@@ -1,6 +1,6 @@
 
 type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
-                | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | INVALID_TYPE
+                | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | INVALID_TYPE | IGNORED_TYPE
 
 type token = CTRLSEQ of string | VAR of string | ID of string | END | BGRP | EGRP | CHAR of string
            | MACRO | POP | IFEMPTY | IFSAME
@@ -54,23 +54,17 @@ let output_token () =
     | EGRP_TYPE -> append_to_sequence EGRP
     | CHAR_TYPE -> append_to_sequence (CHAR(lasttok))
     | INVALID_TYPE -> mcdlex_error ("invalid token \"" ^ lasttok ^ "\"")
+    | IGNORED_TYPE -> ()
 
 let rec refine_ctrlseq lst =
   match lst with
     [] -> []
   | head :: tail -> (
      match head with
-      CTRLSEQ(tok) ->
-        if tok == "\\macro" then
-          MACRO :: (refine_ctrlseq tail)
-        else if tok == "\\pop" then
-          POP :: (refine_ctrlseq tail)
-        else if tok == "\\ifempty" then
-          IFEMPTY :: (refine_ctrlseq tail)
-        else if tok == "\\ifsame" then
-          IFSAME :: (refine_ctrlseq tail)
-        else
-          head :: (refine_ctrlseq tail)
+      CTRLSEQ("\\macro") -> MACRO :: (refine_ctrlseq tail)
+    | CTRLSEQ("\\pop") -> POP :: (refine_ctrlseq tail)
+    | CTRLSEQ("\\ifempty") -> IFEMPTY :: (refine_ctrlseq tail)
+    | CTRLSEQ("\\ifsame") -> IFSAME :: (refine_ctrlseq tail)
     | _ -> head :: (refine_ctrlseq tail)
   )
 
@@ -91,13 +85,14 @@ and q_ini () =
   | '\\' -> (save_token_type CTRLSEQ_TYPE ; q_escape ())
   | '@' -> (save_token_type VAR_TYPE ; q_var ())
   | '#' -> (save_token_type ID_TYPE ; q_id ())
+  | ' ' -> (save_token_type IGNORED_TYPE ; next ())
+  | '\t' -> (save_token_type IGNORED_TYPE ; next ())
+  | '\n' -> (save_token_type IGNORED_TYPE ; next ())
   | '\000' -> (print_string "[END of mcdlex]" ; print_newline ())
   | _ -> (save_token_type CHAR_TYPE ; next ())
 
 and q_escape () =
-  match read_char () with
-    '\000' -> mcdlex_error "Input ended while scanning an escape sequence"
-  | rdch ->
+  let rdch = read_char () in
     if (is_basic_char rdch) then (
       save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
     ) else (
@@ -105,9 +100,7 @@ and q_escape () =
     )
 
 and q_ctrlseq () =
-  match read_char () with
-    '\000' -> mcdlex_error "Input ended while scanning a control sequence"
-  | rdch ->
+  let rdch = read_char () in
     if (is_basic_char rdch) then (
       save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
     ) else (
@@ -115,9 +108,7 @@ and q_ctrlseq () =
     )
 
 and q_var () =
-  match read_char () with
-    '\000' -> mcdlex_error "Input ended while scanning a variable"
-  | rdch ->
+  let rdch = read_char () in
     if (is_basic_char rdch) then (
       save_token_type VAR_TYPE ; q_var ()
     ) else (
@@ -125,9 +116,7 @@ and q_var () =
     )
 
 and q_id () =
-  match read_char () with
-    '\000' -> mcdlex_error "Input ended while scanning an ID"
-  | rdch ->
+  let rdch = read_char () in
     if (is_basic_char rdch) then (
       save_token_type ID_TYPE ; q_id ()
     ) else (
@@ -135,7 +124,7 @@ and q_id () =
     )
 
 and next () =
-  output_token ();
+  output_token () ;
   pos_start := !pos_last ;
   pos_current := !pos_start ;
   last_token_type := INVALID_TYPE ;
