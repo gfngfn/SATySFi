@@ -5,12 +5,12 @@ exception LineUnderflow
 
 module Stack (* : sig
 
-	type 'a t
+  type 'a t
 
-	val empty : 'a t
-	val pop : ('a t ref) -> 'a
-	val push : ('a t ref) -> 'a -> unit
-	val to_list : ('a t) -> ('a list)
+  val empty : 'a t
+  val pop : ('a t ref) -> 'a
+  val push : ('a t ref) -> 'a -> unit
+  val to_list : ('a t) -> ('a list)
 
 end *) = struct
 
@@ -27,6 +27,12 @@ end *) = struct
   (* 'a t ref -> 'a -> unit *)
   let push rfstk cnt =
     rfstk := cnt :: !rfstk
+
+  (* 'a t ref -> 'a *)
+  let top rfstk =
+    match !rfstk with
+      [] -> raise StackUnderflow
+    | head :: tail -> head
 
   (* 'a t -> 'a t -> 'a t *)
   let rec concat lsta lstb =
@@ -63,36 +69,41 @@ end = struct
   let input_line : tree list ref = ref []
   let output_stack : tree_and_state Stack.t ref = ref Stack.empty
 
-  let rec mcd_print stk =
+
+  let print_tree_node tr =
+    match tr with
+      NonTerminal(nontm, lst) -> (
+        match nontm with
+          Total -> print_string "T "
+        | Sentence -> print_string "S "
+        | Block -> print_string "B "
+        | Group -> print_string "G "
+        | Args -> print_string "A "
+        | Params -> print_string "P "
+      )
+    | Terminal(tm) -> (
+        match tm with
+          CTRLSEQ(c) -> print_string "[ctrlseq] "
+        | VAR(c) -> print_string "[var] "
+        | ID(c) -> print_string "[id] "
+        | END -> print_string "[end] "
+        | BGRP -> print_string "[{] "
+        | EGRP -> print_string "[}] "
+        | CHAR(c) -> print_string "[char] "
+        | END_OF_INPUT -> print_string "[$] "
+        | POP -> print_string "[pop] "
+        | MACRO -> print_string "[macro] "
+      )
+
+  let rec print_output stk =
     match stk with
-      [] -> print_string "*"
-    | (tr, st) :: tail -> (
-    	(
-      	match tr with
-      	  NonTerminal(nontm, lst) -> (
-      	  	match nontm with
-      	  	  Total -> print_string "T "
-      	  	| Sentence -> print_string "S "
-      	  	| Block -> print_string "B "
-      	  	| Group -> print_string "G "
-      	  	| Args -> print_string "A "
-      	  	| Params -> print_string "P "
-      	  )
-      	| Terminal(tm) -> (
-      		  match tm with
-      		    CTRLSEQ(c) -> print_string "[ctrlseq] "
-      		  | VAR(c) -> print_string "[var] "
-      		  | ID(c) -> print_string "[id] "
-      		  | END -> print_string "[end] "
-      		  | BGRP -> print_string "[{] "
-      		  | EGRP -> print_string "[}] "
-      		  | CHAR(c) -> print_string "[char] "
-      		  | END_OF_INPUT -> print_string "[$] "
-      		  | POP -> print_string "[pop] "
-      		  | MACRO -> print_string "[macro] "
-        	)
-      ) ; mcd_print tail
-    )
+      [] -> print_string "* "
+    | (tr, st) :: tail -> ( print_output tail ; print_tree_node tr )
+
+  let rec print_input ln =
+    match ln with
+      [] -> print_string "# "
+    | head :: tail -> ( print_tree_node head ; print_input tail )
 
   (* string -> unit *)
   let report_error errmsg =
@@ -142,7 +153,8 @@ end = struct
   (* tree -> state -> unit *)
   and shift content q =
     Stack.push output_stack (content, q) ;
-    mcd_print !output_stack ; print_newline () ;
+    print_output !output_stack ; print_newline () ;
+    print_input !input_line ; print_newline () ;
     q ()
 
   (* nonterminal * int -> unit *)
@@ -153,11 +165,14 @@ end = struct
   (* surely contains bug *)
   and reduce_sub trlst nontm num q =
     if num == 0 then (
-      (* Stack.push output_stack (NonTerminal(nontm, trlst), q) ; q () *)
-      input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
-      print_string "reduce" ; print_newline () ;
-      mcd_print !output_stack ; print_newline () ;
-      q ()
+      match Stack.top output_stack with
+        (tr, st) -> (
+        	input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
+          print_string "reduce" ; print_newline () ;
+          print_output !output_stack ; print_newline () ;
+          print_input !input_line ; print_newline () ;
+          st ()
+        )
     ) else
       let trandst = Stack.pop output_stack in
         match trandst with
@@ -166,7 +181,8 @@ end = struct
   and reduce_empty nontm q =
     input_line := (NonTerminal(nontm, [])) :: !input_line ; 
     print_string "reduce_empty" ; print_newline () ;
-    mcd_print !output_stack ; print_newline () ;
+    print_output !output_stack ; print_newline () ;
+    print_input !input_line ; print_newline () ;
     q ()
 
   and q_dummy () =
@@ -192,7 +208,7 @@ end = struct
     match top_of_line () with
       Terminal(END_OF_INPUT) -> reduce_empty Block q_first
     | _ -> (
-    	let popped = pop_from_line () in
+      let popped = pop_from_line () in
         match popped with
           NonTerminal(Block, lst) -> shift popped q_end
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
@@ -241,7 +257,7 @@ end = struct
   and q_inner_of_group () =
     print_string "q_inner_of_group" ; print_newline () ;
   (*
-    B -> [{].B [}]
+    G -> [{].B [}]
     B -> .S B
     B -> .             (reduce [$], [}])
     S -> .[var] [end]
@@ -260,7 +276,7 @@ end = struct
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_after_block
+          NonTerminal(Block, lst) -> shift popped q_after_inner_of_group
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
@@ -270,6 +286,21 @@ end = struct
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | _ -> report_error "inappropriate token after sentence"
     )
+
+  and q_after_inner_of_group () =
+  (*
+  	G -> [{] B.[}]
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        Terminal(EGRP) -> shift popped q_end_of_group
+      | _ -> report_error "inappropriate end of group"
+
+  and q_end_of_group () =
+  (*
+  	G -> [{] B [}].
+  *)
+    reduce Group 3
 
   and q_var1 () =
     print_string "q_var1" ; print_newline () ;
@@ -377,9 +408,9 @@ end = struct
   and q_args () =
     print_string "q_args" ; print_newline () ;
   (*
-  	A -> [var].A
-  	A -> .[var] A
-  	A -> .
+    A -> [var].A
+    A -> .[var] A
+    A -> .
   *)
     match top_of_line () with
       Terminal(BGRP) -> reduce_empty Args q_args (*?*)
@@ -467,27 +498,27 @@ end = struct
   and q_params () =
     print_string "q_params" ; print_newline () ;
   (*
-  	P -> G.P
-  	P -> .G P
-  	P -> .
-  	G -> .[{] B [}]
+    P -> G.P
+    P -> .G P
+    P -> .
+    G -> .[{] B [}]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_params
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_params
     | _ -> (
-    	let popped = pop_from_line () in
-    	  match popped with
-    	    NonTerminal(Params, lst) -> shift popped q_params_end
-    	  | NonTerminal(Group, lst) -> shift popped q_params
-    	  | Terminal(BGRP) -> shift popped q_inner_of_group
-    	  | _ -> report_error "inappropriate parameter"
+      let popped = pop_from_line () in
+        match popped with
+          NonTerminal(Params, lst) -> shift popped q_params_end
+        | NonTerminal(Group, lst) -> shift popped q_params
+        | Terminal(BGRP) -> shift popped q_inner_of_group
+        | _ -> report_error "inappropriate parameter"
     )
 
   and q_params_end () =
     print_string "q_params_end" ; print_newline () ;
   (*
-  	  P -> G P.
+      P -> G P.
   *)
     reduce Params 2
 
@@ -539,7 +570,7 @@ end = struct
   and q_end_of_end () =
     print_string "q_end_of_end" ; print_newline () ;
   (*
-  	T -> B [$].
+    T -> B [$].
   *)
     reduce Total 2
 (*
