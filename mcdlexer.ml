@@ -1,7 +1,7 @@
 
 type token = CTRLSEQ of string | VAR of string | ID of string | END
            | BGRP | EGRP | CHAR of string
-           | BEGINNING_OF_INPUT | END_OF_INPUT
+           | END_OF_INPUT
            | MACRO | POP
 
 module McdLexer : sig

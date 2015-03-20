@@ -3,7 +3,7 @@ exception StackUnderflow
 
 exception LineUnderflow
 
-module Stack : sig
+module Stack (* : sig
 
 	type 'a t
 
@@ -12,21 +12,21 @@ module Stack : sig
 	val push : ('a t ref) -> 'a -> unit
 	val to_list : ('a t) -> ('a list)
 
-end = struct
+end *) = struct
 
   type 'a t = 'a list
 
   let empty = []
 
   (* 'a t ref -> 'a *)
-  let pop stk =
-    match !stk with
+  let pop rfstk =
+    match !rfstk with
       [] -> raise StackUnderflow
-    | head :: tail -> (stk := tail ; head)
+    | head :: tail -> (rfstk := tail ; head)
 
   (* 'a t ref -> 'a -> unit *)
-  let push stk cnt =
-    stk := cnt :: !stk
+  let push rfstk cnt =
+    rfstk := cnt :: !rfstk
 
   (* 'a t -> 'a t -> 'a t *)
   let rec concat lsta lstb =
@@ -35,8 +35,8 @@ end = struct
     | head :: tail -> head :: (concat tail lstb)
 
   (* 'a t -> 'a list *)
-  let rec to_list lst =
-    match lst with
+  let rec to_list stk =
+    match stk with
       [] -> []
     | head :: tail -> concat (to_list tail) [head]
 
@@ -62,6 +62,37 @@ end = struct
 
   let input_line : tree list ref = ref []
   let output_stack : tree_and_state Stack.t ref = ref Stack.empty
+
+  let rec mcd_print stk =
+    match stk with
+      [] -> print_string "*"
+    | (tr, st) :: tail -> (
+    	(
+      	match tr with
+      	  NonTerminal(nontm, lst) -> (
+      	  	match nontm with
+      	  	  Total -> print_string "T "
+      	  	| Sentence -> print_string "S "
+      	  	| Block -> print_string "B "
+      	  	| Group -> print_string "G "
+      	  	| Args -> print_string "A "
+      	  	| Params -> print_string "P "
+      	  )
+      	| Terminal(tm) -> (
+      		  match tm with
+      		    CTRLSEQ(c) -> print_string "[ctrlseq] "
+      		  | VAR(c) -> print_string "[var] "
+      		  | ID(c) -> print_string "[id] "
+      		  | END -> print_string "[end] "
+      		  | BGRP -> print_string "[{] "
+      		  | EGRP -> print_string "[}] "
+      		  | CHAR(c) -> print_string "[char] "
+      		  | END_OF_INPUT -> print_string "[$] "
+      		  | POP -> print_string "[pop] "
+      		  | MACRO -> print_string "[macro] "
+        	)
+      ) ; mcd_print tail
+    )
 
   (* string -> unit *)
   let report_error errmsg =
@@ -110,26 +141,33 @@ end = struct
 
   (* tree -> state -> unit *)
   and shift content q =
-    Stack.push output_stack (content, q) ; q ()
+    Stack.push output_stack (content, q) ;
+    mcd_print !output_stack ; print_newline () ;
+    q ()
 
   (* nonterminal * int -> unit *)
   and reduce nontm num =
-    print_string "reduce" ; print_newline () ;
     reduce_sub [] nontm num q_dummy
 
   (* tree list -> nonterminal -> int -> unit *)
   (* surely contains bug *)
   and reduce_sub trlst nontm num q =
     if num == 0 then (
-      Stack.push output_stack (NonTerminal(nontm, trlst), q) ; q ()
+      (* Stack.push output_stack (NonTerminal(nontm, trlst), q) ; q () *)
+      input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
+      print_string "reduce" ; print_newline () ;
+      mcd_print !output_stack ; print_newline () ;
+      q ()
     ) else
       let trandst = Stack.pop output_stack in
         match trandst with
           (tr, st) -> reduce_sub (concat_lists trlst [tr]) nontm (num - 1) st
 
   and reduce_empty nontm q =
+    input_line := (NonTerminal(nontm, [])) :: !input_line ; 
     print_string "reduce_empty" ; print_newline () ;
-    shift (NonTerminal(nontm, [])) q
+    mcd_print !output_stack ; print_newline () ;
+    q ()
 
   and q_dummy () =
     print_string "q_dummy" ; print_newline () ;
@@ -158,12 +196,12 @@ end = struct
         match popped with
           NonTerminal(Block, lst) -> shift popped q_end
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
-        | Terminal(VAR(c)) -> q_var1 ()
-        | Terminal(CHAR(c)) -> q_char ()
-        | Terminal(POP) -> q_pop1 ()
-        | Terminal(MACRO) -> q_macro1 ()
+        | Terminal(VAR(c)) -> shift popped q_var1
+        | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(POP) -> shift popped q_pop1
+        | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> q_macrowid1 () *)
-        | Terminal(CTRLSEQ(c)) -> q_after_ctrlseq ()
+        | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | _ -> report_error "illegal first token"
     )
 
