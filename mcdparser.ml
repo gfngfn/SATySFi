@@ -1,16 +1,67 @@
 
-module McdParser = struct
+exception StackUnderflow
+
+exception LineUnderflow
+
+module Stack : sig
+
+	type 'a t
+
+	val empty : 'a t
+	val pop : ('a t ref) -> 'a
+	val push : ('a t ref) -> 'a -> unit
+	val to_list : ('a t) -> ('a list)
+
+end = struct
+
+  type 'a t = 'a list
+
+  let empty = []
+
+  (* 'a t ref -> 'a *)
+  let pop stk =
+    match !stk with
+      [] -> raise StackUnderflow
+    | head :: tail -> (stk := tail ; head)
+
+  (* 'a t ref -> 'a -> unit *)
+  let push stk cnt =
+    stk := cnt :: !stk
+
+  (* 'a t -> 'a t -> 'a t *)
+  let rec concat lsta lstb =
+    match lsta with
+      [] -> lstb
+    | head :: tail -> head :: (concat tail lstb)
+
+  (* 'a t -> 'a list *)
+  let rec to_list lst =
+    match lst with
+      [] -> []
+    | head :: tail -> concat (to_list tail) [head]
+
+end
+
+(*
+module McdParser : sig
 
   type nonterminal = Total | Sentence | Block | Group | Args | Params
-
   type tree = Empty | Terminal of token | NonTerminal of nonterminal * (tree list)
+  type state = (unit -> unit)
+  type tree_and_state = tree * state
+
+  val mcdparser : (token list) -> (tree list)
+
+end = struct
+*)
+  type nonterminal = Total | Sentence | Block | Group | Args | Params
+  type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 
   type state = (unit -> unit)
-
-  type stacked_tree = tree * state
+  type tree_and_state = tree * state
 
   let input_line : tree list ref = ref []
-  let output_stack : stacked_tree list ref = ref []
+  let output_stack : tree_and_state Stack.t ref = ref Stack.empty
 
   (* string -> unit *)
   let report_error errmsg =
@@ -19,13 +70,13 @@ module McdParser = struct
   (* unit -> tree *)
   let pop_from_line () =
     match !input_line with
-      [] -> Empty (*error*)
+      [] -> raise LineUnderflow (*error*)
     | head :: tail -> (input_line := tail ; head)
 
   (* unit -> tree *)
   let top_of_line () =
     match !input_line with
-      [] -> Empty (*error*)
+      [] -> raise LineUnderflow (*error*)
     | head :: tail -> head
 
   (* token list -> tree list *)
@@ -34,43 +85,58 @@ module McdParser = struct
       [] -> []
     | head :: tail -> (Terminal(head)) :: (convert_token_list_into_tree_list tail)
 
+  (* 'a list -> 'a list -> 'a list *)
+  let rec concat_lists lsta lstb =
+    match lsta with
+      [] -> lstb
+    | head :: tail -> head :: (concat_lists tail lstb)
+
   (* token list -> unit *)
   let make_line input =
     input_line := convert_token_list_into_tree_list input
 
-  (* stacked_tree list -> stacked_tree list *)
-  let rec append_element lst elem =
+  let rec eliminate_state lst =
     match lst with
-      [] -> [elem]
-    | head :: tail -> head :: (append_element tail elem)
-
-  (* stacked_tree -> unit *)
-  let append_stack elem =
-    output_stack := append_element !output_stack elem
-
-  let rec pop_from_stack lst =
-    match lst with
-      [] -> report_error "pop_from_stack failed"
-    | [last] -> last
-    | head :: tail -> pop_from_stack tail
-
-  let pop_from_stack_times num =
-    pop_from_stack
+      [] -> []
+    | (tr, st) :: tail -> tr :: (eliminate_state tail)
 
 
-  let rec mcdparse (input: token list) =
+  let rec mcdparser (input: token list) =
     make_line input ;
-    shift Empty q_first
+    output_stack := Stack.empty ;
+
+    q_first () ;
+    eliminate_state (Stack.to_list !output_stack)
 
   (* tree -> state -> unit *)
   and shift content q =
-    append_stack (content, q) ; q ()
+    Stack.push output_stack (content, q) ; q ()
 
   (* nonterminal * int -> unit *)
-  and reduce nontm num = ()
-  (* ****NOW WRITING**** *)
+  and reduce nontm num =
+    print_string "reduce" ; print_newline () ;
+    reduce_sub [] nontm num q_dummy
+
+  (* tree list -> nonterminal -> int -> unit *)
+  (* surely contains bug *)
+  and reduce_sub trlst nontm num q =
+    if num == 0 then (
+      Stack.push output_stack (NonTerminal(nontm, trlst), q) ; q ()
+    ) else
+      let trandst = Stack.pop output_stack in
+        match trandst with
+          (tr, st) -> reduce_sub (concat_lists trlst [tr]) nontm (num - 1) st
+
+  and reduce_empty nontm q =
+    print_string "reduce_empty" ; print_newline () ;
+    shift (NonTerminal(nontm, [])) q
+
+  and q_dummy () =
+    print_string "q_dummy" ; print_newline () ;
+    ()
 
   and q_first () =
+    print_string "q_first" ; print_newline () ;
   (*
     T -> .B [$]
     B -> .S B
@@ -86,7 +152,7 @@ module McdParser = struct
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(END_OF_INPUT) -> reduce Block 0
+      Terminal(END_OF_INPUT) -> reduce_empty Block q_first
     | _ -> (
     	let popped = pop_from_line () in
         match popped with
@@ -102,6 +168,7 @@ module McdParser = struct
     )
 
   and q_after_sentence () =
+    print_string "q_after_sentence" ; print_newline () ;
   (*
     B -> S.B
     B -> .S B
@@ -117,8 +184,8 @@ module McdParser = struct
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce Block 0
-    | Terminal(END_OF_INPUT) -> reduce Block 0
+      Terminal(EGRP) -> reduce_empty Block q_after_sentence
+    | Terminal(END_OF_INPUT) -> reduce_empty Block q_after_sentence
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -134,6 +201,7 @@ module McdParser = struct
     )
 
   and q_inner_of_group () =
+    print_string "q_inner_of_group" ; print_newline () ;
   (*
     B -> [{].B [}]
     B -> .S B
@@ -149,8 +217,8 @@ module McdParser = struct
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce Block 0
-    | Terminal(END_OF_INPUT) -> reduce Block 0
+      Terminal(EGRP) -> reduce_empty Block q_inner_of_group
+    | Terminal(END_OF_INPUT) -> reduce_empty Block q_inner_of_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -166,6 +234,7 @@ module McdParser = struct
     )
 
   and q_var1 () =
+    print_string "q_var1" ; print_newline () ;
   (*
     S -> [var].[end]
   *)
@@ -175,18 +244,21 @@ module McdParser = struct
       | _ -> report_error "missing semicolon after variable"
 
   and q_var2 () =
+    print_string "q_var2" ; print_newline () ;
   (*
     S -> [var] [end].
   *)
     reduce Sentence 2
 
   and q_char () =
+    print_string "q_char" ; print_newline () ;
   (*
     S -> [char].
   *)
     reduce Sentence 1
 
   and q_pop1 () =
+    print_string "q_pop1" ; print_newline () ;
   (*
     S -> [pop].[var] [var] G
   *)
@@ -196,6 +268,7 @@ module McdParser = struct
       | _ -> report_error "missing first variable after \\pop"
 
   and q_pop2 () =
+    print_string "q_pop2" ; print_newline () ;
   (*
     S -> [pop] [var].[var] G
   *)
@@ -205,6 +278,7 @@ module McdParser = struct
       | _ -> report_error "missing second variable after \\pop"
 
   and q_pop3 () =
+    print_string "q_pop3" ; print_newline () ;
   (*
     S -> [pop] [var] [var].G
     G -> .[{] B [}]
@@ -215,6 +289,7 @@ module McdParser = struct
       | _ -> report_error "missing { after \\pop"
 
   and q_macro1 () =
+    print_string "q_macro1" ; print_newline () ;
   (*
     S -> [macro].[ctrlseq] A G
   *)
@@ -224,15 +299,16 @@ module McdParser = struct
       | _ -> report_error "missing control sequence after \\macro"
 
   and q_macro2 () =
+    print_string "q_macro2" ; print_newline () ;
   (*
     S -> [macro] [ctrlseq].A G
     A -> .[var] A
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce Args 0 (*?*)
-    | Terminal(EGRP) -> reduce Args 0
-    | Terminal(END_OF_INPUT) -> reduce Args 0
+      Terminal(BGRP) -> reduce_empty Args q_macro2 (*?*)
+    | Terminal(EGRP) -> reduce_empty Args q_macro2
+    | Terminal(END_OF_INPUT) -> reduce_empty Args q_macro2
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -242,6 +318,7 @@ module McdParser = struct
     )
 
   and q_macro3 () =
+    print_string "q_macro3" ; print_newline () ;
   (*
     S -> [macro] [ctrlseq] A.G
     G -> .[{] B [}]
@@ -253,21 +330,23 @@ module McdParser = struct
       | _ -> report_error "missing group in \\macro declaration"
 
   and q_macro4 () =
+    print_string "q_macro4" ; print_newline () ;
   (*
     S -> [macro] [ctrlseq] A G.
   *)
     reduce Sentence 4
 
   and q_args () =
+    print_string "q_args" ; print_newline () ;
   (*
   	A -> [var].A
   	A -> .[var] A
   	A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce Args 0 (*?*)
-    | Terminal(EGRP) -> reduce Args 0
-    | Terminal(END_OF_INPUT) -> reduce Args 0
+      Terminal(BGRP) -> reduce_empty Args q_args (*?*)
+    | Terminal(EGRP) -> reduce_empty Args q_args
+    | Terminal(END_OF_INPUT) -> reduce_empty Args q_args
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -277,6 +356,7 @@ module McdParser = struct
     )
 
   and q_after_ctrlseq () =
+    print_string "q_after_ctrlseq" ; print_newline () ;
   (*
     S -> [ctrlseq].[end]
     S -> [ctrlseq].[id] [end]
@@ -293,6 +373,7 @@ module McdParser = struct
       | _ -> report_error "illegal token after control sequence"
 
   and q_after_first_group () =
+    print_string "q_after_first_group" ; print_newline () ;
   (*
     S -> [ctrlseq] G.P
     P -> .G P
@@ -300,8 +381,8 @@ module McdParser = struct
     G -> .[{] B [}]
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce Params 0
-    | Terminal(END_OF_INPUT) -> reduce Params 0
+      Terminal(EGRP) -> reduce_empty Params q_after_first_group
+    | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -312,6 +393,7 @@ module McdParser = struct
     )
 
   and q_after_id () =
+    print_string "q_after_id" ; print_newline () ;
   (*
     S -> [ctrlseq] [id].[end]
     S -> [ctrlseq] [id].G P
@@ -325,6 +407,7 @@ module McdParser = struct
       | _ -> report_error "inappropriate token after ID"
 
   and q_after_id_and_first_group () =
+    print_string "q_after_id_and_first_group" ; print_newline () ;
   (*
     S -> [ctrlseq] [id] G.P
     P -> .G P
@@ -332,8 +415,8 @@ module McdParser = struct
     G -> .[{] B [}]
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce Params 0
-    | Terminal(END_OF_INPUT) -> reduce Params 0
+      Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_id_and_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -344,6 +427,7 @@ module McdParser = struct
     )
 
   and q_params () =
+    print_string "q_params" ; print_newline () ;
   (*
   	P -> G.P
   	P -> .G P
@@ -351,8 +435,8 @@ module McdParser = struct
   	G -> .[{] B [}]
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce Params 0
-    | Terminal(END_OF_INPUT) -> reduce Params 0
+      Terminal(EGRP) -> reduce_empty Params q_params
+    | Terminal(END_OF_INPUT) -> reduce_empty Params q_params
     | _ -> (
     	let popped = pop_from_line () in
     	  match popped with
@@ -363,48 +447,63 @@ module McdParser = struct
     )
 
   and q_params_end () =
+    print_string "q_params_end" ; print_newline () ;
   (*
   	  P -> G P.
   *)
     reduce Params 2
 
   and q_ctrlseq_A () =
+    print_string "q_ctrlseq_A" ; print_newline () ;
   (*
     S -> [ctrlseq] [end].
   *)
     reduce Sentence 2
 
   and q_ctrlseq_B () =
+    print_string "q_ctrlseq_B" ; print_newline () ;
   (*
     S -> [ctrlseq] [id] [end].
   *)
     reduce Sentence 3
 
   and q_ctrlseq_C () =
+    print_string "q_ctrlseq_C" ; print_newline () ;
   (*
     S -> [ctrlseq] G P.
   *)
     reduce Sentence 3
 
   and q_ctrlseq_D () =
+    print_string "q_ctrlseq_D" ; print_newline () ;
   (*
     S -> [ctrlseq] [id] G P.
   *)
     reduce Sentence 4
 
   and q_after_block () =
+    print_string "q_after_block" ; print_newline () ;
   (*
     B -> S B.
   *)
     reduce Block 2
 
   and q_end () =
+    print_string "q_end" ; print_newline () ;
   (*
     T -> B.[$]
   *)
-    match pop_from_line () with
-     | Terminal(END_OF_INPUT) -> () (*end of parsing*)
-     | _ -> report_error "illegal end"
+    let popped = pop_from_line () in
+      match popped with
+        Terminal(END_OF_INPUT) -> shift popped q_end_of_end (*end of parsing*)
+      | _ -> report_error "illegal end"
 
-
+  and q_end_of_end () =
+    print_string "q_end_of_end" ; print_newline () ;
+  (*
+  	T -> B [$].
+  *)
+    reduce Total 2
+(*
 end
+*)
