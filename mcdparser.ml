@@ -90,6 +90,7 @@ end = struct
         | BGRP -> print_string "[{] "
         | EGRP -> print_string "[}] "
         | CHAR(c) -> print_string "[char] "
+        | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[pop] "
         | MACRO -> print_string "[macro] "
@@ -97,12 +98,12 @@ end = struct
 
   let rec print_output stk =
     match stk with
-      [] -> print_string "* "
+      [] -> print_string "output: "
     | (tr, st) :: tail -> ( print_output tail ; print_tree_node tr )
 
   let rec print_input ln =
     match ln with
-      [] -> print_string "# "
+      [] -> print_string ":input"
     | head :: tail -> ( print_tree_node head ; print_input tail )
 
   (* string -> unit *)
@@ -146,6 +147,7 @@ end = struct
   let rec mcdparser (input: token list) =
     make_line input ;
     output_stack := Stack.empty ;
+    Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
     eliminate_state (Stack.to_list !output_stack)
@@ -159,11 +161,11 @@ end = struct
 
   (* nonterminal * int -> unit *)
   and reduce nontm num =
-    reduce_sub [] nontm num q_dummy
+    reduce_sub [] nontm num
 
   (* tree list -> nonterminal -> int -> unit *)
   (* surely contains bug *)
-  and reduce_sub trlst nontm num q =
+  and reduce_sub trlst nontm num =
     if num == 0 then (
       match Stack.top output_stack with
         (tr, st) -> (
@@ -174,9 +176,8 @@ end = struct
           st ()
         )
     ) else
-      let trandst = Stack.pop output_stack in
-        match trandst with
-          (tr, st) -> reduce_sub (concat_lists trlst [tr]) nontm (num - 1) st
+      match Stack.pop output_stack with
+        (tr, st) -> reduce_sub (tr :: trlst) nontm (num - 1)
 
   and reduce_empty nontm q =
     input_line := (NonTerminal(nontm, [])) :: !input_line ; 
@@ -210,7 +211,8 @@ end = struct
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_end
+          NonTerminal(Total, lst) -> shift popped q_total
+        | NonTerminal(Block, lst) -> shift popped q_end
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
@@ -220,6 +222,10 @@ end = struct
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | _ -> report_error "illegal first token"
     )
+
+  and q_total () =
+    print_string "q_total" ; print_newline () ;
+    ()
 
   and q_after_sentence () =
     print_string "q_after_sentence" ; print_newline () ;
