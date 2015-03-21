@@ -425,10 +425,16 @@ end = struct
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Args, lst) -> shift popped q_macro3
+          NonTerminal(Args, lst) -> shift popped q_end_of_args
         | Terminal(VAR(c)) -> shift popped q_args
         | _ -> report_error "inappropriate argument in \\macro declaration"
     )
+
+  and q_end_of_args () =
+  (*
+  	A -> [var].A
+  *)
+    reduce Args 2
 
   and q_after_ctrlseq () =
     print_string "q_after_ctrlseq" ; print_newline () ;
