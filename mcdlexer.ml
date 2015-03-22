@@ -47,6 +47,7 @@ end = struct
     print_string ("[Error in mcdlex] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
     print_string (" to " ^ (string_of_int !pos_current)) ; print_newline ()
+    (* ; output_sequence := [END_OF_INPUT] *)
   )
 
   let output_token () = 

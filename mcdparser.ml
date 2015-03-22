@@ -70,6 +70,7 @@ end = struct
   let output_stack : tree_and_state Stack.t ref = ref Stack.empty
 
 
+  (* for test *)
   let print_tree_node tr =
     match tr with
       NonTerminal(nontm, lst) -> (
@@ -98,11 +99,13 @@ end = struct
         | MACRO -> print_string "[macro] "
       )
 
+  (* for test *)
   let rec print_output stk =
     match stk with
       [] -> print_string "output: "
     | (tr, st) :: tail -> ( print_output tail ; print_tree_node tr )
 
+  (* for test *)
   let rec print_input ln =
     match ln with
       [] -> print_string ":input"
@@ -111,6 +114,7 @@ end = struct
   (* string -> unit *)
   let report_error errmsg =
     print_string ("[Error in mcdparser] " ^ errmsg ^ ":") ; print_newline ()
+    (* ; output_stack := Stack.empty *)
 
   (* unit -> tree *)
   let pop_from_line () =
@@ -130,16 +134,17 @@ end = struct
       [] -> []
     | head :: tail -> (Terminal(head)) :: (convert_token_list_into_tree_list tail)
 
-  (* 'a list -> 'a list -> 'a list *)
-  let rec concat_lists lsta lstb =
-    match lsta with
-      [] -> lstb
-    | head :: tail -> head :: (concat_lists tail lstb)
+  (* 'a list -> 'a list *)
+  let elim_first lst =
+    match lst with
+      [] -> []
+    | head :: tail -> tail
 
   (* token list -> unit *)
   let make_line input =
     input_line := convert_token_list_into_tree_list input
 
+  (* ('a * 'b) list -> 'a list *)
   let rec eliminate_state lst =
     match lst with
       [] -> []
@@ -152,7 +157,7 @@ end = struct
     Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
-    eliminate_state (Stack.to_list !output_stack)
+    eliminate_state (elim_first (Stack.to_list !output_stack))
 
   (* tree -> state -> unit *)
   and shift content q =
@@ -270,7 +275,7 @@ end = struct
     L -> .B [sep] L
     L -> .B
     B -> .S B
-    B -> .             (reduce [$], [}], [sep])
+    B -> .             (reduce [$], [}])
     S -> .[var] [end]
     S -> .[char]
     S -> .[pop] [var] [var] G
@@ -301,6 +306,7 @@ end = struct
     )
 
   and q_inner_of_list_by_sep () =
+    print_string "q_inner_of_list_by_sep" ; print_newline () ;
   (*
   	L -> B.[sep] L
   	L -> B.           (reduce [$], [}], [sep])
@@ -308,7 +314,6 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce ListBySep 1
     | Terminal(END_OF_INPUT) -> reduce ListBySep 1
-    | Terminal(SEP) -> reduce ListBySep 1
     | _ -> (
     	let popped = pop_from_line () in
     	  match popped with
@@ -317,6 +322,7 @@ end = struct
       )
 
   and q_after_sep () =
+    print_string "q_after_sep" ; print_newline () ;
   (*
   	L -> B [sep]. L
   	L -> .B [sep] L
@@ -353,12 +359,14 @@ end = struct
     )
 
   and q_end_of_list () =
+    print_string "q_end_of_list" ; print_newline () ;
   (*
   	L -> B [sep] L.
   *)
     reduce ListBySep 3
 
   and q_after_inner_of_group () =
+    print_string "q_after_inner_of_group" ; print_newline () ;
   (*
   	G -> [{] L.[}]
   *)
@@ -368,6 +376,7 @@ end = struct
       | _ -> report_error "inappropriate end of group"
 
   and q_end_of_group () =
+    print_string "q_end_of_group" ; print_newline () ;
   (*
   	G -> [{] L [}].
   *)
@@ -446,8 +455,7 @@ end = struct
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce_empty Args q_macro2 (*?*)
-    | Terminal(EGRP) -> reduce_empty Args q_macro2
+      Terminal(BGRP) -> reduce_empty Args q_macro2
     | Terminal(END_OF_INPUT) -> reduce_empty Args q_macro2
     | _ -> (
       let popped = pop_from_line () in
@@ -484,8 +492,7 @@ end = struct
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce_empty Args q_args (*?*)
-    | Terminal(EGRP) -> reduce_empty Args q_args
+      Terminal(BGRP) -> reduce_empty Args q_args
     | Terminal(END_OF_INPUT) -> reduce_empty Args q_args
     | _ -> (
       let popped = pop_from_line () in
@@ -529,6 +536,7 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_after_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_first_group
+    | Terminal(SEP) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -563,6 +571,7 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(SEP) -> reduce_empty Params q_after_id_and_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -583,6 +592,7 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_params
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_params
+    | Terminal(SEP) -> reduce_empty Params q_params
     | _ -> (
       let popped = pop_from_line () in
         match popped with
