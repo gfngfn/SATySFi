@@ -48,20 +48,19 @@ end *) = struct
 
 end
 
+type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
+type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
+
 (*
 module McdParser : sig
 
-  type nonterminal = Total | Sentence | Block | Group | Args | Params
-  type tree = Empty | Terminal of token | NonTerminal of nonterminal * (tree list)
-  type state = (unit -> unit)
-  type tree_and_state = tree * state
+  type state
+  type tree_and_state
 
   val mcdparser : (token list) -> (tree list)
 
 end = struct
 *)
-  type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
-  type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 
   type state = (unit -> unit)
   type tree_and_state = tree * state
@@ -144,7 +143,7 @@ end = struct
   let make_line input =
     input_line := convert_token_list_into_tree_list input
 
-  (* ('a * 'b) list -> 'a list *)
+  (* (tree * state) list -> tree list *)
   let rec eliminate_state lst =
     match lst with
       [] -> []
@@ -171,7 +170,6 @@ end = struct
     reduce_sub [] nontm num
 
   (* tree list -> nonterminal -> int -> unit *)
-  (* surely contains bug *)
   and reduce_sub trlst nontm num =
     if num == 0 then (
       match Stack.top output_stack with
@@ -309,7 +307,7 @@ end = struct
     print_string "q_inner_of_list_by_sep" ; print_newline () ;
   (*
   	L -> B.[sep] L
-  	L -> B.           (reduce [$], [}], [sep])
+  	L -> B.           (reduce [$], [}])
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce ListBySep 1

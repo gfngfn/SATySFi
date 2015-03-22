@@ -105,11 +105,15 @@ end = struct
 
   and q_escape () =
     let rdch = read_char () in
-      if (is_basic_char rdch) then (
-        save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
-      ) else (
-        save_token_type CHAR_TYPE ; next ()
-      )
+      match rdch with
+        '\000' -> (report_error "input ended by escape")
+      | _ -> (
+          if (is_basic_char rdch) then (
+            save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
+          ) else (
+            save_token_type CHAR_TYPE ; pos_start := !pos_start + 1 ; next ()
+          )
+        )
 
   and q_ctrlseq () =
     let rdch = read_char () in
