@@ -1,6 +1,6 @@
 
-type token = CTRLSEQ of string | VAR of string | ID of string | END
-           | BGRP | EGRP | CHAR of string
+type token = CTRLSEQ of string | VAR of string | ID of string
+           | END | BGRP | EGRP | SEP | CHAR of string
            | BEGINNING_OF_INPUT | END_OF_INPUT
            | MACRO | POP
 
@@ -11,7 +11,7 @@ module McdLexer : sig
 end = struct
 
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
-                  | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | INVALID_TYPE
+                  | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
                   | SPACE_TYPE
 
   let input_buffer : string ref = ref ""
@@ -59,7 +59,9 @@ end = struct
       | BGRP_TYPE -> (append_to_sequence BGRP ; ignore_space := false)
       | EGRP_TYPE -> (append_to_sequence EGRP ; ignore_space := false)
       | CHAR_TYPE -> (append_to_sequence (CHAR(lasttok)) ; ignore_space := false)
+      | SEP_TYPE -> (append_to_sequence SEP ; ignore_space := false)
       | SPACE_TYPE -> if !ignore_space then () else append_to_sequence (CHAR(lasttok))
+        (* maybe the specification of space letter needs changing *)
       | INVALID_TYPE -> report_error ("invalid token \"" ^ lasttok ^ "\"")
 
   let rec refine_ctrlseq lst =
@@ -93,6 +95,7 @@ end = struct
     | '\\' -> (save_token_type CTRLSEQ_TYPE ; q_escape ())
     | '@' -> (save_token_type VAR_TYPE ; q_var ())
     | '#' -> (save_token_type ID_TYPE ; q_id ())
+    | '|' -> (save_token_type SEP_TYPE ; next ())
     | ' ' -> (save_token_type SPACE_TYPE ; next ())
     | '\t' -> (save_token_type SPACE_TYPE ; next ())
     | '\n' -> (save_token_type SPACE_TYPE ; next ())
@@ -104,7 +107,7 @@ end = struct
       if (is_basic_char rdch) then (
         save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
       ) else (
-        save_token_type CHAR_TYPE ; next()
+        save_token_type CHAR_TYPE ; next ()
       )
 
   and q_ctrlseq () =

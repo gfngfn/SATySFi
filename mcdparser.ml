@@ -60,7 +60,7 @@ module McdParser : sig
 
 end = struct
 *)
-  type nonterminal = Total | Sentence | Block | Group | Args | Params
+  type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
   type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 
   type state = (unit -> unit)
@@ -80,6 +80,7 @@ end = struct
         | Group -> print_string "G "
         | Args -> print_string "A "
         | Params -> print_string "P "
+        | ListBySep -> print_string "L "
       )
     | Terminal(tm) -> (
         match tm with
@@ -90,6 +91,7 @@ end = struct
         | BGRP -> print_string "[{] "
         | EGRP -> print_string "[}] "
         | CHAR(c) -> print_string "[char] "
+        | SEP -> print_string "[sep] "
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[pop] "
@@ -232,7 +234,7 @@ end = struct
   (*
     B -> S.B
     B -> .S B
-    B -> .             (reduce [$], [}])
+    B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
     S -> .[pop] [var] [var] G
@@ -246,6 +248,7 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Block q_after_sentence
     | Terminal(END_OF_INPUT) -> reduce_empty Block q_after_sentence
+    | Terminal(SEP) -> reduce_empty Block q_after_sentence
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -263,9 +266,11 @@ end = struct
   and q_inner_of_group () =
     print_string "q_inner_of_group" ; print_newline () ;
   (*
-    G -> [{].B [}]
+    G -> [{].L [}]
+    L -> .B [sep] L
+    L -> .B
     B -> .S B
-    B -> .             (reduce [$], [}])
+    B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
     S -> .[pop] [var] [var] G
@@ -279,10 +284,12 @@ end = struct
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Block q_inner_of_group
     | Terminal(END_OF_INPUT) -> reduce_empty Block q_inner_of_group
+    | Terminal(SEP) -> reduce_empty Block q_inner_of_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_after_inner_of_group
+          NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
+        | NonTerminal(ListBySep, lst) -> shift popped q_after_inner_of_group
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
@@ -293,9 +300,67 @@ end = struct
         | _ -> report_error "inappropriate token after sentence"
     )
 
+  and q_inner_of_list_by_sep () =
+  (*
+  	L -> B.[sep] L
+  	L -> B.           (reduce [$], [}], [sep])
+  *)
+    match top_of_line () with
+      Terminal(EGRP) -> reduce ListBySep 1
+    | Terminal(END_OF_INPUT) -> reduce ListBySep 1
+    | Terminal(SEP) -> reduce ListBySep 1
+    | _ -> (
+    	let popped = pop_from_line () in
+    	  match popped with
+    	    Terminal(SEP) -> shift popped q_after_sep
+    	  | _ -> report_error "illegal end of list in group"
+      )
+
+  and q_after_sep () =
+  (*
+  	L -> B [sep]. L
+  	L -> .B [sep] L
+  	L -> .B
+    B -> .S B
+    B -> .             (reduce [$], [}], [sep])
+    S -> .[var] [end]
+    S -> .[char]
+    S -> .[pop] [var] [var] G
+    S -> .[macro] [ctrlseq] A G
+    S -> .[macrowid] [ctrlseq] A G G
+    S -> .[ctrlseq] [end]
+    S -> .[ctrlseq] [id] [end]
+    S -> .[ctrlseq] G P
+    S -> .[ctrlseq] [id] G P
+  *)
+    match top_of_line () with
+      Terminal(EGRP) -> reduce_empty Block q_inner_of_group
+    | Terminal(END_OF_INPUT) -> reduce_empty Block q_inner_of_group
+    | Terminal(SEP) -> reduce_empty Block q_inner_of_group
+    | _ -> (
+      let popped = pop_from_line () in
+        match popped with
+          NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
+        | NonTerminal(ListBySep, lst) -> shift popped q_end_of_list
+        | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
+        | Terminal(VAR(c)) -> shift popped q_var1
+        | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(POP) -> shift popped q_pop1
+        | Terminal(MACRO) -> shift popped q_macro1
+(*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
+        | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
+        | _ -> report_error "inappropriate token after sentence"
+    )
+
+  and q_end_of_list () =
+  (*
+  	L -> B [sep] L.
+  *)
+    reduce ListBySep 3
+
   and q_after_inner_of_group () =
   (*
-  	G -> [{] B.[}]
+  	G -> [{] L.[}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -304,7 +369,7 @@ end = struct
 
   and q_end_of_group () =
   (*
-  	G -> [{] B [}].
+  	G -> [{] L [}].
   *)
     reduce Group 3
 
@@ -356,7 +421,7 @@ end = struct
     print_string "q_pop3" ; print_newline () ;
   (*
     S -> [pop] [var] [var].G
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -396,7 +461,7 @@ end = struct
     print_string "q_macro3" ; print_newline () ;
   (*
     S -> [macro] [ctrlseq] A.G
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -443,7 +508,7 @@ end = struct
     S -> [ctrlseq].[id] [end]
     S -> [ctrlseq].G P
     S -> [ctrlseq].[id] G P
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -459,7 +524,7 @@ end = struct
     S -> [ctrlseq] G.P
     P -> .G P
     P -> .
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_after_first_group
@@ -478,7 +543,7 @@ end = struct
   (*
     S -> [ctrlseq] [id].[end]
     S -> [ctrlseq] [id].G P
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     let popped = pop_from_line() in
       match popped with
@@ -493,7 +558,7 @@ end = struct
     S -> [ctrlseq] [id] G.P
     P -> .G P
     P -> .
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
@@ -513,7 +578,7 @@ end = struct
     P -> G.P
     P -> .G P
     P -> .
-    G -> .[{] B [}]
+    G -> .[{] L [}]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Params q_params
