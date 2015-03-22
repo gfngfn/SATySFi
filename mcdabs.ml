@@ -50,18 +50,14 @@ end = struct
           print_tree_node lstbysp ; print_newline () ;
           concrete_to_abstract lstbysp
         )
-    | NonTerminal(ListBySep, tr :: lstbysp) -> (
-          match lstbysp with
-            [] -> (
-                print_string "#ListBySep []" ; print_newline () ;
-                print_tree_node tr ; print_newline () ;
-                concrete_to_abstract tr
-              )
-          | _ -> (
-                print_string "#ListBySep _" ; print_newline () ;
-                print_tree_node tr ; print_newline () ;
-                Separated(concrete_to_abstract tr, concrete_to_abstract (NonTerminal(Block, lstbysp)))
-              )
+    | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)]) -> (
+          print_string "#ListBySep []" ; print_newline () ;
+    	    Separated(concrete_to_abstract (NonTerminal(Block, chdrn)), EndOfSeparated)
+        )
+    | NonTerminal(ListBySep, [tr; Terminal(SEP); lstbysp]) -> (
+          print_string "#ListBySep _" ; print_newline () ;
+          print_tree_node tr ; print_newline () ;
+          Separated(concrete_to_abstract tr, concrete_to_abstract lstbysp)
         )
     | NonTerminal(Sentence, chdrn) -> (
         match chdrn with
