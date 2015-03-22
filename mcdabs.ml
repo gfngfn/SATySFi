@@ -129,10 +129,10 @@ end = struct
             print_string "#Args []" ; print_newline () ;
             []
           )
-      | NonTerminal(Args, Terminal(VAR(v)) :: argssub)
+      | NonTerminal(Args, [Terminal(VAR(v)); argssub])
           -> (
             print_string "#Args v :: argssub" ; print_newline () ;
-            v :: (make_args_list (NonTerminal(Args, argssub)))
+            v :: (make_args_list argssub)
           )
       | _ -> (
           report_error "illegal argument" ;
@@ -146,8 +146,8 @@ end = struct
     and make_params_list prms =
       match prms with
         NonTerminal(Params, []) -> []
-      | NonTerminal(Params, grp :: paramssub)
-          -> (concrete_to_abstract grp) :: (make_params_list (NonTerminal(Params, paramssub)))
+      | NonTerminal(Params, [grp; paramssub])
+          -> (concrete_to_abstract grp) :: (make_params_list paramssub)
       | _ -> (report_error "illegal parameter" ; [Invalid])
 
 end
