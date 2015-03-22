@@ -57,7 +57,7 @@ module McdParser : sig
   type state
   type tree_and_state
 
-  val mcdparser : (token list) -> (tree list)
+  val mcdparser : (token list) -> tree
 
 end = struct
 *)
@@ -112,7 +112,7 @@ end = struct
 
   (* string -> unit *)
   let report_error errmsg =
-    print_string ("[Error in mcdparser] " ^ errmsg ^ ":") ; print_newline ()
+    print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ":") ; print_newline ()
     (* ; output_stack := Stack.empty *)
 
   (* unit -> tree *)
@@ -139,6 +139,12 @@ end = struct
       [] -> []
     | head :: tail -> tail
 
+  (* tree list -> tree *)
+  let get_first lst =
+    match lst with
+      [] -> raise LineUnderflow
+    | head :: tail -> head
+
   (* token list -> unit *)
   let make_line input =
     input_line := convert_token_list_into_tree_list input
@@ -150,13 +156,13 @@ end = struct
     | (tr, st) :: tail -> tr :: (eliminate_state tail)
 
 
-  let rec mcdparser (input: token list) =
+  let rec mcdparser (input : token list) =
     make_line input ;
     output_stack := Stack.empty ;
     Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
-    eliminate_state (elim_first (Stack.to_list !output_stack))
+    get_first (eliminate_state (elim_first (Stack.to_list !output_stack)))
 
   (* tree -> state -> unit *)
   and shift content q =

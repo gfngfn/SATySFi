@@ -1,6 +1,11 @@
 
-type token = CTRLSEQ of string | VAR of string | ID of string
-           | END | BGRP | EGRP | SEP | CHAR of string
+type macro_name = string
+type var_name = string
+type id_name = string
+type letter = string
+
+type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
+           | END | BGRP | EGRP | SEP | CHAR of letter
            | BEGINNING_OF_INPUT | END_OF_INPUT
            | MACRO | POP
 
