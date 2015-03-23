@@ -104,7 +104,9 @@ end  = struct
       [] -> print_string "output: "
     | (tr, st) :: tail -> ( print_output_sub tail ; print_tree_node tr )
 
+  (* for test *)
   let print_output stk =
+    (* enable below in order to see the process of parsing *)
   (*
     print_output_sub stk ; print_newline ()
   *)
@@ -112,15 +114,21 @@ end  = struct
 
   (* for test *)
   let rec print_input ln =
+    (* enable below in order to see the process of parsing *)
   (*
-    match ln with
-      [] -> ( print_string ":input" ; print_newline () )
-    | head :: tail -> ( print_tree_node head ; print_input tail )
+    (
+      match ln with
+        [] -> ( print_string ":input" ; print_newline () )
+      | head :: tail -> ( print_tree_node head ; print_input tail )
+    ) ;
   *)
     ()
 
   let print_process stat = 
-    print_string stat ; print_newline () ;
+    (* enable below in order to see the process of parsing *)
+  (*
+  	print_string stat ; print_newline () ;
+  *)
     ()
 
   (* unit -> tree *)
