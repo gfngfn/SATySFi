@@ -48,12 +48,17 @@ end = struct
   let append_to_sequence elem = (
     output_sequence := append_element !output_sequence elem
   )
-  let report_error errmsg = (
-    print_string ("[Error in mcdlex] " ^ errmsg ^ ":") ; print_newline () ;
+  let report_error errmsg =
+    print_string ("[ERROR IN MCDLEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
     print_string (" to " ^ (string_of_int !pos_current)) ; print_newline ()
     (* ; output_sequence := [END_OF_INPUT] *)
-  )
+
+  let print_process stat =
+  (*
+    print_string stat ; print_newline ()
+  *)
+    ()
 
   let output_token () = 
     let lasttok = get_last_token () in
@@ -105,7 +110,7 @@ end = struct
     | ' ' -> (save_token_type SPACE_TYPE ; next ())
     | '\t' -> (save_token_type SPACE_TYPE ; next ())
     | '\n' -> (save_token_type SPACE_TYPE ; next ())
-    | '\000' -> (print_string "[END of mcdlex]" ; print_newline ())
+    | '\000' -> print_process "[END OF MCDLEXER]"
     | _ -> (save_token_type CHAR_TYPE ; next ())
 
   and q_escape () =

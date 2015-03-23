@@ -99,21 +99,34 @@ end = struct
       )
 
   (* for test *)
-  let rec print_output stk =
+  let rec print_output_sub stk =
     match stk with
       [] -> print_string "output: "
-    | (tr, st) :: tail -> ( print_output tail ; print_tree_node tr )
+    | (tr, st) :: tail -> ( print_output_sub tail ; print_tree_node tr )
+
+  let print_output stk =
+  (*
+    print_output_sub stk ; print_newline ()
+  *)
+    ()
 
   (* for test *)
   let rec print_input ln =
+  (*
     match ln with
-      [] -> print_string ":input"
+      [] -> ( print_string ":input" ; print_newline () )
     | head :: tail -> ( print_tree_node head ; print_input tail )
+  *)
+    ()
 
   (* string -> unit *)
   let report_error errmsg =
     print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ":") ; print_newline ()
     (* ; output_stack := Stack.empty *)
+
+  let print_process stat = 
+    (* print_string stat ; print_newline () *)
+    ()
 
   (* unit -> tree *)
   let pop_from_line () =
@@ -162,13 +175,14 @@ end = struct
     Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
+    print_process "[END OF MCDPASER]" ;
     get_first (eliminate_state (elim_first (Stack.to_list !output_stack)))
 
   (* tree -> state -> unit *)
   and shift content q =
     Stack.push output_stack (content, q) ;
-    print_output !output_stack ; print_newline () ;
-    print_input !input_line ; print_newline () ;
+    print_output !output_stack ;
+    print_input !input_line ;
     q ()
 
   (* nonterminal * int -> unit *)
@@ -180,10 +194,10 @@ end = struct
     if num == 0 then (
       match Stack.top output_stack with
         (tr, st) -> (
-        	input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
-          print_string "reduce" ; print_newline () ;
-          print_output !output_stack ; print_newline () ;
-          print_input !input_line ; print_newline () ;
+          input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
+          print_process "reduce" ;
+          print_output !output_stack ;
+          print_input !input_line ;
           st ()
         )
     ) else
@@ -192,17 +206,17 @@ end = struct
 
   and reduce_empty nontm q =
     input_line := (NonTerminal(nontm, [])) :: !input_line ; 
-    print_string "reduce_empty" ; print_newline () ;
-    print_output !output_stack ; print_newline () ;
-    print_input !input_line ; print_newline () ;
+    print_process "reduce_empty" ;
+    print_output !output_stack ;
+    print_input !input_line ;
     q ()
 
   and q_dummy () =
-    print_string "q_dummy" ; print_newline () ;
+    print_process "q_dummy" ;
     ()
 
   and q_first () =
-    print_string "q_first" ; print_newline () ;
+    print_process "q_first" ;
   (*
     T -> .B [$]
     B -> .S B
@@ -235,11 +249,11 @@ end = struct
     )
 
   and q_total () =
-    print_string "q_total" ; print_newline () ;
+    print_process "q_total" ;
     ()
 
   and q_after_sentence () =
-    print_string "q_after_sentence" ; print_newline () ;
+    print_process "q_after_sentence" ;
   (*
     B -> S.B
     B -> .S B
@@ -273,7 +287,7 @@ end = struct
     )
 
   and q_inner_of_group () =
-    print_string "q_inner_of_group" ; print_newline () ;
+    print_process "q_inner_of_group" ;
   (*
     G -> [{].L [}]
     L -> .B [sep] L
@@ -310,27 +324,27 @@ end = struct
     )
 
   and q_inner_of_list_by_sep () =
-    print_string "q_inner_of_list_by_sep" ; print_newline () ;
+    print_process "q_inner_of_list_by_sep" ;
   (*
-  	L -> B.[sep] L
-  	L -> B.           (reduce [$], [}])
+    L -> B.[sep] L
+    L -> B.           (reduce [$], [}])
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce ListBySep 1
     | Terminal(END_OF_INPUT) -> reduce ListBySep 1
     | _ -> (
-    	let popped = pop_from_line () in
-    	  match popped with
-    	    Terminal(SEP) -> shift popped q_after_sep
-    	  | _ -> report_error "illegal end of list in group"
+      let popped = pop_from_line () in
+        match popped with
+          Terminal(SEP) -> shift popped q_after_sep
+        | _ -> report_error "illegal end of list in group"
       )
 
   and q_after_sep () =
-    print_string "q_after_sep" ; print_newline () ;
+    print_process "q_after_sep" ;
   (*
-  	L -> B [sep]. L
-  	L -> .B [sep] L
-  	L -> .B
+    L -> B [sep]. L
+    L -> .B [sep] L
+    L -> .B
     B -> .S B
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
@@ -363,16 +377,16 @@ end = struct
     )
 
   and q_end_of_list () =
-    print_string "q_end_of_list" ; print_newline () ;
+    print_process "q_end_of_list" ;
   (*
-  	L -> B [sep] L.
+    L -> B [sep] L.
   *)
     reduce ListBySep 3
 
   and q_after_inner_of_group () =
-    print_string "q_after_inner_of_group" ; print_newline () ;
+    print_process "q_after_inner_of_group" ;
   (*
-  	G -> [{] L.[}]
+    G -> [{] L.[}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -380,14 +394,14 @@ end = struct
       | _ -> report_error "inappropriate end of group"
 
   and q_end_of_group () =
-    print_string "q_end_of_group" ; print_newline () ;
+    print_process "q_end_of_group" ;
   (*
-  	G -> [{] L [}].
+    G -> [{] L [}].
   *)
     reduce Group 3
 
   and q_var1 () =
-    print_string "q_var1" ; print_newline () ;
+    print_process "q_var1" ;
   (*
     S -> [var].[end]
   *)
@@ -397,21 +411,21 @@ end = struct
       | _ -> report_error "missing semicolon after variable"
 
   and q_var2 () =
-    print_string "q_var2" ; print_newline () ;
+    print_process "q_var2" ;
   (*
     S -> [var] [end].
   *)
     reduce Sentence 2
 
   and q_char () =
-    print_string "q_char" ; print_newline () ;
+    print_process "q_char" ;
   (*
     S -> [char].
   *)
     reduce Sentence 1
 
   and q_pop1 () =
-    print_string "q_pop1" ; print_newline () ;
+    print_process "q_pop1" ;
   (*
     S -> [pop].[var] [var] G
   *)
@@ -421,7 +435,7 @@ end = struct
       | _ -> report_error "missing first variable after \\pop"
 
   and q_pop2 () =
-    print_string "q_pop2" ; print_newline () ;
+    print_process "q_pop2" ;
   (*
     S -> [pop] [var].[var] G
   *)
@@ -431,7 +445,7 @@ end = struct
       | _ -> report_error "missing second variable after \\pop"
 
   and q_pop3 () =
-    print_string "q_pop3" ; print_newline () ;
+    print_process "q_pop3" ;
   (*
     S -> [pop] [var] [var].G
     G -> .[{] L [}]
@@ -442,7 +456,7 @@ end = struct
       | _ -> report_error "missing { after \\pop"
 
   and q_macro1 () =
-    print_string "q_macro1" ; print_newline () ;
+    print_process "q_macro1" ;
   (*
     S -> [macro].[ctrlseq] A G
   *)
@@ -452,7 +466,7 @@ end = struct
       | _ -> report_error "missing control sequence after \\macro"
 
   and q_macro2 () =
-    print_string "q_macro2" ; print_newline () ;
+    print_process "q_macro2" ;
   (*
     S -> [macro] [ctrlseq].A G
     A -> .[var] A
@@ -470,7 +484,7 @@ end = struct
     )
 
   and q_macro3 () =
-    print_string "q_macro3" ; print_newline () ;
+    print_process "q_macro3" ;
   (*
     S -> [macro] [ctrlseq] A.G
     G -> .[{] L [}]
@@ -482,14 +496,14 @@ end = struct
       | _ -> report_error "missing group in \\macro declaration"
 
   and q_macro4 () =
-    print_string "q_macro4" ; print_newline () ;
+    print_process "q_macro4" ;
   (*
     S -> [macro] [ctrlseq] A G.
   *)
     reduce Sentence 4
 
   and q_args () =
-    print_string "q_args" ; print_newline () ;
+    print_process "q_args" ;
   (*
     A -> [var].A
     A -> .[var] A
@@ -508,12 +522,12 @@ end = struct
 
   and q_end_of_args () =
   (*
-  	A -> [var].A
+    A -> [var].A
   *)
     reduce Args 2
 
   and q_after_ctrlseq () =
-    print_string "q_after_ctrlseq" ; print_newline () ;
+    print_process "q_after_ctrlseq" ;
   (*
     S -> [ctrlseq].[end]
     S -> [ctrlseq].[id] [end]
@@ -530,7 +544,7 @@ end = struct
       | _ -> report_error "illegal token after control sequence"
 
   and q_after_first_group () =
-    print_string "q_after_first_group" ; print_newline () ;
+    print_process "q_after_first_group" ;
   (*
     S -> [ctrlseq] G.P
     P -> .G P
@@ -551,7 +565,7 @@ end = struct
     )
 
   and q_after_id () =
-    print_string "q_after_id" ; print_newline () ;
+    print_process "q_after_id" ;
   (*
     S -> [ctrlseq] [id].[end]
     S -> [ctrlseq] [id].G P
@@ -565,7 +579,7 @@ end = struct
       | _ -> report_error "inappropriate token after ID"
 
   and q_after_id_and_first_group () =
-    print_string "q_after_id_and_first_group" ; print_newline () ;
+    print_process "q_after_id_and_first_group" ;
   (*
     S -> [ctrlseq] [id] G.P
     P -> .G P
@@ -586,7 +600,7 @@ end = struct
     )
 
   and q_params () =
-    print_string "q_params" ; print_newline () ;
+    print_process "q_params" ;
   (*
     P -> G.P
     P -> .G P
@@ -607,49 +621,49 @@ end = struct
     )
 
   and q_params_end () =
-    print_string "q_params_end" ; print_newline () ;
+    print_process "q_params_end" ;
   (*
       P -> G P.
   *)
     reduce Params 2
 
   and q_ctrlseq_A () =
-    print_string "q_ctrlseq_A" ; print_newline () ;
+    print_process "q_ctrlseq_A" ;
   (*
     S -> [ctrlseq] [end].
   *)
     reduce Sentence 2
 
   and q_ctrlseq_B () =
-    print_string "q_ctrlseq_B" ; print_newline () ;
+    print_process "q_ctrlseq_B" ;
   (*
     S -> [ctrlseq] [id] [end].
   *)
     reduce Sentence 3
 
   and q_ctrlseq_C () =
-    print_string "q_ctrlseq_C" ; print_newline () ;
+    print_process "q_ctrlseq_C" ;
   (*
     S -> [ctrlseq] G P.
   *)
     reduce Sentence 3
 
   and q_ctrlseq_D () =
-    print_string "q_ctrlseq_D" ; print_newline () ;
+    print_process "q_ctrlseq_D" ;
   (*
     S -> [ctrlseq] [id] G P.
   *)
     reduce Sentence 4
 
   and q_after_block () =
-    print_string "q_after_block" ; print_newline () ;
+    print_process "q_after_block" ;
   (*
     B -> S B.
   *)
     reduce Block 2
 
   and q_end () =
-    print_string "q_end" ; print_newline () ;
+    print_process "q_end" ;
   (*
     T -> B.[$]
   *)
@@ -659,7 +673,7 @@ end = struct
       | _ -> report_error "illegal end"
 
   and q_end_of_end () =
-    print_string "q_end_of_end" ; print_newline () ;
+    print_process "q_end_of_end" ;
   (*
     T -> B [$].
   *)
