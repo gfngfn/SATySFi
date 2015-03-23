@@ -2,7 +2,7 @@
 exception IllegalLengthOfLists
 exception ValueNotFound
 
-module AssocList : sig
+module AssocList (* : sig
 
   type ('a, 'b) t
 
@@ -11,33 +11,45 @@ module AssocList : sig
   val add_list : ('a list) -> ('b list) -> (('a, 'b) t) -> (('a, 'b) t)
   val get_value : (('a, 'b) t) -> 'a -> 'b
 
-end = struct
+end *) = struct
 
   type ('a, 'b) t = ('a * 'b) list
 
   let empty = []
 
   let rec add key value asclst =
+  (*  (key, value) :: asclst *)
     match asclst with
       [] -> [(key, value)]
-    | (key, v) :: tail -> (key, value) :: tail
     | (k, v) :: tail -> (k, v) :: (add key value tail)
 
+  (* 'a list -> 'b list -> ('a, 'b) t -> ('a, 'b) t *)
   let rec add_list key_list value_list asclst =
-    match (key_list, value_list) with
-      ([], []) -> empty
-    | (key_head :: key_tail, value_head :: value_tail) -> (
-          (add_list key_tail value_tail (add key_head value_head asclst))
+    match key_list with
+      [] -> asclst
+    | key_head :: key_tail -> (
+    	    match value_list with
+    	      [] -> raise IllegalLengthOfLists
+    	    | value_head :: value_tail -> (
+        	    let asclstsub = (add key_head value_head asclst) in
+                (add_list key_tail value_tail asclstsub)
+    	      )
         )
-    | _ -> raise IllegalLengthOfLists
 
+  (* ('a, 'b) t -> 'a -> 'b *)
   let rec get_value asclst key =
     match asclst with
       [] -> raise ValueNotFound
-    | (key, value) :: tail -> value
-    | (k, v) :: tail -> get_value tail key
+    | (k, v) :: tail ->
+      if (compare k key) == 0 then v else get_value tail key
+
+  let rec print_key asclst =
+    match asclst with
+      [] -> ()
+    | (k, v) :: tail -> ( print_string k ; print_key tail )
 
 end
+
 
 module McdSemantics (* : sig
 
@@ -68,60 +80,62 @@ end *) = struct
     match abstr with
 
       EmptyAbsBlock -> (
-        	print_process "$EmptyAbsBlock" ;
-        	EmptyAbsBlock
+          print_process "$EmptyAbsBlock" ;
+          EmptyAbsBlock
         )
 
     | AbsBlock(abstr_head, abstr_tail) -> (
-        	print_process "$AbsBlock 2" ;
+          print_process "$AbsBlock 2" ;
           let value_head = interpret menv venv abstr_head in
           let value_tail = interpret menv venv abstr_tail in
             AbsBlock(value_head, value_tail)
         )
 
     | Output(c) -> (
-        	print_process ("$Output: " ^ c) ;
-    	    Output(c)
-    	  )
+          print_process ("$Output: " ^ c) ;
+          Output(c)
+        )
 
     | ContentOf(v) -> (
-        	print_process ("$ContentOf: " ^ v) ;
-    	    !(AssocList.get_value (!venv) v) (*!venv(v)*)
-    	  )
+          print_process ("$ContentOf: " ^ v) ;
+          !(AssocList.get_value (!venv) v) (*!venv(v)*)
+        )
 
     | Separated(abstr_former, abstr_latter) -> (
-    	    print_process "$Separated" ;
+          print_process "$Separated" ;
           let value_former = interpret menv venv abstr_former in
           let value_latter = interpret menv venv abstr_latter in
             Separated(value_former, value_latter)
         )
 
+    | Pop(u, v, EmptyAbsBlock, abstr_content) -> (
+          print_process "$Pop (Empty)" ;
+          EmptyAbsBlock
+        )
     | Pop(u, v, Separated(abstr_former, abstr_latter), abstr_content) -> (
-        	print_process "$Pop (Plural)" ;
+          print_process "$Pop (Plural)" ;
           let value_former = interpret menv venv abstr_former in
           let value_latter = interpret menv venv abstr_latter in
           let loc_former : location = ref value_former in
           let loc_latter : location = ref value_latter in
           let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
           (* venv{ u |-> loc_former, v |-> loc_latter } *)
+            print_string " ***( " ; AssocList.print_key !venv_content ; print_string " )***" ; print_newline () ;
             interpret menv venv_content abstr_content
         )
-    | Pop(u, v, EmptyAbsBlock, abstr_content) -> (
-        	print_process "$Pop (Empty)" ;
-    	    EmptyAbsBlock
-    	  )
     | Pop(u, v, abstr_former, abstr_content) -> (
-        	print_process "$Pop (Single)" ;
+          print_process "$Pop (Single)" ;
           let value_former = interpret menv venv abstr_former in
           let loc_former : location = ref value_former in
           let loc_latter : location = ref EmptyAbsBlock in
           let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
           (* venv{ u|->loc_former, v|->loc_latter } *)
+            print_string " **( " ; AssocList.print_key !venv_content ; print_string " )**" ; print_newline () ;
             interpret menv venv_content abstr_content
         )
 
     | Macro(f, var_list, abstr_noid, abstr_id) -> (
-        	print_process "$Macro" ;
+          print_process "$Macro" ;
           let loc : macro_location = ref DummyFunc in (* dummy *)
           let menv_new = ref (AssocList.add f loc !menv) in
           (* menv{ f|->loc } *)
@@ -130,18 +144,19 @@ end *) = struct
         )
 
     | Apply(f, NoID, param_list) -> (
-        	print_process "$Apply (NoID)" ;
+          print_process "$Apply (NoID)" ;
           match !(AssocList.get_value (!menv) f) with (* !(menv(f)) *)
             Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                 let value_list = interpret_list menv venv param_list in
                 let loc_list : location list = ref_list value_list in
                 let venv_new = ref (AssocList.add_list var_list loc_list cont_venv_f) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
+                  print_string " *|*( " ; AssocList.print_key !venv_new ; print_string " )*|*" ; print_newline () ;
                   interpret menv venv_new abstr_noid
               )
         )
     | Apply(f, RealID(i), param_list) -> (
-        	print_process "$Apply (ID)" ;
+          print_process "$Apply (ID)" ;
           match !(AssocList.get_value (!menv) f) with (* !(menv(f)) *)
             Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                 let value_list = interpret_list menv venv param_list in
@@ -149,6 +164,7 @@ end *) = struct
                 let loc_id : location = ref (id_to_abstract_tree i) in
                 let venv_new = ref (AssocList.add "@id" loc_id (AssocList.add_list var_list loc_list cont_venv_f)) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
+                  print_string " *|*( " ; AssocList.print_key !venv_new ; print_string " )*|*" ; print_newline () ;
                   interpret menv venv_new abstr_id
               )
         )
