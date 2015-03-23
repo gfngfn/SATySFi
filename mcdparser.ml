@@ -108,7 +108,7 @@ end  = struct
   let print_output stk =
     (* enable below in order to see the process of parsing *)
   (*
-    print_output_sub stk ; print_newline ()
+    print_output_sub stk ; print_newline () ;
   *)
     ()
 
@@ -233,7 +233,7 @@ end  = struct
     B -> .              (reduce [$])
     S -> .[var] [end]
     S -> .[char]
-    S -> .[pop] [var] [var] G
+    S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -270,7 +270,7 @@ end  = struct
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
-    S -> .[pop] [var] [var] G
+    S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -306,7 +306,7 @@ end  = struct
     B -> .             (reduce [$], [}])
     S -> .[var] [end]
     S -> .[char]
-    S -> .[pop] [var] [var] G
+    S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -359,7 +359,7 @@ end  = struct
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
-    S -> .[pop] [var] [var] G
+    S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -437,7 +437,7 @@ end  = struct
   and q_pop1 () =
     print_process "q_pop1" ;
   (*
-    S -> [pop].[var] [var] G
+    S -> [pop].[var] [var] G G
   *)
     let popped = pop_from_line () in
       match popped with
@@ -447,7 +447,7 @@ end  = struct
   and q_pop2 () =
     print_process "q_pop2" ;
   (*
-    S -> [pop] [var].[var] G
+    S -> [pop] [var].[var] G G
   *)
     let popped = pop_from_line () in
       match popped with
@@ -457,13 +457,33 @@ end  = struct
   and q_pop3 () =
     print_process "q_pop3" ;
   (*
-    S -> [pop] [var] [var].G
+    S -> [pop] [var] [var].G G
     G -> .[{] L [}]
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(BGRP) -> shift popped q_inner_of_group
-      | _ -> report_error "missing { after \\pop"
+        NonTerminal(Group, lst) -> shift popped q_pop4
+      | Terminal(BGRP) -> shift popped q_inner_of_group
+      | _ -> report_error "illegal first group of \\pop"
+
+  and q_pop4 () =
+    print_process "q_pop4" ;
+  (*
+  	S -> [pop] [var] [var] G.G
+  	G -> .[{] L [}]
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        NonTerminal(Group, lst) -> shift popped q_pop5
+      | Terminal(BGRP) -> shift popped q_inner_of_group
+      | _ -> report_error "illegal second group of \\pop"
+
+  and q_pop5 () =
+    print_process "q_pop5" ;
+  (*
+  	S -> [pop] [var] [var] G G.
+  *)
+    reduce Sentence 5
 
   and q_macro1 () =
     print_process "q_macro1" ;
