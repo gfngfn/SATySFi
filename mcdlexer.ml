@@ -51,8 +51,8 @@ end = struct
   let report_error errmsg =
     print_string ("[ERROR IN MCDLEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
-    print_string (" to " ^ (string_of_int !pos_current)) ; print_newline ()
-    (* ; output_sequence := [END_OF_INPUT] *)
+    print_string (" to " ^ (string_of_int !pos_current)) ; print_newline () ;
+    output_sequence := [END_OF_INPUT]
 
   let print_process stat =
   (*

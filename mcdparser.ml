@@ -48,26 +48,26 @@ end *) = struct
 
 end
 
+
 type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
 type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 
-(*
+
 module McdParser : sig
 
   type state
   type tree_and_state
 
   val mcdparser : (token list) -> tree
+  val print_tree_node : tree -> unit
 
-end = struct
-*)
+end  = struct
 
   type state = (unit -> unit)
   type tree_and_state = tree * state
 
   let input_line : tree list ref = ref []
   let output_stack : tree_and_state Stack.t ref = ref Stack.empty
-
 
   (* for test *)
   let print_tree_node tr =
@@ -119,13 +119,8 @@ end = struct
   *)
     ()
 
-  (* string -> unit *)
-  let report_error errmsg =
-    print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ":") ; print_newline ()
-    (* ; output_stack := Stack.empty *)
-
   let print_process stat = 
-    (* print_string stat ; print_newline () *)
+    print_string stat ; print_newline () ;
     ()
 
   (* unit -> tree *)
@@ -177,6 +172,13 @@ end = struct
     q_first () ;
     print_process "[END OF MCDPASER]" ;
     get_first (eliminate_state (elim_first (Stack.to_list !output_stack)))
+
+  (* string -> unit *)
+  and report_error errmsg =
+    print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ".") ; print_newline () ;
+    output_stack := Stack.empty ;
+    Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
+    Stack.push output_stack (NonTerminal(Total, [NonTerminal(Block, []); Terminal(END_OF_INPUT)]), q_dummy)
 
   (* tree -> state -> unit *)
   and shift content q =
@@ -678,6 +680,5 @@ end = struct
     T -> B [$].
   *)
     reduce Total 2
-(*
+
 end
-*)
