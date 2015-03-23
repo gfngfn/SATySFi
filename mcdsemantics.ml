@@ -185,7 +185,6 @@ end *) = struct
       [] -> []
     | value_head :: value_tail -> (ref value_head) :: (ref_list value_tail)
 
-  and id_to_abstract_tree id =
-    Output(id)
+  and id_to_abstract_tree id = Output(id)
 
 end
