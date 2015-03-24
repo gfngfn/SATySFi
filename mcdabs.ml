@@ -50,12 +50,18 @@ end = struct
         )
     | NonTerminal(Group, [Terminal(BGRP); lstbysp; Terminal(EGRP)]) -> (
           print_process "#Group" ;
-          concrete_to_abstract lstbysp
+          AbsBlock(DeepenIndent,
+            AbsBlock(concrete_to_abstract lstbysp,
+                ShallowIndent
+(*              AbsBlock(ShallowIndent,
+                  AbsBlock(Output("\n"), ContentOf("~indent"))
+                ) *)
+            )
+          )
         )
     | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)]) -> (
           print_process "#ListBySep []" ;
           concrete_to_abstract (NonTerminal(Block, chdrn))
-    	    (* Separated(concrete_to_abstract (NonTerminal(Block, chdrn)), EndOfSeparated) *)
         )
     | NonTerminal(ListBySep, [tr; Terminal(SEP); lstbysp]) -> (
           print_process "#ListBySep _" ;
@@ -115,12 +121,12 @@ end = struct
         | _ -> ( report_error "illegal child of sentence" ; Invalid )
       )
     | Terminal(END_OF_INPUT) -> (
-    	    print_process "#END_OF_INPUT" ;
-    	    EmptyAbsBlock
+          print_process "#END_OF_INPUT" ;
+          EmptyAbsBlock
         )
     | _ -> (
-    	  report_error "illegal concrete tree" ;
-    	  McdParser.print_tree_node conctr ;
+        report_error "illegal concrete tree" ;
+        McdParser.print_tree_node conctr ;
         Invalid
       )
 

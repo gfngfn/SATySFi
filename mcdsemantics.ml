@@ -69,19 +69,21 @@ end *) = struct
   *)
     ()
 
-  let loc_indent : location = ref (Output("--"))
+  let loc_indent : location = ref EmptyAbsBlock
 
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
     print_process "[BEGIN SEMANTICS]" ;
-    loc_indent := Output("--") ;
-    let loc_deepen : location = ref (DeepenIndent) in
-    let loc_shallow : location = ref (ShallowIndent) in
+    loc_indent := Output("  ") ;
+    let loc_deepen : macro_location = ref DummyFunc in
+    let loc_shallow : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref AssocList.empty in
     let venv_main : var_environment ref = ref AssocList.empty in
       venv_main := (AssocList.add "~indent" loc_indent !venv_main) ;
-      venv_main := (AssocList.add "@deepen" loc_deepen !venv_main) ;
-      venv_main := (AssocList.add "@shallow" loc_shallow !venv_main) ;
+      menv_main := (AssocList.add "\\deepen" loc_deepen !menv_main) ;
+      menv_main := (AssocList.add "\\shallow" loc_shallow !menv_main) ;
+      loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       interpret menv_main venv_main abstr
 
   (* (macro_environment ref) -> (var_environment ref) -> abstract_tree -> abstract_tree *)
@@ -92,8 +94,8 @@ end *) = struct
       DeepenIndent -> (
           print_process "$DeepenIndent" ;
           (
-          	match !loc_indent with
-              Output(indent_str) -> loc_indent := Output(indent_str ^ "--")
+            match !loc_indent with
+              Output(indent_str) -> loc_indent := Output(indent_str ^ "  ")
           ) ;
           EmptyAbsBlock
         )
@@ -129,7 +131,8 @@ end *) = struct
 
     | ContentOf(v) -> (
           print_process ("$ContentOf: " ^ v) ;
-          interpret menv venv !(AssocList.get_value (!venv) v) (*!venv(v)*)
+          interpret menv venv !(AssocList.get_value (!venv) v)
+        (*  !(AssocList.get_value (!venv) v) *)
         )
 
     | Separated(abstr_former, abstr_latter) -> (
@@ -219,6 +222,8 @@ end *) = struct
                   interpret menv venv_new abstr_id
               )
         )
+
+    | Invalid -> Invalid
 
   (* macro_environment -> var_environment -> (abstract_tree list) -> (abstract_tree list) *)
   and interpret_list menv venv abstr_list =
