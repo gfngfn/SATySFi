@@ -17,7 +17,7 @@ end = struct
 
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
                   | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
-                  | SPACE_TYPE
+                  | SPACE_TYPE | BREAK_TYPE | COMMENT_TYPE
 
   let input_buffer : string ref = ref ""
   let pos_start : int ref = ref 0
@@ -26,6 +26,7 @@ end = struct
   let last_token_type : token_type ref = ref INVALID_TYPE
   let output_sequence : token list ref = ref []
   let ignore_space : bool ref = ref false
+  let in_comment : bool ref = ref false
 
   let get_last_token () = (
     String.sub !input_buffer !pos_start (!pos_last - !pos_start)
@@ -63,16 +64,35 @@ end = struct
   let output_token () = 
     let lasttok = get_last_token () in
       match !last_token_type with
-        CTRLSEQ_TYPE -> (append_to_sequence (CTRLSEQ(lasttok)) ; ignore_space := true)
-      | VAR_TYPE -> (append_to_sequence (VAR(lasttok)) ; ignore_space := true)
-      | ID_TYPE -> (append_to_sequence (ID(lasttok)) ; ignore_space := true)
-      | END_TYPE -> (append_to_sequence END ; ignore_space := false)
-      | BGRP_TYPE -> (append_to_sequence BGRP ; ignore_space := false)
-      | EGRP_TYPE -> (append_to_sequence EGRP ; ignore_space := false)
-      | CHAR_TYPE -> (append_to_sequence (CHAR(lasttok)) ; ignore_space := false)
-      | SEP_TYPE -> (append_to_sequence SEP ; ignore_space := false)
-      | SPACE_TYPE -> if !ignore_space then () else append_to_sequence (CHAR(lasttok))
-        (* maybe the specification of space letter needs changing *)
+        CTRLSEQ_TYPE
+          -> if !in_comment then () else (append_to_sequence (CTRLSEQ(lasttok)) ; ignore_space := true)
+      | VAR_TYPE
+          -> if !in_comment then () else (append_to_sequence (VAR(lasttok)) ; ignore_space := true)
+      | ID_TYPE
+          -> if !in_comment then () else (append_to_sequence (ID(lasttok)) ; ignore_space := true)
+      | END_TYPE
+          -> if !in_comment then () else (append_to_sequence END ; ignore_space := false)
+      | BGRP_TYPE
+          -> if !in_comment then () else (append_to_sequence BGRP ; ignore_space := false)
+      | EGRP_TYPE
+          -> if !in_comment then () else (append_to_sequence EGRP ; ignore_space := false)
+      | CHAR_TYPE
+          -> if !in_comment then () else (append_to_sequence (CHAR(lasttok)) ; ignore_space := false)
+      | SEP_TYPE
+          -> if !in_comment then () else (append_to_sequence SEP ; ignore_space := false)
+      | SPACE_TYPE
+          -> if !in_comment then () else (if !ignore_space then () else append_to_sequence (CHAR(lasttok)))
+      | BREAK_TYPE
+          -> (
+            (
+              if !in_comment then
+                in_comment := false
+              else
+                if !ignore_space then () else append_to_sequence (CHAR(lasttok))
+            ) ;
+            ignore_space := true
+          )
+      | COMMENT_TYPE -> in_comment := true
       | INVALID_TYPE -> report_error ("invalid token \"" ^ lasttok ^ "\"")
 
   let rec refine_ctrlseq lst =
@@ -92,7 +112,8 @@ end = struct
     pos_current := 0 ;
     last_token_type := INVALID_TYPE ;
     output_sequence := [] ;
-    ignore_space := false ;
+    ignore_space := true ;
+    in_comment := false ;
 
     q_ini () ;
     append_to_sequence END_OF_INPUT ;
@@ -109,7 +130,8 @@ end = struct
     | '|' -> (save_token_type SEP_TYPE ; next ())
     | ' ' -> (save_token_type SPACE_TYPE ; next ())
     | '\t' -> (save_token_type SPACE_TYPE ; next ())
-    | '\n' -> (save_token_type SPACE_TYPE ; next ())
+    | '\n' -> (save_token_type BREAK_TYPE ; next ())
+    | '%' -> (save_token_type COMMENT_TYPE ; next ())
     | '\000' -> print_process "[END OF MCDLEXER]"
     | _ -> (save_token_type CHAR_TYPE ; next ())
 
