@@ -107,28 +107,28 @@ end  = struct
   (* for test *)
   let print_output stk =
     (* enable below in order to see the process of parsing *)
-  
+  (*
     print_output_sub stk ; print_newline () ;
-  
+  *)
     ()
 
   (* for test *)
   let rec print_input ln =
     (* enable below in order to see the process of parsing *)
-  
+  (*
     (
       match ln with
         [] -> ( print_string ":input" ; print_newline () )
       | head :: tail -> ( print_tree_node head ; print_input tail )
     ) ;
-  
+  *)
     ()
 
   let print_process stat = 
     (* enable below in order to see the process of parsing *)
-  
+  (*
   	print_string stat ; print_newline () ;
-  
+  *)
     ()
 
   (* unit -> tree *)
@@ -585,6 +585,12 @@ end  = struct
       Terminal(EGRP) -> reduce_empty Params q_after_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_first_group
     | Terminal(SEP) -> reduce_empty Params q_after_first_group
+    | Terminal(VAR(v)) -> reduce_empty Params q_after_first_group
+    | Terminal(CHAR(c)) -> reduce_empty Params q_after_first_group
+    | Terminal(POP) -> reduce_empty Params q_after_first_group
+    | Terminal(MACRO) -> reduce_empty Params q_after_first_group
+(*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
+    | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -620,6 +626,12 @@ end  = struct
       Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(SEP) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(VAR(v)) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(CHAR(c)) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
+(*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
+    | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -641,6 +653,12 @@ end  = struct
       Terminal(EGRP) -> reduce_empty Params q_params
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_params
     | Terminal(SEP) -> reduce_empty Params q_params
+    | Terminal(VAR(v)) -> reduce_empty Params q_params
+    | Terminal(CHAR(c)) -> reduce_empty Params q_params
+    | Terminal(POP) -> reduce_empty Params q_params
+    | Terminal(MACRO) -> reduce_empty Params q_params
+(*    | Terminal(MACROWID) -> reduce_empty Params q_params *)
+    | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_params
     | _ -> (
       let popped = pop_from_line () in
         match popped with

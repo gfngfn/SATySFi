@@ -9,6 +9,7 @@ let str_f_in = ref ""
 let string_of_file filename =
   let f_in = open_in filename in
   let cat_sub () =
+    str_f_in := "" ;
     while true do
       str_f_in := !str_f_in ^ (String.make 1 (input_char f_in))
     done
@@ -20,10 +21,10 @@ let main filename =
 (*
 	!str_f_in
 *)
-
   let content_in = !str_f_in in
   let lexed = McdLexer.mcdlex content_in in
   let parsed = McdParser.mcdparser lexed in
   let absed = McdAbs.concrete_to_abstract parsed in
-  let content_out = McdOut.mcdout absed in
+  let semed = McdSemantics.semantics absed in
+  let content_out = McdOut.mcdout semed in
     content_out
