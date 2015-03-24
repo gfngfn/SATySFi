@@ -28,12 +28,12 @@ end *) = struct
     match key_list with
       [] -> asclst
     | key_head :: key_tail -> (
-    	    match value_list with
-    	      [] -> raise IllegalLengthOfLists
-    	    | value_head :: value_tail -> (
-        	    let asclstsub = (add key_head value_head asclst) in
+          match value_list with
+            [] -> raise IllegalLengthOfLists
+          | value_head :: value_tail -> (
+              let asclstsub = (add key_head value_head asclst) in
                 (add_list key_tail value_tail asclstsub)
-    	      )
+            )
         )
 
   (* ('a, 'b) t -> 'a -> 'b *)
@@ -69,10 +69,19 @@ end *) = struct
   *)
     ()
 
+  let loc_indent : location = ref (Output("--"))
+
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
+    print_process "[BEGIN SEMANTICS]" ;
+    loc_indent := Output("--") ;
+    let loc_deepen : location = ref (DeepenIndent) in
+    let loc_shallow : location = ref (ShallowIndent) in
     let menv_main : macro_environment ref = ref AssocList.empty in
     let venv_main : var_environment ref = ref AssocList.empty in
+      venv_main := (AssocList.add "~indent" loc_indent !venv_main) ;
+      venv_main := (AssocList.add "@deepen" loc_deepen !venv_main) ;
+      venv_main := (AssocList.add "@shallow" loc_shallow !venv_main) ;
       interpret menv_main venv_main abstr
 
   (* (macro_environment ref) -> (var_environment ref) -> abstract_tree -> abstract_tree *)
@@ -80,7 +89,28 @@ end *) = struct
 
     match abstr with
 
-      EmptyAbsBlock -> (
+      DeepenIndent -> (
+          print_process "$DeepenIndent" ;
+          (
+          	match !loc_indent with
+              Output(indent_str) -> loc_indent := Output(indent_str ^ "--")
+          ) ;
+          EmptyAbsBlock
+        )
+
+    | ShallowIndent -> (
+          print_process "$ShallowIndent" ;
+          (
+            match !loc_indent with
+              Output(indent_str) ->
+                let len = String.length indent_str in
+                  if len >= 2 then loc_indent := Output(String.sub indent_str 0 (len - 2))
+                  else ()
+          ) ;
+          EmptyAbsBlock
+        )
+
+    | EmptyAbsBlock -> (
           print_process "$EmptyAbsBlock" ;
           EmptyAbsBlock
         )
@@ -99,7 +129,7 @@ end *) = struct
 
     | ContentOf(v) -> (
           print_process ("$ContentOf: " ^ v) ;
-          !(AssocList.get_value (!venv) v) (*!venv(v)*)
+          interpret menv venv !(AssocList.get_value (!venv) v) (*!venv(v)*)
         )
 
     | Separated(abstr_former, abstr_latter) -> (
@@ -110,13 +140,13 @@ end *) = struct
         )
 
     | Pop(u, v, abstr_rawlist, abstr_content) -> (
-    	    let value_rawlist = interpret menv venv abstr_rawlist in
-    	    match value_rawlist with
-    	      EmptyAbsBlock -> (
+          let value_rawlist = interpret menv venv abstr_rawlist in
+          match value_rawlist with
+            EmptyAbsBlock -> (
                 print_process "$Pop (Empty)" ;
-    	      	  EmptyAbsBlock
-    	      	)
-    	    | Separated(abstr_former, abstr_latter) -> (
+                EmptyAbsBlock
+              )
+          | Separated(abstr_former, abstr_latter) -> (
                 print_process "$Pop (Plural)" ;
                 let value_former = interpret menv venv abstr_former in
                 let value_latter = interpret menv venv abstr_latter in
@@ -130,8 +160,8 @@ end *) = struct
                   print_string " )***" ; print_newline () ;
                 *)
                   interpret menv venv_content abstr_content
-    	        )
-    	    | abstr_former -> (
+              )
+          | abstr_former -> (
                 print_process "$Pop (Single)" ;
                 let value_former = interpret menv venv abstr_former in
                 let loc_former : location = ref value_former in
@@ -144,7 +174,7 @@ end *) = struct
                   print_string " )**" ; print_newline () ;
                 *)
                   interpret menv venv_content abstr_content
-    	        )
+              )
         )
 
     | Macro(f, var_list, abstr_noid, abstr_id) -> (

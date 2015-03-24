@@ -17,7 +17,7 @@ end = struct
 
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
                   | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
-                  | SPACE_TYPE | BREAK_TYPE | COMMENT_TYPE
+                  | SPACE_TYPE | BREAK_TYPE | INDENT_TYPE | COMMENT_TYPE
 
   let input_buffer : string ref = ref ""
   let pos_start : int ref = ref 0
@@ -80,15 +80,27 @@ end = struct
           -> if !in_comment then () else (append_to_sequence (CHAR(lasttok)) ; ignore_space := false)
       | SEP_TYPE
           -> if !in_comment then () else (append_to_sequence SEP ; ignore_space := false)
+      | INDENT_TYPE
+          ->
+            if !in_comment then () else (
+              append_to_sequence (VAR("~indent")) ;
+              append_to_sequence END ;
+              ignore_space := true
+            )
       | SPACE_TYPE
-          -> if !in_comment then () else (if !ignore_space then () else append_to_sequence (CHAR(lasttok)))
+          -> (
+            if !in_comment then () else
+              if !ignore_space then () else append_to_sequence (CHAR(lasttok))
+          )
       | BREAK_TYPE
           -> (
             (
-              if !in_comment then
-                in_comment := false
-              else
-                if !ignore_space then () else append_to_sequence (CHAR(lasttok))
+              if !in_comment then in_comment := false else
+                if !ignore_space then () else (
+                  append_to_sequence (CHAR(lasttok)) ;
+                  append_to_sequence (VAR("~indent")) ;
+                  append_to_sequence END
+                )
             ) ;
             ignore_space := true
           )
@@ -131,6 +143,7 @@ end = struct
     | ' ' -> (save_token_type SPACE_TYPE ; next ())
     | '\t' -> (save_token_type SPACE_TYPE ; next ())
     | '\n' -> (save_token_type BREAK_TYPE ; next ())
+    | '~' -> (save_token_type INDENT_TYPE ; next ())
     | '%' -> (save_token_type COMMENT_TYPE ; next ())
     | '\000' -> print_process "[END OF MCDLEXER]"
     | _ -> (save_token_type CHAR_TYPE ; next ())

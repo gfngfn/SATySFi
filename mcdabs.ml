@@ -10,7 +10,8 @@ type abstract_tree = EmptyAbsBlock
                    | Apply of macro_name * abstract_id_name * (abstract_tree list)
                    | Invalid
                    | Separated of abstract_tree * abstract_tree
-                   | EndOfSeparated
+                   | DeepenIndent
+                   | ShallowIndent
 
 module McdAbs : sig
 
