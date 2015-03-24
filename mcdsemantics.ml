@@ -41,7 +41,7 @@ end *) = struct
     match asclst with
       [] -> raise ValueNotFound
     | (k, v) :: tail ->
-      if (compare k key) == 0 then (print_string ("# " ^ k ^ " | " ^ key ^ " # ") ; v) else (print_string (" % " ^ k ^ " % ") ; get_value tail key)
+      if (compare k key) == 0 then v else get_value tail key
 
   (* for test *)
   let rec print_key asclst =
@@ -64,9 +64,9 @@ end *) = struct
 
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
-  
+  (*
     print_string stat ; print_newline () ;
-  
+  *)
     ()
 
   (* abstract_tree -> abstract_tree *)
@@ -124,7 +124,11 @@ end *) = struct
                 let loc_latter : location = ref value_latter in
                 let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
                 (* venv{ u |-> loc_former, v |-> loc_latter } *)
-                  print_string " ***( " ; AssocList.print_key !venv_content ; print_string " )***" ; print_newline () ;
+                (*
+                  print_string " ***( " ;
+                  AssocList.print_key !venv_content ;
+                  print_string " )***" ; print_newline () ;
+                *)
                   interpret menv venv_content abstr_content
     	        )
     	    | abstr_former -> (
@@ -134,7 +138,11 @@ end *) = struct
                 let loc_latter : location = ref EmptyAbsBlock in
                 let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
                 (* venv{ u|->loc_former, v|->loc_latter } *)
-                  print_string " **( " ; AssocList.print_key !venv_content ; print_string " )**" ; print_newline () ;
+                (*
+                  print_string " **( " ;
+                  AssocList.print_key !venv_content ;
+                  print_string " )**" ; print_newline () ;
+                *)
                   interpret menv venv_content abstr_content
     	        )
         )
@@ -156,7 +164,11 @@ end *) = struct
                 let loc_list : location list = ref_list value_list in
                 let venv_new = ref (AssocList.add_list var_list loc_list cont_venv_f) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
-                  print_string " *|*( " ; AssocList.print_key !venv_new ; print_string " )*|*" ; print_newline () ;
+                (*
+                  print_string " *|*( " ;
+                  AssocList.print_key !venv_new ;
+                  print_string " )*|*" ; print_newline () ;
+                *)
                   interpret menv venv_new abstr_noid
               )
         )
@@ -169,7 +181,11 @@ end *) = struct
                 let loc_id : location = ref (id_to_abstract_tree i) in
                 let venv_new = ref (AssocList.add "@id" loc_id (AssocList.add_list var_list loc_list cont_venv_f)) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
-                  print_string " *|*( " ; AssocList.print_key !venv_new ; print_string " )*|*" ; print_newline () ;
+                (*
+                  print_string " *|*( " ;
+                  AssocList.print_key !venv_new ;
+                  print_string " )*|*" ; print_newline () ;
+                *)
                   interpret menv venv_new abstr_id
               )
         )
