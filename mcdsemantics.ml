@@ -41,8 +41,9 @@ end *) = struct
     match asclst with
       [] -> raise ValueNotFound
     | (k, v) :: tail ->
-      if (compare k key) == 0 then v else get_value tail key
+      if (compare k key) == 0 then (print_string ("# " ^ k ^ " | " ^ key ^ " # ") ; v) else (print_string (" % " ^ k ^ " % ") ; get_value tail key)
 
+  (* for test *)
   let rec print_key asclst =
     match asclst with
       [] -> ()
@@ -63,9 +64,9 @@ end *) = struct
 
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
-  (*
+  
     print_string stat ; print_newline () ;
-  *)
+  
     ()
 
   (* abstract_tree -> abstract_tree *)
@@ -108,30 +109,34 @@ end *) = struct
             Separated(value_former, value_latter)
         )
 
-    | Pop(u, v, EmptyAbsBlock, abstr_content) -> (
-          print_process "$Pop (Empty)" ;
-          EmptyAbsBlock
-        )
-    | Pop(u, v, Separated(abstr_former, abstr_latter), abstr_content) -> (
-          print_process "$Pop (Plural)" ;
-          let value_former = interpret menv venv abstr_former in
-          let value_latter = interpret menv venv abstr_latter in
-          let loc_former : location = ref value_former in
-          let loc_latter : location = ref value_latter in
-          let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
-          (* venv{ u |-> loc_former, v |-> loc_latter } *)
-            print_string " ***( " ; AssocList.print_key !venv_content ; print_string " )***" ; print_newline () ;
-            interpret menv venv_content abstr_content
-        )
-    | Pop(u, v, abstr_former, abstr_content) -> (
-          print_process "$Pop (Single)" ;
-          let value_former = interpret menv venv abstr_former in
-          let loc_former : location = ref value_former in
-          let loc_latter : location = ref EmptyAbsBlock in
-          let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
-          (* venv{ u|->loc_former, v|->loc_latter } *)
-            print_string " **( " ; AssocList.print_key !venv_content ; print_string " )**" ; print_newline () ;
-            interpret menv venv_content abstr_content
+    | Pop(u, v, abstr_rawlist, abstr_content) -> (
+    	    let value_rawlist = interpret menv venv abstr_rawlist in
+    	    match value_rawlist with
+    	      EmptyAbsBlock -> (
+                print_process "$Pop (Empty)" ;
+    	      	  EmptyAbsBlock
+    	      	)
+    	    | Separated(abstr_former, abstr_latter) -> (
+                print_process "$Pop (Plural)" ;
+                let value_former = interpret menv venv abstr_former in
+                let value_latter = interpret menv venv abstr_latter in
+                let loc_former : location = ref value_former in
+                let loc_latter : location = ref value_latter in
+                let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
+                (* venv{ u |-> loc_former, v |-> loc_latter } *)
+                  print_string " ***( " ; AssocList.print_key !venv_content ; print_string " )***" ; print_newline () ;
+                  interpret menv venv_content abstr_content
+    	        )
+    	    | abstr_former -> (
+                print_process "$Pop (Single)" ;
+                let value_former = interpret menv venv abstr_former in
+                let loc_former : location = ref value_former in
+                let loc_latter : location = ref EmptyAbsBlock in
+                let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
+                (* venv{ u|->loc_former, v|->loc_latter } *)
+                  print_string " **( " ; AssocList.print_key !venv_content ; print_string " )**" ; print_newline () ;
+                  interpret menv venv_content abstr_content
+    	        )
         )
 
     | Macro(f, var_list, abstr_noid, abstr_id) -> (
