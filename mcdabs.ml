@@ -1,23 +1,5 @@
-
-type abstract_id_name = NoID | RealID of id_name
-
-type abstract_tree = EmptyAbsBlock
-                   | AbsBlock of abstract_tree * abstract_tree
-                   | ContentOf of var_name
-                   | Output of letter
-                   | Pop of var_name * var_name * abstract_tree * abstract_tree
-                   | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
-                   | Apply of macro_name * abstract_id_name * (abstract_tree list)
-                   | Invalid
-                   | Separated of abstract_tree * abstract_tree
-                   | DeepenIndent
-                   | ShallowIndent
-
-module McdAbs : sig
-
-  val concrete_to_abstract : tree -> abstract_tree
-
-end = struct
+(* module Mcdabs *)
+  open Types
 
   let report_error errmsg =
     print_string ("[ERROR IN MCDABS] " ^ errmsg ^ ".") ; print_newline ()
@@ -46,6 +28,10 @@ end = struct
           | [stc; blk] -> (
                 print_process "#Block [stc; blk] 2" ;
                 AbsBlock(concrete_to_abstract stc, concrete_to_abstract blk)
+              )
+          | _ -> (
+                report_error "illegal Block" ;
+                Invalid
               )
         )
     | NonTerminal(Group, [Terminal(BGRP); lstbysp; Terminal(EGRP)]) -> (
@@ -126,7 +112,6 @@ end = struct
         )
     | _ -> (
         report_error "illegal concrete tree" ;
-        McdParser.print_tree_node conctr ;
         Invalid
       )
 
@@ -151,5 +136,3 @@ end = struct
       | NonTerminal(Params, [grp; paramssub])
           -> (concrete_to_abstract grp) :: (make_params_list paramssub)
       | _ -> ( report_error "illegal parameter" ; [Invalid] )
-
-end

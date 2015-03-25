@@ -1,9 +1,5 @@
-
-exception IllegalOut
-
-module McdOut (* : sig
-
-end *) = struct
+(* module Mcdout *)
+  open Types
 
   (* abstract_tree -> string *)
   let rec mcdout abstr =
@@ -16,5 +12,3 @@ end *) = struct
     | Separated(abstr_former, abstr_latter) ->
         "!{" ^ (mcdout abstr_former) ^ "|" ^ (mcdout abstr_latter) ^ "}!"
     | _ -> raise IllegalOut
-
-end

@@ -1,66 +1,14 @@
-
-exception IllegalLengthOfLists
-exception ValueNotFound
-
-module AssocList (* : sig
-
-  type ('a, 'b) t
-
-  val empty : ('a, 'b) t
-  val add : 'a -> 'b -> (('a, 'b) t) -> (('a, 'b) t)
-  val add_list : ('a list) -> ('b list) -> (('a, 'b) t) -> (('a, 'b) t)
-  val get_value : (('a, 'b) t) -> 'a -> 'b
-
-end *) = struct
-
-  type ('a, 'b) t = ('a * 'b) list
-
-  let empty = []
-
-  let rec add key value asclst =
-  (*  (key, value) :: asclst *)
-    match asclst with
-      [] -> [(key, value)]
-    | (k, v) :: tail -> (k, v) :: (add key value tail)
-
-  (* 'a list -> 'b list -> ('a, 'b) t -> ('a, 'b) t *)
-  let rec add_list key_list value_list asclst =
-    match key_list with
-      [] -> asclst
-    | key_head :: key_tail -> (
-          match value_list with
-            [] -> raise IllegalLengthOfLists
-          | value_head :: value_tail -> (
-              let asclstsub = (add key_head value_head asclst) in
-                (add_list key_tail value_tail asclstsub)
-            )
-        )
-
-  (* ('a, 'b) t -> 'a -> 'b *)
-  let rec get_value asclst key =
-    match asclst with
-      [] -> raise ValueNotFound
-    | (k, v) :: tail ->
-      if (compare k key) == 0 then v else get_value tail key
-
-  (* for test *)
-  let rec print_key asclst =
-    match asclst with
-      [] -> ()
-    | (k, v) :: tail -> ( print_string k ; print_key tail )
-
-end
-
-
-module McdSemantics (* : sig
-
-end *) = struct
+(* module Mcdsemantics *)
+  open Types
 
   type location = abstract_tree ref
-  type var_environment = (var_name, location) AssocList.t
-  type macro_environment = (macro_name, macro_location) AssocList.t
+  type var_environment = (var_name, location) Assoclist.t
+  type macro_environment = (macro_name, macro_location) Assoclist.t
   and function_spec = DummyFunc | Func of (var_name list) * abstract_tree * abstract_tree * macro_environment * var_environment
   and macro_location = function_spec ref
+
+  let report_error errmsg =
+    print_string ("[ERROR IN MCDSEMANTICS] " ^ errmsg ^ ".")
 
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
@@ -77,11 +25,11 @@ end *) = struct
     loc_indent := Output("  ") ;
     let loc_deepen : macro_location = ref DummyFunc in
     let loc_shallow : macro_location = ref DummyFunc in
-    let menv_main : macro_environment ref = ref AssocList.empty in
-    let venv_main : var_environment ref = ref AssocList.empty in
-      venv_main := (AssocList.add "~indent" loc_indent !venv_main) ;
-      menv_main := (AssocList.add "\\deepen" loc_deepen !menv_main) ;
-      menv_main := (AssocList.add "\\shallow" loc_shallow !menv_main) ;
+    let menv_main : macro_environment ref = ref Assoclist.empty in
+    let venv_main : var_environment ref = ref Assoclist.empty in
+      venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
+      menv_main := (Assoclist.add "\\deepen" loc_deepen !menv_main) ;
+      menv_main := (Assoclist.add "\\shallow" loc_shallow !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       interpret menv_main venv_main abstr
@@ -96,6 +44,7 @@ end *) = struct
           (
             match !loc_indent with
               Output(indent_str) -> loc_indent := Output(indent_str ^ "  ")
+            | _ -> report_error "illegal DeepenIndent"
           ) ;
           EmptyAbsBlock
         )
@@ -108,6 +57,7 @@ end *) = struct
                 let len = String.length indent_str in
                   if len >= 2 then loc_indent := Output(String.sub indent_str 0 (len - 2))
                   else ()
+            | _ -> report_error "illegal ShallowIndent"
           ) ;
           EmptyAbsBlock
         )
@@ -131,8 +81,8 @@ end *) = struct
 
     | ContentOf(v) -> (
           print_process ("$ContentOf: " ^ v) ;
-          interpret menv venv !(AssocList.get_value (!venv) v)
-        (*  !(AssocList.get_value (!venv) v) *)
+          interpret menv venv !(Assoclist.get_value (!venv) v)
+        (*  !(Assoclist.get_value (!venv) v) *)
         )
 
     | Separated(abstr_former, abstr_latter) -> (
@@ -155,11 +105,11 @@ end *) = struct
                 let value_latter = interpret menv venv abstr_latter in
                 let loc_former : location = ref value_former in
                 let loc_latter : location = ref value_latter in
-                let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
+                let venv_content = ref (Assoclist.add v loc_latter (Assoclist.add u loc_former !venv)) in
                 (* venv{ u |-> loc_former, v |-> loc_latter } *)
                 (*
                   print_string " ***( " ;
-                  AssocList.print_key !venv_content ;
+                  Assoclist.print_key !venv_content ;
                   print_string " )***" ; print_newline () ;
                 *)
                   interpret menv venv_content abstr_content
@@ -169,11 +119,11 @@ end *) = struct
                 let value_former = interpret menv venv abstr_former in
                 let loc_former : location = ref value_former in
                 let loc_latter : location = ref EmptyAbsBlock in
-                let venv_content = ref (AssocList.add v loc_latter (AssocList.add u loc_former !venv)) in
+                let venv_content = ref (Assoclist.add v loc_latter (Assoclist.add u loc_former !venv)) in
                 (* venv{ u|->loc_former, v|->loc_latter } *)
                 (*
                   print_string " **( " ;
-                  AssocList.print_key !venv_content ;
+                  Assoclist.print_key !venv_content ;
                   print_string " )**" ; print_newline () ;
                 *)
                   interpret menv venv_content abstr_content
@@ -183,7 +133,7 @@ end *) = struct
     | Macro(f, var_list, abstr_noid, abstr_id) -> (
           print_process "$Macro" ;
           let loc : macro_location = ref DummyFunc in (* dummy *)
-          let menv_new = ref (AssocList.add f loc !menv) in
+          let menv_new = ref (Assoclist.add f loc !menv) in
           (* menv{ f|->loc } *)
           let value = Func(var_list, abstr_noid, abstr_id, !menv_new, !venv) in
             ( loc := value ; menv := !menv_new ; EmptyAbsBlock )
@@ -191,39 +141,41 @@ end *) = struct
 
     | Apply(f, NoID, param_list) -> (
           print_process "$Apply (NoID)" ;
-          match !(AssocList.get_value (!menv) f) with (* !(menv(f)) *)
+          match !(Assoclist.get_value (!menv) f) with (* !(menv(f)) *)
             Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                 let value_list = interpret_list menv venv param_list in
                 let loc_list : location list = ref_list value_list in
-                let venv_new = ref (AssocList.add_list var_list loc_list cont_venv_f) in
+                let venv_new = ref (Assoclist.add_list var_list loc_list cont_venv_f) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
                 (*
                   print_string " *|*( " ;
-                  AssocList.print_key !venv_new ;
+                  Assoclist.print_key !venv_new ;
                   print_string " )*|*" ; print_newline () ;
                 *)
                   interpret menv venv_new abstr_noid
               )
+          | DummyFunc -> ( report_error "illegal Apply of DummyFunc" ; Invalid )
         )
     | Apply(f, RealID(i), param_list) -> (
           print_process "$Apply (ID)" ;
-          match !(AssocList.get_value (!menv) f) with (* !(menv(f)) *)
+          match !(Assoclist.get_value (!menv) f) with (* !(menv(f)) *)
             Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                 let value_list = interpret_list menv venv param_list in
                 let loc_list : location list = ref_list value_list in
                 let loc_id : location = ref (id_to_abstract_tree i) in
-                let venv_new = ref (AssocList.add "@id" loc_id (AssocList.add_list var_list loc_list cont_venv_f)) in
+                let venv_new = ref (Assoclist.add "@id" loc_id (Assoclist.add_list var_list loc_list cont_venv_f)) in
                 (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
                 (*
                   print_string " *|*( " ;
-                  AssocList.print_key !venv_new ;
+                  Assoclist.print_key !venv_new ;
                   print_string " )*|*" ; print_newline () ;
                 *)
                   interpret menv venv_new abstr_id
               )
+          | DummyFunc -> ( report_error "illegal Apply of DummyFunc" ; Invalid )
         )
 
-    | Invalid -> Invalid
+    | _ -> Invalid
 
   (* macro_environment -> var_environment -> (abstract_tree list) -> (abstract_tree list) *)
   and interpret_list menv venv abstr_list =
@@ -242,5 +194,3 @@ end *) = struct
     | value_head :: value_tail -> (ref value_head) :: (ref_list value_tail)
 
   and id_to_abstract_tree id = Output(id)
-
-end

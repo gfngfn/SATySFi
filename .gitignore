@@ -1,5 +1,7 @@
+*.cmi
+*.cmo
+*.exe
 old/
 test/
 test_of_mcd.txt
 memo.txt
-

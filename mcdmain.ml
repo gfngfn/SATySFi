@@ -1,3 +1,5 @@
+open Types
+
 (* string -> string *)
 let string_of_file_in file_name_in =
   let str_in = ref "" in
@@ -19,9 +21,11 @@ let file_out_of_string file_name_out content_out =
 let main file_name_in file_name_out =
 
   let content_in = string_of_file_in file_name_in in
-  let lexed = McdLexer.mcdlex content_in in
-  let parsed = McdParser.mcdparser lexed in
-  let absed = McdAbs.concrete_to_abstract parsed in
-  let semed = McdSemantics.semantics absed in
-  let content_out = McdOut.mcdout semed in
+  let lexed = Mcdlexer.mcdlex content_in in
+  let parsed = Mcdparser.mcdparser lexed in
+  let absed = Mcdabs.concrete_to_abstract parsed in
+  let semed = Mcdsemantics.semantics absed in
+  let content_out = Mcdout.mcdout semed in
     file_out_of_string file_name_out content_out
+
+let _ = main Sys.argv.(1) Sys.argv.(2)

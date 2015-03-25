@@ -1,19 +1,6 @@
+(* module Mcdlexer *)
 
-type macro_name = string
-type var_name = string
-type id_name = string
-type letter = string
-
-type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
-           | END | BGRP | EGRP | SEP | CHAR of letter
-           | BEGINNING_OF_INPUT | END_OF_INPUT
-           | MACRO | POP
-
-module McdLexer : sig
-
-  val mcdlex : string -> (token list)
-
-end = struct
+  open Types
 
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
                   | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
@@ -190,5 +177,3 @@ end = struct
     pos_current := !pos_start ;
     last_token_type := INVALID_TYPE ;
     q_ini ()
-
-end

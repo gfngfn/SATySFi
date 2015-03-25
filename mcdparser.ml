@@ -1,73 +1,11 @@
-
-exception StackUnderflow
-
-exception LineUnderflow
-
-module Stack (* : sig
-
-  type 'a t
-
-  val empty : 'a t
-  val pop : ('a t ref) -> 'a
-  val push : ('a t ref) -> 'a -> unit
-  val to_list : ('a t) -> ('a list)
-
-end *) = struct
-
-  type 'a t = 'a list
-
-  let empty = []
-
-  (* 'a t ref -> 'a *)
-  let pop rfstk =
-    match !rfstk with
-      [] -> raise StackUnderflow
-    | head :: tail -> (rfstk := tail ; head)
-
-  (* 'a t ref -> 'a -> unit *)
-  let push rfstk cnt =
-    rfstk := cnt :: !rfstk
-
-  (* 'a t ref -> 'a *)
-  let top rfstk =
-    match !rfstk with
-      [] -> raise StackUnderflow
-    | head :: tail -> head
-
-  (* 'a t -> 'a t -> 'a t *)
-  let rec concat lsta lstb =
-    match lsta with
-      [] -> lstb
-    | head :: tail -> head :: (concat tail lstb)
-
-  (* 'a t -> 'a list *)
-  let rec to_list stk =
-    match stk with
-      [] -> []
-    | head :: tail -> concat (to_list tail) [head]
-
-end
-
-
-type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
-type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
-
-
-module McdParser : sig
-
-  type state
-  type tree_and_state
-
-  val mcdparser : (token list) -> tree
-  val print_tree_node : tree -> unit
-
-end  = struct
+(* module McdParser *)
+  open Types
 
   type state = (unit -> unit)
   type tree_and_state = tree * state
 
   let input_line : tree list ref = ref []
-  let output_stack : tree_and_state Stack.t ref = ref Stack.empty
+  let output_stack : tree_and_state Stacklist.t ref = ref Stacklist.empty
 
   (* for test *)
   let print_tree_node tr =
@@ -174,23 +112,23 @@ end  = struct
 
   let rec mcdparser (input : token list) =
     make_line input ;
-    output_stack := Stack.empty ;
-    Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
+    output_stack := Stacklist.empty ;
+    Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
     print_process "[END OF MCDPASER]" ;
-    get_first (eliminate_state (elim_first (Stack.to_list !output_stack)))
+    get_first (eliminate_state (elim_first (Stacklist.to_list !output_stack)))
 
   (* string -> unit *)
   and report_error errmsg =
     print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ".") ; print_newline () ;
-    output_stack := Stack.empty ;
-    Stack.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
-    Stack.push output_stack (NonTerminal(Total, [NonTerminal(Block, []); Terminal(END_OF_INPUT)]), q_dummy)
+    output_stack := Stacklist.empty ;
+    Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
+    Stacklist.push output_stack (NonTerminal(Total, [NonTerminal(Block, []); Terminal(END_OF_INPUT)]), q_dummy)
 
   (* tree -> state -> unit *)
   and shift content q =
-    Stack.push output_stack (content, q) ;
+    Stacklist.push output_stack (content, q) ;
     print_output !output_stack ;
     print_input !input_line ;
     q ()
@@ -202,7 +140,7 @@ end  = struct
   (* tree list -> nonterminal -> int -> unit *)
   and reduce_sub trlst nontm num =
     if num == 0 then (
-      match Stack.top output_stack with
+      match Stacklist.top output_stack with
         (tr, st) -> (
           input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
           print_process "reduce" ;
@@ -211,7 +149,7 @@ end  = struct
           st ()
         )
     ) else
-      match Stack.pop output_stack with
+      match Stacklist.pop output_stack with
         (tr, st) -> reduce_sub (tr :: trlst) nontm (num - 1)
 
   and reduce_empty nontm q =
@@ -726,5 +664,3 @@ end  = struct
     T -> B [$].
   *)
     reduce Total 2
-
-end
