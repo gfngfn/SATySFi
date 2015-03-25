@@ -12,6 +12,6 @@ Install `make` and `ocamlc`.
 Clone this repository and execute `make` at `/Macrodown/`.
 Then `macrodown.exe` is generated, and you can type
 
-    ./macrodown.exe <input file> <output file>
+    ./macrodown.exe <header file> <input file> <output file>
 
-to compile `<input file>` into `<output file>`.
+to compile `<input file>` into `<output file>` with `<header file>`.
