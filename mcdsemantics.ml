@@ -22,7 +22,7 @@
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
     print_process "[BEGIN SEMANTICS]" ;
-    loc_indent := Output("  ") ;
+    loc_indent := Output("") ;
     let loc_deepen : macro_location = ref DummyFunc in
     let loc_shallow : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
