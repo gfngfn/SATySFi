@@ -2,14 +2,14 @@
 
 ## Summary
 
-Macrodown is a markup language wrapping other markup languages.
+Macrodown is a markup language wrapping other markup languages such as TeX/LaTeX or HTML.
 It enables you to write documents with macros of your own making,
 especially variadic ones.
 
 ## Usage
 
 Install `make` and `ocamlc`.
-Clone This repository and execute `make` at `/Macrodown/`.
+Clone this repository and execute `make` at `/Macrodown/`.
 Then `macrodown.exe` is generated, and you can type
 
     ./macrodown.exe <input file> <output file>

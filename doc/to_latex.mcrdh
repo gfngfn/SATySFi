@@ -1,0 +1,32 @@
+\macro \head @head {%
+  \\documentclass\{jsarticle\}
+  \\makeatletter%
+    @head;%
+  \\makeatother%
+}%
+\macro \title @title {%
+  \\title\{@title;\}%
+}%
+\macro \author @author {%
+  \\author\{@author;\}%
+}%
+\macro \body @body {%
+  \\begin\{document\}
+  \\maketitle %
+    @body;%
+  \\end\{document\}%
+}%
+\macro \section @sec {%
+  \\section\{@sec;\}%
+}%
+\macro \subsection @subsec {%
+  \\subsection\{@subsec;\}%
+}%
+\macro \p @p {%
+  \\indent %
+    @p;%
+  \\par %
+}%
+\macro \TeX {\\TeX\{\}}%
+\macro \LaTeX {\\LaTeX\{\}}%
+\macro \footnote @footnote {\\footnote\{@footnote;\}}%

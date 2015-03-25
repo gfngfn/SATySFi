@@ -1,8 +1,11 @@
 *.cmi
 *.cmo
 *.exe
+*.tex
+*.dvi
+*.log
+*.aux
 old/
 test/
-doc/
 test_of_mcd.txt
 memo.txt
