@@ -14,6 +14,7 @@
   let output_sequence : token list ref = ref []
   let ignore_space : bool ref = ref false
   let in_comment : bool ref = ref false
+  let after_break : bool ref = ref false
 
   let get_last_token () = (
     String.sub !input_buffer !pos_start (!pos_last - !pos_start)
@@ -36,6 +37,15 @@
   let append_to_sequence elem = (
     output_sequence := append_element !output_sequence elem
   )
+  let rec omit_last_element lst = 
+    match lst with
+      [] -> []
+    | [e] -> []
+    | head :: tail -> head :: (omit_last_element tail)
+
+  let omit_last_from_sequence () =
+    output_sequence := omit_last_element !output_sequence
+
   let report_error errmsg =
     print_string ("[ERROR IN MCDLEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
@@ -44,7 +54,7 @@
 
   let print_process stat =
   (*
-    print_string stat ; print_newline ()
+    print_string stat ; print_newline () ;
   *)
     ()
 
@@ -52,46 +62,100 @@
     let lasttok = get_last_token () in
       match !last_token_type with
         CTRLSEQ_TYPE
-          -> if !in_comment then () else (append_to_sequence (CTRLSEQ(lasttok)) ; ignore_space := true)
+          -> if !in_comment then () else (
+            append_to_sequence (CTRLSEQ(lasttok)) ;
+            ignore_space := true ;
+            after_break := false
+          )
       | VAR_TYPE
-          -> if !in_comment then () else (append_to_sequence (VAR(lasttok)) ; ignore_space := true)
+          -> if !in_comment then () else (
+            append_to_sequence (VAR(lasttok)) ;
+            ignore_space := true ;
+            after_break := false
+          )
       | ID_TYPE
-          -> if !in_comment then () else (append_to_sequence (ID(lasttok)) ; ignore_space := true)
+          -> if !in_comment then () else (
+            append_to_sequence (ID(lasttok)) ;
+            ignore_space := true ;
+            after_break := false
+          )
       | END_TYPE
-          -> if !in_comment then () else (append_to_sequence END ; ignore_space := false)
+          -> if !in_comment then () else (
+            append_to_sequence END ;
+            ignore_space := false ;
+            after_break := false
+          )
       | BGRP_TYPE
-          -> if !in_comment then () else (append_to_sequence BGRP ; ignore_space := false)
+          -> if !in_comment then () else (
+            append_to_sequence BGRP ;
+            ignore_space := false ;
+            after_break := false
+          )
       | EGRP_TYPE
-          -> if !in_comment then () else (append_to_sequence EGRP ; ignore_space := false)
+          -> if !in_comment then () else (
+              (
+                if !after_break then (
+                  (* delete 3 tokens CHAR("\n"), VAR("~indent"), END *)
+                  omit_last_from_sequence () ;
+                  omit_last_from_sequence () ;
+                  omit_last_from_sequence () ;
+
+                  append_to_sequence FINALBREAK ;
+                  append_to_sequence EGRP ;
+                ) else (
+                  append_to_sequence EGRP ;
+                )
+              ) ;
+              ignore_space := false ;
+              after_break := false
+            )
       | CHAR_TYPE
-          -> if !in_comment then () else (append_to_sequence (CHAR(lasttok)) ; ignore_space := false)
+          -> if !in_comment then () else (
+            append_to_sequence (CHAR(lasttok)) ;
+            ignore_space := false ;
+            after_break := false
+          )
       | SEP_TYPE
-          -> if !in_comment then () else (append_to_sequence SEP ; ignore_space := false)
+          -> if !in_comment then () else (
+            append_to_sequence SEP ;
+            ignore_space := false ;
+            after_break := false
+          )
       | INDENT_TYPE
           ->
             if !in_comment then () else (
               append_to_sequence (VAR("~indent")) ;
               append_to_sequence END ;
-              ignore_space := true
+              ignore_space := true ;
+              after_break := false
             )
       | SPACE_TYPE
           -> (
             if !in_comment then () else
-              if !ignore_space then () else append_to_sequence (CHAR(lasttok))
+              if !ignore_space then () else
+                append_to_sequence (CHAR(lasttok))
           )
       | BREAK_TYPE
           -> (
-            (
-              if !in_comment then in_comment := false else
+            if !in_comment then (
+              in_comment := false ;
+              ignore_space := true
+            ) else (
+              (
                 if !ignore_space then () else (
                   append_to_sequence (CHAR(lasttok)) ;
                   append_to_sequence (VAR("~indent")) ;
                   append_to_sequence END
                 )
-            ) ;
-            ignore_space := true
+              ) ;
+              ignore_space := true ;
+              after_break := true
+            )
           )
-      | COMMENT_TYPE -> in_comment := true
+      | COMMENT_TYPE -> (
+            in_comment := true ;
+            after_break := false
+          )
       | INVALID_TYPE -> report_error ("invalid token \"" ^ lasttok ^ "\"")
 
   let rec refine_ctrlseq lst =
@@ -113,6 +177,7 @@
     output_sequence := [] ;
     ignore_space := true ;
     in_comment := false ;
+    after_break := false ;
 
     q_ini () ;
     append_to_sequence END_OF_INPUT ;

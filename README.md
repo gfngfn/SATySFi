@@ -8,10 +8,10 @@ especially variadic ones.
 
 ## Usage
 
-Install `make` and `ocamlc` before compiling Macrodown.
+Install `make` and `ocamlc`.
 Clone This repository and execute `make` at `/Macrodown/`.
-Then `mcd.exe` is generated, and you can type
+Then `macrodown.exe` is generated, and you can type
 
-    ./mcd <input file> <output file>
+    ./macrodown.exe <input file> <output file>
 
-to generate `<output file>` from `<input file>`.
+to compile `<input file>` into `<output file>`.

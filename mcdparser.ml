@@ -22,18 +22,19 @@
       )
     | Terminal(tm) -> (
         match tm with
-          CTRLSEQ(c) -> print_string "[ctrlseq] "
-        | VAR(c) -> print_string "[var] "
-        | ID(c) -> print_string "[id] "
-        | END -> print_string "[end] "
+          CTRLSEQ(c) -> print_string "[c] "
+        | VAR(c) -> print_string "[v] "
+        | ID(c) -> print_string "[i] "
+        | END -> print_string "[;] "
         | BGRP -> print_string "[{] "
         | EGRP -> print_string "[}] "
-        | CHAR(c) -> print_string "[char] "
-        | SEP -> print_string "[sep] "
+        | CHAR(c) -> print_string "."
+        | FINALBREAK -> print_string "[b] "
+        | SEP -> print_string "[|] "
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
-        | POP -> print_string "[pop] "
-        | MACRO -> print_string "[macro] "
+        | POP -> print_string "[p] "
+        | MACRO -> print_string "[m] "
       )
 
   (* for test *)
@@ -45,6 +46,7 @@
   (* for test *)
   let print_output stk =
     (* enable below in order to see the process of parsing *)
+    (* it does not work now since Stacklist module was separated from Mcdparser *)
   (*
     print_output_sub stk ; print_newline () ;
   *)
@@ -171,6 +173,7 @@
     B -> .              (reduce [$])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -189,6 +192,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> q_macrowid1 () *)
@@ -208,6 +212,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -227,6 +232,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
@@ -244,6 +250,7 @@
     B -> .             (reduce [$], [}])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -264,6 +271,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
@@ -297,6 +305,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -317,6 +326,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
@@ -369,6 +379,13 @@
     print_process "q_char" ;
   (*
     S -> [char].
+  *)
+    reduce Sentence 1
+
+  and q_finalbreak () =
+    print_process "q_finalbreak" ;
+  (*
+    S -> [finalbreak].
   *)
     reduce Sentence 1
 
@@ -525,6 +542,7 @@
     | Terminal(SEP) -> reduce_empty Params q_after_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_first_group
+    | Terminal(FINALBREAK) -> reduce_empty Params q_after_first_group
     | Terminal(POP) -> reduce_empty Params q_after_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_first_group
 (*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
@@ -566,6 +584,7 @@
     | Terminal(SEP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(FINALBREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
 (*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
@@ -593,6 +612,7 @@
     | Terminal(SEP) -> reduce_empty Params q_params
     | Terminal(VAR(v)) -> reduce_empty Params q_params
     | Terminal(CHAR(c)) -> reduce_empty Params q_params
+    | Terminal(FINALBREAK) -> reduce_empty Params q_params
     | Terminal(POP) -> reduce_empty Params q_params
     | Terminal(MACRO) -> reduce_empty Params q_params
 (*    | Terminal(MACROWID) -> reduce_empty Params q_params *)

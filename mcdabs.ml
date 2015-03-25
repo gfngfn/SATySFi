@@ -60,6 +60,11 @@
               print_process "#Sentence CHAR" ;
               Output(c)
             )
+        (* S -> [finalbreak] *)
+        | [Terminal(FINALBREAK)] -> (
+              print_process "#Sentence FINALBREAK" ;
+              AbsBlock(ShallowIndent, AbsBlock(Output("\n"), AbsBlock(ContentOf("~indent"), DeepenIndent)))
+            )
         (* S -> [var] *)
         | [Terminal(VAR(v)); Terminal(END)] -> (
               print_process "#Sentence VAR" ;
@@ -72,7 +77,9 @@
               Pop(u, v, concrete_to_abstract grp1, concrete_to_abstract grp2)
             )
         (* S -> [macro] [ctrlseq] A G *)
-        | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
+        (* not [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
+            since it is not consistent with indent system *)
+        | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; NonTerminal(Group, [Terminal(BGRP); grp1; Terminal(EGRP)])]
             -> (
               print_process "#Sentence MACRO" ;
               Macro(f, make_args_list args, concrete_to_abstract grp1, EmptyAbsBlock)

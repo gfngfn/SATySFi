@@ -6,7 +6,7 @@ type id_name = string
 type letter = string
 type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
            | END | BGRP | EGRP | SEP | CHAR of letter
-           | BEGINNING_OF_INPUT | END_OF_INPUT
+           | BEGINNING_OF_INPUT | END_OF_INPUT | FINALBREAK
            | MACRO | POP
 
 

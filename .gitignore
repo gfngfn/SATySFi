@@ -3,5 +3,6 @@
 *.exe
 old/
 test/
+doc/
 test_of_mcd.txt
 memo.txt
