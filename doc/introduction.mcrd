@@ -31,4 +31,10 @@
     現在はまだ簡素な最小限の姿に留まっていますが，
     今後も条件分岐や整数を扱えるようにしたりといった拡張が考えられます。
   }
+  \table{
+    \row{a|bc|def}
+  |
+    \row{ghij|klm|no}
+  }
+  \p{The quick brown fox jumps over the lazy dog.}
 }

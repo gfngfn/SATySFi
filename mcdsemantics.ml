@@ -10,6 +10,7 @@
   let report_error errmsg =
     print_string ("[ERROR IN MCDSEMANTICS] " ^ errmsg ^ ".")
 
+  (* for test *)
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
   (*
@@ -25,13 +26,19 @@
     loc_indent := Output("") ;
     let loc_deepen : macro_location = ref DummyFunc in
     let loc_shallow : macro_location = ref DummyFunc in
+    let loc_ifempty : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
       menv_main := (Assoclist.add "\\deepen" loc_deepen !menv_main) ;
       menv_main := (Assoclist.add "\\shallow" loc_shallow !menv_main) ;
+      menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
+                       PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
       interpret menv_main venv_main abstr
 
   (* (macro_environment ref) -> (var_environment ref) -> abstract_tree -> abstract_tree *)
@@ -39,7 +46,16 @@
 
     match abstr with
 
-      DeepenIndent -> (
+      PrimitiveIfEmpty(abstr_subj, abstr_tru, abstr_fls) -> (
+          let value_subj = interpret menv venv abstr_subj in
+          let value_tru = interpret menv venv abstr_tru in
+          let value_fls = interpret menv venv abstr_fls in
+            match value_subj with
+              EmptyAbsBlock -> value_tru
+            | _ -> value_fls
+        )
+
+    | DeepenIndent -> (
           print_process "$DeepenIndent" ;
           (
             match !loc_indent with

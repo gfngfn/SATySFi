@@ -27,6 +27,21 @@
     @p;%
   \\par %
 }%
+\macro \footnote @footnote {\\footnote\{@footnote;\}}%
+\macro \row @row-content {%
+  \pop @cell @rest {@row-content;}{%
+    @cell;\ifempty{@rest;}{}{ & \row{@rest;}}%
+  }%
+}%
+\macro \table @table {%
+  \\begin\{tabular\}%
+    \--table{@table;}%
+  \\end\{tabular\}%
+}%
+\macro \--table @table-content {%
+  \pop @row @rest {@table-content;}{%
+    @row;\ifempty{@rest;}{}{\\\\\--table{@rest;}}%
+  }%
+}%
 \macro \TeX {\\TeX\{\}}%
 \macro \LaTeX {\\LaTeX\{\}}%
-\macro \footnote @footnote {\\footnote\{@footnote;\}}%
