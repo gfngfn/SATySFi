@@ -36,14 +36,14 @@
         )
     | NonTerminal(Group, [Terminal(BGRP); lstbysp; Terminal(EGRP)]) -> (
           print_process "#Group" ;
+            concrete_to_abstract lstbysp
+(*
           AbsBlock(DeepenIndent,
             AbsBlock(concrete_to_abstract lstbysp,
                 ShallowIndent
-(*              AbsBlock(ShallowIndent,
-                  AbsBlock(Output("\n"), ContentOf("~indent"))
-                ) *)
             )
           )
+*)
         )
     | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)]) -> (
           print_process "#ListBySep []" ;
@@ -63,7 +63,13 @@
         (* S -> [finalbreak] *)
         | [Terminal(FINALBREAK)] -> (
               print_process "#Sentence FINALBREAK" ;
-              AbsBlock(ShallowIndent, AbsBlock(Output("\n"), AbsBlock(ContentOf("~indent"), DeepenIndent)))
+              AbsBlock(ShallowIndent,
+                AbsBlock(Output("\n"),
+                  AbsBlock(ContentOf("~indent"),
+                    DeepenIndent
+                  )
+                )
+              )
             )
         (* S -> [var] *)
         | [Terminal(VAR(v)); Terminal(END)] -> (
@@ -79,7 +85,8 @@
         (* S -> [macro] [ctrlseq] A G *)
         (* not [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
             since it is not consistent with indent system *)
-        | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; NonTerminal(Group, [Terminal(BGRP); grp1; Terminal(EGRP)])]
+        (* | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; NonTerminal(Group, [Terminal(BGRP); grp1; Terminal(EGRP)])] *)
+        | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
             -> (
               print_process "#Sentence MACRO" ;
               Macro(f, make_args_list args, concrete_to_abstract grp1, EmptyAbsBlock)
@@ -103,13 +110,15 @@
         | [Terminal(CTRLSEQ(f)); grp; prms]
             -> (
               print_process "#Sentence CTRLSEQ3" ;
-              Apply(f, NoID, (concrete_to_abstract grp) :: (make_params_list prms))
+            (* call by value *)
+              Apply(f, NoID, make_params_list (NonTerminal(Params, [grp; prms])))
             )
         (* S -> [ctrlseq] [id] G P *)
         | [Terminal(CTRLSEQ(f)); Terminal(ID(i)); grp; prms]
             -> (
               print_process "#Sentence CTRLSEQ4" ;
-              Apply(f, RealID(i), (concrete_to_abstract grp) :: (make_params_list prms))
+            (* call by value *)
+              Apply(f, RealID(i), make_params_list (NonTerminal(Params, [grp; prms])))
             )
         | _ -> ( report_error "illegal child of sentence" ; Invalid )
       )
@@ -141,5 +150,8 @@
       match prms with
         NonTerminal(Params, []) -> []
       | NonTerminal(Params, [grp; paramssub])
-          -> (concrete_to_abstract grp) :: (make_params_list paramssub)
+          -> (manufact_indent (concrete_to_abstract grp)) :: (make_params_list paramssub)
       | _ -> ( report_error "illegal parameter" ; [Invalid] )
+
+    and manufact_indent abstr =
+      AbsBlock(DeepenIndent, AbsBlock(abstr, ShallowIndent))
