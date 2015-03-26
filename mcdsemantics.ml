@@ -71,7 +71,13 @@
           print_process "$AbsBlock 2" ;
           let value_head = interpret menv venv abstr_head in
           let value_tail = interpret menv venv abstr_tail in
-            AbsBlock(value_head, value_tail)
+            match value_head with
+              EmptyAbsBlock -> value_tail
+            | _ -> (
+                  match value_tail with
+                    EmptyAbsBlock -> value_head
+                  | _ -> AbsBlock(value_head, value_tail)
+                )
         )
 
     | Output(c) -> (
