@@ -1,6 +1,7 @@
 *.cmi
 *.cmo
 *.exe
+*.html
 *.tex
 *.dvi
 *.log
