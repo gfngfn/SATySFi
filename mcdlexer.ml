@@ -99,13 +99,10 @@
                   omit_last_from_sequence () ;
                   omit_last_from_sequence () ;
                   omit_last_from_sequence () ;
-
                   append_to_sequence FINALBREAK ;
-                  append_to_sequence EGRP ;
-                ) else (
-                  append_to_sequence EGRP ;
-                )
+                ) else ()
               ) ;
+              append_to_sequence EGRP ;
               ignore_space := false ;
               after_break := false
             )
@@ -117,9 +114,18 @@
           )
       | SEP_TYPE
           -> if !in_comment then () else (
-            append_to_sequence SEP ;
-            ignore_space := false ;
-            after_break := false
+              (
+                if !after_break then (
+                  (* delete 3 tokens CHAR("\n"), VAR("~indent"), END *)
+                  omit_last_from_sequence () ;
+                  omit_last_from_sequence () ;
+                  omit_last_from_sequence () ;
+                  append_to_sequence FINALBREAK ;
+                ) else ()
+              ) ;
+              append_to_sequence SEP ;
+              ignore_space := false ;
+              after_break := false
           )
       | INDENT_TYPE
           ->
