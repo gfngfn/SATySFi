@@ -13,9 +13,9 @@
   (* for test *)
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
-  (*
+  
     print_string stat ; print_newline () ;
-  *)
+  
     ()
 
   let loc_indent : location = ref EmptyAbsBlock
@@ -116,6 +116,23 @@
 
     | Pop(u, v, abstr_rawlist, abstr_content) -> (
           let value_rawlist = interpret menv venv abstr_rawlist in
+            match value_rawlist with
+              EmptyAbsBlock -> (
+                  print_process "$Pop (Empty)" ;
+                  EmptyAbsBlock
+                )
+            | _ -> (
+                  match pop_from_separated_tree value_rawlist UnderConstruction with
+                    (value_former, value_latter) -> (
+                        print_process "Pop (Content)" ;
+                        let loc_former : location = ref value_former in
+                        let loc_latter : location = ref value_latter in
+                        let venv_content = ref (Assoclist.add v loc_latter (Assoclist.add u loc_former !venv)) in
+                          interpret menv venv_content abstr_content
+                      )
+                )
+        )
+(*
           match value_rawlist with
             EmptyAbsBlock -> (
                 print_process "$Pop (Empty)" ;
@@ -150,7 +167,7 @@
                 *)
                   interpret menv venv_content abstr_content
               )
-        )
+*)
 
     | Macro(f, var_list, abstr_noid, abstr_id) -> (
           print_process "$Macro" ;
@@ -216,3 +233,23 @@
     | value_head :: value_tail -> (ref value_head) :: (ref_list value_tail)
 
   and id_to_abstract_tree id = Output(id)
+
+  (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
+  and pop_from_separated_tree abstr_in abstr_constr =
+    match abstr_in with
+      Separated(abstr_former, abstr_latter) -> (
+          match abstr_former with
+            Separated(a, b) -> (
+              pop_from_separated_tree abstr_former (compensate abstr_constr (Separated(UnderConstruction, abstr_latter)))
+            )
+          | _ -> (abstr_former, compensate abstr_constr abstr_latter)
+        )
+    | _ -> (abstr_in, EmptyAbsBlock)
+
+  (* abstract_tree -> abstract_tree -> abstract_tree *)
+  and compensate abstr_under_constr abstr_cmpnstd =
+    match abstr_under_constr with
+      Separated(abstr_former, abstr_latter)
+        -> Separated((compensate abstr_former abstr_cmpnstd), (compensate abstr_latter abstr_cmpnstd))
+    | UnderConstruction -> abstr_cmpnstd
+    | abstr_other -> abstr_other

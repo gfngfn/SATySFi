@@ -29,6 +29,8 @@ type abstract_tree = EmptyAbsBlock
                    | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
                    | Apply of macro_name * abstract_id_name * (abstract_tree list)
                    | Invalid
+                   | UnderConstruction
+                       (* for 'compensate' *)
                    | Separated of abstract_tree * abstract_tree
                    | DeepenIndent
                    | ShallowIndent
