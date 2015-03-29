@@ -6,6 +6,7 @@
 *.dvi
 *.log
 *.aux
+bin/
 old/
 test/
 test_of_mcd.txt

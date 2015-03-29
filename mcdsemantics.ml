@@ -13,9 +13,9 @@
   (* for test *)
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
-  
+  (*
     print_string stat ; print_newline () ;
-  
+  *)
     ()
 
   let loc_indent : location = ref EmptyAbsBlock
