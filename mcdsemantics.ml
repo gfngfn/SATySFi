@@ -8,7 +8,8 @@
   and macro_location = function_spec ref
 
   let report_error errmsg =
-    print_string ("[ERROR IN MCDSEMANTICS] " ^ errmsg ^ ".")
+    print_string ("[ERROR IN SEMANTICS] " ^ errmsg ^ ".") ;
+    print_newline ()
 
   (* for test *)
   let print_process stat =
@@ -103,8 +104,14 @@
 
     | ContentOf(v) -> (
           print_process ("$ContentOf: " ^ v) ;
-          interpret menv venv !(Assoclist.get_value (!venv) v)
+          try
+            interpret menv venv !(Assoclist.get_value (!venv) v)
         (*  !(Assoclist.get_value (!venv) v) *)
+          with
+            ValueNotFound -> (
+                report_error ("undefined variable '" ^ v ^ "'") ;
+                Invalid
+              )
         )
 
     | Separated(abstr_former, abstr_latter) -> (
@@ -180,20 +187,29 @@
 
     | Apply(f, NoID, param_list) -> (
           print_process "$Apply (NoID)" ;
-          match !(Assoclist.get_value (!menv) f) with (* !(menv(f)) *)
-            Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
-                let value_list = interpret_list menv venv param_list in
-                let loc_list : location list = ref_list value_list in
-                let venv_new = ref (Assoclist.add_list var_list loc_list cont_venv_f) in
-                (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
-                (*
-                  print_string " *|*( " ;
-                  Assoclist.print_key !venv_new ;
-                  print_string " )*|*" ; print_newline () ;
-                *)
-                  interpret menv venv_new abstr_noid
-              )
-          | DummyFunc -> ( report_error "illegal Apply of DummyFunc" ; Invalid )
+          let spec_f =
+            try
+              !(Assoclist.get_value (!menv) f)
+            with
+              ValueNotFound -> (
+                  report_error ("undefined control sequence '" ^ f ^ "'") ;
+                  DummyFunc
+                )
+          in
+            match spec_f with (* !(menv(f)) *)
+              Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
+                  let value_list = interpret_list menv venv param_list in
+                  let loc_list : location list = ref_list value_list in
+                  let venv_new = ref (Assoclist.add_list var_list loc_list cont_venv_f) in
+                  (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
+                  (*
+                    print_string " *|*( " ;
+                    Assoclist.print_key !venv_new ;
+                    print_string " )*|*" ; print_newline () ;
+                  *)
+                    interpret menv venv_new abstr_noid
+                )
+            | DummyFunc -> Invalid
         )
     | Apply(f, RealID(i), param_list) -> (
           print_process "$Apply (ID)" ;

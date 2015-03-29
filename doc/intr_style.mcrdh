@@ -1,0 +1,17 @@
+\macro \settings {%
+  \\usepackage[dvipdfmx]\{xcolor\}%
+}%
+\macro \description @dscr {%
+  \\begin\{description\}%
+    @dscr;
+  \\end\{description\}%
+}%
+\macro \d-item @di @dd {%
+  \\item[@di;] @dd;%
+}%
+\macro \synt @synt {%
+  \\textcolor\{blue\}\{\\texttt\{@synt;\}\}%
+}%
+\macro \newword @nw {%
+  \\textgt\{@nw;\}%
+}%

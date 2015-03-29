@@ -47,7 +47,7 @@
     output_sequence := omit_last_element !output_sequence
 
   let report_error errmsg =
-    print_string ("[ERROR IN MCDLEXER] " ^ errmsg ^ ":") ; print_newline () ;
+    print_string ("[ERROR IN LEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
     print_string (" to " ^ (string_of_int !pos_current)) ; print_newline () ;
     output_sequence := [END_OF_INPUT]
@@ -203,7 +203,7 @@
     | '\n' -> (save_token_type BREAK_TYPE ; next ())
     | '~' -> (save_token_type INDENT_TYPE ; next ())
     | '%' -> (save_token_type COMMENT_TYPE ; next ())
-    | '\000' -> print_process "[END OF MCDLEXER]"
+    | '\000' -> print_process "[END OF LEXER]"
     | _ -> (save_token_type CHAR_TYPE ; next ())
 
   and q_escape () =

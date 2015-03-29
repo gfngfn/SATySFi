@@ -111,6 +111,60 @@
       [] -> []
     | (tr, st) :: tail -> tr :: (eliminate_state tail)
 
+  let rec length_of_list lst num =
+    match lst with
+      [] -> num
+    | head :: tail -> length_of_list tail (num + 1)
+
+  (* (tree * state) list -> unit *)
+  let rec print_last_some_tokens lst =
+    if (length_of_list lst 0) <= 6 then
+      print_tree_list (eliminate_state lst)
+    else
+      match lst with
+        [] -> ()
+      | head :: tail -> print_last_some_tokens tail
+
+  and print_tree_list trlst =
+    match trlst with
+      [] -> ()
+    | head :: tail -> ( print_tree_detail head ; print_tree_list tail )
+
+  (* for error log *)
+  and print_tree_detail tr =
+    match tr with
+      NonTerminal(nontm, lst) -> print_tree_list lst
+    | Terminal(tm) -> (
+          match tm with
+            CTRLSEQ(f) -> print_string f
+          | VAR(v) -> (
+                if (compare v "~indent") == 0 then
+                  ()
+                else
+                  print_string v
+              )
+          | ID(i) -> print_string i
+          | END -> print_string ";"
+          | BGRP -> print_string "{"
+          | EGRP -> print_string "}"
+          | CHAR(c) -> (
+                match c with
+                  "{" -> print_string "\\{"
+                | "}" -> print_string "\\}"
+                | "\\" -> print_string "\\\\"
+                | "@" -> print_string "\\@"
+                | "|" -> print_string "\\|"
+                | ";" -> print_string "\\;"
+                | _ -> print_string c
+              )
+          | FINALBREAK -> print_string "\n"
+          | SEP -> print_string "|"
+          | BEGINNING_OF_INPUT -> print_string "[BOI]"
+          | END_OF_INPUT -> print_string "[EOI]"
+          | POP -> print_string "\\pop"
+          | MACRO -> print_string "\\macro"
+        )
+
 
   let rec mcdparser (input : token list) =
     make_line input ;
@@ -118,12 +172,13 @@
     Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_first) ;
 
     q_first () ;
-    print_process "[END OF MCDPASER]" ;
+    print_process "[END OF PASER]" ;
     get_first (eliminate_state (elim_first (Stacklist.to_list !output_stack)))
 
   (* string -> unit *)
   and report_error errmsg =
-    print_string ("[ERROR IN MCDPARSER] " ^ errmsg ^ ".") ; print_newline () ;
+    print_string ("[ERROR IN PARSER] " ^ errmsg ^ ": near") ; print_newline () ;
+    print_last_some_tokens (Stacklist.to_list !output_stack) ;
     output_stack := Stacklist.empty ;
     Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
     Stacklist.push output_stack (NonTerminal(Total, [NonTerminal(Block, []); Terminal(END_OF_INPUT)]), q_dummy)

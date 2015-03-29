@@ -30,22 +30,32 @@ let main file_name_in_list file_name_out =
   let parsed = Mcdparser.mcdparser lexed in
   let absed = Mcdabs.concrete_to_abstract parsed in
   let semed = Mcdsemantics.semantics absed in
-  let content_out = Mcdout.mcdout semed in
-    file_out_of_string file_name_out content_out
+  let content_out =
+    try
+      Mcdout.mcdout semed
+    with
+      IllegalOut -> ""
+  in
+    match content_out with
+      "" -> ( print_string "No output." ; print_newline () )
+    | _ -> file_out_of_string file_name_out content_out
 
 let rec concat_list lsta lstb =
-	match lsta with
-	  [] -> lstb
-	| head :: tail -> head :: (concat_list tail lstb)
+  match lsta with
+    [] -> lstb
+  | head :: tail -> head :: (concat_list tail lstb)
 
 let rec see_argv num file_name_in_list file_name_out =
     if num == Array.length Sys.argv then
       main file_name_in_list file_name_out
     else (
-      if (compare Sys.argv.(num) "-o") == 0 then
+      if (compare Sys.argv.(num) "-o") == 0 then (
+        print_string ("[output] " ^ Sys.argv.(num + 1)) ; print_newline () ;
         see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
-      else
+      ) else (
+        print_string ("[input] " ^ Sys.argv.(num)) ; print_newline () ;
         see_argv (num + 1) (concat_list file_name_in_list [Sys.argv.(num)]) file_name_out
+      )
     )
 
 let _ = see_argv 1 [] "mcrd.out"

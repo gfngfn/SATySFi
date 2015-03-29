@@ -26,9 +26,9 @@
   \\subsection\{@subsec;\}%
 }%
 \macro \p @p {%
-  \\indent %
+  \\indent\{\}%
     @p;%
-  \\par %
+  \\par\{\}%
 }%
 \macro \footnote @footnote {\\footnote\{@footnote;\}}%
 \macro \row @row-content {%
@@ -49,3 +49,9 @@
 \macro \to-latex @c {@c;}%
 \macro \TeX {\\TeX\{\}}%
 \macro \LaTeX {\\LaTeX\{\}}%
+\macro \atmark {\@}%
+\macro \brokenbar {\|}%
+\macro \lbrace {\\\{}%
+\macro \rbrace {\\\}}%
+\macro \bksl {\\symbol\{"5C\}}%
+\macro \numsign {\\\#}%
