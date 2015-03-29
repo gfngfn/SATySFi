@@ -70,3 +70,4 @@
 \macro \rbrace {\\\}}%
 \macro \bksl {\\symbol\{"5C\}}%
 \macro \numsign {\\\#}%
+\macro \percent {\\\%}%

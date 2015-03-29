@@ -66,3 +66,16 @@
     @head;\ifempty{@tail;}{}{ \\enskip\|\\enskip \--cfl{@tail;}}%
   }%
 }%
+\macro \code-dp @code {%
+  \\begin\{center\}%
+    \\parbox\{0.9\\textwidth\}\{@code;\}%
+  \\end\{center\}%
+}%
+\macro \code @code {%
+  @code;%
+}%
+\macro \code-dp-break {\\\\}%
+\macro \meta @metacode {%
+  \\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}%
+}%
+\macro \metadots {$\\ldots$}%

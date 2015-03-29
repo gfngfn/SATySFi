@@ -1,7 +1,7 @@
 \main{\shallow;
   \head{
     \settings;
-    \title{Macrodown}
+    \title{Macrodown (ver. 0.9) の仕様}
     \author{Takashi SUWA (a.k.a gfn)}
   }
   \body{
@@ -10,6 +10,7 @@
       \newword{Macrodown}（\newword{マクロダウン}）は\LaTeX;やHTMLなどのマークアップ言語をラップするための
       軽量［要出典］マークアップ言語です。
       マクロ定義機能があり，可変長引数を扱うこともできます。
+      \url{http://github.com/gfngfn/Macrodown}で公開しています。
     }
     \section{動機}
     \p{
@@ -23,6 +24,8 @@
       HTML+CSSは構造と体裁がよく分離されており，CSSによる体裁の変更等も柔軟ですが，
       記法が冗長で，またマクロ定義機能も存在していない\footnote{おそらく意図的に取り入れられていないのでしょう。}ため，
       直接人間の手で文書を記述するには適しているとは思えません。
+      Markdown，AsciiDoc，その他ローカルなWiki記法など，HTMLを専用にラップする軽量マークアップ言語も数多くありますが，
+      用途が限られている傾向にあり，表現力は乏しいと言わざるを得ないでしょう。
     }
     \p{
       一方の\LaTeX;は比較的平易な記法でマクロ定義機能が備わっており，先達による高度なパッケージも充実し，
@@ -107,6 +110,66 @@
       \cfl{G}{ \token-bgrp; L \token-egrp; }
     |
       \cfl{L}{ B | B \token-sep; L }
+    }
+  %
+    \subsection{変数とマクロ定義}
+    \p{
+      変数にはトークン列\footnote{%
+        正確には構文木が格納されているのですが，
+        トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。%
+      }のみが格納され，現時点では数値などは扱えません。
+      破壊的代入の機能はなく，したがって純粋函数型言語に近い性質をしています。
+    }
+    \p{
+      マークアップ言語における柔軟性を確保するため，前述のとおりマクロ定義機能があります。
+    }
+    \code-dp{
+      \synt{\bksl;macro} \synt{\bksl;}\meta{hoge} %
+        \synt{\atmark;}\meta{var1} \metadots; \synt{\atmark;}\meta{varN} %
+        \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
+    }
+    \p{
+      で引数を\math{N}個伴うマクロ\code{\synt{\bksl;}\meta{hoge}}が定義されます。
+      この定義式以降，
+    }
+    \code-dp{
+      \synt{\bksl;}\meta{hoge} %
+        \synt{\lbrace;}\meta{Arg1}\synt{\rbrace;}%
+        \metadots;
+        \synt{\lbrace;}\meta{ArgN}\synt{\rbrace;}%
+    }
+    \p{
+      で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
+    }
+    \p{
+      変数\code{\synt{\atmark;}\meta{piyo}}に格納された中身を取り出すには
+      \code{\synt{\atmark;}\meta{piyo}\synt{\;}}とします。例えば
+    }
+    \code-dp{
+      \synt{\bksl;macro \bksl;test \atmark;x \atmark;y \lbrace;Ma\atmark;x\;r\atmark;y\;down\rbrace;\percent;}\code-dp-break;%
+      \synt{\bksl;\lbrace;c\rbrace;\lbrace;o\rbrace; \bksl;\lbrace;\rbrace;\lbrace;k\rbrace;}
+    }
+    \p{
+      に対する出力は
+    }
+    \code-dp{
+      \synt{Macrodown Markdown}
+    }
+    \p{
+      となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
+    }
+    \code-dp{
+      \synt{\bksl;macro \bksl;mcrd \lbrace;Macrodown\rbrace;\percent;}\code-dp-break;%
+      \synt{Hello, \bksl;mcrd\;!}
+    }
+    \p{
+      に対する出力は
+    }
+    \code-dp{
+      \synt{Hello, Macrodown!}
+    }
+    \p{
+      となります。
     }
   }
 \deepen;}
