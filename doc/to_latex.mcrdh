@@ -46,6 +46,21 @@
     @row;\ifempty{@rest;}{}{\\\\\--table{@rest;}}%
   }%
 }%
+\macro \itemize @list {%
+  \\begin\{itemize\}%
+    \--itemize{@list;}%
+  \\end\{itemize\}%
+}%
+\macro \--itemize @list {%
+  \pop @head @tail {@list;}{%
+    \\item @head;\ifempty{@tail;}{}{\--itemize{@tail;}}%
+  }%
+}%
+%
+\macro \math @math { $@math;$ }%
+\macro \epsilon {\\varepsilon}%
+%
+\macro \url @url {\\texttt\{@url;\}}%
 \macro \to-latex @c {@c;}%
 \macro \TeX {\\TeX\{\}}%
 \macro \LaTeX {\\LaTeX\{\}}%

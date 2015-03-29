@@ -1,5 +1,7 @@
 %
 \macro \settings {%
+  \\usepackage\{amsmath\}
+  \\usepackage\{amssymb\}
   \\usepackage[T1]\{fontenc\}
   \\usepackage[dvipdfmx]\{xcolor\}%
 }%
@@ -31,5 +33,36 @@
   \\textcolor\{blue\}\{\\texttt\{@synt;\}\}%
 }%
 \macro \newword @nw {%
-  \\textgt\{@nw;\}%
+  \\textsf\{@nw;\}%
+}%
+%
+% ---- tokens ----
+\macro \toksty @tok {\\:\\text\{\\textcolor\{red\}\{$\\underline\{\\mathbf\{@tok;\}\}$\}\}\\:}%
+\macro \token-eoi {\toksty{eoi}}%
+\macro \token-cs {\toksty{cs}}%
+\macro \token-var {\toksty{var}}%
+\macro \token-id {\toksty{id}}%
+\macro \token-char {\toksty{char}}%
+\macro \token-pop {\toksty{pop}}%
+\macro \token-macro {\toksty{macro}}%
+\macro \token-bgrp {\toksty{\\\{}}%
+\macro \token-egrp {\toksty{\\\}}}%
+\macro \token-sep {\toksty{\|}}%
+\macro \token-end {\toksty{\;}}%
+%
+\macro \math-dp-gather @lst {%
+  \\begin\{align*\}%
+  \--math-dp-gather{@lst;}%
+  \\end\{align*\}%
+}%
+\macro \--math-dp-gather @lst {%
+  \pop @head @tail {@lst;}{%
+    @head;\ifempty{@tail;}{}{\\\\\--math-dp-gather{@tail;}}%
+  }%
+}%
+\macro \cfl @nontm @lst {@nontm; &\\rightarrow \--cfl{@lst;}}%
+\macro \--cfl @lst {%
+  \pop @head @tail {@lst;}{%
+    @head;\ifempty{@tail;}{}{ \\enskip\|\\enskip \--cfl{@tail;}}%
+  }%
 }%

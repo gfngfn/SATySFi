@@ -7,7 +7,7 @@
   \body{
     \section{概要}
     \p{
-      Macrodown（マクロダウン）は\LaTeX;やHTMLなどのマークアップ言語をラップするための
+      \newword{Macrodown}（\newword{マクロダウン}）は\LaTeX;やHTMLなどのマークアップ言語をラップするための
       軽量［要出典］マークアップ言語です。
       マクロ定義機能があり，可変長引数を扱うこともできます。
     }
@@ -42,32 +42,71 @@
     \section{仕様}
     \subsection{トークン化}
     \p{
-      大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}として，
-      Macrodownは入力文字列を以下の正規表現にマッチするようにトークン化します。
-      複数にマッチする場合は，より長い文字列ほど，以下に上位に掲げられているものほど優先されます。
+      大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}として，
+      Macrodownは文字列を以下にマッチするようにトークン化します。
+      ただし * は0回以上の繰り返しを表します。
+      複数通りのマッチがある場合はより長い文字列ほど優先し，
+      同一の文字列が複数のトークンにマッチする場合は表で上位に掲げられているものほど優先されます。
     }
     \description{
-      \d-item{\synt{\bksl;macro}}{マクロ定義トークン}
+      \d-item{\synt{\bksl;macro}}{\math{\token-macro;}：\newword{マクロ定義トークン}}
     |
-      \d-item{\synt{\bksl;pop}}{ポップ機能トークン}
+      \d-item{\synt{\bksl;pop}}{\math{\token-pop;}：\newword{ポップ機能トークン}}
     |
-      \d-item{\synt{\bksl;}（基本文字）*}{制御綴トークン}
+      \d-item{\synt{\bksl;}（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
     |
-      \d-item{\synt{\atmark;}（基本文字）*}{変数名トークン}
+      \d-item{\synt{\atmark;}（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
     |
-      \d-item{\synt{\numsign;}（基本文字）*}{ID名トークン}
+      \d-item{\synt{\numsign;}（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
     |
-      \d-item{\synt{\lbrace;}}{開きトークン}
+      \d-item{\synt{\lbrace;}}{\math{\token-bgrp;}：\newword{開きトークン}}
     |
-      \d-item{\synt{\rbrace;}}{閉じトークン}
+      \d-item{\synt{\rbrace;}}{\math{\token-egrp;}：\newword{閉じトークン}}
     |
-      \d-item{\synt{\;}}{無引数終端トークン}
+      \d-item{\synt{\;}}{\math{\token-end;}：\newword{無引数終端トークン}}
     |
-      \d-item{\synt{\brokenbar;}}{区切りトークン}
+      \d-item{\synt{\brokenbar;}}{\math{\token-sep;}：\newword{区切りトークン}}
     |
-      \d-item{\synt{\bksl;}（非基本文字）}{エスケープされた文字トークン}
+      \d-item{\synt{\bksl;}（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
     |
-      \d-item{（1文字）}{文字トークン}
+      \d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
+    }
+    \subsection{空白類を無視する条件}
+    \p{
+      空白文字，タブ文字，改行文字を\newword{空白類}と呼ぶことにします。
+      空白類は無視されるものと文字トークンとされるものが出現場所によって決まり，
+      以下に出現した場合は無視されます。
+    }
+    \itemize{
+      行頭
+    |
+      制御綴トークンの直後
+    |
+      変数名トークンの直後
+    |
+      ID名トークンの直後
+    |
+      空白類の直後
+    }
+    \subsection{構文木化}
+    \p{
+      \math{\token-eoi;}を入力の終端として，Macrodownは以下の\math{T}で表現される入力を受理します。
+    }
+    \math-dp-gather{
+      \cfl{T}{ B \token-eoi; }
+    |
+      \cfl{B}{ \epsilon; | S B }
+    |
+      \cfl{S}{ \token-char; | \token-var; \token-end; | \token-pop; \token-var; \token-var; G G %
+        | \token-macro; \token-cs; A G | \token-cs; \token-end; | \token-cs; G P }
+    |
+      \cfl{A}{ \epsilon; | \token-var; A }
+    |
+      \cfl{P}{ \epsilon; | G P }
+    |
+      \cfl{G}{ \token-bgrp; L \token-egrp; }
+    |
+      \cfl{L}{ B | B \token-sep; L }
     }
   }
 \deepen;}
