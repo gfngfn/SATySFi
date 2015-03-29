@@ -119,31 +119,45 @@
   (* (tree * state) list -> unit *)
   let rec print_last_some_tokens lst =
     if (length_of_list lst 0) <= 6 then
-      print_tree_list (eliminate_state lst)
+      print_tree_list true (eliminate_state lst)
     else
       match lst with
         [] -> ()
       | head :: tail -> print_last_some_tokens tail
 
-  and print_tree_list trlst =
+  and print_tree_list skip_left trlst =
     match trlst with
       [] -> ()
-    | head :: tail -> ( print_tree_detail head ; print_tree_list tail )
+    | head :: tail -> ( print_tree_detail skip_left head ; print_tree_list skip_left tail )
 
-  (* for error log *)
-  and print_tree_detail tr =
+  (* temporary function for error log *)
+  (* tree -> bool -> unit *)
+  and print_tree_detail skip_left tr =
     match tr with
-      NonTerminal(nontm, lst) -> print_tree_list lst
+(*
+      NonTerminal(Block, [trf; NonTerminal(Block, [trlf; trll])]) -> (
+          if skip_left then
+            print_tree_detail true (NonTerminal(Block, [trlf; trll]))
+          else (
+            print_tree_detail false trf ;
+            print_tree_detail false (NonTerminal(Block, [trlf; trll]))
+          )
+        )
+    | NonTerminal(Group, lst) -> print_tree_list false lst
+
+    | NonTerminal(ListBySep, [trf; trl]) -> print_tree_detail false trl
+*)
+    | NonTerminal(nontm, lst) -> print_tree_list skip_left lst
     | Terminal(tm) -> (
           match tm with
-            CTRLSEQ(f) -> print_string f
+            CTRLSEQ(f) -> print_string (f ^ " ")
           | VAR(v) -> (
                 if (compare v "~indent") == 0 then
-                  ()
+                  print_string "~~~~"
                 else
-                  print_string v
+                  print_string (v ^ " ")
               )
-          | ID(i) -> print_string i
+          | ID(i) -> print_string (i ^ " ")
           | END -> print_string ";"
           | BGRP -> print_string "{"
           | EGRP -> print_string "}"
@@ -155,15 +169,26 @@
                 | "@" -> print_string "\\@"
                 | "|" -> print_string "\\|"
                 | ";" -> print_string "\\;"
+                | "\n" -> print_string "^^^^"
                 | _ -> print_string c
               )
           | FINALBREAK -> print_string "\n"
           | SEP -> print_string "|"
-          | BEGINNING_OF_INPUT -> print_string "[BOI]"
-          | END_OF_INPUT -> print_string "[EOI]"
-          | POP -> print_string "\\pop"
-          | MACRO -> print_string "\\macro"
+          | BEGINNING_OF_INPUT -> print_string "[BOI] "
+          | END_OF_INPUT -> print_string " [EOI]"
+          | POP -> print_string "\\pop "
+          | MACRO -> print_string "\\macro "
         )
+
+  (* tree list -> unit *)
+  let rec print_waiting_some_tokens lst num =
+    if num == 0 then () else
+      match lst with
+        [] -> ()
+      | head :: tail -> (
+            print_tree_detail false head ;
+            print_waiting_some_tokens tail (num - 1)
+          )
 
 
   let rec mcdparser (input : token list) =
@@ -177,8 +202,12 @@
 
   (* string -> unit *)
   and report_error errmsg =
-    print_string ("[ERROR IN PARSER] " ^ errmsg ^ ": near") ; print_newline () ;
+    print_string ("[ERROR IN PARSER] " ^ errmsg ^ ": near") ;
+    print_newline () ; print_newline () ;
     print_last_some_tokens (Stacklist.to_list !output_stack) ;
+    print_newline () ; print_newline () ;
+    print_waiting_some_tokens !input_line 16 ;
+    print_newline () ; print_newline () ;
     output_stack := Stacklist.empty ;
     Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
     Stacklist.push output_stack (NonTerminal(Total, [NonTerminal(Block, []); Terminal(END_OF_INPUT)]), q_dummy)

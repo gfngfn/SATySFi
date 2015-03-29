@@ -1,11 +1,11 @@
 \macro \main @main {%
+  \\documentclass\{jsarticle\}%
   @main;%
 }%
 \macro \head @head {%
-  \\documentclass\{jsarticle\}
-  \\makeatletter%
+  \\makeatletter\{\}%
     @head;%
-  \\makeatother%
+  \\makeatother\{\}%
 }%
 \macro \title @title {%
   \\title\{@title;\}%

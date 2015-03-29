@@ -9,7 +9,9 @@ let string_of_file_in file_name_in =
       str_in := !str_in ^ (String.make 1 (input_char chnl_in))
     done
   in
-    try (cat_sub () ; "") with
+    try
+      ( cat_sub () ; "" )
+    with
       End_of_file -> ( close_in chnl_in ; !str_in )
 
 let rec string_of_file_in_list file_name_in_list =

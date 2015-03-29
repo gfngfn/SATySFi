@@ -1,13 +1,31 @@
+%
 \macro \settings {%
+  \\usepackage[T1]\{fontenc\}
   \\usepackage[dvipdfmx]\{xcolor\}%
 }%
 \macro \description @dscr {%
-  \\begin\{description\}%
-    @dscr;
-  \\end\{description\}%
+  \\begin\{center\}
+    \\begin\{tabular\}\{ll\}
+      \\hline%
+        \dscr-sep-lines{@dscr;}%
+      \\hline
+    \\end\{tabular\}
+  \\end\{center\}%
+}%
+\macro \dscr-sep-lines @dscr {%
+  \pop @head @tail {@dscr;}{%
+    @head;%
+    \ifempty{@tail;}{%
+      \\\\
+    }{%
+      \\\\
+      \\hline%
+      \dscr-sep-lines{@tail;}%
+    }%
+  }%
 }%
 \macro \d-item @di @dd {%
-  \\item[@di;] @dd;%
+  @di; & @dd;%
 }%
 \macro \synt @synt {%
   \\textcolor\{blue\}\{\\texttt\{@synt;\}\}%

@@ -1,4 +1,4 @@
-\main{
+\main{\shallow;
   \head{
     \settings;
     \title{Macrodown}
@@ -48,16 +48,26 @@
     }
     \description{
       \d-item{\synt{\bksl;macro}}{マクロ定義トークン}
+    |
       \d-item{\synt{\bksl;pop}}{ポップ機能トークン}
+    |
       \d-item{\synt{\bksl;}（基本文字）*}{制御綴トークン}
+    |
       \d-item{\synt{\atmark;}（基本文字）*}{変数名トークン}
+    |
       \d-item{\synt{\numsign;}（基本文字）*}{ID名トークン}
+    |
       \d-item{\synt{\lbrace;}}{開きトークン}
+    |
       \d-item{\synt{\rbrace;}}{閉じトークン}
+    |
       \d-item{\synt{\;}}{無引数終端トークン}
+    |
       \d-item{\synt{\brokenbar;}}{区切りトークン}
+    |
       \d-item{\synt{\bksl;}（非基本文字）}{エスケープされた文字トークン}
+    |
       \d-item{（1文字）}{文字トークン}
     }
   }
-}
+\deepen;}

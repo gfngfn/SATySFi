@@ -3,9 +3,10 @@
 *.exe
 *.html
 *.tex
-*.dvi
 *.log
 *.aux
+*.dvi
+*.pdf
 bin/
 old/
 test/
