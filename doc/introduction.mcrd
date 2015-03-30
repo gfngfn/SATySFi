@@ -252,7 +252,7 @@
     \code-dp{
       \synt{\bksl;macro \bksl;enum-comma \atmark;list \lbrace;\percent;}\code-dp-break;%
         \synt{\code-dp-tab;%
-        \bksl;pop \atmark;head \atmark;tail \lbrace;\atmark;list\rbrace;\lbrace;\percent;}\code-dp-break;%
+        \bksl;pop \atmark;head \atmark;tail \lbrace;\atmark;list\;\rbrace;\lbrace;\percent;}\code-dp-break;%
           \synt{\code-dp-tab;\code-dp-tab;%
           \atmark;head\;\bksl;ifempty\lbrace;\atmark;tail\;\rbrace;\lbrace;\rbrace;\lbrace;%
           , \bksl;enum-comma\lbrace;\atmark;tail\;\rbrace;\rbrace;\percent;}\code-dp-break;%

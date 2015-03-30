@@ -26,9 +26,9 @@
   \\subsection\{@subsec;\}%
 }%
 \macro \p @p {%
-  \\indent\{\}%
+  \\indent %
     @p;%
-  \\par\{\}%
+  \\par %
 }%
 \macro \footnote @footnote {\\footnote\{@footnote;\}}%
 \macro \row @row-content {%

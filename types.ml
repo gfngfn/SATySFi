@@ -35,6 +35,7 @@ type abstract_tree = EmptyAbsBlock
                    | DeepenIndent
                    | ShallowIndent
                    | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
+                   | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
 
 
 (* for Mcdsemantics *)

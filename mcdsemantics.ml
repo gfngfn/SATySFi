@@ -28,16 +28,22 @@
     let loc_deepen : macro_location = ref DummyFunc in
     let loc_shallow : macro_location = ref DummyFunc in
     let loc_ifempty : macro_location = ref DummyFunc in
+    let loc_ifsame : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
       menv_main := (Assoclist.add "\\deepen" loc_deepen !menv_main) ;
       menv_main := (Assoclist.add "\\shallow" loc_shallow !menv_main) ;
       menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
+      menv_main := (Assoclist.add "\\ifsame" loc_ifsame !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
                        PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
+      loc_ifsame := Func(["~subj1"; "~subj2"; "~tru"; "~fls"],
+                       PrimitiveIfSame(ContentOf("~subj1"), ContentOf("~subj2"), ContentOf("~tru"), ContentOf("~fls")),
                        EmptyAbsBlock, !menv_main, !venv_main
                      ) ;
       interpret menv_main venv_main abstr
@@ -54,6 +60,36 @@
             match value_subj with
               EmptyAbsBlock -> value_tru
             | _ -> value_fls
+        )
+
+    | PrimitiveIfSame(abstr_subj1, abstr_subj2, abstr_tru, abstr_fls) -> (
+    	    print_process "$PrimitiveIfSame" ;
+    	    let str_subj1 = (
+    	      try
+    	        Mcdout.mcdout (interpret menv venv abstr_subj1)
+    	      with
+    	        IllegalOut -> (
+    	        	  report_error "illegal argument of \\ifsame" ;
+    	        	  ""
+    	          )
+    	    ) in
+    	    let str_subj2 = (
+    	      try
+    	        Mcdout.mcdout (interpret menv venv abstr_subj2)
+    	      with
+    	        IllegalOut -> (
+    	        	  report_error "illegal argument of \\ifsame" ;
+    	        	  ""
+    	          )
+    	    ) in (
+    	      if (compare str_subj1 str_subj2) == 0 then (
+    	        print_process ("$true [" ^ str_subj1 ^ "]") ;
+    	        interpret menv venv abstr_tru
+    	      ) else (
+    	        print_process ("$false [" ^ str_subj1 ^ "][" ^ str_subj2 ^ "]") ;
+    	        interpret menv venv abstr_fls
+    	      )
+    	    )
         )
 
     | DeepenIndent -> (
@@ -139,42 +175,6 @@
                       )
                 )
         )
-(*
-          match value_rawlist with
-            EmptyAbsBlock -> (
-                print_process "$Pop (Empty)" ;
-                EmptyAbsBlock
-              )
-          | Separated(abstr_former, abstr_latter) -> (
-                print_process "$Pop (Plural)" ;
-                let value_former = interpret menv venv abstr_former in
-                let value_latter = interpret menv venv abstr_latter in
-                let loc_former : location = ref value_former in
-                let loc_latter : location = ref value_latter in
-                let venv_content = ref (Assoclist.add v loc_latter (Assoclist.add u loc_former !venv)) in
-                (* venv{ u |-> loc_former, v |-> loc_latter } *)
-                (*
-                  print_string " ***( " ;
-                  Assoclist.print_key !venv_content ;
-                  print_string " )***" ; print_newline () ;
-                *)
-                  interpret menv venv_content abstr_content
-              )
-          | abstr_former -> (
-                print_process "$Pop (Single)" ;
-                let value_former = interpret menv venv abstr_former in
-                let loc_former : location = ref value_former in
-                let loc_latter : location = ref EmptyAbsBlock in
-                let venv_content = ref (Assoclist.add v loc_latter (Assoclist.add u loc_former !venv)) in
-                (* venv{ u|->loc_former, v|->loc_latter } *)
-                (*
-                  print_string " **( " ;
-                  Assoclist.print_key !venv_content ;
-                  print_string " )**" ; print_newline () ;
-                *)
-                  interpret menv venv_content abstr_content
-              )
-*)
 
     | Macro(f, var_list, abstr_noid, abstr_id) -> (
           print_process "$Macro" ;
