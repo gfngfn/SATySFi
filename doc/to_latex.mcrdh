@@ -61,9 +61,15 @@
 \macro \epsilon {\\varepsilon}%
 %
 \macro \url @url {\\texttt\{@url;\}}%
+\macro \url-dp @url {%
+  \\begin\{center\}%
+    \\texttt\{@url;\}%
+  \\end\{center\}%
+}%
 \macro \to-latex @c {@c;}%
 \macro \TeX {\\TeX\{\}}%
 \macro \LaTeX {\\LaTeX\{\}}%
+\macro \pLaTeX2e {p\\LaTeX 2\\raisebox\{-0.125zh\}\{$\\varepsilon$\}}%
 \macro \atmark {\@}%
 \macro \brokenbar {\|}%
 \macro \lbrace {\\\{}%

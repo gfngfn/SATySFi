@@ -3,7 +3,9 @@
   \\usepackage\{amsmath\}
   \\usepackage\{amssymb\}
   \\usepackage[T1]\{fontenc\}
-  \\usepackage[dvipdfmx]\{xcolor\}%
+  \\usepackage\{lmodern\}
+  \\usepackage[dvipdfmx]\{xcolor\}
+  \\setlength\\parskip\{1zh\}%
 }%
 \macro \description @dscr {%
   \\begin\{center\}
@@ -75,6 +77,7 @@
   @code;%
 }%
 \macro \code-dp-break {\\\\}%
+\macro \code-dp-tab {\\\ \\\ }%
 \macro \meta @metacode {%
   \\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}%
 }%
