@@ -156,7 +156,7 @@
     }
     \code-dp{
       \synt{\bksl;macro \bksl;test \atmark;x \atmark;y \lbrace;Ma\atmark;x\;r\atmark;y\;down\rbrace;\percent;}\code-dp-break;%
-      \synt{\bksl;\lbrace;c\rbrace;\lbrace;o\rbrace; \bksl;\lbrace;\rbrace;\lbrace;k\rbrace;}
+      \synt{\bksl;test\lbrace;c\rbrace;\lbrace;o\rbrace; \bksl;test\lbrace;\rbrace;\lbrace;k\rbrace;}
     }
     \p{
       に対する出力は
@@ -203,7 +203,7 @@
       とすると変数\code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
       変数\code{\synt{\atmark;}\meta{tail}}に%
       \code{\meta{Elem2} \synt{\brokenbar;} \metadots; %
-        \synt{\brokenbar;} \meta{ElemN} \synt{\rbrace;}}
+        \synt{\brokenbar;} \meta{ElemN}}
       が格納された上で\code{\meta{Expr}}が評価されます。
       変数\code{\synt{\atmark;}\meta{head}}，\code{\synt{\atmark;}\meta{tail}}が有効なスコープは
       \code{\meta{Expr}}内だけであることに注意してください。
@@ -268,7 +268,18 @@
       \synt{un, deux, trois}
     }
     \p{
-      を得ることができます。
+      を得ることができます。また，2つのトークン列が同一の出力となるかどうかを判定する条件分岐機能%
+      \code{\synt{\bksl;ifsame}}は
+    }
+    \code-dp{
+      \synt{\bksl;ifsame}\synt{\lbrace;} \meta{ExprA} \synt{\rbrace;}%
+        \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
+        \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
+        \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}
+    }
+    \p{
+      という形で使い，\code{\meta{ExprA}}と\code{\meta{ExprB}}が同一出力となる場合は
+      \code{\meta{ExprT}}を，互いに異なる出力となる場合は\code{\meta{ExprF}}を評価します。
     }
   }
 \deepen;}

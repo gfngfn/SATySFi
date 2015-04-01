@@ -57,13 +57,13 @@
   (* for test *)
   let rec print_input ln =
     (* enable below in order to see the process of parsing *)
-  
+  (*
     (
       match ln with
         [] -> ( print_string ":input" ; print_newline () )
       | head :: tail -> ( print_tree_node head ; print_input tail )
     ) ;
-  
+  *)
     ()
 
   let print_process stat = 

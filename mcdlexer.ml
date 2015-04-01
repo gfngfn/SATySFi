@@ -55,9 +55,9 @@
     output_sequence := [END_OF_INPUT]
 
   let print_process stat =
-  
+  (*
     print_string stat ; print_newline () ;
-  
+  *)
     ()
 
   let output_token () = 
