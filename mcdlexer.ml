@@ -5,6 +5,7 @@
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
                   | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
                   | SPACE_TYPE | BREAK_TYPE | INDENT_TYPE | COMMENT_TYPE
+                  | BLTRL_TYPE | ELTRL_TYPE
 
   let input_buffer : string ref = ref ""
   let pos_start : int ref = ref 0
@@ -15,28 +16,29 @@
   let ignore_space : bool ref = ref false
   let in_comment : bool ref = ref false
   let after_break : bool ref = ref false
+  let in_literal : bool ref = ref false
 
-  let get_last_token () = (
+  let get_last_token () =
     String.sub !input_buffer !pos_start (!pos_last - !pos_start)
-  )
-  let save_token_type toktp = (
+
+  let save_token_type toktp =
     last_token_type := toktp ;
     pos_last := !pos_current
-  )
-  let read_char () = (
+
+  let read_char () =
      let ch = !input_buffer.[!pos_current] in (pos_current := !pos_current + 1 ; ch)
-  )
-  let is_basic_char ch = (
+
+  let is_basic_char ch =
     ('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || (ch == '-')
-  )
-  let rec append_element lst elem = (
+
+  let rec append_element lst elem =
     match lst with
       [] -> [elem]
     | head :: tail -> head :: (append_element tail elem)
-  )
-  let append_to_sequence elem = (
+
+  let append_to_sequence elem =
     output_sequence := append_element !output_sequence elem
-  )
+
   let rec omit_last_element lst = 
     match lst with
       [] -> []
@@ -53,9 +55,9 @@
     output_sequence := [END_OF_INPUT]
 
   let print_process stat =
-  (*
+  
     print_string stat ; print_newline () ;
-  *)
+  
     ()
 
   let output_token () = 
@@ -150,13 +152,33 @@
               (
                 if !ignore_space then () else (
                   append_to_sequence (CHAR(lasttok)) ;
-                  append_to_sequence (VAR("~indent")) ;
-                  append_to_sequence END
+                  (
+                    if !in_literal then () else (
+                      append_to_sequence (VAR("~indent")) ;
+                      append_to_sequence END
+                    )
+                  )
                 )
               ) ;
               ignore_space := true ;
               after_break := true
             )
+          )
+      | BLTRL_TYPE
+          -> (
+          	if !in_comment then () else (
+          		append_to_sequence (BLTRL(String.sub lasttok 0 ((String.length lasttok) - 1)))
+          	) ;
+            ignore_space := false ;
+            after_break := true
+          )
+      | ELTRL_TYPE
+          -> (
+          	if !in_comment then () else (
+          		append_to_sequence ELTRL
+          	) ;
+            ignore_space := false ;
+            after_break := true
           )
       | COMMENT_TYPE -> (
             in_comment := true ;
@@ -183,30 +205,53 @@
     output_sequence := [] ;
     ignore_space := true ;
     in_comment := false ;
-    after_break := false ;
+    after_break := true ;
+    in_literal := false ;
 
     q_ini () ;
     append_to_sequence END_OF_INPUT ;
     refine_ctrlseq !output_sequence
 
   and q_ini () =
-    match read_char () with
-      ';' -> (save_token_type END_TYPE ; next ())
-    | '{' -> (save_token_type BGRP_TYPE ; next ())
-    | '}' -> (save_token_type EGRP_TYPE ; next ())
-    | '\\' -> (save_token_type CTRLSEQ_TYPE ; q_escape ())
-    | '@' -> (save_token_type VAR_TYPE ; q_var ())
-    | '#' -> (save_token_type ID_TYPE ; q_id ())
-    | '|' -> (save_token_type SEP_TYPE ; next ())
-    | ' ' -> (save_token_type SPACE_TYPE ; next ())
-    | '\t' -> (save_token_type SPACE_TYPE ; next ())
-    | '\n' -> (save_token_type BREAK_TYPE ; next ())
-    | '~' -> (save_token_type INDENT_TYPE ; next ())
-    | '%' -> (save_token_type COMMENT_TYPE ; next ())
-    | '\000' -> print_process "[END OF LEXER]"
-    | _ -> (save_token_type CHAR_TYPE ; next ())
+    if !in_literal then (
+    	print_process "q_ini (in literal)" ;
+    	match read_char () with
+    	  '~' -> (
+            if !after_break then (
+              save_token_type CHAR_TYPE ; q_end_literal ()
+            ) else (
+              save_token_type CHAR_TYPE ; next ()
+            )
+    	    )
+    	| '\000' -> report_error "input ended while reading literal block"
+    	| '\n' -> ( save_token_type BREAK_TYPE ; next () )
+    	| _ -> ( save_token_type CHAR_TYPE ; next () )
+    ) else (
+      match read_char () with
+        ';' -> ( save_token_type END_TYPE ; next () )
+      | '{' -> ( save_token_type BGRP_TYPE ; next () )
+      | '}' -> ( save_token_type EGRP_TYPE ; next () )
+      | '\\' -> ( save_token_type CTRLSEQ_TYPE ; q_escape () )
+      | '@' -> ( save_token_type VAR_TYPE ; q_var () )
+      | '#' -> ( save_token_type ID_TYPE ; q_id () )
+      | '|' -> ( save_token_type SEP_TYPE ; next () )
+      | ' ' -> ( save_token_type SPACE_TYPE ; next () )
+      | '\t' -> ( save_token_type SPACE_TYPE ; next () )
+      | '\n' -> ( save_token_type BREAK_TYPE ; next () )
+      | '~' -> (
+            if !after_break then (
+              save_token_type BLTRL_TYPE ; q_begin_literal ()
+            ) else (
+              save_token_type CHAR_TYPE ; next ()
+            )
+          )
+      | '%' -> (save_token_type COMMENT_TYPE ; next ())
+      | '\000' -> print_process "[END OF LEXER]"
+      | _ -> (save_token_type CHAR_TYPE ; next ())
+    )
 
   and q_escape () =
+    print_process "q_escape" ;
     let rdch = read_char () in
       match rdch with
         '\000' -> (report_error "input ended by escape")
@@ -219,6 +264,7 @@
         )
 
   and q_ctrlseq () =
+    print_process "q_ctrlseq" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
         save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
@@ -227,6 +273,7 @@
       )
 
   and q_var () =
+    print_process "q_var" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
         save_token_type VAR_TYPE ; q_var ()
@@ -235,12 +282,45 @@
       )
 
   and q_id () =
+    print_process "q_id" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
         save_token_type ID_TYPE ; q_id ()
       ) else (
         next ()
       )
+
+  and q_begin_literal () =
+    print_process "q_begin_literal" ;
+    let rdch = read_char () in
+      match rdch with
+        '\n' -> (
+        	  save_token_type BLTRL_TYPE ;
+        	  in_literal := true ;
+        	  ignore_space := true ;
+        	  next ()
+        	)
+      | '\000' -> report_error "input ended while reading the beginning of literal block"
+      | _ -> ( save_token_type BLTRL_TYPE ; q_begin_literal () )
+
+  and q_end_literal () =
+    print_process "q_end_literal" ;
+    let rdch = read_char () in
+      match rdch with
+        '/' -> ( save_token_type ELTRL_TYPE ; q_end_literal2 () )
+      | '\000' -> report_error "input ended while reading the end of literal block"
+      | _ -> next ()
+
+  and q_end_literal2 () =
+    print_process "q_end_literal2" ;
+    let rdch = read_char () in
+      match rdch with
+        '\n' -> (
+        	  save_token_type ELTRL_TYPE ;
+        	  in_literal := false ;
+        	  next ()
+        	)
+      | _ -> report_error "literal block ended without break"
 
   and next () =
     output_token () ;

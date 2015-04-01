@@ -35,6 +35,8 @@
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[p] "
         | MACRO -> print_string "[m] "
+        | BLTRL(c) -> print_string "[~] "
+        | ELTRL -> print_string "[/] "
       )
 
   (* for test *)
@@ -55,13 +57,13 @@
   (* for test *)
   let rec print_input ln =
     (* enable below in order to see the process of parsing *)
-  (*
+  
     (
       match ln with
         [] -> ( print_string ":input" ; print_newline () )
       | head :: tail -> ( print_tree_node head ; print_input tail )
     ) ;
-  *)
+  
     ()
 
   let print_process stat = 
