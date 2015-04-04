@@ -227,7 +227,15 @@
                 *)
                   interpret menv venv_new abstr_id
               )
-          | DummyFunc -> ( report_error "illegal Apply of DummyFunc" ; Invalid )
+          | DummyFunc -> (
+              report_error "illegal Apply of DummyFunc" ;
+              Invalid
+            )
+        )
+
+    | LiteralBlock(lb, abstr_lb) -> (
+          print_process "$LiteralBlock" ;
+          make_literal_legitimate lb abstr_lb
         )
 
     | _ -> Invalid
@@ -269,3 +277,14 @@
         -> Separated((compensate abstr_former abstr_cmpnstd), (compensate abstr_latter abstr_cmpnstd))
     | UnderConstruction -> abstr_cmpnstd
     | abstr_other -> abstr_other
+
+  and make_literal_legitimate lb abstr =
+    match abstr with
+      AbsBlock(abstr_former, abstr_latter) -> (
+          AbsBlock(make_literal_legitimate lb abstr_former, make_literal_legitimate lb abstr_latter)
+        )
+    | OutputOfLiteral(c) -> Output(c)
+    | _ -> (
+        report_error "illegal token in literal block" ;
+        Invalid
+      )

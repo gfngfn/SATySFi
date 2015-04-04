@@ -15,7 +15,7 @@ type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
 
 exception StackUnderflow
 exception LineUnderflow
-type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep
+type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep | CharOfLiteral
 type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 
 
@@ -37,6 +37,8 @@ type abstract_tree = EmptyAbsBlock
                    | ShallowIndent
                    | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
                    | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+                   | LiteralBlock of literal_name * abstract_tree
+                   | OutputOfLiteral of letter
 
 
 (* for Mcdsemantics *)

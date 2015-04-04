@@ -37,13 +37,6 @@
     | NonTerminal(Group, [Terminal(BGRP); lstbysp; Terminal(EGRP)]) -> (
           print_process "#Group" ;
             concrete_to_abstract lstbysp
-(*
-          AbsBlock(DeepenIndent,
-            AbsBlock(concrete_to_abstract lstbysp,
-                ShallowIndent
-            )
-          )
-*)
         )
     | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)]) -> (
           print_process "#ListBySep []" ;
@@ -85,7 +78,6 @@
         (* S -> [macro] [ctrlseq] A G *)
         (* not [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
             since it is not consistent with indent system *)
-        (* | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; NonTerminal(Group, [Terminal(BGRP); grp1; Terminal(EGRP)])] *)
         | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
             -> (
               print_process "#Sentence MACRO" ;
@@ -120,8 +112,23 @@
             (* call by value *)
               Apply(f, RealID(i), make_params_list (NonTerminal(Params, [grp; prms])))
             )
+        (* S -> [bltrl] C [eltrl] *)
+        | [Terminal(BLTRL(lb)); chofltrl; Terminal(ELTRL)]
+            -> (
+              print_process "#Sentence BLTRL-ELTRL" ;
+              LiteralBlock(lb, concrete_to_abstract chofltrl)
+            )
         | _ -> ( report_error "illegal child of sentence" ; Invalid )
       )
+    | NonTerminal(CharOfLiteral, []) -> (
+          EmptyAbsBlock
+        )
+    | NonTerminal(CharOfLiteral, [Terminal(CHAR(c)); chofltrl]) -> (
+          let abstr_chofltrl = concrete_to_abstract chofltrl in
+            match abstr_chofltrl with
+              EmptyAbsBlock -> OutputOfLiteral(c)
+            | _ -> AbsBlock(OutputOfLiteral(c), abstr_chofltrl)
+        )
     | Terminal(END_OF_INPUT) -> (
           print_process "#END_OF_INPUT" ;
           EmptyAbsBlock

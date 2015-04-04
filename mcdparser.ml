@@ -19,6 +19,7 @@
         | Args -> print_string "A "
         | Params -> print_string "P "
         | ListBySep -> print_string "L "
+        | CharOfLiteral -> print_string "C "
       )
     | Terminal(tm) -> (
         match tm with
@@ -136,20 +137,17 @@
   (* tree -> bool -> unit *)
   and print_tree_detail skip_left tr =
     match tr with
-(*
-      NonTerminal(Block, [trf; NonTerminal(Block, [trlf; trll])]) -> (
-          if skip_left then
-            print_tree_detail true (NonTerminal(Block, [trlf; trll]))
-          else (
-            print_tree_detail false trf ;
-            print_tree_detail false (NonTerminal(Block, [trlf; trll]))
-          )
-        )
-    | NonTerminal(Group, lst) -> print_tree_list false lst
+      NonTerminal(Block, [trf; NonTerminal(Block, [])])
+        -> print_tree_detail skip_left trf
 
-    | NonTerminal(ListBySep, [trf; trl]) -> print_tree_detail false trl
-*)
+    | NonTerminal(Block, [trf; trl])
+        -> print_tree_detail skip_left trl
+
+    | NonTerminal(ListBySep, [trf; trl])
+        -> print_tree_detail skip_left trl
+
     | NonTerminal(nontm, lst) -> print_tree_list skip_left lst
+
     | Terminal(tm) -> (
           match tm with
             CTRLSEQ(f) -> print_string (f ^ " ")
@@ -180,6 +178,8 @@
           | END_OF_INPUT -> print_string " [EOI]"
           | POP -> print_string "\\pop "
           | MACRO -> print_string "\\macro "
+          | BLTRL(bl) -> print_string bl
+          | ELTRL -> print_string "~/"
         )
 
   (* tree list -> unit *)
@@ -267,6 +267,7 @@
     S -> .[ctrlseq] [id] [end]
     S -> .[ctrlseq] G P
     S -> .[ctrlseq] [id] G P
+    S -> .[bltrl] B [eltrl]
   *)
     match top_of_line () with
       Terminal(END_OF_INPUT) -> reduce_empty Block q_first
@@ -283,8 +284,62 @@
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> q_macrowid1 () *)
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
+        | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "illegal first token"
     )
+
+  and q_bltrl () =
+  (*
+    S -> [bltrl].C [eltrl]
+    C -> .[char] C
+    C -> .
+  *)
+    match top_of_line () with
+      Terminal(ELTRL) -> reduce_empty CharOfLiteral q_bltrl
+    | _ -> (
+          let popped = pop_from_line () in
+            match popped with
+              NonTerminal(CharOfLiteral, lst) -> shift popped q_end_of_literal
+            | Terminal(CHAR(c)) -> shift popped q_inner_of_literal
+            | _ -> report_error "illegal first token in literal area"
+        )
+
+  and q_inner_of_literal () =
+  (*
+    C -> [char].C
+    C -> .[char] C
+    C -> .
+  *)
+    match top_of_line () with
+      Terminal(ELTRL) -> reduce_empty CharOfLiteral q_inner_of_literal
+    | _ -> (
+          let popped = pop_from_line () in
+            match popped with
+              NonTerminal(CharOfLiteral, lst) -> shift popped q_after_char_of_literal
+            | Terminal(CHAR(c)) -> shift popped q_inner_of_literal
+            | _ -> report_error "illegal token in literal area"
+        )
+
+  and q_after_char_of_literal () =
+  (*
+    C -> [char] C.
+  *)
+    reduce CharOfLiteral 2
+
+  and q_end_of_literal () =
+  (*
+    S -> [bltrl] C.[eltrl]
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        Terminal(ELTRL) -> shift popped q_eltrl
+      | _ -> report_error "illegal end of literal area"
+
+  and q_eltrl () =
+  (*
+    S -> [bltrl] C [eltrl].
+  *)
+    reduce Sentence 3
 
   and q_total () =
     print_process "q_total" ;
