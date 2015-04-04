@@ -178,8 +178,8 @@
               append_to_sequence (BLTRL(String.sub lasttok 0 ((String.length lasttok) - 1)))
             ) ;
             ignore_space := false ;
-            after_break := true ;
-            top_of_line := false
+            after_break := false ;
+            top_of_line := true
           )
       | ELTRL_TYPE
           -> (
@@ -187,7 +187,7 @@
               append_to_sequence ELTRL
             ) ;
             ignore_space := false ;
-            after_break := true ;
+            after_break := false ;
             top_of_line := true
           )
       | COMMENT_TYPE -> (
