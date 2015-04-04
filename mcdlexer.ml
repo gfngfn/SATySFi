@@ -186,7 +186,7 @@
             if !in_comment then () else (
               append_to_sequence ELTRL
             ) ;
-            ignore_space := false ;
+            ignore_space := true ;
             after_break := false ;
             top_of_line := true
           )

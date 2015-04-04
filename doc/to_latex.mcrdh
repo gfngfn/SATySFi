@@ -1,11 +1,19 @@
+\replace{~latex}{\
+}{}%
 \macro \main @main {%
-  \\documentclass\{jsarticle\}%
+~latex
+\documentclass{jsarticle}
+~/
   @main;%
 }%
 \macro \head @head {%
-  \\makeatletter\{\}%
+~latex
+\makeatletter{}
+~/
     @head;%
-  \\makeatother\{\}%
+~latex
+\makeatother{}
+~/
 }%
 \macro \title @title {%
   \\title\{@title;\}%

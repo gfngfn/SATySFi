@@ -21,7 +21,9 @@
 
   let loc_indent : location = ref EmptyAbsBlock
 
-  let literal_list : ((literal_name * letter, letter) Assoclist.t) ref = ref Assoclist.empty
+  let replace_list : ((literal_name * letter, letter) Assoclist.t) ref = ref Assoclist.empty
+  let prefix_list : ((literal_name, abstract_tree) Assoclist.t) ref = ref Assoclist.empty
+  let postfix_list : ((literal_name, abstract_tree) Assoclist.t) ref = ref Assoclist.empty
 
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
@@ -32,6 +34,8 @@
     let loc_ifempty : macro_location = ref DummyFunc in
     let loc_ifsame : macro_location = ref DummyFunc in
     let loc_replace : macro_location = ref DummyFunc in
+    let loc_prefix : macro_location = ref DummyFunc in
+    let loc_postfix : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
@@ -40,6 +44,8 @@
       menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
       menv_main := (Assoclist.add "\\ifsame" loc_ifsame !menv_main) ;
       menv_main := (Assoclist.add "\\replace" loc_replace !menv_main) ;
+      menv_main := (Assoclist.add "\\prefix" loc_prefix !menv_main) ;
+      menv_main := (Assoclist.add "\\postfix" loc_postfix !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
@@ -52,6 +58,14 @@
                      ) ;
       loc_replace := Func(["~name"; "~before"; "~after"],
                        PrimitiveReplace(ContentOf("~name"), ContentOf("~before"), ContentOf("~after")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
+      loc_prefix := Func(["~name"; "~prefix"],
+                       PrimitivePrefix(ContentOf("~name"), ContentOf("~prefix")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
+      loc_postfix := Func(["~name"; "~postfix"],
+                       PrimitivePostfix(ContentOf("~name"), ContentOf("~postfix")),
                        EmptyAbsBlock, !menv_main, !venv_main
                      ) ;
       interpret menv_main venv_main abstr
@@ -104,7 +118,29 @@
             try Mcdout.mcdout (interpret menv venv abstr_after) with
               IllegalOut -> ( report_error "illegal third argument of \\replace" ; "" )
           ) in
-            literal_list := Assoclist.add (str_name, str_before) str_after !literal_list ;
+            replace_list := Assoclist.add (str_name, str_before) str_after !replace_list ;
+            EmptyAbsBlock
+        )
+
+    | PrimitivePrefix(abstr_name, abstr_prefix) -> (
+          print_process "$PrimitivePrefix" ;
+          let str_name = (
+            try Mcdout.mcdout (interpret menv venv abstr_name) with
+              IllegalOut -> ( report_error "illegal first argument of \\prefix" ; "" )
+          ) in
+          let value_prefix = interpret menv venv abstr_prefix in
+            prefix_list := Assoclist.add str_name value_prefix !prefix_list ;
+            EmptyAbsBlock
+        )
+
+    | PrimitivePostfix(abstr_name, abstr_postfix) -> (
+          print_process "$PrimitivePrefix" ;
+          let str_name = (
+            try Mcdout.mcdout (interpret menv venv abstr_name) with
+              IllegalOut -> ( report_error "illegal first argument of \\postfix" ; "" )
+          ) in
+          let value_postfix = interpret menv venv abstr_postfix in
+            postfix_list := Assoclist.add str_name value_postfix !postfix_list ;
             EmptyAbsBlock
         )
 
@@ -251,7 +287,21 @@
 
     | LiteralBlock(lb, abstr_lb) -> (
           print_process "$LiteralBlock" ;
-          make_literal_legitimate lb abstr_lb
+          let abstr_prefix = (
+            try Assoclist.get_value !prefix_list lb with
+              ValueNotFound -> EmptyAbsBlock
+          ) in
+          let abstr_postfix = (
+            try Assoclist.get_value !postfix_list lb with
+              ValueNotFound -> EmptyAbsBlock
+          ) in
+            AbsBlock(
+              abstr_prefix,
+              AbsBlock(
+                make_literal_legitimate lb abstr_lb,
+                abstr_postfix
+              )
+            )
         )
 
     | _ -> Invalid
@@ -301,7 +351,7 @@
         )
     | OutputOfLiteral(c) ->
         let value_after = (
-          try Assoclist.get_value !literal_list (lb, c) with
+          try Assoclist.get_value !replace_list (lb, c) with
             ValueNotFound -> c
         ) in
           Output(value_after)

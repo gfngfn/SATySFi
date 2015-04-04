@@ -1,0 +1,29 @@
+\macro \3-divides @num {%
+  \ifempty{@num;}{T}{\pop @1 @num-1 {@num;}{\3-divides-sub2{@num-1;}}}}%
+\macro \3-divides-sub2 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\3-divides-sub1{@num-1;}}}}%
+\macro \3-divides-sub1 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\3-divides{@num-1;}}}}%
+\macro \5-divides @num {%
+  \ifempty{@num;}{T}{\pop @1 @num-1 {@num;}{\5-divides-sub4{@num-1;}}}}%
+\macro \5-divides-sub4 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\5-divides-sub3{@num-1;}}}}%
+\macro \5-divides-sub3 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\5-divides-sub2{@num-1;}}}}%
+\macro \5-divides-sub2 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\5-divides-sub1{@num-1;}}}}%
+\macro \5-divides-sub1 @num {%
+  \ifempty{@num;}{F}{\pop @1 @num-1 {@num;}{\5-divides{@num-1;}}}}%
+\macro \fizzbuzz @num {%
+  \ifsame{\3-divides{@num;}}{T}{%
+    \ifsame{\5-divides{@num;}}{T}{FizzBuzz}{Fizz}%
+  }{%
+    \ifsame{\5-divides{@num;}}{T}{Buzz}{X}%
+  }%
+}%
+\macro \fizzbuzzes @num {\pop @1 @num-1 {@num;}{\ifempty{@num-1;}{}{\fizzbuzzes{@num-1;}\
+}\fizzbuzz{@num;}}}%
+\fizzbuzzes{%
+||||||||||%
+||||||||||%
+||||||||||}%

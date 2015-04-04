@@ -1,0 +1,22 @@
+\macro \print @num {\print0{@num;}}%
+\macro \print0 @num {\pop @1 @num-1 {@num;}{O\print1{@num-1;}}}%
+\macro \print1 @num {\pop @1 @num-1 {@num;}{O\print2{@num-1;}}}%
+\macro \print2 @num {\pop @1 @num-1 {@num;}{O\print3{@num-1;}}}%
+\macro \print3 @num {\pop @1 @num-1 {@num;}{O\print4{@num-1;}}}%
+\macro \print4 @num {\pop @1 @num-1 {@num;}{O\print5{@num-1;}}}%
+\macro \print5 @num {\pop @1 @num-1 {@num;}{O\print6{@num-1;}}}%
+\macro \print6 @num {\pop @1 @num-1 {@num;}{O\print7{@num-1;}}}%
+\macro \print7 @num {\pop @1 @num-1 {@num;}{O\print8{@num-1;}}}%
+\macro \print8 @num {\pop @1 @num-1 {@num;}{O\print9{@num-1;}}}%
+\macro \print9 @num {\pop @1 @num-1 {@num;}{O
+  \print0{@num-1;}}}%
+\macro \add @m @n {\ifempty{@n;}{@m;}{\pop @1 @n-1 {@n;}{@m;|@n-1;}}}%
+\macro \mult @m @n {\ifempty{@n;}{}{\pop @1 @n-1 {@n;}{\add{@m;}{\mult{@n-1;}{@m;}}}}}%
+%
+%
+3+8:
+\print{\add{|||}{||||||||}}
+3x8:
+\print{\mult{|||}{||||||||}}
+3+3x4:
+\print{\add{|||}{\mult{|||}{||||}}}

@@ -40,6 +40,8 @@ type abstract_tree = EmptyAbsBlock
                    | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
                    | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
                    | PrimitiveReplace of abstract_tree * abstract_tree * abstract_tree
+                   | PrimitivePrefix of abstract_tree * abstract_tree
+                   | PrimitivePostfix of abstract_tree * abstract_tree
                    | LiteralBlock of literal_name * abstract_tree
                    | OutputOfLiteral of letter
 
