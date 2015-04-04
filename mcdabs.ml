@@ -53,6 +53,11 @@
               print_process "#Sentence CHAR" ;
               Output(c)
             )
+        (* S -. [break] *)
+        | [Terminal(BREAK)] -> (
+              print_process "#Sentence BREAK" ;
+              AbsBlock(Output("\n"), ContentOf("~indent"))
+            )
         (* S -> [finalbreak] *)
         | [Terminal(FINALBREAK)] -> (
               print_process "#Sentence FINALBREAK" ;

@@ -30,7 +30,8 @@
         | BGRP -> print_string "[{] "
         | EGRP -> print_string "[}] "
         | CHAR(c) -> print_string "."
-        | FINALBREAK -> print_string "[b] "
+        | BREAK -> print_string "[b] "
+        | FINALBREAK -> print_string "[f] "
         | SEP -> print_string "[|] "
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
@@ -70,7 +71,7 @@
   let print_process stat = 
     (* enable below in order to see the process of parsing *)
   (*
-  	print_string stat ; print_newline () ;
+    print_string stat ; print_newline () ;
   *)
     ()
 
@@ -121,7 +122,7 @@
 
   (* (tree * state) list -> unit *)
   let rec print_last_some_tokens lst =
-    if (length_of_list lst 0) <= 6 then
+    if (length_of_list lst 0) <= 32 then
       print_tree_list true (eliminate_state lst)
     else
       match lst with
@@ -141,7 +142,10 @@
         -> print_tree_detail skip_left trf
 
     | NonTerminal(Block, [trf; trl])
-        -> print_tree_detail skip_left trl
+        -> (
+          (if skip_left then print_string " ... " else ()) ;
+          print_tree_detail false trl
+        )
 
     | NonTerminal(ListBySep, [trf; trl])
         -> print_tree_detail skip_left trl
@@ -172,6 +176,7 @@
                 | "\n" -> print_string "^^^^"
                 | _ -> print_string c
               )
+          | BREAK -> print_string "\n"
           | FINALBREAK -> print_string "\n"
           | SEP -> print_string "|"
           | BEGINNING_OF_INPUT -> print_string "[BOI] "
@@ -208,7 +213,7 @@
     print_newline () ; print_newline () ;
     print_last_some_tokens (Stacklist.to_list !output_stack) ;
     print_newline () ; print_newline () ;
-    print_waiting_some_tokens !input_line 16 ;
+    print_waiting_some_tokens !input_line 32 ;
     print_newline () ; print_newline () ;
     output_stack := Stacklist.empty ;
     Stacklist.push output_stack (Terminal(BEGINNING_OF_INPUT), q_dummy) ;
@@ -259,6 +264,7 @@
     B -> .              (reduce [$])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
@@ -267,7 +273,7 @@
     S -> .[ctrlseq] [id] [end]
     S -> .[ctrlseq] G P
     S -> .[ctrlseq] [id] G P
-    S -> .[bltrl] B [eltrl]
+    S -> .[bltrl] C [eltrl]
   *)
     match top_of_line () with
       Terminal(END_OF_INPUT) -> reduce_empty Block q_first
@@ -279,6 +285,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(BREAK) -> shift popped q_break
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
@@ -353,6 +360,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
@@ -361,6 +369,7 @@
     S -> .[ctrlseq] [id] [end]
     S -> .[ctrlseq] G P
     S -> .[ctrlseq] [id] G P
+    S -> .[bltrl] C [eltrl]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Block q_after_sentence
@@ -373,11 +382,13 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(BREAK) -> shift popped q_break
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
+        | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
     )
 
@@ -391,6 +402,7 @@
     B -> .             (reduce [$], [}])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
@@ -399,6 +411,7 @@
     S -> .[ctrlseq] [id] [end]
     S -> .[ctrlseq] G P
     S -> .[ctrlseq] [id] G P
+    S -> .[bltrl] C [eltrl]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Block q_inner_of_group
@@ -412,11 +425,13 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(BREAK) -> shift popped q_finalbreak
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
+        | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
     )
 
@@ -446,6 +461,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
@@ -454,6 +470,7 @@
     S -> .[ctrlseq] [id] [end]
     S -> .[ctrlseq] G P
     S -> .[ctrlseq] [id] G P
+    S -> .[bltrl] C [eltrl]
   *)
     match top_of_line () with
       Terminal(EGRP) -> reduce_empty Block q_inner_of_group
@@ -467,11 +484,13 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(BREAK) -> shift popped q_finalbreak
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
 (*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
+        | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
     )
 
@@ -523,6 +542,13 @@
   *)
     reduce Sentence 1
 
+  and q_break () =
+    print_process "q_break" ;
+  (*
+    S -> [break].
+  *)
+    reduce Sentence 1
+
   and q_finalbreak () =
     print_process "q_finalbreak" ;
   (*
@@ -565,8 +591,8 @@
   and q_pop4 () =
     print_process "q_pop4" ;
   (*
-  	S -> [pop] [var] [var] G.G
-  	G -> .[{] L [}]
+    S -> [pop] [var] [var] G.G
+    G -> .[{] L [}]
   *)
     let popped = pop_from_line () in
       match popped with
@@ -577,7 +603,7 @@
   and q_pop5 () =
     print_process "q_pop5" ;
   (*
-  	S -> [pop] [var] [var] G G.
+    S -> [pop] [var] [var] G G.
   *)
     reduce Sentence 5
 
@@ -683,11 +709,13 @@
     | Terminal(SEP) -> reduce_empty Params q_after_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_first_group
+    | Terminal(BREAK) -> reduce_empty Params q_after_first_group
     | Terminal(FINALBREAK) -> reduce_empty Params q_after_first_group
     | Terminal(POP) -> reduce_empty Params q_after_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_first_group
 (*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
+    | Terminal(BLTRL(b)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -725,11 +753,13 @@
     | Terminal(SEP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(BREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(FINALBREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
 (*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
+    | Terminal(BLTRL(b)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
@@ -753,11 +783,13 @@
     | Terminal(SEP) -> reduce_empty Params q_params
     | Terminal(VAR(v)) -> reduce_empty Params q_params
     | Terminal(CHAR(c)) -> reduce_empty Params q_params
+    | Terminal(BREAK) -> reduce_empty Params q_params
     | Terminal(FINALBREAK) -> reduce_empty Params q_params
     | Terminal(POP) -> reduce_empty Params q_params
     | Terminal(MACRO) -> reduce_empty Params q_params
 (*    | Terminal(MACROWID) -> reduce_empty Params q_params *)
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_params
+    | Terminal(BLTRL(b)) -> reduce_empty Params q_params
     | _ -> (
       let popped = pop_from_line () in
         match popped with
