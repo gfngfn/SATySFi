@@ -39,6 +39,7 @@ type abstract_tree = EmptyAbsBlock
                    | ShallowIndent
                    | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
                    | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+                   | PrimitiveReplace of abstract_tree * abstract_tree * abstract_tree
                    | LiteralBlock of literal_name * abstract_tree
                    | OutputOfLiteral of letter
 

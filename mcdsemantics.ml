@@ -21,6 +21,8 @@
 
   let loc_indent : location = ref EmptyAbsBlock
 
+  let literal_list : ((literal_name * letter, letter) Assoclist.t) ref = ref Assoclist.empty
+
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
     print_process "[BEGIN SEMANTICS]" ;
@@ -29,6 +31,7 @@
     let loc_shallow : macro_location = ref DummyFunc in
     let loc_ifempty : macro_location = ref DummyFunc in
     let loc_ifsame : macro_location = ref DummyFunc in
+    let loc_replace : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
@@ -36,6 +39,7 @@
       menv_main := (Assoclist.add "\\shallow" loc_shallow !menv_main) ;
       menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
       menv_main := (Assoclist.add "\\ifsame" loc_ifsame !menv_main) ;
+      menv_main := (Assoclist.add "\\replace" loc_replace !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
@@ -44,6 +48,10 @@
                      ) ;
       loc_ifsame := Func(["~subj1"; "~subj2"; "~tru"; "~fls"],
                        PrimitiveIfSame(ContentOf("~subj1"), ContentOf("~subj2"), ContentOf("~tru"), ContentOf("~fls")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
+      loc_replace := Func(["~name"; "~before"; "~after"],
+                       PrimitiveReplace(ContentOf("~name"), ContentOf("~before"), ContentOf("~after")),
                        EmptyAbsBlock, !menv_main, !venv_main
                      ) ;
       interpret menv_main venv_main abstr
@@ -65,22 +73,12 @@
     | PrimitiveIfSame(abstr_subj1, abstr_subj2, abstr_tru, abstr_fls) -> (
     	    print_process "$PrimitiveIfSame" ;
     	    let str_subj1 = (
-    	      try
-    	        Mcdout.mcdout (interpret menv venv abstr_subj1)
-    	      with
-    	        IllegalOut -> (
-    	        	  report_error "illegal argument of \\ifsame" ;
-    	        	  ""
-    	          )
+    	      try Mcdout.mcdout (interpret menv venv abstr_subj1) with
+    	        IllegalOut -> ( report_error "illegal argument of \\ifsame" ; "" )
     	    ) in
     	    let str_subj2 = (
-    	      try
-    	        Mcdout.mcdout (interpret menv venv abstr_subj2)
-    	      with
-    	        IllegalOut -> (
-    	        	  report_error "illegal argument of \\ifsame" ;
-    	        	  ""
-    	          )
+    	      try Mcdout.mcdout (interpret menv venv abstr_subj2) with
+    	        IllegalOut -> ( report_error "illegal argument of \\ifsame" ; "" )
     	    ) in (
     	      if (compare str_subj1 str_subj2) == 0 then (
     	        print_process ("$true [" ^ str_subj1 ^ "]") ;
@@ -90,6 +88,24 @@
     	        interpret menv venv abstr_fls
     	      )
     	    )
+        )
+
+    | PrimitiveReplace(abstr_name, abstr_before, abstr_after) -> (
+          print_process "$PrimitiveReplace" ;
+          let str_name = (
+            try Mcdout.mcdout (interpret menv venv abstr_name) with
+              IllegalOut -> ( report_error "illegal first argument of \\replace" ; "" )
+          ) in
+          let str_before = (
+            try Mcdout.mcdout (interpret menv venv abstr_before) with
+              IllegalOut -> ( report_error "illegal second argument of \\replace" ; "" )
+          ) in
+          let str_after = (
+            try Mcdout.mcdout (interpret menv venv abstr_after) with
+              IllegalOut -> ( report_error "illegal third argument of \\replace" ; "" )
+          ) in
+            literal_list := Assoclist.add (str_name, str_before) str_after !literal_list ;
+            EmptyAbsBlock
         )
 
     | DeepenIndent -> (
@@ -283,7 +299,13 @@
       AbsBlock(abstr_former, abstr_latter) -> (
           AbsBlock(make_literal_legitimate lb abstr_former, make_literal_legitimate lb abstr_latter)
         )
-    | OutputOfLiteral(c) -> Output(c)
+    | OutputOfLiteral(c) ->
+        let value_after = (
+          try Assoclist.get_value !literal_list (lb, c) with
+            ValueNotFound -> c
+        ) in
+          Output(value_after)
+
     | _ -> (
         report_error "illegal token in literal block" ;
         Invalid
