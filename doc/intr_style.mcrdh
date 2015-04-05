@@ -1,4 +1,3 @@
-%
 \macro \settings {%
   \\usepackage\{amsmath\}
   \\usepackage\{amssymb\}

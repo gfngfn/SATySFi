@@ -37,22 +37,24 @@
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[p] "
         | MACRO -> print_string "[m] "
+        | MACROWID -> print_string "[w] "
         | BLTRL(c) -> print_string "[~] "
         | ELTRL -> print_string "[/] "
       )
 
   (* for test *)
-  let rec print_output_sub stk =
-    match stk with
-      [] -> print_string "output: "
-    | (tr, st) :: tail -> ( print_output_sub tail ; print_tree_node tr )
+  let rec print_output_sub lst =
+    match lst with
+      [] -> ()
+    | (tr, st) :: tail -> ( print_tree_node tr ; print_output_sub tail )
 
   (* for test *)
   let print_output stk =
     (* enable below in order to see the process of parsing *)
-    (* it does not work now since Stacklist module was separated from Mcdparser *)
   (*
-    print_output_sub stk ; print_newline () ;
+    print_string "output: " ;
+    print_output_sub (Stacklist.to_list stk) ;
+    print_newline () ;
   *)
     ()
 
@@ -183,6 +185,7 @@
           | END_OF_INPUT -> print_string " [EOI]"
           | POP -> print_string "\\pop "
           | MACRO -> print_string "\\macro "
+          | MACROWID -> print_string "\\macro-with-id "
           | BLTRL(bl) -> print_string bl
           | ELTRL -> print_string "~/"
         )
@@ -289,7 +292,7 @@
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
-(*        | Terminal(MACROWID) -> q_macrowid1 () *)
+        | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "illegal first token"
@@ -386,7 +389,7 @@
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
-(*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
+        | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
@@ -429,7 +432,7 @@
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
-(*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
+        | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
@@ -488,7 +491,7 @@
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
-(*        | Terminal(MACROWID) -> shift popped q_macrowid1 *)
+        | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
         | Terminal(BLTRL(c)) -> shift popped q_bltrl
         | _ -> report_error "inappropriate token after sentence"
@@ -654,6 +657,59 @@
   *)
     reduce Sentence 4
 
+  and q_macrowid1 () =
+  (*
+    S -> [macrowid].[ctrlseq] A G G
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        Terminal(CTRLSEQ(c)) -> shift popped q_macrowid2
+      | _ -> report_error "missing control sequence after \\macro-with-id"
+
+  and q_macrowid2 () =
+  (*
+    S -> [macrowid] [ctrlseq].A G G
+    A -> .[var] A
+    A -> .
+  *)
+    match top_of_line () with
+      Terminal(BGRP) -> reduce_empty Args q_macrowid2
+    | _ -> (
+          let popped = pop_from_line () in
+            match popped with
+              NonTerminal(Args, lst) -> shift popped q_macrowid3
+            | Terminal(VAR(c)) -> shift popped q_args
+            | _ -> report_error "inappropriate argument in \\macro-with-id declaration"
+        )
+
+  and q_macrowid3 () =
+  (*
+    S -> [macrowid] [ctrlseq] A.G G
+    G -> .[{] L [}]
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        NonTerminal(Group, lst) -> shift popped q_macrowid4
+      | Terminal(BGRP) -> shift popped q_inner_of_group
+      | _ -> report_error "missing first group in \\macro-with-id declaration"
+
+  and q_macrowid4 () =
+  (*
+    S -> [macrowid] [ctrlseq] A G.G
+    G -> .[{] L [}]
+  *)
+    let popped = pop_from_line () in
+      match popped with
+        NonTerminal(Group, lst) -> shift popped q_macrowid5
+      | Terminal(BGRP) -> shift popped q_inner_of_group
+      | _ -> report_error "missing second group in \\macro-with-id declaration"
+
+  and q_macrowid5 () =
+  (*
+    S -> [macrowid] [ctrlseq] A G G.
+  *)
+    reduce Sentence 5
+
   and q_args () =
     print_process "q_args" ;
   (*
@@ -713,7 +769,7 @@
     | Terminal(FINALBREAK) -> reduce_empty Params q_after_first_group
     | Terminal(POP) -> reduce_empty Params q_after_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_first_group
-(*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
+    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | Terminal(BLTRL(b)) -> reduce_empty Params q_after_first_group
     | _ -> (
@@ -757,7 +813,7 @@
     | Terminal(FINALBREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
-(*    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group *)
+    | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | Terminal(BLTRL(b)) -> reduce_empty Params q_after_first_group
     | _ -> (
@@ -787,7 +843,7 @@
     | Terminal(FINALBREAK) -> reduce_empty Params q_params
     | Terminal(POP) -> reduce_empty Params q_params
     | Terminal(MACRO) -> reduce_empty Params q_params
-(*    | Terminal(MACROWID) -> reduce_empty Params q_params *)
+    | Terminal(MACROWID) -> reduce_empty Params q_params
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_params
     | Terminal(BLTRL(b)) -> reduce_empty Params q_params
     | _ -> (

@@ -322,7 +322,8 @@
       [] -> []
     | value_head :: value_tail -> (ref value_head) :: (ref_list value_tail)
 
-  and id_to_abstract_tree id = Output(id)
+  and id_to_abstract_tree id = Output((String.sub id 1 ((String.length id) - 1)))
+    (* eliminate '#' *)
 
   (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
   and pop_from_separated_tree abstr_in abstr_constr =

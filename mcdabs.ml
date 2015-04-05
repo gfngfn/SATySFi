@@ -5,7 +5,9 @@
     print_string ("[ERROR IN MCDABS] " ^ errmsg ^ ".") ; print_newline ()
 
   let print_process stat =
-    (* print_string stat ; print_newline () *)
+  (*
+    print_string stat ; print_newline ()
+  *)
     ()
 
   (* tree -> abstract_tree *)
@@ -81,16 +83,17 @@
               Pop(u, v, concrete_to_abstract grp1, concrete_to_abstract grp2)
             )
         (* S -> [macro] [ctrlseq] A G *)
-        (* not [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
-            since it is not consistent with indent system *)
         | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
             -> (
               print_process "#Sentence MACRO" ;
               Macro(f, make_args_list args, concrete_to_abstract grp1, EmptyAbsBlock)
             )
         (* S -> [macrowid] [ctrlseq] A G G *)
-  (*    | [Terminal(MACROWID); Terminal(CTRLSEQ(f)); args; grp1; grp2]
-            -> Macro(f, make_args_list args, concrete_to_abstract grp1, concrete_to_abstract grp2) *)
+        | [Terminal(MACROWID); Terminal(CTRLSEQ(f)); args; grp1; grp2]
+            -> (
+              print_process "#Sentence MACROWID" ;
+              Macro(f, make_args_list args, concrete_to_abstract grp1, concrete_to_abstract grp2)
+            )
         (* S -> [ctrlseq] [end] *)
         | [Terminal(CTRLSEQ(f)); Terminal(END)]
             -> (

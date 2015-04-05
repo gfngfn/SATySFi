@@ -203,6 +203,7 @@
     | head :: tail -> (
       match head with
         CTRLSEQ("\\macro") -> MACRO :: (refine_ctrlseq tail)
+      | CTRLSEQ("\\macro-with-id") -> MACROWID :: (refine_ctrlseq tail)
       | CTRLSEQ("\\pop") -> POP :: (refine_ctrlseq tail)
       | _ -> head :: (refine_ctrlseq tail)
     )
