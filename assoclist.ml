@@ -6,10 +6,17 @@
   let empty = []
 
   let rec add key value asclst =
-  (*  (key, value) :: asclst *)
+  (*
+    (key, value) :: asclst
+  *)
     match asclst with
       [] -> [(key, value)]
-    | (k, v) :: tail -> (k, v) :: (add key value tail)
+    | (k, v) :: tail ->
+        if (compare key k) == 0 then
+          (key, value) :: tail
+        else
+          (k, v) :: (add key value tail)
+  
 
   (* 'a list -> 'b list -> ('a, 'b) t -> ('a, 'b) t *)
   let rec add_list key_list value_list asclst =
