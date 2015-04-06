@@ -49,7 +49,7 @@ type abstract_tree = EmptyAbsBlock
 
 (* for Mcdsemantics *)
 
-exception IllegalLengthOfLists
+exception IncorrespondenceOfLength
 exception ValueNotFound
 
 

@@ -252,49 +252,70 @@
               Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                   let value_list = interpret_list menv venv param_list in
                   let loc_list : location list = ref_list value_list in
-                  let venv_new = ref (Assoclist.add_list var_list loc_list cont_venv_f) in
-                  (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
-                  (*
-                    print_string " *|*( " ;
-                    Assoclist.print_key !venv_new ;
-                    print_string " )*|*" ; print_newline () ;
-                  *)
+                  let menv_new = ref cont_menv_f in
+                  let venv_new =
+                    try
+                      ref (Assoclist.add_list var_list loc_list cont_venv_f)
+                    with
+                      IncorrespondenceOfLength -> (
+                          report_error "wrong number of arguments" ;
+                          ref cont_venv_f
+                        )
+                  in
+                    (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
                     interpret menv venv_new abstr_noid
+                      (* modify 'menv_new' to 'menv' in order to make f globally defined *)
+                      (* modify 'menv' to 'menv_new' in order to make f locally defined *)
                 )
             | DummyFunc -> Invalid
         )
     | Apply(f, RealID(i), param_list) -> (
           print_process "$Apply (ID)" ;
-          match !(Assoclist.get_value (!menv) f) with (* !(menv(f)) *)
-            Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
-                let value_list = interpret_list menv venv param_list in
-                let loc_list : location list = ref_list value_list in
-                let loc_id : location = ref (id_to_abstract_tree i) in
-                let venv_new = ref (Assoclist.add "@id" loc_id (Assoclist.add_list var_list loc_list cont_venv_f)) in
-                (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
-                (*
-                  print_string " *|*( " ;
-                  Assoclist.print_key !venv_new ;
-                  print_string " )*|*" ; print_newline () ;
-                *)
-                  interpret menv venv_new abstr_id
+          let spec_f =
+            try
+              !(Assoclist.get_value (!menv) f)
+            with
+              ValueNotFound -> (
+                  report_error ("undefined control sequence '" ^ f ^ "'") ;
+                  DummyFunc
+                )
+          in
+            match spec_f with (* !(menv(f)) *)
+              Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
+                  let value_list = interpret_list menv venv param_list in
+                  let loc_list : location list = ref_list value_list in
+                  let loc_id : location = ref (id_to_abstract_tree i) in
+                  let menv_new = ref cont_menv_f in
+                  let venv_new =
+                    try
+                      ref (Assoclist.add "@id" loc_id (Assoclist.add_list var_list loc_list cont_venv_f))
+                    with
+                      IncorrespondenceOfLength -> (
+                          report_error "wrong number of argument" ;
+                          ref cont_venv_f
+                        )
+                  in
+                  (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
+                    interpret menv venv_new abstr_id
+                      (* modify 'menv_new' to 'menv' in order to make f globally defined *)
+                      (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                )
+            | DummyFunc -> (
+                report_error "illegal Apply of DummyFunc" ;
+                Invalid
               )
-          | DummyFunc -> (
-              report_error "illegal Apply of DummyFunc" ;
-              Invalid
-            )
         )
 
     | LiteralBlock(lb, abstr_lb) -> (
           print_process "$LiteralBlock" ;
-          let abstr_prefix = (
+          let abstr_prefix =
             try Assoclist.get_value !prefix_list lb with
               ValueNotFound -> EmptyAbsBlock
-          ) in
-          let abstr_postfix = (
+          in
+          let abstr_postfix =
             try Assoclist.get_value !postfix_list lb with
               ValueNotFound -> EmptyAbsBlock
-          ) in
+          in
             AbsBlock(
               abstr_prefix,
               AbsBlock(

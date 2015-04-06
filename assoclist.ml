@@ -21,10 +21,14 @@
   (* 'a list -> 'b list -> ('a, 'b) t -> ('a, 'b) t *)
   let rec add_list key_list value_list asclst =
     match key_list with
-      [] -> asclst
+      [] -> (
+          match value_list with
+            [] -> asclst
+          | _ -> raise IncorrespondenceOfLength
+        )
     | key_head :: key_tail -> (
           match value_list with
-            [] -> raise IllegalLengthOfLists
+            [] -> raise IncorrespondenceOfLength
           | value_head :: value_tail -> (
               let asclstsub = (add key_head value_head asclst) in
                 (add_list key_tail value_tail asclstsub)

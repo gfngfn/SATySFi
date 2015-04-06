@@ -1,5 +1,8 @@
 open Types
 
+let report_error errmsg =
+  print_string ("[ERROR IN MAIN] " ^ errmsg) ; print_newline ()
+
 (* string -> string *)
 let string_of_file_in file_name_in =
   let str_in = ref "" in
@@ -17,7 +20,12 @@ let string_of_file_in file_name_in =
 let rec string_of_file_in_list file_name_in_list =
 	match file_name_in_list with
 	  [] -> ""
-	| head :: tail -> (string_of_file_in head) ^ (string_of_file_in_list tail)
+	| head :: tail ->
+      let str_in =
+        try string_of_file_in head with
+          Sys_error(s) -> report_error ("System error: " ^ s)
+      in
+        str_in ^ (string_of_file_in_list tail)
 
 (* string -> string -> unit *)
 let file_out_of_string file_name_out content_out =
@@ -33,9 +41,7 @@ let main file_name_in_list file_name_out =
   let absed = Mcdabs.concrete_to_abstract parsed in
   let semed = Mcdsemantics.semantics absed in
   let content_out =
-    try
-      Mcdout.mcdout semed
-    with
+    try Mcdout.mcdout semed with
       IllegalOut -> ""
   in
     match content_out with
@@ -44,7 +50,7 @@ let main file_name_in_list file_name_out =
           try
             file_out_of_string file_name_out content_out
           with
-            Sys_error(s) -> ( print_string ("System error:" ^ s) ; print_newline () )
+            Sys_error(s) -> report_error ("System error: " ^ s)
         )
 
 let rec concat_list lsta lstb =
