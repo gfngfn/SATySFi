@@ -40,7 +40,12 @@ let main file_name_in_list file_name_out =
   in
     match content_out with
       "" -> ( print_string "No output." ; print_newline () )
-    | _ -> file_out_of_string file_name_out content_out
+    | _ -> (
+          try
+            file_out_of_string file_name_out content_out
+          with
+            Sys_error(s) -> ( print_string ("System error:" ^ s) ; print_newline () )
+        )
 
 let rec concat_list lsta lstb =
   match lsta with

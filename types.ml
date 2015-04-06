@@ -1,5 +1,6 @@
 (* mainly for Mcdlexer *)
 
+exception SequenceUnderflow
 type macro_name = string
 type var_name = string
 type id_name = string

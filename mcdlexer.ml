@@ -15,7 +15,6 @@
   let output_sequence : token list ref = ref []
   let ignore_space : bool ref = ref false
   let in_comment : bool ref = ref false
-  let after_break : bool ref = ref false
   let in_literal : bool ref = ref false
   let top_of_line : bool ref = ref false
 
@@ -49,6 +48,15 @@
   let omit_last_from_sequence () =
     output_sequence := omit_last_element !output_sequence
 
+  let rec get_last_element lst =
+    match lst with
+      [] -> raise SequenceUnderflow
+    | [e] -> e
+    | head :: tail -> get_last_element tail
+
+  let get_last_of_sequence () =
+    get_last_element !output_sequence
+
   let report_error errmsg =
     print_string ("[ERROR IN LEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
@@ -68,70 +76,66 @@
           -> if !in_comment then () else (
             append_to_sequence (CTRLSEQ(lasttok)) ;
             ignore_space := true ;
-            after_break := false ;
             top_of_line := false
           )
       | VAR_TYPE
           -> if !in_comment then () else (
             append_to_sequence (VAR(lasttok)) ;
             ignore_space := true ;
-            after_break := false ;
             top_of_line := false
           )
       | ID_TYPE
           -> if !in_comment then () else (
             append_to_sequence (ID(lasttok)) ;
             ignore_space := true ;
-            after_break := false ;
             top_of_line := false
           )
       | END_TYPE
           -> if !in_comment then () else (
             append_to_sequence END ;
             ignore_space := false ;
-            after_break := false ;
             top_of_line := false
           )
       | BGRP_TYPE
           -> if !in_comment then () else (
             append_to_sequence BGRP ;
             ignore_space := false ;
-            after_break := false ;
             top_of_line := false
           )
       | EGRP_TYPE
           -> if !in_comment then () else (
               (
-                if !after_break then (
-                  (* delete BREAK *)
-                  omit_last_from_sequence () ;
-                  append_to_sequence FINALBREAK ;
-                ) else ()
+                match get_last_of_sequence () with
+                  BREAK -> (
+                      (* delete BREAK *)
+                      omit_last_from_sequence () ;
+                      append_to_sequence FINALBREAK
+                    )
+                | _ -> ()
               ) ;
               append_to_sequence EGRP ;
               ignore_space := false ;
-              after_break := false ;
               top_of_line := false
             )
       | CHAR_TYPE
           -> if !in_comment then () else (
             append_to_sequence (CHAR(lasttok)) ;
             ignore_space := false ;
-            after_break := false ;
             top_of_line := false
           )
       | SEP_TYPE
           -> if !in_comment then () else (
               (
-                if !after_break then (
-                  (* delete BREAK *)
-                  omit_last_from_sequence () ;
-                  append_to_sequence FINALBREAK ;
-                ) else ()
+                match get_last_of_sequence () with
+                  BREAK -> (
+                      (* delete BREAK *)
+                      omit_last_from_sequence () ;
+                      append_to_sequence FINALBREAK ;
+                    )
+                | _ -> ()
               ) ;
               append_to_sequence SEP ;
               ignore_space := false ;
-              after_break := false ;
               top_of_line := false
           )
       | INDENT_TYPE
@@ -140,7 +144,6 @@
               append_to_sequence (VAR("~indent")) ;
               append_to_sequence END ;
               ignore_space := true ;
-              after_break := false ;
               top_of_line := false
             )
       | SPACE_TYPE
@@ -158,7 +161,6 @@
               in_comment := false ;
               ignore_space := true ;
               top_of_line := true
-              (* not 'after_break := true' *)
             ) else (
             	if !in_literal then (
             	  append_to_sequence (CHAR("\n")) ;
@@ -168,7 +170,6 @@
                   append_to_sequence BREAK
                 ) ;
                 ignore_space := true ;
-                after_break := true ;
                 top_of_line := true
               )
           )
@@ -178,7 +179,6 @@
               append_to_sequence (BLTRL(String.sub lasttok 0 ((String.length lasttok) - 1)))
             ) ;
             ignore_space := false ;
-            after_break := false ;
             top_of_line := true
           )
       | ELTRL_TYPE
@@ -187,12 +187,10 @@
               append_to_sequence ELTRL
             ) ;
             ignore_space := true ;
-            after_break := false ;
             top_of_line := true
           )
       | COMMENT_TYPE -> (
             in_comment := true ;
-            after_break := false ;
             top_of_line := false
           )
       | INVALID_TYPE -> report_error ("invalid token \"" ^ lasttok ^ "\"")
@@ -217,7 +215,6 @@
     output_sequence := [] ;
     ignore_space := true ;
     in_comment := false ;
-    after_break := true ;
     in_literal := false ;
     top_of_line := true ;
 
