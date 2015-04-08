@@ -3,39 +3,18 @@ open Types
 let report_error errmsg =
   print_string ("[ERROR IN MAIN] " ^ errmsg) ; print_newline ()
 
-(* string -> string *)
-let string_of_file_in file_name_in =
-  let str_in = ref "" in
-  let chnl_in = open_in file_name_in in
-  let cat_sub () =
-    while true do
-      str_in := !str_in ^ (String.make 1 (input_char chnl_in))
-    done
-  in
-    try
-      ( cat_sub () ; "" )
-    with
-      End_of_file -> ( close_in chnl_in ; !str_in )
-
-let rec string_of_file_in_list file_name_in_list =
-	match file_name_in_list with
-	  [] -> ""
-	| head :: tail ->
-      let str_in =
-        try string_of_file_in head with
-          Sys_error(s) -> report_error ("System error: " ^ s)
-      in
-        str_in ^ (string_of_file_in_list tail)
-
-(* string -> string -> unit *)
-let file_out_of_string file_name_out content_out =
-  let chnl_out = open_out file_name_out in
-    output_string chnl_out content_out ;
-    close_out chnl_out
+let report_detail dtlmsg =
+  print_string dtlmsg ; print_newline ()
 
 let main file_name_in_list file_name_out =
 
-  let content_in = (string_of_file_in_list file_name_in_list) in
+  let content_in = (
+      try Files.string_of_file_in_list file_name_in_list with
+        Sys_error(s) -> (
+            report_error ("System error - " ^ s) ;
+            ""
+          )
+  ) in
   let lexed = Mcdlexer.mcdlex content_in in
   let parsed = Mcdparser.mcdparser lexed in
   let absed = Mcdabs.concrete_to_abstract parsed in
@@ -45,12 +24,12 @@ let main file_name_in_list file_name_out =
       IllegalOut -> ""
   in
     match content_out with
-      "" -> ( print_string "No output." ; print_newline () )
+      "" -> report_detail "No output."
     | _ -> (
           try
-            file_out_of_string file_name_out content_out
+            Files.file_out_of_string file_name_out content_out
           with
-            Sys_error(s) -> report_error ("System error: " ^ s)
+            Sys_error(s) -> report_error ("System error - " ^ s)
         )
 
 let rec concat_list lsta lstb =
@@ -59,14 +38,17 @@ let rec concat_list lsta lstb =
   | head :: tail -> head :: (concat_list tail lstb)
 
 let rec see_argv num file_name_in_list file_name_out =
-    if num == Array.length Sys.argv then
+    if num == Array.length Sys.argv then (
+      report_detail ("[output] " ^ file_name_out) ;
       main file_name_in_list file_name_out
-    else (
-      if (compare Sys.argv.(num) "-o") == 0 then (
-        print_string ("[output] " ^ Sys.argv.(num + 1)) ; print_newline () ;
-        see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
-      ) else (
-        print_string ("[input] " ^ Sys.argv.(num)) ; print_newline () ;
+    ) else (
+      if (compare Sys.argv.(num) "-o") == 0 then
+          try (
+            see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
+          ) with
+            Invalid_argument(s) -> report_error "missing file name after '-o' option"
+      else (
+        report_detail ("[input] " ^ Sys.argv.(num)) ;
         see_argv (num + 1) (concat_list file_name_in_list [Sys.argv.(num)]) file_name_out
       )
     )

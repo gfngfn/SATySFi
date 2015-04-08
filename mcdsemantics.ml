@@ -36,6 +36,7 @@
     let loc_replace : macro_location = ref DummyFunc in
     let loc_prefix : macro_location = ref DummyFunc in
     let loc_postfix : macro_location = ref DummyFunc in
+    let loc_include : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
@@ -46,6 +47,7 @@
       menv_main := (Assoclist.add "\\replace" loc_replace !menv_main) ;
       menv_main := (Assoclist.add "\\prefix" loc_prefix !menv_main) ;
       menv_main := (Assoclist.add "\\postfix" loc_postfix !menv_main) ;
+      menv_main := (Assoclist.add "\\include" loc_include !menv_main) ;
       loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
@@ -66,6 +68,10 @@
                      ) ;
       loc_postfix := Func(["~name"; "~postfix"],
                        PrimitivePostfix(ContentOf("~name"), ContentOf("~postfix")),
+                       EmptyAbsBlock, !menv_main, !venv_main
+                     ) ;
+      loc_include := Func(["~filename"],
+                       PrimitiveInclude(ContentOf("~filename")),
                        EmptyAbsBlock, !menv_main, !venv_main
                      ) ;
       interpret menv_main venv_main abstr
@@ -142,6 +148,25 @@
           let value_postfix = interpret menv venv abstr_postfix in
             postfix_list := Assoclist.add str_name value_postfix !postfix_list ;
             EmptyAbsBlock
+        )
+
+    | PrimitiveInclude(abstr_file_name) -> (
+          print_process "$PrimitiveInclude" ;
+          let str_file_name = (
+            try Mcdout.mcdout (interpret menv venv abstr_file_name) with
+              IllegalOut -> ( report_error "illegal argument of \\include" ; "" )
+          ) in
+          let str_content = (
+            try Files.string_of_file_in str_file_name with
+              Sys_error(s) -> (
+                  report_error ("System error at \\include - " ^ s) ;
+                  ""
+                )
+          ) in
+          let lexed_content = Mcdlexer.mcdlex str_content in
+          let parsed_content = Mcdparser.mcdparser lexed_content in
+          let absed_content = Mcdabs.concrete_to_abstract parsed_content in
+            interpret menv venv absed_content
         )
 
     | DeepenIndent -> (
@@ -258,7 +283,7 @@
                       ref (Assoclist.add_list var_list loc_list cont_venv_f)
                     with
                       IncorrespondenceOfLength -> (
-                          report_error "wrong number of arguments" ;
+                          report_error ("wrong number of arguments for '" ^ f ^ "'") ;
                           ref cont_venv_f
                         )
                   in
@@ -291,7 +316,7 @@
                       ref (Assoclist.add "@id" loc_id (Assoclist.add_list var_list loc_list cont_venv_f))
                     with
                       IncorrespondenceOfLength -> (
-                          report_error "wrong number of argument" ;
+                          report_error ("wrong number of arguments for '" ^ f ^ "'") ;
                           ref cont_venv_f
                         )
                   in

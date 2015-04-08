@@ -43,6 +43,7 @@ type abstract_tree = EmptyAbsBlock
                    | PrimitiveReplace of abstract_tree * abstract_tree * abstract_tree
                    | PrimitivePrefix of abstract_tree * abstract_tree
                    | PrimitivePostfix of abstract_tree * abstract_tree
+                   | PrimitiveInclude of abstract_tree
                    | LiteralBlock of literal_name * abstract_tree
                    | OutputOfLiteral of letter
 
