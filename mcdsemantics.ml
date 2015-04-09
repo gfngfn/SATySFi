@@ -83,11 +83,9 @@
 
       PrimitiveIfEmpty(abstr_subj, abstr_tru, abstr_fls) -> (
           let value_subj = interpret menv venv abstr_subj in
-          let value_tru = interpret menv venv abstr_tru in
-          let value_fls = interpret menv venv abstr_fls in
             match value_subj with
-              EmptyAbsBlock -> value_tru
-            | _ -> value_fls
+              EmptyAbsBlock -> interpret menv venv abstr_tru
+            | _ -> interpret menv venv abstr_fls
         )
 
     | PrimitiveIfSame(abstr_subj1, abstr_subj2, abstr_tru, abstr_fls) -> (
@@ -265,9 +263,7 @@
     | Apply(f, NoID, param_list) -> (
           print_process "$Apply (NoID)" ;
           let spec_f =
-            try
-              !(Assoclist.get_value (!menv) f)
-            with
+            try !(Assoclist.get_value (!menv) f) with
               ValueNotFound -> (
                   report_error ("undefined control sequence '" ^ f ^ "'") ;
                   DummyFunc
@@ -275,22 +271,41 @@
           in
             match spec_f with (* !(menv(f)) *)
               Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
-                  let value_list = interpret_list menv venv param_list in
-                  let loc_list : location list = ref_list value_list in
-                  let menv_new = ref cont_menv_f in
-                  let venv_new =
-                    try
-                      ref (Assoclist.add_list var_list loc_list cont_venv_f)
-                    with
-                      IncorrespondenceOfLength -> (
-                          report_error ("wrong number of arguments for '" ^ f ^ "'") ;
-                          ref cont_venv_f
-                        )
-                  in
-                    (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
-                    interpret menv venv_new abstr_noid
-                      (* modify 'menv_new' to 'menv' in order to make f globally defined *)
-                      (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                  match f with
+                  (* write individually macros that need other strategy than call-by-value *)
+
+                    "\\ifempty" -> (
+                        match param_list with
+                          [abstr_b; abstr_tru; abstr_fls]
+                            -> interpret menv venv (PrimitiveIfEmpty(abstr_b, abstr_tru, abstr_fls))
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                      )
+
+                  | "\\ifsame" -> (
+                        match param_list with
+                          [abstr_sa; abstr_sb; abstr_tru; abstr_fls]
+                            -> interpret menv venv (PrimitiveIfSame(abstr_sa, abstr_sb, abstr_tru, abstr_fls))
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                      )
+
+                  | _ -> (
+                        let value_list = interpret_list menv venv param_list in
+                        let loc_list : location list = ref_list value_list in
+                        let menv_new = ref cont_menv_f in
+                        let venv_new =
+                          try
+                            ref (Assoclist.add_list var_list loc_list cont_venv_f)
+                          with
+                            IncorrespondenceOfLength -> (
+                                report_error ("wrong number of arguments for '" ^ f ^ "'") ;
+                                ref cont_venv_f
+                              )
+                        in
+                          (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
+                          interpret menv venv_new abstr_noid
+                            (* modify 'menv_new' to 'menv' in order to make f globally defined *)
+                            (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                      )
                 )
             | DummyFunc -> Invalid
         )
