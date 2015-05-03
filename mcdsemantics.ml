@@ -14,9 +14,9 @@
   (* for test *)
   let print_process stat =
     (* enable below in order to see the process of interpret indentation *)
-  (*
+  
     print_string (stat ^ " ") ;
-  *)
+  
     ()
 
   let replace_list : ((literal_name * letter, letter) Assoclist.t) ref = ref Assoclist.empty
@@ -36,13 +36,19 @@
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
       menv_main := (Assoclist.add "\\deeper" loc_deeper !menv_main) ;
+      menv_main := (Assoclist.add "\\break" loc_break !menv_main) ;
       menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
       menv_main := (Assoclist.add "\\ifsame" loc_ifsame !menv_main) ;
       menv_main := (Assoclist.add "\\replace" loc_replace !menv_main) ;
       menv_main := (Assoclist.add "\\prefix" loc_prefix !menv_main) ;
       menv_main := (Assoclist.add "\\postfix" loc_postfix !menv_main) ;
       menv_main := (Assoclist.add "\\include" loc_include !menv_main) ;
-      loc_deeper := Func(["~content"], DeeperIndent(ContentOf("~content")), EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_deeper := Func(["~content"],
+                      AbsBlock(DeeperIndent(
+                        AbsBlock(BreakAndIndent,
+                            ContentOf("~content"))), BreakAndIndent),
+                      EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_break := Func([], BreakAndIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
                        PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
                        EmptyAbsBlock, !menv_main, !venv_main
@@ -67,7 +73,7 @@
                        PrimitiveInclude(ContentOf("~filename")),
                        EmptyAbsBlock, !menv_main, !venv_main
                      ) ;
-      interpret 2 menv_main venv_main (AbsBlock(Indent, abstr))
+      interpret 2 menv_main venv_main abstr
 
   (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
   and interpret indent menv venv abstr =
@@ -161,21 +167,20 @@
         )
 
     | DeeperIndent(abstr) -> (
-          print_process "$DeeperIndent" ;
-          interpret (indent + 1) menv venv abstr
+          print_process "$DeeperIndent(" ;
+          let res = interpret (indent + 1) menv venv abstr in
+            print_process ")" ; DeeperIndent(res)
         )
 
     | ShallowerIndent(abstr) -> (
-          print_process "$ShallowerIndent" ;
-          interpret (indent - 1) menv venv abstr
+          print_process "$ShallowerIndent(" ;
+          let res = interpret (indent - 1) menv venv abstr in
+            print_process ")" ; ShallowerIndent(res)
         )
 
-    | Indent -> (
-          print_process ("$Indent " ^ (string_of_int indent)) ;
-          if indent > 0 then
-            Output(String.make (2 * indent) ' ')
-          else
-            EmptyAbsBlock
+    | BreakAndIndent -> (
+          print_process ("$BreakAndIndent " ^ (string_of_int indent)) ;
+          BreakAndIndent
         )
 
     | EmptyAbsBlock -> (
@@ -184,7 +189,6 @@
         )
 
     | AbsBlock(abstr_head, abstr_tail) -> (
-          (* print_process "$AbsBlock 2" ; *)
           let value_head = interpret indent menv venv abstr_head in
           let value_tail = interpret indent menv venv abstr_tail in
             match value_head with

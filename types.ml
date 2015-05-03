@@ -45,7 +45,7 @@ type abstract_tree = EmptyAbsBlock
                    | PrimitiveInclude of abstract_tree
                    | LiteralBlock of literal_name * abstract_tree
                    | OutputOfLiteral of letter
-                   | Indent
+                   | BreakAndIndent
                    | DeeperIndent of abstract_tree
                    | ShallowerIndent of abstract_tree
 

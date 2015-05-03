@@ -63,12 +63,12 @@
         (* S -. [break] *)
         | [Terminal(BREAK)] -> (
               print_process "#Sentence BREAK" ;
-              AbsBlock(Output("\n"), Indent)
+              BreakAndIndent
             )
         (* S -> [finalbreak] *)
         | [Terminal(FINALBREAK)] -> (
               print_process "#Sentence FINALBREAK" ;
-              ShallowerIndent(AbsBlock(Output("\n"), Indent))
+              ShallowerIndent(BreakAndIndent)
             )
         (* S -> [var] *)
         | [Terminal(VAR(v)); Terminal(END)] -> (

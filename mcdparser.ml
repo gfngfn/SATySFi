@@ -52,11 +52,11 @@
   (* for test *)
   let print_output stk =
     (* enable below in order to see the process of parsing *)
-  
+  (*
     print_string "output: " ;
     print_output_sub (Stacklist.to_list stk) ;
     print_newline () ;
-  
+  *)
     ()
 
   (* for test *)
