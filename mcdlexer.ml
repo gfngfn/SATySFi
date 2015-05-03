@@ -58,9 +58,9 @@
     get_last_element !output_sequence
 
   let report_error errmsg =
-    print_string ("[ERROR IN LEXER] " ^ errmsg ^ ":") ; print_newline () ;
-    print_string (" from " ^ (string_of_int !pos_start)) ; print_newline () ;
-    print_string (" to " ^ (string_of_int !pos_current)) ; print_newline () ;
+    print_string ("! [ERROR IN LEXER] " ^ errmsg ^ ":") ; print_newline () ;
+    print_string ("    from " ^ (string_of_int !pos_start)) ; print_newline () ;
+    print_string ("    to " ^ (string_of_int !pos_current)) ; print_newline () ;
     output_sequence := [END_OF_INPUT]
 
   let print_process stat =

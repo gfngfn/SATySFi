@@ -8,8 +8,11 @@
   and macro_location = function_spec ref
 
   let report_error errmsg =
-    print_string ("[ERROR IN SEMANTICS] " ^ errmsg ^ ".") ;
+    print_string ("! [ERROR IN SEMANTICS] " ^ errmsg ^ ".") ;
     print_newline ()
+
+  let report_detail dtlmsg =
+    print_string ("  " ^ dtlmsg) ; print_newline ()
 
   (* for test *)
   let print_process stat =
@@ -150,21 +153,23 @@
 
     | PrimitiveInclude(abstr_file_name) -> (
           print_process "$PrimitiveInclude" ;
-          let str_file_name = (
+          let str_file_name =
             try Mcdout.mcdout (interpret menv venv abstr_file_name) with
               IllegalOut -> ( report_error "illegal argument of \\include" ; "" )
-          ) in
-          let str_content = (
-            try Files.string_of_file_in str_file_name with
-              Sys_error(s) -> (
-                  report_error ("System error at \\include - " ^ s) ;
-                  ""
-                )
-          ) in
-          let lexed_content = Mcdlexer.mcdlex str_content in
-          let parsed_content = Mcdparser.mcdparser lexed_content in
-          let absed_content = Mcdabs.concrete_to_abstract parsed_content in
-            interpret menv venv absed_content
+          in (
+            report_detail ("Included '" ^ str_file_name ^ "'.") ;
+            let str_content =
+              try Files.string_of_file_in str_file_name with
+                Sys_error(s) -> (
+                    report_error ("System error at \\include - " ^ s) ;
+                    ""
+                  )
+            in
+            let lexed_content = Mcdlexer.mcdlex str_content in
+            let parsed_content = Mcdparser.mcdparser lexed_content in
+            let absed_content = Mcdabs.concrete_to_abstract parsed_content in
+              interpret menv venv absed_content
+          )
         )
 
     | DeeperIndent(abstr) -> (
@@ -269,14 +274,14 @@
                         match param_list with
                           [abstr_b; abstr_tru; abstr_fls]
                             -> interpret menv venv (PrimitiveIfEmpty(abstr_b, abstr_tru, abstr_fls))
-                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; Invalid )
                       )
 
                   | "\\ifsame" -> (
                         match param_list with
                           [abstr_sa; abstr_sb; abstr_tru; abstr_fls]
                             -> interpret menv venv (PrimitiveIfSame(abstr_sa, abstr_sb, abstr_tru, abstr_fls))
-                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifsame'") ; Invalid )
                       )
 
                   | _ -> (

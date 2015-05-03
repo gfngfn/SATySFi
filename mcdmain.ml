@@ -1,19 +1,17 @@
 open Types
 
 let report_error errmsg =
-  print_string ("[ERROR IN MAIN] " ^ errmsg) ; print_newline ()
+  print_string ("! [ERROR IN MAIN] " ^ errmsg) ; print_newline ()
 
 let report_detail dtlmsg =
-  print_string dtlmsg ; print_newline ()
+  print_string ("  " ^ dtlmsg) ; print_newline ()
 
 let main file_name_in_list file_name_out =
 
   let content_in = (
       try Files.string_of_file_in_list file_name_in_list with
         Sys_error(s) -> (
-            report_error ("System error - " ^ s) ;
-            ""
-          )
+            report_error ("System error - " ^ s) ; "" )
   ) in
   let lexed = Mcdlexer.mcdlex content_in in
   let parsed = Mcdparser.mcdparser lexed in
@@ -24,7 +22,7 @@ let main file_name_in_list file_name_out =
       IllegalOut -> ""
   in
     match content_out with
-      "" -> report_detail "No output."
+      "" -> report_detail ("No output for '" ^ file_name_out ^ "'.")
     | _ -> (
           try
             Files.file_out_of_string file_name_out content_out

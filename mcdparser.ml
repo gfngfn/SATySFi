@@ -212,7 +212,7 @@
 
   (* string -> unit *)
   and report_error errmsg =
-    print_string ("[ERROR IN PARSER] " ^ errmsg ^ ": near") ;
+    print_string ("! [ERROR IN PARSER] " ^ errmsg ^ ": near") ;
     print_newline () ; print_newline () ;
     print_last_some_tokens (Stacklist.to_list !output_stack) ;
     print_newline () ; print_newline () ;
