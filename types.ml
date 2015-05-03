@@ -9,9 +9,8 @@ type letter = string
 type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
            | END | BGRP | EGRP | SEP | CHAR of letter
            | BEGINNING_OF_INPUT | END_OF_INPUT
-           | BREAK | FINALBREAK
+           | BREAK | SPACE
            | MACRO | MACROWID | POP
-           | SPACE
            | BLTRL of literal_name | ELTRL
 
 

@@ -118,11 +118,7 @@
           -> if !in_comment then () else (
               (
                 match get_last_of_sequence () with
-                  BREAK -> (
-                      (* delete BREAK *)
-                      omit_last_from_sequence () ;
-                      (* append_to_sequence FINALBREAK *)
-                    )
+                  BREAK -> omit_last_from_sequence ()
                 | SPACE -> omit_last_from_sequence ()
                 | _ -> ()
               ) ;

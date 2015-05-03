@@ -32,7 +32,6 @@
         | CHAR(c) -> print_string (c ^ " ")
         | SPACE -> print_string "[ ] "
         | BREAK -> print_string "[b] "
-        | FINALBREAK -> print_string "[f] "
         | SEP -> print_string "| "
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
@@ -181,7 +180,6 @@
               )
           | SPACE -> print_string " "
           | BREAK -> print_string "\n"
-          | FINALBREAK -> print_string "\n"
           | SEP -> print_string "|"
           | BEGINNING_OF_INPUT -> print_string "[BOI] "
           | END_OF_INPUT -> print_string " [EOI]"
@@ -271,7 +269,6 @@
     S -> .[char]
     S -> .[space]
     S -> .[break]
-    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -293,7 +290,6 @@
         | Terminal(CHAR(c)) -> shift popped q_char
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
-        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
@@ -369,7 +365,6 @@
     S -> .[char]
     S -> .[space]
     S -> .[break]
-    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -392,7 +387,6 @@
         | Terminal(CHAR(c)) -> shift popped q_char
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
-        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
@@ -413,7 +407,6 @@
     S -> .[char]
     S -> .[space]
     S -> .[break]
-    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -436,8 +429,7 @@
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
         | Terminal(SPACE) -> shift popped q_space
-        | Terminal(BREAK) -> shift popped q_finalbreak
-        | Terminal(FINALBREAK) -> shift popped q_finalbreak
+        | Terminal(BREAK) -> shift popped q_break
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
@@ -474,7 +466,6 @@
     S -> .[char]
     S -> .[space]
     S -> .[break]
-    S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
@@ -498,7 +489,6 @@
         | Terminal(CHAR(c)) -> shift popped q_char
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
-        | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
@@ -566,13 +556,6 @@
     print_process "q_break" ;
   (*
     S -> [break].
-  *)
-    reduce Sentence 1
-
-  and q_finalbreak () =
-    print_process "q_finalbreak" ;
-  (*
-    S -> [finalbreak].
   *)
     reduce Sentence 1
 
@@ -783,7 +766,6 @@
     | Terminal(VAR(v)) -> reduce_empty Params q_after_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_first_group
     | Terminal(BREAK) -> reduce_empty Params q_after_first_group
-    | Terminal(FINALBREAK) -> reduce_empty Params q_after_first_group
     | Terminal(POP) -> reduce_empty Params q_after_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_first_group
     | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
@@ -827,7 +809,6 @@
     | Terminal(VAR(v)) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(CHAR(c)) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(BREAK) -> reduce_empty Params q_after_id_and_first_group
-    | Terminal(FINALBREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
@@ -857,7 +838,6 @@
     | Terminal(VAR(v)) -> reduce_empty Params q_params
     | Terminal(CHAR(c)) -> reduce_empty Params q_params
     | Terminal(BREAK) -> reduce_empty Params q_params
-    | Terminal(FINALBREAK) -> reduce_empty Params q_params
     | Terminal(POP) -> reduce_empty Params q_params
     | Terminal(MACRO) -> reduce_empty Params q_params
     | Terminal(MACROWID) -> reduce_empty Params q_params
