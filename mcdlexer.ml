@@ -12,7 +12,7 @@
   let pos_last : int ref = ref 0
   let pos_current : int ref = ref 0
   let last_token_type : token_type ref = ref INVALID_TYPE
-  let output_sequence : token list ref = ref []
+  let output_sequence : token Sequence.t ref = ref Sequence.empty
   let ignore_space : bool ref = ref false
   let in_comment : bool ref = ref false
   let in_literal : bool ref = ref false
@@ -31,37 +31,12 @@
   let is_basic_char ch =
     ('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || (ch == '-')
 
-  let rec append_element lst elem =
-    match lst with
-      [] -> [elem]
-    | head :: tail -> head :: (append_element tail elem)
-
-  let append_to_sequence elem =
-    output_sequence := append_element !output_sequence elem
-
-  let rec omit_last_element lst = 
-    match lst with
-      [] -> []
-    | [e] -> []
-    | head :: tail -> head :: (omit_last_element tail)
-
-  let omit_last_from_sequence () =
-    output_sequence := omit_last_element !output_sequence
-
-  let rec get_last_element lst =
-    match lst with
-      [] -> raise SequenceUnderflow
-    | [e] -> e
-    | head :: tail -> get_last_element tail
-
-  let get_last_of_sequence () =
-    get_last_element !output_sequence
 
   let report_error errmsg =
     print_string ("! [ERROR IN LEXER] " ^ errmsg ^ ":") ; print_newline () ;
     print_string ("    from " ^ (string_of_int !pos_start)) ; print_newline () ;
     print_string ("    to " ^ (string_of_int !pos_current)) ; print_newline () ;
-    output_sequence := [END_OF_INPUT]
+    output_sequence := Sequence.of_list [END_OF_INPUT]
 
   let print_process stat =
   (*
@@ -76,75 +51,75 @@
           -> if !in_comment then () else (
             (
               match lasttok with
-                "\\macro" -> append_to_sequence (MACRO)
-              | "\\macro-with-id" -> append_to_sequence (MACROWID)
-              | "\\pop" -> append_to_sequence (POP)
-              | _ -> append_to_sequence (CTRLSEQ(lasttok))
+                "\\macro" -> Sequence.append output_sequence (MACRO)
+              | "\\macro-with-id" -> Sequence.append output_sequence (MACROWID)
+              | "\\pop" -> Sequence.append output_sequence (POP)
+              | _ -> Sequence.append output_sequence (CTRLSEQ(lasttok))
             ) ;
             ignore_space := true ;
             top_of_line := false
           )
       | VAR_TYPE
           -> if !in_comment then () else (
-            append_to_sequence (VAR(lasttok)) ;
+            Sequence.append output_sequence (VAR(lasttok)) ;
             ignore_space := true ;
             top_of_line := false
           )
       | ID_TYPE
           -> if !in_comment then () else (
-            append_to_sequence (ID(lasttok)) ;
+            Sequence.append output_sequence (ID(lasttok)) ;
             ignore_space := true ;
             top_of_line := false
           )
       | END_TYPE
           -> if !in_comment then () else (
-            append_to_sequence END ;
+            Sequence.append output_sequence END ;
             ignore_space := false ;
             top_of_line := false
           )
       | BGRP_TYPE
           -> if !in_comment then () else (
             (
-              match get_last_of_sequence () with
-                BREAK -> omit_last_from_sequence ()
-              | SPACE -> omit_last_from_sequence ()
+              match Sequence.get_last output_sequence with
+                BREAK -> Sequence.omit_last output_sequence
+              | SPACE -> Sequence.omit_last output_sequence
               | _ -> ()
             ) ;
-            append_to_sequence BGRP ;
+            Sequence.append output_sequence BGRP ;
             ignore_space := true ;
             top_of_line := false
           )
       | EGRP_TYPE
           -> if !in_comment then () else (
               (
-                match get_last_of_sequence () with
-                  BREAK -> omit_last_from_sequence ()
-                | SPACE -> omit_last_from_sequence ()
+                match Sequence.get_last output_sequence with
+                  BREAK -> Sequence.omit_last output_sequence
+                | SPACE -> Sequence.omit_last output_sequence
                 | _ -> ()
               ) ;
-              append_to_sequence EGRP ;
+              Sequence.append output_sequence EGRP ;
               ignore_space := false ;
               top_of_line := false
             )
       | CHAR_TYPE
           -> if !in_comment then () else (
-            append_to_sequence (CHAR(lasttok)) ;
+            Sequence.append output_sequence (CHAR(lasttok)) ;
             ignore_space := false ;
             top_of_line := false
           )
       | SEP_TYPE
           -> if !in_comment then () else (
               (
-                match get_last_of_sequence () with
+                match Sequence.get_last output_sequence with
                   BREAK -> (
                       (* delete BREAK *)
-                      omit_last_from_sequence () ;
-                      (* append_to_sequence FINALBREAK ; *)
+                      Sequence.omit_last output_sequence ;
+                      (* Sequence.append output_sequence FINALBREAK ; *)
                     )
-                | SPACE -> omit_last_from_sequence ()
+                | SPACE -> Sequence.omit_last output_sequence
                 | _ -> ()
               ) ;
-              append_to_sequence SEP ;
+              Sequence.append output_sequence SEP ;
               ignore_space := true ;
               top_of_line := false
           )
@@ -153,7 +128,7 @@
             (
             	if !in_comment then () else
                 if !ignore_space then () else
-                  append_to_sequence SPACE
+                  Sequence.append output_sequence SPACE
             ) ;
             top_of_line := false
           )
@@ -165,11 +140,11 @@
               top_of_line := true
             ) else (
             	if !in_literal then (
-            	  append_to_sequence (CHAR("\n")) ;
+            	  Sequence.append output_sequence (CHAR("\n")) ;
                 top_of_line := true
               ) else (
                 if !ignore_space then () else
-                  append_to_sequence BREAK
+                  Sequence.append output_sequence BREAK
                 ) ;
                 ignore_space := true ;
                 top_of_line := true
@@ -178,7 +153,7 @@
       | BLTRL_TYPE
           -> (
             if !in_comment then () else (
-              append_to_sequence (BLTRL(String.sub lasttok 0 ((String.length lasttok) - 1)))
+              Sequence.append output_sequence (BLTRL(String.sub lasttok 0 ((String.length lasttok) - 1)))
             ) ;
             ignore_space := false ;
             top_of_line := true
@@ -186,7 +161,7 @@
       | ELTRL_TYPE
           -> (
             if !in_comment then () else (
-              append_to_sequence ELTRL
+              Sequence.append output_sequence ELTRL
             ) ;
             ignore_space := true ;
             top_of_line := true
@@ -203,15 +178,15 @@
     pos_last := 0 ;
     pos_current := 0 ;
     last_token_type := INVALID_TYPE ;
-    output_sequence := [] ;
+    output_sequence := Sequence.empty ;
     ignore_space := true ;
     in_comment := false ;
     in_literal := false ;
     top_of_line := true ;
 
     q_ini () ;
-    append_to_sequence END_OF_INPUT ;
-    !output_sequence
+    Sequence.append output_sequence END_OF_INPUT ;
+    Sequence.to_list !output_sequence
 
   and q_ini () =
     if !in_literal then (
