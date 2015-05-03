@@ -1,0 +1,29 @@
+dfn {
+	font-style: normal;
+}
+code {
+  font-family: Courier new;
+}
+.synt {
+  color: #4444ff;
+}
+.meta {
+  color: #cc44ff;
+  font-style: italic;
+}
+.centered {
+	width: 500px;
+	margin-left: auto;
+	margin-right: auto;
+}
+.math {
+  font-style: italic;
+}
+.toksty {
+	font-style: normal;
+	color: red;
+}
+.code-display {
+	text-align: left;
+	margin-left: 50px;
+}

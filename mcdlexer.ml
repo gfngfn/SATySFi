@@ -4,7 +4,7 @@
 
   type token_type = CTRLSEQ_TYPE | VAR_TYPE | ID_TYPE | END_TYPE
                   | BGRP_TYPE | EGRP_TYPE | CHAR_TYPE | SEP_TYPE | INVALID_TYPE
-                  | SPACE_TYPE | BREAK_TYPE | INDENT_TYPE | COMMENT_TYPE
+                  | SPACE_TYPE | BREAK_TYPE | COMMENT_TYPE
                   | BLTRL_TYPE | ELTRL_TYPE
 
   let input_buffer : string ref = ref ""
@@ -74,7 +74,13 @@
       match !last_token_type with
         CTRLSEQ_TYPE
           -> if !in_comment then () else (
-            append_to_sequence (CTRLSEQ(lasttok)) ;
+            (
+              match lasttok with
+                "\\macro" -> append_to_sequence (MACRO)
+              | "\\macro-with-id" -> append_to_sequence (MACROWID)
+              | "\\pop" -> append_to_sequence (POP)
+              | _ -> append_to_sequence (CTRLSEQ(lasttok))
+            ) ;
             ignore_space := true ;
             top_of_line := false
           )
@@ -98,8 +104,14 @@
           )
       | BGRP_TYPE
           -> if !in_comment then () else (
+            (
+              match get_last_of_sequence () with
+                BREAK -> omit_last_from_sequence ()
+              | SPACE -> omit_last_from_sequence ()
+              | _ -> ()
+            ) ;
             append_to_sequence BGRP ;
-            ignore_space := false ;
+            ignore_space := true ;
             top_of_line := false
           )
       | EGRP_TYPE
@@ -109,8 +121,9 @@
                   BREAK -> (
                       (* delete BREAK *)
                       omit_last_from_sequence () ;
-                      append_to_sequence FINALBREAK
+                      (* append_to_sequence FINALBREAK *)
                     )
+                | SPACE -> omit_last_from_sequence ()
                 | _ -> ()
               ) ;
               append_to_sequence EGRP ;
@@ -130,28 +143,21 @@
                   BREAK -> (
                       (* delete BREAK *)
                       omit_last_from_sequence () ;
-                      append_to_sequence FINALBREAK ;
+                      (* append_to_sequence FINALBREAK ; *)
                     )
+                | SPACE -> omit_last_from_sequence ()
                 | _ -> ()
               ) ;
               append_to_sequence SEP ;
-              ignore_space := false ;
-              top_of_line := false
-          )
-      | INDENT_TYPE
-          ->
-            if !in_comment then () else (
-              append_to_sequence (VAR("~indent")) ;
-              append_to_sequence END ;
               ignore_space := true ;
               top_of_line := false
-            )
+          )
       | SPACE_TYPE
           -> (
             (
             	if !in_comment then () else
                 if !ignore_space then () else
-                  append_to_sequence (CHAR(lasttok))
+                  append_to_sequence SPACE
             ) ;
             top_of_line := false
           )
@@ -195,17 +201,6 @@
           )
       | INVALID_TYPE -> report_error ("invalid token \"" ^ lasttok ^ "\"")
 
-  let rec refine_ctrlseq lst =
-    match lst with
-      [] -> []
-    | head :: tail -> (
-      match head with
-        CTRLSEQ("\\macro") -> MACRO :: (refine_ctrlseq tail)
-      | CTRLSEQ("\\macro-with-id") -> MACROWID :: (refine_ctrlseq tail)
-      | CTRLSEQ("\\pop") -> POP :: (refine_ctrlseq tail)
-      | _ -> head :: (refine_ctrlseq tail)
-    )
-
   let rec mcdlex (input: string) =
     input_buffer := input ^ "\000" ;
     pos_start := 0 ;
@@ -220,7 +215,7 @@
 
     q_ini () ;
     append_to_sequence END_OF_INPUT ;
-    refine_ctrlseq !output_sequence
+    !output_sequence
 
   and q_ini () =
     if !in_literal then (

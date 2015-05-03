@@ -26,13 +26,14 @@
           CTRLSEQ(c) -> print_string "[c] "
         | VAR(c) -> print_string "[v] "
         | ID(c) -> print_string "[i] "
-        | END -> print_string "[;] "
-        | BGRP -> print_string "[{] "
-        | EGRP -> print_string "[}] "
-        | CHAR(c) -> print_string "."
+        | END -> print_string "; "
+        | BGRP -> print_string "{ "
+        | EGRP -> print_string "} "
+        | CHAR(c) -> print_string (c ^ " ")
+        | SPACE -> print_string "[ ] "
         | BREAK -> print_string "[b] "
         | FINALBREAK -> print_string "[f] "
-        | SEP -> print_string "[|] "
+        | SEP -> print_string "| "
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[p] "
@@ -51,11 +52,11 @@
   (* for test *)
   let print_output stk =
     (* enable below in order to see the process of parsing *)
-  (*
+  
     print_string "output: " ;
     print_output_sub (Stacklist.to_list stk) ;
     print_newline () ;
-  *)
+  
     ()
 
   (* for test *)
@@ -178,6 +179,7 @@
                 | "\n" -> print_string "^^^^"
                 | _ -> print_string c
               )
+          | SPACE -> print_string " "
           | BREAK -> print_string "\n"
           | FINALBREAK -> print_string "\n"
           | SEP -> print_string "|"
@@ -267,6 +269,7 @@
     B -> .              (reduce [$])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[space]
     S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
@@ -288,6 +291,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
@@ -363,6 +367,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[space]
     S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
@@ -385,6 +390,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
@@ -405,6 +411,7 @@
     B -> .             (reduce [$], [}])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[space]
     S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
@@ -428,6 +435,7 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
+        | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_finalbreak
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
@@ -464,6 +472,7 @@
     B -> .             (reduce [$], [}], [sep])
     S -> .[var] [end]
     S -> .[char]
+    S -> .[space]
     S -> .[break]
     S -> .[finalbreak]
     S -> .[pop] [var] [var] G G
@@ -487,7 +496,8 @@
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
-        | Terminal(BREAK) -> shift popped q_finalbreak
+        | Terminal(SPACE) -> shift popped q_space
+        | Terminal(BREAK) -> shift popped q_break
         | Terminal(FINALBREAK) -> shift popped q_finalbreak
         | Terminal(POP) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
@@ -542,6 +552,13 @@
     print_process "q_char" ;
   (*
     S -> [char].
+  *)
+    reduce Sentence 1
+
+  and q_space () =
+    print_process "q_space" ;
+  (*
+    S -> [space].
   *)
     reduce Sentence 1
 

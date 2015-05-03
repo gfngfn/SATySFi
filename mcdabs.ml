@@ -55,21 +55,20 @@
               print_process "#Sentence CHAR" ;
               Output(c)
             )
+        (* S -. [space] *)
+        | [Terminal(SPACE)] -> (
+              print_process "#Sentence SPACE" ;
+              Output(" ")
+            )
         (* S -. [break] *)
         | [Terminal(BREAK)] -> (
               print_process "#Sentence BREAK" ;
-              AbsBlock(Output("\n"), ContentOf("~indent"))
+              AbsBlock(Output("\n"), Indent)
             )
         (* S -> [finalbreak] *)
         | [Terminal(FINALBREAK)] -> (
               print_process "#Sentence FINALBREAK" ;
-              AbsBlock(ShallowIndent,
-                AbsBlock(Output("\n"),
-                  AbsBlock(ContentOf("~indent"),
-                    DeepenIndent
-                  )
-                )
-              )
+              ShallowerIndent(AbsBlock(Output("\n"), Indent))
             )
         (* S -> [var] *)
         | [Terminal(VAR(v)); Terminal(END)] -> (
@@ -168,5 +167,4 @@
           -> (manufact_indent (concrete_to_abstract grp)) :: (make_params_list paramssub)
       | _ -> ( report_error "illegal parameter" ; [Invalid] )
 
-    and manufact_indent abstr =
-      AbsBlock(DeepenIndent, AbsBlock(abstr, ShallowIndent))
+    and manufact_indent abstr = abstr
