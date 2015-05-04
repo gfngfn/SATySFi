@@ -180,8 +180,9 @@
             ) ;
             q_end_literal ()
           )
-      | '\000' -> report_error "input ended while reading literal block"
+      | ' ' -> ( save_token_type SPACE_TYPE ; next () )
       | '\n' -> ( save_token_type BREAK_TYPE ; next () )
+      | '\000' -> report_error "input ended while reading literal block"
       | _ -> ( save_token_type CHAR_TYPE ; next () )
 
     ) else (
