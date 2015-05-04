@@ -7,7 +7,6 @@
 *.aux
 *.dvi
 *.pdf
-bin/
 old/
 test/
 test_of_mcd.txt
