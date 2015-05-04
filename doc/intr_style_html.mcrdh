@@ -1,0 +1,54 @@
+\macro \settings {%
+  <link href="./intr_style.css" rel="stylesheet" type="text/css">%
+}%
+\macro \description @dscr {%
+  <div class="centered">
+    <table>\dscr-sep-lines{@dscr;}</table>
+  </div>%
+}%
+\macro \dscr-sep-lines @dscr {%
+  \pop @head @tail {@dscr;}{%
+    <tr>@head;</tr>
+    \ifempty{@tail;}{}{\dscr-sep-lines{@tail;}}%
+  }%
+}%
+\macro \d-item @di @dd {<td>@di;</td><td>@dd;</td>}%
+\macro \synt @synt {<span class="synt">@synt;</span>}%
+\macro \newword @nw {<dfn>@nw;</dfn>}%
+%
+% ---- tokens ----
+\macro \toksty @tok {<span class="toksty"><u>@tok;</u></span>}%
+\macro \token-eoi {\toksty{eoi}}%
+\macro \token-cs {\toksty{cs}}%
+\macro \token-var {\toksty{var}}%
+\macro \token-id {\toksty{id}}%
+\macro \token-char {\toksty{char}}%
+\macro \token-pop {\toksty{pop}}%
+\macro \token-macro {\toksty{macro}}%
+\macro \token-bgrp {\toksty{\{}}%
+\macro \token-egrp {\toksty{\}}}%
+\macro \token-sep {\toksty{\|}}%
+\macro \token-end {\toksty{\;}}%
+%
+\macro \math-dp-gather @lst {%
+  <div class="centered"><table>\--math-dp-gather{@lst;}</table></div>%
+}%
+\macro \--math-dp-gather @lst {%
+  \pop @head @tail {@lst;}{%
+    <tr>@head;</tr>
+    \ifempty{@tail;}{}{\--math-dp-gather{@tail;}}%
+  }%
+}%
+\macro \cfl @nontm @lst {%
+  <td><span class="math">@nontm;</span></td>%
+  <td><span class="math">&rarr\; \--cfl{@lst;}</span></td>%
+}%
+\macro \--cfl @lst {%
+  \pop @head @tail {@lst;}{@head;\ifempty{@tail;}{}{</span>\|<span class="math">\--cfl{@tail;}}}%
+}%
+\macro \code-dp @code {<div class="code-display"><code>@code;</code></div>}%
+\macro \code @code { <code>@code;</code> }%
+\macro \code-dp-break {<br>}%
+\macro \code-dp-tab {　}%
+\macro \meta @metacode {<span class="meta">@metacode;</span>}%
+\macro \metadots {&middot\;&middot\;&middot\;}%

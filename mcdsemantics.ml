@@ -8,18 +8,19 @@
   and macro_location = function_spec ref
 
   let report_error errmsg =
-    print_string ("[ERROR IN SEMANTICS] " ^ errmsg ^ ".") ;
+    print_string ("! [ERROR IN SEMANTICS] " ^ errmsg ^ ".") ;
     print_newline ()
+
+  let report_detail dtlmsg =
+    print_string ("  " ^ dtlmsg) ; print_newline ()
 
   (* for test *)
   let print_process stat =
     (* enable below in order to see the process of interpretation *)
   (*
-    print_string stat ; print_newline () ;
+    print_string (stat ^ " ") ;
   *)
     ()
-
-  let loc_indent : location = ref EmptyAbsBlock
 
   let replace_list : ((literal_name * letter, letter) Assoclist.t) ref = ref Assoclist.empty
   let prefix_list : ((literal_name, abstract_tree) Assoclist.t) ref = ref Assoclist.empty
@@ -28,9 +29,8 @@
   (* abstract_tree -> abstract_tree *)
   let rec semantics abstr =
     print_process "[BEGIN SEMANTICS]" ;
-    loc_indent := Output("") ;
-    let loc_deepen : macro_location = ref DummyFunc in
-    let loc_shallow : macro_location = ref DummyFunc in
+    let loc_deeper : macro_location = ref DummyFunc in
+    let loc_break : macro_location = ref DummyFunc in
     let loc_ifempty : macro_location = ref DummyFunc in
     let loc_ifsame : macro_location = ref DummyFunc in
     let loc_replace : macro_location = ref DummyFunc in
@@ -39,17 +39,20 @@
     let loc_include : macro_location = ref DummyFunc in
     let menv_main : macro_environment ref = ref Assoclist.empty in
     let venv_main : var_environment ref = ref Assoclist.empty in
-      venv_main := (Assoclist.add "~indent" loc_indent !venv_main) ;
-      menv_main := (Assoclist.add "\\deepen" loc_deepen !menv_main) ;
-      menv_main := (Assoclist.add "\\shallow" loc_shallow !menv_main) ;
+      menv_main := (Assoclist.add "\\deeper" loc_deeper !menv_main) ;
+      menv_main := (Assoclist.add "\\break" loc_break !menv_main) ;
       menv_main := (Assoclist.add "\\ifempty" loc_ifempty !menv_main) ;
       menv_main := (Assoclist.add "\\ifsame" loc_ifsame !menv_main) ;
       menv_main := (Assoclist.add "\\replace" loc_replace !menv_main) ;
       menv_main := (Assoclist.add "\\prefix" loc_prefix !menv_main) ;
       menv_main := (Assoclist.add "\\postfix" loc_postfix !menv_main) ;
       menv_main := (Assoclist.add "\\include" loc_include !menv_main) ;
-      loc_deepen := Func([], DeepenIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
-      loc_shallow := Func([], ShallowIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_deeper := Func(["~content"],
+                      AbsBlock(DeeperIndent(
+                        AbsBlock(BreakAndIndent,
+                            ContentOf("~content"))), BreakAndIndent),
+                      EmptyAbsBlock, !menv_main, !venv_main) ;
+      loc_break := Func([], BreakAndIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
                        PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
                        EmptyAbsBlock, !menv_main, !venv_main
@@ -76,7 +79,7 @@
                      ) ;
       interpret menv_main venv_main abstr
 
-  (* (macro_environment ref) -> (var_environment ref) -> abstract_tree -> abstract_tree *)
+  (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
   and interpret menv venv abstr =
 
     match abstr with
@@ -150,44 +153,40 @@
 
     | PrimitiveInclude(abstr_file_name) -> (
           print_process "$PrimitiveInclude" ;
-          let str_file_name = (
+          let str_file_name =
             try Mcdout.mcdout (interpret menv venv abstr_file_name) with
               IllegalOut -> ( report_error "illegal argument of \\include" ; "" )
-          ) in
-          let str_content = (
-            try Files.string_of_file_in str_file_name with
-              Sys_error(s) -> (
-                  report_error ("System error at \\include - " ^ s) ;
-                  ""
-                )
-          ) in
-          let lexed_content = Mcdlexer.mcdlex str_content in
-          let parsed_content = Mcdparser.mcdparser lexed_content in
-          let absed_content = Mcdabs.concrete_to_abstract parsed_content in
-            interpret menv venv absed_content
+          in (
+            report_detail ("Included '" ^ str_file_name ^ "'.") ;
+            let str_content =
+              try Files.string_of_file_in str_file_name with
+                Sys_error(s) -> (
+                    report_error ("System error at \\include - " ^ s) ;
+                    ""
+                  )
+            in
+            let lexed_content = Mcdlexer.mcdlex str_content in
+            let parsed_content = Mcdparser.mcdparser lexed_content in
+            let absed_content = Mcdabs.concrete_to_abstract parsed_content in
+              interpret menv venv absed_content
+          )
         )
 
-    | DeepenIndent -> (
-          print_process "$DeepenIndent" ;
-          (
-            match !loc_indent with
-              Output(indent_str) -> loc_indent := Output(indent_str ^ "  ")
-            | _ -> report_error "illegal DeepenIndent"
-          ) ;
-          EmptyAbsBlock
+    | DeeperIndent(abstr) -> (
+          print_process "$DeeperIndent(" ;
+          let res = interpret menv venv abstr in
+            print_process ")" ; DeeperIndent(res)
         )
 
-    | ShallowIndent -> (
-          print_process "$ShallowIndent" ;
-          (
-            match !loc_indent with
-              Output(indent_str) ->
-                let len = String.length indent_str in
-                  if len >= 2 then loc_indent := Output(String.sub indent_str 0 (len - 2))
-                  else ()
-            | _ -> report_error "illegal ShallowIndent"
-          ) ;
-          EmptyAbsBlock
+    | ShallowerIndent(abstr) -> (
+          print_process "$ShallowerIndent(" ;
+          let res = interpret menv venv abstr in
+            print_process ")" ; ShallowerIndent(res)
+        )
+
+    | BreakAndIndent -> (
+          print_process ("$BreakAndIndent") ;
+          BreakAndIndent
         )
 
     | EmptyAbsBlock -> (
@@ -196,7 +195,6 @@
         )
 
     | AbsBlock(abstr_head, abstr_tail) -> (
-          print_process "$AbsBlock 2" ;
           let value_head = interpret menv venv abstr_head in
           let value_tail = interpret menv venv abstr_tail in
             match value_head with
@@ -216,13 +214,11 @@
     | ContentOf(v) -> (
           print_process ("$ContentOf: " ^ v) ;
           try
-            interpret menv venv !(Assoclist.get_value (!venv) v)
-        (*  !(Assoclist.get_value (!venv) v) *)
+        (*   interpret menv venv !(Assoclist.get_value (!venv) v) *)
+            !(Assoclist.get_value (!venv) v)
           with
-            ValueNotFound -> (
-                report_error ("undefined variable '" ^ v ^ "'") ;
-                Invalid
-              )
+            ValueNotFound
+              -> ( report_error ("undefined variable '" ^ v ^ "'") ; Invalid )
         )
 
     | Separated(abstr_former, abstr_latter) -> (
@@ -269,7 +265,7 @@
                   DummyFunc
                 )
           in
-            match spec_f with (* !(menv(f)) *)
+            match spec_f with
               Func(var_list, abstr_noid, abstr_id, cont_menv_f, cont_venv_f) -> (
                   match f with
                   (* write individually macros that need other strategy than call-by-value *)
@@ -278,33 +274,33 @@
                         match param_list with
                           [abstr_b; abstr_tru; abstr_fls]
                             -> interpret menv venv (PrimitiveIfEmpty(abstr_b, abstr_tru, abstr_fls))
-                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; Invalid )
                       )
 
                   | "\\ifsame" -> (
                         match param_list with
                           [abstr_sa; abstr_sb; abstr_tru; abstr_fls]
                             -> interpret menv venv (PrimitiveIfSame(abstr_sa, abstr_sb, abstr_tru, abstr_fls))
-                        | _ -> ( report_error ("wrong number of arguments for '\\ifempty'") ; EmptyAbsBlock )
+                        | _ -> ( report_error ("wrong number of arguments for '\\ifsame'") ; Invalid )
                       )
 
                   | _ -> (
                         let value_list = interpret_list menv venv param_list in
                         let loc_list : location list = ref_list value_list in
                         let menv_new = ref cont_menv_f in
-                        let venv_new =
-                          try
+                        try
+                          let venv_new =
                             ref (Assoclist.add_list var_list loc_list cont_venv_f)
-                          with
-                            IncorrespondenceOfLength -> (
-                                report_error ("wrong number of arguments for '" ^ f ^ "'") ;
-                                ref cont_venv_f
-                              )
-                        in
-                          (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
-                          interpret menv venv_new abstr_noid
-                            (* modify 'menv_new' to 'menv' in order to make f globally defined *)
-                            (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                          in
+                            (* venv_f{ v_1|->l_1, ..., v_n|->l_n } *)
+                            interpret menv venv_new abstr_noid
+                              (* modify 'menv_new' to 'menv' in order to make f globally defined *)
+                              (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                        with
+                          IncorrespondenceOfLength -> (
+                              report_error ("wrong number of arguments for '" ^ f ^ "'") ;
+                              Invalid
+                            )
                       )
                 )
             | DummyFunc -> Invalid
@@ -326,19 +322,19 @@
                   let loc_list : location list = ref_list value_list in
                   let loc_id : location = ref (id_to_abstract_tree i) in
                   let menv_new = ref cont_menv_f in
-                  let venv_new =
-                    try
+                  try
+                    let venv_new =
                       ref (Assoclist.add "@id" loc_id (Assoclist.add_list var_list loc_list cont_venv_f))
-                    with
-                      IncorrespondenceOfLength -> (
-                          report_error ("wrong number of arguments for '" ^ f ^ "'") ;
-                          ref cont_venv_f
-                        )
-                  in
-                  (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
-                    interpret menv venv_new abstr_id
-                      (* modify 'menv_new' to 'menv' in order to make f globally defined *)
-                      (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                    in
+                    (* venv_f{ v_1|->l_1, ..., v_n|->l_n, @id|->loc_id } *)
+                      interpret menv venv_new abstr_id
+                        (* modify 'menv_new' to 'menv' in order to make f globally defined *)
+                        (* modify 'menv' to 'menv_new' in order to make f locally defined *)
+                  with
+                    IncorrespondenceOfLength -> (
+                        report_error ("wrong number of arguments for '" ^ f ^ "'") ;
+                        Invalid
+                      )
                 )
             | DummyFunc -> (
                 report_error "illegal Apply of DummyFunc" ;
