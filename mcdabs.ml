@@ -7,9 +7,11 @@
   (* tree -> abstract_tree *)
   let rec concrete_to_abstract conctr =
     match conctr with
+      (* T -> B [EOI] *)
       NonTerminal(Total, [tr; Terminal(END_OF_INPUT)])
         -> concrete_to_abstract tr
 
+      (*B -> . | S B *)
     | NonTerminal(Block, chdrn) -> (
           match chdrn with
             [] -> EmptyAbsBlock
@@ -22,8 +24,13 @@
 
           | _ -> ( report_bug "illegal Block" ; Invalid )
         )
+      (* G -> [{] L [}] *)
     | NonTerminal(Group, [Terminal(BGRP); lstbysp; Terminal(EGRP)])
         -> concrete_to_abstract lstbysp
+
+      (* G -> [`] C ['] *)
+    | NonTerminal(Group, [Terminal(OPENQT); chofltrl; Terminal(CLOSEQT)])
+        -> concrete_to_abstract chofltrl
 
     | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)])
         -> concrete_to_abstract (NonTerminal(Block, chdrn))
@@ -73,21 +80,20 @@
         | [Terminal(CTRLSEQ(f)); Terminal(ID(i)); grp; prms]
             -> Apply(f, RealID(i), make_params_list (NonTerminal(Params, [grp; prms])))
 
-        (* S -> [bltrl] C [eltrl] *)
-        | [Terminal(BLTRL(lb)); chofltrl; Terminal(ELTRL)]
-            -> LiteralBlock(lb, concrete_to_abstract chofltrl)
-
         | _ -> ( report_bug "illegal child of sentence" ; Invalid )
       )
-    | NonTerminal(CharOfLiteral, []) -> (
-          EmptyAbsBlock
-        )
+
+    (* C -> . *)
+    | NonTerminal(CharOfLiteral, []) -> EmptyAbsBlock
+
+    (* C -> [char] C *)
     | NonTerminal(CharOfLiteral, [Terminal(CHAR(c)); chofltrl]) -> (
           let abstr_chofltrl = concrete_to_abstract chofltrl in
             match abstr_chofltrl with
-              EmptyAbsBlock -> OutputOfLiteral(c)
-            | _ -> AbsBlock(OutputOfLiteral(c), abstr_chofltrl)
+              EmptyAbsBlock -> Output(c)
+            | _ -> AbsBlock(Output(c), abstr_chofltrl)
         )
+
     | Terminal(END_OF_INPUT) -> EmptyAbsBlock
 
     | _ -> ( report_bug "illegal concrete tree" ; Invalid )

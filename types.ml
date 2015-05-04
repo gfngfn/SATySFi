@@ -11,7 +11,7 @@ type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
            | BEGINNING_OF_INPUT | END_OF_INPUT
            | BREAK | SPACE
            | MACRO | MACROWID | POP
-           | BLTRL of literal_name | ELTRL
+           | OPENQT | CLOSEQT
 
 
 (* mainly for Mcdparser *)
