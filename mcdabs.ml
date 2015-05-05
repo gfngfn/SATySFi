@@ -10,13 +10,13 @@
   let rec concrete_to_abstract conctr =
     match conctr with
       (* T -> B [EOI] *)
-      NonTerminal(Total, [tr; Terminal(END_OF_INPUT)])
+    | NonTerminal(Total, [tr; Terminal(END_OF_INPUT)])
         -> concrete_to_abstract tr
 
       (*B -> . | S B *)
     | NonTerminal(Block, chdrn) -> (
           match chdrn with
-            [] -> EmptyAbsBlock
+          | [] -> EmptyAbsBlock
 
           | [stc; NonTerminal(Block, [])]
               -> concrete_to_abstract stc
@@ -43,7 +43,7 @@
     | NonTerminal(Sentence, chdrn) -> (
         match chdrn with
         (* S -> [char] *)
-          [Terminal(CHAR(c))] -> Output(c)
+        | [Terminal(CHAR(c))] -> Output(c)
 
         (* S -. [space] *)
         | [Terminal(SPACE)] -> Output(" ")
@@ -57,6 +57,10 @@
         (* S -> [pop] [var] [var] G G *)
         | [Terminal(POP); Terminal(VAR(u)); Terminal(VAR(v)); grp1; grp2]
             -> Pop(u, v, concrete_to_abstract grp1, concrete_to_abstract grp2)
+
+        (* S -> [popchar] [var] [var] G G *)
+        | [Terminal(POPCHAR); Terminal(VAR(u)); Terminal(VAR(v)); grp1; grp2]
+            -> PopChar(u, v, concrete_to_abstract grp1, concrete_to_abstract grp2)
 
         (* S -> [macro] [ctrlseq] A G *)
         | [Terminal(MACRO); Terminal(CTRLSEQ(f)); args; grp1]
@@ -103,7 +107,7 @@
     (* tree -> var_name list *)
     and make_args_list args =
       match args with
-        NonTerminal(Args, []) -> []
+      | NonTerminal(Args, []) -> []
 
       | NonTerminal(Args, [Terminal(VAR(v)); argssub])
           -> v :: (make_args_list argssub)
@@ -113,14 +117,14 @@
     (* tree -> abstract_tree list *)
     and make_params_list prms =
       match prms with
-        NonTerminal(Params, []) -> []
+      | NonTerminal(Params, []) -> []
       | NonTerminal(Params, [grp; paramssub])
           -> (concrete_to_abstract grp) :: (make_params_list paramssub)
       | _ -> ( report_bug "illegal parameter" ; [Invalid] )
 
     and stringify_literal chofltrl =
       match chofltrl with
-        NonTerminal(CharOfLiteral, []) -> ""
+      | NonTerminal(CharOfLiteral, []) -> ""
 
       | NonTerminal(CharOfLiteral, [Terminal(CHAR(c)); chofltrlsub])
           -> c ^ (stringify_literal chofltrlsub)

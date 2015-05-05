@@ -55,6 +55,7 @@
                 "\\macro" -> Sequence.append output_sequence (MACRO)
               | "\\macro-with-id" -> Sequence.append output_sequence (MACROWID)
               | "\\pop" -> Sequence.append output_sequence (POP)
+              | "\\pop-char" -> Sequence.append output_sequence (POPCHAR)
               | _ -> Sequence.append output_sequence (CTRLSEQ(lasttok))
             ) ;
             ignore_space := true

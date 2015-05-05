@@ -10,7 +10,7 @@ type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
            | END | BGRP | EGRP | SEP | CHAR of letter
            | BEGINNING_OF_INPUT | END_OF_INPUT
            | BREAK | SPACE
-           | MACRO | MACROWID | POP
+           | MACRO | MACROWID | POP | POPCHAR
            | OPENQT | CLOSEQT
 
 
@@ -30,6 +30,7 @@ type abstract_tree = EmptyAbsBlock
                    | ContentOf of var_name
                    | Output of letter
                    | Pop of var_name * var_name * abstract_tree * abstract_tree
+                   | PopChar of var_name * var_name * abstract_tree * abstract_tree
                    | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
                    | Apply of macro_name * abstract_id_name * (abstract_tree list)
                    | Invalid
@@ -38,11 +39,7 @@ type abstract_tree = EmptyAbsBlock
                    | Separated of abstract_tree * abstract_tree
                    | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
                    | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-                   | PrimitiveReplace of abstract_tree * abstract_tree * abstract_tree
-                   | PrimitivePrefix of abstract_tree * abstract_tree
-                   | PrimitivePostfix of abstract_tree * abstract_tree
                    | PrimitiveInclude of abstract_tree
-                   | LiteralBlock of literal_name * abstract_tree
                    | OutputOfLiteral of letter
                    | BreakAndIndent
                    | DeeperIndent of abstract_tree

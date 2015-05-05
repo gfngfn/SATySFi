@@ -10,9 +10,9 @@
   (* for test *)
   let print_tree_node tr =
     match tr with
-      NonTerminal(nontm, lst) -> (
+    | NonTerminal(nontm, lst) -> (
         match nontm with
-          Total -> print_string "T "
+        | Total -> print_string "T "
         | Sentence -> print_string "S "
         | Block -> print_string "B "
         | Group -> print_string "G "
@@ -23,7 +23,7 @@
       )
     | Terminal(tm) -> (
         match tm with
-          CTRLSEQ(c) -> print_string "[c] "
+        | CTRLSEQ(c) -> print_string "[c] "
         | VAR(c) -> print_string "[v] "
         | ID(c) -> print_string "[i] "
         | END -> print_string "; "
@@ -36,6 +36,7 @@
         | BEGINNING_OF_INPUT -> print_string "[!] "
         | END_OF_INPUT -> print_string "[$] "
         | POP -> print_string "[p] "
+        | POPCHAR -> print_string "[q] "
         | MACRO -> print_string "[m] "
         | MACROWID -> print_string "[w] "
         | OPENQT -> print_string "[`] "
@@ -45,7 +46,7 @@
   (* for test *)
   let rec print_output_sub lst =
     match lst with
-      [] -> ()
+    | [] -> ()
     | (tr, st) :: tail -> ( print_tree_node tr ; print_output_sub tail )
 
   (* for test *)
@@ -80,31 +81,31 @@
   (* unit -> tree *)
   let pop_from_line () =
     match !input_line with
-      [] -> raise LineUnderflow (*error*)
+    | [] -> raise LineUnderflow (*error*)
     | head :: tail -> (input_line := tail ; head)
 
   (* unit -> tree *)
   let top_of_line () =
     match !input_line with
-      [] -> raise LineUnderflow (*error*)
+    | [] -> raise LineUnderflow (*error*)
     | head :: tail -> head
 
   (* token list -> tree list *)
   let rec convert_token_list_into_tree_list toklst =
     match toklst with
-      [] -> []
+    | [] -> []
     | head :: tail -> (Terminal(head)) :: (convert_token_list_into_tree_list tail)
 
   (* 'a list -> 'a list *)
   let elim_first lst =
     match lst with
-      [] -> []
+    | [] -> []
     | head :: tail -> tail
 
   (* tree list -> tree *)
   let get_first lst =
     match lst with
-      [] -> raise LineUnderflow
+    | [] -> raise LineUnderflow
     | head :: tail -> head
 
   (* token list -> unit *)
@@ -114,12 +115,12 @@
   (* (tree * state) list -> tree list *)
   let rec eliminate_state lst =
     match lst with
-      [] -> []
+    | [] -> []
     | (tr, st) :: tail -> tr :: (eliminate_state tail)
 
   let rec length_of_list lst num =
     match lst with
-      [] -> num
+    | [] -> num
     | head :: tail -> length_of_list tail (num + 1)
 
   (* (tree * state) list -> unit *)
@@ -128,19 +129,19 @@
       print_tree_list true (eliminate_state lst)
     else
       match lst with
-        [] -> ()
+      | [] -> ()
       | head :: tail -> print_last_some_tokens tail
 
   and print_tree_list skip_left trlst =
     match trlst with
-      [] -> ()
+    | [] -> ()
     | head :: tail -> ( print_tree_detail skip_left head ; print_tree_list skip_left tail )
 
   (* temporary function for error log *)
   (* tree -> bool -> unit *)
   and print_tree_detail skip_left tr =
     match tr with
-      NonTerminal(Block, [trf; NonTerminal(Block, [])])
+    | NonTerminal(Block, [trf; NonTerminal(Block, [])])
         -> print_tree_detail skip_left trf
 
     | NonTerminal(Block, [trf; trl])
@@ -156,7 +157,7 @@
 
     | Terminal(tm) -> (
           match tm with
-            CTRLSEQ(f) -> print_string (f ^ " ")
+          | CTRLSEQ(f) -> print_string (f ^ " ")
           | VAR(v) -> (
                 if (compare v "~indent") == 0 then
                   print_string "~~~~"
@@ -169,7 +170,7 @@
           | EGRP -> print_string "}"
           | CHAR(c) -> (
                 match c with
-                  "{" -> print_string "\\{"
+                | "{" -> print_string "\\{"
                 | "}" -> print_string "\\}"
                 | "\\" -> print_string "\\\\"
                 | "@" -> print_string "\\@"
@@ -184,6 +185,7 @@
           | BEGINNING_OF_INPUT -> print_string "[BOI] "
           | END_OF_INPUT -> print_string " [EOI]"
           | POP -> print_string "\\pop "
+          | POPCHAR -> print_string "\\pop-char "
           | MACRO -> print_string "\\macro "
           | MACROWID -> print_string "\\macro-with-id "
           | OPENQT -> print_string "[`] "
@@ -194,7 +196,7 @@
   let rec print_waiting_some_tokens lst num =
     if num == 0 then () else
       match lst with
-        [] -> ()
+      | [] -> ()
       | head :: tail -> (
             print_tree_detail false head ;
             print_waiting_some_tokens tail (num - 1)
@@ -237,7 +239,7 @@
   and reduce_sub trlst nontm num =
     if num == 0 then (
       match Stacklist.top output_stack with
-        (tr, st) -> (
+      | (tr, st) -> (
           input_line := (NonTerminal(nontm, trlst)) :: !input_line ;
           print_process "reduce" ;
           print_output !output_stack ;
@@ -246,7 +248,7 @@
         )
     ) else
       match Stacklist.pop output_stack with
-        (tr, st) -> reduce_sub (tr :: trlst) nontm (num - 1)
+      | (tr, st) -> reduce_sub (tr :: trlst) nontm (num - 1)
 
   and reduce_empty nontm q =
     input_line := (NonTerminal(nontm, [])) :: !input_line ; 
@@ -270,6 +272,7 @@
     S -> .[space]
     S -> .[break]
     S -> .[pop] [var] [var] G G
+    S -> .[popchar] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -278,11 +281,11 @@
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(END_OF_INPUT) -> reduce_empty Block q_first
+    | Terminal(END_OF_INPUT) -> reduce_empty Block q_first
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Total, lst) -> shift popped q_total
+        | NonTerminal(Total, lst) -> shift popped q_total
         | NonTerminal(Block, lst) -> shift popped q_end
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
@@ -290,6 +293,7 @@
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(POP) -> shift popped q_pop1
+        | Terminal(POPCHAR) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
@@ -311,6 +315,7 @@
     S -> .[space]
     S -> .[break]
     S -> .[pop] [var] [var] G G
+    S -> .[popchar] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -319,19 +324,20 @@
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Block q_after_sentence
+    | Terminal(EGRP) -> reduce_empty Block q_after_sentence
     | Terminal(END_OF_INPUT) -> reduce_empty Block q_after_sentence
     | Terminal(SEP) -> reduce_empty Block q_after_sentence
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_after_block
+        | NonTerminal(Block, lst) -> shift popped q_after_block
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
         | Terminal(CHAR(c)) -> shift popped q_char
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(POP) -> shift popped q_pop1
+        | Terminal(POPCHAR) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
@@ -351,6 +357,7 @@
     S -> .[space]
     S -> .[break]
     S -> .[pop] [var] [var] G G
+    S -> .[popchar] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -359,13 +366,13 @@
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Block q_inner_of_group
+    | Terminal(EGRP) -> reduce_empty Block q_inner_of_group
     | Terminal(END_OF_INPUT) -> reduce_empty Block q_inner_of_group
     | Terminal(SEP) -> reduce_empty Block q_inner_of_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
+        | NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
         | NonTerminal(ListBySep, lst) -> shift popped q_after_inner_of_group
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
@@ -373,6 +380,7 @@
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(POP) -> shift popped q_pop1
+        | Terminal(POPCHAR) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
@@ -386,12 +394,12 @@
     L -> B.           (reduce [$], [}])
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce ListBySep 1
+    | Terminal(EGRP) -> reduce ListBySep 1
     | Terminal(END_OF_INPUT) -> reduce ListBySep 1
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          Terminal(SEP) -> shift popped q_after_sep
+        | Terminal(SEP) -> shift popped q_after_sep
         | _ -> report_error "illegal end of list in group"
       )
 
@@ -408,6 +416,7 @@
     S -> .[space]
     S -> .[break]
     S -> .[pop] [var] [var] G G
+    S -> .[popchar] [var] [var] G G
     S -> .[macro] [ctrlseq] A G
     S -> .[macrowid] [ctrlseq] A G G
     S -> .[ctrlseq] [end]
@@ -416,13 +425,13 @@
     S -> .[ctrlseq] [id] G P
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Block q_inner_of_group
+    | Terminal(EGRP) -> reduce_empty Block q_inner_of_group
     | Terminal(END_OF_INPUT) -> reduce_empty Block q_inner_of_group
     | Terminal(SEP) -> reduce_empty Block q_inner_of_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
+        | NonTerminal(Block, lst) -> shift popped q_inner_of_list_by_sep
         | NonTerminal(ListBySep, lst) -> shift popped q_end_of_list
         | NonTerminal(Sentence, lst) -> shift popped q_after_sentence
         | Terminal(VAR(c)) -> shift popped q_var1
@@ -430,6 +439,7 @@
         | Terminal(SPACE) -> shift popped q_space
         | Terminal(BREAK) -> shift popped q_break
         | Terminal(POP) -> shift popped q_pop1
+        | Terminal(POPCHAR) -> shift popped q_pop1
         | Terminal(MACRO) -> shift popped q_macro1
         | Terminal(MACROWID) -> shift popped q_macrowid1
         | Terminal(CTRLSEQ(c)) -> shift popped q_after_ctrlseq
@@ -450,7 +460,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(EGRP) -> shift popped q_end_of_group
+      | Terminal(EGRP) -> shift popped q_end_of_group
       | _ -> report_error "inappropriate end of group"
 
   and q_end_of_group () =
@@ -468,7 +478,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(CharOfLiteral, lst) -> shift popped q_end_of_qt
+      | NonTerminal(CharOfLiteral, lst) -> shift popped q_end_of_qt
       | Terminal(CHAR(c)) -> shift popped q_middle_of_qt
       | _ -> report_error "illegal token in literal block"
 
@@ -479,11 +489,11 @@
     C -> .[char] C
   *)
     match top_of_line () with
-      Terminal(CLOSEQT) -> reduce_empty CharOfLiteral q_middle_of_qt
+    | Terminal(CLOSEQT) -> reduce_empty CharOfLiteral q_middle_of_qt
     | _ -> (
         let popped = pop_from_line () in
           match popped with
-            NonTerminal(CharOfLiteral, lst) -> shift popped q_end_of_middle_of_qt
+          | NonTerminal(CharOfLiteral, lst) -> shift popped q_end_of_middle_of_qt
           | Terminal(CHAR(c)) -> shift popped q_middle_of_qt
           | _ -> report_error "illegal token in literal block"
       )
@@ -502,7 +512,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(CLOSEQT) -> shift popped q_closeqt
+      | Terminal(CLOSEQT) -> shift popped q_closeqt
       | _ -> report_error "illegal end of literal block"
 
   and q_closeqt () =
@@ -519,7 +529,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(END) -> shift popped q_var2
+      | Terminal(END) -> shift popped q_var2
       | _ -> report_error "missing semicolon after variable"
 
   and q_var2 () =
@@ -554,32 +564,35 @@
     print_process "q_pop1" ;
   (*
     S -> [pop].[var] [var] G G
+    S -> [popchar].[var] [var] G G
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(VAR(c)) -> shift popped q_pop2
+      | Terminal(VAR(c)) -> shift popped q_pop2
       | _ -> report_error "missing first variable after \\pop"
 
   and q_pop2 () =
     print_process "q_pop2" ;
   (*
     S -> [pop] [var].[var] G G
+    S -> [popchar] [var].[var] G G
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(VAR(c)) -> shift popped q_pop3
+      | Terminal(VAR(c)) -> shift popped q_pop3
       | _ -> report_error "missing second variable after \\pop"
 
   and q_pop3 () =
     print_process "q_pop3" ;
   (*
     S -> [pop] [var] [var].G G
+    S -> [popchar] [var] [var].G G
     G -> .[{] L [}]
     G -> .[`] C [']
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_pop4
+      | NonTerminal(Group, lst) -> shift popped q_pop4
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_qt
       | _ -> report_error "illegal first group of \\pop"
@@ -588,12 +601,13 @@
     print_process "q_pop4" ;
   (*
     S -> [pop] [var] [var] G.G
+    S -> [popchar] [var] [var] G.G
     G -> .[{] L [}]
     G -> .[`] C [']
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_pop5
+      | NonTerminal(Group, lst) -> shift popped q_pop5
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_qt
       | _ -> report_error "illegal second group of \\pop"
@@ -602,6 +616,7 @@
     print_process "q_pop5" ;
   (*
     S -> [pop] [var] [var] G G.
+    S -> [popchar] [var] [var] G G.
   *)
     reduce Sentence 5
 
@@ -612,7 +627,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(CTRLSEQ(c)) -> shift popped q_macro2
+      | Terminal(CTRLSEQ(c)) -> shift popped q_macro2
       | _ -> report_error "missing control sequence after \\macro"
 
   and q_macro2 () =
@@ -623,12 +638,12 @@
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce_empty Args q_macro2
+    | Terminal(BGRP) -> reduce_empty Args q_macro2
     | Terminal(END_OF_INPUT) -> reduce_empty Args q_macro2
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Args, lst) -> shift popped q_macro3
+        | NonTerminal(Args, lst) -> shift popped q_macro3
         | Terminal(VAR(c)) -> shift popped q_args
         | _ -> report_error "inappropriate argument in \\macro declaration"
     )
@@ -642,7 +657,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_macro4
+      | NonTerminal(Group, lst) -> shift popped q_macro4
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_group
       | _ -> report_error "missing group in \\macro declaration"
@@ -660,7 +675,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(CTRLSEQ(c)) -> shift popped q_macrowid2
+      | Terminal(CTRLSEQ(c)) -> shift popped q_macrowid2
       | _ -> report_error "missing control sequence after \\macro-with-id"
 
   and q_macrowid2 () =
@@ -670,11 +685,11 @@
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce_empty Args q_macrowid2
+    | Terminal(BGRP) -> reduce_empty Args q_macrowid2
     | _ -> (
           let popped = pop_from_line () in
             match popped with
-              NonTerminal(Args, lst) -> shift popped q_macrowid3
+            | NonTerminal(Args, lst) -> shift popped q_macrowid3
             | Terminal(VAR(c)) -> shift popped q_args
             | _ -> report_error "inappropriate argument in \\macro-with-id declaration"
         )
@@ -687,7 +702,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_macrowid4
+      | NonTerminal(Group, lst) -> shift popped q_macrowid4
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_qt
       | _ -> report_error "missing first group in \\macro-with-id declaration"
@@ -700,7 +715,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_macrowid5
+      | NonTerminal(Group, lst) -> shift popped q_macrowid5
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_qt
       | _ -> report_error "missing second group in \\macro-with-id declaration"
@@ -719,12 +734,12 @@
     A -> .
   *)
     match top_of_line () with
-      Terminal(BGRP) -> reduce_empty Args q_args
+    | Terminal(BGRP) -> reduce_empty Args q_args
     | Terminal(END_OF_INPUT) -> reduce_empty Args q_args
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Args, lst) -> shift popped q_end_of_args
+        | NonTerminal(Args, lst) -> shift popped q_end_of_args
         | Terminal(VAR(c)) -> shift popped q_args
         | _ -> report_error "inappropriate argument in \\macro declaration"
     )
@@ -747,7 +762,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_after_first_group
+      | NonTerminal(Group, lst) -> shift popped q_after_first_group
       | Terminal(END) -> shift popped q_ctrlseq_A
       | Terminal(ID(c)) -> shift popped q_after_id
       | Terminal(BGRP) -> shift popped q_inner_of_group
@@ -764,7 +779,7 @@
     G -> .[`] C [']
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Params q_after_first_group
+    | Terminal(EGRP) -> reduce_empty Params q_after_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_first_group
     | Terminal(SEP) -> reduce_empty Params q_after_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_first_group
@@ -772,13 +787,14 @@
     | Terminal(SPACE) -> reduce_empty Params q_after_first_group
     | Terminal(BREAK) -> reduce_empty Params q_after_first_group
     | Terminal(POP) -> reduce_empty Params q_after_first_group
+    | Terminal(POPCHAR) -> reduce_empty Params q_after_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_first_group
     | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Params, lst) -> shift popped q_ctrlseq_C
+        | NonTerminal(Params, lst) -> shift popped q_ctrlseq_C
         | NonTerminal(Group, lst) -> shift popped q_params
         | Terminal(BGRP) -> shift popped q_inner_of_group
         | Terminal(OPENQT) -> shift popped q_inner_of_qt
@@ -795,7 +811,7 @@
   *)
     let popped = pop_from_line() in
       match popped with
-        NonTerminal(Group, lst) -> shift popped q_after_id_and_first_group
+      | NonTerminal(Group, lst) -> shift popped q_after_id_and_first_group
       | Terminal(END) -> shift popped q_ctrlseq_C
       | Terminal(BGRP) -> shift popped q_inner_of_group
       | Terminal(OPENQT) -> shift popped q_inner_of_qt
@@ -811,7 +827,7 @@
     G -> .[`] C [']
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(EGRP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(SEP) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(VAR(v)) -> reduce_empty Params q_after_id_and_first_group
@@ -819,13 +835,14 @@
     | Terminal(SPACE) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(BREAK) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(POP) -> reduce_empty Params q_after_id_and_first_group
+    | Terminal(POPCHAR) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACRO) -> reduce_empty Params q_after_id_and_first_group
     | Terminal(MACROWID) -> reduce_empty Params q_after_first_group
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_after_first_group
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Params, lst) -> shift popped q_ctrlseq_D
+        | NonTerminal(Params, lst) -> shift popped q_ctrlseq_D
         | NonTerminal(Group, lst) -> shift popped q_params
         | Terminal(BGRP) -> shift popped q_inner_of_group
         | Terminal(OPENQT) -> shift popped q_inner_of_qt
@@ -842,7 +859,7 @@
     G -> .[`] C [']
   *)
     match top_of_line () with
-      Terminal(EGRP) -> reduce_empty Params q_params
+    | Terminal(EGRP) -> reduce_empty Params q_params
     | Terminal(END_OF_INPUT) -> reduce_empty Params q_params
     | Terminal(SEP) -> reduce_empty Params q_params
     | Terminal(VAR(v)) -> reduce_empty Params q_params
@@ -850,13 +867,14 @@
     | Terminal(SPACE) -> reduce_empty Params q_params
     | Terminal(BREAK) -> reduce_empty Params q_params
     | Terminal(POP) -> reduce_empty Params q_params
+    | Terminal(POPCHAR) -> reduce_empty Params q_params
     | Terminal(MACRO) -> reduce_empty Params q_params
     | Terminal(MACROWID) -> reduce_empty Params q_params
     | Terminal(CTRLSEQ(t)) -> reduce_empty Params q_params
     | _ -> (
       let popped = pop_from_line () in
         match popped with
-          NonTerminal(Params, lst) -> shift popped q_params_end
+        | NonTerminal(Params, lst) -> shift popped q_params_end
         | NonTerminal(Group, lst) -> shift popped q_params
         | Terminal(BGRP) -> shift popped q_inner_of_group
         | Terminal(OPENQT) -> shift popped q_inner_of_qt
@@ -912,7 +930,7 @@
   *)
     let popped = pop_from_line () in
       match popped with
-        Terminal(END_OF_INPUT) -> shift popped q_end_of_end (*end of parsing*)
+      | Terminal(END_OF_INPUT) -> shift popped q_end_of_end (*end of parsing*)
       | _ -> report_error "illegal end"
 
   and q_end_of_end () =
