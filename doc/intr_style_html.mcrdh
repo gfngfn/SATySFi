@@ -57,11 +57,21 @@
     \ifempty{@tail;}{}{</span> \| <span class="math">\--cfl{@tail;}}
   }
 }%
-\macro \mcrd @code {<span class="synt"><code>@code;</code></span>}%
-\macro \mcrd-display @code {<div class="code-display"><pre><code>@code;</code></pre></div>}%
+\macro \mcrd @code {<span class="synt"><code>\escape-for-html{@code;}</code></span>}%
+\macro \mcrd-display @code {<div class="code-display"><pre><code>\escape-for-html{@code;}</code></pre></div>}%
 \macro \code-dp @code {<div class="code-display"><code>@code;</code></div>}%
 \macro \code @code {\ <code>@code;</code>\ }%
-%\macro \code-dp-break {<br>}%
-%\macro \code-dp-tab {　}%
 \macro \meta @metacode {<span class="meta">@metacode;</span>}%
 \macro \metadots {&middot\;&middot\;&middot\;}%
+\macro \escape-for-html @str {
+  \pop-char @char @rest {@str;}{
+    \ifsame{@char;}{<}{&lt\;}{
+      \ifsame{@char;}{>}{&gt\;}{
+        \ifsame{@char;}{&}{&amp\;}{
+          @char;
+        }
+      }
+    }%
+    \escape-for-html{@rest;}
+  }
+}%
