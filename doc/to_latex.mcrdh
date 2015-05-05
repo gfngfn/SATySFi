@@ -1,78 +1,52 @@
-\replace{~latex}{\
-}{}%
-\macro \main @main {%
-~latex
-\documentclass{jsarticle}
-~/
-  @main;%
+\macro \document @head @body {%
+  \\documentclass\{jsarticle\}
+  \\makeatletter\deeper{
+    @head;
+  }\\makeatother
+  \\begin\{document\}\deeper{
+    @body;
+  }\\end\{document\}
 }%
-\macro \head @head {%
-~latex
-\makeatletter{}
-~/
-    @head;%
-~latex
-\makeatother{}
-~/
-}%
-\macro \title @title {%
-  \\title\{@title;\}%
-}%
-\macro \author @author {%
-  \\author\{@author;\}%
-}%
-\macro \body @body {%
-  \\begin\{document\}
-  \\maketitle %
-    @body;%
-  \\end\{document\}%
-}%
-\macro \section @sec {%
-  \\section\{@sec;\}%
-}%
-\macro \subsection @subsec {%
-  \\subsection\{@subsec;\}%
-}%
-\macro \p @p {%
-  \\indent %
-    @p;%
-  \\par %
-}%
+\macro \title @title {\\title\{@title;\}}%
+\macro \author @author {\\author\{@author;\}}%
+\macro \section @sec {\\section\{@sec;\}}%
+\macro \subsection @subsec {\\subsection\{@subsec;\}}%
+\macro \p @p {\\indent\deeper{@p;}\\par}%
 \macro \footnote @footnote {\\footnote\{@footnote;\}}%
-\macro \row @row-content {%
-  \pop @cell @rest {@row-content;}{%
-    @cell;\ifempty{@rest;}{}{ & \row{@rest;}}%
-  }%
+\macro \row @row-content {
+  \pop @cell @rest {@row-content;}{
+    @cell;\ifempty{@rest;}{}{\ & \row{@rest;}}
+  }
 }%
-\macro \table @option @table {%
-  \\begin\{tabular\}\{@option;\}%
-    \--table{@table;}%
-  \\end\{tabular\}%
+\macro \table @option @table {
+  \\begin\{tabular\}\{@option;\}\deeper{
+    \--table{@table;}
+  }\\end\{tabular\}
 }%
-\macro \--table @table-content {%
-  \pop @row @rest {@table-content;}{%
-    @row;\ifempty{@rest;}{}{\\\\\--table{@rest;}}%
-  }%
+\macro \--table @table-content {
+  \pop @row @rest {@table-content;}{
+    @row;\ifempty{@rest;}{}{\\\\\break;\--table{@rest;}}%
+  }
 }%
-\macro \itemize @list {%
-  \\begin\{itemize\}%
-    \--itemize{@list;}%
-  \\end\{itemize\}%
+\macro \itemize @list {
+  \\begin\{itemize\}\deeper{
+    \--itemize{@list;}
+  }\\end\{itemize\}
 }%
-\macro \--itemize @list {%
-  \pop @head @tail {@list;}{%
-    \\item @head;\ifempty{@tail;}{}{\--itemize{@tail;}}%
-  }%
+\macro \--itemize @list {
+  \pop @head @tail {@list;}{
+    \\item @head;\ifempty{@tail;}{}{\break;\--itemize{@tail;}}%
+  }
 }%
 %
-\macro \math @math { $@math;$ }%
+\macro \math @math {\ $@math;$\ }%
 \macro \epsilon {\\varepsilon}%
 %
 \macro \url @url {\\texttt\{@url;\}}%
-\macro \url-dp @url {%
-  \\begin\{center\}%
-    \\texttt\{@url;\}%
-  \\end\{center\}%
+\macro \url-dp @url {
+  \\begin\{center\}\deeper{
+    \\texttt\{@url;\}
+  }\\end\{center\}
 }%
 \macro \to-latex @c {@c;}%
 \macro \TeX {\\TeX\{\}}%

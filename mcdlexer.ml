@@ -104,9 +104,8 @@
           )
       | SPACE_TYPE
           -> (
-            if !in_comment then () else
-              if !ignore_space then () else
-                Sequence.append output_sequence SPACE
+            if !ignore_space then () else
+              Sequence.append output_sequence SPACE
           )
       | BREAK_TYPE
           -> (
@@ -180,8 +179,8 @@
             ) ;
             q_end_literal ()
           )
-      | ' ' -> ( save_token_type SPACE_TYPE ; next () )
-      | '\n' -> ( save_token_type BREAK_TYPE ; next () )
+    (*  | ' ' -> ( save_token_type SPACE_TYPE ; next () ) *)
+    (*  | '\n' -> ( save_token_type BREAK_TYPE ; next () ) *)
       | '\000' -> report_error "input ended while reading literal block"
       | _ -> ( save_token_type CHAR_TYPE ; next () )
 

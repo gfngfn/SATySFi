@@ -1,6 +1,8 @@
 (* module Mcdabs *)
   open Types
 
+  type literal_reading_state = Normal | ReadingSpace
+
   let report_bug errmsg =
     print_string ("[BUG IN MCDABS] " ^ errmsg ^ ".") ; print_newline ()
 
@@ -30,7 +32,7 @@
 
       (* G -> [`] C ['] *)
     | NonTerminal(Group, [Terminal(OPENQT); chofltrl; Terminal(CLOSEQT)])
-        -> concrete_to_abstract chofltrl
+        -> omit_spaces chofltrl
 
     | NonTerminal(ListBySep, [NonTerminal(Block, chdrn)])
         -> concrete_to_abstract (NonTerminal(Block, chdrn))
@@ -113,7 +115,74 @@
       match prms with
         NonTerminal(Params, []) -> []
       | NonTerminal(Params, [grp; paramssub])
-          -> (manufact_indent (concrete_to_abstract grp)) :: (make_params_list paramssub)
+          -> (concrete_to_abstract grp) :: (make_params_list paramssub)
       | _ -> ( report_bug "illegal parameter" ; [Invalid] )
 
-    and manufact_indent abstr = abstr
+    and stringify_literal chofltrl =
+      match chofltrl with
+        NonTerminal(CharOfLiteral, []) -> ""
+
+      | NonTerminal(CharOfLiteral, [Terminal(CHAR(c)); chofltrlsub])
+          -> c ^ (stringify_literal chofltrlsub)
+
+      | _ -> ( report_bug "illegal literal" ; "" )
+
+    (* tree -> abstract_tree *)
+    and omit_spaces chofltrl =
+      let str_ltrl = stringify_literal chofltrl in
+        let min_indent = min_indent_space str_ltrl in
+          let str_shaved = shave_indent str_ltrl min_indent in
+            if str_shaved.[(String.length str_shaved) - 1] = '\n' then
+              let str_no_last_break = String.sub str_shaved 0 ((String.length str_shaved) - 1) in
+                AbsBlock(Output(str_no_last_break), BreakAndIndent)
+            else
+              Output(str_shaved)
+
+    (* string -> int *)
+    and min_indent_space str_ltrl =
+      min_indent_space_sub str_ltrl 0 Normal 0 (String.length str_ltrl)
+
+    (* string -> int -> literal_reading_state -> int -> int -> int *)
+    and min_indent_space_sub str_ltrl index lrstate spnum minspnum =
+      if index >= (String.length str_ltrl) then
+        ( print_string ("min_indent: " ^ (string_of_int minspnum) ^ "\n") ;(* for test *)
+          minspnum
+        )(* for test *)
+      else
+        match lrstate with
+        | Normal -> (
+              match str_ltrl.[index] with
+              | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
+              | _  -> min_indent_space_sub str_ltrl (index + 1) Normal 0 minspnum
+            )
+        | ReadingSpace -> (
+              match str_ltrl.[index] with
+              | ' ' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace (spnum + 1) minspnum
+              | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
+                  (* does not take space-only line into account *)
+              | _ -> min_indent_space_sub str_ltrl (index + 1) Normal 0 (if spnum < minspnum then spnum else minspnum)
+            )
+
+      and shave_indent str_ltrl minspnum =
+        shave_indent_sub str_ltrl minspnum 0 "" Normal 0
+
+      and shave_indent_sub str_ltrl minspnum index str_constr lrstate spnum =
+        if index >= (String.length str_ltrl) then
+          str_constr
+        else
+          match lrstate with
+          | Normal -> (
+                match str_ltrl.[index] with
+                | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
+                | ch -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
+              )
+          | ReadingSpace -> (
+                match str_ltrl.[index] with
+                | ' ' ->
+                    if spnum < minspnum then
+                      shave_indent_sub str_ltrl minspnum (index + 1) str_constr ReadingSpace (spnum + 1)
+                    else
+                      shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ " ") ReadingSpace (spnum + 1)
+                | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
+                | ch -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
+              )

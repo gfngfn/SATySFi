@@ -1,21 +1,22 @@
-\main{\shallow;
-  \head{
-    \settings;
-    \title{Macrodown (ver. 0.9) の仕様}
-    \author{gfn}
-  }
-  \body{
-    \section{概要}
+\document{
+  \settings;
+  \title{Macrodown (ver. 0.9) の仕様}
+  \author{gfn}
+}{
+  \maketitle;
+  \section{概要}{
     \p{
       \newword{Macrodown}（\newword{マクロダウン}）は\LaTeX;やHTMLなどのマークアップ言語をラップするための
       軽量［要出典］マークアップ言語です。マクロ定義機能があり，可変長引数を扱うこともできます。
       OCamlで実装しており，ソースコードは
+
+      \url-display{http://github.com/gfngfn/Macrodown}
+
+      で公開しています。この文書もMacrodownを経由してHTMLソースコードとLaTeXソースコードを出力し，
+      LaTeXソースコードの方は\pLaTeX2e;とdvipdfmxで組んでいます。
     }
-    \url-dp{http://github.com/gfngfn/Macrodown}
-    \p{
-      で公開しています。この文書もMacrodownを経由して\pLaTeX2e;とdvipdfmxで組んでいます。
-    }
-    \section{動機}
+  }
+  \section{動機}{
     \p{
       今日，一般的な文書作成のために多用されているマークアップ言語としては
       HTML+CSSや\LaTeX;などが挙げられます。
@@ -47,238 +48,267 @@
       現在はまだ簡素な最小限の姿に留まっていますが，
       今後も条件分岐や整数を扱えるようにしたりといった拡張が考えられます。
     }
-    \section{仕様}
-    \subsection{トークン化}
-    \p{
-      大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}として，
-      Macrodownは文字列を以下にマッチするようにトークン化します。
-      ただし * は0回以上の繰り返しを表します。
-      複数通りのマッチがある場合はより長い文字列ほど優先し，
-      同一の文字列が複数のトークンにマッチする場合は表で上位に掲げられているものほど優先されます。
+  }
+  \section{仕様}{
+    \subsection{トークン化}{
+      \p{
+        大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}として，
+        Macrodownは文字列を以下にマッチするようにトークン化します。
+        ただし * は0回以上の繰り返しを表します。
+        複数通りのマッチがある場合はより長い文字列ほど優先し，
+        同一の文字列が複数のトークンにマッチする場合は表で上位に掲げられているものほど優先されます。
+      }
+      \description{
+        \d-item{\mcrd`\macro`}{\math{\token-macro;}：\newword{マクロ定義トークン}}
+      |
+        \d-item{\mcrd`\pop`}{\math{\token-pop;}：\newword{ポップ機能トークン}}
+      |
+        \d-item{\synt{\bksl;}（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
+      |
+        \d-item{\synt{\atmark;}（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
+      |
+        \d-item{\synt{\numsign;}（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
+      |
+        \d-item{\synt{\lbrace;}}{\math{\token-bgrp;}：\newword{開きトークン}}
+      |
+        \d-item{\synt{\rbrace;}}{\math{\token-egrp;}：\newword{閉じトークン}}
+      |
+        \d-item{\synt{\;}}{\math{\token-end;}：\newword{無引数終端トークン}}
+      |
+        \d-item{\synt{\brokenbar;}}{\math{\token-sep;}：\newword{区切りトークン}}
+      |
+        \d-item{\synt{\bksl;}（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
+      |
+        \d-item{\mcrd`` ` ``}{\math{\token-qt;}：リテラルブロックトークン}
+      |
+        \d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
+      }
+      \p{
+        ただし，このうちID名トークンを扱う操作は近い将来実装豫定なので，
+        現在のところID名トークンには用途がありません。
+      }
     }
-    \description{
-      \d-item{\synt{\bksl;macro}}{\math{\token-macro;}：\newword{マクロ定義トークン}}
-    |
-      \d-item{\synt{\bksl;pop}}{\math{\token-pop;}：\newword{ポップ機能トークン}}
-    |
-      \d-item{\synt{\bksl;}（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
-    |
-      \d-item{\synt{\atmark;}（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
-    |
-      \d-item{\synt{\numsign;}（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
-    |
-      \d-item{\synt{\lbrace;}}{\math{\token-bgrp;}：\newword{開きトークン}}
-    |
-      \d-item{\synt{\rbrace;}}{\math{\token-egrp;}：\newword{閉じトークン}}
-    |
-      \d-item{\synt{\;}}{\math{\token-end;}：\newword{無引数終端トークン}}
-    |
-      \d-item{\synt{\brokenbar;}}{\math{\token-sep;}：\newword{区切りトークン}}
-    |
-      \d-item{\synt{\bksl;}（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
-    |
-      \d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
+    \subsection{空白類を無視する条件}{
+      \p{
+        空白文字，タブ文字，改行文字を\newword{空白類}と呼ぶことにします。
+        空白類は無視されるものと文字トークンとされるものが出現場所によって決まり，
+        以下に出現した場合は無視されます。
+      }
+      \itemize{
+          行頭
+        | \synt{\lbrace;}の手前と直後
+        | \synt{\rbrace;}の手前
+        | \synt{\brokenbar;}の手前と直後
+        | 制御綴トークンの直後
+        | 変数名トークンの直後
+        | ID名トークンの直後
+        | 空白類の直後
+      }
     }
-    \p{
-      ただし，このうちID名トークンを扱う操作は近い将来実装豫定なので，
-      現在のところID名トークンには用途がありません。
+    \subsection{構文木化}{
+      \p{
+        \math{\token-eoi;}を入力の終端として，Macrodownは以下の\math{T}で表現される入力を受理します。
+      }
+      \math-dp-gather{
+        \cfl{T}{ B \token-eoi; }
+      |
+        \cfl{B}{ \epsilon; | S B }
+      |
+        \cfl{S}{ \token-char; | \token-var; \token-end; | \token-pop; \token-var; \token-var; G G %
+          | \token-macro; \token-cs; A G | \token-cs; \token-end; | \token-cs; G P }
+      |
+        \cfl{A}{ \epsilon; | \token-var; A }
+      |
+        \cfl{P}{ \epsilon; | G P }
+      |
+        \cfl{G}{ \token-bgrp; L \token-egrp; }
+      |
+        \cfl{L}{ B | B \token-sep; L }
+      }
     }
-    \subsection{空白類を無視する条件}
-    \p{
-      空白文字，タブ文字，改行文字を\newword{空白類}と呼ぶことにします。
-      空白類は無視されるものと文字トークンとされるものが出現場所によって決まり，
-      以下に出現した場合は無視されます。
+    \subsection{変数とマクロ定義の基本}{
+      \p{
+        変数にはトークン列\footnote{%
+          正確には構文木が格納されているのですが，
+          トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。%
+        }のみが格納され，現時点では数値などは扱えません。
+        破壊的代入の機能はなく，したがって純粋函数型言語に近い性質をしています。
+        マークアップ機能の柔軟な拡張性を確保するために前述のとおりマクロ定義機能があり，
+        以下のような\newword{定義式}
+
+        \code-dp{
+          \synt{\bksl;macro} \synt{\bksl;}\meta{hoge} %
+            \synt{\atmark;}\meta{var1} \metadots; \synt{\atmark;}\meta{varN} %
+            \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
+        }
+
+        で引数を\math{N}個伴うマクロ\code{\synt{\bksl;}\meta{hoge}}が定義されます。
+        この定義式以降，\newword{マクロ適用}として
+
+        \code-dp{
+          \synt{\bksl;}\meta{hoge} %
+            \synt{\lbrace;}\meta{Arg1}\synt{\rbrace;}%
+            \metadots;
+            \synt{\lbrace;}\meta{ArgN}\synt{\rbrace;}%
+        }
+
+        で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
+        変数\code{\synt{\atmark;}\meta{piyo}}に格納された中身を取り出すには
+        \code{\synt{\atmark;}\meta{piyo}\synt{\;}}とします。例えば
+
+        \mcrd-display```
+          \macro \test @x @y {Ma@x;r@y;down}%
+          \test{c}{o} \test{}{k}
+        ```
+
+        に対する出力は
+
+        \mcrd-display```
+          Macrodown Markdown
+        ```
+
+        となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
+
+        \mcrd-display```
+          \macro \mcrd {Macrodown}%
+          Hello, \mcrd;!
+        ```
+
+        に対する出力は
+
+        \mcrd-display```
+          Hello, Macrodown!
+        ```
+
+        となります。
+      }
     }
-    \itemize{
-      行頭
-    |
-      制御綴トークンの直後
-    |
-      変数名トークンの直後
-    |
-      ID名トークンの直後
-    |
-      空白類の直後
-    }
-    \subsection{構文木化}
-    \p{
-      \math{\token-eoi;}を入力の終端として，Macrodownは以下の\math{T}で表現される入力を受理します。
-    }
-    \math-dp-gather{
-      \cfl{T}{ B \token-eoi; }
-    |
-      \cfl{B}{ \epsilon; | S B }
-    |
-      \cfl{S}{ \token-char; | \token-var; \token-end; | \token-pop; \token-var; \token-var; G G %
-        | \token-macro; \token-cs; A G | \token-cs; \token-end; | \token-cs; G P }
-    |
-      \cfl{A}{ \epsilon; | \token-var; A }
-    |
-      \cfl{P}{ \epsilon; | G P }
-    |
-      \cfl{G}{ \token-bgrp; L \token-egrp; }
-    |
-      \cfl{L}{ B | B \token-sep; L }
-    }
-  %
-    \subsection{変数とマクロ定義の基本}
-    \p{
-      変数にはトークン列\footnote{%
-        正確には構文木が格納されているのですが，
-        トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。%
-      }のみが格納され，現時点では数値などは扱えません。
-      破壊的代入の機能はなく，したがって純粋函数型言語に近い性質をしています。
-    }
-    \p{
-      マークアップ言語における柔軟性を確保するため，前述のとおりマクロ定義機能があり，
-      \newword{定義式}
-    }
-    \code-dp{
-      \synt{\bksl;macro} \synt{\bksl;}\meta{hoge} %
-        \synt{\atmark;}\meta{var1} \metadots; \synt{\atmark;}\meta{varN} %
-        \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
-    }
-    \p{
-      で引数を\math{N}個伴うマクロ\code{\synt{\bksl;}\meta{hoge}}が定義されます。
-      この定義式以降，\newword{マクロ適用}として
-    }
-    \code-dp{
-      \synt{\bksl;}\meta{hoge} %
-        \synt{\lbrace;}\meta{Arg1}\synt{\rbrace;}%
-        \metadots;
-        \synt{\lbrace;}\meta{ArgN}\synt{\rbrace;}%
-    }
-    \p{
-      で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
-      変数\code{\synt{\atmark;}\meta{piyo}}に格納された中身を取り出すには
-      \code{\synt{\atmark;}\meta{piyo}\synt{\;}}とします。例えば
-    }
-    \code-dp{
-      \synt{\bksl;macro \bksl;test \atmark;x \atmark;y \lbrace;Ma\atmark;x\;r\atmark;y\;down\rbrace;\percent;}\code-dp-break;%
-      \synt{\bksl;test\lbrace;c\rbrace;\lbrace;o\rbrace; \bksl;test\lbrace;\rbrace;\lbrace;k\rbrace;}
-    }
-    \p{
-      に対する出力は
-    }
-    \code-dp{
-      \synt{Macrodown Markdown}
-    }
-    \p{
-      となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
-    }
-    \code-dp{
-      \synt{\bksl;macro \bksl;mcrd \lbrace;Macrodown\rbrace;\percent;}\code-dp-break;%
-      \synt{Hello, \bksl;mcrd\;!}
-    }
-    \p{
-      に対する出力は
-    }
-    \code-dp{
-      \synt{Hello, Macrodown!}
-    }
-    \p{
-      となります。
-    }
-    \subsection{可変長引数の扱い方}
-    \p{
-      マクロ適用の引数には\newword{可変長リスト}を使用することができます。
-      可変長リストの形の引数を\newword{可変長引数}と呼び，
-    }
-    \code-dp{
-      \synt{\lbrace;} \meta{Expr1} \synt{\brokenbar;} \meta{Expr2} \synt{\brokenbar;} \metadots; %
-        \synt{\brokenbar;} \meta{ExprN} \synt{\rbrace;}
-    }
-    \p{
-      と記述します。マクロ適用時には，可変長リストはひとつの変数に格納されます。
-      この可変長リストを1つづつ切り離す機能が\synt{\bksl;pop}を用いた\newword{ポップ式}で，
-    }
-    \code-dp{
-      \synt{\bksl;pop} \synt{\atmark;}\meta{head} \synt{\atmark;}\meta{tail} %
-        \synt{\lbrace;} \meta{Elem1} \synt{\brokenbar;} \meta{Elem2} \synt{\brokenbar;} \metadots; %
-        \synt{\brokenbar;} \meta{ElemN} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
-    }
-    \p{
-      とすると変数\code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
-      変数\code{\synt{\atmark;}\meta{tail}}に%
-      \code{\meta{Elem2} \synt{\brokenbar;} \metadots; %
-        \synt{\brokenbar;} \meta{ElemN}}
-      が格納された上で\code{\meta{Expr}}が評価されます。
-      変数\code{\synt{\atmark;}\meta{head}}，\code{\synt{\atmark;}\meta{tail}}が有効なスコープは
-      \code{\meta{Expr}}内だけであることに注意してください。
-    }
-    \p{
-      なお，可変長リストが\math{1}個の要素\code{\meta{Elem1}}だけからなるときは，
-      \code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
-      \code{\synt{\atmark;}\meta{head}}に\newword{空列}が格納された上で\code{\meta{Expr}}が評価され，
-      可変長リストが\math{0}要素，つまり空列であるときは
-      \code{\meta{Expr}}が評価されず，ポップ式全体が空列を返します。
-    }
-    \p{
-      可変長リストを扱う例を見てみましょう。
-    }
-    \code-dp{
-      \synt{\bksl;sep \atmark;list \lbrace;\percent;}\code-dp-break;%
-        \synt{\code-dp-tab;%
-        \bksl;pop \atmark;head \atmark;tail \lbrace;\atmark;list\;\rbrace;\lbrace;%
-        (\atmark;head\;)\bksl;sep\lbrace;\atmark;tail\;\rbrace;\rbrace;\percent;}\code-dp-break;%
-      \synt{\rbrace;\percent;}\code-dp-break;%
-      \synt{\bksl;sep\lbrace;bd\brokenbar;gfn\brokenbar;\bksl;sep\lbrace;me\brokenbar;ip\rbrace;\rbrace;}%
-    }
-    \p{
-      に対する出力は
-    }
-    \code-dp{
-      \synt{(bd)(gfn)((me)(ip))}
-    }
-    \p{
-      となります。
-      \code{\synt{\atmark;}\meta{list}}が空列を格納している場合はポップ式が空列を返すだけなので
-      それ以上再帰が生じずに停止するのです。
-      このほか，空列かどうかを判定する条件分岐機能\code{\synt{\bksl;ifempty}}があり，
-    }
-    \code-dp{
-      \synt{\bksl;ifempty}%
-        \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}%
-    }
-    \p{
-      で\code{\meta{ExprB}}が空列のときは\code{\meta{ExprT}}を評価し，
-      空列でない時は\code{\meta{ExprF}}を評価します。
-      これを用いると例えば
-    }
-    \code-dp{
-      \synt{\bksl;macro \bksl;enum-comma \atmark;list \lbrace;\percent;}\code-dp-break;%
-        \synt{\code-dp-tab;%
-        \bksl;pop \atmark;head \atmark;tail \lbrace;\atmark;list\;\rbrace;\lbrace;\percent;}\code-dp-break;%
-          \synt{\code-dp-tab;\code-dp-tab;%
-          \atmark;head\;\bksl;ifempty\lbrace;\atmark;tail\;\rbrace;\lbrace;\rbrace;\lbrace;%
-          , \bksl;enum-comma\lbrace;\atmark;tail\;\rbrace;\rbrace;\percent;}\code-dp-break;%
-        \synt{\code-dp-tab;%
-        \rbrace;\percent;}\code-dp-break;%
-      \synt{\rbrace;\percent;}\code-dp-break;%
-      \synt{\bksl;enum-comma\lbrace;un\brokenbar;deux\brokenbar;trois\rbrace;}
-    }
-    \p{
-      により
-    }
-    \code-dp{
-      \synt{un, deux, trois}
-    }
-    \p{
-      を得ることができます。また，2つのトークン列が同一の出力となるかどうかを判定する条件分岐機能%
-      \code{\synt{\bksl;ifsame}}は
-    }
-    \code-dp{
-      \synt{\bksl;ifsame}\synt{\lbrace;} \meta{ExprA} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
-        \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}
-    }
-    \p{
-      という形で使い，\code{\meta{ExprA}}と\code{\meta{ExprB}}が同一出力となる場合は
-      \code{\meta{ExprT}}を，互いに異なる出力となる場合は\code{\meta{ExprF}}を評価します。
+    \subsection{可変長引数の扱い方}{
+      \p{
+        マクロ適用の引数には\newword{可変長リスト}を使用することができます。
+        可変長リストの形の引数を\newword{可変長引数}と呼び，
+
+        \code-dp{
+          \synt{\lbrace;} \meta{Expr1} \synt{\brokenbar;} \meta{Expr2} \synt{\brokenbar;} \metadots; %
+            \synt{\brokenbar;} \meta{ExprN} \synt{\rbrace;}
+        }
+
+        と記述します。マクロ適用時には，可変長リストはひとつの変数に格納されます。
+        この可変長リストを1つづつ切り離す機能が\mcrd`\pop`を用いた\newword{ポップ式}で，
+
+        \code-dp{
+          \synt{\bksl;pop} \synt{\atmark;}\meta{head} \synt{\atmark;}\meta{tail} %
+            \synt{\lbrace;} \meta{Elem1} \synt{\brokenbar;} \meta{Elem2} \synt{\brokenbar;} \metadots; %
+            \synt{\brokenbar;} \meta{ElemN} \synt{\rbrace;}%
+            \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
+        }
+
+        とすると変数\code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
+        変数\code{\synt{\atmark;}\meta{tail}}に%
+        \code{\meta{Elem2} \synt{\brokenbar;} \metadots; %
+          \synt{\brokenbar;} \meta{ElemN}}
+        が格納された上で\code{\meta{Expr}}が評価されます。
+        変数\code{\synt{\atmark;}\meta{head}}，\code{\synt{\atmark;}\meta{tail}}が有効なスコープは
+        \code{\meta{Expr}}内だけであることに注意してください。
+      }
+      \p{
+        なお，可変長リストが1個の要素\code{\meta{Elem1}}だけからなるときは，
+        \code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
+        \code{\synt{\atmark;}\meta{head}}に\newword{空列}が格納された上で\code{\meta{Expr}}が評価され，
+        可変長リストが0要素，つまり空列であるときは
+        \code{\meta{Expr}}が評価されず，ポップ式全体が空列を返します。
+      }
+      \p{
+        可変長リストを扱う例を見てみましょう。
+
+        \mcrd-display```
+          \macro \sep @list {
+            \pop @head @tail {@list;}{
+              (@head;)\sep{@tail;}
+            }
+          }%
+          \sep{bd|gfn|\sep{me|ip}}
+        ```
+
+        に対する出力は
+
+        \mcrd-display```
+          (bd)(gfn)((me)(ip))
+        ```
+
+        となります。
+        \code{\synt{\atmark;}\meta{list}}が空列を格納している場合はポップ式が空列を返すだけなので
+        それ以上再帰が生じずに停止するのです。
+        \comment{
+        より実用的な例としては
+
+        \mcrd-display```
+          \macro \ul @list {<ul>\deeper{@list;}</ul>}%
+          \macro \--ul @list {
+            \pop @head @tail {@list;}{
+              <li>@head;</li>%
+              \ifempty{@tail;}{}{\break;\--ul{@tail;}}
+            }
+          }%
+          \ul{hoge|piyo|fuga|moge}
+        ```
+
+        に対する出力は
+        
+        \mcrd-display```
+          <ul>
+            <li>hoge</li>
+            <li>piyo</li>
+            <li>fuga</li>
+            <li>moge</li>
+          </ul>
+        ```
+        
+        となります。
+        }
+      }
+      \p{
+        このほか，空列かどうかを判定する条件分岐機能\mcrd`\ifempty`があり，
+      }
+      \code-dp{
+        \synt{\bksl;ifempty}%
+          \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
+          \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
+          \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}%
+      }
+      \p{
+        で\code{\meta{ExprB}}が空列のときは\code{\meta{ExprT}}を評価し，
+        空列でない時は\code{\meta{ExprF}}を評価します。
+        これを用いると例えば
+      }
+      \mcrd-display```
+        \macro \enum-comma @list {
+          \pop @head @tail {@list;}{
+            @head;\ifempty{@tail;}{}{, \enum-comma{@tail;}}
+          }
+        }%
+        \enum-comma{un|deux|trois}
+      ```
+      \p{
+        により
+      }
+      \mcrd-display```
+        un, deux, trois
+      ```
+      \p{
+        を得ることができます。また，2つのトークン列が同一の出力となるかどうかを判定する条件分岐機能%
+        \mcrd`\ifsame`は
+      }
+      \code-dp{
+        \synt{\bksl;ifsame}\synt{\lbrace;} \meta{ExprA} \synt{\rbrace;}%
+          \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
+          \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
+          \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}
+      }
+      \p{
+        という形で使い，\code{\meta{ExprA}}と\code{\meta{ExprB}}が同一出力となる場合は
+        \code{\meta{ExprT}}を，互いに異なる出力となる場合は\code{\meta{ExprF}}を評価します。
+      }
     }
   }
-\deepen;}
+}

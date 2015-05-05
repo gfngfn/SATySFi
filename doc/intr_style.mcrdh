@@ -1,41 +1,35 @@
-\macro \settings {%
+\macro \settings {
   \\usepackage\{amsmath\}
   \\usepackage\{amssymb\}
   \\usepackage[T1]\{fontenc\}
   \\usepackage\{lmodern\}
   \\usepackage[dvipdfmx]\{xcolor\}
-  \\setlength\\parskip\{1zh\}%
+  \\setlength\\parskip\{1zw\}
 }%
-\macro \description @dscr {%
-  \\begin\{center\}
+\macro \description @dscr {
+  \\begin\{center\}\deeper{
     \\begin\{tabular\}\{ll\}
-      \\hline%
-        \dscr-sep-lines{@dscr;}%
-      \\hline
+    \\hline\deeper{
+      \dscr-sep-lines{@dscr;}
+    }\\hline
     \\end\{tabular\}
-  \\end\{center\}%
+  }\\end\{center\}
 }%
-\macro \dscr-sep-lines @dscr {%
-  \pop @head @tail {@dscr;}{%
+\macro \dscr-sep-lines @dscr {
+  \pop @head @tail {@dscr;}{
     @head;%
-    \ifempty{@tail;}{%
+    \ifempty{@tail;}{
       \\\\
-    }{%
+    }{
       \\\\
       \\hline%
-      \dscr-sep-lines{@tail;}%
-    }%
-  }%
+      \deeper{\dscr-sep-lines{@tail;}}
+    }
+  }
 }%
-\macro \d-item @di @dd {%
-  @di; & @dd;%
-}%
-\macro \synt @synt {%
-  \\textcolor\{blue\}\{\\texttt\{@synt;\}\}%
-}%
-\macro \newword @nw {%
-  \\textsf\{@nw;\}%
-}%
+\macro \d-item @di @dd {@di; & @dd;}%
+\macro \synt @synt {\\textcolor\{blue\}\{\\texttt\{@synt;\}\}}%
+\macro \newword @nw {\\textsf\{@nw;\}}%
 %
 % ---- tokens ----
 \macro \toksty @tok {\\:\\text\{\\textcolor\{red\}\{$\\underline\{\\mathbf\{@tok;\}\}$\}\}\\:}%
@@ -51,13 +45,11 @@
 \macro \token-sep {\toksty{\|}}%
 \macro \token-end {\toksty{\;}}%
 %
-\macro \math-dp-gather @lst {%
-  \\begin\{align*\}%
-  \--math-dp-gather{@lst;}%
-  \\end\{align*\}%
+\macro \math-dp-gather @lst {
+  \\begin\{align*\}\deeper{\--math-dp-gather{@lst;}}\\end\{align*\}
 }%
-\macro \--math-dp-gather @lst {%
-  \pop @head @tail {@lst;}{%
+\macro \--math-dp-gather @lst {
+  \pop @head @tail {@lst;}{
     @head;\ifempty{@tail;}{}{\\\\\--math-dp-gather{@tail;}}%
   }%
 }%
@@ -67,17 +59,13 @@
     @head;\ifempty{@tail;}{}{ \\enskip\|\\enskip \--cfl{@tail;}}%
   }%
 }%
-\macro \code-dp @code {%
+\macro \code-dp @code {
   \\begin\{center\}%
-    \\parbox\{0.9\\textwidth\}\{@code;\}%
+    \deeper{\\parbox\{0.9\\textwidth\}\{@code;\}}%
   \\end\{center\}%
 }%
-\macro \code @code {%
-  @code;%
-}%
+\macro \code @code {@code;}%
 \macro \code-dp-break {\\\\}%
 \macro \code-dp-tab {\\\ \\\ }%
-\macro \meta @metacode {%
-  \\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}%
-}%
+\macro \meta @metacode {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}}%
 \macro \metadots {$\\ldots$}%

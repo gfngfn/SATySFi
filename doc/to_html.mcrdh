@@ -1,37 +1,52 @@
-\macro \main @main {@main;}%
-\macro \head @head {<head>@head;</head>}%
-\macro \title @title {<title>@title;</title>}%
-\macro \author @author {}%
-\macro \body @body {<body>@body;</body>}%
-\macro \section @sec {<h1>@sec;</h1>}%
-\macro \subsection @subsec {<h2>@subsec;</h2>}%
-\macro \p @p {<p>@p;</p>}%
+\macro \comment @cmt {}%
+\macro \document @head @body {
+  <html>\deeper{
+    <head>\deeper{
+      @head;
+    }</head>
+    <body><div class="main">\deeper{
+      @body;
+    }</div></body>
+  }</html>
+}%
+\macro \title @title {<title>@title;</title>\macro \--title {@title;}}%
+\macro \author @author {<meta name="author" content="@author;">\macro \--author {@author;}}%
+\macro \maketitle {
+  <div class="maketitle">\deeper{
+    <div class="title">\--title;</div>
+    <div class="author">\--author;</div>
+  }</div>
+}%
+\macro \section @sec @cont {<h1>@sec;</h1>\deeper{@cont;}}%
+\macro \subsection @subsec @cont {<h2>@subsec;</h2>\deeper{@cont;}}%
+\macro \p @p {<p>\deeper{@p;}</p>}%
 \macro \footnote @footnote {}%
-\macro \row @row-content {%
-  \pop @cell @rest {@row-content;}{%
-    <td>@cell;</td>\ifempty{@rest;}{}{\row{@rest;}}%
-  }%
+\macro \row @row-content {
+  \pop @cell @rest {@row-content;}{
+    <td>@cell;</td>\ifempty{@rest;}{}{\row{@rest;}}
+  }
 }%
-\macro \table @option @table {%
-  <table>\--table{@table;}</table>%
+\macro \table @option @table {
+  <table>\deeper{\--table{@table;}}</table>
 }%
-\macro \--table @table-content {%
-  \pop @row @rest {@table-content;}{%
-    <tr>@row;</tr>\ifempty{@rest;}{}{\--table{@rest;}}%
-  }%
+\macro \--table @table-content {
+  \pop @row @rest {@table-content;}{
+    <tr>\deeper{@row;}</tr>%
+    \ifempty{@rest;}{}{\break;\--table{@rest;}}%
+  }
 }%
-\macro \itemize @list {<ul>\--itemize{@list;}</ul>}%
-\macro \--itemize @list {%
-  \pop @head @tail {@list;}{%
-    <li>@head;</li>\ifempty{@tail;}{}{\--itemize{@tail;}}%
-  }%
+\macro \itemize @list {<ul>\deeper{\--itemize{@list;}}</ul>}%
+\macro \--itemize @list {
+  \pop @head @tail {@list;}{
+    <li>@head;</li>\ifempty{@tail;}{}{\break;\--itemize{@tail;}}
+  }
 }%
 %
-\macro \math @math { <span class="math">@math;</span> }%
+\macro \math @math {\ <span class="math">@math;</span>\ }%
 \macro \epsilon {ε}%
 %
-\macro \url @url { <code>@url;</code> }%
-\macro \url-dp @url {<div class="centered">\url{@url;}</div>}%
+\macro \url @url {\ <code>@url;</code>\ }%
+\macro \url-display @url {<div class="centered">\deeper{\url{@url;}}</div>}%
 \macro \to-latex @c {}%
 \macro \TeX {TeX}%
 \macro \LaTeX {LaTeX}%

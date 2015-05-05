@@ -1,29 +1,100 @@
+body {
+  font-family: メイリオ;
+  background-color: #888888;
+}
+.main {
+	/* max-width: 700px; */
+  background-color: #eeeeee;
+  padding-left: 5%;
+  padding-right: 5%;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-width: 2pt;
+  margin-left: 15%;
+  margin-right: 15%;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.maketitle {
+  width: 80%;
+  text-align: center;
+  border-width: 8px;
+  border-color: #444444;
+  border-style: double;
+  margin-left: auto;
+  margin-right: auto;
+}
+.title {
+  width: 96%;
+  text-align: center;
+  font-size: 40px;
+  border-width: 2px;
+  border-color: #444444;
+  border-bottom-style: solid;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+.author {
+  text-align: center;
+  font-size: 25px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+p {
+  text-indent: 1em;
+}
+h1 {
+  text-indent: 10pt;
+  background-color: #cccccc;
+  border-width: 6pt;
+  border-top-style: double;
+  border-bottom-style: double;
+  border-color: #444444;
+  margin-top: 30pt;
+}
+h2 {
+  border-width: 2pt;
+  border-bottom-style: solid;
+  border-color: #444444;
+}
 dfn {
-	font-style: normal;
+  font-style: normal;
+  font-weight: bold;
 }
 code {
-  font-family: Courier new;
+  font-family: "Latin Modern Typewriter 10", "Consolas", "Lucida Console", "Courier new", "Courier", monospace;
+  font-size: 1.1em;
 }
 .synt {
   color: #4444ff;
 }
 .meta {
-  color: #cc44ff;
+  color: #aa22ff;
   font-style: italic;
 }
 .centered {
-	width: 500px;
-	margin-left: auto;
-	margin-right: auto;
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }
 .math {
   font-style: italic;
 }
 .toksty {
-	font-style: normal;
-	color: red;
+  font-style: normal;
+  color: red;
 }
 .code-display {
-	text-align: left;
-	margin-left: 50px;
+  width: 80%;
+  color: #4444ff;
+  font-style: normal;
+  text-align: left;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 20px;
+  margin-bottom: 20px;
 }

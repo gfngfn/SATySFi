@@ -4,7 +4,8 @@
   type location = abstract_tree ref
   type var_environment = (var_name, location) Assoclist.t
   type macro_environment = (macro_name, macro_location) Assoclist.t
-  and function_spec = DummyFunc | Func of (var_name list) * abstract_tree * abstract_tree * macro_environment * var_environment
+  and function_spec = DummyFunc
+                    | Func of (var_name list) * abstract_tree * abstract_tree * macro_environment * var_environment
   and macro_location = function_spec ref
 
   let report_error errmsg =
@@ -12,7 +13,8 @@
     print_newline ()
 
   let report_detail dtlmsg =
-    print_string ("  " ^ dtlmsg) ; print_newline ()
+    print_string ("  " ^ dtlmsg) ;
+    print_newline ()
 
   (* for test *)
   let print_process stat =
@@ -54,29 +56,29 @@
                       EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_break := Func([], BreakAndIndent, EmptyAbsBlock, !menv_main, !venv_main) ;
       loc_ifempty := Func(["~subj"; "~tru"; "~fls"],
-                       PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitiveIfEmpty(ContentOf("~subj"), ContentOf("~tru"), ContentOf("~fls")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       loc_ifsame := Func(["~subj1"; "~subj2"; "~tru"; "~fls"],
-                       PrimitiveIfSame(ContentOf("~subj1"), ContentOf("~subj2"), ContentOf("~tru"), ContentOf("~fls")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitiveIfSame(ContentOf("~subj1"), ContentOf("~subj2"), ContentOf("~tru"), ContentOf("~fls")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       loc_replace := Func(["~name"; "~before"; "~after"],
-                       PrimitiveReplace(ContentOf("~name"), ContentOf("~before"), ContentOf("~after")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitiveReplace(ContentOf("~name"), ContentOf("~before"), ContentOf("~after")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       loc_prefix := Func(["~name"; "~prefix"],
-                       PrimitivePrefix(ContentOf("~name"), ContentOf("~prefix")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitivePrefix(ContentOf("~name"), ContentOf("~prefix")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       loc_postfix := Func(["~name"; "~postfix"],
-                       PrimitivePostfix(ContentOf("~name"), ContentOf("~postfix")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitivePostfix(ContentOf("~name"), ContentOf("~postfix")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       loc_include := Func(["~filename"],
-                       PrimitiveInclude(ContentOf("~filename")),
-                       EmptyAbsBlock, !menv_main, !venv_main
-                     ) ;
+                        PrimitiveInclude(ContentOf("~filename")),
+                        EmptyAbsBlock, !menv_main, !venv_main
+                      ) ;
       interpret menv_main venv_main abstr
 
   (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
@@ -160,10 +162,7 @@
             report_detail ("Included '" ^ str_file_name ^ "'.") ;
             let str_content =
               try Files.string_of_file_in str_file_name with
-                Sys_error(s) -> (
-                    report_error ("System error at \\include - " ^ s) ;
-                    ""
-                  )
+                Sys_error(s) -> ( report_error ("System error at \\include - " ^ s) ; "" )
             in
             let lexed_content = Mcdlexer.mcdlex str_content in
             let parsed_content = Mcdparser.mcdparser lexed_content in
@@ -176,12 +175,6 @@
           print_process "$DeeperIndent(" ;
           let res = interpret menv venv abstr in
             print_process ")" ; DeeperIndent(res)
-        )
-
-    | ShallowerIndent(abstr) -> (
-          print_process "$ShallowerIndent(" ;
-          let res = interpret menv venv abstr in
-            print_process ")" ; ShallowerIndent(res)
         )
 
     | BreakAndIndent -> (

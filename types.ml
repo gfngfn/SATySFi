@@ -46,7 +46,6 @@ type abstract_tree = EmptyAbsBlock
                    | OutputOfLiteral of letter
                    | BreakAndIndent
                    | DeeperIndent of abstract_tree
-                   | ShallowerIndent of abstract_tree
 
 
 (* for Mcdsemantics *)
