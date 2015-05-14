@@ -12,8 +12,8 @@
 
       \url-display{http://github.com/gfngfn/Macrodown}
 
-      で公開しています。この文書もMacrodownを経由してHTMLソースコードとLaTeXソースコードを出力し，
-      LaTeXソースコードの方は\pLaTeX2e;とdvipdfmxで組んでいます。
+      で公開しています。この文書もMacrodownを経由してHTMLソースコードと\LaTeX;ソースコードを出力し，
+      \LaTeX;ソースコードの方は\pLaTeX2e;とdvipdfmxで組んでいます。
     }
   }
   \section{動機}{
@@ -63,29 +63,25 @@
       |
         \d-item{\mcrd`\pop`}{\math{\token-pop;}：\newword{ポップ機能トークン}}
       |
-        \d-item{\synt{\bksl;}（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
+        \d-item{\mcrd`\`（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
       |
-        \d-item{\synt{\atmark;}（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
+        \d-item{\mcrd`@`（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
       |
-        \d-item{\synt{\numsign;}（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
+        \d-item{\mcrd`#`（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
       |
-        \d-item{\synt{\lbrace;}}{\math{\token-bgrp;}：\newword{開きトークン}}
+        \d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{開きトークン}}
       |
-        \d-item{\synt{\rbrace;}}{\math{\token-egrp;}：\newword{閉じトークン}}
+        \d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{閉じトークン}}
       |
-        \d-item{\synt{\;}}{\math{\token-end;}：\newword{無引数終端トークン}}
+        \d-item{\mcrd`;`}{\math{\token-end;}：\newword{無引数終端トークン}}
       |
-        \d-item{\synt{\brokenbar;}}{\math{\token-sep;}：\newword{区切りトークン}}
+        \d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
       |
-        \d-item{\synt{\bksl;}（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
+        \d-item{\mcrd`\`（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
       |
-        \d-item{\mcrd`` ` ``}{\math{\token-qt;}：リテラルブロックトークン}
+        \d-item{\mcrd`` ` ``}{\math{\token-qt;}：\newword{リテラルブロックトークン}}
       |
         \d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
-      }
-      \p{
-        ただし，このうちID名トークンを扱う操作は近い将来実装豫定なので，
-        現在のところID名トークンには用途がありません。
       }
     }
     \subsection{空白類を無視する条件}{

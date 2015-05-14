@@ -1,0 +1,30 @@
+\macro \enclose-each @left @right @list {
+  \pop @head @tail {@list;}{
+    @left;@head;@right;%
+    \ifempty{@tail;}{}{
+      \break;\enclose-each{@left;}{@right;}{@tail;}
+    }
+  }
+}%
+\macro \ul @list {
+  <ul>\deeper{
+    \enclose-each{<li>}{</li>}{@list;}
+  }</ul>
+}%
+\macro \ol @list {
+  <ol>\deeper{
+    \enclose-each{<li>}{</li>}{@list;}
+  }</ol>
+}%
+% ---- ---- ---- ----
+\ul{
+    hoge
+  | piyo
+  | fuga
+  | moge
+}
+\ol{
+    foo
+  | bar
+  | baz
+}

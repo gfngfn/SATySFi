@@ -9,8 +9,9 @@
 }%
 \macro \title @title {\\title\{@title;\}}%
 \macro \author @author {\\author\{@author;\}}%
-\macro \section @sec {\\section\{@sec;\}}%
-\macro \subsection @subsec {\\subsection\{@subsec;\}}%
+\macro \maketitle {\\maketitle}%
+\macro \section @sec @cont {\\section\{@sec;\}\deeper{@cont;}\%}%
+\macro \subsection @subsec @cont {\\subsection\{@subsec;\}\deeper{@cont;}\%}%
 \macro \p @p {\\indent\deeper{@p;}\\par}%
 \macro \footnote @footnote {\\footnote\{@footnote;\}}%
 \macro \row @row-content {
@@ -59,3 +60,22 @@
 \macro \bksl {\\symbol\{"5C\}}%
 \macro \numsign {\\\#}%
 \macro \percent {\\\%}%
+\macro \escape-for-latex @str {
+  \pop-char @hdch @tlstr {@str;}{
+    \ifsame {@hdch;}{\{}{\\\{}{
+      \ifsame {@hdch;}{\}}{\\\}}{
+        \ifsame {@hdch;}{\#}{\\\#}{
+          \ifsame {@hdch;}{\\}{\\symbol\{"5C\}}{
+            \ifsame {@hdch;}{\%}{\\\%}{
+              \ifsame {@hdch;}{$}{\\$}{
+                \ifsame {@hdch;}{_}{\\_}{
+                  @hdch;
+                }
+              }
+            }
+          }
+        }
+      }
+    }\escape-for-latex{@tlstr;}
+  }
+}%

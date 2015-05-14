@@ -1,0 +1,2 @@
+\macro \arity2 @u @v {(@u;, @v;)}%
+\arity2{hoge}

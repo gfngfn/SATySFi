@@ -4,6 +4,9 @@
   \\usepackage[T1]\{fontenc\}
   \\usepackage\{lmodern\}
   \\usepackage[dvipdfmx]\{xcolor\}
+  \\usepackage[dvipdfmx]\{graphicx\}
+  \\usepackage\{apmayfes2015deco\}
+  \\usepackage\{tikz\}
   \\setlength\\parskip\{1zw\}
 }%
 \macro \description @dscr {
@@ -23,7 +26,7 @@
     }{
       \\\\
       \\hline%
-      \deeper{\dscr-sep-lines{@tail;}}
+      \dscr-sep-lines{@tail;}
     }
   }
 }%
@@ -44,6 +47,7 @@
 \macro \token-egrp {\toksty{\\\}}}%
 \macro \token-sep {\toksty{\|}}%
 \macro \token-end {\toksty{\;}}%
+\macro \token-qt {\toksty{\`}}%
 %
 \macro \math-dp-gather @lst {
   \\begin\{align*\}\deeper{\--math-dp-gather{@lst;}}\\end\{align*\}
@@ -69,3 +73,8 @@
 \macro \code-dp-tab {\\\ \\\ }%
 \macro \meta @metacode {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}}%
 \macro \metadots {$\\ldots$}%
+\macro \mcrd-display @code {
+  \\begin\{verbatim\}@code;\\end\{verbatim\}
+}%
+\macro \mcrd @code {\synt{\escape-for-latex{@code;}}}%
+\macro \url-display @url {\\texttt\{@url;\}}%

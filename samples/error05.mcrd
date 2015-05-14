@@ -1,0 +1,5 @@
+\ifempty{}{}
+\ifempty{a}{b}
+\ifempty{}{}{}{}
+\ifempty{c}{d}{}{}
+\ifsame{}{}{}
