@@ -16,13 +16,15 @@
   let ignore_space : bool ref = ref false
   let in_comment : bool ref = ref false
   let in_literal : bool ref = ref false
+  let in_proto : bool ref = ref false
+  let numexprdepth : int ref = ref 0
   let openqtdepth : int ref = ref 0
   let closeqtdepth : int ref = ref 0
 
   let get_last_token () =
     String.sub !input_buffer !pos_start (!pos_last - !pos_start)
 
-  let save_token_type toktp =
+  let save toktp =
     last_token_type := toktp ;
     pos_last := !pos_current
 
@@ -48,18 +50,8 @@
   let output_token () = 
     let lasttok = get_last_token () in
       match !last_token_type with
-        CTRLSEQ_TYPE
-          -> (
-            (
-              match lasttok with
-                "\\macro" -> Sequence.append output_sequence (MACRO)
-              | "\\macro-with-id" -> Sequence.append output_sequence (MACROWID)
-              | "\\pop" -> Sequence.append output_sequence (POP)
-              | "\\pop-char" -> Sequence.append output_sequence (POPCHAR)
-              | _ -> Sequence.append output_sequence (CTRLSEQ(lasttok))
-            ) ;
-            ignore_space := true
-          )
+      | CTRLSEQ_TYPE
+          -> ( Sequence.append output_sequence (CTRLSEQ(lasttok)) ; ignore_space := true )
       | VAR_TYPE
           -> ( Sequence.append output_sequence (VAR(lasttok)) ; ignore_space := true )
 
@@ -83,7 +75,7 @@
           -> (
               (
                 match Sequence.get_last output_sequence with
-                  BREAK -> Sequence.omit_last output_sequence
+                | BREAK -> Sequence.omit_last output_sequence
                 | SPACE -> Sequence.omit_last output_sequence
                 | _ -> ()
               ) ;
@@ -96,7 +88,7 @@
           -> (
               (
                 match Sequence.get_last output_sequence with
-                  BREAK -> Sequence.omit_last output_sequence
+                | BREAK -> Sequence.omit_last output_sequence
                 | SPACE -> Sequence.omit_last output_sequence
                 | _ -> ()
               ) ;
@@ -156,67 +148,92 @@
     ignore_space := true ;
     in_comment := false ;
     in_literal := false ;
+    in_proto := true ;
+    numexprdepth := 0 ;
 
     q_ini () ;
     Sequence.append output_sequence END_OF_INPUT ;
     Sequence.to_list !output_sequence
 
-  and q_ini () =
-    if !in_comment then
+  and q_ini_comment () =
       match read_char () with
-        '\n' -> ( save_token_type END_OF_COMMENT_TYPE ; next () )
-      | _ -> ( save_token_type IGNORED_TYPE ; next () )
+        '\n' -> ( save END_OF_COMMENT_TYPE ; next () )
+      | _ -> ( save IGNORED_TYPE ; next () )
 
-    else if !in_literal then (
-      print_process "q_ini (in literal)" ;
+  and q_ini_literal () =
       match read_char () with
         '`' -> (
             closeqtdepth := 1 ;
-            (
-              if !openqtdepth == 1 then
-                save_token_type CLOSEQT_TYPE
-              else
-                save_token_type CHAR_TYPE
-            ) ;
+            save (if !openqtdepth == 1 then CLOSEQT_TYPE else CHAR_TYPE) ;
             q_end_literal ()
           )
-    (*  | ' ' -> ( save_token_type SPACE_TYPE ; next () ) *)
-    (*  | '\n' -> ( save_token_type BREAK_TYPE ; next () ) *)
       | '\000' -> report_error "input ended while reading literal block"
-      | _ -> ( save_token_type CHAR_TYPE ; next () )
+      | _ -> ( save CHAR_TYPE ; next () )
 
-    ) else (
+  and q_ini_proto () =
       match read_char () with
-        ';' -> ( save_token_type END_TYPE ; next () )
-      | '{' -> ( save_token_type BGRP_TYPE ; next () )
-      | '}' -> ( save_token_type EGRP_TYPE ; next () )
-      | '\\' -> ( save_token_type CTRLSEQ_TYPE ; q_escape () )
-      | '@' -> ( save_token_type VAR_TYPE ; q_var () )
-      | '#' -> ( save_token_type ID_TYPE ; q_id () )
-      | '|' -> ( save_token_type SEP_TYPE ; next () )
-      | ' ' -> ( save_token_type SPACE_TYPE ; next () )
-      | '\t' -> ( save_token_type SPACE_TYPE ; next () )
-      | '\n' -> ( save_token_type BREAK_TYPE ; next () )
+      | ';' -> ( save END_TYPE ; next () )
+      | '{' -> ( in_proto := false ; save BGRP_TYPE ; next () )
+      | '@' -> ( save VAR_TYPE ; q_var () )
+      | '#' -> ( save ID_TYPE ; q_id () )
+      | '.' -> ( save CLASS_TYPE ; q_class () )
+      | '(' -> ( numexprdepth := 1 ; save OPENNUM_TYPE ; next () )
+
+  and q_ini_numexpr () =
+      match read_char () with
+      | '(' -> (
+            numexprdepth := !numexprdepth + 1 ;
+            save LPAREN_TYPE ;
+            next ()
+          )
+      | ')' -> (
+            numexprdepth := !numexprdepth - 1 ;
+            save (if !numexprdepth == 0 then CLOSENUM_TYPE else RPAREN_TYPE) ;
+            next ()
+          )
+      | '+' -> ( save PLUS_TYPE ; next () )
+      | '-' -> ( save MINUS_TYPE ; next () )
+      | '*' -> ( save TIMES_TYPE ; next () )
+      | '/' -> ( save DIVIDES_TYPE ; next () )
+      | '=' -> ( save EQUAL_TYPE ; next () )
+      | '&' -> ( save AND_TYPE ; next () )
+      | '|' -> ( save OR_TYPE ; next () )
+      | '^' -> ( save CONCAT_TYPE ; next () )
+      | '{' -> ( save OPENSTR_TYPE ; next () )
+      | '}' -> report_error "'}' emerged in program level"
+
+  and q_ini () =
+      match read_char () with
+      | ';' -> ( save END_TYPE ; next () )
+      | '{' -> ( save BGRP_TYPE ; next () )
+      | '}' -> ( save EGRP_TYPE ; next () )
+      | '\\' -> ( save CTRLSEQ_TYPE ; q_escape () )
+      | '@' -> ( save VAR_TYPE ; q_var () )
+      | '#' -> ( save ID_TYPE ; q_id () )
+      | '|' -> ( save SEP_TYPE ; next () )
+      | ' ' -> ( save SPACE_TYPE ; next () )
+      | '\t' -> ( save SPACE_TYPE ; next () )
+      | '\n' -> ( save BREAK_TYPE ; next () )
       | '`' -> (
             openqtdepth := 1 ;
-            save_token_type OPENQT_TYPE ;
+            save OPENQT_TYPE ;
             q_begin_literal ()
           )
-      | '%' -> ( save_token_type COMMENT_TYPE ; next () )
+      | '%' -> ( save COMMENT_TYPE ; next () )
       | '\000' -> print_process "[END OF LEXER]"
-      | _ -> ( save_token_type CHAR_TYPE ; next () )
+      | _ -> ( save CHAR_TYPE ; next () )
     )
 
   and q_escape () =
     print_process "q_escape" ;
     let rdch = read_char () in
       match rdch with
-        '\000' -> (report_error "input ended by escape")
+      | '\000' -> (report_error "input ended by escape")
       | _ -> (
           if (is_basic_char rdch) then (
-            save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
+            save CTRLSEQ_TYPE ; q_ctrlseq ()
           ) else (
-            save_token_type CHAR_TYPE ; pos_start := !pos_start + 1 ; next ()
+            save CHAR_TYPE ; pos_start := !pos_start + 1 ; next ()
           )
         )
 
@@ -224,8 +241,9 @@
     print_process "q_ctrlseq" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
-        save_token_type CTRLSEQ_TYPE ; q_ctrlseq ()
+        save CTRLSEQ_TYPE ; q_ctrlseq ()
       ) else (
+        in_proto := true ;
         next ()
       )
 
@@ -233,8 +251,9 @@
     print_process "q_var" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
-        save_token_type VAR_TYPE ; q_var ()
+        save VAR_TYPE ; q_var ()
       ) else (
+        in_proto := true ;
         next ()
       )
 
@@ -242,8 +261,19 @@
     print_process "q_id" ;
     let rdch = read_char () in
       if (is_basic_char rdch) then (
-        save_token_type ID_TYPE ; q_id ()
+        save ID_TYPE ; q_id ()
       ) else (
+        in_proto := true ;
+        next ()
+      )
+
+  and q_class () =
+    print_process "q_class" ;
+    let rdch = read_char () in
+      if (is_basic_char rdch) then (
+        save CLASS_TYPE ; q_class ()
+      ) else (
+        in_proto := true ;
         next ()
       )
 
@@ -253,7 +283,7 @@
       match rdch with
         '`' -> (
               openqtdepth := !openqtdepth + 1 ;
-              save_token_type OPENQT_TYPE ;
+              save OPENQT_TYPE ;
               q_begin_literal ()
             )
       | '\000' -> report_error "input ended while reading the beginning of literal block"
@@ -267,9 +297,9 @@
           closeqtdepth := !closeqtdepth + 1 ;
           (
             if !closeqtdepth < !openqtdepth then
-              save_token_type CHAR_TYPE
+              save CHAR_TYPE
             else if !closeqtdepth == !openqtdepth then
-              save_token_type CLOSEQT_TYPE
+              save CLOSEQT_TYPE
             else
               report_error "literal block closed with too many '`'s"
           )
@@ -283,4 +313,13 @@
     pos_start := !pos_last ;
     pos_current := !pos_start ;
     last_token_type := INVALID_TYPE ;
-    q_ini ()
+    if !in_comment then
+      q_ini_comment ()
+    else if !in_literal then
+      q_ini_literal ()
+    else if !in_proto then
+      q_ini_proto ()
+    else if !in_numexpr >= 1 then
+      q_ini_numexpr ()
+    else
+      q_ini ()

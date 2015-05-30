@@ -1,6 +1,4 @@
 (* signature for Sequence *)
-  open Types
-
   type 'a t
 
   val empty : 'a t

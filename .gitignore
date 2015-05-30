@@ -11,5 +11,5 @@
 bin/
 old/
 test/
-test_of_mcd.txt
-memo.txt
+parser.ml
+parser.mli

@@ -1,22 +1,41 @@
 (* mainly for Mcdlexer *)
 
-exception SequenceUnderflow
 type macro_name = string
 type var_name = string
 type id_name = string
-type literal_name = string
-type letter = string
-type token = CTRLSEQ of macro_name | VAR of var_name | ID of id_name
-           | END | BGRP | EGRP | SEP | CHAR of letter
-           | BEGINNING_OF_INPUT | END_OF_INPUT
-           | BREAK | SPACE
-           | MACRO | MACROWID | POP | POPCHAR
-           | OPENQT | CLOSEQT
+type class_name = string
+
+type token =
+(* numeric token *)
+  | NUMCONST of string
+  | NUMVAR of var_name
+  | LET | IN
+  | IF | THEN | ELSE
+  | FUNC | MACRO | DEFEQ
+  | LPAREN | RPAREN
+  | TIMES | DIVIDES | MOD | PLUS | MINUS | UMINUS
+  | EQ | NEQ | GEQ | LEQ | GT | LT
+  | LAND | LOR | LNOT
+  | CONCAT
+  | SEQEXEC
+  | OPENSTR | CLOSESTR
+  | EOI
+(* string token *)
+  | CHAR of string
+  | BREAK | SPACE
+  | CTRLSEQ of macro_name
+  | STRVAR of var_name
+  | IDNAME of id_name
+  | CLASSNAME of class_name
+  | BGRP | EGRP
+  | OPENQT | CLOSEQT
+  | OPENNUM | CLOSENUM
+  | END
+  | SEP
 
 
 (* mainly for Mcdparser *)
 
-exception StackUnderflow
 exception LineUnderflow
 type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep | CharOfLiteral
 type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
@@ -25,24 +44,20 @@ type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
 (* mainly for Mcdabs *)
 
 type abstract_id_name = NoID | RealID of id_name
-type abstract_tree = EmptyAbsBlock
-                   | AbsBlock of abstract_tree * abstract_tree
-                   | ContentOf of var_name
-                   | Output of letter
-                   | Pop of var_name * var_name * abstract_tree * abstract_tree
-                   | PopChar of var_name * var_name * abstract_tree * abstract_tree
-                   | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
-                   | Apply of macro_name * abstract_id_name * (abstract_tree list)
-                   | Invalid
-                   | UnderConstruction
-                       (* for 'compensate' *)
-                   | Separated of abstract_tree * abstract_tree
-                   | PrimitiveIfEmpty of abstract_tree * abstract_tree * abstract_tree
-                   | PrimitiveIfSame of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-                   | PrimitiveInclude of abstract_tree
-                   | OutputOfLiteral of letter
-                   | BreakAndIndent
-                   | DeeperIndent of abstract_tree
+type abstract_tree =
+  | EmptyAbsBlock
+  | AbsBlock of abstract_tree * abstract_tree
+  | StringContentOf of var_name
+  | NumericContentOf of var_name
+  | StringConstant of string
+  | NumericConstant of int
+  | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
+  | Apply of macro_name * abstract_id_name * (abstract_tree list)
+  | Invalid
+  | UnderConstruction (* for 'compensate' *)
+  | Separated of abstract_tree * abstract_tree
+  | BreakAndIndent
+  | DeeperIndent of abstract_tree
 
 
 (* for Mcdsemantics *)

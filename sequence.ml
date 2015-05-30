@@ -1,6 +1,6 @@
-open Types
-
   type 'a t = 'a list
+
+  exception SequenceUnderflow
 
   let empty = []
 
