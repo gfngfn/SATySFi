@@ -11,7 +11,7 @@ type token =
   | NUMVAR of var_name
   | LET | IN
   | IF | THEN | ELSE
-  | FUNC | MACRO | DEFEQ
+  | FUN | DEFEQ
   | LPAREN | RPAREN
   | TIMES | DIVIDES | MOD | PLUS | MINUS | UMINUS
   | EQ | NEQ | GEQ | LEQ | GT | LT

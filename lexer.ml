@@ -12,7 +12,7 @@
                   | LPAREN_TYPE | RPAREN_TYPE
                   | PLUS_TYPE | MINUS_TYPE
                   | TIMES_TYPE | DIVIDES_TYPE
-                  | EQUAL_TYPE
+                  | EQ_TYPE
                   | LAND_TYPE | LOR_TYPE
                   | CONCAT_TYPE
 
@@ -29,6 +29,12 @@
   let strdepth : int ref = ref 0
   let openqtdepth : int ref = ref 0
   let closeqtdepth : int ref = ref 0
+
+  let print_process stat =
+  
+    print_string (stat ^ "\n") ;
+  
+    ()
 
   let increment rn =
     rn := !rn + 1
@@ -62,106 +68,106 @@
     print_string ("    to " ^ (string_of_int !pos_current) ^ "\n") ;
     output_sequence := Sequence.of_list [EOI]
 
-  let print_process stat =
-  
-    print_string (stat ^ "\n") ;
-  
-    ()
+  let rec omit_last_spaces () =
+    match Sequence.get_last output_sequence with
+    | BREAK -> ( Sequence.omit_last output_sequence ; omit_last_spaces () )
+    | SPACE -> ( Sequence.omit_last output_sequence ; omit_last_spaces () )
+    | _ -> ()
 
   let output_token () = 
     let lasttok = get_last_token () in
       match !last_token_type with
-      | CTRLSEQ_TYPE
-          -> ( Sequence.append output_sequence (CTRLSEQ(lasttok)) ; ignore_space := true )
-      | STRVAR_TYPE
-          -> ( Sequence.append output_sequence (STRVAR(lasttok)) ; ignore_space := true )
-
-      | IDNAME_TYPE
-          -> ( Sequence.append output_sequence (IDNAME(lasttok)) ; ignore_space := true )
-
-      | CLASSNAME_TYPE
-          -> ( Sequence.append output_sequence (CLASSNAME(lasttok)) ; ignore_space := true )
-
-      | END_TYPE
-          -> ( Sequence.append output_sequence END ; ignore_space := false )
-
-      | BGRP_TYPE
-          -> (
-            (
-              match Sequence.get_last output_sequence with
-                BREAK -> Sequence.omit_last output_sequence
-              | SPACE -> Sequence.omit_last output_sequence
-              | _ -> ()
-            ) ;
-            Sequence.append output_sequence BGRP ; ignore_space := true
-          )
-      | EGRP_TYPE
-          -> (
-              (
-                match Sequence.get_last output_sequence with
-                | BREAK -> Sequence.omit_last output_sequence
-                | SPACE -> Sequence.omit_last output_sequence
-                | _ -> ()
-              ) ;
-              Sequence.append output_sequence EGRP ; ignore_space := false
-            )
-      | CHAR_TYPE
-          -> ( Sequence.append output_sequence (CHAR(lasttok)) ; ignore_space := false )
-
-      | SEP_TYPE
-          -> (
-              (
-                match Sequence.get_last output_sequence with
-                | BREAK -> Sequence.omit_last output_sequence
-                | SPACE -> Sequence.omit_last output_sequence
-                | _ -> ()
-              ) ;
-              Sequence.append output_sequence SEP ;
-              ignore_space := true
-          )
-      | SPACE_TYPE
-          -> (
-            if !ignore_space then () else
-              Sequence.append output_sequence SPACE
-          )
-      | BREAK_TYPE
-          -> (
-              if !ignore_space then () else
-                Sequence.append output_sequence BREAK
-              ;
-              ignore_space := true
-            )
-      | OPENQT_TYPE
-          -> (
-            (
-              match Sequence.get_last output_sequence with
-                BREAK -> Sequence.omit_last output_sequence
-              | SPACE -> Sequence.omit_last output_sequence
-              | _ -> ()
-            ) ;
-            Sequence.append output_sequence OPENQT ;
+      | CTRLSEQ_TYPE -> (
+            Sequence.append output_sequence (CTRLSEQ(lasttok)) ;
             ignore_space := true
           )
-      | CLOSEQT_TYPE
-          -> (
-            Sequence.append output_sequence CLOSEQT ;
+      | STRVAR_TYPE -> (
+            Sequence.append output_sequence (STRVAR(lasttok)) ;
+            ignore_space := true
+          )
+      | IDNAME_TYPE -> (
+            Sequence.append output_sequence (IDNAME(lasttok)) ;
+            ignore_space := true
+          )
+      | CLASSNAME_TYPE -> (
+            Sequence.append output_sequence (CLASSNAME(lasttok)) ;
+            ignore_space := true
+          )
+      | END_TYPE -> (
+            Sequence.append output_sequence END ;
+            ignore_space := false
+          )
+      | BGRP_TYPE -> (
+            omit_last_spaces () ;
+            Sequence.append output_sequence BGRP ;
+            ignore_space := true
+          )
+      | EGRP_TYPE -> (
+            omit_last_spaces () ;
+            Sequence.append output_sequence EGRP ;
+            ignore_space := false
+          )
+      | CHAR_TYPE -> (
+            Sequence.append output_sequence (CHAR(lasttok)) ;
             ignore_space := false
           )
 
+      | SEP_TYPE -> (
+            omit_last_spaces () ;
+            Sequence.append output_sequence SEP ;
+            ignore_space := true
+          )
+      | SPACE_TYPE -> (
+            if !ignore_space then () else
+              Sequence.append output_sequence SPACE
+          )
+      | BREAK_TYPE -> (
+            if !ignore_space then () else
+              Sequence.append output_sequence BREAK
+            ;
+            ignore_space := true
+          )
+      | OPENQT_TYPE -> (
+            omit_last_spaces () ;
+            Sequence.append output_sequence OPENQT ;
+            ignore_space := true
+          )
+      | CLOSEQT_TYPE -> (
+            Sequence.append output_sequence CLOSEQT ;
+            ignore_space := false
+          )
       | COMMENT_TYPE -> ()
 
       | END_OF_COMMENT_TYPE -> ( ignore_space := true )
 
       | IGNORED_TYPE -> ()
 
-      | NUMCONST_TYPE -> Sequence.append output_sequence (NUMCONST(lasttok))
+      | NUMCONST_TYPE -> (
+            match lasttok with
+            | "if" -> Sequence.append output_sequence IF
+            | "then" -> Sequence.append output_sequence THEN
+            | "else" -> Sequence.append output_sequence ELSE
+            | "let" -> Sequence.append output_sequence LET
+            | "in" -> Sequence.append output_sequence IN
+            | "fun" -> Sequence.append output_sequence FUN
+            | "mod" -> Sequence.append output_sequence MOD
+            | _ -> Sequence.append output_sequence (NUMCONST(lasttok))
+          )
 
       | NUMVAR_TYPE -> Sequence.append output_sequence (NUMVAR(lasttok))
 
       | OPENNUM_TYPE -> Sequence.append output_sequence OPENNUM
+
       | CLOSENUM_TYPE -> Sequence.append output_sequence CLOSENUM
-      | OPENSTR_TYPE -> Sequence.append output_sequence OPENSTR
-      | CLOSESTR_TYPE -> Sequence.append output_sequence CLOSESTR
+
+      | OPENSTR_TYPE -> (
+            Sequence.append output_sequence OPENSTR ;
+            ignore_space := true
+          )
+      | CLOSESTR_TYPE -> (
+            omit_last_spaces () ;
+            Sequence.append output_sequence CLOSESTR
+          )
 
       | LPAREN_TYPE -> Sequence.append output_sequence LPAREN
       | RPAREN_TYPE -> Sequence.append output_sequence RPAREN
@@ -169,7 +175,7 @@
       | MINUS_TYPE -> Sequence.append output_sequence MINUS
       | TIMES_TYPE -> Sequence.append output_sequence TIMES
       | DIVIDES_TYPE -> Sequence.append output_sequence DIVIDES
-      | EQUAL_TYPE -> Sequence.append output_sequence EQ
+      | EQ_TYPE -> Sequence.append output_sequence EQ
       | LAND_TYPE -> Sequence.append output_sequence LAND
       | LOR_TYPE -> Sequence.append output_sequence LOR
       | CONCAT_TYPE -> Sequence.append output_sequence CONCAT
@@ -241,18 +247,24 @@
         )
     | ')' -> (
           decrement numdepth ;
-          if !numdepth == Stacklist.top numdepth_stack then (
-            Stacklist.delete_top numdepth_stack ;
-            save CLOSENUM_TYPE ; cut () ; q_active ()
-          ) else (
-            save RPAREN_TYPE ; cut () ; q_numexpr ()
-          )
+          try
+            if !numdepth == Stacklist.top numdepth_stack then (
+              Stacklist.delete_top numdepth_stack ;
+              save CLOSENUM_TYPE ; cut () ; q_active ()
+            ) else (
+              save RPAREN_TYPE ; cut () ; q_numexpr ()
+            )
+          with
+          | _ -> (
+                save RPAREN_TYPE ; cut () ; q_numexpr ()
+              )
+          | _ -> report_error "Unknown error"
         )
     | '+' -> ( save PLUS_TYPE ; cut () ; q_numexpr () )
     | '-' -> ( save MINUS_TYPE ; cut () ; q_numexpr () )
     | '*' -> ( save TIMES_TYPE ; cut () ; q_numexpr () )
     | '/' -> ( save DIVIDES_TYPE ; cut () ; q_numexpr () )
-    | '=' -> ( save EQUAL_TYPE ; cut () ; q_numexpr () )
+    | '=' -> ( save EQ_TYPE ; cut () ; q_numexpr () )
     | '&' -> ( save LAND_TYPE ; cut () ; q_numexpr () )
     | '|' -> ( save LOR_TYPE ; cut () ; q_numexpr () )
     | '^' -> ( save CONCAT_TYPE ; cut () ; q_numexpr () )

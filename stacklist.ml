@@ -2,20 +2,20 @@
 
   type 'a t = 'a list
 
-  exception StackUnderflow
+  exception Underflow
 
   let empty = []
 
   (* 'a t ref -> 'a *)
   let pop rfstk =
     match !rfstk with
-    | [] -> raise StackUnderflow
+    | [] -> raise Underflow
     | head :: tail -> ( rfstk := tail ; head )
 
   (* 'a t ref -> unit *)
   let delete_top rfstk =
     match !rfstk with
-    | [] -> raise StackUnderflow
+    | [] -> raise Underflow
     | head :: tail -> ( rfstk := tail )
 
   (* 'a t ref -> 'a -> unit *)
@@ -25,7 +25,7 @@
   (* 'a t ref -> 'a *)
   let top rfstk =
     match !rfstk with
-    | [] -> raise StackUnderflow
+    | [] -> raise Underflow
     | head :: tail -> head
 
   (* 'a t -> 'a t -> 'a t *)
