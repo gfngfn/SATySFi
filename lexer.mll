@@ -76,6 +76,7 @@ rule numexpr = parse
   | "else" { ELSE }
   | "let" { LET }
   | "in" { IN }
+  | "^" { CONCAT }
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
@@ -84,7 +85,7 @@ rule numexpr = parse
         let tok = Lexing.lexeme lexbuf in
         let column_from = (Lexing.lexeme_start lexbuf) - (!end_of_previousline) in
         let column_to = (Lexing.lexeme_end lexbuf) - (!end_of_previousline) in
-          raise (LexError(error_reporting lexbuf "unexpected token '" ^ tok ^ "' in numeric expression"))
+          raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in numeric expression")))
       }
 
 and strexpr = parse
@@ -159,7 +160,7 @@ and active = parse
   }
   | _ {
       let tok = Lexing.lexeme lexbuf in
-        raise (LexError(error_reporting lexbuf "unexpected token '" ^ tok ^ "' in active area"))
+        raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in active area")))
     }
 
 and literal = parse
@@ -185,7 +186,7 @@ and strcomment = parse
   | _ { strcomment lexbuf }
 
 {
-  let root lexbuf =
+  let cut_token lexbuf =
     match !next_state with
     | STATE_NUMEXPR -> numexpr lexbuf
     | STATE_STREXPR -> strexpr lexbuf
@@ -193,13 +194,15 @@ and strcomment = parse
     | STATE_STRCOMMENT -> strcomment lexbuf
     | STATE_LITERAL -> literal lexbuf
 
-  let rec iterate lexbuf =
-    let output = root lexbuf in
+  (* for test *)
+  let rec make_token_list lexbuf =
+    let output = cut_token lexbuf in
       match output with
       | EOI -> [EOI]
-      | _ -> output :: (iterate lexbuf)
+      | _ -> output :: (make_token_list lexbuf)
 
-  let main instr =
+  (* for test *)
+  let token_list_of_string instr =
     let lexbuf = Lexing.from_string instr in
       line_no := 1 ;
       end_of_previousline := 0 ;
@@ -210,5 +213,7 @@ and strcomment = parse
       strdepth_stack := Stacklist.empty ;
       openqtdepth := 0 ;
 
-      iterate lexbuf
+      next_state := STATE_NUMEXPR ;
+
+      make_token_list lexbuf
 }

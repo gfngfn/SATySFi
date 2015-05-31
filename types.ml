@@ -72,7 +72,7 @@ type abstract_tree =
   | LogicalNot of abstract_tree
   | LetNumIn of var_name * abstract_tree * abstract_tree
   | LetStrIn of var_name * abstract_tree * abstract_tree
-
+  | IfThenElse of abstract_tree * abstract_tree * abstract_tree
 
 (* for Mcdsemantics *)
 
