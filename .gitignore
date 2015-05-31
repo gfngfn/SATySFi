@@ -11,5 +11,6 @@
 bin/
 old/
 test/
+lexer.ml
 parser.ml
 parser.mli

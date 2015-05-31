@@ -3,16 +3,14 @@
 %}
 %token <Types.var_name> NUMVAR
 %token <Types.var_name> STRVAR
+%token <string> NUMCONST
 /*
-%token <string> CONSTNUM
 %token <string> CTRLSEQ
 %token <string> IDNAME
 %token <string> CLASSNAME
 */
 %token LET IN DEFEQ
-/*
 %token IF THEN ELSE
-*/
 %token EOI
 %token LPAREN RPAREN
 %token UMINUS
@@ -25,8 +23,8 @@
 %token LOR
 
 %nonassoc DEFEQ IN
-%right LOR
-%right LAND
+%left LOR
+%left LAND
 %nonassoc LNOT
 %left EQ NEQ
 %left GEQ LEQ GT LT
@@ -34,7 +32,10 @@
 %left MOD
 %left TIMES DIVIDES
 %nonassoc UMINUS
-%nonassoc LPAREN NUMVAR LET
+%nonassoc NUMVAR
+%nonassoc IF THEN ELSE
+%nonassoc LET
+%nonassoc LPAREN
 
 %start main
 %type <Types.abstract_tree> main
@@ -46,13 +47,14 @@ main:
   | expr EOI { $1 }
 expr:
   | NUMVAR { NumericContentOf($1) }
+  | NUMCONST { NumericConstant(int_of_string $1) }
   | LPAREN expr RPAREN { $2 }
-  | expr PLUS expr { Plus($1, $3) }
-  | expr MINUS expr { Minus($1, $3) }
-  | expr MOD expr { Mod($1, $3) }
   | expr TIMES expr { Times($1, $3) }
   | expr DIVIDES expr { Divides($1, $3) }
-  | UMINUS expr { Minus(NumericConst(0), $2) }
+  | expr MOD expr { Mod($1, $3) }
+  | expr PLUS expr { Plus($1, $3) }
+  | expr MINUS expr { Minus($1, $3) }
+  | UMINUS expr { Minus(NumericConstant(0), $2) }
   | expr EQ expr { EqualTo($1, $3) }
   | expr NEQ expr { LogicalNot(EqualTo($1, $3)) }
   | expr GEQ expr { LogicalNot(LessThan($1, $3)) }
@@ -64,7 +66,5 @@ expr:
   | expr LOR expr { LogicalOr($1, $3) }
   | LET NUMVAR DEFEQ expr IN expr { LetNumIn($2, $4, $6) }
   | LET STRVAR DEFEQ expr IN expr { LetStrIn($2, $4, $6) }
-/*
   | IF expr THEN expr ELSE expr { IfThenElse($2, $4, $6) }
-*/
 ;

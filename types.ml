@@ -20,6 +20,7 @@ type token =
   | SEQEXEC
   | OPENSTR | CLOSESTR
   | EOI
+  | IGNORED
 (* string token *)
   | CHAR of string
   | BREAK | SPACE
@@ -58,6 +59,19 @@ type abstract_tree =
   | Separated of abstract_tree * abstract_tree
   | BreakAndIndent
   | DeeperIndent of abstract_tree
+  | Times of abstract_tree * abstract_tree
+  | Divides of abstract_tree * abstract_tree
+  | Mod of abstract_tree * abstract_tree
+  | Plus of abstract_tree * abstract_tree
+  | Minus of abstract_tree * abstract_tree
+  | GreaterThan of abstract_tree * abstract_tree
+  | LessThan of abstract_tree * abstract_tree
+  | EqualTo of abstract_tree * abstract_tree
+  | LogicalAnd of abstract_tree * abstract_tree
+  | LogicalOr of abstract_tree * abstract_tree
+  | LogicalNot of abstract_tree
+  | LetNumIn of var_name * abstract_tree * abstract_tree
+  | LetStrIn of var_name * abstract_tree * abstract_tree
 
 
 (* for Mcdsemantics *)
