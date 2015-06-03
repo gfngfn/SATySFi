@@ -18,6 +18,12 @@
     | [] -> raise Underflow
     | head :: tail -> ( rfstk := tail )
 
+  (* 'a t ref -> bool *)
+  let is_empty rfstk =
+    match !rfstk with
+    | [] -> true
+    | _ -> false
+
   (* 'a t ref -> 'a -> unit *)
   let push rfstk cnt =
     rfstk := cnt :: !rfstk
