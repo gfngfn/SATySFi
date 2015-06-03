@@ -80,6 +80,14 @@ rule numexpr = parse
       next_state := STATE_STREXPR ;
       OPENSTR
     }
+  | "`"+ {
+      openqtdepth := String.length (Lexing.lexeme lexbuf) ;
+      after_literal_state := STATE_NUMEXPR ;
+      next_state := STATE_LITERAL ;
+      OPENQT
+    }
+  | ("@" identifier) as tok { STRVAR(tok) } (* STRVAR(_) in numeric expression *)
+  | ("\\" identifier) as tok { CTRLSEQ(tok) } (* CTRLSEQ(_) in numeric expression *)
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }
@@ -145,6 +153,12 @@ and strexpr = parse
         next_state := STATE_ACTIVE ;
         STRVAR(tok)
     }
+  | "`"+ {
+      openqtdepth := String.length (Lexing.lexeme lexbuf) ;
+      after_literal_state := STATE_STREXPR ;
+      next_state := STATE_LITERAL ;
+      OPENQT
+    }
   | eof { raise (LexError(error_reporting lexbuf "input ended while reading string expression")) }
   | _ { let tok = Lexing.lexeme lexbuf in CHAR(tok) }
 
@@ -171,6 +185,7 @@ and active = parse
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
+      after_literal_state := STATE_STREXPR ;
       next_state := STATE_LITERAL ;
       OPENQT
     }
@@ -209,20 +224,24 @@ and comment = parse
   | _ { comment lexbuf }
 
 {
-  let cut_token lexbuf =
-    match !next_state with
-    | STATE_NUMEXPR -> numexpr lexbuf
-    | STATE_STREXPR -> strexpr lexbuf
-    | STATE_ACTIVE -> active lexbuf
-    | STATE_COMMENT -> comment lexbuf
-    | STATE_LITERAL -> literal lexbuf
+  let rec cut_token lexbuf =
+    let output =
+      match !next_state with
+      | STATE_NUMEXPR -> numexpr lexbuf
+      | STATE_STREXPR -> strexpr lexbuf
+      | STATE_ACTIVE -> active lexbuf
+      | STATE_COMMENT -> comment lexbuf
+      | STATE_LITERAL -> literal lexbuf
+    in
+      match output with
+      | IGNORED -> cut_token lexbuf
+      | _ -> output
 
   (* for test *)
   let rec make_token_list lexbuf =
     let output = cut_token lexbuf in
       match output with
       | EOI -> [EOI]
-      | IGNORED -> make_token_list lexbuf
       | _ -> output :: (make_token_list lexbuf)
 
   (* for test *)
