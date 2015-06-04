@@ -1,6 +1,11 @@
 %{
   open Types
 
+  let rec append_argument_list arglsta arglstb =
+    match arglsta with
+    | EndOfArgument -> arglstb
+    | ArgumentCons(arg, arglstl) -> ArgumentCons(arg, (append_argument_list arglstl arglstb))
+
   let parse_error msg =
     print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")
 
@@ -63,9 +68,9 @@
 %type <Types.abstract_tree> nxbot
 %type <Types.abstract_tree> sxblock
 %type <Types.abstract_tree> sxbot
-%type <Types.abstract_tree> narg
-%type <Types.abstract_tree> sarg
-%type <Types.abstract_tree> sargsub
+%type <Types.argument_cons> narg
+%type <Types.argument_cons> sarg
+%type <Types.argument_cons> sargsub
 
 %%
 
@@ -103,12 +108,18 @@ nxconcat:
   | nxlplus { $1 }
 ;
 nxlplus:
-  | nxltimes PLUS nxrplus { Types.Plus($1, $3) }
+  | nxlminus PLUS nxrplus { Types.Plus($1, $3) }
+  | nxlminus { $1 }
+;
+nxlminus:
   | nxlplus MINUS nxrtimes { Types.Minus($1, $3) }
   | nxltimes { $1 }
 ;
 nxrplus:
-  | nxrtimes PLUS nxrplus { Types.Plus($1, $3) }
+  | nxrminus PLUS nxrplus { Types.Plus($1, $3) }
+  | nxrminus { $1 }
+;
+nxrminus:
   | nxrplus MINUS nxrtimes { Types.Minus($1, $3) }
   | nxrtimes { $1 }
 ;
@@ -150,29 +161,29 @@ sxbot:
   | BREAK { Types.BreakAndIndent }
   | STRVAR END { Types.StringContentOf($1) }
   | CTRLSEQ narg sarg {
-        Types.StringApply($1, Types.NoClassName, Types.NoIDName, $2, $3)
+        Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3))
       }
   | CTRLSEQ CLASSNAME narg sarg {
-        Types.StringApply($1, Types.ClassName($2), Types.NoIDName, $3, $4)
+        Types.StringApply($1, Types.ClassName($2), Types.NoIDName, (append_argument_list $3 $4))
       }
   | CTRLSEQ IDNAME narg sarg {
-        Types.StringApply($1, Types.NoClassName, Types.IDName($2), $3, $4)
+        Types.StringApply($1, Types.NoClassName, Types.IDName($2), (append_argument_list $3 $4))
       }
   | CTRLSEQ CLASSNAME IDNAME narg sarg {
-        Types.StringApply($1, Types.ClassName($2), Types.IDName($3), $4, $5)
+        Types.StringApply($1, Types.ClassName($2), Types.IDName($3), (append_argument_list $4 $5))
       }
 ;
-narg:
-  | OPENNUM nxlet CLOSENUM narg { Types.NumericArgument($2, $4) }
+narg: /* -> Types.argument_cons */
+  | OPENNUM nxlet CLOSENUM narg { Types.ArgumentCons($2, $4) }
   | { Types.EndOfArgument }
 ;
-sarg:
-  | BGRP sxblock EGRP sargsub { Types.StringArgument($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.StringArgument($2, $4) }
+sarg: /* -> Types.argument_cons */
+  | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons($2, $4) }
   | END { Types.EndOfArgument }
 ;
-sargsub:
-  | BGRP sxblock EGRP sargsub { Types.StringArgument($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.StringArgument($2, $4) }
+sargsub: /* -> Types.argument_cons */
+  | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons($2, $4) }
   | { Types.EndOfArgument }
 ;

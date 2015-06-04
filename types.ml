@@ -35,19 +35,19 @@ type class_name = string
 *)
 type id_name_arg = NoIDName | IDName of id_name
 type class_name_arg = NoClassName | ClassName of class_name
-type abstract_tree =
-  | Concat of abstract_tree * abstract_tree
+type argument_cons =
+  | ArgumentCons of abstract_tree * argument_cons
+  | EndOfArgument
+and abstract_tree =
   | NumericEmpty
   | StringEmpty
-  | NumericContentOf of var_name
-  | StringContentOf of var_name
   | NumericConstant of int
   | StringConstant of string
+  | NumericContentOf of var_name
+  | StringContentOf of var_name
+  | Concat of abstract_tree * abstract_tree
   | NumericApply of abstract_tree * abstract_tree
-  | StringApply of ctrlseq_name * class_name_arg * id_name_arg * abstract_tree * abstract_tree
-  | NumericArgument of abstract_tree * abstract_tree
-  | StringArgument of abstract_tree * abstract_tree
-  | EndOfArgument
+  | StringApply of ctrlseq_name * class_name_arg * id_name_arg * argument_cons
 (*
   | Macro of ctrlseq_name * (var_name list) * abstract_tree * abstract_tree
   | Apply of ctrlseq_name * abstract_id_name * (abstract_tree list)
@@ -71,6 +71,7 @@ type abstract_tree =
   | LetNumIn of var_name * abstract_tree * abstract_tree
   | LetStrIn of var_name * abstract_tree * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
+
 
 (* for Mcdsemantics *)
 
