@@ -1,5 +1,6 @@
 {
   open Types
+  open Parser
 
   exception LexError of string
   let line_no = ref 1

@@ -1,59 +1,57 @@
-(* mainly for Mcdlexer *)
 
-type macro_name = string
+type ctrlseq_name = string
 type var_name = string
 type id_name = string
 type class_name = string
-
-type token =
-(* numeric token *)
-  | NUMCONST of string
-  | NUMVAR of var_name
-  | LET | IN
-  | IF | THEN | ELSE
-  | FUN | DEFEQ
-  | LPAREN | RPAREN
-  | TIMES | DIVIDES | MOD | PLUS | MINUS | UMINUS
-  | EQ | NEQ | GEQ | LEQ | GT | LT
-  | LAND | LOR | LNOT
-  | CONCAT
-  | SEQEXEC
-  | OPENSTR | CLOSESTR
-  | EOI
-  | IGNORED
-(* string token *)
-  | CHAR of string
-  | BREAK | SPACE
-  | CTRLSEQ of macro_name
-  | STRVAR of var_name
-  | IDNAME of id_name
-  | CLASSNAME of class_name
-  | BGRP | EGRP
-  | OPENQT | CLOSEQT
-  | OPENNUM | CLOSENUM
-  | END
-  | SEP
-
-
-(* mainly for Mcdparser *)
-
-exception LineUnderflow
-type nonterminal = Total | Sentence | Block | Group | Args | Params | ListBySep | CharOfLiteral
-type tree = Terminal of token | NonTerminal of nonterminal * (tree list)
-
-
-(* mainly for Mcdabs *)
-
-type abstract_id_name = NoID | RealID of id_name
+(*
+  type token =
+  (* numeric token *)
+    | NUMCONST of string
+    | NUMVAR of var_name
+    | LET | IN
+    | IF | THEN | ELSE
+    | FUN | DEFEQ
+    | LPAREN | RPAREN
+    | TIMES | DIVIDES | MOD | PLUS | MINUS | UMINUS
+    | EQ | NEQ | GEQ | LEQ | GT | LT
+    | LAND | LOR | LNOT
+    | CONCAT
+    | SEQEXEC
+    | OPENSTR | CLOSESTR
+    | EOI
+    | IGNORED
+  (* string token *)
+    | CHAR of string
+    | BREAK | SPACE
+    | CTRLSEQ of ctrlseq_name
+    | STRVAR of var_name
+    | IDNAME of id_name
+    | CLASSNAME of class_name
+    | BGRP | EGRP
+    | OPENQT | CLOSEQT
+    | OPENNUM | CLOSENUM
+    | END
+    | SEP
+*)
+type id_name_arg = NoIDName | IDName of id_name
+type class_name_arg = NoClassName | ClassName of class_name
 type abstract_tree =
-  | EmptyAbsBlock
-  | AbsBlock of abstract_tree * abstract_tree
-  | StringContentOf of var_name
+  | Concat of abstract_tree * abstract_tree
+  | NumericEmpty
+  | StringEmpty
   | NumericContentOf of var_name
-  | StringConstant of string
+  | StringContentOf of var_name
   | NumericConstant of int
-  | Macro of macro_name * (var_name list) * abstract_tree * abstract_tree
-  | Apply of macro_name * abstract_id_name * (abstract_tree list)
+  | StringConstant of string
+  | NumericApply of abstract_tree * abstract_tree
+  | StringApply of ctrlseq_name * class_name_arg * id_name_arg * abstract_tree * abstract_tree
+  | NumericArgument of abstract_tree * abstract_tree
+  | StringArgument of abstract_tree * abstract_tree
+  | EndOfArgument
+(*
+  | Macro of ctrlseq_name * (var_name list) * abstract_tree * abstract_tree
+  | Apply of ctrlseq_name * abstract_id_name * (abstract_tree list)
+*)
   | Invalid
   | UnderConstruction (* for 'compensate' *)
   | Separated of abstract_tree * abstract_tree
