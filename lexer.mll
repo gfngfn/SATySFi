@@ -19,17 +19,15 @@
   let numdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
   let strdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
 
-  let increment rfn =
-    rfn := !rfn + 1
+  let increment rfn = ( rfn := !rfn + 1 )
 
-  let decrement rfn =
-    rfn := !rfn - 1
+  let decrement rfn = ( rfn := !rfn - 1 )
 
   let error_reporting lexbuf errmsg =
     let column_from = (Lexing.lexeme_start lexbuf) - (!end_of_previousline) in
     let column_to = (Lexing.lexeme_end lexbuf) - (!end_of_previousline) in
-      errmsg ^ " (line " ^ (string_of_int !line_no) ^ ", column "
-        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ")"
+      (errmsg ^ " (line " ^ (string_of_int !line_no) ^ ", column "
+        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ")")
 
   let increment_line lexbuf =
     end_of_previousline := (Lexing.lexeme_end lexbuf) ;
@@ -112,8 +110,6 @@ rule numexpr = parse
   | eof { EOI }
   | _ {
         let tok = Lexing.lexeme lexbuf in
-        let column_from = (Lexing.lexeme_start lexbuf) - (!end_of_previousline) in
-        let column_to = (Lexing.lexeme_end lexbuf) - (!end_of_previousline) in
           raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in numeric expression")))
       }
 
@@ -137,12 +133,11 @@ and strexpr = parse
     }
   | break {
       increment_line lexbuf ;
-      ignore_space := true ;
-      if !ignore_space then strexpr lexbuf else BREAK
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK )
     }
   | space {
-      ignore_space := true ;
-      if !ignore_space then strexpr lexbuf else SPACE
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; SPACE )
+
     }
   | ("\\" identifier) {
       let tok = Lexing.lexeme lexbuf in
@@ -161,7 +156,10 @@ and strexpr = parse
       OPENQT
     }
   | eof { raise (LexError(error_reporting lexbuf "input ended while reading string expression")) }
-  | _ { let tok = Lexing.lexeme lexbuf in CHAR(tok) }
+  | _ {
+      ignore_space := false ;
+      let tok = Lexing.lexeme lexbuf in CHAR(tok)
+    }
 
 and active = parse
   | "%" {

@@ -1,11 +1,6 @@
 %{
   open Types
-(*
-  type ctrlseq_name = string
-  type var_name = string
-  type id_name = string
-  type class_name = string
-*)
+
   let parse_error msg =
     print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")
 
@@ -151,6 +146,8 @@ sxblock:
 ;
 sxbot:
   | CHAR { Types.StringConstant($1) }
+  | SPACE { Types.StringConstant(" ") }
+  | BREAK { Types.BreakAndIndent }
   | STRVAR END { Types.StringContentOf($1) }
   | CTRLSEQ narg sarg {
         Types.StringApply($1, Types.NoClassName, Types.NoIDName, $2, $3)
