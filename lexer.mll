@@ -98,12 +98,15 @@ rule numexpr = parse
   | "<" { LT }
   | ">=" { GEQ }
   | ">" { GT }
+  | "&&" { LAND }
+  | "||" { LOR }
+  | "^" { CONCAT }
+  | "mod" { MOD }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
   | "let" { LET }
   | "in" { IN }
-  | "^" { CONCAT }
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
