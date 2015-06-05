@@ -197,7 +197,7 @@ let rec typecheck tyeq tyenv abstr =
       let tyl = typecheck tyeq tyenv astl in
       ( ( if equivalent BoolType tyb then () else Stacklist.push tyeq (BoolType, tyb) ) ;
         ( if equivalent tyf tyl then () else Stacklist.push tyeq (tyf, tyl) ) ;
-        BoolType
+        tyf
       )
 
   | LambdaAbstract(argvarcons, astf) ->
