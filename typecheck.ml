@@ -13,6 +13,14 @@ type type_struct =
 type type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref
 
+let rec string_of_type_struct tystr =
+  match tystr with
+  | IntType -> "int"
+  | StringType -> "string"
+  | BoolType -> "bool"
+  | FuncType(tyf, tyl) -> "(" ^ (string_of_type_struct tyf) ^ " -> " ^ (string_of_type_struct tyl) ^ ")"
+  | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
+
 let tvidmax : type_variable_id ref = ref 0
 let new_type_variable () = 
   let res = TypeVariable(!tvidmax) in ( tvidmax := !tvidmax + 1 ; res )
@@ -47,10 +55,10 @@ let rec typecheck tyeq tyenv abstr =
   | Concat(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-        if equivalent StringType tyf then
-          if equivalent StringType tyl then StringType
-          else raise (TypeCheckError("right operand of '^' is not of type string"))
-        else raise (TypeCheckError("left openrand of '^' is not of type string"))
+      ( ( if equivalent StringType tyf then () else Stacklist.push tyeq (StringType, tyf) ) ;
+        ( if equivalent StringType tyl then () else Stacklist.push tyeq (StringType, tyl) ) ;
+        StringType
+      )
 
   | NumericApply(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
@@ -61,7 +69,7 @@ let rec typecheck tyeq tyenv abstr =
               tycod
             )
         | _ -> let ntycod = new_type_variable () in
-            ( Stacklist.push tyeq (FuncType(tyl, ntycod), tyf) ;
+            ( Stacklist.push tyeq (tyf, FuncType(tyl, ntycod)) ;
               ntycod
             )
       )
@@ -82,40 +90,40 @@ let rec typecheck tyeq tyenv abstr =
   | Times(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
+      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
+        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
         IntType
       )
 
   | Divides(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
+      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
+        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
         IntType
       )
 
   | Mod(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
+      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
+        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
         IntType
       )
 
   | Plus(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
+      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
+        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
         IntType
       )
 
   | Minus(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
+      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
+        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
         IntType
       )
 
@@ -202,9 +210,11 @@ and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
   match argvarcons with
   | EndOfArgumentVariable -> typecheck tyeq tyenv astf
   | ArgumentVariableCons(av, avcsub) ->
-      let ntv = new_type_variable () in 
-      ( Hashtbl.add tyenv av ntv ;
-        FuncType(ntv, assign_lambda_abstract_type tyeq tyenv avcsub astf)
+      let ntv = new_type_variable () in
+      let tyenv_new = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_new av ntv ;
+        let res = FuncType(ntv, assign_lambda_abstract_type tyeq tyenv_new avcsub astf) in
+        ( Hashtbl.clear tyenv_new ; res )
       )
 
 (* type_variable_id -> type_struct -> bool *)
