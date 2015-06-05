@@ -101,12 +101,14 @@ rule numexpr = parse
   | "&&" { LAND }
   | "||" { LOR }
   | "^" { CONCAT }
+  | "->" { ARROW }
   | "mod" { MOD }
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
   | "let" { LET }
   | "in" { IN }
+  | "function" { LAMBDA }
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
@@ -197,7 +199,7 @@ and active = parse
     }
   | eof {
       raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
-  }
+    }
   | _ {
       let tok = Lexing.lexeme lexbuf in
         raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in active area")))

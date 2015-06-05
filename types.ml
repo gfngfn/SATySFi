@@ -33,8 +33,15 @@ type class_name = string
     | END
     | SEP
 *)
-type id_name_arg = NoIDName | IDName of id_name
-type class_name_arg = NoClassName | ClassName of class_name
+type id_name_arg =
+  | IDName of id_name
+  | NoIDName
+type class_name_arg =
+  | ClassName of class_name
+  | NoClassName
+type argument_variable_cons =
+  | ArgumentVariableCons of var_name * argument_variable_cons
+  | EndOfArgumentVariable
 type argument_cons =
   | ArgumentCons of abstract_tree * argument_cons
   | EndOfArgument
@@ -71,7 +78,7 @@ and abstract_tree =
   | LetNumIn of var_name * abstract_tree * abstract_tree
   | LetStrIn of var_name * abstract_tree * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
-
+  | LambdaAbstract of argument_variable_cons * abstract_tree
 
 (* for Mcdsemantics *)
 

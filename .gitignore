@@ -16,3 +16,4 @@ parser.ml
 parser.mli
 parser.output
 lexer_hand.ml
+how_to.txt

@@ -20,6 +20,7 @@
 %token <Types.id_name> IDNAME
 %token <Types.class_name> CLASSNAME
 %token END
+%token LAMBDA ARROW
 %token LET IN DEFEQ
 %token IF THEN ELSE
 %token EOI
@@ -71,6 +72,8 @@
 %type <Types.argument_cons> narg
 %type <Types.argument_cons> sarg
 %type <Types.argument_cons> sargsub
+%type <Types.argument_variable_cons> nargvar
+%type <Types.argument_variable_cons> sargvar
 
 %%
 
@@ -84,7 +87,19 @@ nxlet:
 ;
 nxif:
   | IF nxif THEN nxif ELSE nxif { Types.IfThenElse($2, $4, $6) }
+  | nxlambda { $1 }
+;
+nxlambda:
+  | LAMBDA nargvar sargvar ARROW nxlor { Types.LambdaAbstract($2, $5) }
   | nxlor { $1 }
+;
+nargvar:
+  | NUMVAR nargvar { Types.ArgumentVariableCons($1, $2) }
+  | { Types.EndOfArgumentVariable }
+;
+sargvar:
+  | STRVAR sargvar { Types.ArgumentVariableCons($1, $2) }
+  | { Types.EndOfArgumentVariable }
 ;
 nxlor:
   | nxland LOR nxlor { Types.LogicalOr($1, $3) }
