@@ -268,18 +268,20 @@ let rec unify_type_variables_sub tyeqlst theta =
 let unify_type_variables tyeq theta =
   let tyeqlst = Stacklist.to_list !tyeq in unify_type_variables_sub tyeqlst theta
 
-let rec apply_unifying theta ty =
+let rec unify theta ty =
   match ty with
-  | FuncType(tydom, tycod) -> FuncType(apply_unifying theta tydom, apply_unifying theta tycod)
+  | FuncType(tydom, tycod) -> FuncType(unify theta tydom, unify theta tycod)
   | TypeVariable(tvid) -> ( try Hashtbl.find theta tvid with Not_found -> TypeVariable(tvid) )
   | tystr -> tystr
 
+(* Types.abstract_tree -> type_struct *)
 let main abstr =
   let tyeq : type_equation = ref Stacklist.empty in
   let tyenv : type_environment = Hashtbl.create 128 in
   let theta : (type_variable_id, type_struct) Hashtbl.t = Hashtbl.create 128 in
   ( tvidmax := 0 ;
-    let type_before_unifying = typecheck tyeq tyenv abstr in
-      unify_type_variables tyeq theta ;
-      apply_unifying theta type_before_unifying
+    let type_before_unified = typecheck tyeq tyenv abstr in
+    ( unify_type_variables tyeq theta ;
+      unify theta type_before_unified
+    )
   )

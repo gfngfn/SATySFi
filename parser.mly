@@ -4,7 +4,14 @@
   let rec append_argument_list arglsta arglstb =
     match arglsta with
     | EndOfArgument -> arglstb
-    | ArgumentCons(arg, arglstl) -> ArgumentCons(arg, (append_argument_list arglstl arglstb))
+    | ArgumentCons(arg, arglstl) ->
+        ArgumentCons(arg, (append_argument_list arglstl arglstb))
+
+  let rec append_argument_variable_list avlsta avlstb =
+    match avlsta with
+    | EndOfArgumentVariable -> avlstb
+    | ArgumentVariableCons(av, avlstl) ->
+        ArgumentVariableCons(av, (append_argument_variable_list avlstl avlstb))
 
   let parse_error msg =
     print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")
@@ -81,8 +88,13 @@ main:
   | nxlet EOI { $1 }
 ;
 nxlet:
-  | LET NUMVAR DEFEQ nxlet IN nxlet { Types.LetNumIn($2, $4, $6) }
   | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetStrIn($2, $4, $6) }
+  | LET NUMVAR nargvar sargvar DEFEQ nxlet IN nxlet {
+        let argcons = (append_argument_variable_list $3 $4) in
+          match argcons with
+          | EndOfArgumentVariable -> Types.LetNumIn($2, $6, $8)
+          | _ -> Types.LetNumIn($2, Types.LambdaAbstract(argcons, $6), $8)
+      }
   | nxif { $1 }
 ;
 nxif:
@@ -90,7 +102,9 @@ nxif:
   | nxlambda { $1 }
 ;
 nxlambda:
-  | LAMBDA nargvar sargvar ARROW nxlor { Types.LambdaAbstract($2, $5) }
+  | LAMBDA nargvar sargvar ARROW nxlor {
+        Types.LambdaAbstract((append_argument_variable_list $2 $3), $5)
+      }
   | nxlor { $1 }
 ;
 nargvar:
