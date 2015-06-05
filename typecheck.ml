@@ -207,7 +207,79 @@ and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
         FuncType(ntv, assign_lambda_abstract_type tyeq tyenv avcsub astf)
       )
 
+(* type_variable_id -> type_struct -> bool *)
+let rec emerge_in tyid tystr =
+  match tystr with
+  | TypeVariable(tyidsub) -> tyid == tyidsub
+  | FuncType(tydom, tycod) -> (emerge_in tyid tydom) || (emerge_in tyid tycod)
+  | _ -> false
+
+(* (type_struct * type_struct) -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
+let rec unify_type_variables_sub tyeqlst theta =
+  match tyeqlst with
+  | [] -> ()
+  | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) :: tail ->
+      unify_type_variables_sub ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
+
+  | (TypeVariable(tvidx), TypeVariable(tvidy)) :: tail ->
+      ( if tvidx == tvidy then
+          ()
+        else
+        ( try 
+            let tystrofx = Hashtbl.find theta tvidx in
+            ( try
+                let tystrofy = Hashtbl.find theta tvidy in
+                  (* if both tvidx and tvidy are found *)
+                  unify_type_variables_sub ((tystrofx, tystrofy) :: tail) theta
+              with
+              | Not_found -> (* if tvidx is found but tvidy is not *)
+                  Hashtbl.add theta tvidy tystrofx
+            )
+          with
+          | Not_found ->
+            ( try
+                let tystrofy = Hashtbl.find theta tvidy in
+                  (* if tvidx is not found but tvidy is *)
+                  Hashtbl.add theta tvidx tystrofy
+              with
+              | Not_found -> (* if neither tvidx nor tvidy is found *)
+                let ntv = new_type_variable () in
+                ( Hashtbl.add theta tvidy ntv ;
+                  Hashtbl.add theta tvidx ntv
+                )
+            )
+        )
+      )
+  | (tystr, TypeVariable(tvid)) :: tail ->
+      ( if emerge_in tvid tystr then
+          raise (TypeCheckError("error 1"))
+        else
+        ( Hashtbl.add theta tvid IntType ; unify_type_variables_sub tail theta )
+      )
+  | (TypeVariable(tvid), tystr) :: tail ->
+      ( if emerge_in tvid tystr then
+          raise (TypeCheckError("error 2"))
+        else
+        ( Hashtbl.add theta tvid IntType ; unify_type_variables_sub tail theta )
+      )
+  | _ -> raise (TypeCheckError("error 3"))
+
+(* type_equation -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
+let unify_type_variables tyeq theta =
+  let tyeqlst = Stacklist.to_list !tyeq in unify_type_variables_sub tyeqlst theta
+
+let rec apply_unifying theta ty =
+  match ty with
+  | FuncType(tydom, tycod) -> FuncType(apply_unifying theta tydom, apply_unifying theta tycod)
+  | TypeVariable(tvid) -> ( try Hashtbl.find theta tvid with Not_found -> TypeVariable(tvid) )
+  | tystr -> tystr
+
 let main abstr =
   let tyeq : type_equation = ref Stacklist.empty in
   let tyenv : type_environment = Hashtbl.create 128 in
-  ( tvidmax := 0 ; typecheck tyeq tyenv abstr )
+  let theta : (type_variable_id, type_struct) Hashtbl.t = Hashtbl.create 128 in
+  ( tvidmax := 0 ;
+    let type_before_unifying = typecheck tyeq tyenv abstr in
+      unify_type_variables tyeq theta ;
+      apply_unifying theta type_before_unifying
+  )
