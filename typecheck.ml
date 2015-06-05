@@ -254,13 +254,13 @@ let rec unify_type_variables_sub tyeqlst theta =
       ( if emerge_in tvid tystr then
           raise (TypeCheckError("error 1"))
         else
-        ( Hashtbl.add theta tvid IntType ; unify_type_variables_sub tail theta )
+        ( Hashtbl.add theta tvid tystr ; unify_type_variables_sub tail theta )
       )
   | (TypeVariable(tvid), tystr) :: tail ->
       ( if emerge_in tvid tystr then
           raise (TypeCheckError("error 2"))
         else
-        ( Hashtbl.add theta tvid IntType ; unify_type_variables_sub tail theta )
+        ( Hashtbl.add theta tvid tystr ; unify_type_variables_sub tail theta )
       )
   | _ -> raise (TypeCheckError("error 3"))
 
@@ -268,6 +268,7 @@ let rec unify_type_variables_sub tyeqlst theta =
 let unify_type_variables tyeq theta =
   let tyeqlst = Stacklist.to_list !tyeq in unify_type_variables_sub tyeqlst theta
 
+(* ((type_variable_id, type_struct) Hashtbl.t) -> type_struct -> type_struct *)
 let rec unify theta ty =
   match ty with
   | FuncType(tydom, tycod) -> FuncType(unify theta tydom, unify theta tycod)
