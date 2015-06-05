@@ -95,6 +95,10 @@ nxlet:
           | EndOfArgumentVariable -> Types.LetNumIn($2, $6, $8)
           | _ -> Types.LetNumIn($2, Types.LambdaAbstract(argcons, $6), $8)
       }
+  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN nxlet {
+        let argcons = (append_argument_variable_list $3 $4) in
+          Types.LetNumIn($2, Types.LambdaAbstract(argcons, $6), $8)
+      }
   | nxif { $1 }
 ;
 nxif:

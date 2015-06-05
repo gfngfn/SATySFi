@@ -73,12 +73,10 @@ let rec typecheck tyeq tyenv abstr =
               ntycod
             )
       )
-(*
-  | StringApply(cs, clsnm, idnm, argcons) ->
-      let tycs = typecheck tyeq tyenv_ctrlseq cs in
-        match tycs with
-        | FuncType(tydom, tycod) ->
-*)
+
+  | StringApply(csnm, _, _, argcons) ->
+      let tycs = typecheck tyeq tyenv (NumericContentOf(csnm)) in
+        deal_with_string_apply tyeq tyenv tycs argcons
 
   | BreakAndIndent -> StringType
   | DeeperIndent(astf) ->
@@ -205,6 +203,19 @@ let rec typecheck tyeq tyenv abstr =
 
   | _ -> raise (TypeCheckError("remains to be implemented"))
 
+and deal_with_string_apply tyeq tyenv tycs argcons =
+    match (tycs, argcons) with
+    | (tya, EndOfArgument) -> 
+        ( ( if equivalent tya StringType then () else Stacklist.push tyeq (tya, StringType) ) ;
+          StringType
+        )
+    | (FuncType(tydom, tycod), ArgumentCons(astofarg, actail)) ->
+        let tyarg = typecheck tyeq tyenv astofarg in
+        ( ( if equivalent tydom tyarg then () else Stacklist.push tyeq (tydom, tyarg) ) ;
+          deal_with_string_apply tyeq tyenv tycod actail
+        )
+    | _ -> raise (TypeCheckError("error 4"))
+
 (* type_equation -> argument_variable_cons -> abstract_tree -> type_struct *)
 and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
   match argvarcons with
@@ -226,6 +237,14 @@ let rec emerge_in tyid tystr =
 
 (* (type_struct * type_struct) -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
 let rec unify_type_variables_sub tyeqlst theta =
+  (* uncommentout below if you would like to see recognized type equations *)
+  
+    ( match tyeqlst with
+      | [] -> ()
+      | (tya, tyb) :: _ -> print_string ("  type eq. <" ^ (string_of_type_struct tya) ^ "> and <"
+            ^ (string_of_type_struct tyb) ^ ">\n")
+    ) ;
+  
   match tyeqlst with
   | [] -> ()
   | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) :: tail ->
@@ -264,15 +283,22 @@ let rec unify_type_variables_sub tyeqlst theta =
       ( if emerge_in tvid tystr then
           raise (TypeCheckError("error 1"))
         else
-        ( Hashtbl.add theta tvid tystr ; unify_type_variables_sub tail theta )
+        ( try
+            let tystrpre = Hashtbl.find theta tvid in
+              unify_type_variables_sub ((tystr, tystrpre) :: tail) theta
+          with
+          | Not_found ->
+              ( Hashtbl.add theta tvid tystr ;
+                unify_type_variables_sub tail theta )
+        )
       )
   | (TypeVariable(tvid), tystr) :: tail ->
-      ( if emerge_in tvid tystr then
-          raise (TypeCheckError("error 2"))
-        else
-        ( Hashtbl.add theta tvid tystr ; unify_type_variables_sub tail theta )
+      unify_type_variables_sub ((tystr, TypeVariable(tvid)) :: tail) theta
+
+  | (tya, tyb) :: tail ->
+      ( ( if equivalent tya tyb then () else raise (TypeCheckError("error 3")) ) ;
+        unify_type_variables_sub tail theta
       )
-  | _ -> raise (TypeCheckError("error 3"))
 
 (* type_equation -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
 let unify_type_variables tyeq theta =
