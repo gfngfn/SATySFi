@@ -122,6 +122,17 @@
           | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
         )
 
+    | LetIn(nv, astdef, astrest) ->
+        let env_func = Hashtbl.copy env in
+        ( Hashtbl.add env_func nv (ref NoContent) ;
+          let valuedef = interpret env_func astdef in
+          ( Hashtbl.add env_func nv (ref valuedef) (* overwrite nv *) ;
+            interpret env_func astrest
+          )
+        )
+
+    | LambdaAbstract(argvarcons, ast) -> FuncWithEnvironment(argvarcons, ast, env)
+
     | _ -> raise (EvalError("remains to be implemented"))
 
   and deal_with_cons env argvarcons argcons =

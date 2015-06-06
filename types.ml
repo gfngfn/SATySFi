@@ -44,8 +44,7 @@ and abstract_tree =
   | LogicalAnd of abstract_tree * abstract_tree
   | LogicalOr of abstract_tree * abstract_tree
   | LogicalNot of abstract_tree
-  | LetNumIn of var_name * abstract_tree * abstract_tree
-  | LetStrIn of var_name * abstract_tree * abstract_tree
+  | LetIn of var_name * abstract_tree * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of argument_variable_cons * abstract_tree
   | LiteralArea of abstract_tree

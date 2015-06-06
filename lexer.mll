@@ -234,6 +234,8 @@ and comment = parse
   | _ { comment lexbuf }
 
 {
+	let reset_lexer () = ( next_state := STATE_NUMEXPR )
+
   let rec cut_token lexbuf =
     let output =
       match !next_state with

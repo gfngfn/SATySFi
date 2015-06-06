@@ -52,7 +52,9 @@ let rec typecheck tyeq tyenv abstr =
   | ContentOf(nv) ->
       ( try
           let ty = Hashtbl.find tyenv nv in
-          ( (* print_string ("  " ^ nv ^ ": <" ^ string_of_type_struct ty ^ ">\n") ; *)
+          ( 
+              print_string ("  " ^ nv ^ ": <" ^ string_of_type_struct ty ^ ">\n") ;
+            
             ty )
         with
         | Not_found -> raise (TypeCheckError("undefined variable '" ^ nv ^ "'"))
@@ -192,7 +194,7 @@ let rec typecheck tyeq tyenv abstr =
         BoolType
       )
 
-  | LetNumIn(nv, astf, astl) ->
+  | LetIn(nv, astf, astl) ->
       let tyenv_new = Hashtbl.copy tyenv in
       let ntv = new_type_variable () in
       ( Hashtbl.add tyenv_new nv ntv ;
@@ -204,7 +206,7 @@ let rec typecheck tyeq tyenv abstr =
           )
         )
       )
-
+(*
   | LetStrIn(sv, astf, astl) ->
       let tyenv_new = Hashtbl.copy tyenv in
       let ntv = new_type_variable () in
@@ -218,7 +220,7 @@ let rec typecheck tyeq tyenv abstr =
           )
         )
       )
-
+*)
   | IfThenElse(astb, astf, astl) ->
       let tyb = typecheck tyeq tyenv astb in
       let tyf = typecheck tyeq tyenv astf in
@@ -233,7 +235,7 @@ let rec typecheck tyeq tyenv abstr =
 
   | _ -> raise (TypeCheckError("remains to be implemented"))
 
-
+(* type_equation -> type_environment -> type_struct -> argument_cons -> type_struct *)
 and deal_with_string_apply tyeq tyenv tycs argcons =
     match (tycs, argcons) with
     | (tya, EndOfArgument) -> 
@@ -245,7 +247,15 @@ and deal_with_string_apply tyeq tyenv tycs argcons =
         ( ( if equivalent tydom tyarg then () else Stacklist.push tyeq (tydom, tyarg) ) ;
           deal_with_string_apply tyeq tyenv tycod actail
         )
-    | _ -> raise (TypeCheckError("error 4"))
+    | (TypeVariable(tvid), ArgumentCons(astofarg, actail)) ->
+        let tydom = typecheck tyeq tyenv astofarg in
+        let ntycod = new_type_variable () in
+        let tyafter = deal_with_string_apply tyeq tyenv ntycod argcons in
+        ( Stacklist.push tyeq (TypeVariable(tvid), FuncType(tydom, ntycod)) ;
+          tyafter
+        )
+
+    | (_, _) -> raise (TypeCheckError("error 4"))
 
 (* type_equation -> argument_variable_cons -> abstract_tree -> type_struct *)
 and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
@@ -276,13 +286,13 @@ let rec subst_type theta tystr =
 (* (type_struct * type_struct) -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
 let rec solve tyeqlst theta =
   (* uncommentout below if you would like to see recognized type equations *)
-  (*
+  
     ( match tyeqlst with
       | [] -> ()
       | (tya, tyb) :: _ -> print_string ("  *equation <" ^ (string_of_type_struct tya) ^ "> = <"
             ^ (string_of_type_struct tyb) ^ ">\n")
     ) ;
-  *)
+  
   match tyeqlst with
   | [] -> ()
   | (tya, tyb) :: tail ->

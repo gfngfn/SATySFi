@@ -89,16 +89,16 @@ main:
   | nxlet EOI { $1 }
 ;
 nxlet:
-  | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetStrIn($2, $4, $6) }
+  | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetIn($2, $4, $6) }
   | LET NUMVAR nargvar sargvar DEFEQ nxlet IN nxlet {
         let argcons = (append_argument_variable_list $3 $4) in
           match argcons with
-          | EndOfArgumentVariable -> Types.LetNumIn($2, $6, $8)
-          | _ -> Types.LetNumIn($2, Types.LambdaAbstract(argcons, $6), $8)
+          | EndOfArgumentVariable -> Types.LetIn($2, $6, $8)
+          | _ -> Types.LetIn($2, Types.LambdaAbstract(argcons, $6), $8)
       }
   | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN nxlet {
         let argcons = (append_argument_variable_list $3 $4) in
-          Types.LetNumIn($2, Types.LambdaAbstract(argcons, $6), $8)
+          Types.LetIn($2, Types.LambdaAbstract(argcons, $6), $8)
       }
   | nxif { $1 }
 ;
