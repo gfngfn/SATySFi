@@ -44,6 +44,7 @@
 %token OPENSTR CLOSESTR
 %token OPENNUM CLOSENUM
 %token BGRP EGRP
+%token TRUE FALSE
 
 %token IGNORED
 
@@ -137,7 +138,7 @@ nxcomp:
   | nxconcat { $1 }
 ;
 nxconcat:
-  | nxlplus CONCAT nxconcat { Types.Concat($1, $3) }
+  | nxlplus CONCAT nxconcat { Types.ConcatOperation($1, $3) }
   | nxlplus { $1 }
 ;
 nxlplus:
@@ -178,11 +179,13 @@ nxapp:
   | nxbot { $1 }
 ;
 nxbot:
-  | NUMVAR { Types.NumericContentOf($1) }
+  | NUMVAR { Types.ContentOf($1) }
   | NUMCONST { Types.NumericConstant(int_of_string $1) }
+  | TRUE { Types.BooleanConstant(true) }
+  | FALSE { Types.BooleanConstant(false) }
   | LPAREN nxlet RPAREN { $2 }
   | OPENSTR sxblock CLOSESTR { $2 }
-  | OPENQT sxblock CLOSEQT { $2 }
+  | OPENQT sxblock CLOSEQT { LiteralArea($2) }
 ;
 sxblock:
   | sxbot sxblock { Types.Concat($1, $2) }
@@ -192,7 +195,7 @@ sxbot:
   | CHAR { Types.StringConstant($1) }
   | SPACE { Types.StringConstant(" ") }
   | BREAK { Types.BreakAndIndent }
-  | STRVAR END { Types.StringContentOf($1) }
+  | STRVAR END { Types.ContentOf($1) }
   | CTRLSEQ narg sarg {
         Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3))
       }
@@ -212,11 +215,11 @@ narg: /* -> Types.argument_cons */
 ;
 sarg: /* -> Types.argument_cons */
   | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | END { Types.EndOfArgument }
 ;
 sargsub: /* -> Types.argument_cons */
   | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | { Types.EndOfArgument }
 ;

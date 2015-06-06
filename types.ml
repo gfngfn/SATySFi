@@ -3,36 +3,7 @@ type ctrlseq_name = string
 type var_name = string
 type id_name = string
 type class_name = string
-(*
-  type token =
-  (* numeric token *)
-    | NUMCONST of string
-    | NUMVAR of var_name
-    | LET | IN
-    | IF | THEN | ELSE
-    | FUN | DEFEQ
-    | LPAREN | RPAREN
-    | TIMES | DIVIDES | MOD | PLUS | MINUS | UMINUS
-    | EQ | NEQ | GEQ | LEQ | GT | LT
-    | LAND | LOR | LNOT
-    | CONCAT
-    | SEQEXEC
-    | OPENSTR | CLOSESTR
-    | EOI
-    | IGNORED
-  (* string token *)
-    | CHAR of string
-    | BREAK | SPACE
-    | CTRLSEQ of ctrlseq_name
-    | STRVAR of var_name
-    | IDNAME of id_name
-    | CLASSNAME of class_name
-    | BGRP | EGRP
-    | OPENQT | CLOSEQT
-    | OPENNUM | CLOSENUM
-    | END
-    | SEP
-*)
+
 type id_name_arg =
   | IDName of id_name
   | NoIDName
@@ -45,22 +16,20 @@ type argument_variable_cons =
 type argument_cons =
   | ArgumentCons of abstract_tree * argument_cons
   | EndOfArgument
+and environment = (string, location) Hashtbl.t
+and location = abstract_tree ref
 and abstract_tree =
+(* for parser *)
   | NumericEmpty
   | StringEmpty
   | NumericConstant of int
+  | BooleanConstant of bool
   | StringConstant of string
-  | NumericContentOf of var_name
-  | StringContentOf of var_name
+  | ContentOf of var_name
   | Concat of abstract_tree * abstract_tree
+  | ConcatOperation of abstract_tree * abstract_tree
   | NumericApply of abstract_tree * abstract_tree
   | StringApply of ctrlseq_name * class_name_arg * id_name_arg * argument_cons
-(*
-  | Macro of ctrlseq_name * (var_name list) * abstract_tree * abstract_tree
-  | Apply of ctrlseq_name * abstract_id_name * (abstract_tree list)
-*)
-  | Invalid
-  | UnderConstruction (* for 'compensate' *)
   | Separated of abstract_tree * abstract_tree
   | BreakAndIndent
   | DeeperIndent of abstract_tree
@@ -79,13 +48,11 @@ and abstract_tree =
   | LetStrIn of var_name * abstract_tree * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of argument_variable_cons * abstract_tree
-
-(* for Mcdsemantics *)
-
-exception IncorrespondenceOfLength
-exception ValueNotFound
-
-
-(* for Mcdout *)
-
-exception IllegalOut
+  | LiteralArea of abstract_tree
+(* for inner procedure *)
+  | FuncWithEnvironment of argument_variable_cons * abstract_tree * environment
+  | NoContent (* for @class and @id *)
+  | UnderConstruction (* for 'compensate' *)
+  | Invalid
+  | PrimitiveSame of abstract_tree * abstract_tree
+  | PrimitiveInclude of abstract_tree

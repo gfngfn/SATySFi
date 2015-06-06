@@ -49,7 +49,7 @@ let rec typecheck tyeq tyenv abstr =
   | NumericConstant(_) -> IntType
   | StringConstant(_) -> StringType
 
-  | NumericContentOf(nv) ->
+  | ContentOf(nv) ->
       ( try
           let ty = Hashtbl.find tyenv nv in
           ( (* print_string ("  " ^ nv ^ ": <" ^ string_of_type_struct ty ^ ">\n") ; *)
@@ -58,10 +58,13 @@ let rec typecheck tyeq tyenv abstr =
         | Not_found -> raise (TypeCheckError("undefined variable '" ^ nv ^ "'"))
       )
 
-  | StringContentOf(sv) ->
-    ( try Hashtbl.find tyenv sv with
-      | Not_found -> raise (TypeCheckError("undefined variable '" ^ sv ^ "'"))
-    )
+  | ConcatOperation(astf, astl) ->
+      let tyf = typecheck tyeq tyenv astf in
+      let tyl = typecheck tyeq tyenv astl in
+      ( ( if equivalent StringType tyf then () else Stacklist.push tyeq (StringType, tyf) ) ;
+        ( if equivalent StringType tyl then () else Stacklist.push tyeq (StringType, tyl) ) ;
+        StringType
+      )
 
   | Concat(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
@@ -86,7 +89,7 @@ let rec typecheck tyeq tyenv abstr =
       )
 
   | StringApply(csnm, _, _, argcons) ->
-      let tycs = typecheck tyeq tyenv (NumericContentOf(csnm)) in
+      let tycs = typecheck tyeq tyenv (ContentOf(csnm)) in
         deal_with_string_apply tyeq tyenv tycs argcons
 
   | BreakAndIndent -> StringType

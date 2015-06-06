@@ -113,6 +113,8 @@ rule numexpr = parse
   | "let" { LET }
   | "in" { IN }
   | "function" { LAMBDA }
+  | "true" { TRUE }
+  | "false" { FALSE }
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
