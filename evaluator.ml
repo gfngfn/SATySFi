@@ -135,7 +135,13 @@ and interpret env ast =
   | LetIn(nv, astdef, astrest) ->
       let env_func = Hashtbl.copy env in
       ( Hashtbl.add env_func nv (ref NoContent) ;
-        let valuedef = interpret env_func astdef in
+        let valuedef =
+        ( let intprtd = interpret env_func astdef in
+            match intprtd with
+            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
+            | other -> other
+        )
+        in
         ( Hashtbl.add env_func nv (ref valuedef) (* overwrite nv *) ;
           interpret env_func astrest
         )

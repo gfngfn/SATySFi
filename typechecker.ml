@@ -384,6 +384,6 @@ let main ast =
   ( tvidmax := 0 ;
     let type_before_unified = typecheck tyeq tyenv ast in
     ( unify_type_variables tyeq theta ;
-      string_of_type_struct (unify theta type_before_unified)
+      string_of_type_struct (subst_type theta type_before_unified)
     )
   )
