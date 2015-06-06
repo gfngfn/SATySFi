@@ -76,9 +76,7 @@ and interpret env ast =
             let env_new = Hashtbl.copy envf in
             ( Hashtbl.add env_new varnm (ref astl) ;
               let valuef = interpret env_new astf in
-              ( Hashtbl.clear env_new ;
                 valuef
-              )
             )
         | _ -> raise (EvalError("illegal apply"))
       )
