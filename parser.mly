@@ -34,7 +34,7 @@
     match argvarcons with
     | EndOfArgumentVariable -> astdef
     | ArgumentVariableCons(argvar, avtail) -> 
-        curry_lambda_abstract avtail (LambdaAbstract(argvar, astdef))
+        LambdaAbstract(argvar, curry_lambda_abstract avtail astdef)
 
   let parse_error msg =
     print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")

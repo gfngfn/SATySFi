@@ -14,7 +14,7 @@ type type_struct =
 type type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref
 
-let print_process msg = print_string (msg ^ "\n")
+let print_process msg = (* print_string (msg ^ "\n") ; *) ()
 
 let rec string_of_type_struct tystr =
   match tystr with
@@ -26,13 +26,13 @@ let rec string_of_type_struct tystr =
   | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
 
 let find_real_type theta tvid =
-  ( print_string ("  *seeking '" ^ (string_of_int tvid) ^ "\n") ;
+  ( print_process ("  *seeking '" ^ (string_of_int tvid) ^ "\n") ;
     Hashtbl.find theta tvid )
 
 let tvidmax : type_variable_id ref = ref 0
 let new_type_variable () = 
   let res = TypeVariable(!tvidmax) in
-  ( print_string ("  *make '" ^ (string_of_int !tvidmax) ^ "\n") ;
+  ( print_process ("  *make '" ^ (string_of_int !tvidmax) ^ "\n") ;
     tvidmax := !tvidmax + 1 ;
     res
   )
@@ -44,6 +44,7 @@ let rec equivalent tya tyb =
   | (BoolType, BoolType)     -> true
   | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod))
       -> (equivalent tyadom tybdom) && (equivalent tyacod tybcod)
+  | (TypeVariable(tvida), TypeVariable(tvidb)) -> (tvida == tvidb)
   | _ -> false
 
 (* type_environment -> Types.abstract_tree -> type_struct *)
@@ -58,7 +59,7 @@ let rec typecheck tyeq tyenv abstr =
       ( try
           let ty = Hashtbl.find tyenv nv in
           ( 
-              print_string ("  " ^ nv ^ ": <" ^ string_of_type_struct ty ^ ">\n") ;
+              print_process ("  " ^ nv ^ ": <" ^ string_of_type_struct ty ^ ">") ;
             
             ty )
         with
@@ -199,7 +200,7 @@ let rec typecheck tyeq tyenv abstr =
       )
 
   | LetIn(nv, astf, astl) ->
-    ( print_string "#LetIn\n" ;
+    ( print_process "#LetIn" ;
       let tyenv_new = Hashtbl.copy tyenv in
       let ntv = new_type_variable () in
       ( Hashtbl.add tyenv_new nv ntv ;
@@ -223,7 +224,7 @@ let rec typecheck tyeq tyenv abstr =
       )
 
   | LambdaAbstract(varnm, astdef) ->
-    ( print_string "#LambdaAbstract\n" ;
+    ( print_process "#LambdaAbstract" ;
       let tyvar = new_type_variable () in
       let tyenv_new = Hashtbl.copy tyenv in
       ( Hashtbl.add tyenv_new varnm tyvar ;
@@ -308,8 +309,34 @@ let rec solve tyeqlst theta =
 
         | (TypeVariable(tvida), TypeVariable(tvidb)) ->
             ( ( if tvida == tvidb then ()
-                else if tvida < tvidb then Hashtbl.add theta tvida (TypeVariable(tvidb))
-                else Hashtbl.add theta tvidb (TypeVariable(tvida))
+                else
+                ( try
+                    let typ = find_real_type theta tvida in
+                    ( try
+                        let tyq = find_real_type theta tvidb in
+                          solve ((typ, tyq) :: tail) theta
+                      with
+                      | Not_found ->
+                        ( Hashtbl.add theta tvidb typ ;
+                          solve tail theta
+                        )
+                    )
+                  with
+                  | Not_found ->
+                    ( try
+                        let tyq = find_real_type theta tvidb in
+                        ( Hashtbl.add theta tvida tyq ;
+                          solve tail theta
+                        )
+                      with
+                      | Not_found ->
+                          let ntv = new_type_variable () in
+                          ( Hashtbl.add theta tvida ntv ;
+                            Hashtbl.add theta tvidb ntv ;
+                            solve tail theta
+                          )
+                    )
+                )
               ) ;
               solve tail theta
             )
@@ -323,7 +350,7 @@ let rec solve tyeqlst theta =
                     solve ((tystr, tystrpre) :: tail) theta
                 with
                 | Not_found ->
-                    ( print_string "#added#\n" ;
+                    ( print_process "#added#\n" ;
                       Hashtbl.add theta tvid (subst_type theta tystr) ;
                       solve tail theta )
               )
