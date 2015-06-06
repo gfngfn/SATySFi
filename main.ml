@@ -7,28 +7,21 @@ let report_detail dtlmsg =
   print_string ("  " ^ dtlmsg) ; print_newline ()
 
 let main file_name_in_list file_name_out =
-
-  let content_in = (
-      try Files.string_of_file_in_list file_name_in_list with
-        Sys_error(s) -> (
-            report_error ("System error - " ^ s) ; "" )
-  ) in
-  let lexed = Mcdlexer.mcdlex content_in in
-  let parsed = Mcdparser.mcdparser lexed in
-  let absed = Mcdabs.concrete_to_abstract parsed in
-  let semed = Mcdsemantics.semantics absed in
-  let content_out =
-    try Mcdout.mcdout semed with
-      IllegalOut -> ""
-  in
-    match content_out with
-      "" -> report_detail ("No output for '" ^ file_name_out ^ "'.")
-    | _ -> (
-          try
-            Files.file_out_of_string file_name_out content_out
-          with
-            Sys_error(s) -> report_error ("System error - " ^ s)
-        )
+  try
+    match file_name_in_list with
+    | [] -> ()
+    | file_name_in :: tail ->
+      let file_in = open_in file_name_in in
+      let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+      let content_out = Out.main (Eval.main parsed) in
+        Files.file_out_of_string file_name_out content_out
+  with
+  | Lexer.LexError(s) -> print_string ("! [ERROR IN LEXER] " ^ s ^ ".")
+  | Parsing.Parse_error -> print_string ("! [ERROR IN PARSER]")
+  | Typecheck.TypeCheckError(s) -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".")
+(*  | Eval.EvalError(s) -> print_string ("! [ERROR IN EVAL]" ^ s ^ ".") *)
+  | Out.IllegalOut(s) -> print_string ("! [ERROR IN OUT] " ^ s ^ ".")
+  | Sys_error(s) -> report_error ("! System error - " ^ s)
 
 let rec concat_list lsta lstb =
   match lsta with

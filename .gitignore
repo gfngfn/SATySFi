@@ -8,6 +8,7 @@
 *.dvi
 *.pdf
 *.out
+*.txt
 bin/
 old/
 test/
@@ -16,5 +17,4 @@ parser.ml
 parser.mli
 parser.output
 lexer_hand.ml
-how_to.txt
 toplevel_test.ml
