@@ -31,8 +31,11 @@ let find_real_type theta tvid =
 
 let tvidmax : type_variable_id ref = ref 0
 let new_type_variable () = 
-  let res = TypeVariable(!tvidmax) in ( tvidmax := !tvidmax + 1 ; res )
-
+  let res = TypeVariable(!tvidmax) in
+  ( print_string ("  *make '" ^ (string_of_int !tvidmax) ^ "\n") ;
+    tvidmax := !tvidmax + 1 ;
+    res
+  )
 let rec equivalent tya tyb =
   match (tya, tyb) with
   | (UnitType, UnitType)     -> true
@@ -296,7 +299,9 @@ let rec solve tyeqlst theta =
   match tyeqlst with
   | [] -> ()
   | (tya, tyb) :: tail ->
-      if equivalent tya tyb then () else
+      if equivalent tya tyb then
+        solve tail theta
+      else
       ( match (tya, tyb) with
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta

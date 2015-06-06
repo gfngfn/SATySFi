@@ -143,7 +143,7 @@ and interpret env ast =
         )
       )
 
-  | LambdaAbstract(argvarcons, ast) -> FuncWithEnvironment(argvarcons, ast, env)
+  | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
 
   | _ -> raise (EvalError("remains to be implemented"))
 
