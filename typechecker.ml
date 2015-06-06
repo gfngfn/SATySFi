@@ -14,6 +14,8 @@ type type_struct =
 type type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref
 
+let print_process msg = print_string (msg ^ "\n")
+
 let rec string_of_type_struct tystr =
   match tystr with
   | UnitType -> "unit"
@@ -24,7 +26,7 @@ let rec string_of_type_struct tystr =
   | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
 
 let find_real_type theta tvid =
-  ( (* print_string ("  *seeking '" ^ (string_of_int tvid) ^ "\n") ; *)
+  ( print_string ("  *seeking '" ^ (string_of_int tvid) ^ "\n") ;
     Hashtbl.find theta tvid )
 
 let tvidmax : type_variable_id ref = ref 0
@@ -89,11 +91,10 @@ let rec typecheck tyeq tyenv abstr =
               ntycod
             )
       )
-
+(*
   | StringApply(csnm, _, _, argcons) ->
-      let tycs = typecheck tyeq tyenv (ContentOf(csnm)) in
-        deal_with_string_apply tyeq tyenv tycs argcons
-
+      typecheck tyeq tyenv (convert_into_numeric_apply csnm argcons)
+*)
   | BreakAndIndent -> StringType
   | DeeperIndent(astf) ->
       let tyf = typecheck tyeq tyenv astf in
@@ -195,6 +196,7 @@ let rec typecheck tyeq tyenv abstr =
       )
 
   | LetIn(nv, astf, astl) ->
+    ( print_string "#LetIn\n" ;
       let tyenv_new = Hashtbl.copy tyenv in
       let ntv = new_type_variable () in
       ( Hashtbl.add tyenv_new nv ntv ;
@@ -206,21 +208,8 @@ let rec typecheck tyeq tyenv abstr =
           )
         )
       )
-(*
-  | LetStrIn(sv, astf, astl) ->
-      let tyenv_new = Hashtbl.copy tyenv in
-      let ntv = new_type_variable () in
-      ( Hashtbl.add tyenv_new sv ntv ;
-        let tyf = typecheck tyeq tyenv_new astf in
-        ( Stacklist.push tyeq (ntv, tyf) ;
-          let tyl = typecheck tyeq tyenv_new astl in
-          ( Hashtbl.clear tyenv_new ;
-            ( if (equivalent StringType tyf) then () else Stacklist.push tyeq (StringType, tyf) ) ;
-            tyl
-          )
-        )
-      )
-*)
+    )
+
   | IfThenElse(astb, astf, astl) ->
       let tyb = typecheck tyeq tyenv astb in
       let tyf = typecheck tyeq tyenv astf in
@@ -230,13 +219,23 @@ let rec typecheck tyeq tyenv abstr =
         tyf
       )
 
-  | LambdaAbstract(argvarcons, astf) ->
-      assign_lambda_abstract_type tyeq tyenv argvarcons astf
+  | LambdaAbstract(varnm, astdef) ->
+    ( print_string "#LambdaAbstract\n" ;
+      let tyvar = new_type_variable () in
+      let tyenv_new = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_new varnm tyvar ;
+        let tydef = typecheck tyeq tyenv_new astdef in
+          FuncType(tyvar, tydef)
+      )
+      (* assign_lambda_abstract_type tyeq tyenv argvarcons astdef *)
+    )
 
   | _ -> raise (TypeCheckError("remains to be implemented"))
 
+(*
 (* type_equation -> type_environment -> type_struct -> argument_cons -> type_struct *)
 and deal_with_string_apply tyeq tyenv tycs argcons =
+    print_string "deal_with_string_apply" ;
     match (tycs, argcons) with
     | (tya, EndOfArgument) -> 
         ( ( if equivalent tya StringType then () else Stacklist.push tyeq (tya, StringType) ) ;
@@ -268,6 +267,7 @@ and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
         let res = FuncType(ntv, assign_lambda_abstract_type tyeq tyenv_new avcsub astf) in
         ( Hashtbl.clear tyenv_new ; res )
       )
+*)
 
 (* type_variable_id -> type_struct -> bool *)
 let rec emerge_in tyid tystr =
@@ -301,6 +301,14 @@ let rec solve tyeqlst theta =
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
 
+        | (TypeVariable(tvida), TypeVariable(tvidb)) ->
+            ( ( if tvida == tvidb then ()
+                else if tvida < tvidb then Hashtbl.add theta tvida (TypeVariable(tvidb))
+                else Hashtbl.add theta tvidb (TypeVariable(tvida))
+              ) ;
+              solve tail theta
+            )
+
         | (TypeVariable(tvid), tystr) ->
             ( if emerge_in tvid tystr then
                 raise (TypeCheckError("error 1"))
@@ -310,7 +318,7 @@ let rec solve tyeqlst theta =
                     solve ((tystr, tystrpre) :: tail) theta
                 with
                 | Not_found ->
-                    ( (* print_string "#added#\n" ; *)
+                    ( print_string "#added#\n" ;
                       Hashtbl.add theta tvid (subst_type theta tystr) ;
                       solve tail theta )
               )
@@ -336,14 +344,14 @@ let rec unify theta ty =
   | TypeVariable(tvid) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid) )
   | tystr -> tystr
 
-(* Types.abstract_tree -> type_struct *)
-let main abstr =
+(* Types.abstract_tree -> string *)
+let main ast =
   let tyeq : type_equation = ref Stacklist.empty in
   let tyenv : type_environment = Hashtbl.create 128 in
   let theta : (type_variable_id, type_struct) Hashtbl.t = Hashtbl.create 128 in
   ( tvidmax := 0 ;
-    let type_before_unified = typecheck tyeq tyenv abstr in
+    let type_before_unified = typecheck tyeq tyenv ast in
     ( unify_type_variables tyeq theta ;
-      unify theta type_before_unified
+      string_of_type_struct (unify theta type_before_unified)
     )
   )

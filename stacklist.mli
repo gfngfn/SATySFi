@@ -1,4 +1,3 @@
-(* signature for Stacklist *)
   open Types
 
   type 'a t

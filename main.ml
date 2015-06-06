@@ -13,13 +13,13 @@ let main file_name_in_list file_name_out =
     | file_name_in :: tail ->
       let file_in = open_in file_name_in in
       let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let content_out = Out.main (Eval.main parsed) in
+      let content_out = Out.main (Evaluator.main parsed) in
         Files.file_out_of_string file_name_out content_out
   with
   | Lexer.LexError(s) -> print_string ("! [ERROR IN LEXER] " ^ s ^ ".")
   | Parsing.Parse_error -> print_string ("! [ERROR IN PARSER]")
-  | Typecheck.TypeCheckError(s) -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".")
-(*  | Eval.EvalError(s) -> print_string ("! [ERROR IN EVAL]" ^ s ^ ".") *)
+  | Typechecker.TypeCheckError(s) -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".")
+  | Evaluator.EvalError(s) -> print_string ("! [ERROR IN EVAL]" ^ s ^ ".")
   | Out.IllegalOut(s) -> print_string ("! [ERROR IN OUT] " ^ s ^ ".")
   | Sys_error(s) -> report_error ("! System error - " ^ s)
 

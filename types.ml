@@ -46,10 +46,10 @@ and abstract_tree =
   | LogicalNot of abstract_tree
   | LetIn of var_name * abstract_tree * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
-  | LambdaAbstract of argument_variable_cons * abstract_tree
+  | LambdaAbstract of var_name * abstract_tree
   | LiteralArea of abstract_tree
 (* for inner procedure *)
-  | FuncWithEnvironment of argument_variable_cons * abstract_tree * environment
+  | FuncWithEnvironment of var_name * abstract_tree * environment
   | NoContent (* for @class and @id *)
   | UnderConstruction (* for 'compensate' *)
   | Invalid

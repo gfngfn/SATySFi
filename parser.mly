@@ -13,6 +13,29 @@
     | ArgumentVariableCons(av, avlstl) ->
         ArgumentVariableCons(av, (append_argument_variable_list avlstl avlstb))
 
+  (* ctrlseq_name -> argument_cons -> abstract_tree *)
+  let rec convert_into_numeric_apply csnm argcons =
+    convert_into_numeric_apply_sub argcons (ContentOf(csnm))
+  
+  (* argument_cons -> abstract_tree -> abstract_tree *)
+  and convert_into_numeric_apply_sub argcons astconstr =
+    match argcons with
+    | EndOfArgument -> astconstr
+    | ArgumentCons(arg, actail) ->
+        convert_into_numeric_apply_sub actail (NumericApply(astconstr, arg))
+
+  let class_name_to_abstract_tree clsnm =
+    StringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
+
+  let id_name_to_abstract_tree idnm =
+    StringConstant((String.sub idnm 1 ((String.length idnm) - 1)))
+
+  let rec curry_lambda_abstract argvarcons astdef =
+    match argvarcons with
+    | EndOfArgumentVariable -> astdef
+    | ArgumentVariableCons(argvar, avtail) -> 
+        curry_lambda_abstract avtail (LambdaAbstract(argvar, astdef))
+
   let parse_error msg =
     print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")
 
@@ -91,14 +114,14 @@ main:
 nxlet:
   | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetIn($2, $4, $6) }
   | LET NUMVAR nargvar sargvar DEFEQ nxlet IN nxlet {
-        let argcons = (append_argument_variable_list $3 $4) in
-          match argcons with
-          | EndOfArgumentVariable -> Types.LetIn($2, $6, $8)
-          | _ -> Types.LetIn($2, Types.LambdaAbstract(argcons, $6), $8)
+        let argvarcons = (append_argument_variable_list $3 $4) in
+        let curried = curry_lambda_abstract argvarcons $6 in
+          Types.LetIn($2, curried, $8)
       }
   | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN nxlet {
-        let argcons = (append_argument_variable_list $3 $4) in
-          Types.LetIn($2, Types.LambdaAbstract(argcons, $6), $8)
+        let argvarcons = (append_argument_variable_list $3 $4) in
+        let curried = curry_lambda_abstract argvarcons $6 in
+          Types.LetIn($2, curried, $8)
       }
   | nxif { $1 }
 ;
@@ -108,7 +131,8 @@ nxif:
 ;
 nxlambda:
   | LAMBDA nargvar sargvar ARROW nxlor {
-        Types.LambdaAbstract((append_argument_variable_list $2 $3), $5)
+        let argvarcons = append_argument_variable_list $2 $3 in
+          curry_lambda_abstract argvarcons $5
       }
   | nxlor { $1 }
 ;
@@ -197,16 +221,27 @@ sxbot:
   | BREAK { Types.BreakAndIndent }
   | STRVAR END { Types.ContentOf($1) }
   | CTRLSEQ narg sarg {
-        Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3))
+        convert_into_numeric_apply $1 (append_argument_list $2 $3)
+        (* Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3)) *)
       }
   | CTRLSEQ CLASSNAME narg sarg {
-        Types.StringApply($1, Types.ClassName($2), Types.NoIDName, (append_argument_list $3 $4))
+        let plain = convert_into_numeric_apply $1 (append_argument_list $3 $4) in
+        let clsnmast = class_name_to_abstract_tree $2 in
+          LetIn("@class", clsnmast, LetIn("@id", NoContent, plain))
+        (* Types.StringApply($1, Types.ClassName($2), Types.NoIDName, (append_argument_list $3 $4)) *)
       }
   | CTRLSEQ IDNAME narg sarg {
-        Types.StringApply($1, Types.NoClassName, Types.IDName($2), (append_argument_list $3 $4))
+        let plain = convert_into_numeric_apply $1 (append_argument_list $3 $4) in
+        let idnmast = id_name_to_abstract_tree $2 in
+          LetIn("@class", NoContent, LetIn("@id", idnmast, plain))
+        (* Types.StringApply($1, Types.NoClassName, Types.IDName($2), (append_argument_list $3 $4)) *)
       }
   | CTRLSEQ CLASSNAME IDNAME narg sarg {
-        Types.StringApply($1, Types.ClassName($2), Types.IDName($3), (append_argument_list $4 $5))
+        let plain = convert_into_numeric_apply $1 (append_argument_list $4 $5) in
+        let clsnmast = class_name_to_abstract_tree $2 in
+        let idnmast = id_name_to_abstract_tree $2 in
+          LetIn("@class", clsnmast, LetIn("@id", idnmast, plain))
+        (* Types.StringApply($1, Types.ClassName($2), Types.IDName($3), (append_argument_list $4 $5)) *)
       }
 ;
 narg: /* -> Types.argument_cons */
