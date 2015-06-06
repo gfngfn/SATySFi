@@ -1,11 +1,15 @@
-SRCS=types.ml files.ml sequence.mli sequence.ml mcdlexer.mli mcdlexer.ml stacklist.mli stacklist.ml mcdparser.mli mcdparser.ml mcdabs.mli mcdabs.ml assoclist.mli assoclist.ml mcdout.mli mcdout.ml mcdsemantics.mli mcdsemantics.ml mcdmain.ml
+SRCS=types.ml stacklist.mli stacklist.ml parser.mli parser.ml lexer.ml typecheck.ml out.mli out.ml eval.mli eval.ml files.ml main.ml
 
 ifeq ($(OS), Windows_NT)
   TARGET=bin/macrodown.exe
 else
   TARGET=bin/macrodown
 endif
-
+all: lexer.ml parser.mli parser.ml $(TARGET)
+lexer.ml: lexer.mll
+	ocamllex lexer.mll
+parser.mli parser.ml: parser.mly
+	ocamlyacc parser.mly
 $(TARGET): $(SRCS)
 	ocamlc -o $(TARGET) $^
 
