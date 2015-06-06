@@ -85,8 +85,12 @@ rule numexpr = parse
       next_state := STATE_LITERAL ;
       OPENQT
     }
-  | ("@" identifier) as tok { STRVAR(tok) } (* STRVAR(_) in numeric expression *)
-  | ("\\" identifier) as tok { CTRLSEQ(tok) } (* CTRLSEQ(_) in numeric expression *)
+  | ("@" identifier) { (* STRVAR(_) in numeric expression *)
+  	    let tok = Lexing.lexeme lexbuf in STRVAR(tok)
+      }
+  | ("\\" identifier) { (* CTRLSEQ(_) in numeric expression *)
+  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(tok)
+  	  }
   | "+" { PLUS }
   | "-" { MINUS }
   | "*" { TIMES }
