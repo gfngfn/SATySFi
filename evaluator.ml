@@ -2,7 +2,21 @@ open Types
 
 exception EvalError of string
 
-let print_process msg = print_string (msg ^ "\n")
+let print_process msg =
+  (*
+    print_string (msg ^ "\n") ;
+  *)
+  ()
+
+let rec string_of_ast ast =
+  match ast with
+  | LambdaAbstract(x, m) -> "(Lam: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(LamEnv: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
+  | ContentOf(v) -> "(" ^ v ^ ")"
+  | NumericApply(m, n) -> "($ " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t) -> (string_of_ast s) ^ "-" ^ (string_of_ast t)
+  | StringEmpty -> "!"
+  | _ -> "_"
 
 let rec make_argument_cons lst =
   match lst with
@@ -10,16 +24,23 @@ let rec make_argument_cons lst =
   | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
 (* abstract_tree -> abstract_tree *)
 
+let copy_environment env = Hashtbl.copy env
+
+let add_to_environment env varnm rfast =
+  ( print_process ("  add " ^ varnm ^ " := " ^ (string_of_ast !rfast)) ;
+    Hashtbl.add env varnm rfast
+  )
+
 let rec main ast_main =
   let loc_same : location = ref NoContent in
   let loc_deeper : location = ref NoContent in
   let loc_break : location = ref NoContent in
   let loc_include : location = ref NoContent in
   let env_main : environment = Hashtbl.create 128 in
-    Hashtbl.add env_main "same" loc_same ;
-    Hashtbl.add env_main "\\deeper" loc_deeper ;
-    Hashtbl.add env_main "\\break" loc_break ;
-    Hashtbl.add env_main "\\include" loc_include ;
+    add_to_environment env_main "same" loc_same ;
+    add_to_environment env_main "\\deeper" loc_deeper ;
+    add_to_environment env_main "\\break" loc_break ;
+    add_to_environment env_main "\\include" loc_include ;
     loc_same := FuncWithEnvironment("~stra", 
                   FuncWithEnvironment("~strb",
                     PrimitiveSame(ContentOf("~stra"), ContentOf("~strb")),
@@ -60,40 +81,81 @@ and interpret env ast =
   | StringConstant(c) -> StringConstant(c)
 
   | ContentOf(v) ->
-      ( try !(Hashtbl.find env v) with
+    ( print_process (">ContentOf: " ^ v) ;
+      ( try
+          let content = !(Hashtbl.find env v) in
+          ( print_process ("  -> " ^ (string_of_ast content)) ;
+            content )
+        with
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
-
+    )
   | Separated(astf, astl) ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
         Separated(valuef, valuel)
 
+  | LetIn(nv, astdef, astrest) ->
+    ( print_process (">LetIn: " ^ nv ^ " / "
+        ^ (string_of_ast astdef) ^ " / " ^ (string_of_ast astrest)) ;
+      let env_func = copy_environment env in
+      ( (* add_to_environment env_func nv (ref NoContent) ; *)
+        let valuedef =
+        ( let intprtd = interpret env_func astdef in
+            match intprtd with
+            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
+            | other -> other
+        )
+        in
+        ( add_to_environment env_func nv (ref valuedef) (* overwrite nv *) ;
+          interpret env_func astrest
+        )
+      )
+    )
+  | LambdaAbstract(varnm, ast) -> (
+      print_process (">LambdaAbstract: " ^ varnm ^ ". " ^ (string_of_ast ast))  ;
+      FuncWithEnvironment(varnm, ast, env)
+    )
+  | FuncWithEnvironment(varnm, ast, env) -> (
+      print_process ">FuncWithEnvironment" ;
+      FuncWithEnvironment(varnm, ast, env)
+    )
+
   | NumericApply(astf, astl) ->
+    ( print_process ">NumericApply" ;
+      print_process ("  " ^ (string_of_ast astf) ^ " / " ^ (string_of_ast astl)) ;
+      let valuel = interpret env astl in
       let fspec = interpret env astf in
+      ( print_process ("  => " ^ (string_of_ast fspec) ^ " / " ^ (string_of_ast valuel)) ;
       ( match fspec with
-        | FuncWithEnvironment(varnm, astf, envf) ->
-            let env_new = Hashtbl.copy envf in
-            ( Hashtbl.add env_new varnm (ref astl) ;
-              let valuef = interpret env_new astf in
-                valuef
+        | FuncWithEnvironment(varnm, astdef, envf) ->
+            let env_new = copy_environment envf in
+            ( add_to_environment env_new varnm (ref valuel) ;
+              let intpd = interpret env_new astdef in ( print_process ("  end " ^ varnm) ; intpd )
+            )
+        | LambdaAbstract(varnm, astdef) ->
+            let env_new = copy_environment env in
+            ( add_to_environment env_new varnm (ref valuel) ;
+              interpret env_new astdef
             )
         | _ -> raise (EvalError("illegal apply"))
       )
+      )
+    )
 (*
   | StringApply(f, clsnmarg, idnmarg, argcons) ->
     ( try
         let fspec = !(Hashtbl.find env f) in
           match fspec with
           | FuncWithEnvironment(argvarcons, astf, envf) ->
-              let env_new = Hashtbl.copy envf in
+              let env_new = copy_environment envf in
               ( ( match clsnmarg with
-                  | NoClassName -> Hashtbl.add env_new "@class" (ref NoContent)
-                  | ClassName(clsnm) -> Hashtbl.add env_new "@class" (ref (class_name_to_abstract_tree clsnm))
+                  | NoClassName -> add_to_environment env_new "@class" (ref NoContent)
+                  | ClassName(clsnm) -> add_to_environment env_new "@class" (ref (class_name_to_abstract_tree clsnm))
                 ) ;
                 ( match idnmarg with
-                  | NoIDName -> Hashtbl.add env_new "@id" (ref NoContent)
-                  | IDName(idnm) -> Hashtbl.add env_new "@id" (ref (id_name_to_abstract_tree idnm))
+                  | NoIDName -> add_to_environment env_new "@id" (ref NoContent)
+                  | IDName(idnm) -> add_to_environment env_new "@id" (ref (id_name_to_abstract_tree idnm))
                 ) ;
                 deal_with_cons env_new argvarcons argcons ;
                 let valuef = interpret env_new astf in
@@ -132,23 +194,6 @@ and interpret env ast =
         | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
       )
 
-  | LetIn(nv, astdef, astrest) ->
-      let env_func = Hashtbl.copy env in
-      ( Hashtbl.add env_func nv (ref NoContent) ;
-        let valuedef =
-        ( let intprtd = interpret env_func astdef in
-            match intprtd with
-            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
-            | other -> other
-        )
-        in
-        ( Hashtbl.add env_func nv (ref valuedef) (* overwrite nv *) ;
-          interpret env_func astrest
-        )
-      )
-
-  | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
-
   | _ -> raise (EvalError("remains to be implemented"))
 
 
@@ -156,7 +201,7 @@ and deal_with_cons env argvarcons argcons =
   match (argvarcons, argcons) with
   | (EndOfArgumentVariable, EndOfArgument) -> ()
   | (ArgumentVariableCons(argvar, avtail), ArgumentCons(arg, atail)) ->
-      ( Hashtbl.add env argvar (ref arg) ; deal_with_cons env avtail atail )
+      ( add_to_environment env argvar (ref arg) ; deal_with_cons env avtail atail )
   | _ -> raise (EvalError("wrong number of argument"))
 
 (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
