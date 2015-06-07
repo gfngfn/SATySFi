@@ -1,10 +1,21 @@
 let \aho @n = {<span style="color: red">@n;</span>}
 in
+let survey n d =
+  if d > n then
+    false
+  else if (n / d) mod 10 == 3 then
+    true
+  else
+    survey n (d * 10)
+in
 let nabeazz n =
   if n mod 3 == 0 then
     {\aho{\arabic(n);}}
   else
-    {\arabic(n);}
+    if survey n 1 then
+      {\aho{\arabic(n);}}
+    else
+      {\arabic(n);}
 in
 let \nabeazzes n =
   if n <= 0 then {} else {\nabeazzes(n - 1);} ^ (nabeazz n) ^ {\space;}
