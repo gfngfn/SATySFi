@@ -55,3 +55,4 @@ and abstract_tree =
   | Invalid
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveInclude of abstract_tree
+  | PrimitiveArabic of abstract_tree

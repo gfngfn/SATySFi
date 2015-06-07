@@ -36,11 +36,13 @@ let rec main ast_main =
   let loc_deeper : location = ref NoContent in
   let loc_break : location = ref NoContent in
   let loc_include : location = ref NoContent in
+  let loc_arabic : location = ref NoContent in
   let env_main : environment = Hashtbl.create 128 in
     add_to_environment env_main "same" loc_same ;
     add_to_environment env_main "\\deeper" loc_deeper ;
     add_to_environment env_main "\\break" loc_break ;
     add_to_environment env_main "\\include" loc_include ;
+    add_to_environment env_main "\\arabic" loc_arabic ;
     loc_same := FuncWithEnvironment("~stra", 
                   FuncWithEnvironment("~strb",
                     PrimitiveSame(ContentOf("~stra"), ContentOf("~strb")),
@@ -56,6 +58,10 @@ let rec main ast_main =
 
     loc_include  := FuncWithEnvironment("~filename",
                       PrimitiveInclude(ContentOf("~filename")),
+                      env_main
+                    ) ;
+    loc_arabic := FuncWithEnvironment("~num",
+                      PrimitiveArabic(ContentOf("~num")),
                       env_main
                     ) ;
     interpret env_main ast_main
@@ -168,7 +174,7 @@ and interpret env ast =
       | Not_found -> raise (EvalError("undefined control sequence '" ^ f ^ "'"))
     )
 *)
-  | DeeperIndent(abstr) -> let res = interpret env abstr in DeeperIndent(res)
+  | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
 
   | BreakAndIndent -> BreakAndIndent
 
@@ -193,17 +199,80 @@ and interpret env ast =
         | Out.IllegalOut(_) -> raise (EvalError("illegal argument of \\include"))
         | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
       )
+  | PrimitiveArabic(astnum) ->
+      let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
 
-  | _ -> raise (EvalError("remains to be implemented"))
+  | IfThenElse(astb, astf, astl) ->
+      if interpret_bool env astb then interpret env astf else interpret env astl
 
+  | NumericConstant(nc) -> NumericConstant(nc)
+  | Times(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        NumericConstant(numl * numr)
+  | Divides(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      ( try NumericConstant(numl / numr) with
+        | Division_by_zero -> raise (EvalError("division by zero")) )
+  | Mod(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      ( try NumericConstant(numl mod numr) with
+        | Division_by_zero -> raise (EvalError("division by zero")) )
+  | Plus(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        NumericConstant(numl + numr)
+  | Minus(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        NumericConstant(numl - numr)
+  | BooleanConstant(bc) -> BooleanConstant(bc)
+  | EqualTo(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        BooleanConstant(numl == numr)
+  | GreaterThan(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        BooleanConstant(numl > numr)
+  | LessThan(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+        BooleanConstant(numl < numr)
+  | LogicalAnd(astl, astr) ->
+      let blnl = interpret_bool env astl in
+      let blnr = interpret_bool env astr in
+        BooleanConstant(blnl && blnr)
+  | LogicalOr(astl, astr) ->
+      let blnl = interpret_bool env astl in
+      let blnr = interpret_bool env astr in
+        BooleanConstant(blnl || blnr)
+  | LogicalNot(astl) ->
+      let blnl = interpret_bool env astl in
+        BooleanConstant(not blnl)
 
+  | _ -> raise (EvalError("not of type string / remains to be implemented"))
+
+and interpret_bool env ast =
+  match interpret env ast with
+  | BooleanConstant(bc) -> bc
+  | _ -> raise (EvalError("not of type bool / remains to be implemented"))
+
+and interpret_int env ast =
+  match interpret env ast with
+  | NumericConstant(nc) -> nc
+  | _ -> raise (EvalError("not of type int / remains to be implemented"))
+
+(*
 and deal_with_cons env argvarcons argcons =
   match (argvarcons, argcons) with
   | (EndOfArgumentVariable, EndOfArgument) -> ()
   | (ArgumentVariableCons(argvar, avtail), ArgumentCons(arg, atail)) ->
       ( add_to_environment env argvar (ref arg) ; deal_with_cons env avtail atail )
   | _ -> raise (EvalError("wrong number of argument"))
-
+*)
 (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
 and pop_from_separated_tree astin astconstr =
   match astin with
