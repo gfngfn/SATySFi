@@ -111,6 +111,7 @@
 
 main:
   | nxlet EOI { $1 }
+  | sxblock EOI { $1 }
 ;
 nxlet:
   | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetIn($2, $4, $6) }

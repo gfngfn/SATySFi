@@ -25,7 +25,7 @@ let make_environment_from_header_file tyenv env file_name_in =
 (* type_environment -> environment -> string -> string -> unit *)
 let read_document_file tyenv env file_name_in file_name_out =
   let file_in = open_in file_name_in in
-  ( Lexer.reset_to_numexpr () ;
+  ( Lexer.reset_to_strexpr () ;
     let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
     let (typed, _) = Typechecker.main tyenv parsed in
     ( print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n") ;

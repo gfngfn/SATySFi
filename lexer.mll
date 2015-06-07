@@ -9,6 +9,7 @@
 
   type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
   let next_state : lexer_state ref = ref STATE_NUMEXPR
+  let first_state : lexer_state ref = ref STATE_NUMEXPR
   let after_literal_state : lexer_state ref = ref STATE_STREXPR
   let after_comment_state : lexer_state ref = ref STATE_STREXPR
 
@@ -42,7 +43,8 @@
     )
 
   let reset_to_numexpr () =
-    ( next_state := STATE_NUMEXPR ;
+    ( first_state := STATE_NUMEXPR ;
+      next_state := !first_state ;
       ignore_space := true ;
       line_no := 0 ;
       openqtdepth := 0 ;
@@ -52,7 +54,8 @@
       strdepth_stack := Stacklist.empty
     )
   let reset_to_strexpr () =
-    ( next_state := STATE_STREXPR ;
+    ( first_state := STATE_STREXPR ;
+      next_state := !first_state ;
       ignore_space := true ;
       line_no := 0 ;
       openqtdepth := 0 ;
@@ -140,7 +143,12 @@ rule numexpr = parse
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
-  | eof { EOI }
+  | eof {
+        if !first_state == STATE_NUMEXPR then
+          EOI
+        else
+          raise (LexError(error_reporting lexbuf ("input ended while reading numeric expression")))
+      }
   | _ {
         let tok = Lexing.lexeme lexbuf in
           raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in numeric expression")))
@@ -188,7 +196,12 @@ and strexpr = parse
       next_state := STATE_LITERAL ;
       OPENQT
     }
-  | eof { raise (LexError(error_reporting lexbuf "input ended while reading string expression")) }
+  | eof {
+      if !first_state == STATE_STREXPR then
+        EOI
+      else
+        raise (LexError(error_reporting lexbuf "input ended while reading string expression"))
+    }
   | _ {
       ignore_space := false ;
       let tok = Lexing.lexeme lexbuf in CHAR(tok)
