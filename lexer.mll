@@ -97,10 +97,11 @@ rule numexpr = parse
         else
           RPAREN
     }
-  | "{" (break | space)* {
+  | "{" {
       Stacklist.push strdepth_stack !strdepth ;
       increment strdepth ;
       next_state := STATE_STREXPR ;
+      ignore_space := true ;
       OPENSTR
     }
   | "`"+ {
@@ -160,17 +161,23 @@ and strexpr = parse
       next_state := STATE_COMMENT ;
       IGNORED
     }
-  | "{" { increment strdepth ; BGRP }
+  | "{" {
+      increment strdepth ;
+      ignore_space := true ;
+      BGRP
+    }
   | ((break | space)* "}") {
       decrement strdepth ;
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      if !strdepth == Stacklist.top strdepth_stack then (
-        Stacklist.delete_top strdepth_stack ;
-        next_state := STATE_NUMEXPR ;
-        CLOSESTR
-      ) else (
+      if Stacklist.is_empty strdepth_stack then
         EGRP
-      )
+      else
+        if !strdepth == Stacklist.top strdepth_stack then
+        ( Stacklist.delete_top strdepth_stack ;
+          next_state := STATE_NUMEXPR ;
+          CLOSESTR )
+        else
+          EGRP
     }
   | break {
       increment_line lexbuf ;
@@ -226,6 +233,7 @@ and active = parse
   | "{" {
       increment strdepth ;
       next_state := STATE_STREXPR ;
+      ignore_space := true ;
       BGRP
     }
   | "`"+ {

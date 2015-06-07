@@ -1,0 +1,17 @@
+let \document @head @body = {
+  <html>\deeper{
+    <head>\deeper{@head;}</head>
+    <body>\deeper{@body;}</body>
+  }</html>
+} in
+let \title @title = {<title>@title;</title>}
+in
+let \section @head @body = {
+  <section>\deeper{
+    <h1>@head;</h1>
+    @body;
+  }</section>
+} in
+let \p @p = {<p>\deeper{@p;}</p>}
+in
+  finish

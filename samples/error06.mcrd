@@ -1,4 +1,0 @@
-\macro \cdr @lst {
-  \pop @hd @tl {@lst;}{@tl;}
-}%
-\cdr{the|quick|brown|fox|jumps|over|the|lazy|dog}

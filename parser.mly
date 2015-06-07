@@ -37,7 +37,7 @@
         LambdaAbstract(argvar, curry_lambda_abstract avtail astdef)
 
   let parse_error msg =
-    print_string ("! [ERROR IN PARSER] " ^ msg ^ "\n")
+    print_string ("! - " ^ msg ^ "\n")
 
 %}
 %token <Types.var_name> NUMVAR

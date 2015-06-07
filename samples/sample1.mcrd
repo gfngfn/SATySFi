@@ -1,0 +1,10 @@
+\document{
+  \title{First Macrodown Test}
+}{
+  \section{FizzBuzz Test}{
+    \p{\fizzbuzzes(60);}
+  }
+  \section{NabeAzz Test}{
+    \p{\nabeazzes(40);}
+  }
+}

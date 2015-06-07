@@ -9,6 +9,7 @@
 *.pdf
 *.out
 *.txt
+*.html
 bin/
 old/
 test/

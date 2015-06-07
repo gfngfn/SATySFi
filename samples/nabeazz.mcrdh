@@ -1,0 +1,12 @@
+let \aho @n = {<span style="color: red">@n;</span>}
+in
+let nabeazz n =
+  if n mod 3 == 0 then
+    {\aho{\arabic(n);}}
+  else
+    {\arabic(n);}
+in
+let \nabeazzes n =
+  if n <= 0 then {} else {\nabeazzes(n - 1);} ^ (nabeazz n) ^ {\space;}
+in
+  finish

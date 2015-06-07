@@ -1,2 +1,0 @@
-\macro \test @u @v {(@u;, @v;)}%
-\test{a}{b}{c}
