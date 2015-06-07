@@ -32,38 +32,7 @@ let add_to_environment env varnm rfast =
   )
 
 let rec main ast_main =
-  let loc_same : location = ref NoContent in
-  let loc_deeper : location = ref NoContent in
-  let loc_break : location = ref NoContent in
-  let loc_include : location = ref NoContent in
-  let loc_arabic : location = ref NoContent in
-  let env_main : environment = Hashtbl.create 128 in
-    add_to_environment env_main "same" loc_same ;
-    add_to_environment env_main "\\deeper" loc_deeper ;
-    add_to_environment env_main "\\break" loc_break ;
-    add_to_environment env_main "\\include" loc_include ;
-    add_to_environment env_main "\\arabic" loc_arabic ;
-    loc_same := FuncWithEnvironment("~stra", 
-                  FuncWithEnvironment("~strb",
-                    PrimitiveSame(ContentOf("~stra"), ContentOf("~strb")),
-                    env_main
-                  ),
-                  env_main
-                ) ;
-    loc_deeper := FuncWithEnvironment("~content",
-                    Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent),
-                    env_main
-                  ) ;
-    loc_break  := BreakAndIndent ;
-
-    loc_include  := FuncWithEnvironment("~filename",
-                      PrimitiveInclude(ContentOf("~filename")),
-                      env_main
-                    ) ;
-    loc_arabic := FuncWithEnvironment("~num",
-                      PrimitiveArabic(ContentOf("~num")),
-                      env_main
-                    ) ;
+  let env_main : environment = Primitives.make_environment () in
     interpret env_main ast_main
 
 (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)

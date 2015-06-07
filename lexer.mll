@@ -115,6 +115,7 @@ rule numexpr = parse
   | "function" { LAMBDA }
   | "true" { TRUE }
   | "false" { FALSE }
+  | "finish" { FINISH }
 
   | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }

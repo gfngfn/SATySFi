@@ -1,4 +1,3 @@
-(* module Stacklist *)
 
   type 'a t = 'a list
 

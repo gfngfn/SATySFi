@@ -2,18 +2,6 @@ open Types
 
 exception TypeCheckError of string
 
-type type_variable_id = int
-type type_struct =
-  | UnitType
-  | IntType
-  | StringType
-  | BoolType
-  | FuncType of type_struct * type_struct
-  | TypeVariable of type_variable_id
-
-type type_environment = (var_name, type_struct) Hashtbl.t
-type type_equation = ((type_struct * type_struct) Stacklist.t) ref
-
 let print_process msg = (* print_string (msg ^ "\n") ; *) ()
 
 let rec string_of_type_struct tystr =
@@ -47,13 +35,15 @@ let rec equivalent tya tyb =
   | (TypeVariable(tvida), TypeVariable(tvidb)) -> (tvida == tvidb)
   | _ -> false
 
-(* type_environment -> Types.abstract_tree -> type_struct *)
-let rec typecheck tyeq tyenv abstr =
-  match abstr with
+(* (type_struct * type_struct) -> type_environment -> Types.abstract_tree -> type_struct *)
+let rec typecheck tyeq tyenv astch =
+  match astch with
   | NumericEmpty -> IntType
   | StringEmpty -> StringType
   | NumericConstant(_) -> IntType
   | StringConstant(_) -> StringType
+  | BooleanConstant(_) -> BoolType
+  | LiteralArea(_) -> StringType
 
   | ContentOf(nv) ->
       ( try
@@ -234,7 +224,9 @@ let rec typecheck tyeq tyenv abstr =
       (* assign_lambda_abstract_type tyeq tyenv argvarcons astdef *)
     )
 
-  | _ -> raise (TypeCheckError("remains to be implemented"))
+  | FinishHeaderFile -> UnitType
+
+  | _ -> raise (TypeCheckError("this cannot happen / remains to be implemented"))
 
 (*
 (* type_equation -> type_environment -> type_struct -> argument_cons -> type_struct *)
@@ -303,7 +295,7 @@ let rec string_of_tyeqlst tyeqlst =
 let rec solve tyeqlst theta =
   (* uncommentout below if you would like to see recognized type equations *)
 
-  print_string (string_of_tyeqlst tyeqlst) ;
+  print_process (string_of_tyeqlst tyeqlst) ;
 
   match tyeqlst with
   | [] -> ()
@@ -319,7 +311,7 @@ let rec solve tyeqlst theta =
             ( if emerge_in tvid tystr then
                 raise (TypeCheckError("error 1"))
               else
-              ( print_string ("  $subst '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct tystr) ^ "\n") ;
+              ( print_process ("  $subst '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct tystr)) ;
                 Hashtbl.add theta tvid tystr ;
                 solve (subst_list theta tail) theta )
             )
@@ -347,7 +339,7 @@ let rec unify theta ty =
 (* Types.abstract_tree -> string *)
 let main ast =
   let tyeq : type_equation = ref Stacklist.empty in
-  let tyenv : type_environment = Hashtbl.create 128 in
+  let tyenv : type_environment = Primitives.make_type_environment () in
   let theta : (type_variable_id, type_struct) Hashtbl.t = Hashtbl.create 128 in
   ( tvidmax := 0 ;
     let type_before_unified = typecheck tyeq tyenv ast in

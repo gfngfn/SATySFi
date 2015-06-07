@@ -1,4 +1,3 @@
-  open Types
 
   type 'a t
 

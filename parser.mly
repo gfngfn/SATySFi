@@ -68,6 +68,7 @@
 %token OPENNUM CLOSENUM
 %token BGRP EGRP
 %token TRUE FALSE
+%token FINISH
 
 %token IGNORED
 
@@ -210,6 +211,7 @@ nxbot:
   | LPAREN nxlet RPAREN { $2 }
   | OPENSTR sxblock CLOSESTR { $2 }
   | OPENQT sxblock CLOSEQT { LiteralArea($2) }
+  | FINISH { Types.FinishHeaderFile }
 ;
 sxblock:
   | sxbot sxblock { Types.Concat($1, $2) }

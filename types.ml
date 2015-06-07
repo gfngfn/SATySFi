@@ -1,4 +1,3 @@
-
 type ctrlseq_name = string
 type var_name = string
 type id_name = string
@@ -29,7 +28,9 @@ and abstract_tree =
   | Concat of abstract_tree * abstract_tree
   | ConcatOperation of abstract_tree * abstract_tree
   | NumericApply of abstract_tree * abstract_tree
+(*
   | StringApply of ctrlseq_name * class_name_arg * id_name_arg * argument_cons
+*)
   | Separated of abstract_tree * abstract_tree
   | BreakAndIndent
   | DeeperIndent of abstract_tree
@@ -53,16 +54,20 @@ and abstract_tree =
   | NoContent (* for @class and @id *)
   | UnderConstruction (* for 'compensate' *)
   | Invalid
+  | FinishHeaderFile
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
 
-let rec string_of_ast ast =
-  match ast with
-  | LambdaAbstract(x, m) -> "(Lam: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(LamEnv: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v) -> "(" ^ v ^ ")"
-  | NumericApply(m, n) -> "($ " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t) -> (string_of_ast s) ^ "-" ^ (string_of_ast t)
-  | StringEmpty -> "!"
-  | _ -> "_"
+
+type type_variable_id = int
+type type_struct =
+  | UnitType
+  | IntType
+  | StringType
+  | BoolType
+  | FuncType of type_struct * type_struct
+  | TypeVariable of type_variable_id
+
+type type_environment = (var_name, type_struct) Hashtbl.t
+type type_equation = ((type_struct * type_struct) Stacklist.t) ref
