@@ -281,22 +281,30 @@ let rec emerge_in tyid tystr =
   | _ -> false
 
 (* ((type_variable_id, type_struct) Hashtbl.t) -> type_struct -> type_struct *)
-let rec subst_type theta tystr =
+let rec subst_type_by_theta theta tystr =
   match tystr with
   | TypeVariable(tvid) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid) )
-  | FuncType(tydom, tycod) -> FuncType(subst_type theta tydom, subst_type theta tycod)
+  | FuncType(tydom, tycod) -> FuncType(subst_type_by_theta theta tydom, subst_type_by_theta theta tycod)
   | tys -> tys
+
+let rec subst_list theta tyeqlst =
+  match tyeqlst with
+  | [] -> []
+  | (tya, tyb) :: tail -> ((subst_type_by_theta theta tya), (subst_type_by_theta theta tyb)) :: (subst_list theta tail)
+
+let rec string_of_tyeqlst tyeqlst =
+  match tyeqlst with
+  | [] -> ""
+  | (tya, tyb) :: tail ->
+      "<" ^ (string_of_type_struct tya) ^ "> = <" ^ (string_of_type_struct tyb) ^ ">\n"
+        ^ (string_of_tyeqlst tail)
 
 (* (type_struct * type_struct) -> ((type_variable_id, type_struct) Hashtbl.t) -> unit *)
 let rec solve tyeqlst theta =
   (* uncommentout below if you would like to see recognized type equations *)
-  
-    ( match tyeqlst with
-      | [] -> ()
-      | (tya, tyb) :: _ -> print_string ("  *equation <" ^ (string_of_type_struct tya) ^ "> = <"
-            ^ (string_of_type_struct tyb) ^ ">\n")
-    ) ;
-  
+
+  print_string (string_of_tyeqlst tyeqlst) ;
+
   match tyeqlst with
   | [] -> ()
   | (tya, tyb) :: tail ->
@@ -307,53 +315,13 @@ let rec solve tyeqlst theta =
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
 
-        | (TypeVariable(tvida), TypeVariable(tvidb)) ->
-            ( ( if tvida == tvidb then ()
-                else
-                ( try
-                    let typ = find_real_type theta tvida in
-                    ( try
-                        let tyq = find_real_type theta tvidb in
-                          solve ((typ, tyq) :: tail) theta
-                      with
-                      | Not_found ->
-                        ( Hashtbl.add theta tvidb typ ;
-                          solve tail theta
-                        )
-                    )
-                  with
-                  | Not_found ->
-                    ( try
-                        let tyq = find_real_type theta tvidb in
-                        ( Hashtbl.add theta tvida tyq ;
-                          solve tail theta
-                        )
-                      with
-                      | Not_found ->
-                          let ntv = new_type_variable () in
-                          ( Hashtbl.add theta tvida ntv ;
-                            Hashtbl.add theta tvidb ntv ;
-                            solve tail theta
-                          )
-                    )
-                )
-              ) ;
-              solve tail theta
-            )
-
         | (TypeVariable(tvid), tystr) ->
             ( if emerge_in tvid tystr then
                 raise (TypeCheckError("error 1"))
               else
-              ( try
-                  let tystrpre = find_real_type theta tvid in
-                    solve ((tystr, tystrpre) :: tail) theta
-                with
-                | Not_found ->
-                    ( print_process "#added#\n" ;
-                      Hashtbl.add theta tvid (subst_type theta tystr) ;
-                      solve tail theta )
-              )
+              ( print_string ("  $subst '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct tystr) ^ "\n") ;
+                Hashtbl.add theta tvid tystr ;
+                solve (subst_list theta tail) theta )
             )
         | (_, TypeVariable(tvidb)) ->
             solve ((tyb, tya) :: tail) theta
@@ -384,6 +352,6 @@ let main ast =
   ( tvidmax := 0 ;
     let type_before_unified = typecheck tyeq tyenv ast in
     ( unify_type_variables tyeq theta ;
-      string_of_type_struct (subst_type theta type_before_unified)
+      string_of_type_struct (subst_type_by_theta theta type_before_unified)
     )
   )

@@ -56,3 +56,13 @@ and abstract_tree =
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
+
+let rec string_of_ast ast =
+  match ast with
+  | LambdaAbstract(x, m) -> "(Lam: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(LamEnv: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
+  | ContentOf(v) -> "(" ^ v ^ ")"
+  | NumericApply(m, n) -> "($ " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t) -> (string_of_ast s) ^ "-" ^ (string_of_ast t)
+  | StringEmpty -> "!"
+  | _ -> "_"
