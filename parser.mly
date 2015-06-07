@@ -13,9 +13,9 @@
     | ArgumentVariableCons(av, avlstl) ->
         ArgumentVariableCons(av, (append_argument_variable_list avlstl avlstb))
 
-  (* ctrlseq_name -> argument_cons -> abstract_tree *)
-  let rec convert_into_numeric_apply csnm argcons =
-    convert_into_numeric_apply_sub argcons (ContentOf(csnm))
+  (* ctrlseq_name -> abstract_tree -> abstract_tree -> argument_cons -> abstract_tree *)
+  let rec convert_into_numeric_apply csnm clsnmast idnmast argcons =
+    convert_into_numeric_apply_sub argcons (ApplyClassAndID(clsnmast, idnmast, ContentOf(csnm)))
   
   (* argument_cons -> abstract_tree -> abstract_tree *)
   and convert_into_numeric_apply_sub argcons astconstr =
@@ -224,26 +224,23 @@ sxbot:
   | BREAK { Types.BreakAndIndent }
   | STRVAR END { Types.ContentOf($1) }
   | CTRLSEQ narg sarg {
-        convert_into_numeric_apply $1 (append_argument_list $2 $3)
+        convert_into_numeric_apply $1 NoContent NoContent (append_argument_list $2 $3)
         (* Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3)) *)
       }
   | CTRLSEQ CLASSNAME narg sarg {
-        let plain = convert_into_numeric_apply $1 (append_argument_list $3 $4) in
         let clsnmast = class_name_to_abstract_tree $2 in
-          LetIn("@class", clsnmast, LetIn("@id", NoContent, plain))
+          convert_into_numeric_apply $1 clsnmast NoContent (append_argument_list $3 $4)
         (* Types.StringApply($1, Types.ClassName($2), Types.NoIDName, (append_argument_list $3 $4)) *)
       }
   | CTRLSEQ IDNAME narg sarg {
-        let plain = convert_into_numeric_apply $1 (append_argument_list $3 $4) in
         let idnmast = id_name_to_abstract_tree $2 in
-          LetIn("@class", NoContent, LetIn("@id", idnmast, plain))
+          convert_into_numeric_apply $1 NoContent idnmast (append_argument_list $3 $4)
         (* Types.StringApply($1, Types.NoClassName, Types.IDName($2), (append_argument_list $3 $4)) *)
       }
   | CTRLSEQ CLASSNAME IDNAME narg sarg {
-        let plain = convert_into_numeric_apply $1 (append_argument_list $4 $5) in
         let clsnmast = class_name_to_abstract_tree $2 in
-        let idnmast = id_name_to_abstract_tree $2 in
-          LetIn("@class", clsnmast, LetIn("@id", idnmast, plain))
+        let idnmast = id_name_to_abstract_tree $3 in
+          convert_into_numeric_apply $1 clsnmast idnmast (append_argument_list $4 $5)
         (* Types.StringApply($1, Types.ClassName($2), Types.IDName($3), (append_argument_list $4 $5)) *)
       }
 ;

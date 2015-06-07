@@ -55,10 +55,12 @@ and abstract_tree =
   | UnderConstruction (* for 'compensate' *)
   | Invalid
   | FinishHeaderFile
+  | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
+  | PrimitiveIsValid of abstract_tree
 
 
 type type_variable_id = int

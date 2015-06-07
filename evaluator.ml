@@ -91,7 +91,19 @@ let rec interpret env ast =
       print_process ">FuncWithEnvironment" ;
       FuncWithEnvironment(varnm, ast, env)
     )
-
+  | ApplyClassAndID(clsnmast, idnmast, astf) ->
+    ( match interpret env astf with
+      | FuncWithEnvironment(varnm, astdef, envf) ->
+          FuncWithEnvironment(varnm, LetIn("@class", clsnmast, LetIn("@id", idnmast, astdef)), envf)
+      | other -> LetIn("@class", clsnmast, LetIn("@id", idnmast, astf))
+    )
+(*
+      let env_new = Hashtbl.copy env in
+      ( Hashtbl.add env_new "@class" (ref clsnmast) ;
+        Hashtbl.add env_new "@id" (ref idnmast) ;
+        interpret env_new astf
+      )
+*)
   | NumericApply(astf, astl) ->
     ( print_process ">NumericApply" ;
       print_process ("  " ^ (string_of_ast astf) ^ " / " ^ (string_of_ast astl)) ;
@@ -104,11 +116,13 @@ let rec interpret env ast =
             ( add_to_environment env_new varnm (ref valuel) ;
               let intpd = interpret env_new astdef in ( print_process ("  end " ^ varnm) ; intpd )
             )
+(*
         | LambdaAbstract(varnm, astdef) ->
             let env_new = copy_environment env in
             ( add_to_environment env_new varnm (ref valuel) ;
               interpret env_new astdef
             )
+*)
         | _ -> raise (EvalError("illegal apply"))
       )
       )
@@ -153,6 +167,12 @@ let rec interpret env ast =
         | Out.IllegalOut(_) -> raise (EvalError("illegal argument of 'same'"))
       ) in
         BooleanConstant((compare str1 str2) == 0)
+
+  | PrimitiveIsValid(astf) ->
+      ( match interpret env astf with
+        | NoContent -> BooleanConstant(false)
+        | _ -> BooleanConstant(true)
+      )
 
   | PrimitiveInclude(astfile_name) ->
       ( try

@@ -7,6 +7,8 @@ let make_type_environment () =
   let tyenv : type_environment = Hashtbl.create 128 in
     add_to_type_environment tyenv "same"
       (FuncType(StringType, FuncType(StringType, BoolType))) ;
+    add_to_type_environment tyenv "is-valid"
+      (FuncType(StringType, BoolType)) ;
     add_to_type_environment tyenv "\\deeper"
       (FuncType(StringType, StringType)) ;
     add_to_type_environment tyenv "\\break"
@@ -24,6 +26,7 @@ let add_to_environment env varnm rfast =
 
 let make_environment () =
   let loc_same : location = ref NoContent in
+  let loc_isvalid : location = ref NoContent in
   let loc_deeper : location = ref NoContent in
   let loc_break : location = ref NoContent in
   let loc_space : location = ref NoContent in
@@ -31,6 +34,7 @@ let make_environment () =
   let loc_arabic : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
     add_to_environment env "same" loc_same ;
+    add_to_environment env "is-valid" loc_isvalid ;
     add_to_environment env "\\deeper" loc_deeper ;
     add_to_environment env "\\break" loc_break ;
     add_to_environment env "\\space" loc_space ;
@@ -43,6 +47,10 @@ let make_environment () =
                   ),
                   env
                 ) ;
+    loc_isvalid := FuncWithEnvironment("~content",
+                    PrimitiveIsValid(ContentOf("~content")),
+                    env
+                  ) ;
     loc_deeper := FuncWithEnvironment("~content",
                     Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent),
                     env

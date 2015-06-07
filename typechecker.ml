@@ -220,10 +220,19 @@ let rec typecheck tyeq tyenv astch =
         let tydef = typecheck tyeq tyenv_new astdef in
           FuncType(tyvar, tydef)
       )
-      (* assign_lambda_abstract_type tyeq tyenv argvarcons astdef *)
+          (* AYASHII! *)
     )
+  | ApplyClassAndID(_, _, astf) ->
+      let tyenv_new = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_new "@class" StringType ;
+        Hashtbl.add tyenv_new "@id" StringType ;
+        typecheck tyeq tyenv_new astf
+          (* AYASHII! *)
+      )
 
   | FinishHeaderFile -> TypeEnvironmentType(tyenv)
+
+  | NoContent -> StringType
 
   | _ -> raise (TypeCheckError("this cannot happen / remains to be implemented"))
 
