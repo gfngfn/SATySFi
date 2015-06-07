@@ -41,6 +41,27 @@
       increment_line_for_each_break lexbuf str (num + 1)
     )
 
+  let reset_to_numexpr () =
+    ( next_state := STATE_NUMEXPR ;
+      ignore_space := true ;
+      line_no := 0 ;
+      openqtdepth := 0 ;
+      numdepth := 0 ;
+      strdepth := 0 ;
+      numdepth_stack := Stacklist.empty ;
+      strdepth_stack := Stacklist.empty
+    )
+  let reset_to_strexpr () =
+    ( next_state := STATE_STREXPR ;
+      ignore_space := true ;
+      line_no := 0 ;
+      openqtdepth := 0 ;
+      numdepth := 0 ;
+      strdepth := 0 ;
+      numdepth_stack := Stacklist.empty ;
+      strdepth_stack := Stacklist.empty
+    )
+
 }
 
 let space = [' ' '\t']
@@ -235,8 +256,6 @@ and comment = parse
   | _ { comment lexbuf }
 
 {
-	let reset_lexer () = ( next_state := STATE_NUMEXPR )
-
   let rec cut_token lexbuf =
     let output =
       match !next_state with

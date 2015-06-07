@@ -55,6 +55,7 @@ and abstract_tree =
   | UnderConstruction (* for 'compensate' *)
   | Invalid
   | FinishHeaderFile
+  | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
@@ -62,12 +63,12 @@ and abstract_tree =
 
 type type_variable_id = int
 type type_struct =
+  | TypeEnvironmentType of type_environment
   | UnitType
   | IntType
   | StringType
   | BoolType
   | FuncType of type_struct * type_struct
   | TypeVariable of type_variable_id
-
-type type_environment = (var_name, type_struct) Hashtbl.t
+and type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref

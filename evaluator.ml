@@ -31,12 +31,8 @@ let add_to_environment env varnm rfast =
     Hashtbl.add env varnm rfast
   )
 
-let rec main ast_main =
-  let env_main : environment = Primitives.make_environment () in
-    interpret env_main ast_main
-
 (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
-and interpret env ast =
+let rec interpret env ast =
   match ast with
   | StringEmpty -> StringEmpty
 
@@ -173,6 +169,8 @@ and interpret env ast =
 
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
+
+  | FinishHeaderFile -> EvaluatedEnvironment(env)
 
   | NumericConstant(nc) -> NumericConstant(nc)
   | Times(astl, astr) ->

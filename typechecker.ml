@@ -6,6 +6,7 @@ let print_process msg = (* print_string (msg ^ "\n") ; *) ()
 
 let rec string_of_type_struct tystr =
   match tystr with
+  | TypeEnvironmentType(_) -> "env"
   | UnitType -> "unit"
   | IntType -> "int"
   | StringType -> "string"
@@ -197,9 +198,7 @@ let rec typecheck tyeq tyenv astch =
         let tyf = typecheck tyeq tyenv_new astf in
         ( Stacklist.push tyeq (ntv, tyf) ;
           let tyl = typecheck tyeq tyenv_new astl in
-          ( Hashtbl.clear tyenv_new ;
             tyl
-          )
         )
       )
     )
@@ -224,7 +223,7 @@ let rec typecheck tyeq tyenv astch =
       (* assign_lambda_abstract_type tyeq tyenv argvarcons astdef *)
     )
 
-  | FinishHeaderFile -> UnitType
+  | FinishHeaderFile -> TypeEnvironmentType(tyenv)
 
   | _ -> raise (TypeCheckError("this cannot happen / remains to be implemented"))
 
@@ -336,14 +335,17 @@ let rec unify theta ty =
   | TypeVariable(tvid) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid) )
   | tystr -> tystr
 
-(* Types.abstract_tree -> string *)
-let main ast =
+(* Types.abstract_tree -> (string * type_environment) *)
+let main tyenv ast =
   let tyeq : type_equation = ref Stacklist.empty in
-  let tyenv : type_environment = Primitives.make_type_environment () in
   let theta : (type_variable_id, type_struct) Hashtbl.t = Hashtbl.create 128 in
-  ( tvidmax := 0 ;
     let type_before_unified = typecheck tyeq tyenv ast in
     ( unify_type_variables tyeq theta ;
-      string_of_type_struct (subst_type_by_theta theta type_before_unified)
+      let type_after_unfied = subst_type_by_theta theta type_before_unified in
+      let strty = string_of_type_struct type_after_unfied in
+        match type_after_unfied with
+        | TypeEnvironmentType(newtyenv) -> (strty, newtyenv)
+        | _ -> (strty, tyenv)
     )
-  )
+
+let initialize () = ( tvidmax := 0 )
