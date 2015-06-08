@@ -64,9 +64,9 @@
 %token <Types.class_name> CLASSNAME
 %token END
 %token LAMBDA ARROW
-%token <int> LET
-%token IN DEFEQ
-%token IF THEN ELSE
+%token <int> LET IN
+%token DEFEQ
+%token <int> IF THEN ELSE
 %token EOI
 %token LPAREN RPAREN
 %token TIMES DIVIDES
@@ -140,6 +140,7 @@ nxlet:
           Types.LetIn($2, curried, $8)
       }
   | nxif { $1 }
+/* -- for syntax error log -- */
   | LET error {
       raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
     }
@@ -150,31 +151,43 @@ nxlet:
       raise (ParseErrorDetail(error_reporting "illegal token after '='" ("let " ^ $2 ^ " = ..<!>..") $1))
     }
   | LET STRVAR DEFEQ nxlet IN error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" ("let " ^ $2 ^ " = ... in ..<!>..") $1))
+      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" ("let " ^ $2 ^ " = ... in ..<!>..") $5))
     }
-
   | LET NUMVAR error {
       raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
     }
-
   | LET NUMVAR nargvar sargvar DEFEQ error {
       raise (ParseErrorDetail(error_reporting "illegal token after '='"
         ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ..<!>..") $1))
     }
-
-/*
+  | LET NUMVAR nargvar sargvar DEFEQ nxlet IN error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" "in ..<!>.." $7))
+      (* ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ... in ..<!>..") *)
+    }
   | LET CTRLSEQ error {
       raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
     }
-*/
-  | LET CTRLSEQ nargvar error {
-      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
-        ("let " ^ $2 ^ (string_of_avc $3) ^ " ..<!>..") $1))
+  | LET CTRLSEQ nargvar sargvar DEFEQ error {
+      raise (ParseErrorDetail(error_reporting "illegal token after '='"
+        ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ " = ..<!>..") $1))
+    }
+  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" "in ..<!>.." $7))
     }
 ;
 nxif:
   | IF nxif THEN nxif ELSE nxif { Types.IfThenElse($2, $4, $6) }
   | nxlambda { $1 }
+/* -- for syntax error log -- */
+  | IF error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'if'" "if ..<!>.." $1))
+    }
+  | IF nxif THEN error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'then'" "then ..<!>.." $3))
+    }
+  | IF nxif THEN nxif ELSE error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'else'" "else ..<!>.." $5))
+    }
 ;
 nxlambda:
   | LAMBDA nargvar sargvar ARROW nxlor {

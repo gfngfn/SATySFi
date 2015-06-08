@@ -1,4 +1,4 @@
-let \aho @n = {<span style="color: red">@n;</span>}
+let \aho @n = {\span.aho{@n;}}
 in
 let survey n d =
   if d > n then

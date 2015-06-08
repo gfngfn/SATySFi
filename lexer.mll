@@ -133,11 +133,11 @@ rule numexpr = parse
   | "^" { CONCAT }
   | "->" { ARROW }
   | "mod" { MOD }
-  | "if" { IF }
-  | "then" { THEN }
-  | "else" { ELSE }
+  | "if" { IF(!line_no) }
+  | "then" { THEN(!line_no) }
+  | "else" { ELSE(!line_no) }
   | "let" { LET(!line_no) }
-  | "in" { IN }
+  | "in" { IN(!line_no) }
   | "function" { LAMBDA }
   | "true" { TRUE }
   | "false" { FALSE }

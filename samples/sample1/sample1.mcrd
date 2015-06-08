@@ -1,5 +1,7 @@
 \document{
+  \content-type;
   \title{First Macrodown Test}
+  \if-html{\set-style{style.css}}
 }{
   \section{FizzBuzz Test}{
     \p{\fizzbuzzes(60);}
