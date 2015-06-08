@@ -1,3 +1,5 @@
+exception ParseErrorDetail of string
+
 type ctrlseq_name = string
 type var_name = string
 type id_name = string
@@ -28,9 +30,6 @@ and abstract_tree =
   | Concat of abstract_tree * abstract_tree
   | ConcatOperation of abstract_tree * abstract_tree
   | NumericApply of abstract_tree * abstract_tree
-(*
-  | StringApply of ctrlseq_name * class_name_arg * id_name_arg * argument_cons
-*)
   | Separated of abstract_tree * abstract_tree
   | BreakAndIndent
   | DeeperIndent of abstract_tree

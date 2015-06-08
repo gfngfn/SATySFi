@@ -3,8 +3,9 @@
   open Parser
 
   exception LexError of string
-  let line_no = ref 1
-  let end_of_previousline = ref 0
+
+  let line_no : int ref = ref 1
+  let end_of_previousline : int ref = ref 0
 (*  let get_pos lexbuf = (!line_no, (Lexing.lexeme_start lexbuf) - (!end_of_previousline)) *)
 
   type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
@@ -46,7 +47,7 @@
     ( first_state := STATE_NUMEXPR ;
       next_state := !first_state ;
       ignore_space := true ;
-      line_no := 0 ;
+      line_no := 1 ;
       openqtdepth := 0 ;
       numdepth := 0 ;
       strdepth := 0 ;
@@ -57,7 +58,7 @@
     ( first_state := STATE_STREXPR ;
       next_state := !first_state ;
       ignore_space := true ;
-      line_no := 0 ;
+      line_no := 1 ;
       openqtdepth := 0 ;
       numdepth := 0 ;
       strdepth := 0 ;
@@ -135,7 +136,7 @@ rule numexpr = parse
   | "if" { IF }
   | "then" { THEN }
   | "else" { ELSE }
-  | "let" { LET }
+  | "let" { LET(!line_no) }
   | "in" { IN }
   | "function" { LAMBDA }
   | "true" { TRUE }
@@ -277,6 +278,72 @@ and comment = parse
   | _ { comment lexbuf }
 
 {
+(*
+  let string_of_token tok =
+    match tok with
+    | NUMVAR(varnm) -> varnm
+    | STRVAR(varnm) -> varnm
+    | NUMCONST(str) -> str
+    | CHAR(str) -> str
+    | SPACE -> "[space]"
+    | BREAK -> "[break]"
+    | CTRLSEQ(csnm) -> csnm
+    | IDNAME(idnm) -> idnm
+    | CLASSNAME(clsnm) -> clsnm
+    | END -> ";"
+    | LAMBDA -> "function"
+    | ARROW -> "->"
+    | LET -> "let"
+    | IN -> "in"
+    | DEFEQ -> "="
+    | IF -> "if"
+    | THEN -> "then"
+    | ELSE -> "else"
+    | EOI -> ""
+    | LPAREN -> "("
+    | RPAREN -> ")"
+    | TIMES -> "*"
+    | DIVIDES -> "/"
+    | MOD -> "mod"
+    | PLUS -> "+"
+    | MINUS -> "-"
+    | EQ -> "=="
+    | NEQ -> "<>"
+    | GEQ -> ">="
+    | LEQ -> "<="
+    | GT -> ">"
+    | LT -> "<"
+    | LNOT -> "not"
+    | LAND -> "&&"
+    | LOR -> "||"
+    | CONCAT -> " ^ "
+    | OPENQT -> "[`{]"
+    | CLOSEQT -> "[}`]"
+    | OPENSTR -> "{"
+    | CLOSESTR -> "}"
+    | OPENNUM -> "("
+    | CLOSENUM -> ")"
+    | BGRP -> "{"
+    | EGRP -> "}"
+    | TRUE -> "true"
+    | FALSE -> "false"
+    | FINISH -> "finish"
+    | IGNORED -> ""
+
+  let rec string_of_token_list lst =
+    match lst with
+    | [] -> ""
+    | head :: tail -> (string_of_token_list tail) ^ " " ^ (string_of_token head)
+
+  let show_latest_token_list () = string_of_token_list !latest_token_list
+*)
+  let update_latest_token_list tok = ()
+  (*
+    match !latest_token_list with
+    | [] -> () (* this cannot hapen *)
+    | head :: tail -> latest_token_list := tok :: tail
+  *)
+
   let rec cut_token lexbuf =
     let output =
       match !next_state with
@@ -286,9 +353,11 @@ and comment = parse
       | STATE_COMMENT -> comment lexbuf
       | STATE_LITERAL -> literal lexbuf
     in
+    ( update_latest_token_list output ;
       match output with
       | IGNORED -> cut_token lexbuf
       | _ -> output
+    )
 
   (* for test *)
   let rec make_token_list lexbuf =

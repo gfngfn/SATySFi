@@ -1,17 +1,26 @@
 %{
   open Types
 
+  exception MyParseError of string
+(*
+  (* mainly used in Lexer *)
+  let latest_output_token_list : token list ref
+    = ref [IGNORED; IGNORED; IGNORED; IGNORED;
+           IGNORED; IGNORED; IGNORED; IGNORED;
+           IGNORED; IGNORED; IGNORED; IGNORED;
+           IGNORED; IGNORED; IGNORED; IGNORED ]
+*)
   let rec append_argument_list arglsta arglstb =
     match arglsta with
     | EndOfArgument -> arglstb
     | ArgumentCons(arg, arglstl) ->
         ArgumentCons(arg, (append_argument_list arglstl arglstb))
 
-  let rec append_argument_variable_list avlsta avlstb =
+  let rec append_avc avlsta avlstb =
     match avlsta with
     | EndOfArgumentVariable -> avlstb
     | ArgumentVariableCons(av, avlstl) ->
-        ArgumentVariableCons(av, (append_argument_variable_list avlstl avlstb))
+        ArgumentVariableCons(av, (append_avc avlstl avlstb))
 
   (* ctrlseq_name -> abstract_tree -> abstract_tree -> argument_cons -> abstract_tree *)
   let rec convert_into_numeric_apply csnm clsnmast idnmast argcons =
@@ -36,9 +45,13 @@
     | ArgumentVariableCons(argvar, avtail) -> 
         LambdaAbstract(argvar, curry_lambda_abstract avtail astdef)
 
-  let parse_error msg =
-    print_string ("! - " ^ msg ^ "\n")
+  let error_reporting msg disp ln =
+    "Syntax error: " ^ msg ^ ".\n\n    " ^ disp ^ "\n\n  (at line " ^ (string_of_int ln) ^ ")"
 
+  let rec string_of_avc argvarcons =
+    match argvarcons with
+    | EndOfArgumentVariable -> ""
+    | ArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
 %}
 %token <Types.var_name> NUMVAR
 %token <Types.var_name> STRVAR
@@ -51,7 +64,8 @@
 %token <Types.class_name> CLASSNAME
 %token END
 %token LAMBDA ARROW
-%token LET IN DEFEQ
+%token <int> LET
+%token IN DEFEQ
 %token IF THEN ELSE
 %token EOI
 %token LPAREN RPAREN
@@ -116,16 +130,47 @@ main:
 nxlet:
   | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetIn($2, $4, $6) }
   | LET NUMVAR nargvar sargvar DEFEQ nxlet IN nxlet {
-        let argvarcons = (append_argument_variable_list $3 $4) in
+        let argvarcons = (append_avc $3 $4) in
         let curried = curry_lambda_abstract argvarcons $6 in
           Types.LetIn($2, curried, $8)
       }
   | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN nxlet {
-        let argvarcons = (append_argument_variable_list $3 $4) in
+        let argvarcons = (append_avc $3 $4) in
         let curried = curry_lambda_abstract argvarcons $6 in
           Types.LetIn($2, curried, $8)
       }
   | nxif { $1 }
+  | LET error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
+    }
+  | LET STRVAR error {
+      raise (ParseErrorDetail(error_reporting "missing '='" ("let " ^ $2 ^ " ..<!>..") $1))
+    }
+  | LET STRVAR DEFEQ error {
+      raise (ParseErrorDetail(error_reporting "illegal token after '='" ("let " ^ $2 ^ " = ..<!>..") $1))
+    }
+  | LET STRVAR DEFEQ nxlet IN error {
+      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" ("let " ^ $2 ^ " = ... in ..<!>..") $1))
+    }
+
+  | LET NUMVAR error {
+      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+    }
+
+  | LET NUMVAR nargvar sargvar DEFEQ error {
+      raise (ParseErrorDetail(error_reporting "illegal token after '='"
+        ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ..<!>..") $1))
+    }
+
+/*
+  | LET CTRLSEQ error {
+      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+    }
+*/
+  | LET CTRLSEQ nargvar error {
+      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
+        ("let " ^ $2 ^ (string_of_avc $3) ^ " ..<!>..") $1))
+    }
 ;
 nxif:
   | IF nxif THEN nxif ELSE nxif { Types.IfThenElse($2, $4, $6) }
@@ -133,7 +178,7 @@ nxif:
 ;
 nxlambda:
   | LAMBDA nargvar sargvar ARROW nxlor {
-        let argvarcons = append_argument_variable_list $2 $3 in
+        let argvarcons = append_avc $2 $3 in
           curry_lambda_abstract argvarcons $5
       }
   | nxlor { $1 }

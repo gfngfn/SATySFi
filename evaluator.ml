@@ -95,7 +95,7 @@ let rec interpret env ast =
     ( match interpret env astf with
       | FuncWithEnvironment(varnm, astdef, envf) ->
           FuncWithEnvironment(varnm, LetIn("@class", clsnmast, LetIn("@id", idnmast, astdef)), envf)
-      | other -> LetIn("@class", clsnmast, LetIn("@id", idnmast, astf))
+      | other -> interpret env (LetIn("@class", clsnmast, LetIn("@id", idnmast, astf)))
     )
 (*
       let env_new = Hashtbl.copy env in
