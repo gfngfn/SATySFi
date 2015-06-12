@@ -1,6 +1,8 @@
 let \document @head @body = {
+  <html lang="ja">\deeper{
     <head>\deeper{@head;}</head>
     <body>\deeper{@body;}</body>
+  }</html>
 } in
 let \author @author = {<meta name="author" content="@author;">} in
 let \title @title = {<title>@title;</title>} in
