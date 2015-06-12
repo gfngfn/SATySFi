@@ -1,0 +1,62 @@
+let direct-latex-0 @csname = {\\@csname;\{\}} in
+let direct-latex-1 @csname =
+  let f @arg1 = {
+    \\@csname;\{@arg1;\}
+  } in f in
+let direct-latex-2 @csname =
+  let f @arg1 @arg2 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}
+  } in f in
+let direct-latex-3 @csname =
+  let f @arg1 @arg2 @arg3 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}
+  } in f in
+let direct-latex-4 @csname =
+  let f @arg1 @arg2 @arg3 @arg4 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}
+  } in f in
+let direct-latex-5 @csname =
+  let f @arg1 @arg2 @arg3 @arg4 @arg5 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}\{@arg5;\}
+  } in f in
+let direct-latex-6 @csname =
+  let f @arg1 @arg2 @arg3 @arg4 @arg5 @arg6 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}\{@arg5;\}\{@arg6;\}
+  } in f in
+let direct-latex-7 @csname =
+  let f @arg1 @arg2 @arg3 @arg4 @arg5 @arg6 @arg7 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}\{@arg5;\}\{@arg6;\}\{@arg7;\}
+  } in f in
+let direct-latex-8 @csname =
+  let f @arg1 @arg2 @arg3 @arg4 @arg5 @arg6 @arg7 @arg8 = {
+    \\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}\{@arg5;\}\{@arg6;\}\{@arg7;\}\{@arg8;\}
+  } in f in
+let latex-environment @envname =
+  let f @inner = {
+    \\begin\{@envname;\}\deeper{@inner;}\\end\{@envname;\}
+  } in f in
+let \document @head @body =
+  {
+    \\documentclass\{jsarticle\}
+    \\makeatletter\deeper{
+      @head;
+    }\\makeatother\break;
+  } ^ (latex-environment {document}) {@body;}
+in
+let \author = direct-latex-1 {author} in
+let \title = direct-latex-1 {title} in
+let \maketitle = direct-latex-0 {maketitle} in
+let \section @head @cnt = {
+  \\section\{@head;\}\deeper{
+    @cnt;
+  }\% ---- ----
+} in
+let \subsection @head @cnt = {
+  \\subsection\{@head;\}\deeper{
+    @cnt;
+  }\% ---- ----
+} in
+let \p @inner = {
+  \\indent\deeper{@inner;}\\par
+} in
+  finish

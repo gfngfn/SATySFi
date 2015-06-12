@@ -175,6 +175,8 @@ let rec interpret env ast =
 
   | EndOfList -> EndOfList
 
+  | LiteralArea(ltrl) -> ltrl
+
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
         let (valuehd, _) = pop_from_separated_tree valuelst UnderConstruction in valuehd

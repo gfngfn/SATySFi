@@ -77,6 +77,7 @@
 %token TRUE FALSE
 %token FINISH
 %token SEP
+%token BLIST ELIST LISTPUNCT
 %token IGNORED
 
 %nonassoc LET DEFEQ IN
@@ -106,6 +107,7 @@
 %type <Types.abstract_tree> nxun
 %type <Types.abstract_tree> nxapp
 %type <Types.abstract_tree> nxbot
+%type <Types.abstract_tree> nxlist
 %type <Types.abstract_tree> sxsep
 %type <Types.abstract_tree> sxsepsub
 %type <Types.abstract_tree> sxblock
@@ -266,6 +268,12 @@ nxbot:
   | OPENSTR sxsep CLOSESTR { $2 }
   | OPENQT sxsep CLOSEQT { LiteralArea($2) }
   | FINISH { Types.FinishHeaderFile }
+  | BLIST ELIST { Types.EndOfList }
+  | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
+;
+nxlist:
+  | LISTPUNCT nxlet nxlist { Types.ListCons($2, $3) }
+  | { Types.EndOfList }
 ;
 sxsep:
   | sxblock SEP sxsepsub { ListCons($1, $3) }

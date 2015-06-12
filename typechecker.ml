@@ -12,7 +12,7 @@ let rec string_of_type_struct tystr =
   | StringType -> "string"
   | BoolType -> "bool"
   | FuncType(tyf, tyl) -> "(" ^ (string_of_type_struct tyf) ^ " -> " ^ (string_of_type_struct tyl) ^ ")"
-  | ListType(ty) -> "[" ^ (string_of_type_struct ty) ^ "]"
+  | ListType(ty) -> "(" ^ (string_of_type_struct ty) ^ " list)"
   | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
 
 let find_real_type theta tvid =
@@ -232,6 +232,14 @@ let rec typecheck tyeq tyenv astch =
           (* AYASHII! *)
       )
 
+  | ListCons(asthd, asttl) ->
+      let tyhd = typecheck tyeq tyenv asthd in
+      let tytl = typecheck tyeq tyenv asttl in
+      ( ( if equivalent (ListType(tyhd)) tytl then () else Stacklist.push tyeq (ListType(tyhd), tytl) ) ;
+      	ListType(tyhd)
+      )
+  | EndOfList -> let ntyvar = new_type_variable() in ListType(ntyvar)
+
   | FinishHeaderFile -> TypeEnvironmentType(tyenv)
 
   | NoContent -> StringType
@@ -314,6 +322,9 @@ let rec solve tyeqlst theta =
         solve tail theta
       else
       ( match (tya, tyb) with
+      	| (ListType(tycnta), ListType(tycntb)) ->
+      	    solve ((tycnta, tycntb) :: tail) theta
+
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
 

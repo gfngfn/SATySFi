@@ -71,8 +71,9 @@
 let space = [' ' '\t']
 let break = ['\n']
 let digit = ['0'-'9']
-let latin = (['a'-'z'] | ['A'-'Z'])
+let latin = ( ['a'-'z'] | ['A'-'Z'] )
 let identifier = (latin (digit | latin | "-")*)
+let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 rule numexpr = parse
   | "%" {
       after_comment_state := STATE_NUMEXPR ;
@@ -98,6 +99,9 @@ rule numexpr = parse
         else
           RPAREN
     }
+  | "[" { BLIST }
+  | "]" { ELIST }
+  | ";" { LISTPUNCT }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
       increment strdepth ;
@@ -132,6 +136,7 @@ rule numexpr = parse
   | "||" { LOR }
   | "^" { CONCAT }
   | "->" { ARROW }
+  | "not" { LNOT }
   | "mod" { MOD }
   | "if" { IF(!line_no) }
   | "then" { THEN(!line_no) }
@@ -171,14 +176,16 @@ and strexpr = parse
       decrement strdepth ;
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       if Stacklist.is_empty strdepth_stack then
-        EGRP
+      ( ignore_space := false ;
+        EGRP )
       else
         if !strdepth == Stacklist.top strdepth_stack then
         ( Stacklist.delete_top strdepth_stack ;
           next_state := STATE_NUMEXPR ;
           CLOSESTR )
         else
-          EGRP
+        ( ignore_space := false ;
+          EGRP )
     }
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
@@ -197,6 +204,9 @@ and strexpr = parse
       let tok = Lexing.lexeme lexbuf in
         next_state := STATE_ACTIVE ;
         CTRLSEQ(tok)
+    }
+  | ("\\" symbol) {
+      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(tok)
     }
   | ("@" identifier) {
       let tok = Lexing.lexeme lexbuf in
@@ -250,6 +260,7 @@ and active = parse
     }
   | ";" {
       next_state := STATE_STREXPR ;
+      ignore_space := false ;
       END
     }
   | eof {
