@@ -25,7 +25,8 @@
 
     | BreakAndIndent -> "\n" ^ (if indent > 0 then String.make (indent * 2) ' ' else "")
 
-    | Separated(vf, vl) -> raise (IllegalOut("cannot output '|'"))
+    | ListCons(vf, vl) -> raise (IllegalOut("cannot output list"))
+    | EndOfList -> raise (IllegalOut("cannot output list"))
 
     | NumericConstant(nc) -> raise (IllegalOut("cannot output int " ^ (string_of_int nc)))
     | BooleanConstant(bc) -> raise (IllegalOut("cannot output bool " ^ (string_of_bool bc)))

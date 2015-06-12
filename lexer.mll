@@ -180,6 +180,11 @@ and strexpr = parse
         else
           EGRP
     }
+  | ((break | space)* "|") {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
+      ignore_space := true ;
+      SEP
+    }
   | break {
       increment_line lexbuf ;
       if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK )

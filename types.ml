@@ -30,7 +30,8 @@ and abstract_tree =
   | Concat of abstract_tree * abstract_tree
   | ConcatOperation of abstract_tree * abstract_tree
   | NumericApply of abstract_tree * abstract_tree
-  | Separated of abstract_tree * abstract_tree
+  | ListCons of abstract_tree * abstract_tree
+  | EndOfList
   | BreakAndIndent
   | DeeperIndent of abstract_tree
   | Times of abstract_tree * abstract_tree
@@ -60,6 +61,9 @@ and abstract_tree =
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
   | PrimitiveIsValid of abstract_tree
+  | PrimitiveListHead of abstract_tree
+  | PrimitiveListTail of abstract_tree
+  | PrimitiveIsEmpty of abstract_tree
 
 
 type type_variable_id = int
@@ -70,6 +74,7 @@ type type_struct =
   | StringType
   | BoolType
   | FuncType of type_struct * type_struct
+  | ListType of type_struct
   | TypeVariable of type_variable_id
 and type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref

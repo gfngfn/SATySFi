@@ -19,6 +19,12 @@ let make_type_environment () =
       (FuncType(StringType, StringType)) ;
     add_to_type_environment tyenv "\\arabic"
       (FuncType(IntType, StringType)) ;
+    add_to_type_environment tyenv "list-head"
+      (FuncType(ListType(StringType), StringType)) ;
+    add_to_type_environment tyenv "list-tail"
+      (FuncType(ListType(StringType), ListType(StringType))) ;
+    add_to_type_environment tyenv "is-empty"
+      (FuncType(ListType(StringType), BoolType)) ;
     tyenv
 
 let add_to_environment env varnm rfast =
@@ -32,6 +38,9 @@ let make_environment () =
   let loc_space : location = ref NoContent in
   let loc_include : location = ref NoContent in
   let loc_arabic : location = ref NoContent in
+  let loc_listhead : location = ref NoContent in
+  let loc_listtail : location = ref NoContent in
+  let loc_isempty : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
     add_to_environment env "same" loc_same ;
     add_to_environment env "is-valid" loc_isvalid ;
@@ -40,6 +49,9 @@ let make_environment () =
     add_to_environment env "\\space" loc_space ;
     add_to_environment env "\\include" loc_include ;
     add_to_environment env "\\arabic" loc_arabic ;
+    add_to_environment env "list-head" loc_listhead ;
+    add_to_environment env "list-tail" loc_listtail ;
+    add_to_environment env "is-empty" loc_isempty ;
     loc_same := FuncWithEnvironment("~stra", 
                   FuncWithEnvironment("~strb",
                     PrimitiveSame(ContentOf("~stra"), ContentOf("~strb")),
@@ -63,7 +75,19 @@ let make_environment () =
                       env
                     ) ;
     loc_arabic := FuncWithEnvironment("~num",
-                      PrimitiveArabic(ContentOf("~num")),
+                    PrimitiveArabic(ContentOf("~num")),
+                    env
+                  ) ;
+    loc_listhead := FuncWithEnvironment("~list",
+                      PrimitiveListHead(ContentOf("~list")),
+                      env
+                    ) ;
+    loc_listtail := FuncWithEnvironment("~list",
+                      PrimitiveListTail(ContentOf("~list")),
+                      env
+                    ) ;
+    loc_isempty :=  FuncWithEnvironment("~list",
+                      PrimitiveIsEmpty(ContentOf("~list")),
                       env
                     ) ;
     env

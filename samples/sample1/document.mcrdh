@@ -7,7 +7,7 @@ in
 let \document @head @body = {
   <html>\deeper{
     <head>\deeper{@head;}</head>
-    <body>\deeper{@body;}</body>
+    <body><div class="main">\deeper{@body;}</div></body>
   }</html>
 } in
 let \title @title = {<title>@title;</title>}

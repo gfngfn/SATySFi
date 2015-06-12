@@ -12,6 +12,7 @@ let rec string_of_type_struct tystr =
   | StringType -> "string"
   | BoolType -> "bool"
   | FuncType(tyf, tyl) -> "(" ^ (string_of_type_struct tyf) ^ " -> " ^ (string_of_type_struct tyl) ^ ")"
+  | ListType(ty) -> "[" ^ (string_of_type_struct ty) ^ "]"
   | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
 
 let find_real_type theta tvid =
@@ -33,6 +34,7 @@ let rec equivalent tya tyb =
   | (BoolType, BoolType)     -> true
   | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod))
       -> (equivalent tyadom tybdom) && (equivalent tyacod tybcod)
+  | (ListType(tycnta), ListType(tycntb)) -> (equivalent tycnta tycntb)
   | (TypeVariable(tvida), TypeVariable(tvidb)) -> (tvida == tvidb)
   | _ -> false
 

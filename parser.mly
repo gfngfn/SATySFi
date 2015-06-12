@@ -2,14 +2,7 @@
   open Types
 
   exception MyParseError of string
-(*
-  (* mainly used in Lexer *)
-  let latest_output_token_list : token list ref
-    = ref [IGNORED; IGNORED; IGNORED; IGNORED;
-           IGNORED; IGNORED; IGNORED; IGNORED;
-           IGNORED; IGNORED; IGNORED; IGNORED;
-           IGNORED; IGNORED; IGNORED; IGNORED ]
-*)
+
   let rec append_argument_list arglsta arglstb =
     match arglsta with
     | EndOfArgument -> arglstb
@@ -83,7 +76,7 @@
 %token BGRP EGRP
 %token TRUE FALSE
 %token FINISH
-
+%token SEP
 %token IGNORED
 
 %nonassoc LET DEFEQ IN
@@ -113,6 +106,8 @@
 %type <Types.abstract_tree> nxun
 %type <Types.abstract_tree> nxapp
 %type <Types.abstract_tree> nxbot
+%type <Types.abstract_tree> sxsep
+%type <Types.abstract_tree> sxsepsub
 %type <Types.abstract_tree> sxblock
 %type <Types.abstract_tree> sxbot
 %type <Types.argument_cons> narg
@@ -268,9 +263,17 @@ nxbot:
   | TRUE { Types.BooleanConstant(true) }
   | FALSE { Types.BooleanConstant(false) }
   | LPAREN nxlet RPAREN { $2 }
-  | OPENSTR sxblock CLOSESTR { $2 }
-  | OPENQT sxblock CLOSEQT { LiteralArea($2) }
+  | OPENSTR sxsep CLOSESTR { $2 }
+  | OPENQT sxsep CLOSEQT { LiteralArea($2) }
   | FINISH { Types.FinishHeaderFile }
+;
+sxsep:
+  | sxblock SEP sxsepsub { ListCons($1, $3) }
+  | sxblock { $1 }
+;
+sxsepsub:
+  | sxblock SEP sxsepsub { ListCons($1, $3) }
+  | sxblock { ListCons($1, EndOfList) }
 ;
 sxblock:
   | sxbot sxblock { Types.Concat($1, $2) }
@@ -307,12 +310,12 @@ narg: /* -> Types.argument_cons */
   | { Types.EndOfArgument }
 ;
 sarg: /* -> Types.argument_cons */
-  | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
+  | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | END { Types.EndOfArgument }
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxblock EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
+  | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
+  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | { Types.EndOfArgument }
 ;

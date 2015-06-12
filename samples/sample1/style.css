@@ -1,4 +1,37 @@
 @charset "UTF-8";
+
+body {
+  font-family: メイリオ;
+  background-color: #888888;
+}
+
+p {
+  text-indent: 1em;
+}
+h1 {
+  text-indent: 10pt;
+  background-color: #cccccc;
+  border-width: 6pt;
+  border-top-style: double;
+  border-bottom-style: double;
+  border-color: #444444;
+  margin-top: 30pt;
+}
+
+.main {
+	/* max-width: 700px; */
+  background-color: #eeeeee;
+  padding-left: 5%;
+  padding-right: 5%;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-width: 2pt;
+  margin-left: 15%;
+  margin-right: 15%;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
 .aho {
 	color: red;
 	font-size: 2em;

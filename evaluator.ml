@@ -61,10 +61,6 @@ let rec interpret env ast =
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
     )
-  | Separated(astf, astl) ->
-      let valuef = interpret env astf in
-      let valuel = interpret env astl in
-        Separated(valuef, valuel)
 
   | LetIn(nv, astdef, astrest) ->
     ( print_process (">LetIn: " ^ nv ^ " / "
@@ -97,13 +93,6 @@ let rec interpret env ast =
           FuncWithEnvironment(varnm, LetIn("@class", clsnmast, LetIn("@id", idnmast, astdef)), envf)
       | other -> interpret env (LetIn("@class", clsnmast, LetIn("@id", idnmast, astf)))
     )
-(*
-      let env_new = Hashtbl.copy env in
-      ( Hashtbl.add env_new "@class" (ref clsnmast) ;
-        Hashtbl.add env_new "@id" (ref idnmast) ;
-        interpret env_new astf
-      )
-*)
   | NumericApply(astf, astl) ->
     ( print_process ">NumericApply" ;
       print_process ("  " ^ (string_of_ast astf) ^ " / " ^ (string_of_ast astl)) ;
@@ -116,13 +105,6 @@ let rec interpret env ast =
             ( add_to_environment env_new varnm (ref valuel) ;
               let intpd = interpret env_new astdef in ( print_process ("  end " ^ varnm) ; intpd )
             )
-(*
-        | LambdaAbstract(varnm, astdef) ->
-            let env_new = copy_environment env in
-            ( add_to_environment env_new varnm (ref valuel) ;
-              interpret env_new astdef
-            )
-*)
         | _ -> raise (EvalError("illegal apply"))
       )
       )
@@ -173,7 +155,6 @@ let rec interpret env ast =
         | NoContent -> BooleanConstant(false)
         | _ -> BooleanConstant(true)
       )
-
   | PrimitiveInclude(astfile_name) ->
       ( try
           let str_file_name = Out.main (interpret env astfile_name) in
@@ -186,6 +167,29 @@ let rec interpret env ast =
       )
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
+
+  | ListCons(asthd, asttl) ->
+      let valuehd = interpret env asthd in
+      let valuetl = interpret env asttl in
+        ListCons(valuehd, valuetl)
+
+  | EndOfList -> EndOfList
+
+  | PrimitiveListHead(astlst) ->
+      let valuelst = interpret env astlst in
+        let (valuehd, _) = pop_from_separated_tree valuelst UnderConstruction in valuehd
+
+  | PrimitiveListTail(astlst) ->
+      let valuelst = interpret env astlst in
+        let (_, valuetl) = pop_from_separated_tree valuelst UnderConstruction in valuetl
+
+  | PrimitiveIsEmpty(astlst) ->
+      let valuelst = interpret env astlst in
+      ( match valuelst with
+        | EndOfList -> BooleanConstant(true)
+        | ListCons(_, _) -> BooleanConstant(false)
+        | _ -> raise (EvalError("not a list"))
+      )
 
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
@@ -240,7 +244,7 @@ let rec interpret env ast =
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)
 
-  | _ -> raise (EvalError("not of type string / remains to be implemented"))
+  | _ -> raise (EvalError("remains to be implemented"))
 
 and interpret_bool env ast =
   match interpret env ast with
@@ -252,31 +256,24 @@ and interpret_int env ast =
   | NumericConstant(nc) -> nc
   | _ -> raise (EvalError("not of type int / remains to be implemented"))
 
-(*
-and deal_with_cons env argvarcons argcons =
-  match (argvarcons, argcons) with
-  | (EndOfArgumentVariable, EndOfArgument) -> ()
-  | (ArgumentVariableCons(argvar, avtail), ArgumentCons(arg, atail)) ->
-      ( add_to_environment env argvar (ref arg) ; deal_with_cons env avtail atail )
-  | _ -> raise (EvalError("wrong number of argument"))
-*)
+
 (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
 and pop_from_separated_tree astin astconstr =
   match astin with
-  | Separated(astf, astl) -> (
-        match astf with
-        | Separated(a, b) -> (
-            pop_from_separated_tree astf (compensate astconstr (Separated(UnderConstruction, astl)))
+  | ListCons(asthd, asttl) -> (
+        match asthd with
+        | ListCons(a, b) -> (
+            pop_from_separated_tree asthd (compensate astconstr (ListCons(UnderConstruction, asttl)))
           )
-        | _ -> (astf, compensate astconstr astl)
+        | _ -> (asthd, compensate astconstr asttl)
       )
-  | _ -> (astin, StringEmpty)
+  | _ -> (astin, EndOfList)
 
 (* abstract_tree -> abstract_tree -> abstract_tree *)
 and compensate astunder_constr astcmpnstd =
   match astunder_constr with
-  | Separated(astformer, astlatter)
-      -> Separated((compensate astformer astcmpnstd), (compensate astlatter astcmpnstd))
+  | ListCons(astformer, astlatter)
+      -> ListCons((compensate astformer astcmpnstd), (compensate astlatter astcmpnstd))
   | UnderConstruction -> astcmpnstd
   | astother -> astother
 
