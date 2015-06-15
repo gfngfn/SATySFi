@@ -1,4 +1,4 @@
-\macro \document @head @body {%
+let \document @head @body = {
   \\documentclass\{jsarticle\}
   \\makeatletter\deeper{
     @head;
@@ -6,76 +6,84 @@
   \\begin\{document\}\deeper{
     @body;
   }\\end\{document\}
-}%
-\macro \title @title {\\title\{@title;\}}%
-\macro \author @author {\\author\{@author;\}}%
-\macro \maketitle {\\maketitle}%
-\macro \section @sec @cont {\\section\{@sec;\}\deeper{@cont;}\%}%
-\macro \subsection @subsec @cont {\\subsection\{@subsec;\}\deeper{@cont;}\%}%
-\macro \p @p {\\indent\deeper{@p;}\\par}%
-\macro \footnote @footnote {\\footnote\{@footnote;\}}%
-\macro \row @row-content {
-  \pop @cell @rest {@row-content;}{
-    @cell;\ifempty{@rest;}{}{\ & \row{@rest;}}
-  }
-}%
-\macro \table @option @table {
+} in
+let \title @title = {\\title\{@title;\}} in
+let \author @author = {\\author\{@author;\}} in
+let \maketitle = {\\maketitle} in
+let \section @sec @cont = {\\section\{@sec;\}\deeper{@cont;}\%} in
+let \subsection @subsec @cont = {\\subsection\{@subsec;\}\deeper{@cont;}\%} in
+let \p @p = {\\indent\deeper{@p;}\\par} in
+let \footnote @footnote {\\footnote\{@footnote;\}} \in
+let \row @row-content =
+  let @cell = list-head {@row-content;} in
+  let @rest = list-tail {@row-content;} in
+    {@cell;}
+      ^ ( if is-empty {@rest;}
+            then {}
+            else {\ & \row{@rest;}} )
+in
+let \table @option @table = {
   \\begin\{tabular\}\{@option;\}\deeper{
     \--table{@table;}
   }\\end\{tabular\}
-}%
-\macro \--table @table-content {
-  \pop @row @rest {@table-content;}{
-    @row;\ifempty{@rest;}{}{\\\\\break;\--table{@rest;}}%
-  }
-}%
-\macro \itemize @list {
+} in
+let \--table @table-content =
+  let @row = list-head {@table-content;} in
+  let @rest = list-tail {@table-content;} in
+    {@row;}
+      ^ ( if is-empty {@rest;}
+            then {}
+            else {\\\\\break;\--table{@rest;}} )
+in
+let \itemize @list = {
   \\begin\{itemize\}\deeper{
     \--itemize{@list;}
   }\\end\{itemize\}
-}%
-\macro \--itemize @list {
-  \pop @head @tail {@list;}{
-    \\item @head;\ifempty{@tail;}{}{\break;\--itemize{@tail;}}%
-  }
-}%
-%
-\macro \math @math {\ $@math;$\ }%
-\macro \epsilon {\\varepsilon}%
-%
-\macro \url @url {\\texttt\{@url;\}}%
-\macro \url-dp @url {
+} in
+let \--itemize @list =
+  let @head = list-head {@list;} in
+  let @tail = list-tail {@list;} in
+    {\\item @head;}
+      ^ ( if is-empty {@tail;}
+            then {}
+            else {\break;\--itemize{@tail;}} )
+in
+let \math @math = {\ $@math;$\ } in
+let \epsilon = {\\varepsilon} in
+let \url @url = {\\texttt\{@url;\}} in
+let \url-dp @url = {
   \\begin\{center\}\deeper{
     \\texttt\{@url;\}
   }\\end\{center\}
-}%
-\macro \to-latex @c {@c;}%
-\macro \TeX {\\TeX\{\}}%
-\macro \LaTeX {\\LaTeX\{\}}%
-\macro \pLaTeX2e {p\\LaTeX 2\\raisebox\{-0.125zh\}\{$\\varepsilon$\}}%
-\macro \atmark {\@}%
-\macro \brokenbar {\|}%
-\macro \lbrace {\\\{}%
-\macro \rbrace {\\\}}%
-\macro \bksl {\\symbol\{"5C\}}%
-\macro \numsign {\\\#}%
-\macro \percent {\\\%}%
-\macro \escape-for-latex @str {
-  \pop-char @hdch @tlstr {@str;}{
-    \ifsame {@hdch;}{\{}{\\\{}{
-      \ifsame {@hdch;}{\}}{\\\}}{
-        \ifsame {@hdch;}{\#}{\\\#}{
-          \ifsame {@hdch;}{\\}{\\symbol\{"5C\}}{
-            \ifsame {@hdch;}{\%}{\\\%}{
-              \ifsame {@hdch;}{$}{\\$}{
-                \ifsame {@hdch;}{_}{\\_}{
-                  @hdch;
-                }
-              }
-            }
-          }
-        }
-      }
-    }\escape-for-latex{@tlstr;}
-  }
-}%
+} in
+let \to-latex @c = {@c;} in
+let \TeX = {\\TeX\{\}} in
+let \LaTeX = {\\LaTeX\{\}} in
+let \pLaTeX2e = {p\\LaTeX 2\\raisebox\{-0.125zh\}\{$\\varepsilon$\}} in
+let \atmark = {\@} in
+let \brokenbar = {\|} in
+let \lbrace = {\\\{} in
+let \rbrace = {\\\}} in
+let \bksl = {\\symbol\{"5C\}} in
+let \numsign = {\\\#} in
+let \percent = {\\\%} in
+%let \escape-for-latex @str {
+%  \pop-char @hdch @tlstr {@str;}{
+%    \ifsame {@hdch;}{\{}{\\\{}{
+%      \ifsame {@hdch;}{\}}{\\\}}{
+%        \ifsame {@hdch;}{\#}{\\\#}{
+%          \ifsame {@hdch;}{\\}{\\symbol\{"5C\}}{
+%            \ifsame {@hdch;}{\%}{\\\%}{
+%              \ifsame {@hdch;}{$}{\\$}{
+%                \ifsame {@hdch;}{_}{\\_}{
+%                  @hdch;
+%                }
+%              }
+%            }
+%          }
+%        }
+%      }
+%    }\escape-for-latex{@tlstr;}
+%  }
+%} in
+finish

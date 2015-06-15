@@ -57,7 +57,7 @@
 %token <Types.class_name> CLASSNAME
 %token END
 %token LAMBDA ARROW
-%token <int> LET IN
+%token <int> LET LETAND IN
 %token DEFEQ
 %token <int> IF THEN ELSE
 %token EOI
@@ -80,7 +80,7 @@
 %token BLIST ELIST LISTPUNCT
 %token IGNORED
 
-%nonassoc LET DEFEQ IN
+%nonassoc LET DEFEQ IN LETAND
 %nonassoc IF THEN ELSE
 %left LOR
 %left LAND
@@ -96,6 +96,8 @@
 
 %start main
 %type <Types.abstract_tree> main
+%type <Types.abstract_tree> nxlet
+%type <Types.mutual_let_cons> nxdec
 %type <Types.abstract_tree> nxlor
 %type <Types.abstract_tree> nxland
 %type <Types.abstract_tree> nxcomp
@@ -125,66 +127,77 @@ main:
   | sxblock EOI { $1 }
 ;
 nxlet:
-  | LET STRVAR DEFEQ nxlet IN nxlet { Types.LetIn($2, $4, $6) }
-  | LET NUMVAR nargvar sargvar DEFEQ nxlet IN nxlet {
-        let argvarcons = (append_avc $3 $4) in
-        let curried = curry_lambda_abstract argvarcons $6 in
-          Types.LetIn($2, curried, $8)
+  | LET STRVAR DEFEQ nxlet IN nxlet {
+        Types.LetIn(Types.MutualLetCons($2, $4, Types.EndOfMutualLet), $6)
       }
-  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN nxlet {
+  | LET NUMVAR nargvar sargvar DEFEQ nxlet nxdec nxlet {
         let argvarcons = (append_avc $3 $4) in
         let curried = curry_lambda_abstract argvarcons $6 in
-          Types.LetIn($2, curried, $8)
+          Types.LetIn(Types.MutualLetCons($2, curried, $7), $8)
+      }
+  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet nxdec nxlet {
+        let argvarcons = (append_avc $3 $4) in
+        let curried = curry_lambda_abstract argvarcons $6 in
+          Types.LetIn(Types.MutualLetCons($2, curried, $7), $8)
       }
   | nxif { $1 }
 /* -- for syntax error log -- */
   | LET error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
+      }
   | LET STRVAR error {
-      raise (ParseErrorDetail(error_reporting "missing '='" ("let " ^ $2 ^ " ..<!>..") $1))
-    }
+        raise (ParseErrorDetail(error_reporting "missing '='" ("let " ^ $2 ^ " ..<!>..") $1))
+      }
   | LET STRVAR DEFEQ error {
-      raise (ParseErrorDetail(error_reporting "illegal token after '='" ("let " ^ $2 ^ " = ..<!>..") $1))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after '='" ("let " ^ $2 ^ " = ..<!>..") $1))
+      }
   | LET STRVAR DEFEQ nxlet IN error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" ("let " ^ $2 ^ " = ... in ..<!>..") $5))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after 'in'" ("let " ^ $2 ^ " = ... in ..<!>..") $5))
+      }
   | LET NUMVAR error {
-      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
-    }
+        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+      }
   | LET NUMVAR nargvar sargvar DEFEQ error {
-      raise (ParseErrorDetail(error_reporting "illegal token after '='"
-        ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ..<!>..") $1))
-    }
-  | LET NUMVAR nargvar sargvar DEFEQ nxlet IN error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" "in ..<!>.." $7))
-      (* ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ... in ..<!>..") *)
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after '='"
+          ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ..<!>..") $1))
+      }
+  | LET NUMVAR nargvar sargvar DEFEQ nxlet nxdec error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+          ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ... in ..<!>..") $1))
+      }
   | LET CTRLSEQ error {
-      raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
-    }
+        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+      }
   | LET CTRLSEQ nargvar sargvar DEFEQ error {
-      raise (ParseErrorDetail(error_reporting "illegal token after '='"
-        ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ " = ..<!>..") $1))
-    }
-  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet IN error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'in'" "in ..<!>.." $7))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after '='"
+          ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ " = ..<!>..") $1))
+      }
+  | LET CTRLSEQ nargvar sargvar DEFEQ nxlet nxdec error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+          ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ... in ..<!>..") $1))
+      }
+;
+nxdec:
+  | LETAND NUMVAR nargvar sargvar DEFEQ nxlet nxdec {
+        let argvarcons = (append_avc $3 $4) in
+        let curried = curry_lambda_abstract argvarcons $6 in
+          Types.MutualLetCons($2, curried, $7)
+      }
+  | IN { Types.EndOfMutualLet }
 ;
 nxif:
   | IF nxif THEN nxif ELSE nxif { Types.IfThenElse($2, $4, $6) }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | IF error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'if'" "if ..<!>.." $1))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after 'if'" "if ..<!>.." $1))
+      }
   | IF nxif THEN error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'then'" "then ..<!>.." $3))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after 'then'" "then ..<!>.." $3))
+      }
   | IF nxif THEN nxif ELSE error {
-      raise (ParseErrorDetail(error_reporting "illegal token after 'else'" "else ..<!>.." $5))
-    }
+        raise (ParseErrorDetail(error_reporting "illegal token after 'else'" "else ..<!>.." $5))
+      }
 ;
 nxlambda:
   | LAMBDA nargvar sargvar ARROW nxlor {

@@ -17,6 +17,9 @@ type argument_variable_cons =
 type argument_cons =
   | ArgumentCons of abstract_tree * argument_cons
   | EndOfArgument
+and mutual_let_cons =
+  | MutualLetCons of var_name * abstract_tree * mutual_let_cons
+  | EndOfMutualLet
 and environment = (string, location) Hashtbl.t
 and location = abstract_tree ref
 and abstract_tree =
@@ -45,7 +48,7 @@ and abstract_tree =
   | LogicalAnd of abstract_tree * abstract_tree
   | LogicalOr of abstract_tree * abstract_tree
   | LogicalNot of abstract_tree
-  | LetIn of var_name * abstract_tree * abstract_tree
+  | LetIn of mutual_let_cons * abstract_tree
   | IfThenElse of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of var_name * abstract_tree
   | LiteralArea of abstract_tree

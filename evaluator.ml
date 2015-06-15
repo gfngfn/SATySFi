@@ -62,23 +62,12 @@ let rec interpret env ast =
       )
     )
 
-  | LetIn(nv, astdef, astrest) ->
-    ( print_process (">LetIn: " ^ nv ^ " / "
-        ^ (string_of_ast astdef) ^ " / " ^ (string_of_ast astrest)) ;
+  | LetIn(mutletcons, astrest) ->
+    (* nv, astdef *)
       let env_func = copy_environment env in
-      ( (* add_to_environment env_func nv (ref NoContent) ; *)
-        let valuedef =
-        ( let intprtd = interpret env_func astdef in
-            match intprtd with
-            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
-            | other -> other
-        )
-        in
-        ( add_to_environment env_func nv (ref valuedef) (* overwrite nv *) ;
-          interpret env_func astrest
-        )
+      ( add_mutuals_to_environment env_func mutletcons ;
+        interpret env_func astrest
       )
-    )
   | LambdaAbstract(varnm, ast) -> (
       print_process (">LambdaAbstract: " ^ varnm ^ ". " ^ (string_of_ast ast))  ;
       FuncWithEnvironment(varnm, ast, env)
@@ -90,8 +79,14 @@ let rec interpret env ast =
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
     ( match interpret env astf with
       | FuncWithEnvironment(varnm, astdef, envf) ->
-          FuncWithEnvironment(varnm, LetIn("@class", clsnmast, LetIn("@id", idnmast, astdef)), envf)
-      | other -> interpret env (LetIn("@class", clsnmast, LetIn("@id", idnmast, astf)))
+          FuncWithEnvironment(varnm,
+            LetIn(MutualLetCons("@class", clsnmast, EndOfMutualLet),
+              LetIn(MutualLetCons("@id", idnmast, EndOfMutualLet), astdef)
+            ), envf)
+      | other ->  interpret env
+                    (LetIn(MutualLetCons("@class", clsnmast, EndOfMutualLet),
+                      LetIn(MutualLetCons("@id", idnmast, EndOfMutualLet), astf))
+                    )
     )
   | NumericApply(astf, astl) ->
     ( print_process ">NumericApply" ;
@@ -259,6 +254,21 @@ and interpret_int env ast =
   | _ -> raise (EvalError("not of type int / remains to be implemented"))
 
 
+and add_mutuals_to_environment env_func mutletcons =
+  match mutletcons with
+  | EndOfMutualLet -> ()
+  | MutualLetCons(nv, astcont, tailcons) ->
+      let valuecont =
+        ( let intprtd = interpret env_func astcont in
+            match intprtd with
+            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
+            | other -> other
+        )
+      in
+        ( add_to_environment env_func nv (ref valuecont) ;
+          add_mutuals_to_environment env_func tailcons
+        )
+
 (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
 and pop_from_separated_tree astin astconstr =
   match astin with
@@ -270,6 +280,7 @@ and pop_from_separated_tree astin astconstr =
         | _ -> (asthd, compensate astconstr asttl)
       )
   | _ -> (astin, EndOfList)
+
 
 (* abstract_tree -> abstract_tree -> abstract_tree *)
 and compensate astunder_constr astcmpnstd =

@@ -53,9 +53,8 @@ let make_environment () =
     add_to_environment env "list-tail" loc_listtail ;
     add_to_environment env "is-empty" loc_isempty ;
     loc_same := FuncWithEnvironment("~stra", 
-                  FuncWithEnvironment("~strb",
-                    PrimitiveSame(ContentOf("~stra"), ContentOf("~strb")),
-                    env
+                  LambdaAbstract("~strb",
+                    PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))
                   ),
                   env
                 ) ;

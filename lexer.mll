@@ -142,6 +142,7 @@ rule numexpr = parse
   | "then" { THEN(!line_no) }
   | "else" { ELSE(!line_no) }
   | "let" { LET(!line_no) }
+  | "and" { LETAND(!line_no) }
   | "in" { IN(!line_no) }
   | "function" { LAMBDA }
   | "true" { TRUE }

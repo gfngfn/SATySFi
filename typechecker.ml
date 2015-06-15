@@ -88,10 +88,6 @@ let rec typecheck tyeq tyenv astch =
               ntycod
             )
       )
-(*
-  | StringApply(csnm, _, _, argcons) ->
-      typecheck tyeq tyenv (convert_into_numeric_apply csnm argcons)
-*)
   | BreakAndIndent -> StringType
   | DeeperIndent(astf) ->
       let tyf = typecheck tyeq tyenv astf in
@@ -192,16 +188,13 @@ let rec typecheck tyeq tyenv astch =
         BoolType
       )
 
-  | LetIn(nv, astf, astl) ->
+  | LetIn(mutletcons, astl) ->
     ( print_process "#LetIn" ;
       let tyenv_new = Hashtbl.copy tyenv in
-      let ntv = new_type_variable () in
-      ( Hashtbl.add tyenv_new nv ntv ;
-        let tyf = typecheck tyeq tyenv_new astf in
-        ( Stacklist.push tyeq (ntv, tyf) ;
+      ( add_mutual_variables tyenv_new mutletcons ;
+        typecheck_mutual_contents tyeq tyenv_new mutletcons ;
           let tyl = typecheck tyeq tyenv_new astl in
             tyl
-        )
       )
     )
 
@@ -246,42 +239,23 @@ let rec typecheck tyeq tyenv astch =
 
   | _ -> raise (TypeCheckError("this cannot happen / remains to be implemented"))
 
-(*
-(* type_equation -> type_environment -> type_struct -> argument_cons -> type_struct *)
-and deal_with_string_apply tyeq tyenv tycs argcons =
-    print_string "deal_with_string_apply" ;
-    match (tycs, argcons) with
-    | (tya, EndOfArgument) -> 
-        ( ( if equivalent tya StringType then () else Stacklist.push tyeq (tya, StringType) ) ;
-          StringType
-        )
-    | (FuncType(tydom, tycod), ArgumentCons(astofarg, actail)) ->
-        let tyarg = typecheck tyeq tyenv astofarg in
-        ( ( if equivalent tydom tyarg then () else Stacklist.push tyeq (tydom, tyarg) ) ;
-          deal_with_string_apply tyeq tyenv tycod actail
-        )
-    | (TypeVariable(tvid), ArgumentCons(astofarg, actail)) ->
-        let tydom = typecheck tyeq tyenv astofarg in
-        let ntycod = new_type_variable () in
-        let tyafter = deal_with_string_apply tyeq tyenv ntycod argcons in
-        ( Stacklist.push tyeq (TypeVariable(tvid), FuncType(tydom, ntycod)) ;
-          tyafter
-        )
 
-    | (_, _) -> raise (TypeCheckError("error 4"))
-
-(* type_equation -> argument_variable_cons -> abstract_tree -> type_struct *)
-and assign_lambda_abstract_type tyeq tyenv argvarcons astf =
-  match argvarcons with
-  | EndOfArgumentVariable -> typecheck tyeq tyenv astf
-  | ArgumentVariableCons(av, avcsub) ->
+and add_mutual_variables tyenv mutletcons =
+  match mutletcons with
+  | EndOfMutualLet -> ()
+  | MutualLetCons(nv, _, tailcons) ->
       let ntv = new_type_variable () in
-      let tyenv_new = Hashtbl.copy tyenv in
-      ( Hashtbl.add tyenv_new av ntv ;
-        let res = FuncType(ntv, assign_lambda_abstract_type tyeq tyenv_new avcsub astf) in
-        ( Hashtbl.clear tyenv_new ; res )
-      )
-*)
+      ( Hashtbl.add tyenv nv ntv ;
+        add_mutual_variables tyenv tailcons )
+
+and typecheck_mutual_contents tyeq tyenv mutletcons =
+  match mutletcons with
+  | EndOfMutualLet -> ()
+  | MutualLetCons(nv, astcont, tailcons) ->
+      let tycont = typecheck tyeq tyenv astcont in
+      let ntv = Hashtbl.find tyenv nv in
+      ( Stacklist.push tyeq (ntv, tycont) ;
+        typecheck_mutual_contents tyeq tyenv tailcons )
 
 (* type_variable_id -> type_struct -> bool *)
 let rec emerge_in tyid tystr =
