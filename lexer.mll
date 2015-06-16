@@ -99,15 +99,15 @@ rule numexpr = parse
         else
           RPAREN
     }
-  | "[" { BLIST }
+  | "[" { BLIST(!line_no) }
   | "]" { ELIST }
-  | ";" { LISTPUNCT }
+  | ";" { LISTPUNCT(!line_no) }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
       increment strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
-      OPENSTR
+      OPENSTR(!line_no)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
@@ -171,7 +171,7 @@ and strexpr = parse
   | "{" {
       increment strdepth ;
       ignore_space := true ;
-      BGRP
+      BGRP(!line_no)
     }
   | ((break | space)* "}") {
       decrement strdepth ;
@@ -191,7 +191,7 @@ and strexpr = parse
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       ignore_space := true ;
-      SEP
+      SEP(!line_no)
     }
   | break {
       increment_line lexbuf ;
@@ -251,10 +251,11 @@ and active = parse
       increment strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
-      BGRP
+      BGRP(!line_no)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
+      ignore_space := false ;
       after_literal_state := STATE_STREXPR ;
       next_state := STATE_LITERAL ;
       OPENQT
@@ -295,72 +296,6 @@ and comment = parse
   | _ { comment lexbuf }
 
 {
-(*
-  let string_of_token tok =
-    match tok with
-    | NUMVAR(varnm) -> varnm
-    | STRVAR(varnm) -> varnm
-    | NUMCONST(str) -> str
-    | CHAR(str) -> str
-    | SPACE -> "[space]"
-    | BREAK -> "[break]"
-    | CTRLSEQ(csnm) -> csnm
-    | IDNAME(idnm) -> idnm
-    | CLASSNAME(clsnm) -> clsnm
-    | END -> ";"
-    | LAMBDA -> "function"
-    | ARROW -> "->"
-    | LET -> "let"
-    | IN -> "in"
-    | DEFEQ -> "="
-    | IF -> "if"
-    | THEN -> "then"
-    | ELSE -> "else"
-    | EOI -> ""
-    | LPAREN -> "("
-    | RPAREN -> ")"
-    | TIMES -> "*"
-    | DIVIDES -> "/"
-    | MOD -> "mod"
-    | PLUS -> "+"
-    | MINUS -> "-"
-    | EQ -> "=="
-    | NEQ -> "<>"
-    | GEQ -> ">="
-    | LEQ -> "<="
-    | GT -> ">"
-    | LT -> "<"
-    | LNOT -> "not"
-    | LAND -> "&&"
-    | LOR -> "||"
-    | CONCAT -> " ^ "
-    | OPENQT -> "[`{]"
-    | CLOSEQT -> "[}`]"
-    | OPENSTR -> "{"
-    | CLOSESTR -> "}"
-    | OPENNUM -> "("
-    | CLOSENUM -> ")"
-    | BGRP -> "{"
-    | EGRP -> "}"
-    | TRUE -> "true"
-    | FALSE -> "false"
-    | FINISH -> "finish"
-    | IGNORED -> ""
-
-  let rec string_of_token_list lst =
-    match lst with
-    | [] -> ""
-    | head :: tail -> (string_of_token_list tail) ^ " " ^ (string_of_token head)
-
-  let show_latest_token_list () = string_of_token_list !latest_token_list
-*)
-  let update_latest_token_list tok = ()
-  (*
-    match !latest_token_list with
-    | [] -> () (* this cannot hapen *)
-    | head :: tail -> latest_token_list := tok :: tail
-  *)
-
   let rec cut_token lexbuf =
     let output =
       match !next_state with
@@ -370,11 +305,9 @@ and comment = parse
       | STATE_COMMENT -> comment lexbuf
       | STATE_LITERAL -> literal lexbuf
     in
-    ( update_latest_token_list output ;
       match output with
       | IGNORED -> cut_token lexbuf
       | _ -> output
-    )
 
   (* for test *)
   let rec make_token_list lexbuf =

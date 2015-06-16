@@ -71,13 +71,16 @@
 %token LOR
 %token CONCAT
 %token OPENQT CLOSEQT
-%token OPENSTR CLOSESTR
+%token <int> OPENSTR
+%token CLOSESTR
 %token OPENNUM CLOSENUM
-%token BGRP EGRP
+%token <int> BGRP
+%token EGRP
 %token TRUE FALSE
 %token FINISH
-%token SEP
-%token BLIST ELIST LISTPUNCT
+%token <int> SEP
+%token <int> BLIST LISTPUNCT
+%token ELIST
 %token IGNORED
 
 %nonassoc LET DEFEQ IN LETAND
@@ -114,6 +117,8 @@
 %type <Types.abstract_tree> sxsepsub
 %type <Types.abstract_tree> sxblock
 %type <Types.abstract_tree> sxbot
+%type <Types.abstract_tree> sxclsnm
+%type <Types.abstract_tree> sxidnm
 %type <Types.argument_cons> narg
 %type <Types.argument_cons> sarg
 %type <Types.argument_cons> sargsub
@@ -166,7 +171,8 @@ nxlet:
           ("let " ^ $2 ^ " " ^ (string_of_avc (append_avc $3 $4)) ^ "= ... in ..<!>..") $1))
       }
   | LET CTRLSEQ error {
-        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
+          ("let " ^ $2 ^ " ..<!>..") $1))
       }
   | LET CTRLSEQ nargvar sargvar DEFEQ error {
         raise (ParseErrorDetail(error_reporting "illegal token after '='"
@@ -204,13 +210,16 @@ nxif:
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | IF error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'if'" "if ..<!>.." $1))
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'if'" "if ..<!>.." $1))
       }
   | IF nxif THEN error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'then'" "then ..<!>.." $3))
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'then'" "then ..<!>.." $3))
       }
   | IF nxif THEN nxif ELSE error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'else'" "else ..<!>.." $5))
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'else'" "else ..<!>.." $5))
       }
 ;
 nxlambda:
@@ -297,48 +306,61 @@ nxbot:
   | FINISH { Types.FinishHeaderFile }
   | BLIST ELIST { Types.EndOfList }
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
+/* -- for syntax error log -- */
+  | BLIST error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after '['" "[ ..<!>.." $1))
+      }
+  | OPENSTR error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after beginning of string area '{'" "{ ..<!>.." $1))
+      }
 ;
 nxlist:
   | LISTPUNCT nxlet nxlist { Types.ListCons($2, $3) }
   | { Types.EndOfList }
+/* -- for syntax error log -- */
+  | LISTPUNCT error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after ';'" "; ..<!>.." $1))
+      }
 ;
 sxsep:
-  | sxblock SEP sxsepsub { ListCons($1, $3) }
+  | SEP sxsepsub { $2 }
   | sxblock { $1 }
+/* -- for syntax error log -- */
+  | SEP error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after '|'" "| ..<!>.." $1))
+      }
 ;
 sxsepsub:
   | sxblock SEP sxsepsub { ListCons($1, $3) }
-  | sxblock { ListCons($1, EndOfList) }
+  | { EndOfList }
+/* -- for syntax error log -- */
+  | sxblock SEP error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after '|'" "| ..<!>.." $2))
+      }
 ;
 sxblock:
   | sxbot sxblock { Types.Concat($1, $2) }
   | { Types.StringEmpty }
-;
+  ;
 sxbot:
   | CHAR { Types.StringConstant($1) }
   | SPACE { Types.StringConstant(" ") }
   | BREAK { Types.BreakAndIndent }
   | STRVAR END { Types.ContentOf($1) }
-  | CTRLSEQ narg sarg {
-        convert_into_numeric_apply $1 NoContent NoContent (append_argument_list $2 $3)
-        (* Types.StringApply($1, Types.NoClassName, Types.NoIDName, (append_argument_list $2 $3)) *)
+  | CTRLSEQ sxclsnm sxidnm narg sarg {
+        convert_into_numeric_apply $1 $2 $3 (append_argument_list $4 $5)
       }
-  | CTRLSEQ CLASSNAME narg sarg {
-        let clsnmast = class_name_to_abstract_tree $2 in
-          convert_into_numeric_apply $1 clsnmast NoContent (append_argument_list $3 $4)
-        (* Types.StringApply($1, Types.ClassName($2), Types.NoIDName, (append_argument_list $3 $4)) *)
-      }
-  | CTRLSEQ IDNAME narg sarg {
-        let idnmast = id_name_to_abstract_tree $2 in
-          convert_into_numeric_apply $1 NoContent idnmast (append_argument_list $3 $4)
-        (* Types.StringApply($1, Types.NoClassName, Types.IDName($2), (append_argument_list $3 $4)) *)
-      }
-  | CTRLSEQ CLASSNAME IDNAME narg sarg {
-        let clsnmast = class_name_to_abstract_tree $2 in
-        let idnmast = id_name_to_abstract_tree $3 in
-          convert_into_numeric_apply $1 clsnmast idnmast (append_argument_list $4 $5)
-        (* Types.StringApply($1, Types.ClassName($2), Types.IDName($3), (append_argument_list $4 $5)) *)
-      }
+sxclsnm:
+  | CLASSNAME { class_name_to_abstract_tree $1 }
+  | { NoContent }
+sxidnm:
+  | IDNAME { id_name_to_abstract_tree $1 }
+  | { NoContent }
 ;
 narg: /* -> Types.argument_cons */
   | OPENNUM nxlet CLOSENUM narg { Types.ArgumentCons($2, $4) }
@@ -348,9 +370,17 @@ sarg: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
   | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | END { Types.EndOfArgument }
+/* -- for syntax error log */
+  | BGRP error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
+      }
 ;
 sargsub: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
   | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
   | { Types.EndOfArgument }
+/* -- for syntax error log */
+  | BGRP error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
+      }
 ;

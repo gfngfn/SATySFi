@@ -9,7 +9,7 @@
       \newword{Macrodown}（\newword{マクロダウン}）は
       「マークアップの記述においてはマークアップ方法自体もユーザが設計できるべきである」
       という思想のもとに制作された，
-      \LaTeX;やHTMLなどのマークアップ言語をラップするための軽量［要出典］マークアップ言語です．
+      \LaTeX;やHTMLなどのマークアップ言語をラップするための軽量［要出典］マークアップ言語です。
       OCamlで実装しており，ソースコードは
 
       \url-display{http://github.com/gfngfn/Macrodown}
@@ -45,90 +45,184 @@
       「意味論が綺麗な\LaTeX;的記法」を目指したといってもよいかもしれません。
     }
   }
-  \section{厳密な仕様}{
-    \subsection{字句解析によるトークン化}{
+  \section{字句解析の厳密な仕様}{
+    \subsection{概要}{
       \p{
-        Macrodownは大きく分けて5つの状態（プログラム状態，テキスト状態，アクティヴ状態，リテラリー状態，コメント状態）
-        を行き来しながらソースコードをトークンとして解釈します．
-        文書（拡張子が.mcrdのもの）はテキスト状態で読み込みが開始され，一方で
-        ヘッダ（拡張子が.mcrdhのもの）はプログラム状態で読み込みが開始されます．
+        Macrodownは大きく分けて
+        \itemize{
+          | プログラム階層
+          | テキスト階層
+          | アクティヴ階層
+          | リテラル階層
+          | コメント階層
+          |}
+        を行き来しながらソースコードをトークンとして解釈します。
+        文書（拡張子が.mcrdのもの）はテキスト階層で読み込みが開始され，一方で
+        ヘッダ（拡張子が.mcrdhのもの）はプログラム階層で読み込みが開始されます。
+      }
+    }
+    \subsection{テキスト階層}{
+      \p{
+        マクロではなく文書そのものを書いているときは，
+        このテキスト階層を中心に意識していれば良いでしょう。
       }
       \p{
-        大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}として，
-        Macrodownは文字列を以下にマッチするようにトークン化します。
-        ただし * は0回以上の繰り返しを表します。
+        大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}，
+        基本文字のみからなり先頭が大小ラテン文字である文字列を\newword{名前文字列}と呼ぶことにすると，
+        テキスト階層では文字列を以下にマッチするようにトークン化します。
+        ただし + は1回以上の繰り返しを表します。
         複数通りのマッチがある場合はより長い文字列ほど優先し，
         同一の文字列が複数のトークンにマッチする場合は表で上位に掲げられているものほど優先されます。
       }
       \description{
-        \d-item{\mcrd`\macro`}{\math{\token-macro;}：\newword{マクロ定義トークン}}
-      |
-        \d-item{\mcrd`\pop`}{\math{\token-pop;}：\newword{ポップ機能トークン}}
-      |
-        \d-item{\mcrd`\`（基本文字）*}{\math{\token-cs;}：\newword{制御綴トークン}}
-      |
-        \d-item{\mcrd`@`（基本文字）*}{\math{\token-macro;}：\newword{変数名トークン}}
-      |
-        \d-item{\mcrd`#`（基本文字）*}{\math{\token-id;}：\newword{ID名トークン}}
-      |
-        \d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{開きトークン}}
-      |
-        \d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{閉じトークン}}
-      |
-        \d-item{\mcrd`;`}{\math{\token-end;}：\newword{無引数終端トークン}}
-      |
-        \d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
-      |
-        \d-item{\mcrd`\`（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
-      |
-        \d-item{\mcrd`` ` ``}{\math{\token-qt;}：\newword{リテラルブロックトークン}}
-      |
-        \d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
-      }
-    }
-    \subsection{空白類を無視する条件}{
+        |\d-item{\mcrd`\`（名前文字列）}{\math{\token-cs;}：\newword{制御綴トークン}}
+        |\d-item{\mcrd`@`（名前文字列）}{\math{\token-var;}：\newword{変数名トークン}}
+        |\d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{ブロック開始トークン}}
+        |\d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{ブロック終了トークン}・\newword{テキスト終了トークン}}
+        |\d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
+        |\d-item{\mcrd`\`（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
+        |\d-item{\mcrd`` ` ``+}{\math{\token-opnqt;}：\newword{リテラル開始トークン}}
+        |\d-item{\mcrd`%`}{\newword{コメント開始トークン}}
+        |\d-item{（空白文字）または（タブ文字）}{\math{\token-space;}}：\newword{空白トークン}
+        |\d-item{（改行文字）}{\math{\token-break;}}：\newword{改行トークン}
+        |\d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
+        |}
       \p{
-        空白文字，タブ文字，改行文字を\newword{空白類}と呼ぶことにします。
-        空白類は無視されるものと文字トークンとされるものが出現場所によって決まり，
-        以下に出現した場合は無視されます。
+        表からわかるように，
+        \mcrd`%`，\mcrd`\`，\mcrd`@`，\mcrd`{`，\mcrd`}`，\mcrd`|`，\mcrd`` ` ``
+        はそのまま書くことができず，\mcrd`\` を手前につけてエスケープしなければならない文字です。
       }
-      \itemize{
-          行頭
-        | \synt{\lbrace;}の手前と直後
-        | \synt{\rbrace;}の手前
-        | \synt{\brokenbar;}の手前と直後
-        | 制御綴トークンの直後
-        | 変数名トークンの直後
-        | ID名トークンの直後
-        | 空白類の直後
+      \p{
+        ただし，空白文字，タブ文字，改行文字をまとめて\newword{空白類文字}と呼ぶことにすると，
+        \itemize{
+          | 行頭の空白類文字
+          | 空白類文字の直後の空白類文字
+          | \mcrd`{` の直後の空白類文字
+          | \mcrd`}` の手前に連続して並んでいる空白類文字
+          |}
+        はいずれも空白トークンおよび改行トークンと認識されることなく読み捨てられます。
+        したがって \mcrd`{` の直後での改行やインデントなどを比較的自由に入れることができます。
+      }
+      \p{
+        また制御綴トークンと変数名トークンは，認識されると直後に字句解析器がアクティヴ階層に遷移します。
+        同様に，リテラル開始トークンが認識されると直後にリテラル階層に，
+        コメント開始トークンが認識されるとこのコメント開始トークンは即座に読み捨てられてコメント階層に遷移します。
+        その他のトークンを認識した直後はテキスト階層を維持して次のトークンの認識に移ります。
+      }
+      \p{
+        \mcrd`}` は基本的に\newword{ブロック終了トークン}ですが，
+        場合によっては\newword{テキスト終了トークン}となります。
+        プログラム階層で後述しますが，
+        プログラム階層からテキスト階層に入る\newword{テキスト開始トークン}の \mcrd`{` と釣り合う \mcrd`}` は
+        テキスト終了トークンとなり，これが認識されるとテキスト階層を出てプログラム階層に戻ります。
       }
     }
-    \subsection{構文木化}{
+    \subsection{プログラム階層}{
+      \p{
+        プログラム階層は，\newword{マクロ}や\newword{函数}の定義に用います。
+        全体的にML風の構文をとっています。
+      }
+      \description{
+        | \d-item{\mcrd`(`}{
+            \math{\token-lparen;}：\newword{開括弧トークン}}
+        | \d-item{\mcrd`)`}{
+            \math{\token-rparen;}：\newword{閉括弧トークン}・%
+            \math{\token-clsprog;}：\newword{プログラム終了トークン}}
+        | \d-item{\mcrd`[`}{
+            \math{\token-blist;}：\newword{リスト開括弧トークン}}
+        | \d-item{\mcrd`]`}{
+            \math{\token-elist;}：\newword{リスト閉括弧トークン}}
+        | \d-item{\mcrd`;`}{
+            \math{\token-listpunct;}：\newword{リスト区切りトークン}}
+        | \d-item{（二項演算子）}{
+            \math{\token-bin;}：\newword{二項演算子トークン}}
+        | \d-item{\mcrd`let`}{
+            \math{\token-let;}：\newword{letトークン}}
+        | \d-item{\mcrd`and`}{
+            \math{\token-and;}：\newword{andトークン}}
+        | \d-item{\mcrd`in`}{
+            \math{\token-in;}：\newword{inトークン}}
+        | \d-item{\mcrd`if`}{
+            \math{\token-if;}：\newword{ifトークン}}
+        | \d-item{\mcrd`then`}{
+            \math{\token-then;}：\newword{thenトークン}}
+        | \d-item{\mcrd`else`}{
+            \math{\token-else;}：\newword{elseトークン}}
+        | \d-item{\mcrd`finish`}{
+            \math{\token-finish;}：\newword{finishトークン}}
+        | \d-item{（名前文字列）}{
+            \math{\token-ident;}：\newword{項トークン}}
+        | \d-item{（整数文字列）}{
+            \math{\token-int;}：\newword{整数トークン}}
+        | \d-item{\mcrd`{`}{
+            \math{\token-opnstr;}：\newword{テキスト開始トークン}}
+        | \d-item{\mcrd`` ` ``}{
+            \math{\token-opnqt;}：\newword{リテラル開始トークン}}
+        | \d-item{\mcrd`%`}{\newword{コメント開始トークン}}
+        |}
+      \p{
+        テキスト開始トークン \mcrd`{` を認識すると，直後にテキスト階層に入ります。
+        テキスト階層で釣り合う \mcrd`}` を見つけると，再びプログラム階層に戻ってきます。
+      }
+      \p{
+        \mcrd`)` は基本的に\newword{閉括弧トークン}となりますが，
+        アクティヴ階層でプログラム開始トークン \mcrd`(` を認識してプログラム階層に入ってきていたとき，
+        釣り合う \mcrd`)` を\newword{プログラム終了トークン}と認識し，直後にアクティヴ階層に戻ります。
+      }
+    }
+    \subsection{アクティヴ階層}{
+      \p{
+        アクティヴ階層は，
+        テキスト階層内で制御綴トークンと変数名トークン直後にのみ現れる，
+        テキスト階層から出ることなく整数値などを扱うための例外的な部分です。
+        とは言いつつも文書中で直接プログラムを書くということは普通避けたいので，
+        実際には整数値をマクロに引数として渡すなど短い記述で完結することがほとんどです。
+      }
+      \description{
+        | \d-item{\mcrd`(`}{
+            \math{\token-opnprog;}：\newword{プログラム開始トークン}}
+        | \d-item{\mcrd`#`（名前文字列）}{
+            \math{\token-id;}：\newword{ID名トークン}}
+        | \d-item{\mcrd`.`（名前文字列）}{
+            \math{\token-class;}：\newword{クラス名トークン}}
+        | \d-item{\mcrd`{`}{
+            \math{\token-bgrp;}：\newword{ブロック開始トークン}}
+        | \d-item{\mcrd`` ` ``}{
+            \math{\token-opnqt;}：\newword{リテラル開始トークン}}
+        |}
+      \p{
+        プログラム開始トークン \mcrd`(` を認識すると，直後にプログラム階層に入ります。
+        プログラム階層内で釣り合う \mcrd`)` を認識すると，アクティヴ階層に戻ってきます。
+        これにより制御綴の引数として文字列だけでなく整数値などを扱うことができるようになっています。
+      }
+      \p{
+        ブロック開始トークン \mcrd`{` を認識すると，直後にアクティヴ階層を出てテキスト階層に戻ります。
+        同様にリテラル開始トークン \mcrd`` ` `` を認識すると
+        直後にアクティヴ階層を出てさらに即座にリテラル階層に入り，
+        リテラル階層を出るとテキスト階層に戻ります。
+        つまり，アクティヴ階層は最初に現れる \mcrd`{` か \mcrd`` ` `` で終了するということになります。
+      }
+    }
+  \section{構文木化}{
       \p{
         \math{\token-eoi;}を入力の終端として，Macrodownは以下の\math{T}で表現される入力を受理します。
       }
       \math-dp-gather{
-        \cfl{T}{ B \token-eoi; }
-      |
-        \cfl{B}{ \epsilon; | S B }
-      |
-        \cfl{S}{ \token-char; | \token-var; \token-end; | \token-pop; \token-var; \token-var; G G %
-          | \token-macro; \token-cs; A G | \token-cs; \token-end; | \token-cs; G P }
-      |
-        \cfl{A}{ \epsilon; | \token-var; A }
-      |
-        \cfl{P}{ \epsilon; | G P }
-      |
-        \cfl{G}{ \token-bgrp; L \token-egrp; }
-      |
-        \cfl{L}{ B | B \token-sep; L }
-      }
+        | \cfl{T}{| B \token-eoi; |}
+        | \cfl{B}{| \epsilon; | S B |}
+        | \cfl{S}{| \token-char; | \token-var; \token-end;
+            | \token-cs; \token-end; | \token-cs; G P |}
+        | \cfl{A}{| \epsilon; | \token-var; A |}
+        | \cfl{P}{| \epsilon; | G P |}
+        | \cfl{G}{| \token-bgrp; L \token-egrp; |}
+        | \cfl{L}{| B | B \token-sep; L |}
+        |}
     }
     \subsection{変数とマクロ定義の基本}{
       \p{
-        変数にはトークン列\footnote{%
+        変数にはトークン列\footnote{
           正確には構文木が格納されているのですが，
-          トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。%
+          トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。
         }のみが格納され，現時点では数値などは扱えません。
         破壊的代入の機能はなく，したがって純粋函数型言語に近い性質をしています。
         マークアップ機能の柔軟な拡張性を確保するために前述のとおりマクロ定義機能があり，
