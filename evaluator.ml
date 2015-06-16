@@ -48,11 +48,9 @@ let rec interpret env ast =
         | (_, StringEmpty) -> valuef
         | (_, _) -> Concat(valuef, valuel)
       )
-
   | StringConstant(c) -> StringConstant(c)
 
   | ContentOf(v) ->
-    ( print_process (">ContentOf: " ^ v) ;
       ( try
           let content = !(Hashtbl.find env v) in
           ( print_process ("  -> " ^ (string_of_ast content)) ;
@@ -60,22 +58,15 @@ let rec interpret env ast =
         with
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
-    )
-
   | LetIn(mutletcons, astrest) ->
-    (* nv, astdef *)
       let env_func = copy_environment env in
       ( add_mutuals_to_environment env_func mutletcons ;
         interpret env_func astrest
       )
-  | LambdaAbstract(varnm, ast) -> (
-      print_process (">LambdaAbstract: " ^ varnm ^ ". " ^ (string_of_ast ast))  ;
-      FuncWithEnvironment(varnm, ast, env)
-    )
-  | FuncWithEnvironment(varnm, ast, env) -> (
-      print_process ">FuncWithEnvironment" ;
-      FuncWithEnvironment(varnm, ast, env)
-    )
+  | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
+
+  | FuncWithEnvironment(varnm, ast, env) -> FuncWithEnvironment(varnm, ast, env)
+
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
     ( match interpret env astf with
       | FuncWithEnvironment(varnm, astdef, envf) ->
@@ -89,11 +80,8 @@ let rec interpret env ast =
                     )
     )
   | NumericApply(astf, astl) ->
-    ( print_process ">NumericApply" ;
-      print_process ("  " ^ (string_of_ast astf) ^ " / " ^ (string_of_ast astl)) ;
       let valuel = interpret env astl in
       let fspec = interpret env astf in
-      ( print_process ("  => " ^ (string_of_ast fspec) ^ " / " ^ (string_of_ast valuel)) ;
       ( match fspec with
         | FuncWithEnvironment(varnm, astdef, envf) ->
             let env_new = copy_environment envf in
@@ -102,34 +90,6 @@ let rec interpret env ast =
             )
         | _ -> raise (EvalError("illegal apply"))
       )
-      )
-    )
-(*
-  | StringApply(f, clsnmarg, idnmarg, argcons) ->
-    ( try
-        let fspec = !(Hashtbl.find env f) in
-          match fspec with
-          | FuncWithEnvironment(argvarcons, astf, envf) ->
-              let env_new = copy_environment envf in
-              ( ( match clsnmarg with
-                  | NoClassName -> add_to_environment env_new "@class" (ref NoContent)
-                  | ClassName(clsnm) -> add_to_environment env_new "@class" (ref (class_name_to_abstract_tree clsnm))
-                ) ;
-                ( match idnmarg with
-                  | NoIDName -> add_to_environment env_new "@id" (ref NoContent)
-                  | IDName(idnm) -> add_to_environment env_new "@id" (ref (id_name_to_abstract_tree idnm))
-                ) ;
-                deal_with_cons env_new argvarcons argcons ;
-                let valuef = interpret env_new astf in
-                ( Hashtbl.clear env_new ;
-                  valuef
-                )
-              )
-          | _ -> raise (EvalError("illegal apply of control sequence '" ^ f ^ "'"))
-      with
-      | Not_found -> raise (EvalError("undefined control sequence '" ^ f ^ "'"))
-    )
-*)
   | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
 
   | BreakAndIndent -> BreakAndIndent
@@ -137,13 +97,29 @@ let rec interpret env ast =
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
       ( try Out.main (interpret env ast1) with
-        | Out.IllegalOut(_) -> raise (EvalError("illegal argument of 'same'"))
+        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'same'"))
       ) in
       let str2 =
       ( try Out.main (interpret env ast2) with
-        | Out.IllegalOut(_) -> raise (EvalError("illegal argument of 'same'"))
+        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'same'"))
       ) in
         BooleanConstant((compare str1 str2) == 0)
+
+  | PrimitiveStringSub(aststr, astpos, astwid) ->
+      let str =
+      ( try Out.main (interpret env aststr) with
+        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'string-sub'"))
+      ) in
+        let pos = interpret_int env astpos in
+        let wid = interpret_int env astwid in
+          StringConstant(String.sub str pos wid)
+
+  | PrimitiveStringLength(aststr) ->
+      let str =
+      ( try Out.main (interpret env aststr) with
+        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'string-length'"))
+      ) in
+        NumericConstant(String.length str)
 
   | PrimitiveIsValid(astf) ->
       ( match interpret env astf with

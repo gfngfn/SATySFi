@@ -1,0 +1,81 @@
+let \settings = {
+  \\usepackage\{amsmath\}
+  \\usepackage\{amssymb\}
+  \\usepackage[T1]\{fontenc\}
+  \\usepackage\{lmodern\}
+  \\usepackage[dvipdfmx]\{xcolor\}
+  \\usepackage[dvipdfmx]\{graphicx\}
+  \\usepackage\{apmayfes2015deco\}
+  \\usepackage\{tikz\}
+  \\setlength\\parskip\{1zw\}
+} in
+let \description @dscr = {
+  \\begin\{center\}\deeper{
+    \\begin\{tabular\}\{ll\}
+    \\hline\deeper{
+      \dscr-sep-lines{@dscr;}
+    }\\hline
+    \\end\{tabular\}
+  }\\end\{center\}
+}
+and \dscr-sep-lines @dscr =
+  let @head = list-head {@dscr;} in
+  let @tail = list-tail {@dscr;} in
+    {@head;} ^
+    ( if is-empty {@tail;} then
+        {\\\\}
+      else
+      { \\\\
+        \\hline%
+        \dscr-sep-lines{@tail;}}
+    )
+in
+let \d-item @di @dd = {@di; & @dd;} in
+let \synt @synt = {\\textcolor\{blue\}\{\\texttt\{@synt;\}\}} in
+let \newword @nw = {\\textsf\{@nw;\}} in
+
+% ---- tokens ----
+let \toksty @tok = {\\:\\text\{\\textcolor\{red\}\{$\\underline\{\\mathbf\{@tok;\}\}$\}\}\\:} in
+let \token-eoi = {\toksty{eoi}} in
+let \token-cs = {\toksty{cs}} in
+let \token-var = {\toksty{var}} in
+let \token-id = {\toksty{id}} in
+let \token-char = {\toksty{char}} in
+let \token-pop = {\toksty{pop}} in
+let \token-macro = {\toksty{macro}} in
+let \token-bgrp = {\toksty{\\\{}} in
+let \token-egrp = {\toksty{\\\}}} in
+let \token-sep = {\toksty{\|}} in
+let \token-end = {\toksty{\;}} in
+let \token-qt = {\toksty{\`}} in
+%
+let \math-dp-gather @lst = {
+  \\begin\{align*\}\deeper{\sub-math-dp-gather{@lst;}}\\end\{align*\}
+}
+and \sub-math-dp-gather @lst =
+  let @head = list-head {@lst;} in
+  let @tail = list-tail {@lst;} in
+    {@head;} ^ ( if is-empty {@tail;} then {} else {\\\\\sub-math-dp-gather{@tail;}} )
+in
+let \cfl @nontm @lst = {@nontm; &\\rightarrow \sub-cfl{@lst;}}
+and \sub-cfl @lst =
+  let @head = list-head {@lst;} in
+  let @tail = list-tail {@lst;} in
+    {@head;} ^ ( if is-empty {@tail;} then {} else { \\enskip\|\\enskip \sub-cfl{@tail;}} )
+in
+let \code-dp @code = {
+  \\begin\{center\}\deeper{
+    \\parbox\{0.9\\textwidth\}\{@code;\}
+  }\\end\{center\}
+} in
+let \code @code = {@code;} in
+let \code-dp-break = {\\\\} in
+let \code-dp-tab = {\\\ \\\ } in
+let \meta @metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
+let \metadots = {$\\ldots$} in
+let \mcrd-display @code = {
+  \\begin\{verbatim\}@code;\\end\{verbatim\}
+} in
+let \mcrd @code = {\synt{\escape-for-latex{@code;}}} in
+let \url-display @url = {\\texttt\{@url;\}} in
+finish

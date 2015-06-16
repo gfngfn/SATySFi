@@ -183,7 +183,21 @@ nxdec:
         let curried = curry_lambda_abstract argvarcons $6 in
           Types.MutualLetCons($2, curried, $7)
       }
+  | LETAND CTRLSEQ nargvar sargvar DEFEQ nxlet nxdec {
+        let argvarcons = (append_avc $3 $4) in
+        let curried = curry_lambda_abstract argvarcons $6 in
+          Types.MutualLetCons($2, curried, $7)
+      }
   | IN { Types.EndOfMutualLet }
+/* -- for syntax error log -- */
+  | LETAND NUMVAR error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
+          ("and " ^ $2 ^ " ..<!>..") $1))
+      }
+  | LETAND CTRLSEQ error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
+          ("and " ^ $2 ^ " ..<!>..") $1))
+      }
 ;
 nxif:
   | IF nxif THEN nxif ELSE nxif { Types.IfThenElse($2, $4, $6) }

@@ -7,6 +7,10 @@ let make_type_environment () =
   let tyenv : type_environment = Hashtbl.create 128 in
     add_to_type_environment tyenv "same"
       (FuncType(StringType, FuncType(StringType, BoolType))) ;
+    add_to_type_environment tyenv "string-sub"
+      (FuncType(StringType, FuncType(IntType, FuncType(IntType, StringType)))) ;
+    add_to_type_environment tyenv "string-length"
+      (FuncType(StringType, IntType)) ;
     add_to_type_environment tyenv "is-valid"
       (FuncType(StringType, BoolType)) ;
     add_to_type_environment tyenv "\\deeper"
@@ -32,6 +36,8 @@ let add_to_environment env varnm rfast =
 
 let make_environment () =
   let loc_same : location = ref NoContent in
+  let loc_stringsub : location = ref NoContent in
+  let loc_stringlength : location = ref NoContent in
   let loc_isvalid : location = ref NoContent in
   let loc_deeper : location = ref NoContent in
   let loc_break : location = ref NoContent in
@@ -43,6 +49,8 @@ let make_environment () =
   let loc_isempty : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
     add_to_environment env "same" loc_same ;
+    add_to_environment env "string-sub" loc_stringsub ;
+    add_to_environment env "string-length" loc_stringlength ;
     add_to_environment env "is-valid" loc_isvalid ;
     add_to_environment env "\\deeper" loc_deeper ;
     add_to_environment env "\\break" loc_break ;
@@ -58,6 +66,18 @@ let make_environment () =
                   ),
                   env
                 ) ;
+    loc_stringsub :=  FuncWithEnvironment("~str", 
+                        LambdaAbstract("~pos",
+                          LambdaAbstract("~wid",
+                            PrimitiveStringSub(ContentOf("~str"), ContentOf("~pos"), ContentOf("~wid"))
+                          )
+                        ),
+                        env
+                      ) ;
+    loc_stringlength := FuncWithEnvironment("~str",
+                          PrimitiveStringLength(ContentOf("~str")),
+                          env
+                        ) ;
     loc_isvalid := FuncWithEnvironment("~content",
                     PrimitiveIsValid(ContentOf("~content")),
                     env

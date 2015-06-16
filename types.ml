@@ -61,6 +61,8 @@ and abstract_tree =
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree
+  | PrimitiveStringSub of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveStringLength of abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
   | PrimitiveIsValid of abstract_tree
