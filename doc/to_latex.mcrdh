@@ -85,4 +85,4 @@ and escape-for-latex str index =
       ^ (escape-for-latex str (index + 1))
   )
 in
-finish
+  finish

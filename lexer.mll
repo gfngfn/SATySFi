@@ -86,7 +86,7 @@ rule numexpr = parse
       line_no := !line_no + 1 ;
       numexpr lexbuf
     }
-  | "(" { increment numdepth ; LPAREN }
+  | "(" { increment numdepth ; LPAREN(!line_no) }
   | ")" {
       decrement numdepth ;
       if Stacklist.is_empty numdepth_stack then
@@ -95,7 +95,7 @@ rule numexpr = parse
         if !numdepth == Stacklist.top numdepth_stack then
         ( Stacklist.delete_top numdepth_stack ;
           next_state := STATE_ACTIVE ;
-          CLOSENUM )
+          CLOSENUM(!line_no) )
         else
           RPAREN
     }
@@ -121,30 +121,30 @@ rule numexpr = parse
   | ("\\" identifier) { (* CTRLSEQ(_) in numeric expression *)
   	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(tok)
   	  }
-  | "+" { PLUS }
-  | "-" { MINUS }
-  | "*" { TIMES }
-  | "/" { DIVIDES }
-  | "==" { EQ }
-  | "=" { DEFEQ }
-  | "<>" { NEQ }
-  | "<=" { LEQ }
-  | "<" { LT }
-  | ">=" { GEQ }
-  | ">" { GT }
-  | "&&" { LAND }
-  | "||" { LOR }
-  | "^" { CONCAT }
-  | "->" { ARROW }
-  | "not" { LNOT }
-  | "mod" { MOD }
+  | "+" { PLUS(!line_no) }
+  | "-" { MINUS(!line_no) }
+  | "*" { TIMES(!line_no) }
+  | "/" { DIVIDES(!line_no) }
+  | "==" { EQ(!line_no) }
+  | "=" { DEFEQ(!line_no) }
+  | "<>" { NEQ(!line_no) }
+  | "<=" { LEQ(!line_no) }
+  | "<" { LT(!line_no) }
+  | ">=" { GEQ(!line_no) }
+  | ">" { GT(!line_no) }
+  | "&&" { LAND(!line_no) }
+  | "||" { LOR(!line_no) }
+  | "^" { CONCAT(!line_no) }
+  | "->" { ARROW(!line_no) }
+  | "not" { LNOT(!line_no) }
+  | "mod" { MOD(!line_no) }
   | "if" { IF(!line_no) }
   | "then" { THEN(!line_no) }
   | "else" { ELSE(!line_no) }
   | "let" { LET(!line_no) }
   | "and" { LETAND(!line_no) }
   | "in" { IN(!line_no) }
-  | "function" { LAMBDA }
+  | "function" { LAMBDA(!line_no) }
   | "true" { TRUE }
   | "false" { FALSE }
   | "finish" { FINISH }
@@ -178,7 +178,7 @@ and strexpr = parse
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       if Stacklist.is_empty strdepth_stack then
       ( ignore_space := false ;
-        EGRP )
+        EGRP(!line_no) )
       else
         if !strdepth == Stacklist.top strdepth_stack then
         ( Stacklist.delete_top strdepth_stack ;
@@ -186,7 +186,7 @@ and strexpr = parse
           CLOSESTR )
         else
         ( ignore_space := false ;
-          EGRP )
+          EGRP(!line_no) )
     }
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
@@ -245,7 +245,7 @@ and active = parse
       Stacklist.push numdepth_stack !numdepth ;
       increment numdepth ;
       next_state := STATE_NUMEXPR ;
-      OPENNUM
+      OPENNUM(!line_no)
     }
   | "{" {
       increment strdepth ;

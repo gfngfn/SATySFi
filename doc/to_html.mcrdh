@@ -1,5 +1,5 @@
-\macro \comment @cmt {}%
-\macro \document @head @body {
+let \comment @cmt = {} in
+let \document @head @body = {
   <html>\deeper{
     <head>\deeper{
       @head;
@@ -8,53 +8,53 @@
       @body;
     }</div></body>
   }</html>
-}%
-\macro \title @title {<title>@title;</title>\macro \--title {@title;}}%
-\macro \author @author {<meta name="author" content="@author;">\macro \--author {@author;}}%
-\macro \maketitle {
-  <div class="maketitle">\deeper{
-    <div class="title">\--title;</div>
-    <div class="author">\--author;</div>
-  }</div>
-}%
-\macro \section @sec @cont {<h1>@sec;</h1>\deeper{@cont;}}%
-\macro \subsection @subsec @cont {<h2>@subsec;</h2>\deeper{@cont;}}%
-\macro \p @p {<p>\deeper{@p;}</p>}%
-\macro \footnote @footnote {}%
-\macro \row @row-content {
-  \pop @cell @rest {@row-content;}{
-    <td>@cell;</td>\ifempty{@rest;}{}{\row{@rest;}}
-  }
-}%
-\macro \table @option @table {
-  <table>\deeper{\--table{@table;}}</table>
-}%
-\macro \--table @table-content {
-  \pop @row @rest {@table-content;}{
-    <tr>\deeper{@row;}</tr>%
-    \ifempty{@rest;}{}{\break;\--table{@rest;}}%
-  }
-}%
-\macro \itemize @list {<ul>\deeper{\--itemize{@list;}}</ul>}%
-\macro \--itemize @list {
-  \pop @head @tail {@list;}{
-    <li>@head;</li>\ifempty{@tail;}{}{\break;\--itemize{@tail;}}
-  }
-}%
+} in
+let \title @title = {<title>@title;</title>} in
+let \author @author = {<meta name="author" content="@author;">} in
+let \maketitle = {
+%  <div class="maketitle">\deeper{
+%    <div class="title">\sub-title;</div>
+%    <div class="author">\sub-author;</div>
+%  }</div>
+} in
+let \section @sec @cont = {<h1>@sec;</h1>\deeper{@cont;}} in
+let \subsection @subsec @cont = {<h2>@subsec;</h2>\deeper{@cont;}} in
+let \p @p = {<p>\deeper{@p;}</p>} in
+let \footnote @footnote = {} in
+let \row @row-content =
+  let @cell = list-head {@row-content;} in
+  let @rest = list-tail {@row-content;} in
+    {<td>@cell;</td>} ^ (if is-empty {@rest;} then {} else {\row{@rest;}})
+in
+let \table @option @table =
+  {<table>\deeper{\sub-table{@table;}}</table>}
+and \sub-table @table-content =
+  let @row = list-head {@table-content;} in
+  let @rest = list-tail {@table-content;} in
+    {<tr>\deeper{@row;}</tr>} ^
+      (if is-empty {@rest;} then {} else {\break;\sub-table{@rest;}})
+in
+let \itemize @list = {<ul>\deeper{\sub-itemize{@list;}}</ul>}
+and \sub-itemize @list =
+  let @head = list-head {@list;} in
+  let @tail = list-tail {@list;} in
+    {<li>@head;</li>} ^
+      (if is-empty {@tail;} then {} else {\break;\sub-itemize{@tail;}})
+in
+let \math @math = {\ <span class="math">@math;</span>\ } in
+let \epsilon = {ε} in
 %
-\macro \math @math {\ <span class="math">@math;</span>\ }%
-\macro \epsilon {ε}%
-%
-\macro \url @url {\ <code>@url;</code>\ }%
-\macro \url-display @url {<div class="centered">\deeper{\url{@url;}}</div>}%
-\macro \to-latex @c {}%
-\macro \TeX {TeX}%
-\macro \LaTeX {LaTeX}%
-\macro \pLaTeX2e {pLaTeX2ε}%
-\macro \atmark {\@}%
-\macro \brokenbar {\|}%
-\macro \lbrace {\{}%
-\macro \rbrace {\}}%
-\macro \bksl {\\}%
-\macro \numsign {\#}%
-\macro \percent {\%}%
+let \url @url = {\ <code>@url;</code>\ } in
+let \url-display @url = {<div class="centered">\deeper{\url{@url;}}</div>} in
+let \to-latex @c = {} in
+let \TeX = {TeX} in
+let \LaTeX = {LaTeX} in
+let \pLaTeX2e = {pLaTeX2ε} in
+let \atmark = {\@} in
+let \brokenbar = {\|} in
+let \lbrace = {\{} in
+let \rbrace = {\}} in
+let \bksl = {\\} in
+let \numsign = {\#} in
+let \percent = {\%} in
+  finish

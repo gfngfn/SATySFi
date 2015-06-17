@@ -57,6 +57,7 @@ let \token-listpunct = {\toksty{\;}} in
 let \token-bin = {\toksty{bin}} in
 let \token-let = {\toksty{let}} in
 let \token-and = {\toksty{and}} in
+let \token-defeq = {\toksty{=}} in
 let \token-in = {\toksty{in}} in
 let \token-if = {\toksty{if}} in
 let \token-then = {\toksty{then}} in
@@ -79,11 +80,19 @@ and \sub-math-dp-gather @lst =
   let @tail = list-tail {@lst;} in
     {@head;} ^ ( if is-empty {@tail;} then {} else {\\\\\sub-math-dp-gather{@tail;}} )
 in
-let \cfl @nontm @lst = {@nontm; &\\rightarrow \sub-cfl{@lst;}}
-and \sub-cfl @lst =
-  let @head = list-head {@lst;} in
-  let @tail = list-tail {@lst;} in
-    {@head;} ^ ( if is-empty {@tail;} then {} else { \\enskip\|\\enskip \sub-cfl{@tail;}} )
+let \cfl nontm lst =
+  let head = list-head lst in
+  let tail = list-tail lst in
+%    nontm ^ {\space;\\rightarrow&\space;} ^ head ^ (sub-cfl tail)
+     {}
+%and sub-cfl lst =
+%  let head = list-head lst in
+%  let tail = list-tail lst in
+%  ( if same head {*br*} then
+%      {\\\\&\space;}
+%    else
+%      {\space;\\enskip\|\\enskip\space;}
+%  ) ^ head ^ ( if is-empty tail then {} else sub-cfl tail )
 in
 let \code-dp @code = {
   \\begin\{center\}\deeper{
@@ -99,5 +108,5 @@ let \mcrd-display @code = {
   \\begin\{verbatim\}@code;\\end\{verbatim\}
 } in
 let \mcrd @code = {\synt{\escape-for-latex{@code;}}} in
-let \url-display @url = {\\texttt\{@url;\}} in
-finish
+let \url-display @url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
+  finish

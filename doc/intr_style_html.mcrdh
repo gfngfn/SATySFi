@@ -1,77 +1,82 @@
-\macro \settings {
+let \settings = {
   <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
   <link href="./intr_style.css" rel="stylesheet" type="text/css">
-}%
-\macro \description @dscr {
+} in
+let \description @dscr = {
   <div class="centered">\deeper{
     <table>\deeper{
       \dscr-sep-lines{@dscr;}
     }</table>
   }</div>
-}%
-\macro \dscr-sep-lines @dscr {
-  \pop @head @tail {@dscr;}{
-    <tr>\deeper{@head;}</tr>%
-    \ifempty{@tail;}{}{\break;\dscr-sep-lines{@tail;}}
-  }
-}%
-\macro \d-item @di @dd {<td>@di;</td><td>@dd;</td>}%
-\macro \synt @synt {<span class="synt"><code>@synt;</code></span>}%
-\macro \newword @nw {<dfn>@nw;</dfn>}%
+}
+and \dscr-sep-lines @dscr =
+  let @head = list-head {@dscr;} in
+  let @tail = list-tail {@dscr;} in
+    {<tr>\deeper{@head;}</tr>} ^
+      (if is-empty {@tail;} then {} else {\break;\dscr-sep-lines{@tail;}})
+in
+let \d-item @di @dd = {<td>@di;</td><td>@dd;</td>} in
+let \synt @synt = {<span class="synt"><code>@synt;</code></span>} in
+let \newword @nw = {<dfn>@nw;</dfn>} in
 %
 % ---- tokens ----
-\macro \toksty @tok {<span class="toksty"><u>@tok;</u></span>}%
-\macro \token-eoi {\toksty{eoi}}%
-\macro \token-cs {\toksty{cs}}%
-\macro \token-var {\toksty{var}}%
-\macro \token-id {\toksty{id}}%
-\macro \token-char {\toksty{char}}%
-\macro \token-pop {\toksty{pop}}%
-\macro \token-macro {\toksty{macro}}%
-\macro \token-bgrp {\toksty{\{}}%
-\macro \token-egrp {\toksty{\}}}%
-\macro \token-sep {\toksty{\|}}%
-\macro \token-end {\toksty{\;}}%
-\macro \token-qt {\toksty{\`}}%
+let \toksty @tok = {<span class="toksty"><u>@tok;</u></span>} in
+let \token-eoi = {\toksty{eoi}} in
+let \token-cs = {\toksty{cs}} in
+let \token-var = {\toksty{var}} in
+let \token-id = {\toksty{id}} in
+let \token-char = {\toksty{char}} in
+let \token-bgrp = {\toksty{\{}} in
+let \token-egrp = {\toksty{\}}} in
+let \token-sep = {\toksty{\|}} in
+let \token-end = {\toksty{\;}} in
+let \token-qt = {\toksty{\`}} in
 %
-\macro \math-dp-gather @lst {
+let \math-dp-gather @lst = {
   <div class="centered">\deeper{
     <table>\deeper{
-      \--math-dp-gather{@lst;}
+      \sub-math-dp-gather{@lst;}
     }</table>
   }</div>
-}%
-\macro \--math-dp-gather @lst {
-  \pop @head @tail {@lst;}{
-    <tr>\deeper{@head;}</tr>%
-    \ifempty{@tail;}{}{\break;\--math-dp-gather{@tail;}}
-  }
-}%
-\macro \cfl @nontm @lst {
+}
+and \sub-math-dp-gather @lst =
+  let @head = list-head {@lst;} in
+  let @tail = list-tail {@lst;} in
+    {<tr>\deeper{@head;}</tr>} ^
+      (if is-empty {@tail;} then {} else {\break;\sub-math-dp-gather{@tail;}})
+in
+let \cfl @nontm @lst = {
   <td><span class="math">@nontm;</span></td>%
-  <td><span class="math">&rarr\; \--cfl{@lst;}</span></td>
-}%
-\macro \--cfl @lst {
-  \pop @head @tail {@lst;}{
-    @head;%
-    \ifempty{@tail;}{}{</span> \| <span class="math">\--cfl{@tail;}}
-  }
-}%
-\macro \mcrd @code {<span class="synt"><code>\escape-for-html{@code;}</code></span>}%
-\macro \mcrd-display @code {<div class="code-display"><pre><code>\escape-for-html{@code;}</code></pre></div>}%
-\macro \code-dp @code {<div class="code-display"><code>@code;</code></div>}%
-\macro \code @code {\ <code>@code;</code>\ }%
-\macro \meta @metacode {<span class="meta">@metacode;</span>}%
-\macro \metadots {&middot\;&middot\;&middot\;}%
-\macro \escape-for-html @str {
-  \pop-char @char @rest {@str;}{
-    \ifsame{@char;}{<}{&lt\;}{
-      \ifsame{@char;}{>}{&gt\;}{
-        \ifsame{@char;}{&}{&amp\;}{
-          @char;
-        }
-      }
-    }%
-    \escape-for-html{@rest;}
-  }
-}%
+  <td><span class="math">&rarr\; \sub-cfl{@lst;}</span></td>
+}
+and \sub-cfl @lst =
+  let @head = list-head {@lst;} in
+  let @tail = list-tail {@lst;} in
+    {@head;} ^
+      (if is-empty {@tail;} then {} else {</span> \| <span class="math">\sub-cfl{@tail;}})
+in
+let \escape-for-html str =
+  sub-escape-for-html str 0
+and sub-escape-for-html str index =
+  if index >= string-length str then
+    {}
+  else
+  ( let ch = string-sub str index in
+    ( if same ch {<} then {&lt\;}
+      else if same ch {>} then {&gt\;}
+      else if same ch {&} then {&amp\;}
+      else ch
+    ) ^ (sub-escape-for-html str (index + 1))
+  )
+in
+let \mcrd @code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>} in
+let \mcrd-display @code = {
+  <div class="code-display"><pre><code>%
+    \escape-for-html{@code;}%
+  </code></pre></div>
+} in
+let \code-dp @code = {<div class="code-display"><code>@code;</code></div>} in
+let \code @code = {\ <code>@code;</code>\ } in
+let \meta @metacode = {<span class="meta">@metacode;</span>} in
+let \metadots = {&middot\;&middot\;&middot\;} in
+  finish

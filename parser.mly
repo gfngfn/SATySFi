@@ -56,26 +56,25 @@
 %token <Types.id_name> IDNAME
 %token <Types.class_name> CLASSNAME
 %token END
-%token LAMBDA ARROW
-%token <int> LET LETAND IN
-%token DEFEQ
+%token <int> LAMBDA ARROW
+%token <int> LET DEFEQ LETAND IN
 %token <int> IF THEN ELSE
 %token EOI
-%token LPAREN RPAREN
-%token TIMES DIVIDES
-%token MOD
-%token PLUS MINUS
-%token EQ NEQ GEQ LEQ GT LT
-%token LNOT
-%token LAND
-%token LOR
-%token CONCAT
+%token <int> LPAREN
+%token RPAREN
+%token <int> TIMES DIVIDES
+%token <int> MOD
+%token <int> PLUS MINUS
+%token <int> EQ NEQ GEQ LEQ GT LT
+%token <int> LNOT
+%token <int> LAND
+%token <int> LOR
+%token <int> CONCAT
 %token OPENQT CLOSEQT
 %token <int> OPENSTR
 %token CLOSESTR
-%token OPENNUM CLOSENUM
-%token <int> BGRP
-%token EGRP
+%token <int> OPENNUM CLOSENUM
+%token <int> BGRP EGRP
 %token TRUE FALSE
 %token FINISH
 %token <int> SEP
@@ -228,6 +227,15 @@ nxlambda:
           curry_lambda_abstract argvarcons $5
       }
   | nxlor { $1 }
+/* -- for syntax error log -- */
+  | LAMBDA error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'function'" "function ..<!>.." $1))
+      }
+  | LAMBDA nargvar sargvar ARROW error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after '->'" "-> ..<!>.." $4))
+      }
 ;
 nargvar:
   | NUMVAR nargvar { Types.ArgumentVariableCons($1, $2) }
@@ -240,10 +248,18 @@ sargvar:
 nxlor:
   | nxland LOR nxlor { Types.LogicalOr($1, $3) }
   | nxland { $1 }
+/* -- for syntax error log -- */
+  | nxland LOR error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '||'" "|| ..<!>.." $2))
+      }
 ;
 nxland:
   | nxcomp LAND nxland { Types.LogicalAnd($1, $3) }
   | nxcomp { $1 }
+/* -- for syntax error log -- */
+  | nxcomp LAND error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '&&'" "&& ..<!>.." $2))
+      }
 ;
 nxcomp:
   | nxconcat EQ nxcomp { Types.EqualTo($1, $3) }
@@ -253,43 +269,109 @@ nxcomp:
   | nxconcat GT nxcomp { Types.GreaterThan($1, $3) }
   | nxconcat LT nxcomp { Types.LessThan($1, $3) }
   | nxconcat { $1 }
+/* -- for syntax error log -- */
+  | nxconcat EQ error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '=='" "== ..<!>.." $2))
+      }
+  | nxconcat NEQ error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '<>'" "<> ..<!>.." $2))
+      }
+  | nxconcat GEQ error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '>='" ">= ..<!>.." $2))
+      }
+  | nxconcat LEQ error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '<='" "<= ..<!>.." $2))
+      }
+  | nxconcat GT error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '>'" "> ..<!>.." $2))
+      }
+  | nxconcat LT error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '<'" "< ..<!>.." $2))
+      }
 ;
 nxconcat:
   | nxlplus CONCAT nxconcat { Types.ConcatOperation($1, $3) }
   | nxlplus { $1 }
+/* -- for syntax error log -- */
+  | nxlplus CONCAT error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '^'" "^ ..<!>.." $2))
+      }
 ;
 nxlplus:
   | nxlminus PLUS nxrplus { Types.Plus($1, $3) }
   | nxlminus { $1 }
+/* -- for syntax error log -- */
+  | nxlminus PLUS error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '+'" "+ ..<!>.." $2))
+      }
 ;
 nxlminus:
   | nxlplus MINUS nxrtimes { Types.Minus($1, $3) }
   | nxltimes { $1 }
+/* -- for syntax error log -- */
+  | nxlplus MINUS error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '-'" "- ..<!>.." $2))
+      }
 ;
 nxrplus:
   | nxrminus PLUS nxrplus { Types.Plus($1, $3) }
   | nxrminus { $1 }
+/* -- for syntax error log -- */
+  | nxrminus PLUS error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '+'" "+ ..<!>.." $2))
+      }
 ;
 nxrminus:
   | nxrplus MINUS nxrtimes { Types.Minus($1, $3) }
   | nxrtimes { $1 }
+/* -- for syntax error log -- */
+  | nxrplus MINUS error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '-'" "- ..<!>.." $2))
+      }
 ;
 nxltimes:
   | nxun TIMES nxrtimes { Types.Times($1, $3) }
   | nxltimes DIVIDES nxapp { Types.Divides($1, $3) }
   | nxltimes MOD nxapp { Types.Mod($1, $3) }
   | nxun { $1 }
+/* -- for syntax error log -- */
+  | nxun TIMES error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '*'" "* ..<!>.." $2))
+      }
+  | nxltimes DIVIDES error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '/'" "/ ..<!>.." $2))
+      }
+  | nxltimes MOD error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'mod'" "mod ..<!>.." $2))
+      }
 ;
 nxrtimes:
   | nxapp TIMES nxrtimes { Types.Times($1, $3) }
   | nxrtimes DIVIDES nxapp { Types.Divides($1, $3) }
   | nxrtimes MOD nxapp { Types.Mod($1, $3) }
   | nxapp { $1 }
+/* -- for syntax error log -- */
+  | nxapp TIMES error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '*'" "* ..<!>.." $2))
+      }
+  | nxrtimes DIVIDES error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '/'" "/ ..<!>.." $2))
+      }
+  | nxrtimes MOD error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'mod'" "mod ..<!>.." $2))
+      }
 ;
 nxun:
   | MINUS nxapp { Types.Minus(Types.NumericConstant(0), $2) }
   | LNOT nxapp { Types.LogicalNot($2) }
   | nxapp { $1 }
+/* -- for syntax error log -- */
+  | MINUS error {
+        raise (ParseErrorDetail(error_reporting "illegal token after unary '-'" "- ..<!>.." $1))
+      }
+  | LNOT error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'not'" "not ..<!>.." $1))
+      }
 ;
 nxapp:
   | nxapp nxbot { Types.NumericApply($1, $2) }
@@ -314,6 +396,10 @@ nxbot:
   | OPENSTR error {
         raise (ParseErrorDetail(
           error_reporting "illegal token after beginning of string area '{'" "{ ..<!>.." $1))
+      }
+  | LPAREN error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after '('" "( ..<!>.." $1))
       }
 ;
 nxlist:
@@ -365,6 +451,15 @@ sxidnm:
 narg: /* -> Types.argument_cons */
   | OPENNUM nxlet CLOSENUM narg { Types.ArgumentCons($2, $4) }
   | { Types.EndOfArgument }
+/* -- for syntax error log -- */
+  | OPENNUM error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after beginning of program '('" "( ..<!>.." $1))
+      }
+  | OPENNUM nxlet CLOSENUM error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after end of program ')'" ") ..<!>.." $3))
+      }
 ;
 sarg: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
@@ -374,6 +469,9 @@ sarg: /* -> Types.argument_cons */
   | BGRP error {
         raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
       }
+  | BGRP sxsep EGRP error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '}'" "} ..<!>.." $3))
+      }
 ;
 sargsub: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
@@ -382,5 +480,8 @@ sargsub: /* -> Types.argument_cons */
 /* -- for syntax error log */
   | BGRP error {
         raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
+      }
+  | BGRP sxsep EGRP error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '}'" "} ..<!>.." $3))
       }
 ;

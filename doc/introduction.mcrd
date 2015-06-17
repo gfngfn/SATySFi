@@ -50,8 +50,8 @@
       \p{
         Macrodownは大きく分けて
         \itemize{
-          | プログラム階層
           | テキスト階層
+          | プログラム階層
           | アクティヴ階層
           | リテラル階層
           | コメント階層
@@ -169,6 +169,10 @@
         アクティヴ階層でプログラム開始トークン \mcrd`(` を認識してプログラム階層に入ってきていたとき，
         釣り合う \mcrd`)` を\newword{プログラム終了トークン}と認識し，直後にアクティヴ階層に戻ります。
       }
+      \p{
+        finishトークンはヘッダファイルを終了させるトークンで，
+        このfinishトークンが評価されたときの環境が次のファイルの読み込みに引き継がれます。
+      }
     }
     \subsection{アクティヴ階層}{
       \p{
@@ -203,19 +207,51 @@
         つまり，アクティヴ階層は最初に現れる \mcrd`{` か \mcrd`` ` `` で終了するということになります。
       }
     }
-  \section{構文木化}{
+    \subsection{リテラル階層}{
       \p{
-        \math{\token-eoi;}を入力の終端として，Macrodownは以下の\math{T}で表現される入力を受理します。
+        リテラル階層は書いた文字列をそのまま出力するための特殊なブロックです。
+        \mcrd`` ` `` が\math{n}個連なる文字列をそのまま出したい場合，\math{n + 1} 個以上で左右同数の
+        \mcrd`` ` `` で括るとリテラル階層となります。
+        したがって，リテラル階層は入ってきたときのリテラル開始トークンと同じ個数の
+        連続した \mcrd`` ` `` を認識するともともといた階層に戻る，という動作をします。
       }
+    }
+    \subsection{コメント階層}{
+      \p{
+        コメント階層では，改行文字が現れるまで全ての文字を読み飛ばします。
+        そして改行文字を認識すると，
+        その改行文字も含めてそこまでがコメントだったとしてコメント階層を離れ，
+        入る前にいたもとの階層に戻ります。
+        特にテキスト階層からコメント階層に入ってきて再びテキスト階層に戻るとき，
+        改行文字は出力されず，
+        さらにコメント階層から抜けた直後は行頭なので空白類文字が無視されることに注意してください。
+      }
+    }
+  \section{構文木化}{
       \math-dp-gather{
-        | \cfl{T}{| B \token-eoi; |}
-        | \cfl{B}{| \epsilon; | S B |}
-        | \cfl{S}{| \token-char; | \token-var; \token-end;
-            | \token-cs; \token-end; | \token-cs; G P |}
-        | \cfl{A}{| \epsilon; | \token-var; A |}
-        | \cfl{P}{| \epsilon; | G P |}
+        | \cfl{P}{
+            | \token-let; \token-ident; A B \token-defeq; P M \token-in; P
+            | \token-let; \token-cs; A B \token-defeq; P M \token-in; P
+            | \token-let; \token-var; \token-defeq; P \token-in; P
+            |*br*
+            | \token-if; P \token-then; P \token-else; P
+            | P \token-bin; P
+            | P P
+            | \token-ident;
+            | \token-int;
+            | \token-opnstr; S \token-clsstr;
+            | \token-opnqt; L \token-clsqt;
+            |}
+        | \cfl{S}{
+            | \token-char;
+            | \token-var; \token-end;
+            | \token-cs; \token-end;
+            | \token-cs; G H
+            |}
+        | \cfl{A}{| \epsilon; | \token-ident; A |}
+        | \cfl{B}{| \epsilon; | \token-var; B |}
         | \cfl{G}{| \token-bgrp; L \token-egrp; |}
-        | \cfl{L}{| B | B \token-sep; L |}
+        | \cfl{H}{| \epsilon; | G H |}
         |}
     }
     \subsection{変数とマクロ定義の基本}{
