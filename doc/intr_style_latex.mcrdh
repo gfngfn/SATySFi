@@ -72,27 +72,26 @@ let \token-clsstr = {\toksty{close\\\}}} in
 let \token-opnprog = {\toksty{open(}} in
 let \token-clsprog = {\toksty{close)}} in
 %
-let \math-dp-gather @lst = {
-  \\begin\{align*\}\deeper{\sub-math-dp-gather{@lst;}}\\end\{align*\}
+let \math-dp-gather lst = {
+  \\begin\{align*\}\deeper(sub-math-dp-gather lst);\\end\{align*\}
 }
-and \sub-math-dp-gather @lst =
-  let @head = list-head {@lst;} in
-  let @tail = list-tail {@lst;} in
-    {@head;} ^ ( if is-empty {@tail;} then {} else {\\\\\sub-math-dp-gather{@tail;}} )
-in
-let \cfl nontm lst =
+and sub-math-dp-gather lst =
   let head = list-head lst in
   let tail = list-tail lst in
-%    nontm ^ {\space;\\rightarrow&\space;} ^ head ^ (sub-cfl tail)
-     {}
-%and sub-cfl lst =
-%  let head = list-head lst in
-%  let tail = list-tail lst in
-%  ( if same head {*br*} then
-%      {\\\\&\space;}
-%    else
-%      {\space;\\enskip\|\\enskip\space;}
-%  ) ^ head ^ ( if is-empty tail then {} else sub-cfl tail )
+    head ^ ( if is-empty tail then {} else {\\\\} ^ (sub-math-dp-gather tail) )
+in
+let \cfl nontm lst =
+    nontm ^ {\ } ^ `\rightarrow&\enskip` ^ {\ } ^ (sub-cfl lst)
+and sub-cfl lst =
+  if is-empty lst then {} else
+  ( let head = list-head lst in
+    let tail = list-tail lst in
+    ( if same head {*br*} then
+        `\\&` ^ {\ }
+      else
+        head ^ `\enskip`
+    ) ^ ( if is-empty tail then {} else `|\enskip` ^ {\ } ^ (sub-cfl tail) )
+  )
 in
 let \code-dp @code = {
   \\begin\{center\}\deeper{

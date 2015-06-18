@@ -42,7 +42,7 @@
       これらの欠点を解決し，またWebページとPDFを共通の規格で記述できるようにすべく，
       Macrodownの制作に手をつけました。
       記法は“OCamlと\LaTeX;のハーフ”であり，
-      「意味論が綺麗な\LaTeX;的記法」を目指したといってもよいかもしれません。
+      “意味論が綺麗な\LaTeX;的記法”を目指したといってもよいかもしれません。
     }
   }
   \section{字句解析の厳密な仕様}{
@@ -228,50 +228,78 @@
       }
     }
   \section{構文木化}{
-      \math-dp-gather{
-        | \cfl{P}{
-            | \token-let; \token-ident; A B \token-defeq; P M \token-in; P
-            | \token-let; \token-cs; A B \token-defeq; P M \token-in; P
-            | \token-let; \token-var; \token-defeq; P \token-in; P
-            |*br*
-            | \token-if; P \token-then; P \token-else; P
-            | P \token-bin; P
-            | P P
-            | \token-ident;
-            | \token-int;
-            | \token-opnstr; S \token-clsstr;
-            | \token-opnqt; L \token-clsqt;
-            |}
-        | \cfl{S}{
-            | \token-char;
-            | \token-var; \token-end;
-            | \token-cs; \token-end;
-            | \token-cs; G H
-            |}
-        | \cfl{A}{| \epsilon; | \token-ident; A |}
-        | \cfl{B}{| \epsilon; | \token-var; B |}
-        | \cfl{G}{| \token-bgrp; L \token-egrp; |}
-        | \cfl{H}{| \epsilon; | G H |}
-        |}
-    }
-    \subsection{変数とマクロ定義の基本}{
+    \math-dp-gather{
+      | \cfl{P}{
+          | \token-let; \token-ident; A B \token-defeq; P M \token-in; P
+          | \token-let; \token-cs; A B \token-defeq; P M \token-in; P
+          | \token-let; \token-var; \token-defeq; P \token-in; P
+          |*br*
+          | \token-if; P \token-then; P \token-else; P
+          | P \token-bin; P
+          | P P
+          |*br*
+          | \token-ident;
+          | \token-int;
+          | \token-opnstr; S \token-clsstr;
+          | \token-opnqt; L \token-clsqt;
+          |}
+      | \cfl{S}{| C S |}
+      | \cfl{C}{
+          | \token-char;
+          | \token-var; \token-end;
+          | \token-cs; \token-end;
+          | \token-cs; G H
+          |}
+      | \cfl{A}{| \epsilon; | \token-ident; A |}
+      | \cfl{B}{| \epsilon; | \token-var; B |}
+      | \cfl{G}{| \token-bgrp; L \token-egrp; |}
+      | \cfl{H}{| \epsilon; | G H |}
+      |}
+  }
+  \section{変数・函数・マクロの基本}{
       \p{
-        変数にはトークン列\footnote{
-          正確には構文木が格納されているのですが，
-          トークン列が格納されていると見なしてもそれほど理解に齟齬のない仕様になっています。
-        }のみが格納され，現時点では数値などは扱えません。
-        破壊的代入の機能はなく，したがって純粋函数型言語に近い性質をしています。
-        マークアップ機能の柔軟な拡張性を確保するために前述のとおりマクロ定義機能があり，
+        Macrodownは手続き的記述よりも函数的記述に特化しています。
+        変数には基本的に破壊的代入の機能がなく，
+        したがって純粋函数型プログラミングに近い性質をしています。
+      }
+      \p{
+        函数とマクロは基本的にほとんど同様に扱えるもので，
+        単に制御綴で書かれるものをマクロ，
+        制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
+        制御綴はテキスト階層で，函数はプログラム階層で用いるようになっています。
+        以降はプログラム階層を基本にして例を掲げていきましょう。
+        したがって，慣れるまではヘッダファイルのみを処理することがしばらく続きます。
+      }
+      \p{
+        まず，名前のない函数が
+        \code-dp{
+          \synt`(function` \meta{nv1} \metadots; \meta{nvM}
+          \synt`@`\meta{sv1} \metadots; \synt`@`\meta{svN}
+          \synt`->` \meta{Expr} \synt`)`
+        }
+        で定義できます。
+      }
+      \p{
         以下のような\newword{定義式}
 
         \code-dp{
-          \synt{\bksl;macro} \synt{\bksl;}\meta{hoge} %
-            \synt{\atmark;}\meta{var1} \metadots; \synt{\atmark;}\meta{varN} %
-            \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
+          \synt{let} \meta{hoge} %
+            \meta{nvar1} \metadots; \meta{nvarM}
+            \synt{\atmark;}\meta{svar1} \metadots; \synt{\atmark;}\meta{svarN} %
+            \synt{=} \meta{ExprA} \synt{in} \meta{ExprB}
         }
 
-        で引数を\math{N}個伴うマクロ\code{\synt{\bksl;}\meta{hoge}}が定義されます。
-        この定義式以降，\newword{マクロ適用}として
+        および
+
+        \code-dp{
+          \synt{let} \synt{\bksl;}\meta{piyo} %
+            \meta{nvar1} \metadots; \meta{nvarM}
+            \synt{\atmark;}\meta{svar1} \metadots; \synt{\atmark;}\meta{svarN} %
+            \synt{=} \meta{ExprA} \synt{in} \meta{ExprB}
+        }
+
+        で引数を\math{M + N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt{\bksl;}\meta{piyo}}
+        が定義されます。
 
         \code-dp{
           \synt{\bksl;}\meta{hoge} %
@@ -285,21 +313,20 @@
         \code{\synt{\atmark;}\meta{piyo}\synt{\;}}とします。例えば
 
         \mcrd-display```
-          \macro \test @x @y {Ma@x;r@y;down}%
-          \test{c}{o} \test{}{k}
+          let \test @x @y = {Ma@x;r@y;down} in
+            {\test{c}{o}, \test{}{k}}
         ```
 
         に対する出力は
 
         \mcrd-display```
-          Macrodown Markdown
+          Macrodown, Markdown
         ```
 
         となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
 
         \mcrd-display```
-          \macro \mcrd {Macrodown}%
-          Hello, \mcrd;!
+          let \mcrd {Macrodown} in {Hello, \mcrd;!}
         ```
 
         に対する出力は
@@ -322,7 +349,7 @@
         }
 
         と記述します。マクロ適用時には，可変長リストはひとつの変数に格納されます。
-        この可変長リストを1つづつ切り離す機能が\mcrd`\pop`を用いた\newword{ポップ式}で，
+        この可変長リストを1つずつ切り離す機能が\mcrd`\pop`を用いた\newword{ポップ式}で，
 
         \code-dp{
           \synt{\bksl;pop} \synt{\atmark;}\meta{head} \synt{\atmark;}\meta{tail} %

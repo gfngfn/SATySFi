@@ -52,9 +52,7 @@ let rec interpret env ast =
 
   | ContentOf(v) ->
       ( try
-          let content = !(Hashtbl.find env v) in
-          ( print_process ("  -> " ^ (string_of_ast content)) ;
-            content )
+          let content = !(Hashtbl.find env v) in content
         with
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
@@ -86,7 +84,7 @@ let rec interpret env ast =
         | FuncWithEnvironment(varnm, astdef, envf) ->
             let env_new = copy_environment envf in
             ( add_to_environment env_new varnm (ref valuel) ;
-              let intpd = interpret env_new astdef in ( print_process ("  end " ^ varnm) ; intpd )
+              let intpd = interpret env_new astdef in intpd
             )
         | _ -> raise (EvalError("illegal apply"))
       )
@@ -97,18 +95,18 @@ let rec interpret env ast =
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
       ( try Out.main (interpret env ast1) with
-        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'same'"))
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
       let str2 =
       ( try Out.main (interpret env ast2) with
-        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'same'"))
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
         BooleanConstant((compare str1 str2) == 0)
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str =
       ( try Out.main (interpret env aststr) with
-        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'string-sub'"))
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-sub': " ^ s))
       ) in
         let pos = interpret_int env astpos in
         let wid = interpret_int env astwid in
@@ -117,7 +115,7 @@ let rec interpret env ast =
   | PrimitiveStringLength(aststr) ->
       let str =
       ( try Out.main (interpret env aststr) with
-        | Out.IllegalOut(_) -> raise (EvalError("Illegal argument for 'string-length'"))
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-length': " ^ s))
       ) in
         NumericConstant(String.length str)
 
@@ -133,7 +131,7 @@ let rec interpret env ast =
           let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file) in
             interpret env parsed
         with
-        | Out.IllegalOut(_) -> raise (EvalError("illegal argument of \\include"))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument of \\include: " ^ s))
         | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
       )
   | PrimitiveArabic(astnum) ->
@@ -150,12 +148,18 @@ let rec interpret env ast =
 
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
-        let (valuehd, _) = pop_from_separated_tree valuelst UnderConstruction in valuehd
-
+      ( match valuelst with
+        | ListCons(vhd, vtl) -> vhd
+        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-head'"))
+        | _ -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
+      )
   | PrimitiveListTail(astlst) ->
       let valuelst = interpret env astlst in
-        let (_, valuetl) = pop_from_separated_tree valuelst UnderConstruction in valuetl
-
+      ( match valuelst with
+        | ListCons(vhd, vtl) -> vtl
+        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-tail'"))
+        | _ -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
+      )
   | PrimitiveIsEmpty(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
@@ -244,26 +248,25 @@ and add_mutuals_to_environment env_func mutletcons =
         ( add_to_environment env_func nv (ref valuecont) ;
           add_mutuals_to_environment env_func tailcons
         )
-
+(*
 (* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
 and pop_from_separated_tree astin astconstr =
   match astin with
-  | ListCons(asthd, asttl) -> (
-        match asthd with
-        | ListCons(a, b) -> (
+  | ListCons(asthd, asttl) ->
+      ( match asthd with
+        | ListCons(a, b) ->
             pop_from_separated_tree asthd (compensate astconstr (ListCons(UnderConstruction, asttl)))
-          )
         | _ -> (asthd, compensate astconstr asttl)
       )
   | _ -> (astin, EndOfList)
-
+*)
 
 (* abstract_tree -> abstract_tree -> abstract_tree *)
 and compensate astunder_constr astcmpnstd =
   match astunder_constr with
+  | UnderConstruction -> astcmpnstd
   | ListCons(astformer, astlatter)
       -> ListCons((compensate astformer astcmpnstd), (compensate astlatter astcmpnstd))
-  | UnderConstruction -> astcmpnstd
   | astother -> astother
 
 and make_literal_legitimate ast =
