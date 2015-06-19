@@ -10,13 +10,16 @@ let print_process msg =
 
 let rec string_of_ast ast =
   match ast with
-  | LambdaAbstract(x, m) -> "(Lam: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(LamEnv: " ^ x ^ ". " ^ (string_of_ast m) ^ ")"
+  | LambdaAbstract(x, m) -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
   | ContentOf(v) -> "(" ^ v ^ ")"
-  | NumericApply(m, n) -> "($ " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t) -> (string_of_ast s) ^ "-" ^ (string_of_ast t)
-  | StringEmpty -> "!"
-  | _ -> "_"
+  | NumericApply(m, n) -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t) -> (string_of_ast s) ^ (string_of_ast t)
+  | StringEmpty -> ""
+  | IfThenElse(b, t, f) ->
+      "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | PrimitiveClassIsValid -> "(class-is-valid)"
+  | _ -> "..."
 
 let rec make_argument_cons lst =
   match lst with
@@ -52,7 +55,13 @@ let rec interpret env ast =
 
   | ContentOf(v) ->
       ( try
-          let content = !(Hashtbl.find env v) in content
+          let content = !(Hashtbl.find env v) in
+          (* patterns that should be interpreted one more time *)
+          ( match content with
+            | PrimitiveClassIsValid -> interpret env PrimitiveClassIsValid
+            | PrimitiveIDIsValid -> interpret env PrimitiveIDIsValid
+            | other -> other
+          )
         with
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
@@ -69,12 +78,12 @@ let rec interpret env ast =
     ( match interpret env astf with
       | FuncWithEnvironment(varnm, astdef, envf) ->
           FuncWithEnvironment(varnm,
-            LetIn(MutualLetCons("@class", clsnmast, EndOfMutualLet),
-              LetIn(MutualLetCons("@id", idnmast, EndOfMutualLet), astdef)
+            LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+              LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
             ), envf)
       | other ->  interpret env
-                    (LetIn(MutualLetCons("@class", clsnmast, EndOfMutualLet),
-                      LetIn(MutualLetCons("@id", idnmast, EndOfMutualLet), astf))
+                    (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+                      LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))
                     )
     )
   | NumericApply(astf, astl) ->
@@ -119,8 +128,15 @@ let rec interpret env ast =
       ) in
         NumericConstant(String.length str)
 
-  | PrimitiveIsValid(astf) ->
-      ( match interpret env astf with
+  | PrimitiveClassIsValid ->
+      let vcclass = interpret env (ContentOf("class")) in
+      ( match vcclass with
+        | NoContent -> BooleanConstant(false)
+        | _ -> BooleanConstant(true)
+      )
+  | PrimitiveIDIsValid ->
+      let vcid = interpret env (ContentOf("id")) in
+      ( match vcid with
         | NoContent -> BooleanConstant(false)
         | _ -> BooleanConstant(true)
       )
@@ -221,17 +237,19 @@ let rec interpret env ast =
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)
 
-  | _ -> raise (EvalError("remains to be implemented"))
+  | other -> raise (EvalError("remains to be implemented: " ^ (string_of_ast other)))
 
 and interpret_bool env ast =
-  match interpret env ast with
-  | BooleanConstant(bc) -> bc
-  | _ -> raise (EvalError("not of type bool / remains to be implemented"))
+  let vb = interpret env ast in
+    match vb with
+    | BooleanConstant(bc) -> bc
+    | other -> raise (EvalError("not of type bool: " ^ (string_of_ast other)))
 
 and interpret_int env ast =
-  match interpret env ast with
-  | NumericConstant(nc) -> nc
-  | _ -> raise (EvalError("not of type int / remains to be implemented"))
+  let vi = interpret env ast in
+    match vi with
+    | NumericConstant(nc) -> nc
+    | other -> raise (EvalError("not of type int: " ^ (string_of_ast other)))
 
 
 and add_mutuals_to_environment env_func mutletcons =
@@ -259,7 +277,6 @@ and pop_from_separated_tree astin astconstr =
         | _ -> (asthd, compensate astconstr asttl)
       )
   | _ -> (astin, EndOfList)
-*)
 
 (* abstract_tree -> abstract_tree -> abstract_tree *)
 and compensate astunder_constr astcmpnstd =
@@ -268,6 +285,7 @@ and compensate astunder_constr astcmpnstd =
   | ListCons(astformer, astlatter)
       -> ListCons((compensate astformer astcmpnstd), (compensate astlatter astcmpnstd))
   | astother -> astother
+*)
 
 and make_literal_legitimate ast =
   match ast with
