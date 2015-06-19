@@ -22,5 +22,6 @@ let \p inner = {<p>\deeper{@inner;}</p>}
 in
 let \span inner =
   (if class-is-valid then {<span class="@class;">} else {<span>}) ^ {@inner;</span>}
+%  {<span>@inner;</span>}
 in
   finish

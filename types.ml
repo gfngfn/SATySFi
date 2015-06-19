@@ -81,6 +81,6 @@ type type_struct =
   | BoolType
   | FuncType of type_struct * type_struct
   | ListType of type_struct
-  | TypeVariable of type_variable_id
+  | TypeVariable of type_variable_id * var_name
 and type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref
