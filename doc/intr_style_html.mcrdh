@@ -2,25 +2,25 @@ let \settings = {
   <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
   <link href="./intr_style.css" rel="stylesheet" type="text/css">
 } in
-let \description @dscr = {
+let \description dscr = {
   <div class="centered">\deeper{
     <table>\deeper{
       \dscr-sep-lines{@dscr;}
     }</table>
   }</div>
 }
-and \dscr-sep-lines @dscr =
-  let @head = list-head {@dscr;} in
-  let @tail = list-tail {@dscr;} in
+and \dscr-sep-lines dscr =
+  let head = list-head dscr in
+  let tail = list-tail dscr in
     {<tr>\deeper{@head;}</tr>} ^
-      (if is-empty {@tail;} then {} else {\break;\dscr-sep-lines{@tail;}})
+      (if is-empty tail then {} else {\break;\dscr-sep-lines{@tail;}})
 in
-let \d-item @di @dd = {<td>@di;</td><td>@dd;</td>} in
-let \synt @synt = {<span class="synt"><code>@synt;</code></span>} in
-let \newword @nw = {<dfn>@nw;</dfn>} in
+let \d-item di dd = {<td>@di;</td><td>@dd;</td>} in
+let \synt synt = {<span class="synt"><code>@synt;</code></span>} in
+let \newword nw = {<dfn>@nw;</dfn>} in
 %
 % ---- tokens ----
-let \toksty @tok = {<span class="toksty"><u>@tok;</u></span>} in
+let \toksty tok = {<span class="toksty"><u>@tok;</u></span>} in
 let \token-eoi = {\toksty{eoi}} in
 let \token-cs = {\toksty{cs}} in
 let \token-var = {\toksty{var}} in
@@ -32,28 +32,28 @@ let \token-sep = {\toksty{\|}} in
 let \token-end = {\toksty{\;}} in
 let \token-qt = {\toksty{\`}} in
 %
-let \math-dp-gather @lst = {
+let \math-dp-gather lst = {
   <div class="centered">\deeper{
     <table>\deeper{
       \sub-math-dp-gather{@lst;}
     }</table>
   }</div>
 }
-and \sub-math-dp-gather @lst =
-  let @head = list-head {@lst;} in
-  let @tail = list-tail {@lst;} in
+and \sub-math-dp-gather lst =
+  let head = list-head lst in
+  let tail = list-tail lst in
     {<tr>\deeper{@head;}</tr>} ^
-      (if is-empty {@tail;} then {} else {\break;\sub-math-dp-gather{@tail;}})
+      (if is-empty tail then {} else {\break;\sub-math-dp-gather{@tail;}})
 in
-let \cfl @nontm @lst = {
+let \cfl nontm lst = {
   <td><span class="math">@nontm;</span></td>%
   <td><span class="math">&rarr\; \sub-cfl{@lst;}</span></td>
 }
-and \sub-cfl @lst =
-  let @head = list-head {@lst;} in
-  let @tail = list-tail {@lst;} in
-    {@head;} ^
-      (if is-empty {@tail;} then {} else {</span> \| <span class="math">\sub-cfl{@tail;}})
+and \sub-cfl lst =
+  let head = list-head lst in
+  let tail = list-tail lst in
+    head ^
+      (if is-empty tail then {} else {</span> \| <span class="math">\sub-cfl{@tail;}})
 in
 let \escape-for-html str =
   sub-escape-for-html str 0
@@ -69,14 +69,14 @@ and sub-escape-for-html str index =
     ) ^ (sub-escape-for-html str (index + 1))
   )
 in
-let \mcrd @code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>} in
-let \mcrd-display @code = {
+let \mcrd code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>} in
+let \mcrd-display code = {
   <div class="code-display"><pre><code>%
     \escape-for-html{@code;}%
   </code></pre></div>
 } in
-let \code-dp @code = {<div class="code-display"><code>@code;</code></div>} in
-let \code @code = {\ <code>@code;</code>\ } in
-let \meta @metacode = {<span class="meta">@metacode;</span>} in
+let \code-dp code = {<div class="code-display"><code>@code;</code></div>} in
+let \code code = {\ <code>@code;</code>\ } in
+let \meta metacode = {<span class="meta">@metacode;</span>} in
 let \metadots = {&middot\;&middot\;&middot\;} in
   finish

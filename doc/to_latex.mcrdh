@@ -1,4 +1,4 @@
-let \document @head @body = {
+let \document head body = {
   \\documentclass\{jsarticle\}
   \\makeatletter\deeper{
     @head;
@@ -7,56 +7,56 @@ let \document @head @body = {
     @body;
   }\\end\{document\}
 } in
-let \title @title = {\\title\{@title;\}} in
-let \author @author = {\\author\{@author;\}} in
+let \title title = {\\title\{@title;\}} in
+let \author author = {\\author\{@author;\}} in
 let \maketitle = {\\maketitle} in
-let \section @sec @cont = {\\section\{@sec;\}\deeper{@cont;}\%} in
-let \subsection @subsec @cont = {\\subsection\{@subsec;\}\deeper{@cont;}\%} in
-let \p @p = {\\indent\deeper{@p;}\\par} in
-let \footnote @footnote = {\\footnote\{@footnote;\}} in
-let \row @row-content =
-  let @cell = list-head {@row-content;} in
-  let @rest = list-tail {@row-content;} in
-    {@cell;}
-      ^ ( if is-empty {@rest;}
+let \section sec cont = {\\section\{@sec;\}\deeper{@cont;}\%} in
+let \subsection subsec cont = {\\subsection\{@subsec;\}\deeper{@cont;}\%} in
+let \p p = {\\indent\deeper{@p;}\\par} in
+let \footnote footnote = {\\footnote\{@footnote;\}} in
+let \row row-content =
+  let cell = list-head row-content in
+  let rest = list-tail row-content in
+    cell
+      ^ ( if is-empty rest
             then {}
             else {\ & \row{@rest;}} )
 in
-let \table @option @table = {
-  \\begin\{tabular\}\{@option;\}\deeper{
+let \table option table = {
+  \\begin\{tabular\}\{option;\}\deeper{
     \sub-table{@table;}
   }\\end\{tabular\}
 }
-and \sub-table @table-content =
-  let @row = list-head {@table-content;} in
-  let @rest = list-tail {@table-content;} in
-    {@row;}
-      ^ ( if is-empty {@rest;}
+and \sub-table table-content =
+  let row = list-head table-content in
+  let rest = list-tail table-content in
+    row
+      ^ ( if is-empty rest
             then {}
             else {\\\\\break;\sub-table{@rest;}} )
 in
-let \itemize @list = {
+let \itemize list = {
   \\begin\{itemize\}\deeper{
     \sub-itemize{@list;}
   }\\end\{itemize\}
 }
-and \sub-itemize @list =
-  let @head = list-head {@list;} in
-  let @tail = list-tail {@list;} in
+and \sub-itemize list =
+  let head = list-head list in
+  let tail = list-tail list in
     {\\item @head;}
-      ^ ( if is-empty {@tail;}
+      ^ ( if is-empty tail
             then {}
             else {\break;\sub-itemize{@tail;}} )
 in
-let \math @math = {\ $@math;$\ } in
+let \math math = {\ $@math;$\ } in
 let \epsilon = {\\varepsilon} in
-let \url @url = {\\texttt\{@url;\}} in
-let \url-dp @url = {
+let \url url = {\\texttt\{@url;\}} in
+let \url-dp url = {
   \\begin\{center\}\deeper{
     \\texttt\{@url;\}
   }\\end\{center\}
 } in
-let \to-latex @c = {@c;} in
+let \to-latex c = {@c;} in
 let \TeX = {\\TeX\{\}} in
 let \LaTeX = {\\LaTeX\{\}} in
 let \pLaTeX2e = {p\\LaTeX 2\\raisebox\{-0.125zh\}\{$\\varepsilon$\}} in
@@ -67,7 +67,7 @@ let \rbrace = {\\\}} in
 let \bksl = {\\symbol\{"5C\}} in
 let \numsign = {\\\#} in
 let \percent = {\\\%} in
-let \escape-for-latex @str = escape-for-latex {@str;} 0
+let \escape-for-latex str = escape-for-latex str 0
 and escape-for-latex str index =
   if index >= string-length str then
     {}

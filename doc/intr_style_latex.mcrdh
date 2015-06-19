@@ -9,7 +9,7 @@ let \settings = {
   \\usepackage\{tikz\}
   \\setlength\\parskip\{1zw\}
 } in
-let \description @dscr = {
+let \description dscr = {
   \\begin\{center\}\deeper{
     \\begin\{tabular\}\{ll\}
     \\hline\deeper{
@@ -18,24 +18,24 @@ let \description @dscr = {
     \\end\{tabular\}
   }\\end\{center\}
 }
-and \dscr-sep-lines @dscr =
-  let @head = list-head {@dscr;} in
-  let @tail = list-tail {@dscr;} in
-    {@head;} ^
-    ( if is-empty {@tail;} then
+and \dscr-sep-lines dscr =
+  let head = list-head dscr in
+  let tail = list-tail dscr in
+    head ^
+    ( if is-empty tail then
         {\\\\}
       else
-      { \\\\
-        \\hline%
-        \dscr-sep-lines{@tail;}}
+        {\\\\
+          \\hline%
+          \dscr-sep-lines{@tail;}}
     )
 in
-let \d-item @di @dd = {@di; & @dd;} in
-let \synt @synt = {\\textcolor\{blue\}\{\\texttt\{@synt;\}\}} in
-let \newword @nw = {\\textsf\{@nw;\}} in
+let \d-item di dd = {@di; & @dd;} in
+let \synt synt = {\\textcolor\{blue\}\{\\texttt\{@synt;\}\}} in
+let \newword nw = {\\textsf\{@nw;\}} in
 
 % ---- tokens ----
-let \toksty @tok = {\\:\\text\{\\textcolor\{red\}\{$\\underline\{\\mathbf\{@tok;\}\}$\}\}\\:} in
+let \toksty tok = {\\:\\text\{\\textcolor\{red\}\{$\\underline\{\\mathbf\{@tok;\}\}$\}\}\\:} in
 let \token-eoi = {\toksty{eoi}} in
 let \token-cs = {\toksty{cs}} in
 let \token-var = {\toksty{var}} in
@@ -93,19 +93,19 @@ and sub-cfl lst =
     ) ^ ( if is-empty tail then {} else `|\enskip` ^ {\ } ^ (sub-cfl tail) )
   )
 in
-let \code-dp @code = {
+let \code-dp code = {
   \\begin\{center\}\deeper{
     \\parbox\{0.9\\textwidth\}\{@code;\}
   }\\end\{center\}
 } in
-let \code @code = {@code;} in
+let \code code = code in
 let \code-dp-break = {\\\\} in
 let \code-dp-tab = {\\\ \\\ } in
-let \meta @metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
+let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
 let \metadots = {$\\ldots$} in
-let \mcrd-display @code = {
+let \mcrd-display code = {
   \\begin\{verbatim\}@code;\\end\{verbatim\}
 } in
-let \mcrd @code = {\synt{\escape-for-latex{@code;}}} in
-let \url-display @url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
+let \mcrd code = {\synt{\escape-for-latex{@code;}}} in
+let \url-display url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
   finish
