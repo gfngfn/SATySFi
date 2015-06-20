@@ -20,11 +20,10 @@ type argument_cons =
 and mutual_let_cons =
   | MutualLetCons of var_name * abstract_tree * mutual_let_cons
   | EndOfMutualLet
-and environment = (string, location) Hashtbl.t
+and environment = (var_name, location) Hashtbl.t
 and location = abstract_tree ref
 and abstract_tree =
 (* for parser *)
-  | NumericEmpty
   | StringEmpty
   | NumericConstant of int
   | BooleanConstant of bool
@@ -56,8 +55,14 @@ and abstract_tree =
   | FuncWithEnvironment of var_name * abstract_tree * environment
   | NoContent (* for @class and @id *)
   | UnderConstruction (* for 'compensate' *)
-  | Invalid
   | FinishHeaderFile
+  | LetMutableIn of var_name * abstract_tree * abstract_tree
+  | Sequential of abstract_tree * abstract_tree
+  | Overwrite of var_name * abstract_tree
+  | MutableValue of abstract_tree
+  | Reference of var_name
+  | ReferenceFinal of var_name
+  | UnitConstant
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree

@@ -2,4 +2,4 @@
   open Types
   exception IllegalOut of string
 
-  val main : abstract_tree -> string
+  val main : environment -> abstract_tree -> string

@@ -45,7 +45,6 @@ let rec equivalent tya tyb =
 (* (type_struct * type_struct) -> type_environment -> Types.abstract_tree -> type_struct *)
 let rec typecheck tyeq tyenv astch =
   match astch with
-  | NumericEmpty -> IntType
   | StringEmpty -> StringType
   | NumericConstant(_) -> IntType
   | StringConstant(_) -> StringType
@@ -234,6 +233,22 @@ let rec typecheck tyeq tyenv astch =
         ListType(tyhd)
       )
   | EndOfList -> let ntyvar = new_type_variable "*empty" in ListType(ntyvar)
+
+  | LetMutableIn(varnm, astdflt, astaft) ->
+      let tydflt = typecheck tyeq tyenv astdflt in
+      let tyenv_new = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv varnm tydflt ;
+        let tyaft = typecheck tyeq tyenv_new astaft in tyaft
+      )
+
+  | Sequential(astf, astl) ->
+      let tyf = typecheck tyeq tyenv astf in
+      let tyl = typecheck tyeq tyenv astl in
+      ( ( if equivalent UnitType tyf then () else Stacklist.push tyeq (UnitType, tyf)) ;
+        tyl
+      )
+  | Overwrite(varnm, astnew) ->
+      let _ = typecheck tyeq tyenv astnew in UnitType
 
   | FinishHeaderFile -> TypeEnvironmentType(tyenv)
 

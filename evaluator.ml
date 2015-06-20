@@ -19,6 +19,12 @@ let rec string_of_ast ast =
   | IfThenElse(b, t, f) ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | IfClassIsValid(t, f) -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | Reference(vn) -> "!" ^ vn
+  | ReferenceFinal(vn) -> "'!" ^ vn
+  | Overwrite(vn, n) -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | MutableValue(mv) -> "(mutable " ^ (string_of_ast mv) ^ ")"
+  | UnitConstant -> "()"
+  | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | _ -> "..."
 
 let rec make_argument_cons lst =
@@ -97,18 +103,18 @@ let rec interpret env ast =
 
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
-      ( try Out.main (interpret env ast1) with
+      ( try Out.main env (interpret env ast1) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
       let str2 =
-      ( try Out.main (interpret env ast2) with
+      ( try Out.main env (interpret env ast2) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
         BooleanConstant((compare str1 str2) == 0)
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str =
-      ( try Out.main (interpret env aststr) with
+      ( try Out.main env (interpret env aststr) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-sub': " ^ s))
       ) in
         let pos = interpret_int env astpos in
@@ -117,14 +123,14 @@ let rec interpret env ast =
 
   | PrimitiveStringLength(aststr) ->
       let str =
-      ( try Out.main (interpret env aststr) with
+      ( try Out.main env (interpret env aststr) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-length': " ^ s))
       ) in
         NumericConstant(String.length str)
 
   | PrimitiveInclude(astfile_name) ->
       ( try
-          let str_file_name = Out.main (interpret env astfile_name) in
+          let str_file_name = Out.main env (interpret env astfile_name) in
           let file = open_in str_file_name in
           let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file) in
             interpret env parsed
@@ -179,6 +185,46 @@ let rec interpret env ast =
       )
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
+
+  | LetMutableIn(varnm, astdflt, astaft) ->
+      let valuedflt = interpret env astdflt in
+      ( add_to_environment env varnm (ref (MutableValue(valuedflt))) ;
+        interpret env astaft
+      )
+  | Reference(varnm) ->
+      ( try
+          let valuemutvar = !(Hashtbl.find env varnm) in
+          ( match valuemutvar with
+            | MutableValue(astmv) -> astmv
+            | _ -> raise (EvalError("'" ^ varnm ^ "' is not a mutable variable for '!'"))
+          )
+        with
+        | Not_found -> raise (EvalError("undefined mutable variable '" ^ varnm ^ "' for '!'"))
+      )
+  | ReferenceFinal(varnm) -> ReferenceFinal(varnm)
+
+  | Overwrite(varnm, astnew) ->
+      ( try
+          let rfvalue = Hashtbl.find env varnm in
+          ( match !rfvalue with
+            | MutableValue(astmv) ->
+                ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
+            | _ -> raise (EvalError("'" ^ varnm ^ "' is not a mutable variable for '<-'"))
+          )
+        with
+        | Not_found -> raise (EvalError("undefined mutable variable '" ^ varnm ^ "' for '<-'"))
+      )
+  | UnitConstant -> UnitConstant
+
+  | Sequential(astf, astl) ->
+      let valuef = interpret env astf in
+      let valuel = interpret env astl in
+      ( match valuef with
+        | UnitConstant -> valuel
+        | _ -> raise (EvalError("not of type unit"))
+      )
+
+  | MutableValue(astmv) -> MutableValue(astmv)
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)
 

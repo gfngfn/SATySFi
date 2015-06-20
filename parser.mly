@@ -52,6 +52,8 @@
 %token END
 %token <int> LAMBDA ARROW
 %token <int> LET DEFEQ LETAND IN
+%token <int> LETMUTABLE OVERWRITEEQ
+%token <int> REFNOW REFFINAL
 %token <int> IF THEN ELSE IFCLASSISVALID IFIDISVALID
 %token EOI
 %token <int> LPAREN
@@ -74,9 +76,11 @@
 %token <int> SEP
 %token <int> BLIST LISTPUNCT
 %token ELIST
+%token <int> BEFORE
 %token IGNORED
 
-%nonassoc LET DEFEQ IN LETAND
+%nonassoc BEFORE
+%nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
 %nonassoc IF THEN ELSE
 %left LOR
 %left LAND
@@ -124,6 +128,7 @@ main:
   | sxblock EOI { $1 }
 ;
 nxlet:
+  | nxlet BEFORE nxif { Types.Sequential($1, $3) }
   | LET VAR argvar DEFEQ nxlet nxdec nxlet {
         let curried = curry_lambda_abstract $3 $5 in
           Types.LetIn(Types.MutualLetCons($2, curried, $6), $7)
@@ -132,6 +137,9 @@ nxlet:
         let (_, csname) = $2 in
         let curried = curry_lambda_abstract $3 $5 in
           Types.LetIn(Types.MutualLetCons(csname, curried, $6), $7)
+      }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
+        Types.LetMutableIn($2, $4, $6)
       }
   | nxif { $1 }
 /* -- for syntax error log -- */
@@ -241,6 +249,7 @@ nxif:
       }
 ;
 nxlambda:
+  | VAR OVERWRITEEQ nxlor { Types.Overwrite($1, $3) }
   | LAMBDA argvar ARROW nxlor { curry_lambda_abstract $2 $4 }
   | nxlor { $1 }
 /* -- for syntax error log -- */
@@ -400,6 +409,8 @@ nxbot:
   | FINISH { Types.FinishHeaderFile }
   | BLIST ELIST { Types.EndOfList }
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
+  | REFNOW VAR { Types.Reference($2) }
+  | REFFINAL VAR { Types.ReferenceFinal($2) }
 /* -- for syntax error log -- */
   | BLIST error {
         raise (ParseErrorDetail(

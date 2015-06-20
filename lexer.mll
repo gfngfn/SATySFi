@@ -146,6 +146,11 @@ rule numexpr = parse
   | "true" { TRUE }
   | "false" { FALSE }
   | "finish" { FINISH }
+  | "let-mutable" { LETMUTABLE(!line_no) }
+  | "before" { BEFORE(!line_no) }
+  | "<-" { OVERWRITEEQ(!line_no) }
+  | "!" { REFNOW(!line_no) }
+  | "!!" { REFFINAL(!line_no) }
 
   | (latin (digit | latin |"-")*) as tok { VAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }

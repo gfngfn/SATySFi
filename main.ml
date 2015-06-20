@@ -45,7 +45,8 @@ let read_standalone_file tyenv env file_name_in file_name_out =
               print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n")
           else ()
         ) ;
-        let content_out = Out.main (Evaluator.interpret env parsed) in
+        let evaled = Evaluator.interpret env parsed in
+        let content_out = Out.main env evaled in
           Files.file_out_of_string file_name_out content_out
       )
     )
@@ -62,7 +63,8 @@ let read_document_file tyenv env file_name_in file_name_out =
               print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n")
           else ()
         ) ;
-        let content_out = Out.main (Evaluator.interpret env parsed) in
+        let evaled = Evaluator.interpret env parsed in
+        let content_out = Out.main env evaled in
           Files.file_out_of_string file_name_out content_out
       )
     )
