@@ -65,8 +65,8 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
-  | PrimitiveClassIsValid
-  | PrimitiveIDIsValid
+  | IfClassIsValid of abstract_tree * abstract_tree
+  | IfIDIsValid of abstract_tree * abstract_tree
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty of abstract_tree

@@ -2,7 +2,11 @@ open Types
 
 exception TypeCheckError of string
 
-let print_process msg = print_string (msg ^ "\n") ;  ()
+let print_process msg =
+(*
+	print_string (msg ^ "\n") ;
+*)
+  ()
 
 let rec string_of_type_struct tystr =
   match tystr with
@@ -183,14 +187,33 @@ let rec typecheck tyeq tyenv astch =
             tyl
       )
     )
-  | IfThenElse(astb, astf, astl) ->
+  | IfThenElse(astb, asttru, astfls) ->
       let tyb = typecheck tyeq tyenv astb in
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
+      let tytru = typecheck tyeq tyenv asttru in
+      let tyfls = typecheck tyeq tyenv astfls in
       ( ( if equivalent BoolType tyb then () else Stacklist.push tyeq (BoolType, tyb) ) ;
-        ( if equivalent tyf tyl then () else Stacklist.push tyeq (tyf, tyl) ) ;
-        tyf
+        ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+        tytru
       )
+  | IfClassIsValid(asttru, astfls) ->
+      let tyenv_class = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_class "class" StringType ;
+        let tytru = typecheck tyeq tyenv_class asttru in
+        let tyfls = typecheck tyeq tyenv astfls in
+        ( ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+          tytru
+        )
+      )
+  | IfIDIsValid(asttru, astfls) ->
+      let tyenv_id = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_id "id" StringType ;
+        let tytru = typecheck tyeq tyenv_id asttru in
+        let tyfls = typecheck tyeq tyenv astfls in
+        ( ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+          tytru
+        )
+      )
+
   | LambdaAbstract(varnm, astdef) ->
     ( print_process ("#LambdaAbstract " ^ varnm ^ ". ...") ;
       let tyvar = new_type_variable varnm in
@@ -202,23 +225,15 @@ let rec typecheck tyeq tyenv astch =
     )
           (* AYASHII! *)
   | ApplyClassAndID(_, _, astf) ->
-    ( print_process "#ApplyClassAndID" ;
-      let tyenv_new = Hashtbl.copy tyenv in
-      ( Hashtbl.add tyenv_new "class" StringType ;
-        Hashtbl.add tyenv_new "id" StringType ;
-        print_process "add class and id" ;
-        let res = typecheck tyeq tyenv_new astf in
-        ( print_process "end" ; res )
-          (* AYASHII! *)
-      )
-    )
+      typecheck tyeq tyenv astf
+
   | ListCons(asthd, asttl) ->
       let tyhd = typecheck tyeq tyenv asthd in
       let tytl = typecheck tyeq tyenv asttl in
       ( ( if equivalent (ListType(tyhd)) tytl then () else Stacklist.push tyeq (ListType(tyhd), tytl) ) ;
-      	ListType(tyhd)
+        ListType(tyhd)
       )
-  | EndOfList -> let ntyvar = new_type_variable "[]" in ListType(ntyvar)
+  | EndOfList -> let ntyvar = new_type_variable "*empty" in ListType(ntyvar)
 
   | FinishHeaderFile -> TypeEnvironmentType(tyenv)
 
@@ -283,8 +298,8 @@ let rec solve tyeqlst theta =
         solve tail theta
       else
       ( match (tya, tyb) with
-      	| (ListType(tycnta), ListType(tycntb)) ->
-      	    solve ((tycnta, tycntb) :: tail) theta
+        | (ListType(tycnta), ListType(tycntb)) ->
+            solve ((tycnta, tycntb) :: tail) theta
 
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
@@ -304,7 +319,7 @@ let rec solve tyeqlst theta =
                   (TypeVariable(_), TypeVariable(_)) causes *)
 
         | (_, _) -> raise (TypeCheckError("inconsistent: "
-        	            ^ (string_of_type_struct tya) ^ " and " ^ (string_of_type_struct tyb)))
+                      ^ (string_of_type_struct tya) ^ " and " ^ (string_of_type_struct tyb)))
       )
 
 

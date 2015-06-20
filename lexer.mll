@@ -135,6 +135,8 @@ rule numexpr = parse
   | "not" { LNOT(!line_no) }
   | "mod" { MOD(!line_no) }
   | "if" { IF(!line_no) }
+  | "if-class-is-valid" { IFCLASSISVALID(!line_no) }
+  | "if-id-is-valid" { IFIDISVALID(!line_no) }
   | "then" { THEN(!line_no) }
   | "else" { ELSE(!line_no) }
   | "let" { LET(!line_no) }

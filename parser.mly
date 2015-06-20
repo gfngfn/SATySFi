@@ -52,7 +52,7 @@
 %token END
 %token <int> LAMBDA ARROW
 %token <int> LET DEFEQ LETAND IN
-%token <int> IF THEN ELSE
+%token <int> IF THEN ELSE IFCLASSISVALID IFIDISVALID
 %token EOI
 %token <int> LPAREN
 %token RPAREN
@@ -183,6 +183,10 @@ nxdec:
 ;
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet { Types.IfThenElse($2, $4, $6) }
+  | IFCLASSISVALID nxlet ELSE nxlet { Types.IfClassIsValid($2, $4) }
+  | IFCLASSISVALID THEN nxlet ELSE nxlet { Types.IfClassIsValid($3, $5) }
+  | IFIDISVALID nxlet ELSE nxlet { Types.IfIDIsValid($2, $4) }
+  | IFIDISVALID THEN nxlet ELSE nxlet { Types.IfIDIsValid($3, $5) }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | IF error {
@@ -196,6 +200,38 @@ nxif:
   | IF nxlet THEN nxlet ELSE error {
         raise (ParseErrorDetail(
           error_reporting "illegal token after 'else'" "else ..<!>.." $5))
+      }
+  | IFCLASSISVALID error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'if-class-is-valid'" "if-class-is-valid ..<!>.." $1))
+      }
+  | IFCLASSISVALID nxlet ELSE error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'else'" "else ..<!>.." $3))
+      }
+  | IFCLASSISVALID THEN error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'then'" "then ..<!>.." $2))
+      }
+  | IFCLASSISVALID THEN nxlet ELSE error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'else'" "else ..<!>.." $4))
+      }
+  | IFIDISVALID error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'if-id-is-valid'" "if-id-is-valid ..<!>.." $1))
+      }
+  | IFIDISVALID nxlet ELSE error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'else'" "else ..<!>.." $3))
+      }
+  | IFIDISVALID THEN error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'then'" "then ..<!>.." $2))
+      }
+  | IFIDISVALID THEN nxlet ELSE error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after 'else'" "else ..<!>.." $4))
       }
 ;
 nxlambda:

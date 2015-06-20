@@ -18,7 +18,7 @@ let rec string_of_ast ast =
   | StringEmpty -> ""
   | IfThenElse(b, t, f) ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | PrimitiveClassIsValid -> "(class-is-valid)"
+  | IfClassIsValid(t, f) -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | _ -> "..."
 
 let rec make_argument_cons lst =
@@ -55,13 +55,7 @@ let rec interpret env ast =
 
   | ContentOf(v) ->
       ( try
-          let content = !(Hashtbl.find env v) in
-          (* patterns that should be interpreted one more time *)
-          ( match content with
-            | PrimitiveClassIsValid -> interpret env PrimitiveClassIsValid
-            | PrimitiveIDIsValid -> interpret env PrimitiveIDIsValid
-            | other -> other
-          )
+          let content = !(Hashtbl.find env v) in content
         with
         | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
       )
@@ -128,18 +122,6 @@ let rec interpret env ast =
       ) in
         NumericConstant(String.length str)
 
-  | PrimitiveClassIsValid ->
-      let vcclass = interpret env (ContentOf("class")) in
-      ( match vcclass with
-        | NoContent -> BooleanConstant(false)
-        | _ -> BooleanConstant(true)
-      )
-  | PrimitiveIDIsValid ->
-      let vcid = interpret env (ContentOf("id")) in
-      ( match vcid with
-        | NoContent -> BooleanConstant(false)
-        | _ -> BooleanConstant(true)
-      )
   | PrimitiveInclude(astfile_name) ->
       ( try
           let str_file_name = Out.main (interpret env astfile_name) in
@@ -183,7 +165,18 @@ let rec interpret env ast =
         | ListCons(_, _) -> BooleanConstant(false)
         | _ -> raise (EvalError("not a list"))
       )
-
+  | IfClassIsValid(asttru, astfls) ->
+      let vcclass = interpret env (ContentOf("class")) in
+      ( match vcclass with
+        | NoContent -> interpret env astfls
+        | _         -> interpret env asttru
+      )
+  | IfIDIsValid(asttru, astfls) ->
+      let vcid = interpret env (ContentOf("id")) in
+      ( match vcid with
+        | NoContent -> interpret env astfls
+        | _         -> interpret env asttru
+      )
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
 
