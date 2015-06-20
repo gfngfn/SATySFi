@@ -2,7 +2,11 @@ open Types
 
 exception TypeCheckError of string
 
-let print_process msg = (* print_string (msg ^ "\n") ; *) ()
+let print_process msg =
+(*
+	print_string (msg ^ "\n") ;
+*)
+  ()
 
 let rec string_of_type_struct tystr =
   match tystr with
@@ -13,16 +17,16 @@ let rec string_of_type_struct tystr =
   | BoolType -> "bool"
   | FuncType(tyf, tyl) -> "(" ^ (string_of_type_struct tyf) ^ " -> " ^ (string_of_type_struct tyl) ^ ")"
   | ListType(ty) -> "(" ^ (string_of_type_struct ty) ^ " list)"
-  | TypeVariable(tvid) -> "'" ^ (string_of_int tvid)
+  | TypeVariable(tvid, varnm) -> "'" ^ (string_of_int tvid) ^ "[" ^ varnm ^ "]"
 
 let find_real_type theta tvid =
-  ( print_process ("  *seeking '" ^ (string_of_int tvid) ^ "\n") ;
+  ( print_process ("  *seeking '" ^ (string_of_int tvid)) ;
     Hashtbl.find theta tvid )
 
 let tvidmax : type_variable_id ref = ref 0
-let new_type_variable () = 
-  let res = TypeVariable(!tvidmax) in
-  ( print_process ("  *make '" ^ (string_of_int !tvidmax) ^ "\n") ;
+let new_type_variable varnm =
+  let res = TypeVariable(!tvidmax, varnm) in
+  ( print_process ("  *make '" ^ (string_of_int !tvidmax) ^ " for " ^ varnm) ;
     tvidmax := !tvidmax + 1 ;
     res
   )
@@ -35,7 +39,7 @@ let rec equivalent tya tyb =
   | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod))
       -> (equivalent tyadom tybdom) && (equivalent tyacod tybcod)
   | (ListType(tycnta), ListType(tycntb)) -> (equivalent tycnta tycntb)
-  | (TypeVariable(tvida), TypeVariable(tvidb)) -> (tvida == tvidb)
+  | (TypeVariable(tvida, _), TypeVariable(tvidb, _)) -> (tvida == tvidb)
   | _ -> false
 
 (* (type_struct * type_struct) -> type_environment -> Types.abstract_tree -> type_struct *)
@@ -80,7 +84,7 @@ let rec typecheck tyeq tyenv astch =
             ( ( if equivalent tydom tyl then () else Stacklist.push tyeq (tydom, tyl) ) ;
               tycod
             )
-        | _ -> let ntycod = new_type_variable () in
+        | _ -> let ntycod = new_type_variable "*cod" in
             ( Stacklist.push tyeq (tyf, FuncType(tyl, ntycod)) ;
               ntycod
             )
@@ -183,38 +187,53 @@ let rec typecheck tyeq tyenv astch =
             tyl
       )
     )
-  | IfThenElse(astb, astf, astl) ->
+  | IfThenElse(astb, asttru, astfls) ->
       let tyb = typecheck tyeq tyenv astb in
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
+      let tytru = typecheck tyeq tyenv asttru in
+      let tyfls = typecheck tyeq tyenv astfls in
       ( ( if equivalent BoolType tyb then () else Stacklist.push tyeq (BoolType, tyb) ) ;
-        ( if equivalent tyf tyl then () else Stacklist.push tyeq (tyf, tyl) ) ;
-        tyf
+        ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+        tytru
       )
+  | IfClassIsValid(asttru, astfls) ->
+      let tyenv_class = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_class "class" StringType ;
+        let tytru = typecheck tyeq tyenv_class asttru in
+        let tyfls = typecheck tyeq tyenv astfls in
+        ( ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+          tytru
+        )
+      )
+  | IfIDIsValid(asttru, astfls) ->
+      let tyenv_id = Hashtbl.copy tyenv in
+      ( Hashtbl.add tyenv_id "id" StringType ;
+        let tytru = typecheck tyeq tyenv_id asttru in
+        let tyfls = typecheck tyeq tyenv astfls in
+        ( ( if equivalent tytru tyfls then () else Stacklist.push tyeq (tytru, tyfls) ) ;
+          tytru
+        )
+      )
+
   | LambdaAbstract(varnm, astdef) ->
-    ( print_process "#LambdaAbstract" ;
-      let tyvar = new_type_variable () in
+    ( print_process ("#LambdaAbstract " ^ varnm ^ ". ...") ;
+      let tyvar = new_type_variable varnm in
       let tyenv_new = Hashtbl.copy tyenv in
       ( Hashtbl.add tyenv_new varnm tyvar ;
         let tydef = typecheck tyeq tyenv_new astdef in
           FuncType(tyvar, tydef)
       )
-          (* AYASHII! *)
     )
-  | ApplyClassAndID(_, _, astf) ->
-      let tyenv_new = Hashtbl.copy tyenv in
-      ( Hashtbl.add tyenv_new "@class" StringType ;
-        Hashtbl.add tyenv_new "@id" StringType ;
-        typecheck tyeq tyenv_new astf
           (* AYASHII! *)
-      )
+  | ApplyClassAndID(_, _, astf) ->
+      typecheck tyeq tyenv astf
+
   | ListCons(asthd, asttl) ->
       let tyhd = typecheck tyeq tyenv asthd in
       let tytl = typecheck tyeq tyenv asttl in
       ( ( if equivalent (ListType(tyhd)) tytl then () else Stacklist.push tyeq (ListType(tyhd), tytl) ) ;
-      	ListType(tyhd)
+        ListType(tyhd)
       )
-  | EndOfList -> let ntyvar = new_type_variable() in ListType(ntyvar)
+  | EndOfList -> let ntyvar = new_type_variable "*empty" in ListType(ntyvar)
 
   | FinishHeaderFile -> TypeEnvironmentType(tyenv)
 
@@ -227,7 +246,7 @@ and add_mutual_variables tyenv mutletcons =
   match mutletcons with
   | EndOfMutualLet -> ()
   | MutualLetCons(nv, _, tailcons) ->
-      let ntv = new_type_variable () in
+      let ntv = new_type_variable nv in
       ( Hashtbl.add tyenv nv ntv ;
         add_mutual_variables tyenv tailcons )
 
@@ -243,14 +262,14 @@ and typecheck_mutual_contents tyeq tyenv mutletcons =
 (* type_variable_id -> type_struct -> bool *)
 let rec emerge_in tyid tystr =
   match tystr with
-  | TypeVariable(tyidsub) -> tyid == tyidsub
+  | TypeVariable(tyidsub, _) -> tyid == tyidsub
   | FuncType(tydom, tycod) -> (emerge_in tyid tydom) || (emerge_in tyid tycod)
   | _ -> false
 
 (* ((type_variable_id, type_struct) Hashtbl.t) -> type_struct -> type_struct *)
 let rec subst_type_by_theta theta tystr =
   match tystr with
-  | TypeVariable(tvid) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid) )
+  | TypeVariable(tvid, varnm) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid, varnm) )
   | FuncType(tydom, tycod) -> FuncType(subst_type_by_theta theta tydom, subst_type_by_theta theta tycod)
   | tys -> tys
 
@@ -279,27 +298,28 @@ let rec solve tyeqlst theta =
         solve tail theta
       else
       ( match (tya, tyb) with
-      	| (ListType(tycnta), ListType(tycntb)) ->
-      	    solve ((tycnta, tycntb) :: tail) theta
+        | (ListType(tycnta), ListType(tycntb)) ->
+            solve ((tycnta, tycntb) :: tail) theta
 
         | (FuncType(tyadom, tyacod), FuncType(tybdom, tybcod)) ->
             solve ((tyadom, tybdom) :: (tyacod, tybcod) :: tail) theta
 
-        | (TypeVariable(tvid), tystr) ->
+        | (TypeVariable(tvid, varnm), tystr) ->
             ( if emerge_in tvid tystr then
-                raise (TypeCheckError("error 1"))
+                raise (TypeCheckError("error 1: " ^ varnm ^ " is expected of type " ^ (string_of_type_struct tystr)))
               else
               ( print_process ("  $subst '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct tystr)) ;
                 Hashtbl.add theta tvid tystr ;
                 solve (subst_list theta tail) theta )
             )
-        | (_, TypeVariable(tvidb)) ->
+        | (_, TypeVariable(_, _)) ->
             solve ((tyb, tya) :: tail) theta
               (*  this pattern matching must be after (TypeVariable(tvid), tystr)
                   in order to avoid endless loop
                   (TypeVariable(_), TypeVariable(_)) causes *)
 
-        | (_, _) -> raise (TypeCheckError("error 2"))
+        | (_, _) -> raise (TypeCheckError("inconsistent: "
+                      ^ (string_of_type_struct tya) ^ " and " ^ (string_of_type_struct tyb)))
       )
 
 
@@ -311,7 +331,7 @@ let unify_type_variables tyeq theta =
 let rec unify theta ty =
   match ty with
   | FuncType(tydom, tycod) -> FuncType(unify theta tydom, unify theta tycod)
-  | TypeVariable(tvid) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid) )
+  | TypeVariable(tvid, varnm) -> ( try find_real_type theta tvid with Not_found -> TypeVariable(tvid, varnm) )
   | tystr -> tystr
 
 (* Types.abstract_tree -> (string * type_environment) *)

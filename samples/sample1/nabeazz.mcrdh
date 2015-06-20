@@ -1,4 +1,4 @@
-let \aho @n = {\span.aho{@n;}}
+let \aho s = {\span.aho{@s;}}
 in
 let survey n d =
   if d > n then

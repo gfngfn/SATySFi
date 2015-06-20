@@ -10,6 +10,9 @@ let is_document_file str =
 let is_header_file str =
   (compare ".mcrdh" (String.sub str ((String.length str) - 6) 6)) == 0
 
+let is_standalone_file str =
+  (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0
+
 (* type_environment -> environment -> string -> (type_environment * environment) *)
 let make_environment_from_header_file tyenv env file_name_in =
   let file_in = open_in file_name_in in
@@ -28,6 +31,20 @@ let make_environment_from_header_file tyenv env file_name_in =
           match evaled with
           | EvaluatedEnvironment(newenv) -> (tyenv, newenv)
           | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
+  )
+
+let read_standalone_file tyenv env file_name_in file_name_out =
+  let file_in = open_in file_name_in in
+  ( Lexer.reset_to_numexpr () ;
+    let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+    ( ( if !option_typecheck then
+          let (typed, _) = Typechecker.main tyenv parsed in
+            print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n")
+        else ()
+      ) ;
+      let content_out = Out.main (Evaluator.interpret env parsed) in
+        Files.file_out_of_string file_name_out content_out
+    )
   )
 
 (* type_environment -> environment -> string -> string -> unit *)
@@ -56,6 +73,8 @@ let rec main tyenv env file_name_in_list file_name_out =
       else if is_header_file file_name_in then
         let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
           main newtyenv newenv tail file_name_out
+      else if is_standalone_file file_name_in then
+        read_standalone_file tyenv env file_name_in file_name_out
       else
         raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with

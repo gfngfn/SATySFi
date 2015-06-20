@@ -82,8 +82,7 @@ rule numexpr = parse
     }
   | space { numexpr lexbuf }
   | break {
-      end_of_previousline := (Lexing.lexeme_end lexbuf) ;
-      line_no := !line_no + 1 ;
+      increment_line lexbuf ;
       numexpr lexbuf
     }
   | "(" { increment numdepth ; LPAREN(!line_no) }
@@ -115,9 +114,6 @@ rule numexpr = parse
       next_state := STATE_LITERAL ;
       OPENQT
     }
-  | ("@" identifier) { (* STRVAR(_) in numeric expression *)
-  	    let tok = Lexing.lexeme lexbuf in STRVAR(tok)
-      }
   | ("\\" identifier) { (* CTRLSEQ(_) in numeric expression *)
   	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(tok)
   	  }
@@ -139,6 +135,8 @@ rule numexpr = parse
   | "not" { LNOT(!line_no) }
   | "mod" { MOD(!line_no) }
   | "if" { IF(!line_no) }
+  | "if-class-is-valid" { IFCLASSISVALID(!line_no) }
+  | "if-id-is-valid" { IFIDISVALID(!line_no) }
   | "then" { THEN(!line_no) }
   | "else" { ELSE(!line_no) }
   | "let" { LET(!line_no) }
@@ -149,7 +147,7 @@ rule numexpr = parse
   | "false" { FALSE }
   | "finish" { FINISH }
 
-  | (latin (digit | latin |"-")*) as tok { NUMVAR(tok) }
+  | (latin (digit | latin |"-")*) as tok { VAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
   | eof {
         if !first_state == STATE_NUMEXPR then
@@ -210,9 +208,11 @@ and strexpr = parse
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(tok)
     }
   | ("@" identifier) {
-      let tok = Lexing.lexeme lexbuf in
-        next_state := STATE_ACTIVE ;
-        STRVAR(tok)
+        let tok = Lexing.lexeme lexbuf in
+        let vnm = String.sub tok 1 ((String.length tok) - 1) in
+        ( next_state := STATE_ACTIVE ;
+          VARINSTR(vnm)
+        )
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;

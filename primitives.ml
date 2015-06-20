@@ -11,8 +11,10 @@ let make_type_environment () =
       (FuncType(StringType, FuncType(IntType, FuncType(IntType, StringType)))) ;
     add_to_type_environment tyenv "string-length"
       (FuncType(StringType, IntType)) ;
-    add_to_type_environment tyenv "is-valid"
-      (FuncType(StringType, BoolType)) ;
+(*
+    add_to_type_environment tyenv "class-is-valid" BoolType ;
+    add_to_type_environment tyenv "id-is-valid" BoolType ;
+*)
     add_to_type_environment tyenv "\\deeper"
       (FuncType(StringType, StringType)) ;
     add_to_type_environment tyenv "\\break"
@@ -38,7 +40,10 @@ let make_environment () =
   let loc_same : location = ref NoContent in
   let loc_stringsub : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
-  let loc_isvalid : location = ref NoContent in
+(*
+  let loc_classisvalid : location = ref NoContent in
+  let loc_idisvalid : location = ref NoContent in
+*)
   let loc_deeper : location = ref NoContent in
   let loc_break : location = ref NoContent in
   let loc_space : location = ref NoContent in
@@ -51,7 +56,10 @@ let make_environment () =
     add_to_environment env "same" loc_same ;
     add_to_environment env "string-sub" loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
-    add_to_environment env "is-valid" loc_isvalid ;
+(*
+    add_to_environment env "class-is-valid" loc_classisvalid ;
+    add_to_environment env "id-is-valid" loc_idisvalid ;
+*)
     add_to_environment env "\\deeper" loc_deeper ;
     add_to_environment env "\\break" loc_break ;
     add_to_environment env "\\space" loc_space ;
@@ -78,10 +86,10 @@ let make_environment () =
                           PrimitiveStringLength(ContentOf("~str")),
                           env
                         ) ;
-    loc_isvalid := FuncWithEnvironment("~content",
-                    PrimitiveIsValid(ContentOf("~content")),
-                    env
-                  ) ;
+(*
+    loc_classisvalid := PrimitiveClassIsValid ;
+    loc_idisvalid := PrimitiveIDIsValid ;
+*)
     loc_deeper := FuncWithEnvironment("~content",
                     Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent),
                     env
