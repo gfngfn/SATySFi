@@ -114,8 +114,8 @@ rule numexpr = parse
       next_state := STATE_LITERAL ;
       OPENQT
     }
-  | ("\\" identifier) { (* CTRLSEQ(_) in numeric expression *)
-  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(tok)
+  | ("\\" identifier) {
+  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(!line_no, tok)
   	  }
   | "+" { PLUS(!line_no) }
   | "-" { MINUS(!line_no) }
@@ -202,7 +202,7 @@ and strexpr = parse
   | ("\\" identifier) {
       let tok = Lexing.lexeme lexbuf in
         next_state := STATE_ACTIVE ;
-        CTRLSEQ(tok)
+        CTRLSEQ(!line_no, tok)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(tok)

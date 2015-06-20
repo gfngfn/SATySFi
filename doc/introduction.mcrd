@@ -45,6 +45,41 @@
       “意味論が綺麗な\LaTeX;的記法”を目指したといってもよいかもしれません。
     }
   }
+  \section{実用的な例}{
+    \subsection{クラス名・ID名オプション}{
+      \p{
+        クラス名・ID名オプション機能を使うと，
+        例えば
+
+        \mcrd-display```
+          \div{The quick brown fox jumps over the lazy dog.}
+          \div .quote {色は匂へど散りぬるを，吾が世誰ぞ恒ならむ。}
+          \div .quote #tori {鳥啼く声す，夢覚ませ。見よ明け亘る，東を。}
+        ```
+
+        から
+
+        \mcrd-display```
+          <div>
+            The quick brown fox jumps over the lazy dog.
+          </div>
+          <div class="quote">
+            色は匂へど散りぬるを，吾が世誰ぞ恒ならむ。
+          </div>
+          <div class="quote" id="tori">
+            鳥啼く声す，夢覚ませ。見よ明け亘る，東を。
+          </div>
+        ```
+            %有為の奥山今日越えて，浅き夢見じ，酔いもせず。
+            %空色映えて，沖つ辺に，帆船群れゐぬ，靄の内。
+
+        を得るようなマクロ\code{\synt`\div`}を定義することができます。
+        クラス名・ID名オプション機能はHTMLの影響で実装したものですが，
+        HTMLに限らず「マークアップ上大きな意味はないが小さい分岐をさせたいとき」に利用できます。
+        函数・マクロ定義の項目で後述します。
+      }
+    }
+  }
   \section{字句解析の厳密な仕様}{
     \subsection{概要}{
       \p{
@@ -76,7 +111,7 @@
       }
       \description{
         |\d-item{\mcrd`\`（名前文字列）}{\math{\token-cs;}：\newword{制御綴トークン}}
-        |\d-item{\mcrd`@`（名前文字列）}{\math{\token-var;}：\newword{変数名トークン}}
+        |\d-item{\mcrd`@`}{\math{\token-var;}：\newword{文字列中変数参照トークン}}
         |\d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{ブロック開始トークン}}
         |\d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{ブロック終了トークン}・\newword{テキスト終了トークン}}
         |\d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
@@ -273,8 +308,7 @@
       \p{
         まず，名前のない函数が
         \code-dp{
-          \synt`(function` \meta{nv1} \metadots; \meta{nvM}
-          \synt`@`\meta{sv1} \metadots; \synt`@`\meta{svN}
+          \synt`(function` \meta{nv1} \metadots; \meta{nvN}
           \synt`->` \meta{Expr} \synt`)`
         }
         で定義できます。
@@ -283,37 +317,33 @@
         以下のような\newword{定義式}
 
         \code-dp{
-          \synt{let} \meta{hoge} %
-            \meta{nvar1} \metadots; \meta{nvarM}
-            \synt{\atmark;}\meta{svar1} \metadots; \synt{\atmark;}\meta{svarN} %
-            \synt{=} \meta{ExprA} \synt{in} \meta{ExprB}
+          \synt`let` \meta{hoge} %
+            \meta{nvar1} \metadots; \meta{nvarN}
+            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
         }
 
         および
 
         \code-dp{
-          \synt{let} \synt{\bksl;}\meta{piyo} %
-            \meta{nvar1} \metadots; \meta{nvarM}
-            \synt{\atmark;}\meta{svar1} \metadots; \synt{\atmark;}\meta{svarN} %
-            \synt{=} \meta{ExprA} \synt{in} \meta{ExprB}
+          \synt`let` \synt`\`\meta{piyo} %
+            \meta{var1} \metadots; \meta{varN}
+            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
         }
 
-        で引数を\math{M + N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt{\bksl;}\meta{piyo}}
+        で引数を\math{N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt`\`\meta{piyo}}
         が定義されます。
 
         \code-dp{
-          \synt{\bksl;}\meta{hoge} %
-            \synt{\lbrace;}\meta{Arg1}\synt{\rbrace;}%
-            \metadots;
-            \synt{\lbrace;}\meta{ArgN}\synt{\rbrace;}%
+          \synt`\`\meta{hoge}\ %
+            \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
         }
 
         で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
-        変数\code{\synt{\atmark;}\meta{piyo}}に格納された中身を取り出すには
-        \code{\synt{\atmark;}\meta{piyo}\synt{\;}}とします。例えば
+        変数\code{\meta{piyo}}に格納された中身を文字列中で取り出すには
+        \code{\synt`@`\meta{piyo}\synt`;`}とします。例えば
 
         \mcrd-display```
-          let \test @x @y = {Ma@x;r@y;down} in
+          let \test x y = {Ma@x;r@y;down} in
             {\test{c}{o}, \test{}{k}}
         ```
 
@@ -344,7 +374,7 @@
         可変長リストの形の引数を\newword{可変長引数}と呼び，
 
         \code-dp{
-          \synt{\lbrace;} \meta{Expr1} \synt{\brokenbar;} \meta{Expr2} \synt{\brokenbar;} \metadots; %
+          \synt`{` \meta{Expr1} \synt`|` \meta{Expr2} \synt{\brokenbar;} \metadots; %
             \synt{\brokenbar;} \meta{ExprN} \synt{\rbrace;}
         }
 

@@ -46,7 +46,7 @@
 %token <string> CHAR
 %token SPACE
 %token BREAK
-%token <Types.ctrlseq_name> CTRLSEQ
+%token <int * Types.ctrlseq_name> CTRLSEQ
 %token <Types.id_name> IDNAME
 %token <Types.class_name> CLASSNAME
 %token END
@@ -129,8 +129,9 @@ nxlet:
           Types.LetIn(Types.MutualLetCons($2, curried, $6), $7)
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxlet {
+        let (_, csname) = $2 in
         let curried = curry_lambda_abstract $3 $5 in
-          Types.LetIn(Types.MutualLetCons($2, curried, $6), $7)
+          Types.LetIn(Types.MutualLetCons(csname, curried, $6), $7)
       }
   | nxif { $1 }
 /* -- for syntax error log -- */
@@ -149,16 +150,19 @@ nxlet:
           ("let " ^ $2 ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
       }
   | LET CTRLSEQ error {
-        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
-          ("let " ^ $2 ^ " ..<!>..") $1))
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
+            ("let " ^ csname ^ " ..<!>..") ln))
       }
   | LET CTRLSEQ argvar DEFEQ error {
-        raise (ParseErrorDetail(error_reporting "illegal token after '='"
-          ("let " ^ $2 ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") $1))
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '='"
+            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") ln))
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
-          ("let " ^ $2 ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
       }
 ;
 nxdec:
@@ -167,8 +171,9 @@ nxdec:
           Types.MutualLetCons($2, curried, $6)
       }
   | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
+        let (_, csname) = $2 in
         let curried = curry_lambda_abstract $3 $5 in
-          Types.MutualLetCons($2, curried, $6)
+          Types.MutualLetCons(csname, curried, $6)
       }
   | IN { Types.EndOfMutualLet }
 /* -- for syntax error log -- */
@@ -177,8 +182,9 @@ nxdec:
           ("and " ^ $2 ^ " ..<!>..") $1))
       }
   | LETAND CTRLSEQ error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-          ("and " ^ $2 ^ " ..<!>..") $1))
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
+            ("and " ^ csname ^ " ..<!>..") ln))
       }
 ;
 nxif:
@@ -445,8 +451,14 @@ sxbot:
   | BREAK { Types.BreakAndIndent }
   | VARINSTR END { Types.ContentOf($1) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
-        convert_into_numeric_apply $1 $2 $3 (append_argument_list $4 $5)
+        let (_, csname) = $1 in
+        convert_into_numeric_apply csname $2 $3 (append_argument_list $4 $5)
       }
+/* -- for syntax error log -- */
+  | CTRLSEQ error {
+        let (ln, csname) = $1 in
+        raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csname ^ "'") (csname ^ " ..<!>..") ln))
+  }
 sxclsnm:
   | CLASSNAME { class_name_to_abstract_tree $1 }
   | { NoContent }
