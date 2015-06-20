@@ -188,8 +188,9 @@ let rec interpret env ast =
 
   | LetMutableIn(varnm, astdflt, astaft) ->
       let valuedflt = interpret env astdflt in
-      ( add_to_environment env varnm (ref (MutableValue(valuedflt))) ;
-        interpret env astaft
+      let env_new = Hashtbl.copy env in
+      ( add_to_environment env_new varnm (ref (MutableValue(valuedflt))) ;
+        interpret env_new astaft
       )
   | Reference(varnm) ->
       ( try
