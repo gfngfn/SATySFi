@@ -72,6 +72,7 @@ and abstract_tree =
   | PrimitiveArabic of abstract_tree
   | IfClassIsValid of abstract_tree * abstract_tree
   | IfIDIsValid of abstract_tree * abstract_tree
+  | WhileDo of abstract_tree * abstract_tree
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty of abstract_tree

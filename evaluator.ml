@@ -186,6 +186,11 @@ let rec interpret env ast =
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
 
+  | WhileDo(astb, astc) ->
+      if interpret_bool env astb then
+        let _ = interpret env astc in interpret env (WhileDo(astb, astc))
+      else UnitConstant
+
   | LetMutableIn(varnm, astdflt, astaft) ->
       let valuedflt = interpret env astdflt in
       let env_new = Hashtbl.copy env in

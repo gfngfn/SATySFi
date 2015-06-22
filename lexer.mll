@@ -85,6 +85,7 @@ rule numexpr = parse
       increment_line lexbuf ;
       numexpr lexbuf
     }
+  | ("(" (space | break)* ")") { UNITVALUE(!line_no) }
   | "(" { increment numdepth ; LPAREN(!line_no) }
   | ")" {
       decrement numdepth ;
@@ -148,6 +149,8 @@ rule numexpr = parse
   | "finish" { FINISH }
   | "let-mutable" { LETMUTABLE(!line_no) }
   | "before" { BEFORE(!line_no) }
+  | "while" { WHILE(!line_no) }
+  | "do" { DO(!line_no) }
   | "<-" { OVERWRITEEQ(!line_no) }
   | "!" { REFNOW(!line_no) }
   | "!!" { REFFINAL(!line_no) }

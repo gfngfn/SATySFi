@@ -77,11 +77,14 @@
 %token <int> BLIST LISTPUNCT
 %token ELIST
 %token <int> BEFORE
+%token <int> UNITVALUE
+%token <int> WHILE DO
 %token IGNORED
 
-%nonassoc BEFORE
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
 %nonassoc IF THEN ELSE
+%left BEFORE
+%nonassoc WHILE
 %left LOR
 %left LAND
 %nonassoc LNOT
@@ -98,6 +101,8 @@
 %type <Types.abstract_tree> main
 %type <Types.abstract_tree> nxlet
 %type <Types.mutual_let_cons> nxdec
+%type <Types.abstract_tree> nxwhl
+%type <Types.abstract_tree> nxif
 %type <Types.abstract_tree> nxlor
 %type <Types.abstract_tree> nxland
 %type <Types.abstract_tree> nxcomp
@@ -128,7 +133,6 @@ main:
   | sxblock EOI { $1 }
 ;
 nxlet:
-  | nxlet BEFORE nxif { Types.Sequential($1, $3) }
   | LET VAR argvar DEFEQ nxlet nxdec nxlet {
         let curried = curry_lambda_abstract $3 $5 in
           Types.LetIn(Types.MutualLetCons($2, curried, $6), $7)
@@ -141,7 +145,7 @@ nxlet:
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
         Types.LetMutableIn($2, $4, $6)
       }
-  | nxif { $1 }
+  | nxwhl { $1 }
 /* -- for syntax error log -- */
   | LET error {
         raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
@@ -195,13 +199,16 @@ nxdec:
             ("and " ^ csname ^ " ..<!>..") ln))
       }
 ;
+nxwhl:
+  | WHILE nxlet DO nxwhl { Types.WhileDo($2, $4) }
+  | nxif { $1 }
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet { Types.IfThenElse($2, $4, $6) }
   | IFCLASSISVALID nxlet ELSE nxlet { Types.IfClassIsValid($2, $4) }
   | IFCLASSISVALID THEN nxlet ELSE nxlet { Types.IfClassIsValid($3, $5) }
   | IFIDISVALID nxlet ELSE nxlet { Types.IfIDIsValid($2, $4) }
   | IFIDISVALID THEN nxlet ELSE nxlet { Types.IfIDIsValid($3, $5) }
-  | nxlambda { $1 }
+  | nxbfr { $1 }
 /* -- for syntax error log -- */
   | IF error {
         raise (ParseErrorDetail(
@@ -247,6 +254,10 @@ nxif:
         raise (ParseErrorDetail(
           error_reporting "illegal token after 'else'" "else ..<!>.." $4))
       }
+;
+nxbfr:
+  | nxlambda BEFORE nxbfr { Types.Sequential($1, $3) }
+  | nxlambda { $1 }
 ;
 nxlambda:
   | VAR OVERWRITEEQ nxlor { Types.Overwrite($1, $3) }
@@ -411,6 +422,7 @@ nxbot:
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
   | REFNOW VAR { Types.Reference($2) }
   | REFFINAL VAR { Types.ReferenceFinal($2) }
+  | UNITVALUE { Types.UnitConstant }
 /* -- for syntax error log -- */
   | BLIST error {
         raise (ParseErrorDetail(
