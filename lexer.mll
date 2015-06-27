@@ -6,7 +6,8 @@
 
   let line_no : int ref = ref 1
   let end_of_previousline : int ref = ref 0
-(*  let get_pos lexbuf = (!line_no, (Lexing.lexeme_start lexbuf) - (!end_of_previousline)) *)
+  let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
+  let get_end_pos lexbuf = (Lexing.lexeme_end lexbuf) - !end_of_previousline
 
   type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
   let next_state : lexer_state ref = ref STATE_NUMEXPR
@@ -26,10 +27,15 @@
   let decrement rfn = ( rfn := !rfn - 1 )
 
   let error_reporting lexbuf errmsg =
-    let column_from = (Lexing.lexeme_start lexbuf) - (!end_of_previousline) in
-    let column_to = (Lexing.lexeme_end lexbuf) - (!end_of_previousline) in
+    let column_from = get_start_pos lexbuf in
+    let column_to = get_end_pos lexbuf in
       (errmsg ^ " (line " ^ (string_of_int !line_no) ^ ", column "
         ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ")")
+
+  let get_pos lexbuf =
+    let column_from = get_start_pos lexbuf in
+    let column_to = get_end_pos lexbuf in
+      (!line_no, column_from, column_to)
 
   let increment_line lexbuf =
     end_of_previousline := (Lexing.lexeme_end lexbuf) ;
@@ -85,8 +91,8 @@ rule numexpr = parse
       increment_line lexbuf ;
       numexpr lexbuf
     }
-  | ("(" (space | break)* ")") { UNITVALUE(!line_no) }
-  | "(" { increment numdepth ; LPAREN(!line_no) }
+  | ("(" (space | break)* ")") { UNITVALUE(get_pos lexbuf) }
+  | "(" { increment numdepth ; LPAREN(get_pos lexbuf) }
   | ")" {
       decrement numdepth ;
       if Stacklist.is_empty numdepth_stack then
@@ -95,19 +101,19 @@ rule numexpr = parse
         if !numdepth == Stacklist.top numdepth_stack then
         ( Stacklist.delete_top numdepth_stack ;
           next_state := STATE_ACTIVE ;
-          CLOSENUM(!line_no) )
+          CLOSENUM(get_pos lexbuf) )
         else
           RPAREN
     }
-  | "[" { BLIST(!line_no) }
+  | "[" { BLIST(get_pos lexbuf) }
   | "]" { ELIST }
-  | ";" { LISTPUNCT(!line_no) }
+  | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
       increment strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
-      OPENSTR(!line_no)
+      OPENSTR(get_pos lexbuf)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
@@ -116,44 +122,44 @@ rule numexpr = parse
       OPENQT
     }
   | ("\\" identifier) {
-  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(!line_no, tok)
+  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
   	  }
-  | "+" { PLUS(!line_no) }
-  | "-" { MINUS(!line_no) }
-  | "*" { TIMES(!line_no) }
-  | "/" { DIVIDES(!line_no) }
-  | "==" { EQ(!line_no) }
-  | "=" { DEFEQ(!line_no) }
-  | "<>" { NEQ(!line_no) }
-  | "<=" { LEQ(!line_no) }
-  | "<" { LT(!line_no) }
-  | ">=" { GEQ(!line_no) }
-  | ">" { GT(!line_no) }
-  | "&&" { LAND(!line_no) }
-  | "||" { LOR(!line_no) }
-  | "^" { CONCAT(!line_no) }
-  | "->" { ARROW(!line_no) }
-  | "not" { LNOT(!line_no) }
-  | "mod" { MOD(!line_no) }
-  | "if" { IF(!line_no) }
-  | "if-class-is-valid" { IFCLASSISVALID(!line_no) }
-  | "if-id-is-valid" { IFIDISVALID(!line_no) }
-  | "then" { THEN(!line_no) }
-  | "else" { ELSE(!line_no) }
-  | "let" { LET(!line_no) }
-  | "and" { LETAND(!line_no) }
-  | "in" { IN(!line_no) }
-  | "function" { LAMBDA(!line_no) }
-  | "true" { TRUE }
-  | "false" { FALSE }
+  | "+"   { PLUS(get_pos lexbuf) }
+  | "-"   { MINUS(get_pos lexbuf) }
+  | "*"   { TIMES(get_pos lexbuf) }
+  | "/"   { DIVIDES(get_pos lexbuf) }
+  | "=="  { EQ(get_pos lexbuf) }
+  | "="   { DEFEQ(get_pos lexbuf) }
+  | "<>"  { NEQ(get_pos lexbuf) }
+  | "<="  { LEQ(get_pos lexbuf) }
+  | "<"   { LT(get_pos lexbuf) }
+  | ">="  { GEQ(get_pos lexbuf) }
+  | ">"   { GT(get_pos lexbuf) }
+  | "&&"  { LAND(get_pos lexbuf) }
+  | "||"  { LOR(get_pos lexbuf) }
+  | "^"   { CONCAT(get_pos lexbuf) }
+  | "->"  { ARROW(get_pos lexbuf) }
+  | "not" { LNOT(get_pos lexbuf) }
+  | "mod" { MOD(get_pos lexbuf) }
+  | "if"  { IF(get_pos lexbuf) }
+  | "if-class-is-valid" { IFCLASSISVALID(get_pos lexbuf) }
+  | "if-id-is-valid"    { IFIDISVALID(get_pos lexbuf) }
+  | "then" { THEN(get_pos lexbuf) }
+  | "else" { ELSE(get_pos lexbuf) }
+  | "let"  { LET(get_pos lexbuf) }
+  | "and"  { LETAND(get_pos lexbuf) }
+  | "in"   { IN(get_pos lexbuf) }
+  | "function" { LAMBDA(get_pos lexbuf) }
+  | "true"   { TRUE }
+  | "false"  { FALSE }
   | "finish" { FINISH }
-  | "let-mutable" { LETMUTABLE(!line_no) }
-  | "before" { BEFORE(!line_no) }
-  | "while" { WHILE(!line_no) }
-  | "do" { DO(!line_no) }
-  | "<-" { OVERWRITEEQ(!line_no) }
-  | "!" { REFNOW(!line_no) }
-  | "!!" { REFFINAL(!line_no) }
+  | "let-mutable" { LETMUTABLE(get_pos lexbuf) }
+  | "before" { BEFORE(get_pos lexbuf) }
+  | "while"  { WHILE(get_pos lexbuf) }
+  | "do"  { DO(get_pos lexbuf) }
+  | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
+  | "!"   { REFNOW(get_pos lexbuf) }
+  | "!!"  { REFFINAL(get_pos lexbuf) }
 
   | (latin (digit | latin |"-")*) as tok { VAR(tok) }
   | (digit digit*) as tok { NUMCONST(tok) }
@@ -177,14 +183,14 @@ and strexpr = parse
   | "{" {
       increment strdepth ;
       ignore_space := true ;
-      BGRP(!line_no)
+      BGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
       decrement strdepth ;
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       if Stacklist.is_empty strdepth_stack then
       ( ignore_space := false ;
-        EGRP(!line_no) )
+        EGRP(get_pos lexbuf) )
       else
         if !strdepth == Stacklist.top strdepth_stack then
         ( Stacklist.delete_top strdepth_stack ;
@@ -192,12 +198,12 @@ and strexpr = parse
           CLOSESTR )
         else
         ( ignore_space := false ;
-          EGRP(!line_no) )
+          EGRP(get_pos lexbuf) )
     }
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       ignore_space := true ;
-      SEP(!line_no)
+      SEP(get_pos lexbuf)
     }
   | break {
       increment_line lexbuf ;
@@ -210,7 +216,7 @@ and strexpr = parse
   | ("\\" identifier) {
       let tok = Lexing.lexeme lexbuf in
         next_state := STATE_ACTIVE ;
-        CTRLSEQ(!line_no, tok)
+        CTRLSEQ(get_pos lexbuf, tok)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(tok)
@@ -253,13 +259,13 @@ and active = parse
       Stacklist.push numdepth_stack !numdepth ;
       increment numdepth ;
       next_state := STATE_NUMEXPR ;
-      OPENNUM(!line_no)
+      OPENNUM(get_pos lexbuf)
     }
   | "{" {
       increment strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
-      BGRP(!line_no)
+      BGRP(get_pos lexbuf)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;

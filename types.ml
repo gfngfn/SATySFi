@@ -5,6 +5,8 @@ type var_name = string
 type id_name = string
 type class_name = string
 
+type token_position = int * int * int
+
 type id_name_arg =
   | IDName of id_name
   | NoIDName

@@ -32,8 +32,11 @@
     | ArgumentVariableCons(argvar, avtail) -> 
         LambdaAbstract(argvar, curry_lambda_abstract avtail astdef)
 
-  let error_reporting msg disp ln =
-    "Syntax error: " ^ msg ^ ".\n\n    " ^ disp ^ "\n\n  (at line " ^ (string_of_int ln) ^ ")"
+  let error_reporting msg disp pos =
+    let (pos_ln, pos_start, pos_end) = pos in
+      "Syntax error: " ^ msg ^ ".\n\n    " ^ disp
+        ^ "\n\n  (at line " ^ (string_of_int pos_ln) ^ ", "
+        ^ (string_of_int pos_start) ^ "-" ^ (string_of_int pos_end) ^ ")"
 
   let rec string_of_avc argvarcons =
     match argvarcons with
@@ -46,39 +49,39 @@
 %token <string> CHAR
 %token SPACE
 %token BREAK
-%token <int * Types.ctrlseq_name> CTRLSEQ
+%token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
 %token <Types.id_name> IDNAME
 %token <Types.class_name> CLASSNAME
 %token END
-%token <int> LAMBDA ARROW
-%token <int> LET DEFEQ LETAND IN
-%token <int> LETMUTABLE OVERWRITEEQ
-%token <int> REFNOW REFFINAL
-%token <int> IF THEN ELSE IFCLASSISVALID IFIDISVALID
+%token <Types.token_position> LAMBDA ARROW
+%token <Types.token_position> LET DEFEQ LETAND IN
+%token <Types.token_position> LETMUTABLE OVERWRITEEQ
+%token <Types.token_position> REFNOW REFFINAL
+%token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
 %token EOI
-%token <int> LPAREN
+%token <Types.token_position> LPAREN
 %token RPAREN
-%token <int> TIMES DIVIDES
-%token <int> MOD
-%token <int> PLUS MINUS
-%token <int> EQ NEQ GEQ LEQ GT LT
-%token <int> LNOT
-%token <int> LAND
-%token <int> LOR
-%token <int> CONCAT
+%token <Types.token_position> TIMES DIVIDES
+%token <Types.token_position> MOD
+%token <Types.token_position> PLUS MINUS
+%token <Types.token_position> EQ NEQ GEQ LEQ GT LT
+%token <Types.token_position> LNOT
+%token <Types.token_position> LAND
+%token <Types.token_position> LOR
+%token <Types.token_position> CONCAT
 %token OPENQT CLOSEQT
-%token <int> OPENSTR
+%token <Types.token_position> OPENSTR
 %token CLOSESTR
-%token <int> OPENNUM CLOSENUM
-%token <int> BGRP EGRP
+%token <Types.token_position> OPENNUM CLOSENUM
+%token <Types.token_position> BGRP EGRP
 %token TRUE FALSE
 %token FINISH
-%token <int> SEP
-%token <int> BLIST LISTPUNCT
+%token <Types.token_position> SEP
+%token <Types.token_position> BLIST LISTPUNCT
 %token ELIST
-%token <int> BEFORE
-%token <int> UNITVALUE
-%token <int> WHILE DO
+%token <Types.token_position> BEFORE
+%token <Types.token_position> UNITVALUE
+%token <Types.token_position> WHILE DO
 %token IGNORED
 
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
@@ -101,6 +104,7 @@
 %type <Types.abstract_tree> main
 %type <Types.abstract_tree> nxlet
 %type <Types.mutual_let_cons> nxdec
+%type <Types.abstract_tree> nxbfr
 %type <Types.abstract_tree> nxwhl
 %type <Types.abstract_tree> nxif
 %type <Types.abstract_tree> nxlor
@@ -202,6 +206,13 @@ nxdec:
 nxwhl:
   | WHILE nxlet DO nxwhl { Types.WhileDo($2, $4) }
   | nxif { $1 }
+/* -- for syntax error log --*/
+  | WHILE error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'while'" "while ..<!>.." $1))
+      }
+  | WHILE nxlet DO error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'do'" "do ..<!>.." $3))
+      }
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet { Types.IfThenElse($2, $4, $6) }
   | IFCLASSISVALID nxlet ELSE nxlet { Types.IfClassIsValid($2, $4) }
@@ -258,6 +269,10 @@ nxif:
 nxbfr:
   | nxlambda BEFORE nxbfr { Types.Sequential($1, $3) }
   | nxlambda { $1 }
+/* -- for syntax error log -- */
+  | nxlambda BEFORE error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'before'" "before ..<!>.." $2))
+      }
 ;
 nxlambda:
   | VAR OVERWRITEEQ nxlor { Types.Overwrite($1, $3) }
