@@ -43,24 +43,23 @@
     | EndOfArgumentVariable -> ""
     | ArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
 %}
-%token <Types.var_name> VAR
-%token <Types.var_name> VARINSTR
-%token <string> NUMCONST
-%token <string> CHAR
+%token <Types.token_position * Types.var_name> VAR
+%token <Types.token_position * Types.var_name> VARINSTR
+%token <Types.token_position * string> NUMCONST
+%token <Types.token_position * string> CHAR
 %token SPACE
 %token BREAK
 %token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
-%token <Types.id_name> IDNAME
-%token <Types.class_name> CLASSNAME
-%token END
+%token <Types.token_position * Types.id_name> IDNAME
+%token <Types.token_position * Types.class_name> CLASSNAME
+%token <Types.token_position> END
 %token <Types.token_position> LAMBDA ARROW
 %token <Types.token_position> LET DEFEQ LETAND IN
 %token <Types.token_position> LETMUTABLE OVERWRITEEQ
 %token <Types.token_position> REFNOW REFFINAL
 %token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
-%token EOI
 %token <Types.token_position> LPAREN
-%token RPAREN
+%token <Types.token_position> RPAREN
 %token <Types.token_position> TIMES DIVIDES
 %token <Types.token_position> MOD
 %token <Types.token_position> PLUS MINUS
@@ -69,19 +68,18 @@
 %token <Types.token_position> LAND
 %token <Types.token_position> LOR
 %token <Types.token_position> CONCAT
-%token OPENQT CLOSEQT
-%token <Types.token_position> OPENSTR
-%token CLOSESTR
+%token <Types.token_position> OPENQT CLOSEQT
+%token <Types.token_position> OPENSTR CLOSESTR
 %token <Types.token_position> OPENNUM CLOSENUM
 %token <Types.token_position> BGRP EGRP
-%token TRUE FALSE
-%token FINISH
+%token <Types.token_position> TRUE FALSE
+%token <Types.token_position> FINISH
 %token <Types.token_position> SEP
-%token <Types.token_position> BLIST LISTPUNCT
-%token ELIST
+%token <Types.token_position> BLIST LISTPUNCT ELIST
 %token <Types.token_position> BEFORE
 %token <Types.token_position> UNITVALUE
 %token <Types.token_position> WHILE DO
+%token EOI
 %token IGNORED
 
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
@@ -138,8 +136,9 @@ main:
 ;
 nxlet:
   | LET VAR argvar DEFEQ nxlet nxdec nxlet {
+        let (_, vn) = $2 in
         let curried = curry_lambda_abstract $3 $5 in
-          Types.LetIn(Types.MutualLetCons($2, curried, $6), $7)
+          Types.LetIn(Types.MutualLetCons(vn, curried, $6), $7)
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxlet {
         let (_, csname) = $2 in
@@ -147,7 +146,8 @@ nxlet:
           Types.LetIn(Types.MutualLetCons(csname, curried, $6), $7)
       }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
-        Types.LetMutableIn($2, $4, $6)
+        let (_, vn) = $2 in
+          Types.LetMutableIn(vn, $4, $6)
       }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
@@ -155,15 +155,19 @@ nxlet:
         raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
       }
   | LET VAR error {
-        raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument" ("let " ^ $2 ^ " ..<!>..") $1))
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
+            ("let " ^ vn ^ " ..<!>..") $1))
       }
   | LET VAR argvar DEFEQ error {
-        raise (ParseErrorDetail(error_reporting "illegal token after '='"
-          ("let " ^ $2 ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '='"
+            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
       }
   | LET VAR argvar DEFEQ nxlet nxdec error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
-          ("let " ^ $2 ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
       }
   | LET CTRLSEQ error {
         let (ln, csname) = $2 in
@@ -183,8 +187,9 @@ nxlet:
 ;
 nxdec:
   | LETAND VAR argvar DEFEQ nxlet nxdec {
+        let (_, vn) = $2 in
         let curried = curry_lambda_abstract $3 $5 in
-          Types.MutualLetCons($2, curried, $6)
+          Types.MutualLetCons(vn, curried, $6)
       }
   | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
         let (_, csname) = $2 in
@@ -194,8 +199,9 @@ nxdec:
   | IN { Types.EndOfMutualLet }
 /* -- for syntax error log -- */
   | LETAND VAR error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-          ("and " ^ $2 ^ " ..<!>..") $1))
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
+            ("and " ^ vn ^ " ..<!>..") $1))
       }
   | LETAND CTRLSEQ error {
         let (ln, csname) = $2 in
@@ -275,7 +281,7 @@ nxbfr:
       }
 ;
 nxlambda:
-  | VAR OVERWRITEEQ nxlor { Types.Overwrite($1, $3) }
+  | VAR OVERWRITEEQ nxlor { let (_, vn) = $1 in Types.Overwrite(vn, $3) }
   | LAMBDA argvar ARROW nxlor { curry_lambda_abstract $2 $4 }
   | nxlor { $1 }
 /* -- for syntax error log -- */
@@ -289,7 +295,7 @@ nxlambda:
       }
 ;
 argvar:
-  | VAR argvar { Types.ArgumentVariableCons($1, $2) }
+  | VAR argvar { let (_, vn) = $1 in Types.ArgumentVariableCons(vn, $2) }
   | { Types.EndOfArgumentVariable }
 ;
 nxlor:
@@ -425,8 +431,8 @@ nxapp:
   | nxbot { $1 }
 ;
 nxbot:
-  | VAR { Types.ContentOf($1) }
-  | NUMCONST { Types.NumericConstant(int_of_string $1) }
+  | VAR { let (_, vn) = $1 in Types.ContentOf(vn) }
+  | NUMCONST { let (_, cs) = $1 in Types.NumericConstant(int_of_string cs) }
   | TRUE { Types.BooleanConstant(true) }
   | FALSE { Types.BooleanConstant(false) }
   | LPAREN nxlet RPAREN { $2 }
@@ -435,8 +441,8 @@ nxbot:
   | FINISH { Types.FinishHeaderFile }
   | BLIST ELIST { Types.EndOfList }
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
-  | REFNOW VAR { Types.Reference($2) }
-  | REFFINAL VAR { Types.ReferenceFinal($2) }
+  | REFNOW VAR { let (_, vn) = $2 in Types.Reference(vn) }
+  | REFFINAL VAR { let (_, vn) = $2 in Types.ReferenceFinal(vn) }
   | UNITVALUE { Types.UnitConstant }
 /* -- for syntax error log -- */
   | BLIST error {
@@ -484,10 +490,10 @@ sxblock:
   | { Types.StringEmpty }
   ;
 sxbot:
-  | CHAR { Types.StringConstant($1) }
+  | CHAR { let (_, ch) = $1 in Types.StringConstant(ch) }
   | SPACE { Types.StringConstant(" ") }
   | BREAK { Types.BreakAndIndent }
-  | VARINSTR END { Types.ContentOf($1) }
+  | VARINSTR END { let (_, vn) = $1 in Types.ContentOf(vn) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (_, csname) = $1 in
         convert_into_numeric_apply csname $2 $3 (append_argument_list $4 $5)
@@ -498,10 +504,10 @@ sxbot:
         raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csname ^ "'") (csname ^ " ..<!>..") ln))
   }
 sxclsnm:
-  | CLASSNAME { class_name_to_abstract_tree $1 }
+  | CLASSNAME { let (_, clsnm) = $1 in class_name_to_abstract_tree clsnm }
   | { NoContent }
 sxidnm:
-  | IDNAME { id_name_to_abstract_tree $1 }
+  | IDNAME { let (_, idnm) = $1 in id_name_to_abstract_tree idnm }
   | { NoContent }
 ;
 narg: /* -> Types.argument_cons */

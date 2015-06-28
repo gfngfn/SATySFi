@@ -96,17 +96,17 @@ rule numexpr = parse
   | ")" {
       decrement numdepth ;
       if Stacklist.is_empty numdepth_stack then
-        RPAREN
+        RPAREN(get_pos lexbuf)
       else
         if !numdepth == Stacklist.top numdepth_stack then
         ( Stacklist.delete_top numdepth_stack ;
           next_state := STATE_ACTIVE ;
           CLOSENUM(get_pos lexbuf) )
         else
-          RPAREN
+          RPAREN(get_pos lexbuf)
     }
   | "[" { BLIST(get_pos lexbuf) }
-  | "]" { ELIST }
+  | "]" { ELIST(get_pos lexbuf) }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
@@ -119,7 +119,7 @@ rule numexpr = parse
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
       after_literal_state := STATE_NUMEXPR ;
       next_state := STATE_LITERAL ;
-      OPENQT
+      OPENQT(get_pos lexbuf)
     }
   | ("\\" identifier) {
   	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
@@ -139,30 +139,38 @@ rule numexpr = parse
   | "||"  { LOR(get_pos lexbuf) }
   | "^"   { CONCAT(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
-  | "not" { LNOT(get_pos lexbuf) }
-  | "mod" { MOD(get_pos lexbuf) }
-  | "if"  { IF(get_pos lexbuf) }
-  | "if-class-is-valid" { IFCLASSISVALID(get_pos lexbuf) }
-  | "if-id-is-valid"    { IFIDISVALID(get_pos lexbuf) }
-  | "then" { THEN(get_pos lexbuf) }
-  | "else" { ELSE(get_pos lexbuf) }
-  | "let"  { LET(get_pos lexbuf) }
-  | "and"  { LETAND(get_pos lexbuf) }
-  | "in"   { IN(get_pos lexbuf) }
-  | "function" { LAMBDA(get_pos lexbuf) }
-  | "true"   { TRUE }
-  | "false"  { FALSE }
-  | "finish" { FINISH }
-  | "let-mutable" { LETMUTABLE(get_pos lexbuf) }
-  | "before" { BEFORE(get_pos lexbuf) }
-  | "while"  { WHILE(get_pos lexbuf) }
-  | "do"  { DO(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
   | "!"   { REFNOW(get_pos lexbuf) }
   | "!!"  { REFFINAL(get_pos lexbuf) }
 
-  | (latin (digit | latin |"-")*) as tok { VAR(tok) }
-  | (digit digit*) as tok { NUMCONST(tok) }
+  | (latin (digit | latin |"-")*) {
+        let tok = Lexing.lexeme lexbuf in
+        let pos = get_pos lexbuf in
+        ( match tok with
+          | "not"  -> LNOT(pos)
+          | "mod"  -> MOD(pos)
+          | "if"   -> IF(pos)
+          | "if-class-is-valid" -> IFCLASSISVALID(pos)
+          | "if-id-is-valid"    -> IFIDISVALID(pos)
+          | "then" -> THEN(pos)
+          | "else" -> ELSE(pos)
+          | "let"  -> LET(pos)
+          | "and"  -> LETAND(pos)
+          | "in"   -> IN(pos)
+          | "function" -> LAMBDA(pos)
+          | "true"  -> TRUE(pos)
+          | "false" -> FALSE(pos)
+          | "let-mutable" -> LETMUTABLE(pos)
+          | "before" -> BEFORE(pos)
+          | "while"  -> WHILE(pos)
+          | "do"     -> DO(pos)
+          | "finish" -> FINISH(pos)
+          | _ -> VAR(pos, tok)
+        )
+      }
+  | (digit digit*) {
+        let tok = Lexing.lexeme lexbuf in NUMCONST(get_pos lexbuf, tok)
+      }
   | eof {
         if !first_state == STATE_NUMEXPR then
           EOI
@@ -195,7 +203,7 @@ and strexpr = parse
         if !strdepth == Stacklist.top strdepth_stack then
         ( Stacklist.delete_top strdepth_stack ;
           next_state := STATE_NUMEXPR ;
-          CLOSESTR )
+          CLOSESTR(get_pos lexbuf) )
         else
         ( ignore_space := false ;
           EGRP(get_pos lexbuf) )
@@ -219,20 +227,20 @@ and strexpr = parse
         CTRLSEQ(get_pos lexbuf, tok)
     }
   | ("\\" symbol) {
-      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(tok)
+      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(get_pos lexbuf, tok)
     }
   | ("@" identifier) {
         let tok = Lexing.lexeme lexbuf in
         let vnm = String.sub tok 1 ((String.length tok) - 1) in
         ( next_state := STATE_ACTIVE ;
-          VARINSTR(vnm)
+          VARINSTR(get_pos lexbuf, vnm)
         )
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf) ;
       after_literal_state := STATE_STREXPR ;
       next_state := STATE_LITERAL ;
-      OPENQT
+      OPENQT(get_pos lexbuf)
     }
   | eof {
       if !first_state == STATE_STREXPR then
@@ -242,7 +250,7 @@ and strexpr = parse
     }
   | _ {
       ignore_space := false ;
-      let tok = Lexing.lexeme lexbuf in CHAR(tok)
+      let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
 and active = parse
@@ -253,8 +261,8 @@ and active = parse
     }
   | space { active lexbuf }
   | break { increment_line lexbuf ; active lexbuf }
-  | ("#" identifier) { let tok = Lexing.lexeme lexbuf in IDNAME(tok) }
-  | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(tok) }
+  | ("#" identifier) { let tok = Lexing.lexeme lexbuf in IDNAME(get_pos lexbuf, tok) }
+  | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
   | "(" {
       Stacklist.push numdepth_stack !numdepth ;
       increment numdepth ;
@@ -272,12 +280,12 @@ and active = parse
       ignore_space := false ;
       after_literal_state := STATE_STREXPR ;
       next_state := STATE_LITERAL ;
-      OPENQT
+      OPENQT(get_pos lexbuf)
     }
   | ";" {
       next_state := STATE_STREXPR ;
       ignore_space := false ;
-      END
+      END(get_pos lexbuf)
     }
   | eof {
       raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
@@ -292,13 +300,13 @@ and literal = parse
       let tok = Lexing.lexeme lexbuf in
       let len = String.length tok in
         if len < !openqtdepth then
-          CHAR(tok)
+          CHAR(get_pos lexbuf, tok)
         else if len > !openqtdepth then
           raise (LexError(error_reporting lexbuf "literal area was closed with too many '`'s"))
         else
-        ( next_state := !after_literal_state ; CLOSEQT )
+        ( next_state := !after_literal_state ; CLOSEQT(get_pos lexbuf) )
     }
-  | _ { let tok = Lexing.lexeme lexbuf in CHAR(tok) }
+  | _ { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
 
 and comment = parse
   | break {
@@ -315,20 +323,20 @@ and comment = parse
       match !next_state with
       | STATE_NUMEXPR -> numexpr lexbuf
       | STATE_STREXPR -> strexpr lexbuf
-      | STATE_ACTIVE -> active lexbuf
+      | STATE_ACTIVE  -> active lexbuf
       | STATE_COMMENT -> comment lexbuf
       | STATE_LITERAL -> literal lexbuf
     in
       match output with
       | IGNORED -> cut_token lexbuf
-      | _ -> output
+      | _       -> output
 
   (* for test *)
   let rec make_token_list lexbuf =
     let output = cut_token lexbuf in
       match output with
       | EOI -> [EOI]
-      | _ -> output :: (make_token_list lexbuf)
+      | _   -> output :: (make_token_list lexbuf)
 
   (* for test *)
   let token_list_of_string instr =

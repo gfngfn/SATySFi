@@ -29,42 +29,42 @@ and abstract_tree =
   | StringEmpty
   | NumericConstant of int
   | BooleanConstant of bool
-  | StringConstant of string
-  | ContentOf of var_name
-  | Concat of abstract_tree * abstract_tree
+  | StringConstant  of string
+  | UnitConstant
+  | ContentOf       of var_name
+  | Concat          of abstract_tree * abstract_tree
   | ConcatOperation of abstract_tree * abstract_tree
-  | NumericApply of abstract_tree * abstract_tree
-  | ListCons of abstract_tree * abstract_tree
+  | NumericApply    of abstract_tree * abstract_tree
+  | ListCons        of abstract_tree * abstract_tree
   | EndOfList
   | BreakAndIndent
   | DeeperIndent of abstract_tree
-  | Times of abstract_tree * abstract_tree
+  | Times   of abstract_tree * abstract_tree
   | Divides of abstract_tree * abstract_tree
-  | Mod of abstract_tree * abstract_tree
-  | Plus of abstract_tree * abstract_tree
-  | Minus of abstract_tree * abstract_tree
+  | Mod     of abstract_tree * abstract_tree
+  | Plus    of abstract_tree * abstract_tree
+  | Minus   of abstract_tree * abstract_tree
   | GreaterThan of abstract_tree * abstract_tree
-  | LessThan of abstract_tree * abstract_tree
-  | EqualTo of abstract_tree * abstract_tree
-  | LogicalAnd of abstract_tree * abstract_tree
-  | LogicalOr of abstract_tree * abstract_tree
-  | LogicalNot of abstract_tree
-  | LetIn of mutual_let_cons * abstract_tree
-  | IfThenElse of abstract_tree * abstract_tree * abstract_tree
+  | LessThan    of abstract_tree * abstract_tree
+  | EqualTo     of abstract_tree * abstract_tree
+  | LogicalAnd  of abstract_tree * abstract_tree
+  | LogicalOr   of abstract_tree * abstract_tree
+  | LogicalNot  of abstract_tree
+  | LetIn          of mutual_let_cons * abstract_tree
+  | IfThenElse     of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of var_name * abstract_tree
-  | LiteralArea of abstract_tree
+  | LiteralArea    of abstract_tree
 (* for inner procedure *)
   | FuncWithEnvironment of var_name * abstract_tree * environment
-  | NoContent (* for @class and @id *)
+  | NoContent (* for class and id *)
   | UnderConstruction (* for 'compensate' *)
   | FinishHeaderFile
-  | LetMutableIn of var_name * abstract_tree * abstract_tree
-  | Sequential of abstract_tree * abstract_tree
-  | Overwrite of var_name * abstract_tree
-  | MutableValue of abstract_tree
-  | Reference of var_name
+  | LetMutableIn   of var_name * abstract_tree * abstract_tree
+  | Sequential     of abstract_tree * abstract_tree
+  | Overwrite      of var_name * abstract_tree
+  | MutableValue   of abstract_tree
+  | Reference      of var_name
   | ReferenceFinal of var_name
-  | UnitConstant
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree
@@ -73,11 +73,11 @@ and abstract_tree =
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
   | IfClassIsValid of abstract_tree * abstract_tree
-  | IfIDIsValid of abstract_tree * abstract_tree
+  | IfIDIsValid    of abstract_tree * abstract_tree
   | WhileDo of abstract_tree * abstract_tree
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
-  | PrimitiveIsEmpty of abstract_tree
+  | PrimitiveIsEmpty  of abstract_tree
 
 
 type type_variable_id = int
