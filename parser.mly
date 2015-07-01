@@ -56,7 +56,7 @@
       | UTStringEmpty        -> ""
       | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
 
-  (* untyped_abstract_tree -> untyped_abstract_tree *)
+  (* untyped_abstract_tree -> untyped_abstract_tree_main *)
   and omit_spaces ltrl =
     let str_ltrl = stringify_literal ltrl in
       let min_indent = min_indent_space str_ltrl in
@@ -780,7 +780,12 @@ narg: /* -> Types.argument_cons */
 ;
 sarg: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { UTArgumentCons(((0, 0, 0, 0), omit_spaces $2), $4) }
+  | OPENQT sxsep CLOSEQT sargsub {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          UTArgumentCons((rng, omit_spaces $2), $4)
+      }
   | END { UTEndOfArgument }
 /* -- for syntax error log */
   | BGRP error {
@@ -791,8 +796,19 @@ sarg: /* -> Types.argument_cons */
       }
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { UTArgumentCons(((0, 0, 0, 0), omit_spaces $2), $4) }
+  | BGRP sxsep EGRP sargsub {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, utast) = $2 in
+          UTArgumentCons((rng, utast), $4)
+      }
+  | OPENQT sxsep CLOSEQT sargsub {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          UTArgumentCons((rng, omit_spaces $2), $4)
+      }
   | { UTEndOfArgument }
 /* -- for syntax error log */
   | BGRP error {
