@@ -1,6 +1,7 @@
 %{
   open Types
 
+  type literal_reading_state = Normal | ReadingSpace
   exception MyParseError of string
 
   let rec append_argument_list arglsta arglstb =
@@ -42,6 +43,76 @@
     match argvarcons with
     | EndOfArgumentVariable -> ""
     | ArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
+
+
+  let rec stringify_literal chofltrl =
+    match chofltrl with
+    | Concat(astf, astl) -> (stringify_literal astf) ^ (stringify_literal astl)
+    | StringConstant(s)  -> s
+    | StringEmpty        -> ""
+    | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
+
+  (* abstract_tree -> abstract_tree *)
+  and omit_spaces chofltrl =
+    let str_ltrl = stringify_literal chofltrl in
+      let min_indent = min_indent_space str_ltrl in
+        let str_shaved = shave_indent str_ltrl min_indent in
+          if str_shaved.[(String.length str_shaved) - 1] = '\n' then
+            let str_no_last_break = String.sub str_shaved 0 ((String.length str_shaved) - 1) in
+              Concat(StringConstant(str_no_last_break), BreakAndIndent)
+          else
+            StringConstant(str_shaved)
+
+  (* string -> int *)
+  and min_indent_space str_ltrl =
+    min_indent_space_sub str_ltrl 0 ReadingSpace 0 (String.length str_ltrl)
+
+  (* string -> int -> literal_reading_state -> int -> int -> int *)
+  and min_indent_space_sub str_ltrl index lrstate spnum minspnum =
+    if index >= (String.length str_ltrl) then
+      (* ( print_string ("min_indent: " ^ (string_of_int minspnum) ^ "\n") ; *)
+        minspnum
+      (* ) *)
+    else
+      match lrstate with
+      | Normal ->
+          ( match str_ltrl.[index] with
+            | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
+            | _    -> min_indent_space_sub str_ltrl (index + 1) Normal 0 minspnum
+          )
+      | ReadingSpace ->
+          ( match str_ltrl.[index] with
+            | ' '  -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace (spnum + 1) minspnum
+            | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
+                (* does not take space-only line into account *)
+            | _    -> min_indent_space_sub str_ltrl (index + 1) Normal 0 (if spnum < minspnum then spnum else minspnum)
+          )
+
+  and shave_indent str_ltrl minspnum =
+    shave_indent_sub str_ltrl minspnum 0 "" Normal 0
+
+  and shave_indent_sub str_ltrl minspnum index str_constr lrstate spnum =
+    if index >= (String.length str_ltrl) then
+      str_constr
+    else
+      match lrstate with
+      | Normal ->
+          ( match str_ltrl.[index] with
+            | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
+            | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
+          )
+      | ReadingSpace ->
+          ( match str_ltrl.[index] with
+            | ' ' ->
+                if spnum < minspnum then
+                  shave_indent_sub str_ltrl minspnum (index + 1) str_constr ReadingSpace (spnum + 1)
+                else
+                  shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ " ") ReadingSpace (spnum + 1)
+
+            | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
+            | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
+          )
+
 %}
 %token <Types.token_position * Types.var_name> VAR
 %token <Types.token_position * Types.var_name> VARINSTR
@@ -437,7 +508,7 @@ nxbot:
   | FALSE { Types.BooleanConstant(false) }
   | LPAREN nxlet RPAREN { $2 }
   | OPENSTR sxsep CLOSESTR { $2 }
-  | OPENQT sxsep CLOSEQT { LiteralArea($2) }
+  | OPENQT sxsep CLOSEQT { omit_spaces $2 }
   | FINISH { Types.FinishHeaderFile }
   | BLIST ELIST { Types.EndOfList }
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
@@ -525,7 +596,7 @@ narg: /* -> Types.argument_cons */
 ;
 sarg: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
+  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(omit_spaces $2, $4) }
   | END { Types.EndOfArgument }
 /* -- for syntax error log */
   | BGRP error {
@@ -537,7 +608,7 @@ sarg: /* -> Types.argument_cons */
 ;
 sargsub: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(LiteralArea($2), $4) }
+  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(omit_spaces $2, $4) }
   | { Types.EndOfArgument }
 /* -- for syntax error log */
   | BGRP error {

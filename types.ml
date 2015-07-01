@@ -6,6 +6,7 @@ type id_name = string
 type class_name = string
 
 type token_position = int * int * int
+type code_range = int * int * int * int
 
 type id_name_arg =
   | IDName of id_name
@@ -24,6 +25,37 @@ and mutual_let_cons =
   | EndOfMutualLet
 and environment = (var_name, location) Hashtbl.t
 and location = abstract_tree ref
+(*
+and untyped_abstract_tree =
+  | UTStringEmpty
+  | UTNumericConstant of code_range * int
+  | UTBooleanConstant of code_range * bool
+  | UTStringConstant  of code_range * string
+  | UTUnitConstant    of code_range
+  | UTContentOf       of code_range * var_name
+  | UTConcat          of code_range * abstract_tree * abstract_tree
+  | UTConcatOperation of code_range * abstract_tree * abstract_tree
+  | UTNumericApply    of code_range * abstract_tree * abstract_tree
+  | UTListCons        of code_range * abstract_tree * abstract_tree
+  | UTEndOfList
+  | UTBreakAndIndent
+  | UTTimes   of code_range * abstract_tree * abstract_tree
+  | UTDivides of code_range * abstract_tree * abstract_tree
+  | UTMod     of code_range * abstract_tree * abstract_tree
+  | UTPlus    of code_range * abstract_tree * abstract_tree
+  | UTMinus   of code_range * abstract_tree * abstract_tree
+  | UTGreaterThan of code_range * abstract_tree * abstract_tree
+  | UTLessThan    of code_range * abstract_tree * abstract_tree
+  | UTEqualTo     of code_range * abstract_tree * abstract_tree
+  | UTLogicalAnd  of code_range * abstract_tree * abstract_tree
+  | UTLogicalOr   of code_range * abstract_tree * abstract_tree
+  | UTLogicalNot  of code_range * abstract_tree
+  | UTLetIn          of code_range * mutual_let_cons * abstract_tree
+  | UTIfThenElse     of code_range * abstract_tree * abstract_tree * abstract_tree
+  | UTLambdaAbstract of code_range * var_name * abstract_tree
+  | UTLiteralArea    of code_range * abstract_tree
+  | UTFinishHeaderFile of code_range
+*)
 and abstract_tree =
 (* for parser *)
   | StringEmpty
@@ -57,7 +89,6 @@ and abstract_tree =
 (* for inner procedure *)
   | FuncWithEnvironment of var_name * abstract_tree * environment
   | NoContent (* for class and id *)
-  | UnderConstruction (* for 'compensate' *)
   | FinishHeaderFile
   | LetMutableIn   of var_name * abstract_tree * abstract_tree
   | Sequential     of abstract_tree * abstract_tree
