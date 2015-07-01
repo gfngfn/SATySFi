@@ -215,10 +215,10 @@ and strexpr = parse
     }
   | break {
       increment_line lexbuf ;
-      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK )
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK(get_pos lexbuf) )
     }
   | space {
-      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; SPACE )
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; SPACE(get_pos lexbuf) )
 
     }
   | ("\\" identifier) {

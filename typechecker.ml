@@ -46,7 +46,7 @@ let rec equivalent tya tyb =
 let rec typecheck tyeq tyenv astch =
   match astch with
   | StringEmpty -> StringType
-  | NumericConstant(_) -> IntType
+  | NumericConstant(nc) -> IntType
   | StringConstant(_) -> StringType
   | BooleanConstant(_) -> BoolType
   | ContentOf(nv) ->

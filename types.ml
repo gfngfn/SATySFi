@@ -14,6 +14,46 @@ type id_name_arg =
 type class_name_arg =
   | ClassName of class_name
   | NoClassName
+(* ---- untyped ---- *)
+type untyped_argument_variable_cons =
+  | UTArgumentVariableCons of var_name * untyped_argument_variable_cons
+  | UTEndOfArgumentVariable
+type untyped_argument_cons =
+  | UTArgumentCons of untyped_abstract_tree * untyped_argument_cons
+  | UTEndOfArgument
+and untyped_mutual_let_cons =
+  | UTMutualLetCons of var_name * untyped_abstract_tree * untyped_mutual_let_cons
+  | UTEndOfMutualLet
+and untyped_abstract_tree = code_range * untyped_abstract_tree_main
+and untyped_abstract_tree_main =
+  | UTStringEmpty
+  | UTNumericConstant  of int
+  | UTBooleanConstant  of bool
+  | UTStringConstant   of string
+  | UTUnitConstant
+  | UTContentOf        of var_name
+  | UTConcat           of untyped_abstract_tree * untyped_abstract_tree
+  | UTConcatOperation  of untyped_abstract_tree * untyped_abstract_tree
+  | UTApply            of untyped_abstract_tree * untyped_abstract_tree
+  | UTListCons         of untyped_abstract_tree * untyped_abstract_tree
+  | UTEndOfList
+  | UTBreakAndIndent
+  | UTLetIn            of untyped_mutual_let_cons * untyped_abstract_tree
+  | UTIfThenElse       of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTLambdaAbstract   of var_name * untyped_abstract_tree
+  | UTFinishHeaderFile
+  | UTLetMutableIn     of var_name * untyped_abstract_tree * untyped_abstract_tree
+  | UTSequential       of untyped_abstract_tree * untyped_abstract_tree
+  | UTOverwrite        of var_name * untyped_abstract_tree
+  | UTMutableValue     of untyped_abstract_tree
+  | UTReference        of var_name
+  | UTReferenceFinal   of var_name
+  | UTIfClassIsValid   of untyped_abstract_tree * untyped_abstract_tree
+  | UTIfIDIsValid      of untyped_abstract_tree * untyped_abstract_tree
+  | UTApplyClassAndID of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTWhileDo          of untyped_abstract_tree * untyped_abstract_tree
+  | UTNoContent
+(* ---- typed ---- *)
 type argument_variable_cons =
   | ArgumentVariableCons of var_name * argument_variable_cons
   | EndOfArgumentVariable
@@ -25,32 +65,6 @@ and mutual_let_cons =
   | EndOfMutualLet
 and environment = (var_name, location) Hashtbl.t
 and location = abstract_tree ref
-and untyped_abstract_tree =
-  | UntypedStringEmpty
-  | UntypedNumericConstant  of code_range * int
-  | UntypedBooleanConstant  of code_range * bool
-  | UntypedStringConstant   of code_range * string
-  | UntypedUnitConstant     of code_range
-  | UntypedContentOf        of code_range * var_name
-  | UntypedConcat           of code_range * abstract_tree * abstract_tree
-  | UntypedConcatOperation  of code_range * abstract_tree * abstract_tree
-  | UntypedApply            of code_range * abstract_tree * abstract_tree
-  | UntypedListCons         of code_range * abstract_tree * abstract_tree
-  | UntypedEndOfList
-  | UntypedBreakAndIndent   of code_range
-  | UntypedLetIn            of code_range * mutual_let_cons * abstract_tree
-  | UntypedIfThenElse       of code_range * abstract_tree * abstract_tree * abstract_tree
-  | UntypedLambdaAbstract   of code_range * var_name * abstract_tree
-  | UntypedFinishHeaderFile of code_range
-  | UntypedLetMutableIn     of code_range * var_name * abstract_tree * abstract_tree
-  | UntypedSequential       of code_range * abstract_tree * abstract_tree
-  | UntypedOverwrite        of code_range * var_name * abstract_tree
-  | UntypedMutableValue     of code_range * abstract_tree
-  | UntypedReference        of code_range * var_name
-  | UntypedReferenceFinal   of code_range * var_name
-  | UntypedIfClassIsValid   of code_range * abstract_tree * abstract_tree
-  | UntypedIfIDIsValid      of code_range * abstract_tree * abstract_tree
-  | UntypedWhileDo          of code_range * abstract_tree * abstract_tree
 and abstract_tree =
 (* for syntax *)
   | StringEmpty
@@ -76,11 +90,11 @@ and abstract_tree =
   | ReferenceFinal of var_name
   | IfClassIsValid of abstract_tree * abstract_tree
   | IfIDIsValid    of abstract_tree * abstract_tree
+  | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | WhileDo of abstract_tree * abstract_tree
 (* only for inner procedure *)
   | NoContent (* for class and id *)
   | FuncWithEnvironment of var_name * abstract_tree * environment
-  | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | DeeperIndent of abstract_tree
   | Times   of abstract_tree * abstract_tree

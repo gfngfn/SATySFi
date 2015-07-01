@@ -129,7 +129,7 @@ let rec interpret env ast =
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-length': " ^ s))
       ) in
         NumericConstant(String.length str)
-
+(*
   | PrimitiveInclude(astfile_name) ->
       ( try
           let str_file_name = Out.main env (interpret env astfile_name) in
@@ -140,6 +140,7 @@ let rec interpret env ast =
         | Out.IllegalOut(s) -> raise (EvalError("illegal argument of \\include: " ^ s))
         | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
       )
+*)
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
 

@@ -6,32 +6,36 @@
 
   let rec append_argument_list arglsta arglstb =
     match arglsta with
-    | EndOfArgument -> arglstb
-    | ArgumentCons(arg, arglstl) ->
-        ArgumentCons(arg, (append_argument_list arglstl arglstb))
+    | UTEndOfArgument -> arglstb
+    | UTArgumentCons(arg, arglstl) ->
+        UTArgumentCons(arg, (append_argument_list arglstl arglstb))
 
-  (* ctrlseq_name -> abstract_tree -> abstract_tree -> argument_cons -> abstract_tree *)
-  let rec convert_into_numeric_apply csnm clsnmast idnmast argcons =
-    convert_into_numeric_apply_sub argcons (ApplyClassAndID(clsnmast, idnmast, ContentOf(csnm)))
-  
-  (* argument_cons -> abstract_tree -> abstract_tree *)
-  and convert_into_numeric_apply_sub argcons astconstr =
+  (* ctrlseq_name -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_argument_cons -> untyped_abstract_tree *)
+  let rec convert_into_apply csast clsnmast idnmast argcons =
+    convert_into_apply_sub argcons ((0, 0, 0, 0), UTApplyClassAndID(clsnmast, idnmast, csast))
+
+  (* argument_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
+  and convert_into_apply_sub argcons astconstr =
     match argcons with
-    | EndOfArgument -> astconstr
-    | ArgumentCons(arg, actail) ->
-        convert_into_numeric_apply_sub actail (Apply(astconstr, arg))
+    | UTEndOfArgument -> astconstr
+    | UTArgumentCons(arg, actail) ->
+        convert_into_apply_sub actail ((0, 0, 0, 0), UTApply(astconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
-    StringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
+    UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
 
   let id_name_to_abstract_tree idnm =
-    StringConstant((String.sub idnm 1 ((String.length idnm) - 1)))
+    UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))
 
-  let rec curry_lambda_abstract argvarcons astdef =
+  let rec curry_lambda_abstract rng argvarcons astdef =
     match argvarcons with
-    | EndOfArgumentVariable -> astdef
-    | ArgumentVariableCons(argvar, avtail) -> 
-        LambdaAbstract(argvar, curry_lambda_abstract avtail astdef)
+    | UTEndOfArgumentVariable -> astdef
+    | UTArgumentVariableCons(argvar, avtail) -> 
+        (rng, UTLambdaAbstract(argvar, curry_lambda_abstract (0, 0, 0, 0) avtail astdef))
+
+  (* untyped_abstract_tree -> code_range *)
+  let get_range utast =
+    let (rng, _) = utast in rng
 
   let error_reporting msg disp pos =
     let (pos_ln, pos_start, pos_end) = pos in
@@ -41,27 +45,30 @@
 
   let rec string_of_avc argvarcons =
     match argvarcons with
-    | EndOfArgumentVariable -> ""
-    | ArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
+    | UTEndOfArgumentVariable -> ""
+    | UTArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
 
+  let rec stringify_literal ltrl =
+    let (_, ltrlmain) = ltrl in
+      match ltrlmain with
+      | UTConcat(astf, astl) -> (stringify_literal astf) ^ (stringify_literal astl)
+      | UTStringConstant(s)  -> s
+      | UTStringEmpty        -> ""
+      | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
 
-  let rec stringify_literal chofltrl =
-    match chofltrl with
-    | Concat(astf, astl) -> (stringify_literal astf) ^ (stringify_literal astl)
-    | StringConstant(s)  -> s
-    | StringEmpty        -> ""
-    | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
-
-  (* abstract_tree -> abstract_tree *)
-  and omit_spaces chofltrl =
-    let str_ltrl = stringify_literal chofltrl in
+  (* untyped_abstract_tree -> untyped_abstract_tree *)
+  and omit_spaces ltrl =
+    let str_ltrl = stringify_literal ltrl in
       let min_indent = min_indent_space str_ltrl in
         let str_shaved = shave_indent str_ltrl min_indent in
           if str_shaved.[(String.length str_shaved) - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 ((String.length str_shaved) - 1) in
-              Concat(StringConstant(str_no_last_break), BreakAndIndent)
+              UTConcat(
+                ((0, 0, 0, 0), UTStringConstant(str_no_last_break)),
+                ((0, 0, 0, 0), UTBreakAndIndent)
+              )
           else
-            StringConstant(str_shaved)
+            UTStringConstant(str_shaved)
 
   (* string -> int *)
   and min_indent_space str_ltrl =
@@ -113,13 +120,23 @@
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           )
 
+  let binary_operator opname lft op rgt =
+    let (sttln, sttpos, _, _) = get_range lft in
+    let (_, _, endln, endpos) = get_range rgt in
+    let (opln, opstt, opend) = op in
+    let oprng = (opln, opstt, opln, opend) in
+    let dummyrng = (0, 0, 0, 0) in
+    let rng = (sttln, sttpos, endln, endpos) in
+      (rng, UTApply((dummyrng, UTApply((oprng, UTContentOf(opname)), lft)), rgt))
+
 %}
+
 %token <Types.token_position * Types.var_name> VAR
 %token <Types.token_position * Types.var_name> VARINSTR
 %token <Types.token_position * string> NUMCONST
 %token <Types.token_position * string> CHAR
-%token SPACE
-%token BREAK
+%token <Types.token_position> SPACE
+%token <Types.token_position> BREAK
 %token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
 %token <Types.token_position * Types.id_name> IDNAME
 %token <Types.token_position * Types.class_name> CLASSNAME
@@ -170,34 +187,34 @@
 %nonassoc LPAREN RPAREN
 
 %start main
-%type <Types.abstract_tree> main
-%type <Types.abstract_tree> nxlet
-%type <Types.mutual_let_cons> nxdec
-%type <Types.abstract_tree> nxbfr
-%type <Types.abstract_tree> nxwhl
-%type <Types.abstract_tree> nxif
-%type <Types.abstract_tree> nxlor
-%type <Types.abstract_tree> nxland
-%type <Types.abstract_tree> nxcomp
-%type <Types.abstract_tree> nxconcat
-%type <Types.abstract_tree> nxlplus
-%type <Types.abstract_tree> nxltimes
-%type <Types.abstract_tree> nxrplus
-%type <Types.abstract_tree> nxrtimes
-%type <Types.abstract_tree> nxun
-%type <Types.abstract_tree> nxapp
-%type <Types.abstract_tree> nxbot
-%type <Types.abstract_tree> nxlist
-%type <Types.abstract_tree> sxsep
-%type <Types.abstract_tree> sxsepsub
-%type <Types.abstract_tree> sxblock
-%type <Types.abstract_tree> sxbot
-%type <Types.abstract_tree> sxclsnm
-%type <Types.abstract_tree> sxidnm
-%type <Types.argument_cons> narg
-%type <Types.argument_cons> sarg
-%type <Types.argument_cons> sargsub
-%type <Types.argument_variable_cons> argvar
+%type <Types.untyped_abstract_tree> main
+%type <Types.untyped_abstract_tree> nxlet
+%type <Types.untyped_mutual_let_cons> nxdec
+%type <Types.untyped_abstract_tree> nxbfr
+%type <Types.untyped_abstract_tree> nxwhl
+%type <Types.untyped_abstract_tree> nxif
+%type <Types.untyped_abstract_tree> nxlor
+%type <Types.untyped_abstract_tree> nxland
+%type <Types.untyped_abstract_tree> nxcomp
+%type <Types.untyped_abstract_tree> nxconcat
+%type <Types.untyped_abstract_tree> nxlplus
+%type <Types.untyped_abstract_tree> nxltimes
+%type <Types.untyped_abstract_tree> nxrplus
+%type <Types.untyped_abstract_tree> nxrtimes
+%type <Types.untyped_abstract_tree> nxun
+%type <Types.untyped_abstract_tree> nxapp
+%type <Types.untyped_abstract_tree> nxbot
+%type <Types.untyped_abstract_tree> nxlist
+%type <Types.untyped_abstract_tree> sxsep
+%type <Types.untyped_abstract_tree> sxsepsub
+%type <Types.untyped_abstract_tree> sxblock
+%type <Types.untyped_abstract_tree> sxbot
+%type <Types.untyped_abstract_tree> sxclsnm
+%type <Types.untyped_abstract_tree> sxidnm
+%type <Types.untyped_argument_cons> narg
+%type <Types.untyped_argument_cons> sarg
+%type <Types.untyped_argument_cons> sargsub
+%type <Types.untyped_argument_variable_cons> argvar
 
 %%
 
@@ -207,18 +224,27 @@ main:
 ;
 nxlet:
   | LET VAR argvar DEFEQ nxlet nxdec nxlet {
-        let (_, vn) = $2 in
-        let curried = curry_lambda_abstract $3 $5 in
-          Types.LetIn(Types.MutualLetCons(vn, curried, $6), $7)
+        let (sttln, sttpos, _) = $1 in
+        let (_, varnm) = $2 in
+        let (_, _, endln, endpos) = get_range $7 in
+        let rng = (sttln, sttpos, endln, endpos) in
+        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+          (rng, UTLetIn(UTMutualLetCons(varnm, curried, $6), $7))
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxlet {
+        let (sttln, sttpos, _) = $1 in
         let (_, csname) = $2 in
-        let curried = curry_lambda_abstract $3 $5 in
-          Types.LetIn(Types.MutualLetCons(csname, curried, $6), $7)
+        let (_, _, endln, endpos) = get_range $7 in
+        let rng = (sttln, sttpos, endln, endpos) in
+        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+          (rng, UTLetIn(UTMutualLetCons(csname, curried, $6), $7))
       }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
+        let (sttln, sttpos, _) = $1 in
         let (_, vn) = $2 in
-          Types.LetMutableIn(vn, $4, $6)
+        let (_, _, endln, endpos) = get_range $6 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTLetMutableIn(vn, $4, $6))
       }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
@@ -256,18 +282,18 @@ nxlet:
             ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
       }
 ;
-nxdec:
+nxdec: /* -> Types.mutual_let_cons */
   | LETAND VAR argvar DEFEQ nxlet nxdec {
         let (_, vn) = $2 in
-        let curried = curry_lambda_abstract $3 $5 in
-          Types.MutualLetCons(vn, curried, $6)
+        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+          UTMutualLetCons(vn, curried, $6)
       }
   | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
         let (_, csname) = $2 in
-        let curried = curry_lambda_abstract $3 $5 in
-          Types.MutualLetCons(csname, curried, $6)
+        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+          UTMutualLetCons(csname, curried, $6)
       }
-  | IN { Types.EndOfMutualLet }
+  | IN { UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | LETAND VAR error {
         let (_, vn) = $2 in
@@ -281,7 +307,12 @@ nxdec:
       }
 ;
 nxwhl:
-  | WHILE nxlet DO nxwhl { Types.WhileDo($2, $4) }
+  | WHILE nxlet DO nxwhl {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTWhileDo($2, $4))
+      }
   | nxif { $1 }
 /* -- for syntax error log --*/
   | WHILE error {
@@ -291,11 +322,36 @@ nxwhl:
         raise (ParseErrorDetail(error_reporting "illegal token after 'do'" "do ..<!>.." $3))
       }
 nxif:
-  | IF nxlet THEN nxlet ELSE nxlet       { Types.IfThenElse($2, $4, $6) }
-  | IFCLASSISVALID nxlet ELSE nxlet      { Types.IfClassIsValid($2, $4) }
-  | IFCLASSISVALID THEN nxlet ELSE nxlet { Types.IfClassIsValid($3, $5) }
-  | IFIDISVALID nxlet ELSE nxlet         { Types.IfIDIsValid($2, $4) }
-  | IFIDISVALID THEN nxlet ELSE nxlet    { Types.IfIDIsValid($3, $5) }
+  | IF nxlet THEN nxlet ELSE nxlet {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $6 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTIfThenElse($2, $4, $6))
+      }
+  | IFCLASSISVALID nxlet ELSE nxlet {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTIfClassIsValid($2, $4))
+      }
+  | IFCLASSISVALID THEN nxlet ELSE nxlet {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTIfClassIsValid($3, $5))
+      }
+  | IFIDISVALID nxlet ELSE nxlet {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTIfIDIsValid($2, $4))
+      }
+  | IFIDISVALID THEN nxlet ELSE nxlet {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTIfIDIsValid($3, $5))
+      }
   | nxbfr { $1 }
 /* -- for syntax error log -- */
   | IF error {
@@ -344,7 +400,12 @@ nxif:
       }
 ;
 nxbfr:
-  | nxlambda BEFORE nxbfr { Types.Sequential($1, $3) }
+  | nxlambda BEFORE nxbfr {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTSequential($1, $3))
+      }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | nxlambda BEFORE error {
@@ -352,8 +413,18 @@ nxbfr:
       }
 ;
 nxlambda:
-  | VAR OVERWRITEEQ nxlor { let (_, vn) = $1 in Types.Overwrite(vn, $3) }
-  | LAMBDA argvar ARROW nxlor { curry_lambda_abstract $2 $4 }
+  | VAR OVERWRITEEQ nxlor {
+        let ((sttln, sttpos, _), vn) = $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTOverwrite(vn, $3))
+      }
+  | LAMBDA argvar ARROW nxlor {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          curry_lambda_abstract rng $2 $4
+      }
   | nxlor { $1 }
 /* -- for syntax error log -- */
   | LAMBDA error {
@@ -365,12 +436,12 @@ nxlambda:
           error_reporting "illegal token after '->'" "-> ..<!>.." $3))
       }
 ;
-argvar:
-  | VAR argvar { let (_, vn) = $1 in Types.ArgumentVariableCons(vn, $2) }
-  | { Types.EndOfArgumentVariable }
+argvar: /* -> Types.argument_variable_cons */
+  | VAR argvar { let (_, vn) = $1 in UTArgumentVariableCons(vn, $2) }
+  | { UTEndOfArgumentVariable }
 ;
 nxlor:
-  | nxland LOR nxlor { Types.Apply(Types.Apply(ContentOf("||"), $1), $3) }
+  | nxland LOR nxlor { binary_operator "||" $1 $2 $3 }
   | nxland { $1 }
 /* -- for syntax error log -- */
   | nxland LOR error {
@@ -378,7 +449,7 @@ nxlor:
       }
 ;
 nxland:
-  | nxcomp LAND nxland { Types.Apply(Types.Apply(ContentOf("&&"), $1), $3) }
+  | nxcomp LAND nxland { binary_operator "&&" $1 $2 $3 }
   | nxcomp { $1 }
 /* -- for syntax error log -- */
   | nxcomp LAND error {
@@ -386,12 +457,12 @@ nxland:
       }
 ;
 nxcomp:
-  | nxconcat EQ nxcomp  { Types.Apply(Types.Apply(ContentOf("=="), $1), $3) }
-  | nxconcat NEQ nxcomp { Types.Apply(Types.Apply(ContentOf("<>"), $1), $3) }
-  | nxconcat GEQ nxcomp { Types.Apply(Types.Apply(ContentOf(">="), $1), $3) }
-  | nxconcat LEQ nxcomp { Types.Apply(Types.Apply(ContentOf("<="), $1), $3) }
-  | nxconcat GT nxcomp  { Types.Apply(Types.Apply(ContentOf(">"), $1), $3) }
-  | nxconcat LT nxcomp  { Types.Apply(Types.Apply(ContentOf("<"), $1), $3) }
+  | nxconcat EQ nxcomp  { binary_operator "==" $1 $2 $3 }
+  | nxconcat NEQ nxcomp { binary_operator "<>" $1 $2 $3 }
+  | nxconcat GEQ nxcomp { binary_operator ">=" $1 $2 $3 }
+  | nxconcat LEQ nxcomp { binary_operator "<=" $1 $2 $3 }
+  | nxconcat GT nxcomp  { binary_operator ">" $1 $2 $3 }
+  | nxconcat LT nxcomp  { binary_operator "<" $1 $2 $3 }
   | nxconcat { $1 }
 /* -- for syntax error log -- */
   | nxconcat EQ error {
@@ -414,7 +485,7 @@ nxcomp:
       }
 ;
 nxconcat:
-  | nxlplus CONCAT nxconcat { Types.Apply(Types.Apply(ContentOf("^"), $1), $3) }
+  | nxlplus CONCAT nxconcat { binary_operator "^" $1 $2 $3 }
   | nxlplus { $1 }
 /* -- for syntax error log -- */
   | nxlplus CONCAT error {
@@ -422,7 +493,7 @@ nxconcat:
       }
 ;
 nxlplus:
-  | nxlminus PLUS nxrplus { Types.Apply(Types.Apply(ContentOf("+"), $1), $3) }
+  | nxlminus PLUS nxrplus { binary_operator "+" $1 $2 $3 }
   | nxlminus { $1 }
 /* -- for syntax error log -- */
   | nxlminus PLUS error {
@@ -430,7 +501,7 @@ nxlplus:
       }
 ;
 nxlminus:
-  | nxlplus MINUS nxrtimes { Types.Apply(Types.Apply(ContentOf("-"), $1), $3) }
+  | nxlplus MINUS nxrtimes { binary_operator "-" $1 $2 $3 }
   | nxltimes { $1 }
 /* -- for syntax error log -- */
   | nxlplus MINUS error {
@@ -438,7 +509,7 @@ nxlminus:
       }
 ;
 nxrplus:
-  | nxrminus PLUS nxrplus { Types.Apply(Types.Apply(ContentOf("+"), $1), $3) }
+  | nxrminus PLUS nxrplus { binary_operator "+" $1 $2 $3 }
   | nxrminus { $1 }
 /* -- for syntax error log -- */
   | nxrminus PLUS error {
@@ -446,7 +517,7 @@ nxrplus:
       }
 ;
 nxrminus:
-  | nxrplus MINUS nxrtimes { Types.Apply(Types.Apply(ContentOf("-"), $1), $3) }
+  | nxrplus MINUS nxrtimes { binary_operator "+" $1 $2 $3 }
   | nxrtimes { $1 }
 /* -- for syntax error log -- */
   | nxrplus MINUS error {
@@ -454,9 +525,9 @@ nxrminus:
       }
 ;
 nxltimes:
-  | nxun TIMES nxrtimes    { Types.Apply(Types.Apply(ContentOf("*"), $1), $3) }
-  | nxltimes DIVIDES nxapp { Types.Apply(Types.Apply(ContentOf("/"), $1), $3) }
-  | nxltimes MOD nxapp     { Types.Apply(Types.Apply(ContentOf("mod"), $1), $3) }
+  | nxun TIMES nxrtimes    { binary_operator "*" $1 $2 $3 }
+  | nxltimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
+  | nxltimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
   | nxun { $1 }
 /* -- for syntax error log -- */
   | nxun TIMES error {
@@ -470,9 +541,9 @@ nxltimes:
       }
 ;
 nxrtimes:
-  | nxapp TIMES nxrtimes   { Types.Apply(Types.Apply(ContentOf("*"), $1), $3) }
-  | nxrtimes DIVIDES nxapp { Types.Apply(Types.Apply(ContentOf("/"), $1), $3) }
-  | nxrtimes MOD nxapp     { Types.Apply(Types.Apply(ContentOf("mod"), $1), $3) }
+  | nxapp TIMES nxrtimes   { binary_operator "*" $1 $2 $3 }
+  | nxrtimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
+  | nxrtimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | nxapp TIMES error {
@@ -486,8 +557,14 @@ nxrtimes:
       }
 ;
 nxun:
-  | MINUS nxapp { Types.Apply(Types.Apply(ContentOf("-"), NumericConstant(0)), $2) }
-  | LNOT nxapp  { Types.Apply(ContentOf("not"), $2) }
+  | MINUS nxapp { binary_operator "-" ((0, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
+  | LNOT nxapp  {
+        let (sttln, sttpos, lnotend) = $1 in
+        let lnotrng = (sttln, sttpos, sttln, lnotend) in
+        let (_, _, endln, endpos) = get_range $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTApply((lnotrng, UTContentOf("not")), $2))
+      }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | MINUS error {
@@ -498,23 +575,89 @@ nxun:
       }
 ;
 nxapp:
-  | nxapp nxbot { Types.Apply($1, $2) }
+  | nxapp nxbot {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let (_, _, endln, endpos) = get_range $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTApply($1, $2))
+      }
   | nxbot { $1 }
 ;
 nxbot:
-  | VAR      { let (_, vn) = $1 in Types.ContentOf(vn) }
-  | NUMCONST { let (_, cs) = $1 in Types.NumericConstant(int_of_string cs) }
-  | TRUE  { Types.BooleanConstant(true) }
-  | FALSE { Types.BooleanConstant(false) }
-  | LPAREN nxlet RPAREN    { $2 }
-  | OPENSTR sxsep CLOSESTR { $2 }
-  | OPENQT sxsep CLOSEQT   { omit_spaces $2 }
-  | BLIST ELIST              { Types.EndOfList }
-  | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
-  | REFNOW VAR   { let (_, vn) = $2 in Types.Reference(vn) }
-  | REFFINAL VAR { let (_, vn) = $2 in Types.ReferenceFinal(vn) }
-  | UNITVALUE    { Types.UnitConstant }
-  | FINISH       { Types.FinishHeaderFile }
+  | VAR {
+        let ((varln, varstt, varend), vn) = $1 in
+        let rng = (varln, varstt, varln, varend) in
+          (rng, UTContentOf(vn))
+      }
+  | NUMCONST {
+        let ((ncln, ncstt, ncend), cs) = $1 in
+        let rng = (ncln, ncstt, ncln, ncend) in
+          (rng, UTNumericConstant(int_of_string cs))
+      }
+  | TRUE  {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTBooleanConstant(true))
+      }
+  | FALSE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTBooleanConstant(false))
+      }
+  | LPAREN nxlet RPAREN    {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let (_, utast) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, utast)
+      }
+  | OPENSTR sxsep CLOSESTR {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let (_, utast) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, utast)
+      }
+  | OPENQT sxsep CLOSEQT {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, omit_spaces $2)
+      }
+  | BLIST ELIST {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTEndOfList)
+      }
+  | BLIST nxlet nxlist ELIST {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTListCons($2, $3))
+      }
+  | REFNOW VAR   {
+        let (sttln, sttpos, _) = $1 in
+        let ((endln, _, endpos), vn) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTReference(vn))
+      }
+  | REFFINAL VAR {
+        let (sttln, sttpos, _) = $1 in
+        let ((endln, _, endpos), vn) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTReferenceFinal(vn))
+      }
+  | UNITVALUE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTUnitConstant)
+      }
+  | FINISH {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTFinishHeaderFile)
+      }
 /* -- for syntax error log -- */
   | BLIST error {
         raise (ParseErrorDetail(
@@ -530,8 +673,13 @@ nxbot:
       }
 ;
 nxlist:
-  | LISTPUNCT nxlet nxlist { Types.ListCons($2, $3) }
-  | { Types.EndOfList }
+  | LISTPUNCT nxlet nxlist {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTListCons($2, $3))
+      }
+  | { ((0, 0, 0, 0), UTEndOfList) }
 /* -- for syntax error log -- */
   | LISTPUNCT error {
         raise (ParseErrorDetail(
@@ -548,8 +696,13 @@ sxsep:
       }
 ;
 sxsepsub:
-  | sxblock SEP sxsepsub { ListCons($1, $3) }
-  | { EndOfList }
+  | sxblock SEP sxsepsub {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTListCons($1, $3))
+      }
+  | { ((0, 0, 0, 0), UTEndOfList) }
 /* -- for syntax error log -- */
   | sxblock SEP error {
         raise (ParseErrorDetail(
@@ -557,17 +710,40 @@ sxsepsub:
       }
 ;
 sxblock:
-  | sxbot sxblock { Types.Concat($1, $2) }
-  | { Types.StringEmpty }
+  | sxbot sxblock {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let (_, _, endln, endpos) = get_range $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTConcat($1, $2))
+      }
+  | { ((0, 0, 0, 0), UTStringEmpty) }
   ;
 sxbot:
-  | CHAR  { let (_, ch) = $1 in Types.StringConstant(ch) }
-  | SPACE { Types.StringConstant(" ") }
-  | BREAK { Types.BreakAndIndent }
-  | VARINSTR END { let (_, vn) = $1 in Types.ContentOf(vn) }
+  | CHAR  {
+        let ((ln, sttpos, endpos), ch) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTStringConstant(ch))
+      }
+  | SPACE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTStringConstant(" "))
+      }
+  | BREAK {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTBreakAndIndent)
+      }
+  | VARINSTR END {
+        let ((sttln, sttpos, _), vn) = $1 in
+        let (endln, _, endpos) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTContentOf(vn))
+      }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
-        let (_, csname) = $1 in
-          convert_into_numeric_apply csname $2 $3 (append_argument_list $4 $5)
+        let ((csln, csstt, csend), csname) = $1 in
+        let csrng = (csln, csstt, csln, csend) in
+          convert_into_apply (csrng, UTContentOf(csname)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | CTRLSEQ error {
@@ -575,15 +751,23 @@ sxbot:
         raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csname ^ "'") (csname ^ " ..<!>..") ln))
       }
 sxclsnm:
-  | CLASSNAME { let (_, clsnm) = $1 in class_name_to_abstract_tree clsnm }
-  | { NoContent }
+  | CLASSNAME {
+        let ((ln, sttpos, endpos), clsnm) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, class_name_to_abstract_tree clsnm)
+      }
+  | { ((0, 0, 0, 0), UTNoContent) }
 sxidnm:
-  | IDNAME { let (_, idnm) = $1 in id_name_to_abstract_tree idnm }
-  | { NoContent }
+  | IDNAME {
+        let ((ln, sttpos, endpos), idnm) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, id_name_to_abstract_tree idnm)
+      }
+  | { ((0, 0, 0, 0), UTNoContent) }
 ;
 narg: /* -> Types.argument_cons */
-  | OPENNUM nxlet CLOSENUM narg { Types.ArgumentCons($2, $4) }
-  | { Types.EndOfArgument }
+  | OPENNUM nxlet CLOSENUM narg { UTArgumentCons($2, $4) }
+  | { UTEndOfArgument }
 /* -- for syntax error log -- */
   | OPENNUM error {
         raise (ParseErrorDetail(
@@ -595,9 +779,9 @@ narg: /* -> Types.argument_cons */
       }
 ;
 sarg: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(omit_spaces $2, $4) }
-  | END { Types.EndOfArgument }
+  | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
+  | OPENQT sxsep CLOSEQT sargsub { UTArgumentCons(((0, 0, 0, 0), omit_spaces $2), $4) }
+  | END { UTEndOfArgument }
 /* -- for syntax error log */
   | BGRP error {
         raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
@@ -607,9 +791,9 @@ sarg: /* -> Types.argument_cons */
       }
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub { Types.ArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub { Types.ArgumentCons(omit_spaces $2, $4) }
-  | { Types.EndOfArgument }
+  | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
+  | OPENQT sxsep CLOSEQT sargsub { UTArgumentCons(((0, 0, 0, 0), omit_spaces $2), $4) }
+  | { UTEndOfArgument }
 /* -- for syntax error log */
   | BGRP error {
         raise (ParseErrorDetail(error_reporting "illegal token after '{'" "{ ..<!>.." $1))
