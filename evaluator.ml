@@ -148,8 +148,6 @@ let rec interpret env ast =
 
   | EndOfList -> EndOfList
 
-  | LiteralArea(ltrl) -> ltrl
-
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with

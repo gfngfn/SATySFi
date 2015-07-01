@@ -85,10 +85,6 @@ and abstract_tree =
   | LetIn          of mutual_let_cons * abstract_tree
   | IfThenElse     of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of var_name * abstract_tree
-  | LiteralArea    of abstract_tree
-(* for inner procedure *)
-  | FuncWithEnvironment of var_name * abstract_tree * environment
-  | NoContent (* for class and id *)
   | FinishHeaderFile
   | LetMutableIn   of var_name * abstract_tree * abstract_tree
   | Sequential     of abstract_tree * abstract_tree
@@ -96,6 +92,12 @@ and abstract_tree =
   | MutableValue   of abstract_tree
   | Reference      of var_name
   | ReferenceFinal of var_name
+  | IfClassIsValid of abstract_tree * abstract_tree
+  | IfIDIsValid    of abstract_tree * abstract_tree
+  | WhileDo of abstract_tree * abstract_tree
+(* only for inner procedure *)
+  | NoContent (* for class and id *)
+  | FuncWithEnvironment of var_name * abstract_tree * environment
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
   | PrimitiveSame of abstract_tree * abstract_tree
@@ -103,9 +105,6 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveInclude of abstract_tree
   | PrimitiveArabic of abstract_tree
-  | IfClassIsValid of abstract_tree * abstract_tree
-  | IfIDIsValid    of abstract_tree * abstract_tree
-  | WhileDo of abstract_tree * abstract_tree
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
@@ -120,6 +119,7 @@ type type_struct =
   | BoolType
   | FuncType of type_struct * type_struct
   | ListType of type_struct
+(*  | PolyType of type_variable_id * type_struct *)
   | TypeVariable of type_variable_id * var_name
 and type_environment = (var_name, type_struct) Hashtbl.t
 type type_equation = ((type_struct * type_struct) Stacklist.t) ref

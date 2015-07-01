@@ -1,104 +1,139 @@
 open Types
 
+let rec func_types domlst cod =
+  match domlst with
+  | [] -> cod
+  | hd :: tl -> FuncType(hd, func_types tl cod)
+
 let add_to_type_environment tyenv varnm tystr =
   Hashtbl.add tyenv varnm tystr
 
 let make_type_environment () =
   let tyenv : type_environment = Hashtbl.create 128 in
-    add_to_type_environment tyenv "same"
-      (FuncType(StringType, FuncType(StringType, BoolType))) ;
-    add_to_type_environment tyenv "string-sub"
-      (FuncType(StringType, FuncType(IntType, FuncType(IntType, StringType)))) ;
-    add_to_type_environment tyenv "string-length"
-      (FuncType(StringType, IntType)) ;
-    add_to_type_environment tyenv "\\deeper"
-      (FuncType(StringType, StringType)) ;
-    add_to_type_environment tyenv "\\break"
-      StringType ;
-    add_to_type_environment tyenv "\\space"
-      StringType ;
-    add_to_type_environment tyenv "\\include"
-      (FuncType(StringType, StringType)) ;
-    add_to_type_environment tyenv "\\arabic"
-      (FuncType(IntType, StringType)) ;
-    add_to_type_environment tyenv "list-head"
-      (FuncType(ListType(StringType), StringType)) ;
-    add_to_type_environment tyenv "list-tail"
-      (FuncType(ListType(StringType), ListType(StringType))) ;
-    add_to_type_environment tyenv "is-empty"
-      (FuncType(ListType(StringType), BoolType)) ;
+
+    add_to_type_environment tyenv "+"   (func_types [IntType; IntType] IntType) ;
+    add_to_type_environment tyenv "-"   (func_types [IntType; IntType] IntType) ;
+    add_to_type_environment tyenv "mod" (func_types [IntType; IntType] IntType) ;
+    add_to_type_environment tyenv "*"   (func_types [IntType; IntType] IntType) ;
+    add_to_type_environment tyenv "/"   (func_types [IntType; IntType] IntType) ;
+    add_to_type_environment tyenv "^"   (func_types [StringType; StringType] StringType) ;
+    add_to_type_environment tyenv "=="  (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv "<>"  (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv ">"   (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv "<"   (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv ">="  (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv "<="  (func_types [IntType; IntType] BoolType) ;
+    add_to_type_environment tyenv "&&"  (func_types [BoolType; BoolType] BoolType) ;
+    add_to_type_environment tyenv "||"  (func_types [BoolType; BoolType] BoolType) ;
+
+    add_to_type_environment tyenv "same"          (func_types [StringType; StringType] BoolType) ;
+    add_to_type_environment tyenv "string-sub"    (func_types [StringType; IntType; IntType] StringType) ;
+    add_to_type_environment tyenv "string-length" (func_types [StringType] IntType) ;
+    add_to_type_environment tyenv "\\deeper"      (func_types [StringType] StringType) ;
+    add_to_type_environment tyenv "\\break"       (func_types [] StringType) ;
+    add_to_type_environment tyenv "\\space"       (func_types [] StringType) ;
+    add_to_type_environment tyenv "\\include"     (func_types [StringType] StringType) ;
+    add_to_type_environment tyenv "\\arabic"      (func_types [IntType] StringType) ;
+
+    add_to_type_environment tyenv "list-head" (FuncType(ListType(StringType), StringType)) ;
+    add_to_type_environment tyenv "list-tail" (FuncType(ListType(StringType), ListType(StringType))) ;
+    add_to_type_environment tyenv "is-empty"  (FuncType(ListType(StringType), BoolType)) ;
+
     tyenv
+
+let rec lambdas env vlst ast =
+  match vlst with
+  | [] -> ast
+  | vn :: tail -> FuncWithEnvironment(vn, lambdas_sub tail ast, env)
+
+and lambdas_sub vlst ast =
+  match vlst with
+  | [] -> ast
+  | vn :: tail -> LambdaAbstract(vn, lambdas_sub tail ast)
 
 let add_to_environment env varnm rfast =
   Hashtbl.add env varnm rfast
 
 let make_environment () =
-  let loc_same : location = ref NoContent in
-  let loc_stringsub : location = ref NoContent in
+  let loc_plus         : location = ref NoContent in
+  let loc_minus        : location = ref NoContent in
+  let loc_mod          : location = ref NoContent in
+  let loc_times        : location = ref NoContent in
+  let loc_divides      : location = ref NoContent in
+  let loc_concat       : location = ref NoContent in
+  let loc_equalto      : location = ref NoContent in
+  let loc_greaterthan  : location = ref NoContent in
+  let loc_lessthan     : location = ref NoContent in
+  let loc_geq          : location = ref NoContent in
+  let loc_leq          : location = ref NoContent in
+  let loc_land         : location = ref NoContent in
+  let loc_lor          : location = ref NoContent in
+  let loc_lnot         : location = ref NoContent in
+  let loc_same         : location = ref NoContent in
+  let loc_stringsub    : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
-  let loc_deeper : location = ref NoContent in
-  let loc_break : location = ref NoContent in
-  let loc_space : location = ref NoContent in
-  let loc_include : location = ref NoContent in
-  let loc_arabic : location = ref NoContent in
-  let loc_listhead : location = ref NoContent in
-  let loc_listtail : location = ref NoContent in
-  let loc_isempty : location = ref NoContent in
+  let loc_deeper       : location = ref NoContent in
+  let loc_break        : location = ref NoContent in
+  let loc_space        : location = ref NoContent in
+  let loc_include      : location = ref NoContent in
+  let loc_arabic       : location = ref NoContent in
+  let loc_listhead     : location = ref NoContent in
+  let loc_listtail     : location = ref NoContent in
+  let loc_isempty      : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
-    add_to_environment env "same" loc_same ;
-    add_to_environment env "string-sub" loc_stringsub ;
+    add_to_environment env "+"             loc_plus ;
+    add_to_environment env "-"             loc_minus ;
+    add_to_environment env "mod"           loc_mod ;
+    add_to_environment env "*"             loc_times ;
+    add_to_environment env "/"             loc_divides ;
+    add_to_environment env "^"             loc_concat ;
+    add_to_environment env "=="            loc_equalto ;
+    add_to_environment env ">"             loc_greaterthan ;
+    add_to_environment env "<"             loc_lessthan ;
+    add_to_environment env ">="            loc_geq ;
+    add_to_environment env "<="            loc_leq ;
+    add_to_environment env "&&"            loc_land ;
+    add_to_environment env "||"            loc_lor ;
+    add_to_environment env "not"           loc_lnot ;
+    add_to_environment env "same"          loc_same ;
+    add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
-    add_to_environment env "\\deeper" loc_deeper ;
-    add_to_environment env "\\break" loc_break ;
-    add_to_environment env "\\space" loc_space ;
-    add_to_environment env "\\include" loc_include ;
-    add_to_environment env "\\arabic" loc_arabic ;
-    add_to_environment env "list-head" loc_listhead ;
-    add_to_environment env "list-tail" loc_listtail ;
-    add_to_environment env "is-empty" loc_isempty ;
-    loc_same := FuncWithEnvironment("~stra", 
-                  LambdaAbstract("~strb",
-                    PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))
-                  ),
-                  env
-                ) ;
-    loc_stringsub :=  FuncWithEnvironment("~str", 
-                        LambdaAbstract("~pos",
-                          LambdaAbstract("~wid",
-                            PrimitiveStringSub(ContentOf("~str"), ContentOf("~pos"), ContentOf("~wid"))
-                          )
-                        ),
-                        env
-                      ) ;
-    loc_stringlength := FuncWithEnvironment("~str",
-                          PrimitiveStringLength(ContentOf("~str")),
-                          env
-                        ) ;
-    loc_deeper := FuncWithEnvironment("~content",
-                    Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent),
-                    env
-                  ) ;
-    loc_break  := BreakAndIndent ;
-    loc_space  := StringConstant(" ") ;
+    add_to_environment env "\\deeper"      loc_deeper ;
+    add_to_environment env "\\break"       loc_break ;
+    add_to_environment env "\\space"       loc_space ;
+    add_to_environment env "\\include"     loc_include ;
+    add_to_environment env "\\arabic"      loc_arabic ;
+    add_to_environment env "list-head"     loc_listhead ;
+    add_to_environment env "list-tail"     loc_listtail ;
+    add_to_environment env "is-empty"      loc_isempty ;
 
-    loc_include  := FuncWithEnvironment("~filename",
-                      PrimitiveInclude(ContentOf("~filename")),
-                      env
-                    ) ;
-    loc_arabic := FuncWithEnvironment("~num",
-                    PrimitiveArabic(ContentOf("~num")),
-                    env
-                  ) ;
-    loc_listhead := FuncWithEnvironment("~list",
-                      PrimitiveListHead(ContentOf("~list")),
-                      env
-                    ) ;
-    loc_listtail := FuncWithEnvironment("~list",
-                      PrimitiveListTail(ContentOf("~list")),
-                      env
-                    ) ;
-    loc_isempty :=  FuncWithEnvironment("~list",
-                      PrimitiveIsEmpty(ContentOf("~list")),
-                      env
-                    ) ;
+    loc_plus         := lambdas env ["~opl"; "~opr"]
+                          (Plus(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_same         := lambdas env ["~stra"; "~strb"]
+                          (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;
+
+    loc_stringsub    := lambdas env ["~str"; "~pos"; "~wid"]
+                          (PrimitiveStringSub(ContentOf("~str"), ContentOf("~pos"), ContentOf("~wid"))) ;
+
+    loc_stringlength := lambdas env ["~str"]
+                          (PrimitiveStringLength(ContentOf("~str"))) ;
+
+    loc_deeper       := lambdas env ["~content"]
+                          (Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent)) ;
+
+    loc_break        := lambdas env [] BreakAndIndent ;
+
+    loc_space        := lambdas env [] (StringConstant(" ")) ;
+
+    loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ;
+
+    loc_arabic       := lambdas env ["~num"] (PrimitiveArabic(ContentOf("~num"))) ;
+
+    loc_listhead     := lambdas env ["~list"] (PrimitiveListHead(ContentOf("~list"))) ;
+
+    loc_listtail     := lambdas env ["~list"] (PrimitiveListTail(ContentOf("~list"))) ;
+
+    loc_isempty      := lambdas env ["~list"] (PrimitiveIsEmpty(ContentOf("~list"))) ;
+
     env

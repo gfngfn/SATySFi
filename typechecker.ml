@@ -49,8 +49,6 @@ let rec typecheck tyeq tyenv astch =
   | NumericConstant(_) -> IntType
   | StringConstant(_) -> StringType
   | BooleanConstant(_) -> BoolType
-  | LiteralArea(_) -> StringType
-
   | ContentOf(nv) ->
       ( try
           let ty = Hashtbl.find tyenv nv in
