@@ -25,39 +25,34 @@ and mutual_let_cons =
   | EndOfMutualLet
 and environment = (var_name, location) Hashtbl.t
 and location = abstract_tree ref
-(*
 and untyped_abstract_tree =
-  | UTStringEmpty
-  | UTNumericConstant of code_range * int
-  | UTBooleanConstant of code_range * bool
-  | UTStringConstant  of code_range * string
-  | UTUnitConstant    of code_range
-  | UTContentOf       of code_range * var_name
-  | UTConcat          of code_range * abstract_tree * abstract_tree
-  | UTConcatOperation of code_range * abstract_tree * abstract_tree
-  | UTApply    of code_range * abstract_tree * abstract_tree
-  | UTListCons        of code_range * abstract_tree * abstract_tree
-  | UTEndOfList
-  | UTBreakAndIndent
-  | UTTimes   of code_range * abstract_tree * abstract_tree
-  | UTDivides of code_range * abstract_tree * abstract_tree
-  | UTMod     of code_range * abstract_tree * abstract_tree
-  | UTPlus    of code_range * abstract_tree * abstract_tree
-  | UTMinus   of code_range * abstract_tree * abstract_tree
-  | UTGreaterThan of code_range * abstract_tree * abstract_tree
-  | UTLessThan    of code_range * abstract_tree * abstract_tree
-  | UTEqualTo     of code_range * abstract_tree * abstract_tree
-  | UTLogicalAnd  of code_range * abstract_tree * abstract_tree
-  | UTLogicalOr   of code_range * abstract_tree * abstract_tree
-  | UTLogicalNot  of code_range * abstract_tree
-  | UTLetIn          of code_range * mutual_let_cons * abstract_tree
-  | UTIfThenElse     of code_range * abstract_tree * abstract_tree * abstract_tree
-  | UTLambdaAbstract of code_range * var_name * abstract_tree
-  | UTLiteralArea    of code_range * abstract_tree
-  | UTFinishHeaderFile of code_range
-*)
+  | UntypedStringEmpty
+  | UntypedNumericConstant  of code_range * int
+  | UntypedBooleanConstant  of code_range * bool
+  | UntypedStringConstant   of code_range * string
+  | UntypedUnitConstant     of code_range
+  | UntypedContentOf        of code_range * var_name
+  | UntypedConcat           of code_range * abstract_tree * abstract_tree
+  | UntypedConcatOperation  of code_range * abstract_tree * abstract_tree
+  | UntypedApply            of code_range * abstract_tree * abstract_tree
+  | UntypedListCons         of code_range * abstract_tree * abstract_tree
+  | UntypedEndOfList
+  | UntypedBreakAndIndent   of code_range
+  | UntypedLetIn            of code_range * mutual_let_cons * abstract_tree
+  | UntypedIfThenElse       of code_range * abstract_tree * abstract_tree * abstract_tree
+  | UntypedLambdaAbstract   of code_range * var_name * abstract_tree
+  | UntypedFinishHeaderFile of code_range
+  | UntypedLetMutableIn     of code_range * var_name * abstract_tree * abstract_tree
+  | UntypedSequential       of code_range * abstract_tree * abstract_tree
+  | UntypedOverwrite        of code_range * var_name * abstract_tree
+  | UntypedMutableValue     of code_range * abstract_tree
+  | UntypedReference        of code_range * var_name
+  | UntypedReferenceFinal   of code_range * var_name
+  | UntypedIfClassIsValid   of code_range * abstract_tree * abstract_tree
+  | UntypedIfIDIsValid      of code_range * abstract_tree * abstract_tree
+  | UntypedWhileDo          of code_range * abstract_tree * abstract_tree
 and abstract_tree =
-(* for parser *)
+(* for syntax *)
   | StringEmpty
   | NumericConstant of int
   | BooleanConstant of bool
@@ -65,23 +60,10 @@ and abstract_tree =
   | UnitConstant
   | ContentOf       of var_name
   | Concat          of abstract_tree * abstract_tree
-  | ConcatOperation of abstract_tree * abstract_tree
   | Apply           of abstract_tree * abstract_tree
   | ListCons        of abstract_tree * abstract_tree
   | EndOfList
   | BreakAndIndent
-  | DeeperIndent of abstract_tree
-  | Times   of abstract_tree * abstract_tree
-  | Divides of abstract_tree * abstract_tree
-  | Mod     of abstract_tree * abstract_tree
-  | Plus    of abstract_tree * abstract_tree
-  | Minus   of abstract_tree * abstract_tree
-  | GreaterThan of abstract_tree * abstract_tree
-  | LessThan    of abstract_tree * abstract_tree
-  | EqualTo     of abstract_tree * abstract_tree
-  | LogicalAnd  of abstract_tree * abstract_tree
-  | LogicalOr   of abstract_tree * abstract_tree
-  | LogicalNot  of abstract_tree
   | LetIn          of mutual_let_cons * abstract_tree
   | IfThenElse     of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of var_name * abstract_tree
@@ -100,6 +82,18 @@ and abstract_tree =
   | FuncWithEnvironment of var_name * abstract_tree * environment
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
   | EvaluatedEnvironment of environment
+  | DeeperIndent of abstract_tree
+  | Times   of abstract_tree * abstract_tree
+  | Divides of abstract_tree * abstract_tree
+  | Mod     of abstract_tree * abstract_tree
+  | Plus    of abstract_tree * abstract_tree
+  | Minus   of abstract_tree * abstract_tree
+  | GreaterThan of abstract_tree * abstract_tree
+  | LessThan    of abstract_tree * abstract_tree
+  | EqualTo     of abstract_tree * abstract_tree
+  | LogicalAnd  of abstract_tree * abstract_tree
+  | LogicalOr   of abstract_tree * abstract_tree
+  | LogicalNot  of abstract_tree
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveStringSub of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree

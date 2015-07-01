@@ -47,8 +47,6 @@ let rec interpret env ast =
 
   | NoContent -> NoContent
 
-  | ConcatOperation(astf, astl) -> interpret env (Concat(astf, astl))
-
   | Concat(astf, astl) ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in

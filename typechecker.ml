@@ -59,13 +59,6 @@ let rec typecheck tyeq tyenv astch =
         with
         | Not_found -> raise (TypeCheckError("undefined variable '" ^ nv ^ "'"))
       )
-  | ConcatOperation(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent StringType tyf then () else Stacklist.push tyeq (StringType, tyf) ) ;
-        ( if equivalent StringType tyl then () else Stacklist.push tyeq (StringType, tyl) ) ;
-        StringType
-      )
   | Concat(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
@@ -92,88 +85,6 @@ let rec typecheck tyeq tyenv astch =
       let tyf = typecheck tyeq tyenv astf in
       ( ( if equivalent StringType tyf then () else Stacklist.push tyeq (StringType, tyf) ) ;
         StringType
-      )
-  | Times(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        IntType
-      )
-  | Divides(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        IntType
-      )
-  | Mod(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        IntType
-      )
-  | Plus(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        IntType
-      )
-  | Minus(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        IntType
-      )
-  | GreaterThan(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        BoolType
-      )
-  | LessThan(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent IntType tyf then () else Stacklist.push tyeq (IntType, tyf) ) ;
-        ( if equivalent IntType tyl then () else Stacklist.push tyeq (IntType, tyl) ) ;
-        BoolType
-      )
-  | EqualTo(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      (
-        ( match (tyf, tyl) with
-          | (FuncType(_, _), _) -> raise (TypeCheckError("cannot compare functions using '=='"))
-          | (_, FuncType(_, _)) -> raise (TypeCheckError("cannot compare functions using '=='"))
-          | (UnitType, _) -> raise (TypeCheckError("cannot compare units using '=='"))
-          | (_, UnitType) -> raise (TypeCheckError("cannot compare units using '=='"))
-          | _ -> ()
-        ) ;
-        ( if equivalent tyf tyl then () else Stacklist.push tyeq (tyf, tyl) ) ;
-        BoolType
-      )
-  | LogicalAnd(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent BoolType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent BoolType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
-        BoolType
-      )
-  | LogicalOr(astf, astl) ->
-      let tyf = typecheck tyeq tyenv astf in
-      let tyl = typecheck tyeq tyenv astl in
-      ( ( if equivalent BoolType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        ( if equivalent BoolType tyl then () else Stacklist.push tyeq (BoolType, tyl) ) ;
-        BoolType
-      )
-  | LogicalNot(astf) ->
-      let tyf = typecheck tyeq tyenv astf in
-      ( ( if equivalent BoolType tyf then () else Stacklist.push tyeq (BoolType, tyf) ) ;
-        BoolType
       )
   | LetIn(mutletcons, astl) ->
     ( print_process "#LetIn" ;
