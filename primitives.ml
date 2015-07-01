@@ -43,12 +43,12 @@ let make_type_environment () =
 
 let rec lambdas env vlst ast =
   match vlst with
-  | [] -> ast
+  | []         -> ast
   | vn :: tail -> FuncWithEnvironment(vn, lambdas_sub tail ast, env)
 
 and lambdas_sub vlst ast =
   match vlst with
-  | [] -> ast
+  | []         -> ast
   | vn :: tail -> LambdaAbstract(vn, lambdas_sub tail ast)
 
 let add_to_environment env varnm rfast =
@@ -62,6 +62,7 @@ let make_environment () =
   let loc_divides      : location = ref NoContent in
   let loc_concat       : location = ref NoContent in
   let loc_equalto      : location = ref NoContent in
+  let loc_neq          : location = ref NoContent in
   let loc_greaterthan  : location = ref NoContent in
   let loc_lessthan     : location = ref NoContent in
   let loc_geq          : location = ref NoContent in
@@ -88,6 +89,7 @@ let make_environment () =
     add_to_environment env "/"             loc_divides ;
     add_to_environment env "^"             loc_concat ;
     add_to_environment env "=="            loc_equalto ;
+    add_to_environment env "<>"            loc_neq ;
     add_to_environment env ">"             loc_greaterthan ;
     add_to_environment env "<"             loc_lessthan ;
     add_to_environment env ">="            loc_geq ;
@@ -109,6 +111,48 @@ let make_environment () =
 
     loc_plus         := lambdas env ["~opl"; "~opr"]
                           (Plus(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_minus        := lambdas env ["~opl"; "~opr"]
+                          (Minus(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_mod          := lambdas env ["~opl"; "~opr"]
+                          (Mod(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_times        := lambdas env ["~opl"; "~opr"]
+                          (Times(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_divides      := lambdas env ["~opl"; "~opr"]
+                          (Divides(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_concat       := lambdas env ["~opl"; "~opr"]
+                          (Concat(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_equalto      := lambdas env ["~opl"; "~opr"]
+                          (EqualTo(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_neq          := lambdas env ["~opl"; "~opr"]
+                          (LogicalNot(EqualTo(ContentOf("~opl"), ContentOf("~opr")))) ;
+
+    loc_greaterthan  := lambdas env ["~opl"; "~opr"]
+                          (GreaterThan(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_lessthan     := lambdas env ["~opl"; "~opr"]
+                          (LessThan(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_geq          := lambdas env ["~opl"; "~opr"]
+                          (LogicalNot(LessThan(ContentOf("~opl"), ContentOf("~opr")))) ;
+
+    loc_leq          := lambdas env ["~opl"; "~opr"]
+                          (LogicalNot(GreaterThan(ContentOf("~opl"), ContentOf("~opr")))) ;
+
+    loc_land         := lambdas env ["~opl"; "~opr"]
+                          (LogicalAnd(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_lor          := lambdas env ["~opl"; "~opr"]
+                          (LogicalOr(ContentOf("~opl"), ContentOf("~opr"))) ;
+
+    loc_lnot         := lambdas env ["~op"]
+                          (LogicalNot(ContentOf("~op"))) ;
 
     loc_same         := lambdas env ["~stra"; "~strb"]
                           (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;

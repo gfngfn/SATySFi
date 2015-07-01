@@ -19,7 +19,7 @@
     match argcons with
     | EndOfArgument -> astconstr
     | ArgumentCons(arg, actail) ->
-        convert_into_numeric_apply_sub actail (NumericApply(astconstr, arg))
+        convert_into_numeric_apply_sub actail (Apply(astconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
     StringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
@@ -291,11 +291,11 @@ nxwhl:
         raise (ParseErrorDetail(error_reporting "illegal token after 'do'" "do ..<!>.." $3))
       }
 nxif:
-  | IF nxlet THEN nxlet ELSE nxlet { Types.IfThenElse($2, $4, $6) }
-  | IFCLASSISVALID nxlet ELSE nxlet { Types.IfClassIsValid($2, $4) }
+  | IF nxlet THEN nxlet ELSE nxlet       { Types.IfThenElse($2, $4, $6) }
+  | IFCLASSISVALID nxlet ELSE nxlet      { Types.IfClassIsValid($2, $4) }
   | IFCLASSISVALID THEN nxlet ELSE nxlet { Types.IfClassIsValid($3, $5) }
-  | IFIDISVALID nxlet ELSE nxlet { Types.IfIDIsValid($2, $4) }
-  | IFIDISVALID THEN nxlet ELSE nxlet { Types.IfIDIsValid($3, $5) }
+  | IFIDISVALID nxlet ELSE nxlet         { Types.IfIDIsValid($2, $4) }
+  | IFIDISVALID THEN nxlet ELSE nxlet    { Types.IfIDIsValid($3, $5) }
   | nxbfr { $1 }
 /* -- for syntax error log -- */
   | IF error {
@@ -370,7 +370,7 @@ argvar:
   | { Types.EndOfArgumentVariable }
 ;
 nxlor:
-  | nxland LOR nxlor { Types.LogicalOr($1, $3) }
+  | nxland LOR nxlor { Types.Apply(Types.Apply(ContentOf("||"), $1), $3) }
   | nxland { $1 }
 /* -- for syntax error log -- */
   | nxland LOR error {
@@ -378,7 +378,7 @@ nxlor:
       }
 ;
 nxland:
-  | nxcomp LAND nxland { Types.LogicalAnd($1, $3) }
+  | nxcomp LAND nxland { Types.Apply(Types.Apply(ContentOf("&&"), $1), $3) }
   | nxcomp { $1 }
 /* -- for syntax error log -- */
   | nxcomp LAND error {
@@ -386,12 +386,12 @@ nxland:
       }
 ;
 nxcomp:
-  | nxconcat EQ nxcomp { Types.EqualTo($1, $3) }
-  | nxconcat NEQ nxcomp { Types.LogicalNot(Types.EqualTo($1, $3)) }
-  | nxconcat GEQ nxcomp { Types.LogicalNot(Types.LessThan($1, $3)) }
-  | nxconcat LEQ nxcomp { Types.LogicalNot(Types.GreaterThan($1, $3)) }
-  | nxconcat GT nxcomp { Types.GreaterThan($1, $3) }
-  | nxconcat LT nxcomp { Types.LessThan($1, $3) }
+  | nxconcat EQ nxcomp  { Types.Apply(Types.Apply(ContentOf("=="), $1), $3) }
+  | nxconcat NEQ nxcomp { Types.Apply(Types.Apply(ContentOf("<>"), $1), $3) }
+  | nxconcat GEQ nxcomp { Types.Apply(Types.Apply(ContentOf(">="), $1), $3) }
+  | nxconcat LEQ nxcomp { Types.Apply(Types.Apply(ContentOf("<="), $1), $3) }
+  | nxconcat GT nxcomp  { Types.Apply(Types.Apply(ContentOf(">"), $1), $3) }
+  | nxconcat LT nxcomp  { Types.Apply(Types.Apply(ContentOf("<"), $1), $3) }
   | nxconcat { $1 }
 /* -- for syntax error log -- */
   | nxconcat EQ error {
@@ -414,7 +414,7 @@ nxcomp:
       }
 ;
 nxconcat:
-  | nxlplus CONCAT nxconcat { Types.ConcatOperation($1, $3) }
+  | nxlplus CONCAT nxconcat { Types.Apply(Types.Apply(ContentOf("^"), $1), $3) }
   | nxlplus { $1 }
 /* -- for syntax error log -- */
   | nxlplus CONCAT error {
@@ -422,7 +422,7 @@ nxconcat:
       }
 ;
 nxlplus:
-  | nxlminus PLUS nxrplus { Types.Plus($1, $3) }
+  | nxlminus PLUS nxrplus { Types.Apply(Types.Apply(ContentOf("+"), $1), $3) }
   | nxlminus { $1 }
 /* -- for syntax error log -- */
   | nxlminus PLUS error {
@@ -430,7 +430,7 @@ nxlplus:
       }
 ;
 nxlminus:
-  | nxlplus MINUS nxrtimes { Types.Minus($1, $3) }
+  | nxlplus MINUS nxrtimes { Types.Apply(Types.Apply(ContentOf("-"), $1), $3) }
   | nxltimes { $1 }
 /* -- for syntax error log -- */
   | nxlplus MINUS error {
@@ -438,7 +438,7 @@ nxlminus:
       }
 ;
 nxrplus:
-  | nxrminus PLUS nxrplus { Types.Plus($1, $3) }
+  | nxrminus PLUS nxrplus { Types.Apply(Types.Apply(ContentOf("+"), $1), $3) }
   | nxrminus { $1 }
 /* -- for syntax error log -- */
   | nxrminus PLUS error {
@@ -446,7 +446,7 @@ nxrplus:
       }
 ;
 nxrminus:
-  | nxrplus MINUS nxrtimes { Types.Minus($1, $3) }
+  | nxrplus MINUS nxrtimes { Types.Apply(Types.Apply(ContentOf("-"), $1), $3) }
   | nxrtimes { $1 }
 /* -- for syntax error log -- */
   | nxrplus MINUS error {
@@ -454,9 +454,9 @@ nxrminus:
       }
 ;
 nxltimes:
-  | nxun TIMES nxrtimes { Types.Times($1, $3) }
-  | nxltimes DIVIDES nxapp { Types.Divides($1, $3) }
-  | nxltimes MOD nxapp { Types.Mod($1, $3) }
+  | nxun TIMES nxrtimes    { Types.Apply(Types.Apply(ContentOf("*"), $1), $3) }
+  | nxltimes DIVIDES nxapp { Types.Apply(Types.Apply(ContentOf("/"), $1), $3) }
+  | nxltimes MOD nxapp     { Types.Apply(Types.Apply(ContentOf("mod"), $1), $3) }
   | nxun { $1 }
 /* -- for syntax error log -- */
   | nxun TIMES error {
@@ -470,9 +470,9 @@ nxltimes:
       }
 ;
 nxrtimes:
-  | nxapp TIMES nxrtimes { Types.Times($1, $3) }
-  | nxrtimes DIVIDES nxapp { Types.Divides($1, $3) }
-  | nxrtimes MOD nxapp { Types.Mod($1, $3) }
+  | nxapp TIMES nxrtimes   { Types.Apply(Types.Apply(ContentOf("*"), $1), $3) }
+  | nxrtimes DIVIDES nxapp { Types.Apply(Types.Apply(ContentOf("/"), $1), $3) }
+  | nxrtimes MOD nxapp     { Types.Apply(Types.Apply(ContentOf("mod"), $1), $3) }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | nxapp TIMES error {
@@ -486,8 +486,8 @@ nxrtimes:
       }
 ;
 nxun:
-  | MINUS nxapp { Types.Minus(Types.NumericConstant(0), $2) }
-  | LNOT nxapp { Types.LogicalNot($2) }
+  | MINUS nxapp { Types.Apply(Types.Apply(ContentOf("-"), NumericConstant(0)), $2) }
+  | LNOT nxapp  { Types.Apply(ContentOf("not"), $2) }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | MINUS error {
@@ -498,23 +498,23 @@ nxun:
       }
 ;
 nxapp:
-  | nxapp nxbot { Types.NumericApply($1, $2) }
+  | nxapp nxbot { Types.Apply($1, $2) }
   | nxbot { $1 }
 ;
 nxbot:
-  | VAR { let (_, vn) = $1 in Types.ContentOf(vn) }
+  | VAR      { let (_, vn) = $1 in Types.ContentOf(vn) }
   | NUMCONST { let (_, cs) = $1 in Types.NumericConstant(int_of_string cs) }
-  | TRUE { Types.BooleanConstant(true) }
+  | TRUE  { Types.BooleanConstant(true) }
   | FALSE { Types.BooleanConstant(false) }
-  | LPAREN nxlet RPAREN { $2 }
+  | LPAREN nxlet RPAREN    { $2 }
   | OPENSTR sxsep CLOSESTR { $2 }
-  | OPENQT sxsep CLOSEQT { omit_spaces $2 }
-  | FINISH { Types.FinishHeaderFile }
-  | BLIST ELIST { Types.EndOfList }
+  | OPENQT sxsep CLOSEQT   { omit_spaces $2 }
+  | BLIST ELIST              { Types.EndOfList }
   | BLIST nxlet nxlist ELIST { Types.ListCons($2, $3) }
-  | REFNOW VAR { let (_, vn) = $2 in Types.Reference(vn) }
+  | REFNOW VAR   { let (_, vn) = $2 in Types.Reference(vn) }
   | REFFINAL VAR { let (_, vn) = $2 in Types.ReferenceFinal(vn) }
-  | UNITVALUE { Types.UnitConstant }
+  | UNITVALUE    { Types.UnitConstant }
+  | FINISH       { Types.FinishHeaderFile }
 /* -- for syntax error log -- */
   | BLIST error {
         raise (ParseErrorDetail(
@@ -561,19 +561,19 @@ sxblock:
   | { Types.StringEmpty }
   ;
 sxbot:
-  | CHAR { let (_, ch) = $1 in Types.StringConstant(ch) }
+  | CHAR  { let (_, ch) = $1 in Types.StringConstant(ch) }
   | SPACE { Types.StringConstant(" ") }
   | BREAK { Types.BreakAndIndent }
   | VARINSTR END { let (_, vn) = $1 in Types.ContentOf(vn) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (_, csname) = $1 in
-        convert_into_numeric_apply csname $2 $3 (append_argument_list $4 $5)
+          convert_into_numeric_apply csname $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | CTRLSEQ error {
         let (ln, csname) = $1 in
         raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csname ^ "'") (csname ^ " ..<!>..") ln))
-  }
+      }
 sxclsnm:
   | CLASSNAME { let (_, clsnm) = $1 in class_name_to_abstract_tree clsnm }
   | { NoContent }

@@ -73,7 +73,7 @@ let rec typecheck tyeq tyenv astch =
         ( if equivalent StringType tyl then () else Stacklist.push tyeq (StringType, tyl) ) ;
         StringType
       )
-  | NumericApply(astf, astl) ->
+  | Apply(astf, astl) ->
       let tyf = typecheck tyeq tyenv astf in
       let tyl = typecheck tyeq tyenv astl in
       ( match tyf with

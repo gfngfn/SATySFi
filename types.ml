@@ -35,7 +35,7 @@ and untyped_abstract_tree =
   | UTContentOf       of code_range * var_name
   | UTConcat          of code_range * abstract_tree * abstract_tree
   | UTConcatOperation of code_range * abstract_tree * abstract_tree
-  | UTNumericApply    of code_range * abstract_tree * abstract_tree
+  | UTApply    of code_range * abstract_tree * abstract_tree
   | UTListCons        of code_range * abstract_tree * abstract_tree
   | UTEndOfList
   | UTBreakAndIndent
@@ -66,7 +66,7 @@ and abstract_tree =
   | ContentOf       of var_name
   | Concat          of abstract_tree * abstract_tree
   | ConcatOperation of abstract_tree * abstract_tree
-  | NumericApply    of abstract_tree * abstract_tree
+  | Apply           of abstract_tree * abstract_tree
   | ListCons        of abstract_tree * abstract_tree
   | EndOfList
   | BreakAndIndent
