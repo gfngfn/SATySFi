@@ -1,26 +1,20 @@
 open Types
 open Typeenv
 
-exception TypeCheckError of string
-
 let print_process msg =
 (*
   print_string (msg ^ "\n") ;
 *)
   ()
 
-let rec string_of_type_struct tystr =
-  match tystr with
-  | TypeEnvironmentType(_) -> "env"
-  | UnitType   -> "unit"
-  | IntType    -> "int"
-  | StringType -> "string"
-  | BoolType   -> "bool"
-  | FuncType(tyf, tyl) -> "(" ^ (string_of_type_struct tyf) ^ " -> " ^ (string_of_type_struct tyl) ^ ")"
-  | ListType(ty)       -> "(" ^ (string_of_type_struct ty) ^ " list)"
-  | TypeVariable(tvid) -> "'" ^ (string_of_int tvid) ^ ""
-  | ForallType(tvid, tycont) -> "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct tycont) ^ ")"
-
+let error_reporting rng errmsg =
+  let (sttln, sttpos, endln, endpos) = rng in
+    if sttln == endln then
+      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", column "
+        ^ (string_of_int sttpos) ^ " - " ^ (string_of_int endpos) ^ ")"
+    else
+      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", column " ^ (string_of_int sttpos)
+        ^ " to line " ^ (string_of_int endln) ^ ", column " ^ (string_of_int endpos) ^ ")"
 
 let tvidmax : type_variable_id ref = ref 0
 
@@ -40,6 +34,7 @@ let rec typecheck tyenv utast =
     | UTNumericConstant(nc) -> (NumericConstant(nc), IntType, Subst.empty)
     | UTStringConstant(sc)  -> (StringConstant(sc), StringType, Subst.empty)
     | UTBooleanConstant(bc) -> (BooleanConstant(bc), BoolType, Subst.empty)
+    | UTUnitConstant        -> (UnitConstant, UnitType, Subst.empty)
     | UTFinishHeaderFile    -> (FinishHeaderFile, TypeEnvironmentType(tyenv), Subst.empty)
     | UTNoContent           -> (NoContent, StringType, Subst.empty)
     | UTContentOf(nv) ->
@@ -47,7 +42,7 @@ let rec typecheck tyenv utast =
             let ty = Typeenv.find tyenv nv in
               (ContentOf(nv), ty, Subst.empty)
           with
-          | Not_found -> raise (TypeCheckError("undefined variable '" ^ nv ^ "'"))
+          | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
         )
 (*
     | UTConcat(utast1, utast2) ->
@@ -81,7 +76,7 @@ let rec typecheck tyenv utast =
 
     | UTLetIn(utmutletcons, utast2) ->
         let tyenv_for_rec = add_mutual_variables tyenv utmutletcons in
-        let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv_for_rec utmutletcons in
+        let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv tyenv_for_rec utmutletcons in
         let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
           (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
 (*
@@ -135,7 +130,7 @@ let rec typecheck tyenv utast =
     | UTOverwrite(varnm, astnew) ->
         let _ = typecheck tyenv astnew in UnitType
 *)  
-    | _ -> raise (TypeCheckError("this cannot happen / remains to be implemented"))
+    | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 
 (* Typeenv.t -> untyped_mutual_let_cons -> Typeenv.t *)
 and add_mutual_variables tyenv mutletcons =
@@ -146,19 +141,18 @@ and add_mutual_variables tyenv mutletcons =
         add_mutual_variables (Typeenv.add tyenv nv ntv) tailcons
 
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * mutual_let_cons * Subst.t) *)
-and typecheck_mutual_contents tyenv mutletcons =
+and typecheck_mutual_contents tyenv tyenv_for_rec mutletcons =
   match mutletcons with
-  | UTEndOfMutualLet -> (tyenv, EndOfMutualLet, Subst.empty)
+  | UTEndOfMutualLet -> (tyenv_for_rec, EndOfMutualLet, Subst.empty)
   | UTMutualLetCons(nv, utast1, tailcons) ->
-      let (e1, ty1, theta1) = typecheck tyenv utast1 in
-      let ntystr = Typeenv.find tyenv nv in (* for self recursion *)
+      let (e1, ty1, theta1) = typecheck tyenv_for_rec utast1 in
+      let ntystr = Typeenv.find tyenv_for_rec nv in (* for self recursion *)
       ( match ntystr with
         | TypeVariable(ntvid) ->
             let theta1_new = Subst.add theta1 ntvid ty1 in
-            let tyenv_new_pre = Subst.apply_to_type_environment theta1_new tyenv in
-            let forallty = make_forall_type ty1 tyenv_new_pre in
-            let tyenv_new = Typeenv.add tyenv_new_pre nv forallty in
-            let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents tyenv_new tailcons in
+            let forallty = make_forall_type ty1 (Subst.apply_to_type_environment theta1_new tyenv) in
+            let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1_new tyenv_for_rec) nv forallty in
+            let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents tyenv tyenv_new tailcons in
               (tyenv_tail, MutualLetCons(nv, e1, mutletcons_tail), Subst.compose theta_tail theta1_new)
 
         | _ -> raise (TypeCheckError("this cannot happen. (at typecheck_mutual_contents)"))

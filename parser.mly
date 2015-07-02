@@ -400,12 +400,7 @@ nxif:
       }
 ;
 nxbfr:
-  | nxlambda BEFORE nxbfr {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTSequential($1, $3))
-      }
+  | nxlambda BEFORE nxbfr { binary_operator "before" $1 $2 $3 }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | nxlambda BEFORE error {

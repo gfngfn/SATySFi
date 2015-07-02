@@ -77,7 +77,7 @@ let rec main tyenv env file_name_in_list file_name_out =
   | Lexer.LexError(s)             -> print_string ("! [ERROR IN LEXER] " ^ s ^ ".\n")
   | Parsing.Parse_error           -> print_string ("! [ERROR IN PARSER]")
   | ParseErrorDetail(s)           -> print_string ("! [ERROR IN PARSER] " ^ s ^ "\n")
-  | Typechecker.TypeCheckError(s) -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".\n")
+  | Typeenv.TypeCheckError(s) -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".\n")
   | Evaluator.EvalError(s)        -> print_string ("! [ERROR IN EVAL] " ^ s ^ ".\n")
   | Out.IllegalOut(s)             -> print_string ("! [ERROR IN OUT] " ^ s ^ ".\n")
   | MainError(s)                  -> print_string ("! [ERROR IN MAIN] " ^ s ^ ".\n")

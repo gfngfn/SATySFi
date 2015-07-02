@@ -22,9 +22,9 @@ let rec overwrite_type_struct tystr key value =
 
 let rec overwrite theta key value =
   match theta with
-  | []             -> theta
+  | []             -> add theta key value
   | (k, v) :: tail ->
-      ( if k = key then (key, value) else (k, (overwrite_type_struct v key value)) ) :: (overwrite tail key value)
+      if k = key then (key, value) :: tail else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 
 let rec compose theta2 theta1 =
   match theta2 with
@@ -48,4 +48,27 @@ let rec apply_to_type_environment theta tyenv =
 
 let rec apply_to_term theta ast = ast (* need writing *)
 
-let rec unify tystr1 tystr2 = empty (* need writing *)
+let rec emerge_in tvid tystr =
+	match tystr with
+	| TypeVariable(tvidx) -> tvidx == tvid
+	| FuncType(dom, cod)  -> (emerge_in tvid dom) || (emerge_in tvid cod)
+	| ListType(cont)      -> emerge_in tvid cont
+	| _                   -> false
+
+let rec unify tystr1 tystr2 =
+	match (tystr1, tystr2) with
+	| (IntType, IntType)       -> empty
+	| (StringType, StringType) -> empty
+	| (BoolType, BoolType)     -> empty
+	| (UnitType, UnitType)     -> empty
+	| (TypeEnvironmentType(_), TypeEnvironmentType(_)) -> empty
+	| (FuncType(dom1, cod1), FuncType(dom2, cod2)) ->
+	    compose (unify dom1 dom2) (unify cod1 cod2)
+	| (ListType(cont1), ListType(cont2)) -> unify cont1 cont2
+  | (TypeVariable(tvid), tystr) ->
+      if emerge_in tvid tystr then
+        raise (TypeCheckError("error in unify 1"))
+      else
+        [(tvid, tystr)]
+  | (tystr, TypeVariable(tvid)) -> unify (TypeVariable(tvid)) tystr
+  | _ -> raise (TypeCheckError("error in unify 2"))
