@@ -47,9 +47,9 @@ let make_type_environment () =
         ( "\\include",     (func_types [StringType] StringType) );
         ( "\\arabic",      (func_types [IntType] StringType) );
 
-        ( "list-head", (FuncType(ListType(StringType), StringType)) );
-        ( "list-tail", (FuncType(ListType(StringType), ListType(StringType))) );
-        ( "is-empty",  (FuncType(ListType(StringType), BoolType)) )
+        ( "list-head", (forall_types [-2] (FuncType(ListType(TypeVariable(-2)), TypeVariable(-2)))) );
+        ( "list-tail", (forall_types [-3] (FuncType(ListType(TypeVariable(-3)), ListType(TypeVariable(-3))))) );
+        ( "is-empty",  (forall_types [-4] (FuncType(ListType(TypeVariable(-4)), BoolType))) )
       ]
 
 let rec lambdas env vlst ast =

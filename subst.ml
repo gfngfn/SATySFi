@@ -9,9 +9,9 @@ let empty = []
 let add theta key value = (key, value) :: theta
 
 let rec find theta key =
-	match theta with
-	| []             -> raise Not_found
-	| (k, v) :: tail -> if k = key then v else find tail key
+  match theta with
+  | []             -> raise Not_found
+  | (k, v) :: tail -> if k = key then v else find tail key
 
 let rec overwrite_type_struct tystr key value =
   match tystr with
@@ -49,22 +49,26 @@ let rec apply_to_type_environment theta tyenv =
 let rec apply_to_term theta ast = ast (* need writing *)
 
 let rec emerge_in tvid tystr =
-	match tystr with
-	| TypeVariable(tvidx) -> tvidx == tvid
-	| FuncType(dom, cod)  -> (emerge_in tvid dom) || (emerge_in tvid cod)
-	| ListType(cont)      -> emerge_in tvid cont
-	| _                   -> false
+  match tystr with
+  | TypeVariable(tvidx) -> tvidx == tvid
+  | FuncType(dom, cod)  -> (emerge_in tvid dom) || (emerge_in tvid cod)
+  | ListType(cont)      -> emerge_in tvid cont
+  | _                   -> false
 
 let rec unify tystr1 tystr2 =
-	match (tystr1, tystr2) with
-	| (IntType, IntType)       -> empty
-	| (StringType, StringType) -> empty
-	| (BoolType, BoolType)     -> empty
-	| (UnitType, UnitType)     -> empty
-	| (TypeEnvironmentType(_), TypeEnvironmentType(_)) -> empty
-	| (FuncType(dom1, cod1), FuncType(dom2, cod2)) ->
-	    compose (unify dom1 dom2) (unify cod1 cod2)
-	| (ListType(cont1), ListType(cont2)) -> unify cont1 cont2
+  match (tystr1, tystr2) with
+(*
+  | (ForallType(tvidx, cont), tystr) -> unify cont tystr
+  | (tystr, ForallType(tvidx, cont)) -> unify cont tystr
+*)
+  | (IntType, IntType)       -> empty
+  | (StringType, StringType) -> empty
+  | (BoolType, BoolType)     -> empty
+  | (UnitType, UnitType)     -> empty
+  | (TypeEnvironmentType(_), TypeEnvironmentType(_)) -> empty
+  | (FuncType(dom1, cod1), FuncType(dom2, cod2)) ->
+      compose (unify dom1 dom2) (unify cod1 cod2)
+  | (ListType(cont1), ListType(cont2)) -> unify cont1 cont2
   | (TypeVariable(tvid), tystr) ->
       if emerge_in tvid tystr then
         raise (TypeCheckError("error in unify 1"))

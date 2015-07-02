@@ -43,7 +43,6 @@ and untyped_abstract_tree_main =
   | UTLambdaAbstract   of var_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTLetMutableIn     of var_name * untyped_abstract_tree * untyped_abstract_tree
-  | UTSequential       of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite        of var_name * untyped_abstract_tree
   | UTMutableValue     of untyped_abstract_tree
   | UTReference        of var_name

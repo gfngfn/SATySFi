@@ -215,6 +215,7 @@
 %type <Types.untyped_argument_cons> sarg
 %type <Types.untyped_argument_cons> sargsub
 %type <Types.untyped_argument_variable_cons> argvar
+%type <string> binop
 
 %%
 
@@ -653,6 +654,12 @@ nxbot:
         let rng = (ln, sttpos, ln, endpos) in
           (rng, UTFinishHeaderFile)
       }
+  | LPAREN binop RPAREN {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTContentOf($2))
+  }
 /* -- for syntax error log -- */
   | BLIST error {
         raise (ParseErrorDetail(
@@ -667,6 +674,23 @@ nxbot:
           error_reporting "illegal token after '('" "( ..<!>.." $1))
       }
 ;
+binop:
+  | PLUS    { "+" }
+  | MINUS   { "-" }
+  | MOD     { "mod" }
+  | TIMES   { "*" }
+  | DIVIDES { "/" }
+  | CONCAT  { "^" }
+  | EQ      { "==" }
+  | NEQ     { "<>" }
+  | GEQ     { ">=" }
+  | LEQ     { "<=" }
+  | GT      { ">" }
+  | LT      { "<" }
+  | LAND    { "&&" }
+  | LOR     { "||" }
+  | LNOT    { "not" }
+  | BEFORE  { "before" }
 nxlist:
   | LISTPUNCT nxlet nxlist {
         let (sttln, sttpos, _) = $1 in
