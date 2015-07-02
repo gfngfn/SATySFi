@@ -116,17 +116,3 @@ and abstract_tree =
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
-
-
-type type_variable_id = int
-type type_struct =
-  | TypeEnvironmentType of type_environment
-  | UnitType
-  | IntType
-  | StringType
-  | BoolType
-  | FuncType of type_struct * type_struct
-  | ListType of type_struct
-  | ForallType of type_variable_id * type_struct
-  | TypeVariable of type_variable_id
-and type_environment =

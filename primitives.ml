@@ -1,4 +1,5 @@
 open Types
+open Typeenv
 
 let rec func_types domlst cod =
   match domlst with

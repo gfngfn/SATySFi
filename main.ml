@@ -13,29 +13,30 @@ let is_standalone_file str =
 
 (* type_environment -> environment -> string -> (type_environment * environment) *)
 let make_environment_from_header_file tyenv env file_name_in =
-  ( print_string ("  [reading] " ^ file_name_in ^ "\n") ;
+  ( print_string (" ---- ---- ---- ----\n") ;
+    print_string ("  reading " ^ file_name_in ^ "\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
-      let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (typed, newtyenv) = Typechecker.main tyenv parsed in
-        ( print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n") ;
-          let evaled = Evaluator.interpret env parsed in
-            match evaled with
-            | EvaluatedEnvironment(newenv) -> (newtyenv, newenv)
-            | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
-          )
+      let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+      let (strty, newtyenv, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  type check: " ^ strty ^ "\n") ;
+        let evaled = Evaluator.interpret env ast in
+          match evaled with
+          | EvaluatedEnvironment(newenv) -> (newtyenv, newenv)
+          | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
+      )
     )
   )
 
 let read_standalone_file tyenv env file_name_in file_name_out =
-  ( print_string ("  [reading] " ^ file_name_in ^ "\n") ;
+  ( print_string (" ---- ---- ---- ----\n") ;
+    print_string ("  reading " ^ file_name_in ^ "\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
-      let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      ( ( let (typed, _) = Typechecker.main tyenv parsed in
-            print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n")
-        ) ;
-        let evaled = Evaluator.interpret env parsed in
+      let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+      let (typed, _, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  type check: " ^ typed ^ "\n") ;
+        let evaled = Evaluator.interpret env ast in
         let content_out = Out.main env evaled in
           Files.file_out_of_string file_name_out content_out
       )
@@ -47,11 +48,10 @@ let read_document_file tyenv env file_name_in file_name_out =
   ( print_string ("  [reading] " ^ file_name_in ^ "\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_strexpr () ;
-      let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      ( ( let (typed, _) = Typechecker.main tyenv parsed in
-            print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n")
-        ) ;
-        let evaled = Evaluator.interpret env parsed in
+      let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+      let (typed, _, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n") ;
+        let evaled = Evaluator.interpret env ast in
         let content_out = Out.main env evaled in
           Files.file_out_of_string file_name_out content_out
       )
@@ -88,8 +88,8 @@ let rec see_argv num file_name_in_list file_name_out =
     if num == Array.length Sys.argv then
     ( print_string ("  [output] " ^ file_name_out ^ "\n\n") ;
       Typechecker.initialize () ;
-      let tyenv : type_environment = Primitives.make_type_environment () in
-      let env : environment = Primitives.make_environment () in
+      let tyenv = Primitives.make_type_environment () in
+      let env = Primitives.make_environment () in
         main tyenv env file_name_in_list file_name_out )
     else
       if (compare "-o" Sys.argv.(num)) == 0 then

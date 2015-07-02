@@ -1,4 +1,5 @@
 open Types
+open Typeenv
 
 type t = (type_variable_id * type_struct) list
 
@@ -6,12 +7,11 @@ let empty = []
 
 (* t -> type_variable_id -> type_struct -> t *)
 let add theta key value = (key, value) :: theta
-(*
-  match asclst with
-  | [] -> [(key, value)]
-  | (k, v) :: tail ->
-      if k = key then (key, value) :: tail else (k, v) :: (add tail key value)
-*)
+
+let rec find theta key =
+	match theta with
+	| []             -> raise Not_found
+	| (k, v) :: tail -> if k = key then v else find tail key
 
 let rec overwrite_type_struct tystr key value =
   match tystr with
@@ -31,8 +31,21 @@ let rec compose theta2 theta1 =
   | []              -> theta1
   | (k, v) :: tail2 -> compose tail2 (overwrite theta1 k v)
 
-let rec apply_to_type_variable theta tyvar =
-  match theta with
-  | []             -> tyvar
-  | (k, v) :: tail -> if k = tyvar then v else apply_to_type_variable tail tyvar
+(* Subst.t -> type_struct -> type_struct *)
+let rec apply_to_type_struct theta tystr =
+  match tystr with
+  | FuncType(tydom, tycod) -> FuncType(apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
+  | ListType(tycont) -> ListType(apply_to_type_struct theta tycont)
+  | TypeVariable(tv) -> ( try find theta tv with Not_found -> TypeVariable(tv) )
+  | other            -> other
 
+(* Subst.t -> type_environment -> type_environment *)
+let rec apply_to_type_environment theta tyenv =
+  match tyenv with
+  | []                     -> tyenv
+  | (varnm, tystr) :: tail ->
+      (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment theta tail)
+
+let rec apply_to_term theta ast = ast (* need writing *)
+
+let rec unify tystr1 tystr2 = empty (* need writing *)
