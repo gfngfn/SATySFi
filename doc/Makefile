@@ -1,6 +1,6 @@
 all: output.tex output.dvi output.pdf
 output.tex: to_latex.mcrdh intr_style_latex.mcrdh introduction.mcrd
-	macrodown $^ -n -o output.tex
+	macrodown $^ -o output.tex
 output.dvi: output.tex
 	platex output.tex
 output.pdf: output.dvi

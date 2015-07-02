@@ -14,7 +14,7 @@ let is_standalone_file str =
 (* type_environment -> environment -> string -> (type_environment * environment) *)
 let make_environment_from_header_file tyenv env file_name_in =
   ( print_string (" ---- ---- ---- ----\n") ;
-    print_string ("  reading " ^ file_name_in ^ "\n") ;
+    print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
@@ -30,7 +30,7 @@ let make_environment_from_header_file tyenv env file_name_in =
 
 let read_standalone_file tyenv env file_name_in file_name_out =
   ( print_string (" ---- ---- ---- ----\n") ;
-    print_string ("  reading " ^ file_name_in ^ "\n") ;
+    print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
@@ -38,22 +38,29 @@ let read_standalone_file tyenv env file_name_in file_name_out =
       ( print_string ("  type check: " ^ typed ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
         let content_out = Out.main env evaled in
-          Files.file_out_of_string file_name_out content_out
+        ( Files.file_out_of_string file_name_out content_out ;
+          print_string (" ---- ---- ---- ----\n") ;
+          print_string ("  output written on '" ^ file_name_out ^ "'.\n")
+        )
       )
     )
   )
 
 (* type_environment -> environment -> string -> string -> unit *)
 let read_document_file tyenv env file_name_in file_name_out =
-  ( print_string ("  [reading] " ^ file_name_in ^ "\n") ;
+  ( print_string (" ---- ---- ---- ----\n") ;
+    print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_strexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
       let (typed, _, ast) = Typechecker.main tyenv utast in
-      ( print_string ("  [type check] " ^ file_name_in ^ " : " ^ typed ^ "\n") ;
+      ( print_string ("  type check: " ^ file_name_in ^ " : " ^ typed ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
         let content_out = Out.main env evaled in
-          Files.file_out_of_string file_name_out content_out
+        ( Files.file_out_of_string file_name_out content_out ;
+          print_string (" ---- ---- ---- ----\n") ;
+          print_string ("output written.\n")
+        )
       )
     )
   )

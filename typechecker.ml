@@ -39,11 +39,11 @@ let rec eliminate_forall tystr lst =
 
 and replace_id tystr lst =
   match tystr with
-  | TypeVariable(tvid) ->
+  | TypeVariable(tvid)     ->
       ( try find_in_list lst tvid with Not_found -> TypeVariable(tvid) )
   | ListType(tycont)       -> ListType(replace_id tycont lst)
   | FuncType(tydom, tycod) -> FuncType(replace_id tydom lst, replace_id tycod lst)
-  | other -> other
+  | other                  -> other
 
 let make_bounded_free tystr = eliminate_forall tystr []
 

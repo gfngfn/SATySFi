@@ -30,7 +30,7 @@ let rec string_of_type_struct tystr =
   | ForallType(tvid, tycont) -> "(forall '" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct tycont) ^ ")"
 let rec string_of_type_environment tyenv =
   match tyenv with
-  | []                -> ""
+  | []               -> ""
   | (vn, ts) :: tail -> "  " ^ vn ^ ": " ^ (string_of_type_struct ts) ^ "\n" ^ (string_of_type_environment tail)
 
 
