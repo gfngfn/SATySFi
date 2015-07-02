@@ -2,44 +2,54 @@ open Types
 
 let rec func_types domlst cod =
   match domlst with
-  | [] -> cod
+  | []       -> cod
   | hd :: tl -> FuncType(hd, func_types tl cod)
 
-let add_to_type_environment tyenv varnm tystr =
-  Hashtbl.add tyenv varnm tystr
+let rec forall_types tvlst cont =
+  match tvlst with
+  | []       -> cont
+  | hd :: tl -> ForallType(hd, forall_types tl cont)
+
+let rec add_to_type_environment tyenv lst =
+  match lst with
+  | []                     -> tyenv
+  | (varnm, tystr) :: tail ->
+      let tyenv_new = Typeenv.add tyenv varnm tystr in
+        add_to_type_environment tyenv_new tail
 
 let make_type_environment () =
-  let tyenv : type_environment = Hashtbl.create 128 in
 
-    add_to_type_environment tyenv "+"   (func_types [IntType; IntType] IntType) ;
-    add_to_type_environment tyenv "-"   (func_types [IntType; IntType] IntType) ;
-    add_to_type_environment tyenv "mod" (func_types [IntType; IntType] IntType) ;
-    add_to_type_environment tyenv "*"   (func_types [IntType; IntType] IntType) ;
-    add_to_type_environment tyenv "/"   (func_types [IntType; IntType] IntType) ;
-    add_to_type_environment tyenv "^"   (func_types [StringType; StringType] StringType) ;
-    add_to_type_environment tyenv "=="  (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv "<>"  (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv ">"   (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv "<"   (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv ">="  (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv "<="  (func_types [IntType; IntType] BoolType) ;
-    add_to_type_environment tyenv "&&"  (func_types [BoolType; BoolType] BoolType) ;
-    add_to_type_environment tyenv "||"  (func_types [BoolType; BoolType] BoolType) ;
+    add_to_type_environment Typeenv.empty
+      [ ( "+",   (func_types [IntType; IntType] IntType) );
+        ( "-",   (func_types [IntType; IntType] IntType) );
+        ( "mod", (func_types [IntType; IntType] IntType) );
+        ( "*",   (func_types [IntType; IntType] IntType) );
+        ( "/",   (func_types [IntType; IntType] IntType) );
+        ( "^",   (func_types [StringType; StringType] StringType) );
+        ( "==",  (func_types [IntType; IntType] BoolType) );
+        ( "<>",  (func_types [IntType; IntType] BoolType) );
+        ( ">",   (func_types [IntType; IntType] BoolType) );
+        ( "<",   (func_types [IntType; IntType] BoolType) );
+        ( ">=",  (func_types [IntType; IntType] BoolType) );
+        ( "<=",  (func_types [IntType; IntType] BoolType) );
+        ( "&&",  (func_types [BoolType; BoolType] BoolType) );
+        ( "||",  (func_types [BoolType; BoolType] BoolType) );
+        ( "not", (func_types [BoolType] BoolType) );
+        ( "before", (forall_types [-1] (func_types [UnitType; TypeVariable(-1)] (TypeVariable(-1)))) );
 
-    add_to_type_environment tyenv "same"          (func_types [StringType; StringType] BoolType) ;
-    add_to_type_environment tyenv "string-sub"    (func_types [StringType; IntType; IntType] StringType) ;
-    add_to_type_environment tyenv "string-length" (func_types [StringType] IntType) ;
-    add_to_type_environment tyenv "\\deeper"      (func_types [StringType] StringType) ;
-    add_to_type_environment tyenv "\\break"       (func_types [] StringType) ;
-    add_to_type_environment tyenv "\\space"       (func_types [] StringType) ;
-    add_to_type_environment tyenv "\\include"     (func_types [StringType] StringType) ;
-    add_to_type_environment tyenv "\\arabic"      (func_types [IntType] StringType) ;
+        ( "same",          (func_types [StringType; StringType] BoolType) );
+        ( "string-sub",    (func_types [StringType; IntType; IntType] StringType) );
+        ( "string-length", (func_types [StringType] IntType) );
+        ( "\\deeper",      (func_types [StringType] StringType) );
+        ( "\\break",       (func_types [] StringType) );
+        ( "\\space",       (func_types [] StringType) );
+        ( "\\include",     (func_types [StringType] StringType) );
+        ( "\\arabic",      (func_types [IntType] StringType) );
 
-    add_to_type_environment tyenv "list-head" (FuncType(ListType(StringType), StringType)) ;
-    add_to_type_environment tyenv "list-tail" (FuncType(ListType(StringType), ListType(StringType))) ;
-    add_to_type_environment tyenv "is-empty"  (FuncType(ListType(StringType), BoolType)) ;
-
-    tyenv
+        ( "list-head", (FuncType(ListType(StringType), StringType)) );
+        ( "list-tail", (FuncType(ListType(StringType), ListType(StringType))) );
+        ( "is-empty",  (FuncType(ListType(StringType), BoolType)) )
+      ]
 
 let rec lambdas env vlst ast =
   match vlst with
@@ -70,6 +80,7 @@ let make_environment () =
   let loc_land         : location = ref NoContent in
   let loc_lor          : location = ref NoContent in
   let loc_lnot         : location = ref NoContent in
+  let loc_before       : location = ref NoContent in
   let loc_same         : location = ref NoContent in
   let loc_stringsub    : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
@@ -97,6 +108,7 @@ let make_environment () =
     add_to_environment env "&&"            loc_land ;
     add_to_environment env "||"            loc_lor ;
     add_to_environment env "not"           loc_lnot ;
+    add_to_environment env "before"        loc_before ;
     add_to_environment env "same"          loc_same ;
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
@@ -153,6 +165,9 @@ let make_environment () =
 
     loc_lnot         := lambdas env ["~op"]
                           (LogicalNot(ContentOf("~op"))) ;
+
+    loc_before       := lambdas env ["~opl"; "~opr"]
+                          (Sequential(ContentOf("~opl"), ContentOf("~opr"))) ;
 
     loc_same         := lambdas env ["~stra"; "~strb"]
                           (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;
