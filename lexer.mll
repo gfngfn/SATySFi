@@ -6,8 +6,6 @@
 
   let line_no : int ref = ref 1
   let end_of_previousline : int ref = ref 0
-  let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
-  let get_end_pos lexbuf = (Lexing.lexeme_end lexbuf) - !end_of_previousline
 
   type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
   let next_state : lexer_state ref = ref STATE_NUMEXPR
@@ -26,11 +24,14 @@
 
   let decrement rfn = ( rfn := !rfn - 1 )
 
+  let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
+  let get_end_pos lexbuf = (Lexing.lexeme_end lexbuf) - !end_of_previousline
+
   let error_reporting lexbuf errmsg =
     let column_from = get_start_pos lexbuf in
     let column_to = get_end_pos lexbuf in
-      (errmsg ^ " (line " ^ (string_of_int !line_no) ^ ", column "
-        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ")")
+      "at line " ^ (string_of_int !line_no) ^ ", column "
+        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ":\n    " ^ errmsg
 
   let get_pos lexbuf =
     let column_from = get_start_pos lexbuf in
@@ -215,10 +216,10 @@ and strexpr = parse
     }
   | break {
       increment_line lexbuf ;
-      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK )
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; BREAK(get_pos lexbuf) )
     }
   | space {
-      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; SPACE )
+      if !ignore_space then strexpr lexbuf else ( ignore_space := true ; SPACE(get_pos lexbuf) )
 
     }
   | ("\\" identifier) {

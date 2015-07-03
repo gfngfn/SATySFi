@@ -12,23 +12,21 @@ let \settings = {
 let \description dscr = {
   \\begin\{center\}\deeper{
     \\begin\{tabular\}\{ll\}
-    \\hline\deeper{
-      \dscr-sep-lines{@dscr;}
-    }\\hline
+    \\hline\deeper(dscr-sep-lines dscr);\\hline
     \\end\{tabular\}
   }\\end\{center\}
 }
-and \dscr-sep-lines dscr =
-  let head = list-head dscr in
-  let tail = list-tail dscr in
-    head ^
-    ( if is-empty tail then
-        {\\\\}
-      else
-        {\\\\
-          \\hline%
-          \dscr-sep-lines{@tail;}}
-    )
+and dscr-sep-lines dscr =
+  if is-empty dscr then {} else
+    let head = list-head dscr in
+    let tail = list-tail dscr in
+      head ^
+      ( if is-empty tail then
+          {\\\\}
+        else
+          {\\\\
+            \\hline} ^ (dscr-sep-lines tail)
+      )
 in
 let \d-item di dd = {@di; & @dd;} in
 let \synt synt = {\\textcolor\{blue\}\{\\texttt\{\escape-for-latex{@synt;}\}\}} in
@@ -65,12 +63,12 @@ let \token-else = {\toksty{else}} in
 let \token-finish = {\toksty{finish}} in
 let \token-ident = {\toksty{ident}} in
 let \token-int = {\toksty{int}} in
-let \token-opnqt = {\toksty{open\`}} in
-let \token-clsqt = {\toksty{close\`}} in
+let \token-opnqt = {\toksty{open\\grave\{\\ \}}} in
+let \token-clsqt = {\toksty{\\grave\{\\ \}close}} in
 let \token-opnstr = {\toksty{open\\\{}} in
-let \token-clsstr = {\toksty{close\\\}}} in
+let \token-clsstr = {\toksty{\\\}close}} in
 let \token-opnprog = {\toksty{open(}} in
-let \token-clsprog = {\toksty{close)}} in
+let \token-clsprog = {\toksty{)close}} in
 %
 let \math-dp-gather lst = {
   \\begin\{align*\}\deeper(sub-math-dp-gather lst);\\end\{align*\}

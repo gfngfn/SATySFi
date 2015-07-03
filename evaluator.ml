@@ -12,8 +12,8 @@ let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m) -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v) -> "(" ^ v ^ ")"
-  | NumericApply(m, n) -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | ContentOf(v) -> "#" ^ v ^ "#"
+  | Apply(m, n) -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t) -> (string_of_ast s) ^ (string_of_ast t)
   | StringEmpty -> ""
   | IfThenElse(b, t, f) ->
@@ -47,15 +47,13 @@ let rec interpret env ast =
 
   | NoContent -> NoContent
 
-  | ConcatOperation(astf, astl) -> interpret env (Concat(astf, astl))
-
   | Concat(astf, astl) ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
       ( match (valuef, valuel) with
         | (StringEmpty, _) -> valuel
         | (_, StringEmpty) -> valuef
-        | (_, _) -> Concat(valuef, valuel)
+        | (_, _)           -> Concat(valuef, valuel)
       )
   | StringConstant(c) -> StringConstant(c)
 
@@ -72,7 +70,7 @@ let rec interpret env ast =
       )
   | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
 
-  | FuncWithEnvironment(varnm, ast, env) -> FuncWithEnvironment(varnm, ast, env)
+  | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
     ( match interpret env astf with
@@ -86,7 +84,7 @@ let rec interpret env ast =
                       LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))
                     )
     )
-  | NumericApply(astf, astl) ->
+  | Apply(astf, astl) ->
       let valuel = interpret env astl in
       let fspec = interpret env astf in
       ( match fspec with
@@ -95,7 +93,11 @@ let rec interpret env ast =
             ( add_to_environment env_new varnm (ref valuel) ;
               let intpd = interpret env_new astdef in intpd
             )
-        | _ -> raise (EvalError("illegal apply"))
+        | _ ->
+            ( print_string ("!   " ^ (string_of_ast astf) ^ "\n") ;
+              print_string ("!   " ^ (string_of_ast astl) ^ "\n") ;
+              raise (EvalError("illegal apply"))
+            )
       )
   | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
 
@@ -127,7 +129,7 @@ let rec interpret env ast =
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-length': " ^ s))
       ) in
         NumericConstant(String.length str)
-
+(*
   | PrimitiveInclude(astfile_name) ->
       ( try
           let str_file_name = Out.main env (interpret env astfile_name) in
@@ -138,6 +140,7 @@ let rec interpret env ast =
         | Out.IllegalOut(s) -> raise (EvalError("illegal argument of \\include: " ^ s))
         | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
       )
+*)
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
 
@@ -148,40 +151,46 @@ let rec interpret env ast =
 
   | EndOfList -> EndOfList
 
-  | LiteralArea(ltrl) -> ltrl
-
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vhd
-        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-head'"))
-        | _ -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
+        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-head'"))
+        | _                  -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
       )
   | PrimitiveListTail(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vtl
-        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-tail'"))
-        | _ -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
+        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-tail'"))
+        | _                  -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
       )
   | PrimitiveIsEmpty(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
-        | EndOfList -> BooleanConstant(true)
+        | EndOfList      -> BooleanConstant(true)
         | ListCons(_, _) -> BooleanConstant(false)
-        | _ -> raise (EvalError("not a list"))
+        | _              -> raise (EvalError("not a list"))
       )
   | IfClassIsValid(asttru, astfls) ->
-      let vcclass = interpret env (ContentOf("class")) in
-      ( match vcclass with
-        | NoContent -> interpret env astfls
-        | _         -> interpret env asttru
+      ( try
+          let vcclass = interpret env (ContentOf("class")) in
+          ( match vcclass with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+          )
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-class-is-valid'; 'class' cannot be used here"))
       )
   | IfIDIsValid(asttru, astfls) ->
-      let vcid = interpret env (ContentOf("id")) in
-      ( match vcid with
-        | NoContent -> interpret env astfls
-        | _         -> interpret env asttru
+      ( try
+          let vcid = interpret env (ContentOf("id")) in
+          ( match vcid with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+          )
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
       )
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
