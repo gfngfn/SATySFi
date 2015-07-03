@@ -57,10 +57,6 @@ let rec emerge_in tvid tystr =
 
 let rec unify tystr1 tystr2 =
   match (tystr1, tystr2) with
-(*
-  | (ForallType(tvidx, cont), tystr) -> unify cont tystr
-  | (tystr, ForallType(tvidx, cont)) -> unify cont tystr
-*)
   | (IntType, IntType)       -> empty
   | (StringType, StringType) -> empty
   | (BoolType, BoolType)     -> empty

@@ -53,7 +53,7 @@ let rec interpret env ast =
       ( match (valuef, valuel) with
         | (StringEmpty, _) -> valuel
         | (_, StringEmpty) -> valuef
-        | (_, _) -> Concat(valuef, valuel)
+        | (_, _)           -> Concat(valuef, valuel)
       )
   | StringConstant(c) -> StringConstant(c)
 
@@ -70,7 +70,7 @@ let rec interpret env ast =
       )
   | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
 
-  | FuncWithEnvironment(varnm, ast, env) -> FuncWithEnvironment(varnm, ast, env)
+  | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
     ( match interpret env astf with
@@ -155,34 +155,42 @@ let rec interpret env ast =
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vhd
-        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-head'"))
-        | _ -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
+        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-head'"))
+        | _                  -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
       )
   | PrimitiveListTail(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vtl
-        | EndOfList -> raise (EvalError("cannot apply empty list for 'list-tail'"))
-        | _ -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
+        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-tail'"))
+        | _                  -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
       )
   | PrimitiveIsEmpty(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
-        | EndOfList -> BooleanConstant(true)
+        | EndOfList      -> BooleanConstant(true)
         | ListCons(_, _) -> BooleanConstant(false)
-        | _ -> raise (EvalError("not a list"))
+        | _              -> raise (EvalError("not a list"))
       )
   | IfClassIsValid(asttru, astfls) ->
-      let vcclass = interpret env (ContentOf("class")) in
-      ( match vcclass with
-        | NoContent -> interpret env astfls
-        | _         -> interpret env asttru
+      ( try
+          let vcclass = interpret env (ContentOf("class")) in
+          ( match vcclass with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+          )
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-class-is-valid'; 'class' cannot be used here"))
       )
   | IfIDIsValid(asttru, astfls) ->
-      let vcid = interpret env (ContentOf("id")) in
-      ( match vcid with
-        | NoContent -> interpret env astfls
-        | _         -> interpret env asttru
+      ( try
+          let vcid = interpret env (ContentOf("id")) in
+          ( match vcid with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+          )
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
       )
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl

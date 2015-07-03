@@ -11,15 +11,15 @@
         UTArgumentCons(arg, (append_argument_list arglstl arglstb))
 
   (* ctrlseq_name -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_argument_cons -> untyped_abstract_tree *)
-  let rec convert_into_apply csast clsnmast idnmast argcons =
-    convert_into_apply_sub argcons ((0, 0, 0, 0), UTApplyClassAndID(clsnmast, idnmast, csast))
+  let rec convert_into_apply csutast clsnmutast idnmutast argcons =
+    convert_into_apply_sub argcons ((0, 0, 0, 0), UTApplyClassAndID(clsnmutast, idnmutast, csutast))
 
   (* argument_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
-  and convert_into_apply_sub argcons astconstr =
+  and convert_into_apply_sub argcons utastconstr =
     match argcons with
-    | UTEndOfArgument -> astconstr
+    | UTEndOfArgument -> utastconstr
     | UTArgumentCons(arg, actail) ->
-        convert_into_apply_sub actail ((0, 0, 0, 0), UTApply(astconstr, arg))
+        convert_into_apply_sub actail ((0, 0, 0, 0), UTApply(utastconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
     UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
@@ -27,11 +27,11 @@
   let id_name_to_abstract_tree idnm =
     UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))
 
-  let rec curry_lambda_abstract rng argvarcons astdef =
+  let rec curry_lambda_abstract rng argvarcons utastdef =
     match argvarcons with
-    | UTEndOfArgumentVariable -> astdef
+    | UTEndOfArgumentVariable -> utastdef
     | UTArgumentVariableCons(argvar, avtail) -> 
-        (rng, UTLambdaAbstract(argvar, curry_lambda_abstract (0, 0, 0, 0) avtail astdef))
+        (rng, UTLambdaAbstract(argvar, curry_lambda_abstract (0, 0, 0, 0) avtail utastdef))
 
   (* untyped_abstract_tree -> code_range *)
   let get_range utast =
@@ -51,7 +51,7 @@
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
       match ltrlmain with
-      | UTConcat(astf, astl) -> (stringify_literal astf) ^ (stringify_literal astl)
+      | UTConcat(utastf, utastl) -> (stringify_literal utastf) ^ (stringify_literal utastl)
       | UTStringConstant(s)  -> s
       | UTStringEmpty        -> ""
       | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
