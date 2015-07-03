@@ -14,39 +14,38 @@ let \section sec cont = {\\section\{@sec;\}\deeper{@cont;}\%} in
 let \subsection subsec cont = {\\subsection\{@subsec;\}\deeper{@cont;}\%} in
 let \p p = {\\indent\deeper{@p;}\\par} in
 let \footnote footnote = {\\footnote\{@footnote;\}} in
-let \row row-content =
-  let cell = list-head row-content in
-  let rest = list-tail row-content in
-    cell
-      ^ ( if is-empty rest
-            then {}
-            else {\ & \row{@rest;}} )
-in
+%let row row-content =
+%  if is-empty row-content then {} else
+%    let cell = list-head row-content in
+%    let rest = list-tail row-content in
+%      cell
+%        ^ ( if is-empty rest
+%              then {}
+%              else {\ &\ } ^ (row rest) )
+%in
 let \table option table = {
-  \\begin\{tabular\}\{option;\}\deeper{
-    \sub-table{@table;}
-  }\\end\{tabular\}
+  \\begin\{tabular\}\{option;\}\deeper(sub-table table);\\end\{tabular\}
 }
-and \sub-table table-content =
-  let row = list-head table-content in
-  let rest = list-tail table-content in
-    row
+and sub-table table-content =
+  if is-empty table-content then {} else
+    let row = list-head table-content in
+    let rest = list-tail table-content in
+      row
       ^ ( if is-empty rest
             then {}
-            else {\\\\\break;\sub-table{@rest;}} )
+            else {\\\\\break;} ^ (sub-table rest) )
 in
 let \itemize list = {
-  \\begin\{itemize\}\deeper{
-    \sub-itemize{@list;}
-  }\\end\{itemize\}
+  \\begin\{itemize\}\deeper(sub-itemize list);\\end\{itemize\}
 }
-and \sub-itemize list =
-  let head = list-head list in
-  let tail = list-tail list in
-    {\\item @head;}
-      ^ ( if is-empty tail
-            then {}
-            else {\break;\sub-itemize{@tail;}} )
+and sub-itemize list =
+  if is-empty list then {} else
+    let head = list-head list in
+    let tail = list-tail list in
+      {\\item @head;}
+        ^ ( if is-empty tail
+              then {}
+              else {\break;} ^ (sub-itemize tail) )
 in
 let \math math = {\ $@math;$\ } in
 let \epsilon = {\\varepsilon} in

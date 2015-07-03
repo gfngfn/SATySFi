@@ -1,16 +1,6 @@
 open Types
 open Typeenv
 
-let rec func_types domlst cod =
-  match domlst with
-  | []       -> cod
-  | hd :: tl -> FuncType(hd, func_types tl cod)
-
-let rec forall_types tvlst cont =
-  match tvlst with
-  | []       -> cont
-  | hd :: tl -> ForallType(hd, forall_types tl cont)
-
 let rec add_to_type_environment tyenv lst =
   match lst with
   | []                     -> tyenv
@@ -19,37 +9,45 @@ let rec add_to_type_environment tyenv lst =
         add_to_type_environment tyenv_new tail
 
 let make_type_environment () =
+  let i = IntType((-32, 0, 0, 0)) in
+  let b = BoolType((-32, 0, 0, 0)) in
+  let s = StringType((-32, 0, 0, 0)) in
+  let u = UnitType((-32, 0, 0, 0)) in
+  let v n = TypeVariable((-32, 0, 0, 0), n) in
+  let (-%) n cont = ForallType(n, cont) in
+  let l cont = ListType((-32, 0, 0, 0), cont) in
+  let (-->) dom cod = FuncType((-32, 0, 0, 0), dom, cod) in
 
     add_to_type_environment Typeenv.empty
-      [ ( "+",   (func_types [IntType; IntType] IntType) );
-        ( "-",   (func_types [IntType; IntType] IntType) );
-        ( "mod", (func_types [IntType; IntType] IntType) );
-        ( "*",   (func_types [IntType; IntType] IntType) );
-        ( "/",   (func_types [IntType; IntType] IntType) );
-        ( "^",   (func_types [StringType; StringType] StringType) );
-        ( "==",  (func_types [IntType; IntType] BoolType) );
-        ( "<>",  (func_types [IntType; IntType] BoolType) );
-        ( ">",   (func_types [IntType; IntType] BoolType) );
-        ( "<",   (func_types [IntType; IntType] BoolType) );
-        ( ">=",  (func_types [IntType; IntType] BoolType) );
-        ( "<=",  (func_types [IntType; IntType] BoolType) );
-        ( "&&",  (func_types [BoolType; BoolType] BoolType) );
-        ( "||",  (func_types [BoolType; BoolType] BoolType) );
-        ( "not", (func_types [BoolType] BoolType) );
-        ( "before", (forall_types [-1] (func_types [UnitType; TypeVariable(-1)] (TypeVariable(-1)))) );
+      [ ( "+",   i --> (i --> i) );
+        ( "-",   i --> (i --> i) );
+        ( "mod", i --> (i --> i) );
+        ( "*",   i --> (i --> i) );
+        ( "/",   i --> (i --> i) );
+        ( "^",   s --> (s --> s) );
+        ( "==",  i --> (i --> b) );
+        ( "<>",  i --> (i --> b) );
+        ( ">",   i --> (i --> b) );
+        ( "<",   i --> (i --> b) );
+        ( ">=",  i --> (i --> b) );
+        ( "<=",  i --> (i --> b) );
+        ( "&&",  b --> (b --> b) );
+        ( "||",  b --> (b --> b) );
+        ( "not", b --> b );
+  ( "before", (-1) -% (u --> ((v (-1)) --> (v (-1)))) );
 
-        ( "same",          (func_types [StringType; StringType] BoolType) );
-        ( "string-sub",    (func_types [StringType; IntType; IntType] StringType) );
-        ( "string-length", (func_types [StringType] IntType) );
-        ( "\\deeper",      (func_types [StringType] StringType) );
-        ( "\\break",       (func_types [] StringType) );
-        ( "\\space",       (func_types [] StringType) );
-        ( "\\include",     (func_types [StringType] StringType) );
-        ( "\\arabic",      (func_types [IntType] StringType) );
+        ( "same",          s --> (s --> b) );
+        ( "string-sub",    s --> (i --> (i --> s)) );
+        ( "string-length", s --> i );
+        ( "\\deeper",      s --> s );
+        ( "\\break",       s );
+        ( "\\space",       s );
+        ( "\\include",     s --> s );
+        ( "\\arabic",      i --> s );
 
-        ( "list-head", (forall_types [-2] (FuncType(ListType(TypeVariable(-2)), TypeVariable(-2)))) );
-        ( "list-tail", (forall_types [-3] (FuncType(ListType(TypeVariable(-3)), ListType(TypeVariable(-3))))) );
-        ( "is-empty",  (forall_types [-4] (FuncType(ListType(TypeVariable(-4)), BoolType))) )
+        ( "list-head", (-2) -% ((l (v (-2))) --> (v (-2))) );
+        ( "list-tail", (-3) -% ((l (v (-3))) --> (l (v (-3)))) );
+        ( "is-empty",  (-4) -% ((l (v (-4))) --> b) )
       ]
 
 let rec lambdas env vlst ast =

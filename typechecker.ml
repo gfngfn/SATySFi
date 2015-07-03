@@ -7,15 +7,6 @@ let print_process msg =
 *)
   ()
 
-let error_reporting rng errmsg =
-  let (sttln, sttpos, endln, endpos) = rng in
-    if sttln == endln then
-      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", characters "
-        ^ (string_of_int sttpos) ^ "-" ^ (string_of_int endpos) ^ ")"
-    else
-      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
-        ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ")"
-
 let tvidmax : type_variable_id ref = ref 0
 
 let new_type_variable_id () =
@@ -33,32 +24,32 @@ let rec find_in_list lst elm =
 let rec eliminate_forall tystr lst =
   match tystr with
   | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable(new_type_variable_id ()) in
+      let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
   | other -> replace_id other lst
 
 and replace_id tystr lst =
   match tystr with
-  | TypeVariable(tvid)     ->
-      ( try find_in_list lst tvid with Not_found -> TypeVariable(tvid) )
-  | ListType(tycont)       -> ListType(replace_id tycont lst)
-  | FuncType(tydom, tycod) -> FuncType(replace_id tydom lst, replace_id tycod lst)
+  | TypeVariable(rng, tvid)     ->
+      ( try find_in_list lst tvid with Not_found -> TypeVariable(rng, tvid) )
+  | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
+  | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
   | other                  -> other
 
 let make_bounded_free tystr = eliminate_forall tystr []
 
-(* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct * Subst.t) *)
+(* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck tyenv utast =
   let (rng, utastmain) = utast in
     match utastmain with
-    | UTStringEmpty         -> (StringEmpty, StringType, Subst.empty)
-    | UTBreakAndIndent      -> (BreakAndIndent, StringType, Subst.empty)
-    | UTNumericConstant(nc) -> (NumericConstant(nc), IntType, Subst.empty)
-    | UTStringConstant(sc)  -> (StringConstant(sc), StringType, Subst.empty)
-    | UTBooleanConstant(bc) -> (BooleanConstant(bc), BoolType, Subst.empty)
-    | UTUnitConstant        -> (UnitConstant, UnitType, Subst.empty)
-    | UTFinishHeaderFile    -> (FinishHeaderFile, TypeEnvironmentType(tyenv), Subst.empty)
-    | UTNoContent           -> (NoContent, StringType, Subst.empty)
+    | UTStringEmpty         -> (StringEmpty, StringType(rng), Subst.empty)
+    | UTBreakAndIndent      -> (BreakAndIndent, StringType(rng), Subst.empty)
+    | UTNumericConstant(nc) -> (NumericConstant(nc), IntType(rng), Subst.empty)
+    | UTStringConstant(sc)  -> (StringConstant(sc), StringType(rng), Subst.empty)
+    | UTBooleanConstant(bc) -> (BooleanConstant(bc), BoolType(rng), Subst.empty)
+    | UTUnitConstant        -> (UnitConstant, UnitType(rng), Subst.empty)
+    | UTFinishHeaderFile    -> (FinishHeaderFile, TypeEnvironmentType(rng, tyenv), Subst.empty)
+    | UTNoContent           -> (NoContent, StringType(rng), Subst.empty)
     | UTContentOf(nv) ->
         ( try
             let forallty = Typeenv.find tyenv nv in
@@ -71,16 +62,16 @@ let rec typecheck tyenv utast =
     | UTConcat(utast1, utast2) ->
         let (e1, ty1, theta1) = typecheck tyenv utast1 in
         let (e2, ty2, theta2) = typecheck tyenv utast2 in
-        let theta3 = Subst.unify ty1 StringType in
-        let theta4 = Subst.unify ty2 StringType in
+        let theta3 = Subst.unify ty1 (StringType(get_range utast1)) in
+        let theta4 = Subst.unify ty2 (StringType(get_range utast2)) in
         let theta_result = Subst.compose theta4 (Subst.compose theta3 (Subst.compose theta2 theta1)) in
-          (Concat(e1, e2), StringType, theta_result)
+          (Concat(e1, e2), StringType(rng), theta_result)
 
     | UTApply(utast1, utast2) ->
         let (e1, ty1, theta1) = typecheck tyenv utast1 in
         let (e2, ty2, theta2) = typecheck tyenv utast2 in
-        let beta = TypeVariable(new_type_variable_id ()) in
-        let theta3 = Subst.unify (FuncType(ty2, beta)) ty1 in
+        let beta = TypeVariable(rng, new_type_variable_id ()) in
+        let theta3 = Subst.unify (FuncType(get_range utast1, ty2, beta)) ty1 in
           let term_result = Apply(
                               Subst.apply_to_term (Subst.compose theta3 theta1) e1,
                               Subst.apply_to_term theta3 e2
@@ -89,12 +80,12 @@ let rec typecheck tyenv utast =
           let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
             (term_result, type_result, theta_result)
 
-    | UTLambdaAbstract(varnm, utast1) ->
-        let beta = TypeVariable(new_type_variable_id ()) in
+    | UTLambdaAbstract(varrng, varnm, utast1) ->
+        let beta = TypeVariable(varrng, new_type_variable_id ()) in
         let tyenv_new = Typeenv.add tyenv varnm beta in
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
             let term_result = LambdaAbstract(varnm, e1) in
-            let type_result = FuncType(Subst.apply_to_type_struct theta1 beta, ty1) in
+            let type_result = FuncType(rng, Subst.apply_to_type_struct theta1 beta, ty1) in
             let theta_result = theta1 in
               (term_result, type_result, theta_result)
 
@@ -118,7 +109,7 @@ let rec typecheck tyenv utast =
           (term_result, Subst.apply_to_type_struct theta_result ty1, theta_result)
 
     | UTIfClassIsValid(utast1, utast2) ->
-        let tyenv_new = Typeenv.add tyenv "class" StringType in
+        let tyenv_new = Typeenv.add tyenv "class" (StringType((-6, 0, 0, 0))) in
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
           let (e2, ty2, theta2) = typecheck tyenv utast2 in
           let theta_result = Subst.compose (Subst.unify ty1 ty2) (Subst.compose theta2 theta1) in
@@ -127,7 +118,7 @@ let rec typecheck tyenv utast =
             (term_result, type_result, theta_result)
 
     | UTIfIDIsValid(utast1, utast2) ->
-        let tyenv_new = Typeenv.add tyenv "id" StringType in
+        let tyenv_new = Typeenv.add tyenv "id" (StringType((-7, 0, 0, 0))) in
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
           let (e2, ty2, theta2) = typecheck tyenv utast2 in
           let theta_result = Subst.compose (Subst.unify ty1 ty2) (Subst.compose theta2 theta1) in
@@ -145,15 +136,15 @@ let rec typecheck tyenv utast =
         let (ehd, tyhd, thetahd) = typecheck tyenv utasthd in
         let (etl, tytl, thetatl) = typecheck tyenv utasttl in
           let theta_result = Subst.compose thetatl thetahd in
-          let type_result = ListType(Subst.apply_to_type_struct theta_result tyhd) in
+          let type_result = ListType(rng, Subst.apply_to_type_struct theta_result tyhd) in
           let term_result = ListCons(
                               Subst.apply_to_term theta_result ehd,
                               Subst.apply_to_term theta_result etl) in
             (term_result, type_result, theta_result)
 
     | UTEndOfList ->
-        let ntyvar = TypeVariable(new_type_variable_id ()) in
-          (EndOfList, ListType(ntyvar), Subst.empty)
+        let ntyvar = TypeVariable(rng, new_type_variable_id ()) in
+          (EndOfList, ListType(rng, ntyvar), Subst.empty)
 (*  
     | UTLetMutableIn(varnm, astdflt, astaft) ->
         let tydflt = typecheck tyenv astdflt in
@@ -172,7 +163,7 @@ and add_mutual_variables tyenv mutletcons =
   match mutletcons with
   | UTEndOfMutualLet -> tyenv
   | UTMutualLetCons(nv, _, tailcons) ->
-      let ntv = TypeVariable(new_type_variable_id ()) in
+      let ntv = TypeVariable((-1, 0, 0, 0), new_type_variable_id ()) in
         add_mutual_variables (Typeenv.add tyenv nv ntv) tailcons
 
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * mutual_let_cons * Subst.t) *)
@@ -191,7 +182,7 @@ let main tyenv utast =
   let (e, ty, theta) = typecheck tyenv utast in
   let strty = string_of_type_struct ty in
     match ty with
-    | TypeEnvironmentType(newtyenv) -> (strty, newtyenv, e)
-    | _                             -> (strty, tyenv, e)
+    | TypeEnvironmentType(_, newtyenv) -> (strty, newtyenv, e)
+    | _                                -> (strty, tyenv, e)
 
 let initialize () = ( tvidmax := 0 )

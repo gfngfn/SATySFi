@@ -12,23 +12,21 @@ let \settings = {
 let \description dscr = {
   \\begin\{center\}\deeper{
     \\begin\{tabular\}\{ll\}
-    \\hline\deeper{
-      \dscr-sep-lines{@dscr;}
-    }\\hline
+    \\hline\deeper(dscr-sep-lines dscr);\\hline
     \\end\{tabular\}
   }\\end\{center\}
 }
-and \dscr-sep-lines dscr =
-  let head = list-head dscr in
-  let tail = list-tail dscr in
-    head ^
-    ( if is-empty tail then
-        {\\\\}
-      else
-        {\\\\
-          \\hline%
-          \dscr-sep-lines{@tail;}}
-    )
+and dscr-sep-lines dscr =
+  if is-empty dscr then {} else
+    let head = list-head dscr in
+    let tail = list-tail dscr in
+      head ^
+      ( if is-empty tail then
+          {\\\\}
+        else
+          {\\\\
+            \\hline} ^ (dscr-sep-lines tail)
+      )
 in
 let \d-item di dd = {@di; & @dd;} in
 let \synt synt = {\\textcolor\{blue\}\{\\texttt\{\escape-for-latex{@synt;}\}\}} in

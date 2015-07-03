@@ -12,14 +12,14 @@
 
   (* ctrlseq_name -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_argument_cons -> untyped_abstract_tree *)
   let rec convert_into_apply csutast clsnmutast idnmutast argcons =
-    convert_into_apply_sub argcons ((0, 0, 0, 0), UTApplyClassAndID(clsnmutast, idnmutast, csutast))
+    convert_into_apply_sub argcons ((-12, 0, 0, 0), UTApplyClassAndID(clsnmutast, idnmutast, csutast))
 
   (* argument_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   and convert_into_apply_sub argcons utastconstr =
     match argcons with
     | UTEndOfArgument -> utastconstr
     | UTArgumentCons(arg, actail) ->
-        convert_into_apply_sub actail ((0, 0, 0, 0), UTApply(utastconstr, arg))
+        convert_into_apply_sub actail ((-11, 0, 0, 0), UTApply(utastconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
     UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
@@ -30,8 +30,8 @@
   let rec curry_lambda_abstract rng argvarcons utastdef =
     match argvarcons with
     | UTEndOfArgumentVariable -> utastdef
-    | UTArgumentVariableCons(argvar, avtail) -> 
-        (rng, UTLambdaAbstract(argvar, curry_lambda_abstract (0, 0, 0, 0) avtail utastdef))
+    | UTArgumentVariableCons(varrng, argvar, avtail) ->
+        (rng, UTLambdaAbstract(varrng, argvar, curry_lambda_abstract (-10, 0, 0, 0) avtail utastdef))
 
   (* untyped_abstract_tree -> code_range *)
   let get_range utast =
@@ -45,15 +45,15 @@
 
   let rec string_of_avc argvarcons =
     match argvarcons with
-    | UTEndOfArgumentVariable -> ""
-    | UTArgumentVariableCons(argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
+    | UTEndOfArgumentVariable                   -> ""
+    | UTArgumentVariableCons(_, argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
 
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
       match ltrlmain with
       | UTConcat(utastf, utastl) -> (stringify_literal utastf) ^ (stringify_literal utastl)
-      | UTStringConstant(s)  -> s
-      | UTStringEmpty        -> ""
+      | UTStringConstant(s)      -> s
+      | UTStringEmpty            -> ""
       | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
 
   (* untyped_abstract_tree -> untyped_abstract_tree_main *)
@@ -64,8 +64,8 @@
           if str_shaved.[(String.length str_shaved) - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 ((String.length str_shaved) - 1) in
               UTConcat(
-                ((0, 0, 0, 0), UTStringConstant(str_no_last_break)),
-                ((0, 0, 0, 0), UTBreakAndIndent)
+                ((-13, 0, 0, 0), UTStringConstant(str_no_last_break)),
+                ((-14, 0, 0, 0), UTBreakAndIndent)
               )
           else
             UTStringConstant(str_shaved)
@@ -125,9 +125,8 @@
     let (_, _, endln, endpos) = get_range rgt in
     let (opln, opstt, opend) = op in
     let oprng = (opln, opstt, opln, opend) in
-    let dummyrng = (0, 0, 0, 0) in
     let rng = (sttln, sttpos, endln, endpos) in
-      (rng, UTApply((dummyrng, UTApply((oprng, UTContentOf(opname)), lft)), rgt))
+      (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
 %}
 
@@ -226,18 +225,20 @@ main:
 nxlet:
   | LET VAR argvar DEFEQ nxlet nxdec nxlet {
         let (sttln, sttpos, _) = $1 in
-        let (_, varnm) = $2 in
+        let ((varln, varstt, varend), varnm) = $2 in
         let (_, _, endln, endpos) = get_range $7 in
         let rng = (sttln, sttpos, endln, endpos) in
-        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+        let varrng = (varln, varstt, varln, varend) in
+        let curried = curry_lambda_abstract varrng $3 $5 in
           (rng, UTLetIn(UTMutualLetCons(varnm, curried, $6), $7))
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxlet {
         let (sttln, sttpos, _) = $1 in
-        let (_, csname) = $2 in
+        let ((csln, csstt, csend), csname) = $2 in
         let (_, _, endln, endpos) = get_range $7 in
         let rng = (sttln, sttpos, endln, endpos) in
-        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+        let csrng = (csln, csstt, csln, csend) in
+        let curried = curry_lambda_abstract csrng $3 $5 in
           (rng, UTLetIn(UTMutualLetCons(csname, curried, $6), $7))
       }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
@@ -285,13 +286,15 @@ nxlet:
 ;
 nxdec: /* -> Types.mutual_let_cons */
   | LETAND VAR argvar DEFEQ nxlet nxdec {
-        let (_, vn) = $2 in
-        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+        let ((varln, varstt, varend), vn) = $2 in
+        let varrng = (varln, varstt, varln, varend) in
+        let curried = curry_lambda_abstract varrng $3 $5 in
           UTMutualLetCons(vn, curried, $6)
       }
   | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
-        let (_, csname) = $2 in
-        let curried = curry_lambda_abstract (0, 0, 0, 0) $3 $5 in
+        let ((csln, csstt, csend), csname) = $2 in
+        let csrng = (csln, csstt, csln, csend) in
+        let curried = curry_lambda_abstract csrng $3 $5 in
           UTMutualLetCons(csname, curried, $6)
       }
   | IN { UTEndOfMutualLet }
@@ -433,7 +436,11 @@ nxlambda:
       }
 ;
 argvar: /* -> Types.argument_variable_cons */
-  | VAR argvar { let (_, vn) = $1 in UTArgumentVariableCons(vn, $2) }
+  | VAR argvar {
+        let ((varln, varstt, varend), vn) = $1 in
+        let varrng = (varln, varstt, varln, varend) in
+          UTArgumentVariableCons(varrng, vn, $2)
+      }
   | { UTEndOfArgumentVariable }
 ;
 nxlor:
@@ -553,7 +560,7 @@ nxrtimes:
       }
 ;
 nxun:
-  | MINUS nxapp { binary_operator "-" ((0, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
+  | MINUS nxapp { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
   | LNOT nxapp  {
         let (sttln, sttpos, lnotend) = $1 in
         let lnotrng = (sttln, sttpos, sttln, lnotend) in
@@ -698,7 +705,7 @@ nxlist:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTListCons($2, $3))
       }
-  | { ((0, 0, 0, 0), UTEndOfList) }
+  | { ((-17, 0, 0, 0), UTEndOfList) }
 /* -- for syntax error log -- */
   | LISTPUNCT error {
         raise (ParseErrorDetail(
@@ -721,7 +728,7 @@ sxsepsub:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTListCons($1, $3))
       }
-  | { ((0, 0, 0, 0), UTEndOfList) }
+  | { ((-18, 0, 0, 0), UTEndOfList) }
 /* -- for syntax error log -- */
   | sxblock SEP error {
         raise (ParseErrorDetail(
@@ -735,7 +742,7 @@ sxblock:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTConcat($1, $2))
       }
-  | { ((0, 0, 0, 0), UTStringEmpty) }
+  | { ((-19, 0, 0, 0), UTStringEmpty) }
   ;
 sxbot:
   | CHAR  {
@@ -775,17 +782,23 @@ sxclsnm:
         let rng = (ln, sttpos, ln, endpos) in
           (rng, class_name_to_abstract_tree clsnm)
       }
-  | { ((0, 0, 0, 0), UTNoContent) }
+  | { ((-20, 0, 0, 0), UTNoContent) }
 sxidnm:
   | IDNAME {
         let ((ln, sttpos, endpos), idnm) = $1 in
         let rng = (ln, sttpos, ln, endpos) in
           (rng, id_name_to_abstract_tree idnm)
       }
-  | { ((0, 0, 0, 0), UTNoContent) }
+  | { ((-21, 0, 0, 0), UTNoContent) }
 ;
-narg: /* -> Types.argument_cons */
-  | OPENNUM nxlet CLOSENUM narg { UTArgumentCons($2, $4) }
+narg: /* -> Types.untyped_argument_cons */
+  | OPENNUM nxlet CLOSENUM narg {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let (_, utastmain) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          UTArgumentCons((rng, utastmain), $4)
+      }
   | { UTEndOfArgument }
 /* -- for syntax error log -- */
   | OPENNUM error {
@@ -797,7 +810,7 @@ narg: /* -> Types.argument_cons */
           error_reporting "illegal token after end of program ')'" ") ..<!>.." $3))
       }
 ;
-sarg: /* -> Types.argument_cons */
+sarg: /* -> Types.untyped_argument_cons */
   | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
   | OPENQT sxsep CLOSEQT sargsub {
         let (sttln, sttpos, _) = $1 in

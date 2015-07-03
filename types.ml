@@ -16,7 +16,7 @@ type class_name_arg =
   | NoClassName
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons =
-  | UTArgumentVariableCons of var_name * untyped_argument_variable_cons
+  | UTArgumentVariableCons of code_range * var_name * untyped_argument_variable_cons
   | UTEndOfArgumentVariable
 type untyped_argument_cons =
   | UTArgumentCons of untyped_abstract_tree * untyped_argument_cons
@@ -40,7 +40,7 @@ and untyped_abstract_tree_main =
   | UTBreakAndIndent
   | UTLetIn            of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse       of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaAbstract   of var_name * untyped_abstract_tree
+  | UTLambdaAbstract   of code_range * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTLetMutableIn     of var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite        of var_name * untyped_abstract_tree
