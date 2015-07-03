@@ -42,11 +42,13 @@ let describe_position (sttln, sttpos, endln, endpos) =
 let error_reporting rng errmsg =
   let (sttln, sttpos, endln, endpos) = rng in
     if sttln == endln then
-      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", characters "
-        ^ (string_of_int sttpos) ^ "-" ^ (string_of_int endpos) ^ ")"
+      "at line " ^ (string_of_int sttln) ^ ", characters "
+        ^ (string_of_int sttpos) ^ "-" ^ (string_of_int endpos) ^ ":\n"
+        ^ "    " ^ errmsg
     else
-      errmsg ^ " (line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
-        ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ")"
+      "at line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
+        ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ":\n"
+        ^ "    " ^ errmsg
 
 let rec string_of_type_struct tystr =
   match tystr with

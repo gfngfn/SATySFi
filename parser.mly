@@ -1,7 +1,6 @@
 %{
   open Types
 
-  exception ParseErrorDetail of string
   type literal_reading_state = Normal | ReadingSpace
 
   let rec append_argument_list arglsta arglstb =

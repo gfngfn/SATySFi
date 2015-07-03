@@ -71,7 +71,9 @@ let rec unify tystr1 tystr2 =
   | (TypeVariable(rng, tvid), tystr) ->
       if emerge_in tvid tystr then
         raise (TypeCheckError(error_reporting rng
-          ("type " ^ (string_of_type_struct (TypeVariable(rng, tvid))) ^ " is in " ^ (string_of_type_struct tystr))))
+          ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng, tvid))) ^ ">\n"
+          	^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
+          	^ "    but the former type is in the latter one")))
       else
         [(tvid, tystr)]
   | (tystr, TypeVariable(rng, tvid)) -> unify (TypeVariable(rng, tvid)) tystr
