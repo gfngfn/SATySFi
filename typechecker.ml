@@ -54,7 +54,9 @@ let rec typecheck tyenv utast =
         ( try
             let forallty = Typeenv.find tyenv nv in
             let ty = make_bounded_free forallty in
-              (ContentOf(nv), ty, Subst.empty)
+              ( (* print_string ("  " ^ nv ^ " : " ^ (string_of_type_struct forallty) ^ "\n\n") ; *)
+                (ContentOf(nv), ty, Subst.empty)
+              )
           with
           | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
         )
@@ -204,6 +206,18 @@ let rec typecheck tyenv utast =
     | UTEndOfList ->
         let ntyvar = TypeVariable(rng, new_type_variable_id ()) in
           (EndOfList, ListType(rng, ntyvar), Subst.empty)
+
+    | UTWhileDo(utastb, utastc) ->
+        let (eb, tyb, thetab) = typecheck tyenv utastb in
+        let (ec, tyc, thetac) = typecheck tyenv utastc in
+          let thetabsub = Subst.unify tyb (BoolType(get_range utastb)) in
+          let thetacsub = Subst.unify tyc (UnitType(get_range utastc)) in
+            let theta_result =  Subst.compose thetacsub
+                                  (Subst.compose thetabsub
+                                  	(Subst.compose thetac thetab)) in
+            let term_result = WhileDo(Subst.apply_to_term theta_result eb,
+                                      Subst.apply_to_term theta_result ec) in
+              (term_result, UnitType(rng), theta_result)
 
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 

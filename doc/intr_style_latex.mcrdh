@@ -5,9 +5,18 @@ let \settings = {
   \\usepackage\{lmodern\}
   \\usepackage[dvipdfmx]\{xcolor\}
   \\usepackage[dvipdfmx]\{graphicx\}
-  \\usepackage\{apmayfes2015deco\}
   \\usepackage\{tikz\}
+  \\usepackage\{eclbkbox\}
+  \\usepackage\{gfncls\}
+  \\setsectiontheme\{line\}
   \\setlength\\parskip\{1zw\}
+  \\usepackage\{mdframed\}
+  \\mdfdefinestyle\{codebox\}\{\deeper{
+    frametitlerule=true,
+    frametitlefont=\\normalfont,
+    frametitlebackgroundcolor=gray!20,
+    linewidth=1pt
+  }\}
 } in
 let \description dscr = {
   \\begin\{center\}\deeper{
@@ -29,7 +38,7 @@ and dscr-sep-lines dscr =
       )
 in
 let \d-item di dd = {@di; & @dd;} in
-let \synt synt = {\\textcolor\{blue\}\{\\texttt\{\escape-for-latex{@synt;}\}\}} in
+let \synt synt = `\textcolor[rgb]{0,0,0.75}{\texttt{` ^ {\escape-for-latex{@synt;}} ^ `}}` in
 let \newword nw = {\\textsf\{@nw;\}} in
 
 % ---- tokens ----
@@ -102,14 +111,24 @@ let \code-dp-tab = {\\\ \\\ } in
 let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
 let \metadots = {$\\ldots$} in
 let \mcrd-display code = {
-  \\begin\{center\}\deeper{
-    \\parbox\{0.9\\textwidth\}\{\\noindent
-      \\textcolor\{blue\}\{\\texttt\{\strong-escape-for-latex{@code;}\}\}%
-    \}%
-  }\\end\{center\}
+  %\\begin\{center\}\deeper{
+    %\\parbox\{0.9\\textwidth\}\{\\noindent%
+      %\\textcolor\{blue\}\{\\texttt\{
+      %  \strong-escape-for-latex{@code;}
+      %\}\}%
+    %\}%
+  %}\\end\{center\}
+  \{\\small\\begin\{breakbox\}
+    \\begin\{verbatim\}@code;\\end\{verbatim\}
+  \\end\{breakbox\}\}\\noindent
+} in
+let \mcrd-file name code = {
+  \\begin\{mdframed\}[style=codebox, frametitle=\{\\texttt\{\escape-for-latex{@name;}\}\}]
+    \{\\small\\begin\{verbatim\}@code;\\end\{verbatim\}\}
+  \\end\{mdframed\}
 } in
 let \mcrd code = {\synt{@code;}} in
 let \url-display url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
-let \type-synt ty = `\textcolor{gray}{\texttt{` ^ ty ^ `}}` in
+let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}` in
 let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}} in
   finish

@@ -144,6 +144,7 @@ rule numexpr = parse
   | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
   | "!"   { REFNOW(get_pos lexbuf) }
   | "!!"  { REFFINAL(get_pos lexbuf) }
+  | "::"  { CONS(get_pos lexbuf) }
 
   | (latin (digit | latin |"-")*) {
         let tok = Lexing.lexeme lexbuf in

@@ -55,9 +55,25 @@
       | UTStringEmpty            -> ""
       | _  -> raise (ParseErrorDetail("illegal token in literal area; this cannot happen"))
 
+  let rec omit_pre_spaces str =
+    if String.sub str 0 1 = " "  then
+      omit_pre_spaces (String.sub str 1 ((String.length str) - 1)) 
+(*    else if String.sub str 0 1 = "\n" then
+      (String.sub str 1 ((String.length str) - 1)) *)
+    else
+      str
+
+  let rec omit_post_spaces str =
+    if String.sub str ((String.length str) - 1) 1 = " " then
+      omit_post_spaces (String.sub str 0 ((String.length str) - 1))
+    else if String.sub str ((String.length str) - 1) 1 = "\n" then
+      (String.sub str 0 ((String.length str) - 1))
+    else
+      str
+
   (* untyped_abstract_tree -> untyped_abstract_tree_main *)
-  and omit_spaces ltrl =
-    let str_ltrl = stringify_literal ltrl in
+  let rec omit_spaces ltrl =
+    let str_ltrl = omit_post_spaces (omit_pre_spaces (stringify_literal ltrl)) in
       let min_indent = min_indent_space str_ltrl in
         let str_shaved = shave_indent str_ltrl min_indent in
           if str_shaved.[(String.length str_shaved) - 1] = '\n' then
@@ -161,7 +177,7 @@
 %token <Types.token_position> TRUE FALSE
 %token <Types.token_position> FINISH
 %token <Types.token_position> SEP
-%token <Types.token_position> BLIST LISTPUNCT ELIST
+%token <Types.token_position> BLIST LISTPUNCT ELIST CONS
 %token <Types.token_position> BEFORE
 %token <Types.token_position> UNITVALUE
 %token <Types.token_position> WHILE DO
@@ -510,6 +526,7 @@ nxcomp:
 ;
 nxconcat:
   | nxlplus CONCAT nxconcat { binary_operator "^" $1 $2 $3 }
+  | nxlplus CONS nxconcat   { binary_operator "::" $1 $2 $3 }
   | nxlplus { $1 }
 /* -- for syntax error log -- */
   | nxlplus CONCAT error {

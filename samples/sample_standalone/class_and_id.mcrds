@@ -1,0 +1,11 @@
+let \div inner =
+  {<div}
+  ^ ( if-class-is-valid {\ class="@class;"} else {} )
+  ^ ( if-id-is-valid {\ id="@id;"} else {} )
+  ^ {>\deeper{@inner;}</div>}
+in {
+  \div{The quick brown fox jumps over the lazy dog.}
+  \div .hoge {My quiz above the kiwi juice needs priceless fixing.}
+  \div #piyo {Iro wa nioe do chiri nuru o, wa ga yo tare zo tsune nara n. }
+  \div .hoge #piyo {Lorem ipsum dolor sit amet.}
+}

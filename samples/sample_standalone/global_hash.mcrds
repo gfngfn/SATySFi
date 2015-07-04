@@ -1,0 +1,3 @@
+declare-global-mutable final <- {} before
+  {[} ^ !!final ^ {]}
+  ^ ( final <- {hoge} before {+[} ^ !!final ^ {]} )

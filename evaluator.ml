@@ -294,7 +294,7 @@ let rec interpret env ast =
         BooleanConstant(blnl || blnr)
   | LogicalNot(astl) ->
       let blnl = interpret_bool env astl in
-        BooleanConstant(not blnl)
+        BooleanConstant(not blnl)    
 
   | other -> raise (EvalError("remains to be implemented: " ^ (string_of_ast other)))
 

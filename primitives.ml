@@ -35,6 +35,7 @@ let make_type_environment () =
         ( "||",  b --> (b --> b) );
         ( "not", b --> b );
         ( "!",   (-5) -% ((r (v (-5))) --> (v (-5))) );
+        ( "::",  (-6) -% ((v (-6)) --> ((l (v (-6))) --> (l (v (-6))))) );
 
         ( "same",          s --> (s --> b) );
         ( "string-sub",    s --> (i --> (i --> s)) );
@@ -42,6 +43,7 @@ let make_type_environment () =
         ( "\\deeper",      s --> s );
         ( "\\break",       s );
         ( "\\space",       s );
+        ( "break-char",    s );
         ( "\\include",     s --> s );
         ( "arabic",      i --> s );
 
@@ -80,12 +82,14 @@ let make_environment () =
   let loc_lor          : location = ref NoContent in
   let loc_lnot         : location = ref NoContent in
   let loc_refnow       : location = ref NoContent in
+  let loc_cons         : location = ref NoContent in
   let loc_same         : location = ref NoContent in
   let loc_stringsub    : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
   let loc_deeper       : location = ref NoContent in
   let loc_break        : location = ref NoContent in
   let loc_space        : location = ref NoContent in
+  let loc_breakchar    : location = ref NoContent in
   let loc_include      : location = ref NoContent in
   let loc_arabic       : location = ref NoContent in
   let loc_listhead     : location = ref NoContent in
@@ -108,12 +112,14 @@ let make_environment () =
     add_to_environment env "||"            loc_lor ;
     add_to_environment env "not"           loc_lnot ;
     add_to_environment env "!"             loc_refnow ;
+    add_to_environment env "::"            loc_cons ;
     add_to_environment env "same"          loc_same ;
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
     add_to_environment env "\\deeper"      loc_deeper ;
     add_to_environment env "\\break"       loc_break ;
     add_to_environment env "\\space"       loc_space ;
+    add_to_environment env "break-char"    loc_breakchar ;
     add_to_environment env "\\include"     loc_include ;
     add_to_environment env "arabic"        loc_arabic ;
     add_to_environment env "list-head"     loc_listhead ;
@@ -167,6 +173,8 @@ let make_environment () =
 
     loc_refnow       := lambdas env ["~op"] (Reference(ContentOf("~op"))) ;
 
+    loc_cons         := lambdas env ["~opl"; "~opr"] (ListCons(ContentOf("~opl"), ContentOf("~opr"))) ;
+
     loc_same         := lambdas env ["~stra"; "~strb"]
                           (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;
 
@@ -182,6 +190,8 @@ let make_environment () =
     loc_break        := lambdas env [] BreakAndIndent ;
 
     loc_space        := lambdas env [] (StringConstant(" ")) ;
+
+    loc_breakchar    := lambdas env [] (StringConstant("\n")) ;
 
     loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ;
 

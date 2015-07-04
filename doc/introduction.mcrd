@@ -79,6 +79,199 @@
         函数・マクロ定義の項目で後述します。
       }
     }
+    \subsection{自動番号づけ・相互参照}{
+      \p{
+        Macrodownには強力な相互参照を実装できる機能があり，例えば
+        
+        \mcrd-display```
+          \section{はじめに}{
+            \p{後方参照の例です。\ref{next}の番号を前方で取得できます。}
+          }
+          \section #next {サンプル}{
+            \p{参照される側にはIDをつけておけばOK!}
+          }
+        ```
+
+        に対する出力として
+
+        \mcrd-display```
+          <section>
+            <h1>第1章 はじめに</h1>
+              <p>
+                後方参照の例です。第2章の番号を前方で取得できます。
+              </p>
+            <!-- ---- ---- ---- ---- -->
+          </section>
+          <section id="next">
+            <h1>第2章 サンプル</h1>
+              <p>
+                参照される側にはIDをつけておけばOK!
+              </p>
+            <!-- ---- ---- ---- ---- -->
+          </section>
+        ```
+
+        を得るようなマクロ\mcrd`\section`，\mcrd`\ref`を定義することが可能です。
+        \LaTeX;ではこのような相互参照は更新するたびに2回タイプセットしなければ正当に出力されませんが，
+        Macrodownのテキスト整形では1度で正当な相互参照を出力することができます。
+      }
+    }
+  }
+  \section{変数・函数・マクロの基本}{
+      \p{
+        Macrodownは手続き的記述よりも函数的記述に特化しています。
+        変数には基本的に破壊的代入の機能がなく，
+        したがって純粋函数型プログラミングに近い性質をしています。
+      }
+      \p{
+        函数とマクロは基本的にほとんど同様に扱えるもので，
+        単に制御綴で書かれるものをマクロ，
+        制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
+        制御綴はテキスト階層で，函数はプログラム階層で用いるようになっています。
+        以降はプログラム階層を基本にして例を掲げていきましょう。
+        したがって，慣れるまではヘッダファイルのみを処理することがしばらく続きます。
+      }
+      \p{
+        以下のような\newword{定義式}
+
+        \code-dp{
+          \synt`let` \meta{hoge} %
+            \meta{nvar1} \metadots; \meta{nvarN}
+            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
+        }
+
+        および
+
+        \code-dp{
+          \synt`let` \synt`\`\meta{piyo} %
+            \meta{var1} \metadots; \meta{varN}
+            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
+        }
+
+        で引数を\math{N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt`\`\meta{piyo}}
+        が定義されます。
+        なお，普通積極的には用いませんが，名前のない函数は
+        \code-dp{
+          \synt`(function` \meta{nv1} \metadots; \meta{nvN}
+          \synt`->` \meta{Expr} \synt`)`
+        }
+        で表現することができます。例えば与えられた整数を2乗する函数は
+        \mcrd`(function n -> n * n)`です。
+
+        \code-dp{
+          \synt`\`\meta{hoge}\ %
+            \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
+        }
+
+        で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
+        変数\code{\meta{piyo}}に格納された中身を文字列中で取り出すには
+        \code{\synt`@`\meta{piyo}\synt`;`}とします。例えば
+
+        \mcrd-display```
+          let \test x y = {Ma@x;r@y;down} in
+            {\test{c}{o}, \test{}{k}}
+        ```
+
+        に対する出力は
+
+        \mcrd-display```
+          Macrodown, Markdown
+        ```
+
+        となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
+
+        \mcrd-display```
+          let \mcrd {Macrodown} in {Hello, \mcrd;!}
+        ```
+
+        に対する出力は
+
+        \mcrd-display```
+          Hello, Macrodown!
+        ```
+
+        となります。
+      }
+    }
+    \subsection{リスト}{
+      \p{
+        具体的なリストは，基本的に
+        
+        \mcrd-display```
+          [3; 1; 4; 1; 5; 9; 2]
+        ```
+
+        のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書きます。
+        リストでは，全ての要素の型が一致していなければなりません。
+        \type-synt{'t}型の要素を持つリストの型は\type-synt{'t list}であり，
+        例えば\type-synt{int}型のリストは\type-synt{int list}型になります。
+        なお，実際に文書中のテキスト階層で用いるリストの多くは
+        \type-synt{string list}型のリストをマクロの引数とする場合ですが，これは
+
+        \mcrd-display```
+          \somecs([{hoge}; {piyo}; {fuga}; {moge}]);
+        ```
+
+        と複雑に入り組んだ書き方をせずとも
+
+        \mcrd-display```
+          \somecs{|hoge|piyo|fuga|moge|}
+        ```
+
+        と省略して書くことができます。
+        プログラム階層でも\mcrd`{|hoge|piyo|fuga|moge|}`で
+        \mcrd`[{hoge}; {piyo}; {fuga}; {moge}]`の省略として使えます。
+      }
+      \p{
+        リストの要素を取り出す操作を見ていきましょう。
+        まずリストの先頭要素を取り出す函数が\mcrd-type`list-head`{'a list -> 'a}，
+        先頭を除いたリストを得る函数が\mcrd-type`list-tail`{'a list -> 'a list}です。
+        例えば\mcrd`list-head [2; 4; 6; 9; 11]`は\mcrd`2`に，
+        \mcrd`list-tail [2; 4; 6; 9; 11]`は\mcrd`[4; 6; 9; 11]`にそれぞれ評価されます。
+      }
+      \p{
+        では，\mcrd`list-head`および\mcrd`list-tail`に空のリスト\mcrd`[]`を渡すとどうなるかというと，
+        これは実行時エラーで終了してしまいます。
+        そこで，リストが空かどうか判定する函数\mcrd-type`is-empty`{'a list -> bool}を使うことになります。
+      }
+      \p{
+        リストを再帰的に扱う例を見てみましょう。
+        \type-synt{string list}型の値を受け取り，
+        各要素をHTMLのリストの項目として並べたものを返すマクロ
+        \mcrd-type`\ul`{string list -> string}を定義します。
+
+        \mcrd-file{ul.mcrdh}```
+          let sub-ul lst =
+            if is-empty lst then {} else
+              let hd = list-head lst in
+              let tl = list-tail lst in
+                {<li class="list-content">@head;</li>\break;} ^ (sub-ul tl)
+          in
+          let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
+          in finish
+        ```
+        \mcrd-file{main.mcrd}```
+          \ul{|hoge|piyo|fuga|moge|}
+        ```
+
+        に対して\mcrd`macrodown ul.mcrdh main.mcrd -o main.txt`で処理した出力は
+        
+        \mcrd-file{main.txt}```
+          <ul>
+            <li class="list-content">hoge</li>
+            <li class="list-content">piyo</li>
+            <li class="list-content">fuga</li>
+            <li class="list-content">moge</li>
+          </ul>
+        ```
+
+        となります。ここで挙げた例は4要素のリストですが，
+        実際の文書を記述するにあたってはもっと長いリストも登場することでしょう。
+        そのように何度も同じ記述が繰り返される場合，すべて手で打つのではなく，
+        共通部分は再帰的なマクロ定義に含ませて，異なる部分をリストの各要素として与えることにより，
+        効率的にマークアップすることができます。
+      }
+    }
   }
   \section{字句解析の厳密な仕様}{
     \subsection{概要}{
@@ -290,214 +483,5 @@
       | \cfl{G}{| \token-bgrp; L \token-egrp; |}
       | \cfl{H}{| \epsilon; | G H |}
       |}
-  }
-  \section{変数・函数・マクロの基本}{
-      \p{
-        Macrodownは手続き的記述よりも函数的記述に特化しています。
-        変数には基本的に破壊的代入の機能がなく，
-        したがって純粋函数型プログラミングに近い性質をしています。
-      }
-      \p{
-        函数とマクロは基本的にほとんど同様に扱えるもので，
-        単に制御綴で書かれるものをマクロ，
-        制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
-        制御綴はテキスト階層で，函数はプログラム階層で用いるようになっています。
-        以降はプログラム階層を基本にして例を掲げていきましょう。
-        したがって，慣れるまではヘッダファイルのみを処理することがしばらく続きます。
-      }
-      \p{
-        まず，名前のない函数が
-        \code-dp{
-          \synt`(function` \meta{nv1} \metadots; \meta{nvN}
-          \synt`->` \meta{Expr} \synt`)`
-        }
-        で定義できます。
-      }
-      \p{
-        以下のような\newword{定義式}
-
-        \code-dp{
-          \synt`let` \meta{hoge} %
-            \meta{nvar1} \metadots; \meta{nvarN}
-            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
-        }
-
-        および
-
-        \code-dp{
-          \synt`let` \synt`\`\meta{piyo} %
-            \meta{var1} \metadots; \meta{varN}
-            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
-        }
-
-        で引数を\math{N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt`\`\meta{piyo}}
-        が定義されます。
-
-        \code-dp{
-          \synt`\`\meta{hoge}\ %
-            \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
-        }
-
-        で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
-        変数\code{\meta{piyo}}に格納された中身を文字列中で取り出すには
-        \code{\synt`@`\meta{piyo}\synt`;`}とします。例えば
-
-        \mcrd-display```
-          let \test x y = {Ma@x;r@y;down} in
-            {\test{c}{o}, \test{}{k}}
-        ```
-
-        に対する出力は
-
-        \mcrd-display```
-          Macrodown, Markdown
-        ```
-
-        となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
-
-        \mcrd-display```
-          let \mcrd {Macrodown} in {Hello, \mcrd;!}
-        ```
-
-        に対する出力は
-
-        \mcrd-display```
-          Hello, Macrodown!
-        ```
-
-        となります。
-      }
-    }
-    \subsection{リスト}{
-      \p{
-        具体的なリストは，基本的に
-        
-        \mcrd-display```
-          [3; 1; 4; 1; 5; 9; 2]
-        ```
-
-        のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書きます。
-        リストでは，全ての要素の型が一致していなければなりません。
-        \type-synt{'t}型の要素を持つリストの型は\type-synt{'t list}であり，
-        例えば\type-synt{int}型のリストは\type-synt{int list}型になります。
-        \type-synt{string}型のリストだけは，
-
-        \mcrd-display```
-          [{hoge}; {piyo}; {fuga}; {moge}]
-        ```
-
-        と書くところを
-
-        \mcrd-display```
-          {|hoge|piyo|fuga|moge|}
-        ```
-
-        と省略して書くことができます。
-        \code{\synt`[`}と\code{\synt`]`}で括る方法はプログラム階層でしか使えませんが，
-        この\type-synt{string}型の省略記法はテキスト階層でのマクロ引数でも使うことができるので便利です。
-      }
-      \p{
-        リストの要素を取り出す操作を見ていきましょう。
-        まずリストの先頭要素を取り出す函数が\mcrd-type`list-head`{'a list -> 'a}，
-        先頭を除いたリストを得る函数が\mcrd-type`list-tail`{'a list -> 'a list}です。
-        例えば\mcrd`list-head [2; 4; 6; 9; 11]`は\mcrd`2`に，
-        \mcrd`list-tail [2; 4; 6; 9; 11]`は\mcrd`[4; 6; 9; 11]`にそれぞれ評価されます。
-      }
-      \p{
-        では，\mcrd`list-head`および\mcrd`list-tail`に空のリスト\mcrd`[]`を渡すとどうなるかというと，
-        これは実行時エラーで終了してしまいます。
-        そこで，リストが空かどうか判定する函数\mcrd-type`is-empty`{'a list -> bool}を使うことになります。
-      }
-      \p{
-        リストを扱う例を見てみましょう。
-        文字列のリストを受け取り，それぞれを文字\mcrd`(`と\mcrd`)`で括って並べるマクロ，
-        \mcrd-type`\enclose-each`{string list -> string}を定義します。
-
-        \mcrd-display```
-          let enclose-each lst =
-            if is-empty lst then {} else
-              let hd = list-head lst in
-              let tl = list-tail lst in
-                {(@hd;)} ^ (enclose-each tl) in
-          let \enclose-each = enclose-each in
-          in {\enclose-each{|bd|gfn|\enclose-each{|me|ip|}|}}
-        ```
-
-        に対する出力は
-
-        \mcrd-display```
-          (bd)(gfn)((me)(ip))
-        ```
-
-        となります。より実用的な例としては
-
-        \mcrd-display```
-          let sub-ul lst =
-            if is-empty lst then {} else
-              let hd = list-head lst in
-              let tl = list-tail lst in
-                {<li>@head;</li>\break;} ^ (sub-ul tl)
-          in
-          let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
-          in
-            {\ul{|hoge|piyo|fuga|moge|}}
-        ```
-
-        に対する出力は
-        
-        \mcrd-display```
-          <ul>
-            <li>hoge</li>
-            <li>piyo</li>
-            <li>fuga</li>
-            <li>moge</li>
-          </ul>
-        ```
-        
-        となります。
-      }
-      \p{
-        このほか，空列かどうかを判定する条件分岐機能\mcrd`\ifempty`があり，
-      }
-      \code-dp{
-        \synt{\bksl;ifempty}%
-          \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
-          \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
-          \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}%
-      }
-      \p{
-        で\code{\meta{ExprB}}が空列のときは\code{\meta{ExprT}}を評価し，
-        空列でない時は\code{\meta{ExprF}}を評価します。
-        これを用いると例えば
-      }
-      \mcrd-display```
-        \macro \enum-comma @list {
-          \pop @head @tail {@list;}{
-            @head;\ifempty{@tail;}{}{, \enum-comma{@tail;}}
-          }
-        }%
-        \enum-comma{un|deux|trois}
-      ```
-      \p{
-        により
-      }
-      \mcrd-display```
-        un, deux, trois
-      ```
-      \p{
-        を得ることができます。また，2つのトークン列が同一の出力となるかどうかを判定する条件分岐機能%
-        \mcrd`\ifsame`は
-      }
-      \code-dp{
-        \synt{\bksl;ifsame}\synt{\lbrace;} \meta{ExprA} \synt{\rbrace;}%
-          \synt{\lbrace;} \meta{ExprB} \synt{\rbrace;}%
-          \synt{\lbrace;} \meta{ExprT} \synt{\rbrace;}%
-          \synt{\lbrace;} \meta{ExprF} \synt{\rbrace;}
-      }
-      \p{
-        という形で使い，\code{\meta{ExprA}}と\code{\meta{ExprB}}が同一出力となる場合は
-        \code{\meta{ExprT}}を，互いに異なる出力となる場合は\code{\meta{ExprF}}を評価します。
-      }
-    }
   }
 }

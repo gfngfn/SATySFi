@@ -1,0 +1,5 @@
+let-mutable m <- 0 in
+let-mutable i <- 1 in
+( while !i <= 10 do
+    m <- (!m) + (!i) before i <- (!i) + 1
+) before arabic (!m)
