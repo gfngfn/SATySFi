@@ -194,7 +194,7 @@ let rec interpret env ast =
         | _                   -> raise (EvalError("this cannot happen:\n    not for '!'\n\n      "
                                    ^ (string_of_ast astcont)))
       )
-  | ReferenceFinal(varnm) -> ReferenceFinal(varnm)
+  | ReferenceFinal(varnm) -> ReferenceFinal(interpret env varnm)
 
   | DeclareGlobalHash(astkey, astdflt) ->
       ( try

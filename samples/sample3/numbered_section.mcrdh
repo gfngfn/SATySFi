@@ -1,0 +1,22 @@
+let-mutable counter-section <- 0 in
+let \arabic = arabic in
+let \section head content =
+  counter-section <- !counter-section + 1
+  before
+  ( let strcnt = arabic (!counter-section) in
+    ( if-id-is-valid
+        declare-global-hash id <<- {第} ^ strcnt ^ {章}
+      else
+        ()
+    ) before
+    {
+      <section>\deeper{
+        <h1>第@strcnt;章 @head;</h1>\deeper{
+          @content;
+        }<!-- ---- ---- ---- ---- -->
+      }</section>
+    }
+  )
+in
+let \ref ref = !! ref in
+  finish
