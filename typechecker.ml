@@ -34,7 +34,7 @@ and replace_id tystr lst =
       ( try find_in_list lst tvid with Not_found -> TypeVariable(rng, tvid) )
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
-  | other                  -> other
+  | other                       -> other
 
 let make_bounded_free tystr = eliminate_forall tystr []
 
@@ -71,12 +71,12 @@ let rec typecheck tyenv utast =
         let (e2, ty2, theta2) = typecheck tyenv utast2 in
         let beta = TypeVariable(rng, new_type_variable_id ()) in
         let theta3 = Subst.unify (FuncType(get_range utast1, ty2, beta)) ty1 in
-          let term_result = Apply(
-                              Subst.apply_to_term (Subst.compose theta3 theta1) e1,
-                              Subst.apply_to_term theta3 e2
-                            ) in
-          let type_result = Subst.apply_to_type_struct theta3 beta in
           let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
+          let term_result = Apply(
+                              Subst.apply_to_term theta_result e1,
+                              Subst.apply_to_term theta_result e2
+                            ) in
+          let type_result = Subst.apply_to_type_struct theta_result beta in
             (term_result, type_result, theta_result)
 
     | UTLambdaAbstract(varrng, varnm, utast1) ->

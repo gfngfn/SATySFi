@@ -58,7 +58,20 @@ let rec emerge_in tvid tystr =
   | RefType(_, cont)       -> emerge_in tvid cont
   | _                      -> false
 
-let rec unify tystr1 tystr2 =
+let rec compose_special theta2 theta1 =
+	match theta2 with
+	| [] -> theta1
+	| (tvid, tystr2) :: tail ->
+	    ( try
+	    	  let tystr1 = find theta1 tvid in
+	    	  ( print_string "$1\n" ;
+	    	    compose_special tail (unify_sub tystr1 tystr2)
+	    	  )
+	      with
+	      | Not_found ->
+	        ( print_string "$2\n" ; compose_special tail (add theta1 tvid tystr2) )
+	    )
+and unify_sub tystr1 tystr2 =
   match (tystr1, tystr2) with
   | (IntType(_), IntType(_))       -> empty
   | (StringType(_), StringType(_)) -> empty
@@ -67,17 +80,28 @@ let rec unify tystr1 tystr2 =
   | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> empty
 
   | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) ->
-      compose (unify dom1 dom2) (unify cod1 cod2)
+      compose_special (unify_sub dom1 dom2) (unify_sub cod1 cod2)
 
-  | (ListType(_, cont1), ListType(_, cont2)) -> unify cont1 cont2
+  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2
 
-  | (RefType(_, cont1), RefType(_, cont2))   -> unify cont1 cont2
+  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
 
   | (TypeVariable(rng1, tvid1), tystr) ->
       ( match tystr with
         | TypeVariable(rng2, tvid2) ->
-            if tvid1 == tvid2 then empty else [(tvid1, tystr)]
+            if tvid1 == tvid2 then
+              empty
+            else if tvid1 < tvid2 then
+            ( print_string ("*A '" ^ (string_of_int tvid1) ^ " = '" ^ (string_of_int tvid2) ^ "\n") ;
+              [(tvid1, TypeVariable(rng2, tvid2))]
+            )
+            else
+            ( print_string ("*B '" ^ (string_of_int tvid2) ^ " = '" ^ (string_of_int tvid1) ^ "\n") ;
+              [(tvid2, TypeVariable(rng1, tvid1))]
+            )
+
         | other ->
+          ( print_string ("*C '" ^ (string_of_int tvid1) ^ " = " ^ (string_of_type_struct tystr) ^ "\n") ;
             if emerge_in tvid1 tystr then
               raise (TypeCheckError(error_reporting rng1
                 ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng1, tvid1))) ^ ">\n"
@@ -85,8 +109,9 @@ let rec unify tystr1 tystr2 =
                   ^ "    but the former type is in the latter one")))
             else
               [(tvid1, tystr)]
+          )
       )
-  | (tystr, TypeVariable(rng, tvid)) -> unify (TypeVariable(rng, tvid)) tystr
+  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
   | (tystr1, tystr2) ->
       let (sttln1, sttpos1, endln1, endpos1) = get_range_from_type tystr1 in
@@ -111,3 +136,18 @@ let rec unify tystr1 tystr2 =
               ^ "    but is expected of type <" ^ strty1 ^ ">"))
           else
             raise (TypeCheckError("something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"))
+
+let rec fix_unification theta thetaconstr =
+	match theta with
+	| [] -> thetaconstr
+	| (tvid1, TypeVariable(rng2, tvid2)) :: tail ->
+	  ( print_string ("*D '" ^ (string_of_int tvid1) ^ " = '" ^ (string_of_int tvid2) ^ "\n") ;
+	    let tystr_new = ( try find theta tvid2 with Not_found -> TypeVariable(rng2, tvid2) ) in
+	      fix_unification tail ((tvid1, tystr_new) :: thetaconstr)
+	  )
+
+	| (tvid1, tystr) :: tail -> fix_unification tail ((tvid1, tystr) :: thetaconstr)
+
+
+let unify tystr1 tystr2 = fix_unification (unify_sub tystr1 tystr2) empty
+
