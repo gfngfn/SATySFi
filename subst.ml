@@ -73,14 +73,19 @@ let rec unify tystr1 tystr2 =
 
   | (RefType(_, cont1), RefType(_, cont2))   -> unify cont1 cont2
 
-  | (TypeVariable(rng, tvid), tystr) ->
-      if emerge_in tvid tystr then
-        raise (TypeCheckError(error_reporting rng
-          ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng, tvid))) ^ ">\n"
-          	^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
-          	^ "    but the former type is in the latter one")))
-      else
-        [(tvid, tystr)]
+  | (TypeVariable(rng1, tvid1), tystr) ->
+      ( match tystr with
+        | TypeVariable(rng2, tvid2) ->
+            if tvid1 == tvid2 then empty else [(tvid1, tystr)]
+        | other ->
+            if emerge_in tvid1 tystr then
+              raise (TypeCheckError(error_reporting rng1
+                ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng1, tvid1))) ^ ">\n"
+                  ^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
+                  ^ "    but the former type is in the latter one")))
+            else
+              [(tvid1, tystr)]
+      )
   | (tystr, TypeVariable(rng, tvid)) -> unify (TypeVariable(rng, tvid)) tystr
 
   | (tystr1, tystr2) ->
@@ -97,12 +102,12 @@ let rec unify tystr1 tystr2 =
               ^ "    but they should be the same"))
           else
             raise (TypeCheckError(" at " ^ msg1 ^ ":\n"
-            	^ "    this expression has type <" ^ strty1 ^ ">,\n"
+              ^ "    this expression has type <" ^ strty1 ^ ">,\n"
               ^ "    but is expected of type <" ^ strty2 ^ ">"))
         else
           if (sttln2 > 0) then
             raise (TypeCheckError("at " ^ msg2 ^ ":\n"
-            	^ "    this expression has type <" ^ strty2 ^ ">,\n"
+              ^ "    this expression has type <" ^ strty2 ^ ">,\n"
               ^ "    but is expected of type <" ^ strty1 ^ ">"))
           else
             raise (TypeCheckError("something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"))
