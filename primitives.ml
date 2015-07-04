@@ -10,13 +10,13 @@ let rec add_to_type_environment tyenv lst =
 
 let make_type_environment () =
   let i = IntType((-32, 0, 0, 0)) in
-  let b = BoolType((-32, 0, 0, 0)) in
-  let s = StringType((-32, 0, 0, 0)) in
-  let v n = TypeVariable((-32, 0, 0, 0), n) in
+  let b = BoolType((-33, 0, 0, 0)) in
+  let s = StringType((-34, 0, 0, 0)) in
+  let v n = TypeVariable((-35, 0, 0, 0), n) in
   let (-%) n cont = ForallType(n, cont) in
-  let l cont = ListType((-32, 0, 0, 0), cont) in
-  let r cont = RefType((-32, 0, 0, 0), cont) in
-  let (-->) dom cod = FuncType((-32, 0, 0, 0), dom, cod) in
+  let l cont = ListType((-36, 0, 0, 0), cont) in
+  let r cont = RefType((-37, 0, 0, 0), cont) in
+  let (-->) dom cod = FuncType((-38, 0, 0, 0), dom, cod) in
 
     add_to_type_environment Typeenv.empty
       [ ( "+",   i --> (i --> i) );
@@ -35,7 +35,6 @@ let make_type_environment () =
         ( "||",  b --> (b --> b) );
         ( "not", b --> b );
         ( "!",   (-5) -% ((r (v (-5))) --> (v (-5))) );
-        ( "!!",  (-5) -% ((r s) --> s));
 
         ( "same",          s --> (s --> b) );
         ( "string-sub",    s --> (i --> (i --> s)) );
@@ -81,7 +80,6 @@ let make_environment () =
   let loc_lor          : location = ref NoContent in
   let loc_lnot         : location = ref NoContent in
   let loc_refnow       : location = ref NoContent in
-  let loc_reffinal     : location = ref NoContent in
   let loc_same         : location = ref NoContent in
   let loc_stringsub    : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
@@ -110,7 +108,6 @@ let make_environment () =
     add_to_environment env "||"            loc_lor ;
     add_to_environment env "not"           loc_lnot ;
     add_to_environment env "!"             loc_refnow ;
-    add_to_environment env "!!"            loc_reffinal ;
     add_to_environment env "same"          loc_same ;
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
@@ -169,8 +166,6 @@ let make_environment () =
                           (LogicalNot(ContentOf("~op"))) ;
 
     loc_refnow       := lambdas env ["~op"] (Reference(ContentOf("~op"))) ;
-
-    loc_reffinal     := lambdas env ["~op"] (ReferenceFinal(ContentOf("~op"))) ;
 
     loc_same         := lambdas env ["~stra"; "~strb"]
                           (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;

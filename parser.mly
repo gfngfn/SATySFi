@@ -165,6 +165,7 @@
 %token <Types.token_position> BEFORE
 %token <Types.token_position> UNITVALUE
 %token <Types.token_position> WHILE DO
+%token <Types.token_position> DECGLOBALHASH
 %token EOI
 %token IGNORED
 
@@ -425,6 +426,14 @@ nxlambda:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTOverwrite(varrng, vn, $3))
       }
+  | DECGLOBALHASH VAR OVERWRITEEQ nxlor {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $4 in
+        let ((varln, varstt, varend), vn) = $2 in
+        let varrng = (varln, varstt, varln, varend) in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareGlobalMutable(varrng, vn, $4))
+      }
   | LAMBDA argvar ARROW nxlor {
         let (sttln, sttpos, _) = $1 in
         let (_, _, endln, endpos) = get_range $4 in
@@ -582,13 +591,6 @@ nxun:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTApply((refnowrng, UTContentOf("!")), $2))
       }
-  | REFFINAL nxapp {
-        let (sttln, sttpos, reffinend) = $1 in
-        let reffinrng = (sttln, sttpos, sttln, reffinend) in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTApply((reffinrng, UTContentOf("!!")), $2))
-      }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | MINUS error {
@@ -664,6 +666,13 @@ nxbot:
         let (ln, sttpos, endpos) = $1 in
         let rng = (ln, sttpos, ln, endpos) in
           (rng, UTUnitConstant)
+      }
+  | REFFINAL VAR {
+        let (sttln, sttpos, _) = $1 in
+        let ((endln, varstt, endpos), vn) = $2 in
+        let varrng = (endln, varstt, endln, endpos) in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTReferenceFinal(varrng, vn))
       }
   | FINISH {
         let (ln, sttpos, endpos) = $1 in

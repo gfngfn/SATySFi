@@ -1,5 +1,6 @@
 (* module Mcdout *)
   open Types
+  open Typeenv
 
   exception IllegalOut of string
 
@@ -7,32 +8,31 @@
     print_string ("! [ERROR IN OUT] " ^ errmsg ^ ".") ; print_newline ()
 
   (* abstract_tree -> string *)
-  let rec main env value =
-    string_of_abstract_tree env 0 value
+  let rec main value =
+    string_of_abstract_tree 0 value
 
   (* int -> abstract_tree -> string *)
-  and string_of_abstract_tree env indent value =
+  and string_of_abstract_tree indent value =
     match value with
     | StringEmpty -> ""
 
     | Concat(vf, vl) ->
-        (string_of_abstract_tree env indent vf)
-        ^ (string_of_abstract_tree env indent vl)
+        (string_of_abstract_tree indent vf)
+        ^ (string_of_abstract_tree indent vl)
 
     | StringConstant(c) -> c
 
-    | DeeperIndent(value_content) -> string_of_abstract_tree env (indent + 1) value_content
+    | DeeperIndent(value_content) -> string_of_abstract_tree (indent + 1) value_content
 
     | BreakAndIndent -> "\n" ^ (if indent > 0 then String.make (indent * 2) ' ' else "")
 
-    | ReferenceFinal(astv) -> string_of_abstract_tree env indent astv
+    | ReferenceFinal(varnm) ->
+        ( try
+            match !(Hashtbl.find global_env varnm) with
+            | MutableValue(mutvalue) -> string_of_abstract_tree indent mutvalue
+            | _ -> raise (IllegalOut("this cannot happen:\n    '" ^ varnm ^ "' is not a global mutable variable"))
+          with
+          | Not_found -> raise (IllegalOut("this cannot happen:\n    undefined variable '" ^ varnm ^ "' for '!!'"))
+        )
 
-    | ListCons(vf, vl) -> 
-        let strf = string_of_abstract_tree env indent vf in
-          raise (IllegalOut("this cannot happen:\n    cannot output list: {| " ^ strf ^ " | ... |}"))
-    | EndOfList -> raise (IllegalOut("cannot output list: {|}"))
-    | NumericConstant(nc)          -> raise (IllegalOut("this cannot happen:\n    cannot output int " ^ (string_of_int nc)))
-    | BooleanConstant(bc)          -> raise (IllegalOut("this cannot happen:\n    cannot output bool " ^ (string_of_bool bc)))
-    | FuncWithEnvironment(_, _, _) -> raise (IllegalOut("this cannot happen:\n    cannot output function"))
-    | NoContent                    -> raise (IllegalOut("this cannot happen:\n    cannot output no-content"))
-    | _                            -> raise (IllegalOut("this cannot happen:\n    unknown error"))
+    | other -> raise (IllegalOut("this cannot happen:\n    cannot output\n\n      " ^ (string_of_ast other)))

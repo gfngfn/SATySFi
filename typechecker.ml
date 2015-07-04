@@ -56,7 +56,14 @@ let rec typecheck tyenv utast =
             let ty = make_bounded_free forallty in
               (ContentOf(nv), ty, Subst.empty)
           with
-          | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
+          | Not_found ->
+              ( try
+              	  let forallty = Typeenv.find !global_tyenv nv in
+              	  let ty = make_bounded_free forallty in
+              	    (ContentOf(nv), ty, Subst.empty)
+                with
+              	| Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
+              )
         )
 
     | UTConcat(utast1, utast2) ->
@@ -104,7 +111,13 @@ let rec typecheck tyenv utast =
                                                   Subst.apply_to_term theta_result eaft) in
             let type_result = Subst.apply_to_type_struct theta_result tyaft in
               (term_result, type_result, theta_result)
- 
+
+    | UTDeclareGlobalMutable(varrng, varnm, utastdflt) ->
+        let (edflt, tydflt, thetadflt) = typecheck tyenv utastdflt in
+        let thetasub = Subst.unify tydflt (StringType(get_range utastdflt)) in
+        ( global_tyenv := Typeenv.add !global_tyenv varnm (RefType(varrng, StringType(get_range utastdflt))) ;
+          (DeclareGlobalMutable(varnm, edflt), UnitType(rng), Subst.compose thetasub thetadflt)
+        ) 
     | UTOverwrite(varrng, varnm, utastnew) ->
         let (_, tyvar, _) = typecheck tyenv (varrng, UTContentOf(varnm)) in
         let (enew, tynew, thetanew) = typecheck tyenv utastnew in
@@ -115,7 +128,7 @@ let rec typecheck tyenv utast =
 
     | UTSequential(utast1, utast2) ->
         let (e1, ty1, theta1) = typecheck tyenv utast1 in
-        let theta_new = Subst.compose (Subst.unify ty1 (UnitType((0, 0, 0, 0)))) theta1 in
+        let theta_new = Subst.compose (Subst.unify ty1 (UnitType((-128, 0, 0, 0)))) theta1 in
         let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
         let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
           let theta_result = Subst.compose theta2 theta_new in
@@ -124,6 +137,10 @@ let rec typecheck tyenv utast =
           	                           Subst.apply_to_term theta_result e2) in
             (term_result, type_result, theta_result)
 
+    | UTReferenceFinal(varrng, varnm) ->
+        let (_, varty, _) = typecheck tyenv (varrng, UTContentOf(varnm)) in
+        let theta_result = Subst.unify varty (RefType(varrng, StringType(rng))) in
+        (ReferenceFinal(varnm), StringType(rng), theta_result)
 
     | UTIfThenElse(utastb, utast1, utast2) ->
         let (eb, tyb, thetab) = typecheck tyenv utastb in

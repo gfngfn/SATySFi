@@ -16,6 +16,36 @@ and type_struct =
   | ForallType   of type_variable_id * type_struct
   | TypeVariable of code_range * type_variable_id
 
+(* !!!! ---- global variable ---- !!!! *)
+let global_tyenv : type_environment ref = ref []
+
+(* !!!! ---- global variable ---- !!!! *)
+let global_env : environment = Hashtbl.create 32
+
+
+let rec string_of_ast ast =
+  match ast with
+  | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
+  | ContentOf(v)           -> "#" ^ v ^ "#"
+  | Apply(m, n)            -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t)           -> (string_of_ast s) ^ (string_of_ast t)
+  | StringEmpty            -> ""
+  | StringConstant(sc)     -> "{" ^ sc ^ "}"
+  | NumericConstant(nc)    -> string_of_int nc
+  | BooleanConstant(bc)    -> string_of_bool bc
+  | IfThenElse(b, t, f)    ->
+      "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | Reference(a)           -> "!" ^ (string_of_ast a)
+  | ReferenceFinal(vn)     -> "!!" ^ vn
+  | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
+  | UnitConstant           -> "()"
+  | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
+  | _ -> "..."
+
+
 (* untyped_abstract_tree -> code_range *)
 let get_range utast =
   let (rng, _) = utast in rng

@@ -1,4 +1,5 @@
 open Types
+open Typeenv
 
 exception EvalError of string
 
@@ -7,28 +8,6 @@ let print_process msg =
     print_string (msg ^ "\n") ;
   *)
   ()
-
-let rec string_of_ast ast =
-  match ast with
-  | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)           -> "#" ^ v ^ "#"
-  | Apply(m, n)            -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t)           -> (string_of_ast s) ^ (string_of_ast t)
-  | StringEmpty            -> ""
-  | StringConstant(sc)     -> "{" ^ sc ^ "}"
-  | NumericConstant(nc)    -> string_of_int nc
-  | BooleanConstant(bc)    -> string_of_bool bc
-  | IfThenElse(b, t, f)    ->
-      "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | Reference(a)           -> "!" ^ (string_of_ast a)
-  | ReferenceFinal(a)      -> "'!" ^ (string_of_ast a)
-  | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
-  | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
-  | UnitConstant           -> "()"
-  | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
-  | _ -> "..."
 
 let rec make_argument_cons lst =
   match lst with
@@ -97,10 +76,9 @@ let rec interpret env ast =
               let intpd = interpret env_new astdef in intpd
             )
         | _ ->
-            ( print_string ("!   " ^ (string_of_ast astf) ^ "\n") ;
-              print_string ("!   " ^ (string_of_ast astl) ^ "\n") ;
-              raise (EvalError("illegal apply"))
-            )
+            raise (EvalError("this cannot happen:\n    illegal apply\n\n"
+              ^ "      " ^ (string_of_ast astf) ^ "\n"
+              ^ "      " ^ (string_of_ast astl)))
       )
   | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
 
@@ -108,18 +86,18 @@ let rec interpret env ast =
 
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
-      ( try Out.main env (interpret env ast1) with
+      ( try Out.main (interpret env ast1) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
       let str2 =
-      ( try Out.main env (interpret env ast2) with
+      ( try Out.main (interpret env ast2) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
       ) in
         BooleanConstant((compare str1 str2) == 0)
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str =
-      ( try Out.main env (interpret env aststr) with
+      ( try Out.main (interpret env aststr) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-sub': " ^ s))
       ) in
         let pos = interpret_int env astpos in
@@ -128,7 +106,7 @@ let rec interpret env ast =
 
   | PrimitiveStringLength(aststr) ->
       let str =
-      ( try Out.main env (interpret env aststr) with
+      ( try Out.main (interpret env aststr) with
         | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-length': " ^ s))
       ) in
         NumericConstant(String.length str)
@@ -204,28 +182,27 @@ let rec interpret env ast =
       else UnitConstant
 
   | LetMutableIn(varnm, astdflt, astaft) ->
-    ( print_string ("let-mutable " ^ varnm ^ " <- " ^ (string_of_ast astdflt) ^ "\n") ;
       let valuedflt = interpret env astdflt in
       let env_new = Hashtbl.copy env in
       ( add_to_environment env_new varnm (ref (MutableValue(valuedflt))) ;
         interpret env_new astaft
       )
-    )
   | Reference(astcont) ->
-    ( print_string ("ref " ^ (string_of_ast astcont) ^ "\n") ;
       let valuecont = interpret env astcont in
-      ( print_string ("  = ref " ^ (string_of_ast valuecont) ^ "\n") ;
       ( match valuecont with
         | MutableValue(astmv) -> astmv
         | _                   -> raise (EvalError("this cannot happen:\n    not for '!'\n\n      "
                                    ^ (string_of_ast astcont)))
       )
-      )
-    )
   | ReferenceFinal(varnm) -> ReferenceFinal(varnm)
 
+  | DeclareGlobalMutable(varnm, astdflt) ->
+      let valuedflt = interpret env astdflt in
+      ( Hashtbl.add global_env varnm (ref (MutableValue(valuedflt))) ;
+        UnitConstant
+      )
+
   | Overwrite(varnm, astnew) ->
-    ( print_string (varnm ^ " <- " ^ (string_of_ast astnew) ^ "\n") ;
       ( try
           let rfvalue = Hashtbl.find env varnm in
           ( match !rfvalue with
@@ -234,20 +211,28 @@ let rec interpret env ast =
             | _ -> raise (EvalError("this cannot happen:\n    '" ^ varnm ^ "' is not a mutable variable for '<-'"))
           )
         with
-        | Not_found -> raise (EvalError("this cannot happen:\n    undefined mutable variable '" ^ varnm ^ "' for '<-'"))
+        | Not_found ->
+            ( try
+                let rfvalue = Hashtbl.find global_env varnm in
+                ( match !rfvalue with
+                  | MutableValue(astmv) ->
+                      ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
+                  | _ -> raise (EvalError("this cannot happen\n:   '" ^ varnm ^ "' is not a mutable variable for '<-'"))
+                )
+              with
+              | Not_found ->  raise (EvalError("this cannot happen:\n"
+                                ^ "    undefined mutable variable '" ^ varnm ^ "' for '<-'"))
+            )
       )
-    )
   | UnitConstant -> UnitConstant
 
   | Sequential(ast1, ast2) ->
-    ( print_string((string_of_ast ast1) ^ " before " ^ (string_of_ast ast2) ^ "\n") ;
       let value1 = interpret env ast1 in
       let value2 = interpret env ast2 in
       ( match value1 with
         | UnitConstant -> value2
         | _            -> raise (EvalError("this cannot happen:\n    not of type unit"))
       )
-    )
   | MutableValue(astmv) -> MutableValue(astmv)
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)

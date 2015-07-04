@@ -18,6 +18,7 @@ let rec overwrite_type_struct tystr key value =
   | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
   | FuncType(rng, dom, cod) -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
   | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
+  | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
   | other                   -> other
 
 let rec overwrite theta key value =
@@ -36,6 +37,7 @@ let rec apply_to_type_struct theta tystr =
   match tystr with
   | FuncType(rng, tydom, tycod) -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
   | ListType(rng, tycont)       -> ListType(rng, apply_to_type_struct theta tycont)
+  | RefType(rng, tycont)        -> RefType(rng, apply_to_type_struct theta tycont)
   | TypeVariable(rng, tv)       -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
   | other                       -> other
 
@@ -53,6 +55,7 @@ let rec emerge_in tvid tystr =
   | TypeVariable(_, tvidx) -> tvidx == tvid
   | FuncType(_, dom, cod)  -> (emerge_in tvid dom) || (emerge_in tvid cod)
   | ListType(_, cont)      -> emerge_in tvid cont
+  | RefType(_, cont)       -> emerge_in tvid cont
   | _                      -> false
 
 let rec unify tystr1 tystr2 =

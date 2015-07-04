@@ -22,4 +22,4 @@ let eval s  =
   let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in
     Evaluator.interpret env ast;;
 
-let out s   = init () ; Out.main env (eval s);;
+let out s   = init () ; Out.main (eval s);;

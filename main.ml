@@ -37,7 +37,7 @@ let read_standalone_file tyenv env file_name_in file_name_out =
       let (typed, _, ast) = Typechecker.main tyenv utast in
       ( print_string ("  type check: " ^ typed ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
-        let content_out = Out.main env evaled in
+        let content_out = Out.main evaled in
         ( Files.file_out_of_string file_name_out content_out ;
           print_string (" ---- ---- ---- ----\n") ;
           print_string ("  output written on '" ^ file_name_out ^ "'.\n")
@@ -56,7 +56,7 @@ let read_document_file tyenv env file_name_in file_name_out =
       let (typed, _, ast) = Typechecker.main tyenv utast in
       ( print_string ("  type check: " ^ typed ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
-        let content_out = Out.main env evaled in
+        let content_out = Out.main evaled in
         ( Files.file_out_of_string file_name_out content_out ;
           print_string (" ---- ---- ---- ----\n") ;
           print_string ("  output written on '" ^ file_name_out ^ "'.\n")
