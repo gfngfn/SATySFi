@@ -10,20 +10,23 @@ let print_process msg =
 
 let rec string_of_ast ast =
   match ast with
-  | LambdaAbstract(x, m) -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
+  | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v) -> "#" ^ v ^ "#"
-  | Apply(m, n) -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t) -> (string_of_ast s) ^ (string_of_ast t)
-  | StringEmpty -> ""
-  | IfThenElse(b, t, f) ->
+  | ContentOf(v)           -> "#" ^ v ^ "#"
+  | Apply(m, n)            -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t)           -> (string_of_ast s) ^ (string_of_ast t)
+  | StringEmpty            -> ""
+  | StringConstant(sc)     -> "{" ^ sc ^ "}"
+  | NumericConstant(nc)    -> string_of_int nc
+  | BooleanConstant(bc)    -> string_of_bool bc
+  | IfThenElse(b, t, f)    ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | IfClassIsValid(t, f) -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | Reference(vn) -> "!" ^ vn
-  | ReferenceFinal(vn) -> "'!" ^ vn
-  | Overwrite(vn, n) -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
-  | MutableValue(mv) -> "(mutable " ^ (string_of_ast mv) ^ ")"
-  | UnitConstant -> "()"
+  | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | Reference(a)           -> "!" ^ (string_of_ast a)
+  | ReferenceFinal(a)      -> "'!" ^ (string_of_ast a)
+  | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
+  | UnitConstant           -> "()"
   | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | _ -> "..."
 
@@ -85,10 +88,10 @@ let rec interpret env ast =
                     )
     )
   | Apply(astf, astl) ->
-      let valuel = interpret env astl in
       let fspec = interpret env astf in
       ( match fspec with
         | FuncWithEnvironment(varnm, astdef, envf) ->
+            let valuel = interpret env astl in
             let env_new = copy_environment envf in
             ( add_to_environment env_new varnm (ref valuel) ;
               let intpd = interpret env_new astdef in intpd
@@ -201,44 +204,50 @@ let rec interpret env ast =
       else UnitConstant
 
   | LetMutableIn(varnm, astdflt, astaft) ->
+    ( print_string ("let-mutable " ^ varnm ^ " <- " ^ (string_of_ast astdflt) ^ "\n") ;
       let valuedflt = interpret env astdflt in
       let env_new = Hashtbl.copy env in
       ( add_to_environment env_new varnm (ref (MutableValue(valuedflt))) ;
         interpret env_new astaft
       )
-  | Reference(varnm) ->
-      ( try
-          let valuemutvar = !(Hashtbl.find env varnm) in
-          ( match valuemutvar with
-            | MutableValue(astmv) -> astmv
-            | _ -> raise (EvalError("'" ^ varnm ^ "' is not a mutable variable for '!'"))
-          )
-        with
-        | Not_found -> raise (EvalError("undefined mutable variable '" ^ varnm ^ "' for '!'"))
+    )
+  | Reference(astcont) ->
+    ( print_string ("ref " ^ (string_of_ast astcont) ^ "\n") ;
+      let valuecont = interpret env astcont in
+      ( print_string ("  = ref " ^ (string_of_ast valuecont) ^ "\n") ;
+      ( match valuecont with
+        | MutableValue(astmv) -> astmv
+        | _                   -> raise (EvalError("this cannot happen:\n    not for '!'\n\n      "
+                                   ^ (string_of_ast astcont)))
       )
+      )
+    )
   | ReferenceFinal(varnm) -> ReferenceFinal(varnm)
 
   | Overwrite(varnm, astnew) ->
+    ( print_string (varnm ^ " <- " ^ (string_of_ast astnew) ^ "\n") ;
       ( try
           let rfvalue = Hashtbl.find env varnm in
           ( match !rfvalue with
             | MutableValue(astmv) ->
                 ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
-            | _ -> raise (EvalError("'" ^ varnm ^ "' is not a mutable variable for '<-'"))
+            | _ -> raise (EvalError("this cannot happen:\n    '" ^ varnm ^ "' is not a mutable variable for '<-'"))
           )
         with
-        | Not_found -> raise (EvalError("undefined mutable variable '" ^ varnm ^ "' for '<-'"))
+        | Not_found -> raise (EvalError("this cannot happen:\n    undefined mutable variable '" ^ varnm ^ "' for '<-'"))
       )
+    )
   | UnitConstant -> UnitConstant
 
-  | Sequential(astf, astl) ->
-      let valuef = interpret env astf in
-      let valuel = interpret env astl in
-      ( match valuef with
-        | UnitConstant -> valuel
-        | _ -> raise (EvalError("not of type unit"))
+  | Sequential(ast1, ast2) ->
+    ( print_string((string_of_ast ast1) ^ " before " ^ (string_of_ast ast2) ^ "\n") ;
+      let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
+      ( match value1 with
+        | UnitConstant -> value2
+        | _            -> raise (EvalError("this cannot happen:\n    not of type unit"))
       )
-
+    )
   | MutableValue(astmv) -> MutableValue(astmv)
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)

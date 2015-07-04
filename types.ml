@@ -42,11 +42,9 @@ and untyped_abstract_tree_main =
   | UTIfThenElse       of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaAbstract   of code_range * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
-  | UTLetMutableIn     of var_name * untyped_abstract_tree * untyped_abstract_tree
-  | UTOverwrite        of var_name * untyped_abstract_tree
-  | UTMutableValue     of untyped_abstract_tree
-  | UTReference        of var_name
-  | UTReferenceFinal   of var_name
+  | UTLetMutableIn     of code_range * var_name * untyped_abstract_tree * untyped_abstract_tree
+  | UTOverwrite        of code_range * var_name * untyped_abstract_tree
+  | UTSequential       of untyped_abstract_tree * untyped_abstract_tree
   | UTIfClassIsValid   of untyped_abstract_tree * untyped_abstract_tree
   | UTIfIDIsValid      of untyped_abstract_tree * untyped_abstract_tree
   | UTApplyClassAndID of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
@@ -85,8 +83,8 @@ and abstract_tree =
   | Sequential     of abstract_tree * abstract_tree
   | Overwrite      of var_name * abstract_tree
   | MutableValue   of abstract_tree
-  | Reference      of var_name
-  | ReferenceFinal of var_name
+  | Reference      of abstract_tree
+  | ReferenceFinal of abstract_tree
   | IfClassIsValid of abstract_tree * abstract_tree
   | IfIDIsValid    of abstract_tree * abstract_tree
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree

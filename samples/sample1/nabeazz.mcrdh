@@ -1,4 +1,4 @@
-let \aho s = {\span.aho{@s;}}
+let aho s = {\span.aho{@s;}}
 in
 let survey n d =
   if d > n then
@@ -10,12 +10,12 @@ let survey n d =
 in
 let nabeazz n =
   if n mod 3 == 0 then
-    {\aho{\arabic(n);}}
+    aho (arabic n)
   else
     if survey n 1 then
-      {\aho{\arabic(n);}}
+      aho (arabic n)
     else
-      {\arabic(n);}
+      arabic n
 in
 let \nabeazzes n =
   if n <= 0 then {} else {\nabeazzes(n - 1);} ^ (nabeazz n) ^ {\space;}

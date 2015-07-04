@@ -2,7 +2,7 @@ let fizzbuzz n =
   if n mod 3 == 0 then
     if n mod 5 == 0 then {FizzBuzz} else {Fizz}
   else
-    if n mod 5 == 0 then {Buzz} else {\arabic(n);}
+    if n mod 5 == 0 then {Buzz} else arabic n
 in
 let \fizzbuzzes n =
   if n <= 0 then {} else {\fizzbuzzes(n - 1);} ^ (fizzbuzz n) ^ {\space;}

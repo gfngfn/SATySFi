@@ -12,10 +12,10 @@ let make_type_environment () =
   let i = IntType((-32, 0, 0, 0)) in
   let b = BoolType((-32, 0, 0, 0)) in
   let s = StringType((-32, 0, 0, 0)) in
-  let u = UnitType((-32, 0, 0, 0)) in
   let v n = TypeVariable((-32, 0, 0, 0), n) in
   let (-%) n cont = ForallType(n, cont) in
   let l cont = ListType((-32, 0, 0, 0), cont) in
+  let r cont = RefType((-32, 0, 0, 0), cont) in
   let (-->) dom cod = FuncType((-32, 0, 0, 0), dom, cod) in
 
     add_to_type_environment Typeenv.empty
@@ -34,7 +34,8 @@ let make_type_environment () =
         ( "&&",  b --> (b --> b) );
         ( "||",  b --> (b --> b) );
         ( "not", b --> b );
-  ( "before", (-1) -% (u --> ((v (-1)) --> (v (-1)))) );
+        ( "!",   (-5) -% ((r (v (-5))) --> (v (-5))) );
+        ( "!!",  (-5) -% ((r s) --> s));
 
         ( "same",          s --> (s --> b) );
         ( "string-sub",    s --> (i --> (i --> s)) );
@@ -43,7 +44,7 @@ let make_type_environment () =
         ( "\\break",       s );
         ( "\\space",       s );
         ( "\\include",     s --> s );
-        ( "\\arabic",      i --> s );
+        ( "arabic",      i --> s );
 
         ( "list-head", (-2) -% ((l (v (-2))) --> (v (-2))) );
         ( "list-tail", (-3) -% ((l (v (-3))) --> (l (v (-3)))) );
@@ -79,7 +80,8 @@ let make_environment () =
   let loc_land         : location = ref NoContent in
   let loc_lor          : location = ref NoContent in
   let loc_lnot         : location = ref NoContent in
-  let loc_before       : location = ref NoContent in
+  let loc_refnow       : location = ref NoContent in
+  let loc_reffinal     : location = ref NoContent in
   let loc_same         : location = ref NoContent in
   let loc_stringsub    : location = ref NoContent in
   let loc_stringlength : location = ref NoContent in
@@ -107,7 +109,8 @@ let make_environment () =
     add_to_environment env "&&"            loc_land ;
     add_to_environment env "||"            loc_lor ;
     add_to_environment env "not"           loc_lnot ;
-    add_to_environment env "before"        loc_before ;
+    add_to_environment env "!"             loc_refnow ;
+    add_to_environment env "!!"            loc_reffinal ;
     add_to_environment env "same"          loc_same ;
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
@@ -115,7 +118,7 @@ let make_environment () =
     add_to_environment env "\\break"       loc_break ;
     add_to_environment env "\\space"       loc_space ;
     add_to_environment env "\\include"     loc_include ;
-    add_to_environment env "\\arabic"      loc_arabic ;
+    add_to_environment env "arabic"        loc_arabic ;
     add_to_environment env "list-head"     loc_listhead ;
     add_to_environment env "list-tail"     loc_listtail ;
     add_to_environment env "is-empty"      loc_isempty ;
@@ -165,8 +168,9 @@ let make_environment () =
     loc_lnot         := lambdas env ["~op"]
                           (LogicalNot(ContentOf("~op"))) ;
 
-    loc_before       := lambdas env ["~opl"; "~opr"]
-                          (Sequential(ContentOf("~opl"), ContentOf("~opr"))) ;
+    loc_refnow       := lambdas env ["~op"] (Reference(ContentOf("~op"))) ;
+
+    loc_reffinal     := lambdas env ["~op"] (ReferenceFinal(ContentOf("~op"))) ;
 
     loc_same         := lambdas env ["~stra"; "~strb"]
                           (PrimitiveSame(ContentOf("~stra"), ContentOf("~strb"))) ;

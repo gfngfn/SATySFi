@@ -68,6 +68,8 @@ let rec unify tystr1 tystr2 =
 
   | (ListType(_, cont1), ListType(_, cont2)) -> unify cont1 cont2
 
+  | (RefType(_, cont1), RefType(_, cont2))   -> unify cont1 cont2
+
   | (TypeVariable(rng, tvid), tystr) ->
       if emerge_in tvid tystr then
         raise (TypeCheckError(error_reporting rng
@@ -77,6 +79,7 @@ let rec unify tystr1 tystr2 =
       else
         [(tvid, tystr)]
   | (tystr, TypeVariable(rng, tvid)) -> unify (TypeVariable(rng, tvid)) tystr
+
   | (tystr1, tystr2) ->
       let (sttln1, sttpos1, endln1, endpos1) = get_range_from_type tystr1 in
       let (sttln2, sttpos2, endln2, endpos2) = get_range_from_type tystr2 in

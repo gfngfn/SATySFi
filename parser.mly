@@ -242,10 +242,11 @@ nxlet:
       }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
         let (sttln, sttpos, _) = $1 in
-        let (_, vn) = $2 in
+        let ((varln, varstt, varend), vn) = $2 in
         let (_, _, endln, endpos) = get_range $6 in
+        let varrng = (varln, varstt, varln, varend) in
         let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTLetMutableIn(vn, $4, $6))
+          (rng, UTLetMutableIn(varrng, vn, $4, $6))
       }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
@@ -403,7 +404,13 @@ nxif:
       }
 ;
 nxbfr:
-  | nxlambda BEFORE nxbfr { binary_operator "before" $1 $2 $3 }
+  | nxlambda BEFORE nxbfr {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTSequential($1, $3))
+
+      }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
   | nxlambda BEFORE error {
@@ -412,10 +419,11 @@ nxbfr:
 ;
 nxlambda:
   | VAR OVERWRITEEQ nxlor {
-        let ((sttln, sttpos, _), vn) = $1 in
+        let ((sttln, sttpos, varend), vn) = $1 in
         let (_, _, endln, endpos) = get_range $3 in
+        let varrng = (sttln, sttpos, sttln, varend) in
         let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTOverwrite(vn, $3))
+          (rng, UTOverwrite(varrng, vn, $3))
       }
   | LAMBDA argvar ARROW nxlor {
         let (sttln, sttpos, _) = $1 in
@@ -567,6 +575,20 @@ nxun:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTApply((lnotrng, UTContentOf("not")), $2))
       }
+  | REFNOW nxapp {
+        let (sttln, sttpos, refnowend) = $1 in
+        let refnowrng = (sttln, sttpos, sttln, refnowend) in
+        let (_, _, endln, endpos) = get_range $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTApply((refnowrng, UTContentOf("!")), $2))
+      }
+  | REFFINAL nxapp {
+        let (sttln, sttpos, reffinend) = $1 in
+        let reffinrng = (sttln, sttpos, sttln, reffinend) in
+        let (_, _, endln, endpos) = get_range $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTApply((reffinrng, UTContentOf("!!")), $2))
+      }
   | nxapp { $1 }
 /* -- for syntax error log -- */
   | MINUS error {
@@ -637,18 +659,6 @@ nxbot:
         let (endln, _, endpos) = $4 in
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTListCons($2, $3))
-      }
-  | REFNOW VAR   {
-        let (sttln, sttpos, _) = $1 in
-        let ((endln, _, endpos), vn) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTReference(vn))
-      }
-  | REFFINAL VAR {
-        let (sttln, sttpos, _) = $1 in
-        let ((endln, _, endpos), vn) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTReferenceFinal(vn))
       }
   | UNITVALUE {
         let (ln, sttpos, endpos) = $1 in

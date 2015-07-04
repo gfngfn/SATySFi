@@ -12,6 +12,7 @@ and type_struct =
   | BoolType     of code_range
   | FuncType     of code_range * type_struct * type_struct
   | ListType     of code_range * type_struct
+  | RefType      of code_range * type_struct
   | ForallType   of type_variable_id * type_struct
   | TypeVariable of code_range * type_variable_id
 
@@ -26,10 +27,11 @@ let get_range_from_type tystr =
   | BoolType(rng)        -> rng
   | UnitType(rng)        -> rng
   | TypeVariable(rng, _) -> rng
-  | FuncType(rng, _, _)         -> rng
-  | ListType(rng, _)            -> rng
+  | FuncType(rng, _, _)  -> rng
+  | ListType(rng, _)     -> rng
+  | RefType(rng, _)      -> rng
   | TypeEnvironmentType(rng, _) -> rng
-  | ForallType(_, _)            -> (0, 0, 0, 0)
+  | ForallType(_, _)     -> (-64, 0, 0, 0)
 
 let describe_position (sttln, sttpos, endln, endpos) =
   if sttln == endln then
@@ -59,13 +61,15 @@ let rec string_of_type_struct tystr =
   | TypeEnvironmentType(_, _) -> "env"
   | FuncType(_, tydom, tycod) -> "(" ^ (string_of_type_struct tydom) ^ " -> " ^ (string_of_type_struct tycod) ^ ")"
   | ListType(_, tycont)       -> "(" ^ (string_of_type_struct tycont) ^ " list)"
+  | RefType(_, tycont)        -> "(" ^ (string_of_type_struct tycont) ^ " ref)"
   | TypeVariable(_, tvid)     -> "'" ^ (string_of_int tvid)
   | ForallType(tvid, tycont)  -> "(forall '" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct tycont) ^ ")"
+(*
 let rec string_of_type_environment tyenv =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail -> "  " ^ vn ^ ": " ^ (string_of_type_struct ts) ^ "\n" ^ (string_of_type_environment tail)
-
+*)
 
 let rec found_in_list tvid lst =
   match lst with
@@ -77,15 +81,15 @@ let rec found_in_type_struct tvid tystr =
   | TypeVariable(_, tvidx)    -> tvidx == tvid
   | FuncType(_, tydom, tycod) -> (found_in_type_struct tvid tydom) || (found_in_type_struct tvid tycod)
   | ListType(_, tycont)       -> found_in_type_struct tvid tycont
-  | _                      -> false
+  | RefType(_, tycont)        -> found_in_type_struct tvid tycont
+  | _                         -> false
 
 let rec found_in_type_environment tvid tyenv =
   match tyenv with
-  | []                 -> ( (* print_string "%found_in_type_environment: false\n" ; *) false )
+  | []                 -> false
   | (_, tystr) :: tail ->
       if found_in_type_struct tvid tystr then
-      ( (* print_string ("%found_in_type_environment: " ^ (string_of_type_struct tystr) ^ "\n") ; *)
-        true )
+        true
       else
         found_in_type_environment tvid tail
 
@@ -103,7 +107,8 @@ let rec listup_unbound_id tystr tyenv =
     )
   | FuncType(_, tydom, tycod) -> ( listup_unbound_id tydom tyenv ; listup_unbound_id tycod tyenv )
   | ListType(_, tycont)       -> listup_unbound_id tycont tyenv
-  | _                      -> ()
+  | RefType(_, tycont)        -> listup_unbound_id tycont tyenv
+  | _                         -> ()
 
 (* type_variable_id list -> type_struct -> type_struct *)
 let rec add_forall_struct lst tystr =

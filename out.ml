@@ -25,23 +25,14 @@
 
     | BreakAndIndent -> "\n" ^ (if indent > 0 then String.make (indent * 2) ' ' else "")
 
+    | ReferenceFinal(astv) -> string_of_abstract_tree env indent astv
+
     | ListCons(vf, vl) -> 
         let strf = string_of_abstract_tree env indent vf in
-          raise (IllegalOut("cannot output list: {| " ^ strf ^ " | ... |}"))
+          raise (IllegalOut("this cannot happen:\n    cannot output list: {| " ^ strf ^ " | ... |}"))
     | EndOfList -> raise (IllegalOut("cannot output list: {|}"))
-
-    | ReferenceFinal(nv) ->
-        ( try
-            let value = !(Hashtbl.find env nv) in
-            match value with
-            | MutableValue(mvcontent) -> string_of_abstract_tree env indent mvcontent
-            | _ -> raise (IllegalOut("'" ^ "' is not a mutable variable for '!!'"))
-          with
-          | Not_found -> raise (IllegalOut("undefined mutable variable '" ^ nv ^ "' for '!!'"))
-        )
-
-    | NumericConstant(nc) -> raise (IllegalOut("cannot output int: " ^ (string_of_int nc)))
-    | BooleanConstant(bc) -> raise (IllegalOut("cannot output bool: " ^ (string_of_bool bc)))
-    | FuncWithEnvironment(_, _, _) -> raise (IllegalOut("cannot output function"))
-    | NoContent -> raise (IllegalOut("cannot output no-content"))
-    | _ -> raise (IllegalOut("unknown error"))
+    | NumericConstant(nc)          -> raise (IllegalOut("this cannot happen:\n    cannot output int " ^ (string_of_int nc)))
+    | BooleanConstant(bc)          -> raise (IllegalOut("this cannot happen:\n    cannot output bool " ^ (string_of_bool bc)))
+    | FuncWithEnvironment(_, _, _) -> raise (IllegalOut("this cannot happen:\n    cannot output function"))
+    | NoContent                    -> raise (IllegalOut("this cannot happen:\n    cannot output no-content"))
+    | _                            -> raise (IllegalOut("this cannot happen:\n    unknown error"))

@@ -42,14 +42,14 @@ let make_bounded_free tystr = eliminate_forall tystr []
 let rec typecheck tyenv utast =
   let (rng, utastmain) = utast in
     match utastmain with
-    | UTStringEmpty         -> (StringEmpty, StringType(rng), Subst.empty)
-    | UTBreakAndIndent      -> (BreakAndIndent, StringType(rng), Subst.empty)
-    | UTNumericConstant(nc) -> (NumericConstant(nc), IntType(rng), Subst.empty)
-    | UTStringConstant(sc)  -> (StringConstant(sc), StringType(rng), Subst.empty)
-    | UTBooleanConstant(bc) -> (BooleanConstant(bc), BoolType(rng), Subst.empty)
-    | UTUnitConstant        -> (UnitConstant, UnitType(rng), Subst.empty)
-    | UTFinishHeaderFile    -> (FinishHeaderFile, TypeEnvironmentType(rng, tyenv), Subst.empty)
-    | UTNoContent           -> (NoContent, StringType(rng), Subst.empty)
+    | UTStringEmpty         -> (StringEmpty,         StringType(rng), Subst.empty)
+    | UTBreakAndIndent      -> (BreakAndIndent,      StringType(rng), Subst.empty)
+    | UTNumericConstant(nc) -> (NumericConstant(nc), IntType(rng),    Subst.empty)
+    | UTStringConstant(sc)  -> (StringConstant(sc),  StringType(rng), Subst.empty)
+    | UTBooleanConstant(bc) -> (BooleanConstant(bc), BoolType(rng),   Subst.empty)
+    | UTUnitConstant        -> (UnitConstant,        UnitType(rng),   Subst.empty)
+    | UTNoContent           -> (NoContent,           StringType(rng), Subst.empty)
+    | UTFinishHeaderFile    -> (FinishHeaderFile,    TypeEnvironmentType(rng, tyenv), Subst.empty)
     | UTContentOf(nv) ->
         ( try
             let forallty = Typeenv.find tyenv nv in
@@ -94,6 +94,36 @@ let rec typecheck tyenv utast =
         let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv tyenv_for_rec utmutletcons in
         let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
           (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
+
+    | UTLetMutableIn(varrng, varnm, utastdflt, utastaft) ->
+        let (edflt, tydflt, thetadflt) = typecheck tyenv utastdflt in
+        let tyenv_new = Subst.apply_to_type_environment thetadflt (Typeenv.add tyenv varnm (RefType(varrng, tydflt))) in
+          let (eaft, tyaft, thetaaft) = typecheck tyenv_new utastaft in
+            let theta_result = Subst.compose thetaaft thetadflt in
+            let term_result = LetMutableIn(varnm, Subst.apply_to_term theta_result edflt,
+                                                  Subst.apply_to_term theta_result eaft) in
+            let type_result = Subst.apply_to_type_struct theta_result tyaft in
+              (term_result, type_result, theta_result)
+ 
+    | UTOverwrite(varrng, varnm, utastnew) ->
+        let (_, tyvar, _) = typecheck tyenv (varrng, UTContentOf(varnm)) in
+        let (enew, tynew, thetanew) = typecheck tyenv utastnew in
+        let thetasub = Subst.unify tyvar (RefType(get_range utastnew, tynew)) in
+            (*  actually 'get_range astnew' is not good
+                since the right side expression has type 't, not 't ref *)
+          (Overwrite(varnm, enew), UnitType(rng), Subst.compose thetasub thetanew)
+
+    | UTSequential(utast1, utast2) ->
+        let (e1, ty1, theta1) = typecheck tyenv utast1 in
+        let theta_new = Subst.compose (Subst.unify ty1 (UnitType((0, 0, 0, 0)))) theta1 in
+        let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
+        let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
+          let theta_result = Subst.compose theta2 theta_new in
+          let type_result = Subst.apply_to_type_struct theta_result ty2 in
+          let term_result = Sequential(Subst.apply_to_term theta_result e1,
+          	                           Subst.apply_to_term theta_result e2) in
+            (term_result, type_result, theta_result)
+
 
     | UTIfThenElse(utastb, utast1, utast2) ->
         let (eb, tyb, thetab) = typecheck tyenv utastb in
@@ -145,17 +175,7 @@ let rec typecheck tyenv utast =
     | UTEndOfList ->
         let ntyvar = TypeVariable(rng, new_type_variable_id ()) in
           (EndOfList, ListType(rng, ntyvar), Subst.empty)
-(*  
-    | UTLetMutableIn(varnm, astdflt, astaft) ->
-        let tydflt = typecheck tyenv astdflt in
-        let tyenv_new = Typeenv.copy tyenv in
-        ( Typeenv.add tyenv varnm tydflt ;
-          let tyaft = typecheck tyenv_new astaft in tyaft
-        )
- 
-    | UTOverwrite(varnm, astnew) ->
-        let _ = typecheck tyenv astnew in UnitType
-*)  
+
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 
 (* Typeenv.t -> untyped_mutual_let_cons -> Typeenv.t *)

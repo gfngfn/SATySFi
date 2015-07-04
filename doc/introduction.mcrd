@@ -368,51 +368,59 @@
         となります。
       }
     }
-    \subsection{可変長引数の扱い方}{
+    \subsection{リスト}{
       \p{
-        マクロ適用の引数には\newword{可変長リスト}を使用することができます。
-        可変長リストの形の引数を\newword{可変長引数}と呼び，
+        具体的なリストは，基本的に
+        
+        \mcrd-display```
+          [3; 1; 4; 1; 5; 9; 2]
+        ```
 
-        \code-dp{
-          \synt`{` \meta{Expr1} \synt`|` \meta{Expr2} \synt{\brokenbar;} \metadots; %
-            \synt{\brokenbar;} \meta{ExprN} \synt{\rbrace;}
-        }
-
-        と記述します。マクロ適用時には，可変長リストはひとつの変数に格納されます。
-        この可変長リストを1つずつ切り離す機能が\mcrd`\pop`を用いた\newword{ポップ式}で，
-
-        \code-dp{
-          \synt{\bksl;pop} \synt{\atmark;}\meta{head} \synt{\atmark;}\meta{tail} %
-            \synt{\lbrace;} \meta{Elem1} \synt{\brokenbar;} \meta{Elem2} \synt{\brokenbar;} \metadots; %
-            \synt{\brokenbar;} \meta{ElemN} \synt{\rbrace;}%
-            \synt{\lbrace;} \meta{Expr} \synt{\rbrace;}
-        }
-
-        とすると変数\code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
-        変数\code{\synt{\atmark;}\meta{tail}}に%
-        \code{\meta{Elem2} \synt{\brokenbar;} \metadots; %
-          \synt{\brokenbar;} \meta{ElemN}}
-        が格納された上で\code{\meta{Expr}}が評価されます。
-        変数\code{\synt{\atmark;}\meta{head}}，\code{\synt{\atmark;}\meta{tail}}が有効なスコープは
-        \code{\meta{Expr}}内だけであることに注意してください。
-      }
-      \p{
-        なお，可変長リストが1個の要素\code{\meta{Elem1}}だけからなるときは，
-        \code{\synt{\atmark;}\meta{head}}に\code{\meta{Elem1}}が，
-        \code{\synt{\atmark;}\meta{head}}に\newword{空列}が格納された上で\code{\meta{Expr}}が評価され，
-        可変長リストが0要素，つまり空列であるときは
-        \code{\meta{Expr}}が評価されず，ポップ式全体が空列を返します。
-      }
-      \p{
-        可変長リストを扱う例を見てみましょう。
+        のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書きます。
+        リストでは，全ての要素の型が一致していなければなりません。
+        \type-synt{'t}型の要素を持つリストの型は\type-synt{'t list}であり，
+        例えば\type-synt{int}型のリストは\type-synt{int list}型になります。
+        \type-synt{string}型のリストだけは，
 
         \mcrd-display```
-          \macro \sep @list {
-            \pop @head @tail {@list;}{
-              (@head;)\sep{@tail;}
-            }
-          }%
-          \sep{bd|gfn|\sep{me|ip}}
+          [{hoge}; {piyo}; {fuga}; {moge}]
+        ```
+
+        と書くところを
+
+        \mcrd-display```
+          {|hoge|piyo|fuga|moge|}
+        ```
+
+        と省略して書くことができます。
+        \code{\synt`[`}と\code{\synt`]`}で括る方法はプログラム階層でしか使えませんが，
+        この\type-synt{string}型の省略記法はテキスト階層でのマクロ引数でも使うことができるので便利です。
+      }
+      \p{
+        リストの要素を取り出す操作を見ていきましょう。
+        まずリストの先頭要素を取り出す函数が\mcrd-type`list-head`{'a list -> 'a}，
+        先頭を除いたリストを得る函数が\mcrd-type`list-tail`{'a list -> 'a list}です。
+        例えば\mcrd`list-head [2; 4; 6; 9; 11]`は\mcrd`2`に，
+        \mcrd`list-tail [2; 4; 6; 9; 11]`は\mcrd`[4; 6; 9; 11]`にそれぞれ評価されます。
+      }
+      \p{
+        では，\mcrd`list-head`および\mcrd`list-tail`に空のリスト\mcrd`[]`を渡すとどうなるかというと，
+        これは実行時エラーで終了してしまいます。
+        そこで，リストが空かどうか判定する函数\mcrd-type`is-empty`{'a list -> bool}を使うことになります。
+      }
+      \p{
+        リストを扱う例を見てみましょう。
+        文字列のリストを受け取り，それぞれを文字\mcrd`(`と\mcrd`)`で括って並べるマクロ，
+        \mcrd-type`\enclose-each`{string list -> string}を定義します。
+
+        \mcrd-display```
+          let enclose-each lst =
+            if is-empty lst then {} else
+              let hd = list-head lst in
+              let tl = list-tail lst in
+                {(@hd;)} ^ (enclose-each tl) in
+          let \enclose-each = enclose-each in
+          in {\enclose-each{|bd|gfn|\enclose-each{|me|ip|}|}}
         ```
 
         に対する出力は
@@ -421,20 +429,18 @@
           (bd)(gfn)((me)(ip))
         ```
 
-        となります。
-        \code{\synt{\atmark;}\meta{list}}が空列を格納している場合はポップ式が空列を返すだけなので
-        それ以上再帰が生じずに停止するのです。
-        より実用的な例としては
+        となります。より実用的な例としては
 
         \mcrd-display```
-          \macro \ul @list {<ul>\deeper{@list;}</ul>}%
-          \macro \--ul @list {
-            \pop @head @tail {@list;}{
-              <li>@head;</li>%
-              \ifempty{@tail;}{}{\break;\--ul{@tail;}}
-            }
-          }%
-          \ul{hoge|piyo|fuga|moge}
+          let sub-ul lst =
+            if is-empty lst then {} else
+              let hd = list-head lst in
+              let tl = list-tail lst in
+                {<li>@head;</li>\break;} ^ (sub-ul tl)
+          in
+          let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
+          in
+            {\ul{|hoge|piyo|fuga|moge|}}
         ```
 
         に対する出力は

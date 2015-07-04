@@ -102,8 +102,14 @@ let \code-dp-tab = {\\\ \\\ } in
 let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
 let \metadots = {$\\ldots$} in
 let \mcrd-display code = {
-  \\begin\{verbatim\}@code;\\end\{verbatim\}
+  \\begin\{center\}\deeper{
+    \\parbox\{0.9\\textwidth\}\{\\noindent
+      \\textcolor\{blue\}\{\\texttt\{\strong-escape-for-latex{@code;}\}\}%
+    \}%
+  }\\end\{center\}
 } in
 let \mcrd code = {\synt{@code;}} in
 let \url-display url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
+let \type-synt ty = `\textcolor{gray}{\texttt{` ^ ty ^ `}}` in
+let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}} in
   finish
