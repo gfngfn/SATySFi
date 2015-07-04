@@ -13,7 +13,7 @@ parser.mli parser.ml: parser.mly
 types.cmo: $(SRCS)
 	ocamlc -c $^
 $(TARGET): $(SRCS)
-	ocamlc -o $(TARGET) $^
+	ocamlopt -o $(TARGET) $^
 
 clean:
 	rm -f $(TARGET)
