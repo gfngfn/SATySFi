@@ -196,12 +196,33 @@ let rec interpret env ast =
       )
   | ReferenceFinal(varnm) -> ReferenceFinal(varnm)
 
-  | DeclareGlobalMutable(varnm, astdflt) ->
-      let valuedflt = interpret env astdflt in
-      ( Hashtbl.add global_env varnm (ref (MutableValue(valuedflt))) ;
-        UnitConstant
+  | DeclareGlobalHash(astkey, astdflt) ->
+      ( try
+          let str_key = Out.main (interpret env astkey) in
+          let valuedflt = interpret env astdflt in
+          ( Hashtbl.add global_hash_env str_key (ref (MutableValue(valuedflt))) ;
+            UnitConstant
+          )
+        with
+        | Out.IllegalOut(_) -> raise (EvalError("this cannot hapen:\n    illegal hash key for 'declare-global-hash'"))
       )
-
+  | OverwriteGlobalHash(astkey, astnew) ->
+      ( try
+          let str_key = Out.main (interpret env astkey) in
+          ( try
+              let rfvalue = Hashtbl.find global_hash_env str_key in
+              ( match !rfvalue with
+                | MutableValue(astmv) ->
+                    ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
+                | _                   -> raise (EvalError("this cannot happen\n:"
+                                           ^ "   global hash key '" ^ str_key ^ "' contains non-mutable value"))
+              )
+            with
+            | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
+          )
+        with
+        | Out.IllegalOut(_) -> raise (EvalError("this cannot happen:\n    illegal argument for '<<-'"))
+      )
   | Overwrite(varnm, astnew) ->
       ( try
           let rfvalue = Hashtbl.find env varnm in
@@ -211,18 +232,8 @@ let rec interpret env ast =
             | _ -> raise (EvalError("this cannot happen:\n    '" ^ varnm ^ "' is not a mutable variable for '<-'"))
           )
         with
-        | Not_found ->
-            ( try
-                let rfvalue = Hashtbl.find global_env varnm in
-                ( match !rfvalue with
-                  | MutableValue(astmv) ->
-                      ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
-                  | _ -> raise (EvalError("this cannot happen\n:   '" ^ varnm ^ "' is not a mutable variable for '<-'"))
-                )
-              with
-              | Not_found ->  raise (EvalError("this cannot happen:\n"
-                                ^ "    undefined mutable variable '" ^ varnm ^ "' for '<-'"))
-            )
+        | Not_found ->  raise (EvalError("this cannot happen:\n"
+                          ^ "    undefined mutable variable '" ^ varnm ^ "' for '<-'"))
       )
   | UnitConstant -> UnitConstant
 

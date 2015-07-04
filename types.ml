@@ -43,10 +43,11 @@ and untyped_abstract_tree_main =
   | UTLambdaAbstract   of code_range * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTLetMutableIn     of code_range * var_name * untyped_abstract_tree * untyped_abstract_tree
-  | UTDeclareGlobalMutable of code_range * var_name * untyped_abstract_tree
+  | UTDeclareGlobalHash   of untyped_abstract_tree * untyped_abstract_tree
+  | UTOverwriteGlobalHash of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite        of code_range * var_name * untyped_abstract_tree
   | UTSequential       of untyped_abstract_tree * untyped_abstract_tree
-  | UTReferenceFinal   of code_range * var_name
+  | UTReferenceFinal   of untyped_abstract_tree
   | UTIfClassIsValid   of untyped_abstract_tree * untyped_abstract_tree
   | UTIfIDIsValid      of untyped_abstract_tree * untyped_abstract_tree
   | UTApplyClassAndID  of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
@@ -86,12 +87,13 @@ and abstract_tree =
   | Overwrite      of var_name * abstract_tree
   | MutableValue   of abstract_tree
   | Reference      of abstract_tree
-  | ReferenceFinal of var_name
+  | ReferenceFinal of abstract_tree
   | IfClassIsValid of abstract_tree * abstract_tree
   | IfIDIsValid    of abstract_tree * abstract_tree
   | ApplyClassAndID of abstract_tree * abstract_tree * abstract_tree
-  | WhileDo of abstract_tree * abstract_tree
-  | DeclareGlobalMutable of var_name * abstract_tree
+  | WhileDo        of abstract_tree * abstract_tree
+  | DeclareGlobalHash   of abstract_tree * abstract_tree
+  | OverwriteGlobalHash of abstract_tree * abstract_tree
 (* only for inner procedure *)
   | NoContent (* for class and id *)
   | FuncWithEnvironment of var_name * abstract_tree * environment

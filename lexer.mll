@@ -141,6 +141,7 @@ rule numexpr = parse
   | "^"   { CONCAT(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
+  | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
   | "!"   { REFNOW(get_pos lexbuf) }
   | "!!"  { REFFINAL(get_pos lexbuf) }
 
@@ -167,6 +168,7 @@ rule numexpr = parse
           | "if-id-is-valid"      -> IFIDISVALID(pos)
           | "let-mutable"         -> LETMUTABLE(pos)
           | "declare-global-hash" -> DECGLOBALHASH(pos)
+          | "renew"               -> RENEWGLOBALHASH(pos)
           | _          -> VAR(pos, tok)
         )
       }

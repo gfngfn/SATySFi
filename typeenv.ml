@@ -17,10 +17,7 @@ and type_struct =
   | TypeVariable of code_range * type_variable_id
 
 (* !!!! ---- global variable ---- !!!! *)
-let global_tyenv : type_environment ref = ref []
-
-(* !!!! ---- global variable ---- !!!! *)
-let global_env : environment = Hashtbl.create 32
+let global_hash_env : environment = Hashtbl.create 32
 
 
 let rec string_of_ast ast =
@@ -38,7 +35,7 @@ let rec string_of_ast ast =
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | Reference(a)           -> "!" ^ (string_of_ast a)
-  | ReferenceFinal(vn)     -> "!!" ^ vn
+  | ReferenceFinal(a)     -> "!!" ^ (string_of_ast a)
   | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
   | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
   | UnitConstant           -> "()"

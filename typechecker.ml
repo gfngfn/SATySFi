@@ -56,16 +56,8 @@ let rec typecheck tyenv utast =
             let ty = make_bounded_free forallty in
               (ContentOf(nv), ty, Subst.empty)
           with
-          | Not_found ->
-              ( try
-              	  let forallty = Typeenv.find !global_tyenv nv in
-              	  let ty = make_bounded_free forallty in
-              	    (ContentOf(nv), ty, Subst.empty)
-                with
-              	| Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
-              )
+          | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
         )
-
     | UTConcat(utast1, utast2) ->
         let (e1, ty1, theta1) = typecheck tyenv utast1 in
         let (e2, ty2, theta2) = typecheck tyenv utast2 in
@@ -112,12 +104,30 @@ let rec typecheck tyenv utast =
             let type_result = Subst.apply_to_type_struct theta_result tyaft in
               (term_result, type_result, theta_result)
 
-    | UTDeclareGlobalMutable(varrng, varnm, utastdflt) ->
+    | UTDeclareGlobalHash(utastkey, utastdflt) ->
+        let (ekey, tykey, thetakey)    = typecheck tyenv utastkey in
         let (edflt, tydflt, thetadflt) = typecheck tyenv utastdflt in
-        let thetasub = Subst.unify tydflt (StringType(get_range utastdflt)) in
-        ( global_tyenv := Typeenv.add !global_tyenv varnm (RefType(varrng, StringType(get_range utastdflt))) ;
-          (DeclareGlobalMutable(varnm, edflt), UnitType(rng), Subst.compose thetasub thetadflt)
-        ) 
+        let thetasubkey  = Subst.unify tykey  (StringType(get_range utastkey))  in
+        let thetasubdflt = Subst.unify tydflt (StringType(get_range utastdflt)) in
+        let theta_result =  Subst.compose thetasubdflt (
+        	                    Subst.compose thetasubkey (
+        	                      Subst.compose thetadflt thetakey)) in
+        let term_result  = DeclareGlobalHash( Subst.apply_to_term theta_result ekey,
+                                              Subst.apply_to_term theta_result edflt) in
+          (term_result, UnitType(rng), theta_result)
+
+    | UTOverwriteGlobalHash(utastkey, utastnew) ->
+        let (ekey, tykey, thetakey) = typecheck tyenv utastkey in
+        let (enew, tynew, thetanew) = typecheck tyenv utastnew in
+        let thetasubkey = Subst.unify tykey (StringType(get_range utastkey)) in
+        let thetasubnew = Subst.unify tynew (StringType(get_range utastnew)) in
+        let theta_result =  Subst.compose thetasubnew (
+        	                    Subst.compose thetasubkey (
+        	                      Subst.compose thetanew thetakey)) in
+        let term_result  = OverwriteGlobalHash( Subst.apply_to_term theta_result ekey,
+                                                Subst.apply_to_term theta_result enew) in
+          (term_result, UnitType(rng), theta_result)
+
     | UTOverwrite(varrng, varnm, utastnew) ->
         let (_, tyvar, _) = typecheck tyenv (varrng, UTContentOf(varnm)) in
         let (enew, tynew, thetanew) = typecheck tyenv utastnew in
@@ -137,10 +147,12 @@ let rec typecheck tyenv utast =
           	                           Subst.apply_to_term theta_result e2) in
             (term_result, type_result, theta_result)
 
-    | UTReferenceFinal(varrng, varnm) ->
-        let (_, varty, _) = typecheck tyenv (varrng, UTContentOf(varnm)) in
-        let theta_result = Subst.unify varty (RefType(varrng, StringType(rng))) in
-        (ReferenceFinal(varnm), StringType(rng), theta_result)
+    | UTReferenceFinal(utast1) ->
+        let (e1, ty1, theta1) = typecheck tyenv utast1 in
+        let thetasub = Subst.unify ty1 (StringType(rng)) in
+        let theta_result = Subst.compose thetasub theta1 in
+        let term_result = ReferenceFinal(Subst.apply_to_term theta_result e1) in
+          (term_result, StringType(rng), theta_result)
 
     | UTIfThenElse(utastb, utast1, utast2) ->
         let (eb, tyb, thetab) = typecheck tyenv utastb in
