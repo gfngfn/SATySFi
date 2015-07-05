@@ -1,4 +1,6 @@
-all: output.tex output.dvi output.pdf
+all: output.html output.tex output.dvi output.pdf
+output.html: to_html.mcrdh intr_style_html.mcrdh introduction.mcrd
+	macrodown $^ -o output.html
 output.tex: to_latex.mcrdh intr_style_latex.mcrdh introduction.mcrd
 	macrodown $^ -o output.tex
 output.dvi: output.tex

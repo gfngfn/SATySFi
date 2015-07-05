@@ -48,60 +48,65 @@ and sub-itemize list =
               else {\break;} ^ (sub-itemize tail) )
 in
 let \math math = {\ $@math;$\ } in
-let \epsilon = {\\varepsilon} in
-let \url url = {\\texttt\{@url;\}} in
+let \epsilon = `\varepsilon` in
+let \beta = `\beta` in
+let \url url = `\texttt{` ^ url ^ `}` in
 let \url-dp url = {
   \\begin\{center\}\deeper{
     \\texttt\{@url;\}
   }\\end\{center\}
 } in
 let \to-latex c = {@c;} in
-let \TeX = {\\TeX\{\}} in
-let \LaTeX = {\\LaTeX\{\}} in
-let \pLaTeX2e = {p\\LaTeX 2\\raisebox\{-0.125zh\}\{$\\varepsilon$\}} in
-let \atmark = {\@} in
-let \brokenbar = {\|} in
-let \lbrace = {\\\{} in
-let \rbrace = {\\\}} in
-let \bksl = {\\symbol\{"5C\}} in
-let \numsign = {\\\#} in
-let \percent = {\\\%} in
-let \escape-for-latex str = escape-for-latex str 0
-and escape-for-latex str index =
-  if index >= string-length str then
-    {}
-  else
-  ( let ch = string-sub str index 1 in
-    ( if same ch {\{} then {\\\{}
-      else if same ch {\}} then {\\\}}
-      else if same ch {\#} then {\\\#}
-      else if same ch {\\} then {\\symbol\{"5C\}}
-      else if same ch {\%} then {\\\%}
-      else if same ch {$} then {\\$}
-      else if same ch {_} then {\\_}
-      else ch
-    )
-      ^ (escape-for-latex str (index + 1))
-  )
+let \TeX = `\TeX{}` in
+let \LaTeX = `\LaTeX{}` in
+let \pLaTeX2e = `p\LaTeX 2\raise-0.125em\hbox{$\varepsilon$}` in
+%let \atmark = `@` in
+%let \brokenbar = {\|} in
+%let \lbrace = {\\\{} in
+%let \rbrace = {\\\}} in
+%let \bksl = {\\symbol\{"5C\}} in
+%let \numsign = {\\\#} in
+%let \percent = {\\\%} in
+let escape-single-char ch =
+  if      same ch `{` then `\{`
+  else if same ch `}` then `\}`
+  else if same ch `#` then `\#`
+  else if same ch `\` then `\symbol{"5C}`
+  else if same ch `%` then `\%`
+  else if same ch `$` then `\$`
+  else if same ch `_` then `\_`
+  else ch
 in
-let \strong-escape-for-latex str = strong-escape-for-latex str 0
-and strong-escape-for-latex str index =
-  if index >= string-length str then
-    {}
+let escape-double-chars ch2 =
+  if      same ch2 `<<` then `<{}<`
+  else if same ch2 `>>` then `>{}>`
   else
-  ( let ch = string-sub str index 1 in
-    ( if      same ch {\{} then {\\\{}
-      else if same ch {\}} then {\\\}}
-      else if same ch {\#} then {\\\#}
-      else if same ch {\\} then {\\symbol\{"5C\}}
-      else if same ch {\%} then {\\\%}
-      else if same ch {$} then {\\$}
-      else if same ch {_} then {\\_}
-      %else if same ch {\ } then {\\\ }
-      %else if same ch break-char then {???}
-      else ch
-    )
-      ^ (escape-for-latex str (index + 1))
-  )
+    (escape-single-char (string-sub ch2 0 1))
+      ^ (escape-single-char (string-sub ch2 1 1))
+in
+let escape-for-latex str index =
+  if index >= string-length str then {} else
+    if index <= (string-length str) - 2 then
+      let ch2 = string-sub str index 2 in
+        escape-double-chars ch2
+          ^ (escape-for-latex str (index + 2))
+    else
+      let ch = string-sub str index 1 in
+        escape-single-char ch
+in
+let \escape-for-latex str = escape-for-latex str 0 in
+let \ref ref = !! ref in
+let-mutable counter-table <- 0 in
+let \float-table cap content =
+    counter-table <- !counter-table + 1
+  before
+    ( if-id-is-valid then
+        declare-global-hash id <<- {表} ^ (arabic (!counter-table))
+      else () )
+  before
+    `\begin{table*}\centering{}`
+      ^ {\deeper{@content;}}
+      ^ `\parbox{\textwidth}{\centering 表` ^ (arabic (!counter-table)) ^ `\quad{}` ^ cap ^ `}`
+      ^ `\end{table*}`
 in
   finish

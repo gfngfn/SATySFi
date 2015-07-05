@@ -1,5 +1,5 @@
-let \comment @cmt = {} in
-let \document @head @body = {
+let \mut-content mut = !mut in
+let \document head body = {
   <html>\deeper{
     <head>\deeper{
       @head;
@@ -9,52 +9,71 @@ let \document @head @body = {
     }</div></body>
   }</html>
 } in
-let \title @title = {<title>@title;</title>} in
-let \author @author = {<meta name="author" content="@author;">} in
+let-mutable mut-title <- {} in
+let \title title =
+  mut-title <- title before {<title>@title;</title>} in
+
+let-mutable mut-author <- {} in
+let \author author =
+  mut-author <- author before {<meta name="author" content="@author;">} in
+
 let \maketitle = {
-%  <div class="maketitle">\deeper{
-%    <div class="title">\sub-title;</div>
-%    <div class="author">\sub-author;</div>
-%  }</div>
+  <div class="maketitle">\deeper{
+    <div class="title">\mut-content(mut-title);</div>
+    <div class="author">\mut-content(mut-author);</div>
+  }</div>
 } in
-let \section @sec @cont = {<h1>@sec;</h1>\deeper{@cont;}} in
-let \subsection @subsec @cont = {<h2>@subsec;</h2>\deeper{@cont;}} in
-let \p @p = {<p>\deeper{@p;}</p>} in
-let \footnote @footnote = {} in
-let \row @row-content =
-  let @cell = list-head {@row-content;} in
-  let @rest = list-tail {@row-content;} in
-    {<td>@cell;</td>} ^ (if is-empty {@rest;} then {} else {\row{@rest;}})
+
+let-mutable section-counter <- 0 in
+let-mutable section-prefix <- {} in
+let-mutable section-postfix <- {.} in
+
+let-mutable subsection-counter <- 0 in
+let-mutable subsection-prefix <- {} in
+let-mutable subsection-postfix <- {} in
+
+let \section sec cont =
+    section-counter       <- !section-counter + 1
+  before
+    subsection-counter    <- 0
+  before
+  ( let cntstr = (!section-prefix) ^ (arabic (!section-counter)) ^ (!section-postfix) in
+      ( if-id-is-valid then
+          declare-global-hash id <<- cntstr
+        else () )
+      before
+        {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
+  )
 in
-let \table @option @table =
-  {<table>\deeper{\sub-table{@table;}}</table>}
-and \sub-table @table-content =
-  let @row = list-head {@table-content;} in
-  let @rest = list-tail {@table-content;} in
+
+let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}} in
+let \p inner = {<p>\deeper{@inner;}</p>} in
+let \footnote footnote = {} in
+let \table option table =
+  {<table>\deeper(sub-table table);</table>}
+
+and sub-table table-content =
+  let row  = list-head table-content in
+  let rest = list-tail table-content in
     {<tr>\deeper{@row;}</tr>} ^
-      (if is-empty {@rest;} then {} else {\break;\sub-table{@rest;}})
+      ( if is-empty rest then {} else {\break;} ^ (sub-table rest) )
 in
-let \itemize @list = {<ul>\deeper{\sub-itemize{@list;}}</ul>}
-and \sub-itemize @list =
-  let @head = list-head {@list;} in
-  let @tail = list-tail {@list;} in
+
+let \itemize lst = {<ul>\deeper(sub-itemize lst);</ul>}
+and sub-itemize lst =
+  let head = list-head lst in
+  let tail = list-tail lst in
     {<li>@head;</li>} ^
-      (if is-empty {@tail;} then {} else {\break;\sub-itemize{@tail;}})
+      ( if is-empty tail then {} else {\break;} ^ (sub-itemize tail) )
 in
-let \math @math = {\ <span class="math">@math;</span>\ } in
+let \math math = {\ <span class="math">@math;</span>\ } in
 let \epsilon = {ε} in
 %
-let \url @url = {\ <code>@url;</code>\ } in
-let \url-display @url = {<div class="centered">\deeper{\url{@url;}}</div>} in
-let \to-latex @c = {} in
+let \url url = {\ <code>@url;</code>\ } in
+let \url-display url = {<div class="centered">\deeper{\url{@url;}}</div>} in
+let \if-latex inner = {} in
+let \if-html  inner = {} in
 let \TeX = {TeX} in
 let \LaTeX = {LaTeX} in
 let \pLaTeX2e = {pLaTeX2ε} in
-let \atmark = {\@} in
-let \brokenbar = {\|} in
-let \lbrace = {\{} in
-let \rbrace = {\}} in
-let \bksl = {\\} in
-let \numsign = {\#} in
-let \percent = {\%} in
   finish

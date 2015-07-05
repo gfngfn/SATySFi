@@ -1,7 +1,7 @@
 \document{
   \settings;
-  \title{Macrodown (ver. 0.99) の仕様}
-  \author{gfn}
+  \title{Macrodown (\version;)}
+  \author{\twitter-at-id{bd_gfngfn}}
 }{
   \maketitle;
   \section{概要}{
@@ -117,7 +117,8 @@
       }
     }
   }
-  \section{変数・函数・マクロの基本}{
+  \section{変数・函数・マクロ}{
+    \subsection{基礎}{
       \p{
         Macrodownは手続き的記述よりも函数的記述に特化しています。
         変数には基本的に破壊的代入の機能がなく，
@@ -151,10 +152,12 @@
         で引数を\math{N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt`\`\meta{piyo}}
         が定義されます。
         なお，普通積極的には用いませんが，名前のない函数は
+
         \code-dp{
           \synt`(function` \meta{nv1} \metadots; \meta{nvN}
           \synt`->` \meta{Expr} \synt`)`
         }
+
         で表現することができます。例えば与えられた整数を2乗する函数は
         \mcrd`(function n -> n * n)`です。
 
@@ -164,29 +167,29 @@
         }
 
         で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
-        変数\code{\meta{piyo}}に格納された中身を文字列中で取り出すには
+        変数\code{\meta{piyo}}に格納された中身をテキスト階層中で取り出すには
         \code{\synt`@`\meta{piyo}\synt`;`}とします。例えば
 
-        \mcrd-display```
+        \mcrd-file{test.mcrds}```
           let \test x y = {Ma@x;r@y;down} in
             {\test{c}{o}, \test{}{k}}
         ```
 
         に対する出力は
 
-        \mcrd-display```
+        \mcrd-file{test.txt}```
           Macrodown, Markdown
         ```
 
         となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
 
-        \mcrd-display```
-          let \mcrd {Macrodown} in {Hello, \mcrd;!}
+        \mcrd-file{no-arg.mcrds}```
+          let \mcrd = {Macrodown} in {Hello, \mcrd;!}
         ```
 
         に対する出力は
 
-        \mcrd-display```
+        \mcrd-file{no-arg.txt}```
           Hello, Macrodown!
         ```
 
@@ -297,24 +300,25 @@
       \p{
         大小ラテン文字とアラビア数字とハイフンを\newword{基本文字}，その他の文字を\newword{非基本文字}，
         基本文字のみからなり先頭が大小ラテン文字である文字列を\newword{名前文字列}と呼ぶことにすると，
-        テキスト階層では文字列を以下にマッチするようにトークン化します。
-        ただし + は1回以上の繰り返しを表します。
-        複数通りのマッチがある場合はより長い文字列ほど優先し，
+        テキスト階層では文字列を\ref{token-text}に示す規則でマッチするようにトークン化します。
+        ただし + は1回以上の繰り返しを表し，また複数通りのマッチがある場合はより長い文字列ほど優先し，
         同一の文字列が複数のトークンにマッチする場合は表で上位に掲げられているものほど優先されます。
       }
-      \description{
-        |\d-item{\mcrd`\`（名前文字列）}{\math{\token-cs;}：\newword{制御綴トークン}}
-        |\d-item{\mcrd`@`}{\math{\token-var;}：\newword{文字列中変数参照トークン}}
-        |\d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{ブロック開始トークン}}
-        |\d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{ブロック終了トークン}・\newword{テキスト終了トークン}}
-        |\d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
-        |\d-item{\mcrd`\`（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
-        |\d-item{\mcrd`` ` ``+}{\math{\token-opnqt;}：\newword{リテラル開始トークン}}
-        |\d-item{\mcrd`%`}{\newword{コメント開始トークン}}
-        |\d-item{（空白文字）または（タブ文字）}{\math{\token-space;}}：\newword{空白トークン}
-        |\d-item{（改行文字）}{\math{\token-break;}}：\newword{改行トークン}
-        |\d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
-        |}
+      \float-table #token-text {テキスト階層で認識されるトークンとその規則}{
+        \description{
+          |\d-item{\mcrd`\`（名前文字列）}{\math{\token-cs;}：\newword{制御綴トークン}}
+          |\d-item{\mcrd`@`}{\math{\token-varinstr;}：\newword{文字列中変数参照トークン}}
+          |\d-item{\mcrd`{`}{\math{\token-bgrp;}：\newword{ブロック開始トークン}}
+          |\d-item{\mcrd`}`}{\math{\token-egrp;}：\newword{ブロック終了トークン}・\newword{テキスト終了トークン}}
+          |\d-item{\mcrd`|`}{\math{\token-sep;}：\newword{区切りトークン}}
+          |\d-item{\mcrd`\`（非基本文字）}{\math{\token-char;}：エスケープされた\newword{文字トークン}}
+          |\d-item{\mcrd`` ` ``+}{\math{\token-opnqt;}：\newword{リテラル開始トークン}}
+          |\d-item{\mcrd`%`}{\newword{コメント開始トークン}}
+          |\d-item{（空白文字）または（タブ文字）}{\math{\token-space;}}：\newword{空白トークン}
+          |\d-item{（改行文字）}{\math{\token-break;}}：\newword{改行トークン}
+          |\d-item{（1文字）}{\math{\token-char;}：\newword{文字トークン}}
+          |}
+      }
       \p{
         表からわかるように，
         \mcrd`%`，\mcrd`\`，\mcrd`@`，\mcrd`{`，\mcrd`}`，\mcrd`|`，\mcrd`` ` ``
@@ -338,68 +342,103 @@
         その他のトークンを認識した直後はテキスト階層を維持して次のトークンの認識に移ります。
       }
       \p{
-        \mcrd`}` は基本的に\newword{ブロック終了トークン}ですが，
-        場合によっては\newword{テキスト終了トークン}となります。
+        \mcrd`}` は基本的に\newword{ブロック終了トークン} \math{\token-egrp;} ですが，
+        場合によっては\newword{テキスト終了トークン} \math{\token-clsstr;} となります。
         プログラム階層で後述しますが，
-        プログラム階層からテキスト階層に入る\newword{テキスト開始トークン}の \mcrd`{` と釣り合う \mcrd`}` は
-        テキスト終了トークンとなり，これが認識されるとテキスト階層を出てプログラム階層に戻ります。
+        プログラム階層からテキスト階層に入るときに
+        \newword{テキスト開始トークン} \math{\token-opnstr;} と扱われた \mcrd`{` と釣り合う \mcrd`}` は
+        テキスト終了トークン \math{\token-clsstr;} となり，これが認識されるとテキスト階層を出てプログラム階層に戻ります。
       }
     }
     \subsection{プログラム階層}{
       \p{
         プログラム階層は，\newword{マクロ}や\newword{函数}の定義に用います。
+        プログラム階層で認識されるトークンとその規則を\ref{token-program}に示します。
         全体的にML風の構文をとっています。
       }
-      \description{
-        | \d-item{\mcrd`(`}{
-            \math{\token-lparen;}：\newword{開括弧トークン}}
-        | \d-item{\mcrd`)`}{
-            \math{\token-rparen;}：\newword{閉括弧トークン}・%
-            \math{\token-clsprog;}：\newword{プログラム終了トークン}}
-        | \d-item{\mcrd`[`}{
-            \math{\token-blist;}：\newword{リスト開括弧トークン}}
-        | \d-item{\mcrd`]`}{
-            \math{\token-elist;}：\newword{リスト閉括弧トークン}}
-        | \d-item{\mcrd`;`}{
-            \math{\token-listpunct;}：\newword{リスト区切りトークン}}
-        | \d-item{（二項演算子）}{
-            \math{\token-bin;}：\newword{二項演算子トークン}}
-        | \d-item{\mcrd`let`}{
-            \math{\token-let;}：\newword{letトークン}}
-        | \d-item{\mcrd`and`}{
-            \math{\token-and;}：\newword{andトークン}}
-        | \d-item{\mcrd`in`}{
-            \math{\token-in;}：\newword{inトークン}}
-        | \d-item{\mcrd`if`}{
-            \math{\token-if;}：\newword{ifトークン}}
-        | \d-item{\mcrd`then`}{
-            \math{\token-then;}：\newword{thenトークン}}
-        | \d-item{\mcrd`else`}{
-            \math{\token-else;}：\newword{elseトークン}}
-        | \d-item{\mcrd`finish`}{
-            \math{\token-finish;}：\newword{finishトークン}}
-        | \d-item{（名前文字列）}{
-            \math{\token-ident;}：\newword{項トークン}}
-        | \d-item{（整数文字列）}{
-            \math{\token-int;}：\newword{整数トークン}}
-        | \d-item{\mcrd`{`}{
-            \math{\token-opnstr;}：\newword{テキスト開始トークン}}
-        | \d-item{\mcrd`` ` ``}{
-            \math{\token-opnqt;}：\newword{リテラル開始トークン}}
-        | \d-item{\mcrd`%`}{\newword{コメント開始トークン}}
-        |}
-      \p{
-        テキスト開始トークン \mcrd`{` を認識すると，直後にテキスト階層に入ります。
-        テキスト階層で釣り合う \mcrd`}` を見つけると，再びプログラム階層に戻ってきます。
+      \float-table #token-program {プログラム階層で認識されるトークン}{
+        \description{
+          | \d-item{\mcrd`(`}{
+              \math{\token-lparen;}：\newword{開括弧トークン}}
+          | \d-item{\mcrd`)`}{
+              \math{\token-rparen;}：\newword{閉括弧トークン}・%
+              \math{\token-clsprog;}：\newword{プログラム終了トークン}}
+          | \d-item{\mcrd`[`}{
+              \math{\token-blist;}：\newword{リスト開括弧トークン}}
+          | \d-item{\mcrd`]`}{
+              \math{\token-elist;}：\newword{リスト閉括弧トークン}}
+          | \d-item{\mcrd`;`}{
+              \math{\token-listpunct;}：\newword{リスト区切りトークン}}
+          | \d-item{（二項演算子）}{
+              \math{\token-bin;}：\newword{二項演算子トークン}}
+          | \d-item{\mcrd`let`}{
+              \math{\token-let;}：\newword{宣言トークン}}
+          | \d-item{\mcrd`and`}{
+              \math{\token-and;}：\newword{並列宣言トークン}}
+          | \d-item{\mcrd`in`}{
+              \math{\token-in;}：\newword{inトークン}}
+          | \d-item{\mcrd`if`}{
+              \math{\token-if;}：\newword{ifトークン}}
+          | \d-item{\mcrd`then`}{
+              \math{\token-then;}：\newword{thenトークン}}
+          | \d-item{\mcrd`else`}{
+              \math{\token-else;}：\newword{elseトークン}}
+          | \d-item{\mcrd`true`}{
+              \math{\token-true;}：\newword{真トークン}}
+          | \d-item{\mcrd`false`}{
+              \math{\token-true;}：\newword{偽トークン}}
+          | \d-item{\mcrd`function`}{
+              \math{\token-function;}：\newword{無名函数トークン}}
+          | \d-item{\mcrd`->`}{
+              \math{\token-arrow;}：\newword{無名函数矢印トークン}}
+          | \d-item{\mcrd`if-class-is-valid`}{
+              \math{\token-if-class-is-valid;}：\newword{if-class-is-validトークン}}
+          | \d-item{\mcrd`if-id-is-valid`}{
+              \math{\token-if-id-is-valid;}：\newword{if-id-is-validトークン}}
+          | \d-item{\mcrd`let-mutable`}{
+              \math{\token-let-mutable;}：\newword{変更可能変数宣言トークン}}
+          | \d-item{\mcrd`<-`}{
+              \math{\token-oweq;}：\newword{破壊的代入トークン}}
+          | \d-item{\mcrd`before`}{
+              \math{\token-before;}：\newword{逐次評価トークン}}
+          | \d-item{\mcrd`()`}{
+              \math{\token-unit;}：\newword{ユニットトークン}}
+          | \d-item{\mcrd`while`}{
+              \math{\token-while;}：\newword{whileトークン}}
+          | \d-item{\mcrd`do`}{
+              \math{\token-do;}：\newword{doトークン}}
+          | \d-item{\mcrd`declare-global-hash`}{
+              \math{\token-declare-global-hash;}：\newword{ハッシュ宣言トークン}}
+          | \d-item{\mcrd`renew`}{
+              \math{\token-renew;}：\newword{ハッシュ変更トークン}}
+          | \d-item{\mcrd`<<-`}{
+              \math{\token-owhash;}：\newword{ハッシュ代入トークン}}
+          | \d-item{\mcrd`finish`}{
+              \math{\token-finish;}：\newword{finishトークン}}
+          | \d-item{（名前文字列）}{
+              \math{\token-ident;}：\newword{項トークン}}
+          | \d-item{（整数文字列）}{
+              \math{\token-int;}：\newword{整数トークン}}
+          | \d-item{\mcrd`{`}{
+              \math{\token-opnstr;}：\newword{テキスト開始トークン}}
+          | \d-item{\mcrd`` ` ``}{
+              \math{\token-opnqt;}：\newword{リテラル開始トークン}}
+          | \d-item{\mcrd`%`}{\newword{コメント開始トークン}}
+          |}
       }
       \p{
-        \mcrd`)` は基本的に\newword{閉括弧トークン}となりますが，
-        アクティヴ階層でプログラム開始トークン \mcrd`(` を認識してプログラム階層に入ってきていたとき，
-        釣り合う \mcrd`)` を\newword{プログラム終了トークン}と認識し，直後にアクティヴ階層に戻ります。
+        \mcrd`{` を見つけてテキスト開始トークン \math{\token-opnstr;} と認識すると，直後にテキスト階層に入ります。
+        テキスト階層で釣り合う \mcrd`}` を見つけると，それをテキスト終了トークン \math{\token-clsstr;} とみなして
+        再びプログラム階層に戻ってきます。
       }
       \p{
-        finishトークンはヘッダファイルを終了させるトークンで，
-        このfinishトークンが評価されたときの環境が次のファイルの読み込みに引き継がれます。
+        \mcrd`)` は基本的に\newword{閉括弧トークン} \math{\token-rparen;} となりますが，
+        アクティヴ階層で \mcrd`(` をプログラム開始トークン \math{\token-opnprog;} と認識してプログラム階層に入ってきていたとき，
+        釣り合う \mcrd`)` を\newword{プログラム終了トークン} \math{\token-clsprog;} と認識し，直後にアクティヴ階層に戻ります。
+      }
+      \p{
+        finishトークン \math{\token-finish;} はヘッダファイルを終了させるトークンで，
+        これが評価されたときの環境が次のファイルの読み込みに引き継がれます。
       }
     }
     \subsection{アクティヴ階層}{
@@ -409,27 +448,31 @@
         テキスト階層から出ることなく整数値などを扱うための例外的な部分です。
         とは言いつつも文書中で直接プログラムを書くということは普通避けたいので，
         実際には整数値をマクロに引数として渡すなど短い記述で完結することがほとんどです。
+        トークンの認識規則を\ref{token-active}に示します。
       }
-      \description{
-        | \d-item{\mcrd`(`}{
-            \math{\token-opnprog;}：\newword{プログラム開始トークン}}
-        | \d-item{\mcrd`#`（名前文字列）}{
-            \math{\token-id;}：\newword{ID名トークン}}
-        | \d-item{\mcrd`.`（名前文字列）}{
-            \math{\token-class;}：\newword{クラス名トークン}}
-        | \d-item{\mcrd`{`}{
-            \math{\token-bgrp;}：\newword{ブロック開始トークン}}
-        | \d-item{\mcrd`` ` ``}{
-            \math{\token-opnqt;}：\newword{リテラル開始トークン}}
-        |}
+      \float-table #token-active {アクティヴ階層で認識されるトークンとその規則}{
+        \description{
+          | \d-item{\mcrd`(`}{
+              \math{\token-opnprog;}：\newword{プログラム開始トークン}}
+          | \d-item{\mcrd`#`（名前文字列）}{
+              \math{\token-id;}：\newword{ID名トークン}}
+          | \d-item{\mcrd`.`（名前文字列）}{
+              \math{\token-class;}：\newword{クラス名トークン}}
+          | \d-item{\mcrd`{`}{
+              \math{\token-bgrp;}：\newword{ブロック開始トークン}}
+          | \d-item{\mcrd`` ` ``}{
+              \math{\token-opnqt;}：\newword{リテラル開始トークン}}
+          |}
+      }
       \p{
-        プログラム開始トークン \mcrd`(` を認識すると，直後にプログラム階層に入ります。
-        プログラム階層内で釣り合う \mcrd`)` を認識すると，アクティヴ階層に戻ってきます。
+        \mcrd`(` を読んでプログラム開始トークン \math{\token-opnprog;} を認識すると，直後にプログラム階層に入ります。
+        プログラム階層内で釣り合う \mcrd`)` を読むと，これをプログラム終了トークン \math{\token-clsprog;} と認識して
+        直後にアクティヴ階層に戻ってきます。
         これにより制御綴の引数として文字列だけでなく整数値などを扱うことができるようになっています。
       }
       \p{
-        ブロック開始トークン \mcrd`{` を認識すると，直後にアクティヴ階層を出てテキスト階層に戻ります。
-        同様にリテラル開始トークン \mcrd`` ` `` を認識すると
+        \mcrd`{` を読んでブロック開始トークン \math{\token-bgrp;} を認識すると，直後にアクティヴ階層を出てテキスト階層に戻ります。
+        同様にリテラル開始トークン \math{\token-opnqt;} を認識すると
         直後にアクティヴ階層を出てさらに即座にリテラル階層に入り，
         リテラル階層を出るとテキスト階層に戻ります。
         つまり，アクティヴ階層は最初に現れる \mcrd`{` か \mcrd`` ` `` で終了するということになります。
@@ -442,6 +485,10 @@
         \mcrd`` ` `` で括るとリテラル階層となります。
         したがって，リテラル階層は入ってきたときのリテラル開始トークンと同じ個数の
         連続した \mcrd`` ` `` を認識するともともといた階層に戻る，という動作をします。
+        「文字列をそのまま出力する」と言いつつも，
+        インデントは空白文字でも改行文字でもない文字を含む最もインデントの浅い行に合わせて削られ，
+        さらに先頭の空白文字が0文字以上連続した部分および
+        末尾の改行文字1文字以下と空白文字0文字以上が連続した部分は削除されるので注意してください。
       }
     }
     \subsection{コメント階層}{
@@ -455,33 +502,54 @@
         さらにコメント階層から抜けた直後は行頭なので空白類文字が無視されることに注意してください。
       }
     }
-  \section{構文木化}{
-    \math-dp-gather{
-      | \cfl{P}{
-          | \token-let; \token-ident; A B \token-defeq; P M \token-in; P
-          | \token-let; \token-cs; A B \token-defeq; P M \token-in; P
-          | \token-let; \token-var; \token-defeq; P \token-in; P
-          |*br*
-          | \token-if; P \token-then; P \token-else; P
-          | P \token-bin; P
-          | P P
-          |*br*
-          | \token-ident;
-          | \token-int;
-          | \token-opnstr; S \token-clsstr;
-          | \token-opnqt; L \token-clsqt;
-          |}
-      | \cfl{S}{| C S |}
-      | \cfl{C}{
-          | \token-char;
-          | \token-var; \token-end;
-          | \token-cs; \token-end;
-          | \token-cs; G H
-          |}
-      | \cfl{A}{| \epsilon; | \token-ident; A |}
-      | \cfl{B}{| \epsilon; | \token-var; B |}
-      | \cfl{G}{| \token-bgrp; L \token-egrp; |}
-      | \cfl{H}{| \epsilon; | G H |}
-      |}
+  }
+  \section{構文解析の厳密な仕様}{
+    \p{
+      Macrodownは字句解析が終了した後に構文解析に移ります。
+      文法は以下のBNFで表されます。
+      拡張子が.mcrdである文書は \math{\Text;} で表現される文字列を，
+      拡張子が.mcrdhであるヘッダおよび拡張子が.mcrdsである単独ファイルは \math{\Expr;} で表現される文字列を
+      それぞれ受理します。
+      \math-dp-gather{
+        | \cfl{\Expr;}{
+            | \token-let; \Dec; \repeat-star{\token-and; \Dec;} \token-in; \Expr;
+            |*br*
+            | \token-if; \Expr; \token-then; \Expr; \token-else; \Expr;
+            |*br*
+            | \token-function; \Args; \token-arrow; \Expr;
+            |*br*
+            | \Expr; \token-bin; \Expr; | \Expr; \Expr;
+            | \token-ident;
+            | \token-lparen; \Expr; \token-rparen;
+            |*br*
+            | \GroupInExpr; | \token-int; | \token-true; | \token-false; | \token-unit; | \token-finish;
+            |*br*
+            | \token-let-mutable; \token-ident; \token-oweq; \Expr; \token-in; \Expr;
+            | \token-ident; \token-oweq; \Expr;
+            |*br*
+            | \token-while; \Expr; \token-do; \Expr;
+            | \Expr; \token-before; \Expr;
+            |*br*
+            | \token-if-class-is-valid; \cfl-or{|\epsilon;|\token-then;|} \Expr; \token-else; \Expr;
+            |*br*
+            | \token-if-id-is-valid; \cfl-or{|\epsilon;|\token-then;|} \Expr; \token-else; \Expr;
+            |*br*
+            | \token-declare-global-hash; \Expr; \token-owhash; \Expr;
+            | \token-renew; \Expr; \token-owhash; \Expr;
+            |}
+        | \cfl{\Dec;}{| \cfl-or{|\token-ident;|\token-cs;|} \Args; \token-defeq; \Expr; |}
+        | \cfl{\Args;}{| \repeat-star{\token-ident;} |}
+        | \cfl{\Text;}{| \repeat-star{\Single;} |}
+        | \cfl{\Single;}{
+            | \token-char;
+            | \token-varinstr; \token-ident; \token-end;
+            | \token-cs; \cfl-or{| \epsilon; | \token-class; |} \cfl-or{| \epsilon; | \token-id; |} \ExprArgs; \TextArgs;
+            |}
+        | \cfl{\ExprArgs;}{| \repeat-star{\token-opnprog; \Expr; \token-clsprog;} |}
+        | \cfl{\TextArgs;}{| \token-end; | \repeat-plus{ \GroupInText; } |}
+        | \cfl{\GroupInText;}{| \token-bgrp; \Text; \token-egrp; | \token-opnqt; \Literal; \token-clsqt; |}
+        | \cfl{\GroupInExpr;}{| \token-opnstr; \Text; \token-clsstr; | \token-opnqt; \Literal; \token-clsqt; |}
+        |}
+    }
   }
 }

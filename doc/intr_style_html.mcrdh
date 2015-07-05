@@ -4,16 +4,14 @@ let \settings = {
 } in
 let \description dscr = {
   <div class="centered">\deeper{
-    <table>\deeper{
-      \dscr-sep-lines{@dscr;}
-    }</table>
+    <table>\deeper(dscr-sep-lines dscr);</table>
   }</div>
 }
-and \dscr-sep-lines dscr =
+and dscr-sep-lines dscr =
   let head = list-head dscr in
   let tail = list-tail dscr in
     {<tr>\deeper{@head;}</tr>} ^
-      (if is-empty tail then {} else {\break;\dscr-sep-lines{@tail;}})
+      ( if is-empty tail then {} else {\break;} ^ (dscr-sep-lines tail) )
 in
 let \d-item di dd = {<td>@di;</td><td>@dd;</td>} in
 let \synt synt = {<span class="synt"><code>@synt;</code></span>} in
@@ -34,40 +32,37 @@ let \token-qt = {\toksty{\`}} in
 %
 let \math-dp-gather lst = {
   <div class="centered">\deeper{
-    <table>\deeper{
-      \sub-math-dp-gather{@lst;}
-    }</table>
+    <table>\deeper(sub-math-dp-gather lst);</table>
   }</div>
 }
-and \sub-math-dp-gather lst =
-  let head = list-head lst in
-  let tail = list-tail lst in
-    {<tr>\deeper{@head;}</tr>} ^
-      (if is-empty tail then {} else {\break;\sub-math-dp-gather{@tail;}})
+and sub-math-dp-gather lst =
+  if is-empty lst then {} else
+    let head = list-head lst in
+    let tail = list-tail lst in
+      {<tr>\deeper{@head;}</tr>} ^
+        ( if is-empty tail then {} else {\break;} ^ (sub-math-dp-gather tail) )
 in
 let \cfl nontm lst = {
   <td><span class="math">@nontm;</span></td>%
-  <td><span class="math">&rarr\; \sub-cfl{@lst;}</span></td>
+  <td><span class="math">&rarr\;\ } ^ (sub-cfl lst) ^ {</span></td>
 }
-and \sub-cfl lst =
-  let head = list-head lst in
-  let tail = list-tail lst in
-    head ^
-      (if is-empty tail then {} else {</span> \| <span class="math">\sub-cfl{@tail;}})
+and sub-cfl lst =
+  if is-empty lst then {} else
+    let head = list-head lst in
+    let tail = list-tail lst in
+      head ^
+        ( if is-empty tail then {} else {</span> \| <span class="math">} ^ (sub-cfl tail) )
 in
-let \escape-for-html str =
-  sub-escape-for-html str 0
+let \escape-for-html str = sub-escape-for-html str 0
+
 and sub-escape-for-html str index =
-  if index >= string-length str then
-    {}
-  else
-  ( let ch = string-sub str index in
+  if index >= string-length str then {} else
+    let ch = string-sub str index 1 in
     ( if same ch {<} then {&lt\;}
       else if same ch {>} then {&gt\;}
       else if same ch {&} then {&amp\;}
       else ch
     ) ^ (sub-escape-for-html str (index + 1))
-  )
 in
 let \mcrd code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>} in
 let \mcrd-display code = {

@@ -311,6 +311,7 @@ and literal = parse
         else
         ( next_state := !after_literal_state ; CLOSEQT(get_pos lexbuf) )
     }
+  | "\n" { increment_line lexbuf ; CHAR(get_pos lexbuf, "\n") }
   | _ { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
 
 and comment = parse

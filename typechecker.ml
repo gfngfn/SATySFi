@@ -16,6 +16,19 @@ let new_type_variable_id () =
     res
   )
 
+let overwrite_range rng ty =
+	match ty with
+	| IntType(r)         -> IntType(rng)
+	| StringType(r)      -> StringType(rng)
+	| BoolType(r)        -> BoolType(rng)
+	| UnitType(r)        -> UnitType(rng)
+	| FuncType(r, d, c)  -> FuncType(rng, d, c)
+	| ListType(r, c)     -> ListType(rng, c)
+	| RefType(r, c)      -> RefType(rng, c)
+	| TypeVariable(r, v) -> TypeVariable(rng, v)
+	| ForallType(v, c)   -> ForallType(v, c)
+	| TypeEnvironmentType(r, e) -> TypeEnvironmentType(rng, e)
+
 let rec find_in_list lst elm =
   match lst with
   | []                    -> raise Not_found
@@ -55,7 +68,7 @@ let rec typecheck tyenv utast =
             let forallty = Typeenv.find tyenv nv in
             let ty = make_bounded_free forallty in
               ( (* print_string ("  " ^ nv ^ " : " ^ (string_of_type_struct forallty) ^ "\n\n") ; *)
-                (ContentOf(nv), ty, Subst.empty)
+                (ContentOf(nv), (overwrite_range rng ty), Subst.empty)
               )
           with
           | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
