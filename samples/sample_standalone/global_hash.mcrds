@@ -1,3 +1,7 @@
-declare-global-mutable final <- {} before
-  {[} ^ !!final ^ {]}
-  ^ ( final <- {hoge} before {+[} ^ !!final ^ {]} )
+let \ref hash = !! hash in
+    declare-global-hash {final} <<- {}
+  before
+    {[\ref{final}]}
+      ^ ( renew {final} <<- {hoge}
+        before
+          {/[\ref{final}]} )

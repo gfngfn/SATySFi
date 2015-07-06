@@ -1,16 +1,20 @@
-# Macrodown (ver. 0.99)
+# Macrodown (ver. 1.00 beta)
 
 ## Summary
 
 Macrodown is a markup language wrapping other markup languages such as TeX/LaTeX or HTML.
-It enables you to write documents with macros of your own making,
-especially with variadic ones.
+It consists of two “layers” ― the text layer and the program layer.
+The former is mainly for writing documents in LaTeX-like syntax.
+The latter, that has ML-like syntax, is mainly for defining functions and macros.
+It enables you to write documents semantically markuped with flexible macros of your own making.
 
 ## Usage
 
-Install `make` and `ocamlc`.
-Clone this repository, make directory `bin/` under `Macrodown/`, and execute `make`.
-Then `macrodown.exe` is generated, and you can type at `bin/` directory
+Download the binary executable file from the Release of Macrodown on GitHub.
+Should you want to compile from the source codes,
+install `make` and `ocamlc`/`ocamlopt`.
+Clone this repository, and execute `make`.
+Then `macrodown.exe` is generated in `bin/`, and you can type at `bin/` directory
 
     ./macrodown.exe <input files> -o <output file>
 

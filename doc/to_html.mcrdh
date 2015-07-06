@@ -1,3 +1,4 @@
+let \ref ref = !! ref in
 let \mut-content mut = !mut in
 let \document head body = {
   <html>\deeper{
@@ -76,4 +77,15 @@ let \if-html  inner = {} in
 let \TeX = {TeX} in
 let \LaTeX = {LaTeX} in
 let \pLaTeX2e = {pLaTeX2ε} in
+
+let-mutable table-counter <- 0 in
+let \float-table title content =
+    table-counter <- !table-counter + 1
+  before
+  ( let cntstr = {表} ^ (arabic (!table-counter)) in
+      ( if-id-is-valid declare-global-hash id <<- cntstr else () )
+      before
+       {<div class="centered">\deeper{@content;}<div class="table-caption">@cntstr; @title;</div></div>}
+  )
+in
   finish

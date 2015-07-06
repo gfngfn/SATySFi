@@ -2,6 +2,8 @@ let \settings = {
   <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
   <link href="./intr_style.css" rel="stylesheet" type="text/css">
 } in
+let \version = {ver 1.00β} in
+let \twitter-at-id at-id = `@` ^ at-id in
 let \description dscr = {
   <div class="centered">\deeper{
     <table>\deeper(dscr-sep-lines dscr);</table>
@@ -70,8 +72,18 @@ let \mcrd-display code = {
     \escape-for-html{@code;}%
   </code></pre></div>
 } in
+let \mcrd-file name code = {
+  <div class="code-display-file">\deeper{
+    <div class="file-name">@name;</div>
+    <div class="code-display"><pre><code>%
+      \escape-for-html{@code;}%
+    </code></pre></div>
+  }</div>
+} in
 let \code-dp code = {<div class="code-display"><code>@code;</code></div>} in
 let \code code = {\ <code>@code;</code>\ } in
 let \meta metacode = {<span class="meta">@metacode;</span>} in
 let \metadots = {&middot\;&middot\;&middot\;} in
+let \type-synt ty = {<span class="type">ty</span>} in
+let \mcrd-type ident ty = {<span class="identifier">@ident;</span>\type-synt{@ty;}} in
   finish
