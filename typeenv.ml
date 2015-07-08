@@ -81,17 +81,19 @@ let error_reporting rng errmsg =
         ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ":\n"
         ^ "    " ^ errmsg
 
-let rec meta_variable_name_of_int n =
+let rec variable_name_of_int n =
   ( if n >= 26 then
-      meta_variable_name_of_int ((n - n mod 26) / 26 - 1)
+      variable_name_of_int ((n - n mod 26) / 26 - 1)
     else
       ""
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
-let meta_max : type_variable_id ref = ref 0
+let meta_max    : type_variable_id ref = ref 0
+let unbound_max : type_variable_id ref = ref 0
+let unbound_type_valiable_name_list : (type_variable_id * string ) list ref = ref []
 
 let new_meta_type_variable_name () =
-  let res = meta_variable_name_of_int (!meta_max) in
+  let res = variable_name_of_int (!meta_max) in
     meta_max := !meta_max + 1 ; res
 
 let rec find_meta_type_variable lst tvid =
@@ -99,8 +101,20 @@ let rec find_meta_type_variable lst tvid =
   | []             -> raise Not_found
   | (k, v) :: tail -> if k == tvid then v else find_meta_type_variable tail tvid
 
+let new_unbound_type_variable_name tvid =
+  let res = variable_name_of_int (!unbound_max) in
+    unbound_max := !unbound_max + 1 ;
+    unbound_type_valiable_name_list := (tvid, res) :: (!unbound_type_valiable_name_list) ;
+    res
+
+let find_unbound_type_variable tvid =
+  find_meta_type_variable (!unbound_type_valiable_name_list) tvid
+
 let rec string_of_type_struct tystr =
-  meta_max := 0 ; string_of_type_struct_sub tystr []
+  meta_max := 0 ;
+  unbound_max := 0 ;
+  unbound_type_valiable_name_list := [] ;
+  string_of_type_struct_sub tystr []
 
 (* type_struct -> (type_variable_id * string) list -> string *)
 and string_of_type_struct_sub tystr lst =
@@ -110,17 +124,42 @@ and string_of_type_struct_sub tystr lst =
   | BoolType(_)   -> "bool"
   | UnitType(_)   -> "unit"
   | TypeEnvironmentType(_, _) -> "env"
+
   | TypeVariable(_, tvid)     ->
-      "'" ^ ( try find_meta_type_variable lst tvid with Not_found -> string_of_int tvid )
+      ( try "'" ^ (find_meta_type_variable lst tvid) with
+        | Not_found ->
+            "'" ^
+              ( try find_unbound_type_variable tvid with
+                | Not_found -> new_unbound_type_variable_name tvid
+              )
+      )
+
   | FuncType(_, tydom, tycod) ->
-      "(" ^ (string_of_type_struct_sub tydom lst) ^ " -> " ^ (string_of_type_struct_sub tycod lst) ^ ")"
+      let strdom = string_of_type_struct_sub tydom lst in
+      let strcod = string_of_type_struct_sub tycod lst in
+      ( match tydom with
+        | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
+        | _                 -> strdom
+      ) ^ " -> " ^ strcod
+
   | ListType(_, tycont)       ->
-      "(" ^ (string_of_type_struct_sub tycont lst) ^ " list)"
+      let strcont = string_of_type_struct_sub tycont lst in
+      ( match tycont with
+        | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+        | _                 -> strcont
+      ) ^ " list"
+
   | RefType(_, tycont)        ->
-      "(" ^ (string_of_type_struct_sub tycont lst) ^ " ref)"
+      let strcont = string_of_type_struct_sub tycont lst in
+      ( match tycont with
+        | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+        | _                 -> strcont
+      ) ^ " ref"
+
   | ForallType(tvid, tycont)  ->
       let meta = new_meta_type_variable_name () in
-        (string_of_type_struct_sub tycont ((tvid, meta) :: lst)) ^ ")"
+        (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
+
 
 let rec string_of_type_environment tyenv =
     " #===============================\n"
@@ -161,11 +200,9 @@ let unbound_id_list : type_variable_id list ref = ref []
 let rec listup_unbound_id tystr tyenv =
   match tystr with
   | TypeVariable(_, tvid)     ->
-    ( (* print_string ("%listup_unbound_id: '" ^ (string_of_int tvid) ^ "\n") ; *)
       if found_in_type_environment tvid tyenv then ()
       else if found_in_list tvid !unbound_id_list then ()
       else unbound_id_list := tvid :: !unbound_id_list
-    )
   | FuncType(_, tydom, tycod) -> ( listup_unbound_id tydom tyenv ; listup_unbound_id tycod tyenv )
   | ListType(_, tycont)       -> listup_unbound_id tycont tyenv
   | RefType(_, tycont)        -> listup_unbound_id tycont tyenv
@@ -173,14 +210,12 @@ let rec listup_unbound_id tystr tyenv =
 
 (* type_variable_id list -> type_struct -> type_struct *)
 let rec add_forall_struct lst tystr =
-  (* print_string "%add_forall_struct\n" ; *)
   match lst with
   | []           -> tystr
   | tvid :: tail -> ForallType(tvid, add_forall_struct tail tystr)
 
 (* type_struct -> type_environment -> type_struct *)
 let make_forall_type tystr tyenv =
-(*	print_string ("%make_forall_type\n" ^ (string_of_type_environment tyenv) ^ "\n") ; *)
 	unbound_id_list := [] ; listup_unbound_id tystr tyenv ;
 	add_forall_struct (!unbound_id_list) tystr
 

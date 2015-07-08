@@ -262,7 +262,7 @@ and make_forall_type_mutual tyenv theta tvtylst =
   | (varnm, tvty) :: tvtytail ->
     	let prety = Subst.apply_to_type_struct theta tvty in
     ( print_for_debug (Subst.string_of_subst theta) ;
-    	print_string (string_of_type_environment tyenv) ;
+    	print_for_debug (string_of_type_environment tyenv) ;
     	print_for_debug ("$ '" ^ varnm ^ " : " ^ (string_of_type_struct prety) ^ "\n") ;
       let forallty  = make_forall_type prety tyenv in
       let tyenv_new = Typeenv.add tyenv varnm forallty in
