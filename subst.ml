@@ -11,7 +11,21 @@ let add theta key value = (key, value) :: theta
 let rec find theta key =
   match theta with
   | []             -> raise Not_found
-  | (k, v) :: tail -> if k = key then v else find tail key
+  | (k, v) :: tail -> if k == key then v else find tail key
+
+
+let rec eliminate theta key =
+	eliminate_sub theta key []
+
+and eliminate_sub theta key constr =
+  match theta with
+  | [] -> raise Not_found
+  | (k, v) :: tail ->
+      if k == key then
+        constr @ tail
+      else
+        eliminate_sub tail key ((k, v) :: constr)
+
 
 let rec overwrite_type_struct tystr key value =
   match tystr with
@@ -20,17 +34,6 @@ let rec overwrite_type_struct tystr key value =
   | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
   | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
   | other                   -> other
-
-let rec overwrite theta key value =
-  match theta with
-  | []             -> add theta key value
-  | (k, v) :: tail ->
-      if k = key then (key, value) :: tail else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
-
-let rec compose theta2 theta1 =
-  match theta2 with
-  | []              -> theta1
-  | (k, v) :: tail2 -> compose tail2 (overwrite theta1 k v)
 
 (* Subst.t -> type_struct -> type_struct *)
 let rec apply_to_type_struct theta tystr =
@@ -58,62 +61,84 @@ let rec emerge_in tvid tystr =
   | RefType(_, cont)       -> emerge_in tvid cont
   | _                      -> false
 
+let rec overwrite theta key value =
+  match theta with
+  | []             -> []
+  | (k, v) :: tail ->
+      if k = key then
+        (key, value) :: (overwrite tail key value)
+      else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
+
+let overwrite_or_add theta key value =
+  overwrite (add theta key value) key value
+
+
+let rec fix_subst theta = fix_subst_sub theta theta
+and fix_subst_sub rest from =
+  match rest with
+  | []                    -> from
+  | (tvid, tystr) :: tail -> (fix_subst_sub tail (overwrite from tvid tystr))
+
+
 (* Subst.t -> Subst.t -> Subst.t *)
-let rec compose_special theta2 theta1 =
-	match theta2 with
-	| [] -> theta1
-	| (tvid, tystr2) :: tail ->
-	    ( try
-	    	  let tystr1 = find theta1 tvid in
-	    	  ( (* print_string "$1\n" ; *)
-	    	    compose_special [(tvid, tystr1)] (compose_special (unify_sub tystr1 tystr2 empty) tail)
-	    	  )
-	      with
-	      | Not_found ->
-	        ( (* print_string "$2\n" ; *) compose_special tail (overwrite theta1 tvid tystr2) )
-	    )
-(* type_struct -> type_struct -> Subst.t -> Subst.t *)
-and unify_sub tystr1 tystr2 theta =
+let rec compose theta2 theta1 =
+	fix_subst (compose_prim theta2 theta1)
+
+and compose_prim theta2 theta1 =
+  match theta2 with
+  | []                     -> theta1
+  | (tvid, tystr2) :: tail ->
+      ( try
+          let tystr1 = find theta1 tvid in
+          ( print_for_debug ("$1: '" ^ (string_of_int tvid) ^ " = "
+              ^ (string_of_type_struct tystr2) ^ " = " ^ (string_of_type_struct tystr1) ^ "\n") ;
+              (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
+          )
+        with
+        | Not_found ->
+          ( compose_prim tail (overwrite_or_add theta1 tvid tystr2) )
+      )
+
+(* type_struct -> type_struct -> Subst.t *)
+and unify tystr1 tystr2 = 
+  print_for_debug ("  <" ^ (string_of_type_struct tystr1) ^ "> = <" ^ (string_of_type_struct tystr2) ^ ">\n") ; (* for test *)
+  unify_sub tystr1 tystr2
+
+and unify_sub tystr1 tystr2 =
   match (tystr1, tystr2) with
-  | (IntType(_), IntType(_))       -> theta
-  | (StringType(_), StringType(_)) -> theta
-  | (BoolType(_), BoolType(_))     -> theta
-  | (UnitType(_), UnitType(_))     -> theta
-  | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> theta
+  | (IntType(_), IntType(_))       -> empty
+  | (StringType(_), StringType(_)) -> empty
+  | (BoolType(_), BoolType(_))     -> empty
+  | (UnitType(_), UnitType(_))     -> empty
+  | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> empty
 
   | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) ->
-      compose_special (unify_sub dom1 dom2 theta) (unify_sub cod1 cod2 theta)
+      compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
 
-  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2 theta
+  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2
 
-  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2 theta
+  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
 
   | (TypeVariable(rng1, tvid1), tystr) ->
       ( match tystr with
         | TypeVariable(rng2, tvid2) ->
             if tvid1 == tvid2 then
-              theta
+              empty
             else if tvid1 < tvid2 then
-            ( (* print_string ("*A '" ^ (string_of_int tvid1) ^ " = '" ^ (string_of_int tvid2) ^ "\n") ; *)
-              compose_special [(tvid1, TypeVariable(rng2, tvid2))] theta
-            )
+              [(tvid1, TypeVariable(rng2, tvid2))]
             else
-            ( (* print_string ("*B '" ^ (string_of_int tvid2) ^ " = '" ^ (string_of_int tvid1) ^ "\n") ; *)
-              compose_special [(tvid2, TypeVariable(rng1, tvid1))] theta
-            )
+              [(tvid2, TypeVariable(rng1, tvid1))]
 
         | other ->
-          ( (* print_string ("*C '" ^ (string_of_int tvid1) ^ " = " ^ (string_of_type_struct tystr) ^ "\n") ; *)
             if emerge_in tvid1 tystr then
               raise (TypeCheckError(error_reporting rng1
                 ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng1, tvid1))) ^ ">\n"
                   ^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
                   ^ "    but the former type is in the latter one")))
             else
-              compose_special [(tvid1, tystr)] theta
-          )
+              [(tvid1, tystr)]
       )
-  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr theta
+  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
   | (tystr1, tystr2) ->
       let (sttln1, sttpos1, endln1, endpos1) = get_range_from_type tystr1 in
@@ -139,19 +164,15 @@ and unify_sub tystr1 tystr2 theta =
           else
             raise (TypeCheckError("something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"))
 
-let rec fix_unification theta thetaconstr =
-	match theta with
-	| [] -> thetaconstr
-	| (tvid1, TypeVariable(rng2, tvid2)) :: tail ->
-	  ( (* print_string ("*D '" ^ (string_of_int tvid1) ^ " = '" ^ (string_of_int tvid2) ^ "\n") ; *)
-	    let tystr_new = ( try find theta tvid2 with Not_found -> TypeVariable(rng2, tvid2) ) in
-	      fix_unification tail ((tvid1, tystr_new) :: thetaconstr)
-	  )
 
-	| (tvid1, tystr) :: tail -> fix_unification tail ((tvid1, tystr) :: thetaconstr)
-
-
-let unify tystr1 tystr2 = fix_unification (unify_sub tystr1 tystr2 empty) empty
-(*
-let compose = compose_special
-*)
+(* for test *)
+let rec string_of_subst theta =
+      " +-------------------------------\n"
+    ^ (string_of_subst_sub theta)
+    ^ " +-------------------------------\n"
+and string_of_subst_sub theta =
+  match theta with
+  | []                    -> ""
+  | (tvid, tystr) :: tail ->
+      " | '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct tystr) ^ "\n"
+        ^ (string_of_subst_sub tail)

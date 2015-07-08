@@ -24,7 +24,7 @@ let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)           -> "#" ^ v ^ "#"
+  | ContentOf(v)           -> v
   | Apply(m, n)            -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)           -> (string_of_ast s) ^ (string_of_ast t)
   | StringEmpty            -> ""
@@ -42,6 +42,8 @@ let rec string_of_ast ast =
   | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | _ -> "..."
 
+
+let print_for_debug msg = (* print_string msg ; *) ()
 
 (* untyped_abstract_tree -> code_range *)
 let get_range utast =
@@ -79,24 +81,56 @@ let error_reporting rng errmsg =
         ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ":\n"
         ^ "    " ^ errmsg
 
+let rec meta_variable_name_of_int n =
+  ( if n >= 26 then
+      meta_variable_name_of_int ((n - n mod 26) / 26 - 1)
+    else
+      ""
+  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
+
+let meta_max : type_variable_id ref = ref 0
+
+let new_meta_type_variable_name () =
+  let res = meta_variable_name_of_int (!meta_max) in
+    meta_max := !meta_max + 1 ; res
+
+let rec find_meta_type_variable lst tvid =
+  match lst with
+  | []             -> raise Not_found
+  | (k, v) :: tail -> if k == tvid then v else find_meta_type_variable tail tvid
+
 let rec string_of_type_struct tystr =
+  meta_max := 0 ; string_of_type_struct_sub tystr []
+
+(* type_struct -> (type_variable_id * string) list -> string *)
+and string_of_type_struct_sub tystr lst =
   match tystr with
   | StringType(_) -> "string"
   | IntType(_)    -> "int"
   | BoolType(_)   -> "bool"
   | UnitType(_)   -> "unit"
   | TypeEnvironmentType(_, _) -> "env"
-  | FuncType(_, tydom, tycod) -> "(" ^ (string_of_type_struct tydom) ^ " -> " ^ (string_of_type_struct tycod) ^ ")"
-  | ListType(_, tycont)       -> "(" ^ (string_of_type_struct tycont) ^ " list)"
-  | RefType(_, tycont)        -> "(" ^ (string_of_type_struct tycont) ^ " ref)"
-  | TypeVariable(_, tvid)     -> "'" ^ (string_of_int tvid)
-  | ForallType(tvid, tycont)  -> "(forall '" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct tycont) ^ ")"
-(*
+  | TypeVariable(_, tvid)     ->
+      "'" ^ ( try find_meta_type_variable lst tvid with Not_found -> string_of_int tvid )
+  | FuncType(_, tydom, tycod) ->
+      "(" ^ (string_of_type_struct_sub tydom lst) ^ " -> " ^ (string_of_type_struct_sub tycod lst) ^ ")"
+  | ListType(_, tycont)       ->
+      "(" ^ (string_of_type_struct_sub tycont lst) ^ " list)"
+  | RefType(_, tycont)        ->
+      "(" ^ (string_of_type_struct_sub tycont lst) ^ " ref)"
+  | ForallType(tvid, tycont)  ->
+      let meta = new_meta_type_variable_name () in
+        (string_of_type_struct_sub tycont ((tvid, meta) :: lst)) ^ ")"
+
 let rec string_of_type_environment tyenv =
+    " #===============================\n"
+  ^ (string_of_type_environment_sub tyenv)
+  ^ " #===============================\n"
+and string_of_type_environment_sub tyenv =
   match tyenv with
   | []               -> ""
-  | (vn, ts) :: tail -> "  " ^ vn ^ ": " ^ (string_of_type_struct ts) ^ "\n" ^ (string_of_type_environment tail)
-*)
+  | (vn, ts) :: tail -> " #  " ^ vn ^ " : " ^ (string_of_type_struct ts) ^ "\n" ^ (string_of_type_environment_sub tail)
+
 
 let rec found_in_list tvid lst =
   match lst with

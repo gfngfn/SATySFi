@@ -1,20 +1,10 @@
 open Types
 open Typeenv
 
-let print_process msg =
-(*
-  print_string (msg ^ "\n") ;
-*)
-  ()
-
 let tvidmax : type_variable_id ref = ref 0
 
 let new_type_variable_id () =
-  let res = !tvidmax in
-  ( print_process ("  *make '" ^ (string_of_int !tvidmax)) ;
-    tvidmax := !tvidmax + 1 ;
-    res
-  )
+  let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
 let overwrite_range rng ty =
 	match ty with
@@ -67,7 +57,8 @@ let rec typecheck tyenv utast =
         ( try
             let forallty = Typeenv.find tyenv nv in
             let ty = make_bounded_free forallty in
-              ( (* print_string ("  " ^ nv ^ " : " ^ (string_of_type_struct forallty) ^ "\n\n") ; *)
+              ( print_for_debug ("  " ^ nv ^ " : " ^ (string_of_type_struct forallty) (* for test *)
+              	  ^ "\n    = " ^ (string_of_type_struct ty) ^ "\n") ;                 (* for test *)
                 (ContentOf(nv), (overwrite_range rng ty), Subst.empty)
               )
           with
@@ -92,7 +83,11 @@ let rec typecheck tyenv utast =
                               Subst.apply_to_term theta_result e2
                             ) in
           let type_result = Subst.apply_to_type_struct theta_result beta in
+          ( print_for_debug ("\n%Apply " ^ (string_of_ast term_result) ^ " : "
+          	  ^ (string_of_type_struct beta) ^ " = " ^ (string_of_type_struct type_result) ^ "\n") ;
+          	print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ; (* for test *)
             (term_result, type_result, theta_result)
+          )
 
     | UTLambdaAbstract(varrng, varnm, utast1) ->
         let beta = TypeVariable(varrng, new_type_variable_id ()) in
@@ -104,9 +99,10 @@ let rec typecheck tyenv utast =
               (term_result, type_result, theta_result)
 
     | UTLetIn(utmutletcons, utast2) ->
-        let tyenv_for_rec = add_mutual_variables tyenv utmutletcons in
-        let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv tyenv_for_rec utmutletcons in
-        let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
+        let (tyenv_for_rec, tvtylst) = add_mutual_variables tyenv utmutletcons [] in
+        let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv_for_rec utmutletcons tvtylst in
+        let tyenv_forall = make_forall_type_mutual tyenv theta1 tvtylst in
+        let (e2, ty2, theta2) = typecheck tyenv_forall utast2 in
           (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
 
     | UTLetMutableIn(varrng, varnm, utastdflt, utastaft) ->
@@ -234,24 +230,45 @@ let rec typecheck tyenv utast =
 
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 
-(* Typeenv.t -> untyped_mutual_let_cons -> Typeenv.t *)
-and add_mutual_variables tyenv mutletcons =
+(* Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
+	-> (Typeenv.t * ((var_name * type_struct) list)) *)
+and add_mutual_variables tyenv mutletcons tvtylst =
   match mutletcons with
-  | UTEndOfMutualLet -> tyenv
-  | UTMutualLetCons(nv, _, tailcons) ->
+  | UTEndOfMutualLet -> (tyenv, tvtylst)
+  | UTMutualLetCons(varnm, _, tailcons) ->
       let ntv = TypeVariable((-1, 0, 0, 0), new_type_variable_id ()) in
-        add_mutual_variables (Typeenv.add tyenv nv ntv) tailcons
+        add_mutual_variables (Typeenv.add tyenv varnm ntv) tailcons ((varnm, ntv) :: tvtylst)
 
-(* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * mutual_let_cons * Subst.t) *)
-and typecheck_mutual_contents tyenv tyenv_for_rec mutletcons =
-  match mutletcons with
-  | UTEndOfMutualLet -> (tyenv_for_rec, EndOfMutualLet, Subst.empty)
-  | UTMutualLetCons(nv, utast1, tailcons) ->
-      let (e1, ty1, theta1) = typecheck tyenv_for_rec utast1 in
-        let forallty = make_forall_type ty1 (Subst.apply_to_type_environment theta1 tyenv) in
-        let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1 tyenv_for_rec) nv forallty in
-        let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents tyenv tyenv_new tailcons in
-          (tyenv_tail, MutualLetCons(nv, e1, mutletcons_tail), Subst.compose theta_tail theta1)
+(* Typeenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
+	-> (Typeenv.t * mutual_let_cons * Subst.t) *)
+and typecheck_mutual_contents tyenv mutletcons tvtylst =
+  match (mutletcons, tvtylst) with
+  | (UTEndOfMutualLet, []) ->
+      (tyenv, EndOfMutualLet, Subst.empty)
+
+  | (UTMutualLetCons(nv, utast1, tailcons), (_, tvty) :: tvtytail) ->
+      let (e1, ty1, theta1) = typecheck tyenv utast1 in
+        let theta1new = Subst.compose (Subst.unify ty1 tvty) theta1 in
+        let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1new tyenv) nv ty1 in
+        let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents tyenv_new tailcons tvtytail in
+        let theta1final = Subst.compose theta_tail theta1new in
+          (Subst.apply_to_type_environment theta1final tyenv_tail, MutualLetCons(nv, e1, mutletcons_tail), theta1final)
+
+  | _ -> raise (TypeCheckError("this cannot happen: error in 'typecheck_mutual_contents'"))
+
+and make_forall_type_mutual tyenv theta tvtylst =
+  match tvtylst with
+  | []                        -> tyenv
+  | (varnm, tvty) :: tvtytail ->
+    	let prety = Subst.apply_to_type_struct theta tvty in
+    ( print_for_debug (Subst.string_of_subst theta) ;
+    	print_string (string_of_type_environment tyenv) ;
+    	print_for_debug ("$ '" ^ varnm ^ " : " ^ (string_of_type_struct prety) ^ "\n") ;
+      let forallty  = make_forall_type prety tyenv in
+      let tyenv_new = Typeenv.add tyenv varnm forallty in
+        make_forall_type_mutual tyenv_new theta tvtytail
+    )
+
 
 (* untyped_abstract_tree -> (string * type_environment) *)
 let main tyenv utast =

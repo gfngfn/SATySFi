@@ -1,4 +1,4 @@
-SRCS=stacklist.mli stacklist.ml types.ml typeenv.ml subst.ml parser.mli parser.ml lexer.ml primitives.ml typechecker.mli typechecker.ml out.mli out.ml evaluator.mli evaluator.ml files.ml main.mli main.ml
+SRCS=stacklist.mli stacklist.ml types.ml typeenv.ml subst.mli subst.ml parser.mli parser.ml lexer.ml primitives.ml typechecker.mli typechecker.ml out.mli out.ml evaluator.mli evaluator.ml files.ml main.mli main.ml
 
 ifeq ($(OS), Windows_NT)
   TARGET=bin/macrodown.exe
