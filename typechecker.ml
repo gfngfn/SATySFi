@@ -149,7 +149,7 @@ let rec typecheck tyenv utast =
 
     | UTSequential(utast1, utast2) ->
         let (e1, ty1, theta1) = typecheck tyenv utast1 in
-        let theta_new = Subst.compose (Subst.unify ty1 (UnitType((-128, 0, 0, 0)))) theta1 in
+        let theta_new = Subst.compose (Subst.unify ty1 (UnitType(get_range utast1))) theta1 in
         let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
         let (e2, ty2, theta2) = typecheck tyenv_new utast2 in
           let theta_result = Subst.compose theta2 theta_new in

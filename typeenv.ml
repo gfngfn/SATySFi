@@ -162,13 +162,36 @@ and string_of_type_struct_sub tystr lst =
 
 
 let rec string_of_type_environment tyenv =
-    " #===============================\n"
+    "    #===============================================================\n"
   ^ (string_of_type_environment_sub tyenv)
-  ^ " #===============================\n"
+  ^ "    #===============================================================\n"
 and string_of_type_environment_sub tyenv =
   match tyenv with
   | []               -> ""
-  | (vn, ts) :: tail -> " #  " ^ vn ^ " : " ^ (string_of_type_struct ts) ^ "\n" ^ (string_of_type_environment_sub tail)
+  | (vn, ts) :: tail ->
+            "    #  "
+              ^ ( let len = String.length vn in
+                    if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
+              ^ " : " ^ (string_of_type_struct ts) ^ "\n"
+              ^ (string_of_type_environment_sub tail)
+
+
+let rec string_of_control_sequence_type tyenv =
+    "    #===============================================================\n"
+  ^ (string_of_control_sequence_type_sub tyenv)
+  ^ "    #===============================================================\n"
+and string_of_control_sequence_type_sub tyenv =
+  match tyenv with
+  | []               -> ""
+  | (vn, ts) :: tail ->
+      ( match String.sub vn 0 1 with
+        | "\\" ->
+            "    #  "
+              ^ ( let len = String.length vn in
+                    if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
+              ^ " : " ^ (string_of_type_struct ts) ^ "\n"
+        | _    -> ""
+      ) ^ (string_of_control_sequence_type_sub tail)
 
 
 let rec found_in_list tvid lst =

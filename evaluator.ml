@@ -3,24 +3,15 @@ open Typeenv
 
 exception EvalError of string
 
-let print_process msg =
-  (*
-    print_string (msg ^ "\n") ;
-  *)
-  ()
 
 let rec make_argument_cons lst =
   match lst with
   | [] -> EndOfArgumentVariable
   | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
-(* abstract_tree -> abstract_tree *)
 
 let copy_environment env = Hashtbl.copy env
 
-let add_to_environment env varnm rfast =
-  ( print_process ("  add " ^ varnm ^ " := " ^ (string_of_ast !rfast)) ;
-    Hashtbl.add env varnm rfast
-  )
+let add_to_environment env varnm rfast = Hashtbl.add env varnm rfast
 
 (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
 let rec interpret env ast =
@@ -43,7 +34,7 @@ let rec interpret env ast =
       ( try
           let content = !(Hashtbl.find env v) in content
         with
-        | Not_found -> raise (EvalError("undefined variable '" ^ v ^ "'"))
+        | Not_found -> raise (EvalError("this cannot happen: undefined variable '" ^ v ^ "'"))
       )
   | LetIn(mutletcons, astrest) ->
       let env_func = copy_environment env in
@@ -55,17 +46,21 @@ let rec interpret env ast =
   | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
-    ( match interpret env astf with
-      | FuncWithEnvironment(varnm, astdef, envf) ->
-          FuncWithEnvironment(varnm,
-            LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-              LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
-            ), envf)
-      | other ->  interpret env
-                    (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-                      LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))
-                    )
-    )
+      (print_string ("%1 " ^ (string_of_ast astf) ^ "\n");
+      let valuef =  interpret env
+                      (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+                        LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))
+                      ) in
+      ( print_string ("%2 " ^ (string_of_ast valuef) ^ "\n");
+      ( match valuef with
+        | FuncWithEnvironment(varnm, astdef, envf) ->
+            FuncWithEnvironment(varnm,
+              LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+                LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
+              ), envf)
+        | other ->  valuef
+      )
+      ))
   | Apply(astf, astl) ->
       let fspec = interpret env astf in
       ( match fspec with
@@ -136,14 +131,14 @@ let rec interpret env ast =
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vhd
-        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-head'"))
-        | _                  -> raise (EvalError("'list-head' expected argument to be a list, but is not"))
+        | EndOfList          -> raise (EvalError("applied 'list-head' to an empty list"))
+        | _                  -> raise (EvalError("this cannot happen: argument of 'list-head' is not a list"))
       )
   | PrimitiveListTail(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
         | ListCons(vhd, vtl) -> vtl
-        | EndOfList          -> raise (EvalError("cannot apply empty list for 'list-tail'"))
+        | EndOfList          -> raise (EvalError("applied 'list-tail' to an empty list"))
         | _                  -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
       )
   | PrimitiveIsEmpty(astlst) ->
@@ -151,7 +146,7 @@ let rec interpret env ast =
       ( match valuelst with
         | EndOfList      -> BooleanConstant(true)
         | ListCons(_, _) -> BooleanConstant(false)
-        | _              -> raise (EvalError("not a list"))
+        | _              -> raise (EvalError("this cannot happen: not a list"))
       )
   | IfClassIsValid(asttru, astfls) ->
       ( try
@@ -200,7 +195,7 @@ let rec interpret env ast =
       ( try
           let str_key = Out.main (interpret env astkey) in
           let valuedflt = interpret env astdflt in
-          ( Hashtbl.add global_hash_env str_key (ref (MutableValue(valuedflt))) ;
+          ( add_to_environment global_hash_env str_key (ref (MutableValue(valuedflt))) ;
             UnitConstant
           )
         with
