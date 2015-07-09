@@ -3,6 +3,7 @@
   \title{Sample Title}
   \author{gfn}
 }{
+  \maketitle(());
   \section{Sample Section}{
     \p{
       The quick brown fox jumps over the lazy dog.

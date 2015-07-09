@@ -143,6 +143,23 @@
     let rng = (sttln, sttpos, endln, endpos) in
       (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
+  let make_let_expression lettk vartk utargcons utastdef decs utastaft =
+    let (sttln, sttpos, _) = lettk in
+    let ((varln, varstt, varend), varnm) = vartk in
+    let (_, _, endln, endpos) = get_range utastaft in
+    let rng = (sttln, sttpos, endln, endpos) in
+    let varrng = (varln, varstt, varln, varend) in
+    let curried = curry_lambda_abstract varrng utargcons utastdef in
+      (rng, UTLetIn(UTMutualLetCons(varnm, curried, decs), utastaft))
+
+  let make_let_mutable_expression letmuttk vartk utastdef utastaft =
+    let (sttln, sttpos, _) = letmuttk in
+    let ((varln, varstt, varend), vn) = vartk in
+    let (_, _, endln, endpos) = get_range utastaft in
+    let varrng = (varln, varstt, varln, varend) in
+    let rng = (sttln, sttpos, endln, endpos) in
+      (rng, UTLetMutableIn(varrng, vn, utastdef, utastaft))
+
 %}
 
 %token <Types.token_position * Types.var_name> VAR
@@ -235,41 +252,82 @@
 
 %%
 
+
 main:
-  | nxlet EOI { $1 }
+  | nxtoplevel EOI { $1 }
   | sxblock EOI { $1 }
 ;
+nxtoplevel:
+/* ---- toplevel style ---- */
+  | LET VAR argvar DEFEQ nxlet nxdec nxtoplevel     { make_let_expression $1 $2 $3 $5 $6 $7 }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxtoplevel { make_let_expression $1 $2 $3 $5 $6 $7 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
+  | LET VAR argvar DEFEQ nxlet nxdec {
+        make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
+      }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec {
+        make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
+      }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet {
+        make_let_mutable_expression $1 $2 $4 ((-256, 0, 0, 0), UTFinishHeaderFile)
+      }
+/* ---- transition to expression style ---- */
+  | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
+/* ---- for syntax error log ---- */
+  | LET error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
+      }
+  | LET VAR error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'let'"
+            ("let" ^ vn ^ " ..<!>..") $1))
+      }
+  | LET VAR argvar DEFEQ error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '='"
+            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
+      }
+  | LET CTRLSEQ error {
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
+            ("let " ^ csname ^ " ..<!>..") ln))
+      }
+  | LET CTRLSEQ argvar DEFEQ error {
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '='"
+            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") ln))
+      }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN error {
+        let (ln, csname) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
+      }
+  | LETMUTABLE error {
+        raise (ParseErrorDetail(error_reporting "missing identifier after 'let-mutable'"
+          "let-mutable ..<!>.." $1))
+      }
+  | LETMUTABLE VAR error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting ("missing '<-' after '" ^ vn ^ "'")
+            ("let-mutable " ^ vn ^ " ..<!>..") $1))
+      }
+  | LETMUTABLE VAR OVERWRITEEQ error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '<-'"
+            ("let-mutable " ^ vn ^ " <- ..<!>..") $1))
+      }
+;
 nxlet:
-  | LET VAR argvar DEFEQ nxlet nxdec nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let ((varln, varstt, varend), varnm) = $2 in
-        let (_, _, endln, endpos) = get_range $7 in
-        let rng = (sttln, sttpos, endln, endpos) in
-        let varrng = (varln, varstt, varln, varend) in
-        let curried = curry_lambda_abstract varrng $3 $5 in
-          (rng, UTLetIn(UTMutualLetCons(varnm, curried, $6), $7))
-      }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let ((csln, csstt, csend), csname) = $2 in
-        let (_, _, endln, endpos) = get_range $7 in
-        let rng = (sttln, sttpos, endln, endpos) in
-        let csrng = (csln, csstt, csln, csend) in
-        let curried = curry_lambda_abstract csrng $3 $5 in
-          (rng, UTLetIn(UTMutualLetCons(csname, curried, $6), $7))
-      }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let ((varln, varstt, varend), vn) = $2 in
-        let (_, _, endln, endpos) = get_range $6 in
-        let varrng = (varln, varstt, varln, varend) in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTLetMutableIn(varrng, vn, $4, $6))
-      }
+  | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
   | LET error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
+        raise (ParseErrorDetail(error_reporting
+          "missing identifier after 'let'" "let ..<!>.." $1))
       }
   | LET VAR error {
         let (_, vn) = $2 in
@@ -281,7 +339,7 @@ nxlet:
           raise (ParseErrorDetail(error_reporting "illegal token after '='"
             ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
       }
-  | LET VAR argvar DEFEQ nxlet nxdec error {
+  | LET VAR argvar DEFEQ nxlet nxdec IN error {
         let (_, vn) = $2 in
           raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
             ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
@@ -296,10 +354,28 @@ nxlet:
           raise (ParseErrorDetail(error_reporting "illegal token after '='"
             ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") ln))
       }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec error {
+  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN error {
         let (ln, csname) = $2 in
           raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
             ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
+      }
+  | LETMUTABLE error {
+        raise (ParseErrorDetail(error_reporting "missing identifier after 'let-mutable'"
+          "let-mutable ..<!>.." $1))
+      }
+  | LETMUTABLE VAR error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting ("missing '<-' after '" ^ vn ^ "'")
+            ("let-mutable " ^ vn ^ " ..<!>..") $1))
+      }
+  | LETMUTABLE VAR OVERWRITEEQ error {
+        let (_, vn) = $2 in
+          raise (ParseErrorDetail(error_reporting "illegal token after '<-'"
+            ("let-mutable " ^ vn ^ " <- ..<!>..") $1))
+      }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN error {
+        raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
+          "in ..<!>.." $5))
       }
 ;
 nxdec: /* -> Types.mutual_let_cons */
@@ -315,7 +391,7 @@ nxdec: /* -> Types.mutual_let_cons */
         let curried = curry_lambda_abstract csrng $3 $5 in
           UTMutualLetCons(csname, curried, $6)
       }
-  | IN { UTEndOfMutualLet }
+  | { UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | LETAND VAR error {
         let (_, vn) = $2 in
@@ -427,7 +503,6 @@ nxbfr:
         let (_, _, endln, endpos) = get_range $3 in
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTSequential($1, $3))
-
       }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
@@ -470,6 +545,22 @@ nxlambda:
   | LAMBDA argvar ARROW error {
         raise (ParseErrorDetail(
           error_reporting "illegal token after '->'" "-> ..<!>.." $3))
+      }
+  | DECGLOBALHASH error {
+        raise (ParseErrorDetail(error_reporting
+          "illegal token after 'declare-global-hash'" "declare-global-hash ..<!>.." $1))
+      }
+  | DECGLOBALHASH nxlet OVERWRITEGLOBALHASH error {
+        raise (ParseErrorDetail(error_reporting
+          "illegal token after '<<-'" "<<- ..<!>.." $3))
+      }
+  | RENEWGLOBALHASH error {
+        raise (ParseErrorDetail(error_reporting
+          "illegal token after 'renew'" "renew ..<!>.." $1))
+      }
+  | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH error {
+        raise (ParseErrorDetail(error_reporting
+          "illegal token after '<<-'" "<<- ..<!>.." $3))
       }
 ;
 argvar: /* -> Types.argument_variable_cons */

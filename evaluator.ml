@@ -46,12 +46,12 @@ let rec interpret env ast =
   | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
-      (print_string ("%1 " ^ (string_of_ast astf) ^ "\n");
+      ((* print_string ("%1 " ^ (string_of_ast astf) ^ "\n") ; *)
       let valuef =  interpret env
                       (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
                         LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))
                       ) in
-      ( print_string ("%2 " ^ (string_of_ast valuef) ^ "\n");
+      ((* print_string ("%2 " ^ (string_of_ast valuef) ^ "\n") ; *)
       ( match valuef with
         | FuncWithEnvironment(varnm, astdef, envf) ->
             FuncWithEnvironment(varnm,

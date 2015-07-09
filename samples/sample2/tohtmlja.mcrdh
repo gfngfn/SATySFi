@@ -3,10 +3,21 @@ let \document head body = {
     <head>\deeper{@head;}</head>
     <body>\deeper{@body;}</body>
   }</html>
-} in
-let \author author = {<meta name="author" content="@author;">} in
-let \title title = {<title>@title;</title>} in
-let \maketitle = {} in
+}
+
+let-mutable mut-author <- {(initial)}
+let-mutable mut-title  <- {(initial)}
+
+let \author author =
+  mut-author <- author before {<meta name="author" content="@author;">}
+
+let \title title =
+  mut-title <- title before {<title>} ^ (!mut-title) ^ {</title>}
+
+let \maketitle u =
+  {<div style="font-size: 2em;">} ^ (!mut-title) ^ {</div>}
+    ^ {<div>} ^ (!mut-author) ^ {</div>}
+
 let \section head cnt = {
   <h1>@head;</h1>\deeper{
     @cnt;

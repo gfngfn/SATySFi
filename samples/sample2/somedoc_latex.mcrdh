@@ -1,4 +1,4 @@
 let \settings = {
   \\usepackage\{lmodern\}
   \\usepackage[T1]\{fontenc\}
-} in finish
+}
