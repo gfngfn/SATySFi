@@ -315,15 +315,17 @@ and add_mutuals_to_environment env mutletcons =
   -> (var_name * abstract_tree) list *)
 and add_mutuals_to_environment_sub lst env mutletcons =
   match mutletcons with
-  | EndOfMutualLet -> lst
+  | EndOfMutualLet                       -> lst
   | MutualLetCons(nv, astcont, tailcons) ->
-      match astcont with
-      | LambdaAbstract(_, _) ->
+      ( try
           let valuecont = interpret env astcont in
-            ( add_to_environment env nv (ref valuecont) ;
-              add_mutuals_to_environment_sub lst env tailcons
-            )
-      | _ -> add_mutuals_to_environment_sub ((nv, astcont) :: lst) env tailcons
+          ( add_to_environment env nv (ref valuecont) ;
+            add_mutuals_to_environment_sub lst env tailcons
+          )
+        with
+        | EvalError(_) -> add_mutuals_to_environment_sub ((nv, astcont) :: lst) env tailcons
+          (* 0-ary definition dependent of ``sibling'' functions *)
+      )
 
 and add_zeroary_mutuals lst env =
   match lst with
@@ -333,10 +335,3 @@ and add_zeroary_mutuals lst env =
       ( add_to_environment env nv (ref valuecont) ;
         add_zeroary_mutuals tail env
       )
-
-and make_literal_legitimate ast =
-  match ast with
-  | Concat(astf, astl) ->
-        Concat(make_literal_legitimate astf, make_literal_legitimate astl)
-  | StringConstant(c) -> StringConstant(c)
-  | _ -> raise (EvalError("illegal token in literal area"))
