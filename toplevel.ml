@@ -15,7 +15,7 @@ let init () = Lexer.reset_to_numexpr ();;
 
 let parse s = init () ; Parser.main Lexer.cut_token (Lexing.from_string s);;
 
-let tc s    = init () ; let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in typed;;
+let tc s    = init () ; let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in Typeenv.string_of_type_struct typed;;
 
 let eval s  =
   init () ;

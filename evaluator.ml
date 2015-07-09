@@ -34,7 +34,8 @@ let rec interpret env ast =
       ( try
           let content = !(Hashtbl.find env v) in content
         with
-        | Not_found -> raise (EvalError("this cannot happen: undefined variable '" ^ v ^ "'"))
+        | Not_found ->  raise (EvalError("undefined variable '" ^ v ^ "'\n"
+                          ^ "    maybe you wrote 0-ary meaningless mutual recursion"))
       )
   | LetIn(mutletcons, astrest) ->
       let env_func = copy_environment env in
@@ -82,11 +83,11 @@ let rec interpret env ast =
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
       ( try Out.main (interpret env ast1) with
-        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("this cannot happen:\n    llegal argument for 'same': " ^ s))
       ) in
       let str2 =
       ( try Out.main (interpret env ast2) with
-        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'same': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("this cannot happen:\n    Illegal argument for 'same': " ^ s))
       ) in
         BooleanConstant((compare str1 str2) == 0)
 
@@ -305,41 +306,33 @@ and interpret_int env ast =
     | NumericConstant(nc) -> nc
     | other -> raise (EvalError("not of type int: " ^ (string_of_ast other)))
 
+(* environment -> mutual_let_cons -> unit *)
+and add_mutuals_to_environment env mutletcons =
+  let lst = add_mutuals_to_environment_sub [] env mutletcons in
+    add_zeroary_mutuals lst env
 
-and add_mutuals_to_environment env_func mutletcons =
+(* (var_name * abstract_tree) list -> environment -> mutual_let_cons
+  -> (var_name * abstract_tree) list *)
+and add_mutuals_to_environment_sub lst env mutletcons =
   match mutletcons with
-  | EndOfMutualLet -> ()
+  | EndOfMutualLet -> lst
   | MutualLetCons(nv, astcont, tailcons) ->
-      let valuecont =
-        ( let intprtd = interpret env_func astcont in
-            match intprtd with
-            | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env_func)
-            | other -> other
-        )
-      in
-        ( add_to_environment env_func nv (ref valuecont) ;
-          add_mutuals_to_environment env_func tailcons
-        )
-(*
-(* abstract_tree -> abstract_tree -> (abstract_tree * abstract_tree) *)
-and pop_from_separated_tree astin astconstr =
-  match astin with
-  | ListCons(asthd, asttl) ->
-      ( match asthd with
-        | ListCons(a, b) ->
-            pop_from_separated_tree asthd (compensate astconstr (ListCons(UnderConstruction, asttl)))
-        | _ -> (asthd, compensate astconstr asttl)
-      )
-  | _ -> (astin, EndOfList)
+      match astcont with
+      | LambdaAbstract(_, _) ->
+          let valuecont = interpret env astcont in
+            ( add_to_environment env nv (ref valuecont) ;
+              add_mutuals_to_environment_sub lst env tailcons
+            )
+      | _ -> add_mutuals_to_environment_sub ((nv, astcont) :: lst) env tailcons
 
-(* abstract_tree -> abstract_tree -> abstract_tree *)
-and compensate astunder_constr astcmpnstd =
-  match astunder_constr with
-  | UnderConstruction -> astcmpnstd
-  | ListCons(astformer, astlatter)
-      -> ListCons((compensate astformer astcmpnstd), (compensate astlatter astcmpnstd))
-  | astother -> astother
-*)
+and add_zeroary_mutuals lst env =
+  match lst with
+  | []                    -> ()
+  | (nv, astcont) :: tail ->
+      let valuecont = interpret env astcont in
+      ( add_to_environment env nv (ref valuecont) ;
+        add_zeroary_mutuals tail env
+      )
 
 and make_literal_legitimate ast =
   match ast with

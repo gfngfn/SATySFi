@@ -200,6 +200,7 @@
 %token <Types.token_position> UNITVALUE
 %token <Types.token_position> WHILE DO
 %token <Types.token_position> DECGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
+%token <Types.token_position> MUTUAL ENDMUTUAL
 %token EOI
 %token IGNORED
 
@@ -260,22 +261,33 @@ main:
 ;
 nxtoplevel:
 /* ---- toplevel style ---- */
-  | LET VAR argvar DEFEQ nxlet nxdec nxtoplevel     { make_let_expression $1 $2 $3 $5 $6 $7 }
+  | LET VAR     argvar DEFEQ nxlet nxdec nxtoplevel { make_let_expression $1 $2 $3 $5 $6 $7 }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxtoplevel { make_let_expression $1 $2 $3 $5 $6 $7 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
+  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
+  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
+/* ---- toplevel terminal ---- */
   | LET VAR argvar DEFEQ nxlet nxdec {
         make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
       }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec {
-        make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
+        make_let_expression $1 $2 $3 $5 $6 ((-257, 0, 0, 0), UTFinishHeaderFile)
       }
   | LETMUTABLE VAR OVERWRITEEQ nxlet {
-        make_let_mutable_expression $1 $2 $4 ((-256, 0, 0, 0), UTFinishHeaderFile)
+        make_let_mutable_expression $1 $2 $4 ((-258, 0, 0, 0), UTFinishHeaderFile)
+      }
+  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual {
+        make_let_expression $2 $3 $4 $6 $7 ((-259, 0, 0, 0), UTFinishHeaderFile)
+      }
+  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
+        make_let_expression $2 $3 $4 $6 $7 ((-259, 0, 0, 0), UTFinishHeaderFile)
       }
 /* ---- transition to expression style ---- */
-  | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }
+  | LET VAR     argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
+  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual IN nxlet { make_let_expression $2 $3 $4 $6 $7 $9 }
+  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual IN nxlet { make_let_expression $2 $3 $4 $6 $7 $9 }
 /* ---- for syntax error log ---- */
   | LET error {
         raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
@@ -319,6 +331,21 @@ nxtoplevel:
           raise (ParseErrorDetail(error_reporting "illegal token after '<-'"
             ("let-mutable " ^ vn ^ " <- ..<!>..") $1))
       }
+;
+nxmutual: /* -> Types.untyped_mutual_let_cons */
+  | LET VAR argvar DEFEQ nxlet nxmutual {
+        let ((varln, varstt, varend), vn) = $2 in
+        let varrng = (varln, varstt, varln, varend) in
+        let curried = curry_lambda_abstract varrng $3 $5 in
+          UTMutualLetCons(vn, curried, $6)
+      }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
+        let ((csln, csstt, csend), cn) = $2 in
+        let csrng = (csln, csstt, csln, csend) in
+        let curried = curry_lambda_abstract csrng $3 $5 in
+          UTMutualLetCons(cn, curried, $6)
+      }
+  | ENDMUTUAL { UTEndOfMutualLet }
 ;
 nxlet:
   | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }

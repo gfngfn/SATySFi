@@ -1,23 +1,21 @@
 let \if-html inner = {@inner;}
-in
+
 let \content-type = {<meta http-equiv="Content-Type" content="text/html\; charset=utf-8">}
-in
+
 let \set-style file = {<link href="@file;" rel="stylesheet" type="text/css">}
-in
+
 let \document head body = {
   <html>\deeper{
     <head>\deeper{@head;}</head>
     <body><div class="main">\deeper{@body;}</div></body>
   }</html>
-} in
+}
 let \title title = {<title>@title;</title>}
-in
+
 let \section head body = {
   <section>\deeper{
     <h1>@head;</h1>
     @body;
   }</section>
-} in
+}
 let \p inner = {<p>\deeper{@inner;}</p>}
-in
-  finish

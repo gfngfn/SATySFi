@@ -1,7 +1,7 @@
 let \ref hash = !! hash in
-    declare-global-hash {final} <<- {}
+    new-global-hash {final} <<- {}
   before
     {[\ref{final}]}
-      ^ ( renew {final} <<- {hoge}
+      ^ ( renew-global-hash {final} <<- {hoge}
         before
           {/[\ref{final}]} )
