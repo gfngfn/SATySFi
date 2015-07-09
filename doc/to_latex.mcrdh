@@ -59,6 +59,7 @@ let escape-single-char ch =
   else if same ch `\` then `\symbol{"5C}`
   else if same ch `%` then `\%`
   else if same ch `$` then `\$`
+  else if same ch `^` then `\^{}`
   else if same ch `_` then `\_`
   else ch
 

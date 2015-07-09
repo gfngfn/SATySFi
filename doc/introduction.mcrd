@@ -117,21 +117,98 @@
       }
     }
   }
-  \section{変数・函数・マクロ}{
-    \subsection{基礎}{
+  \section{言語仕様}{
+    \subsection{概要}{
       \p{
         Macrodownは手続き的記述よりも函数的記述に特化しています。
         変数には基本的に破壊的代入の機能がなく，
         したがって純粋函数型プログラミングに近い性質をしています。
       }
       \p{
-        函数とマクロは基本的にほとんど同様に扱えるもので，
-        単に制御綴で書かれるものをマクロ，
+        \newword{函数}と\newword{マクロ}は基本的にほとんど同様に扱えるもので，
+        単に\newword{制御綴}で書かれるものをマクロ，
         制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
-        制御綴はテキスト階層で，函数はプログラム階層で用いるようになっています。
+        制御綴は\newword{テキスト階層}で，函数は\newword{プログラム階層}で用いるようになっています。
         以降はプログラム階層を基本にして例を掲げていきましょう。
-        したがって，慣れるまではヘッダファイルのみを処理することがしばらく続きます。
       }
+    }
+    \subsection{入出力方法}{
+      \p{
+        まずはどのようにソースコードを与え，どのように出力を得るかを見てみましょう。
+        お決まりのHello World!を出力するソースコードを書いてみます。
+        
+        \mcrd-file{input.mcrd}```
+          Hello World!
+        ```
+        
+        一般的なプログラミング言語でHello World!を書いた人なら「冗談だろう」と思われることでしょう。
+        世界で最もつまらないHello World!であることは疑う餘地なしです。これに対して
+        
+        \mcrd-display```
+          macrodown input.mcrd -o output.txt
+        ```
+
+        とコマンドプロンプトやターミナルで処理すると
+
+        \mcrd-file{output.txt}```
+          Hello World!
+        ```
+        
+        が得られます。「何もしていないじゃないか！」と思われても仕方ないので，
+        もう少しMacrodownを勤勉に見せる例を挙げます。
+        勿論詳しい仕組みは後述するので，おまじない程度に認識しても構いません。
+        
+        \mcrd-file{header.mcrdh}```
+          let \hello s = {Hello, @s;!}
+        ```
+        \mcrd-file{input.mcrd}```
+          \hello{World} \hello{Macrodown}
+        ```
+        
+        という2つのファイルを用意し，
+        
+        \mcrd-display```
+          macrodown header.mcrdh input.mcrd -o output.txt
+        ```
+        
+        と処理すると
+        
+        \mcrd-file{output.txt}```
+          Hello, World! Hello, Macrodown!
+        ```
+        
+        なるファイルが出力されます。header.mcrdhで\mcrd`\hello`というマクロが定義され，
+        input.mcrdでそれを使用しているというわけです。
+        拡張子が.mcrdhのものはプログラム階層で函数・マクロを定義する\newword{ヘッダファイル}，
+        拡張子が.mcrdのものはテキスト階層で文書を記述する\newword{文書ファイル}です。
+        このほか入力ファイルの拡張子として.mcrdsがあり，
+        これはプログラム階層で記述されながらも文書として出力される\newword{単独ファイル}です。
+        例えばさきほど2ファイル要した例も
+        
+        \mcrd-file{input.mcrds}```
+          let \hello s = {Hello, @s;!} in
+            {\hello{World} \hello{Macrodown}}
+        ```
+        
+        とすると1ファイルで等価に記述することができます。
+        \mcrd`{\hello{World} \hello{Macrodown}}` の
+        最も外側の \mcrd`{` と \mcrd`}` はテキスト階層の開始と終了を表しています。
+        プログラム階層中に \mcrd`{` があると，
+        その \mcrd`{` とそれに釣り合う \mcrd`}` の直前までがテキスト階層となります。
+      }
+      \p{
+        処理のしやすさを考慮して，言語仕様の解説でもこの単独ファイルを中心に扱います。
+        とはいえ大きな文書の記述に単独ファイルを実用することはおそらくほとんどなく，
+        デバッグ等に使うと便利という程度です。
+      }
+      \p{
+        非常に小さい例でしたが，Macrodownはこのような仕組みを駆使して
+        「共通の処理を抽出して，文字の並べるだけではなく意味を示しながら文書を記述する」
+        ことを目的とした，メタなマークアップ言語を設計して使用できるシステムなのです。
+        以降の節で言語仕様を掲げます。
+      }
+    }
+    \subsection{変数・函数・マクロ}{
       \p{
         以下のような\newword{定義式}
 
@@ -141,7 +218,10 @@
             \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
         }
 
-        および
+        で引数を\math{N}個伴う函数\code{\meta{hoge}}が定義されます。
+        定義が有効な範囲を\newword{スコープ}と言い，
+        この函数\code{\meta{hoge}}の定義は\code{\meta{ExprB}}がスコープです。
+        函数だけでなくマクロも同様の構文で定めることができ，
 
         \code-dp{
           \synt`let` \synt`\`\meta{piyo} %
@@ -149,8 +229,7 @@
             \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
         }
 
-        で引数を\math{N}個伴う函数\code{\meta{hoge}}およびマクロ\code{\synt`\`\meta{piyo}}
-        が定義されます。
+        で\code{\synt`\`\meta{piyo}}が\code{\meta{ExprB}}をスコープとして定義されます。
         なお，普通積極的には用いませんが，名前のない函数は
 
         \code-dp{
@@ -167,8 +246,50 @@
         }
 
         で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
-        変数\code{\meta{piyo}}に格納された中身をテキスト階層中で取り出すには
-        \code{\synt`@`\meta{piyo}\synt`;`}とします。例えば
+        定義された函数をプログラム階層で使うときは単に引数を並べることで適用します。
+        例えば
+        
+        \mcrd-file{test.mcrds}```
+          let f x = x * x in arabic (f (f 3))
+        ```
+        
+        に対する出力は
+        
+        \mcrd-file{test.txt}```
+          81
+        ```
+        
+        となります。Macrodownにはユーザが定儀せずとも最初から備わっている函数とマクロ
+        \footnote{正確には，ユーザが定義しようとしても原理的に定義できないものがほとんどです。}
+        がいくつもあり，これを\newword{プリミティヴ}と呼びます。
+        上の例で登場した\mcrd`arabic`は整数を文字列に変換するプリミティヴです。もし入力を
+
+        \mcrd-file{test.mcrds}```
+          let f x = x * x in f (f 3)
+        ```
+        
+        としたならば，これは 81 という整数値になります。しかし，
+        Macrodownは文字列値しか出力することができないので，
+        
+        \mcrd-display```
+          ! [ERROR IN TYPECHECK] the output of 'test.mcrds' is not string.
+        ```
+        
+        とエラーが返されるようになっています。したがって
+        さらに\mcrd`arabic`を適用して\mcrd`81`という文字列に変換してやる必要があるのです。
+        値には\newword{型}がついており，整数値は\type-synt`int`型，文字列値は\type-synt`string`型です。
+        Macrodownは，\type-synt`string`型のデータのみを出力できるようになっている，というわけです。
+        \mcrd`arabic`は\type-synt`int`型の値を受け取って\type-synt`string`型の値を返す函数であり，
+        これを表して\type-synt`int -> string`型を持っていると扱われます。
+        型が整合していない場合，実際に処理が行なわれる前にその不整合を検出してエラーを返します。
+        これが\newword{静的型検査}という仕組みです。
+      }
+      \p{
+        マクロも函数とまったく同様の構文で定義することができます。
+        ただし，マクロはプログラム階層では適用することができず，必ずテキスト階層で用います。
+        テキスト階層では，引数は基本的に\type-synt`string`型であり，
+        これは各引数を \mcrd`{` と \mcrd`}` で括ることによって与えます。
+        例えば
 
         \mcrd-file{test.mcrds}```
           let \test x y = {Ma@x;r@y;down} in
@@ -181,7 +302,21 @@
           Macrodown, Markdown
         ```
 
-        となります。引数のないマクロも定義でき，これは使用時にセミコロンをつけます。例えば
+        となります。
+        変数\code{\meta{piyo}}に格納された中身をテキスト階層中で取り出すには
+        \code{\synt`@`\meta{piyo}\synt`;`}とします。
+        或いは，文字列結合演算子 \mcrd-type`^` `string -> string -> string` を用いて
+
+        \mcrd-file{test.mcrds}```
+          let \test x y = {Ma} ^ x ^ {r} ^ y ^ {down} in
+            {\test{c}{o}, \test{}{k}}
+        ```
+
+        としても同様ですが，ここでは \mcrd`@` を使う方が短く済んで見やすいようです。
+      }
+      \p{
+        定義式を用いて変数や引数のないマクロも定義できます。
+        引数のないマクロは，使用の際にセミコロンをつけます。例えば
 
         \mcrd-file{no-arg.mcrds}```
           let \mcrd = {Macrodown} in {Hello, \mcrd;!}
@@ -194,6 +329,119 @@
         ```
 
         となります。
+      }
+      \p{
+        引数に文字列以外の値を与えることもできます。
+        例として，整数値を2つ渡すとそれらの和を文字列にし，単位をつけて返すマクロ \mcrd`\sumstr` を定義してみましょう。
+        
+        \mcrd-file{header.mcrdh}```
+          let \sumstr m n u = (arabic (m + n)) ^ u
+        ```
+        
+        これを文書中で使うには
+        
+        \mcrd-file{doc.mcrd}```
+          \sumstr(3)(4){個}
+        ```
+        
+        というように文字列でない値を \mcrd`(` と \mcrd`)` で括って与えます。これらを処理すると
+        
+        \mcrd-file{doc.txt}```
+          7個
+        ```
+        
+        とめでたく出力されることとなります。ただし注意として，
+        \mcrd`{` と \mcrd`}` で括られた引数（\newword{テキスト引数}）が存在する時，
+        \mcrd`(` と \mcrd`)` で括られた引数（\newword{プログラム引数}）はいずれも
+        どのテキスト引数よりも手前になければなりません。
+        そのうえ，すべての引数がプログラム引数である場合，末尾には必ず \mcrd`;` をつけねばなりません。
+        したがって，\mcrd`\sumstr` を
+
+        \mcrd-file{header.mcrdh}```
+          let \sumstr u m n = (arabic (m + n)) ^ u
+        ```
+        
+        という引数の順序で定義して
+        
+        \mcrd-file{doc.mcrd}```
+          \sumstr{個}(3)(4)
+        ```
+        
+        とすることはできません。
+        この入力だと \mcrd`{個}` に \mcrd`{` が後続しないため「引数は1つである」と判断され，
+        残りの \mcrd`(3)(4)` はすべて単なる文字列と解釈されてしまいます。したがって
+        \mcrd`\sumstr` は\type-synt`string -> int -> int -> string`型で
+        適用結果は\type-synt`string`型でなければならないのに
+        引数として\type-synt`string`型の値1つしか与えられていないので，
+        型検査で不整合と判断しMacrodownはエラーを返します。
+        
+        \mcrd`(3)(4)` が単なる文字列になっていることは，代わりに
+
+        \mcrd-file{header.mcrdh}```
+          let \sumstr t = {A@t;B}
+        ```
+        \mcrd-file{doc.mcrd}```
+          \sumstr{個}(3)(4)
+        ```
+
+        を処理すると
+        
+        \mcrd-file{doc.txt}```
+          A個B(3)(4)
+        ```
+        
+        が出力されることからもわかります。
+        なお，あまりおすすめしませんが，
+        文字列値はテキスト引数ではなくプログラム引数で与えることもできるので，先ほどのように
+
+        \mcrd-file{header.mcrdh}```
+          let \sumstr u m n = (arabic (m + n)) ^ u
+        ```
+
+        の引数の順序で定義したとしても
+        
+        \mcrd-file{doc.mcrd}```
+          \sumstr( {個} )(3)(4);
+        ```
+        
+        と使うことができ，やはり処理するとその出力は
+
+        \mcrd-file{doc.txt}```
+          7個
+        ```
+        
+        となります。型さえ整合していれば，
+        構文上でテキスト引数かプログラム引数かは問わない，ということです。
+      }
+    }
+    \subsection{条件分岐}{
+      \p{
+        条件分岐は単純明快で，
+        
+        \code-dp{
+          \synt{if} \meta{ExprB} \synt{then} \meta{ExprT} \synt{else} \meta{ExprF}
+        }
+        
+        の構文を用います。\code{\meta{ExprB}} は
+        \type-synt`bool`型を持ち，これを評価して \mcrd`true` であった場合は
+        \code{\meta{ExprT}}を評価してその結果を，
+        \mcrd`false` であった場合は
+        \code{\meta{ExprF}}を評価してその結果を返します。
+        例として1つの整数値をFizzBuzz上の表現にするマクロ \mcrd-type`\fb` `int -> string`
+        を定義して使ってみましょう。
+        
+        \mcrd-file{input.mcrds}```
+          let \fb n =
+            if n mod 5 == 0 then
+              if n mod 3 == 0 then {FizzBuzz} else {Buzz}
+            else
+              if n mod 3 == 0 then {Fizz} else arabic n
+          
+          in {\fb(1);, \fb(3);, \fb(6);, \fb(10);, \fb(15);, \fb(21);, \fb(28);}
+        ```
+        \mcrd-file{output.txt}```
+          1, Fizz, Fizz, Buzz, FizzBuzz, Fizz, 28
+        ```
       }
     }
     \subsection{リスト}{
@@ -212,7 +460,7 @@
         \type-synt{string list}型のリストをマクロの引数とする場合ですが，これは
 
         \mcrd-display```
-          \somecs([{hoge}; {piyo}; {fuga}; {moge}]);
+          \somecs( [{hoge}; {piyo}; {fuga}; {moge}] );
         ```
 
         と複雑に入り組んだ書き方をせずとも
@@ -222,20 +470,20 @@
         ```
 
         と省略して書くことができます。
-        プログラム階層でも\mcrd`{|hoge|piyo|fuga|moge|}`で
-        \mcrd`[{hoge}; {piyo}; {fuga}; {moge}]`の省略として使えます。
+        プログラム階層でも \mcrd`{|hoge|piyo|fuga|moge|}` で
+        \mcrd`[{hoge}; {piyo}; {fuga}; {moge}]` の省略として使えます。
       }
       \p{
         リストの要素を取り出す操作を見ていきましょう。
-        まずリストの先頭要素を取り出す函数が\mcrd-type`list-head`{'a list -> 'a}，
-        先頭を除いたリストを得る函数が\mcrd-type`list-tail`{'a list -> 'a list}です。
-        例えば\mcrd`list-head [2; 4; 6; 9; 11]`は\mcrd`2`に，
-        \mcrd`list-tail [2; 4; 6; 9; 11]`は\mcrd`[4; 6; 9; 11]`にそれぞれ評価されます。
+        まずリストの先頭要素を取り出す函数が \mcrd-type`list-head`{'a list -> 'a}，
+        先頭を除いたリストを得る函数が \mcrd-type`list-tail`{'a list -> 'a list} です。
+        例えば \mcrd`list-head [2; 4; 6; 9; 11]` は \mcrd`2` に，
+        \mcrd`list-tail [2; 4; 6; 9; 11]` は \mcrd`[4; 6; 9; 11]` にそれぞれ評価されます。
       }
       \p{
-        では，\mcrd`list-head`および\mcrd`list-tail`に空のリスト\mcrd`[]`を渡すとどうなるかというと，
+        では，\mcrd`list-head` および \mcrd`list-tail` に空のリスト \mcrd`[]` を渡すとどうなるかというと，
         これは実行時エラーで終了してしまいます。
-        そこで，リストが空かどうか判定する函数\mcrd-type`is-empty`{'a list -> bool}を使うことになります。
+        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty`{'a list -> bool} を使うことになります。
       }
       \p{
         リストを再帰的に扱う例を見てみましょう。
@@ -248,7 +496,7 @@
             if is-empty lst then {} else
               let hd = list-head lst in
               let tl = list-tail lst in
-                {<li class="list-content">@head;</li>\break;} ^ (sub-ul tl)
+                {<li class="list-content">@hd;</li>\break;} ^ (sub-ul tl)
           in
           let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
           in finish
@@ -257,7 +505,8 @@
           \ul{|hoge|piyo|fuga|moge|}
         ```
 
-        に対して\mcrd`macrodown ul.mcrdh main.mcrd -o main.txt`で処理した出力は
+        %\mcrd`macrodown ul.mcrdh main.mcrd -o main.txt`
+        を処理した出力は
         
         \mcrd-file{main.txt}```
           <ul>
@@ -547,8 +796,9 @@
         | \cfl{\Args;}{| \repeat-star{\token-ident;} |}
         | \cfl{\Text;}{| \repeat-star{\Single;} |}
         | \cfl{\Single;}{
-            | \token-char;
+            | \token-char; | \token-space; | \token-break;
             | \token-varinstr; \token-ident; \token-end;
+            |*br*
             | \token-cs; \cfl-or{| \epsilon; | \token-class; |} \cfl-or{| \epsilon; | \token-id; |} \ExprArgs; \TextArgs;
             |}
         | \cfl{\ExprArgs;}{| \repeat-star{\token-opnprog; \Expr; \token-clsprog;} |}
