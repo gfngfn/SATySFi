@@ -22,8 +22,8 @@ let make_environment_from_header_file tyenv env file_name_in =
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (strty, newtyenv, ast) = Typechecker.main tyenv utast in
-      ( print_string ("  type check: " ^ strty ^ "\n") ;
+      let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
           match evaled with
           | EvaluatedEnvironment(newenv) ->
@@ -46,14 +46,17 @@ let read_standalone_file tyenv env file_name_in file_name_out =
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (typed, _, ast) = Typechecker.main tyenv utast in
-      ( print_string ("  type check: " ^ typed ^ "\n") ;
-        let evaled = Evaluator.interpret env ast in
-        let content_out = Out.main evaled in
-        ( Files.file_out_of_string file_name_out content_out ;
-          print_string (" ---- ---- ---- ----\n") ;
-          print_string ("  output written on '" ^ file_name_out ^ "'.\n")
-        )
+      let (ty, _, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
+        match ty with
+        | StringType(_) ->
+            let evaled = Evaluator.interpret env ast in
+            let content_out = Out.main evaled in
+            ( Files.file_out_of_string file_name_out content_out ;
+              print_string (" ---- ---- ---- ----\n") ;
+              print_string ("  output written on '" ^ file_name_out ^ "'.\n")
+            )
+        | _  -> raise (TypeCheckError("the output of '" ^ file_name_in ^ "' is not string"))
       )
     )
   )
@@ -65,14 +68,17 @@ let read_document_file tyenv env file_name_in file_name_out =
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_strexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (typed, _, ast) = Typechecker.main tyenv utast in
-      ( print_string ("  type check: " ^ typed ^ "\n") ;
-        let evaled = Evaluator.interpret env ast in
-        let content_out = Out.main evaled in
-        ( Files.file_out_of_string file_name_out content_out ;
-          print_string (" ---- ---- ---- ----\n") ;
-          print_string ("  output written on '" ^ file_name_out ^ "'.\n")
-        )
+      let (ty, _, ast) = Typechecker.main tyenv utast in
+      ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
+        match ty with
+        | StringType(_) ->
+            let evaled = Evaluator.interpret env ast in
+            let content_out = Out.main evaled in
+            ( Files.file_out_of_string file_name_out content_out ;
+              print_string (" ---- ---- ---- ----\n") ;
+              print_string ("  output written on '" ^ file_name_out ^ "'.\n")
+            )
+        | _ -> raise (TypeCheckError("the output of '" ^ file_name_in ^ "' is not string"))
       )
     )
   )

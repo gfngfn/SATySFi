@@ -125,9 +125,15 @@ and unify_sub tystr1 tystr2 =
             if tvid1 == tvid2 then
               empty
             else if tvid1 < tvid2 then
-              [(tvid1, TypeVariable(rng2, tvid2))]
+              if is_invalid_range rng2 then
+                [(tvid1, TypeVariable(rng1, tvid2))]
+              else
+                [(tvid1, TypeVariable(rng2, tvid2))]
             else
-              [(tvid2, TypeVariable(rng1, tvid1))]
+              if is_invalid_range rng1 then
+                [(tvid2, TypeVariable(rng2, tvid1))]
+              else
+                [(tvid2, TypeVariable(rng1, tvid1))]
 
         | other ->
             if emerge_in tvid1 tystr then
@@ -136,7 +142,10 @@ and unify_sub tystr1 tystr2 =
                   ^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
                   ^ "    but the former type is in the latter one")))
             else
-              [(tvid1, tystr)]
+              if is_invalid_range (get_range_from_type tystr) then
+                [(tvid1, overwrite_range_of_type tystr rng1)]
+              else
+                [(tvid1, tystr)]
       )
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 

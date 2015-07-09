@@ -99,7 +99,7 @@ let rec typecheck tyenv utast =
               (term_result, type_result, theta_result)
 
     | UTLetIn(utmutletcons, utast2) ->
-        let (tyenv_for_rec, tvtylst) = add_mutual_variables tyenv utmutletcons [] in
+        let (tyenv_for_rec, tvtylst) = add_mutual_variables tyenv utmutletcons in
         let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv_for_rec utmutletcons tvtylst in
         let tyenv_forall = make_forall_type_mutual tyenv theta1 tvtylst in
         let (e2, ty2, theta2) = typecheck tyenv_forall utast2 in
@@ -230,14 +230,14 @@ let rec typecheck tyenv utast =
 
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 
-(* Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
-	-> (Typeenv.t * ((var_name * type_struct) list)) *)
-and add_mutual_variables tyenv mutletcons tvtylst =
+(* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
+and add_mutual_variables tyenv mutletcons =
   match mutletcons with
-  | UTEndOfMutualLet -> (tyenv, tvtylst)
-  | UTMutualLetCons(varnm, _, tailcons) ->
-      let ntv = TypeVariable((-1, 0, 0, 0), new_type_variable_id ()) in
-        add_mutual_variables (Typeenv.add tyenv varnm ntv) tailcons ((varnm, ntv) :: tvtylst)
+  | UTEndOfMutualLet -> (tyenv, [])
+  | UTMutualLetCons(varnm, astdef, tailcons) ->
+      let ntv = TypeVariable(get_range astdef, new_type_variable_id ()) in
+        let (tyenv_tail, tvtylst) = add_mutual_variables (Typeenv.add tyenv varnm ntv) tailcons in
+          (tyenv_tail, ((varnm, ntv) :: tvtylst))
 
 (* Typeenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
 	-> (Typeenv.t * mutual_let_cons * Subst.t) *)
@@ -270,12 +270,11 @@ and make_forall_type_mutual tyenv theta tvtylst =
     )
 
 
-(* untyped_abstract_tree -> (string * type_environment) *)
+(* untyped_abstract_tree -> (type_struct * type_environment) *)
 let main tyenv utast =
   let (e, ty, theta) = typecheck tyenv utast in
-  let strty = string_of_type_struct ty in
     match ty with
-    | TypeEnvironmentType(_, newtyenv) -> (strty, newtyenv, e)
-    | _                                -> (strty, tyenv, e)
+    | TypeEnvironmentType(_, newtyenv) -> (ty, newtyenv, e)
+    | _                                -> (ty, tyenv, e)
 
 let initialize () = ( tvidmax := 0 )

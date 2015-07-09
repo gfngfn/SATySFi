@@ -49,6 +49,9 @@ let print_for_debug msg = (* print_string msg ; *) ()
 let get_range utast =
   let (rng, _) = utast in rng
 
+let is_invalid_range rng =
+  let (sttln, _, _, _) = rng in sttln <= 0
+
 let get_range_from_type tystr =
   match tystr with
   | IntType(rng)         -> rng
@@ -61,6 +64,20 @@ let get_range_from_type tystr =
   | RefType(rng, _)      -> rng
   | TypeEnvironmentType(rng, _) -> rng
   | ForallType(_, _)     -> (-64, 0, 0, 0)
+
+let overwrite_range_of_type tystr rng =
+  match tystr with
+  | IntType(_)                -> IntType(rng)
+  | StringType(_)             -> StringType(rng)
+  | BoolType(_)               -> BoolType(rng)
+  | UnitType(_)               -> UnitType(rng)
+  | TypeVariable(_, tvid)     -> TypeVariable(rng, tvid)
+  | FuncType(_, tydom, tycod) -> FuncType(rng, tydom, tycod)
+  | ListType(_, tycont)       -> ListType(rng, tycont)
+  | RefType(_, tycont)        -> RefType(rng, tycont)
+  | TypeEnvironmentType(_, tyenv)  -> TypeEnvironmentType(rng, tyenv)
+  | ForallType(tvid, tycont)       -> ForallType(tvid, tycont)
+
 
 let describe_position (sttln, sttpos, endln, endpos) =
   if sttln == endln then

@@ -3,9 +3,14 @@
 
   type literal_reading_state = Normal | ReadingSpace
 
+
+  (* untyped_abstract_tree -> code_range *)
+  let get_range utast =
+    let (rng, _) = utast in rng
+
   let rec append_argument_list arglsta arglstb =
     match arglsta with
-    | UTEndOfArgument -> arglstb
+    | UTEndOfArgument              -> arglstb
     | UTArgumentCons(arg, arglstl) ->
         UTArgumentCons(arg, (append_argument_list arglstl arglstb))
 
@@ -16,9 +21,9 @@
   (* argument_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   and convert_into_apply_sub argcons utastconstr =
     match argcons with
-    | UTEndOfArgument -> utastconstr
+    | UTEndOfArgument             -> utastconstr
     | UTArgumentCons(arg, actail) ->
-        convert_into_apply_sub actail ((-11, 0, 0, 0), UTApply(utastconstr, arg))
+        convert_into_apply_sub actail (get_range arg, UTApply(utastconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
     UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
@@ -30,11 +35,7 @@
     match argvarcons with
     | UTEndOfArgumentVariable -> utastdef
     | UTArgumentVariableCons(varrng, argvar, avtail) ->
-        (rng, UTLambdaAbstract(varrng, argvar, curry_lambda_abstract (-10, 0, 0, 0) avtail utastdef))
-
-  (* untyped_abstract_tree -> code_range *)
-  let get_range utast =
-    let (rng, _) = utast in rng
+        (rng, UTLambdaAbstract(varrng, argvar, curry_lambda_abstract (-11, 0, 0, 0) avtail utastdef))
 
   let error_reporting msg disp pos =
     let (pos_ln, pos_start, pos_end) = pos in
@@ -718,6 +719,12 @@ nxun:
   | LNOT error {
         raise (ParseErrorDetail(error_reporting "illegal token after 'not'" "not ..<!>.." $1))
       }
+  | REFNOW error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '!'" "! ..<!>.." $1))
+      }
+  | REFFINAL error {
+        raise (ParseErrorDetail(error_reporting "illegal token after '!!'" "!! ..<!>.." $1))
+      }
 ;
 nxapp:
   | nxapp nxbot {
@@ -828,6 +835,7 @@ binop:
   | LOR     { "||" }
   | LNOT    { "not" }
   | BEFORE  { "before" }
+;
 nxlist:
   | LISTPUNCT nxlet nxlist {
         let (sttln, sttpos, _) = $1 in

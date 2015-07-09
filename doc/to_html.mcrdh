@@ -1,5 +1,7 @@
-let \ref ref = !! ref in
-let \mut-content mut = !mut in
+let \ref ref = !! ref
+
+let \mut-content mut = !mut
+
 let \document head body = {
   <html>\deeper{
     <head>\deeper{
@@ -9,29 +11,32 @@ let \document head body = {
       @body;
     }</div></body>
   }</html>
-} in
-let-mutable mut-title <- {} in
-let \title title =
-  mut-title <- title before {<title>@title;</title>} in
+}
 
-let-mutable mut-author <- {} in
+let-mutable mut-title <- {}
+
+let \title title =
+  mut-title <- title before {<title>@title;</title>}
+
+let-mutable mut-author <- {}
+
 let \author author =
-  mut-author <- author before {<meta name="author" content="@author;">} in
+  mut-author <- author before {<meta name="author" content="@author;">}
 
 let \maketitle = {
   <div class="maketitle">\deeper{
     <div class="title">\mut-content(mut-title);</div>
     <div class="author">\mut-content(mut-author);</div>
   }</div>
-} in
+}
 
-let-mutable section-counter <- 0 in
-let-mutable section-prefix <- {} in
-let-mutable section-postfix <- {.} in
+let-mutable section-counter <- 0
+let-mutable section-prefix <- {}
+let-mutable section-postfix <- {.}
 
-let-mutable subsection-counter <- 0 in
-let-mutable subsection-prefix <- {} in
-let-mutable subsection-postfix <- {} in
+let-mutable subsection-counter <- 0
+let-mutable subsection-prefix <- {}
+let-mutable subsection-postfix <- {}
 
 let \section sec cont =
     section-counter       <- !section-counter + 1
@@ -45,7 +50,6 @@ let \section sec cont =
       before
         {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
   )
-in
 
 let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}} in
 let \p inner = {<p>\deeper{@inner;}</p>} in

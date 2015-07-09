@@ -17,9 +17,12 @@ let \settings = {
     frametitlebackgroundcolor=gray!20,
     linewidth=1pt
   }\}
-} in
-let \version = {ver. 1.00 beta} in
-let \twitter-at-id at-id = `\texttt{@` ^ {\escape-for-latex{@at-id;}} ^ `}` in
+}
+
+let \version = {ver. 1.00 beta}
+
+let \twitter-at-id at-id = `\texttt{@` ^ {\escape-for-latex{@at-id;}} ^ `}`
+
 let \description dscr = {
   \\begin\{center\}\deeper{
     \\begin\{tabular\}\{ll\}
@@ -38,85 +41,89 @@ and dscr-sep-lines dscr =
           {\\\\
             \\hline} ^ (dscr-sep-lines tail)
       )
-in
-let \d-item di dd = {@di; & @dd;} in
-let \synt synt = `\textcolor[rgb]{0,0,0.75}{\texttt{` ^ {\escape-for-latex{@synt;}} ^ `}}` in
-let \newword nw = {\\textsf\{@nw;\}} in
+
+let \d-item di dd = {@di; & @dd;}
+
+let \synt synt = `\textcolor[rgb]{0,0,0.75}{\texttt{` ^ {\escape-for-latex{@synt;}} ^ `}}`
+
+let \newword nw = {\\textsf\{@nw;\}}
 
 % ---- tokens ----
-let toksty tok = `\:\text{\textcolor{red}{$\underline{\text{\textbf{` ^ tok ^ `}}}$}}\:` in
-let vartoksty tok = `\:\text{\textcolor{orange}{$\underline{\text{\textit{\textbf{` ^ tok ^ `}}}}$}}\:` in
-let \token-eoi   = vartoksty `eoi`   in
-let \token-cs    = vartoksty `cs`    in
-let \token-id    = vartoksty `id`    in
-let \token-class = vartoksty `class` in
-let \token-char  = vartoksty `char`  in
-let \token-ident = vartoksty `ident` in
-let \token-int   = vartoksty `int`   in
-let \token-varinstr = toksty `@`  in
-let \token-bgrp  = toksty `\{`    in
-let \token-egrp  = toksty `\}`    in
-let \token-sep   = toksty `|`     in
-let \token-end   = toksty `;`     in
-let \token-space = toksty `space` in
-let \token-break = toksty `break` in
+let toksty tok = `\:\text{\textcolor{red}{$\underline{\text{\textbf{` ^ tok ^ `}}}$}}\:`
+let vartoksty tok = `\:\text{\textcolor{orange}{$\underline{\text{\textit{\textbf{` ^ tok ^ `}}}}$}}\:`
+let \token-eoi   = vartoksty `eoi`
+let \token-cs    = vartoksty `cs`
+let \token-id    = vartoksty `id`
+let \token-class = vartoksty `class`
+let \token-char  = vartoksty `char`
+let \token-ident = vartoksty `ident`
+let \token-int   = vartoksty `int`
+let \token-varinstr = toksty `@`
+let \token-bgrp  = toksty `\{`
+let \token-egrp  = toksty `\}`
+let \token-sep   = toksty `|`
+let \token-end   = toksty `;`
+let \token-space = toksty `space`
+let \token-break = toksty `break`
 %
-let \token-lparen = toksty `(`      in
-let \token-rparen = toksty `)`      in
-let \token-blist  = toksty `[`      in
-let \token-elist  = toksty `]`      in
-let \token-listpunct = toksty `;`   in
-let \token-bin    = vartoksty `bin` in
-let \token-let    = toksty `let`    in
-let \token-and    = toksty `and`    in
-let \token-defeq  = toksty `=`      in
-let \token-in     = toksty `in`     in
-let \token-if     = toksty `if`     in
-let \token-then   = toksty `then`   in
-let \token-else   = toksty `else`   in
-let \token-finish = toksty `finish` in
-let \token-opnqt  = toksty ``l\`{} `` in
-let \token-clsqt  = toksty ``\`{ }l`` in
-let \token-opnstr = toksty `t\{` in
-let \token-clsstr = toksty `\}t` in
-let \token-opnprog = toksty `e(` in
-let \token-clsprog = toksty `)e` in
-let \token-if-class-is-valid   = toksty `if-class-is-valid`   in
-let \token-if-id-is-valid      = toksty `if-id-is-valid`      in
-let \token-let-mutable         = toksty `let-mutable`         in
-let \token-declare-global-hash = toksty `declare-global-hash` in
-let \token-renew  = toksty `renew`         in
-let \token-owhash = toksty `$\leftarrow\!\!\!\leftarrow$`  in
-let \token-function = toksty `function`    in
-let \token-arrow  = toksty `$\rightarrow$` in
-let \token-oweq   = toksty `$\leftarrow$`  in
-let \token-before = toksty `before`        in
-let \token-while  = toksty `while`         in
-let \token-do     = toksty `do`            in
-let \token-true   = toksty `true`          in
-let \token-false  = toksty `false`         in
-let \token-unit   = toksty `()`            in
+let \token-lparen = toksty `(`
+let \token-rparen = toksty `)`
+let \token-blist  = toksty `[`
+let \token-elist  = toksty `]`
+let \token-listpunct = toksty `;`
+let \token-bin    = vartoksty `bin`
+let \token-let    = toksty `let`
+let \token-and    = toksty `and`
+let \token-defeq  = toksty `=`
+let \token-in     = toksty `in`
+let \token-if     = toksty `if`
+let \token-then   = toksty `then`
+let \token-else   = toksty `else`
+let \token-finish = toksty `finish`
+let \token-opnqt  = toksty ``l\`{} ``
+let \token-clsqt  = toksty ``\`{ }l``
+let \token-opnstr = toksty `t\{`
+let \token-clsstr = toksty `\}t`
+let \token-opnprog = toksty `e(`
+let \token-clsprog = toksty `)e`
+let \token-if-class-is-valid   = toksty `if-class-is-valid`
+let \token-if-id-is-valid      = toksty `if-id-is-valid`
+let \token-let-mutable         = toksty `let-mutable`
+let \token-declare-global-hash = toksty `declare-global-hash`
+let \token-renew  = toksty `renew`
+let \token-owhash = toksty `$\leftarrow\!\!\!\leftarrow$`
+let \token-function = toksty `function`
+let \token-arrow  = toksty `$\rightarrow$`
+let \token-oweq   = toksty `$\leftarrow$`
+let \token-before = toksty `before`
+let \token-while  = toksty `while`
+let \token-do     = toksty `do`
+let \token-true   = toksty `true`
+let \token-false  = toksty `false`
+let \token-unit   = toksty `()`
 %
-let \repeat-star inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{*}\:` in
-let \repeat-plus inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{+}\:` in
+let \repeat-star inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{*}\:`
+let \repeat-plus inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{+}\:`
 let cfl-or-sub lst =
   if is-empty lst then {} else
     let hd = list-head lst in
     let tl = list-tail lst in
       hd ^ ( if is-empty tl then {} else {\|} ^ (cfl-or-sub tl) )
-in
-let \cfl-or lst = `\:(` ^ (cfl-or-sub lst) ^ `)\:` in
-let nontmsty nontm = `\:\langle{}\mathit{` ^ nontm ^ `}\rangle{}\:` in
-let \Expr = nontmsty {Expr} in
-let \Dec  = nontmsty {Dec}  in
-let \Text = nontmsty {Text} in
-let \Args = nontmsty {Args} in
-let \Literal = nontmsty {Literal} in
-let \Single = nontmsty {Single} in
-let \ExprArgs = nontmsty {ExprArgs} in
-let \TextArgs = nontmsty {TextArgs} in
-let \GroupInText = nontmsty {GroupInText} in
-let \GroupInExpr = nontmsty {GroupInExpr} in
+
+let \cfl-or lst = `\:(` ^ (cfl-or-sub lst) ^ `)\:`
+
+let nontmsty nontm = `\:\langle{}\mathit{` ^ nontm ^ `}\rangle{}\:`
+let \TopLevel = nontmsty `TopLevel`
+let \Expr     = nontmsty `Expr`
+let \Dec      = nontmsty `Dec`
+let \Text     = nontmsty `Text`
+let \Args     = nontmsty `Args`
+let \Literal  = nontmsty `Literal`
+let \Single   = nontmsty `Single`
+let \ExprArgs = nontmsty `ExprArgs`
+let \TextArgs = nontmsty `TextArgs`
+let \GroupInText = nontmsty `GroupInText`
+let \GroupInExpr = nontmsty `GroupInExpr`
 %
 let \math-dp-gather lst = {
   \\begin\{align*\}\deeper(sub-math-dp-gather lst);\\end\{align*\}
@@ -125,12 +132,13 @@ and sub-math-dp-gather lst =
   let head = list-head lst in
   let tail = list-tail lst in
     head ^ ( if is-empty tail then {} else {\\\\} ^ (sub-math-dp-gather tail) )
-in
+
 let \cfl nontm lst =
   if is-empty lst then {} else
     let head = list-head lst in
     let tail = list-tail lst in
       nontm ^ {\ } ^ `\rightarrow&\enskip` ^ {\ } ^ head ^ `\enskip` ^ (sub-cfl tail)
+
 and sub-cfl lst =
   if is-empty lst then {} else
   ( let head = list-head lst in
@@ -141,17 +149,23 @@ and sub-cfl lst =
         `|\enskip` ^ {\ } ^ head ^ `\enskip` ^ {\ }
     ) ^ ( if is-empty tail then {} else {\ } ^ (sub-cfl tail) )
   )
-in
+
 let \code-dp code = {
   \\begin\{center\}\deeper{
     \\parbox\{0.9\\textwidth\}\{@code;\}
   }\\end\{center\}
-} in
-let \code code = code in
-let \code-dp-break = {\\\\} in
-let \code-dp-tab = {\\\ \\\ } in
-let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}} in
-let \metadots = {$\\ldots$} in
+}
+
+let \code code = code
+
+let \code-dp-break = {\\\\}
+
+let \code-dp-tab = {\\\ \\\ }
+
+let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}}
+
+let \metadots = {$\\ldots$}
+
 let \mcrd-display code = {
   %\\begin\{center\}\deeper{
     %\\parbox\{0.9\\textwidth\}\{\\noindent%
@@ -163,14 +177,20 @@ let \mcrd-display code = {
   \{\\small\\begin\{breakbox\}
     \\begin\{verbatim\}@code;\\end\{verbatim\}
   \\end\{breakbox\}\}\\noindent
-} in
-let \mcrd-file name code = {
-  \\begin\{mdframed\}[style=codebox, frametitle=\{\\texttt\{\escape-for-latex{@name;}\}\}]
-    \{\\small\\begin\{verbatim\}@code;\\end\{verbatim\}\}
-  \\end\{mdframed\}
-} in
-let \mcrd code = {\synt{@code;}} in
-let \url-display url = {\\begin\{center\}\deeper{\\texttt\{@url;\}}\\end\{center\}} in
-let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}` in
-let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}} in
-  finish
+}
+
+let \mcrd-file name code =
+    `\begin{mdframed}[style=codebox, frametitle={\texttt{` ^ {\escape-for-latex{@name;}} ^ `}}]`
+  ^ `{\small\begin{verbatim}` ^ code ^ `\end{verbatim}}`
+  ^ `\end{mdframed}`
+
+let \mcrd code = {\synt{@code;}}
+
+let \url-display url =
+    `\begin{center}`
+  ^ {\deeper(`\texttt{` ^ url ^ `}`);}
+  ^ `\end{center}`
+
+let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}`
+
+let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}}
