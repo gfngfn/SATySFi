@@ -80,17 +80,17 @@ let \token-if     = toksty `if`
 let \token-then   = toksty `then`
 let \token-else   = toksty `else`
 let \token-finish = toksty `finish`
-let \token-opnqt  = toksty ``l\`{} ``
+let \token-opnqt  = toksty ``l\`{ }``
 let \token-clsqt  = toksty ``\`{ }l``
 let \token-opnstr = toksty `t\{`
 let \token-clsstr = toksty `\}t`
 let \token-opnprog = toksty `e(`
 let \token-clsprog = toksty `)e`
-let \token-if-class-is-valid   = toksty `if-class-is-valid`
-let \token-if-id-is-valid      = toksty `if-id-is-valid`
-let \token-let-mutable         = toksty `let-mutable`
-let \token-declare-global-hash = toksty `declare-global-hash`
-let \token-renew  = toksty `renew`
+let \token-if-class-is-valid = toksty `if-class-is-valid`
+let \token-if-id-is-valid    = toksty `if-id-is-valid`
+let \token-let-mutable       = toksty `let-mutable`
+let \token-new-global-hash   = toksty `new-global-hash`
+let \token-renew-global-hash = toksty `renew-global-hash`
 let \token-owhash = toksty `$\leftarrow\!\!\!\leftarrow$`
 let \token-function = toksty `function`
 let \token-arrow  = toksty `$\rightarrow$`
@@ -101,6 +101,8 @@ let \token-do     = toksty `do`
 let \token-true   = toksty `true`
 let \token-false  = toksty `false`
 let \token-unit   = toksty `()`
+let \token-mutual     = toksty `mutual`
+let \token-end-mutual = toksty `end-mutual`
 %
 let \repeat-star inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{*}\:`
 let \repeat-plus inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{+}\:`
@@ -112,8 +114,9 @@ let cfl-or-sub lst =
 
 let \cfl-or lst = `\:(` ^ (cfl-or-sub lst) ^ `)\:`
 
-let nontmsty nontm = `\:\langle{}\mathit{` ^ nontm ^ `}\rangle{}\:`
-let \TopLevel = nontmsty `TopLevel`
+let nontmsty nontm = `\:\langle{}\mathit{` ^ nontm ^ `\/}\rangle{}\:`
+let \TopLevel  = nontmsty `TopLevel`
+let \TopSingle = nontmsty `TopSingle`
 let \Expr     = nontmsty `Expr`
 let \Dec      = nontmsty `Dec`
 let \Text     = nontmsty `Text`
@@ -166,7 +169,7 @@ let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\
 
 let \metadots = {$\\ldots$}
 
-let \mcrd-display code = {
+let \mcrd-display code =
   %\\begin\{center\}\deeper{
     %\\parbox\{0.9\\textwidth\}\{\\noindent%
       %\\textcolor\{blue\}\{\\texttt\{
@@ -174,22 +177,19 @@ let \mcrd-display code = {
       %\}\}%
     %\}%
   %}\\end\{center\}
-  \{\\small\\begin\{breakbox\}
-    \\begin\{verbatim\}@code;\\end\{verbatim\}
-  \\end\{breakbox\}\}\\noindent
-}
+  `{\small\begin{breakbox}` ^ {\break;}
+  ^ `\begin{verbatim}` ^code^ `\end{verbatim}` ^ {\break;}
+  ^ `\end{breakbox}}\noindent` ^ {\ }
 
 let \mcrd-file name code =
-    `\begin{mdframed}[style=codebox, frametitle={\texttt{` ^ {\escape-for-latex{@name;}} ^ `}}]`
-  ^ `{\small\begin{verbatim}` ^ code ^ `\end{verbatim}}`
+    `\begin{mdframed}[style=codebox, frametitle={\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
+  ^ `{\small\begin{verbatim}` ^code^ `\end{verbatim}}`
   ^ `\end{mdframed}`
 
 let \mcrd code = {\synt{@code;}}
 
 let \url-display url =
-    `\begin{center}`
-  ^ {\deeper(`\texttt{` ^ url ^ `}`);}
-  ^ `\end{center}`
+    `\begin{center}` ^(deeper (`\texttt{` ^url^ `}`))^ `\end{center}`
 
 let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}`
 

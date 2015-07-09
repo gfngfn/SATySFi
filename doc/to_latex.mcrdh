@@ -1,3 +1,5 @@
+let deeper s = {\deeper{@s;}}
+
 let \document head body = {
   \\documentclass\{jsarticle\}
   \\makeatletter\deeper{
@@ -7,68 +9,44 @@ let \document head body = {
     @body;
   }\\end\{document\}
 }
+let \title title = `\title{` ^ title ^ `}`
 
-let \title title = {\\title\{@title;\}}
+let \author author = `\author{` ^ author ^ `}`
 
-let \author author = {\\author\{@author;\}}
+let \maketitle = `\maketitle` ^ {\ }
 
-let \maketitle = {\\maketitle}
+let \section sec cont = `\section{` ^sec^ `}` ^(deeper cont)^ `%`
 
-let \section sec cont = {\\section\{@sec;\}\deeper{@cont;}\%}
+let \subsection subsec cont = `\subsection{` ^subsec^ `}` ^(deeper cont)^ `%`
 
-let \subsection subsec cont = {\\subsection\{@subsec;\}\deeper{@cont;}\%}
+let \p p = `\indent` ^(deeper p)^ `\par`
 
-let \p p = {\\indent\deeper{@p;}\\par}
+let \footnote footnote = `\footnote{` ^footnote^ `}`
 
-let \footnote footnote = {\\footnote\{@footnote;\}}
-%let row row-content =
-%  if is-empty row-content then {} else
-%    let cell = list-head row-content in
-%    let rest = list-tail row-content in
-%      cell
-%        ^ ( if is-empty rest
-%              then {}
-%              else {\ &\ } ^ (row rest) )
-%in
-%let \table option table = {
-%  \\begin\{tabular\}\{@option;\}\deeper(sub-table table);\\end\{tabular\}
-%}
-%and sub-table table-content =
-%  if is-empty table-content then {} else
-%    let row = list-head table-content in
-%    let rest = list-tail table-content in
-%      row
-%      ^ ( if is-empty rest
-%            then {}
-%            else {\\\\\break;} ^ (sub-table rest) )
-%in
-let \itemize list = {
-  \\begin\{itemize\}\deeper(sub-itemize list);\\end\{itemize\}
-}
+let \itemize list =
+  `\begin{itemize}` ^(deeper (sub-itemize list))^ `\end{itemize}`
+
 and sub-itemize list =
   if is-empty list then {} else
     let head = list-head list in
     let tail = list-tail list in
-      {\\item @head;}
+      `\item` ^ {\ } ^ head
         ^ ( if is-empty tail
               then {}
               else {\break;} ^ (sub-itemize tail) )
 
 let \math math = {\ $@math;$\ }
 
-let \epsilon = `\varepsilon`
+let \epsilon = `\varepsilon{}`
 
-let \beta = `\beta`
+let \beta = `\beta{}`
 
-let \url url = `\texttt{` ^ url ^ `}`
+let \url url = `\texttt{` ^url^ `}`
 
-let \url-dp url = {
-  \\begin\{center\}\deeper{
-    \\texttt\{@url;\}
-  }\\end\{center\}
-}
-
-let \to-latex c = {@c;}
+let \url-dp url =
+    `\begin{center}`
+  ^ (deeper (`\texttt{` ^url^ `}`))
+  ^ `\end{center}`
 
 let \TeX = `\TeX{}`
 let \LaTeX = `\LaTeX{}`
@@ -110,8 +88,8 @@ let-mutable counter-table <- 0
 let \float-table cap content =
     counter-table <- !counter-table + 1
   before
-    ( if-id-is-valid then
-        declare-global-hash id <<- {表} ^ (arabic (!counter-table))
+    ( if-id-is-valid
+        new-global-hash id <<- {表} ^ (arabic (!counter-table))
       else () )
   before
     `\begin{table*}\centering{}`

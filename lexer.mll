@@ -195,7 +195,8 @@ and strexpr = parse
       next_state := STATE_COMMENT ;
       IGNORED
     }
-  | "{" {
+  | ((break | space)* "{") {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       increment strdepth ;
       ignore_space := true ;
       BGRP(get_pos lexbuf)
@@ -243,8 +244,9 @@ and strexpr = parse
           VARINSTR(get_pos lexbuf, vnm)
         )
     }
-  | "`"+ {
-      openqtdepth := String.length (Lexing.lexeme lexbuf) ;
+  | ((break | space)* ("`"+ as openqtstr)) {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
+      openqtdepth := String.length openqtstr ;
       after_literal_state := STATE_STREXPR ;
       next_state := STATE_LITERAL ;
       OPENQT(get_pos lexbuf)

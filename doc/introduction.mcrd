@@ -407,10 +407,10 @@
               \math{\token-while;}：\newword{whileトークン}}
           | \d-item{\mcrd`do`}{
               \math{\token-do;}：\newword{doトークン}}
-          | \d-item{\mcrd`declare-global-hash`}{
-              \math{\token-declare-global-hash;}：\newword{ハッシュ宣言トークン}}
-          | \d-item{\mcrd`renew`}{
-              \math{\token-renew;}：\newword{ハッシュ変更トークン}}
+          | \d-item{\mcrd`new-global-hash`}{
+              \math{\token-new-global-hash;}：\newword{ハッシュ宣言トークン}}
+          | \d-item{\mcrd`renew-global-hash`}{
+              \math{\token-renew-global-hash;}：\newword{ハッシュ変更トークン}}
           | \d-item{\mcrd`<<-`}{
               \math{\token-owhash;}：\newword{ハッシュ代入トークン}}
           | \d-item{\mcrd`finish`}{
@@ -508,9 +508,14 @@
       Macrodownは字句解析が終了した後に構文解析に移ります。
       文法は以下のBNFで表されます。
       拡張子が.mcrdである文書は \math{\Text;} で表現される文字列を，
-      拡張子が.mcrdhであるヘッダおよび拡張子が.mcrdsである単独ファイルは \math{\Expr;} で表現される文字列を
-      それぞれ受理します。
+      拡張子が.mcrdhであるヘッダおよび拡張子が.mcrdsである単独ファイルは \math{\TopLevel;} で表現される文字列を
+      それぞれ受理します。ただし，結合順序は適切に定まっているものとします。
       \math-dp-gather{
+        | \cfl{\TopLevel;}{|  \repeat-plus{\TopSingle;} \cfl-or{|\token-in; \Expr; | \epsilon; |} |}
+        | \cfl{\TopSingle;}{
+            | \token-let; \Dec; \repeat-star{\token-and; \Dec;}
+            | \token-mutual; \repeat-plus{\token-let; \Dec;} \token-end-mutual;
+            |}
         | \cfl{\Expr;}{
             | \token-let; \Dec; \repeat-star{\token-and; \Dec;} \token-in; \Expr;
             |*br*
@@ -534,8 +539,9 @@
             |*br*
             | \token-if-id-is-valid; \cfl-or{|\epsilon;|\token-then;|} \Expr; \token-else; \Expr;
             |*br*
-            | \token-declare-global-hash; \Expr; \token-owhash; \Expr;
-            | \token-renew; \Expr; \token-owhash; \Expr;
+            | \token-new-global-hash; \Expr; \token-owhash; \Expr;
+            |*br*
+            | \token-renew-global-hash; \Expr; \token-owhash; \Expr;
             |}
         | \cfl{\Dec;}{| \cfl-or{|\token-ident;|\token-cs;|} \Args; \token-defeq; \Expr; |}
         | \cfl{\Args;}{| \repeat-star{\token-ident;} |}
