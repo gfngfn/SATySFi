@@ -61,6 +61,7 @@ let escape-single-char ch =
   else if same ch `$` then `\$`
   else if same ch `^` then `\^{}`
   else if same ch `_` then `\_`
+  else if same ch `&` then `\&`
   else ch
 
 let escape-double-chars ch2 =

@@ -65,7 +65,7 @@ let \token-sep   = toksty `|`
 let \token-end   = toksty `;`
 let \token-space = toksty `space`
 let \token-break = toksty `break`
-%
+
 let \token-lparen = toksty `(`
 let \token-rparen = toksty `)`
 let \token-blist  = toksty `[`
@@ -127,7 +127,11 @@ let \ExprArgs = nontmsty `ExprArgs`
 let \TextArgs = nontmsty `TextArgs`
 let \GroupInText = nontmsty `GroupInText`
 let \GroupInExpr = nontmsty `GroupInExpr`
-%
+
+let \extension ext = `\texttt{` ^ext^ `}`
+
+let \file-name fn = `\texttt{` ^{\escape-for-latex{@fn;}}^ `}`
+
 let \math-dp-gather lst = {
   \\begin\{align*\}\deeper(sub-math-dp-gather lst);\\end\{align*\}
 }
@@ -181,8 +185,13 @@ let \mcrd-display code =
   ^ `\begin{verbatim}` ^code^ `\end{verbatim}` ^ {\break;}
   ^ `\end{breakbox}}\noindent` ^ {\ }
 
-let \mcrd-file name code =
-    `\begin{mdframed}[style=codebox, frametitle={\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
+let \mcrd-input name code =
+    `\begin{mdframed}[style=codebox, frametitle={\textsf{入力}\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
+  ^ `{\small\begin{verbatim}` ^code^ `\end{verbatim}}`
+  ^ `\end{mdframed}`
+
+let \mcrd-output name code =
+    `\begin{mdframed}[style=codebox, frametitle={\textsf{出力}\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
   ^ `{\small\begin{verbatim}` ^code^ `\end{verbatim}}`
   ^ `\end{mdframed}`
 

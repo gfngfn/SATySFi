@@ -327,11 +327,25 @@ and add_mutuals_to_environment_sub lst env mutletcons =
           (* 0-ary definition dependent of ``sibling'' functions *)
       )
 
+(* (var_name * abstract_tree) list -> environment -> unit *)
 and add_zeroary_mutuals lst env =
+  let newlst = add_zeroary_mutuals_sub lst env [] in
+    if List.length newlst == 0 then
+      ()
+    else if (List.length newlst) == (List.length lst) then
+      raise (EvalError("meaningless 0-ary mutual recursion definition"))
+    else
+      add_zeroary_mutuals newlst env
+
+and add_zeroary_mutuals_sub lst env constr =
   match lst with
-  | []                    -> ()
+  | []                    -> constr
   | (nv, astcont) :: tail ->
-      let valuecont = interpret env astcont in
-      ( add_to_environment env nv (ref valuecont) ;
-        add_zeroary_mutuals tail env
+      ( try
+          let valuecont = interpret env astcont in
+          ( add_to_environment env nv (ref valuecont) ;
+            add_zeroary_mutuals_sub tail env constr
+          )
+        with
+        | EvalError(_) -> add_zeroary_mutuals_sub tail env ((nv, astcont) :: constr)
       )

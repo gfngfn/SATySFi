@@ -73,7 +73,7 @@
             %有為の奥山今日越えて，浅き夢見じ，酔いもせず。
             %空色映えて，沖つ辺に，帆船群れゐぬ，靄の内。
 
-        を得るようなマクロ\code{\synt`\div`}を定義することができます。
+        を得るようなマクロ \mcrd`\div` を定義することができます。
         クラス名・ID名オプション機能はHTMLの影響で実装したものですが，
         HTMLに限らず「マークアップ上大きな意味はないが小さい分岐をさせたいとき」に利用できます。
         函数・マクロ定義の項目で後述します。
@@ -111,7 +111,7 @@
           </section>
         ```
 
-        を得るようなマクロ\mcrd`\section`，\mcrd`\ref`を定義することが可能です。
+        を得るようなマクロ \mcrd`\section`，\mcrd`\ref` を定義することが可能です。
         \LaTeX;ではこのような相互参照は更新するたびに2回タイプセットしなければ正当に出力されませんが，
         Macrodownのテキスト整形では1度で正当な相互参照を出力することができます。
       }
@@ -137,7 +137,7 @@
         まずはどのようにソースコードを与え，どのように出力を得るかを見てみましょう。
         お決まりのHello World!を出力するソースコードを書いてみます。
         
-        \mcrd-file{input.mcrd}```
+        \mcrd-input{input.mcrd}```
           Hello World!
         ```
         
@@ -150,7 +150,7 @@
 
         とコマンドプロンプトやターミナルで処理すると
 
-        \mcrd-file{output.txt}```
+        \mcrd-output{output.txt}```
           Hello World!
         ```
         
@@ -158,10 +158,10 @@
         もう少しMacrodownを勤勉に見せる例を挙げます。
         勿論詳しい仕組みは後述するので，おまじない程度に認識しても構いません。
         
-        \mcrd-file{header.mcrdh}```
+        \mcrd-input{header.mcrdh}```
           let \hello s = {Hello, @s;!}
         ```
-        \mcrd-file{input.mcrd}```
+        \mcrd-input{input.mcrd}```
           \hello{World} \hello{Macrodown}
         ```
         
@@ -173,19 +173,19 @@
         
         と処理すると
         
-        \mcrd-file{output.txt}```
+        \mcrd-output{output.txt}```
           Hello, World! Hello, Macrodown!
         ```
         
-        なるファイルが出力されます。header.mcrdhで\mcrd`\hello`というマクロが定義され，
-        input.mcrdでそれを使用しているというわけです。
-        拡張子が.mcrdhのものはプログラム階層で函数・マクロを定義する\newword{ヘッダファイル}，
-        拡張子が.mcrdのものはテキスト階層で文書を記述する\newword{文書ファイル}です。
-        このほか入力ファイルの拡張子として.mcrdsがあり，
+        なるファイルが出力されます。\file-name{header.mcrdh}で\mcrd`\hello`というマクロが定義され，
+        \file-name{input.mcrd}でそれを使用しているというわけです。
+        拡張子が\extension{.mcrdh}のものはプログラム階層で函数・マクロを定義する\newword{ヘッダファイル}，
+        拡張子が\extension{.mcrd}のものはテキスト階層で文書を記述する\newword{文書ファイル}です。
+        このほか入力ファイルの拡張子として\extension{.mcrds}があり，
         これはプログラム階層で記述されながらも文書として出力される\newword{単独ファイル}です。
         例えばさきほど2ファイル要した例も
         
-        \mcrd-file{input.mcrds}```
+        \mcrd-input{input.mcrds}```
           let \hello s = {Hello, @s;!} in
             {\hello{World} \hello{Macrodown}}
         ```
@@ -229,7 +229,7 @@
             \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
         }
 
-        で\code{\synt`\`\meta{piyo}}が\code{\meta{ExprB}}をスコープとして定義されます。
+        で \code{\synt`\`\meta{piyo}} が \code{\meta{ExprB}} をスコープとして定義されます。
         なお，普通積極的には用いませんが，名前のない函数は
 
         \code-dp{
@@ -238,24 +238,24 @@
         }
 
         で表現することができます。例えば与えられた整数を2乗する函数は
-        \mcrd`(function n -> n * n)`です。
+        \mcrd`(function n -> n * n)` です。
 
         \code-dp{
           \synt`\`\meta{hoge}\ %
             \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
         }
 
-        で各\code{\meta{varI}}に\code{\meta{ArgI}}が格納された上で定義式の\code{\meta{Expr}}が評価されます。
+        で各 \code{\meta{varI}} に \code{\meta{ArgI}} が格納された上で定義式の \code{\meta{Expr}} が評価されます。
         定義された函数をプログラム階層で使うときは単に引数を並べることで適用します。
         例えば
         
-        \mcrd-file{test.mcrds}```
+        \mcrd-input{test.mcrds}```
           let f x = x * x in arabic (f (f 3))
         ```
         
         に対する出力は
         
-        \mcrd-file{test.txt}```
+        \mcrd-output{test.txt}```
           81
         ```
         
@@ -264,7 +264,7 @@
         がいくつもあり，これを\newword{プリミティヴ}と呼びます。
         上の例で登場した\mcrd`arabic`は整数を文字列に変換するプリミティヴです。もし入力を
 
-        \mcrd-file{test.mcrds}```
+        \mcrd-input{test.mcrds}```
           let f x = x * x in f (f 3)
         ```
         
@@ -276,7 +276,7 @@
         ```
         
         とエラーが返されるようになっています。したがって
-        さらに\mcrd`arabic`を適用して\mcrd`81`という文字列に変換してやる必要があるのです。
+        さらに \mcrd`arabic` を適用して \mcrd`81` という文字列に変換してやる必要があるのです。
         値には\newword{型}がついており，整数値は\type-synt`int`型，文字列値は\type-synt`string`型です。
         Macrodownは，\type-synt`string`型のデータのみを出力できるようになっている，というわけです。
         \mcrd`arabic`は\type-synt`int`型の値を受け取って\type-synt`string`型の値を返す函数であり，
@@ -291,14 +291,14 @@
         これは各引数を \mcrd`{` と \mcrd`}` で括ることによって与えます。
         例えば
 
-        \mcrd-file{test.mcrds}```
+        \mcrd-input{test.mcrds}```
           let \test x y = {Ma@x;r@y;down} in
             {\test{c}{o}, \test{}{k}}
         ```
 
         に対する出力は
 
-        \mcrd-file{test.txt}```
+        \mcrd-output{test.txt}```
           Macrodown, Markdown
         ```
 
@@ -307,7 +307,7 @@
         \code{\synt`@`\meta{piyo}\synt`;`}とします。
         或いは，文字列結合演算子 \mcrd-type`^` `string -> string -> string` を用いて
 
-        \mcrd-file{test.mcrds}```
+        \mcrd-input{test.mcrds}```
           let \test x y = {Ma} ^ x ^ {r} ^ y ^ {down} in
             {\test{c}{o}, \test{}{k}}
         ```
@@ -318,13 +318,13 @@
         定義式を用いて変数や引数のないマクロも定義できます。
         引数のないマクロは，使用の際にセミコロンをつけます。例えば
 
-        \mcrd-file{no-arg.mcrds}```
+        \mcrd-input{no-arg.mcrds}```
           let \mcrd = {Macrodown} in {Hello, \mcrd;!}
         ```
 
         に対する出力は
 
-        \mcrd-file{no-arg.txt}```
+        \mcrd-output{no-arg.txt}```
           Hello, Macrodown!
         ```
 
@@ -334,19 +334,19 @@
         引数に文字列以外の値を与えることもできます。
         例として，整数値を2つ渡すとそれらの和を文字列にし，単位をつけて返すマクロ \mcrd`\sumstr` を定義してみましょう。
         
-        \mcrd-file{header.mcrdh}```
+        \mcrd-input{header.mcrdh}```
           let \sumstr m n u = (arabic (m + n)) ^ u
         ```
         
         これを文書中で使うには
         
-        \mcrd-file{doc.mcrd}```
+        \mcrd-input{doc.mcrd}```
           \sumstr(3)(4){個}
         ```
         
         というように文字列でない値を \mcrd`(` と \mcrd`)` で括って与えます。これらを処理すると
         
-        \mcrd-file{doc.txt}```
+        \mcrd-output{doc.txt}```
           7個
         ```
         
@@ -357,13 +357,13 @@
         そのうえ，すべての引数がプログラム引数である場合，末尾には必ず \mcrd`;` をつけねばなりません。
         したがって，\mcrd`\sumstr` を
 
-        \mcrd-file{header.mcrdh}```
+        \mcrd-input{header.mcrdh}```
           let \sumstr u m n = (arabic (m + n)) ^ u
         ```
         
         という引数の順序で定義して
         
-        \mcrd-file{doc.mcrd}```
+        \mcrd-input{doc.mcrd}```
           \sumstr{個}(3)(4)
         ```
         
@@ -377,16 +377,16 @@
         
         \mcrd`(3)(4)` が単なる文字列になっていることは，代わりに
 
-        \mcrd-file{header.mcrdh}```
+        \mcrd-input{header.mcrdh}```
           let \sumstr t = {A@t;B}
         ```
-        \mcrd-file{doc.mcrd}```
+        \mcrd-input{doc.mcrd}```
           \sumstr{個}(3)(4)
         ```
 
         を処理すると
         
-        \mcrd-file{doc.txt}```
+        \mcrd-output{doc.txt}```
           A個B(3)(4)
         ```
         
@@ -394,19 +394,19 @@
         なお，あまりおすすめしませんが，
         文字列値はテキスト引数ではなくプログラム引数で与えることもできるので，先ほどのように
 
-        \mcrd-file{header.mcrdh}```
+        \mcrd-input{header.mcrdh}```
           let \sumstr u m n = (arabic (m + n)) ^ u
         ```
 
         の引数の順序で定義したとしても
         
-        \mcrd-file{doc.mcrd}```
+        \mcrd-input{doc.mcrd}```
           \sumstr( {個} )(3)(4);
         ```
         
         と使うことができ，やはり処理するとその出力は
 
-        \mcrd-file{doc.txt}```
+        \mcrd-output{doc.txt}```
           7個
         ```
         
@@ -423,14 +423,14 @@
         }
         
         の構文を用います。\code{\meta{ExprB}} は
-        \type-synt`bool`型を持ち，これを評価して \mcrd`true` であった場合は
+        真偽値を表す\type-synt`bool`型を持ち，これを評価して \mcrd`true` であった場合は
         \code{\meta{ExprT}}を評価してその結果を，
         \mcrd`false` であった場合は
         \code{\meta{ExprF}}を評価してその結果を返します。
         例として1つの整数値をFizzBuzz上の表現にするマクロ \mcrd-type`\fb` `int -> string`
         を定義して使ってみましょう。
         
-        \mcrd-file{input.mcrds}```
+        \mcrd-input{input.mcrds}```
           let \fb n =
             if n mod 5 == 0 then
               if n mod 3 == 0 then {FizzBuzz} else {Buzz}
@@ -439,9 +439,42 @@
           
           in {\fb(1);, \fb(3);, \fb(6);, \fb(10);, \fb(15);, \fb(21);, \fb(28);}
         ```
-        \mcrd-file{output.txt}```
+        \mcrd-output{output.txt}```
           1, Fizz, Fizz, Buzz, FizzBuzz, Fizz, 28
         ```
+      }
+      \p{
+        整数の比較で真理値を返す演算子として
+        整数等価演算子 \mcrd-type`==` `int -> int -> bool`，
+        整数非等価演算子 \mcrd-type`<>` `int -> int -> bool`，
+        および4種類の整数不等号演算子
+        \mcrd-type`>=` `int -> int -> bool`，
+        \mcrd-type`<=` `int -> int -> bool`，
+        \mcrd-type`>` `int -> int -> bool`，
+        \mcrd-type`<` `int -> int -> bool` があります。
+        またいわゆる論理演算子として
+        選言 \mcrd-type`||` `bool -> bool -> bool`，
+        連言 \mcrd-type`&&` `bool -> bool -> bool`，
+        否定 \mcrd-type`not` `bool -> bool` があります。
+      }
+      \p{
+        条件分岐を使えば，再帰函数によって繰り返し処理を書くこともできます。
+        全然実用的ではありませんが，
+        1から与えられた整数までを並べた文字列を返す函数 \mcrd`\lineup` を定義して使ってみましょう。
+        
+        \mcrd-input{lineup.mcrds}```
+          let \lineup n =
+            if n <= 0 then {} else
+              let s = arabic n in {\lineup(n - 1);[@s;]}
+
+          in {\lineup(20);}
+        ```
+        \mcrd-output{lineup.txt}```
+          [1][2][3][4][5][6][7][8][9][10][11][12][13][14][15][16][17][18][19][20]
+        ```
+        
+        いわゆる函数型プログラミングの経験がない方には少し想像しづらいかもしれませんが，
+        慣れてしまえばループ処理よりもずっと少ない手間で書くことができます。
       }
     }
     \subsection{リスト}{
@@ -491,7 +524,7 @@
         各要素をHTMLのリストの項目として並べたものを返すマクロ
         \mcrd-type`\ul`{string list -> string}を定義します。
 
-        \mcrd-file{ul.mcrdh}```
+        \mcrd-input{ul.mcrdh}```
           let sub-ul lst =
             if is-empty lst then {} else
               let hd = list-head lst in
@@ -501,14 +534,13 @@
           let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
           in finish
         ```
-        \mcrd-file{main.mcrd}```
+        \mcrd-input{main.mcrd}```
           \ul{|hoge|piyo|fuga|moge|}
         ```
 
-        %\mcrd`macrodown ul.mcrdh main.mcrd -o main.txt`
         を処理した出力は
         
-        \mcrd-file{main.txt}```
+        \mcrd-output{main.txt}```
           <ul>
             <li class="list-content">hoge</li>
             <li class="list-content">piyo</li>
@@ -522,6 +554,42 @@
         そのように何度も同じ記述が繰り返される場合，すべて手で打つのではなく，
         共通部分は再帰的なマクロ定義に含ませて，異なる部分をリストの各要素として与えることにより，
         効率的にマークアップすることができます。
+      }
+      \p{
+        ついでに再帰の例として有名な左畳み込み演算
+        \mcrd-type`foldl` `('a -> 'b -> 'a) -> 'a -> 'b list -> 'a`
+        とそれを使った函数を掲げておきます。
+
+        \mcrd-input{foldl.mcrds}```
+          let foldl f i lst =
+            if is-empty lst then i else
+              foldl f (f i (list-head lst)) (list-tail lst)
+
+          let sum = foldl (+) 0
+          let \sum lst = arabic (sum lst)
+
+          let count m a = m + 1
+          let length = foldl count 0
+          let \length lst = arabic (length lst)
+
+          let enclose s t = {@s;[@t;]}
+          let \display = foldl enclose {}
+
+          in {
+            \sum    ( [3; 1; 4; 1; 5; 9; 2] );
+            \length ( [3; 1; 4; 1; 5; 9; 2] );
+            \display{|hoge|piyo|fuga|moge|}
+          }
+        ```
+        \mcrd-output{foldl.txt}```
+          25
+          7
+          [hoge][piyo][fuga][moge]
+        ```
+        リストになっている整数の総和を返す函数 \mcrd-type`sum` `int list -> int`，
+        リストの長さを返す函数 \mcrd-type`length` `'a list -> int`，
+        リストの文字列各々を四角括弧で括って並べるマクロ \mcrd-type`\display` `string list -> string`
+        がそれぞれ \mcrd`foldl` を使って非常に簡潔に定義できています。
       }
     }
   }
@@ -537,8 +605,8 @@
           | コメント階層
           |}
         を行き来しながらソースコードをトークンとして解釈します。
-        文書（拡張子が.mcrdのもの）はテキスト階層で読み込みが開始され，一方で
-        ヘッダ（拡張子が.mcrdhのもの）はプログラム階層で読み込みが開始されます。
+        文書（拡張子が\extension{.mcrd}のもの）はテキスト階層で読み込みが開始され，一方で
+        ヘッダ（拡張子が\extension{.mcrdh}のもの）はプログラム階層で読み込みが開始されます。
       }
     }
     \subsection{テキスト階層}{
@@ -756,8 +824,9 @@
     \p{
       Macrodownは字句解析が終了した後に構文解析に移ります。
       文法は以下のBNFで表されます。
-      拡張子が.mcrdである文書は \math{\Text;} で表現される文字列を，
-      拡張子が.mcrdhであるヘッダおよび拡張子が.mcrdsである単独ファイルは \math{\TopLevel;} で表現される文字列を
+      拡張子が\extension{.mcrd}である文書は \math{\Text;} で表現される文字列を，
+      拡張子が\extension{.mcrdh}であるヘッダおよび拡張子が\extension{.mcrds}である単独ファイルは
+      \math{\TopLevel;} で表現される文字列を
       それぞれ受理します。ただし，結合順序は適切に定まっているものとします。
       \math-dp-gather{
         | \cfl{\TopLevel;}{|  \repeat-plus{\TopSingle;} \cfl-or{|\token-in; \Expr; | \epsilon; |} |}

@@ -142,10 +142,10 @@ and unify_sub tystr1 tystr2 =
                   ^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
                   ^ "    but the former type is in the latter one")))
             else
-              if is_invalid_range (get_range_from_type tystr) then
+(*            if is_invalid_range (get_range_from_type tystr) then *)
                 [(tvid1, overwrite_range_of_type tystr rng1)]
-              else
-                [(tvid1, tystr)]
+(*            else
+                [(tvid1, tystr)] *)
       )
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
