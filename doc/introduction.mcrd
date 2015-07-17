@@ -1,6 +1,6 @@
 \document{
   \settings;
-  \title{Macrodown (\version;)}
+  \title{Macrodown \version; 解説（未完成）}
   \author{\twitter-at-id{bd_gfngfn}}
 }{
   \maketitle;
@@ -212,7 +212,7 @@
       \p{
         以下のような\newword{定義式}
 
-        \code-dp{
+        \code-display{
           \synt`let` \meta{hoge} %
             \meta{nvar1} \metadots; \meta{nvarN}
             \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
@@ -223,7 +223,7 @@
         この函数\code{\meta{hoge}}の定義は\code{\meta{ExprB}}がスコープです。
         函数だけでなくマクロも同様の構文で定めることができ，
 
-        \code-dp{
+        \code-display{
           \synt`let` \synt`\`\meta{piyo} %
             \meta{var1} \metadots; \meta{varN}
             \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
@@ -232,7 +232,7 @@
         で \code{\synt`\`\meta{piyo}} が \code{\meta{ExprB}} をスコープとして定義されます。
         なお，普通積極的には用いませんが，名前のない函数は
 
-        \code-dp{
+        \code-display{
           \synt`(function` \meta{nv1} \metadots; \meta{nvN}
           \synt`->` \meta{Expr} \synt`)`
         }
@@ -240,7 +240,7 @@
         で表現することができます。例えば与えられた整数を2乗する函数は
         \mcrd`(function n -> n * n)` です。
 
-        \code-dp{
+        \code-display{
           \synt`\`\meta{hoge}\ %
             \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
         }
@@ -268,7 +268,7 @@
           let f x = x * x in f (f 3)
         ```
         
-        としたならば，これは 81 という整数値になります。しかし，
+        としたならば，これは 81 という整数値になるはずです。しかし，
         Macrodownは文字列値しか出力することができないので，
         
         \mcrd-display```
@@ -283,6 +283,19 @@
         これを表して\type-synt`int -> string`型を持っていると扱われます。
         型が整合していない場合，実際に処理が行なわれる前にその不整合を検出してエラーを返します。
         これが\newword{静的型検査}という仕組みです。
+      }
+      \p{
+        既に説明なく乗算 \mcrd`*` を用いましたが，算術演算子には
+        \itemize{
+          | 乗算 \mcrd-type`*` `int -> int -> int`
+          | 除算 \mcrd-type`/` `int -> int -> int`
+          | 剰餘 \mcrd-type`mod` `int -> int -> int`
+          | 加算 \mcrd-type`+` `int -> int -> int`
+          | 減算 \mcrd-type`-` `int -> int -> int`
+          |}
+        があります。\mcrd`-` は単項演算子としても使用することができます。
+        なお，2項演算子は \mcrd`(` と \mcrd`)` で囲うことで普通の函数のように使うことができます。
+        例えば \mcrd`(function n -> 3 + n)` と \mcrd`(+) 3` は同等です。
       }
       \p{
         マクロも函数とまったく同様の構文で定義することができます。
@@ -313,6 +326,16 @@
         ```
 
         としても同様ですが，ここでは \mcrd`@` を使う方が短く済んで見やすいようです。
+      }
+      \p{
+        なお，マクロを制御綴で記述する仕様になっているために，テキスト階層に於いて
+        文字 \mcrd`\`，\mcrd`{`，\mcrd`}`，\mcrd`@` は
+        文字そのものとして直接書くことができません。
+        また，これらに加えて \mcrd`` ` `` も同様に文字そのものとしては書けません。
+        これらの文字を文字そのものとして書くには
+        \mcrd`\\`，\mcrd`\{`，\mcrd`\}`，\mcrd`\@`，\mcrd``\` `` とエスケープする必要があります。
+        実際にはいちいちエスケープしていては面倒なので，
+        後述するリテラル階層という機能によりさらに簡潔に記述することができます。
       }
       \p{
         定義式を用いて変数や引数のないマクロも定義できます。
@@ -418,7 +441,7 @@
       \p{
         条件分岐は単純明快で，
         
-        \code-dp{
+        \code-display{
           \synt{if} \meta{ExprB} \synt{then} \meta{ExprT} \synt{else} \meta{ExprF}
         }
         
@@ -437,7 +460,9 @@
             else
               if n mod 3 == 0 then {Fizz} else arabic n
           
-          in {\fb(1);, \fb(3);, \fb(6);, \fb(10);, \fb(15);, \fb(21);, \fb(28);}
+          in {
+            \fb(1);, \fb(3);, \fb(6);, \fb(10);, \fb(15);, \fb(21);, \fb(28);
+          }
         ```
         \mcrd-output{output.txt}```
           1, Fizz, Fizz, Buzz, FizzBuzz, Fizz, 28
@@ -445,18 +470,24 @@
       }
       \p{
         整数の比較で真理値を返す演算子として
-        整数等価演算子 \mcrd-type`==` `int -> int -> bool`，
-        整数非等価演算子 \mcrd-type`<>` `int -> int -> bool`，
-        および4種類の整数不等号演算子
-        \mcrd-type`>=` `int -> int -> bool`，
-        \mcrd-type`<=` `int -> int -> bool`，
-        \mcrd-type`>` `int -> int -> bool`，
-        \mcrd-type`<` `int -> int -> bool` があります。
-        またいわゆる論理演算子として
-        選言 \mcrd-type`||` `bool -> bool -> bool`，
-        連言 \mcrd-type`&&` `bool -> bool -> bool`，
-        否定 \mcrd-type`not` `bool -> bool` があります。
+        \itemize{
+          | 等価演算子 \mcrd-type`==` `int -> int -> bool`
+          | 非等価演算子 \mcrd-type`<>` `int -> int -> bool`
+          | 不等号演算子 \mcrd-type`>=` `int -> int -> bool`
+          | 不等号演算子 \mcrd-type`<=` `int -> int -> bool`
+          | 不等号演算子 \mcrd-type`>` `int -> int -> bool`
+          | 不等号演算子 \mcrd-type`<` `int -> int -> bool`
+          |}
+        があります。またいわゆる論理演算子として
+        \itemize{
+          | 選言 \mcrd-type`||` `bool -> bool -> bool`
+          | 連言 \mcrd-type`&&` `bool -> bool -> bool`
+          | 否定 \mcrd-type`not` `bool -> bool`
+          |}
+        があります。
       }
+    }
+    \subsection{再帰}{
       \p{
         条件分岐を使えば，再帰函数によって繰り返し処理を書くこともできます。
         全然実用的ではありませんが，
@@ -487,10 +518,10 @@
 
         のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書きます。
         リストでは，全ての要素の型が一致していなければなりません。
-        \type-synt{'t}型の要素を持つリストの型は\type-synt{'t list}であり，
-        例えば\type-synt{int}型のリストは\type-synt{int list}型になります。
+        \type-synt`'t`型の要素を持つリストの型は\type-synt{'t list}であり，
+        例えば\type-synt`int`型のリストは\type-synt{int list}型になります。
         なお，実際に文書中のテキスト階層で用いるリストの多くは
-        \type-synt{string list}型のリストをマクロの引数とする場合ですが，これは
+        \type-synt`string list`型のリストをマクロの引数とする場合ですが，これは
 
         \mcrd-display```
           \somecs( [{hoge}; {piyo}; {fuga}; {moge}] );
@@ -516,31 +547,30 @@
       \p{
         では，\mcrd`list-head` および \mcrd`list-tail` に空のリスト \mcrd`[]` を渡すとどうなるかというと，
         これは実行時エラーで終了してしまいます。
-        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty`{'a list -> bool} を使うことになります。
+        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty` `'a list -> bool` を使うことになります。
       }
       \p{
         リストを再帰的に扱う例を見てみましょう。
-        \type-synt{string list}型の値を受け取り，
-        各要素をHTMLのリストの項目として並べたものを返すマクロ
-        \mcrd-type`\ul`{string list -> string}を定義します。
+        \type-synt`string list` 型の値を受け取り，
+        各要素をHTMLのリストの項目として並べたものを返す
+        マクロ \mcrd-type`\ul` `string list -> string` を定義します。
 
-        \mcrd-input{ul.mcrdh}```
+        \mcrd-input{ul.mcrds}```
           let sub-ul lst =
             if is-empty lst then {} else
               let hd = list-head lst in
               let tl = list-tail lst in
                 {<li class="list-content">@hd;</li>\break;} ^ (sub-ul tl)
-          in
+
           let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
-          in finish
-        ```
-        \mcrd-input{main.mcrd}```
-          \ul{|hoge|piyo|fuga|moge|}
+          in {
+            \ul{|hoge|piyo|fuga|moge|}
+          }
         ```
 
         を処理した出力は
         
-        \mcrd-output{main.txt}```
+        \mcrd-output{ul.txt}```
           <ul>
             <li class="list-content">hoge</li>
             <li class="list-content">piyo</li>
@@ -592,10 +622,204 @@
         がそれぞれ \mcrd`foldl` を使って非常に簡潔に定義できています。
       }
     }
+    \subsection{相互再帰}{
+      \p{
+        再帰は“自己再帰”に限らず，複数の函数が“相互に依存しあう”こともできます。
+        例えば奇数番目が\mcrd`style-odd`クラス，偶数番目が\mcrd`style-even`クラスに指定される
+        HTMLのリストを書きたいときは
+
+        \mcrd-input{mut.mcrds}```
+          let ul-odd lst =
+            if is-empty lst then {} else
+              let hd = list-head lst in
+              let tl = list-tail lst in
+                {<li class="style-odd">@hd;</li>} ^ (ul-even tl)
+
+          and ul-even lst =
+            if is-empty lst then {} else
+              let hd = list-head lst in
+              let tl = list-tail lst in
+                {<li class="style-even"@hd;</li>>} ^ (ul-odd tl)
+
+          let \ul lst = {<ul>\deeper(ul-odd lst);</ul>}
+          in {
+            \ul{|hoge|piyo|fuga|moge|}
+          }
+        ```
+        
+        と \mcrd`and` を用いて“並列的に” \mcrd`ul-odd` と \mcrd`ul-even` を宣言して書くと
+        
+        \mcrd-output{mut.txt}```
+          <ul>
+            <li class="style-odd">hoge</li>
+            <li class="style-even">piyo</li>
+            <li class="style-odd">fuga</li>
+            <li class="style-even">moge</li>
+          </ul>
+        ```
+        
+        が出力されます。もしかしたら
+        「なぜわざわざ \mcrd`and` で書く必要があるんだ？ \mcrd`let` に置き換えてもいいんじゃないか」
+        と思われるかもしれませんが，これはスコープの問題で，もしも
+
+        \code-display{
+          \synt{let} \meta{f} \meta{x1} \metadots; \meta{xM} \synt{=} \meta{ExprA}\code-break;
+          \code-break;
+          \synt{let} \meta{g} \meta{y1} \metadots; \meta{yN} \synt{=} \meta{ExprB}
+        }
+        
+        と書くと，
+        \code{\meta{ExprB}} で \code{\meta{f}} を使うことができても
+        \code{\meta{ExprA}} で \code{\meta{g}} を使うことができないのです。
+
+        \code-display{
+          \synt{let} \meta{f} \meta{x1} \metadots; \meta{xM} \synt{=} \meta{ExprA}\code-break;
+          \code-break;
+          \synt{and} \meta{g} \meta{y1} \metadots; \meta{yN} \synt{=} \meta{ExprB}
+        }
+        
+        とすると，これは
+        \code{\meta{ExprB}} で \code{\meta{f}} を使うことも
+        \code{\meta{ExprA}} で \code{\meta{g}} を使うこともできるようにスコープが設定されています。
+        このように \mcrd`and` を駆使せねばならないことは一見面倒なように見えますが，
+        定義の依存関係を明確に意識して書ける，
+        すなわち一度書いた定義を後で書き換えるとどの範囲に影響が及ぶかということが明確になるという意味で有用です。
+      }
+    }
+    \subsection{ファイル分割}{
+      \p{
+        これまでは単独ファイルの例を多用してきましたが，実用上は函数とマクロの定義をヘッダファイルに，
+        “文書本体”を文書ファイルに記述する方が便利です。
+        というのも，複数のターゲット言語，例えば\LaTeX;とHTML/CSSの両方に出力したいとき，
+        “文書本体”を共通のデータにしてヘッダファイルのみを入れ替えることでどちらも出力することができる，
+        という利点があるためです。
+        その他，単独ファイルだと先頭の函数とマクロの定義がかさばって見づらい，という問題も解消できます。
+      }
+      \p{
+        ヘッダファイルはプログラム階層で記述し，
+
+        \code-display{
+          \synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
+          \code-break;
+          \synt{let} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
+          \code-break;
+          \metadots;\code-break;
+          \code-break;
+          \synt{let} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}
+        }
+        
+        というように \mcrd`let` で宣言を並べます。
+        この宣言が並ぶ“最も外側の領域”を\newword{大域環境}と呼びます。
+        大域環境の \mcrd`let` は
+        \code{\synt{let} \meta{hoge} \synt{=} \meta{Expr} \synt{in} \meta{Expr}}
+        のように \mcrd`in` をつける必要はありませんが，上のコードは実際には
+
+        \code-display{
+          \synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1} \synt{in}\code-break;
+          \code-tab;
+          \synt{let} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2} \synt{in}\code-break;
+          \code-tab;\code-tab;
+          \metadots;\code-break;
+          \code-tab;\code-tab;\code-tab;
+          \synt{let} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM} \synt{in}\code-break;
+          \code-tab;\code-tab;\code-tab;\code-tab;
+          \synt{finish}
+        }
+        
+        と全く同等となります。
+        \mcrd`finish` が書かれた場所から定義が“見える”函数・マクロが，次以降のファイルの読み込みに引き継がれます。
+        \mcrd`finish` は \type-synt`env` 型という特殊な型を持つ値を指す唯一のトークンですが，
+        省略できるので普通は書きません。
+      }
+      \p{
+        大域環境での相互再帰はやはり
+
+        \code-display{
+          \synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
+          \code-break;
+          \synt{and} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
+          \code-break;
+          \metadots;\code-break;
+          \code-break;
+          \synt{and} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}
+        }
+
+        と書きますが，
+        「定義の依存関係が明白になるなんて全然有用に思えん！\quad;\mcrd`and` なんて意識しないで書きたい！」
+        という方のために \mcrd`mutual`～\mcrd`end-mutual` という糖衣構文を用意しており，
+        
+        \code-display{
+          \synt{mutual}\code-break;
+          \code-tab;\synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
+          \code-break;
+          \code-tab;\synt{let} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
+          \code-break;
+          \code-tab;\metadots;\code-break;
+          \code-break;
+          \code-tab;\synt{let} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}\code-break;
+          \synt{end-mutual}
+        }
+        
+        と書くことで，上に掲げた \mcrd`and` を用いたものと同等となります。
+      }
+    }
+    \subsection{リテラル階層}{
+      \p{
+        テキスト階層では，\mcrd`\`，\mcrd`{`，\mcrd`}`，\mcrd`` ` ``，\mcrd`@` という
+        “そのままでは書けない”文字がありました。これらはそれぞれ
+        \mcrd`\\`，\mcrd`\{`，\mcrd`\}`，\mcrd``\` ``，\mcrd`\@` とエスケープしなければならないのですが，
+        長い定文字列中にこれらの文字が高頻度で出現する場合は非常に面倒です
+        （特に\LaTeX;をターゲット言語とするマクロを記述する場合，
+        これらの文字をいちいちエスケープしていては大変です）。
+        そこでより簡潔に定文字列を書く方法として，プログラム階層で
+        
+        \mcrd-input{literal1.mcrds}```
+          `In literal areas, you can use letters \, {, }, and @ as itself.`
+        ```
+        
+        と \mcrd`` ` `` で括って書くことで
+        
+        \mcrd-output{literal1.txt}```
+          In literal areas, you can use letters \, {, }, and @ as itself.
+        ```
+
+        と出力できるようになっています。これを\newword{リテラル階層}と呼びます。
+        「えっ，では \mcrd`` ` `` そのものはどうやって書くんだ」と思われた方，安心してください。
+        \mcrd`` ` `` が含まれる文字列は全体を \mcrd``` `` ``` で囲んで
+        
+        \mcrd-input{literal2.mcrds}```
+          ``You can also use ` in literal areas like this.``
+        ```
+        
+        \mcrd-output{literal2.txt}```
+          You can also use ` in literal areas like this.
+        ```
+        
+        のように使えます。さらに \mcrd``` `` ```が含まれる文字列は全体を \mcrd```` ``` ```` で囲んで，
+        …と文字列中に \mcrd`` ` `` が連続する最大個数よりも多い数の \mcrd`` ` `` で括ってリテラル階層にすることができます。
+        左右の個数は同数でなければなりません。
+      }
+    }
+    \subsection{クラス名・ID名オプション}{
+      \p{（執筆中）}
+    }
+    \subsection{文字列操作プリミティヴ}{
+      \p{（執筆中）}
+    }
+    \subsection{手続き型プログラミング機能}{
+      \p{（執筆中）}
+    }
+    \subsection{最終値参照・グローバルハッシュ}{
+      \p{（執筆中）}
+    }
+    \subsection{\type-synt`string`型の実体・2段階評価}{
+      \p{（執筆中）}
+    }
   }
   \section{字句解析の厳密な仕様}{
     \subsection{概要}{
       \p{
+        この章は，Macrodownのより詳細で厳密な仕様が気になるという方に向けた記述です。
         Macrodownは大きく分けて
         \itemize{
           | テキスト階層

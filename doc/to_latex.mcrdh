@@ -24,7 +24,7 @@ let \p p = `\indent` ^(deeper p)^ `\par`
 let \footnote footnote = `\footnote{` ^footnote^ `}`
 
 let \itemize list =
-  `\begin{itemize}` ^(deeper (sub-itemize list))^ `\end{itemize}`
+  `{\samepage\begin{itemize}` ^(deeper (sub-itemize list))^ `\end{itemize}}`
 
 and sub-itemize list =
   if is-empty list then {} else
@@ -65,8 +65,10 @@ let escape-single-char ch =
   else ch
 
 let escape-double-chars ch2 =
-  if      same ch2 `<<` then `<{}<`
-  else if same ch2 `>>` then `>{}>`
+  if      same ch2 `<<` then `<{}<{}`
+  else if same ch2 `>>` then `>{}>{}`
+  else if same ch2 ``` `` ``` then `` `{}`{}``
+  else if same ch2 `''` then `'{}'{}`
   else
     (escape-single-char (string-sub ch2 0 1))
       ^ (escape-single-char (string-sub ch2 1 1))

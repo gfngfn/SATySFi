@@ -46,7 +46,7 @@ let \d-item di dd = {@di; & @dd;}
 
 let \synt synt = `\textcolor[rgb]{0,0,0.75}{\texttt{` ^ {\escape-for-latex{@synt;}} ^ `}}`
 
-let \newword nw = {\\textsf\{@nw;\}}
+let \newword nw = `\textsf{` ^nw^ `}`
 
 % ---- tokens ----
 let toksty tok = `\:\text{\textcolor{red}{$\underline{\text{\textbf{` ^ tok ^ `}}}$}}\:`
@@ -104,27 +104,27 @@ let \token-unit   = toksty `()`
 let \token-mutual     = toksty `mutual`
 let \token-end-mutual = toksty `end-mutual`
 %
-let \repeat-star inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{*}\:`
-let \repeat-plus inner = `\:\Bigl[` ^ inner ^ `\Bigr]^{+}\:`
+let \repeat-star inner = `\:\Bigl[` ^inner^ `\Bigr]^{*}\:`
+let \repeat-plus inner = `\:\Bigl[` ^inner^ `\Bigr]^{+}\:`
 let cfl-or-sub lst =
   if is-empty lst then {} else
     let hd = list-head lst in
     let tl = list-tail lst in
-      hd ^ ( if is-empty tl then {} else {\|} ^ (cfl-or-sub tl) )
+      hd ^ ( if is-empty tl then {} else `|` ^ (cfl-or-sub tl) )
 
-let \cfl-or lst = `\:(` ^ (cfl-or-sub lst) ^ `)\:`
+let \cfl-or lst = `\:(` ^(cfl-or-sub lst)^ `)\:`
 
-let nontmsty nontm = `\:\langle{}\mathit{` ^ nontm ^ `\/}\rangle{}\:`
+let nontmsty nontm = `\:\langle{}\mathit{` ^nontm^ `\/}\rangle{}\:`
 let \TopLevel  = nontmsty `TopLevel`
 let \TopSingle = nontmsty `TopSingle`
-let \Expr     = nontmsty `Expr`
-let \Dec      = nontmsty `Dec`
-let \Text     = nontmsty `Text`
-let \Args     = nontmsty `Args`
-let \Literal  = nontmsty `Literal`
-let \Single   = nontmsty `Single`
-let \ExprArgs = nontmsty `ExprArgs`
-let \TextArgs = nontmsty `TextArgs`
+let \Expr      = nontmsty `Expr`
+let \Dec       = nontmsty `Dec`
+let \Text      = nontmsty `Text`
+let \Args      = nontmsty `Args`
+let \Literal   = nontmsty `Literal`
+let \Single    = nontmsty `Single`
+let \ExprArgs  = nontmsty `ExprArgs`
+let \TextArgs  = nontmsty `TextArgs`
 let \GroupInText = nontmsty `GroupInText`
 let \GroupInExpr = nontmsty `GroupInExpr`
 
@@ -132,13 +132,13 @@ let \extension ext = `\texttt{` ^ext^ `}`
 
 let \file-name fn = `\texttt{` ^{\escape-for-latex{@fn;}}^ `}`
 
-let \math-dp-gather lst = {
-  \\begin\{align*\}\deeper(sub-math-dp-gather lst);\\end\{align*\}
-}
+let \math-dp-gather lst =
+  `\begin{align*}` ^(deeper (sub-math-dp-gather lst))^ `\end{align*}`
+
 and sub-math-dp-gather lst =
   let head = list-head lst in
   let tail = list-tail lst in
-    head ^ ( if is-empty tail then {} else {\\\\} ^ (sub-math-dp-gather tail) )
+    head ^ ( if is-empty tail then {} else `\\` ^ (sub-math-dp-gather tail) )
 
 let \cfl nontm lst =
   if is-empty lst then {} else
@@ -157,21 +157,20 @@ and sub-cfl lst =
     ) ^ ( if is-empty tail then {} else {\ } ^ (sub-cfl tail) )
   )
 
-let \code-dp code = {
-  \\begin\{center\}\deeper{
-    \\parbox\{0.9\\textwidth\}\{@code;\}
-  }\\end\{center\}
-}
+let \code-display code =
+  `\begin{breakbox}\begin{center}` ^(deeper
+    `\parbox{0.9\textwidth}{` ^code^ `}`
+  )^ `\end{center}\end{breakbox}\noindent` ^ {\ }
 
 let \code code = code
 
-let \code-dp-break = {\\\\}
+let \code-break = `\\`
 
-let \code-dp-tab = {\\\ \\\ }
+let \code-tab   = `\quad{}`
 
-let \meta metacode = {\\textcolor\{violet\}\{\\textit\{\\texttt\{@metacode;\}\}\}}
+let \meta metacode = `\textcolor{violet}{\textit{\texttt{` ^metacode^ `}}}`
 
-let \metadots = {$\\ldots$}
+let \metadots = `$\cdots$`
 
 let \mcrd-display code =
   %\\begin\{center\}\deeper{
@@ -203,3 +202,5 @@ let \url-display url =
 let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}`
 
 let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}}
+
+let \quad = `\quad{}`
