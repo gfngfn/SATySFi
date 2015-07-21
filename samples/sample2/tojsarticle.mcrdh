@@ -1,19 +1,21 @@
-let direct-latex-0 csname = {\\@csname;\{\}}
+let deeper s = {\deeper{@s;}}
+
+let direct-latex-0 csname = `\` ^csname^ `{}`
 
 let direct-latex-1 csname =
-  let f arg1 = {\\@csname;\{@arg1;\}} in f
+  let f arg1 = `\` ^csname^ `{` ^arg1^ `}` in f
 
 let direct-latex-2 csname =
-  let f arg1 arg2 = {\\@csname;\{@arg1;\}\{@arg2;\}} in f
+  let f arg1 arg2 = `\` ^csname^ `{` ^arg1^ `}{` ^arg2^ `}` in f
 
 let direct-latex-3 csname =
-  let f arg1 arg2 arg3 = {\\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}} in f
+  let f arg1 arg2 arg3 = `\` ^csname^ `{` ^arg1^ `}{` ^arg2^ `}{` ^arg3^ `}` in f
 
 let direct-latex-4 csname =
-  let f arg1 arg2 arg3 arg4 = {\\@csname;\{@arg1;\}\{@arg2;\}\{@arg3;\}\{@arg4;\}} in f
+  let f arg1 arg2 arg3 arg4 = `\` ^csname^ `{` ^arg1^ `}{` ^arg2^ `}{` ^arg3^ `}{` ^arg4^ `}` in f
 
 let latex-environment envname =
-  let f inner = {\\begin\{@envname;\}\deeper{@inner;}\\end\{@envname;\}} in f
+  let f inner = `\begin{` ^envname^ `}` ^(deeper inner)^ `\end{` ^envname^ `}` in f
 
 let \document head body =
   {
@@ -21,23 +23,17 @@ let \document head body =
     \\makeatletter\deeper{
       @head;
     }\\makeatother\break;
-  } ^ (latex-environment {document}) {@body;}
+  } ^ (latex-environment `document`) body
 
-let \author = direct-latex-1 {author}
-let \title = direct-latex-1 {title}
-let \maketitle u = direct-latex-0 {maketitle}
-let \section head cnt = {
-  \\section\{@head;\}\deeper{
-    @cnt;
-  }\% ---- ----
-}
+let \author = direct-latex-1 `author`
+let \title = direct-latex-1 `title`
+let \maketitle u = direct-latex-0 `maketitle`
+let \section head cnt =
+  `\section{` ^head^ `}` ^(deeper cnt)^ `% ---- ----`
 
-let \subsection head cnt = {
-  \\subsection\{@head;\}\deeper{
-    @cnt;
-  }\% ---- ----
-}
+let \subsection head cnt =
+  `\subsection{` ^head^ `}` ^(deeper cnt)^ `% ---- ----`
 
-let \p inner = {
-  \\indent\deeper{@inner;}\\par
-}
+let \p inner =
+  `\indent`^{\ } ^(deeper inner)^ `\par`^{\ }
+

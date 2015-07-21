@@ -1,4 +1,4 @@
 let special-tag tag special-class =
   let g inner = {<@tag; class="@special-class;">@inner;</@tag;>} in g
-in
-let \hoge = special-tag {span} {hoge} in finish
+
+let \hoge = special-tag {span} {hoge}

@@ -94,7 +94,8 @@ let rec typecheck tyenv utast =
         let tyenv_new = Typeenv.add tyenv varnm beta in
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
             let term_result = LambdaAbstract(varnm, e1) in
-            let type_result = FuncType(rng, Subst.apply_to_type_struct theta1 beta, ty1) in
+            let tydom = overwrite_range (-1024, 0, 0, 0) (Subst.apply_to_type_struct theta1 beta) in
+            let type_result = FuncType(rng, tydom, ty1) in
             let theta_result = theta1 in
               (term_result, type_result, theta_result)
 
