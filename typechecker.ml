@@ -57,8 +57,8 @@ let rec typecheck tyenv utast =
         ( try
             let forallty = Typeenv.find tyenv nv in
             let ty = make_bounded_free forallty in
-              ( print_for_debug ("  " ^ nv ^ " : " ^ (string_of_type_struct forallty) (* for test *)
-              	  ^ "\n    = " ^ (string_of_type_struct ty) ^ "\n") ;                 (* for test *)
+              ( print_for_debug ("  " ^ nv ^ " : " ^ (string_of_type_struct_basic forallty) (* for test *)
+              	  ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                 (* for test *)
                 (ContentOf(nv), (overwrite_range rng ty), Subst.empty)
               )
           with
@@ -84,7 +84,7 @@ let rec typecheck tyenv utast =
                             ) in
           let type_result = Subst.apply_to_type_struct theta_result beta in
           ( print_for_debug ("\n%Apply " ^ (string_of_ast term_result) ^ " : "
-          	  ^ (string_of_type_struct beta) ^ " = " ^ (string_of_type_struct type_result) ^ "\n") ;
+          	  ^ (string_of_type_struct_basic beta) ^ " = " ^ (string_of_type_struct_basic type_result) ^ "\n") ;
           	print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ; (* for test *)
             (term_result, type_result, theta_result)
           )
@@ -94,8 +94,9 @@ let rec typecheck tyenv utast =
         let tyenv_new = Typeenv.add tyenv varnm beta in
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
             let term_result = LambdaAbstract(varnm, e1) in
-            let tydom = overwrite_range (-1024, 0, 0, 0) (Subst.apply_to_type_struct theta1 beta) in
-            let type_result = FuncType(rng, tydom, ty1) in
+            let tydom = (Subst.apply_to_type_struct theta1 beta) in
+            let tycod = ty1 in
+            let type_result = FuncType(rng, tydom, tycod) in
             let theta_result = theta1 in
               (term_result, type_result, theta_result)
 
@@ -264,9 +265,9 @@ and make_forall_type_mutual tyenv theta tvtylst =
     	let prety = Subst.apply_to_type_struct theta tvty in
     ( print_for_debug (Subst.string_of_subst theta) ;
     	print_for_debug (string_of_type_environment tyenv) ;
-    	print_for_debug ("$ '" ^ varnm ^ " : " ^ (string_of_type_struct prety) ^ "\n") ;
+    	print_for_debug ("$ '" ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;
       let forallty  = make_forall_type prety tyenv in
-      let tyenv_new = Typeenv.add tyenv varnm forallty in
+      let tyenv_new = Typeenv.add tyenv varnm (erase_range_of_type forallty) in
         make_forall_type_mutual tyenv_new theta tvtytail
     )
 

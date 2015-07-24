@@ -43,7 +43,12 @@ let rec string_of_ast ast =
   | _ -> "..."
 
 
-let print_for_debug msg = (* print_string msg ; *) ()
+let print_for_debug msg =
+(* enable below to see the process of type inference *)
+(*
+  print_string msg ;
+*)
+  ()
 
 (* untyped_abstract_tree -> code_range *)
 let get_range utast =
@@ -78,6 +83,19 @@ let overwrite_range_of_type tystr rng =
   | TypeEnvironmentType(_, tyenv)  -> TypeEnvironmentType(rng, tyenv)
   | ForallType(tvid, tycont)       -> ForallType(tvid, tycont)
 
+let rec erase_range_of_type tystr =
+  let dummy = (-2048, 0, 0, 0) in
+    match tystr with
+    | IntType(_)                -> IntType(dummy)
+    | StringType(_)             -> StringType(dummy)
+    | BoolType(_)               -> BoolType(dummy)
+    | UnitType(_)               -> UnitType(dummy)
+    | TypeVariable(_, tvid)     -> TypeVariable(dummy, tvid)
+    | FuncType(_, tydom, tycod) -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
+    | ListType(_, tycont)       -> ListType(dummy, erase_range_of_type tycont)
+    | RefType(_, tycont)        -> RefType(dummy, erase_range_of_type tycont)
+    | TypeEnvironmentType(_, tyenv) -> TypeEnvironmentType(dummy, tyenv)
+    | ForallType(tvid, tycont)      -> ForallType(tvid, erase_range_of_type tycont)
 
 let describe_position (sttln, sttpos, endln, endpos) =
   if sttln == endln then
@@ -104,6 +122,39 @@ let rec variable_name_of_int n =
     else
       ""
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
+
+(* for debug *)
+let rec string_of_type_struct_basic tystr =
+  let (sttln, _, _, _) = get_range_from_type tystr in
+    match tystr with
+    | StringType(_) -> if sttln <= 0 then "string" else "string*"
+    | IntType(_)    -> if sttln <= 0 then "int"    else "int*"
+    | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool*"
+    | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit*"
+    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env*"
+    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "*" else "")
+    | FuncType(_, tydom, tycod)  ->
+        let strdom = string_of_type_struct_basic tydom in
+        let strcod = string_of_type_struct_basic tycod in
+        ( match tydom with
+          | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
+          | _                 -> strdom
+        ) ^ " ->" ^ (if sttln <= 0 then "* " else " ") ^ strcod
+    | ListType(_, tycont)        ->
+        let strcont = string_of_type_struct_basic tycont in
+        ( match tycont with
+          | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+          | _                 -> strcont
+        ) ^ " list" ^ (if sttln <= 0 then "*" else "")
+    | RefType(_, tycont)         ->
+        let strcont = string_of_type_struct_basic tycont in
+        ( match tycont with
+          | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+          | _                 -> strcont
+        ) ^ " ref" ^ (if sttln <= 0 then "*" else "")
+    | ForallType(tvid, tycont)   ->
+        "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "*" else "")
+
 
 let meta_max    : type_variable_id ref = ref 0
 let unbound_max : type_variable_id ref = ref 0
@@ -132,6 +183,21 @@ let rec string_of_type_struct tystr =
   unbound_max := 0 ;
   unbound_type_valiable_name_list := [] ;
   string_of_type_struct_sub tystr []
+(*
+  string_of_type_struct_basic tystr
+*)
+and string_of_type_struct_double tystr1 tystr2 =
+  meta_max := 0 ;
+  unbound_max := 0 ;
+  unbound_type_valiable_name_list := [] ;
+  let strty1 = string_of_type_struct_sub tystr1 [] in
+  let strty2 = string_of_type_struct_sub tystr2 [] in
+    (strty1, strty2)
+(*
+  let strty1 = string_of_type_struct_basic tystr1 in
+  let strty2 = string_of_type_struct_basic tystr2 in
+    (strty1, strty2)
+*)
 
 (* type_struct -> (type_variable_id * string) list -> string *)
 and string_of_type_struct_sub tystr lst =
