@@ -19,7 +19,7 @@ and type_struct =
 (* !!!! ---- global variable ---- !!!! *)
 let global_hash_env : environment = Hashtbl.create 32
 
-
+(* -- for test -- *)
 let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
@@ -35,7 +35,7 @@ let rec string_of_ast ast =
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | Reference(a)           -> "!" ^ (string_of_ast a)
-  | ReferenceFinal(a)     -> "!!" ^ (string_of_ast a)
+  | ReferenceFinal(a)      -> "!!" ^ (string_of_ast a)
   | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
   | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
   | UnitConstant           -> "()"
@@ -105,25 +105,9 @@ let describe_position (sttln, sttpos, endln, endpos) =
     "line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
       ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos)
 
-let error_reporting rng errmsg =
-  let (sttln, sttpos, endln, endpos) = rng in
-    if sttln == endln then
-      "at line " ^ (string_of_int sttln) ^ ", characters "
-        ^ (string_of_int sttpos) ^ "-" ^ (string_of_int endpos) ^ ":\n"
-        ^ "    " ^ errmsg
-    else
-      "at line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
-        ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos) ^ ":\n"
-        ^ "    " ^ errmsg
+let error_reporting rng errmsg = (describe_position rng) ^ ":\n    " ^ errmsg
 
-let rec variable_name_of_int n =
-  ( if n >= 26 then
-      variable_name_of_int ((n - n mod 26) / 26 - 1)
-    else
-      ""
-  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
-
-(* for debug *)
+(* -- for debug -- *)
 let rec string_of_type_struct_basic tystr =
   let (sttln, _, _, _) = get_range_from_type tystr in
     match tystr with
@@ -156,9 +140,17 @@ let rec string_of_type_struct_basic tystr =
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "*" else "")
 
 
+
 let meta_max    : type_variable_id ref = ref 0
 let unbound_max : type_variable_id ref = ref 0
 let unbound_type_valiable_name_list : (type_variable_id * string ) list ref = ref []
+
+let rec variable_name_of_int n =
+  ( if n >= 26 then
+      variable_name_of_int ((n - n mod 26) / 26 - 1)
+    else
+      ""
+  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 let new_meta_type_variable_name () =
   let res = variable_name_of_int (!meta_max) in

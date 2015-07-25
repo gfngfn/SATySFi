@@ -81,6 +81,7 @@ let digit = ['0'-'9']
 let latin = ( ['a'-'z'] | ['A'-'Z'] )
 let identifier = (latin (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
+let str = [^ ' ' '\t' '\n' '@' '`' '\\' '{' '}' '%' '|']
 rule numexpr = parse
   | "%" {
       after_comment_state := STATE_NUMEXPR ;
@@ -257,7 +258,7 @@ and strexpr = parse
       else
         raise (LexError(error_reporting lexbuf "input ended while reading string expression"))
     }
-  | _ {
+  | str+ {
       ignore_space := false ;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }

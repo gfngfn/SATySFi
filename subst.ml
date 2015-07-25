@@ -1,6 +1,9 @@
 open Types
 open Typeenv
 
+exception InclusionError
+exception ContradictionError
+
 type t = (type_variable_id * type_struct) list
 
 let empty = []
@@ -14,9 +17,7 @@ let rec find theta key =
   | (k, v) :: tail -> if k == key then v else find tail key
 
 
-let rec eliminate theta key =
-	eliminate_sub theta key []
-
+let rec eliminate theta key = eliminate_sub theta key []
 and eliminate_sub theta key constr =
   match theta with
   | [] -> raise Not_found
@@ -35,6 +36,7 @@ let rec overwrite_type_struct tystr key value =
   | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
   | other                   -> other
 
+
 (* Subst.t -> type_struct -> type_struct *)
 let rec apply_to_type_struct theta tystr =
   match tystr with
@@ -44,6 +46,7 @@ let rec apply_to_type_struct theta tystr =
   | TypeVariable(rng, tv)       -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
   | other                       -> other
 
+
 (* Subst.t -> type_environment -> type_environment *)
 let rec apply_to_type_environment theta tyenv =
   match tyenv with
@@ -51,7 +54,11 @@ let rec apply_to_type_environment theta tyenv =
   | (varnm, tystr) :: tail ->
       (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment theta tail)
 
-let rec apply_to_term theta ast = ast (* need writing *)
+
+(* -- unneccesary -- *)
+(* Subst.t -> abstract_tree -> abstract_tree *)
+let rec apply_to_term theta ast = ast
+
 
 (* type_variable_id -> type_struct -> (bool * code_range) *)
 let rec emerge_in tvid tystr =
@@ -66,6 +73,7 @@ let rec emerge_in tvid tystr =
     | RefType(_, cont)         -> emerge_in tvid cont
     | _                        -> (false, dummy)
 
+
 let rec overwrite theta key value =
   match theta with
   | []             -> []
@@ -74,13 +82,74 @@ let rec overwrite theta key value =
         (key, value) :: (overwrite tail key value)
       else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 
+
 let overwrite_or_add theta key value =
   overwrite (add theta key value) key value
 
 
+let report_inclusion_error tystr1 tystr2 =
+  let rng1 = get_range_from_type tystr1 in
+  let rng2 = get_range_from_type tystr2 in
+  let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
+  let msg =
+  ( if is_invalid_range rng1 then
+      if is_invalid_range rng2 then
+        let (sttln1, _, _, _) = rng1 in
+        let (sttln2, _, _, _) = rng2 in
+          "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"
+      else
+        "at " ^ (describe_position rng2)
+    else
+      "at " ^ (describe_position rng1)
+  ) in
+    raise (TypeCheckError(
+        msg ^ ":\n"
+      ^ "    this expression has types\n"
+      ^ "      " ^ strty1 ^ "\n"
+      ^ "    and\n"
+      ^ "      " ^ strty2 ^ "\n"
+      ^ "    at the same time,\n"
+      ^ "    but these are incompatible with each other"
+    ))
+
+
+let report_contradiction_error tystr1 tystr2 =
+  let rng1 = get_range_from_type tystr1 in
+  let rng2 = get_range_from_type tystr2 in
+  let strty1 = string_of_type_struct tystr1 in
+  let strty2 = string_of_type_struct tystr2 in
+  let msg1 = describe_position rng1 in
+  let msg2 = describe_position rng2 in
+    if is_invalid_range rng1 then
+      if is_invalid_range rng2 then
+        raise ContradictionError
+      else
+        raise (TypeCheckError(
+            "at " ^ msg2 ^ ":\n"
+          ^ "    this expression has type\n"
+          ^ "      " ^ strty2 ^ "\n"
+          ^ "    but is expected of type\n"
+          ^ "      " ^ strty1))
+    else
+      if is_invalid_range rng2 then
+        raise (TypeCheckError(
+            "at " ^ msg1 ^ ":\n"
+          ^ "    this expression has type\n"
+          ^ "      " ^ strty1 ^ "\n"
+          ^ "    but is expected of type\n"
+          ^ "      " ^ strty2))
+      else
+        raise (TypeCheckError(
+            "at " ^ msg1 ^ ":\n"
+          ^ "    this expression has type\n"
+          ^ "      " ^ strty1 ^ "\n"
+          ^ "    but is expected of type\n"
+          ^ "      " ^ strty2 ^ ";\n"
+          ^ "    this constraint is required by the expression\n"
+          ^ "    at " ^ msg2))
+
 (* Subst.t -> Subst.t *)
 let rec fix_subst theta = fix_subst_sub theta theta
-
 and fix_subst_sub rest from =
   match rest with
   | []                    -> ( check_emergence from ; from )
@@ -92,11 +161,10 @@ and check_emergence theta =
   | (tvid, tystr) :: tail ->
       let (b, rng) = emerge_in tvid tystr in
         if b then
-          let (strty1, strty2) = string_of_type_struct_double (TypeVariable((-259, 0, 0, 0), tvid)) tystr in
-          raise (TypeCheckError(error_reporting rng
-            ("this expression has types <" ^ strty1 ^ ">\n"
-              ^ "    and <" ^ strty2 ^ "> at the same time,\n"
-              ^ "    but the former type emerges in the latter one")))
+          if is_invalid_range rng then
+            ( print_for_debug "*1\n" ; raise InclusionError )
+          else
+            report_inclusion_error (TypeVariable(rng, tvid)) tystr
         else
           check_emergence tail
 
@@ -120,6 +188,23 @@ and compose_prim theta2 theta1 =
 
 (* type_struct -> type_struct -> Subst.t *)
 and unify tystr1 tystr2 =
+  try unify_sub tystr1 tystr2 with
+  | InclusionError     -> report_inclusion_error tystr1 tystr2
+  | ContradictionError ->
+       let rng1 = get_range_from_type tystr1 in
+       let rng2 = get_range_from_type tystr2 in
+         if (is_invalid_range rng1) && (is_invalid_range rng2) then
+           let (sttln1, _, _, _) = rng1 in
+           let (sttln2, _, _, _) = rng2 in
+             raise (TypeCheckError(
+                "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")\n"
+              ^ "      " ^ (string_of_type_struct tystr1) ^ "\n"
+              ^ "    and\n"
+              ^ "      " ^ (string_of_type_struct tystr2)))
+         else
+           report_contradiction_error tystr1 tystr2
+
+and unify_sub tystr1 tystr2 =
   print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ; (* for test *)
   match (tystr1, tystr2) with
@@ -130,11 +215,11 @@ and unify tystr1 tystr2 =
   | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> empty
 
   | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) ->
-      compose (unify dom1 dom2) (unify cod1 cod2)
+      compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
 
-  | (ListType(_, cont1), ListType(_, cont2)) -> unify cont1 cont2
+  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2
 
-  | (RefType(_, cont1), RefType(_, cont2))   -> unify cont1 cont2
+  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
 
   | (TypeVariable(rng1, tvid1), tystr) ->
       ( match tystr with
@@ -155,39 +240,25 @@ and unify tystr1 tystr2 =
         | other ->
             let (b, _) = emerge_in tvid1 tystr in
               if b then
-                raise (TypeCheckError(error_reporting rng1
-                  ("this expression has type <" ^ (string_of_type_struct (TypeVariable(rng1, tvid1))) ^ ">\n"
-                    ^ "    and <" ^ (string_of_type_struct tystr) ^ "> at the same time,\n"
-                    ^ "    but the former type emerges in the latter one")))
+                report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
               else
                 [(tvid1, overwrite_range_of_type tystr rng1)]
       )
-  | (tystr, TypeVariable(rng, tvid)) -> unify (TypeVariable(rng, tvid)) tystr
+  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
   | (tystr1, tystr2) ->
-      let (sttln1, sttpos1, endln1, endpos1) = get_range_from_type tystr1 in
-      let (sttln2, sttpos2, endln2, endpos2) = get_range_from_type tystr2 in
-      let strty1 = string_of_type_struct tystr1 in
-      let strty2 = string_of_type_struct tystr2 in
-      let msg1 = describe_position (sttln1, sttpos1, endln1, endpos1) in
-      let msg2 = describe_position (sttln2, sttpos2, endln2, endpos2) in
-        if (sttln1 > 0) then
-          if (sttln2 > 0) then
-            raise (TypeCheckError("at " ^ msg1 ^ " and " ^ msg2 ^ ":\n"
-              ^ "    these expressions have type <" ^ strty1 ^ "> and <" ^ strty2 ^ "> respectively,\n"
-              ^ "    but they should correspond with each other"))
-          else
-            raise (TypeCheckError(" at " ^ msg1 ^ ":\n"
-              ^ "    this expression has type <" ^ strty1 ^ ">,\n"
-              ^ "    but is expected of type <" ^ strty2 ^ ">"))
+(*
+      let rng1 = get_range_from_type tystr1 in
+      let rng2 = get_range_from_type tystr2 in
+        if (is_invalid_range rng1) || (is_invalid_range rng2) then
+*)
+          report_contradiction_error tystr1 tystr2
+(*
         else
-          if (sttln2 > 0) then
-            raise (TypeCheckError("at " ^ msg2 ^ ":\n"
-              ^ "    this expression has type <" ^ strty2 ^ ">,\n"
-              ^ "    but is expected of type <" ^ strty1 ^ ">"))
-          else
-            raise (TypeCheckError("something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"))
-
+        ( print_string "*2\n" ;
+          raise ContradictionError
+        )
+*)
 
 (* for test *)
 let rec string_of_subst theta =
@@ -200,3 +271,4 @@ and string_of_subst_sub theta =
   | (tvid, tystr) :: tail ->
       " | '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct_basic tystr) ^ "\n"
         ^ (string_of_subst_sub tail)
+
