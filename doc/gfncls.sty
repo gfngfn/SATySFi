@@ -1,0 +1,149 @@
+\newdimen\gfncls@dimen@titleheight
+\newdimen\gfncls@dimen@authorheight
+\newdimen\gfncls@dimen@dateheight
+\newdimen\gfncls@dimen@lowerheight
+\newdimen\gfncls@dimen@datemiddle
+\newdimen\gfncls@dimen@textwidth
+%  \def\maketitle{%
+%    \begin{center}
+%      \textsf{\LARGE\@title}
+%    \end{center}
+%    \begin{flushright}
+%      {\large\@author}
+%    \end{flushright}
+%  }
+%\renewcommand{\thepage}{--\arabic{page}--}
+%\setlength{\parskip}{1em}
+\renewcommand{\thesection}{\@arabic\c@section.}
+\renewcommand{\thesubsection}{\@arabic\c@section.\@arabic\c@subsection.}
+\renewcommand{\thesubsubsection}{\@arabic\c@section.\@arabic\c@subsection.\@arabic\c@subsubsection.}
+\renewcommand{\section}{%
+  \@startsection{section}{1}{\z@}{\gfncls@sectionbeforeskip}{\gfncls@sectionafterskip}{\gfncls@sectionstyle}%
+}
+%\def\gfncls@sectionbeforeskip{\Cvs \@plus.5\Cdp \@minus.2\Cdp}
+%\def\gfncls@sectionafterskip{.5\Cvs \@plus.3\Cdp}
+\renewcommand{\subsection}{%
+  \@startsection{subsection}{2}{\z@}{.5\Cvs \@plus.5\Cdp \@minus.2\Cdp}{.2\Cvs \@plus.3\Cdp}{\gfncls@subsectionstyle}%
+}
+\renewcommand{\subsubsection}{%
+  \@startsection{subsubsection}{3}{\z@}{\Cvs \@plus.5\Cdp \@minus.2\Cdp}{\z@}{\normalfont\normalsize\headfont}%
+}
+\def\@seccntformat#1{\csname the#1\endcsname\enskip}
+%
+\def\setsectiontheme#1{%
+  \expandafter\let\expandafter\@maketitle\expandafter=\csname @maketitle@#1\endcsname
+  \expandafter\let\expandafter\gfncls@sectionstyle\expandafter=\csname gfncls@sectionstyle@#1\endcsname
+  \expandafter\let\expandafter\gfncls@sectionbeforeskip\expandafter=\csname gfncls@sectionbeforeskip@#1\endcsname
+  \expandafter\let\expandafter\gfncls@sectionafterskip\expandafter=\csname gfncls@sectionafterskip@#1\endcsname
+  \expandafter\let\expandafter\gfncls@subsectionstyle\expandafter=\csname gfncls@subsectionstyle@#1\endcsname
+}
+% ---- std ----
+  \def\@maketitle@std{%
+    \newpage\null
+    \vskip 2em\relax
+    \begin{center}%
+      \let\footnote\thanks
+      {\LARGE \@title \par}%
+      \vskip 1.5em\relax
+      {\large
+        \lineskip .5em\relax
+        \begin{tabular}[t]{c}%
+          \@author
+        \end{tabular}\par}%
+      \vskip 1em\relax
+      {\large \@date}%
+    \end{center}%
+    \par\vskip 1.5em\relax
+    \ifvoid\@abstractbox\else\centerline{\box\@abstractbox}\vskip1.5em\relax\fi
+  }
+\def\gfncls@sectionstyle@std#1{\textsf{\normalfont\Large\headfont #1}}
+\def\gfncls@subsectionstyle@std#1{\textsf{\normalfont\large\headfont #1}}
+\def\gfncls@sectionbeforeskip@std{\Cvs \@plus.5\Cdp \@minus.2\Cdp}
+\def\gfncls@sectionafterskip@std{.5\Cvs \@plus.3\Cdp}
+% ---- concise ----
+  \def\@maketitle@concise{%
+    \newpage\null
+    \begin{center}%
+      \let\footnote\thanks
+      {\LARGE \@title\par}%
+      \vskip 1.5em\relax
+      {\large
+        \lineskip .5em\relax
+        \begin{flushright}%
+          \@author
+        \end{flushright}\par}%
+    \end{center}%
+    \ifvoid\@abstractbox\else\centerline{\box\@abstractbox}\vskip1.5em\relax\fi
+  }
+\def\gfncls@sectionstyle@concise#1{%
+  {\parbox[c]{\textwidth}{%
+    \parbox[c]{0.99\textwidth}{\enskip\textsf{\normalfont\large\headfont #1}}\par
+    \vskip -2ex\relax
+    \begin{tikzpicture}
+      \draw[line width=1pt] (0,0) -- (0.99\textwidth,0);
+    \end{tikzpicture}%
+  }}%
+}
+\def\gfncls@subsectionstyle@concise#1{\textsf{\normalfont\large\headfont #1}}
+\def\gfncls@sectionbeforeskip@concise{.5\Cvs \@plus.1\Cdp \@minus.1\Cdp}
+\def\gfncls@sectionafterskip@concise{.2\Cvs \@plus.1\Cdp}
+% ---- line ----
+\def\@maketitle@line{%
+  \setbox0=\hbox{\parbox{0.79\textwidth}{\centering\LARGE\@title\par}}%
+  \gfncls@dimen@titleheight=0.75cm\relax
+  \advance\gfncls@dimen@titleheight by\ht0\relax
+  \advance\gfncls@dimen@titleheight by\dp0\relax
+  \setbox1=\hbox{\parbox{0.79\textwidth}{\centering\large\begin{tabular}{l}\@author\end{tabular}\par}}%
+  \gfncls@dimen@authorheight=0.5cm\relax
+  \advance\gfncls@dimen@authorheight by\ht1\relax
+  \advance\gfncls@dimen@authorheight by\dp1\relax
+  \setbox2=\hbox{\parbox{0.79\textwidth}{\centering\normalsize\@date\par}}
+  \gfncls@dimen@dateheight=0.5cm\relax
+  \advance\gfncls@dimen@dateheight by\ht2\relax
+  \advance\gfncls@dimen@dateheight by\dp2\relax
+  \gfncls@dimen@lowerheight=\gfncls@dimen@authorheight\relax
+  \advance\gfncls@dimen@lowerheight by\gfncls@dimen@dateheight\relax
+  \gfncls@dimen@datemiddle=\gfncls@dimen@authorheight\relax
+  \advance\gfncls@dimen@datemiddle by0.5\gfncls@dimen@dateheight\relax
+  \newpage\null
+  \begin{center}
+    \begin{tikzpicture}
+      \draw [line width=2pt, double distance=2pt]
+           (-0.4\textwidth, \gfncls@dimen@titleheight) rectangle (0.4\textwidth, -\gfncls@dimen@lowerheight);
+      \draw (0, 0.5\gfncls@dimen@titleheight) node {\parbox[c]{0.79\textwidth}{\copy0}};
+      \draw (-0.3\textwidth, 0) -- (0.3\textwidth, 0);
+      \draw (0, -0.5\gfncls@dimen@authorheight) node {\parbox[c]{0.79\textwidth}{\copy1}};
+      \draw (-0.2\textwidth, -\gfncls@dimen@authorheight) -- (0.2\textwidth, -\gfncls@dimen@authorheight);
+      \draw (0, -\gfncls@dimen@datemiddle) node {\parbox[c]{0.79\textwidth}{\copy2}};
+    \end{tikzpicture}
+  \end{center}
+  \ifvoid\@abstractbox\else\centerline{\box\@abstractbox}\vskip1.5em\relax\fi
+}
+\def\gfncls@sectionstyle@line#1{%
+  {\parbox[c]{\textwidth}{%
+    \begin{tikzpicture}
+      \draw[line width=1pt] (0,0) -- (0.99\textwidth,0);
+      \draw[line width=0.5pt] (0,-3pt) -- (0.99\textwidth,-3pt);
+    \end{tikzpicture}\par
+    \vspace{-0.75ex}%
+    \parbox[c][3ex][c]{0.99\textwidth}{\enskip\textsf{\normalfont\Large\headfont #1}}\par
+    \vspace{-0.75ex}%
+    \begin{tikzpicture}
+      \draw[line width=0.5pt] (0,0) -- (0.99\textwidth,0);
+      \draw[line width=1pt] (0,-3pt) -- (0.99\textwidth,-3pt);
+    \end{tikzpicture}\par
+  }}%
+}
+\def\gfncls@subsectionstyle@line#1{%
+  {\parbox[c]{\textwidth}{%
+    \parbox[c]{0.99\textwidth}{\enskip\textsf{\normalfont\large\headfont #1}}\par
+    \vspace{-2ex}%
+    \begin{tikzpicture}
+      \draw[line width=1pt] (0,0) -- (0.99\textwidth,0);
+    \end{tikzpicture}%
+  }}%
+}
+\def\gfncls@sectionbeforeskip@line{\Cvs \@plus.5\Cdp \@minus.2\Cdp}
+\def\gfncls@sectionafterskip@line{.5\Cvs \@plus.3\Cdp}
+% ---- ----
+\setsectiontheme{line}
