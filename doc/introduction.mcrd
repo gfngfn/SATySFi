@@ -487,6 +487,30 @@
         があります。
       }
     }
+    \subsection{文字列操作プリミティヴ}{
+      \p{
+        文字列を“直接見る”或いは“加工する”プリミティヴとして
+        \itemize{
+          | \mcrd-type`\deeper` `string -> string`
+          | \mcrd-type`string-length` `string -> int`
+          | \mcrd-type`string-sub` `string -> int -> int -> string`
+          | \mcrd-type`same` `string -> string -> bool`
+          |}
+        があります。
+        \mcrd`\deeper` は出力される文字列に於けるインデントを深めて返し，
+        \code{\synt`string-length` \meta{s}} は与えられた文字列 \code{\meta{s}} の長さを返し，
+        \code{\synt`string-sub` \meta{s} \meta{i} \meta{l}} は
+        文字列 \code{\meta{s}} の \code{\meta{i}} 文字目から \code{\meta{l}} 文字を返し，
+        \code{\synt`same` \meta{s} \meta{t}} は
+        文字列 \code{\meta{s}} と \code{\meta{t}} が一致していれば真を，そうでなければ偽を返します。
+      }
+      \p{
+        ただし，これらのプリミティヴの機能は，厳密には上記の説明ほど単純ではありません。
+        ほとんどの場合は上記の説明で意図通り使用することができますが，用いられ方によっては
+        \type-synt`string`型の仕様とMacrodownの評価規則を正確に知らないと不可解に近いような挙動を見せてしまいます。
+        これについては後の\newword{最終値参照}と\newword{グローバルハッシュ}の節で述べます。
+      }
+    }
     \subsection{再帰}{
       \p{
         条件分岐を使えば，再帰函数によって繰り返し処理を書くこともできます。
@@ -774,13 +798,13 @@
         そこでより簡潔に定文字列を書く方法として，プログラム階層で
         
         \mcrd-input{literal1.mcrds}```
-          `In literal areas, you can use letters \, {, }, and @ as itself.`
+          `In literal areas, you can use letters \, {, }, and @ as they are.`
         ```
         
         と \mcrd`` ` `` で括って書くことで
         
         \mcrd-output{literal1.txt}```
-          In literal areas, you can use letters \, {, }, and @ as itself.
+          In literal areas, you can use letters \, {, }, and @ as they are.
         ```
 
         と出力できるようになっています。これを\newword{リテラル階層}と呼びます。
@@ -799,15 +823,201 @@
         …と文字列中に \mcrd`` ` `` が連続する最大個数よりも多い数の \mcrd`` ` `` で括ってリテラル階層にすることができます。
         左右の個数は同数でなければなりません。
       }
+      \p{
+        \mcrd`` ` `` \metadots; \mcrd`` ` `` はプログラム階層での文字列だけでなく，テキスト引数として使うこともできます。
+        すなわち，例えば
+        
+        \mcrd-input{literal3.mcrds}```
+          let \test inner = {The parameter is @inner;.} in
+            {\test`{@bd_gfngfn}`}
+        ```
+        
+        に対しては
+        
+        \mcrd-output{literal3.txt}```
+          The parameter is {@bd_gfngfn}.
+        ```
+        
+        と出力されます。
+        リテラル階層を用いて2個以上の連続するテキスト引数を書く場合は，
+        それらの引数の間にスペースを空けねばなりません。すなわち
+        
+        \mcrd-input{literal4.mcrds}```
+          let \test p1 p2 = {First: p1, Second: p2.} in
+            {(\test``vis-a`-vis`` `P \/ Q`)}
+        ```
+        \mcrd-output{leteral4.txt}```
+          (First: vis-a`-vis, Second: P \/ Q.)
+        ```
+        
+        のようにします。これは，スペースを空けないと \mcrd``` `` ``` で始まった
+        1個目の引数が \mcrd```` ``` ```` で終了しているとみなされてしまい，
+        釣り合いがとれていないという旨のエラーが返されるからです。
+      }
     }
     \subsection{クラス名・ID名オプション}{
-      \p{（執筆中）}
-    }
-    \subsection{文字列操作プリミティヴ}{
-      \p{（執筆中）}
+      \p{
+        マクロは適用に於いて\newword{クラス名オプション}および\newword{ID名オプション}をとることができます。
+        ここで言うクラス名とID名とは，おおよそHTMLのクラス属性とID属性にそれぞれ対応するものです。
+        クラス名オプション，ID名オプションはいずれもアクティヴ階層で使い，
+        
+        \code-display{
+          \synt`\`\meta`cs` \synt`.`\meta`class` \synt`#`\meta`id` \synt`(` \metadots;
+        }
+        
+        のように，マクロを表す制御綴よりも後ろで，どのプログラム引数よりも手前に書きます。
+        クラス名オプションとID名オプションはいずれか片方でも構わず，
+        また両方書く場合はクラス名オプションを先に書かねばなりません。
+        クラス名オプションは先頭の \mcrd`.` を除いた部分が文字列として変数 \mcrd`class` に，
+        同様にID名オプションは先頭の \mcrd`#` を除いた部分が文字列として変数 \mcrd`id` に格納されてマクロが適用されます。
+        
+        マクロ定義中でクラス名オプションの文字列を使用するには，
+        まず指定された場合と指定されなかった場合で分岐しなければなりませんから
+        
+        \code-display{
+          \synt`if-class-is-valid` \synt`then` \meta`ExprT` \synt`else` \meta`ExprF`
+        }
+        
+        という分岐を用います。\mcrd`if-class-is-valid` でひとつのトークンであることに注意してください。
+        また，\mcrd`then` は省略することができます。
+        この分岐に於いて，クラス名オプションが指定されている場合は \code{\meta`ExprT`} が，
+        指定されなかった場合は \code{\meta`ExprF`} がそれぞれ評価され，
+        このうち \code{\meta`ExprT`} 内でのみ変数 \mcrd`class` を用いることができます。
+        \code{\meta`ExprF`} 内や \mcrd`if-class-is-valid` の外で \mcrd`class` が用いられた場合は，
+        型検査時にエラーが返されます。ID名オプションも同様に
+
+        \code-display{
+          \synt`if-id-is-valid` \synt`then` \meta`ExprT` \synt`else` \meta`ExprF`
+        }
+        
+        で分岐し，\code{\meta`ExprT`} 内でのみ変数 \mcrd`id` を用いることができます。
+        使用例としては
+        
+        \mcrd-input{header.mcrdh}```
+          let deeper inner = {\deeper{@inner;}}
+
+          let \p inner = `\indent` ^(deeper inner)^ `\par`
+
+          let \sect sect cont =
+            `\section{` ^sect^ `}` ^
+              ( if-id-is-valid `\label{`^id^ `}` else {} ) ^
+              (deeper cont) ^
+            `% ---- ----`
+        ```
+        \mcrd-input{main.mcrd}```
+          \sect{First Title}{
+            \p{ The quick brown fox jumps over the lazy dog. }
+          }
+          \sect #second {Second Title}{
+            \p{ My quiz above the kiwi juice needs priceless fixing. }
+          }
+        ```
+        
+        から
+        
+        \mcrd-output{output.txt}```
+          \section{First Title}
+            \indent
+              The quick brown fox jumps over the lazy dog.
+            \par
+          % ---- ----
+          \section{Second Title}\label{second}
+            \indent
+              My quiz above the kiwi juice needs priceless fixing.
+            \par
+          % ---- ----
+        ```
+        
+        を得ることができます。
+      }
     }
     \subsection{手続き型プログラミング機能}{
-      \p{（執筆中）}
+      \p{
+        これまで函数型プログラミングを基礎に各種機能を紹介してきましたが，
+        手続き型プログラミングにあたる機能も存在しています。
+        手続き型に洗脳されている皆様におかれましては「なぜそれをもっと早く言わなかったんだ」
+        と思われたかもしれませんが，
+        手続き的プログラミングは破壊的代入の存在によりいわゆる参照透過性が失われるなど
+        相対的に保守を困難にする要素をはらんでいるため，その使用は最小限に留めたいという志向があります。
+        といっても，破壊的代入が可能な変数を用いた方がずっと見通しよく処理が書けることも多々あるので，
+        これを意図して手続き型の機能を備えつけています。
+      }
+      \p{
+        まず，書き換え可能な変数の宣言は
+        
+        \code-display{
+          \synt`let-mutable` \meta`var` \synt`<-` \meta`ExprA` \synt`in` \meta`ExprB`
+        }
+        
+        で行ないます。こうすると変数 \code{\meta`var`} に \code{\meta`ExprA`} の評価結果が初期値として代入され，
+        \code{\meta`ExprB`} をスコープとして使用することができます。
+        大域環境では \code{\synt`in` \meta`ExprB`} を書かずに
+
+        \code-display{
+          \synt`let-mutable` \meta`var` \synt`<-` \meta`ExprA`
+        }
+        
+        とすることで以降すべての箇所で \code{\meta`var`} を書き換えたり参照したりして使えます。
+        このようにして宣言された \code{\meta`var`} は，
+        \code{\meta`ExprA`} を\type-synt`'t`型とすると \type-synt`'t ref`型を持ちます。
+        参照は通常の変数とは違い \mcrd`!` をつけて \code{\synt`!` \meta`var`} とします。
+        また書き換えは \mcrd`<-` を用いて \code{\meta`var` \synt`<-` \meta`Expr`} とします。
+        書き換えの式全体は\type-synt`unit`型です。引き続き処理を行なうには
+        逐次評価の二項演算子 \mcrd-type`before` `unit -> 'a -> 'a` を用います。
+        例えば
+        
+        \mcrd-input{ref1.mcrds}```
+          let-mutable x <- {hoge} in
+            (! x) ^ {/} ^ ( x <- {piyo} before (! x) )
+        ```
+        
+        に対する出力は
+        
+        \mcrd-output{ref1.txt}```
+          hoge/piyo
+        ```
+        
+        となります。
+      }
+      \p{
+        ループの機能もあります。\mcrd`while` を用いて
+        
+        \code-display{
+          \synt`while` \meta`ExprB` \synt`do` \meta`ExprC`
+        }
+        
+        と書くと，\code{\meta`ExprB`} が真である間 \code{\meta`ExprC`} を繰り返し評価し，
+        \code{\meta`ExprB`} が偽となった時に\type-synt`unit`型の唯一の値を返します。
+        これを用いると，例えば\math{1}から\math{n}までの和を求める函数は
+        
+        \mcrd-input{while.mcrds}```
+          let sum n =
+            let-mutable i <- 1 in
+            let-mutable r <- 0 in
+              ( while ! i <= n do
+                r <- (! r) + (! i) before i <- (! i) + 1
+              ) before ! r
+
+          in arabic (sum 10)
+        ```
+        \mcrd-output{while.txt}```
+          55
+        ```
+        
+        と定義して使うことができます。しかしこの例のような処理は“わざわざ”手続き的に書かなくとも
+        
+        \mcrd-input{rec.mcrds}```
+          let sum n =
+            if n <= 0 then 0 else n + (sum (n - 1))
+          
+          in arabic (sum 10)
+        ```
+        
+        とすれば済む話ではあります。
+        手続き的処理がどうしても必要な場面というのは，
+        例えば文書の冒頭で宣言的に書かれた情報を文書の途中で使うために書き換え可能変数に保持しておくといった，
+        比較的限定された状況なのです。
+      }
     }
     \subsection{最終値参照・グローバルハッシュ}{
       \p{（執筆中）}

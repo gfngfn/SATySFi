@@ -6,14 +6,18 @@ exception MainError of string
 let show_control_sequence_type : bool ref = ref false
 let show_function_type         : bool ref = ref false
 
-let is_document_file str = 
-  (compare ".mcrd" (String.sub str ((String.length str) - 5) 5)) == 0
+let is_document_file str =
+  if String.length str < 5 then false else
+    (compare ".mcrd" (String.sub str ((String.length str) - 5) 5)) == 0
 
 let is_header_file str =
-  (compare ".mcrdh" (String.sub str ((String.length str) - 6) 6)) == 0
+  if String.length str < 6 then false else
+    (compare ".mcrdh" (String.sub str ((String.length str) - 6) 6)) == 0
 
 let is_standalone_file str =
-  (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0
+  if String.length str < 6 then false else
+    (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0
+
 
 (* type_environment -> environment -> string -> (type_environment * environment) *)
 let make_environment_from_header_file tyenv env file_name_in =
@@ -40,6 +44,8 @@ let make_environment_from_header_file tyenv env file_name_in =
     )
   )
 
+
+(* type_environment -> environment -> string -> string -> unit *)
 let read_standalone_file tyenv env file_name_in file_name_out =
   ( print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
@@ -61,6 +67,7 @@ let read_standalone_file tyenv env file_name_in file_name_out =
     )
   )
 
+
 (* type_environment -> environment -> string -> string -> unit *)
 let read_document_file tyenv env file_name_in file_name_out =
   ( print_string (" ---- ---- ---- ----\n") ;
@@ -74,8 +81,12 @@ let read_document_file tyenv env file_name_in file_name_out =
         | StringType(_) ->
             let evaled = Evaluator.interpret env ast in
             let content_out = Out.main evaled in
+            if (String.length content_out) == 0 then
+            ( print_string " ---- ---- ---- ----\n" ;
+              print_string "  no output.\n" )
+            else
             ( Files.file_out_of_string file_name_out content_out ;
-              print_string (" ---- ---- ---- ----\n") ;
+              print_string " ---- ---- ---- ----\n" ;
               print_string ("  output written on '" ^ file_name_out ^ "'.\n")
             )
         | _ -> raise (TypeCheckError("the output of '" ^ file_name_in ^ "' is not string"))
@@ -87,7 +98,9 @@ let read_document_file tyenv env file_name_in file_name_out =
 let rec main tyenv env file_name_in_list file_name_out =
   try
     match file_name_in_list with
-    | [] -> ()
+    | [] ->
+        ( print_string " ---- ---- ---- ----\n" ;
+        	print_string "  no output.\n" )
     | file_name_in :: tail ->
         if is_document_file file_name_in then
           read_document_file tyenv env file_name_in file_name_out
@@ -118,6 +131,8 @@ let rec see_argv num file_name_in_list file_name_out =
         main tyenv env file_name_in_list file_name_out )
     else
       match Sys.argv.(num) with
+      | "-v" ->
+          print_string "  Macrodown version 1.00b\n"
       | "-o" ->
           ( try
               see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
