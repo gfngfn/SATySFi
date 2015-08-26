@@ -42,6 +42,9 @@ let rec interpret env ast =
       ( add_mutuals_to_environment env_func mutletcons ;
         interpret env_func astrest
       )
+  | PatternMatch(astobj, pmcons) ->
+      let valueobj = interpret env astobj in select_pattern env valueobj pmcons
+
   | LambdaAbstract(varnm, ast) -> FuncWithEnvironment(varnm, ast, env)
 
   | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
@@ -128,6 +131,13 @@ let rec interpret env ast =
 
   | EndOfList -> EndOfList
 
+  | TupleCons(asthd, asttl) ->
+      let valuehd = interpret env asthd in
+      let valuetl = interpret env asttl in
+        TupleCons(valuehd, valuetl)
+
+  | EndOfTuple -> EndOfTuple
+
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with
@@ -179,7 +189,7 @@ let rec interpret env ast =
 
   | LetMutableIn(varnm, astdflt, astaft) ->
       let valuedflt = interpret env astdflt in
-      let env_new = Hashtbl.copy env in
+      let env_new = copy_environment env in
       ( add_to_environment env_new varnm (ref (MutableValue(valuedflt))) ;
         interpret env_new astaft
       )
@@ -298,13 +308,42 @@ and interpret_bool env ast =
   let vb = interpret env ast in
     match vb with
     | BooleanConstant(bc) -> bc
-    | other -> raise (EvalError("not of type bool: " ^ (string_of_ast other)))
+    | other -> raise (EvalError("this cannot happen: not of type bool: " ^ (string_of_ast other)))
 
 and interpret_int env ast =
   let vi = interpret env ast in
     match vi with
     | NumericConstant(nc) -> nc
-    | other -> raise (EvalError("not of type int: " ^ (string_of_ast other)))
+    | other -> raise (EvalError("this cannot happen: not of type int: " ^ (string_of_ast other)))
+
+
+and select_pattern env astobj pmcons =
+  match pmcons with
+  | EndOfPatternMatch               -> raise (EvalError("no matches"))
+  | PatternMatchCons(pat, astto, tailcons) ->
+      let envnew = copy_environment env in
+      let b = check_pattern_matching envnew pat astobj in
+        if b then interpret envnew astto else select_pattern env astobj tailcons
+
+and check_pattern_matching env pat astobj =
+  match (pat, astobj) with
+  | (PNumericConstant(pnc), NumericConstant(nc)) -> pnc = nc
+  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
+  | (PUnitConstant, UnitConstant)                -> true
+  | (PWildCard, _)                               -> true
+  | (PVariable(varnm), _) ->
+      ( add_to_environment env varnm (ref astobj) ; true )
+
+  | (PEndOfList, EndOfList)                      -> true
+  | (PListCons(phd, ptl), ListCons(hd, tl))
+      -> (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+
+  | (PEndOfTuple, EndOfTuple)                    -> true
+  | (PTupleCons(phd, ptl), TupleCons(hd, tl))
+      -> (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+
+  | _ -> false
+
 
 (* environment -> mutual_let_cons -> unit *)
 and add_mutuals_to_environment env mutletcons =

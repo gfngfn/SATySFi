@@ -962,7 +962,13 @@ patbot: /* -> Types.untyped_pattern_tree */
         let (endln, _, endpos) = $5 in
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTPTupleCons($2, $4))
-  }
+      }
+  | BLIST ELIST {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPEndOfList)
+      }
 ;
 pattuple:
   | patcons {

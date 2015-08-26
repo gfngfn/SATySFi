@@ -145,7 +145,6 @@ and pattern_match_cons =
 and pattern_tree =
   | PNumericConstant of int
   | PBooleanConstant of bool
-  | PStringConstant  of string
   | PUnitConstant
   | PListCons        of pattern_tree * pattern_tree
   | PEndOfList
