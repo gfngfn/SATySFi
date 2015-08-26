@@ -221,6 +221,8 @@ and unify_sub tystr1 tystr2 =
 
   | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
 
+  | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
+
   | (TypeVariable(rng1, tvid1), tystr) ->
       ( match tystr with
         | TypeVariable(rng2, tvid2) ->
@@ -259,6 +261,12 @@ and unify_sub tystr1 tystr2 =
           raise ContradictionError
         )
 *)
+and unify_sub_list tylist1 tylist2 =
+  match (tylist1, tylist2) with
+  | ([], [])                 -> empty
+  | (hd1 :: tl1, hd2 :: tl2) -> compose (unify_sub hd1 hd2) (unify_sub_list tl1 tl2)
+  | _                        -> raise ContradictionError
+
 
 (* for test *)
 let rec string_of_subst theta =

@@ -271,13 +271,13 @@ let rec typecheck tyenv utast =
 and typecheck_pattern_match_cons tyenv utpmcons tyobj theta tyres =
   let (rng, utpmconsmain) = utpmcons in
     match utpmconsmain with
-    | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, theta)
+    | UTEndOfPatternMatch -> (EndOfPatternMatch, (Subst.apply_to_type_struct theta tyres), theta)
     | UTPatternMatchCons(utpat, utast1, tailcons) ->
         let (epat, typat, tyenvpat) = typecheck_pattern tyenv utpat in
-        let theta_new = Subst.compose (Subst.unify tyobj typat) theta in
-        let tyenv1 = Subst.apply_to_type_environment theta_new tyenvpat in
+        let thetapat = Subst.compose (Subst.unify tyobj typat) theta in
+        let tyenv1 = Subst.apply_to_type_environment thetapat tyenvpat in
         let (e1, ty1, theta1) = typecheck tyenv1 utast1 in
-        let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 theta_new) in
+        let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
         let tyres_new = Subst.apply_to_type_struct theta2 tyres in
         let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons tyenv tailcons tyobj theta2 tyres_new in
           (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)

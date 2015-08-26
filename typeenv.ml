@@ -86,9 +86,9 @@ let rec string_of_ast ast =
 
 let print_for_debug msg =
 (* enable below to see the process of type inference *)
-(*
+
   print_string msg ;
-*)
+
   ()
 
 (* untyped_abstract_tree -> code_range *)
