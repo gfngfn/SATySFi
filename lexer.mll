@@ -146,6 +146,9 @@ rule numexpr = parse
   | "!"   { REFNOW(get_pos lexbuf) }
   | "!!"  { REFFINAL(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }
+  | ","   { COMMA(get_pos lexbuf) }
+  | "|"   { BAR(get_pos lexbuf) }
+  | "_"   { WILDCARD(get_pos lexbuf) }
 
   | (latin (digit | latin |"-")*) {
         let tok = Lexing.lexeme lexbuf in
@@ -171,8 +174,10 @@ rule numexpr = parse
           | "if-class-is-valid"   -> IFCLASSISVALID(pos)
           | "if-id-is-valid"      -> IFIDISVALID(pos)
           | "let-mutable"         -> LETMUTABLE(pos)
-          | "new-global-hash"     -> DECGLOBALHASH(pos)
+          | "new-global-hash"     -> NEWGLOBALHASH(pos)
           | "renew-global-hash"   -> RENEWGLOBALHASH(pos)
+          | "match"    -> MATCH(pos)
+          | "with"     -> WITH(pos)
           | _          -> VAR(pos, tok)
         )
       }

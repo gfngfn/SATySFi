@@ -199,8 +199,10 @@
 %token <Types.token_position> BEFORE
 %token <Types.token_position> UNITVALUE
 %token <Types.token_position> WHILE DO
-%token <Types.token_position> DECGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
+%token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Types.token_position> MUTUAL ENDMUTUAL
+%token <Types.token_position> COMMA
+%token <Types.token_position> MATCH WITH BAR WILDCARD
 %token EOI
 %token IGNORED
 
@@ -224,6 +226,7 @@
 %start main
 %type <Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
+%type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_mutual_let_cons> nxdec
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxwhl
@@ -239,6 +242,10 @@
 %type <Types.untyped_abstract_tree> nxun
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
+%type <Types.untyped_abstract_tree> tuple
+%type <Types.untyped_pattern_match_cons> pats
+%type <Types.untyped_pattern_tree> patcons
+%type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxsepsub
@@ -348,6 +355,20 @@ nxmutual: /* -> Types.untyped_mutual_let_cons */
   | ENDMUTUAL { UTEndOfMutualLet }
 ;
 nxlet:
+  | MATCH nxlet WITH pats {
+        let (sttln, sttpos, _) = $1 in
+        let ((_, _, endln, endpos), utpats) = $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatch($2, $4))
+      }
+  | MATCH nxlet WITH BAR pats {
+        let (sttln, sttpos, _) = $1 in
+        let ((_, _, endln, endpos), utpats) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatch($2, $5))
+      }
+  | nxletsub { $1 }
+nxletsub:
   | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }
   | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
@@ -546,7 +567,7 @@ nxlambda:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTOverwrite(varrng, vn, $3))
       }
-  | DECGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
+  | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
         let (sttln, sttpos, _) = $1 in
         let (_, _, endln, endpos) = get_range $4 in
         let rng = (sttln, sttpos, endln, endpos) in
@@ -574,11 +595,11 @@ nxlambda:
         raise (ParseErrorDetail(
           error_reporting "illegal token after '->'" "-> ..<!>.." $3))
       }
-  | DECGLOBALHASH error {
+  | NEWGLOBALHASH error {
         raise (ParseErrorDetail(error_reporting
           "illegal token after 'declare-global-hash'" "declare-global-hash ..<!>.." $1))
       }
-  | DECGLOBALHASH nxlet OVERWRITEGLOBALHASH error {
+  | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH error {
         raise (ParseErrorDetail(error_reporting
           "illegal token after '<<-'" "<<- ..<!>.." $3))
       }
@@ -790,6 +811,12 @@ nxbot:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, utast)
       }
+  | LPAREN nxlet COMMA tuple RPAREN {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTTupleCons($2, $4))
+      }
   | OPENSTR sxsep CLOSESTR {
         let (sttln, sttpos, _) = $1 in
         let (endln, _, endpos) = $3 in
@@ -845,6 +872,110 @@ nxbot:
           error_reporting "illegal token after '('" "( ..<!>.." $1))
       }
 ;
+nxlist:
+  | LISTPUNCT nxlet nxlist {
+        let (sttln, sttpos, _) = $1 in
+        let (_, _, endln, endpos) = get_range $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTListCons($2, $3))
+      }
+  | { ((-17, 0, 0, 0), UTEndOfList) }
+/* -- for syntax error log -- */
+  | LISTPUNCT error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after ';'" "; ..<!>.." $1))
+      }
+;
+tuple: /* Types.untyped_tuple_cons */
+  | nxlet {
+        let rng = get_range $1 in
+          (rng, UTTupleCons($1, ((-5000, 0, 0, 0), UTEndOfTuple)))
+      }
+  | nxlet COMMA tuple {
+        let (sttln, sttpos, _, _) = get_range $1 in
+        let ((_, _, endln, endpos), _) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTTupleCons($1, $3))
+      }
+/* -- for syntax error log -- */
+  | nxlet COMMA error {
+        raise (ParseErrorDetail(
+          error_reporting "illegal token after ','" ", ..<!>.." $2))
+      }
+;
+pats:
+  | patcons ARROW nxlet {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatchCons($1, $3, ((-5001, 0, 0, 0), UTEndOfPatternMatch)))
+      }
+  | patcons ARROW nxletsub BAR pats {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatchCons($1, $3, $5))
+      }
+;
+patcons: /* -> Types.untyped_pattern_tree */
+  | patbot CONS patcons {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPListCons($1, $3))
+      }
+  | patbot { $1 }
+;
+patbot: /* -> Types.untyped_pattern_tree */
+  | NUMCONST {
+        let ((ln, sttpos, endpos), cs) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPNumericConstant(int_of_string cs))
+      }
+  | TRUE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPBooleanConstant(true))
+      }
+  | FALSE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPBooleanConstant(false))
+      }
+  | UNITVALUE {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPUnitConstant)
+      }
+  | WILDCARD {
+        let (ln, sttpos, endpos) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPWildCard)
+      }
+  | VAR {
+        let ((ln, sttpos, endpos), varnm) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          (rng, UTPVariable(varnm))
+      }
+  | LPAREN patcons COMMA pattuple RPAREN {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPTupleCons($2, $4))
+  }
+;
+pattuple:
+  | patcons {
+        let (rng, _) = $1 in
+          (rng, UTPTupleCons($1, ((-5002, 0, 0, 0), UTPEndOfTuple)))
+      }
+  | patcons COMMA pattuple {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPTupleCons($1, $3))
+      }
+;
 binop:
   | PLUS    { "+" }
   | MINUS   { "-" }
@@ -862,20 +993,6 @@ binop:
   | LOR     { "||" }
   | LNOT    { "not" }
   | BEFORE  { "before" }
-;
-nxlist:
-  | LISTPUNCT nxlet nxlist {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTListCons($2, $3))
-      }
-  | { ((-17, 0, 0, 0), UTEndOfList) }
-/* -- for syntax error log -- */
-  | LISTPUNCT error {
-        raise (ParseErrorDetail(
-          error_reporting "illegal token after ';'" "; ..<!>.." $1))
-      }
 ;
 sxsep:
   | SEP sxsepsub { $2 }

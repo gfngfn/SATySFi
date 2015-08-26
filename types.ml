@@ -33,10 +33,11 @@ and untyped_abstract_tree_main =
   | UTUnitConstant
   | UTContentOf        of var_name
   | UTConcat           of untyped_abstract_tree * untyped_abstract_tree
-  | UTConcatOperation  of untyped_abstract_tree * untyped_abstract_tree
   | UTApply            of untyped_abstract_tree * untyped_abstract_tree
   | UTListCons         of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
+  | UTTupleCons        of untyped_abstract_tree * untyped_abstract_tree
+  | UTEndOfTuple
   | UTBreakAndIndent
   | UTLetIn            of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse       of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
@@ -52,7 +53,24 @@ and untyped_abstract_tree_main =
   | UTIfIDIsValid      of untyped_abstract_tree * untyped_abstract_tree
   | UTApplyClassAndID  of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo          of untyped_abstract_tree * untyped_abstract_tree
+  | UTPatternMatch     of untyped_abstract_tree * untyped_pattern_match_cons
   | UTNoContent
+and untyped_pattern_tree = code_range * untyped_pattern_tree_main
+and untyped_pattern_tree_main =
+  | UTPNumericConstant of int
+  | UTPBooleanConstant of bool
+  | UTPUnitConstant
+  | UTPListCons        of untyped_pattern_tree * untyped_pattern_tree
+  | UTPEndOfList
+  | UTPTupleCons       of untyped_pattern_tree * untyped_pattern_tree
+  | UTPEndOfTuple
+  | UTPWildCard
+  | UTPVariable        of var_name
+and untyped_pattern_match_cons = code_range * untyped_pattern_match_cons_main
+and untyped_pattern_match_cons_main =
+  | UTPatternMatchCons of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
+  | UTEndOfPatternMatch
+
 (* ---- typed ---- *)
 type argument_variable_cons =
   | ArgumentVariableCons of var_name * argument_variable_cons
@@ -77,6 +95,8 @@ and abstract_tree =
   | Apply           of abstract_tree * abstract_tree
   | ListCons        of abstract_tree * abstract_tree
   | EndOfList
+  | TupleCons       of abstract_tree * abstract_tree
+  | EndOfTuple
   | BreakAndIndent
   | LetIn          of mutual_let_cons * abstract_tree
   | IfThenElse     of abstract_tree * abstract_tree * abstract_tree
@@ -118,3 +138,15 @@ and abstract_tree =
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
+
+type pattern_tree =
+  | PNumericConstant of int
+  | PBooleanConstant of bool
+  | PStringConstant  of string
+  | PUnitConstant
+  | PListCons        of pattern_tree * pattern_tree
+  | PEndOfList
+  | PTupleCons       of pattern_tree * pattern_tree
+  | PEndOfTuple
+  | PWildCard
+  | PVariable        of var_name

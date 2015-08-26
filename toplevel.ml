@@ -13,13 +13,26 @@ let tyenv = Primitives.make_type_environment ();;
 
 let init () = Lexer.reset_to_numexpr ();;
 
-let parse s = init () ; Parser.main Lexer.cut_token (Lexing.from_string s);;
+let parse s =
+	init () ;
+	Parser.main Lexer.cut_token (Lexing.from_string s)
+;;
 
-let tc s    = init () ; let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in Typeenv.string_of_type_struct typed;;
+let prsstr s = Typeenv.string_of_utast (parse s);;
 
-let eval s  =
+let tc s =
   init () ;
   let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in
-    Evaluator.interpret env ast;;
+    Typeenv.string_of_type_struct typed
+;;
 
-let out s   = init () ; Out.main (eval s);;
+let eval s =
+  init () ;
+  let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in
+    Evaluator.interpret env ast
+;;
+
+let out s =
+	init () ;
+	Out.main (eval s)
+;;

@@ -13,6 +13,7 @@ and type_struct =
   | FuncType     of code_range * type_struct * type_struct
   | ListType     of code_range * type_struct
   | RefType      of code_range * type_struct
+  | ProductType  of code_range * (type_struct list)
   | ForallType   of type_variable_id * type_struct
   | TypeVariable of code_range * type_variable_id
 
@@ -20,6 +21,46 @@ and type_struct =
 let global_hash_env : environment = Hashtbl.create 32
 
 (* -- for test -- *)
+let rec string_of_utast (_, utast) =
+  match utast with
+  | UTStringEmpty         -> "{}"
+  | UTNumericConstant(nc) -> string_of_int nc
+  | UTBooleanConstant(bc) -> string_of_bool bc
+  | UTStringConstant(sc)  -> "{" ^ sc ^ "}"
+  | UTUnitConstant        -> "()"
+  | UTContentOf(varnm)    -> varnm
+  | UTConcat(ut1, ut2)    -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
+  | UTApply(ut1, ut2)     -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
+  | UTListCons(hd, tl)    -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")" 
+  | UTEndOfList           -> "[]"
+  | UTTupleCons(hd, tl)   -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
+  | UTEndOfTuple          -> "$"
+  | UTBreakAndIndent      -> "{\\break;}"
+  | UTLetIn(umlc, ut)     -> "(let ... in " ^ (string_of_utast ut) ^ ")"
+  | UTIfThenElse(ut1, ut2, ut3)
+      -> "(if " ^ (string_of_utast ut1) ^ " then " ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
+  | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"
+  | UTFinishHeaderFile    -> "finish"
+  | UTPatternMatch(ut, pmcons) -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
+  | _ -> "?"
+and string_of_pmcons (_, pmcons) =
+  match pmcons with
+  | UTEndOfPatternMatch -> ""
+  | UTPatternMatchCons(pat, ut, tail)
+      -> " | " ^ (string_of_pat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
+and string_of_pat (_, pat) =
+  match pat with
+  | UTPNumericConstant(nc) -> string_of_int nc
+  | UTPBooleanConstant(bc) -> string_of_bool bc
+  | UTPUnitConstant        -> "()"
+  | UTPListCons(hd, tl)    -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
+  | UTPEndOfList           ->  "[]"
+  | UTPTupleCons(hd, tl)   -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
+  | UTPEndOfTuple          -> "$"
+  | UTPWildCard            -> "_"
+  | UTPVariable(varnm)     -> varnm
+
+
 let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
@@ -67,6 +108,7 @@ let get_range_from_type tystr =
   | FuncType(rng, _, _)  -> rng
   | ListType(rng, _)     -> rng
   | RefType(rng, _)      -> rng
+  | ProductType(rng, _)  -> rng
   | TypeEnvironmentType(rng, _) -> rng
   | ForallType(_, _)     -> (-64, 0, 0, 0)
 
@@ -80,6 +122,7 @@ let overwrite_range_of_type tystr rng =
   | FuncType(_, tydom, tycod) -> FuncType(rng, tydom, tycod)
   | ListType(_, tycont)       -> ListType(rng, tycont)
   | RefType(_, tycont)        -> RefType(rng, tycont)
+  | ProductType(_, tylist)    -> ProductType(rng, tylist)
   | TypeEnvironmentType(_, tyenv)  -> TypeEnvironmentType(rng, tyenv)
   | ForallType(tvid, tycont)       -> ForallType(tvid, tycont)
 
@@ -94,8 +137,14 @@ let rec erase_range_of_type tystr =
     | FuncType(_, tydom, tycod) -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
     | ListType(_, tycont)       -> ListType(dummy, erase_range_of_type tycont)
     | RefType(_, tycont)        -> RefType(dummy, erase_range_of_type tycont)
+    | ProductType(_, tylist)    -> ProductType(dummy, erase_range_of_type_list tylist)
     | TypeEnvironmentType(_, tyenv) -> TypeEnvironmentType(dummy, tyenv)
     | ForallType(tvid, tycont)      -> ForallType(tvid, erase_range_of_type tycont)
+
+and erase_range_of_type_list tylist =
+  match tylist with
+  | []           -> []
+  | head :: tail -> (erase_range_of_type head) :: (erase_range_of_type_list tail)
 
 let describe_position (sttln, sttpos, endln, endpos) =
   if sttln == endln then
@@ -107,38 +156,52 @@ let describe_position (sttln, sttpos, endln, endpos) =
 
 let error_reporting rng errmsg = (describe_position rng) ^ ":\n    " ^ errmsg
 
+
 (* -- for debug -- *)
 let rec string_of_type_struct_basic tystr =
   let (sttln, _, _, _) = get_range_from_type tystr in
     match tystr with
-    | StringType(_) -> if sttln <= 0 then "string" else "string*"
-    | IntType(_)    -> if sttln <= 0 then "int"    else "int*"
-    | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool*"
-    | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit*"
-    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env*"
-    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "*" else "")
+    | StringType(_) -> if sttln <= 0 then "string" else "string+"
+    | IntType(_)    -> if sttln <= 0 then "int"    else "int+"
+    | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool+"
+    | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit+"
+    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
+    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
+
     | FuncType(_, tydom, tycod)  ->
         let strdom = string_of_type_struct_basic tydom in
         let strcod = string_of_type_struct_basic tycod in
         ( match tydom with
           | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
+          | ProductType(_, _) -> "(" ^ strdom ^ ")"
           | _                 -> strdom
-        ) ^ " ->" ^ (if sttln <= 0 then "* " else " ") ^ strcod
+        ) ^ " ->" ^ (if sttln <= 0 then "+ " else " ") ^ strcod
+
     | ListType(_, tycont)        ->
         let strcont = string_of_type_struct_basic tycont in
         ( match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+          | ProductType(_, _) -> "(" ^ strcont ^ ")"
           | _                 -> strcont
-        ) ^ " list" ^ (if sttln <= 0 then "*" else "")
+        ) ^ " list" ^ (if sttln <= 0 then "+" else "")
+
     | RefType(_, tycont)         ->
         let strcont = string_of_type_struct_basic tycont in
         ( match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+          | ProductType(_, _) -> "(" ^ strcont ^ ")"
           | _                 -> strcont
-        ) ^ " ref" ^ (if sttln <= 0 then "*" else "")
-    | ForallType(tvid, tycont)   ->
-        "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "*" else "")
+        ) ^ " ref" ^ (if sttln <= 0 then "+" else "")
 
+    | ProductType(_, tylist)     -> string_of_type_struct_list_basic tylist
+    | ForallType(tvid, tycont)   ->
+        "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
+
+and string_of_type_struct_list_basic tylist =
+  match tylist with
+  | []           -> ""
+  | [head]       -> string_of_type_struct_basic head
+  | head :: tail -> (string_of_type_struct_basic head) ^ " * " ^ (string_of_type_struct_list_basic tail)
 
 
 let meta_max    : type_variable_id ref = ref 0
@@ -221,6 +284,7 @@ and string_of_type_struct_sub tystr lst =
       let strcont = string_of_type_struct_sub tycont lst in
       ( match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+        | ProductType(_, _) -> "(" ^ strcont ^ ")"
         | _                 -> strcont
       ) ^ " list"
 
@@ -228,13 +292,29 @@ and string_of_type_struct_sub tystr lst =
       let strcont = string_of_type_struct_sub tycont lst in
       ( match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
+        | ProductType(_, _) -> "(" ^ strcont ^ ")"
         | _                 -> strcont
       ) ^ " ref"
+
+  | ProductType(_, tylist)    ->
+      string_of_type_struct_list tylist lst
 
   | ForallType(tvid, tycont)  ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
 
+and string_of_type_struct_list tylist lst =
+  match tylist with
+  | []           -> ""
+  | [head]       -> string_of_type_struct_sub head lst
+  | head :: tail ->
+      let strhead = string_of_type_struct_sub head lst in
+      let strtail = string_of_type_struct_list tail lst in
+      ( match head with
+        | FuncType(_, _, _) -> "(" ^ strhead ^ ")"
+        | ProductType(_, _) -> "(" ^ strhead ^ ")"
+        | _                 -> strhead
+      ) ^ " * " ^ strtail
 
 let rec string_of_type_environment tyenv =
     "    #===============================================================\n"

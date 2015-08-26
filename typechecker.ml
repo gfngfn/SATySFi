@@ -6,19 +6,6 @@ let tvidmax : type_variable_id ref = ref 0
 let new_type_variable_id () =
   let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
-let overwrite_range rng ty =
-  match ty with
-  | IntType(r)         -> IntType(rng)
-  | StringType(r)      -> StringType(rng)
-  | BoolType(r)        -> BoolType(rng)
-  | UnitType(r)        -> UnitType(rng)
-  | FuncType(r, d, c)  -> FuncType(rng, d, c)
-  | ListType(r, c)     -> ListType(rng, c)
-  | RefType(r, c)      -> RefType(rng, c)
-  | TypeVariable(r, v) -> TypeVariable(rng, v)
-  | ForallType(v, c)   -> ForallType(v, c)
-  | TypeEnvironmentType(r, e) -> TypeEnvironmentType(rng, e)
-
 let rec find_in_list lst elm =
   match lst with
   | []                    -> raise Not_found
@@ -58,7 +45,7 @@ let rec typecheck tyenv utast =
     | UTContentOf(nv) ->
         ( try
             let forallty = Typeenv.find tyenv nv in
-            let ty = overwrite_range rng (make_bounded_free forallty) in
+            let ty = overwrite_range_of_type (make_bounded_free forallty) rng in
               ( print_for_debug ("#C " ^ nv ^ " : " ^ (string_of_type_struct_basic forallty) (* for debug *)
                   ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                       (* for debug *)
                 (ContentOf(nv), ty, Subst.empty)
