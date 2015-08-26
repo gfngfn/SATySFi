@@ -20,15 +20,21 @@ and eliminate_forall tystr lst =
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
   | other -> replace_id other lst
 
+(* type_struct -> type_variable_id list -> type_struct *)
 and replace_id tystr lst =
   match tystr with
   | TypeVariable(rng, tvid)     ->
       ( try find_in_list lst tvid with Not_found -> TypeVariable(rng, tvid) )
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
+  | ProductType(rng, tylist)    -> ProductType(rng, replace_id_list tylist lst)
   | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
   | other                       -> other
 
+and replace_id_list tylist lst =
+  match tylist with
+  | []           -> []
+  | head :: tail -> (replace_id head lst) :: (replace_id_list tail lst)
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck tyenv utast =
@@ -98,6 +104,7 @@ let rec typecheck tyenv utast =
     | UTLambdaAbstract(varrng, varnm, utast1) ->
         let beta = TypeVariable(varrng, new_type_variable_id ()) in
         let tyenv_new = Typeenv.add tyenv varnm beta in
+        ( print_for_debug (Typeenv.string_of_type_environment tyenv_new "Lambda");
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
             let term_result = LambdaAbstract(varnm, e1) in
             let tydom = (Subst.apply_to_type_struct theta1 beta) in
@@ -105,13 +112,17 @@ let rec typecheck tyenv utast =
             let type_result = FuncType(rng, tydom, tycod) in
             let theta_result = theta1 in
               (term_result, type_result, theta_result)
+        )
 
     | UTLetIn(utmutletcons, utast2) ->
         let (tyenv_for_rec, tvtylst) = add_mutual_variables tyenv utmutletcons in
+      ( print_for_debug (Typeenv.string_of_type_environment tyenv_for_rec "UTLetIn1") ;
         let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv_for_rec utmutletcons tvtylst in
-        let tyenv_forall = make_forall_type_mutual tyenv theta1 tvtylst in
+      ( print_for_debug (Typeenv.string_of_type_environment tyenv_new "UTLetIn2") ;
+        let tyenv_forall = make_forall_type_mutual tyenv theta1 tvtylst in (* contains bugs *)
         let (e2, ty2, theta2) = typecheck tyenv_forall utast2 in
           (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
+      ))
 
     | UTLetMutableIn(varrng, varnm, utastdflt, utastaft) ->
         let (edflt, tydflt, thetadflt) = typecheck tyenv utastdflt in
@@ -236,6 +247,21 @@ let rec typecheck tyenv utast =
                                       Subst.apply_to_term theta_result ec) in
               (term_result, UnitType(rng), theta_result)
 
+    | UTTupleCons(utasthd, utasttl) ->
+        let (ehd, tyhd, thetahd) = typecheck tyenv utasthd in
+        let (etl, tytl, thetatl) = typecheck tyenv utasttl in
+        let theta_result = Subst.compose thetatl thetahd in
+        let term_result = Subst.apply_to_term theta_result (TupleCons(ehd, etl)) in
+        let type_result = Subst.apply_to_type_struct theta_result
+          ( match tytl with
+            | ProductType(rngtl, tylist) -> ProductType(rng, tyhd :: tylist)
+            | _ -> raise (TypeCheckError("this cannot happen: illegal type for tuple"))
+          )
+        in
+          (term_result, type_result, theta_result)
+
+    | UTEndOfTuple -> (EndOfTuple, ProductType(rng, []), Subst.empty)
+
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
 
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
@@ -269,7 +295,7 @@ and make_forall_type_mutual tyenv theta tvtylst =
   | (varnm, tvty) :: tvtytail ->
       let prety = Subst.apply_to_type_struct theta tvty in
     ( print_for_debug (Subst.string_of_subst theta) ;
-      print_for_debug (string_of_type_environment tyenv) ;
+      print_for_debug (string_of_type_environment tyenv "MakeForall") ;
       print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;
       let forallty  = make_forall_type prety tyenv in
       let tyenv_new = Typeenv.add tyenv varnm (erase_range_of_type forallty) in

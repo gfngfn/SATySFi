@@ -18,13 +18,14 @@ let parse s =
 	Parser.main Lexer.cut_token (Lexing.from_string s)
 ;;
 
-let prsstr s = Typeenv.string_of_utast (parse s);;
+let parsestr s = Typeenv.string_of_utast (parse s);;
 
-let tc s =
+let tcraw s =
   init () ;
-  let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in
-    Typeenv.string_of_type_struct typed
+  let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in typed
 ;;
+
+let tc s = Typeenv.string_of_type_struct (tcraw s);;
 
 let eval s =
   init () ;

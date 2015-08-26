@@ -86,9 +86,9 @@ let rec string_of_ast ast =
 
 let print_for_debug msg =
 (* enable below to see the process of type inference *)
-(*
+
   print_string msg ;
-*)
+
   ()
 
 (* untyped_abstract_tree -> code_range *)
@@ -110,7 +110,7 @@ let get_range_from_type tystr =
   | RefType(rng, _)      -> rng
   | ProductType(rng, _)  -> rng
   | TypeEnvironmentType(rng, _) -> rng
-  | ForallType(_, _)     -> (-64, 0, 0, 0)
+  | ForallType(_, _)     -> (-31, 0, 0, 0)
 
 let overwrite_range_of_type tystr rng =
   match tystr with
@@ -200,8 +200,19 @@ let rec string_of_type_struct_basic tystr =
 and string_of_type_struct_list_basic tylist =
   match tylist with
   | []           -> ""
-  | [head]       -> string_of_type_struct_basic head
-  | head :: tail -> (string_of_type_struct_basic head) ^ " * " ^ (string_of_type_struct_list_basic tail)
+  | head :: []   ->
+      let strhd = string_of_type_struct_basic head in
+      ( match head with
+        | ProductType(_, _) -> "(" ^ strhd ^ ")"
+        | _                 -> strhd
+      )
+  | head :: tail ->
+      let strhd = string_of_type_struct_basic head in
+      let strtl = string_of_type_struct_list_basic tail in
+      ( match head with
+        | ProductType(_, _) -> "(" ^ strhd ^ ")"
+        | _                 -> strhd
+      ) ^ " * " ^ strtl
 
 
 let meta_max    : type_variable_id ref = ref 0
@@ -306,7 +317,6 @@ and string_of_type_struct_sub tystr lst =
 and string_of_type_struct_list tylist lst =
   match tylist with
   | []           -> ""
-  | [head]       -> string_of_type_struct_sub head lst
   | head :: tail ->
       let strhead = string_of_type_struct_sub head lst in
       let strtail = string_of_type_struct_list tail lst in
@@ -314,27 +324,35 @@ and string_of_type_struct_list tylist lst =
         | FuncType(_, _, _) -> "(" ^ strhead ^ ")"
         | ProductType(_, _) -> "(" ^ strhead ^ ")"
         | _                 -> strhead
-      ) ^ " * " ^ strtail
+      ) ^
+      ( match tail with
+        | [] -> ""
+        | _  -> " * " ^ strtail
+      )
 
-let rec string_of_type_environment tyenv =
-    "    #===============================================================\n"
+let rec string_of_type_environment tyenv msg =
+    "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
   ^ (string_of_type_environment_sub tyenv)
-  ^ "    #===============================================================\n"
+  ^ "    #================================================================\n"
 and string_of_type_environment_sub tyenv =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
-            "    #  "
-              ^ ( let len = String.length vn in
-                    if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-              ^ " : " ^ (string_of_type_struct ts) ^ "\n"
-              ^ (string_of_type_environment_sub tail)
+      let (a, _, _, _) = get_range_from_type ts in (* dirty code *)
+        if -38 <= a && a <= -1 then
+          string_of_type_environment_sub tail
+        else
+          "    #  "
+            ^ ( let len = String.length vn in
+                  if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
+            ^ " : " ^ (string_of_type_struct ts) ^ "\n"
+            ^ (string_of_type_environment_sub tail)
 
 
 let rec string_of_control_sequence_type tyenv =
-    "    #===============================================================\n"
+    "    #================================================================\n"
   ^ (string_of_control_sequence_type_sub tyenv)
-  ^ "    #===============================================================\n"
+  ^ "    #================================================================\n"
 and string_of_control_sequence_type_sub tyenv =
   match tyenv with
   | []               -> ""
@@ -403,7 +421,8 @@ let empty = []
 let rec add tyenv varnm tystr =
   match tyenv with
   | []               -> [(varnm, tystr)]
-  | (vn, ts) :: tail -> if vn == varnm then (varnm, tystr) :: tail else (vn, ts) :: (add tail varnm tystr)
+  | (vn, ts) :: tail ->
+      if vn = varnm then (varnm, tystr) :: tail else (vn, ts) :: (add tail varnm tystr)
 
 let rec find tyenv varnm =
   match tyenv with

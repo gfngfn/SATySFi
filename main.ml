@@ -33,7 +33,7 @@ let make_environment_from_header_file tyenv env file_name_in =
           | EvaluatedEnvironment(newenv) ->
               ( ( if !show_control_sequence_type then
                     if !show_function_type then
-                      print_string (string_of_type_environment newtyenv)
+                      print_string (string_of_type_environment newtyenv "Environment")
                     else
                       print_string (string_of_control_sequence_type newtyenv)
                   else () ) ;
