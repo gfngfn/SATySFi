@@ -86,9 +86,9 @@ let rec string_of_ast ast =
 
 let print_for_debug msg =
 (* enable below to see the process of type inference *)
-
+(*
   print_string msg ;
-
+*)
   ()
 
 (* untyped_abstract_tree -> code_range *)
@@ -147,7 +147,7 @@ and erase_range_of_type_list tylist =
   | head :: tail -> (erase_range_of_type head) :: (erase_range_of_type_list tail)
 
 let describe_position (sttln, sttpos, endln, endpos) =
-  if sttln == endln then
+  if sttln = endln then
     "line " ^ (string_of_int sttln) ^ ", characters " ^ (string_of_int sttpos)
       ^ "-" ^ (string_of_int endpos)
   else
@@ -233,7 +233,7 @@ let new_meta_type_variable_name () =
 let rec find_meta_type_variable lst tvid =
   match lst with
   | []             -> raise Not_found
-  | (k, v) :: tail -> if k == tvid then v else find_meta_type_variable tail tvid
+  | (k, v) :: tail -> if k = tvid then v else find_meta_type_variable tail tvid
 
 let new_unbound_type_variable_name tvid =
   let res = variable_name_of_int (!unbound_max) in
@@ -370,11 +370,11 @@ and string_of_control_sequence_type_sub tyenv =
 let rec found_in_list tvid lst =
   match lst with
   | []       -> false
-  | hd :: tl -> if hd == tvid then true else found_in_list tvid tl
+  | hd :: tl -> if hd = tvid then true else found_in_list tvid tl
 
 let rec found_in_type_struct tvid tystr =
   match tystr with
-  | TypeVariable(_, tvidx)    -> tvidx == tvid
+  | TypeVariable(_, tvidx)    -> tvidx = tvid
   | FuncType(_, tydom, tycod) -> (found_in_type_struct tvid tydom) || (found_in_type_struct tvid tycod)
   | ListType(_, tycont)       -> found_in_type_struct tvid tycont
   | RefType(_, tycont)        -> found_in_type_struct tvid tycont

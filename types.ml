@@ -101,6 +101,7 @@ and abstract_tree =
   | LetIn          of mutual_let_cons * abstract_tree
   | IfThenElse     of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract of var_name * abstract_tree
+  | PatternMatch   of abstract_tree * pattern_match_cons
   | FinishHeaderFile
   | LetMutableIn   of var_name * abstract_tree * abstract_tree
   | Sequential     of abstract_tree * abstract_tree
@@ -138,8 +139,10 @@ and abstract_tree =
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
-
-type pattern_tree =
+and pattern_match_cons =
+  | PatternMatchCons of pattern_tree * abstract_tree * pattern_match_cons
+  | EndOfPatternMatch
+and pattern_tree =
   | PNumericConstant of int
   | PBooleanConstant of bool
   | PStringConstant  of string

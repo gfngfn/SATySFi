@@ -104,7 +104,6 @@ let rec typecheck tyenv utast =
     | UTLambdaAbstract(varrng, varnm, utast1) ->
         let beta = TypeVariable(varrng, new_type_variable_id ()) in
         let tyenv_new = Typeenv.add tyenv varnm beta in
-        ( print_for_debug (Typeenv.string_of_type_environment tyenv_new "Lambda");
           let (e1, ty1, theta1) = typecheck tyenv_new utast1 in
             let term_result = LambdaAbstract(varnm, e1) in
             let tydom = (Subst.apply_to_type_struct theta1 beta) in
@@ -112,17 +111,13 @@ let rec typecheck tyenv utast =
             let type_result = FuncType(rng, tydom, tycod) in
             let theta_result = theta1 in
               (term_result, type_result, theta_result)
-        )
 
     | UTLetIn(utmutletcons, utast2) ->
         let (tyenv_for_rec, tvtylst) = add_mutual_variables tyenv utmutletcons in
-      ( print_for_debug (Typeenv.string_of_type_environment tyenv_for_rec "UTLetIn1") ;
         let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents tyenv_for_rec utmutletcons tvtylst in
-      ( print_for_debug (Typeenv.string_of_type_environment tyenv_new "UTLetIn2") ;
         let tyenv_forall = make_forall_type_mutual tyenv theta1 tvtylst in (* contains bugs *)
         let (e2, ty2, theta2) = typecheck tyenv_forall utast2 in
           (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
-      ))
 
     | UTLetMutableIn(varrng, varnm, utastdflt, utastaft) ->
         let (edflt, tydflt, thetadflt) = typecheck tyenv utastdflt in
@@ -262,7 +257,65 @@ let rec typecheck tyenv utast =
 
     | UTEndOfTuple -> (EndOfTuple, ProductType(rng, []), Subst.empty)
 
+    | UTPatternMatch(utastobj, utpmcons) ->
+        let (eobj, tyobj, thetaobj) = typecheck tyenv utastobj in
+        let ntv = TypeVariable((-300, 0, 0, 0), new_type_variable_id ()) in
+        let (pmcons, typm, thetapm) = typecheck_pattern_match_cons tyenv utpmcons tyobj thetaobj ntv in
+          (PatternMatch(eobj, pmcons), typm, thetapm)
+(*
     | _ -> raise (TypeCheckError(error_reporting rng "this cannot happen / remains to be implemented"))
+*)
+
+(* type_environment -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
+	-> (pattern_match_cons * type_struct * Subst.t) *)
+and typecheck_pattern_match_cons tyenv utpmcons tyobj theta tyres =
+  let (rng, utpmconsmain) = utpmcons in
+    match utpmconsmain with
+    | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, theta)
+    | UTPatternMatchCons(utpat, utast1, tailcons) ->
+        let (epat, typat, tyenvpat) = typecheck_pattern tyenv utpat in
+        let theta_new = Subst.compose (Subst.unify tyobj typat) theta in
+        let tyenv1 = Subst.apply_to_type_environment theta_new tyenvpat in
+        let (e1, ty1, theta1) = typecheck tyenv1 utast1 in
+        let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 theta_new) in
+        let tyres_new = Subst.apply_to_type_struct theta2 tyres in
+        let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons tyenv tailcons tyobj theta2 tyres_new in
+          (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
+
+(* type_environment * untyped_pattern_tree -> (pattern_tree * type_struct * type_environment) *)
+and typecheck_pattern tyenv utpat =
+  let (rng, utpatmain) = utpat in
+    match utpatmain with
+    | UTPNumericConstant(nc) -> (PNumericConstant(nc), IntType(rng), tyenv)
+    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), BoolType(rng), tyenv)
+    | UTPUnitConstant        -> (PUnitConstant, UnitType(rng), tyenv)
+    | UTPEndOfList ->
+        let ntv = TypeVariable(rng, new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
+    | UTPListCons(utpat1, utpat2) ->
+        let (epat1, typat1, tyenv1) = typecheck_pattern tyenv utpat1 in
+        let (epat2, typat2, tyenv2) = typecheck_pattern tyenv1 utpat2 in
+          let theta = Subst.unify (ListType((-200, 0, 0, 0), typat1)) typat2 in
+          let tyenv_result = Subst.apply_to_type_environment theta tyenv2 in
+          let type_result = Subst.apply_to_type_struct theta typat2 in
+            (PListCons(epat1, epat2), type_result, tyenv_result)
+
+    | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
+    | UTPTupleCons(utpat1, utpat2) ->
+        let (epat1, typat1, tyenv1) = typecheck_pattern tyenv utpat1 in
+        let (epat2, typat2, tyenv2) = typecheck_pattern tyenv1 utpat2 in
+        let type_result =
+          ( match typat2 with
+            | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
+            | _ -> raise (TypeCheckError("this cannot happen: illegal tuple in pattern"))
+          )
+        in
+          (PTupleCons(epat1, epat2), type_result, tyenv2)
+    | UTPWildCard ->
+        let ntv = TypeVariable(rng, new_type_variable_id ()) in (PWildCard, ntv, tyenv)
+    | UTPVariable(varnm) ->
+        let ntv = TypeVariable(rng, new_type_variable_id ()) in
+          (PVariable(varnm), ntv, Typeenv.add tyenv varnm ntv)
+
 
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
 and add_mutual_variables tyenv mutletcons =
