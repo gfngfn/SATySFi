@@ -28,13 +28,19 @@ and eliminate_sub theta key constr =
         eliminate_sub tail key ((k, v) :: constr)
 
 
+(* type_struct -> type_variable_id -> type_struct -> type_variable *)
 let rec overwrite_type_struct tystr key value =
   match tystr with
   | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
   | FuncType(rng, dom, cod) -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
   | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
   | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
+  | ProductType(rng, lst)   -> ProductType(rng, overwrite_type_struct_list lst key value)
   | other                   -> other
+and overwrite_type_struct_list tylist key value =
+  match tylist with
+  | []           -> []
+  | tyhd :: tytl -> (overwrite_type_struct tyhd key value) :: (overwrite_type_struct_list tytl key value)
 
 
 (* Subst.t -> type_struct -> type_struct *)
@@ -43,8 +49,13 @@ let rec apply_to_type_struct theta tystr =
   | FuncType(rng, tydom, tycod) -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
   | ListType(rng, tycont)       -> ListType(rng, apply_to_type_struct theta tycont)
   | RefType(rng, tycont)        -> RefType(rng, apply_to_type_struct theta tycont)
+  | ProductType(rng, tylist)    -> ProductType(rng, apply_to_type_struct_list theta tylist)
   | TypeVariable(rng, tv)       -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
   | other                       -> other
+and apply_to_type_struct_list theta tylist =
+  match tylist with
+  | []           -> []
+  | tyhd :: tytl -> (apply_to_type_struct theta tyhd) :: (apply_to_type_struct_list theta tytl)
 
 
 (* Subst.t -> type_environment -> type_environment *)
@@ -64,14 +75,23 @@ let rec apply_to_term theta ast = ast
 let rec emerge_in tvid tystr =
   let dummy = (-2049, 0, 0, 0) in
     match tystr with
-    | TypeVariable(rng, tvidx) -> (tvidx == tvid, rng)
+    | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
     | FuncType(_, dom, cod)    ->
         let (bdom, rngdom) = emerge_in tvid dom in
         let (bcod, rngcod) = emerge_in tvid cod in
           if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dummy)
     | ListType(_, cont)        -> emerge_in tvid cont
     | RefType(_, cont)         -> emerge_in tvid cont
+    | ProductType(_, lst)      -> emerge_in_list tvid lst
     | _                        -> (false, dummy)
+and emerge_in_list tvid tylist =
+  let dummy = (-2049, 0, 0, 0) in
+    match tylist with
+    | []           -> (false, dummy)
+    | tyhd :: tytl ->
+        let (bhd, rnghd) = emerge_in tvid tyhd in
+        let (btl, rngtl) = emerge_in_list tvid tytl in
+          if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dummy)
 
 
 let rec overwrite theta key value =
