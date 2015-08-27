@@ -31,9 +31,9 @@ let \description dscr = {
   }\\end\{center\}
 }
 and dscr-sep-lines dscr =
-  if is-empty dscr then {} else
-    let head = list-head dscr in
-    let tail = list-tail dscr in
+  match dscr with
+  | []           -> {}
+  | head :: tail ->
       head ^
       ( if is-empty tail then
           {\\\\}
@@ -107,10 +107,10 @@ let \token-end-mutual = toksty `end-mutual`
 let \repeat-star inner = `\:\Bigl[` ^inner^ `\Bigr]^{*}\:`
 let \repeat-plus inner = `\:\Bigl[` ^inner^ `\Bigr]^{+}\:`
 let cfl-or-sub lst =
-  if is-empty lst then {} else
-    let hd = list-head lst in
-    let tl = list-tail lst in
-      hd ^ ( if is-empty tl then {} else `|` ^ (cfl-or-sub tl) )
+  match lst with
+  | []       -> {}
+  | hd :: [] -> hd
+  | hd :: tl -> hd ^ `|` ^ (cfl-or-sub tl)
 
 let \cfl-or lst = `\:(` ^(cfl-or-sub lst)^ `)\:`
 
@@ -136,26 +136,26 @@ let \math-dp-gather lst =
   `\begin{align*}` ^(deeper (sub-math-dp-gather lst))^ `\end{align*}`
 
 and sub-math-dp-gather lst =
-  let head = list-head lst in
-  let tail = list-tail lst in
-    head ^ ( if is-empty tail then {} else `\\` ^ (sub-math-dp-gather tail) )
+  match lst with
+  | []           -> {}
+  | head :: []   -> head
+  | head :: tail -> head ^ `\\` ^ (sub-math-dp-gather tail)
 
 let \cfl nontm lst =
-  if is-empty lst then {} else
-    let head = list-head lst in
-    let tail = list-tail lst in
+  match lst with
+  | []           -> {}
+  | head :: tail ->
       nontm ^ {\ } ^ `\rightarrow&\enskip` ^ {\ } ^ head ^ `\enskip` ^ (sub-cfl tail)
 
 and sub-cfl lst =
-  if is-empty lst then {} else
-  ( let head = list-head lst in
-    let tail = list-tail lst in
+  match lst with
+  | []           -> {}
+  | head :: tail ->
     ( if same head {*br*} then
         `\\&` ^ {\ }
       else
         `|\enskip` ^ {\ } ^ head ^ `\enskip` ^ {\ }
     ) ^ ( if is-empty tail then {} else {\ } ^ (sub-cfl tail) )
-  )
 
 let \code-display code =
   `\begin{breakbox}\begin{center}` ^(deeper

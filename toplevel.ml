@@ -32,6 +32,7 @@ let eval s =
   let (typed, _, ast) = (Typechecker.main tyenv (parse s)) in
     Evaluator.interpret env ast
 ;;
+let evalstr s = Typeenv.string_of_ast (eval s);;
 
 let out s =
 	init () ;

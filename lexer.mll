@@ -178,6 +178,7 @@ rule numexpr = parse
           | "renew-global-hash"   -> RENEWGLOBALHASH(pos)
           | "match"    -> MATCH(pos)
           | "with"     -> WITH(pos)
+          | "when"     -> WHEN(pos)
           | _          -> VAR(pos, tok)
         )
       }

@@ -27,13 +27,10 @@ let \itemize list =
   `{\samepage\begin{itemize}` ^(deeper (sub-itemize list))^ `\end{itemize}}`
 
 and sub-itemize list =
-  if is-empty list then {} else
-    let head = list-head list in
-    let tail = list-tail list in
-      `\item` ^ {\ } ^ head
-        ^ ( if is-empty tail
-              then {}
-              else {\break;} ^ (sub-itemize tail) )
+  match list with
+  | []           -> {}
+  | head :: []   -> `\item` ^ {\ } ^ head
+  | head :: tail -> `\item` ^ {\ } ^ head ^ {\break;} ^ (sub-itemize tail)
 
 let \math math = {\ $@math;$\ }
 

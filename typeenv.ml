@@ -48,6 +48,9 @@ and string_of_pmcons (_, pmcons) =
   | UTEndOfPatternMatch -> ""
   | UTPatternMatchCons(pat, ut, tail)
       -> " | " ^ (string_of_pat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
+  | UTPatternMatchConsWhen(pat, utb, ut, tail)
+      -> " | " ^ (string_of_pat pat) ^ " when " ^ (string_of_utast utb)
+          ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 and string_of_pat (_, pat) =
   match pat with
   | UTPNumericConstant(nc) -> string_of_int nc
@@ -81,7 +84,13 @@ let rec string_of_ast ast =
   | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
   | UnitConstant           -> "()"
   | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
-  | _ -> "..."
+  | ListCons(a, cons)      -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
+  | EndOfList              -> "[]"
+  | TupleCons(a, cons)     -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
+  | EndOfTuple             -> "$"
+  | BreakAndIndent         -> "break"
+  | EvaluatedEnvironment(_)-> "finish"
+  | _ -> "?"
 
 
 let print_for_debug msg =

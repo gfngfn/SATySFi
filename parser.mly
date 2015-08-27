@@ -202,7 +202,7 @@
 %token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Types.token_position> MUTUAL ENDMUTUAL
 %token <Types.token_position> COMMA
-%token <Types.token_position> MATCH WITH BAR WILDCARD
+%token <Types.token_position> MATCH WITH BAR WILDCARD WHEN
 %token EOI
 %token IGNORED
 
@@ -904,7 +904,7 @@ tuple: /* Types.untyped_tuple_cons */
       }
 ;
 pats:
-  | patcons ARROW nxlet {
+  | patcons ARROW nxletsub {
         let ((sttln, sttpos, _, _), _) = $1 in
         let ((_, _, endln, endpos), _) = $3 in
         let rng = (sttln, sttpos, endln, endpos) in
@@ -915,6 +915,18 @@ pats:
         let ((_, _, endln, endpos), _) = $5 in
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTPatternMatchCons($1, $3, $5))
+      }
+  | patcons WHEN nxletsub ARROW nxletsub {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatchConsWhen($1, $3, $5, ((-5001, 0, 0, 0), UTEndOfPatternMatch)))
+      }
+  | patcons WHEN nxletsub ARROW nxletsub BAR pats {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((_, _, endln, endpos), _) = $7 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPatternMatchConsWhen($1, $3, $5, $7))
       }
 ;
 patcons: /* -> Types.untyped_pattern_tree */
@@ -957,6 +969,13 @@ patbot: /* -> Types.untyped_pattern_tree */
         let rng = (ln, sttpos, ln, endpos) in
           (rng, UTPVariable(varnm))
       }
+  | LPAREN patcons RPAREN {
+        let (sttln, sttpos, _) = $1 in
+        let (endln, _, endpos) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, pat) = $2 in
+          (rng, pat)
+  }
   | LPAREN patcons COMMA pattuple RPAREN {
         let (sttln, sttpos, _) = $1 in
         let (endln, _, endpos) = $5 in

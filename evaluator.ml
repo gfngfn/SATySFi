@@ -324,6 +324,11 @@ and select_pattern env astobj pmcons =
       let envnew = copy_environment env in
       let b = check_pattern_matching envnew pat astobj in
         if b then interpret envnew astto else select_pattern env astobj tailcons
+  | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
+      let envnew = copy_environment env in
+      let b = check_pattern_matching envnew pat astobj in
+      let bb = interpret_bool envnew astb in
+        if b && bb then interpret envnew astto else select_pattern env astobj tailcons
 
 and check_pattern_matching env pat astobj =
   match (pat, astobj) with

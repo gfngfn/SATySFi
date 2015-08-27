@@ -3,6 +3,8 @@ open Typeenv
 
 let tvidmax : type_variable_id ref = ref 0
 
+let initialize () = ( tvidmax := 0 )
+
 let new_type_variable_id () =
   let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
@@ -272,6 +274,7 @@ and typecheck_pattern_match_cons tyenv utpmcons tyobj theta tyres =
   let (rng, utpmconsmain) = utpmcons in
     match utpmconsmain with
     | UTEndOfPatternMatch -> (EndOfPatternMatch, (Subst.apply_to_type_struct theta tyres), theta)
+
     | UTPatternMatchCons(utpat, utast1, tailcons) ->
         let (epat, typat, tyenvpat) = typecheck_pattern tyenv utpat in
         let thetapat = Subst.compose (Subst.unify tyobj typat) theta in
@@ -281,6 +284,19 @@ and typecheck_pattern_match_cons tyenv utpmcons tyobj theta tyres =
         let tyres_new = Subst.apply_to_type_struct theta2 tyres in
         let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons tyenv tailcons tyobj theta2 tyres_new in
           (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
+
+    | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
+        let (epat, typat, tyenvpat) = typecheck_pattern tyenv utpat in
+        let (eb, tyb, thetab) = typecheck tyenvpat utastb in
+        let thetapat =  Subst.compose (Subst.unify (BoolType(-400, 0, 0, 0)) tyb)
+                          (Subst.compose thetab
+                          	(Subst.compose (Subst.unify tyobj typat) theta)) in
+        let tyenv1 = Subst.apply_to_type_environment thetapat tyenvpat in
+        let (e1, ty1, theta1) = typecheck tyenv1 utast1 in
+        let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
+        let tyres_new = Subst.apply_to_type_struct theta2 tyres in
+        let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons tyenv tailcons tyobj theta2 tyres_new in
+          (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
 
 (* type_environment * untyped_pattern_tree -> (pattern_tree * type_struct * type_environment) *)
 and typecheck_pattern tyenv utpat =
@@ -347,9 +363,9 @@ and make_forall_type_mutual tyenv theta tvtylst =
   | []                        -> tyenv
   | (varnm, tvty) :: tvtytail ->
       let prety = Subst.apply_to_type_struct theta tvty in
-    ( print_for_debug (Subst.string_of_subst theta) ;
-      print_for_debug (string_of_type_environment tyenv "MakeForall") ;
-      print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;
+    ( print_for_debug (Subst.string_of_subst theta) ;                                         (* for debug *)
+      print_for_debug (string_of_type_environment tyenv "MakeForall") ;                       (* for debug *)
+      print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
       let forallty  = make_forall_type prety tyenv in
       let tyenv_new = Typeenv.add tyenv varnm (erase_range_of_type forallty) in
         make_forall_type_mutual tyenv_new theta tvtytail
@@ -362,5 +378,3 @@ let main tyenv utast =
     match ty with
     | TypeEnvironmentType(_, newtyenv) -> (ty, newtyenv, e)
     | _                                -> (ty, tyenv, e)
-
-let initialize () = ( tvidmax := 0 )

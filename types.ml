@@ -68,7 +68,8 @@ and untyped_pattern_tree_main =
   | UTPVariable        of var_name
 and untyped_pattern_match_cons = code_range * untyped_pattern_match_cons_main
 and untyped_pattern_match_cons_main =
-  | UTPatternMatchCons of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
+  | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
+  | UTPatternMatchConsWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTEndOfPatternMatch
 
 (* ---- typed ---- *)
@@ -140,7 +141,8 @@ and abstract_tree =
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
 and pattern_match_cons =
-  | PatternMatchCons of pattern_tree * abstract_tree * pattern_match_cons
+  | PatternMatchCons     of pattern_tree * abstract_tree * pattern_match_cons
+  | PatternMatchConsWhen of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
   | EndOfPatternMatch
 and pattern_tree =
   | PNumericConstant of int
