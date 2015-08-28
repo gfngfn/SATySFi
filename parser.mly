@@ -202,11 +202,12 @@
 %token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Types.token_position> MUTUAL ENDMUTUAL
 %token <Types.token_position> COMMA
-%token <Types.token_position> MATCH WITH BAR WILDCARD WHEN
+%token <Types.token_position> MATCH WITH BAR WILDCARD WHEN AS
 %token EOI
 %token IGNORED
 
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
+%nonassoc MATCH
 %nonassoc IF THEN ELSE
 %left OVERWRITEGLOBALHASH
 %left BEFORE
@@ -936,6 +937,12 @@ patcons: /* -> Types.untyped_pattern_tree */
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTPListCons($1, $3))
       }
+  | patcons AS VAR {
+        let ((sttln, sttpos, _, _), _) = $1 in
+        let ((endln, _, endpos), varnm) = $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTPAsVariable(varnm, $1))
+  }
   | patbot { $1 }
 ;
 patbot: /* -> Types.untyped_pattern_tree */

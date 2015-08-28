@@ -62,6 +62,7 @@ and string_of_pat (_, pat) =
   | UTPEndOfTuple          -> "$"
   | UTPWildCard            -> "_"
   | UTPVariable(varnm)     -> varnm
+  | UTPAsVariable(varnm, p)-> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
 
 
 let rec string_of_ast ast =

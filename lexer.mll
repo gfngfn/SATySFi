@@ -179,6 +179,7 @@ rule numexpr = parse
           | "match"    -> MATCH(pos)
           | "with"     -> WITH(pos)
           | "when"     -> WHEN(pos)
+          | "as"       -> AS(pos)
           | _          -> VAR(pos, tok)
         )
       }

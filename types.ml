@@ -66,6 +66,7 @@ and untyped_pattern_tree_main =
   | UTPEndOfTuple
   | UTPWildCard
   | UTPVariable        of var_name
+  | UTPAsVariable      of var_name * untyped_pattern_tree
 and untyped_pattern_match_cons = code_range * untyped_pattern_match_cons_main
 and untyped_pattern_match_cons_main =
   | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
@@ -135,8 +136,8 @@ and abstract_tree =
   | PrimitiveSame of abstract_tree * abstract_tree
   | PrimitiveStringSub of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
-  | PrimitiveInclude of abstract_tree
-  | PrimitiveArabic of abstract_tree
+  | PrimitiveInclude  of abstract_tree
+  | PrimitiveArabic   of abstract_tree
   | PrimitiveListHead of abstract_tree
   | PrimitiveListTail of abstract_tree
   | PrimitiveIsEmpty  of abstract_tree
@@ -154,3 +155,4 @@ and pattern_tree =
   | PEndOfTuple
   | PWildCard
   | PVariable        of var_name
+  | PAsVariable      of var_name * pattern_tree

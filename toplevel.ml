@@ -13,10 +13,7 @@ let tyenv = Primitives.make_type_environment ();;
 
 let init () = Lexer.reset_to_numexpr ();;
 
-let parse s =
-	init () ;
-	Parser.main Lexer.cut_token (Lexing.from_string s)
-;;
+let parse s = init () ; Parser.main Lexer.cut_token (Lexing.from_string s);;
 
 let parsestr s = Typeenv.string_of_utast (parse s);;
 
@@ -34,7 +31,4 @@ let eval s =
 ;;
 let evalstr s = Typeenv.string_of_ast (eval s);;
 
-let out s =
-	init () ;
-	Out.main (eval s)
-;;
+let out s = init () ; Out.main (eval s);;

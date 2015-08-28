@@ -338,6 +338,8 @@ and check_pattern_matching env pat astobj =
   | (PWildCard, _)                               -> true
   | (PVariable(varnm), _) ->
       ( add_to_environment env varnm (ref astobj) ; true )
+  | (PAsVariable(varnm, psub), sub) ->
+      ( add_to_environment env varnm (ref sub) ; check_pattern_matching env psub sub )
 
   | (PEndOfList, EndOfList)                      -> true
   | (PListCons(phd, ptl), ListCons(hd, tl))
