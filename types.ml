@@ -121,14 +121,14 @@ and abstract_tree =
   | OverwriteGlobalHash of abstract_tree * abstract_tree
 (* only for inner procedure *)
   | NoContent (* for class and id *)
-  | FuncWithEnvironment of var_name * abstract_tree * environment
+  | FuncWithEnvironment  of var_name * abstract_tree * environment
   | EvaluatedEnvironment of environment
   | DeeperIndent of abstract_tree
-  | Times   of abstract_tree * abstract_tree
-  | Divides of abstract_tree * abstract_tree
-  | Mod     of abstract_tree * abstract_tree
-  | Plus    of abstract_tree * abstract_tree
-  | Minus   of abstract_tree * abstract_tree
+  | Times       of abstract_tree * abstract_tree
+  | Divides     of abstract_tree * abstract_tree
+  | Mod         of abstract_tree * abstract_tree
+  | Plus        of abstract_tree * abstract_tree
+  | Minus       of abstract_tree * abstract_tree
   | GreaterThan of abstract_tree * abstract_tree
   | LessThan    of abstract_tree * abstract_tree
   | EqualTo     of abstract_tree * abstract_tree
