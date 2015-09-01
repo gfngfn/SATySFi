@@ -1,5 +1,5 @@
 open Types
-open Typeenv
+open Display
 
 exception EvalError of string
 
@@ -302,7 +302,7 @@ let rec interpret env ast =
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)    
 
-  | other -> raise (EvalError("remains to be implemented: " ^ (string_of_ast other)))
+  | other -> raise (EvalError("this cannot happen / remains to be implemented: " ^ (string_of_ast other)))
 
 and interpret_bool env ast =
   let vb = interpret env ast in

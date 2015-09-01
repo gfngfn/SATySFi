@@ -1,5 +1,6 @@
 open Types
 open Typeenv
+open Display
 
 exception InclusionError
 exception ContradictionError

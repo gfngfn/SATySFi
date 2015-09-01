@@ -1,5 +1,6 @@
 open Types
 open Typeenv
+open Display
 
 let tvidmax : type_variable_id ref = ref 0
 
@@ -8,10 +9,10 @@ let initialize () = ( tvidmax := 0 )
 let new_type_variable_id () =
   let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
-let rec find_in_list lst elm =
+let rec find_id_in_list elm lst =
   match lst with
   | []                    -> raise Not_found
-  | (tvid, tystr) :: tail -> if tvid == elm then tystr else find_in_list tail elm
+  | (tvid, tystr) :: tail -> if tvid = elm then tystr else find_id_in_list elm tail
 
 
 let rec make_bounded_free tystr = eliminate_forall tystr []
@@ -26,7 +27,7 @@ and eliminate_forall tystr lst =
 and replace_id tystr lst =
   match tystr with
   | TypeVariable(rng, tvid)     ->
-      ( try find_in_list lst tvid with Not_found -> TypeVariable(rng, tvid) )
+      ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
   | ProductType(rng, tylist)    -> ProductType(rng, replace_id_list tylist lst)

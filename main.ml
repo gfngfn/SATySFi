@@ -1,19 +1,23 @@
 open Types
 open Typeenv
+open Display
 
 exception MainError of string
 
 let show_control_sequence_type : bool ref = ref false
 let show_function_type         : bool ref = ref false
 
+(* string -> bool *)
 let is_document_file str =
   if String.length str < 5 then false else
     (compare ".mcrd" (String.sub str ((String.length str) - 5) 5)) == 0
 
+(* string -> bool *)
 let is_header_file str =
   if String.length str < 6 then false else
     (compare ".mcrdh" (String.sub str ((String.length str) - 6) 6)) == 0
 
+(* string -> bool *)
 let is_standalone_file str =
   if String.length str < 6 then false else
     (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0

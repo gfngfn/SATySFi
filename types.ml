@@ -156,3 +156,22 @@ and pattern_tree =
   | PWildCard
   | PVariable        of var_name
   | PAsVariable      of var_name * pattern_tree
+
+
+(* !!!! ---- global variable ---- !!!! *)
+let global_hash_env : environment = Hashtbl.create 32
+
+(* untyped_abstract_tree -> code_range *)
+let get_range utast =
+  let (rng, _) = utast in rng
+
+let is_invalid_range rng =
+  let (sttln, _, _, _) = rng in sttln <= 0
+
+
+let print_for_debug msg =
+(* enable below to see the process of type inference *)
+(*
+  print_string msg ;
+*)
+  ()
