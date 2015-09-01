@@ -284,6 +284,13 @@ nxtoplevel:
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTDeclareVariant(typenm, $4))
       }
+  | VARIANT VAR DEFEQ BAR variants {
+        let (sttln, sttpos, _) = $1 in
+        let (_, typenm) = $2 in
+        let ((_, _, endln, endpos), _) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareVariant(typenm, $5))
+      }
 /* ---- toplevel terminal ---- */
   | LET VAR argvar DEFEQ nxlet nxdec {
         make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
@@ -928,6 +935,15 @@ txprod:
           match $3 with
           | ProductType(_, tylist) -> ProductType(rng, $1 :: tylist)
           | other                  -> ProductType(rng, [$1; $3])
+      }
+  | txbot VAR {
+        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
+        let ((endln, _, endpos), tyschnm) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          match tyschnm with
+          | "list" -> ListType(rng, $1)
+          | "ref"  -> RefType(rng, $1)
+          | other  -> raise (ParseErrorDetail("undefined type scheme '" ^ other ^ "'"))
       }
   | txbot { $1 }
 ;
