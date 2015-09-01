@@ -8,6 +8,7 @@
   let get_range utast =
     let (rng, _) = utast in rng
 
+  (* untyped_argument_cons -> untyped_argument_cons -> untyped_argument_cons *)
   let rec append_argument_list arglsta arglstb =
     match arglsta with
     | UTEndOfArgument              -> arglstb
@@ -203,11 +204,13 @@
 %token <Types.token_position> MUTUAL ENDMUTUAL
 %token <Types.token_position> COMMA
 %token <Types.token_position> MATCH WITH BAR WILDCARD WHEN AS
+%token <Types.token_position> VARIANT OF
+%token <Types.token_position * Types.constructor_name> CONSTRUCTOR
 %token EOI
 %token IGNORED
 
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
-%nonassoc MATCH
+%nonassoc MATCH WITH
 %nonassoc IF THEN ELSE
 %left OVERWRITEGLOBALHASH
 %left BEFORE
@@ -274,6 +277,13 @@ nxtoplevel:
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
   | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
+  | VARIANT VAR DEFEQ variants {
+        let (sttln, sttpos, _) = $1 in
+        let (_, typenm) = $2 in
+        let ((_, _, endln, endpos), _) = $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareVariant(typenm, $4))
+      }
 /* ---- toplevel terminal ---- */
   | LET VAR argvar DEFEQ nxlet nxdec {
         make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
@@ -887,7 +897,54 @@ nxlist:
           error_reporting "illegal token after ';'" "; ..<!>.." $1))
       }
 ;
-tuple: /* Types.untyped_tuple_cons */
+variants:
+  | CONSTRUCTOR OF txfunc {
+        let ((sttln, sttpos, _), constrnm) = $1 in
+        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTVariantCons(constrnm, $3, ((-400, 0, 0, 0), UTEndOfVariant)))
+      }
+  | CONSTRUCTOR OF txfunc BAR variants {
+        let ((sttln, sttpos, _), constrnm) = $1 in
+        let ((_, _, endln, endpos), _) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTVariantCons(constrnm, $3, $5))
+      }
+;
+txfunc: /* -> type_struct */
+  | txprod ARROW txfunc {
+        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
+        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          FuncType(rng, $1, $3)
+      }
+  | txprod { $1 }
+;
+txprod:
+  | txbot TIMES txprod {
+        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
+        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          match $3 with
+          | ProductType(_, tylist) -> ProductType(rng, $1 :: tylist)
+          | other                  -> ProductType(rng, [$1; $3])
+      }
+  | txbot { $1 }
+;
+txbot:
+  | VAR {
+        let ((ln, sttpos, endpos), tynm) = $1 in
+        let rng = (ln, sttpos, ln, endpos) in
+          match tynm with
+          | "int"    -> IntType(rng)
+          | "bool"   -> BoolType(rng)
+          | "string" -> StringType(rng)
+          | "unit"   -> UnitType(rng)
+          | other    -> VariantType(rng, other)
+      }
+  | LPAREN txfunc RPAREN { $2 }
+;
+tuple: /* -> untyped_tuple_cons */
   | nxlet {
         let rng = get_range $1 in
           (rng, UTTupleCons($1, ((-5000, 0, 0, 0), UTEndOfTuple)))

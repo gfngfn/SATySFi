@@ -4,11 +4,12 @@
 
   exception LexError of string
 
-  let line_no : int ref = ref 1
+  type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
+
+  let line_no             : int ref = ref 1
   let end_of_previousline : int ref = ref 0
 
-  type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
-  let next_state : lexer_state ref = ref STATE_NUMEXPR
+  let next_state  : lexer_state ref = ref STATE_NUMEXPR
   let first_state : lexer_state ref = ref STATE_NUMEXPR
   let after_literal_state : lexer_state ref = ref STATE_STREXPR
   let after_comment_state : lexer_state ref = ref STATE_STREXPR
@@ -43,8 +44,8 @@
     line_no := !line_no + 1
 
   let rec increment_line_for_each_break lexbuf str num =
-    if num >= String.length str then () else (
-      ( match str.[num] with
+    if num >= String.length str then () else
+    ( ( match str.[num] with
         | '\n' -> ( increment_line lexbuf )
         | _ -> () ) ;
       increment_line_for_each_break lexbuf str (num + 1)

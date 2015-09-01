@@ -2,13 +2,32 @@
 exception ParseErrorDetail of string
 exception TypeCheckError of string
 
+
 type ctrlseq_name = string
 type var_name = string
 type id_name = string
 type class_name = string
+type variant_type_name = string
+type constructor_name = string
 
 type token_position = int * int * int
 type code_range = int * int * int * int
+
+type type_variable_id = int
+type type_environment = (var_name * type_struct) list
+and type_struct =
+  | TypeEnvironmentType of code_range * type_environment
+  | UnitType     of code_range
+  | IntType      of code_range
+  | StringType   of code_range
+  | BoolType     of code_range
+  | FuncType     of code_range * type_struct * type_struct
+  | ListType     of code_range * type_struct
+  | RefType      of code_range * type_struct
+  | ProductType  of code_range * (type_struct list)
+  | ForallType   of type_variable_id * type_struct
+  | TypeVariable of code_range * type_variable_id
+  | VariantType  of code_range * variant_type_name
 
 type id_name_arg =
   | IDName of id_name
@@ -56,6 +75,9 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID  of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo          of untyped_abstract_tree * untyped_abstract_tree
   | UTPatternMatch     of untyped_abstract_tree * untyped_pattern_match_cons
+  | UTDeclareVariant   of variant_type_name * untyped_abstract_tree
+  | UTVariantCons      of constructor_name * type_struct * untyped_abstract_tree
+  | UTEndOfVariant
   | UTNoContent
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
@@ -159,23 +181,6 @@ and pattern_tree =
   | PVariable        of var_name
   | PAsVariable      of var_name * pattern_tree
 
-type type_variable_id = int
-type type_environment = (var_name * type_struct) list
-and type_struct =
-  | TypeEnvironmentType of code_range * type_environment
-  | UnitType     of code_range
-  | IntType      of code_range
-  | StringType   of code_range
-  | BoolType     of code_range
-  | FuncType     of code_range * type_struct * type_struct
-  | ListType     of code_range * type_struct
-  | RefType      of code_range * type_struct
-  | ProductType  of code_range * (type_struct list)
-  | ForallType   of type_variable_id * type_struct
-  | TypeVariable of code_range * type_variable_id
-(*
-  | VariantConstructor of constructor_name * type_struct
-*)
 
 
 (* !!!! ---- global variable ---- !!!! *)
