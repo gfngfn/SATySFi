@@ -1,5 +1,4 @@
 open Types
-open Typeenv
 open Display
 
 exception InclusionError
@@ -109,8 +108,8 @@ let overwrite_or_add theta key value =
 
 
 let report_inclusion_error tystr1 tystr2 =
-  let rng1 = get_range_from_type tystr1 in
-  let rng2 = get_range_from_type tystr2 in
+  let rng1 = Typeenv.get_range_from_type tystr1 in
+  let rng2 = Typeenv.get_range_from_type tystr2 in
   let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
   let msg =
   ( if is_invalid_range rng1 then
@@ -135,8 +134,8 @@ let report_inclusion_error tystr1 tystr2 =
 
 
 let report_contradiction_error tystr1 tystr2 =
-  let rng1 = get_range_from_type tystr1 in
-  let rng2 = get_range_from_type tystr2 in
+  let rng1 = Typeenv.get_range_from_type tystr1 in
+  let rng2 = Typeenv.get_range_from_type tystr2 in
   let strty1 = string_of_type_struct tystr1 in
   let strty2 = string_of_type_struct tystr2 in
   let msg1 = describe_position rng1 in
@@ -212,8 +211,8 @@ and unify tystr1 tystr2 =
   try unify_sub tystr1 tystr2 with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
-       let rng1 = get_range_from_type tystr1 in
-       let rng2 = get_range_from_type tystr2 in
+       let rng1 = Typeenv.get_range_from_type tystr1 in
+       let rng2 = Typeenv.get_range_from_type tystr2 in
          if (is_invalid_range rng1) && (is_invalid_range rng2) then
            let (sttln1, _, _, _) = rng1 in
            let (sttln2, _, _, _) = rng2 in
@@ -265,23 +264,12 @@ and unify_sub tystr1 tystr2 =
               if b then
                 report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
               else
-                [(tvid1, overwrite_range_of_type tystr rng1)]
+                [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
       )
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
-  | (tystr1, tystr2) ->
-(*
-      let rng1 = get_range_from_type tystr1 in
-      let rng2 = get_range_from_type tystr2 in
-        if (is_invalid_range rng1) || (is_invalid_range rng2) then
-*)
-          report_contradiction_error tystr1 tystr2
-(*
-        else
-        ( print_string "*2\n" ;
-          raise ContradictionError
-        )
-*)
+  | (tystr1, tystr2) -> report_contradiction_error tystr1 tystr2
+
 and unify_sub_list tylist1 tylist2 =
   match (tylist1, tylist2) with
   | ([], [])                 -> empty

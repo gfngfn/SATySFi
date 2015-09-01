@@ -1,5 +1,4 @@
 open Types
-open Typeenv
 
 (* -- for test -- *)
 let rec string_of_utast (_, utast) =
@@ -88,7 +87,7 @@ let error_reporting rng errmsg = (describe_position rng) ^ ":\n    " ^ errmsg
 
 (* -- for debug -- *)
 let rec string_of_type_struct_basic tystr =
-  let (sttln, _, _, _) = get_range_from_type tystr in
+  let (sttln, _, _, _) = Typeenv.get_range_from_type tystr in
     match tystr with
     | StringType(_) -> if sttln <= 0 then "string" else "string+"
     | IntType(_)    -> if sttln <= 0 then "int"    else "int+"
@@ -266,7 +265,7 @@ and string_of_type_environment_sub tyenv =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
-      let (a, _, _, _) = get_range_from_type ts in (* dirty code *)
+      let (a, _, _, _) = Typeenv.get_range_from_type ts in (* dirty code *)
         if -38 <= a && a <= -1 then
           string_of_type_environment_sub tail
         else

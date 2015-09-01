@@ -1,25 +1,5 @@
 open Types
 
-exception TypeCheckError of string
-
-type type_variable_id = int
-type type_environment = (var_name * type_struct) list
-and type_struct =
-  | TypeEnvironmentType of code_range * type_environment
-  | UnitType     of code_range
-  | IntType      of code_range
-  | StringType   of code_range
-  | BoolType     of code_range
-  | FuncType     of code_range * type_struct * type_struct
-  | ListType     of code_range * type_struct
-  | RefType      of code_range * type_struct
-  | ProductType  of code_range * (type_struct list)
-  | ForallType   of type_variable_id * type_struct
-  | TypeVariable of code_range * type_variable_id
-(*
-  | VariantConstructor of constructor_name * type_struct
-*)
-
 (* type_environment *)
 let empty = []
 

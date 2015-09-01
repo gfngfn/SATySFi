@@ -1,5 +1,4 @@
 open Types
-open Typeenv
 
 let rec add_to_type_environment tyenv lst =
   match lst with

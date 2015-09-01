@@ -1,5 +1,4 @@
 open Types
-open Typeenv
 open Display
 
 exception MainError of string
@@ -117,9 +116,9 @@ let rec main tyenv env file_name_in_list file_name_out =
           raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with
   | Lexer.LexError(s)             -> print_string ("! [ERROR IN LEXER] " ^ s ^ ".\n")
-  | Parsing.Parse_error           -> print_string ("! [ERROR IN PARSER]")
+  | Parsing.Parse_error           -> print_string ("! [ERROR IN PARSER] something is wrong.\n")
   | ParseErrorDetail(s)           -> print_string ("! [ERROR IN PARSER] " ^ s ^ "\n")
-  | Typeenv.TypeCheckError(s)     -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".\n")
+  | TypeCheckError(s)             -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".\n")
   | Evaluator.EvalError(s)        -> print_string ("! [ERROR IN EVAL] " ^ s ^ ".\n")
   | Out.IllegalOut(s)             -> print_string ("! [ERROR IN OUT] " ^ s ^ ".\n")
   | MainError(s)                  -> print_string ("! [ERROR IN MAIN] " ^ s ^ ".\n")
@@ -135,8 +134,7 @@ let rec see_argv num file_name_in_list file_name_out =
         main tyenv env file_name_in_list file_name_out )
     else
       match Sys.argv.(num) with
-      | "-v" ->
-          print_string "  Macrodown version 1.00b\n"
+      | "-v" -> print_string "  Macrodown version 1.00b\n"
       | "-o" ->
           ( try
               see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))

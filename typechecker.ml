@@ -1,5 +1,4 @@
 open Types
-open Typeenv
 open Display
 
 let tvidmax : type_variable_id ref = ref 0
@@ -53,7 +52,7 @@ let rec typecheck tyenv (rng, utastmain) =
   | UTContentOf(nv) ->
       ( try
           let forallty = Typeenv.find tyenv nv in
-          let ty = overwrite_range_of_type (make_bounded_free forallty) rng in
+          let ty = Typeenv.overwrite_range_of_type (make_bounded_free forallty) rng in
             ( print_for_debug ("#C " ^ nv ^ " : " ^ (string_of_type_struct_basic forallty) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                       (* for debug *)
               (ContentOf(nv), ty, Subst.empty)
@@ -369,8 +368,8 @@ and make_forall_type_mutual tyenv theta tvtylst =
     ( print_for_debug (Subst.string_of_subst theta) ;                                         (* for debug *)
       print_for_debug (string_of_type_environment tyenv "MakeForall") ;                       (* for debug *)
       print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-      let forallty  = make_forall_type prety tyenv in
-      let tyenv_new = Typeenv.add tyenv varnm (erase_range_of_type forallty) in
+      let forallty  = Typeenv.make_forall_type prety tyenv in
+      let tyenv_new = Typeenv.add tyenv varnm (Typeenv.erase_range_of_type forallty) in
         make_forall_type_mutual tyenv_new theta tvtytail
     )
 
