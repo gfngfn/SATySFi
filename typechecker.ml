@@ -334,6 +334,15 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
         (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm ntv)
 
+  | UTPConstructor(constrnm, utpat1) ->
+      ( try
+          let (varntnm, tycont) = Variantenv.find varntenv constrnm in
+          let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
+          let tyenv_new = Subst.apply_to_type_environment (Subst.unify tycont typat1) tyenv1 in
+            (PConstructor(constrnm, epat1), VariantType(rng, varntnm), tyenv_new)
+        with
+        | Not_found -> raise (TypeCheckError("undefined constructor '" ^ constrnm ^ "'"))
+      )
 
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
 and add_mutual_variables varntenv tyenv mutletcons =

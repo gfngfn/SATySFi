@@ -92,6 +92,7 @@ and untyped_pattern_tree_main =
   | UTPWildCard
   | UTPVariable        of var_name
   | UTPAsVariable      of var_name * untyped_pattern_tree
+  | UTPConstructor     of constructor_name * untyped_pattern_tree
 and untyped_pattern_match_cons = code_range * untyped_pattern_match_cons_main
 and untyped_pattern_match_cons_main =
   | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
@@ -182,6 +183,7 @@ and pattern_tree =
   | PWildCard
   | PVariable        of var_name
   | PAsVariable      of var_name * pattern_tree
+  | PConstructor     of constructor_name * pattern_tree
 
 
 

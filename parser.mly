@@ -1069,13 +1069,19 @@ patbot: /* -> Types.untyped_pattern_tree */
         let rng = (ln, sttpos, ln, endpos) in
           (rng, UTPVariable(varnm))
       }
+  | CONSTRUCTOR patbot {
+         let ((sttln, sttpos, _), constrnm) = $1 in
+         let ((_, _, endln, endpos), _) = $2 in
+         let rng = (sttln, sttpos, endln, endpos) in
+           (rng, UTPConstructor(constrnm, $2))
+      }
   | LPAREN patcons RPAREN {
         let (sttln, sttpos, _) = $1 in
         let (endln, _, endpos) = $3 in
         let rng = (sttln, sttpos, endln, endpos) in
         let (_, pat) = $2 in
           (rng, pat)
-  }
+      }
   | LPAREN patcons COMMA pattuple RPAREN {
         let (sttln, sttpos, _) = $1 in
         let (endln, _, endpos) = $5 in

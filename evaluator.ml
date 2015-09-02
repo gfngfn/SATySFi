@@ -138,6 +138,8 @@ let rec interpret env ast =
 
   | EndOfTuple -> EndOfTuple
 
+  | Constructor(constrnm, astcont) -> Constructor(constrnm, astcont)
+
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
       ( match valuelst with

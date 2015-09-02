@@ -33,16 +33,17 @@ and string_of_pmcons (_, pmcons) =
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 and string_of_pat (_, pat) =
   match pat with
-  | UTPNumericConstant(nc) -> string_of_int nc
-  | UTPBooleanConstant(bc) -> string_of_bool bc
-  | UTPUnitConstant        -> "()"
-  | UTPListCons(hd, tl)    -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
-  | UTPEndOfList           ->  "[]"
-  | UTPTupleCons(hd, tl)   -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
-  | UTPEndOfTuple          -> "$"
-  | UTPWildCard            -> "_"
-  | UTPVariable(varnm)     -> varnm
-  | UTPAsVariable(varnm, p)-> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
+  | UTPNumericConstant(nc)  -> string_of_int nc
+  | UTPBooleanConstant(bc)  -> string_of_bool bc
+  | UTPUnitConstant         -> "()"
+  | UTPListCons(hd, tl)     -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
+  | UTPEndOfList            ->  "[]"
+  | UTPTupleCons(hd, tl)    -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
+  | UTPEndOfTuple           -> "$"
+  | UTPWildCard             -> "_"
+  | UTPVariable(varnm)      -> varnm
+  | UTPAsVariable(varnm, p) -> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
+  | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_pat p) ^ ")"
 
 
 let rec string_of_ast ast =
