@@ -351,6 +351,10 @@ and check_pattern_matching env pat astobj =
   | (PTupleCons(phd, ptl), TupleCons(hd, tl))
       -> (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
 
+  | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
+      when cnm1 = cnm2
+      -> check_pattern_matching env psub sub
+
   | _ -> false
 
 
