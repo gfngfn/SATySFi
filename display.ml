@@ -93,8 +93,6 @@ let rec string_of_type_struct_basic tystr =
     | IntType(_)    -> if sttln <= 0 then "int"    else "int+"
     | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool+"
     | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit+"
-    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
-    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
 
     | FuncType(_, tydom, tycod)  ->
         let strdom = string_of_type_struct_basic tydom in
@@ -122,6 +120,9 @@ let rec string_of_type_struct_basic tystr =
         ) ^ " ref" ^ (if sttln <= 0 then "+" else "")
 
     | ProductType(_, tylist)     -> string_of_type_struct_list_basic tylist
+    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
+    | VariantType(_, varntnm)    -> if sttln <= 0 then varntnm else varntnm ^ "+"
+    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
     | ForallType(tvid, tycont)   ->
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
 
@@ -199,16 +200,6 @@ and string_of_type_struct_sub tystr lst =
   | IntType(_)    -> "int"
   | BoolType(_)   -> "bool"
   | UnitType(_)   -> "unit"
-  | TypeEnvironmentType(_, _) -> "env"
-
-  | TypeVariable(_, tvid)     ->
-      ( try "'" ^ (find_meta_type_variable lst tvid) with
-        | Not_found ->
-            "'" ^
-              ( try find_unbound_type_variable tvid with
-                | Not_found -> new_unbound_type_variable_name tvid
-              )
-      )
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
@@ -237,9 +228,23 @@ and string_of_type_struct_sub tystr lst =
   | ProductType(_, tylist)    ->
       string_of_type_struct_list tylist lst
 
+  | TypeVariable(_, tvid)     ->
+      ( try "'" ^ (find_meta_type_variable lst tvid) with
+        | Not_found ->
+            "'" ^
+              ( try find_unbound_type_variable tvid with
+                | Not_found -> new_unbound_type_variable_name tvid
+              )
+      )
+
+  | VariantType(_, varntnm) -> varntnm
+
+  | TypeEnvironmentType(_, _) -> "env"
+
   | ForallType(tvid, tycont)  ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
+
 
 and string_of_type_struct_list tylist lst =
   match tylist with

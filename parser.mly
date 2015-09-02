@@ -277,19 +277,19 @@ nxtoplevel:
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
   | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
-  | VARIANT VAR DEFEQ variants {
-        let (sttln, sttpos, _) = $1 in
-        let (_, typenm) = $2 in
-        let ((_, _, endln, endpos), _) = $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTDeclareVariant(typenm, $4))
-      }
-  | VARIANT VAR DEFEQ BAR variants {
+  | VARIANT VAR DEFEQ variants nxtoplevel {
         let (sttln, sttpos, _) = $1 in
         let (_, typenm) = $2 in
         let ((_, _, endln, endpos), _) = $5 in
         let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTDeclareVariant(typenm, $5))
+          (rng, UTDeclareVariantIn(typenm, $4, $5))
+      }
+  | VARIANT VAR DEFEQ BAR variants nxtoplevel {
+        let (sttln, sttpos, _) = $1 in
+        let (_, typenm) = $2 in
+        let ((_, _, endln, endpos), _) = $6 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareVariantIn(typenm, $5, $6))
       }
 /* ---- toplevel terminal ---- */
   | LET VAR argvar DEFEQ nxlet nxdec {
@@ -305,7 +305,21 @@ nxtoplevel:
         make_let_expression $2 $3 $4 $6 $7 ((-259, 0, 0, 0), UTFinishHeaderFile)
       }
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
-        make_let_expression $2 $3 $4 $6 $7 ((-259, 0, 0, 0), UTFinishHeaderFile)
+        make_let_expression $2 $3 $4 $6 $7 ((-260, 0, 0, 0), UTFinishHeaderFile)
+      }
+  | VARIANT VAR DEFEQ variants {
+        let (sttln, sttpos, _) = $1 in
+        let (_, typenm) = $2 in
+        let ((_, _, endln, endpos), _) = $4 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareVariantIn(typenm, $4, ((-261, 0, 0, 0), UTFinishHeaderFile)))
+      }
+  | VARIANT VAR DEFEQ BAR variants {
+        let (sttln, sttpos, _) = $1 in
+        let (_, typenm) = $2 in
+        let ((_, _, endln, endpos), _) = $5 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTDeclareVariantIn(typenm, $5, ((-262, 0, 0, 0), UTFinishHeaderFile)))
       }
 /* ---- transition to expression style ---- */
   | LET VAR     argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
@@ -806,6 +820,12 @@ nxbot:
         let ((varln, varstt, varend), vn) = $1 in
         let rng = (varln, varstt, varln, varend) in
           (rng, UTContentOf(vn))
+      }
+  | CONSTRUCTOR nxbot {
+        let ((sttln, sttpos, _), constrnm) = $1 in
+        let ((_, _, endln, endpos), _) = $2 in
+        let rng = (sttln, sttpos, endln, endpos) in
+          (rng, UTConstructor(constrnm, $2))
       }
   | NUMCONST {
         let ((ncln, ncstt, ncend), cs) = $1 in

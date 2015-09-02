@@ -22,14 +22,14 @@ let is_standalone_file str =
     (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0
 
 
-(* type_environment -> environment -> string -> (type_environment * environment) *)
-let make_environment_from_header_file tyenv env file_name_in =
+(* Variantenv.t -> type_environment -> environment -> string -> (type_environment * environment) *)
+let make_environment_from_header_file varntenv tyenv env file_name_in =
   ( print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
+      let (ty, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
       ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
           match evaled with
@@ -49,13 +49,13 @@ let make_environment_from_header_file tyenv env file_name_in =
 
 
 (* type_environment -> environment -> string -> string -> unit *)
-let read_standalone_file tyenv env file_name_in file_name_out =
+let read_standalone_file varntenv tyenv env file_name_in file_name_out =
   ( print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (ty, _, ast) = Typechecker.main tyenv utast in
+      let (ty, _, ast) = Typechecker.main varntenv tyenv utast in
       ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
         match ty with
         | StringType(_) ->
@@ -72,13 +72,13 @@ let read_standalone_file tyenv env file_name_in file_name_out =
 
 
 (* type_environment -> environment -> string -> string -> unit *)
-let read_document_file tyenv env file_name_in file_name_out =
+let read_document_file varntenv tyenv env file_name_in file_name_out =
   ( print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_strexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (ty, _, ast) = Typechecker.main tyenv utast in
+      let (ty, _, ast) = Typechecker.main varntenv tyenv utast in
       ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
         match ty with
         | StringType(_) ->
@@ -97,8 +97,8 @@ let read_document_file tyenv env file_name_in file_name_out =
     )
   )
 
-(* type_environment -> environment -> (string list) -> string -> unit *)
-let rec main tyenv env file_name_in_list file_name_out =
+(* Variantenv.t -> type_environment -> environment -> (string list) -> string -> unit *)
+let rec main varntenv tyenv env file_name_in_list file_name_out =
   try
     match file_name_in_list with
     | [] ->
@@ -106,12 +106,12 @@ let rec main tyenv env file_name_in_list file_name_out =
         	print_string "  no output.\n" )
     | file_name_in :: tail ->
         if is_document_file file_name_in then
-          read_document_file tyenv env file_name_in file_name_out
+          read_document_file varntenv tyenv env file_name_in file_name_out
         else if is_header_file file_name_in then
-          let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
-            main newtyenv newenv tail file_name_out
+          let (newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
+            main varntenv newtyenv newenv tail file_name_out
         else if is_standalone_file file_name_in then
-          read_standalone_file tyenv env file_name_in file_name_out
+          read_standalone_file varntenv tyenv env file_name_in file_name_out
         else
           raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with
@@ -129,9 +129,10 @@ let rec see_argv num file_name_in_list file_name_out =
     if num == Array.length Sys.argv then
     ( print_string ("  [output] " ^ file_name_out ^ "\n\n") ;
       Typechecker.initialize () ;
+      let varntenv = Primitives.make_variant_environment () in
       let tyenv = Primitives.make_type_environment () in
       let env = Primitives.make_environment () in
-        main tyenv env file_name_in_list file_name_out )
+        main varntenv tyenv env file_name_in_list file_name_out )
     else
       match Sys.argv.(num) with
       | "-v" -> print_string "  Macrodown version 1.00b\n"

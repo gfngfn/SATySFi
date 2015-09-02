@@ -15,8 +15,6 @@ val apply_to_type_struct : t -> type_struct -> type_struct
 
 val apply_to_type_environment : t -> type_environment -> type_environment
 
-val apply_to_term : t -> abstract_tree -> abstract_tree
-
 val compose : t -> t -> t
 
 val unify : type_struct -> type_struct -> t

@@ -75,9 +75,10 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID  of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo          of untyped_abstract_tree * untyped_abstract_tree
   | UTPatternMatch     of untyped_abstract_tree * untyped_pattern_match_cons
-  | UTDeclareVariant   of variant_type_name * untyped_abstract_tree
+  | UTDeclareVariantIn of variant_type_name * untyped_abstract_tree * untyped_abstract_tree
   | UTVariantCons      of constructor_name * type_struct * untyped_abstract_tree
   | UTEndOfVariant
+  | UTConstructor      of constructor_name * untyped_abstract_tree
   | UTNoContent
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
@@ -141,6 +142,7 @@ and abstract_tree =
   | WhileDo        of abstract_tree * abstract_tree
   | DeclareGlobalHash   of abstract_tree * abstract_tree
   | OverwriteGlobalHash of abstract_tree * abstract_tree
+  | Constructor    of constructor_name * abstract_tree
 (* only for inner procedure *)
   | NoContent (* for class and id *)
   | FuncWithEnvironment  of var_name * abstract_tree * environment

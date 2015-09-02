@@ -11,12 +11,13 @@ let empty = []
 (* t -> type_variable_id -> type_struct -> t *)
 let add theta key value = (key, value) :: theta
 
+(* t -> type_variable_id -> type_struct *)
 let rec find theta key =
   match theta with
   | []             -> raise Not_found
   | (k, v) :: tail -> if k == key then v else find tail key
 
-
+(* t -> type_variable_id -> t *)
 let rec eliminate theta key = eliminate_sub theta key []
 and eliminate_sub theta key constr =
   match theta with
@@ -27,15 +28,14 @@ and eliminate_sub theta key constr =
       else
         eliminate_sub tail key ((k, v) :: constr)
 
-
 (* type_struct -> type_variable_id -> type_struct -> type_variable *)
 let rec overwrite_type_struct tystr key value =
   match tystr with
-  | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
   | FuncType(rng, dom, cod) -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
   | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
   | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
   | ProductType(rng, lst)   -> ProductType(rng, overwrite_type_struct_list lst key value)
+  | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
   | other                   -> other
 and overwrite_type_struct_list tylist key value =
   match tylist with
@@ -43,7 +43,7 @@ and overwrite_type_struct_list tylist key value =
   | tyhd :: tytl -> (overwrite_type_struct tyhd key value) :: (overwrite_type_struct_list tytl key value)
 
 
-(* Subst.t -> type_struct -> type_struct *)
+(* t -> type_struct -> type_struct *)
 let rec apply_to_type_struct theta tystr =
   match tystr with
   | FuncType(rng, tydom, tycod) -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
@@ -58,7 +58,7 @@ and apply_to_type_struct_list theta tylist =
   | tyhd :: tytl -> (apply_to_type_struct theta tyhd) :: (apply_to_type_struct_list theta tytl)
 
 
-(* Subst.t -> type_environment -> type_environment *)
+(* t -> type_environment -> type_environment *)
 let rec apply_to_type_environment theta tyenv =
   match tyenv with
   | []                     -> tyenv
@@ -66,16 +66,10 @@ let rec apply_to_type_environment theta tyenv =
       (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment theta tail)
 
 
-(* -- unneccesary -- *)
-(* Subst.t -> abstract_tree -> abstract_tree *)
-let rec apply_to_term theta ast = ast
-
-
 (* type_variable_id -> type_struct -> (bool * code_range) *)
 let rec emerge_in tvid tystr =
   let dummy = (-2049, 0, 0, 0) in
     match tystr with
-    | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
     | FuncType(_, dom, cod)    ->
         let (bdom, rngdom) = emerge_in tvid dom in
         let (bcod, rngcod) = emerge_in tvid cod in
@@ -83,6 +77,7 @@ let rec emerge_in tvid tystr =
     | ListType(_, cont)        -> emerge_in tvid cont
     | RefType(_, cont)         -> emerge_in tvid cont
     | ProductType(_, lst)      -> emerge_in_list tvid lst
+    | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
     | _                        -> (false, dummy)
 and emerge_in_list tvid tylist =
   let dummy = (-2049, 0, 0, 0) in
@@ -94,6 +89,7 @@ and emerge_in_list tvid tylist =
           if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dummy)
 
 
+(* t -> type_variable_id -> type_struct -> t *)
 let rec overwrite theta key value =
   match theta with
   | []             -> []
@@ -103,10 +99,12 @@ let rec overwrite theta key value =
       else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 
 
+(* t -> type_variable_id -> type_struct -> t *)
 let overwrite_or_add theta key value =
   overwrite (add theta key value) key value
 
 
+(* type_struct -> type_struct -> 'a *)
 let report_inclusion_error tystr1 tystr2 =
   let rng1 = Typeenv.get_range_from_type tystr1 in
   let rng2 = Typeenv.get_range_from_type tystr2 in
@@ -132,7 +130,7 @@ let report_inclusion_error tystr1 tystr2 =
       ^ "    but these are incompatible with each other"
     ))
 
-
+(* type_struct -> type_struct -> 'a *)
 let report_contradiction_error tystr1 tystr2 =
   let rng1 = Typeenv.get_range_from_type tystr1 in
   let rng2 = Typeenv.get_range_from_type tystr2 in
@@ -168,7 +166,7 @@ let report_contradiction_error tystr1 tystr2 =
           ^ "    this constraint is required by the expression\n"
           ^ "    at " ^ msg2))
 
-(* Subst.t -> Subst.t *)
+(* t -> t *)
 let rec fix_subst theta = fix_subst_sub theta theta
 and fix_subst_sub rest from =
   match rest with
@@ -189,7 +187,7 @@ and check_emergence theta =
           check_emergence tail
 
 
-(* Subst.t -> Subst.t -> Subst.t *)
+(* t -> t -> t *)
 let rec compose theta2 theta1 = fix_subst (compose_prim theta2 theta1)
 and compose_prim theta2 theta1 =
   match theta2 with
@@ -206,7 +204,7 @@ and compose_prim theta2 theta1 =
           ( compose_prim tail (overwrite_or_add theta1 tvid tystr2) )
       )
 
-(* type_struct -> type_struct -> Subst.t *)
+(* type_struct -> type_struct -> t *)
 and unify tystr1 tystr2 =
   try unify_sub tystr1 tystr2 with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
@@ -224,6 +222,7 @@ and unify tystr1 tystr2 =
          else
            report_contradiction_error tystr1 tystr2
 
+(* type_struct -> type_struct -> t *)
 and unify_sub tystr1 tystr2 =
   print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ; (* for test *)
@@ -242,6 +241,10 @@ and unify_sub tystr1 tystr2 =
   | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
 
   | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
+
+  | (VariantType(_, varntnm1), VariantType(_, varntnm2))
+      when varntnm1 = varntnm2
+      -> empty
 
   | (TypeVariable(rng1, tvid1), tystr) ->
       ( match tystr with
@@ -288,4 +291,3 @@ and string_of_subst_sub theta =
   | (tvid, tystr) :: tail ->
       " | '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct_basic tystr) ^ "\n"
         ^ (string_of_subst_sub tail)
-
