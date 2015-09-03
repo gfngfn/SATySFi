@@ -16,35 +16,39 @@ let rec find tyenv varnm =
   | []               -> raise Not_found
   | (vn, ts) :: tail -> if vn = varnm then ts else find tail varnm
 
-
+(* type_struct -> code_range *)
 let get_range_from_type tystr =
   match tystr with
   | IntType(rng)         -> rng
   | StringType(rng)      -> rng
   | BoolType(rng)        -> rng
   | UnitType(rng)        -> rng
-  | TypeVariable(rng, _) -> rng
   | FuncType(rng, _, _)  -> rng
   | ListType(rng, _)     -> rng
   | RefType(rng, _)      -> rng
   | ProductType(rng, _)  -> rng
+  | TypeVariable(rng, _) -> rng
+  | VariantType(rng, _)  -> rng
   | TypeEnvironmentType(rng, _) -> rng
   | ForallType(_, _)     -> (-31, 0, 0, 0)
 
+(* type_struct -> code_range -> type_struct *)
 let overwrite_range_of_type tystr rng =
   match tystr with
   | IntType(_)                -> IntType(rng)
   | StringType(_)             -> StringType(rng)
   | BoolType(_)               -> BoolType(rng)
   | UnitType(_)               -> UnitType(rng)
-  | TypeVariable(_, tvid)     -> TypeVariable(rng, tvid)
   | FuncType(_, tydom, tycod) -> FuncType(rng, tydom, tycod)
   | ListType(_, tycont)       -> ListType(rng, tycont)
   | RefType(_, tycont)        -> RefType(rng, tycont)
   | ProductType(_, tylist)    -> ProductType(rng, tylist)
+  | TypeVariable(_, tvid)     -> TypeVariable(rng, tvid)
+  | VariantType(_, varntnm)   -> VariantType(rng, varntnm)
   | TypeEnvironmentType(_, tyenv)  -> TypeEnvironmentType(rng, tyenv)
   | ForallType(tvid, tycont)       -> ForallType(tvid, tycont)
 
+(* type_struct -> type_struct *)
 let rec erase_range_of_type tystr =
   let dummy = (-2048, 0, 0, 0) in
     match tystr with
@@ -52,11 +56,12 @@ let rec erase_range_of_type tystr =
     | StringType(_)             -> StringType(dummy)
     | BoolType(_)               -> BoolType(dummy)
     | UnitType(_)               -> UnitType(dummy)
-    | TypeVariable(_, tvid)     -> TypeVariable(dummy, tvid)
     | FuncType(_, tydom, tycod) -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
     | ListType(_, tycont)       -> ListType(dummy, erase_range_of_type tycont)
     | RefType(_, tycont)        -> RefType(dummy, erase_range_of_type tycont)
     | ProductType(_, tylist)    -> ProductType(dummy, erase_range_of_type_list tylist)
+    | TypeVariable(_, tvid)     -> TypeVariable(dummy, tvid)
+    | VariantType(_, varntnm)   -> VariantType(dummy, varntnm)
     | TypeEnvironmentType(_, tyenv) -> TypeEnvironmentType(dummy, tyenv)
     | ForallType(tvid, tycont)      -> ForallType(tvid, erase_range_of_type tycont)
 and erase_range_of_type_list tylist =
@@ -78,7 +83,12 @@ let rec find_in_type_struct tvid tystr =
   | FuncType(_, tydom, tycod) -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
   | ListType(_, tycont)       -> find_in_type_struct tvid tycont
   | RefType(_, tycont)        -> find_in_type_struct tvid tycont
+  | ProductType(_, tylist)    -> find_in_type_struct_list tvid tylist
   | _                         -> false
+and find_in_type_struct_list tvid tystr =
+  match tystr with
+  | []         -> false
+  | ty :: tail -> if find_in_type_struct tvid ty then true else find_in_type_struct_list tvid tail
 
 (* type_variable_id -> type_environment -> bool *)
 let rec find_in_type_environment tvid tyenv =

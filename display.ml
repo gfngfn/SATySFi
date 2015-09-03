@@ -33,16 +33,17 @@ and string_of_pmcons (_, pmcons) =
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 and string_of_pat (_, pat) =
   match pat with
-  | UTPNumericConstant(nc) -> string_of_int nc
-  | UTPBooleanConstant(bc) -> string_of_bool bc
-  | UTPUnitConstant        -> "()"
-  | UTPListCons(hd, tl)    -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
-  | UTPEndOfList           ->  "[]"
-  | UTPTupleCons(hd, tl)   -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
-  | UTPEndOfTuple          -> "$"
-  | UTPWildCard            -> "_"
-  | UTPVariable(varnm)     -> varnm
-  | UTPAsVariable(varnm, p)-> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
+  | UTPNumericConstant(nc)  -> string_of_int nc
+  | UTPBooleanConstant(bc)  -> string_of_bool bc
+  | UTPUnitConstant         -> "()"
+  | UTPListCons(hd, tl)     -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
+  | UTPEndOfList            ->  "[]"
+  | UTPTupleCons(hd, tl)    -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
+  | UTPEndOfTuple           -> "$"
+  | UTPWildCard             -> "_"
+  | UTPVariable(varnm)      -> varnm
+  | UTPAsVariable(varnm, p) -> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
+  | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_pat p) ^ ")"
 
 
 let rec string_of_ast ast =
@@ -82,7 +83,10 @@ let describe_position (sttln, sttpos, endln, endpos) =
     "line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
       ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos)
 
-let error_reporting rng errmsg = (describe_position rng) ^ ":\n    " ^ errmsg
+
+let error_reporting rng errmsg = "at" ^ (describe_position rng) ^ ":\n    " ^ errmsg
+
+let bug_reporting rng errmsg = "at" ^ (describe_position rng) ^ ":\n     this cannot happen; " ^ errmsg
 
 
 (* -- for debug -- *)
@@ -93,8 +97,6 @@ let rec string_of_type_struct_basic tystr =
     | IntType(_)    -> if sttln <= 0 then "int"    else "int+"
     | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool+"
     | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit+"
-    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
-    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
 
     | FuncType(_, tydom, tycod)  ->
         let strdom = string_of_type_struct_basic tydom in
@@ -122,6 +124,9 @@ let rec string_of_type_struct_basic tystr =
         ) ^ " ref" ^ (if sttln <= 0 then "+" else "")
 
     | ProductType(_, tylist)     -> string_of_type_struct_list_basic tylist
+    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
+    | VariantType(_, varntnm)    -> if sttln <= 0 then varntnm else varntnm ^ "+"
+    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
     | ForallType(tvid, tycont)   ->
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
 
@@ -199,16 +204,6 @@ and string_of_type_struct_sub tystr lst =
   | IntType(_)    -> "int"
   | BoolType(_)   -> "bool"
   | UnitType(_)   -> "unit"
-  | TypeEnvironmentType(_, _) -> "env"
-
-  | TypeVariable(_, tvid)     ->
-      ( try "'" ^ (find_meta_type_variable lst tvid) with
-        | Not_found ->
-            "'" ^
-              ( try find_unbound_type_variable tvid with
-                | Not_found -> new_unbound_type_variable_name tvid
-              )
-      )
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
@@ -237,9 +232,23 @@ and string_of_type_struct_sub tystr lst =
   | ProductType(_, tylist)    ->
       string_of_type_struct_list tylist lst
 
+  | TypeVariable(_, tvid)     ->
+      ( try "'" ^ (find_meta_type_variable lst tvid) with
+        | Not_found ->
+            "'" ^
+              ( try find_unbound_type_variable tvid with
+                | Not_found -> new_unbound_type_variable_name tvid
+              )
+      )
+
+  | VariantType(_, varntnm) -> varntnm
+
+  | TypeEnvironmentType(_, _) -> "env"
+
   | ForallType(tvid, tycont)  ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
+
 
 and string_of_type_struct_list tylist lst =
   match tylist with

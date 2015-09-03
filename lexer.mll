@@ -4,11 +4,12 @@
 
   exception LexError of string
 
-  let line_no : int ref = ref 1
+  type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
+
+  let line_no             : int ref = ref 1
   let end_of_previousline : int ref = ref 0
 
-  type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
-  let next_state : lexer_state ref = ref STATE_NUMEXPR
+  let next_state  : lexer_state ref = ref STATE_NUMEXPR
   let first_state : lexer_state ref = ref STATE_NUMEXPR
   let after_literal_state : lexer_state ref = ref STATE_STREXPR
   let after_comment_state : lexer_state ref = ref STATE_STREXPR
@@ -43,8 +44,8 @@
     line_no := !line_no + 1
 
   let rec increment_line_for_each_break lexbuf str num =
-    if num >= String.length str then () else (
-      ( match str.[num] with
+    if num >= String.length str then () else
+    ( ( match str.[num] with
         | '\n' -> ( increment_line lexbuf )
         | _ -> () ) ;
       increment_line_for_each_break lexbuf str (num + 1)
@@ -78,8 +79,11 @@
 let space = [' ' '\t']
 let break = ['\n']
 let digit = ['0'-'9']
-let latin = ( ['a'-'z'] | ['A'-'Z'] )
-let identifier = (latin (digit | latin | "-")*)
+let capital = ['A'-'Z']
+let small = ['a'-'z']
+let latin = ( small | capital )
+let identifier = (small (digit | latin | "-")*)
+let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let str = [^ ' ' '\t' '\n' '@' '`' '\\' '{' '}' '%' '|']
 rule numexpr = parse
@@ -150,7 +154,7 @@ rule numexpr = parse
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
 
-  | (latin (digit | latin |"-")*) {
+  | identifier {
         let tok = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
         ( match tok with
@@ -180,8 +184,13 @@ rule numexpr = parse
           | "with"     -> WITH(pos)
           | "when"     -> WHEN(pos)
           | "as"       -> AS(pos)
+          | "variant"  -> VARIANT(pos)
+          | "of"       -> OF(pos)
           | _          -> VAR(pos, tok)
         )
+      }
+  | constructor {
+        let tok = Lexing.lexeme lexbuf in CONSTRUCTOR(get_pos lexbuf, tok)
       }
   | (digit digit*) {
         let tok = Lexing.lexeme lexbuf in NUMCONST(get_pos lexbuf, tok)

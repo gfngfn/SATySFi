@@ -1,5 +1,11 @@
 open Types
 
+
+(* unit -> Variantenv.t *)
+let make_variant_environment () = Variantenv.empty
+
+
+(* type_environment -> (var_name * type_struct) list *)
 let rec add_to_type_environment tyenv lst =
   match lst with
   | []                     -> tyenv
@@ -7,6 +13,8 @@ let rec add_to_type_environment tyenv lst =
       let tyenv_new = Typeenv.add tyenv varnm tystr in
         add_to_type_environment tyenv_new tail
 
+
+(* unit -> type_environment *)
 let make_type_environment () =
   let i = IntType((-32, 0, 0, 0)) in
   let b = BoolType((-33, 0, 0, 0)) in
