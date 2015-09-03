@@ -297,14 +297,14 @@ and typecheck_pattern_match_cons varntenv tyenv (rng, utpmconsmain) tyobj theta 
       let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
         (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
 
+
 (* type_environment * untyped_pattern_tree -> (pattern_tree * type_struct * type_environment) *)
 and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   match utpatmain with
   | UTPNumericConstant(nc) -> (PNumericConstant(nc), IntType(rng), tyenv)
   | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), BoolType(rng), tyenv)
   | UTPUnitConstant        -> (PUnitConstant, UnitType(rng), tyenv)
-  | UTPEndOfList ->
-      let ntv = TypeVariable(rng, new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
+
   | UTPListCons(utpat1, utpat2) ->
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
       let (epat2, typat2, tyenv2) = typecheck_pattern varntenv tyenv1 utpat2 in
@@ -312,8 +312,9 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         let tyenv_result = Subst.apply_to_type_environment theta tyenv2 in
         let type_result = Subst.apply_to_type_struct theta typat2 in
           (PListCons(epat1, epat2), type_result, tyenv_result)
+  | UTPEndOfList ->
+      let ntv = TypeVariable(rng, new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
 
-  | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
   | UTPTupleCons(utpat1, utpat2) ->
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
       let (epat2, typat2, tyenv2) = typecheck_pattern varntenv tyenv1 utpat2 in
@@ -324,11 +325,15 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         )
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
+  | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
+
   | UTPWildCard ->
       let ntv = TypeVariable(rng, new_type_variable_id ()) in (PWildCard, ntv, tyenv)
+
   | UTPVariable(varnm) ->
       let ntv = TypeVariable(rng, new_type_variable_id ()) in
         (PVariable(varnm), ntv, Typeenv.add tyenv varnm ntv)
+
   | UTPAsVariable(varnm, utpat1) ->
       let ntv = TypeVariable(rng, new_type_variable_id ()) in
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
@@ -344,6 +349,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         | Not_found -> raise (TypeCheckError("undefined constructor '" ^ constrnm ^ "'"))
       )
 
+
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
 and add_mutual_variables varntenv tyenv mutletcons =
   match mutletcons with
@@ -352,6 +358,7 @@ and add_mutual_variables varntenv tyenv mutletcons =
       let ntv = TypeVariable(get_range astdef, new_type_variable_id ()) in
         let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
           (tyenv_tail, ((varnm, ntv) :: tvtylst))
+
 
 (* Typeenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
   -> (Typeenv.t * mutual_let_cons * Subst.t) *)
@@ -368,6 +375,7 @@ and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
           (Subst.apply_to_type_environment theta1final tyenv_tail, MutualLetCons(nv, e1, mutletcons_tail), theta1final)
 
   | _ -> raise (TypeCheckError("this cannot happen: error in 'typecheck_mutual_contents'"))
+
 
 and make_forall_type_mutual varntenv tyenv theta tvtylst =
   match tvtylst with

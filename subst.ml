@@ -195,10 +195,7 @@ and compose_prim theta2 theta1 =
   | (tvid, tystr2) :: tail ->
       ( try
           let tystr1 = find theta1 tvid in
-          ( print_for_debug ("$1: '" ^ (string_of_int tvid) ^ " = "
-              ^ (string_of_type_struct tystr2) ^ " = " ^ (string_of_type_struct tystr1) ^ "\n") ;
-              (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
-          )
+            (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
         with
         | Not_found ->
           ( compose_prim tail (overwrite_or_add theta1 tvid tystr2) )
@@ -224,8 +221,8 @@ and unify tystr1 tystr2 =
 
 (* type_struct -> type_struct -> t *)
 and unify_sub tystr1 tystr2 =
-  print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["
-                     ^ (string_of_type_struct_basic tystr2) ^ "]\n") ; (* for test *)
+  print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
+                     ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
   match (tystr1, tystr2) with
   | (IntType(_), IntType(_))       -> empty
   | (StringType(_), StringType(_)) -> empty

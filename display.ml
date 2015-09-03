@@ -83,7 +83,10 @@ let describe_position (sttln, sttpos, endln, endpos) =
     "line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
       ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos)
 
-let error_reporting rng errmsg = (describe_position rng) ^ ":\n    " ^ errmsg
+
+let error_reporting rng errmsg = "at" ^ (describe_position rng) ^ ":\n    " ^ errmsg
+
+let bug_reporting rng errmsg = "at" ^ (describe_position rng) ^ ":\n     this cannot happen; " ^ errmsg
 
 
 (* -- for debug -- *)

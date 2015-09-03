@@ -9,9 +9,13 @@ let rec make_argument_cons lst =
   | [] -> EndOfArgumentVariable
   | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
 
+
 let copy_environment env = Hashtbl.copy env
 
 let add_to_environment env varnm rfast = Hashtbl.add env varnm rfast
+
+let find_in_environment env varnm = Hashtbl.find env varnm
+
 
 (* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
 let rec interpret env ast =
@@ -32,7 +36,7 @@ let rec interpret env ast =
 
   | ContentOf(v) ->
       ( try
-          let content = !(Hashtbl.find env v) in content
+          let content = !(find_in_environment env v) in content
         with
         | Not_found ->  raise (EvalError("undefined variable '" ^ v ^ "'\n"
                           ^ "    maybe you wrote 0-ary meaningless mutual recursion"))
@@ -218,7 +222,7 @@ let rec interpret env ast =
       ( try
           let str_key = Out.main (interpret env astkey) in
           ( try
-              let rfvalue = Hashtbl.find global_hash_env str_key in
+              let rfvalue = find_in_environment global_hash_env str_key in
               ( match !rfvalue with
                 | MutableValue(astmv) ->
                     ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
@@ -233,7 +237,7 @@ let rec interpret env ast =
       )
   | Overwrite(varnm, astnew) ->
       ( try
-          let rfvalue = Hashtbl.find env varnm in
+          let rfvalue = find_in_environment env varnm in
           ( match !rfvalue with
             | MutableValue(astmv) ->
                 ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
