@@ -1,0 +1,31 @@
+let qsort lst =
+  match lst with
+  | []       -> []
+  | hd :: tl ->
+      ( match separate hd tl [] [] with
+        | (lp, lq) -> concat (qsort lp) (hd :: (qsort lq))
+      )
+
+and separate pivot lst lp lq =
+  match lst with
+  | []       -> (lp, lq)
+  | hd :: tl ->
+    if hd <= pivot then
+      separate pivot tl (hd :: lp) lq
+    else
+      separate pivot tl lp (hd :: lq)
+
+and concat lsta lstb =
+  match lsta with
+  | []       -> lstb
+  | hd :: tl -> hd :: (concat tl lstb)
+
+let print-list lst =
+  match lst with
+  | []       -> {}
+  | hd :: tl -> {[} ^ (arabic hd) ^ {]} ^ (print-list tl)
+
+let test1 = [3; 1; 4; 1; 5; 9; 2]
+let test2 = qsort test1
+
+in {/} ^ (print-list test1) ^ {/} ^ (print-list test2) ^ {/}

@@ -2,11 +2,43 @@
   open Types
 
   type literal_reading_state = Normal | ReadingSpace
+  type range_kind =
+    | Tok     of token_position
+    | TokArg  of (token_position * string)
+    | Untyped of untyped_abstract_tree
+    | Pat     of untyped_pattern_tree
+    | PatCons of untyped_pattern_match_cons
+    | TypeStr of type_struct
 
+  (* range_kind -> range_kind -> code_range *)
+  let make_range sttx endx =
+    let (sttln, sttpos) =
+      match sttx with
+      | Tok(l, s, _)               -> (l, s)
+      | TokArg((l, s, _), _)       -> (l, s)
+      | Untyped((sl, sp, _, _), _) -> (sl, sp)
+      | Pat((sl, sp, _, _), _)     -> (sl, sp)
+      | PatCons((sl, sp, _, _), _) -> (sl, sp)
+      | TypeStr(tystr)             ->
+          let (sl, sp, _, _) = Typeenv.get_range_from_type tystr in (sl, sp)
+    in
+    let (endln, endpos) =
+      match endx with
+      | Tok(l, _, e)               -> (l, e)
+      | TokArg((l, _, e), _)       -> (l, e)
+      | Untyped((_, _, el, ep), _) -> (el, ep)
+      | Pat((_, _, el, ep), _)     -> (el, ep)
+      | PatCons((_, _, el, ep), _) -> (el, ep)
+      | TypeStr(tystr)             ->
+          let (_, _, el, ep) = Typeenv.get_range_from_type tystr in (el, ep)
+    in
+      (sttln, sttpos, endln, endpos)
 
-  (* untyped_abstract_tree -> code_range *)
-  let get_range utast =
-    let (rng, _) = utast in rng
+  (* token_position -> code_range *)
+  let extract_range (ln, sttpos, endpos) = (ln, sttpos, ln, endpos)
+
+  (* token_position * string -> code_range * string *)
+  let extract_range_and_name ((ln, sttpos, endpos), name) = ((ln, sttpos, ln, endpos), name)
 
   (* untyped_argument_cons -> untyped_argument_cons -> untyped_argument_cons *)
   let rec append_argument_list arglsta arglstb =
@@ -24,7 +56,8 @@
     match argcons with
     | UTEndOfArgument             -> utastconstr
     | UTArgumentCons(arg, actail) ->
-        convert_into_apply_sub actail (get_range arg, UTApply(utastconstr, arg))
+        let (rng, _) = arg in
+          convert_into_apply_sub actail (rng, UTApply(utastconstr, arg))
 
   let class_name_to_abstract_tree clsnm =
     UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
@@ -138,29 +171,21 @@
           )
 
   let binary_operator opname lft op rgt =
-    let (sttln, sttpos, _, _) = get_range lft in
-    let (_, _, endln, endpos) = get_range rgt in
     let (opln, opstt, opend) = op in
     let oprng = (opln, opstt, opln, opend) in
-    let rng = (sttln, sttpos, endln, endpos) in
+    let rng = make_range (Untyped lft) (Untyped rgt) in
       (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
   let make_let_expression lettk vartk utargcons utastdef decs utastaft =
-    let (sttln, sttpos, _) = lettk in
-    let ((varln, varstt, varend), varnm) = vartk in
-    let (_, _, endln, endpos) = get_range utastaft in
-    let rng = (sttln, sttpos, endln, endpos) in
-    let varrng = (varln, varstt, varln, varend) in
+    let (varrng, varnm) = extract_range_and_name vartk in
+    let rng = make_range (Tok lettk) (Untyped utastaft) in
     let curried = curry_lambda_abstract varrng utargcons utastdef in
       (rng, UTLetIn(UTMutualLetCons(varnm, curried, decs), utastaft))
 
   let make_let_mutable_expression letmuttk vartk utastdef utastaft =
-    let (sttln, sttpos, _) = letmuttk in
-    let ((varln, varstt, varend), vn) = vartk in
-    let (_, _, endln, endpos) = get_range utastaft in
-    let varrng = (varln, varstt, varln, varend) in
-    let rng = (sttln, sttpos, endln, endpos) in
-      (rng, UTLetMutableIn(varrng, vn, utastdef, utastaft))
+    let (varrng, varnm) = extract_range_and_name vartk in
+    let rng = make_range (Tok letmuttk) (Untyped utastaft) in
+      (rng, UTLetMutableIn(varrng, varnm, utastdef, utastaft))
 
 %}
 
@@ -248,7 +273,7 @@
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree> tuple
 %type <Types.untyped_pattern_match_cons> pats
-%type <Types.untyped_pattern_tree> patcons
+%type <Types.untyped_pattern_tree> pattr
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
 %type <Types.untyped_abstract_tree> sxsep
@@ -388,15 +413,11 @@ nxmutual: /* -> Types.untyped_mutual_let_cons */
 ;
 nxlet:
   | MATCH nxlet WITH pats {
-        let (sttln, sttpos, _) = $1 in
-        let ((_, _, endln, endpos), utpats) = $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (PatCons $4) in
           (rng, UTPatternMatch($2, $4))
       }
   | MATCH nxlet WITH BAR pats {
-        let (sttln, sttpos, _) = $1 in
-        let ((_, _, endln, endpos), utpats) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (PatCons $5) in
           (rng, UTPatternMatch($2, $5))
       }
   | nxletsub { $1 }
@@ -461,35 +482,31 @@ nxletsub:
 ;
 nxdec: /* -> Types.mutual_let_cons */
   | LETAND VAR argvar DEFEQ nxlet nxdec {
-        let ((varln, varstt, varend), vn) = $2 in
-        let varrng = (varln, varstt, varln, varend) in
+        let (varrng, varnm) = extract_range_and_name $2 in
         let curried = curry_lambda_abstract varrng $3 $5 in
-          UTMutualLetCons(vn, curried, $6)
+          UTMutualLetCons(varnm, curried, $6)
       }
   | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
-        let ((csln, csstt, csend), csname) = $2 in
-        let csrng = (csln, csstt, csln, csend) in
+        let (csrng, csnm) = extract_range_and_name $2 in
         let curried = curry_lambda_abstract csrng $3 $5 in
-          UTMutualLetCons(csname, curried, $6)
+          UTMutualLetCons(csnm, curried, $6)
       }
   | { UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | LETAND VAR error {
-        let (_, vn) = $2 in
+        let (_, varnm) = $2 in
           raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-            ("and " ^ vn ^ " ..<!>..") $1))
+            ("and " ^ varnm ^ " ..<!>..") $1))
       }
   | LETAND CTRLSEQ error {
-        let (ln, csname) = $2 in
+        let (ln, csnm) = $2 in
           raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-            ("and " ^ csname ^ " ..<!>..") ln))
+            ("and " ^ csnm ^ " ..<!>..") ln))
       }
 ;
 nxwhl:
   | WHILE nxlet DO nxwhl {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           (rng, UTWhileDo($2, $4))
       }
   | nxif { $1 }
@@ -502,33 +519,23 @@ nxwhl:
       }
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $6 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $6) in
           (rng, UTIfThenElse($2, $4, $6))
       }
   | IFCLASSISVALID nxlet ELSE nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           (rng, UTIfClassIsValid($2, $4))
       }
   | IFCLASSISVALID THEN nxlet ELSE nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $5) in
           (rng, UTIfClassIsValid($3, $5))
       }
   | IFIDISVALID nxlet ELSE nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           (rng, UTIfIDIsValid($2, $4))
       }
   | IFIDISVALID THEN nxlet ELSE nxlet {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $5) in
           (rng, UTIfIDIsValid($3, $5))
       }
   | nxbfr { $1 }
@@ -580,9 +587,7 @@ nxif:
 ;
 nxbfr:
   | nxlambda BEFORE nxbfr {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Untyped $1) (Untyped $3) in
           (rng, UTSequential($1, $3))
       }
   | nxlambda { $1 }
@@ -593,28 +598,20 @@ nxbfr:
 ;
 nxlambda:
   | VAR OVERWRITEEQ nxlor {
-        let ((sttln, sttpos, varend), vn) = $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let varrng = (sttln, sttpos, sttln, varend) in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTOverwrite(varrng, vn, $3))
+        let (varrng, varnm) = extract_range_and_name $1 in
+        let rng = make_range (TokArg $1) (Untyped $3) in
+          (rng, UTOverwrite(varrng, varnm, $3))
       }
   | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           (rng, UTDeclareGlobalHash($2, $4))
       }
   | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           (rng, UTOverwriteGlobalHash($2, $4))
       }
   | LAMBDA argvar ARROW nxlor {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $4) in
           curry_lambda_abstract rng $2 $4
       }
   | nxlor { $1 }
@@ -646,8 +643,7 @@ nxlambda:
 ;
 argvar: /* -> Types.argument_variable_cons */
   | VAR argvar {
-        let ((varln, varstt, varend), vn) = $1 in
-        let varrng = (varln, varstt, varln, varend) in
+        let (varrng, vn) = extract_range_and_name $1 in
           UTArgumentVariableCons(varrng, vn, $2)
       }
   | { UTEndOfArgumentVariable }
@@ -772,23 +768,17 @@ nxrtimes:
 nxun:
   | MINUS nxapp { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
   | LNOT nxapp  {
-        let (sttln, sttpos, lnotend) = $1 in
-        let lnotrng = (sttln, sttpos, sttln, lnotend) in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let lnotrng = extract_range $1 in
+        let rng = make_range (Tok $1) (Untyped $2) in
           (rng, UTApply((lnotrng, UTContentOf("not")), $2))
       }
   | REFNOW nxapp {
-        let (sttln, sttpos, refnowend) = $1 in
-        let refnowrng = (sttln, sttpos, sttln, refnowend) in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let refnowrng = extract_range $1 in
+        let rng = make_range (Tok $1) (Untyped $2) in
           (rng, UTApply((refnowrng, UTContentOf("!")), $2))
       }
   | REFFINAL nxapp {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $2) in
           (rng, UTReferenceFinal($2))
       }
   | nxapp { $1 }
@@ -808,92 +798,69 @@ nxun:
 ;
 nxapp:
   | nxapp nxbot {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Untyped $1) (Untyped $2) in
           (rng, UTApply($1, $2))
       }
   | nxbot { $1 }
 ;
 nxbot:
   | VAR {
-        let ((varln, varstt, varend), vn) = $1 in
-        let rng = (varln, varstt, varln, varend) in
+        let (rng, vn) = extract_range_and_name $1 in
           (rng, UTContentOf(vn))
       }
   | CONSTRUCTOR nxbot {
-        let ((sttln, sttpos, _), constrnm) = $1 in
-        let ((_, _, endln, endpos), _) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, constrnm) = extract_range_and_name $1 in
+        let rng = make_range (TokArg $1) (Untyped $2) in
           (rng, UTConstructor(constrnm, $2))
       }
   | NUMCONST {
-        let ((ncln, ncstt, ncend), cs) = $1 in
-        let rng = (ncln, ncstt, ncln, ncend) in
-          (rng, UTNumericConstant(int_of_string cs))
+        let (rng, ncs) = extract_range_and_name $1 in
+          (rng, UTNumericConstant(int_of_string ncs))
       }
   | TRUE  {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTBooleanConstant(true))
       }
   | FALSE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTBooleanConstant(false))
       }
-  | LPAREN nxlet RPAREN    {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
+  | LPAREN nxlet RPAREN {
         let (_, utast) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           (rng, utast)
       }
   | LPAREN nxlet COMMA tuple RPAREN {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $5) in
           (rng, UTTupleCons($2, $4))
       }
   | OPENSTR sxsep CLOSESTR {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
         let (_, utast) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           (rng, utast)
       }
   | OPENQT sxsep CLOSEQT {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           (rng, omit_spaces $2)
       }
   | BLIST ELIST {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $2) in
           (rng, UTEndOfList)
       }
   | BLIST nxlet nxlist ELIST {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $4) in
           (rng, UTListCons($2, $3))
       }
   | UNITVALUE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTUnitConstant)
       }
   | FINISH {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTFinishHeaderFile)
       }
   | LPAREN binop RPAREN {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           (rng, UTContentOf($2))
   }
 /* -- for syntax error log -- */
@@ -912,9 +879,7 @@ nxbot:
 ;
 nxlist:
   | LISTPUNCT nxlet nxlist {
-        let (sttln, sttpos, _) = $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Untyped $3) in
           (rng, UTListCons($2, $3))
       }
   | { ((-17, 0, 0, 0), UTEndOfList) }
@@ -926,40 +891,33 @@ nxlist:
 ;
 variants:
   | CONSTRUCTOR OF txfunc {
-        let ((sttln, sttpos, _), constrnm) = $1 in
-        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, constrnm) = extract_range_and_name $1 in
+        let rng = make_range (TokArg $1) (TypeStr $3) in
           (rng, UTVariantCons(constrnm, $3, ((-400, 0, 0, 0), UTEndOfVariant)))
       }
   | CONSTRUCTOR OF txfunc BAR variants {
-        let ((sttln, sttpos, _), constrnm) = $1 in
-        let ((_, _, endln, endpos), _) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, constrnm) = extract_range_and_name $1 in
+        let rng = make_range (TokArg $1) (Untyped $5) in
           (rng, UTVariantCons(constrnm, $3, $5))
       }
 ;
 txfunc: /* -> type_struct */
   | txprod ARROW txfunc {
-        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
-        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (TypeStr $1) (TypeStr $3) in
           FuncType(rng, $1, $3)
       }
   | txprod { $1 }
 ;
 txprod:
   | txbot TIMES txprod {
-        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
-        let (_, _, endln, endpos) = Typeenv.get_range_from_type $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (TypeStr $1) (TypeStr $3) in
           match $3 with
           | ProductType(_, tylist) -> ProductType(rng, $1 :: tylist)
           | other                  -> ProductType(rng, [$1; $3])
       }
   | txbot VAR {
-        let (sttln, sttpos, _, _) = Typeenv.get_range_from_type $1 in
-        let ((endln, _, endpos), tyschnm) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, tyschnm) = extract_range_and_name $2 in
+        let rng = make_range (TypeStr $1) (TokArg $2) in
           match tyschnm with
           | "list" -> ListType(rng, $1)
           | "ref"  -> RefType(rng, $1)
@@ -982,13 +940,11 @@ txbot:
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet {
-        let rng = get_range $1 in
+        let (rng, _) = $1 in
           (rng, UTTupleCons($1, ((-5000, 0, 0, 0), UTEndOfTuple)))
       }
   | nxlet COMMA tuple {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let ((_, _, endln, endpos), _) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Untyped $1) (Untyped $3) in
           (rng, UTTupleCons($1, $3))
       }
 /* -- for syntax error log -- */
@@ -997,113 +953,89 @@ tuple: /* -> untyped_tuple_cons */
           error_reporting "illegal token after ','" ", ..<!>.." $2))
       }
 ;
-pats:
-  | patcons ARROW nxletsub {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+pats: /* -> untyped_patter_match_cons */
+  | pattr ARROW nxletsub {
+        let rng = make_range (Pat $1) (Untyped $3) in
           (rng, UTPatternMatchCons($1, $3, ((-5001, 0, 0, 0), UTEndOfPatternMatch)))
       }
-  | patcons ARROW nxletsub BAR pats {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | pattr ARROW nxletsub BAR pats {
+        let rng = make_range (Pat $1) (PatCons $5) in
           (rng, UTPatternMatchCons($1, $3, $5))
       }
-  | patcons WHEN nxletsub ARROW nxletsub {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | pattr WHEN nxletsub ARROW nxletsub {
+        let rng = make_range (Pat $1) (Untyped $5) in
           (rng, UTPatternMatchConsWhen($1, $3, $5, ((-5001, 0, 0, 0), UTEndOfPatternMatch)))
       }
-  | patcons WHEN nxletsub ARROW nxletsub BAR pats {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $7 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | pattr WHEN nxletsub ARROW nxletsub BAR pats {
+        let rng = make_range (Pat $1) (PatCons $7) in
           (rng, UTPatternMatchConsWhen($1, $3, $5, $7))
       }
 ;
-patcons: /* -> Types.untyped_pattern_tree */
-  | patbot CONS patcons {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+pattr: /* -> Types.untyped_pattern_tree */
+  | patbot CONS pattr {
+        let rng = make_range (Pat $1) (Pat $3) in
           (rng, UTPListCons($1, $3))
       }
-  | patcons AS VAR {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((endln, _, endpos), varnm) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | pattr AS VAR {
+        let (_, varnm) = extract_range_and_name $3 in
+        let rng = make_range (Pat $1) (TokArg $3) in
           (rng, UTPAsVariable(varnm, $1))
   }
   | patbot { $1 }
 ;
 patbot: /* -> Types.untyped_pattern_tree */
   | NUMCONST {
-        let ((ln, sttpos, endpos), cs) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
-          (rng, UTPNumericConstant(int_of_string cs))
+        let (rng, ncs) = extract_range_and_name $1 in
+          (rng, UTPNumericConstant(int_of_string ncs))
       }
   | TRUE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTPBooleanConstant(true))
       }
   | FALSE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTPBooleanConstant(false))
       }
   | UNITVALUE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTPUnitConstant)
       }
   | WILDCARD {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTPWildCard)
       }
   | VAR {
-        let ((ln, sttpos, endpos), varnm) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let (rng, varnm) = extract_range_and_name $1 in
           (rng, UTPVariable(varnm))
       }
   | CONSTRUCTOR patbot {
-         let ((sttln, sttpos, _), constrnm) = $1 in
-         let ((_, _, endln, endpos), _) = $2 in
-         let rng = (sttln, sttpos, endln, endpos) in
+         let (_, constrnm) = extract_range_and_name $1 in
+         let rng = make_range (TokArg $1) (Pat $2) in
            (rng, UTPConstructor(constrnm, $2))
       }
-  | LPAREN patcons RPAREN {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | LPAREN pattr RPAREN {
+        let rng = make_range (Tok $1) (Tok $3) in
         let (_, pat) = $2 in
           (rng, pat)
       }
-  | LPAREN patcons COMMA pattuple RPAREN {
+  | LPAREN pattr COMMA pattuple RPAREN {
         let (sttln, sttpos, _) = $1 in
         let (endln, _, endpos) = $5 in
         let rng = (sttln, sttpos, endln, endpos) in
           (rng, UTPTupleCons($2, $4))
       }
   | BLIST ELIST {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $2) in
           (rng, UTPEndOfList)
       }
 ;
-pattuple:
-  | patcons {
+pattuple: /* untyped_pattern_tree */
+  | pattr {
         let (rng, _) = $1 in
           (rng, UTPTupleCons($1, ((-5002, 0, 0, 0), UTPEndOfTuple)))
       }
-  | patcons COMMA pattuple {
-        let ((sttln, sttpos, _, _), _) = $1 in
-        let ((_, _, endln, endpos), _) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+  | pattr COMMA pattuple {
+        let rng = make_range (Pat $1) (Pat $3) in
           (rng, UTPTupleCons($1, $3))
       }
 ;
@@ -1136,9 +1068,7 @@ sxsep:
 ;
 sxsepsub:
   | sxblock SEP sxsepsub {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let (_, _, endln, endpos) = get_range $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Untyped $1) (Untyped $3) in
           (rng, UTListCons($1, $3))
       }
   | { ((-18, 0, 0, 0), UTEndOfList) }
@@ -1150,66 +1080,55 @@ sxsepsub:
 ;
 sxblock:
   | sxbot sxblock {
-        let (sttln, sttpos, _, _) = get_range $1 in
-        let (_, _, endln, endpos) = get_range $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Untyped $1) (Untyped $2) in
           (rng, UTConcat($1, $2))
       }
   | { ((-19, 0, 0, 0), UTStringEmpty) }
   ;
 sxbot:
-  | CHAR  {
-        let ((ln, sttpos, endpos), ch) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+  | CHAR {
+        let (rng, ch) = extract_range_and_name $1 in
           (rng, UTStringConstant(ch))
       }
   | SPACE {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTStringConstant(" "))
       }
   | BREAK {
-        let (ln, sttpos, endpos) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let rng = extract_range $1 in
           (rng, UTBreakAndIndent)
       }
   | VARINSTR END {
-        let ((sttln, sttpos, _), vn) = $1 in
-        let (endln, _, endpos) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTContentOf(vn))
+        let (_, varnm) = extract_range_and_name $1 in
+        let rng = make_range (TokArg $1) (Tok $2) in
+          (rng, UTContentOf(varnm))
       }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
-        let ((csln, csstt, csend), csname) = $1 in
-        let csrng = (csln, csstt, csln, csend) in
-          convert_into_apply (csrng, UTContentOf(csname)) $2 $3 (append_argument_list $4 $5)
+        let (csrng, csnm) = extract_range_and_name $1 in
+          convert_into_apply (csrng, UTContentOf(csnm)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | CTRLSEQ error {
-        let (ln, csname) = $1 in
-        raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csname ^ "'") (csname ^ " ..<!>..") ln))
+        let (ln, csnm) = $1 in
+          raise (ParseErrorDetail(error_reporting ("illegal token after '" ^ csnm ^ "'") (csnm ^ " ..<!>..") ln))
       }
 sxclsnm:
   | CLASSNAME {
-        let ((ln, sttpos, endpos), clsnm) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let (rng, clsnm) = extract_range_and_name $1 in
           (rng, class_name_to_abstract_tree clsnm)
       }
   | { ((-20, 0, 0, 0), UTNoContent) }
 sxidnm:
   | IDNAME {
-        let ((ln, sttpos, endpos), idnm) = $1 in
-        let rng = (ln, sttpos, ln, endpos) in
+        let (rng, idnm) = extract_range_and_name $1 in
           (rng, id_name_to_abstract_tree idnm)
       }
   | { ((-21, 0, 0, 0), UTNoContent) }
 ;
 narg: /* -> Types.untyped_argument_cons */
   | OPENNUM nxlet CLOSENUM narg {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
         let (_, utastmain) = $2 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           UTArgumentCons((rng, utastmain), $4)
       }
   | { UTEndOfArgument }
@@ -1226,9 +1145,7 @@ narg: /* -> Types.untyped_argument_cons */
 sarg: /* -> Types.untyped_argument_cons */
   | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
   | OPENQT sxsep CLOSEQT sargsub {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           UTArgumentCons((rng, omit_spaces $2), $4)
       }
   | END { UTEndOfArgument }
@@ -1242,16 +1159,12 @@ sarg: /* -> Types.untyped_argument_cons */
 ;
 sargsub: /* -> Types.argument_cons */
   | BGRP sxsep EGRP sargsub {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
-        let (_, utast) = $2 in
-          UTArgumentCons((rng, utast), $4)
+        let rng = make_range (Tok $1) (Tok $3) in
+        let (_, utastmain) = $2 in
+          UTArgumentCons((rng, utastmain), $4)
       }
   | OPENQT sxsep CLOSEQT sargsub {
-        let (sttln, sttpos, _) = $1 in
-        let (endln, _, endpos) = $3 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let rng = make_range (Tok $1) (Tok $3) in
           UTArgumentCons((rng, omit_spaces $2), $4)
       }
   | { UTEndOfArgument }
