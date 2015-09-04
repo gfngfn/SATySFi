@@ -84,6 +84,7 @@ and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPNumericConstant of int
   | UTPBooleanConstant of bool
+  | UTPStringConstant  of untyped_abstract_tree
   | UTPUnitConstant
   | UTPListCons        of untyped_pattern_tree * untyped_pattern_tree
   | UTPEndOfList
@@ -175,6 +176,7 @@ and pattern_match_cons =
 and pattern_tree =
   | PNumericConstant of int
   | PBooleanConstant of bool
+  | PStringConstant  of abstract_tree
   | PUnitConstant
   | PListCons        of pattern_tree * pattern_tree
   | PEndOfList
@@ -184,7 +186,6 @@ and pattern_tree =
   | PVariable        of var_name
   | PAsVariable      of var_name * pattern_tree
   | PConstructor     of constructor_name * pattern_tree
-
 
 
 (* !!!! ---- global variable ---- !!!! *)

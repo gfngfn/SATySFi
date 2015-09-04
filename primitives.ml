@@ -48,10 +48,10 @@ let make_type_environment () =
         ( "string-sub",    s --> (i --> (i --> s)) );
         ( "string-length", s --> i );
         ( "\\deeper",      s --> s );
-        ( "\\break",       s );
-        ( "\\space",       s );
-        ( "break-char",    s );
-        ( "\\include",     s --> s );
+        ( "break",       s );
+        ( "space",       s );
+(*        ( "break-char",    s ); *)
+(*        ( "\\include",     s --> s ); *)
         ( "arabic",      i --> s );
 
         ( "list-head", (-2) -% ((l (v (-2))) --> (v (-2))) );
@@ -124,10 +124,10 @@ let make_environment () =
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
     add_to_environment env "\\deeper"      loc_deeper ;
-    add_to_environment env "\\break"       loc_break ;
-    add_to_environment env "\\space"       loc_space ;
-    add_to_environment env "break-char"    loc_breakchar ;
-    add_to_environment env "\\include"     loc_include ;
+    add_to_environment env "break"       loc_break ;
+    add_to_environment env "space"       loc_space ;
+(*    add_to_environment env "break-char"    loc_breakchar ; *)
+(*    add_to_environment env "\\include"     loc_include ; *)
     add_to_environment env "arabic"        loc_arabic ;
     add_to_environment env "list-head"     loc_listhead ;
     add_to_environment env "list-tail"     loc_listtail ;

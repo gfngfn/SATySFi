@@ -35,6 +35,7 @@ and string_of_pat (_, pat) =
   match pat with
   | UTPNumericConstant(nc)  -> string_of_int nc
   | UTPBooleanConstant(bc)  -> string_of_bool bc
+  | UTPStringConstant(ut)   -> string_of_utast ut
   | UTPUnitConstant         -> "()"
   | UTPListCons(hd, tl)     -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
   | UTPEndOfList            ->  "[]"

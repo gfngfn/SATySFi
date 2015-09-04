@@ -79,9 +79,10 @@ let rec interpret env ast =
               let intpd = interpret env_new astdef in intpd
             )
         | _ ->
-            raise (EvalError("this cannot happen:\n    illegal apply\n\n"
+            raise (EvalError("this cannot happen: illegal apply\n\n"
               ^ "      " ^ (string_of_ast astf) ^ "\n"
-              ^ "      " ^ (string_of_ast astl)))
+              ^ "      " ^ (string_of_ast astl)
+            ))
       )
   | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
 
@@ -90,18 +91,18 @@ let rec interpret env ast =
   | PrimitiveSame(ast1, ast2) ->
       let str1 =
       ( try Out.main (interpret env ast1) with
-        | Out.IllegalOut(s) -> raise (EvalError("this cannot happen:\n    llegal argument for 'same': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'same':\n    " ^ s))
       ) in
       let str2 =
       ( try Out.main (interpret env ast2) with
-        | Out.IllegalOut(s) -> raise (EvalError("this cannot happen:\n    Illegal argument for 'same': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'same':\n    " ^ s))
       ) in
-        BooleanConstant((compare str1 str2) == 0)
+        BooleanConstant((compare str1 str2) = 0)
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str =
       ( try Out.main (interpret env aststr) with
-        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for 'string-sub': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'string-sub': " ^ s))
       ) in
         let pos = interpret_int env astpos in
         let wid = interpret_int env astwid in
@@ -156,7 +157,7 @@ let rec interpret env ast =
       ( match valuelst with
         | ListCons(vhd, vtl) -> vtl
         | EndOfList          -> raise (EvalError("applied 'list-tail' to an empty list"))
-        | _                  -> raise (EvalError("'list-tail' expected argument to be a list, but is not"))
+        | _                  -> raise (EvalError("this cannot happen: argument of 'list-tail' is not a list"))
       )
   | PrimitiveIsEmpty(astlst) ->
       let valuelst = interpret env astlst in
@@ -340,6 +341,17 @@ and check_pattern_matching env pat astobj =
   match (pat, astobj) with
   | (PNumericConstant(pnc), NumericConstant(nc)) -> pnc = nc
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
+  | (PStringConstant(ast1), ast2)                ->
+      let out1 =
+        try Out.main ast1 with
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for pattern matching of string: " ^ s))
+      in
+      let out2 =
+        try Out.main ast2 with
+        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for pattern matching of string: " ^ s))
+      in
+        out1 = out2
+
   | (PUnitConstant, UnitConstant)                -> true
   | (PWildCard, _)                               -> true
   | (PVariable(varnm), _) ->

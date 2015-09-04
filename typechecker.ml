@@ -303,6 +303,12 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   match utpatmain with
   | UTPNumericConstant(nc) -> (PNumericConstant(nc), IntType(rng), tyenv)
   | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), BoolType(rng), tyenv)
+  | UTPStringConstant(ut1)  ->
+      let (e1, ty1, theta1) = typecheck varntenv tyenv ut1 in
+      let theta_new = Subst.compose (Subst.unify (StringType(-201, 0, 0, 0)) ty1) theta1 in
+      let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
+        (PStringConstant(e1), StringType(rng), tyenv_new)
+
   | UTPUnitConstant        -> (PUnitConstant, UnitType(rng), tyenv)
 
   | UTPListCons(utpat1, utpat2) ->

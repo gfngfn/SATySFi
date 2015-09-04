@@ -3,9 +3,6 @@ open Types
 exception IllegalOut of string
 
 
-let report_error errmsg =
-  print_string ("! [ERROR IN OUT] " ^ errmsg ^ ".") ; print_newline ()
-
 (* abstract_tree -> string *)
 let rec main value = out 0 value
 
@@ -27,4 +24,4 @@ and out indent value =
         with
         | Not_found -> raise (IllegalOut("undefined reference key \"" ^ str_key ^ "\""))
       )
-  | other -> raise (IllegalOut("this cannot happen:\n    cannot output\n\n      " (* ^ (string_of_ast other)*) ))
+  | other -> raise (IllegalOut("this cannot happen: cannot output\n\n    " (* ^ (string_of_ast other)*) ))

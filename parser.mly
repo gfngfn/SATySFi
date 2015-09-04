@@ -839,7 +839,7 @@ nxbot:
         let rng = make_range (Tok $1) (Tok $3) in
           (rng, utast)
       }
-  | OPENQT sxsep CLOSEQT {
+  | OPENQT sxblock CLOSEQT {
         let rng = make_range (Tok $1) (Tok $3) in
           (rng, omit_spaces $2)
       }
@@ -980,7 +980,7 @@ pattr: /* -> Types.untyped_pattern_tree */
         let (_, varnm) = extract_range_and_name $3 in
         let rng = make_range (Pat $1) (TokArg $3) in
           (rng, UTPAsVariable(varnm, $1))
-  }
+      }
   | patbot { $1 }
 ;
 patbot: /* -> Types.untyped_pattern_tree */
@@ -1028,8 +1028,12 @@ patbot: /* -> Types.untyped_pattern_tree */
         let rng = make_range (Tok $1) (Tok $2) in
           (rng, UTPEndOfList)
       }
+  | OPENQT sxblock CLOSEQT {
+        let rng = make_range (Tok $1) (Tok $3) in
+          (rng, UTPStringConstant(rng, omit_spaces $2))
+      }
 ;
-pattuple: /* untyped_pattern_tree */
+pattuple: /* -> untyped_pattern_tree */
   | pattr {
         let (rng, _) = $1 in
           (rng, UTPTupleCons($1, ((-5002, 0, 0, 0), UTPEndOfTuple)))
@@ -1144,7 +1148,7 @@ narg: /* -> Types.untyped_argument_cons */
 ;
 sarg: /* -> Types.untyped_argument_cons */
   | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
-  | OPENQT sxsep CLOSEQT sargsub {
+  | OPENQT sxblock CLOSEQT sargsub {
         let rng = make_range (Tok $1) (Tok $3) in
           UTArgumentCons((rng, omit_spaces $2), $4)
       }
@@ -1163,7 +1167,7 @@ sargsub: /* -> Types.argument_cons */
         let (_, utastmain) = $2 in
           UTArgumentCons((rng, utastmain), $4)
       }
-  | OPENQT sxsep CLOSEQT sargsub {
+  | OPENQT sxblock CLOSEQT sargsub {
         let rng = make_range (Tok $1) (Tok $3) in
           UTArgumentCons((rng, omit_spaces $2), $4)
       }
