@@ -128,9 +128,9 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let (edflt, tydflt, thetadflt) = typecheck varntenv tyenv utastdflt in
       let thetasubkey  = Subst.unify tykey  (StringType(get_range utastkey))  in
       let thetasubdflt = Subst.unify tydflt (StringType(get_range utastdflt)) in
-      let theta_result =  Subst.compose thetasubdflt (
-                            Subst.compose thetasubkey (
-                              Subst.compose thetadflt thetakey)) in
+      let theta_result =  Subst.compose thetasubdflt
+                            (Subst.compose thetasubkey
+                              (Subst.compose thetadflt thetakey)) in
       let term_result  = DeclareGlobalHash(ekey, edflt) in
         (term_result, UnitType(rng), theta_result)
 
@@ -236,7 +236,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let type_result = Subst.apply_to_type_struct theta_result
         ( match tytl with
           | ProductType(rngtl, tylist) -> ProductType(rng, tyhd :: tylist)
-          | _ -> raise (TypeCheckError("this cannot happen: illegal type for tuple"))
+          | _ -> raise (TypeCheckError(bug_reporting rng "this cannot happen: illegal type for tuple"))
         )
       in
         (term_result, type_result, theta_result)
@@ -253,10 +253,6 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let varntenv_new = Variantenv.add_cons varntenv varntnm varntcons in
         typecheck varntenv_new tyenv utastaft
 
-  | UTVariantCons(_, _, _) -> raise (TypeCheckError("this cannot happen: variant cons emerged"))
-
-  | UTEndOfVariant -> raise (TypeCheckError("this cannot happen: end of variant emerged"))
-
   | UTConstructor(constrnm, utastcont) ->
       ( try
           let (varntnm, tyvarnt) = Variantenv.find varntenv constrnm in
@@ -264,7 +260,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
               (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
         with
-        | Not_found -> raise (TypeCheckError("undefined constructor '" ^ constrnm ^ "'"))
+        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       )
 
 
@@ -327,7 +323,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       let type_result =
         ( match typat2 with
           | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
-          | _ -> raise (TypeCheckError("this cannot happen: illegal tuple in pattern"))
+          | _ -> raise (TypeCheckError(bug_reporting rng "this cannot happen: illegal tuple in pattern"))
         )
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
@@ -352,7 +348,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
           let tyenv_new = Subst.apply_to_type_environment (Subst.unify tycont typat1) tyenv1 in
             (PConstructor(constrnm, epat1), VariantType(rng, varntnm), tyenv_new)
         with
-        | Not_found -> raise (TypeCheckError("undefined constructor '" ^ constrnm ^ "'"))
+        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       )
 
 

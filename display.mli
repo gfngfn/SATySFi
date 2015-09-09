@@ -8,6 +8,8 @@ val describe_position : code_range -> string
 
 val error_reporting : code_range -> string -> string
 
+val bug_reporting : code_range -> string -> string
+
 val string_of_type_struct_basic : type_struct -> string
 
 val string_of_type_struct : type_struct -> string

@@ -3,33 +3,36 @@
 
   type literal_reading_state = Normal | ReadingSpace
   type range_kind =
-    | Tok     of token_position
-    | TokArg  of (token_position * string)
-    | Untyped of untyped_abstract_tree
-    | Pat     of untyped_pattern_tree
-    | PatCons of untyped_pattern_match_cons
-    | TypeStr of type_struct
+    | Tok       of token_position
+    | TokArg    of (token_position * string)
+    | Untyped   of untyped_abstract_tree
+    | Pat       of untyped_pattern_tree
+    | PatCons   of untyped_pattern_match_cons
+    | TypeStr   of type_struct
+    | VarntCons of untyped_variant_cons
 
   (* range_kind -> range_kind -> code_range *)
   let make_range sttx endx =
     let (sttln, sttpos) =
       match sttx with
-      | Tok(l, s, _)               -> (l, s)
-      | TokArg((l, s, _), _)       -> (l, s)
-      | Untyped((sl, sp, _, _), _) -> (sl, sp)
-      | Pat((sl, sp, _, _), _)     -> (sl, sp)
-      | PatCons((sl, sp, _, _), _) -> (sl, sp)
-      | TypeStr(tystr)             ->
+      | Tok(l, s, _)                 -> (l, s)
+      | TokArg((l, s, _), _)         -> (l, s)
+      | Untyped((sl, sp, _, _), _)   -> (sl, sp)
+      | Pat((sl, sp, _, _), _)       -> (sl, sp)
+      | PatCons((sl, sp, _, _), _)   -> (sl, sp)
+      | VarntCons((sl, sp, _, _), _) -> (sl, sp)
+      | TypeStr(tystr)               ->
           let (sl, sp, _, _) = Typeenv.get_range_from_type tystr in (sl, sp)
     in
     let (endln, endpos) =
       match endx with
-      | Tok(l, _, e)               -> (l, e)
-      | TokArg((l, _, e), _)       -> (l, e)
-      | Untyped((_, _, el, ep), _) -> (el, ep)
-      | Pat((_, _, el, ep), _)     -> (el, ep)
-      | PatCons((_, _, el, ep), _) -> (el, ep)
-      | TypeStr(tystr)             ->
+      | Tok(l, _, e)                 -> (l, e)
+      | TokArg((l, _, e), _)         -> (l, e)
+      | Untyped((_, _, el, ep), _)   -> (el, ep)
+      | Pat((_, _, el, ep), _)       -> (el, ep)
+      | PatCons((_, _, el, ep), _)   -> (el, ep)
+      | VarntCons((_, _, el, ep), _) -> (el, ep)
+      | TypeStr(tystr)               ->
           let (_, _, el, ep) = Typeenv.get_range_from_type tystr in (el, ep)
     in
       (sttln, sttpos, endln, endpos)
@@ -303,17 +306,13 @@ nxtoplevel:
   | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
   | VARIANT VAR DEFEQ variants nxtoplevel {
-        let (sttln, sttpos, _) = $1 in
-        let (_, typenm) = $2 in
-        let ((_, _, endln, endpos), _) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, typenm) = extract_range_and_name $2 in
+        let rng = make_range (Tok $1) (Untyped $5) in
           (rng, UTDeclareVariantIn(typenm, $4, $5))
       }
   | VARIANT VAR DEFEQ BAR variants nxtoplevel {
-        let (sttln, sttpos, _) = $1 in
-        let (_, typenm) = $2 in
-        let ((_, _, endln, endpos), _) = $6 in
-        let rng = (sttln, sttpos, endln, endpos) in
+        let (_, typenm) = extract_range_and_name $2 in
+        let rng = make_range (Tok $1) (Untyped $6) in
           (rng, UTDeclareVariantIn(typenm, $5, $6))
       }
 /* ---- toplevel terminal ---- */
@@ -889,7 +888,7 @@ nxlist:
           error_reporting "illegal token after ';'" "; ..<!>.." $1))
       }
 ;
-variants:
+variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc {
         let (_, constrnm) = extract_range_and_name $1 in
         let rng = make_range (TokArg $1) (TypeStr $3) in
@@ -897,7 +896,7 @@ variants:
       }
   | CONSTRUCTOR OF txfunc BAR variants {
         let (_, constrnm) = extract_range_and_name $1 in
-        let rng = make_range (TokArg $1) (Untyped $5) in
+        let rng = make_range (TokArg $1) (VarntCons $5) in
           (rng, UTVariantCons(constrnm, $3, $5))
       }
 ;

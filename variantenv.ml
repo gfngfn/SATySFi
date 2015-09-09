@@ -46,20 +46,19 @@ and is_in_list lst elm =
   | head :: tail -> if head = elm then true else is_in_list tail elm
 
 
-(* t -> variant_type_name -> untyped_abstract_tree -> t *)
-let rec add_cons varntenv varntnm utast =
+(* t -> variant_type_name -> untyped_variant_cons -> t *)
+let rec add_cons varntenv varntnm utvc =
 	let (defedtypelist, varntenvmain) = varntenv in
 	let varntenv_new = (varntnm :: defedtypelist, varntenvmain) in
-	  add_cons_main varntenv_new varntnm utast
+	  add_cons_main varntenv_new varntnm utvc
 
-and add_cons_main varntenv varntnm (rng, utastcons) =
-  match utastcons with
+and add_cons_main varntenv varntnm (rng, utvcmain) =
+  match utvcmain with
   | UTEndOfVariant                           -> varntenv
   | UTVariantCons(constrnm, tystr, tailcons) ->
       ( check_type_defined varntenv tystr ;
         add_cons_main (add varntenv constrnm varntnm tystr) varntnm tailcons
       )
-  | _ -> raise (TypeCheckError("this cannot happen: illegal variant cons"))
 
 
 (* t -> constructor_name -> (variant_type_name * type_struct) *)
