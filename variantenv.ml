@@ -46,11 +46,13 @@ and is_in_list lst elm =
   | head :: tail -> if head = elm then true else is_in_list tail elm
 
 
+let add_type varntenv typenm =
+  let (defedtypelist, varntenvmain) = varntenv in
+    (typenm :: defedtypelist, varntenvmain)
+
 (* t -> variant_type_name -> untyped_variant_cons -> t *)
 let rec add_cons varntenv varntnm utvc =
-	let (defedtypelist, varntenvmain) = varntenv in
-	let varntenv_new = (varntnm :: defedtypelist, varntenvmain) in
-	  add_cons_main varntenv_new varntnm utvc
+	  add_cons_main (add_type varntenv varntnm) varntnm utvc
 
 and add_cons_main varntenv varntnm (rng, utvcmain) =
   match utvcmain with
@@ -60,6 +62,19 @@ and add_cons_main varntenv varntnm (rng, utvcmain) =
         add_cons_main (add varntenv constrnm varntnm tystr) varntnm tailcons
       )
 
+(* t -> untyped_mutual_variant_cons -> t *)
+let rec add_mutual_cons varntenv mutvarntcons =
+  let varntenv_new = add_mutual_variant_type varntenv mutvarntcons in
+    match mutvarntcons with
+    | UTEndOfMutualVariant                         -> varntenv_new
+    | UTMutualVariantCons(varntnm, utvc, tailcons) ->
+        add_mutual_cons (add_cons varntenv_new varntnm utvc) tailcons
+
+and add_mutual_variant_type varntenv mutvarntcons =
+  match mutvarntcons with
+  | UTEndOfMutualVariant                      -> varntenv
+  | UTMutualVariantCons(varntnm, _, tailcons) ->
+      add_mutual_variant_type (add_type varntenv varntnm) tailcons
 
 (* t -> constructor_name -> (variant_type_name * type_struct) *)
 let rec find varntenv constrnm =

@@ -236,7 +236,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let type_result = Subst.apply_to_type_struct theta_result
         ( match tytl with
           | ProductType(rngtl, tylist) -> ProductType(rng, tyhd :: tylist)
-          | _ -> raise (TypeCheckError(bug_reporting rng "this cannot happen: illegal type for tuple"))
+          | _                          -> assert false
         )
       in
         (term_result, type_result, theta_result)
@@ -249,8 +249,8 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let (pmcons, typm, thetapm) = typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj thetaobj ntv in
         (PatternMatch(eobj, pmcons), typm, thetapm)
 
-  | UTDeclareVariantIn(varntnm, varntcons, utastaft) ->
-      let varntenv_new = Variantenv.add_cons varntenv varntnm varntcons in
+  | UTDeclareVariantIn(mutvarntcons, utastaft) ->
+      let varntenv_new = Variantenv.add_mutual_cons varntenv mutvarntcons in
         typecheck varntenv_new tyenv utastaft
 
   | UTConstructor(constrnm, utastcont) ->
@@ -323,7 +323,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       let type_result =
         ( match typat2 with
           | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
-          | _ -> raise (TypeCheckError(bug_reporting rng "this cannot happen: illegal tuple in pattern"))
+          | _                      -> assert false
         )
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
@@ -376,7 +376,7 @@ and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
         let theta1final = Subst.compose theta_tail theta1new in
           (Subst.apply_to_type_environment theta1final tyenv_tail, MutualLetCons(nv, e1, mutletcons_tail), theta1final)
 
-  | _ -> raise (TypeCheckError("this cannot happen: error in 'typecheck_mutual_contents'"))
+  | _ -> assert false
 
 
 and make_forall_type_mutual varntenv tyenv theta tvtylst =

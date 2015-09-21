@@ -305,15 +305,15 @@ nxtoplevel:
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
   | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
-  | VARIANT VAR DEFEQ variants nxtoplevel {
-        let (_, typenm) = extract_range_and_name $2 in
-        let rng = make_range (Tok $1) (Untyped $5) in
-          (rng, UTDeclareVariantIn(typenm, $4, $5))
-      }
-  | VARIANT VAR DEFEQ BAR variants nxtoplevel {
+  | VARIANT VAR DEFEQ variants nxvariantdec nxtoplevel {
         let (_, typenm) = extract_range_and_name $2 in
         let rng = make_range (Tok $1) (Untyped $6) in
-          (rng, UTDeclareVariantIn(typenm, $5, $6))
+          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $4, $5), $6))
+      }
+  | VARIANT VAR DEFEQ BAR variants nxvariantdec nxtoplevel {
+        let (_, typenm) = extract_range_and_name $2 in
+        let rng = make_range (Tok $1) (Untyped $7) in
+          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $5, $6), $7))
       }
 /* ---- toplevel terminal ---- */
   | LET VAR argvar DEFEQ nxlet nxdec {
@@ -331,19 +331,15 @@ nxtoplevel:
   | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
         make_let_expression $2 $3 $4 $6 $7 ((-260, 0, 0, 0), UTFinishHeaderFile)
       }
-  | VARIANT VAR DEFEQ variants {
-        let (sttln, sttpos, _) = $1 in
-        let (_, typenm) = $2 in
-        let ((_, _, endln, endpos), _) = $4 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTDeclareVariantIn(typenm, $4, ((-261, 0, 0, 0), UTFinishHeaderFile)))
+  | VARIANT VAR DEFEQ variants nxvariantdec {
+        let (_, typenm) = extract_range_and_name $2 in
+        let rng = make_range (Tok $1) (Tok (-1, 0, 0)) in
+          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $4, $5), ((-261, 0, 0, 0), UTFinishHeaderFile)))
       }
-  | VARIANT VAR DEFEQ BAR variants {
-        let (sttln, sttpos, _) = $1 in
-        let (_, typenm) = $2 in
-        let ((_, _, endln, endpos), _) = $5 in
-        let rng = (sttln, sttpos, endln, endpos) in
-          (rng, UTDeclareVariantIn(typenm, $5, ((-262, 0, 0, 0), UTFinishHeaderFile)))
+  | VARIANT VAR DEFEQ BAR variants nxvariantdec {
+        let (_, typenm) = extract_range_and_name $2 in
+        let rng = make_range (Tok $1) (Tok (-1, 0, 0)) in
+          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $5, $6), ((-262, 0, 0, 0), UTFinishHeaderFile)))
       }
 /* ---- transition to expression style ---- */
   | LET VAR     argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
@@ -479,7 +475,7 @@ nxletsub:
           "in ..<!>.." $5))
       }
 ;
-nxdec: /* -> Types.mutual_let_cons */
+nxdec: /* -> mutual_let_cons */
   | LETAND VAR argvar DEFEQ nxlet nxdec {
         let (varrng, varnm) = extract_range_and_name $2 in
         let curried = curry_lambda_abstract varrng $3 $5 in
@@ -502,6 +498,13 @@ nxdec: /* -> Types.mutual_let_cons */
           raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
             ("and " ^ csnm ^ " ..<!>..") ln))
       }
+;
+nxvariantdec: /* -> mutual_variant_cons */
+  | LETAND VAR DEFEQ variants nxvariantdec {
+        let (_, typenm) = extract_range_and_name $2 in
+          UTMutualVariantCons(typenm, $4, $5)
+      }
+  | { UTEndOfMutualVariant }
 ;
 nxwhl:
   | WHILE nxlet DO nxwhl {

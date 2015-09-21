@@ -75,13 +75,16 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID  of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo          of untyped_abstract_tree * untyped_abstract_tree
   | UTPatternMatch     of untyped_abstract_tree * untyped_pattern_match_cons
-  | UTDeclareVariantIn of variant_type_name * untyped_variant_cons * untyped_abstract_tree
+  | UTDeclareVariantIn of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTConstructor      of constructor_name * untyped_abstract_tree
   | UTNoContent
 and untyped_variant_cons = code_range * untyped_variant_cons_main
 and untyped_variant_cons_main =
   | UTVariantCons      of constructor_name * type_struct * untyped_variant_cons
   | UTEndOfVariant
+and untyped_mutual_variant_cons =
+  | UTMutualVariantCons of variant_type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTEndOfMutualVariant
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPNumericConstant of int
