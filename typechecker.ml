@@ -110,7 +110,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
   | UTLetIn(utmutletcons, utast2) ->
       let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
       let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
-      let tyenv_forall = make_forall_type_mutual varntenv tyenv theta1 tvtylst in (* contains bugs *)
+      let tyenv_forall = make_forall_type_mutual varntenv tyenv theta1 tvtylst in (* contains bugs? *)
       let (e2, ty2, theta2) = typecheck varntenv tyenv_forall utast2 in
         (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
 
@@ -149,7 +149,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let (_, tyvar, _) = typecheck varntenv tyenv (varrng, UTContentOf(varnm)) in
       let (enew, tynew, thetanew) = typecheck varntenv tyenv utastnew in
       let thetasub = Subst.unify tyvar (RefType(get_range utastnew, tynew)) in
-          (*  actually 'get_range astnew' is not good
+          (*  actually 'get_range utastnew' is not good
               since the right side expression has type 't, not 't ref *)
         (Overwrite(varnm, enew), UnitType(rng), Subst.compose thetasub thetanew)
 

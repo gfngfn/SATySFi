@@ -174,21 +174,31 @@
           )
 
   let binary_operator opname lft op rgt =
-    let (opln, opstt, opend) = op in
-    let oprng = (opln, opstt, opln, opend) in
+    let oprng = extract_range op in
     let rng = make_range (Untyped lft) (Untyped rgt) in
       (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
-  let make_let_expression lettk vartk utargcons utastdef decs utastaft =
-    let (varrng, varnm) = extract_range_and_name vartk in
+  let make_let_expression lettk decs utastaft =
     let rng = make_range (Tok lettk) (Untyped utastaft) in
-    let curried = curry_lambda_abstract varrng utargcons utastdef in
-      (rng, UTLetIn(UTMutualLetCons(varnm, curried, decs), utastaft))
+      (rng, UTLetIn(decs, utastaft))
 
   let make_let_mutable_expression letmuttk vartk utastdef utastaft =
     let (varrng, varnm) = extract_range_and_name vartk in
     let rng = make_range (Tok letmuttk) (Untyped utastaft) in
       (rng, UTLetMutableIn(varrng, varnm, utastdef, utastaft))
+
+  let make_variant_declaration firsttk varntdecs utastaft =
+    let rng = make_range (Tok firsttk) (Untyped utastaft) in
+      (rng, UTDeclareVariantIn(varntdecs, utastaft))
+
+  let make_mutual_let_cons firsttk vartk argcons utastdef tailcons =
+    let (varrng, varnm) = extract_range_and_name vartk in
+    let curried = curry_lambda_abstract varrng argcons utastdef in
+      UTMutualLetCons(varnm, curried, tailcons)
+
+  let make_mutual_variant_cons typetk constrdecs tailcons =
+    let (_, typenm) = extract_range_and_name typetk in
+      UTMutualVariantCons(typenm, constrdecs, tailcons)
 
 %}
 
@@ -296,115 +306,55 @@
 
 main:
   | nxtoplevel EOI { $1 }
-  | sxblock EOI { $1 }
+  | sxblock EOI    { $1 }
 ;
 nxtoplevel:
 /* ---- toplevel style ---- */
-  | LET VAR     argvar DEFEQ nxlet nxdec nxtoplevel { make_let_expression $1 $2 $3 $5 $6 $7 }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec nxtoplevel { make_let_expression $1 $2 $3 $5 $6 $7 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel     { make_let_mutable_expression $1 $2 $4 $5 }
-  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
-  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual nxtoplevel { make_let_expression $2 $3 $4 $6 $7 $8 }
-  | VARIANT VAR DEFEQ variants nxvariantdec nxtoplevel {
-        let (_, typenm) = extract_range_and_name $2 in
-        let rng = make_range (Tok $1) (Untyped $6) in
-          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $4, $5), $6))
-      }
-  | VARIANT VAR DEFEQ BAR variants nxvariantdec nxtoplevel {
-        let (_, typenm) = extract_range_and_name $2 in
-        let rng = make_range (Tok $1) (Untyped $7) in
-          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $5, $6), $7))
-      }
+  | LET nxdec nxtoplevel                        { make_let_expression $1 $2 $3 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel { make_let_mutable_expression $1 $2 $4 $5 }
+  | MUTUAL nxmutual nxtoplevel                  { make_let_expression $1 $2 $3 }
+  | VARIANT nxvariantdec nxtoplevel             { make_variant_declaration $1 $2 $3 }
 /* ---- toplevel terminal ---- */
-  | LET VAR argvar DEFEQ nxlet nxdec {
-        make_let_expression $1 $2 $3 $5 $6 ((-256, 0, 0, 0), UTFinishHeaderFile)
-      }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec {
-        make_let_expression $1 $2 $3 $5 $6 ((-257, 0, 0, 0), UTFinishHeaderFile)
-      }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet {
-        make_let_mutable_expression $1 $2 $4 ((-258, 0, 0, 0), UTFinishHeaderFile)
-      }
-  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual {
-        make_let_expression $2 $3 $4 $6 $7 ((-259, 0, 0, 0), UTFinishHeaderFile)
-      }
-  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
-        make_let_expression $2 $3 $4 $6 $7 ((-260, 0, 0, 0), UTFinishHeaderFile)
-      }
-  | VARIANT VAR DEFEQ variants nxvariantdec {
-        let (_, typenm) = extract_range_and_name $2 in
-        let rng = make_range (Tok $1) (Tok (-1, 0, 0)) in
-          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $4, $5), ((-261, 0, 0, 0), UTFinishHeaderFile)))
-      }
-  | VARIANT VAR DEFEQ BAR variants nxvariantdec {
-        let (_, typenm) = extract_range_and_name $2 in
-        let rng = make_range (Tok $1) (Tok (-1, 0, 0)) in
-          (rng, UTDeclareVariantIn(UTMutualVariantCons(typenm, $5, $6), ((-262, 0, 0, 0), UTFinishHeaderFile)))
-      }
+  | LET nxdec                        { make_let_expression $1 $2 untyped_finish }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet { make_let_mutable_expression $1 $2 $4 untyped_finish }
+  | MUTUAL nxmutual                  { make_let_expression $1 $2 untyped_finish }
+  | VARIANT nxvariantdec             { make_variant_declaration $1 $2 untyped_finish }
 /* ---- transition to expression style ---- */
-  | LET VAR     argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
-  | MUTUAL LET VAR     argvar DEFEQ nxlet nxmutual IN nxlet { make_let_expression $2 $3 $4 $6 $7 $9 }
-  | MUTUAL LET CTRLSEQ argvar DEFEQ nxlet nxmutual IN nxlet { make_let_expression $2 $3 $4 $6 $7 $9 }
+  | LET nxdec IN nxlet                        { make_let_expression $1 $2 $4 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet { make_let_mutable_expression $1 $2 $4 $6 }
+  | MUTUAL nxmutual IN nxlet                  { make_let_expression $1 $2 $4 }
+  | VARIANT nxvariantdec IN nxlet             { make_variant_declaration $1 $2 $4 }
 /* ---- for syntax error log ---- */
-  | LET error {
-        raise (ParseErrorDetail(error_reporting "illegal token after 'let'" "let ..<!>.." $1))
-      }
-  | LET VAR error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'let'"
-            ("let" ^ vn ^ " ..<!>..") $1))
-      }
-  | LET VAR argvar DEFEQ error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after '='"
-            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
-      }
-  | LET CTRLSEQ error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
-            ("let " ^ csname ^ " ..<!>..") ln))
-      }
-  | LET CTRLSEQ argvar DEFEQ error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after '='"
-            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") ln))
-      }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
-            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
-      }
-  | LETMUTABLE error {
-        raise (ParseErrorDetail(error_reporting "missing identifier after 'let-mutable'"
-          "let-mutable ..<!>.." $1))
-      }
-  | LETMUTABLE VAR error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting ("missing '<-' after '" ^ vn ^ "'")
-            ("let-mutable " ^ vn ^ " ..<!>..") $1))
-      }
-  | LETMUTABLE VAR OVERWRITEEQ error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after '<-'"
-            ("let-mutable " ^ vn ^ " <- ..<!>..") $1))
-      }
+  | LET error                        { report_error (Tok $1) "illegal token after 'let'" }
+  | LETMUTABLE error                 { report_error (Tok $1) "illegal token after 'let-mutable'"}
+  | LETMUTABLE VAR error             {
+        let (_, varnm) = extract_range_and_name $2 in
+          report_error (TokArg $2) ("expected '<-' after '" ^ varnm ^ "'") }
+  | LETMUTABLE VAR OVERWRITEEQ error { report_error (Tok $3) "illegal token after '<-'" }
 ;
 nxmutual: /* -> Types.untyped_mutual_let_cons */
-  | LET VAR argvar DEFEQ nxlet nxmutual {
-        let ((varln, varstt, varend), vn) = $2 in
-        let varrng = (varln, varstt, varln, varend) in
-        let curried = curry_lambda_abstract varrng $3 $5 in
-          UTMutualLetCons(vn, curried, $6)
-      }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual {
-        let ((csln, csstt, csend), cn) = $2 in
-        let csrng = (csln, csstt, csln, csend) in
-        let curried = curry_lambda_abstract csrng $3 $5 in
-          UTMutualLetCons(cn, curried, $6)
-      }
-  | ENDMUTUAL { UTEndOfMutualLet }
+  | LET VAR argvar DEFEQ nxlet nxmutual      { make_mutual_let_cons $1 $2 $3 $5 $6 }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual  { make_mutual_let_cons $1 $2 $3 $5 $6 }
+  | LET VAR argvar DEFEQ nxlet ENDMUTUAL     { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
+  | LET CTRLSEQ argvar DEFEQ nxlet ENDMUTUAL { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
+;
+nxdec: /* -> untyped_mutual_let_cons */
+  | LETAND VAR argvar DEFEQ nxlet nxdec     { make_mutual_let_cons $1 $2 $3 $5 $6 }
+  | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec { make_mutual_let_cons $1 $2 $3 $5 $6 }
+  | LETAND VAR argvar DEFEQ nxlet           { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
+  | LETAND CTRLSEQ argvar DEFEQ nxlet       { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
+/* -- for syntax error log -- */
+  | LETAND error { report_error (Tok $1) "illegal token after 'and'" }
+  | LETAND VAR error {
+        let (_, varnm) = $2 in report_error (TokArg $2) ("illegal token after '" ^ varnm ^ "'") }
+  | LETAND CTRLSEQ error {
+        let (ln, csnm) = $2 in report_error (TokArg $2) ("illegal token after '" ^ varnm ^ "'") }
+;
+nxvariantdec: /* -> untyped_mutual_variant_cons */
+  | LETAND VAR DEFEQ variants nxvariantdec     { make_mutual_variant_cons $2 $4 $5 }
+  | LETAND VAR DEFEQ BAR variants nxvariantdec { make_mutual_variant_cons $2 $5 $6 }
+  | LETAND VAR DEFEQ variants                  { make_mutual_variant_cons $2 $4 UTEndOfMutualVariant }
+  | LETAND VAR DEFEQ BAR variants              { make_mutual_variant_cons $2 $5 UTEndOfMutualVariant }
 ;
 nxlet:
   | MATCH nxlet WITH pats {
@@ -417,44 +367,13 @@ nxlet:
       }
   | nxletsub { $1 }
 nxletsub:
-  | LET VAR argvar DEFEQ nxlet nxdec IN nxlet     { make_let_expression $1 $2 $3 $5 $6 $8 }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN nxlet { make_let_expression $1 $2 $3 $5 $6 $8 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet     { make_let_mutable_expression $1 $2 $4 $6 }
+  | LET nxdec IN nxlet                        { make_let_expression $1 $2 $4 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet { make_let_mutable_expression $1 $2 $4 $6 }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
   | LET error {
         raise (ParseErrorDetail(error_reporting
           "missing identifier after 'let'" "let ..<!>.." $1))
-      }
-  | LET VAR error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
-            ("let " ^ vn ^ " ..<!>..") $1))
-      }
-  | LET VAR argvar DEFEQ error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after '='"
-            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ..<!>..") $1))
-      }
-  | LET VAR argvar DEFEQ nxlet nxdec IN error {
-        let (_, vn) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
-            ("let " ^ vn ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") $1))
-      }
-  | LET CTRLSEQ error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "missing '=' or illegal argument"
-            ("let " ^ csname ^ " ..<!>..") ln))
-      }
-  | LET CTRLSEQ argvar DEFEQ error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after '='"
-            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ " = ..<!>..") ln))
-      }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxdec IN error {
-        let (ln, csname) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'in'"
-            ("let " ^ csname ^ " " ^ (string_of_avc $3) ^ "= ... in ..<!>..") ln))
       }
   | LETMUTABLE error {
         raise (ParseErrorDetail(error_reporting "missing identifier after 'let-mutable'"
@@ -475,41 +394,9 @@ nxletsub:
           "in ..<!>.." $5))
       }
 ;
-nxdec: /* -> mutual_let_cons */
-  | LETAND VAR argvar DEFEQ nxlet nxdec {
-        let (varrng, varnm) = extract_range_and_name $2 in
-        let curried = curry_lambda_abstract varrng $3 $5 in
-          UTMutualLetCons(varnm, curried, $6)
-      }
-  | LETAND CTRLSEQ argvar DEFEQ nxlet nxdec {
-        let (csrng, csnm) = extract_range_and_name $2 in
-        let curried = curry_lambda_abstract csrng $3 $5 in
-          UTMutualLetCons(csnm, curried, $6)
-      }
-  | { UTEndOfMutualLet }
-/* -- for syntax error log -- */
-  | LETAND VAR error {
-        let (_, varnm) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-            ("and " ^ varnm ^ " ..<!>..") $1))
-      }
-  | LETAND CTRLSEQ error {
-        let (ln, csnm) = $2 in
-          raise (ParseErrorDetail(error_reporting "illegal token after 'and'"
-            ("and " ^ csnm ^ " ..<!>..") ln))
-      }
-;
-nxvariantdec: /* -> mutual_variant_cons */
-  | LETAND VAR DEFEQ variants nxvariantdec {
-        let (_, typenm) = extract_range_and_name $2 in
-          UTMutualVariantCons(typenm, $4, $5)
-      }
-  | { UTEndOfMutualVariant }
-;
 nxwhl:
   | WHILE nxlet DO nxwhl {
-        let rng = make_range (Tok $1) (Untyped $4) in
-          (rng, UTWhileDo($2, $4))
+        let rng = make_range (Tok $1) (Untyped $4) in (rng, UTWhileDo($2, $4))
       }
   | nxif { $1 }
 /* -- for syntax error log --*/
@@ -521,24 +408,19 @@ nxwhl:
       }
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet {
-        let rng = make_range (Tok $1) (Untyped $6) in
-          (rng, UTIfThenElse($2, $4, $6))
+        let rng = make_range (Tok $1) (Untyped $6) in (rng, UTIfThenElse($2, $4, $6))
       }
   | IFCLASSISVALID nxlet ELSE nxlet {
-        let rng = make_range (Tok $1) (Untyped $4) in
-          (rng, UTIfClassIsValid($2, $4))
+        let rng = make_range (Tok $1) (Untyped $4) in (rng, UTIfClassIsValid($2, $4))
       }
   | IFCLASSISVALID THEN nxlet ELSE nxlet {
-        let rng = make_range (Tok $1) (Untyped $5) in
-          (rng, UTIfClassIsValid($3, $5))
+        let rng = make_range (Tok $1) (Untyped $5) in (rng, UTIfClassIsValid($3, $5))
       }
   | IFIDISVALID nxlet ELSE nxlet {
-        let rng = make_range (Tok $1) (Untyped $4) in
-          (rng, UTIfIDIsValid($2, $4))
+        let rng = make_range (Tok $1) (Untyped $4) in (rng, UTIfIDIsValid($2, $4))
       }
   | IFIDISVALID THEN nxlet ELSE nxlet {
-        let rng = make_range (Tok $1) (Untyped $5) in
-          (rng, UTIfIDIsValid($3, $5))
+        let rng = make_range (Tok $1) (Untyped $5) in (rng, UTIfIDIsValid($3, $5))
       }
   | nxbfr { $1 }
 /* -- for syntax error log -- */
@@ -589,8 +471,7 @@ nxif:
 ;
 nxbfr:
   | nxlambda BEFORE nxbfr {
-        let rng = make_range (Untyped $1) (Untyped $3) in
-          (rng, UTSequential($1, $3))
+        let rng = make_range (Untyped $1) (Untyped $3) in (rng, UTSequential($1, $3))
       }
   | nxlambda { $1 }
 /* -- for syntax error log -- */
@@ -645,14 +526,14 @@ nxlambda:
 ;
 argvar: /* -> Types.argument_variable_cons */
   | VAR argvar {
-        let (varrng, vn) = extract_range_and_name $1 in
-          UTArgumentVariableCons(varrng, vn, $2)
+        let (varrng, varnm) = extract_range_and_name $1 in
+          UTArgumentVariableCons(varrng, varnm, $2)
       }
   | { UTEndOfArgumentVariable }
 ;
 nxlor:
   | nxland LOR nxlor { binary_operator "||" $1 $2 $3 }
-  | nxland { $1 }
+  | nxland           { $1 }
 /* -- for syntax error log -- */
   | nxland LOR error {
         raise (ParseErrorDetail(error_reporting "illegal token after '||'" "|| ..<!>.." $2))
@@ -660,7 +541,7 @@ nxlor:
 ;
 nxland:
   | nxcomp LAND nxland { binary_operator "&&" $1 $2 $3 }
-  | nxcomp { $1 }
+  | nxcomp             { $1 }
 /* -- for syntax error log -- */
   | nxcomp LAND error {
         raise (ParseErrorDetail(error_reporting "illegal token after '&&'" "&& ..<!>.." $2))
@@ -673,7 +554,7 @@ nxcomp:
   | nxconcat LEQ nxcomp { binary_operator "<=" $1 $2 $3 }
   | nxconcat GT nxcomp  { binary_operator ">" $1 $2 $3 }
   | nxconcat LT nxcomp  { binary_operator "<" $1 $2 $3 }
-  | nxconcat { $1 }
+  | nxconcat            { $1 }
 /* -- for syntax error log -- */
   | nxconcat EQ error {
         raise (ParseErrorDetail(error_reporting "illegal token after '=='" "== ..<!>.." $2))
@@ -697,7 +578,7 @@ nxcomp:
 nxconcat:
   | nxlplus CONCAT nxconcat { binary_operator "^" $1 $2 $3 }
   | nxlplus CONS nxconcat   { binary_operator "::" $1 $2 $3 }
-  | nxlplus { $1 }
+  | nxlplus                 { $1 }
 /* -- for syntax error log -- */
   | nxlplus CONCAT error {
         raise (ParseErrorDetail(error_reporting "illegal token after '^'" "^ ..<!>.." $2))
@@ -705,7 +586,7 @@ nxconcat:
 ;
 nxlplus:
   | nxlminus PLUS nxrplus { binary_operator "+" $1 $2 $3 }
-  | nxlminus { $1 }
+  | nxlminus              { $1 }
 /* -- for syntax error log -- */
   | nxlminus PLUS error {
         raise (ParseErrorDetail(error_reporting "illegal token after '+'" "+ ..<!>.." $2))
@@ -713,7 +594,7 @@ nxlplus:
 ;
 nxlminus:
   | nxlplus MINUS nxrtimes { binary_operator "-" $1 $2 $3 }
-  | nxltimes { $1 }
+  | nxltimes               { $1 }
 /* -- for syntax error log -- */
   | nxlplus MINUS error {
         raise (ParseErrorDetail(error_reporting "illegal token after '-'" "- ..<!>.." $2))
@@ -721,7 +602,7 @@ nxlminus:
 ;
 nxrplus:
   | nxrminus PLUS nxrplus { binary_operator "+" $1 $2 $3 }
-  | nxrminus { $1 }
+  | nxrminus              { $1 }
 /* -- for syntax error log -- */
   | nxrminus PLUS error {
         raise (ParseErrorDetail(error_reporting "illegal token after '+'" "+ ..<!>.." $2))
@@ -729,7 +610,7 @@ nxrplus:
 ;
 nxrminus:
   | nxrplus MINUS nxrtimes { binary_operator "+" $1 $2 $3 }
-  | nxrtimes { $1 }
+  | nxrtimes               { $1 }
 /* -- for syntax error log -- */
   | nxrplus MINUS error {
         raise (ParseErrorDetail(error_reporting "illegal token after '-'" "- ..<!>.." $2))
@@ -739,7 +620,7 @@ nxltimes:
   | nxun TIMES nxrtimes    { binary_operator "*" $1 $2 $3 }
   | nxltimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
   | nxltimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
-  | nxun { $1 }
+  | nxun                   { $1 }
 /* -- for syntax error log -- */
   | nxun TIMES error {
         raise (ParseErrorDetail(error_reporting "illegal token after '*'" "* ..<!>.." $2))
@@ -755,7 +636,7 @@ nxrtimes:
   | nxapp TIMES nxrtimes   { binary_operator "*" $1 $2 $3 }
   | nxrtimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
   | nxrtimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
-  | nxapp { $1 }
+  | nxapp                  { $1 }
 /* -- for syntax error log -- */
   | nxapp TIMES error {
         raise (ParseErrorDetail(error_reporting "illegal token after '*'" "* ..<!>.." $2))
@@ -807,8 +688,7 @@ nxapp:
 ;
 nxbot:
   | VAR {
-        let (rng, vn) = extract_range_and_name $1 in
-          (rng, UTContentOf(vn))
+        let (rng, varnm) = extract_range_and_name $1 in (rng, UTContentOf(varnm))
       }
   | CONSTRUCTOR nxbot {
         let (_, constrnm) = extract_range_and_name $1 in
@@ -1092,18 +972,9 @@ sxblock:
   | { ((-19, 0, 0, 0), UTStringEmpty) }
   ;
 sxbot:
-  | CHAR {
-        let (rng, ch) = extract_range_and_name $1 in
-          (rng, UTStringConstant(ch))
-      }
-  | SPACE {
-        let rng = extract_range $1 in
-          (rng, UTStringConstant(" "))
-      }
-  | BREAK {
-        let rng = extract_range $1 in
-          (rng, UTBreakAndIndent)
-      }
+  | CHAR  { let (rng, ch) = extract_range_and_name $1 in (rng, UTStringConstant(ch)) }
+  | SPACE { let rng = extract_range $1 in (rng, UTStringConstant(" ")) }
+  | BREAK { let rng = extract_range $1 in (rng, UTBreakAndIndent) }
   | VARINSTR END {
         let (_, varnm) = extract_range_and_name $1 in
         let rng = make_range (TokArg $1) (Tok $2) in
