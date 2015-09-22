@@ -20,55 +20,56 @@ let rec find tyenv varnm =
 (* type_struct -> code_range *)
 let get_range_from_type tystr =
   match tystr with
-  | IntType(rng)                -> rng
-  | StringType(rng)             -> rng
-  | BoolType(rng)               -> rng
-  | UnitType(rng)               -> rng
-  | FuncType(rng, _, _)         -> rng
-  | ListType(rng, _)            -> rng
-  | RefType(rng, _)             -> rng
-  | ProductType(rng, _)         -> rng
-  | TypeVariable(rng, _)        -> rng
-  | VariantType(rng, _)         -> rng
-  | TypeEnvironmentType(rng, _) -> rng
-  | ForallType(_, _)            -> (-31, 0, 0, 0)
+  | IntType(rng)                   -> rng
+  | StringType(rng)                -> rng
+  | BoolType(rng)                  -> rng
+  | UnitType(rng)                  -> rng
+  | TypeEnvironmentType(rng, _)    -> rng
+  | VariantType(rng, _)            -> rng
+  | FuncType(rng, _, _)            -> rng
+  | ListType(rng, _)               -> rng
+  | RefType(rng, _)                -> rng
+  | ProductType(rng, _)            -> rng
+  | TypeVariable(rng, _)           -> rng
+  | ForallType(_, _)               -> (-31, 0, 0, 0)
+  | TypeWithRestriction(rng, _, _) -> rng
+
 
 (* type_struct -> code_range -> type_struct *)
 let overwrite_range_of_type tystr rng =
   match tystr with
-  | IntType(_)                     -> IntType(rng)
-  | StringType(_)                  -> StringType(rng)
-  | BoolType(_)                    -> BoolType(rng)
-  | UnitType(_)                    -> UnitType(rng)
-  | FuncType(_, tydom, tycod)      -> FuncType(rng, tydom, tycod)
-  | ListType(_, tycont)            -> ListType(rng, tycont)
-  | RefType(_, tycont)             -> RefType(rng, tycont)
-  | ProductType(_, tylist)         -> ProductType(rng, tylist)
-  | TypeVariable(_, tvid)          -> TypeVariable(rng, tvid)
-  | VariantType(_, varntnm)        -> VariantType(rng, varntnm)
-  | TypeEnvironmentType(_, tyenv)  -> TypeEnvironmentType(rng, tyenv)
-  | ForallType(tvid, tycont)       -> ForallType(tvid, tycont)
+  | IntType(_)                               -> IntType(rng)
+  | StringType(_)                            -> StringType(rng)
+  | BoolType(_)                              -> BoolType(rng)
+  | UnitType(_)                              -> UnitType(rng)
+  | TypeEnvironmentType(_, tyenv)            -> TypeEnvironmentType(rng, tyenv)
+  | VariantType(_, varntnm)                  -> VariantType(rng, varntnm)
+  | FuncType(_, tydom, tycod)                -> FuncType(rng, tydom, tycod)
+  | ListType(_, tycont)                      -> ListType(rng, tycont)
+  | RefType(_, tycont)                       -> RefType(rng, tycont)
+  | ProductType(_, tylist)                   -> ProductType(rng, tylist)
+  | TypeVariable(_, tvid)                    -> TypeVariable(rng, tvid)
+  | ForallType(tvid, tycont)                 -> ForallType(tvid, tycont)
+  | TypeWithRestriction(_, restrlst, tycont) -> TypeWithRestriction(rng, restrlst, tycont)
+
 
 (* type_struct -> type_struct *)
 let rec erase_range_of_type tystr =
   let dummy = (-2048, 0, 0, 0) in
     match tystr with
-    | IntType(_)                    -> IntType(dummy)
-    | StringType(_)                 -> StringType(dummy)
-    | BoolType(_)                   -> BoolType(dummy)
-    | UnitType(_)                   -> UnitType(dummy)
-    | FuncType(_, tydom, tycod)     -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
-    | ListType(_, tycont)           -> ListType(dummy, erase_range_of_type tycont)
-    | RefType(_, tycont)            -> RefType(dummy, erase_range_of_type tycont)
-    | ProductType(_, tylist)        -> ProductType(dummy, erase_range_of_type_list tylist)
-    | TypeVariable(_, tvid)         -> TypeVariable(dummy, tvid)
-    | VariantType(_, varntnm)       -> VariantType(dummy, varntnm)
-    | TypeEnvironmentType(_, tyenv) -> TypeEnvironmentType(dummy, tyenv)
-    | ForallType(tvid, tycont)      -> ForallType(tvid, erase_range_of_type tycont)
-and erase_range_of_type_list tylist =
-  match tylist with
-  | []           -> []
-  | head :: tail -> (erase_range_of_type head) :: (erase_range_of_type_list tail)
+    | IntType(_)                                 -> IntType(dummy)
+    | StringType(_)                              -> StringType(dummy)
+    | BoolType(_)                                -> BoolType(dummy)
+    | UnitType(_)                                -> UnitType(dummy)
+    | TypeEnvironmentType(_, tyenv)              -> TypeEnvironmentType(dummy, tyenv)
+    | VariantType(_, varntnm)                    -> VariantType(dummy, varntnm)
+    | FuncType(_, tydom, tycod)                  -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
+    | ListType(_, tycont)                        -> ListType(dummy, erase_range_of_type tycont)
+    | RefType(_, tycont)                         -> RefType(dummy, erase_range_of_type tycont)
+    | ProductType(_, tylist)                     -> ProductType(dummy, List.map erase_range_of_type tylist)
+    | TypeVariable(_, tvid)                      -> TypeVariable(dummy, tvid)
+    | ForallType(tvid, tycont)                   -> ForallType(tvid, erase_range_of_type tycont)
+    | TypeWithRestriction(rng, restrlst, tycont) -> TypeWithRestriction(dummy, restrlst, tycont)
 
 
 (* type_variable_id -> type_variable_id list -> bool *)
@@ -81,12 +82,14 @@ let rec find_in_list tvid lst =
 (* type_variable_id -> type_struct -> bool *)
 let rec find_in_type_struct tvid tystr =
   match tystr with
-  | TypeVariable(_, tvidx)    -> tvidx = tvid
-  | FuncType(_, tydom, tycod) -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
-  | ListType(_, tycont)       -> find_in_type_struct tvid tycont
-  | RefType(_, tycont)        -> find_in_type_struct tvid tycont
-  | ProductType(_, tylist)    -> find_in_type_struct_list tvid tylist
-  | _                         -> false
+  | TypeVariable(_, tvidx)            -> tvidx = tvid
+  | FuncType(_, tydom, tycod)         -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
+  | ListType(_, tycont)               -> find_in_type_struct tvid tycont
+  | RefType(_, tycont)                -> find_in_type_struct tvid tycont
+  | ProductType(_, tylist)            -> find_in_type_struct_list tvid tylist
+  | TypeWithRestriction(_, _, tycont) -> find_in_type_struct tvid tycont
+  | _                                 -> false
+
 and find_in_type_struct_list tvid tystr =
   match tystr with
   | []         -> false

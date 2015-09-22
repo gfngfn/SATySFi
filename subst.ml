@@ -221,51 +221,24 @@ and unify_sub tystr1 tystr2 =
   print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
   match (tystr1, tystr2) with
-  | (IntType(_), IntType(_))       -> empty
-  | (StringType(_), StringType(_)) -> empty
-  | (BoolType(_), BoolType(_))     -> empty
-  | (UnitType(_), UnitType(_))     -> empty
+  | (IntType(_), IntType(_))                               -> empty
+  | (StringType(_), StringType(_))                         -> empty
+  | (BoolType(_), BoolType(_))                             -> empty
+  | (UnitType(_), UnitType(_))                             -> empty
   | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> empty
-
-  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) ->
-      compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
-
-  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2
-
-  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
-
-  | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
-
   | (VariantType(_, varntnm1), VariantType(_, varntnm2))
-      when varntnm1 = varntnm2
-      -> empty
-
-  | (TypeVariable(rng1, tvid1), tystr) ->
-      ( match tystr with
-        | TypeVariable(rng2, tvid2) ->
-            if tvid1 == tvid2 then
-              empty
-            else if tvid1 < tvid2 then
-              if is_invalid_range rng2 then
-                [(tvid1, TypeVariable(rng1, tvid2))]
-              else
-                [(tvid1, TypeVariable(rng2, tvid2))]
-            else
-              if is_invalid_range rng1 then
-                [(tvid2, TypeVariable(rng2, tvid1))]
-              else
-                [(tvid2, TypeVariable(rng1, tvid1))]
-
-        | other ->
-            let (b, _) = emerge_in tvid1 tystr in
-              if b then
-                report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
-              else
-                [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
-      )
-  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
-
-  | (tystr1, tystr2) -> report_contradiction_error tystr1 tystr2
+                                  when varntnm1 = varntnm2 -> empty
+  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2))     -> compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
+  | (ListType(_, cont1), ListType(_, cont2))               -> unify_sub cont1 cont2
+  | (RefType(_, cont1), RefType(_, cont2))                 -> unify_sub cont1 cont2
+  | (ProductType(_, tylist1), ProductType(_, tylist2))     -> unify_sub_list tylist1 tylist2
+  | (TypeWithRestriction(rng1, restrlst1, cont1), _)       -> unify_sub_restriction rng1 restrlst1 cont1 tystr2
+  | (_, TypeWithRestriction(rng2, restrlst2, cont2))       -> unify_sub_restriction rng2 restrlst2 cont2 tystr1
+                                                                (* reversed *)
+  | (TypeVariable(rng1, tvid1), _)                         -> unify_sub_variable rng1 tvid1 tystr2
+  | (_, TypeVariable(rng2, tvid2))                         -> unify_sub_variable rng2 tvid2 tystr1
+                                                                (* reversed *)
+  | (_, _)                                                 -> report_contradiction_error tystr1 tystr2
 
 and unify_sub_list tylist1 tylist2 =
   match (tylist1, tylist2) with
@@ -273,6 +246,101 @@ and unify_sub_list tylist1 tylist2 =
   | (hd1 :: tl1, hd2 :: tl2) -> compose (unify_sub hd1 hd2) (unify_sub_list tl1 tl2)
   | _                        -> raise ContradictionError
 
+and unify_sub_variable rng1 tvid1 tystr2 =
+  match tystr2 with
+  | TypeVariable(rng2, tvid2) ->
+      if tvid1 = tvid2 then
+        empty
+      else if tvid1 < tvid2 then
+        if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
+                                  else [(tvid1, TypeVariable(rng2, tvid2))]
+      else
+        if is_invalid_range rng1  then [(tvid2, TypeVariable(rng2, tvid1))]
+                                  else [(tvid2, TypeVariable(rng1, tvid1))]
+  | other ->
+      let (b, _) = emerge_in tvid1 tystr2 in
+        if b  then report_inclusion_error (TypeVariable(rng1, tvid1)) tystr2
+              else [(tvid1, Typeenv.overwrite_range_of_type tystr2 rng1)]
+
+(* code_range -> type_restriction -> type_struct -> type_struct -> t *)
+and unify_sub_restriction rng1 restrlst1 tycont1 tystr2 =
+  match tycont1 with
+  | FuncType(r, dom, cod) ->
+      let newdom = TypeWithRestriction(rng1, restrlst1, dom) in
+      let newcod = TypeWithRestriction(rng1, restrlst1, cod) in
+        unify_sub (FuncType(r, newdom, newcod)) tystr2
+
+  | ListType(r, cont) ->
+      let newcont = TypeWithRestriction(rng1, restrlst1, cont) in
+        unify_sub (ListType(r, newcont)) tystr2
+
+  | RefType(r, cont) ->
+      let newcont = TypeWithRestriction(rng1, restrlst1, cont) in
+        unify_sub (RefType(r, newcont)) tystr2
+
+  | ProductType(r, lst) ->
+      let newlst = List.map (fun ty -> TypeWithRestriction(rng1, restrlst1, ty)) lst in
+        unify_sub (ProductType(r, newlst)) tystr2
+
+  | TypeVariable(r1, tvid) ->
+      ( match tystr2 with
+        | TypeWithRestriction(r2, restrlst2, tycont2) ->
+            if is_stricter tvid restrlst1 restrlst2 then [(tvid, tycont2)]
+                                                    else raise ContradictionError
+        | _ ->
+            if satisfy tystr2 tvid restrlst1 then [(tvid, tystr2)]
+                                        else raise ContradictionError
+      )
+  | _ -> unify_sub tycont1 tystr2
+
+(* type_variable_id -> type_restriction -> type_restriction -> bool *)
+and is_stricter tvid restrlst1 restrlst2 =
+  match restrlst2 with
+  | []                                          -> true
+  | (TypeVariable(rng2, tvid2), tycls2) :: tail ->
+      if tvid2 = tvid then
+        if is_included (TypeVariable(rng2, tvid2)) tycls2 restrlst1 then is_stricter tvid restrlst1 tail
+                                                                    else false
+      else
+        is_stricter tvid restrlst1 tail
+  | _ :: tail                                   -> is_stricter tvid restrlst1 tail
+
+(* type_variable_id -> type_class_name -> type_restriction -> bool *)
+and is_included tystr tycls restrlst =
+  match restrlst with
+  | []                       -> false
+  | (tystrx, tyclsx) :: tail ->
+      if is_equal_type tystrx tystr && tyclsx = tycls then true else is_included tystr tycls tail
+
+and is_equal_type tystr1 tystr2 =
+  match (tystr1, tystr2) with
+  | (IntType(_), IntType(_))                               -> true
+  | (StringType(_), StringType(_))                         -> true
+  | (BoolType(_), BoolType(_))                             -> true
+  | (UnitType(_), UnitType(_))                             -> true
+  | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> true
+  | (VariantType(_, varntnm1), VariantType(_, varntnm2))   -> varntnm1 = varntnm2
+  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2))     -> (is_equal_type dom1 dom2) && (is_equal_type cod1 cod2)
+  | (ListType(_, cont1), ListType(_, cont2))               -> is_equal_type cont1 cont2
+  | (RefType(_, cont1), RefType(_, cont2))                 -> is_equal_type cont1 cont2
+  | (ProductType(_, tylist1), ProductType(_, tylist2))     -> is_equal_type_list tylist1 tylist2
+  | (TypeVariable(_, tvid1), TypeVariable(_, tvid2))       -> tvid1 = tvid2
+  | _ -> false
+
+and is_equal_type_list tylist1 tylist2 =
+  match (tylist1, tylist2) with
+  | ([], [])                 -> true
+  | (hd1 :: tl1, hd2 :: tl2) -> (is_equal_type hd1 hd2) && (is_equal_type_list tl1 tl2)
+  | _                        -> false
+
+and satisfy tystr tvid restrlst =
+  match restrlst with
+  | []                                       -> true
+  | (TypeVariable(_, tvidx), tyclsx) :: tail ->
+      if tvidx = tvid then
+        if is_included tystr tyclsx restrlst then satisfy tystr tvid tail else false
+      else satisfy tystr tvid tail
+  | _ :: tail                                -> satisfy tystr tvid tail
 
 (* for test *)
 let rec string_of_subst theta =

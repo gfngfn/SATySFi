@@ -9,12 +9,14 @@ type id_name = string
 type class_name = string
 type variant_type_name = string
 type constructor_name = string
+type type_class_name = string
 
 type token_position = int * int * int
 type code_range = int * int * int * int
 
 type type_variable_id = int
 type type_environment = (var_name * type_struct) list
+and type_restriction = (type_struct * type_class_name) list
 and type_struct =
   | TypeEnvironmentType of code_range * type_environment
   | UnitType            of code_range
@@ -28,8 +30,7 @@ and type_struct =
   | TypeVariable        of code_range * type_variable_id
   | VariantType         of code_range * variant_type_name
   | ForallType          of type_variable_id * type_struct
-(*  | TypeWithRestriction of type_variable_id * type_struct
-*)
+  | TypeWithRestriction of code_range * type_restriction * type_struct
 
 type id_name_arg =
   | IDName of id_name
