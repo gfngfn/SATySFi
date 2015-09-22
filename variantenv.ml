@@ -46,9 +46,11 @@ and is_in_list lst elm =
   | head :: tail -> if head = elm then true else is_in_list tail elm
 
 
+(* t -> variant_type_name -> t *)
 let add_type varntenv typenm =
   let (defedtypelist, varntenvmain) = varntenv in
     (typenm :: defedtypelist, varntenvmain)
+
 
 (* t -> variant_type_name -> untyped_variant_cons -> t *)
 let rec add_cons varntenv varntnm utvc =

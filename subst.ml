@@ -6,10 +6,13 @@ exception ContradictionError
 
 type t = (type_variable_id * type_struct) list
 
+
 let empty = []
+
 
 (* t -> type_variable_id -> type_struct -> t *)
 let add theta key value = (key, value) :: theta
+
 
 (* t -> type_variable_id -> type_struct *)
 let rec find theta key =
@@ -17,16 +20,18 @@ let rec find theta key =
   | []             -> raise Not_found
   | (k, v) :: tail -> if k == key then v else find tail key
 
+
 (* t -> type_variable_id -> t *)
-let rec eliminate theta key = eliminate_sub theta key []
-and eliminate_sub theta key constr =
+let rec eliminate theta key = eliminate_sub [] theta key
+and eliminate_sub constr theta key =
   match theta with
   | [] -> raise Not_found
   | (k, v) :: tail ->
       if k == key then
         constr @ tail
       else
-        eliminate_sub tail key ((k, v) :: constr)
+        eliminate_sub ((k, v) :: constr) tail key
+
 
 (* type_struct -> type_variable_id -> type_struct -> type_variable *)
 let rec overwrite_type_struct tystr key value =
@@ -34,13 +39,9 @@ let rec overwrite_type_struct tystr key value =
   | FuncType(rng, dom, cod) -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
   | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
   | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
-  | ProductType(rng, lst)   -> ProductType(rng, overwrite_type_struct_list lst key value)
+  | ProductType(rng, lst)   -> ProductType(rng, List.map (fun ty -> overwrite_type_struct ty key value) lst)
   | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
   | other                   -> other
-and overwrite_type_struct_list tylist key value =
-  match tylist with
-  | []           -> []
-  | tyhd :: tytl -> (overwrite_type_struct tyhd key value) :: (overwrite_type_struct_list tytl key value)
 
 
 (* t -> type_struct -> type_struct *)
@@ -49,13 +50,9 @@ let rec apply_to_type_struct theta tystr =
   | FuncType(rng, tydom, tycod) -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
   | ListType(rng, tycont)       -> ListType(rng, apply_to_type_struct theta tycont)
   | RefType(rng, tycont)        -> RefType(rng, apply_to_type_struct theta tycont)
-  | ProductType(rng, tylist)    -> ProductType(rng, apply_to_type_struct_list theta tylist)
+  | ProductType(rng, tylist)    -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
   | TypeVariable(rng, tv)       -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
   | other                       -> other
-and apply_to_type_struct_list theta tylist =
-  match tylist with
-  | []           -> []
-  | tyhd :: tytl -> (apply_to_type_struct theta tyhd) :: (apply_to_type_struct_list theta tytl)
 
 
 (* t -> type_environment -> type_environment *)

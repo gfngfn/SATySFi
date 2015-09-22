@@ -37,11 +37,6 @@
     in
       (sttln, sttpos, endln, endpos)
 
-  (* token_position -> code_range *)
-  let extract_range (ln, sttpos, endpos) = (ln, sttpos, ln, endpos)
-
-  (* token_position * string -> code_range * string *)
-  let extract_range_and_name ((ln, sttpos, endpos), name) = ((ln, sttpos, ln, endpos), name)
 
   (* untyped_argument_cons -> untyped_argument_cons -> untyped_argument_cons *)
   let rec append_argument_list arglsta arglstb =
@@ -73,22 +68,6 @@
     | UTEndOfArgumentVariable                        -> utastdef
     | UTArgumentVariableCons(varrng, argvar, avtail) ->
         (rng, UTLambdaAbstract(varrng, argvar, curry_lambda_abstract (-11, 0, 0, 0) avtail utastdef))
-
-  let report_error rngknd tok =
-    match rngknd with
-    | Tok(tp) ->
-        let rng = extract_range tp in
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ tok ^ "'\n"
-            ^ "    " ^ (Display.describe_position rng)))
-    | TokArg(tp, nm) ->
-        let rng = extract_range tp in
-          raise (ParseErrorDetail(
-            "syntax error:\n"
-            ^ "    unexpected token after '" ^ nm ^ "'\n"
-            ^ "    " ^ (Display.describe_position rng)))
-    | _ -> raise (ParseErrorDetail("something is wrong"))
 
   let rec string_of_avc argvarcons =
     match argvarcons with
@@ -183,6 +162,19 @@
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           )
 
+  (* 'a * 'b -> 'b *)
+  let extract_main (_, utastmain) = utastmain
+
+  (* token_position -> code_range *)
+  let extract_range (ln, sttpos, endpos) = (ln, sttpos, ln, endpos)
+
+  (* token_position * string -> string *)
+  let extract_name (_, name) = name
+
+  (* token_position * string -> code_range * string *)
+  let extract_range_and_name ((ln, sttpos, endpos), name) = ((ln, sttpos, ln, endpos), name)
+
+
   let binary_operator opname lft op rgt =
     let oprng = extract_range op in
     let rng = make_range (Untyped lft) (Untyped rgt) in
@@ -206,14 +198,30 @@
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(varnm, curried, tailcons)
 
-  let make_mutual_variant_cons typetk constrdecs tailcons =
-    let (_, typenm) = extract_range_and_name typetk in
+  let make_mutual_variant_cons typenmtk constrdecs tailcons =
+    let (_, typenm) = extract_range_and_name typenmtk in
       UTMutualVariantCons(typenm, constrdecs, tailcons)
 
+  (* range_kind -> range_kind -> 'a -> code_range * 'a *)
   let make_standard sttknd endknd utastmain =
     let rng = make_range sttknd endknd in (rng, utastmain)
 
-  let extract_main (_, utastmain) = utastmain
+  (* range_kind -> string -> 'a *)
+  let report_error rngknd tok =
+    match rngknd with
+    | Tok(tp) ->
+        let rng = extract_range tp in
+          raise (ParseErrorDetail(
+            "syntax error:\n"
+            ^ "    unexpected token after '" ^ tok ^ "'\n"
+            ^ "    " ^ (Display.describe_position rng)))
+    | TokArg(tp, nm) ->
+        let rng = extract_range tp in
+          raise (ParseErrorDetail(
+            "syntax error:\n"
+            ^ "    unexpected token after '" ^ nm ^ "'\n"
+            ^ "    " ^ (Display.describe_position rng)))
+    | _ -> raise (ParseErrorDetail("something is wrong"))
 
 %}
 
@@ -373,15 +381,9 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
   | VAR DEFEQ BAR variants LETAND error { report_error (Tok $5) "and" }
 ;
 nxlet:
-  | MATCH nxlet WITH pats {
-        let rng = make_range (Tok $1) (PatCons $4) in
-          (rng, UTPatternMatch($2, $4))
-      }
-  | MATCH nxlet WITH BAR pats {
-        let rng = make_range (Tok $1) (PatCons $5) in
-          (rng, UTPatternMatch($2, $5))
-      }
-  | nxletsub { $1 }
+  | MATCH nxlet WITH pats      { make_standard (Tok $1) (PatCons $4) (UTPatternMatch($2, $4)) }
+  | MATCH nxlet WITH BAR pats  { make_standard (Tok $1) (PatCons $5) (UTPatternMatch($2, $5)) }
+  | nxletsub                   { $1 }
 /* -- for syntax error log -- */
   | MATCH error                { report_error (Tok $1) "match" }
   | MATCH nxlet WITH error     { report_error (Tok $3) "with" }
@@ -452,8 +454,7 @@ nxlambda:
 argvar: /* -> Types.argument_variable_cons */
   | VAR argvar {
         let (varrng, varnm) = extract_range_and_name $1 in
-          UTArgumentVariableCons(varrng, varnm, $2)
-      }
+          UTArgumentVariableCons(varrng, varnm, $2) }
   | { UTEndOfArgumentVariable }
 /* -- for syntax error log -- */
   | VAR error { report_error (TokArg $1) "" }
@@ -538,13 +539,9 @@ nxrtimes:
   | nxrtimes MOD error      { report_error (Tok $2) "mod" }
 ;
 nxun:
-  | MINUS nxapp { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
-  | LNOT nxapp  {
-        let lnotrng = extract_range $1 in
-          make_standard (Tok $1) (Untyped $2) (UTApply((lnotrng, UTContentOf("not")), $2)) }
-  | REFNOW nxapp {
-        let refnowrng = extract_range $1 in
-          make_standard (Tok $1) (Untyped $2) (UTApply((refnowrng, UTContentOf("!")), $2)) }
+  | MINUS nxapp    { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
+  | LNOT nxapp     { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("not")), $2)) }
+  | REFNOW nxapp   { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("!")), $2)) }
   | REFFINAL nxapp { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
   | nxapp          { $1 }
 /* -- for syntax error log -- */
@@ -558,25 +555,19 @@ nxapp:
   | nxbot       { $1 }
 ;
 nxbot:
-  | VAR {
-        let (rng, varnm) = extract_range_and_name $1 in
-          (rng, UTContentOf(varnm)) }
-  | CONSTRUCTOR nxbot {
-        let (_, constrnm) = extract_range_and_name $1 in
-          make_standard (TokArg $1) (Untyped $2) (UTConstructor(constrnm, $2)) }
-  | NUMCONST {
-        let (rng, ncs) = extract_range_and_name $1 in
-          (rng, UTNumericConstant(int_of_string ncs)) }
+  | VAR               { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
+  | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
+  | NUMCONST          { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
+  | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
+  | FINISH                          { make_standard (Tok $1) (Tok $1) UTFinishHeaderFile }
   | LPAREN nxlet RPAREN             { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN nxlet COMMA tuple RPAREN { make_standard (Tok $1) (Tok $5) (UTTupleCons($2, $4)) }
   | OPENSTR sxsep CLOSESTR          { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | OPENQT sxblock CLOSEQT          { make_standard (Tok $1) (Tok $3) (omit_spaces $2) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlet nxlist ELIST        { make_standard (Tok $1) (Tok $4) (UTListCons($2, $3)) }
-  | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
-  | FINISH                          { make_standard (Tok $1) (Tok $1) UTFinishHeaderFile }
   | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf($2)) }
 /* -- for syntax error log -- */
   | BLIST error   { report_error (Tok $1) "[" }
@@ -590,12 +581,10 @@ nxlist:
   | LISTPUNCT error        { report_error (Tok $1) ";" }
 ;
 variants: /* -> untyped_variant_cons */
-  | CONSTRUCTOR OF txfunc BAR variants {
-        let (_, constrnm) = extract_range_and_name $1 in
-          make_standard (TokArg $1) (VarntCons $5) (UTVariantCons(constrnm, $3, $5)) }
-  | CONSTRUCTOR OF txfunc {
-        let (_, constrnm) = extract_range_and_name $1 in
-          make_standard (TokArg $1) (TypeStr $3) (UTVariantCons(constrnm, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
+  | CONSTRUCTOR OF txfunc BAR variants
+      { make_standard (TokArg $1) (VarntCons $5) (UTVariantCons(extract_name $1, $3, $5)) }
+  | CONSTRUCTOR OF txfunc
+      { make_standard (TokArg $1) (TypeStr $3)   (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR error               { report_error (TokArg $1) "" }
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
@@ -665,34 +654,25 @@ pats: /* -> untyped_patter_match_cons */
 ;
 pattr: /* -> Types.untyped_pattern_tree */
   | patbot CONS pattr { make_standard (Pat $1) (Pat $3) (UTPListCons($1, $3)) }
-  | pattr AS VAR {
-        let (_, varnm) = extract_range_and_name $3 in
-          make_standard (Pat $1) (TokArg $3) (UTPAsVariable(varnm, $1)) }
-  | patbot { $1 }
+  | pattr AS VAR      { make_standard (Pat $1) (TokArg $3) (UTPAsVariable(extract_name $3, $1)) }
+  | patbot            { $1 }
 /* -- for syntax error log -- */
   | patbot CONS error { report_error (Tok $2) "::" }
   | patbot AS error   { report_error (Tok $2) "as" }
 ;
 patbot: /* -> Types.untyped_pattern_tree */
-  | NUMCONST {
-        let (rng, ncs) = extract_range_and_name $1 in
-          (rng, UTPNumericConstant(int_of_string ncs)) }
-  | TRUE      { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
-  | FALSE     { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
-  | UNITVALUE { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
-  | WILDCARD  { make_standard (Tok $1) (Tok $1) UTPWildCard }
-  | VAR {
-        let (rng, varnm) = extract_range_and_name $1 in
-          (rng, UTPVariable(varnm)) }
-  | CONSTRUCTOR patbot {
-        let (_, constrnm) = extract_range_and_name $1 in
-          make_standard (TokArg $1) (Pat $2) (UTPConstructor(constrnm, $2)) }
+  | NUMCONST           { make_standard (TokArg $1) (TokArg $1) (UTPNumericConstant(int_of_string (extract_name $1))) }
+  | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
+  | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
+  | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
+  | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
+  | VAR                { make_standard (TokArg $1) (TokArg $1) (UTPVariable(extract_name $1)) }
+  | CONSTRUCTOR patbot { make_standard (TokArg $1) (Pat $2) (UTPConstructor(extract_name $1, $2)) }
   | LPAREN pattr RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN pattr COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | OPENQT sxblock CLOSEQT {
-        let rng = make_range (Tok $1) (Tok $3) in
-          (rng, UTPStringConstant(rng, omit_spaces $2)) }
+        let rng = make_range (Tok $1) (Tok $3) in (rng, UTPStringConstant(rng, omit_spaces $2)) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR error        { report_error (TokArg $1) "" }
   | LPAREN error             { report_error (Tok $1) "(" }
@@ -707,21 +687,11 @@ pattuple: /* -> untyped_pattern_tree */
   | pattr COMMA error    { report_error (Tok $2) "," }
 ;
 binop:
-  | PLUS    { "+" }
-  | MINUS   { "-" }
-  | MOD     { "mod" }
-  | TIMES   { "*" }
-  | DIVIDES { "/" }
-  | CONCAT  { "^" }
-  | EQ      { "==" }
-  | NEQ     { "<>" }
-  | GEQ     { ">=" }
-  | LEQ     { "<=" }
-  | GT      { ">" }
-  | LT      { "<" }
-  | LAND    { "&&" }
-  | LOR     { "||" }
-  | LNOT    { "not" }
+  | PLUS    { "+" }      | MINUS   { "-" }      | MOD     { "mod" }
+  | TIMES   { "*" }      | DIVIDES { "/" }      | CONCAT  { "^" }
+  | EQ      { "==" }     | NEQ     { "<>" }     | GEQ     { ">=" }
+  | LEQ     { "<=" }     | GT      { ">" }      | LT      { "<" }
+  | LAND    { "&&" }     | LOR     { "||" }     | LNOT    { "not" }
   | BEFORE  { "before" }
 ;
 sxsep:
@@ -744,29 +714,20 @@ sxbot:
   | CHAR  { let (rng, ch) = extract_range_and_name $1 in (rng, UTStringConstant(ch)) }
   | SPACE { let rng = extract_range $1 in (rng, UTStringConstant(" ")) }
   | BREAK { let rng = extract_range $1 in (rng, UTBreakAndIndent) }
-  | VARINSTR END {
-        let (_, varnm) = extract_range_and_name $1 in
-        let rng = make_range (TokArg $1) (Tok $2) in
-          (rng, UTContentOf(varnm))
-      }
+  | VARINSTR END { make_standard (TokArg $1) (Tok $2) (UTContentOf(extract_name $1)) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (csrng, csnm) = extract_range_and_name $1 in
           convert_into_apply (csrng, UTContentOf(csnm)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
-  | CTRLSEQ error { report_error (TokArg $1) "" }
+  | VARINSTR error { report_error (TokArg $1) "" }
+  | CTRLSEQ error  { report_error (TokArg $1) "" }
 sxclsnm:
-  | CLASSNAME {
-        let (rng, clsnm) = extract_range_and_name $1 in
-          (rng, class_name_to_abstract_tree clsnm)
-      }
-  | { ((-20, 0, 0, 0), UTNoContent) }
+  | CLASSNAME { make_standard (TokArg $1) (TokArg $1) (class_name_to_abstract_tree (extract_name $1)) }
+  |           { ((-20, 0, 0, 0), UTNoContent) }
 sxidnm:
-  | IDNAME {
-        let (rng, idnm) = extract_range_and_name $1 in
-          (rng, id_name_to_abstract_tree idnm)
-      }
-  | { ((-21, 0, 0, 0), UTNoContent) }
+  | IDNAME    { make_standard (TokArg $1) (TokArg $1) (id_name_to_abstract_tree (extract_name $1)) }
+  |           { ((-21, 0, 0, 0), UTNoContent) }
 ;
 narg: /* -> untyped_argument_cons */
   | OPENNUM nxlet CLOSENUM narg {
@@ -774,7 +735,7 @@ narg: /* -> untyped_argument_cons */
           UTArgumentCons((rng, extract_main $2), $4) }
   | { UTEndOfArgument }
 /* -- for syntax error log -- */
-  | OPENNUM error { report_error (Tok $1) "(" }
+  | OPENNUM error                { report_error (Tok $1) "(" }
   | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ")" }
 ;
 sarg: /* -> Types.untyped_argument_cons */
@@ -789,14 +750,9 @@ sarg: /* -> Types.untyped_argument_cons */
   | BGRP sxsep EGRP error { report_error (Tok $3) "}" }
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub {
-        let rng = make_range (Tok $1) (Tok $3) in
-          UTArgumentCons((rng, extract_main $2), $4) }
-  | OPENQT sxblock CLOSEQT sargsub {
-        let rng = make_range (Tok $1) (Tok $3) in
-          UTArgumentCons((rng, omit_spaces $2), $4)
-      }
-  | { UTEndOfArgument }
+  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
+  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, omit_spaces $2), $4) }
+  |                                { UTEndOfArgument }
 /* -- for syntax error log */
   | BGRP error                   { report_error (Tok $1) "{" }
   | BGRP sxsep EGRP error        { report_error (Tok $3) "}" }
