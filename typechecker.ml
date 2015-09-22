@@ -8,35 +8,78 @@ let initialize () = ( tvidmax := 0 )
 let new_type_variable_id () =
   let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
-let rec find_id_in_list elm lst =
+(* type_variable_id -> (type_variable_id * 'a) list -> 'a *)
+let rec find_id_in_list tvid lst =
   match lst with
-  | []                    -> raise Not_found
-  | (tvid, tystr) :: tail -> if tvid = elm then tystr else find_id_in_list elm tail
+  | []                 -> raise Not_found
+  | (tvidx, v) :: tail -> if tvidx = tvid then v else find_id_in_list tvidx tail
 
 
-let rec make_bounded_free tystr = eliminate_forall tystr []
+let rec make_bounded_free tystr =
+  match tystr with
+  | ForallType(_, _)                         -> eliminate_forall tystr []
+  | TypeWithRestriction(rng, restrlst, tycont) ->
+      let (newtycont, substlst) = eliminate_restriction tycont restrlst [] in
+      let newrestrlst = apply_substitution substlst restrlst in
+        TypeWithRestriction(rng, newrestrlst, newtycont)
+  | other                                    -> other
+
+(* (type_variable_id * type_struct) list -> type_restriction -> type_restriction *)
+and apply_substitution substlst restrlst =
+  match substlst with
+  | []                    -> restrlst
+  | (tvid, tystr) :: tail -> apply_substitution tail (replace_id_in_restriction tvid tystr restrlst)
+
+(* type_variable_id -> type_struct -> type_restriction -> type_restriction *)
+and replace_id_in_restriction tvid tystr restrlst =
+  match restrlst with
+  | [] -> []
+  | (TypeVariable(rng, tvidx), tyclsx) :: tail ->
+      if tvidx = tvid then
+        (TypeVariable(rng, tvid), tyclsx) :: (replace_id_in_restriction tvid tystr tail)
+      else
+        (TypeVariable(rng, tvidx), tyclsx) :: (replace_id_in_restriction tvid tystr tail)
+  | tystrx :: tail -> tystrx :: (replace_id_in_restriction tvid tystr tail)
+
 and eliminate_forall tystr lst =
   match tystr with
   | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
-        eliminate_forall tycont ((tvid, ntvstr) :: lst)
-  | other -> replace_id other lst
+      let ntv = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
+        eliminate_forall tycont ((tvid, ntv) :: lst)
+  | other                    -> replace_id other lst
 
-(* type_struct -> type_variable_id list -> type_struct *)
+(* type_struct -> type_restriction -> (type_variable_id * type_struct) list
+    -> (type_struct * ((type_variable_id * type_struct) list)) *)
+and eliminate_restriction tystr restrlst donelst =
+  match restrlst with
+  | []                                       -> (tystr, donelst)
+  | (TypeVariable(_, tvid), tyclshd) :: tail ->
+      ( try
+          let ntv = find_id_in_list tvid donelst in
+            eliminate_restriction (replace_id tystr [(tvid, ntv)]) tail donelst
+        with Not_found ->
+          let ntv = TypeVariable((-3, 0, 0, 0), new_type_variable_id ()) in
+            eliminate_restriction (replace_id tystr [(tvid, ntv)]) tail ((tvid, ntv) :: donelst)
+      )
+  | _ :: tail                                -> eliminate_restriction tystr tail donelst
+
+
+(* type_struct -> (type_variable_id * type_struct) list -> type_struct *)
 and replace_id tystr lst =
   match tystr with
   | TypeVariable(rng, tvid)     ->
       ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
-  | ProductType(rng, tylist)    -> ProductType(rng, replace_id_list tylist lst)
+  | ProductType(rng, tylist)    -> ProductType(rng, List.map (fun tl -> replace_id tl lst) tylist)
   | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
   | other                       -> other
-
+(*
 and replace_id_list tylist lst =
   match tylist with
   | []           -> []
   | head :: tail -> (replace_id head lst) :: (replace_id_list tail lst)
+*)
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck varntenv tyenv (rng, utastmain) =

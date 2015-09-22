@@ -16,17 +16,18 @@ let rec add_to_type_environment tyenv lst =
 
 (* unit -> type_environment *)
 let make_type_environment () =
-  let i = IntType((-32, 0, 0, 0)) in
-  let b = BoolType((-33, 0, 0, 0)) in
-  let s = StringType((-34, 0, 0, 0)) in
-  let v n = TypeVariable((-35, 0, 0, 0), n) in
-  let (-%) n cont = ForallType(n, cont) in
-  let l cont = ListType((-36, 0, 0, 0), cont) in
-  let r cont = RefType((-37, 0, 0, 0), cont) in
+  let i             = IntType((-32, 0, 0, 0)) in
+  let b             = BoolType((-33, 0, 0, 0)) in
+  let s             = StringType((-34, 0, 0, 0)) in
   let (-->) dom cod = FuncType((-38, 0, 0, 0), dom, cod) in
+  let l cont        = ListType((-36, 0, 0, 0), cont) in
+  let r cont        = RefType((-37, 0, 0, 0), cont) in
+  let v n           = TypeVariable((-35, 0, 0, 0), n) in
+  let (-%) n cont   = ForallType(n, cont) in
+  let (==>) rl cont = TypeWithRestriction((-36, 0, 0, 0), rl, cont) in
 
     add_to_type_environment Typeenv.empty
-      [ ( "+",   i --> (i --> i) );
+      [ ( "+",   ([(v (-7), "Num")] ==> ((v (-7)) --> (v (-7) --> v (-7)))) );
         ( "-",   i --> (i --> i) );
         ( "mod", i --> (i --> i) );
         ( "*",   i --> (i --> i) );
