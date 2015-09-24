@@ -13,7 +13,7 @@ val eliminate : t -> type_variable_id -> t
 
 val apply_to_type_struct : t -> type_struct -> type_struct
 
-val apply_to_type_environment : t -> type_environment -> type_environment
+val apply_to_type_environment : t -> Typeenv.t -> Typeenv.t
 
 val compose : t -> t -> t
 

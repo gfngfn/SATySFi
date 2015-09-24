@@ -30,7 +30,7 @@ and sub-itemize list =
   match list with
   | []           -> {}
   | head :: []   -> `\item` ^ {\ } ^ head
-  | head :: tail -> `\item` ^ {\ } ^ head ^ {\break;} ^ (sub-itemize tail)
+  | head :: tail -> `\item` ^ {\ } ^ head ^ break ^ (sub-itemize tail)
 
 let \math math = {\ $@math;$\ }
 
