@@ -22,14 +22,14 @@ let is_standalone_file str =
     (compare ".mcrds" (String.sub str ((String.length str) - 6) 6)) == 0
 
 
-(* Variantenv.t -> type_environment -> environment -> string -> (type_environment * environment) *)
+(* Variantenv.t -> Typeenv.t -> environment -> string -> (Variantenv.t * Typeenv.t * environment) *)
 let make_environment_from_header_file varntenv tyenv env file_name_in =
   ( print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
     ( Lexer.reset_to_numexpr () ;
       let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (ty, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
+      let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
       ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
         let evaled = Evaluator.interpret env ast in
           match evaled with
@@ -40,7 +40,7 @@ let make_environment_from_header_file varntenv tyenv env file_name_in =
                     else
                       print_string (Typeenv.string_of_control_sequence_type newtyenv)
                   else () ) ;
-                (newtyenv, newenv)
+                (newvarntenv, newtyenv, newenv)
               )
           | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
       )
@@ -57,7 +57,7 @@ let read_standalone_file varntenv tyenv env file_name_in file_name_out =
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, ast) = Typechecker.main varntenv tyenv utast in
+        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
           begin
             print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
             match ty with
@@ -84,7 +84,7 @@ let read_document_file varntenv tyenv env file_name_in file_name_out =
       begin
         Lexer.reset_to_strexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, ast) = Typechecker.main varntenv tyenv utast in
+        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
           begin
             print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
             match ty with
@@ -121,8 +121,8 @@ let rec main varntenv tyenv env file_name_in_list file_name_out =
           read_document_file varntenv tyenv env file_name_in file_name_out
 
     | file_name_in :: tail when is_header_file file_name_in ->
-          let (newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
-            main varntenv newtyenv newenv tail file_name_out
+          let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
+            main newvarntenv newtyenv newenv tail file_name_out
 
     | file_name_in :: tail when is_standalone_file file_name_in ->
           read_standalone_file varntenv tyenv env file_name_in file_name_out

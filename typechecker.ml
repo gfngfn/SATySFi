@@ -40,7 +40,8 @@ and replace_id_list tylist lst =
 
 
 (* !! mutable !! *)
-let final_tyenv : Typeenv.t ref = ref Typeenv.empty
+let final_tyenv : Typeenv.t ref       = ref Typeenv.empty
+let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck varntenv tyenv (rng, utastmain) =
@@ -54,7 +55,9 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
   | UTNoContent           -> (NoContent,           StringType(rng), Subst.empty)
   | UTFinishHeaderFile    ->
       begin
-        final_tyenv := tyenv ; (FinishHeaderFile, UnitType(-1, 0, 0, 0), Subst.empty)
+        final_tyenv := tyenv ;
+        final_varntenv := varntenv ;
+        (FinishHeaderFile, UnitType(-1, 0, 0, 0), Subst.empty)
       end
   | UTContentOf(nv) ->
       begin try
@@ -405,10 +408,11 @@ and make_forall_type_mutual varntenv tyenv theta tvtylst =
         end                                                                                       (* for debug *)
 
 
-(* untyped_abstract_tree -> (type_struct * Typeenv.t) *)
+(* untyped_abstract_tree -> (type_struct * Variantenv.t * Typeenv.t) *)
 let main varntenv tyenv utast =
     begin
+      final_varntenv := varntenv ;
       final_tyenv := tyenv ;
       let (e, ty, theta) = typecheck varntenv tyenv utast in
-        (ty, !final_tyenv, e)
+        (ty, !final_varntenv, !final_tyenv, e)
     end
