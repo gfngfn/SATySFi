@@ -23,14 +23,12 @@ let rec find theta key =
 
 (* t -> type_variable_id -> t *)
 let rec eliminate theta key = eliminate_sub [] theta key
+
 and eliminate_sub constr theta key =
   match theta with
-  | [] -> raise Not_found
+  | []             -> raise Not_found
   | (k, v) :: tail ->
-      if k == key then
-        constr @ tail
-      else
-        eliminate_sub ((k, v) :: constr) tail key
+      if k = key then constr @ tail else eliminate_sub ((k, v) :: constr) tail key
 
 
 (* type_struct -> type_variable_id -> type_struct -> type_variable *)
@@ -51,16 +49,19 @@ let rec apply_to_type_struct theta tystr =
   | ListType(rng, tycont)       -> ListType(rng, apply_to_type_struct theta tycont)
   | RefType(rng, tycont)        -> RefType(rng, apply_to_type_struct theta tycont)
   | ProductType(rng, tylist)    -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
-  | TypeVariable(rng, tv)       -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
+  | TypeVariable(rng, tv)       -> begin try find theta tv with Not_found -> TypeVariable(rng, tv) end
   | other                       -> other
 
 
-(* t -> type_environment -> type_environment *)
+(* t -> type_environment -> Typeenv.t *)
 let rec apply_to_type_environment theta tyenv =
-  match tyenv with
-  | []                     -> tyenv
+  Typeenv.from_list (apply_to_type_environment_sub theta (Typeenv.to_list tyenv))
+
+and apply_to_type_environment_sub theta tyenvlst =
+  match tyenvlst with
+  | []                     -> tyenvlst
   | (varnm, tystr) :: tail ->
-      (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment theta tail)
+      (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment_sub theta tail)
 
 
 (* type_variable_id -> type_struct -> (bool * code_range) *)
@@ -107,7 +108,7 @@ let report_inclusion_error tystr1 tystr2 =
   let rng2 = Typeenv.get_range_from_type tystr2 in
   let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
   let msg =
-  ( if is_invalid_range rng1 then
+    if is_invalid_range rng1 then
       if is_invalid_range rng2 then
         let (sttln1, _, _, _) = rng1 in
         let (sttln2, _, _, _) = rng2 in
@@ -116,7 +117,7 @@ let report_inclusion_error tystr1 tystr2 =
         "at " ^ (describe_position rng2)
     else
       "at " ^ (describe_position rng1)
-  ) in
+  in
     raise (TypeCheckError(
         msg ^ ":\n"
       ^ "    this expression has types\n"
@@ -126,6 +127,7 @@ let report_inclusion_error tystr1 tystr2 =
       ^ "    at the same time,\n"
       ^ "    but these are incompatible with each other"
     ))
+
 
 (* type_struct -> type_struct -> 'a *)
 let report_contradiction_error tystr1 tystr2 =
@@ -167,9 +169,10 @@ let report_contradiction_error tystr1 tystr2 =
 let rec fix_subst theta = fix_subst_sub theta theta
 and fix_subst_sub rest from =
   match rest with
-  | []                    -> ( check_emergence from ; from )
+  | []                    -> begin check_emergence from ; from end
   | (tvid, tystr) :: tail -> fix_subst_sub tail (overwrite from tvid tystr)
 
+(* t -> unit *)
 and check_emergence theta =
   match theta with
   | []                    -> ()
@@ -177,7 +180,7 @@ and check_emergence theta =
       let (b, rng) = emerge_in tvid tystr in
         if b then
           if is_invalid_range rng then
-            ( print_for_debug "*1\n" ; raise InclusionError )
+            raise InclusionError
           else
             report_inclusion_error (TypeVariable(rng, tvid)) tystr
         else
@@ -186,17 +189,17 @@ and check_emergence theta =
 
 (* t -> t -> t *)
 let rec compose theta2 theta1 = fix_subst (compose_prim theta2 theta1)
+
 and compose_prim theta2 theta1 =
   match theta2 with
   | []                     -> theta1
   | (tvid, tystr2) :: tail ->
-      ( try
-          let tystr1 = find theta1 tvid in
-            (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
-        with
-        | Not_found ->
-          ( compose_prim tail (overwrite_or_add theta1 tvid tystr2) )
-      )
+      begin try
+        let tystr1 = find theta1 tvid in
+          (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
+      with
+      | Not_found -> compose_prim tail (overwrite_or_add theta1 tvid tystr2)
+      end
 
 (* type_struct -> type_struct -> t *)
 and unify tystr1 tystr2 =
@@ -225,47 +228,39 @@ and unify_sub tystr1 tystr2 =
   | (StringType(_), StringType(_)) -> empty
   | (BoolType(_), BoolType(_))     -> empty
   | (UnitType(_), UnitType(_))     -> empty
-  | (TypeEnvironmentType(_, _), TypeEnvironmentType(_, _)) -> empty
 
-  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) ->
-      compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
+  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) -> compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
 
-  | (ListType(_, cont1), ListType(_, cont2)) -> unify_sub cont1 cont2
+  | (ListType(_, cont1), ListType(_, cont2))           -> unify_sub cont1 cont2
 
-  | (RefType(_, cont1), RefType(_, cont2))   -> unify_sub cont1 cont2
+  | (RefType(_, cont1), RefType(_, cont2))             -> unify_sub cont1 cont2
 
   | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
 
   | (VariantType(_, varntnm1), VariantType(_, varntnm2))
-      when varntnm1 = varntnm2
-      -> empty
+                              when varntnm1 = varntnm2 -> empty
 
   | (TypeVariable(rng1, tvid1), tystr) ->
-      ( match tystr with
-        | TypeVariable(rng2, tvid2) ->
-            if tvid1 == tvid2 then
-              empty
-            else if tvid1 < tvid2 then
-              if is_invalid_range rng2 then
-                [(tvid1, TypeVariable(rng1, tvid2))]
-              else
-                [(tvid1, TypeVariable(rng2, tvid2))]
-            else
-              if is_invalid_range rng1 then
-                [(tvid2, TypeVariable(rng2, tvid1))]
-              else
-                [(tvid2, TypeVariable(rng1, tvid1))]
+      begin match tystr with
+      | TypeVariable(rng2, tvid2) ->
+          if tvid1 == tvid2 then
+            empty
+          else if tvid1 < tvid2 then
+            if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
+                                      else [(tvid1, TypeVariable(rng2, tvid2))]
+          else
+            if is_invalid_range rng1  then [(tvid2, TypeVariable(rng2, tvid1))]
+                                      else [(tvid2, TypeVariable(rng1, tvid1))]
+      | other ->
+          let (b, _) = emerge_in tvid1 tystr in
+            if b  then report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
+                  else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
+      end
 
-        | other ->
-            let (b, _) = emerge_in tvid1 tystr in
-              if b then
-                report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
-              else
-                [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
-      )
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
-  | (tystr1, tystr2) -> report_contradiction_error tystr1 tystr2
+  | (tystr1, tystr2)                 -> report_contradiction_error tystr1 tystr2
+
 
 and unify_sub_list tylist1 tylist2 =
   match (tylist1, tylist2) with
@@ -279,6 +274,7 @@ let rec string_of_subst theta =
       " +-------------------------------\n"
     ^ (string_of_subst_sub theta)
     ^ " +-------------------------------\n"
+
 and string_of_subst_sub theta =
   match theta with
   | []                    -> ""

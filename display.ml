@@ -1,6 +1,7 @@
 open Types
 
 (* -- for test -- *)
+(* untyped_abstract_tree -> string *)
 let rec string_of_utast (_, utast) =
   match utast with
   | UTStringEmpty         -> "{}"
@@ -23,6 +24,7 @@ let rec string_of_utast (_, utast) =
   | UTFinishHeaderFile    -> "finish"
   | UTPatternMatch(ut, pmcons) -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
   | _ -> "?"
+
 and string_of_pmcons (_, pmcons) =
   match pmcons with
   | UTEndOfPatternMatch -> ""
@@ -31,6 +33,7 @@ and string_of_pmcons (_, pmcons) =
   | UTPatternMatchConsWhen(pat, utb, ut, tail)
       -> " | " ^ (string_of_pat pat) ^ " when " ^ (string_of_utast utb)
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
+
 and string_of_pat (_, pat) =
   match pat with
   | UTPNumericConstant(nc)  -> string_of_int nc
@@ -47,6 +50,7 @@ and string_of_pat (_, pat) =
   | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_pat p) ^ ")"
 
 
+(* abstract_tree -> string *)
 let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
@@ -76,6 +80,7 @@ let rec string_of_ast ast =
   | _ -> "?"
 
 
+(* code_range -> string *)
 let describe_position (sttln, sttpos, endln, endpos) =
   if sttln = endln then
     "line " ^ (string_of_int sttln) ^ ", characters " ^ (string_of_int sttpos)
@@ -102,32 +107,31 @@ let rec string_of_type_struct_basic tystr =
     | FuncType(_, tydom, tycod)  ->
         let strdom = string_of_type_struct_basic tydom in
         let strcod = string_of_type_struct_basic tycod in
-        ( match tydom with
+          begin match tydom with
           | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
           | ProductType(_, _) -> "(" ^ strdom ^ ")"
           | _                 -> strdom
-        ) ^ " ->" ^ (if sttln <= 0 then "+ " else " ") ^ strcod
+          end ^ " ->" ^ (if sttln <= 0 then "+ " else " ") ^ strcod
 
     | ListType(_, tycont)        ->
         let strcont = string_of_type_struct_basic tycont in
-        ( match tycont with
+          begin match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
           | ProductType(_, _) -> "(" ^ strcont ^ ")"
           | _                 -> strcont
-        ) ^ " list" ^ (if sttln <= 0 then "+" else "")
+          end ^ " list" ^ (if sttln <= 0 then "+" else "")
 
     | RefType(_, tycont)         ->
         let strcont = string_of_type_struct_basic tycont in
-        ( match tycont with
+          begin match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
           | ProductType(_, _) -> "(" ^ strcont ^ ")"
           | _                 -> strcont
-        ) ^ " ref" ^ (if sttln <= 0 then "+" else "")
+          end ^ " ref" ^ (if sttln <= 0 then "+" else "")
 
     | ProductType(_, tylist)     -> string_of_type_struct_list_basic tylist
     | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
     | VariantType(_, varntnm)    -> if sttln <= 0 then varntnm else varntnm ^ "+"
-    | TypeEnvironmentType(_, _)  -> if sttln <= 0 then "env" else "env+"
     | ForallType(tvid, tycont)   ->
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
 
@@ -164,7 +168,7 @@ let rec variable_name_of_int n =
 (* unit -> string *)
 let new_meta_type_variable_name () =
   let res = variable_name_of_int (!meta_max) in
-    meta_max := !meta_max + 1 ; res
+    begin meta_max := !meta_max + 1 ; res end
 
 (* (type_variable_id * string) list -> type_variable_id -> string *)
 let rec find_meta_type_variable lst tvid =
@@ -175,9 +179,11 @@ let rec find_meta_type_variable lst tvid =
 (* type_variable_id -> string *)
 let new_unbound_type_variable_name tvid =
   let res = variable_name_of_int (!unbound_max) in
-    unbound_max := !unbound_max + 1 ;
-    unbound_type_valiable_name_list := (tvid, res) :: (!unbound_type_valiable_name_list) ;
-    res
+    begin
+      unbound_max := !unbound_max + 1 ;
+      unbound_type_valiable_name_list := (tvid, res) :: (!unbound_type_valiable_name_list) ;
+      res
+    end
 
 (* type_variable_id -> string *)
 let find_unbound_type_variable tvid =
@@ -185,66 +191,67 @@ let find_unbound_type_variable tvid =
 
 (* type_struct -> string *)
 let rec string_of_type_struct tystr =
-  meta_max := 0 ;
-  unbound_max := 0 ;
-  unbound_type_valiable_name_list := [] ;
-  string_of_type_struct_sub tystr []
+  begin
+    meta_max := 0 ;
+    unbound_max := 0 ;
+    unbound_type_valiable_name_list := [] ;
+    string_of_type_struct_sub tystr []
+  end
 
 and string_of_type_struct_double tystr1 tystr2 =
-  meta_max := 0 ;
-  unbound_max := 0 ;
-  unbound_type_valiable_name_list := [] ;
-  let strty1 = string_of_type_struct_sub tystr1 [] in
-  let strty2 = string_of_type_struct_sub tystr2 [] in
-    (strty1, strty2)
+  begin
+    meta_max := 0 ;
+    unbound_max := 0 ;
+    unbound_type_valiable_name_list := [] ;
+    let strty1 = string_of_type_struct_sub tystr1 [] in
+    let strty2 = string_of_type_struct_sub tystr2 [] in
+      (strty1, strty2)
+  end
 
 (* type_struct -> (type_variable_id * string) list -> string *)
 and string_of_type_struct_sub tystr lst =
   match tystr with
-  | StringType(_) -> "string"
-  | IntType(_)    -> "int"
-  | BoolType(_)   -> "bool"
-  | UnitType(_)   -> "unit"
+  | StringType(_)           -> "string"
+  | IntType(_)              -> "int"
+  | BoolType(_)             -> "bool"
+  | UnitType(_)             -> "unit"
+  | VariantType(_, varntnm) -> varntnm
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
       let strcod = string_of_type_struct_sub tycod lst in
-      ( match tydom with
+        begin match tydom with
         | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
         | _                 -> strdom
-      ) ^ " -> " ^ strcod
+        end ^ " -> " ^ strcod
 
   | ListType(_, tycont)       ->
       let strcont = string_of_type_struct_sub tycont lst in
-      ( match tycont with
+        begin match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
         | ProductType(_, _) -> "(" ^ strcont ^ ")"
         | _                 -> strcont
-      ) ^ " list"
+        end ^ " list"
 
   | RefType(_, tycont)        ->
       let strcont = string_of_type_struct_sub tycont lst in
-      ( match tycont with
+        begin match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
         | ProductType(_, _) -> "(" ^ strcont ^ ")"
         | _                 -> strcont
-      ) ^ " ref"
+        end ^ " ref"
 
   | ProductType(_, tylist)    ->
       string_of_type_struct_list tylist lst
 
   | TypeVariable(_, tvid)     ->
-      ( try "'" ^ (find_meta_type_variable lst tvid) with
-        | Not_found ->
-            "'" ^
-              ( try find_unbound_type_variable tvid with
-                | Not_found -> new_unbound_type_variable_name tvid
-              )
-      )
-
-  | VariantType(_, varntnm) -> varntnm
-
-  | TypeEnvironmentType(_, _) -> "env"
+      begin try "'" ^ (find_meta_type_variable lst tvid) with
+      | Not_found ->
+          "'" ^
+            begin try find_unbound_type_variable tvid with
+            | Not_found -> new_unbound_type_variable_name tvid
+            end
+      end
 
   | ForallType(tvid, tycont)  ->
       let meta = new_meta_type_variable_name () in
@@ -257,48 +264,12 @@ and string_of_type_struct_list tylist lst =
   | head :: tail ->
       let strhead = string_of_type_struct_sub head lst in
       let strtail = string_of_type_struct_list tail lst in
-      ( match head with
+        begin match head with
         | FuncType(_, _, _) -> "(" ^ strhead ^ ")"
         | ProductType(_, _) -> "(" ^ strhead ^ ")"
         | _                 -> strhead
-      ) ^
-      ( match tail with
+        end ^
+        begin match tail with
         | [] -> ""
         | _  -> " * " ^ strtail
-      )
-
-let rec string_of_type_environment tyenv msg =
-    "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
-  ^ (string_of_type_environment_sub tyenv)
-  ^ "    #================================================================\n"
-and string_of_type_environment_sub tyenv =
-  match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
-      let (a, _, _, _) = Typeenv.get_range_from_type ts in (* dirty code *)
-        if -38 <= a && a <= -1 then
-          string_of_type_environment_sub tail
-        else
-          "    #  "
-            ^ ( let len = String.length vn in
-                  if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-            ^ " : " ^ (string_of_type_struct ts) ^ "\n"
-            ^ (string_of_type_environment_sub tail)
-
-
-let rec string_of_control_sequence_type tyenv =
-    "    #================================================================\n"
-  ^ (string_of_control_sequence_type_sub tyenv)
-  ^ "    #================================================================\n"
-and string_of_control_sequence_type_sub tyenv =
-  match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
-      ( match String.sub vn 0 1 with
-        | "\\" ->
-            "    #  "
-              ^ ( let len = String.length vn in
-                    if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-              ^ " : " ^ (string_of_type_struct ts) ^ "\n"
-        | _    -> ""
-      ) ^ (string_of_control_sequence_type_sub tail)
+        end

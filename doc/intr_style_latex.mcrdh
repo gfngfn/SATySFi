@@ -180,8 +180,8 @@ let \mcrd-display code =
       %\}\}%
     %\}%
   %}\\end\{center\}
-  `{\small\begin{breakbox}` ^ {\break;}
-  ^ `\begin{verbatim}` ^code^ `\end{verbatim}` ^ {\break;}
+  `{\small\begin{breakbox}` ^ break
+  ^ `\begin{verbatim}` ^code^ `\end{verbatim}` ^ break
   ^ `\end{breakbox}}\noindent` ^ {\ }
 
 let \mcrd-input name code =

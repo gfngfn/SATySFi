@@ -127,7 +127,7 @@ rule numexpr = parse
       next_state := STATE_LITERAL ;
       OPENQT(get_pos lexbuf)
     }
-  | ("\\" identifier) {
+  | ("\\" (identifier | constructor)) {
   	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
   	  }
   | "+"   { PLUS(get_pos lexbuf) }
