@@ -59,6 +59,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         final_varntenv := varntenv ;
         (FinishHeaderFile, UnitType(-1, 0, 0, 0), Subst.empty)
       end
+
   | UTContentOf(nv) ->
       begin try
         let forallty = Typeenv.find tyenv nv in
@@ -265,6 +266,10 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
   | UTDeclareVariantIn(mutvarntcons, utastaft) ->
       let varntenv_new = Variantenv.add_mutual_cons varntenv mutvarntcons in
+        typecheck varntenv_new tyenv utastaft
+
+  | UTDeclareTypeSynonymIn(tynm, tystr, utastaft) ->
+      let varntenv_new = Variantenv.add_type_synonym varntenv tynm tystr in
         typecheck varntenv_new tyenv utastaft
 
   | UTConstructor(constrnm, utastcont) ->

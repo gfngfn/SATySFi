@@ -76,7 +76,9 @@ let rec emerge_in tvid tystr =
     | RefType(_, cont)         -> emerge_in tvid cont
     | ProductType(_, lst)      -> emerge_in_list tvid lst
     | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
+    | TypeSynonym(_, _, cont)  -> emerge_in tvid cont
     | _                        -> (false, dummy)
+
 and emerge_in_list tvid tylist =
   let dummy = (-2049, 0, 0, 0) in
     match tylist with
@@ -203,27 +205,42 @@ and compose_prim theta2 theta1 =
 
 (* type_struct -> type_struct -> t *)
 and unify tystr1 tystr2 =
-  try unify_sub tystr1 tystr2 with
+  print_for_debug (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
+                     ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
+  try
+    match (tystr1, tystr2) with
+    | (TypeSynonym(_, _, tycont1), _) -> unify_sub tycont1 tystr2
+    | (_, TypeSynonym(_, _, tycont2)) -> unify_sub tystr1 tycont2
+    | _                               -> unify_sub tystr1 tystr2
+  with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
-       let rng1 = Typeenv.get_range_from_type tystr1 in
-       let rng2 = Typeenv.get_range_from_type tystr2 in
-         if (is_invalid_range rng1) && (is_invalid_range rng2) then
-           let (sttln1, _, _, _) = rng1 in
-           let (sttln2, _, _, _) = rng2 in
-             raise (TypeCheckError(
-                "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")\n"
-              ^ "      " ^ (string_of_type_struct tystr1) ^ "\n"
-              ^ "    and\n"
-              ^ "      " ^ (string_of_type_struct tystr2)))
-         else
-           report_contradiction_error tystr1 tystr2
+      begin                                                                                     (* for debug *)
+        print_for_debug ("contradiction: "                                                      (* for debug *)
+          ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ; (* for debug *)
+        let rng1 = Typeenv.get_range_from_type tystr1 in
+        let rng2 = Typeenv.get_range_from_type tystr2 in
+          if (is_invalid_range rng1) && (is_invalid_range rng2) then
+            let (sttln1, _, _, _) = rng1 in
+            let (sttln2, _, _, _) = rng2 in
+              raise (TypeCheckError(
+                 "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")\n"
+               ^ "      " ^ (string_of_type_struct tystr1) ^ "\n"
+               ^ "    and\n"
+               ^ "      " ^ (string_of_type_struct tystr2)))
+          else
+            report_contradiction_error tystr1 tystr2
+      end                                                                                       (* for debug *)
 
 (* type_struct -> type_struct -> t *)
 and unify_sub tystr1 tystr2 =
   print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
+
   match (tystr1, tystr2) with
+  | (TypeSynonym(_, _, _), _)      -> unify tystr1 tystr2
+  | (_, TypeSynonym(_, _, _))      -> unify tystr1 tystr2
+
   | (IntType(_), IntType(_))       -> empty
   | (StringType(_), StringType(_)) -> empty
   | (BoolType(_), BoolType(_))     -> empty
@@ -243,7 +260,7 @@ and unify_sub tystr1 tystr2 =
   | (TypeVariable(rng1, tvid1), tystr) ->
       begin match tystr with
       | TypeVariable(rng2, tvid2) ->
-          if tvid1 == tvid2 then
+          if tvid1 = tvid2 then
             empty
           else if tvid1 < tvid2 then
             if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
@@ -259,8 +276,8 @@ and unify_sub tystr1 tystr2 =
 
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
 
-  | (tystr1, tystr2)                 -> report_contradiction_error tystr1 tystr2
-
+  | _                                -> raise ContradictionError
+(*  | (tystr1, tystr2)                 -> report_contradiction_error tystr1 tystr2 *)
 
 and unify_sub_list tylist1 tylist2 =
   match (tylist1, tylist2) with

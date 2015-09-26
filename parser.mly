@@ -57,12 +57,15 @@
         let (rng, _) = arg in
           convert_into_apply_sub actail (rng, UTApply(utastconstr, arg))
 
+  (* class_name -> untyped_abstract_tree *)
   let class_name_to_abstract_tree clsnm =
     UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))
 
+  (* id_name -> untyped_abstract_tree *)
   let id_name_to_abstract_tree idnm =
     UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))
 
+  (* code_range -> untyped_argument_variable_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   let rec curry_lambda_abstract rng argvarcons utastdef =
     match argvarcons with
     | UTEndOfArgumentVariable                        -> utastdef
@@ -180,18 +183,30 @@
     let rng = make_range (Untyped lft) (Untyped rgt) in
       (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
+
+  (* range_kind -> range_kind -> 'a -> code_range * 'a *)
+  let make_standard sttknd endknd utastmain =
+    let rng = make_range sttknd endknd in (rng, utastmain)
+
+
+  (* code_range -> untyped_mutual_let_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   let make_let_expression lettk decs utastaft =
     let rng = make_range (Tok lettk) (Untyped utastaft) in
       (rng, UTLetIn(decs, utastaft))
 
+  (* code_range -> (code_range * var_name) -> untyped_abstract_tree
+      -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_abstract_tree *)
   let make_let_mutable_expression letmuttk vartk utastdef utastaft =
     let (varrng, varnm) = extract_range_and_name vartk in
-    let rng = make_range (Tok letmuttk) (Untyped utastaft) in
-      (rng, UTLetMutableIn(varrng, varnm, utastdef, utastaft))
+      make_standard (Tok letmuttk) (Untyped utastaft) (UTLetMutableIn(varrng, varnm, utastdef, utastaft))
 
+  (* code_range -> untyped_mutual_variant_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   let make_variant_declaration firsttk varntdecs utastaft =
-    let rng = make_range (Tok firsttk) (Untyped utastaft) in
-      (rng, UTDeclareVariantIn(varntdecs, utastaft))
+    make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
+
+  let make_type_synonym_declaration firsttk tytk tystr utastaft =
+    let tynm = extract_name tytk in
+      make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareTypeSynonymIn(tynm, tystr, utastaft))
 
   let make_mutual_let_cons firsttk vartk argcons utastdef tailcons =
     let (varrng, varnm) = extract_range_and_name vartk in
@@ -202,9 +217,6 @@
     let (_, typenm) = extract_range_and_name typenmtk in
       UTMutualVariantCons(typenm, constrdecs, tailcons)
 
-  (* range_kind -> range_kind -> 'a -> code_range * 'a *)
-  let make_standard sttknd endknd utastmain =
-    let rng = make_range sttknd endknd in (rng, utastmain)
 
   (* range_kind -> string -> 'a *)
   let report_error rngknd tok =
@@ -253,7 +265,7 @@
 %token <Types.token_position> BEFORE UNITVALUE WHILE DO
 %token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Types.token_position> MATCH WITH BAR WILDCARD WHEN AS
-%token <Types.token_position> VARIANT OF
+%token <Types.token_position> VARIANT OF TYPE
 %token <Types.token_position * Types.constructor_name> CONSTRUCTOR
 %token EOI
 %token IGNORED
@@ -329,11 +341,14 @@ nxtoplevel:
   | MUTUAL nxmutual EOI                         { make_let_expression $1 $2 untyped_finish }
   | VARIANT nxvariantdec nxtoplevel             { make_variant_declaration $1 $2 $3 }
   | VARIANT nxvariantdec EOI                    { make_variant_declaration $1 $2 untyped_finish }
+  | TYPE VAR DEFEQ txfunc nxtoplevel            { make_type_synonym_declaration $1 $2 $4 $5 }
+  | TYPE VAR DEFEQ txfunc EOI                   { make_type_synonym_declaration $1 $2 $4 untyped_finish }
 /* ---- transition to expression style ---- */
   | LET nxdec IN nxlet EOI                        { make_let_expression $1 $2 $4 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI { make_let_mutable_expression $1 $2 $4 $6 }
   | MUTUAL nxmutual IN nxlet EOI                  { make_let_expression $1 $2 $4 }
   | VARIANT nxvariantdec IN nxlet EOI             { make_variant_declaration $1 $2 $4 }
+  | TYPE VAR DEFEQ txfunc IN nxlet EOI            { make_type_synonym_declaration $1 $2 $4 $6 }
 /* ---- for syntax error log ---- */
   | LET error                                 { report_error (Tok $1) "let" }
   | LET nxdec IN error                        { report_error (Tok $3) "in" }
@@ -451,7 +466,7 @@ nxlambda:
   | LAMBDA error                                    { report_error (Tok $1) "function" }
   | LAMBDA argvar ARROW error                       { report_error (Tok $3) "->" }
 ;
-argvar: /* -> Types.argument_variable_cons */
+argvar: /* -> argument_variable_cons */
   | VAR argvar {
         let (varrng, varnm) = extract_range_and_name $1 in
           UTArgumentVariableCons(varrng, varnm, $2) }

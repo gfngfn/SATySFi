@@ -186,6 +186,7 @@ rule numexpr = parse
           | "as"       -> AS(pos)
           | "variant"  -> VARIANT(pos)
           | "of"       -> OF(pos)
+          | "type"     -> TYPE(pos)
           | _          -> VAR(pos, tok)
         )
       }

@@ -100,12 +100,13 @@ let bug_reporting rng errmsg = "at " ^ (describe_position rng) ^ ":\n     this c
 let rec string_of_type_struct_basic tystr =
   let (sttln, _, _, _) = Typeenv.get_range_from_type tystr in
     match tystr with
-    | StringType(_) -> if sttln <= 0 then "string" else "string+"
-    | IntType(_)    -> if sttln <= 0 then "int"    else "int+"
-    | BoolType(_)   -> if sttln <= 0 then "bool"   else "bool+"
-    | UnitType(_)   -> if sttln <= 0 then "unit"   else "unit+"
+    | StringType(_)                -> if sttln <= 0 then "string" else "string+"
+    | IntType(_)                   -> if sttln <= 0 then "int"    else "int+"
+    | BoolType(_)                  -> if sttln <= 0 then "bool"   else "bool+"
+    | UnitType(_)                  -> if sttln <= 0 then "unit"   else "unit+"
+    | VariantType(_, varntnm)      -> if sttln <= 0 then varntnm else varntnm ^ "+"
 
-    | FuncType(_, tydom, tycod)  ->
+    | FuncType(_, tydom, tycod)    ->
         let strdom = string_of_type_struct_basic tydom in
         let strcod = string_of_type_struct_basic tycod in
           begin match tydom with
@@ -114,7 +115,7 @@ let rec string_of_type_struct_basic tystr =
           | _                 -> strdom
           end ^ " ->" ^ (if sttln <= 0 then "+ " else " ") ^ strcod
 
-    | ListType(_, tycont)        ->
+    | ListType(_, tycont)          ->
         let strcont = string_of_type_struct_basic tycont in
           begin match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
@@ -122,7 +123,7 @@ let rec string_of_type_struct_basic tystr =
           | _                 -> strcont
           end ^ " list" ^ (if sttln <= 0 then "+" else "")
 
-    | RefType(_, tycont)         ->
+    | RefType(_, tycont)           ->
         let strcont = string_of_type_struct_basic tycont in
           begin match tycont with
           | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
@@ -130,10 +131,10 @@ let rec string_of_type_struct_basic tystr =
           | _                 -> strcont
           end ^ " ref" ^ (if sttln <= 0 then "+" else "")
 
-    | ProductType(_, tylist)     -> string_of_type_struct_list_basic tylist
-    | TypeVariable(_, tvid)      -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
-    | VariantType(_, varntnm)    -> if sttln <= 0 then varntnm else varntnm ^ "+"
-    | ForallType(tvid, tycont)   ->
+    | ProductType(_, tylist)       -> string_of_type_struct_list_basic tylist
+    | TypeVariable(_, tvid)        -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "+" else "")
+    | TypeSynonym(_, tynm, tycont) -> tynm ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, tycont)     ->
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
 
 and string_of_type_struct_list_basic tylist =
@@ -148,10 +149,10 @@ and string_of_type_struct_list_basic tylist =
   | head :: tail ->
       let strhd = string_of_type_struct_basic head in
       let strtl = string_of_type_struct_list_basic tail in
-      ( match head with
+        begin match head with
         | ProductType(_, _) -> "(" ^ strhd ^ ")"
         | _                 -> strhd
-      ) ^ " * " ^ strtl
+        end ^ " * " ^ strtl
 
 
 let meta_max    : type_variable_id ref = ref 0
@@ -212,13 +213,13 @@ and string_of_type_struct_double tystr1 tystr2 =
 (* type_struct -> (type_variable_id * string) list -> string *)
 and string_of_type_struct_sub tystr lst =
   match tystr with
-  | StringType(_)             -> "string"
-  | IntType(_)                -> "int"
-  | BoolType(_)               -> "bool"
-  | UnitType(_)               -> "unit"
-  | VariantType(_, varntnm)   -> varntnm
+  | StringType(_)                -> "string"
+  | IntType(_)                   -> "int"
+  | BoolType(_)                  -> "bool"
+  | UnitType(_)                  -> "unit"
+  | VariantType(_, varntnm)      -> varntnm
 
-  | FuncType(_, tydom, tycod) ->
+  | FuncType(_, tydom, tycod)    ->
       let strdom = string_of_type_struct_sub tydom lst in
       let strcod = string_of_type_struct_sub tycod lst in
         begin match tydom with
@@ -226,7 +227,7 @@ and string_of_type_struct_sub tystr lst =
         | _                 -> strdom
         end ^ " -> " ^ strcod
 
-  | ListType(_, tycont)       ->
+  | ListType(_, tycont)          ->
       let strcont = string_of_type_struct_sub tycont lst in
         begin match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
@@ -234,7 +235,7 @@ and string_of_type_struct_sub tystr lst =
         | _                 -> strcont
         end ^ " list"
 
-  | RefType(_, tycont)        ->
+  | RefType(_, tycont)           ->
       let strcont = string_of_type_struct_sub tycont lst in
         begin match tycont with
         | FuncType(_, _, _) -> "(" ^ strcont ^ ")"
@@ -242,10 +243,9 @@ and string_of_type_struct_sub tystr lst =
         | _                 -> strcont
         end ^ " ref"
 
-  | ProductType(_, tylist)    ->
-      string_of_type_struct_list tylist lst
+  | ProductType(_, tylist)       -> string_of_type_struct_list tylist lst
 
-  | TypeVariable(_, tvid)     ->
+  | TypeVariable(_, tvid)        ->
       begin try "'" ^ (find_meta_type_variable lst tvid) with
       | Not_found ->
           "'" ^
@@ -254,7 +254,9 @@ and string_of_type_struct_sub tystr lst =
             end
       end
 
-  | ForallType(tvid, tycont)  ->
+  | TypeSynonym(_, tynm, tycont) -> tynm ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
+
+  | ForallType(tvid, tycont)     ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
 

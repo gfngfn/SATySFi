@@ -7,7 +7,7 @@ type ctrlseq_name = string
 type var_name = string
 type id_name = string
 type class_name = string
-type variant_type_name = string
+type type_name = string
 type constructor_name = string
 
 type token_position = int * int * int
@@ -24,7 +24,8 @@ and type_struct =
   | RefType      of code_range * type_struct
   | ProductType  of code_range * (type_struct list)
   | TypeVariable of code_range * type_variable_id
-  | VariantType  of code_range * variant_type_name
+  | TypeSynonym  of code_range * type_name * type_struct
+  | VariantType  of code_range * type_name
   | ForallType   of type_variable_id * type_struct
 
 type id_name_arg =
@@ -71,9 +72,10 @@ and untyped_abstract_tree_main =
   | UTLambdaAbstract      of code_range * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
 (* -- pattern match -- *)
-  | UTPatternMatch        of untyped_abstract_tree * untyped_pattern_match_cons
-  | UTDeclareVariantIn    of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTConstructor         of constructor_name * untyped_abstract_tree
+  | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
+  | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
+  | UTConstructor          of constructor_name * untyped_abstract_tree
+  | UTDeclareTypeSynonymIn of type_name * type_struct * untyped_abstract_tree
 (* -- implerative -- *)
   | UTLetMutableIn        of code_range * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential          of untyped_abstract_tree * untyped_abstract_tree
@@ -91,7 +93,7 @@ and untyped_variant_cons_main =
   | UTVariantCons         of constructor_name * type_struct * untyped_variant_cons
   | UTEndOfVariant
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons   of variant_type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualVariantCons   of type_name * untyped_variant_cons * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
