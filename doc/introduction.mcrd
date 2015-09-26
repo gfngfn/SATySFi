@@ -532,7 +532,7 @@
         慣れてしまえばループ処理よりもずっと少ない手間で書くことができます。
       }
     }
-    \subsection{リスト}{
+    \subsection{リストとパターンマッチ}{
       \p{
         具体的なリストは，基本的に
         
@@ -562,34 +562,65 @@
         \mcrd`[{hoge}; {piyo}; {fuga}; {moge}]` の省略として使えます。
       }
       \p{
-        リストの要素を取り出す操作を見ていきましょう。
-        まずリストの先頭要素を取り出す函数が \mcrd-type`list-head`{'a list -> 'a}，
-        先頭を除いたリストを得る函数が \mcrd-type`list-tail`{'a list -> 'a list} です。
-        例えば \mcrd`list-head [2; 4; 6; 9; 11]` は \mcrd`2` に，
-        \mcrd`list-tail [2; 4; 6; 9; 11]` は \mcrd`[4; 6; 9; 11]` にそれぞれ評価されます。
+        リストの各要素を取り出して操作には，\newword{パターンマッチ}を用います。一般にパターンマッチは
+
+        \code-display{
+          \synt`match` \meta{Expr0} \synt`with`\code-break;
+          \synt`|` \meta{pat1} \synt`->` \meta{Expr1}\code-break;
+          \synt`|` \meta{pat2} \synt`->` \meta{Expr2}\code-break;
+          \metadots;\code-break;
+          \synt`|` \meta{patN} \synt`->` \meta{ExprN}
+        }
+        
+        という記法をとり，\code{\meta{Expr0}} の値が
+        パターン \code{\meta{pat1}} に合致する場合は \meta{Expr1} を返し，
+        パターン \code{\meta{pat1}} に合致しない場合は
+        次の \code{\meta{pat2}} と照らしあわせて合致すれば \meta{Expr2} を返し，
+        ……という，上から順にマッチする表現を探して対応する値を返す仕組みです。
+        具体的に次の例を見てみましょう。
+        
+        \mcrd-input{enclose.mcrds}```
+          let \enclose lst =
+            match lst with
+            | []       -> {}
+            | hd :: tl -> {(@hd;)\enclose(tl);}
+          
+          in {\enclose{|hoge|piyo|fuga|moge|}}
+        ```
+        
+        という入力に対して
+        
+        \mcrd-output{enclose.txt}```
+          (hoge)(piyo)(fuga)(moge)
+        ```
+        
+        という文字列になります。
+        %まずリストの先頭要素を取り出す函数が \mcrd-type`list-head`{'a list -> 'a}，
+        %先頭を除いたリストを得る函数が \mcrd-type`list-tail`{'a list -> 'a list} です。
+        %例えば \mcrd`list-head [2; 4; 6; 9; 11]` は \mcrd`2` に，
+        %\mcrd`list-tail [2; 4; 6; 9; 11]` は \mcrd`[4; 6; 9; 11]` にそれぞれ評価されます。
       }
-      \p{
-        では，\mcrd`list-head` および \mcrd`list-tail` に空のリスト \mcrd`[]` を渡すとどうなるかというと，
-        これは実行時エラーで終了してしまいます。
-        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty` `'a list -> bool` を使うことになります。
-      }
+%      \p{
+%        では，\mcrd`list-head` および \mcrd`list-tail` に空のリスト \mcrd`[]` を渡すとどうなるかというと，
+%        これは実行時エラーで終了してしまいます。
+%        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty` `'a list -> bool` を使うことになります。
+%      }
       \p{
         リストを再帰的に扱う例を見てみましょう。
         \type-synt`string list` 型の値を受け取り，
         各要素をHTMLのリストの項目として並べたものを返す
         マクロ \mcrd-type`\ul` `string list -> string` を定義します。
 
-        \mcrd-input{ul.mcrds}```
+        \mcrd-input{ul.mcrdh}```
           let sub-ul lst =
-            if is-empty lst then {} else
-              let hd = list-head lst in
-              let tl = list-tail lst in
-                {<li class="list-content">@hd;</li>\break;} ^ (sub-ul tl)
+            match lst with
+            | []       -> {}
+            | hd :: tl -> {<li class="list-content">@hd;</li>} ^ break ^ (sub-ul tl)
 
           let \ul lst = {<ul>\deeper(sub-ul lst);</ul>}
-          in {
-            \ul{|hoge|piyo|fuga|moge|}
-          }
+        ```
+        \mcrd-input{ul.mcrd}```
+          \ul{|hoge|piyo|fuga|moge|}
         ```
 
         を処理した出力は
@@ -616,8 +647,9 @@
 
         \mcrd-input{foldl.mcrds}```
           let foldl f i lst =
-            if is-empty lst then i else
-              foldl f (f i (list-head lst)) (list-tail lst)
+            match lst with
+            | []       -> i
+            | hd :: tl -> foldl f (f i hd) tl
 
           let sum = foldl (+) 0
           let \sum lst = arabic (sum lst)
@@ -654,16 +686,14 @@
 
         \mcrd-input{mut.mcrds}```
           let ul-odd lst =
-            if is-empty lst then {} else
-              let hd = list-head lst in
-              let tl = list-tail lst in
-                {<li class="style-odd">@hd;</li>} ^ (ul-even tl)
+            match lst with
+            | []       -> {}
+            | hd :: tl -> {<li class="style-odd">@hd;</li>} ^ (ul-even tl)
 
           and ul-even lst =
-            if is-empty lst then {} else
-              let hd = list-head lst in
-              let tl = list-tail lst in
-                {<li class="style-even"@hd;</li>>} ^ (ul-odd tl)
+            match lst with
+            | []       -> {}
+            | hd :: tl -> {<li class="style-even"@hd;</li>>} ^ (ul-odd tl)
 
           let \ul lst = {<ul>\deeper(ul-odd lst);</ul>}
           in {
@@ -750,10 +780,8 @@
           \synt{finish}
         }
         
-        と全く同等となります。
-        \mcrd`finish` が書かれた場所から定義が“見える”函数・マクロが，次以降のファイルの読み込みに引き継がれます。
-        \mcrd`finish` は \type-synt`env` 型という特殊な型を持つ値を指す唯一のトークンですが，
-        省略できるので普通は書きません。
+        と同等となります。最後の \mcrd`finish` は実際には書けないトークンで，値としては \mcrd`()` ですが，
+        これが書かれた場所から“見える”函数・マクロの定義を次以降のファイルの読み込みに引き継ぐという機能を持っています。
       }
       \p{
         大域環境での相互再帰はやはり
@@ -1164,8 +1192,6 @@
               \math{\token-renew-global-hash;}：\newword{ハッシュ変更トークン}}
           | \d-item{\mcrd`<<-`}{
               \math{\token-owhash;}：\newword{ハッシュ代入トークン}}
-          | \d-item{\mcrd`finish`}{
-              \math{\token-finish;}：\newword{finishトークン}}
           | \d-item{（名前文字列）}{
               \math{\token-ident;}：\newword{項トークン}}
           | \d-item{（整数文字列）}{
@@ -1189,6 +1215,7 @@
       }
       \p{
         finishトークン \math{\token-finish;} はヘッダファイルを終了させるトークンで，
+        ユーザーは入力できず，大域環境の末尾に自動的に附加されます。
         これが評価されたときの環境が次のファイルの読み込みに引き継がれます。
       }
     }

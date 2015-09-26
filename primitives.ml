@@ -48,8 +48,9 @@ let make_type_environment () =
         ( "string-sub",    s --> (i --> (i --> s)) );
         ( "string-length", s --> i );
         ( "\\deeper",      s --> s );
-        ( "break",       s );
-        ( "space",       s );
+        ( "deeper",        s --> s );
+        ( "break",         s );
+        ( "space",         s );
 (*        ( "break-char",    s ); *)
 (*        ( "\\include",     s --> s ); *)
         ( "arabic",      i --> s );
@@ -97,7 +98,7 @@ let make_environment () =
   let loc_break        : location = ref NoContent in
   let loc_space        : location = ref NoContent in
   let loc_breakchar    : location = ref NoContent in
-  let loc_include      : location = ref NoContent in
+(*  let loc_include      : location = ref NoContent in *)
   let loc_arabic       : location = ref NoContent in
   let loc_listhead     : location = ref NoContent in
   let loc_listtail     : location = ref NoContent in
@@ -124,8 +125,9 @@ let make_environment () =
     add_to_environment env "string-sub"    loc_stringsub ;
     add_to_environment env "string-length" loc_stringlength ;
     add_to_environment env "\\deeper"      loc_deeper ;
-    add_to_environment env "break"       loc_break ;
-    add_to_environment env "space"       loc_space ;
+    add_to_environment env "deeper"        loc_deeper ;
+    add_to_environment env "break"         loc_break ;
+    add_to_environment env "space"         loc_space ;
 (*    add_to_environment env "break-char"    loc_breakchar ; *)
 (*    add_to_environment env "\\include"     loc_include ; *)
     add_to_environment env "arabic"        loc_arabic ;
@@ -200,7 +202,7 @@ let make_environment () =
 
     loc_breakchar    := lambdas env [] (StringConstant("\n")) ;
 
-    loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ;
+(*    loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ; *)
 
     loc_arabic       := lambdas env ["~num"] (PrimitiveArabic(ContentOf("~num"))) ;
 

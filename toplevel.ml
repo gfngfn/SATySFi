@@ -22,14 +22,14 @@ let parsestr s = Display.string_of_utast (parse s);;
 
 let tcraw s =
   init () ;
-  let (typed, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in typed
+  let (typed, _, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in typed
 ;;
 
 let tc s = Display.string_of_type_struct (tcraw s);;
 
 let eval s =
   init () ;
-  let (typed, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in
+  let (typed, _, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in
     Evaluator.interpret env ast
 ;;
 let evalstr s = Display.string_of_ast (eval s);;

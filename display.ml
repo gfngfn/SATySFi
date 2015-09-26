@@ -23,6 +23,7 @@ let rec string_of_utast (_, utast) =
   | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"
   | UTFinishHeaderFile    -> "finish"
   | UTPatternMatch(ut, pmcons) -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
+(*  | UTDeclareVariantIn() *)
   | _ -> "?"
 
 and string_of_pmcons (_, pmcons) =
@@ -211,11 +212,11 @@ and string_of_type_struct_double tystr1 tystr2 =
 (* type_struct -> (type_variable_id * string) list -> string *)
 and string_of_type_struct_sub tystr lst =
   match tystr with
-  | StringType(_)           -> "string"
-  | IntType(_)              -> "int"
-  | BoolType(_)             -> "bool"
-  | UnitType(_)             -> "unit"
-  | VariantType(_, varntnm) -> varntnm
+  | StringType(_)             -> "string"
+  | IntType(_)                -> "int"
+  | BoolType(_)               -> "bool"
+  | UnitType(_)               -> "unit"
+  | VariantType(_, varntnm)   -> varntnm
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
