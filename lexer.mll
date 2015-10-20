@@ -157,55 +157,47 @@ rule numexpr = parse
   | identifier {
         let tok = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
-        ( match tok with
-          | "not"      -> LNOT(pos)
-          | "mod"      -> MOD(pos)
-          | "if"       -> IF(pos)
-          | "then"     -> THEN(pos)
-          | "else"     -> ELSE(pos)
-          | "let"      -> LET(pos)
-          | "and"      -> LETAND(pos)
-          | "in"       -> IN(pos)
-          | "function" -> LAMBDA(pos)
-          | "true"     -> TRUE(pos)
-          | "false"    -> FALSE(pos)
-          | "before"   -> BEFORE(pos)
-          | "while"    -> WHILE(pos)
-          | "do"       -> DO(pos)
-          | "finish"   -> FINISH(pos)
-          | "mutual"      -> MUTUAL(pos)
-          | "end-mutual"  -> ENDMUTUAL(pos)
-          | "if-class-is-valid"   -> IFCLASSISVALID(pos)
-          | "if-id-is-valid"      -> IFIDISVALID(pos)
-          | "let-mutable"         -> LETMUTABLE(pos)
-          | "new-global-hash"     -> NEWGLOBALHASH(pos)
-          | "renew-global-hash"   -> RENEWGLOBALHASH(pos)
-          | "match"    -> MATCH(pos)
-          | "with"     -> WITH(pos)
-          | "when"     -> WHEN(pos)
-          | "as"       -> AS(pos)
-          | "variant"  -> VARIANT(pos)
-          | "of"       -> OF(pos)
-          | "type"     -> TYPE(pos)
-          | _          -> VAR(pos, tok)
-        )
+          match tok with
+          | "not"               -> LNOT(pos)
+          | "mod"               -> MOD(pos)
+          | "if"                -> IF(pos)
+          | "then"              -> THEN(pos)
+          | "else"              -> ELSE(pos)
+          | "let"               -> LET(pos)
+          | "and"               -> LETAND(pos)
+          | "in"                -> IN(pos)
+          | "function"          -> LAMBDA(pos)
+          | "true"              -> TRUE(pos)
+          | "false"             -> FALSE(pos)
+          | "before"            -> BEFORE(pos)
+          | "while"             -> WHILE(pos)
+          | "do"                -> DO(pos)
+          | "mutual"            -> MUTUAL(pos)
+          | "end-mutual"        -> ENDMUTUAL(pos)
+          | "if-class-is-valid" -> IFCLASSISVALID(pos)
+          | "if-id-is-valid"    -> IFIDISVALID(pos)
+          | "let-mutable"       -> LETMUTABLE(pos)
+          | "new-global-hash"   -> NEWGLOBALHASH(pos)
+          | "renew-global-hash" -> RENEWGLOBALHASH(pos)
+          | "match"             -> MATCH(pos)
+          | "with"              -> WITH(pos)
+          | "when"              -> WHEN(pos)
+          | "as"                -> AS(pos)
+          | "variant"           -> VARIANT(pos)
+          | "of"                -> OF(pos)
+          | "type"              -> TYPE(pos)
+          | "module"            -> MODULE(pos)
+          | "struct"            -> STRUCT(pos)
+          | "end-struct"        -> ENDSTRUCT(pos)
+          | _                   -> VAR(pos, tok)
       }
-  | constructor {
-        let tok = Lexing.lexeme lexbuf in CONSTRUCTOR(get_pos lexbuf, tok)
-      }
-  | (digit digit*) {
-        let tok = Lexing.lexeme lexbuf in NUMCONST(get_pos lexbuf, tok)
-      }
+  | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
-        if !first_state = STATE_NUMEXPR then
-          EOI
-        else
+        if !first_state = STATE_NUMEXPR then EOI else
           raise (LexError(error_reporting lexbuf ("input ended while reading numeric expression")))
       }
-  | _ {
-        let tok = Lexing.lexeme lexbuf in
-          raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in numeric expression")))
-      }
+  | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in numeric expression"))) }
 
 and strexpr = parse
   | "%" {
@@ -283,7 +275,7 @@ and strexpr = parse
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
-  | _ as c { raise (LexError(error_reporting lexbuf "illegal token: " ^ (String.make 1 c)))}
+  | _ as c { raise (LexError(error_reporting lexbuf "illegal token '" ^ (String.make 1 c) ^ "' in string expression"))}
 
 and active = parse
   | "%" {
