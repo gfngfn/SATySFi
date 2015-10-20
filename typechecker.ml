@@ -1,19 +1,25 @@
 open Types
 open Display
 
+(* !! mutable !! *)
 let tvidmax : type_variable_id ref = ref 0
+let final_tyenv : Typeenv.t ref       = ref Typeenv.empty
+let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 let initialize () = ( tvidmax := 0 )
 
 let new_type_variable_id () =
   let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
 
+
+(* 'a -> ('a * 'b) list -> 'b *)
 let rec find_id_in_list elm lst =
   match lst with
   | []                    -> raise Not_found
   | (tvid, tystr) :: tail -> if tvid = elm then tystr else find_id_in_list elm tail
 
 
+(* type_struct -> type_struct *)
 let rec make_bounded_free tystr = eliminate_forall tystr []
 and eliminate_forall tystr lst =
   match tystr with
@@ -29,19 +35,10 @@ and replace_id tystr lst =
       ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
-  | ProductType(rng, tylist)    -> ProductType(rng, replace_id_list tylist lst)
+  | ProductType(rng, tylist)    -> ProductType(rng, List.map (fun tl -> replace_id tl lst) tylist)
   | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
   | other                       -> other
 
-and replace_id_list tylist lst =
-  match tylist with
-  | []           -> []
-  | head :: tail -> (replace_id head lst) :: (replace_id_list tail lst)
-
-
-(* !! mutable !! *)
-let final_tyenv : Typeenv.t ref       = ref Typeenv.empty
-let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck varntenv tyenv (rng, utastmain) =
@@ -189,11 +186,14 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let (eb, tyb, thetab) = typecheck varntenv tyenv utastb in
       let (e1, ty1, theta1) = typecheck varntenv tyenv utast1 in
       let (e2, ty2, theta2) = typecheck varntenv tyenv utast2 in
-      let theta_result =  Subst.compose
-                            (Subst.unify ty2 ty1)
-                            (Subst.compose theta2 (Subst.compose theta1 thetab)) in
+      let theta_result =  Subst.compose (Subst.unify ty2 ty1)
+                            (Subst.compose theta2
+                              (Subst.compose theta1
+                                (Subst.compose (Subst.unify tyb (BoolType(-7, 0, 0, 0)))
+                                  thetab))) in
       let term_result = IfThenElse(eb, e1, e2) in
-        (term_result, Subst.apply_to_type_struct theta_result ty1, theta_result)
+      let type_result = Subst.apply_to_type_struct theta_result ty1 in
+        (term_result, type_result, theta_result)
 
   | UTIfClassIsValid(utast1, utast2) ->
       let tyenv_new = Typeenv.add tyenv "class" (StringType((-6, 0, 0, 0))) in
@@ -281,10 +281,29 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       with
       | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
+(*
+  | UTModule(mdlnm, utastdef, utastaft) ->
+      let (varntenv_new, tyenv_new, _, _) = typecheck_module varntenv tyenv varntenv tyenv mdlnm utastdef in
+        typecheck varntenv_new tyenv_new utastaft
 
 
-(* type_environment -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
-	-> (pattern_match_cons * type_struct * Subst.t) *)
+(* Variantenv.t -> Typeenv.t -> Variantenv.t -> Typeenv.t -> module_name -> untyped_module_tree
+    -> (Variantenv.t * Typeenv.t * Variantenv.t * Typeenv.t) *)
+and typecheck_module veout teout vein tein mdlnm utmdldef =
+  match utmdldef with
+  | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
+  | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
+  | UTMPublicLetMutableIn(rng, varnm, utast, utmdlaft)    ->
+  | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
+  | UTMPublicDeclareTypeSynonymIn(tynm, tystr, utmdlaft)  ->
+  | UTMPrivateLetIn(utmutletcons, utmdlaft)               ->
+  | UTMPrivateLetMutableIn(rng, varnm, utast, utmdlaft)   ->
+  | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
+  | UTMPrivateDeclareTypeSynonymIn(tynm, tystr, utmdlaft) ->
+*)
+
+(* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
+	  -> (pattern_match_cons * type_struct * Subst.t) *)
 and typecheck_pattern_match_cons varntenv tyenv (rng, utpmconsmain) tyobj theta tyres =
   match utpmconsmain with
   | UTEndOfPatternMatch -> (EndOfPatternMatch, (Subst.apply_to_type_struct theta tyres), theta)
@@ -313,7 +332,7 @@ and typecheck_pattern_match_cons varntenv tyenv (rng, utpmconsmain) tyobj theta 
         (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
 
 
-(* type_environment * untyped_pattern_tree -> (pattern_tree * type_struct * type_environment) *)
+(* Typeenv.t * untyped_pattern_tree -> (pattern_tree * type_struct * Typeenv.t) *)
 and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   match utpatmain with
   | UTPNumericConstant(nc) -> (PNumericConstant(nc), IntType(rng), tyenv)
@@ -374,7 +393,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
 (* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
 and add_mutual_variables varntenv tyenv mutletcons =
   match mutletcons with
-  | UTEndOfMutualLet -> (tyenv, [])
+  | UTEndOfMutualLet                         -> (tyenv, [])
   | UTMutualLetCons(varnm, astdef, tailcons) ->
       let ntv = TypeVariable(get_range astdef, new_type_variable_id ()) in
         let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
@@ -398,6 +417,7 @@ and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
   | _ -> assert false
 
 
+(* Variantenv.t -> Typeenv.t -> Subst.t -> type_variable_id list -> Typeenv.t *)
 and make_forall_type_mutual varntenv tyenv theta tvtylst =
   match tvtylst with
   | []                        -> tyenv

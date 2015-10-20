@@ -1,33 +1,53 @@
 open Types
 
-type t = (var_name * type_struct) list
+type visible_state = Visible | UnVisible
+type t = (visible_state * var_name * type_struct) list
+
 
 (* t *)
 let empty = []
 
 
 (* t -> (var_name * type_struct) list *)
-let to_list tyenv = tyenv
+let rec to_list tyenv =
+  match tyenv with
+  | []                              -> []
+  | (Visible, varnm, tystr) :: tail -> (varnm, tystr) :: (to_list tail)
+  | (UnVisible, _, _)       :: tail -> to_list tail
 
 
 (* (var_name * type_struct) list -> t *)
-let from_list lst = lst
+let rec from_list lst =
+  match lst with
+  | []                   -> []
+  | (varnm, tystr) :: tl -> (Visible, varnm, tystr) :: (from_list tl)
 
 
 (* t -> var_name -> type_struct -> t *)
 let rec add tyenv varnm tystr =
   match tyenv with
-  | []                               -> [(varnm, tystr)]
-  | (vn, ts) :: tail when vn = varnm -> (varnm, tystr) :: tail
-  | (vn, ts) :: tail                 -> (vn, ts) :: (add tail varnm tystr)
+  | []                          -> [(Visible, varnm, tystr)]
+  | (Visible, vn, ts) :: tail
+                when vn = varnm -> (Visible, varnm, tystr) :: tail
+  | (vst, vn, ts) :: tail       -> (vst, vn, ts) :: (add tail varnm tystr)
 
 
 (* t -> var_name -> type_struct *)
 let rec find tyenv varnm =
   match tyenv with
-  | []                               -> raise Not_found
-  | (vn, ts) :: tail when vn = varnm -> ts
-  | (vn, ts) :: tail                 -> find tail varnm
+  | []                          -> raise Not_found
+  | (Visible, vn, ts) :: tail
+                when vn = varnm -> ts
+  | _ :: tail                   -> find tail varnm
+
+
+(* t -> t *)
+let rec omit_unvisible tyenv =
+  match tyenv with
+  | []                        -> []
+  | (UnVisible, _, _) :: tail -> tail
+  | other :: tail             -> other :: (omit_unvisible tail)
+
 
 (* type_struct -> code_range *)
 let get_range_from_type tystr =
@@ -45,6 +65,7 @@ let get_range_from_type tystr =
   | VariantType(rng, _)    -> rng
   | ForallType(_, _)       -> (-31, 0, 0, 0)
 
+
 (* type_struct -> code_range -> type_struct *)
 let overwrite_range_of_type tystr rng =
   match tystr with
@@ -61,22 +82,23 @@ let overwrite_range_of_type tystr rng =
   | VariantType(_, varntnm)      -> VariantType(rng, varntnm)
   | ForallType(tvid, tycont)     -> ForallType(tvid, tycont)
 
+
 (* type_struct -> type_struct *)
 let rec erase_range_of_type tystr =
   let dummy = (-2048, 0, 0, 0) in
     match tystr with
-    | IntType(_)                -> IntType(dummy)
-    | StringType(_)             -> StringType(dummy)
-    | BoolType(_)               -> BoolType(dummy)
-    | UnitType(_)               -> UnitType(dummy)
-    | FuncType(_, tydom, tycod) -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
-    | ListType(_, tycont)       -> ListType(dummy, erase_range_of_type tycont)
-    | RefType(_, tycont)        -> RefType(dummy, erase_range_of_type tycont)
-    | ProductType(_, tylist)    -> ProductType(dummy, List.map erase_range_of_type tylist)
-    | TypeVariable(_, tvid)     -> TypeVariable(dummy, tvid)
+    | IntType(_)                   -> IntType(dummy)
+    | StringType(_)                -> StringType(dummy)
+    | BoolType(_)                  -> BoolType(dummy)
+    | UnitType(_)                  -> UnitType(dummy)
+    | FuncType(_, tydom, tycod)    -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
+    | ListType(_, tycont)          -> ListType(dummy, erase_range_of_type tycont)
+    | RefType(_, tycont)           -> RefType(dummy, erase_range_of_type tycont)
+    | ProductType(_, tylist)       -> ProductType(dummy, List.map erase_range_of_type tylist)
+    | TypeVariable(_, tvid)        -> TypeVariable(dummy, tvid)
     | TypeSynonym(_, tynm, tycont) -> TypeSynonym(dummy, tynm, erase_range_of_type tycont)
-    | VariantType(_, varntnm)   -> VariantType(dummy, varntnm)
-    | ForallType(tvid, tycont)  -> ForallType(tvid, erase_range_of_type tycont)
+    | VariantType(_, varntnm)      -> VariantType(dummy, varntnm)
+    | ForallType(tvid, tycont)     -> ForallType(tvid, erase_range_of_type tycont)
 
 
 (* type_variable_id -> type_variable_id list -> bool *)
@@ -107,11 +129,13 @@ and find_in_type_struct_list tvid tystr =
 (* type_variable_id -> t -> bool *)
 let rec find_in_type_environment tvid tyenv =
   match tyenv with
-  | []                 -> false
-  | (_, tystr) :: tail ->
+  | []                          -> false
+  | (UnVisible, _, _) :: tail   -> find_in_type_environment tvid tail
+  | (Visible, _, tystr) :: tail ->
       if find_in_type_struct tvid tystr then true else find_in_type_environment tvid tail
 
 
+(* !! mutable !! *)
 let unbound_id_list : type_variable_id list ref = ref []
 
 (* type_struct -> t -> (type_variable_id list) -> unit *)
@@ -124,7 +148,7 @@ let rec listup_unbound_id tystr tyenv =
   | FuncType(_, tydom, tycod) -> begin listup_unbound_id tydom tyenv ; listup_unbound_id tycod tyenv end
   | ListType(_, tycont)       -> listup_unbound_id tycont tyenv
   | RefType(_, tycont)        -> listup_unbound_id tycont tyenv
-  | ProductType(_, tylist)    -> let _ = List.map (fun ty -> listup_unbound_id ty tyenv) in ()
+  | ProductType(_, tylist)    -> let _ = List.map (fun ty -> listup_unbound_id ty tyenv) tylist in ()
   | _                         -> ()
 
 
@@ -152,8 +176,9 @@ let rec string_of_type_environment tyenv msg =
 
 and string_of_type_environment_sub tyenv =
   match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
+  | []                        -> ""
+  | (UnVisible, _, _) :: tail -> string_of_type_environment_sub tail
+  | (Visible, vn, ts) :: tail ->
       let (a, _, _, _) = get_range_from_type ts in (* dirty code *)
         if -38 <= a && a <= -1 then
           string_of_type_environment_sub tail
@@ -172,8 +197,9 @@ let rec string_of_control_sequence_type tyenv =
 
 and string_of_control_sequence_type_sub tyenv =
   match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
+  | []                        -> ""
+  | (UnVisible, _, _) :: tail -> string_of_control_sequence_type_sub tail
+  | (Visible, vn, ts) :: tail ->
       begin match String.sub vn 0 1 with
       | "\\" ->
           "    #  "
