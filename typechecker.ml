@@ -120,9 +120,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             (term_result, type_result, theta_result)
 
   | UTLetIn(utmutletcons, utast2) ->
-      let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
-      let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
-      let tyenv_forall = make_forall_type_mutual varntenv tyenv theta1 tvtylst in (* contains bugs? *)
+      let (tyenv_forall, mutletcons, theta1) = make_type_environment_by_let varntenv tyenv utmutletcons in
       let (e2, ty2, theta2) = typecheck varntenv tyenv_forall utast2 in
         (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
 
@@ -287,11 +285,13 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         typecheck varntenv_new tyenv_new utastaft
 
 
+
 (* Variantenv.t -> Typeenv.t -> Variantenv.t -> Typeenv.t -> module_name -> untyped_module_tree
     -> (Variantenv.t * Typeenv.t * Variantenv.t * Typeenv.t) *)
 and typecheck_module veout teout vein tein mdlnm utmdldef =
   match utmdldef with
   | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
+      let tyenv_forall = make_type_environment_by_let vein tein utmutletcons in
   | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
   | UTMPublicLetMutableIn(rng, varnm, utast, utmdlaft)    ->
   | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
@@ -310,25 +310,25 @@ and typecheck_pattern_match_cons varntenv tyenv (rng, utpmconsmain) tyobj theta 
 
   | UTPatternMatchCons(utpat, utast1, tailcons) ->
       let (epat, typat, tyenvpat) = typecheck_pattern varntenv tyenv utpat in
-      let thetapat = Subst.compose (Subst.unify tyobj typat) theta in
-      let tyenv1 = Subst.apply_to_type_environment thetapat tyenvpat in
-      let (e1, ty1, theta1) = typecheck varntenv tyenv1 utast1 in
-      let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
+      let thetapat  = Subst.compose (Subst.unify tyobj typat) theta in
+      let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
+      let (e1, ty1, theta1)       = typecheck varntenv tyenv1 utast1 in
+      let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
       let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
+      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
         (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
 
   | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
       let (epat, typat, tyenvpat) = typecheck_pattern varntenv tyenv utpat in
-      let (eb, tyb, thetab) = typecheck varntenv tyenvpat utastb in
-      let thetapat =  Subst.compose (Subst.unify tyb (BoolType(-400, 0, 0, 0)))
+      let (eb, tyb, thetab)       = typecheck varntenv tyenvpat utastb in
+      let thetapat  = Subst.compose (Subst.unify tyb (BoolType(-400, 0, 0, 0)))
                         (Subst.compose thetab
                         	(Subst.compose (Subst.unify tyobj typat) theta)) in
-      let tyenv1 = Subst.apply_to_type_environment thetapat tyenvpat in
-      let (e1, ty1, theta1) = typecheck varntenv tyenv1 utast1 in
-      let theta2 = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
+      let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
+      let (e1, ty1, theta1)       = typecheck varntenv tyenv1 utast1 in
+      let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
       let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let (pmctl, tytl, thetatl) = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
+      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
         (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
 
 
@@ -352,6 +352,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         let tyenv_result = Subst.apply_to_type_environment theta tyenv2 in
         let type_result = Subst.apply_to_type_struct theta typat2 in
           (PListCons(epat1, epat2), type_result, tyenv_result)
+
   | UTPEndOfList ->
       let ntv = TypeVariable(rng, new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
 
@@ -365,6 +366,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         )
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
+
   | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
 
   | UTPWildCard ->
@@ -390,7 +392,15 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       end
 
 
-(* Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
+(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * mutual_let_cons * Subst.t) *)
+and make_type_environment_by_let varntenv tyenv utmutletcons =
+  let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
+  let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
+  let tyenv_forall = make_forall_type_mutual varntenv tyenv theta1 tvtylst in (* contains bugs? *)
+    (tyenv_forall, mutletcons, theta1)
+
+
+(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
 and add_mutual_variables varntenv tyenv mutletcons =
   match mutletcons with
   | UTEndOfMutualLet                         -> (tyenv, [])
@@ -400,7 +410,7 @@ and add_mutual_variables varntenv tyenv mutletcons =
           (tyenv_tail, ((varnm, ntv) :: tvtylst))
 
 
-(* Typeenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
+(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
   -> (Typeenv.t * mutual_let_cons * Subst.t) *)
 and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
   match (mutletcons, tvtylst) with
