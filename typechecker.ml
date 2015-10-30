@@ -120,7 +120,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             (term_result, type_result, theta_result)
 
   | UTLetIn(utmutletcons, utast2) ->
-      let (tyenv_forall, mutletcons, theta1) = make_type_environment_by_let varntenv tyenv utmutletcons in
+      let (tyenv_forall, _, mutletcons, theta1) = make_type_environment_by_let varntenv tyenv utmutletcons in
       let (e2, ty2, theta2) = typecheck varntenv tyenv_forall utast2 in
         (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
 
@@ -279,7 +279,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       with
       | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
-(*
+
   | UTModule(mdlnm, utastdef, utastaft) ->
       let (varntenv_new, tyenv_new, _, _) = typecheck_module varntenv tyenv varntenv tyenv mdlnm utastdef in
         typecheck varntenv_new tyenv_new utastaft
@@ -287,20 +287,52 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
 
 (* Variantenv.t -> Typeenv.t -> Variantenv.t -> Typeenv.t -> module_name -> untyped_module_tree
-    -> (Variantenv.t * Typeenv.t * Variantenv.t * Typeenv.t) *)
-and typecheck_module veout teout vein tein mdlnm utmdldef =
+    -> (Variantenv.t * Typeenv.t * module_tree * Subst.t) *)
+and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
   match utmdldef with
+  | UTMFinishModule                                       -> (veout, teout, MFinishModule, Subst.empty)
   | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
-      let tyenv_forall = make_type_environment_by_let vein tein utmutletcons in
+      let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
+      let teout_new = add_list_to_type_environment teout tvtylst_added in
+      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
+      let theta_result = Subst.compose thetaaft theta in
+        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+
   | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
+      let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
+      let teout_new = add_list_to_module_type_environment teout tvtylst_added mdlnm in
+      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
+      let theta_result = Subst.compose thetaaft theta in
+        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+
+  | UTMPrivateLetIn(utmutletcons, utmdlaft)               ->
+      let (tein_new, _, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
+      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout vein tein_new mdlnm utmdlaft in
+      let theta_result = Subst.compose thetaaft theta in
+        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+(*
   | UTMPublicLetMutableIn(rng, varnm, utast, utmdlaft)    ->
   | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
   | UTMPublicDeclareTypeSynonymIn(tynm, tystr, utmdlaft)  ->
-  | UTMPrivateLetIn(utmutletcons, utmdlaft)               ->
   | UTMPrivateLetMutableIn(rng, varnm, utast, utmdlaft)   ->
   | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
   | UTMPrivateDeclareTypeSynonymIn(tynm, tystr, utmdlaft) ->
 *)
+
+(* Typeenv.t -> (var_name * type_struct) list -> Typeenv.t *)
+and add_list_to_type_environment tyenv tvtylst =
+  match tvtylst with
+  | []                         -> tyenv
+  | (varnm, tystr) :: tvtytail ->
+      add_list_to_type_environment (Typeenv.add tyenv varnm tystr) tvtytail
+
+(* Typeenv.t -> (var_name * type_struct) list -> module_name -> Typeenv.t *)
+and add_list_to_module_type_environment tyenv tvtylst mdlnm =
+  match tvtylst with
+  | []                         -> tyenv
+  | (varnm, tystr) :: tvtytail ->
+      add_list_to_type_environment (Typeenv.add tyenv (mdlnm ^ "." ^ varnm) tystr) tvtytail
+
 
 (* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
 	  -> (pattern_match_cons * type_struct * Subst.t) *)
@@ -392,12 +424,13 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       end
 
 
-(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * mutual_let_cons * Subst.t) *)
+(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons ->
+	  (Typeenv.t * (var_name * type_struct) list * mutual_let_cons * Subst.t) *)
 and make_type_environment_by_let varntenv tyenv utmutletcons =
   let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
   let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
-  let tyenv_forall = make_forall_type_mutual varntenv tyenv_new tyenv theta1 tvtylst in (* contains bugs? *)
-    (tyenv_forall, mutletcons, theta1)
+  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual varntenv tyenv_new tyenv theta1 tvtylst [] in
+    (tyenv_forall, tvtylst_forall, mutletcons, theta1)
 
 
 (* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
@@ -427,19 +460,21 @@ and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
   | _ -> assert false
 
 
-(* Variantenv.t -> Typeenv.t -> Typeenv.t -> Subst.t -> type_variable_id list -> Typeenv.t *)
-and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst =
+(* Variantenv.t -> Typeenv.t -> Typeenv.t -> Subst.t -> (var_name * type_struct) list ->
+	  (var_name * type_struct) list -> (Typeenv.t * ((var_name * type_struct) list) *)
+and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst tvtylst_forall =
   match tvtylst with
-  | []                        -> tyenv
+  | []                        -> (tyenv, tvtylst_forall)
   | (varnm, tvty) :: tvtytail ->
       let prety = Subst.apply_to_type_struct theta tvty in
         begin                                                                                     (* for debug *)
           print_for_debug (Subst.string_of_subst theta) ;                                         (* for debug *)
           print_for_debug (Typeenv.string_of_type_environment tyenv "MakeForall") ;               (* for debug *)
           print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in
-          let tyenv_new = Typeenv.add tyenv varnm (Typeenv.erase_range_of_type forallty) in
-            make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail
+          let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
+          let tyenv_new = Typeenv.add tyenv varnm forallty in
+          let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
+            make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail tvtylst_forall_new
         end                                                                                       (* for debug *)
 
 

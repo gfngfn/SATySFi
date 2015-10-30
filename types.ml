@@ -118,6 +118,7 @@ and untyped_pattern_match_cons_main =
   | UTEndOfPatternMatch
 and untyped_module_tree = code_range * untyped_module_tree_main
 and untyped_module_tree_main =
+  | UTMFinishModule
   | UTMPublicLetIn                 of untyped_mutual_let_cons * untyped_module_tree
   | UTMPublicLetMutableIn          of code_range * var_name * untyped_abstract_tree * untyped_module_tree
   | UTMPublicDeclareTypeSynonymIn  of type_name * type_struct * untyped_module_tree
@@ -127,7 +128,6 @@ and untyped_module_tree_main =
   | UTMPrivateDeclareTypeSynonymIn of type_name * type_struct * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
-  | UTMFinishModule
 
 (* ---- typed ---- *)
 type argument_variable_cons =
@@ -221,6 +221,17 @@ and pattern_tree =
   | PVariable             of var_name
   | PAsVariable           of var_name * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
+and module_tree =
+  | MFinishModule
+  | MPublicLetIn                 of mutual_let_cons * module_tree
+  | MPublicLetMutableIn          of code_range * var_name * abstract_tree * module_tree
+  | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree
+(*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
+  | MPrivateLetIn                of mutual_let_cons * module_tree
+  | MPrivateLetMutableIn         of code_range * var_name * abstract_tree * module_tree
+  | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree
+(*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
+  | MDirectLetIn                 of mutual_let_cons * module_tree
 
 
 (* !!!! ---- global variable ---- !!!! *)

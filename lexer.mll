@@ -153,6 +153,7 @@ rule numexpr = parse
   | ","   { COMMA(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
+  | "."   { DOT(get_pos lexbuf) }
 
   | identifier {
         let tok = Lexing.lexeme lexbuf in
@@ -189,6 +190,9 @@ rule numexpr = parse
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
           | "end-struct"        -> ENDSTRUCT(pos)
+          | "direct"            -> DIRECT(pos)
+          | "public"            -> PUBLIC(pos)
+          | "private"           -> PRIVATE(pos)
           | _                   -> VAR(pos, tok)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
