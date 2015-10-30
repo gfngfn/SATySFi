@@ -350,6 +350,11 @@ let rec interpret env ast =
   | LogicalNot(astl) ->
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)    
+
+(*
+  | Module(mdlnm, astdef, astaft) ->
+*)
+
 (*
   | other -> raise (EvalError("this cannot happen / remains to be implemented: " ^ (string_of_ast other)))
 *)

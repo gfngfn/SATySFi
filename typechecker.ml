@@ -280,9 +280,12 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
 
-  | UTModule(mdlnm, utastdef, utastaft) ->
-      let (varntenv_new, tyenv_new, _, _) = typecheck_module varntenv tyenv varntenv tyenv mdlnm utastdef in
-        typecheck varntenv_new tyenv_new utastaft
+  | UTModule(mdlnm, utmdltr, utastaft) ->
+      let (varntenv_new, tyenv_new, emdltr, thetadef) = typecheck_module varntenv tyenv varntenv tyenv mdlnm utmdltr in
+      let (eaft, tyaft, thetaaft) = typecheck varntenv_new tyenv_new utastaft in
+      let theta_result = Subst.compose thetaaft thetadef in
+      let type_result  = Subst.apply_to_type_struct theta_result tyaft in
+        (Module(mdlnm, emdltr, eaft), type_result, theta_result)
 
 
 
@@ -293,7 +296,7 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
   | UTMFinishModule                                       -> (veout, teout, MFinishModule, Subst.empty)
   | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
-      let _ = List.map (fun (x, _) -> print_string ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
+      let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
         let teout_new = add_list_to_type_environment teout tvtylst_added in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
         let theta_result = Subst.compose thetaaft theta in
@@ -301,7 +304,7 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
 
   | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
-      let _ = List.map (fun (x, _) -> print_string ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
+      let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
       let teout_new = add_list_to_module_type_environment teout tvtylst_added mdlnm in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in

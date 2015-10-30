@@ -204,6 +204,7 @@ and abstract_tree =
   | PrimitiveListHead     of abstract_tree
   | PrimitiveListTail     of abstract_tree
   | PrimitiveIsEmpty      of abstract_tree
+  | Module                of module_name * module_tree * abstract_tree
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
   | PatternMatchConsWhen  of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
