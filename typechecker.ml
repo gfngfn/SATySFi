@@ -293,13 +293,15 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
   | UTMFinishModule                                       -> (veout, teout, MFinishModule, Subst.empty)
   | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
-      let teout_new = add_list_to_type_environment teout tvtylst_added in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
-      let theta_result = Subst.compose thetaaft theta in
-        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+      let _ = List.map (fun (x, _) -> print_string ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
+        let teout_new = add_list_to_type_environment teout tvtylst_added in
+        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
+        let theta_result = Subst.compose thetaaft theta in
+          (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
 
   | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
+      let _ = List.map (fun (x, _) -> print_string ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
       let teout_new = add_list_to_module_type_environment teout tvtylst_added mdlnm in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in
@@ -331,7 +333,7 @@ and add_list_to_module_type_environment tyenv tvtylst mdlnm =
   match tvtylst with
   | []                         -> tyenv
   | (varnm, tystr) :: tvtytail ->
-      add_list_to_type_environment (Typeenv.add tyenv (mdlnm ^ "." ^ varnm) tystr) tvtytail
+      add_list_to_module_type_environment (Typeenv.add tyenv (mdlnm ^ "." ^ varnm) tystr) tvtytail mdlnm
 
 
 (* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
