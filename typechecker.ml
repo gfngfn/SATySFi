@@ -396,7 +396,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
 and make_type_environment_by_let varntenv tyenv utmutletcons =
   let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
   let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
-  let tyenv_forall = make_forall_type_mutual varntenv tyenv theta1 tvtylst in (* contains bugs? *)
+  let tyenv_forall = make_forall_type_mutual varntenv tyenv_new tyenv theta1 tvtylst in (* contains bugs? *)
     (tyenv_forall, mutletcons, theta1)
 
 
@@ -427,8 +427,8 @@ and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
   | _ -> assert false
 
 
-(* Variantenv.t -> Typeenv.t -> Subst.t -> type_variable_id list -> Typeenv.t *)
-and make_forall_type_mutual varntenv tyenv theta tvtylst =
+(* Variantenv.t -> Typeenv.t -> Typeenv.t -> Subst.t -> type_variable_id list -> Typeenv.t *)
+and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst =
   match tvtylst with
   | []                        -> tyenv
   | (varnm, tvty) :: tvtytail ->
@@ -437,9 +437,9 @@ and make_forall_type_mutual varntenv tyenv theta tvtylst =
           print_for_debug (Subst.string_of_subst theta) ;                                         (* for debug *)
           print_for_debug (Typeenv.string_of_type_environment tyenv "MakeForall") ;               (* for debug *)
           print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-          let forallty  = Typeenv.make_forall_type prety tyenv in
+          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in
           let tyenv_new = Typeenv.add tyenv varnm (Typeenv.erase_range_of_type forallty) in
-            make_forall_type_mutual varntenv tyenv_new theta tvtytail
+            make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail
         end                                                                                       (* for debug *)
 
 
