@@ -2,7 +2,7 @@ let \settings = {
   <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
   <link href="./intr_style.css" rel="stylesheet" type="text/css">
 } in
-let \version = {ver 1.00β} in
+let \version = {ver 1.00γ} in
 let \twitter-at-id at-id = `@` ^ at-id in
 let \description dscr = {
   <div class="centered">\deeper{

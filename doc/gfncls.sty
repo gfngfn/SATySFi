@@ -14,9 +14,9 @@
 %  }
 %\renewcommand{\thepage}{--\arabic{page}--}
 %\setlength{\parskip}{1em}
-\renewcommand{\thesection}{\@arabic\c@section.}
-\renewcommand{\thesubsection}{\@arabic\c@section.\@arabic\c@subsection.}
-\renewcommand{\thesubsubsection}{\@arabic\c@section.\@arabic\c@subsection.\@arabic\c@subsubsection.}
+\renewcommand{\thesection}{\@arabic\c@section}
+\renewcommand{\thesubsection}{\@arabic\c@section.\@arabic\c@subsection}
+\renewcommand{\thesubsubsection}{\@arabic\c@section.\@arabic\c@subsection.\@arabic\c@subsubsection}
 \renewcommand{\section}{%
   \@startsection{section}{1}{\z@}{\gfncls@sectionbeforeskip}{\gfncls@sectionafterskip}{\gfncls@sectionstyle}%
 }
@@ -124,14 +124,14 @@
     \begin{tikzpicture}
       \draw[line width=1pt] (0,0) -- (0.99\textwidth,0);
       \draw[line width=0.5pt] (0,-3pt) -- (0.99\textwidth,-3pt);
-    \end{tikzpicture}\par
+    \end{tikzpicture}\par\vspace{-\parskip}%
     \vspace{-0.75ex}%
-    \parbox[c][3ex][c]{0.99\textwidth}{\enskip\textsf{\normalfont\Large\headfont #1}}\par
+    \parbox[c][3ex][c]{0.99\textwidth}{\enskip\textsf{\normalfont\Large\headfont #1}}\par\vspace{-\parskip}%
     \vspace{-0.75ex}%
     \begin{tikzpicture}
       \draw[line width=0.5pt] (0,0) -- (0.99\textwidth,0);
       \draw[line width=1pt] (0,-3pt) -- (0.99\textwidth,-3pt);
-    \end{tikzpicture}\par
+    \end{tikzpicture}
   }}%
 }
 \def\gfncls@subsectionstyle@line#1{%
@@ -145,5 +145,27 @@
 }
 \def\gfncls@sectionbeforeskip@line{\Cvs \@plus.5\Cdp \@minus.2\Cdp}
 \def\gfncls@sectionafterskip@line{.5\Cvs \@plus.3\Cdp}
+% ---- strongline ----
+\let\@maketitle@strongline=\@maketitle@line
+\def\gfncls@sectionstyle@strongline#1{%
+  {\parbox[c]{\textwidth}{%
+    \begin{tikzpicture}
+      \draw[line width=2pt] (0,0) -- (0.99\textwidth,0);
+      \draw[line width=2pt] (0,-4pt) -- (0.99\textwidth,-4pt);
+    \end{tikzpicture}\par\vspace{-\parskip}\vspace{1pt}%
+    \colorbox{black}{\parbox{0.98\textwidth}{%
+      \vspace{0.25em}\noindent
+      \textcolor{white}{\enskip\textsf{\LARGE #1}}%
+      \par\vspace{-\parskip}\vspace{0.25em}%
+    }}\par\vspace{-\parskip}\vspace{1pt}%
+    \begin{tikzpicture}
+      \draw[line width=2pt] (0,0) -- (0.99\textwidth,0);
+      \draw[line width=2pt] (0,-4pt) -- (0.99\textwidth,-4pt);
+    \end{tikzpicture}\par\vspace{-\parskip}%
+  }}%
+}
+\let\gfncls@subsectionstyle@strongline=\gfncls@sectionstyle@line
+\def\gfncls@sectionbeforeskip@strongline{\Cvs \@plus.5\Cdp \@minus.2\Cdp}
+\def\gfncls@sectionafterskip@strongline{.5\Cvs \@plus.3\Cdp}
 % ---- ----
 \setsectiontheme{line}

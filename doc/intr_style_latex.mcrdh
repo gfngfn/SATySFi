@@ -8,7 +8,7 @@ let \settings = {
   \\usepackage\{tikz\}
   \\usepackage\{eclbkbox\}
   \\usepackage\{gfncls\}
-  \\setsectiontheme\{line\}
+  \\setsectiontheme\{strongline\}
   \\setlength\\parskip\{1zw\}
   \\usepackage\{mdframed\}
   \\mdfdefinestyle\{codebox\}\{\deeper{
@@ -19,7 +19,7 @@ let \settings = {
   }\}
 }
 
-let \version = {ver. 1.00 beta}
+let \version = {ver. 1.00 gamma}
 
 let \twitter-at-id at-id = `\texttt{@` ^ {\escape-for-latex{@at-id;}} ^ `}`
 
@@ -33,14 +33,11 @@ let \description dscr = {
 and dscr-sep-lines dscr =
   match dscr with
   | []           -> {}
+  | head :: []   -> head ^ {\\\\}
   | head :: tail ->
       head ^
-      ( if is-empty tail then
-          {\\\\}
-        else
-          {\\\\
-            \\hline} ^ (dscr-sep-lines tail)
-      )
+        {\\\\
+          \\hline} ^ (dscr-sep-lines tail)
 
 let \d-item di dd = {@di; & @dd;}
 
@@ -108,9 +105,9 @@ let \repeat-star inner = `\:\Bigl[` ^inner^ `\Bigr]^{*}\:`
 let \repeat-plus inner = `\:\Bigl[` ^inner^ `\Bigr]^{+}\:`
 let cfl-or-sub lst =
   match lst with
-  | []       -> {}
-  | hd :: [] -> hd
-  | hd :: tl -> hd ^ `|` ^ (cfl-or-sub tl)
+  | []           -> {}
+  | head :: []   -> head
+  | head :: tail -> head ^ `|` ^ (cfl-or-sub tail)
 
 let \cfl-or lst = `\:(` ^(cfl-or-sub lst)^ `)\:`
 
@@ -150,12 +147,13 @@ let \cfl nontm lst =
 and sub-cfl lst =
   match lst with
   | []           -> {}
-  | head :: tail ->
-    ( if same head {*br*} then
-        `\\&` ^ {\ }
-      else
-        `|\enskip` ^ {\ } ^ head ^ `\enskip` ^ {\ }
-    ) ^ ( if is-empty tail then {} else {\ } ^ (sub-cfl tail) )
+  | head :: []   -> insert-bar head
+  | head :: tail -> (insert-bar head) ^ {\ } ^ (sub-cfl tail)
+
+and insert-bar s =
+  if same s `*br*` then `\\&` ^ {\ }
+                   else `|\enskip` ^ {\ } ^ s ^ `\enskip` ^ {\ }
+
 
 let \code-display code =
   `\begin{breakbox}\begin{center}` ^(deeper
