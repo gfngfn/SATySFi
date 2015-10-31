@@ -17,72 +17,62 @@ let add_to_environment env varnm rfast = Hashtbl.add env varnm rfast
 let find_in_environment env varnm = Hashtbl.find env varnm
 
 
-(* (macro_environment ref) -> int -> (var_environment ref) -> abstract_tree -> abstract_tree *)
+(* environment -> abstract_tree -> abstract_tree *)
 let rec interpret env ast =
   match ast with
 
 (* -- basic value -- *)
 
-  | StringEmpty -> StringEmpty
-
-  | NoContent -> NoContent
-
+  | StringEmpty                           -> StringEmpty
+  | NoContent                             -> NoContent
+  | NumericConstant(nc)                   -> NumericConstant(nc)
+  | StringConstant(c)                     -> StringConstant(c)
+  | BooleanConstant(bc)                   -> BooleanConstant(bc)
+  | UnitConstant                          -> UnitConstant
+  | EvaluatedEnvironment(env)             -> EvaluatedEnvironment(env)
   | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
-
-  | NumericConstant(nc) -> NumericConstant(nc)
-
-  | StringConstant(c) -> StringConstant(c)
-
-  | BooleanConstant(bc) -> BooleanConstant(bc)
-
-  | UnitConstant -> UnitConstant
-
-  | Concat(astf, astl) ->
+  | DeeperIndent(ast)                     -> DeeperIndent(interpret env ast)
+  | BreakAndIndent                        -> BreakAndIndent
+  | Concat(astf, astl)                    ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
-        begin match (valuef, valuel) with
-        | (StringEmpty, _) -> valuel
-        | (_, StringEmpty) -> valuef
-        | (_, _)           -> Concat(valuef, valuel)
+        begin
+          match (valuef, valuel) with
+          | (StringEmpty, _) -> valuel
+          | (_, StringEmpty) -> valuef
+          | (_, _)           -> Concat(valuef, valuel)
         end
-
-  | DeeperIndent(ast) -> let res = interpret env ast in DeeperIndent(res)
-
-  | BreakAndIndent -> BreakAndIndent
-
-  | EvaluatedEnvironment(env) -> EvaluatedEnvironment(env)
 
 (* -- list value -- *)
 
+  | EndOfList              -> EndOfList
   | ListCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         ListCons(valuehd, valuetl)
 
-  | EndOfList -> EndOfList
-
 (* -- tuple value -- *)
 
+  | EndOfTuple              -> EndOfTuple
   | TupleCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         TupleCons(valuehd, valuetl)
 
-  | EndOfTuple -> EndOfTuple
-
 (* -- fundamental -- *)
 
-  | ContentOf(v) ->
-      begin try
-        let content = !(find_in_environment env v) in content
-      with
-      | Not_found -> assert false
+  | ContentOf(varnm) ->
+      begin
+        try
+          let content = !(find_in_environment env varnm) in content
+        with
+        | Not_found -> assert false
       end
 
   | LetIn(mutletcons, astrest) ->
       let env_func = copy_environment env in
         begin
-          add_mutuals_to_environment env_func mutletcons ;
+          add_mutuals_to_environment false env_func env_func "" mutletcons ;
           interpret env_func astrest
         end
 
@@ -90,40 +80,41 @@ let rec interpret env ast =
 
   | Apply(astf, astl) ->
       let fspec = interpret env astf in
-        begin match fspec with
-        | FuncWithEnvironment(varnm, astdef, envf) ->
-            let valuel = interpret env astl in
-            let env_new = copy_environment envf in
-              begin
-                add_to_environment env_new varnm (ref valuel) ;
-                let intpd = interpret env_new astdef in intpd
-              end
-        | _ -> assert false
+        begin
+          match fspec with
+          | FuncWithEnvironment(varnm, astdef, envf) ->
+              let valuel = interpret env astl in
+              let env_new = copy_environment envf in
+                begin
+                  add_to_environment env_new varnm (ref valuel) ;
+                  interpret env_new astdef
+                end
+          | _ -> assert false
         end
 
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
 
   | IfClassIsValid(asttru, astfls) ->
-      begin try
-        let vcclass = interpret env (ContentOf("class")) in
-          begin match vcclass with
-          | NoContent -> interpret env astfls
-          | _         -> interpret env asttru
-          end
-      with
-      | EvalError(_) -> raise (EvalError("illegal 'if-class-is-valid'; 'class' cannot be used here"))
+      begin
+        try
+          let vcclass = interpret env (ContentOf("class")) in
+            match vcclass with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-class-is-valid'; 'class' cannot be used here"))
       end
 
   | IfIDIsValid(asttru, astfls) ->
-      begin try
-        let vcid = interpret env (ContentOf("id")) in
-          begin match vcid with
-          | NoContent -> interpret env astfls
-          | _         -> interpret env asttru
-          end
-      with
-      | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
+      begin
+        try
+          let vcid = interpret env (ContentOf("id")) in
+            match vcid with
+            | NoContent -> interpret env astfls
+            | _         -> interpret env asttru
+        with
+        | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
       end
 
 (* -- imperative -- *)
@@ -139,62 +130,73 @@ let rec interpret env ast =
   | Sequential(ast1, ast2) ->
       let value1 = interpret env ast1 in
       let value2 = interpret env ast2 in
-        begin match value1 with
-        | UnitConstant -> value2
-        | _            -> assert false
+        begin
+          match value1 with
+          | UnitConstant -> value2
+          | _            -> assert false
         end
 
   | MutableValue(astmv) -> MutableValue(astmv)
 
   | Overwrite(varnm, astnew) ->
-      begin try
-        let rfvalue = find_in_environment env varnm in
-          match !rfvalue with
+      begin
+        try
+          let rfvalue = find_in_environment env varnm in
+            match !rfvalue with
             | MutableValue(astmv) ->
-                begin rfvalue := MutableValue(interpret env astnew) ; UnitConstant end
+                begin
+                  rfvalue := MutableValue(interpret env astnew) ;
+                  UnitConstant
+                end
             | _                   -> assert false
-      with
-      | Not_found ->  assert false
+        with
+        | Not_found ->  assert false
       end
 
   | WhileDo(astb, astc) ->
       if interpret_bool env astb then
         let _ = interpret env astc in interpret env (WhileDo(astb, astc))
-      else UnitConstant
+      else
+        UnitConstant
 
   | Reference(astcont) ->
       let valuecont = interpret env astcont in
-        begin match valuecont with
-        | MutableValue(astmv) -> astmv
-        | _                   -> assert false
+        begin
+          match valuecont with
+          | MutableValue(astmv) -> astmv
+          | _                   -> assert false
         end
 
   | DeclareGlobalHash(astkey, astdflt) ->
-      begin try
-        let str_key = Out.main (interpret env astkey) in
-        let valuedflt = interpret env astdflt in
-          begin
-            add_to_environment global_hash_env str_key (ref (MutableValue(valuedflt))) ;
-            UnitConstant
-          end
-      with
-      | Out.IllegalOut(_) -> raise (EvalError("this cannot hapen:\n    illegal hash key for 'declare-global-hash'"))
+      begin
+        try
+          let str_key = Out.main (interpret env astkey) in
+          let valuedflt = interpret env astdflt in
+            begin
+              add_to_environment global_hash_env str_key (ref (MutableValue(valuedflt))) ;
+              UnitConstant
+            end
+        with
+        | Out.IllegalOut(_) -> raise (EvalError("this cannot hapen:\n    illegal hash key for 'declare-global-hash'"))
       end
 
   | OverwriteGlobalHash(astkey, astnew) ->
-      begin try
-        let str_key = Out.main (interpret env astkey) in
-          begin try
-            let rfvalue = find_in_environment global_hash_env str_key in
-              match !rfvalue with
-              | MutableValue(astmv) ->
-                  begin rfvalue := MutableValue(interpret env astnew) ; UnitConstant end
-              | _                   -> assert false
-          with
-          | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
-          end
-      with
-      | Out.IllegalOut(_) -> raise (EvalError("this cannot happen:\n    illegal argument for '<<-'"))
+      begin
+        try
+          let str_key = Out.main (interpret env astkey) in
+            try
+              let rfvalue = find_in_environment global_hash_env str_key in
+                match !rfvalue with
+                | MutableValue(astmv) ->
+                    begin
+                      rfvalue := MutableValue(interpret env astnew) ;
+                      UnitConstant
+                    end
+                | _                   -> assert false
+            with
+            | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
+        with
+        | Out.IllegalOut(_) -> raise (EvalError("this cannot happen:\n    illegal argument for '<<-'"))
       end
 
   | ReferenceFinal(varnm) -> ReferenceFinal(interpret env varnm)
@@ -225,6 +227,15 @@ let rec interpret env ast =
             | other ->  valuef
           end                                                           (* for debug *)
       end                                                               (* for debug *)
+
+  | Module(mdlnm, mdltrdef, astaft) ->
+      let env_out = copy_environment env in
+      let env_in  = copy_environment env in
+        begin
+          print_for_debug ("module1 [" ^ mdlnm ^ "]\n");                (* for debug *)
+          add_module_to_environment env_out env_in mdlnm mdltrdef ;
+          interpret env_out astaft
+        end
 
 (* -- primitive operation -- *)
 
@@ -271,26 +282,29 @@ let rec interpret env ast =
 
   | PrimitiveListHead(astlst) ->
       let valuelst = interpret env astlst in
-        begin match valuelst with
-        | ListCons(vhd, _) -> vhd
-        | EndOfList        -> raise (EvalError("applied 'list-head' to an empty list"))
-        | _                -> assert false
+        begin
+          match valuelst with
+          | ListCons(vhd, _) -> vhd
+          | EndOfList        -> raise (EvalError("applied 'list-head' to an empty list"))
+          | _                -> assert false
         end
 
   | PrimitiveListTail(astlst) ->
       let valuelst = interpret env astlst in
-        begin match valuelst with
-        | ListCons(_, vtl) -> vtl
-        | EndOfList        -> raise (EvalError("applied 'list-tail' to an empty list"))
-        | _                -> assert false
+        begin
+          match valuelst with
+          | ListCons(_, vtl) -> vtl
+          | EndOfList        -> raise (EvalError("applied 'list-tail' to an empty list"))
+          | _                -> assert false
         end
 
   | PrimitiveIsEmpty(astlst) ->
       let valuelst = interpret env astlst in
-        begin match valuelst with
-        | EndOfList      -> BooleanConstant(true)
-        | ListCons(_, _) -> BooleanConstant(false)
-        | _              -> assert false
+        begin
+          match valuelst with
+          | EndOfList      -> BooleanConstant(true)
+          | ListCons(_, _) -> BooleanConstant(false)
+          | _              -> assert false
         end
 
   | Times(astl, astr) ->
@@ -301,15 +315,17 @@ let rec interpret env ast =
   | Divides(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        begin try NumericConstant(numl / numr) with
-        | Division_by_zero -> raise (EvalError("division by zero"))
+        begin
+          try NumericConstant(numl / numr) with
+          | Division_by_zero -> raise (EvalError("division by zero"))
         end
 
   | Mod(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        begin try NumericConstant(numl mod numr) with
-        | Division_by_zero -> raise (EvalError("division by zero"))
+        begin
+          try NumericConstant(numl mod numr) with
+          | Division_by_zero -> raise (EvalError("division by zero"))
         end
 
   | Plus(astl, astr) ->
@@ -349,17 +365,21 @@ let rec interpret env ast =
 
   | LogicalNot(astl) ->
       let blnl = interpret_bool env astl in
-        BooleanConstant(not blnl)    
+        BooleanConstant(not blnl)
+
 (*
   | other -> raise (EvalError("this cannot happen / remains to be implemented: " ^ (string_of_ast other)))
 *)
 
+(* environment -> abstract_tree -> bool *)
 and interpret_bool env ast =
   let vb = interpret env ast in
     match vb with
     | BooleanConstant(bc) -> bc
     | other               -> assert false
 
+
+(* environment -> abstract_tree -> int *)
 and interpret_int env ast =
   let vi = interpret env ast in
     match vi with
@@ -367,19 +387,55 @@ and interpret_int env ast =
     | other               -> assert false
 
 
+(* module_name -> var_name -> var_name *)
+and make_variable_name mdlnm varnm =
+  match mdlnm with
+  | "" -> varnm
+  | _  -> mdlnm ^ "." ^ varnm
+
+
+(* environment -> environment -> module_name -> module_tree -> unit *)
+and add_module_to_environment eout ein mdlnm mdltrdef =
+  match mdltrdef with
+  | MFinishModule -> ()
+
+  | MDirectLetIn(mutletcons, mdltraft) ->
+      begin
+        add_mutuals_to_environment true eout ein "" mutletcons ;
+        add_module_to_environment eout ein mdlnm mdltraft
+      end
+
+  | MPublicLetIn(mutletcons, mdltraft) ->
+      begin
+        add_mutuals_to_environment true eout ein mdlnm mutletcons ;
+        add_module_to_environment eout ein mdlnm mdltraft
+      end
+
+  | MPrivateLetIn(mutletcons, mdltraft) ->
+      begin
+        add_mutuals_to_environment false eout ein mdlnm mutletcons ;
+        add_module_to_environment eout ein mdlnm mdltraft
+      end
+
+
+(* environment -> abstract_tree -> pattern_match_cons -> abstract_tree *)
 and select_pattern env astobj pmcons =
   match pmcons with
   | EndOfPatternMatch               -> raise (EvalError("no matches"))
+
   | PatternMatchCons(pat, astto, tailcons) ->
       let envnew = copy_environment env in
       let b = check_pattern_matching envnew pat astobj in
         if b then interpret envnew astto else select_pattern env astobj tailcons
+
   | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
       let envnew = copy_environment env in
       let b = check_pattern_matching envnew pat astobj in
       let bb = interpret_bool envnew astb in
         if b && bb then interpret envnew astto else select_pattern env astobj tailcons
 
+
+(* environment -> pattern_tree -> abstract_tree *)
 and check_pattern_matching env pat astobj =
   match (pat, astobj) with
   | (PNumericConstant(pnc), NumericConstant(nc)) -> pnc = nc
@@ -397,66 +453,89 @@ and check_pattern_matching env pat astobj =
 
   | (PUnitConstant, UnitConstant)                -> true
   | (PWildCard, _)                               -> true
-  | (PVariable(varnm), _) ->
-      ( add_to_environment env varnm (ref astobj) ; true )
-  | (PAsVariable(varnm, psub), sub) ->
-      ( add_to_environment env varnm (ref sub) ; check_pattern_matching env psub sub )
+  | (PVariable(varnm), _)                        ->
+      begin
+        add_to_environment env varnm (ref astobj) ; true
+      end
+  | (PAsVariable(varnm, psub), sub)              ->
+      begin
+        add_to_environment env varnm (ref sub) ; check_pattern_matching env psub sub
+      end
 
   | (PEndOfList, EndOfList)                      -> true
-  | (PListCons(phd, ptl), ListCons(hd, tl))
-      -> (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PListCons(phd, ptl), ListCons(hd, tl))      ->
+      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
 
   | (PEndOfTuple, EndOfTuple)                    -> true
-  | (PTupleCons(phd, ptl), TupleCons(hd, tl))
-      -> (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PTupleCons(phd, ptl), TupleCons(hd, tl))    ->
+      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
-      when cnm1 = cnm2
-      -> check_pattern_matching env psub sub
+      when cnm1 = cnm2                           -> check_pattern_matching env psub sub
 
-  | _ -> false
+  | _                                            -> false
 
 
-(* environment -> mutual_let_cons -> unit *)
-and add_mutuals_to_environment env mutletcons =
-  let lst = add_mutuals_to_environment_sub [] env mutletcons in
-    add_zeroary_mutuals lst env
+(* bool -> environment -> mutual_let_cons -> unit *)
+and add_mutuals_to_environment is_public eout ein mdlnm mutletcons =
+  let lst = add_mutuals_to_environment_sub is_public [] mdlnm eout ein mutletcons in
+    begin                                              (* for debug *)
+      print_for_debug ("module3 [" ^ mdlnm ^ "]\n") ;  (* for debug *)
+      add_zeroary_mutuals is_public lst mdlnm eout ein
+    end                                                (* for debug *)
 
-(* (var_name * abstract_tree) list -> environment -> mutual_let_cons
-  -> (var_name * abstract_tree) list *)
-and add_mutuals_to_environment_sub lst env mutletcons =
+
+(* bool -> (var_name * abstract_tree) list -> module_name ->
+    environment -> environment -> mutual_let_cons -> (var_name * abstract_tree) list *)
+and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
   match mutletcons with
-  | EndOfMutualLet                       -> lst
-  | MutualLetCons(nv, astcont, tailcons) ->
-      ( try
-          let valuecont = interpret env astcont in
-          ( add_to_environment env nv (ref valuecont) ;
-            add_mutuals_to_environment_sub lst env tailcons
-          )
+  | EndOfMutualLet                          -> lst
+  | MutualLetCons(varnm, astcont, tailcons) ->
+      begin
+        try
+          let valuecont = interpret ein astcont in
+            begin
+              add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
+              if is_public  then
+                begin                                                   (* for debug *)
+                  add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
+                  ; print_for_debug ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
+                end                                                     (* for debug *)
+                            else () ;
+              add_mutuals_to_environment_sub is_public lst mdlnm eout ein tailcons
+            end
         with
-        | EvalError(_) -> add_mutuals_to_environment_sub ((nv, astcont) :: lst) env tailcons
-          (* 0-ary definition dependent of ``sibling'' functions *)
-      )
+        | EvalError(_) -> add_mutuals_to_environment_sub is_public ((varnm, astcont) :: lst) mdlnm eout ein tailcons
+            (* 0-ary definition dependent of ``sibling'' functions *)
+      end
 
-(* (var_name * abstract_tree) list -> environment -> unit *)
-and add_zeroary_mutuals lst env =
-  let newlst = add_zeroary_mutuals_sub lst env [] in
-    if List.length newlst == 0 then
+
+(* bool -> (var_name * abstract_tree) list -> module_name -> environment -> unit *)
+and add_zeroary_mutuals is_public lst mdlnm eout ein =
+  let newlst = add_zeroary_mutuals_sub is_public lst mdlnm eout ein [] in
+    if List.length newlst = 0 then
       ()
-    else if (List.length newlst) == (List.length lst) then
+    else if (List.length newlst) = (List.length lst) then
       raise (EvalError("meaningless 0-ary mutual recursion"))
     else
-      add_zeroary_mutuals newlst env
+      add_zeroary_mutuals is_public newlst mdlnm eout ein
 
-and add_zeroary_mutuals_sub lst env constr =
+
+(* bool -> (var_name * abstract_tree) list -> module_name ->
+    enviroment -> environment -> (var_name * abstract_tree) list -> (var_name * abstract_tree) list *)
+and add_zeroary_mutuals_sub is_public lst mdlnm eout ein constr =
   match lst with
-  | []                    -> constr
-  | (nv, astcont) :: tail ->
-      ( try
-          let valuecont = interpret env astcont in
-          ( add_to_environment env nv (ref valuecont) ;
-            add_zeroary_mutuals_sub tail env constr
-          )
+  | []                       -> constr
+  | (varnm, astcont) :: tail ->
+      begin
+        try
+          let valuecont = interpret ein astcont in
+            begin
+              add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
+              if is_public  then add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
+                            else () ;
+              add_zeroary_mutuals_sub is_public tail mdlnm eout ein constr
+            end
         with
-        | EvalError(_) -> add_zeroary_mutuals_sub tail env ((nv, astcont) :: constr)
-      )
+        | EvalError(_) -> add_zeroary_mutuals_sub is_public tail mdlnm eout ein ((varnm, astcont) :: constr)
+      end

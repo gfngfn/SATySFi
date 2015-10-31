@@ -239,13 +239,16 @@
 
 %token <Types.token_position * Types.var_name> VAR
 %token <Types.token_position * Types.var_name> VARINSTR
+%token <Types.token_position * Types.constructor_name> CONSTRUCTOR
 %token <Types.token_position * string> NUMCONST CHAR
-%token <Types.token_position> SPACE BREAK
 %token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
 %token <Types.token_position * Types.id_name>      IDNAME
 %token <Types.token_position * Types.class_name>   CLASSNAME
+%token <Types.token_position> SPACE BREAK
 %token <Types.token_position> LAMBDA ARROW
 %token <Types.token_position> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
+%token <Types.token_position> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
+%token <Types.token_position> VARIANT OF TYPE MATCH WITH BAR WILDCARD WHEN AS
 %token <Types.token_position> LETMUTABLE OVERWRITEEQ
 %token <Types.token_position> REFNOW REFFINAL
 %token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
@@ -342,13 +345,16 @@ nxtoplevel:
   | VARIANT nxvariantdec nxtoplevel             { make_variant_declaration $1 $2 $3 }
   | VARIANT nxvariantdec EOI                    { make_variant_declaration $1 $2 untyped_finish }
   | TYPE VAR DEFEQ txfunc nxtoplevel            { make_type_synonym_declaration $1 $2 $4 $5 }
-  | TYPE VAR DEFEQ txfunc EOI                   { make_type_synonym_declaration $1 $2 $4 untyped_finish }
+  | TYPE VAR DEFEQ txfunc EOI                   { make_type_synonym_declaration $1 $2 $4 end_header }
+  | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct nxtoplevel { make_module $1 $2 $5 $6 }
+  | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct EOI        { make_module $1 $2 $5 end_header }
 /* ---- transition to expression style ---- */
   | LET nxdec IN nxlet EOI                        { make_let_expression $1 $2 $4 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI { make_let_mutable_expression $1 $2 $4 $6 }
   | MUTUAL nxmutual IN nxlet EOI                  { make_let_expression $1 $2 $4 }
   | VARIANT nxvariantdec IN nxlet EOI             { make_variant_declaration $1 $2 $4 }
   | TYPE VAR DEFEQ txfunc IN nxlet EOI            { make_type_synonym_declaration $1 $2 $4 $6 }
+  | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $5 $7 }
 /* ---- for syntax error log ---- */
   | LET error                                 { report_error (Tok $1) "let" }
   | LET nxdec IN error                        { report_error (Tok $3) "in" }
@@ -358,6 +364,42 @@ nxtoplevel:
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN error { report_error (Tok $5) "in" }
   | MUTUAL error                              { report_error (Tok $1) "mutual" }
   | VARIANT error                             { report_error (Tok $1) "variant" }
+  | MODULE error                              { report_error (Tok $1) "module" }
+  | MODULE CONSTRUCTOR DEFEQ error            { report_error (Tok $3) "=" }
+  | MODULE CONSTRUCTOR DEFEQ STRUCT error     { report_error (Tok $4) "struct" }
+;
+nxstruct: /* -> untyped_module_tree */
+  | DIRECT LET nxdirectdec nxstruct                    { make_direct_let_expression $1 $3 $4 }
+  | DIRECT LET nxdirectdec ENDSTRUCT                   { make_direct_let_expression $1 $3 end_struct }
+  | PUBLIC LET nxpubdec nxstruct                       { make_public_let_expression $1 $3 $4 }
+  | PUBLIC LET nxpubdec ENDSTRUCT                      { make_public_let_expression $1 $3 end_struct }
+  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct   { make_public_let_mutable_expression $1 $3 $5 $6 }
+  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT  { make_public_let_mutable_expression $1 $3 $5 end_struct }
+  | PUBLIC VARIANT nxvariantdec nxstruct               { make_public_variant_declaration $1 $3 $4 }
+  | PUBLIC VARIANT nxvariantdec ENDSTRUCT              { make_public_variant_declaration $1 $3 end_struct }
+  | PUBLIC TYPE VAR DEFEQ txfunc nxstruct              { make_public_type_synonym_declaration $1 $3 $5 $6 }
+  | PUBLIC TYPE VAR DEFEQ txfunc ENDSTRUCT             { make_public_type_synonym_declaration $1 $3 $5 end_struct }
+  | PRIVATE LET nxdec nxstruct                         { make_private_let_expression $1 $3 $4 }
+  | PRIVATE LET nxdec ENDSTRUCT                        { make_private_let_expression $1 $3 end_struct }
+  | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct  { make_private_let_mutable_expression $1 $3 $5 $6 }
+  | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT { make_private_let_mutable_expression $1 $3 $5 end_struct }
+  | PRIVATE VARIANT nxvariantdec nxstruct              { make_private_variant_declaration $1 $3 $4 }
+  | PRIVATE VARIANT nxvariantdec ENDSTRUCT             { make_private_variant_declaration $1 $3 end_struct }
+  | PRIVATE TYPE VAR DEFEQ txfunc nxstruct             { make_private_type_synonym_declaration $1 $3 $5 $6 }
+  | PRIVATE TYPE VAR DEFEQ txfunc ENDSTRUCT            { make_private_type_synonym_declaration $1 $3 $5 end_struct }
+/* -- for syntax error log -- */
+  | DIRECT error             { report_error (Tok $1) "direct" }
+  | DIRECT LET error         { report_error (Tok $2) "let" }
+  | PUBLIC error             { report_error (Tok $1) "private" }
+  | PUBLIC LET error         { report_error (Tok $2) "let" }
+  | PUBLIC LETMUTABLE error  { report_error (Tok $2) "let" }
+  | PUBLIC VARIANT error     { report_error (Tok $2) "variant" }
+  | PUBLIC TYPE error        { report_error (Tok $2) "type" }
+  | PRIVATE error            { report_error (Tok $1) "private" }
+  | PRIVATE LET error        { report_error (Tok $2) "let" }
+  | PRIVATE LETMUTABLE error { report_error (Tok $2) "let" }
+  | PRIVATE VARIANT error    { report_error (Tok $2) "variant" }
+  | PRIVATE TYPE error       { report_error (Tok $2) "type" }
 ;
 nxmutual: /* -> Types.untyped_mutual_let_cons */
   | LET VAR argvar DEFEQ nxlet nxmutual      { make_mutual_let_cons $1 $2 $3 $5 $6 }
@@ -380,6 +422,22 @@ nxdec: /* -> untyped_mutual_let_cons */
   | VAR error                               { report_error (TokArg $1) "" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
   | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
+  | CTRLSEQ error                           { report_error (TokArg $1) "" }
+  | CTRLSEQ argvar DEFEQ error              { report_error (Tok $3) "=" }
+  | CTRLSEQ argvar DEFEQ nxlet LETAND error { report_error (Tok $5) "and" }
+;
+nxpubdec: /* -> untyped_mutual_let_cons */
+  | VAR argvar DEFEQ nxlet LETAND nxpubdec  { make_mutual_let_cons $1 $1 $2 $4 $6 }
+  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
+/* -- for syntax error log -- */
+  | VAR error                               { report_error (TokArg $1) "" }
+  | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
+  | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
+;
+nxdirectdec: /* -> untyped_mutual_let_cons */
+  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons $1 $1 $2 $4 $6 }
+  | CTRLSEQ argvar DEFEQ nxlet                    { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
+/* -- for syntax error log -- */
   | CTRLSEQ error                           { report_error (TokArg $1) "" }
   | CTRLSEQ argvar DEFEQ error              { report_error (Tok $3) "=" }
   | CTRLSEQ argvar DEFEQ nxlet LETAND error { report_error (Tok $5) "and" }
@@ -570,9 +628,10 @@ nxapp:
   | nxbot       { $1 }
 ;
 nxbot:
-  | VAR               { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
-  | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
-  | NUMCONST          { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
+  | VAR                 { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
+  | CONSTRUCTOR DOT VAR { make_standard (TokArg $1) (TokArg $3) (UTContentOf((extract_name $1) ^ "." ^ (extract_name $3))) }
+  | CONSTRUCTOR nxbot   { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
+  | NUMCONST            { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
   | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
