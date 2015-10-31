@@ -232,6 +232,7 @@ let rec interpret env ast =
       let env_out = copy_environment env in
       let env_in  = copy_environment env in
         begin
+          print_string ("module1 [" ^ mdlnm ^ "]\n");
           add_module_to_environment env_out env_in mdlnm mdltrdef ;
           interpret env_out astaft
         end
@@ -400,18 +401,21 @@ and add_module_to_environment eout ein mdlnm mdltrdef =
 
   | MDirectLetIn(mutletcons, mdltraft) ->
       begin
+        print_string ("module2-1 [" ^ mdlnm ^ "]\n") ; (* for debug *)
         add_mutuals_to_environment true eout ein "" mutletcons ;
         add_module_to_environment eout ein mdlnm mdltraft
       end
 
   | MPublicLetIn(mutletcons, mdltraft) ->
       begin
+        print_string ("module2-2 [" ^ mdlnm ^ "]\n") ; (* for debug *)
         add_mutuals_to_environment true eout ein mdlnm mutletcons ;
         add_module_to_environment eout ein mdlnm mdltraft
       end
 
   | MPrivateLetIn(mutletcons, mdltraft) ->
       begin
+        print_string ("module2-3 [" ^ mdlnm ^ "]\n") ; (* for debug *)
         add_mutuals_to_environment false eout ein mdlnm mutletcons ;
         add_module_to_environment eout ein mdlnm mdltraft
       end
@@ -478,7 +482,10 @@ and check_pattern_matching env pat astobj =
 (* bool -> environment -> mutual_let_cons -> unit *)
 and add_mutuals_to_environment is_public eout ein mdlnm mutletcons =
   let lst = add_mutuals_to_environment_sub is_public [] mdlnm eout ein mutletcons in
-    add_zeroary_mutuals is_public lst mdlnm eout ein
+    begin                                              (* for debug *)
+      print_string ("module3 [" ^ mdlnm ^ "]\n") ;     (* for debug *)
+      add_zeroary_mutuals is_public lst mdlnm eout ein
+    end                                                (* for debug *)
 
 
 (* bool -> (var_name * abstract_tree) list -> module_name ->
@@ -492,7 +499,11 @@ and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
           let valuecont = interpret ein astcont in
             begin
               add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
-              if is_public  then add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
+              if is_public  then
+                begin                                                (* for debug *)
+                  add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
+                  ; print_string ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
+                end                                                  (* for debug *)
                             else () ;
               add_mutuals_to_environment_sub is_public lst mdlnm eout ein tailcons
             end

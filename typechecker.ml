@@ -85,31 +85,32 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
   | UTApply(utast1, utast2) ->
       let (e1, ty1, theta1) = typecheck varntenv tyenv utast1 in
       let (e2, ty2, theta2) = typecheck varntenv tyenv utast2 in
-        begin match ty1 with
-        | FuncType(_, tydom, tycod) ->
-            let theta3 = Subst.unify ty2 tydom in
-              let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
-              let term_result = Apply(e1, e2) in
-              let type_result = Subst.apply_to_type_struct theta_result tycod in
-                begin                                                                 (* for debug *)
-                  print_for_debug ("\n%Apply1 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
-                    ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
-                  print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
-                    (term_result, type_result, theta_result)
-                end                                                                   (* for debug *)
-        | _ ->
-            let beta = TypeVariable(rng, new_type_variable_id ()) in
-            let theta3 = Subst.unify ty1 (FuncType(get_range utast1, ty2, beta)) in
-              let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
-              let term_result = Apply(e1, e2) in
-              let type_result = Subst.apply_to_type_struct theta_result beta in
-                begin                                                                 (* for debug *)
-                  print_for_debug ("\n%Apply2 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
-                    ^ (string_of_type_struct_basic beta) ^ " = "                      (* for debug *)
-                    ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
-                  print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
-                    (term_result, type_result, theta_result)
-                end                                                                   (* for debug *)
+        begin
+        	match ty1 with
+          | FuncType(_, tydom, tycod) ->
+              let theta3 = Subst.unify ty2 tydom in
+                let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
+                let term_result = Apply(e1, e2) in
+                let type_result = Subst.apply_to_type_struct theta_result tycod in
+                  begin                                                                 (* for debug *)
+                    print_for_debug ("\n%Apply1 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
+                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
+                    print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
+                      (term_result, type_result, theta_result)
+                  end                                                                   (* for debug *)
+          | _ ->
+              let beta = TypeVariable(rng, new_type_variable_id ()) in
+              let theta3 = Subst.unify ty1 (FuncType(get_range utast1, ty2, beta)) in
+                let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
+                let term_result = Apply(e1, e2) in
+                let type_result = Subst.apply_to_type_struct theta_result beta in
+                  begin                                                                 (* for debug *)
+                    print_for_debug ("\n%Apply2 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
+                      ^ (string_of_type_struct_basic beta) ^ " = "                      (* for debug *)
+                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
+                    print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
+                      (term_result, type_result, theta_result)
+                  end                                                                   (* for debug *)
         end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
@@ -312,13 +313,13 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
       let teout_new = add_list_to_module_type_environment teout tvtylst_added mdlnm in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in
-        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+        (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), theta_result)
 
   | UTMPrivateLetIn(utmutletcons, utmdlaft)               ->
       let (tein_new, _, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in
-        (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
+        (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), theta_result)
 (*
   | UTMPublicLetMutableIn(rng, varnm, utast, utmdlaft)    ->
   | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
