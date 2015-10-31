@@ -128,8 +128,8 @@ rule numexpr = parse
       OPENQT(get_pos lexbuf)
     }
   | ("\\" (identifier | constructor)) {
-  	    let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
-  	  }
+        let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
+      }
   | "+"   { PLUS(get_pos lexbuf) }
   | "-"   { MINUS(get_pos lexbuf) }
   | "*"   { TIMES(get_pos lexbuf) }
@@ -198,15 +198,10 @@ rule numexpr = parse
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
-        if !first_state = STATE_NUMEXPR then
-          EOI
-        else
+        if !first_state = STATE_NUMEXPR then EOI else
           raise (LexError(error_reporting lexbuf ("input ended while reading numeric expression")))
       }
-  | _ {
-        let tok = Lexing.lexeme lexbuf in
-          raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in numeric expression")))
-      }
+  | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in numeric expression"))) }
 
 and strexpr = parse
   | "%" {
@@ -284,7 +279,7 @@ and strexpr = parse
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
-  | _ as c { raise (LexError(error_reporting lexbuf "illegal token: " ^ (String.make 1 c)))}
+  | _ as c { raise (LexError(error_reporting lexbuf "illegal token '" ^ (String.make 1 c) ^ "' in string expression"))}
 
 and active = parse
   | "%" {

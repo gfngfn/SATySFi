@@ -54,10 +54,6 @@ let make_type_environment () =
 (*        ( "break-char",    s ); *)
 (*        ( "\\include",     s --> s ); *)
         ( "arabic",      i --> s );
-
-        ( "list-head", (-2) -% ((l (v (-2))) --> (v (-2))) );
-        ( "list-tail", (-3) -% ((l (v (-3))) --> (l (v (-3)))) );
-        ( "is-empty",  (-4) -% ((l (v (-4))) --> b) )
       ]
 
 let rec lambdas env vlst ast =
@@ -100,9 +96,6 @@ let make_environment () =
   let loc_breakchar    : location = ref NoContent in
 (*  let loc_include      : location = ref NoContent in *)
   let loc_arabic       : location = ref NoContent in
-  let loc_listhead     : location = ref NoContent in
-  let loc_listtail     : location = ref NoContent in
-  let loc_isempty      : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
     add_to_environment env "+"             loc_plus ;
     add_to_environment env "-"             loc_minus ;
@@ -131,9 +124,6 @@ let make_environment () =
 (*    add_to_environment env "break-char"    loc_breakchar ; *)
 (*    add_to_environment env "\\include"     loc_include ; *)
     add_to_environment env "arabic"        loc_arabic ;
-    add_to_environment env "list-head"     loc_listhead ;
-    add_to_environment env "list-tail"     loc_listtail ;
-    add_to_environment env "is-empty"      loc_isempty ;
 
     loc_plus         := lambdas env ["~opl"; "~opr"]
                           (Plus(ContentOf("~opl"), ContentOf("~opr"))) ;
@@ -205,11 +195,5 @@ let make_environment () =
 (*    loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ; *)
 
     loc_arabic       := lambdas env ["~num"] (PrimitiveArabic(ContentOf("~num"))) ;
-
-    loc_listhead     := lambdas env ["~list"] (PrimitiveListHead(ContentOf("~list"))) ;
-
-    loc_listtail     := lambdas env ["~list"] (PrimitiveListTail(ContentOf("~list"))) ;
-
-    loc_isempty      := lambdas env ["~list"] (PrimitiveIsEmpty(ContentOf("~list"))) ;
 
     env
