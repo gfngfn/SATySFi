@@ -67,7 +67,11 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             (ContentOf(nv), ty, Subst.empty)
           end                                                                            (* for debug *)
       with
-      | Not_found -> raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
+      | Not_found ->
+          	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
+          (*
+            (ContentOf(nv), FuncType((-1,0,0,0), IntType(-1,0,0,0), IntType(-1,0,0,0)), Subst.empty) (* for test *)
+          *)
       end
 
   | UTConcat(utast1, utast2) ->
@@ -397,10 +401,11 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
       let (epat2, typat2, tyenv2) = typecheck_pattern varntenv tyenv1 utpat2 in
       let type_result =
-        ( match typat2 with
+        begin
+        	match typat2 with
           | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
           | _                      -> assert false
-        )
+        end
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
 
