@@ -2,37 +2,48 @@ open Types
 open Display
 
 (* !! mutable !! *)
-let tvidmax : type_variable_id ref = ref 0
-let final_tyenv : Typeenv.t ref       = ref Typeenv.empty
-let final_varntenv : Variantenv.t ref = ref Variantenv.empty
+let tvidmax        : type_variable_id ref = ref 0
+let final_tyenv    : Typeenv.t ref        = ref Typeenv.empty
+let final_varntenv : Variantenv.t ref     = ref Variantenv.empty
 
 let initialize () = ( tvidmax := 0 )
 
 let new_type_variable_id () =
-  let res = !tvidmax in tvidmax := !tvidmax + 1 ; res
+  let res = !tvidmax in ( tvidmax := !tvidmax + 1 ; res )
+
+
+let make_module_var_name mdlnm varnm =
+  match mdlnm with
+  | "" -> varnm
+  | _  -> mdlnm ^ "." ^ varnm
 
 
 (* 'a -> ('a * 'b) list -> 'b *)
 let rec find_id_in_list elm lst =
   match lst with
-  | []                    -> raise Not_found
-  | (tvid, tystr) :: tail -> if tvid = elm then tystr else find_id_in_list elm tail
+  | []                                    -> raise Not_found
+  | (tvid, tystr) :: tail when tvid = elm -> tystr
+  | _ :: tail                             -> find_id_in_list elm tail
 
 
 (* type_struct -> type_struct *)
 let rec make_bounded_free tystr = eliminate_forall tystr []
+
 and eliminate_forall tystr lst =
   match tystr with
   | ForallType(tvid, tycont) ->
       let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
-  | other -> replace_id other lst
+
+  | other                    -> replace_id other lst
+
 
 (* type_struct -> type_variable_id list -> type_struct *)
 and replace_id tystr lst =
   match tystr with
   | TypeVariable(rng, tvid)     ->
       ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
+
   | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
   | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
   | ProductType(rng, tylist)    -> ProductType(rng, List.map (fun tl -> replace_id tl lst) tylist)
@@ -57,18 +68,18 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         (FinishHeaderFile, UnitType(-1, 0, 0, 0), Subst.empty)
       end
 
-  | UTContentOf(nv) ->
+  | UTContentOf(varnm) ->
       begin try
-        let forallty = Typeenv.find tyenv nv in
+        let forallty = Typeenv.find tyenv varnm in
         let ty = Typeenv.overwrite_range_of_type (make_bounded_free forallty) rng in
-          begin                                                                          (* for debug *)
-            print_for_debug ("#C " ^ nv ^ " : " ^ (string_of_type_struct_basic forallty) (* for debug *)
-              ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                       (* for debug *)
-            (ContentOf(nv), ty, Subst.empty)
-          end                                                                            (* for debug *)
+          begin                                                                             (* for debug *)
+            print_for_debug ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic forallty) (* for debug *)
+              ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                          (* for debug *)
+            (ContentOf(varnm), ty, Subst.empty)
+          end                                                                               (* for debug *)
       with
       | Not_found ->
-          	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ nv ^ "'")))
+          	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ varnm ^ "'")))
           (*
             (ContentOf(nv), FuncType((-1,0,0,0), IntType(-1,0,0,0), IntType(-1,0,0,0)), Subst.empty) (* for test *)
           *)
@@ -302,7 +313,7 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
   | UTMDirectLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
       let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
-        let teout_new = add_list_to_type_environment teout tvtylst_added in
+        let teout_new = add_list_to_type_environment "" teout tvtylst_added in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
         let theta_result = Subst.compose thetaaft theta in
           (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), theta_result)
@@ -310,7 +321,7 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
   | UTMPublicLetIn(utmutletcons, utmdlaft)                ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
       let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
-      let teout_new = add_list_to_module_type_environment teout tvtylst_added mdlnm in
+      let teout_new = add_list_to_type_environment mdlnm teout tvtylst_added in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in
         (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), theta_result)
@@ -320,9 +331,14 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout vein tein_new mdlnm utmdlaft in
       let theta_result = Subst.compose thetaaft theta in
         (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), theta_result)
+
+  | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
+      let vein_new  = Variantenv.add_mutual_cons vein utmutvarntcons in
+      let veout_new = Variantenv.add_mutual_cons_hidden mdlnm veout utmutvarntcons in
+      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout_new teout vein_new tein mdlnm utmdlaft in
+        (veout_result, teout_result, eaft, thetaaft)
 (*
   | UTMPublicLetMutableIn(rng, varnm, utast, utmdlaft)    ->
-  | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft)   ->
   | UTMPublicDeclareTypeSynonymIn(tynm, tystr, utmdlaft)  ->
   | UTMPrivateLetMutableIn(rng, varnm, utast, utmdlaft)   ->
   | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
@@ -330,18 +346,11 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
 *)
 
 (* Typeenv.t -> (var_name * type_struct) list -> Typeenv.t *)
-and add_list_to_type_environment tyenv tvtylst =
+and add_list_to_type_environment mdlnm tyenv tvtylst =
   match tvtylst with
   | []                         -> tyenv
   | (varnm, tystr) :: tvtytail ->
-      add_list_to_type_environment (Typeenv.add tyenv varnm tystr) tvtytail
-
-(* Typeenv.t -> (var_name * type_struct) list -> module_name -> Typeenv.t *)
-and add_list_to_module_type_environment tyenv tvtylst mdlnm =
-  match tvtylst with
-  | []                         -> tyenv
-  | (varnm, tystr) :: tvtytail ->
-      add_list_to_module_type_environment (Typeenv.add tyenv (mdlnm ^ "." ^ varnm) tystr) tvtytail mdlnm
+      add_list_to_type_environment mdlnm (Typeenv.add tyenv (make_module_var_name mdlnm varnm) tystr) tvtytail
 
 
 (* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
@@ -402,11 +411,9 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
       let (epat2, typat2, tyenv2) = typecheck_pattern varntenv tyenv1 utpat2 in
       let type_result =
-        begin
-        	match typat2 with
-          | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
-          | _                      -> assert false
-        end
+      	match typat2 with
+        | ProductType(_, tylist) -> ProductType(rng, typat1 :: tylist)
+        | _                      -> assert false
       in
         (PTupleCons(epat1, epat2), type_result, tyenv2)
 
@@ -425,13 +432,14 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
         (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm ntv)
 
   | UTPConstructor(constrnm, utpat1) ->
-      begin try
-        let (varntnm, tycont) = Variantenv.find varntenv constrnm in
-        let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
-        let tyenv_new = Subst.apply_to_type_environment (Subst.unify tycont typat1) tyenv1 in
-          (PConstructor(constrnm, epat1), VariantType(rng, varntnm), tyenv_new)
-      with
-      | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
+      begin
+        try
+          let (varntnm, tycont) = Variantenv.find varntenv constrnm in
+          let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
+          let tyenv_new = Subst.apply_to_type_environment (Subst.unify tycont typat1) tyenv1 in
+            (PConstructor(constrnm, epat1), VariantType(rng, varntnm), tyenv_new)
+        with
+        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
 
 
