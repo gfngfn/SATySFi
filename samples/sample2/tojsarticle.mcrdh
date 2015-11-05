@@ -22,8 +22,8 @@ let \document head body =
     \\documentclass\{jsarticle\}
     \\makeatletter\deeper{
       @head;
-    }\\makeatother\break;
-  } ^ (latex-environment `document`) body
+    }\\makeatother
+  } ^ break ^ (latex-environment `document`) body
 
 let \author = direct-latex-1 `author`
 let \title = direct-latex-1 `title`

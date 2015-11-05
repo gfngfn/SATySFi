@@ -5,5 +5,5 @@ let fizzbuzz n =
     if n mod 5 == 0 then {Buzz} else arabic n
 
 let \fizzbuzzes n =
-  if n <= 0 then {} else {\fizzbuzzes(n - 1);} ^ (fizzbuzz n) ^ {\space;}
+  if n <= 0 then {} else {\fizzbuzzes(n - 1);} ^ (fizzbuzz n) ^ space
 

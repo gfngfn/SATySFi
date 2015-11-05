@@ -22,11 +22,12 @@ let \section head cnt = {
   <h1>@head;</h1>\deeper{
     @cnt;
   }<!-- ---- ---- -->
-} in
+}
+
 let \subsection head cnt = {
   <h2>@head;</h2>\deeper{
     @cnt;
   }<!-- ---- ---- -->
-} in
-let \p inner = {<p>\deeper{@inner;}</p>} in
-  finish
+}
+
+let \p inner = {<p>\deeper{@inner;}</p>}

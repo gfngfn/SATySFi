@@ -1,19 +1,21 @@
-let range-sub lst min i =
-  if i < min then lst else range-sub (i :: lst) min (i - 1)
+let range-sub lst minval i =
+  if i < minval then lst else range-sub (i :: lst) minval (i - 1)
 
-let range min max = range-sub [] min max
+let range = range-sub []
 
 let foldl f ini lst =
-  if is-empty lst then ini else
-    foldl f (f ini (list-head lst)) (list-tail lst)
+  match lst with
+  | []       -> ini
+  | hd :: tl -> foldl f (f hd ini) tl
 
 let sum lst = foldl (+) 0 lst
 
 let show-list lst =
-  if is-empty lst then {} else
-    {[} ^ (arabic (list-head lst)) ^ {]} ^ (show-list (list-tail lst))
+  match lst with
+  | []       -> {}
+  | hd :: tl -> {[} ^ (arabic hd) ^ {]} ^ (show-list tl)
 
 in
-  (show-list (range 1 10)) ^ {\break;}
-    ^ (arabic (sum (range 1 10))) ^ {\break;}
+  (show-list (range 1 10)) ^ break
+    ^ (arabic (sum (range 1 10))) ^ break
     ^ (arabic (sum (range 1 10000)))

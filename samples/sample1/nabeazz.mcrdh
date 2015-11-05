@@ -18,5 +18,5 @@ let nabeazz n =
       arabic n
 
 let \nabeazzes n =
-  if n <= 0 then {} else {\nabeazzes(n - 1);} ^ (nabeazz n) ^ {\space;}
+  if n <= 0 then {} else {\nabeazzes(n - 1);} ^ (nabeazz n) ^ space
 
