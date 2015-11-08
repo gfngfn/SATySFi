@@ -89,28 +89,28 @@
       | _                        -> assert false
 
   let rec omit_pre_spaces str =
-    if String.sub str 0 1 = " "  then
-      omit_pre_spaces (String.sub str 1 ((String.length str) - 1)) 
-(*    else if String.sub str 0 1 = "\n" then
-      (String.sub str 1 ((String.length str) - 1)) *)
-    else
-      str
+    let len = String.length str in
+      if len = 0 then "" else
+        match String.sub str 0 1 with
+        | " " -> omit_pre_spaces (String.sub str 1 (len - 1)) 
+        | _   -> str
 
   let rec omit_post_spaces str =
-    if String.sub str ((String.length str) - 1) 1 = " " then
-      omit_post_spaces (String.sub str 0 ((String.length str) - 1))
-    else if String.sub str ((String.length str) - 1) 1 = "\n" then
-      (String.sub str 0 ((String.length str) - 1))
-    else
-      str
+    let len = String.length str in
+      if len = 0 then "" else
+        match String.sub str (len - 1) 1 with
+        | " "  -> omit_post_spaces (String.sub str 0 (len - 1))
+        | "\n" -> String.sub str 0 (len - 1)
+        | _    -> str
 
   (* untyped_abstract_tree -> untyped_abstract_tree_main *)
   let rec omit_spaces ltrl =
     let str_ltrl = omit_post_spaces (omit_pre_spaces (stringify_literal ltrl)) in
       let min_indent = min_indent_space str_ltrl in
         let str_shaved = shave_indent str_ltrl min_indent in
-          if str_shaved.[(String.length str_shaved) - 1] = '\n' then
-            let str_no_last_break = String.sub str_shaved 0 ((String.length str_shaved) - 1) in
+        let len_shaved = String.length str_shaved in
+          if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
+            let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
               UTConcat(
                 ((-13, 0, 0, 0), UTStringConstant(str_no_last_break)),
                 ((-14, 0, 0, 0), UTBreakAndIndent)
@@ -641,10 +641,13 @@ nxrtimes:
   | nxrtimes MOD error      { report_error (Tok $2) "mod" }
 ;
 nxun:
-  | MINUS nxapp    { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
-  | LNOT nxapp     { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("not")), $2)) }
-  | REFNOW nxapp   { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("!")), $2)) }
-  | REFFINAL nxapp { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
+  | MINUS nxapp       { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
+  | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("not")), $2)) }
+  | REFNOW nxapp      { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("!")), $2)) }
+  | REFFINAL nxapp    { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
+  | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
+  | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
+  	                      (UTConstructor(extract_name $1, ((-2, 0, 0, 0), UTUnitConstant))) }
   | nxapp          { $1 }
 /* -- for syntax error log -- */
   | MINUS error    { report_error (Tok $1) "-" }
@@ -653,13 +656,12 @@ nxun:
   | REFFINAL error { report_error (Tok $1) "!!" }
 ;
 nxapp:
-  | nxapp nxbot { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
-  | nxbot       { $1 }
+  | nxapp nxbot       { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
+  | nxbot             { $1 }
 ;
 nxbot:
   | VAR                 { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
   | CONSTRUCTOR DOT VAR { make_standard (TokArg $1) (TokArg $3) (UTContentOf((extract_name $1) ^ "." ^ (extract_name $3))) }
-  | CONSTRUCTOR nxbot   { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | NUMCONST            { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
@@ -683,12 +685,15 @@ nxlist:
   | LISTPUNCT error        { report_error (Tok $1) ";" }
 ;
 variants: /* -> untyped_variant_cons */
-  | CONSTRUCTOR OF txfunc BAR variants
-      { make_standard (TokArg $1) (VarntCons $5) (UTVariantCons(extract_name $1, $3, $5)) }
-  | CONSTRUCTOR OF txfunc
-      { make_standard (TokArg $1) (TypeStr $3)   (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
+  | CONSTRUCTOR OF txfunc BAR variants  { make_standard (TokArg $1) (VarntCons $5)
+  	                                        (UTVariantCons(extract_name $1, $3, $5)) }
+  | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
+  	                                        (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
+  | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
+                                         	  (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), $3)) }
+  | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
+      	            (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), ((-400, 0, 0, 0), UTEndOfVariant))) }
 /* -- for syntax error log -- */
-  | CONSTRUCTOR error               { report_error (TokArg $1) "" }
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
 ;
@@ -770,6 +775,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
   | VAR                { make_standard (TokArg $1) (TokArg $1) (UTPVariable(extract_name $1)) }
   | CONSTRUCTOR patbot { make_standard (TokArg $1) (Pat $2) (UTPConstructor(extract_name $1, $2)) }
+  | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, ((-2, 0, 0, 0), UTPUnitConstant))) }
   | LPAREN pattr RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN pattr COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }

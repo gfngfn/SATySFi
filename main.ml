@@ -154,10 +154,11 @@ let rec see_argv num file_name_in_list file_name_out =
       match Sys.argv.(num) with
       | "-v" -> print_string "  Macrodown version 1.00b\n"
       | "-o" ->
-          begin try
-            see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
-          with
-          | Invalid_argument(s) -> print_string "! missing file name after '-o' option\n"
+          begin
+            try
+              see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
+            with
+            | Invalid_argument(s) -> print_string "! missing file name after '-o' option\n"
           end
       | "-t" ->
           begin

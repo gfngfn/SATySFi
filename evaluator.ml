@@ -208,7 +208,9 @@ let rec interpret env ast =
   | PatternMatch(astobj, pmcons) ->
       let valueobj = interpret env astobj in select_pattern env valueobj pmcons
 
-  | Constructor(constrnm, astcont) -> Constructor(constrnm, astcont)
+  | Constructor(constrnm, astcont) ->
+      let valuecont = interpret env astcont in
+        Constructor(constrnm, valuecont)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
       begin                                                             (* for debug *)
@@ -279,33 +281,6 @@ let rec interpret env ast =
 *)
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
-
-  | PrimitiveListHead(astlst) ->
-      let valuelst = interpret env astlst in
-        begin
-          match valuelst with
-          | ListCons(vhd, _) -> vhd
-          | EndOfList        -> raise (EvalError("applied 'list-head' to an empty list"))
-          | _                -> assert false
-        end
-
-  | PrimitiveListTail(astlst) ->
-      let valuelst = interpret env astlst in
-        begin
-          match valuelst with
-          | ListCons(_, vtl) -> vtl
-          | EndOfList        -> raise (EvalError("applied 'list-tail' to an empty list"))
-          | _                -> assert false
-        end
-
-  | PrimitiveIsEmpty(astlst) ->
-      let valuelst = interpret env astlst in
-        begin
-          match valuelst with
-          | EndOfList      -> BooleanConstant(true)
-          | ListCons(_, _) -> BooleanConstant(false)
-          | _              -> assert false
-        end
 
   | Times(astl, astr) ->
       let numl = interpret_int env astl in

@@ -50,23 +50,25 @@ let \LaTeX = `\LaTeX{}`
 let \pLaTeX2e = `p\LaTeX 2\raise-0.125em\hbox{$\varepsilon$}`
 
 let escape-single-char ch =
-  if      same ch `{` then `\{`
-  else if same ch `}` then `\}`
-  else if same ch `#` then `\#`
-  else if same ch `\` then `\symbol{"5C}`
-  else if same ch `%` then `\%`
-  else if same ch `$` then `\$`
-  else if same ch `^` then `\^{}`
-  else if same ch `_` then `\_`
-  else if same ch `&` then `\&`
-  else ch
+  match ch with
+  | `{` -> `\{`
+  | `}` -> `\}`
+  | `#` -> `\#`
+  | `\` -> `\symbol{"5C}`
+  | `%` -> `\%`
+  | `$` -> `\$`
+  | `^` -> `\^{}`
+  | `_` -> `\_`
+  | `&` -> `\&`
+  | _   -> ch
 
 let escape-double-chars ch2 =
-  if      same ch2 `<<` then `<{}<{}`
-  else if same ch2 `>>` then `>{}>{}`
-  else if same ch2 ``` `` ``` then `` `{}`{}``
-  else if same ch2 `''` then `'{}'{}`
-  else
+  match ch2 with
+  | `<<`       -> `<{}<{}`
+  | `>>`       -> `>{}>{}`
+  | ``` `` ``` -> `` `{}`{}``
+  | `''`       -> `'{}'{}`
+  | _          ->
     (escape-single-char (string-sub ch2 0 1))
       ^ (escape-single-char (string-sub ch2 1 1))
 

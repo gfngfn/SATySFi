@@ -30,25 +30,25 @@ and string_of_pmcons (_, pmcons) =
   match pmcons with
   | UTEndOfPatternMatch -> ""
   | UTPatternMatchCons(pat, ut, tail)
-      -> " | " ^ (string_of_pat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
+      -> " | " ^ (string_of_utpat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
   | UTPatternMatchConsWhen(pat, utb, ut, tail)
-      -> " | " ^ (string_of_pat pat) ^ " when " ^ (string_of_utast utb)
+      -> " | " ^ (string_of_utpat pat) ^ " when " ^ (string_of_utast utb)
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 
-and string_of_pat (_, pat) =
+and string_of_utpat (_, pat) =
   match pat with
   | UTPNumericConstant(nc)  -> string_of_int nc
   | UTPBooleanConstant(bc)  -> string_of_bool bc
   | UTPStringConstant(ut)   -> string_of_utast ut
   | UTPUnitConstant         -> "()"
-  | UTPListCons(hd, tl)     -> (string_of_pat hd) ^ " :: " ^ (string_of_pat tl)
+  | UTPListCons(hd, tl)     -> (string_of_utpat hd) ^ " :: " ^ (string_of_utpat tl)
   | UTPEndOfList            ->  "[]"
-  | UTPTupleCons(hd, tl)    -> "(" ^ (string_of_pat hd) ^ ", " ^ (string_of_pat tl) ^ ")"
+  | UTPTupleCons(hd, tl)    -> "(" ^ (string_of_utpat hd) ^ ", " ^ (string_of_utpat tl) ^ ")"
   | UTPEndOfTuple           -> "$"
   | UTPWildCard             -> "_"
   | UTPVariable(varnm)      -> varnm
-  | UTPAsVariable(varnm, p) -> "(" ^ (string_of_pat p) ^ " as " ^ varnm ^ ")"
-  | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_pat p) ^ ")"
+  | UTPAsVariable(varnm, p) -> "(" ^ (string_of_utpat p) ^ " as " ^ varnm ^ ")"
+  | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_utpat p) ^ ")"
 
 
 (* abstract_tree -> string *)
@@ -56,29 +56,48 @@ let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)           -> v
-  | Apply(m, n)            -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t)           -> (string_of_ast s) ^ (string_of_ast t)
-  | StringEmpty            -> ""
-  | StringConstant(sc)     -> "{" ^ sc ^ "}"
-  | NumericConstant(nc)    -> string_of_int nc
-  | BooleanConstant(bc)    -> string_of_bool bc
-  | IfThenElse(b, t, f)    ->
+  | ContentOf(v)                 -> v
+  | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | Concat(s, t)                 -> (string_of_ast s) ^ (string_of_ast t)
+  | StringEmpty                  -> ""
+  | StringConstant(sc)           -> "{" ^ sc ^ "}"
+  | NumericConstant(nc)          -> string_of_int nc
+  | BooleanConstant(bc)          -> string_of_bool bc
+  | IfThenElse(b, t, f)          ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | IfClassIsValid(t, f)   -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | Reference(a)           -> "!" ^ (string_of_ast a)
-  | ReferenceFinal(a)      -> "!!" ^ (string_of_ast a)
-  | Overwrite(vn, n)       -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
-  | MutableValue(mv)       -> "(mutable " ^ (string_of_ast mv) ^ ")"
-  | UnitConstant           -> "()"
-  | LetMutableIn(vn, d, f) -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
-  | ListCons(a, cons)      -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
-  | EndOfList              -> "[]"
-  | TupleCons(a, cons)     -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
-  | EndOfTuple             -> "$"
-  | BreakAndIndent         -> "break"
-  | EvaluatedEnvironment(_)-> "finish"
-  | _ -> "?"
+  | IfClassIsValid(t, f)         -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | IfIDIsValid(t, f)            -> "(if-id-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+  | ApplyClassAndID(c, i, m)     ->
+      "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
+  | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
+  | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
+  | Overwrite(vn, n)             -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | MutableValue(mv)             -> "(mutable " ^ (string_of_ast mv) ^ ")"
+  | UnitConstant                 -> "()"
+  | LetMutableIn(vn, d, f)       -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
+  | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
+  | EndOfList                    -> "[]"
+  | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
+  | EndOfTuple                   -> "$"
+  | BreakAndIndent               -> "break"
+  | FinishHeaderFile             -> "finish-header-file"
+  | EvaluatedEnvironment(_)      -> "evaluated-environment"
+  | DeeperIndent(m)              -> "(deeper " ^ (string_of_ast m) ^ ")"
+  | Constructor(c, m)            -> "(constructor " ^ c ^ " " ^ (string_of_ast m) ^ ")"
+  | NoContent                    -> "no-content"
+  | PatternMatch(_, _)           -> "(match ...)"
+  | LetIn(_, m)                  -> "(let ... in " ^ (string_of_ast m) ^ ")"
+  | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"
+  | DeclareGlobalHash(m, n)      -> "(declare-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
+  | OverwriteGlobalHash(m, n)    -> "(overwrite-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
+  | Module(mn, _, _)             -> "(module " ^ mn ^ " = struct ... end-struct)"
+  | Sequential(m, n)             -> "(sequential " ^ (string_of_ast m) ^ " ; " ^ (string_of_ast n) ^ ")"
+  | PrimitiveSame(m, n)          -> "(same " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
+  | PrimitiveStringSub(m, n, o)  ->
+      "(string-sub " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ " " ^ (string_of_ast o) ^ ")"
+  | PrimitiveStringLength(m)     -> "(string-length " ^ (string_of_ast m) ^ ")"
+  | PrimitiveArabic(m)           -> "(arabic " ^ (string_of_ast m) ^ ")"
+  | _                            -> "?"
 
 
 (* code_range -> string *)

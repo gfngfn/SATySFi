@@ -197,8 +197,70 @@ let \mcrd code = {\synt{@code;}}
 let \url-display url =
     `\begin{center}` ^(deeper (`\texttt{` ^url^ `}`))^ `\end{center}`
 
-let \type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}`
+let type-synt ty = `\textcolor[rgb]{0.75,0,0}{\texttt{` ^ ty ^ `}}`
+let type-meta ty = `\textcolor[rgb]{1,0.5,0}{\textit{\texttt{` ^ ty ^ `}}}`
 
-let \mcrd-type code ty = {\synt{@code;}\ :\ \type-synt{@ty;}}
+variant type-struct =
+  | Int | String | Bool | Unit
+  | Data  of string
+  | Meta  of string
+  | Bound of string
+  | List  of type-struct
+  | Ref   of type-struct
+  | Func  of type-struct * type-struct
+  | Prod  of type-struct list
+  | Paren of type-struct
+
+let display-type tystr =
+  match tystr with
+  | Int                -> `int`
+  | String             -> `string`
+  | Bool               -> `bool`
+  | Unit               -> `unit`
+  | Data(s)            -> s
+  | Meta(s)            -> type-meta s
+  | Bound(s)           -> {'@s;}
+  | List(tycont)       -> display-s-type tycont `list`
+  | Ref(tycont)        -> display-s-type tycont `ref`
+  | Func(tydom, tycod) -> display-func-type tydom tycod
+  | Prod(tylst)        -> display-prod-type tylst
+  | Paren(tycont)      -> let scont = display-type tycont in {(@scont;)}
+
+and display-s-type tycont s =
+  let scont = display-type tycont in
+    match tycont with
+    | Func(_, _) -> {(@scont;) @s;}
+    | Prod(_)    -> {(@scont;) @s;}
+    | _          -> {@scont; @s;}
+
+and display-func-type tydom tycod =
+  let sdom = display-type tydom in
+  let scod = display-type tycod in
+    match tydom with
+    | Func(_, _) -> {(@sdom;) -> @scod;}
+    | _          -> {@sdom; -> @scod;}
+
+and display-prod-type tylst =
+  match tylst with
+  | []           -> {}
+  | tyhd :: []   ->
+      let shd = display-type tyhd in
+      ( match tyhd with
+        | Func(_, _) -> {(@shd;)}
+        | Prod(_)    -> {(@shd;)}
+        | _          -> shd
+      )
+  | tyhd :: tytl ->
+      let shd = display-type tyhd in
+      let stl = display-prod-type tytl in
+      ( match tyhd with
+        | Func(_, _) -> {(@shd;) * @stl;}
+        | Prod(_)    -> {(@shd;) * @stl;}
+        | _          -> {@shd; * @stl;}
+      )
+
+let \type tystr = type-synt (display-type tystr)
+
+let \mcrd-type code tystr = {\synt{@code;}\ :\ \type(tystr);}
 
 let \quad = `\quad{}`

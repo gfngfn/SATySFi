@@ -1,6 +1,6 @@
 \document{
   \settings;
-  \title{Macrodown \version; 解説（未完成）}
+  \title{Macrodown \version; 解説}
   \author{\twitter-at-id{bd_gfngfn}}
 }{
   \maketitle;
@@ -118,18 +118,19 @@
     }
   }
   \section{言語仕様}{
-    \subsection{概要}{
+    \subsection{階層}{
       \p{
-        Macrodownは手続き的記述よりも函数的記述に特化しています。
-        変数には基本的に破壊的代入の機能がなく，
-        したがって純粋函数型プログラミングに近い性質をしています。
-      }
-      \p{
-        \newword{函数}と\newword{マクロ}は基本的にほとんど同様に扱えるもので，
-        単に\newword{制御綴}で書かれるものをマクロ，
-        制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
-        制御綴は\newword{テキスト階層}で，函数は\newword{プログラム階層}で用いるようになっています。
-        以降はプログラム階層を基本にして例を掲げていきましょう。
+        Macrodownでは構文に階層という概念があり，
+        \newword{テキスト階層}，\newword{プログラム階層}，\newword{アクティヴ階層}，
+        \newword{リテラル階層}，\newword{コメント階層}の5種類が区別されます。
+        このうちコメント階層は単にコメントアウトの範囲を指し，
+        コード上にある文字\mcrd`%`からその行の行末の改行文字までをコメントとみなします。
+        またリテラル階層はテキスト階層の“仲間”であり，扱いの上では特にテキスト階層と大きな差異がありません。
+        アクティヴ階層はテキスト階層中で引数に\newword{適用}された制御綴の直後に現れる，（多くの場合）小さい範囲です。
+        これについてはマクロの適用と同時に解説します。
+        以上の3種類は附加的であり，Macrodownを書くときは主にテキスト階層とプログラム階層の2種類を強く意識することになります。
+        テキスト階層は文書の記述本体を担い，構文は\LaTeX;やMarkdownと類似しています。
+        プログラム階層は函数とマクロの定義を担い，構文はML系言語に近いものです。
       }
     }
     \subsection{入出力方法}{
@@ -156,7 +157,7 @@
         
         が得られます。「何もしていないじゃないか！」と思われても仕方ないので，
         もう少しMacrodownを勤勉に見せる例を挙げます。
-        勿論詳しい仕組みは後述するので，おまじない程度に認識しても構いません。
+        勿論詳しい仕組みは後述するので，おまじない程度に認識してもかまいません。
         
         \mcrd-input`header.mcrdh` ```
           let \hello s = {Hello, @s;!}
@@ -165,7 +166,7 @@
           \hello{World} \hello{Macrodown}
         ```
         
-        という2つのファイルを用意し，
+        という2つのファイルを用意します。拡張子が違っていることに注意してください。これらを
         
         \mcrd-display```
           macrodown header.mcrdh input.mcrd -o output.txt
@@ -177,10 +178,10 @@
           Hello, World! Hello, Macrodown!
         ```
         
-        なるファイルが出力されます。\file-name{header.mcrdh}で\mcrd`\hello`というマクロが定義され，
-        \file-name{input.mcrd}でそれを使用しているというわけです。
-        拡張子が\extension{.mcrdh}のものはプログラム階層で函数・マクロを定義する\newword{ヘッダファイル}，
-        拡張子が\extension{.mcrd}のものはテキスト階層で文書を記述する\newword{文書ファイル}です。
+        なるファイルが出力されます。\file-name`header.mcrdh`で\mcrd`\hello`というマクロが定義され，
+        \file-name`input.mcrd`でそれを使用しているというわけです。
+        拡張子が\extension`.mcrdh`のものはプログラム階層で函数・マクロを定義している\newword{ヘッダファイル}，
+        拡張子が\extension`.mcrd`のものはテキスト階層で文書を記述している\newword{文書ファイル}です。
         このほか入力ファイルの拡張子として\extension{.mcrds}があり，
         これはプログラム階層で記述されながらも文書として出力される\newword{単独ファイル}です。
         例えばさきほど2ファイル要した例も
@@ -203,49 +204,52 @@
       }
       \p{
         非常に小さい例でしたが，Macrodownはこのような仕組みを駆使して
-        「共通の処理を抽出して，文字の並べるだけではなく意味を示しながら文書を記述する」
+        「共通の処理を抽出し，文字を並べるだけではなく意味を示しながら文書を記述する」
         ことを目的とした，メタなマークアップ言語を設計して使用できるシステムなのです。
-        以降の節で言語仕様を掲げます。
       }
     }
-    \subsection{変数・函数・マクロ}{
+    \subsection{変数・函数・マクロの定義}{
       \p{
-        以下のような\newword{定義式}
+        \newword{函数}と\newword{マクロ}は基本的にほとんど同様に扱えるもので，
+        単に\newword{制御綴}で書かれるものをマクロ，
+        制御綴でない普通の変数名のように書かれるものを函数と便宜的に呼び分けているだけです。
+        プログラミング言語の機能として用いられる「マクロ」という用語とは大きく異なる概念であることに注意してください。
+      }
+      \p{
+        まず函数については，以下のような\newword{定義式}
 
         \code-display{
-          \synt`let` \meta{hoge} %
-            \meta{nvar1} \metadots; \meta{nvarN}
-            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
+          \synt`let` \meta`hoge` %
+            \meta`nvar1` \metadots; \meta`nvarN`
+            \synt`=` \meta`ExprA` \synt`in` \meta`ExprB`
         }
 
-        で引数を\math{N}個伴う函数\code{\meta{hoge}}が定義されます。
+        で引数を\math{N}個伴う函数\code{\meta`hoge`}が定義されます。
         定義が有効な範囲を\newword{スコープ}と言い，
-        この函数\code{\meta{hoge}}の定義は\code{\meta{ExprB}}がスコープです。
+        この函数\code{\meta`hoge`}の定義は\code{\meta`ExprB`}がスコープです。
         函数だけでなくマクロも同様の構文で定めることができ，
 
         \code-display{
-          \synt`let` \synt`\`\meta{piyo} %
-            \meta{var1} \metadots; \meta{varN}
-            \synt`=` \meta{ExprA} \synt`in` \meta{ExprB}
+          \synt`let` \synt`\`\meta`piyo` \meta`var1` \metadots; \meta`varN`
+            \synt`=` \meta`ExprA` \synt`in` \meta`ExprB`
         }
 
-        で \code{\synt`\`\meta{piyo}} が \code{\meta{ExprB}} をスコープとして定義されます。
+        で \code{\synt`\`\meta`piyo`} が \code{\meta`ExprB`} をスコープとして定義されます。
         なお，普通積極的には用いませんが，名前のない函数は
 
         \code-display{
-          \synt`(function` \meta{nv1} \metadots; \meta{nvN}
-          \synt`->` \meta{Expr} \synt`)`
+          \synt`(function` \meta`nv1` \metadots; \meta`nvN`
+          \synt`->` \meta`Expr` \synt`)`
         }
 
         で表現することができます。例えば与えられた整数を2乗する函数は
         \mcrd`(function n -> n * n)` です。
 
         \code-display{
-          \synt`\`\meta{hoge}\ %
-            \synt`{`\meta{Arg1}\synt`}`\metadots;\synt`{`\meta{ArgN}\synt`}`
+          \synt`\`\meta`hoge`\ \synt`{`\meta`Arg1`\synt`}`\metadots;\synt`{`\meta`ArgN`\synt`}`
         }
 
-        で各 \code{\meta{varI}} に \code{\meta{ArgI}} が格納された上で定義式の \code{\meta{Expr}} が評価されます。
+        で各 \code{\meta`varI`} に \code{\meta`ArgI`} が格納された上で定義式の \code{\meta`Expr`} が評価されます。
         定義された函数をプログラム階層で使うときは単に引数を並べることで適用します。
         例えば
         
@@ -259,54 +263,124 @@
           81
         ```
         
-        となります。Macrodownにはユーザが定儀せずとも最初から備わっている函数とマクロ
-        \footnote{正確には，ユーザが定義しようとしても原理的に定義できないものがほとんどです。}
-        がいくつもあり，これを\newword{プリミティヴ}と呼びます。
-        上の例で登場した\mcrd`arabic`は整数を文字列に変換するプリミティヴです。もし入力を
+        となります。Macrodownにはユーザが定儀せずとも最初から備わっている函数とマクロ\footnote{
+          ユーザが定義しようとしても原理的に定義できないものがほとんどです。
+        }がいくつもあり，これを\newword{プリミティヴ}と呼びます。
+        上の例で登場した\mcrd`*`は整数の乗算をする二項演算子，\mcrd`arabic`は整数を文字列に変換するプリミティヴです。
+        二項演算子は中置的な構文をとる特殊なプリミティヴです。ちなみに，もし入力を
 
         \mcrd-input`test.mcrds` ```
           let f x = x * x in f (f 3)
         ```
         
-        としたならば，これは 81 という整数値になるはずです。しかし，
+        としたならば，これは\mcrd`81`という整数値になるはずが，
         Macrodownは文字列値しか出力することができないので，
         
         \mcrd-display```
           ! [ERROR IN TYPECHECK] the output of 'test.mcrds' is not string.
         ```
         
-        とエラーが返されるようになっています。したがって
-        さらに \mcrd`arabic` を適用して \mcrd`81` という文字列に変換してやる必要があるのです。
-        値には\newword{型}がついており，整数値は\type-synt`int`型，文字列値は\type-synt`string`型です。
-        Macrodownは，\type-synt`string`型のデータのみを出力できるようになっている，というわけです。
-        \mcrd`arabic`は\type-synt`int`型の値を受け取って\type-synt`string`型の値を返す函数であり，
-        これを表して\type-synt`int -> string`型を持っていると扱われます。
-        型が整合していない場合，実際に処理が行なわれる前にその不整合を検出してエラーを返します。
-        これが\newword{静的型検査}という仕組みです。
+        とエラーが返されるようになっています。
+        型システムについては直後の節で述べますが，
+        Macrodownは\type(String);型の値のみをテキストファイルとして出力できるようになっており，
+        したがって整数値\mcrd`81`に\mcrd`arabic`を適用して\mcrd`{81}`という文字列に変換してやる必要があるのです。
+      }
+    }
+    \subsection{型システムの基本}{
+      \p{
+        Macrodownは\newword{強い静的型つけ}の型システムを採用しています。
+        \newword{型}とはプログラムの整合性を実際に評価することなく検証するための有力かつ簡潔な方法のひとつですが，
+        ひとまずは“値には特定の型がついている”と考えて差し支えありません。
+        \newword{基本型}，すなわちMacrodownに最初から備わっている型は
+        \itemize{
+          |\type(String);型
+          |\type(Int);型
+          |\type(Bool);型
+          |\type(Unit);型
+          |}
+        で，\type(String);型は文字列値，\type(Int);型は整数値，\type(Bool);型は真理値に対応しています。
+        \type(Unit);型は原則として\mcrd`()`という値だけにつけられる\footnote{
+          正確には\mcrd`()`だけでなくファイルの終端に附加される\mcrd`finish`という値にも\type(Unit);型がつきますが，
+          これはユーザの手で入力するものではないので意識する必要はありません。
+        }型で，最初のうちは“voidのようなもの”と捉えていてもかまいません。
       }
       \p{
-        既に説明なく乗算 \mcrd`*` を用いましたが，算術演算子には
+        Macrodownでは函数・マクロも値であり，
+        \newword{単純型つきラムダ計算}という体系をもとにした型つけ規則により型がつきます。
+        \type(Meta`s`);型の値を受け取って\type(Meta`t`);型の値を返す函数・マクロは
+        \type(Func(Meta`s`, Meta`t`));型を持ちます。
+        例えば前節で登場した\mcrd`arabic`は\type(Int);型の値を受け取って\type(String);型の値を返す函数であり，
+        これを表して\type(Func(Int, String));型を持っていると扱われます。
+        \type(Func(Meta`s`, Meta`t`));型の函数・マクロが何らかの値に適用されるとき，
+        引数が\type(Meta`s`);型を持っていないと型が整合していないとみなし，
+        実際に評価が行なわれる前にその不整合を検出してエラーを返します。
+        これが\newword{静的型検査}という仕組みです。
+        \type(Meta`s`);型の値と\type(Meta`t`);型の値を受け取って\type(Meta`u`);型の値を返す2変数函数については，
+        \type(Func(Meta`s`, Paren(Func(Meta`t`, Meta`u`))));のように，
+        1つ目の引数を渡すと\type(Func(Meta`t`, Meta`u`));型の値を返し，
+        これに2つ目の引数を渡すと\type(Meta`u`);型の値を返す，とみなします。
+        \newword{Curry化}と呼ばれる概念です。また，函数も値ですから，函数に函数を適用することもできます。
+        例えば
+        
+        \mcrd-input`test.mcrds` ```
+          let is-bigger-at-0 f = if 0 < f 0 then {T} else {F}
+
+          let succ n = n + 1
+          let polyn x = x * x + 2 * x - 1
+
+          in (is-bigger-at-0 succ) ^ (is-bigger-at-0 polyn)
+        ```
+
+        で定義されている\mcrd`is-bigger-at-0`は\type(Func(Int, Int));型の値を受け取って\type(String);型を返すので，
+        \type(Func(Func(Int, Int), String));型を持ちます。上のコードに対する出力は
+
+        \mcrd-output`test.txt` ```
+          TF
+        ```
+        
+        となります。この例からもわかるように，
+        \type(Func(Meta`s`, Paren(Func(Meta`t`, Meta`u`))));型と
+        \type(Func(Func(Meta`s`, Meta`t`), Meta`u`));型とは一致しません。
+        以降では前者の\type(Func(Meta`s`, Paren(Func(Meta`t`, Meta`u`))));型を
+        \type(Func(Meta`s`, Func(Meta`t`, Meta`u`)));型と略記することにします。
+        すなわち，\type(Func(Meta` `, Meta` `));は右結合です。
+      }
+      \p{
+        函数の型をはじめとして，“より小さい型”から“より大きい型”をつくる構造は
         \itemize{
-          | 乗算 \mcrd-type`*` `int -> int -> int`
-          | 除算 \mcrd-type`/` `int -> int -> int`
-          | 剰餘 \mcrd-type`mod` `int -> int -> int`
-          | 加算 \mcrd-type`+` `int -> int -> int`
-          | 減算 \mcrd-type`-` `int -> int -> int`
+          | \type(Func(Meta`s`, Meta`t`));（\type(Meta`s`);型から\type(Meta`t`);型への函数の型）
+          | \type(List(Meta`t`));（\type(Meta`t`);型の\newword{リスト型}）
+          | \type(Ref(Meta`t`));（\type(Meta`t`);型への\newword{参照型}）
+          | \type(Prod[Meta`s1`; Meta`s2`; Meta{\metadots;}; Meta`sN`]);
+              （\type(Meta`s1`);，\type(Meta`s2`);，…，\type(Meta`sN`);型の\newword{直積型}）
+          |}
+        があります。これらの型の構成はいずれも値の扱い方と合わせて後述します。
+      }
+      \p{
+        また，前節では乗算 \mcrd`*` を用いましたが，算術演算子には
+        \itemize{
+          | 乗算 \mcrd-type(`*`)(Func(Int, Func(Int, Int))); 
+          | 除算 \mcrd-type(`/`)(Func(Int, Func(Int, Int)));
+          | 剰餘 \mcrd-type(`mod`)(Func(Int, Func(Int, Int)));
+          | 加算 \mcrd-type(`+`)(Func(Int, Func(Int, Int)));
+          | 減算 \mcrd-type(`-`)(Func(Int, Func(Int, Int)));
           |}
         があります。\mcrd`-` は単項演算子としても使用することができます。
-        なお，2項演算子は \mcrd`(` と \mcrd`)` で囲うことで普通の函数のように使うことができます。
+        なお，二項演算子は \mcrd`(` と \mcrd`)` で囲うことで普通の函数のように使うことができます。
         例えば \mcrd`(function n -> 3 + n)` と \mcrd`(+) 3` は同等です。
       }
+    }
+    \subsection{マクロの適用}{
       \p{
-        マクロも函数とまったく同様の構文で定義することができます。
-        ただし，マクロはプログラム階層では適用することができず，必ずテキスト階層で用います。
-        テキスト階層では，引数は基本的に\type-synt`string`型であり，
-        これは各引数を \mcrd`{` と \mcrd`}` で括ることによって与えます。
+        前述の通り，マクロもプログラム階層に於いて函数とまったく同様の構文で定義することができました。
+        しかし，函数と異なりマクロはプログラム階層では適用することができず，必ずテキスト階層で用います。
+        テキスト階層では，引数は基本的に\type(String);型であり，
+        これは引数となる各文字列を原則として\mcrd`{`と\mcrd`}`で括ることによって与えます。
         例えば
 
         \mcrd-input`test.mcrds` ```
           let \test x y = {Ma@x;r@y;down} in
-            {\test{c}{o}, \test{}{k}}
+              {\test{c}{o}, \test{}{k}}
         ```
 
         に対する出力は
@@ -318,14 +392,14 @@
         となります。
         変数\code{\meta{piyo}}に格納された中身をテキスト階層中で取り出すには
         \code{\synt`@`\meta{piyo}\synt`;`}とします。
-        或いは，文字列結合演算子 \mcrd-type`^` `string -> string -> string` を用いて
+        或いは，文字列結合演算子 \mcrd-type(`^`)(Func(String, Func(String, String)));を用いて
 
         \mcrd-input`test.mcrds` ```
           let \test x y = {Ma} ^ x ^ {r} ^ y ^ {down} in
             {\test{c}{o}, \test{}{k}}
         ```
 
-        としても同様ですが，ここでは \mcrd`@` を使う方が短く済んで見やすいようです。
+        としても同様です。
       }
       \p{
         なお，マクロを制御綴で記述する仕様になっているために，テキスト階層に於いて
@@ -393,9 +467,9 @@
         とすることはできません。
         この入力だと \mcrd`{個}` に \mcrd`{` が後続しないため「引数は1つである」と判断され，
         残りの \mcrd`(3)(4)` はすべて単なる文字列と解釈されてしまいます。したがって
-        \mcrd`\sumstr` は\type-synt`string -> int -> int -> string`型で
-        適用結果は\type-synt`string`型でなければならないのに
-        引数として\type-synt`string`型の値1つしか与えられていないので，
+        \mcrd`\sumstr` は\type(Func(String, Func(Int, Func(Int, String))));型で
+        適用結果は\type(String);型でなければならないのに
+        引数として\type(String);型の値1つしか与えられていないので，
         型検査で不整合と判断しMacrodownはエラーを返します。
         
         \mcrd`(3)(4)` が単なる文字列になっていることは，代わりに
@@ -446,11 +520,11 @@
         }
         
         の構文を用います。\code{\meta{ExprB}} は
-        真偽値を表す\type-synt`bool`型を持ち，これを評価して \mcrd`true` であった場合は
+        真偽値を表す\type(Bool);型を持ち，これを評価して \mcrd`true` であった場合は
         \code{\meta{ExprT}}を評価してその結果を，
         \mcrd`false` であった場合は
         \code{\meta{ExprF}}を評価してその結果を返します。
-        例として1つの整数値をFizzBuzz上の表現にするマクロ \mcrd-type`\fb` `int -> string`
+        例として1つの整数値をFizzBuzz上の表現にするマクロ \mcrd-type(`\fb`)(Func(Int, String));
         を定義して使ってみましょう。
         
         \mcrd-input`input.mcrds` ```
@@ -471,18 +545,18 @@
       \p{
         整数の比較で真理値を返す演算子として
         \itemize{
-          | 等価演算子 \mcrd-type`==` `int -> int -> bool`
-          | 非等価演算子 \mcrd-type`<>` `int -> int -> bool`
-          | 不等号演算子 \mcrd-type`>=` `int -> int -> bool`
-          | 不等号演算子 \mcrd-type`<=` `int -> int -> bool`
-          | 不等号演算子 \mcrd-type`>` `int -> int -> bool`
-          | 不等号演算子 \mcrd-type`<` `int -> int -> bool`
+          | 等価演算子 \mcrd-type(`==`)(Func(Int, Func(Int, Bool)));
+          | 非等価演算子 \mcrd-type(`<>`)(Func(Int, Func(Int, Bool)));
+          | 不等号演算子 \mcrd-type(`>=`)(Func(Int, Func(Int, Bool)));
+          | 不等号演算子 \mcrd-type(`<=`)(Func(Int, Func(Int, Bool)));
+          | 不等号演算子 \mcrd-type(`>`)(Func(Int, Func(Int, Bool)));
+          | 不等号演算子 \mcrd-type(`<`)(Func(Int, Func(Int, Bool)));
           |}
         があります。またいわゆる論理演算子として
         \itemize{
-          | 選言 \mcrd-type`||` `bool -> bool -> bool`
-          | 連言 \mcrd-type`&&` `bool -> bool -> bool`
-          | 否定 \mcrd-type`not` `bool -> bool`
+          | 選言 \mcrd-type(`||`)(Func(Bool, Func(Bool, Bool)));
+          | 連言 \mcrd-type(`&&`)(Func(Bool, Func(Bool, Bool)));
+          | 否定 \mcrd-type(`not`)(Func(Bool, Bool));
           |}
         があります。
       }
@@ -491,10 +565,10 @@
       \p{
         文字列を“直接見る”或いは“加工する”プリミティヴとして
         \itemize{
-          | \mcrd-type`\deeper` `string -> string`
-          | \mcrd-type`string-length` `string -> int`
-          | \mcrd-type`string-sub` `string -> int -> int -> string`
-          | \mcrd-type`same` `string -> string -> bool`
+          | \mcrd-type(`\deeper`)(Func(String, String));
+          | \mcrd-type(`string-length`)(Func(String, Int));
+          | \mcrd-type(`string-sub`)(Func(String, Func(Int, Func(Int, String))));
+          | \mcrd-type(`same`)(Func(String, Func(String, Bool)));
           |}
         があります。
         \mcrd`\deeper` は出力される文字列に於けるインデントを深めて返し，
@@ -503,11 +577,93 @@
         文字列 \code{\meta{s}} の \code{\meta{i}} 文字目から \code{\meta{l}} 文字を返し，
         \code{\synt`same` \meta{s} \meta{t}} は
         文字列 \code{\meta{s}} と \code{\meta{t}} が一致していれば真を，そうでなければ偽を返します。
+        \mcrd`\deeper`は少し複雑なので，以下に例を掲げておきます。
+        
+        \mcrd-input`deeper.mcrds` ```
+          let \p1 cont = {
+            <p>@cont;</p>
+          }
+          let \p2 cont = {
+            <p>
+              @cont;
+            </p>
+          }
+          let \p3 cont = {
+            <p>\deeper{@cont;}</p>
+          }
+          let \p4 cont = {
+            <p>
+              \deeper{@cont;}
+            </p>
+          }
+          in {
+            [\p1{
+              The quick brown fox jumps over the lazy dog.
+            }]
+            \p2{
+              The quick brown fox jumps over the lazy dog.
+            }
+            \p3{
+              The quick brown fox jumps over the lazy dog.
+            }
+            \p4{
+              The quick brown fox jumps over the lazy dog.
+            }
+          }
+        ```
+        \mcrd-output`deeper.html` ```
+          [<p>The quick brown fox jumps over the lazy dog.</p>]
+          <p>
+          The quick brown fox jumps over the lazy dog.
+          </p>
+          <p>
+            The quick brown fox jumps over the lazy dog.
+          </p>
+          <p>
+          
+            The quick brown fox jumps over the lazy dog.
+          
+          </p>
+        ```
+        
+        文字\mcrd`[`と\mcrd`]`は改行位置を確認する目的で挿入したものです。
+        第一に，Macrodownは\mcrd`{`の後ろか\mcrd`}`の手前にある改行文字と空白文字の連続は無視します。
+        したがって\mcrd`\p1`では\mcrd`<p>`の手前や\mcrd`</p>`の直後に改行文字は出力されていません。
+        続いて\mcrd`\p2`の結果からわかるように，Macrodownはコード中のインデントを出力に反映しません。
+        したがって，出力の\mcrd`<p>`と\mcrd`</p>`の間をインデントするには\mcrd`\p3`または\mcrd`\p4`のように
+        \mcrd`\deeper`を挿入する必要があります。
+        \mcrd`\p3`からわかるように\mcrd`\deeper`は前後に改行文字を自動的に挿入して出力しますから，
+        \mcrd`\p4`のように定義すると改行が冗長になってしまいます。
+        特に\LaTeX;のような空行に意味のある言語をターゲットにする場合は注意してください。
       }
       \p{
-        ただし，これらのプリミティヴの機能は，厳密には上記の説明ほど単純ではありません。
-        ほとんどの場合は上記の説明で意図通り使用することができますが，用いられ方によっては
-        \type-synt`string`型の仕様とMacrodownの評価規則を正確に知らないと不可解に近いような挙動を見せてしまいます。
+        なお，\mcrd`\deeper`は函数・マクロ定義でのみ使用することを意図された機能です。
+        文書本体に直接\mcrd`\deeper`を記述することは，
+        煩雑化と意味マークアップの阻碍に繋がるので望ましくないでしょう。
+      }
+      \p{
+        その他は
+        
+        \mcrd-input`string.mcrds` ```
+          let \is-mcrd s = if same s {Macrodown} then {Yes} else {No}
+          let \len s  = arabic (string-length s)
+          let \sub i l s = string-sub s i l
+          in {
+            \is-mcrd{Markdown}/\len{Markdown}/\sub(3)(4){Markdown}
+            \is-mcrd{Macrodown}/\len{Macrodown}/\sub(2)(4){Macrodown}
+          }
+        ```
+        \mcrd-output`string.txt` ```
+          No/8/kdow
+          Yes/9/crod
+        ```
+        
+        のように単純です。
+      }
+      \p{
+        ただし，これらのプリミティヴの機能は，厳密には上記の説明ほど明快ではありません。
+        ほとんどの場合は上のような理解で意図通り使用することができますが，用いられ方によっては
+        \type(String);型の仕様とMacrodownの評価規則を正確に知らないと不可解に近いような挙動を見せてしまいます。
         これについては後の\newword{最終値参照}と\newword{グローバルハッシュ}の節で述べます。
       }
     }
@@ -534,18 +690,36 @@
     }
     \subsection{リストとパターンマッチ}{
       \p{
-        具体的なリストは，基本的に
+        \newword{リスト}は，同じ型のデータを順序を区別して並べた値です。伸長したり削減したりすることができます。
+        値\mcrd`[]`を\newword{空リスト}と呼び，\type(List(Bound`a`));型を持ちます。
+        どんな型のリストでも空の場合は\mcrd`[]`を用います。
+        また，値\code{\meta`v`}の後ろにリスト\code{\meta`l`}を繋げたリストを
+        \code{\meta`v` \synt`::` \meta`l`}と書きます。
+        例えば\mcrd`3 :: []`は長さ1のリスト，\mcrd`3 :: (1 :: [])`は長さ2のリストであり，
+        それぞれ\type(List(Int));型を持ちます。
+        \mcrd`::`は\newword{コンス}と呼ばれ，
+        \type(Func(Func(Bound`a`, List(Bound`a`)), List(Bound`a`)));型をもつ右結合の二項演算子です。
+        右結合性より\mcrd`3 :: (1 :: [])`は\mcrd`3 :: 1 :: []`と括弧を略すことができます。
+        同様にどんどん伸ばすことができ，
+        
+        \mcrd-display```
+          3 :: 1 :: 4 :: 1 :: 5 :: 9 :: 2 :: []
+        ```
+        
+        などとします。このような成分を書いた具体的なリストは，糖衣構文として
         
         \mcrd-display```
           [3; 1; 4; 1; 5; 9; 2]
         ```
 
-        のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書きます。
-        リストでは，全ての要素の型が一致していなければなりません。
-        \type-synt`'t`型の要素を持つリストの型は\type-synt{'t list}であり，
-        例えば\type-synt`int`型のリストは\type-synt{int list}型になります。
+        のように\code{\synt`[`}と\code{\synt`]`}で括って各要素を\code{\synt`;`}で区切って書くこともできます。
+      }
+      \p{
+        \mcrd`::`の持つ型により，リストでは全ての要素の型が一致していなければなりません。
+        \type(Meta`t`);型の要素を持つリストの型は\type(List(Meta`t`));であり，
+        例えば\type(Int);型のリストは\type(List(Int));型になります。
         なお，実際に文書中のテキスト階層で用いるリストの多くは
-        \type-synt`string list`型のリストをマクロの引数とする場合ですが，これは
+        \type(List(String));型のリストをマクロの引数とする場合ですが，これは
 
         \mcrd-display```
           \somecs( [{hoge}; {piyo}; {fuga}; {moge}] );
@@ -562,7 +736,7 @@
         \mcrd`[{hoge}; {piyo}; {fuga}; {moge}]` の省略として使えます。
       }
       \p{
-        リストの各要素を取り出して操作には，\newword{パターンマッチ}を用います。一般にパターンマッチは
+        リストの各要素を取り出す操作には，\newword{パターンマッチ}を用います。一般にパターンマッチは
 
         \code-display{
           \synt`match` \meta{Expr0} \synt`with`\code-break;
@@ -595,21 +769,12 @@
         ```
         
         という文字列になります。
-        %まずリストの先頭要素を取り出す函数が \mcrd-type`list-head`{'a list -> 'a}，
-        %先頭を除いたリストを得る函数が \mcrd-type`list-tail`{'a list -> 'a list} です。
-        %例えば \mcrd`list-head [2; 4; 6; 9; 11]` は \mcrd`2` に，
-        %\mcrd`list-tail [2; 4; 6; 9; 11]` は \mcrd`[4; 6; 9; 11]` にそれぞれ評価されます。
       }
-%      \p{
-%        では，\mcrd`list-head` および \mcrd`list-tail` に空のリスト \mcrd`[]` を渡すとどうなるかというと，
-%        これは実行時エラーで終了してしまいます。
-%        そこで，リストが空かどうか判定する函数 \mcrd-type`is-empty` `'a list -> bool` を使うことになります。
-%      }
       \p{
         リストを再帰的に扱う例を見てみましょう。
-        \type-synt`string list` 型の値を受け取り，
+        \type(List(String));型の値を受け取り，
         各要素をHTMLのリストの項目として並べたものを返す
-        マクロ \mcrd-type`\ul` `string list -> string` を定義します。
+        マクロ \mcrd-type(`\ul`)(Func(List(String), String));を定義します。
 
         \mcrd-input`ul.mcrdh` ```
           let sub-ul lst =
@@ -642,7 +807,7 @@
       }
       \p{
         ついでに再帰の例として有名な左畳み込み演算
-        \mcrd-type`foldl` `('a -> 'b -> 'a) -> 'a -> 'b list -> 'a`
+        \mcrd-type(`foldl`)(Func(Func(Bound`a`, Func(Bound`b`, Bound`a`)), Func(Bound`a`, Func(List(Bound`b`), Bound`a`))));
         とそれを使った函数を掲げておきます。
 
         \mcrd-input`foldl.mcrds` ```
@@ -672,9 +837,9 @@
           7
           [hoge][piyo][fuga][moge]
         ```
-        リストになっている整数の総和を返す函数 \mcrd-type`sum` `int list -> int`，
-        リストの長さを返す函数 \mcrd-type`length` `'a list -> int`，
-        リストの文字列各々を四角括弧で括って並べるマクロ \mcrd-type`\display` `string list -> string`
+        リストになっている整数の総和を返す函数 \mcrd-type(`sum`)(Func(List(Int), Int));，
+        リストの長さを返す函数 \mcrd-type(`length`)(Func(List(Bound`a`), Int));，
+        リストの文字列各々を四角括弧で括って並べるマクロ \mcrd-type(`\display`)(Func(List(String), String));
         がそれぞれ \mcrd`foldl` を使って非常に簡潔に定義できています。
       }
     }
@@ -815,6 +980,159 @@
         と書くことで，上に掲げた \mcrd`and` を用いたものと同等となります。
       }
     }
+    \subsection{直積とパターンマッチ}{
+      \p{
+        \newword{直積}または\newword{タプル}は，座標のように複数の値をまとめてひとつの値として扱う方法です。
+        リストのように伸長や削減をすることはできませんが，それぞれ異なる型の値から構成することができます。
+        単純に括弧でくくってコンマで区切り，\mcrd`({Grothendieck}, 51)`のように書きます。この値は
+        \type(Prod[String; Int]);型です。
+        このほか\mcrd`(true, arabic)`は\type(Prod[Bool; Func(Int, String)]);型であるなど，自由に組み合わせることができます。
+      }
+      \p{
+        ただ組み合わせられるだけでは意義がなく，直積の値を“分解”して使う必要があります。
+        分解はやはりパターンマッチによります。3次元座標を例にとって見てみます。
+        3次元ベクトルの大きさの2乗を返す函数\mcrd-type(`square-size`)(Func(Prod[Int; Int; Int], Int));は
+        
+        \mcrd-input`3d.mcrdh` ```
+          let square-size p =
+            match p1 with
+            | (x, y, z) -> x * x + y * y + z * z
+        ```
+        
+        のように定義できます。同様に，和を返す函数
+        \mcrd-type(`add`)(Func(Prod[Int; Int; Int], Prod[Int; Int; Int]));は
+        
+        \mcrd-input`3d.mcrdh` ```
+          let add p1 p2 =
+            match (p1, p2) with
+            | ((x1, y1, z1), (x2, y2, z2)) -> (x1 + x2, y1 + y2, z1 + z2)
+        ```
+        
+        と定義できます。一般に
+        \code{\synt`(`\meta`a`\synt`,` \meta`b`\synt`,` \meta`c`\synt`)`}と
+        \code{\synt`(`\meta`a`\synt`,` \synt`(`\meta`b`\synt`,` \meta`c`\synt`)`\synt`)`}と
+        \code{\synt`(`\synt`(`\meta`a`\synt`,` \meta`b`\synt`)`\synt`,` \meta`c`\synt`)`}とが互いに区別され，
+        それぞれ
+        \type(Prod[Meta`s`; Meta`t`; Meta`u`]);型，
+        \type(Prod[Meta`s`; Prod[Meta`t`; Meta`u`]]);型，
+        \type(Prod[Prod[Meta`s`; Meta`t`]; Meta`u`]);型をもつことに注意してください。
+      }
+    }
+    \subsection{直和型}{
+      \p{
+        \newword{直和型}或いは\newword{ヴァリアント型}とは，ユーザが構造を定義する型です。
+        リスト，直積では表現するのが冗長になるような構造も，簡潔に表現できることがよくあります。
+        例としてトランプカードを扱う型を考えてみましょう。
+        スートとランクを直積で表現するという方針であれば，\type(Int);型を用いて
+        \mcrd`0`をスペード，\mcrd`1`をハート，\mcrd`2`をダイヤ，\mcrd`3`をクラブとみなし，
+        ランクはそのまま\mcrd`1`から\mcrd`13`を使うことにしましょう。
+        これに基づけばスペードの3は\mcrd`(0, 3)`，ダイヤのQは\mcrd`(2, 12)`という具合になります。
+        ではこれにジョーカー1枚を加える場合はどのように表現すればよいでしょうか。
+        シンプルな例としては\mcrd`(4, 0)`に割り当てるという解決法があったりします。
+        しかし，このような数値的扱いの方針はすぐに簡潔さを失ってしまい，保守しにくいコードを生む温床になります。
+        例えばジョーカーの場合分けを忘れてスートの判定でよくわからないエラーを出してしまうかもしれません。
+        この例の程度の大きさであれば修正できるかもしれませんが，
+        油断すればコードに意図が現れずマジックナンバーで溢れたりすることが十分ありますし，
+        また初めから見落としなくバグを埋め込まずに書くのは結構難しいものです。
+      }
+      \p{
+        そこで直和型が登場します。直和型は
+        
+        \code-display{
+          \synt`variant` \meta`vtype` \synt`=` \meta`Constr1` \synt`of` \type(Meta`t1`); \synt`|`
+            \metadots; \synt`|` \meta`ConstrN` \synt`of` \type(Meta`tN`);
+        }
+        
+        という具合にして\code{\meta`vtype`}と名づけた型を宣言します。
+        \code{\meta`Constr1`}，…，\code{\meta`ConstrN`}は\newword{コンストラクタ}と呼ばれ，
+        “型をなす構成子”です。各\code{\synt`of` \type(Meta`tI`);}はコンストラクタがとる引数の型の指定で，
+        \code{\synt`of` \type(Unit);}の場合は省略できます。
+      }
+      \p{
+        トランプカードの型を直和型を用いて定義してみましょう。
+        
+        \mcrd-input`cards.mcrdh` ```
+          variant suit = Spade | Heart | Diamond | Club
+          variant card = Normal of suit * int | Joker
+        ```
+        
+        これで定義は終了です。\type(Data`suit`);型はスートを表現し，\type(Data`card`);型はカードを表現しています。
+        この定義に基づくと，2つのカードが同じスートかどうかを判定する函数
+        \mcrd-type(`same-suit`)(Func(Data`card`, Func(Data`card`, Bool)));と同じランクかどうかを判定する函数
+        \mcrd-type(`same-rank`)(Func(Data`card`, Func(Data`card`, Bool)));は
+        
+        \mcrd-input`cards.mcrdh` ```
+          let same-suit c1 c2 =
+            match (c1, c2) with
+            | (Normal(Spade, _), Normal(Spade, _))     -> true
+            | (Normal(Heart, _), Normal(Heart, _))     -> true
+            | (Normal(Diamond, _), Normal(Diamond, _)) -> true
+            | (Normal(Club, _), Normal(Club, _))       -> true
+            | _                                        -> false
+          
+          let same-rank c1 c2 =
+            match (c1, c2) with
+            | (Normal(_, r1), Normal(_, r2) -> r1 == r2
+            | _                             -> false
+        ```
+        
+        という具合に非常に明瞭に実装することができます。
+      }
+      \p{
+        木構造を扱うときは，再帰性によりさらに効力を発揮します。
+        以下は各頂点に整数が記録された二分木のための型\type(Data`tree`);と，
+        その頂点の合計を計算する函数\mcrd-type(`vertex-sum`)(Func(Data`tree`, Int));です。
+        
+        \mcrd-input`tree.mcrds` ```
+          variant tree = Leaf of int | Node of int * tree * tree
+          
+          let vertex-sum tr =
+            match tr with
+            | Leaf(i)         -> i
+            | Node(i, lc, rc) -> i + (vertex-sum lc) + (vertex-sum rc)
+        ```
+      }
+      \p{
+        このほか，失敗してしまうかもしれない整数の計算に対しても結果を返すための\mcrd`maybe-int`型を定義してみましょう。
+        
+        \mcrd-input`maybe-int.mcrdh` ```
+          variant maybe-int = Just of int | None
+          
+          let divide x y =
+            match (x, y) with
+            | (_, Just 0)      -> None
+            | (Just m, Just n) -> Just (m / n)
+            | _                -> None
+        ```
+        
+        \mcrd`0`で除算してしまった場合も\mcrd`None`が返ってきます。
+      }
+      \p{
+        相互再帰的に依存する直和型の定義は，例えば
+        
+        \mcrd-input`mut-variant.mcrds` ```
+          variant odd-tree  = OddLeaf of int
+                            | OddNode of int * even-tree * even-tree
+          
+              and even-tree = EvenLeaf of int
+                            | EvenNode of int * odd-tree * odd-tree
+        ```
+        
+        のように\mcrd`and`を用いて定義します。
+      }
+    }
+    \subsection{型シノニム}{
+      \p{
+        型には別名をつけることができます。
+        例えば\type(Prod[Int; Int; Int]);型に\type(Data`vector`);型という別名をあてたい場合は
+        
+        \mcrd-input`synonym.mcrds` ```
+          type vector = int * int * int
+        ```
+        
+        などとします。
+      }
+    }
     \subsection{リテラル階層}{
       \p{
         テキスト階層では，\mcrd`\`，\mcrd`{`，\mcrd`}`，\mcrd`` ` ``，\mcrd`@` という
@@ -832,7 +1150,7 @@
         と \mcrd`` ` `` で括って書くことで
         
         \mcrd-output`literal1.txt` ```
-          In literal areas, you can use letters \, {, }, and @ as they are.
+          In literal areas, you can use letters \, {, }, and @ directly.
         ```
 
         と出力できるようになっています。これを\newword{リテラル階層}と呼びます。
@@ -856,14 +1174,14 @@
         すなわち，例えば
         
         \mcrd-input`literal3.mcrds` ```
-          let \test inner = {The parameter is @inner;.} in
+          let \test arg = {The argument is @arg;.} in
             {\test`{@bd_gfngfn}`}
         ```
         
         に対しては
         
         \mcrd-output`literal3.txt` ```
-          The parameter is {@bd_gfngfn}.
+          The arg is {@bd_gfngfn}.
         ```
         
         と出力されます。
@@ -871,11 +1189,11 @@
         それらの引数の間にスペースを空けねばなりません。すなわち
         
         \mcrd-input`literal4.mcrds` ```
-          let \test p1 p2 = {First: p1, Second: p2.} in
-            {(\test``vis-a`-vis`` `P \/ Q`)}
+          let \test p1 p2 = {First: @p1;, Second: @p2;.} in
+            {\test``vis-a`-vis`` `P \/ Q`}
         ```
         \mcrd-output`leteral4.txt` ```
-          (First: vis-a`-vis, Second: P \/ Q.)
+          First: vis-a`-vis, Second: P \/ Q.
         ```
         
         のようにします。これは，スペースを空けないと \mcrd``` `` ``` で始まった
@@ -987,11 +1305,11 @@
         
         とすることで以降すべての箇所で \code{\meta`var`} を書き換えたり参照したりして使えます。
         このようにして宣言された \code{\meta`var`} は，
-        \code{\meta`ExprA`} を\type-synt`'t`型とすると \type-synt`'t ref`型を持ちます。
+        \code{\meta`ExprA`} を\type(Meta`t`);型とすると \type(Ref(Meta`t`));型を持ちます。
         参照は通常の変数とは違い \mcrd`!` をつけて \code{\synt`!` \meta`var`} とします。
         また書き換えは \mcrd`<-` を用いて \code{\meta`var` \synt`<-` \meta`Expr`} とします。
-        書き換えの式全体は\type-synt`unit`型です。引き続き処理を行なうには
-        逐次評価の二項演算子 \mcrd-type`before` `unit -> 'a -> 'a` を用います。
+        書き換えの式全体は\type(Unit);型です。引き続き処理を行なうには
+        逐次評価の二項演算子 \mcrd-type(`before`)(Func(Unit, Func(Bound`a`, Bound`a`)));を用います。
         例えば
         
         \mcrd-input`ref1.mcrds` ```
@@ -1015,7 +1333,7 @@
         }
         
         と書くと，\code{\meta`ExprB`} が真である間 \code{\meta`ExprC`} を繰り返し評価し，
-        \code{\meta`ExprB`} が偽となった時に\type-synt`unit`型の唯一の値を返します。
+        \code{\meta`ExprB`} が偽となった時に\type(Unit);型の唯一の値を返します。
         これを用いると，例えば\math{1}から\math{n}までの和を求める函数は
         
         \mcrd-input`while.mcrds` ```
@@ -1138,11 +1456,244 @@
         と未定義によるエラーが返されます。
       }
     }
-    \subsection{最終値参照・グローバルハッシュ}{
-      \p{（執筆中）}
+    \subsection{最終値参照と大域ハッシュ}{
+      \p{
+        \newword{最終値参照}は，出力する文字列をそれよりも後方の情報に依存して決めたい，
+        ということを実現するのに便利な機能です。が，慎重に使わないと理解が困難になる危険な機能でもあります。
+        次節：\type(String);型の実体と2段階評価も合わせてお読みになることを強く推奨します。
+      }
+      \p{
+        出力する文字列をそれよりも後方の情報に依存して決めたいなどという状況は想像がつきにくいかもしれませんが，
+        簡潔な例だと前方で後方の章節番号を参照するときなどです。
+        
+        節の番号をidから参照することを意図し，
+        
+        \mcrd-input`ref1.mcrdh` ```
+          let-mutable secnum <- 0
+          let-mutable reflist <- []
+          let \section head body =
+            secnum <- (! secnum) + 1 before
+            ( if-id-is-valid reflist <- (id, (! secnum)) :: (! reflist) else () ) before
+            ( let numstr = (arabic (! secnum)) in {
+              <h1>@numstr;. @head;</h1>\deeper{
+                @body;
+              }<!-- -->
+            } )
+
+          let find lst key =
+            match lst with
+            | []                             -> {??}
+            | (k, v) :: tail when same k key -> arabic v
+            | _ :: tail                      -> find tail key
+          
+          let \ref key = find (! reflist) key
+        ```
+        
+        という具合にヘッダファイルを実装すると
+        
+        \mcrd-input`doc.mcrd` ```
+          \section #first {はじめに}{
+            あー
+          }
+          \section{間にある節}{
+            いー
+          }
+          \section{引用のテスト}{
+            うー
+            第\ref{first}節に戻る
+            第\ref{latter}節には行けない
+          }
+          \section #latter {後ろの節}{
+            えー
+          }
+        ```
+        
+        という入力に対して
+        
+        \mcrd-output`doc.txt` ```
+          <h1>1. はじめに</h1>
+            あー
+          <!-- -->
+          <h1>2. 間にある節</h1>
+            いー
+          <!-- -->
+          <h1>3. 引用のテスト</h1>
+            うー
+            第1節に戻る
+            第??節には行けない
+          <!-- -->
+          <h1>4. 後ろの節</h1>
+            えー
+          <!-- -->
+        ```
+        
+        と出力が得られるのですが，見ての通り\mcrd`\ref`を書いたところよりも後方にある番号は参照できず，
+        \mcrd`find`の定義内に見つからなかった時のためのダミーとして書いておいた\mcrd`??`が出力されています。
+        これは\mcrd`\section #latter {後ろの節}{えー}`が評価されるまで変数\mcrd`reflist`に
+        \mcrd`({latter}, {4})`が格納されないためです。
+        \LaTeX;ではこのような参照について「1回目の処理で参照情報を外部ファイル\file-name{….aux}に書き出しておき，
+        複数回実行することで整合させる」という方針をとっていますが，
+        Macrodownではこのような状況でも不正な出力があることを避けたい，むやみにファイル入出力しないようにしたい，
+        という動機のもとで1回の評価での後方参照が可能な機能を設けました。
+      }
+      \p{
+        具体的な仕組みはというと，上のナイーヴな参照機能の実装で用いた\mcrd`reflist`という参照リストに相当する機能を
+        \newword{大域ハッシュ}という形にしています。
+        大域ハッシュそのものは最初から備わっており，ユーザは\newword{キー}とそれに対応する内容を宣言します。
+        \type(String);型のキー\code{\meta`k`}と\type(String);型の内容\code{\meta`v`}に対し，
+        
+        \code-display{
+          \synt`new-global-hash` \meta`k` \synt`<<-` \meta`v`
+        }
+        
+        でキーと内容の対応 (\code{\meta`k`}, \code{\meta`v`}) を大域ハッシュに入れます。
+        この式は常に\mcrd`()`を返し，\type(Unit);型です。
+        実際にキー\code{\meta`k`}に対応する内容\code{\meta`v`}を出力したい箇所で
+        
+        \code-display{
+          \synt`!!` \meta`k`
+        }
+        
+        と書くと，最終出力段階までに\code{\meta`k`}に対応する内容の文字列\code{\meta`v`}が大域ハッシュに入っていれば
+        \code{\synt`!!` \meta`k`}の箇所が\code{\meta`v`}に置き換わって出力されます。
+        \code{\code`!!` \meta`k`}より後ろでもかまわないので，
+        とにかく対応 (\code{\meta`k`}, \code{\meta`v`}) が最終出力段階までに登録されていればよいのです。
+        最終出力段階については次節で述べるとして，まずは小さい例を見てみましょう。
+        
+        \mcrd-input`global-hash.mcrds` ```
+          let enclose1 x = {[@x;]}
+          let enclose2 x = {<@x;>}
+          in
+            (enclose1 (!! {key1})) ^ break ^
+              (new-global-hash {key1} <<- {CONTENT} before {<} ^ (!! {key1}) ^ {>} )
+        ```
+        
+        これを実行すると
+
+        \mcrd-output`global-hash.txt` ```
+          [CONTENT]
+          <CONTENT>
+        ```
+        
+        という出力が得られ，確かにキーと内容の対応を入れる前に書かれている\mcrd`!! {key1}`に対しても
+        文字列\mcrd`CONTENT`が出力されていることがわかります。先ほどのヘッダファイルも
+        
+        \mcrd-input`ref2.mcrdh` ```
+          let-mutable secnum <- 0
+          let-mutable reflist <- []
+          let \section head body =
+            secnum <- (! secnum) + 1 before
+            ( if-id-is-valid new-global-hash id <<- arabic (! secnum) else () ) before
+            ( let numstr = (arabic (! secnum)) in {
+              <h1>@numstr;. @head;</h1>\deeper{
+                @body;
+              }<!-- -->
+            } )
+          
+          let \ref key = !! key
+        ```
+        
+        と代替すると，
+        
+        \mcrd-output`doc.txt` ```
+          <h1>1. はじめに</h1>
+            あー
+          <!-- -->
+          <h1>2. 間にある節</h1>
+            いー
+          <!-- -->
+          <h1>3. 引用のテスト</h1>
+            うー
+            第1節に戻る
+            第4節は引用できない
+          <!-- -->
+          <h1>4. 後ろの節</h1>
+            えー
+          <!-- -->
+        ```
+        
+        のように後方への参照もうまく出力されます。
+      }
+      \p{
+        なお，最終出力段階まで未定義のキーが\mcrd`!!`で参照されていた場合，
+        これは未定義のキーであるとしてエラーになります。例えば
+        
+        \mcrd-input`key-error.mcrds` ```
+          let enclose s = {[@s;]} in enclose (!! {key0})
+        ```
+        
+        を処理すると，最終出力段階で
+        
+        \mcrd-display```
+          ! [ERROR IN OUT] undefined reference key "key0".
+        ```
+        
+        という具合にエラーが返されます。
+      }
     }
-    \subsection{\type-synt`string`型の実体・2段階評価}{
-      \p{（執筆中）}
+    \subsection{\type(String);型の実体と2段階評価}{
+      \p{
+        最初に衝撃の事実ですが\type(String);型の値は文字列ではありません。
+        \type(String);型の値は文字列に限らず，インデントの階層を保持した構造\code{\synt`\deeper` \meta`s`}\footnote{
+          正確には抽象構文木なので，\mcrd`\deeper`というトークンがそのまま保持されているわけではありません。
+        }，大域ハッシュのキーによる参照\code{\synt`!!` \meta`k`}などの情報を持っています。
+        これらの値を筋よく扱うため，Macrodownの評価の仕組みは\newword{第1段階評価}と\newword{第2段階評価}に分けられており，
+        第1段階評価がすべて終わって第2段階評価のみが行なわれている状態を\newword{最終出力段階}と呼びます。
+        インデントの階層と最終値参照のキーは第1段階評価では評価されることなく残り，
+        第2段階評価に移行してはじめて評価が始まります。
+        こうして第2段階評価によってすべての情報が文字列化されてはじめてテキストファイルに出力されるのです。
+      }
+      \p{
+        第2段階評価では，インデント量の決定が\mcrd`\deeper`のつくる構造をもとに行なわれ，
+        また同時に最終値参照のキーを内容に置き換える処理がなされています。
+        つまり，第2段階評価になるまではどんな文字列がテキストファイルに書き出されるかは確定していないということになります。
+        一方，\mcrd`string-sub`，\mcrd`string-length`，\mcrd`same`などは
+        “実際に文字列そのものを見て評価される必要がある”プリミティヴでした。
+        このような函数の適用を第1段階評価の範疇で評価することは原理的に不可能なはずですが，
+        実際にこれまでの例で\mcrd`string-sub`，\mcrd`string-length`，\mcrd`same`は意図通り動いていました。
+        ではどのように評価しているかというと，
+        実はこれらの“実際に文字列そのものを見て評価される必要がある”プリミティヴの適用を評価するときは
+        例外的に第2段階評価を施しているのです。
+        したがって，最終出力段階に至っていない時でも第2段階評価は細かく行なわれうるということです。
+      }
+      \p{
+        これまでに登場した例では，インデント構造や最終値参照を含んでいない値だけを
+        これらの文字列操作プリミティヴに渡していたため問題なく動作していた，ということです。
+        したがって，インデント構造や最終値参照が残っている\type(String);型の値をこれらのプリミティヴに渡してしまうと，
+        かなり予想困難な挙動をする可能性も十分あります。例えば
+        
+        \mcrd-input`sub-value.mcrds` ```
+          let r = !! `mcrd` in
+            (string-sub r 0 3) ^ {/} ^ (new-global-hash `mcrd` <<- {Macrodown} before !! `mcrd`)
+        ```
+        
+        という入力に対しては\mcrd`Mac/Macrodown`と出力されることが直感的に期待できそうですが，
+        実際はそうではなく，
+
+        \mcrd-display```
+          ! [ERROR IN EVAL] illegal argument for 'string-sub': undefined reference key "mcrd".
+        ```
+        
+        とエラーを返されます。これは\mcrd`string-sub`に対して\mcrd``!! `mcrd` ``が適用され，
+        ここで第2段階評価が行なわれた結果，キー\mcrd`mcrd`に対応する内容が未登録だったためです。
+      }
+      \p{
+        文字列操作プリミティヴだけでなく，
+        \type(String);型のパターンマッチでも文字列の内容が一致しているかどうかを見るために
+        \mcrd`same`と同等の方法で比較をしています。
+        このほか，大域ハッシュへの登録に使うキーと内容そのものも\type(String);型であり，
+        やはり第2段階評価を行なってから大域ハッシュに入れています。
+        したがって，次のような例は最終出力段階で無限ループに陥るはずです。
+        
+        \mcrd-input`infinite.mcrds` ```
+          let r = !! {key} in
+            new-global-hash {key} <<- r before r
+        ```
+      }
+      \p{
+        いずれにしても，最終値参照を含む値や，改行を含んでいてインデントになる部分があるような値を文字列操作プリミティヴに渡すことは
+        できるだけ避けるように心がけ，意図的に行なう場合でも細心の注意を払うようにしてください。
+      }
     }
   }
   \section{字句解析の厳密な仕様}{
