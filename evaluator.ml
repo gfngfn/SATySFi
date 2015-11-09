@@ -21,7 +21,7 @@ let find_in_environment env varnm = Hashtbl.find env varnm
 let rec interpret env ast =
   match ast with
 
-(* -- basic value -- *)
+(* ---- basic value ---- *)
 
   | StringEmpty                           -> StringEmpty
   | NoContent                             -> NoContent
@@ -43,28 +43,33 @@ let rec interpret env ast =
           | (_, _)           -> Concat(valuef, valuel)
         end
 
-(* -- list value -- *)
+(* ---- list value ---- *)
 
   | EndOfList              -> EndOfList
+
   | ListCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         ListCons(valuehd, valuetl)
 
-(* -- tuple value -- *)
+(* ---- tuple value ---- *)
 
   | EndOfTuple              -> EndOfTuple
+
   | TupleCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         TupleCons(valuehd, valuetl)
 
-(* -- fundamental -- *)
+(* -- fundamentals -- *)
 
   | ContentOf(varnm) ->
       begin
         try
-          let content = !(find_in_environment env varnm) in content
+          let content = !(find_in_environment env varnm) in
+            match content with
+            | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
+            | _                 -> content
         with
         | Not_found -> assert false
       end
@@ -95,6 +100,8 @@ let rec interpret env ast =
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
 
+(* ---- class/id option ---- *)
+
   | IfClassIsValid(asttru, astfls) ->
       begin
         try
@@ -117,7 +124,25 @@ let rec interpret env ast =
         | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
       end
 
-(* -- imperative -- *)
+  | ApplyClassAndID(clsnmast, idnmast, astf) ->
+      begin                                                             (* for debug *)
+        print_for_debug ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
+        let valuef =  interpret env
+                        (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+                          LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))) in
+          begin                                                         (* for debug *)
+            print_for_debug ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
+            match valuef with
+            | FuncWithEnvironment(varnm, astdef, envf) ->
+                FuncWithEnvironment(varnm,
+                  LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
+                    LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
+                  ), envf)
+            | other ->  valuef
+          end                                                           (* for debug *)
+      end                                                               (* for debug *)
+
+(* ---- imperatives ---- *)
 
   | LetMutableIn(varnm, astdflt, astaft) ->
       let valuedflt = interpret env astdflt in
@@ -150,7 +175,7 @@ let rec interpret env ast =
                 end
             | _                   -> assert false
         with
-        | Not_found ->  assert false
+        | Not_found -> raise (EvalError("this cannot happen: undefined mutable value '" ^ varnm ^ "'"))
       end
 
   | WhileDo(astb, astc) ->
@@ -166,6 +191,16 @@ let rec interpret env ast =
           | MutableValue(astmv) -> astmv
           | _                   -> assert false
         end
+
+  | LazyContent(ast1) ->
+      begin                                                                (* for debug *)
+        print_for_debug ("Lazy: " ^ (Display.string_of_ast ast1) ^ "\n") ; (* for debug *)
+        LazyContentWithEnvironmentRef(ast1, (ref env))
+      end                                                                  (* for debug *)
+
+  | LazyContentWithEnvironmentRef(ast1, envref) -> LazyContentWithEnvironmentRef(ast1, envref)
+
+(* ---- final reference ---- *)
 
   | DeclareGlobalHash(astkey, astdflt) ->
       begin
@@ -187,21 +222,17 @@ let rec interpret env ast =
             try
               let rfvalue = find_in_environment global_hash_env str_key in
                 match !rfvalue with
-                | MutableValue(astmv) ->
-                    begin
-                      rfvalue := MutableValue(interpret env astnew) ;
-                      UnitConstant
-                    end
+                | MutableValue(astmv) -> ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
                 | _                   -> assert false
             with
             | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
         with
-        | Out.IllegalOut(_) -> raise (EvalError("this cannot happen:\n    illegal argument for '<<-'"))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for '<<-': " ^ s))
       end
 
   | ReferenceFinal(varnm) -> ReferenceFinal(interpret env varnm)
 
-(* -- others -- *)
+(* ---- others ---- *)
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)
 
@@ -211,24 +242,6 @@ let rec interpret env ast =
   | Constructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
         Constructor(constrnm, valuecont)
-
-  | ApplyClassAndID(clsnmast, idnmast, astf) ->
-      begin                                                             (* for debug *)
-        print_for_debug ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
-        let valuef =  interpret env
-                        (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-                          LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))) in
-          begin                                                         (* for debug *)
-            print_for_debug ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
-            match valuef with
-            | FuncWithEnvironment(varnm, astdef, envf) ->
-                FuncWithEnvironment(varnm,
-                  LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-                    LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
-                  ), envf)
-            | other ->  valuef
-          end                                                           (* for debug *)
-      end                                                               (* for debug *)
 
   | Module(mdlnm, mdltrdef, astaft) ->
       let env_out = copy_environment env in
@@ -392,6 +405,21 @@ and add_module_to_environment eout ein mdlnm mdltrdef =
         add_module_to_environment eout ein mdlnm mdltraft
       end
 
+  | MPublicLetMutableIn(varnm, astini, mdltraft) ->
+      let valueini = interpret ein astini in
+        begin
+          add_to_environment ein varnm (ref (MutableValue(valueini))) ;
+          add_to_environment eout (make_variable_name mdlnm varnm) (ref (MutableValue(valueini))) ;
+          add_module_to_environment eout ein mdlnm mdltraft
+        end
+
+  | MPrivateLetMutableIn(varnm, astini, mdltraft) ->
+      let valueini = interpret ein astini in
+        begin
+          add_to_environment ein varnm (ref (MutableValue(valueini))) ;
+          add_module_to_environment eout ein mdlnm mdltraft
+        end
+
 
 (* environment -> abstract_tree -> pattern_match_cons -> abstract_tree *)
 and select_pattern env astobj pmcons =
@@ -471,12 +499,12 @@ and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
           let valuecont = interpret ein astcont in
             begin
               add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
-              if is_public  then
+              if is_public then
                 begin                                                   (* for debug *)
                   add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
                   ; print_for_debug ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
                 end                                                     (* for debug *)
-                            else () ;
+              else () ;
               add_mutuals_to_environment_sub is_public lst mdlnm eout ein tailcons
             end
         with

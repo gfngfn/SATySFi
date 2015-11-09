@@ -86,6 +86,7 @@ and untyped_abstract_tree_main =
   | UTOverwriteGlobalHash  of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwrite            of code_range * var_name * untyped_abstract_tree
   | UTReferenceFinal       of untyped_abstract_tree
+  | UTLazyContent          of untyped_abstract_tree
 (* -- class and id option -- *)
   | UTIfClassIsValid       of untyped_abstract_tree * untyped_abstract_tree
   | UTIfIDIsValid          of untyped_abstract_tree * untyped_abstract_tree
@@ -180,6 +181,8 @@ and abstract_tree =
   | DeclareGlobalHash     of abstract_tree * abstract_tree
   | OverwriteGlobalHash   of abstract_tree * abstract_tree
   | ReferenceFinal        of abstract_tree
+  | LazyContent           of abstract_tree
+  | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
   | IfClassIsValid        of abstract_tree * abstract_tree
   | IfIDIsValid           of abstract_tree * abstract_tree
@@ -222,11 +225,11 @@ and pattern_tree =
 and module_tree =
   | MFinishModule
   | MPublicLetIn                 of mutual_let_cons * module_tree
-  | MPublicLetMutableIn          of code_range * var_name * abstract_tree * module_tree
+  | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
   | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree
 (*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
   | MPrivateLetIn                of mutual_let_cons * module_tree
-  | MPrivateLetMutableIn         of code_range * var_name * abstract_tree * module_tree
+  | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
   | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree
 (*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
   | MDirectLetIn                 of mutual_let_cons * module_tree

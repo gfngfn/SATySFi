@@ -104,7 +104,7 @@ rule numexpr = parse
       if Stacklist.is_empty numdepth_stack then
         RPAREN(get_pos lexbuf)
       else
-        if !numdepth == Stacklist.top numdepth_stack then
+        if !numdepth = Stacklist.top numdepth_stack then
         ( Stacklist.delete_top numdepth_stack ;
           next_state := STATE_ACTIVE ;
           CLOSENUM(get_pos lexbuf) )
@@ -178,6 +178,7 @@ rule numexpr = parse
           | "if-class-is-valid" -> IFCLASSISVALID(pos)
           | "if-id-is-valid"    -> IFIDISVALID(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
+          | "let-lazy"          -> LETLAZY(pos)
           | "new-global-hash"   -> NEWGLOBALHASH(pos)
           | "renew-global-hash" -> RENEWGLOBALHASH(pos)
           | "match"             -> MATCH(pos)
@@ -224,7 +225,7 @@ and strexpr = parse
           EGRP(get_pos lexbuf)
         end
       else
-        if !strdepth == Stacklist.top strdepth_stack then
+        if !strdepth = Stacklist.top strdepth_stack then
           begin Stacklist.delete_top strdepth_stack ;
             next_state := STATE_NUMEXPR ;
             CLOSESTR(get_pos lexbuf)

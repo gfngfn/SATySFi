@@ -195,7 +195,11 @@
   (* code_range -> untyped_mutual_let_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   let make_let_expression lettk decs utastaft =
     make_standard (Tok lettk) (Untyped utastaft) (UTLetIn(decs, utastaft))
-
+(*
+  (* code_range -> untyped_mutual_let_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
+  let make_let_lazy_expression lettk decs utastaft =
+    make_standard (Tok lettk) (Untyped utastaft) (UTLetLazyIn(decs, utastaft))
+*)
   (* code_range -> (code_range * var_name) -> untyped_abstract_tree
       -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_abstract_tree *)
   let make_let_mutable_expression letmuttk vartk utastdef utastaft =
@@ -210,7 +214,7 @@
     let tynm = extract_name tytk in
       make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareTypeSynonymIn(tynm, tystr, utastaft))
 
-  let make_mutual_let_cons firsttk vartk argcons utastdef tailcons =
+  let make_mutual_let_cons vartk argcons utastdef tailcons =
     let (varrng, varnm) = extract_range_and_name vartk in
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(varnm, curried, tailcons)
@@ -285,7 +289,7 @@
 %token <Types.token_position> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
 %token <Types.token_position> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
 %token <Types.token_position> VARIANT OF TYPE MATCH WITH BAR WILDCARD WHEN AS
-%token <Types.token_position> LETMUTABLE OVERWRITEEQ
+%token <Types.token_position> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Types.token_position> REFNOW REFFINAL
 %token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
 %token <Types.token_position> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
@@ -365,24 +369,27 @@ main:
 ;
 nxtoplevel:
 /* ---- toplevel style ---- */
-  | LET nxdec nxtoplevel                        { make_let_expression $1 $2 $3 }
-  | LET nxdec EOI                               { make_let_expression $1 $2 end_header }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel { make_let_mutable_expression $1 $2 $4 $5 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet EOI        { make_let_mutable_expression $1 $2 $4 end_header }
-  | MUTUAL nxmutual nxtoplevel                  { make_let_expression $1 $2 $3 }
-  | MUTUAL nxmutual EOI                         { make_let_expression $1 $2 end_header }
-  | VARIANT nxvariantdec nxtoplevel             { make_variant_declaration $1 $2 $3 }
-  | VARIANT nxvariantdec EOI                    { make_variant_declaration $1 $2 end_header }
-  | TYPE VAR DEFEQ txfunc nxtoplevel            { make_type_synonym_declaration $1 $2 $4 $5 }
-  | TYPE VAR DEFEQ txfunc EOI                   { make_type_synonym_declaration $1 $2 $4 end_header }
+  | LET nxdec nxtoplevel                                { make_let_expression $1 $2 $3 }
+  | LET nxdec EOI                                       { make_let_expression $1 $2 end_header }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel         { make_let_mutable_expression $1 $2 $4 $5 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet EOI                { make_let_mutable_expression $1 $2 $4 end_header }
+  | MUTUAL nxmutual nxtoplevel                          { make_let_expression $1 $2 $3 }
+  | MUTUAL nxmutual EOI                                 { make_let_expression $1 $2 end_header }
+  | VARIANT nxvariantdec nxtoplevel                     { make_variant_declaration $1 $2 $3 }
+  | VARIANT nxvariantdec EOI                            { make_variant_declaration $1 $2 end_header }
+  | TYPE VAR DEFEQ txfunc nxtoplevel                    { make_type_synonym_declaration $1 $2 $4 $5 }
+  | TYPE VAR DEFEQ txfunc EOI                           { make_type_synonym_declaration $1 $2 $4 end_header }
+  | LETLAZY nxlazydec nxtoplevel                        { make_let_expression $1 $2 $3 }
+  | LETLAZY nxlazydec EOI                               { make_let_expression $1 $2 end_header }
   | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct nxtoplevel { make_module $1 $2 $5 $6 }
   | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct EOI        { make_module $1 $2 $5 end_header }
 /* ---- transition to expression style ---- */
-  | LET nxdec IN nxlet EOI                        { make_let_expression $1 $2 $4 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI { make_let_mutable_expression $1 $2 $4 $6 }
-  | MUTUAL nxmutual IN nxlet EOI                  { make_let_expression $1 $2 $4 }
-  | VARIANT nxvariantdec IN nxlet EOI             { make_variant_declaration $1 $2 $4 }
-  | TYPE VAR DEFEQ txfunc IN nxlet EOI            { make_type_synonym_declaration $1 $2 $4 $6 }
+  | LET nxdec IN nxlet EOI                                { make_let_expression $1 $2 $4 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI         { make_let_mutable_expression $1 $2 $4 $6 }
+  | MUTUAL nxmutual IN nxlet EOI                          { make_let_expression $1 $2 $4 }
+  | VARIANT nxvariantdec IN nxlet EOI                     { make_variant_declaration $1 $2 $4 }
+  | TYPE VAR DEFEQ txfunc IN nxlet EOI                    { make_type_synonym_declaration $1 $2 $4 $6 }
+  | LETLAZY nxlazydec IN nxlet EOI                        { make_let_expression $1 $2 $4 }
   | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $5 $7 }
 /* ---- for syntax error log ---- */
   | LET error                                 { report_error (Tok $1) "let" }
@@ -400,8 +407,12 @@ nxtoplevel:
 nxstruct: /* -> untyped_module_tree */
   | DIRECT LET nxdirectdec nxstruct                    { make_direct_let_expression $1 $3 $4 }
   | DIRECT LET nxdirectdec ENDSTRUCT                   { make_direct_let_expression $1 $3 end_struct }
+  | DIRECT LETLAZY nxdirectlazydec nxstruct            { make_direct_let_expression $1 $3 $4 }
+  | DIRECT LETLAZY nxdirectlazydec ENDSTRUCT           { make_direct_let_expression $1 $3 end_struct }
   | PUBLIC LET nxpubdec nxstruct                       { make_public_let_expression $1 $3 $4 }
   | PUBLIC LET nxpubdec ENDSTRUCT                      { make_public_let_expression $1 $3 end_struct }
+  | PUBLIC LETLAZY nxpublazydec nxstruct               { make_public_let_expression $1 $3 $4 }
+  | PUBLIC LETLAZY nxpublazydec ENDSTRUCT              { make_public_let_expression $1 $3 end_struct }
   | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct   { make_public_let_mutable_expression $1 $3 $5 $6 }
   | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT  { make_public_let_mutable_expression $1 $3 $5 end_struct }
   | PUBLIC VARIANT nxvariantdec nxstruct               { make_public_variant_declaration $1 $3 $4 }
@@ -410,6 +421,8 @@ nxstruct: /* -> untyped_module_tree */
   | PUBLIC TYPE VAR DEFEQ txfunc ENDSTRUCT             { make_public_type_synonym_declaration $1 $3 $5 end_struct }
   | PRIVATE LET nxdec nxstruct                         { make_private_let_expression $1 $3 $4 }
   | PRIVATE LET nxdec ENDSTRUCT                        { make_private_let_expression $1 $3 end_struct }
+  | PRIVATE LETLAZY nxlazydec nxstruct                 { make_private_let_expression $1 $3 $4 }
+  | PRIVATE LETLAZY nxlazydec ENDSTRUCT                { make_private_let_expression $1 $3 end_struct }
   | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct  { make_private_let_mutable_expression $1 $3 $5 $6 }
   | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT { make_private_let_mutable_expression $1 $3 $5 end_struct }
   | PRIVATE VARIANT nxvariantdec nxstruct              { make_private_variant_declaration $1 $3 $4 }
@@ -431,10 +444,10 @@ nxstruct: /* -> untyped_module_tree */
   | PRIVATE TYPE error       { report_error (Tok $2) "type" }
 ;
 nxmutual: /* -> Types.untyped_mutual_let_cons */
-  | LET VAR argvar DEFEQ nxlet nxmutual      { make_mutual_let_cons $1 $2 $3 $5 $6 }
-  | LET VAR argvar DEFEQ nxlet ENDMUTUAL     { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual  { make_mutual_let_cons $1 $2 $3 $5 $6 }
-  | LET CTRLSEQ argvar DEFEQ nxlet ENDMUTUAL { make_mutual_let_cons $1 $2 $3 $5 UTEndOfMutualLet }
+  | LET VAR argvar DEFEQ nxlet nxmutual      { make_mutual_let_cons $2 $3 $5 $6 }
+  | LET VAR argvar DEFEQ nxlet ENDMUTUAL     { make_mutual_let_cons $2 $3 $5 UTEndOfMutualLet }
+  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual  { make_mutual_let_cons $2 $3 $5 $6 }
+  | LET CTRLSEQ argvar DEFEQ nxlet ENDMUTUAL { make_mutual_let_cons $2 $3 $5 UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | LET error                      { report_error (Tok $1) "and" }
   | LET VAR error                  { report_error (TokArg $2) "" }
@@ -443,10 +456,10 @@ nxmutual: /* -> Types.untyped_mutual_let_cons */
   | LET CTRLSEQ argvar DEFEQ error { report_error (Tok $4) "=" }
 ;
 nxdec: /* -> untyped_mutual_let_cons */
-  | VAR argvar DEFEQ nxlet LETAND nxdec     { make_mutual_let_cons $1 $1 $2 $4 $6 }
-  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
-  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdec { make_mutual_let_cons $1 $1 $2 $4 $6 }
-  | CTRLSEQ argvar DEFEQ nxlet              { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet LETAND nxdec     { make_mutual_let_cons $1 $2 $4 $6 }
+  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdec { make_mutual_let_cons $1 $2 $4 $6 }
+  | CTRLSEQ argvar DEFEQ nxlet              { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | VAR error                               { report_error (TokArg $1) "" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
@@ -454,22 +467,64 @@ nxdec: /* -> untyped_mutual_let_cons */
   | CTRLSEQ error                           { report_error (TokArg $1) "" }
   | CTRLSEQ argvar DEFEQ error              { report_error (Tok $3) "=" }
   | CTRLSEQ argvar DEFEQ nxlet LETAND error { report_error (Tok $5) "and" }
+;
+nxlazydec:
+  | VAR DEFEQ nxlet LETAND nxlazydec {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) $5
+      }
+  | VAR DEFEQ nxlet {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) UTEndOfMutualLet
+      }
+/* -- for syntax error log -- */
+  | VAR error                    { report_error (TokArg $1) "" }
+  | VAR DEFEQ error              { report_error (Tok $2) "=" }
+  | VAR DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxpubdec: /* -> untyped_mutual_let_cons */
-  | VAR argvar DEFEQ nxlet LETAND nxpubdec  { make_mutual_let_cons $1 $1 $2 $4 $6 }
-  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet LETAND nxpubdec  { make_mutual_let_cons $1 $2 $4 $6 }
+  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | VAR error                               { report_error (TokArg $1) "" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
   | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
 ;
+nxpublazydec:
+  | VAR DEFEQ nxlet LETAND nxpublazydec {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) $5
+      }
+  | VAR DEFEQ nxlet {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) UTEndOfMutualLet
+      }
+/* -- for syntax error log -- */
+  | VAR error                    { report_error (TokArg $1) "" }
+  | VAR DEFEQ error              { report_error (Tok $2) "=" }
+  | VAR DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
+;
 nxdirectdec: /* -> untyped_mutual_let_cons */
-  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons $1 $1 $2 $4 $6 }
-  | CTRLSEQ argvar DEFEQ nxlet                    { make_mutual_let_cons $1 $1 $2 $4 UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons $1 $2 $4 $6 }
+  | CTRLSEQ argvar DEFEQ nxlet                    { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | CTRLSEQ error                           { report_error (TokArg $1) "" }
   | CTRLSEQ argvar DEFEQ error              { report_error (Tok $3) "=" }
   | CTRLSEQ argvar DEFEQ nxlet LETAND error { report_error (Tok $5) "and" }
+;
+nxdirectlazydec:
+  | CTRLSEQ DEFEQ nxlet LETAND nxdirectlazydec {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) $5
+      }
+  | CTRLSEQ DEFEQ nxlet {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) UTEndOfMutualLet
+      }
+/* -- for syntax error log -- */
+  | CTRLSEQ error                    { report_error (TokArg $1) "" }
+  | CTRLSEQ DEFEQ error              { report_error (Tok $2) "=" }
+  | CTRLSEQ DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
   | VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $1 $3 $5 }
@@ -647,7 +702,7 @@ nxun:
   | REFFINAL nxapp    { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
   | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
-  	                      (UTConstructor(extract_name $1, ((-2, 0, 0, 0), UTUnitConstant))) }
+                          (UTConstructor(extract_name $1, ((-2, 0, 0, 0), UTUnitConstant))) }
   | nxapp          { $1 }
 /* -- for syntax error log -- */
   | MINUS error    { report_error (Tok $1) "-" }
@@ -686,13 +741,13 @@ nxlist:
 ;
 variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { make_standard (TokArg $1) (VarntCons $5)
-  	                                        (UTVariantCons(extract_name $1, $3, $5)) }
+                                            (UTVariantCons(extract_name $1, $3, $5)) }
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
-  	                                        (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
+                                            (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                         	  (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), $3)) }
+                                             (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-      	            (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), ((-400, 0, 0, 0), UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), ((-400, 0, 0, 0), UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
