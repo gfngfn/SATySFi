@@ -262,28 +262,28 @@
   let rec make_list_to_itemize (lst : (code_range * int * untyped_abstract_tree) list) =
     ((-1, 0, 0, 0), UTItemize(make_list_to_itemize_sub (UTItem(((-1, 0, 0, 0), UTStringEmpty), [])) lst 0))
 
-  and make_list_to_itemize_sub (restree : untyped_itemize) (lst : (code_range * int * untyped_abstract_tree) list) (crrntdp : int) =
+  and make_list_to_itemize_sub (resitmz : untyped_itemize) (lst : (code_range * int * untyped_abstract_tree) list) (crrntdp : int) =
     match lst with
-    | []                          -> restree
+    | []                          -> resitmz
     | (rng, depth, utast) :: tail ->
         if depth <= crrntdp + 1 then
-          let newrestree = add_item restree 0 depth utast in
-            make_list_to_itemize_sub newrestree tail depth
+          let newresitmz = add_item resitmz 0 depth utast in
+            make_list_to_itemize_sub newresitmz tail depth
         else
           raise (ParseErrorDetail("syntax error: illegal depth of item\n"
             ^ "    " ^ (Display.describe_position rng)))
 
-  and add_item (tree : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
+  and add_item (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     if i >= depth then
       UTItem(utast, [])
     else
-      insert_last [] tree i depth utast
+      insert_last [] itmz i depth utast
 
-  and insert_last (reslst : untyped_itemize list) (tree : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
-    match tree with
+  and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
+    match itmz with
     | UTItem(uta, [])           -> UTItem(uta, [UTItem(utast, [])])
-    | UTItem(uta, head :: [])   -> UTItem(uta, reslst @ [add_item tree (i + 1) depth utast])
-    | UTItem(uta, head :: tail) -> insert_last (reslst @ [head]) (UTItem(uta, tail)) i depth utast
+    | UTItem(uta, head :: [])   -> UTItem(uta, resitmzlst @ [add_item itmz (i + 1) depth utast])
+    | UTItem(uta, head :: tail) -> insert_last (resitmzlst @ [head]) (UTItem(uta, tail)) i depth utast
 
   (* range_kind -> string -> 'a *)
   let report_error rngknd tok =

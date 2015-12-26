@@ -250,7 +250,7 @@ and strexpr = parse
       if !ignore_space then strexpr lexbuf else begin ignore_space := true ; SPACE(get_pos lexbuf) end
     }
   | item {
-      ignore_space := false ;
+(*      ignore_space := false ; *)
       let tok = Lexing.lexeme lexbuf in
         if !ignore_space then
           ITEM(get_pos lexbuf, String.length tok)
