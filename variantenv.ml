@@ -10,7 +10,7 @@ type t = defined_type_list * constructor_list
 let empty = ([], [])
 
 
-(* t -> constructor_name -> type_name -> t -> type_struct *)
+(* t -> constructor_name -> type_struct -> type_name -> t *)
 let rec add (varntenv : t) (constrnm : constructor_name) (tystr : type_struct) (varntnm : type_name) =
   let (defedtylst, varntenvmain) = varntenv in
     (defedtylst, add_main varntenvmain constrnm tystr varntnm)

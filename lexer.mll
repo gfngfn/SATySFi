@@ -86,7 +86,7 @@ let item  = "*"+
 let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
-let str = [^ ' ' '\t' '\n' '@' '`' '\\' '{' '}' '%' '|']
+let str = [^ ' ' '\t' '\n' '@' '`' '\\' '{' '}' '%' '|' '*']
 rule numexpr = parse
   | "%" {
       after_comment_state := STATE_NUMEXPR ;
@@ -249,13 +249,10 @@ and strexpr = parse
   | space {
       if !ignore_space then strexpr lexbuf else begin ignore_space := true ; SPACE(get_pos lexbuf) end
     }
-  | item {
-      ignore_space := false ;
-      let tok = Lexing.lexeme lexbuf in
-        if !ignore_space then
-          ITEM(get_pos lexbuf, String.length tok)
-        else
-          CHAR(get_pos lexbuf, Lexing.lexeme lexbuf)
+  | ((break | space)* (item as itemstr)) {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
+      ignore_space := true ;
+      ITEM(get_pos lexbuf, String.length itemstr)
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in

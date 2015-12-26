@@ -2,29 +2,35 @@ open Types
 
 (* -- for test -- *)
 (* untyped_abstract_tree -> string *)
-let rec string_of_utast (_, utast) =
-  match utast with
-  | UTStringEmpty         -> "{}"
-  | UTNumericConstant(nc) -> string_of_int nc
-  | UTBooleanConstant(bc) -> string_of_bool bc
-  | UTStringConstant(sc)  -> "{" ^ sc ^ "}"
-  | UTUnitConstant        -> "()"
-  | UTContentOf(varnm)    -> varnm
-  | UTConcat(ut1, ut2)    -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
-  | UTApply(ut1, ut2)     -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
-  | UTListCons(hd, tl)    -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")" 
-  | UTEndOfList           -> "[]"
-  | UTTupleCons(hd, tl)   -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
-  | UTEndOfTuple          -> "$"
-  | UTBreakAndIndent      -> "break"
-  | UTLetIn(umlc, ut)     -> "(let ... in " ^ (string_of_utast ut) ^ ")"
-  | UTIfThenElse(ut1, ut2, ut3)
-      -> "(if " ^ (string_of_utast ut1) ^ " then " ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
+let rec string_of_utast (_, utastmain) =
+  match utastmain with
+  | UTStringEmpty                  -> "{}"
+  | UTNumericConstant(nc)          -> string_of_int nc
+  | UTBooleanConstant(bc)          -> string_of_bool bc
+  | UTStringConstant(sc)           -> "{" ^ sc ^ "}"
+  | UTUnitConstant                 -> "()"
+  | UTContentOf(varnm)             -> varnm
+  | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
+  | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
+  | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
+  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")" 
+  | UTEndOfList                    -> "[]"
+  | UTTupleCons(hd, tl)            -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
+  | UTEndOfTuple                   -> "$"
+  | UTBreakAndIndent               -> "break"
+  | UTLetIn(umlc, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
+  | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
+                                        ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
   | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"
-  | UTFinishHeaderFile    -> "finish"
-  | UTPatternMatch(ut, pmcons) -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
+  | UTFinishHeaderFile             -> "finish"
+  | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
+  | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
 (*  | UTDeclareVariantIn() *)
   | _ -> "?"
+
+and string_of_itemize dp (UTItem(utast, itmzlst)) =
+  "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
+    ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"
 
 and string_of_pmcons (_, pmcons) =
   match pmcons with

@@ -252,6 +252,12 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let (e1, ty1, theta1) = typecheck varntenv tyenv utast1 in
         (ApplyClassAndID(ecls, eid, e1), ty1, theta1)
 
+(* ---- lightweight itemize ---- *)
+
+  | UTItemize(utitmz) ->
+      let (eitmz, thetaitmz) = typecheck_itemize varntenv tyenv utitmz in
+        (eitmz, VariantType(rng, "itemize"), thetaitmz)
+
 (* ---- list ---- *)
 
   | UTListCons(utasthd, utasttl) ->
@@ -317,6 +323,22 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       let type_result  = Subst.apply_to_type_struct theta_result tyaft in
         (Module(mdlnm, emdltr, eaft), type_result, theta_result)
 
+
+(* Variantenv.t -> Typeenv.t -> untyped_itemize -> abstract_tree * Subst.t *)
+and typecheck_itemize varntenv tyenv (UTItem(utast1, utitmzlst)) =
+    let (e1, ty1, theta1) = typecheck varntenv tyenv utast1 in
+    let (elst, thetalst)  = typecheck_itemize_list varntenv tyenv utitmzlst in
+      let theta_result = Subst.compose thetalst (Subst.compose theta1 (Subst.unify ty1 (StringType(-1, 0, 0, 0)))) in
+        (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), theta_result)
+
+(* Variantenv.t -> Typeenv.t -> untyped_itemize list -> abstract_tree * Subst.t *)
+and typecheck_itemize_list varntenv tyenv utitmzlst =
+  match utitmzlst with
+  | []                    -> (EndOfList, Subst.empty)
+  | hditmz :: tlitmzlst ->
+      let (ehd, thetahd) = typecheck_itemize varntenv tyenv hditmz in
+      let (etl, thetatl) = typecheck_itemize_list varntenv tyenv tlitmzlst in
+        (ListCons(ehd, etl), Subst.compose thetatl thetahd)
 
 
 (* Variantenv.t -> Typeenv.t -> Variantenv.t -> Typeenv.t -> module_name -> untyped_module_tree

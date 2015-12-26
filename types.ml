@@ -155,6 +155,7 @@ and abstract_tree =
   | UnitConstant
   | DeeperIndent          of abstract_tree
   | BreakAndIndent
+  | SoftBreakAndIndent
   | Concat                of abstract_tree * abstract_tree
   | NoContent (* for class and id *)
   | FuncWithEnvironment   of var_name * abstract_tree * environment
@@ -191,6 +192,8 @@ and abstract_tree =
   | IfClassIsValid        of abstract_tree * abstract_tree
   | IfIDIsValid           of abstract_tree * abstract_tree
   | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree
+(* (* -- lightweight itemize -- *)
+  | Itemize               of itemize *)
 (* -- primitive operation -- *)
   | Times                 of abstract_tree * abstract_tree
   | Divides               of abstract_tree * abstract_tree
@@ -209,6 +212,8 @@ and abstract_tree =
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
   | Module                of module_name * module_tree * abstract_tree
+(* and itemize =
+  | Item                  of abstract_tree * (itemize list) *)
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
   | PatternMatchConsWhen  of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
@@ -238,6 +243,10 @@ and module_tree =
 (*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
   | MDirectLetIn                 of mutual_let_cons * module_tree
 
+type output_unit =
+  | OString             of string
+  | OBreakAndIndent     of int
+  | OSoftBreakAndIndent of int
 
 (* !!!! ---- global variable ---- !!!! *)
 let global_hash_env : environment = Hashtbl.create 32

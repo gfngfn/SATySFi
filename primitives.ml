@@ -2,7 +2,10 @@ open Types
 
 
 (* unit -> Variantenv.t *)
-let make_variant_environment () = Variantenv.empty
+let make_variant_environment () =
+  Variantenv.add Variantenv.empty "Item"
+    (ProductType((-1, 0, 0, 0), [StringType(-1, 0, 0, 0); ListType((-1, 0, 0, 0), VariantType((-1, 0, 0, 0), "itemize"))]))
+    "itemize"
 
 
 (* type_environment -> (var_name * type_struct) list *)
@@ -50,6 +53,7 @@ let make_type_environment () =
         ( "\\deeper",      s --> s );
         ( "deeper",        s --> s );
         ( "break",         s );
+        ( "soft-break",    s );
         ( "space",         s );
 (*        ( "break-char",    s ); *)
 (*        ( "\\include",     s --> s ); *)
@@ -92,8 +96,9 @@ let make_environment () =
   let loc_stringlength : location = ref NoContent in
   let loc_deeper       : location = ref NoContent in
   let loc_break        : location = ref NoContent in
+  let loc_softbreak    : location = ref NoContent in
   let loc_space        : location = ref NoContent in
-  let loc_breakchar    : location = ref NoContent in
+(*  let loc_breakchar    : location = ref NoContent in *)
 (*  let loc_include      : location = ref NoContent in *)
   let loc_arabic       : location = ref NoContent in
   let env : environment = Hashtbl.create 128 in
@@ -120,6 +125,7 @@ let make_environment () =
     add_to_environment env "\\deeper"      loc_deeper ;
     add_to_environment env "deeper"        loc_deeper ;
     add_to_environment env "break"         loc_break ;
+    add_to_environment env "soft-break"    loc_softbreak ;
     add_to_environment env "space"         loc_space ;
 (*    add_to_environment env "break-char"    loc_breakchar ; *)
 (*    add_to_environment env "\\include"     loc_include ; *)
@@ -184,13 +190,15 @@ let make_environment () =
                           (PrimitiveStringLength(ContentOf("~str"))) ;
 
     loc_deeper       := lambdas env ["~content"]
-                          (Concat(DeeperIndent(Concat(BreakAndIndent, ContentOf("~content"))), BreakAndIndent)) ;
+                          (Concat(DeeperIndent(Concat(SoftBreakAndIndent, ContentOf("~content"))), SoftBreakAndIndent)) ;
 
     loc_break        := lambdas env [] BreakAndIndent ;
 
+    loc_softbreak    := lambdas env [] SoftBreakAndIndent ;
+
     loc_space        := lambdas env [] (StringConstant(" ")) ;
 
-    loc_breakchar    := lambdas env [] (StringConstant("\n")) ;
+(*    loc_breakchar    := lambdas env [] (StringConstant("\n")) ; *)
 
 (*    loc_include      := lambdas env ["~filename"] (PrimitiveInclude(ContentOf("~filename"))) ; *)
 
