@@ -33,6 +33,7 @@ let rec interpret env ast =
   | FuncWithEnvironment(varnm, ast, envf) -> FuncWithEnvironment(varnm, ast, envf)
   | DeeperIndent(ast)                     -> DeeperIndent(interpret env ast)
   | BreakAndIndent                        -> BreakAndIndent
+  | SoftBreakAndIndent                    -> SoftBreakAndIndent
   | Concat(astf, astl)                    ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
@@ -71,7 +72,7 @@ let rec interpret env ast =
             | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
             | _                                           -> content
         with
-        | Not_found -> assert false
+        | Not_found -> begin print_string ("!!!! not found: " ^ varnm ^ "\n") ; assert false end
       end
 
   | LetIn(mutletcons, astrest) ->
