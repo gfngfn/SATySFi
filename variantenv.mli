@@ -5,6 +5,8 @@ type t
 
 val empty : t
 
+val add : t -> constructor_name -> type_struct -> type_name -> t
+
 val add_cons : module_name -> t -> type_name -> untyped_variant_cons -> t
 
 val add_mutual_cons : t -> untyped_mutual_variant_cons -> t

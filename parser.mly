@@ -266,25 +266,27 @@
     match lst with
     | []                          -> resitmz
     | (rng, depth, utast) :: tail ->
-        begin (* for debug *)
-          print_string ("$ " ^ (string_of_int depth) ^ ": " ^ (Display.string_of_utast utast) ^ "\n") ; (* for debug *)
         if depth <= crrntdp + 1 then
-          let newresitmz = add_item resitmz 0 depth utast in
+          let newresitmz = insert_last [] resitmz 1 depth utast in
             make_list_to_itemize_sub newresitmz tail depth
         else
           raise (ParseErrorDetail("syntax error: illegal item depth "
             ^ (string_of_int depth) ^ " after " ^ (string_of_int crrntdp) ^ "\n"
             ^ "    " ^ (Display.describe_position rng)))
-        end (* for debug *)
-
-  and add_item (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
-    insert_last [] itmz i depth utast
 
   and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
-    | UTItem(uta, [])           -> UTItem(uta, [UTItem(utast, [])])
-    | UTItem(uta, head :: [])   -> UTItem(uta, resitmzlst @ [add_item head (i + 1) depth utast])
-    | UTItem(uta, head :: tail) -> insert_last (resitmzlst @ [head]) (UTItem(uta, tail)) i depth utast
+    | UTItem(uta, []) ->
+(*        begin (* for debug *) 
+          print_string ("A " ^ (string_of_int i) ^ " / " ^ (string_of_int depth) ^ "\n") ; (* for debug *) *)
+          if i < depth then assert false else UTItem(uta, [UTItem(utast, [])])
+(*        end (* for debug *) *)
+    | UTItem(uta, hditmz :: []) ->
+        if i < depth then
+          UTItem(uta, resitmzlst @ [insert_last [] hditmz (i + 1) depth utast])
+        else
+          UTItem(uta, resitmzlst @ [hditmz] @ [UTItem(utast, [])])
+    | UTItem(uta, hditmz :: tlitmzlst) -> insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
   (* range_kind -> string -> 'a *)
   let report_error rngknd tok =

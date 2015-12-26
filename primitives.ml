@@ -2,7 +2,10 @@ open Types
 
 
 (* unit -> Variantenv.t *)
-let make_variant_environment () = Variantenv.empty
+let make_variant_environment () =
+  Variantenv.add Variantenv.empty "Item"
+    (ProductType((-1, 0, 0, 0), [StringType(-1, 0, 0, 0); ListType((-1, 0, 0, 0), VariantType((-1, 0, 0, 0), "itemize"))]))
+    "itemize"
 
 
 (* type_environment -> (var_name * type_struct) list *)

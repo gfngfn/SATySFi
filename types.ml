@@ -191,6 +191,8 @@ and abstract_tree =
   | IfClassIsValid        of abstract_tree * abstract_tree
   | IfIDIsValid           of abstract_tree * abstract_tree
   | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree
+(* -- lightweight itemize -- *)
+  | Itemize               of itemize
 (* -- primitive operation -- *)
   | Times                 of abstract_tree * abstract_tree
   | Divides               of abstract_tree * abstract_tree
@@ -209,6 +211,8 @@ and abstract_tree =
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
   | Module                of module_name * module_tree * abstract_tree
+and itemize =
+  | Item                  of abstract_tree * (itemize list)
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
   | PatternMatchConsWhen  of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
