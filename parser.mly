@@ -258,6 +258,33 @@
     let tynm = extract_name tytk in
       make_standard (Tok firsttk) (UnMdl utmdlaft) (UTMPrivateDeclareTypeSynonymIn(tynm, tystr, utmdlaft))
 
+  (* (code_range * int * untyped_abstract_tree) list -> untyped_abstract_tree *)
+  let rec make_list_to_itemize (lst : (code_range * int * untyped_abstract_tree) list) =
+    ((-1, 0, 0, 0), UTItemize(make_list_to_itemize_sub (UTItem(((-1, 0, 0, 0), UTStringEmpty), [])) lst 0))
+
+  and make_list_to_itemize_sub (restree : untyped_itemize) (lst : (code_range * int * untyped_abstract_tree) list) (crrntdp : int) =
+    match lst with
+    | []                          -> restree
+    | (rng, depth, utast) :: tail ->
+        if depth <= crrntdp + 1 then
+          let newrestree = add_item restree 0 depth utast in
+            make_list_to_itemize_sub newrestree tail depth
+        else
+          raise (ParseErrorDetail("syntax error: illegal depth of item\n"
+            ^ "    " ^ (Display.describe_position rng)))
+
+  and add_item (tree : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
+    if i >= depth then
+      UTItem(utast, [])
+    else
+      insert_last [] tree i depth utast
+
+  and insert_last (reslst : untyped_itemize list) (tree : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
+    match tree with
+    | UTItem(uta, [])           -> UTItem(uta, [UTItem(utast, [])])
+    | UTItem(uta, head :: [])   -> UTItem(uta, reslst @ [add_item tree (i + 1) depth utast])
+    | UTItem(uta, head :: tail) -> insert_last (reslst @ [head]) (UTItem(uta, tail)) i depth utast
+
   (* range_kind -> string -> 'a *)
   let report_error rngknd tok =
     match rngknd with
@@ -303,6 +330,7 @@
 %token <Types.token_position> BLIST LISTPUNCT ELIST CONS
 %token <Types.token_position> BEFORE UNITVALUE WHILE DO
 %token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
+%token <Types.token_position * int> ITEM
 %token EOI
 %token IGNORED
 
@@ -861,8 +889,19 @@ binop:
 sxsep:
   | SEP sxsepsub { $2 }
   | sxblock      { $1 }
+  | sxitemize    { make_list_to_itemize $1 }
 /* -- for syntax error log -- */
   | SEP error    { report_error (Tok $1) "|" }
+;
+sxitemize:
+  | ITEM sxblock sxitemize {
+      let (rng, depth) = extract_range_and_name $1 in
+        (rng, depth, $2) :: $3
+    }
+  | ITEM sxblock {
+      let (rng, depth) = extract_range_and_name $1 in
+        (rng, depth, $2) :: []
+}
 ;
 sxsepsub:
   | sxblock SEP sxsepsub { make_standard (Untyped $1) (Untyped $3) (UTListCons($1, $3)) }

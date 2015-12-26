@@ -82,6 +82,7 @@ let digit = ['0'-'9']
 let capital = ['A'-'Z']
 let small = ['a'-'z']
 let latin = ( small | capital )
+let item  = "*"+
 let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
@@ -247,6 +248,14 @@ and strexpr = parse
     }
   | space {
       if !ignore_space then strexpr lexbuf else begin ignore_space := true ; SPACE(get_pos lexbuf) end
+    }
+  | item {
+      ignore_space := false ;
+      let tok = Lexing.lexeme lexbuf in
+        if !ignore_space then
+          ITEM(get_pos lexbuf, String.length tok)
+        else
+          CHAR(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in

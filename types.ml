@@ -87,10 +87,14 @@ and untyped_abstract_tree_main =
   | UTOverwrite            of code_range * var_name * untyped_abstract_tree
   | UTReferenceFinal       of untyped_abstract_tree
   | UTLazyContent          of untyped_abstract_tree
+(* -- lightweight itemize -- *)
+  | UTItemize              of untyped_itemize
 (* -- class and id option -- *)
   | UTIfClassIsValid       of untyped_abstract_tree * untyped_abstract_tree
   | UTIfIDIsValid          of untyped_abstract_tree * untyped_abstract_tree
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+and untyped_itemize =
+  | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
 and untyped_variant_cons = code_range * untyped_variant_cons_main
 and untyped_variant_cons_main =
   | UTVariantCons          of constructor_name * type_struct * untyped_variant_cons
