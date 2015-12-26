@@ -226,11 +226,11 @@ and module_tree =
   | MFinishModule
   | MPublicLetIn                 of mutual_let_cons * module_tree
   | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-  | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree
+(*  | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree *)
 (*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
   | MPrivateLetIn                of mutual_let_cons * module_tree
   | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-  | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree
+(*  | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree *)
 (*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
   | MDirectLetIn                 of mutual_let_cons * module_tree
 

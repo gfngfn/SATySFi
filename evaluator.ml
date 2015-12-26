@@ -69,7 +69,7 @@ let rec interpret env ast =
           let content = !(find_in_environment env varnm) in
             match content with
             | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
-            | _                 -> content
+            | _                                           -> content
         with
         | Not_found -> assert false
       end

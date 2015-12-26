@@ -686,33 +686,34 @@ nxltimes:
   | nxltimes MOD error      { report_error (Tok $2) "mod" }
 ;
 nxrtimes:
-  | nxapp TIMES nxrtimes    { binary_operator "*" $1 $2 $3 }
-  | nxrtimes DIVIDES nxapp  { binary_operator "/" $1 $2 $3 }
-  | nxrtimes MOD nxapp      { binary_operator "mod" $1 $2 $3 }
-  | nxapp                   { $1 }
+  | nxapp TIMES nxrtimes   { binary_operator "*" $1 $2 $3 }
+  | nxrtimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
+  | nxrtimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
+  | nxapp                  { $1 }
 /* -- for syntax error log -- */
-  | nxapp TIMES error       { report_error (Tok $2) "*" }
-  | nxrtimes DIVIDES error  { report_error (Tok $2) "/" }
-  | nxrtimes MOD error      { report_error (Tok $2) "mod" }
+  | nxapp TIMES error      { report_error (Tok $2) "*" }
+  | nxrtimes DIVIDES error { report_error (Tok $2) "/" }
+  | nxrtimes MOD error     { report_error (Tok $2) "mod" }
 ;
 nxun:
   | MINUS nxapp       { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
   | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("not")), $2)) }
-  | REFNOW nxapp      { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("!")), $2)) }
-  | REFFINAL nxapp    { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
   | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
                           (UTConstructor(extract_name $1, ((-2, 0, 0, 0), UTUnitConstant))) }
-  | nxapp          { $1 }
+  | nxapp             { $1 }
 /* -- for syntax error log -- */
-  | MINUS error    { report_error (Tok $1) "-" }
-  | LNOT error     { report_error (Tok $1) "not" }
-  | REFNOW error   { report_error (Tok $1) "!" }
-  | REFFINAL error { report_error (Tok $1) "!!" }
+  | MINUS error       { report_error (Tok $1) "-" }
+  | LNOT error        { report_error (Tok $1) "not" }
 ;
 nxapp:
-  | nxapp nxbot       { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
-  | nxbot             { $1 }
+  | nxapp nxbot    { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
+  | REFNOW nxbot   { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("!")), $2)) }
+  | REFFINAL nxbot { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
+  | nxbot          { $1 }
+/* -- for syntax error log -- */
+  | REFNOW error   { report_error (Tok $1) "!" }
+  | REFFINAL error { report_error (Tok $1) "!!" }
 ;
 nxbot:
   | VAR                 { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
