@@ -40,6 +40,10 @@
     in
       (sttln, sttpos, endln, endpos)
 
+  (* code_range *)
+  let dummy_range = (-42, 0, 0, 0)
+
+
 
   (* untyped_argument_cons -> untyped_argument_cons -> untyped_argument_cons *)
   let rec append_argument_list arglsta arglstb =
@@ -50,7 +54,7 @@
 
   (* ctrlseq_name -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_argument_cons -> untyped_abstract_tree *)
   let rec convert_into_apply csutast clsnmutast idnmutast argcons =
-    convert_into_apply_sub argcons ((-12, 0, 0, 0), UTApplyClassAndID(clsnmutast, idnmutast, csutast))
+    convert_into_apply_sub argcons (dummy_range, UTApplyClassAndID(clsnmutast, idnmutast, csutast))
 
   (* argument_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   and convert_into_apply_sub argcons utastconstr =
@@ -115,8 +119,8 @@
           if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
               UTConcat(
-                ((-13, 0, 0, 0), UTStringConstant(str_no_last_break)),
-                ((-14, 0, 0, 0), UTBreakAndIndent)
+                (dummy_range, UTStringConstant(str_no_last_break)),
+                (dummy_range, UTBreakAndIndent)
               )
           else
             UTStringConstant(str_shaved)
@@ -183,9 +187,6 @@
   (* token_position * string -> code_range * string *)
   let extract_range_and_name ((ln, sttpos, endpos), name) = ((ln, sttpos, ln, endpos), name)
 
-  (* code_range *)
-  let dummy_range = (-42, 0, 0, 0)
-
 
   let binary_operator opname lft op rgt =
     let oprng = extract_range op in
@@ -233,46 +234,79 @@
   (* code_range -> untyped_let_pattern_cons -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
   let rec make_mutual_let_cons_par vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
     let (varrng, varnm) = extract_range_and_name vartk in
-    let patmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
-    let abs        = make_lambda_abstract_for_parallel argletpatcons patmatcons in
+    let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
+    let fullrng = get_range_of_let_pattern_cons argletpatcons in
+    let abs     = make_lambda_abstract_for_parallel fullrng argletpatcons pmcons in
       UTMutualLetCons(varnm, abs, tailcons)
 
-  (* untyped_let_pattern_cons -> untyped_pattern_match_cons *)
+  (* untyped_let_pattern_cons -> code_range *)
+  and get_range_of_let_pattern_cons argletpatcons =
+    let get_first_range argletpatcons =
+      match argletpatcons with
+      | UTLetPatternCons(UTArgumentVariableCons((argpatrng, _), _), _, _) -> argpatrng
+      | _                                                                 -> assert false
+    in
+    let rec get_last_range argletpatcons =
+      match argletpatcons with
+      | UTEndOfLetPattern                                             -> assert false
+      | UTLetPatternCons(argpatcons, (lastrng, _), UTEndOfLetPattern) -> lastrng
+      | UTLetPatternCons(_, _, tailcons)                              -> get_last_range tailcons
+    in
+      make_range (Rng (get_first_range argletpatcons)) (Rng (get_last_range argletpatcons))
+
+  (* code_range -> untyped_let_pattern_cons -> untyped_pattern_match_cons * code_range *)
   and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) =
     match argletpatcons with
-    | UTEndOfLetPattern                                                 -> UTEndOfPatternMatch
-    | UTLetPatternCons(argpatcons, (rng, utastmain), argletpattailcons) ->
-        let tailpatmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
-        let prodpat        = make_product_pattern_of_argument_cons argpatcons in
-          UTPatternMatchCons(prodpat, (rng, utastmain), tailpatmatcons)
+    | UTEndOfLetPattern                                         -> UTEndOfPatternMatch
+    | UTLetPatternCons(argpatcons, utastdef, argletpattailcons) ->
+        let tailpmcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
+        let prodpatrng = get_range_of_argument_variable_cons argpatcons in
+        let prodpat    = make_product_pattern_of_argument_cons prodpatrng argpatcons in
+          UTPatternMatchCons(prodpat, utastdef, tailpmcons)
+
+  and get_range_of_argument_variable_cons argpatcons =
+    let get_first_range argpatcons =
+      match argpatcons with
+      | UTArgumentVariableCons((fstrng, _), _) -> fstrng
+      | _                                      -> assert false
+    in
+    let rec get_last_range argpatcons =
+      match argpatcons with
+      | UTEndOfArgumentVariable                                       -> assert false
+      | UTArgumentVariableCons((lastrng, _), UTEndOfArgumentVariable) -> lastrng
+      | UTArgumentVariableCons(_, tailargpatcons)                     -> get_last_range tailargpatcons
+    in
+      make_range (Rng (get_first_range argpatcons)) (Rng (get_last_range argpatcons))
+
 
   (* untyped_argument_variable_cons -> untyped_pattern_tree *)
-  and make_product_pattern_of_argument_cons (argpatcons : untyped_argument_variable_cons) =
-    match argpatcons with
-    | UTEndOfArgumentVariable                  -> (dummy_range, UTPEndOfTuple)
-    | UTArgumentVariableCons(argpat, tailcons) ->
-        ((-107, 0, 0, 0), UTPTupleCons(argpat, make_product_pattern_of_argument_cons tailcons))
+  and make_product_pattern_of_argument_cons prodpatrng (argpatcons : untyped_argument_variable_cons) =
+    let rec subfunc argpatcons =
+      match argpatcons with
+      | UTEndOfArgumentVariable                  -> (dummy_range, UTPEndOfTuple)
+      | UTArgumentVariableCons(argpat, tailcons) ->
+          (dummy_range, UTPTupleCons(argpat, subfunc tailcons))
+    in
+      let (_, prodpatmain) = subfunc argpatcons in (prodpatrng, prodpatmain)
 
   (* untyped_let_pattern_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
-  and make_lambda_abstract_for_parallel (argletpatcons : untyped_let_pattern_cons) (patmatcons : untyped_pattern_match_cons) =
+  and make_lambda_abstract_for_parallel (fullrng : code_range) (argletpatcons : untyped_let_pattern_cons)
+                                          (pmcons : untyped_pattern_match_cons) =
     match argletpatcons with
     | UTEndOfLetPattern                  -> assert false
-    | UTLetPatternCons(argpatcons, _, _) -> make_lambda_abstract_for_parallel_sub 0 argpatcons patmatcons
+    | UTLetPatternCons(argpatcons, _, _) ->
+        make_lambda_abstract_for_parallel_sub fullrng (fun u -> u) 0 argpatcons pmcons
 
-  (* int -> untyped_argument_variable_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
-  and make_lambda_abstract_for_parallel_sub (i : int) (argpatcons : untyped_argument_variable_cons) (patmatcons : untyped_pattern_match_cons) =
+  (* code_range -> int -> untyped_argument_variable_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
+  and make_lambda_abstract_for_parallel_sub (fullrng : code_range) (k : untyped_abstract_tree -> untyped_abstract_tree)
+                                              (i : int) (argpatcons : untyped_argument_variable_cons)
+                                                (pmcons : untyped_pattern_match_cons) =
     match argpatcons with
-    | UTEndOfArgumentVariable             -> ((-93, 0, 0, 0), UTPatternMatch(make_dummy_tuple 0 i, patmatcons))
-    | UTArgumentVariableCons(_, tailcons) ->
-        let after = make_lambda_abstract_for_parallel_sub (i + 1) tailcons patmatcons in
+    | UTEndOfArgumentVariable                    -> (fullrng, UTPatternMatch(k (dummy_range, UTEndOfTuple), pmcons))
+    | UTArgumentVariableCons((rng, _), tailcons) ->
+        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in
+        let after = make_lambda_abstract_for_parallel_sub fullrng knew (i + 1) tailcons pmcons in
           ((-95, 0, 0, 0), UTLambdaAbstract(dummy_range, numbered_var_name i, after))
-
-  (* int -> int -> untyped_abstract_tree *)
-  and make_dummy_tuple i n =
-    if i >= n then
-      (dummy_range, UTEndOfTuple)
-    else
-      (dummy_range, UTTupleCons((dummy_range, UTContentOf(numbered_var_name i)), make_dummy_tuple (i + 1) n))
 
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
@@ -318,7 +352,7 @@
 
   (* (code_range * int * untyped_abstract_tree) list -> untyped_abstract_tree *)
   let rec make_list_to_itemize (lst : (code_range * int * untyped_abstract_tree) list) =
-    ((-1, 0, 0, 0), UTItemize(make_list_to_itemize_sub (UTItem(((-1, 0, 0, 0), UTStringEmpty), [])) lst 0))
+    ((-1, 0, 0, 0), UTItemize(make_list_to_itemize_sub (UTItem((dummy_range, UTStringEmpty), [])) lst 0))
 
   and make_list_to_itemize_sub (resitmz : untyped_itemize) (lst : (code_range * int * untyped_abstract_tree) list) (crrntdp : int) =
     match lst with
@@ -796,11 +830,11 @@ nxrtimes:
   | nxrtimes MOD error     { report_error (Tok $2) "mod" }
 ;
 nxun:
-  | MINUS nxapp       { binary_operator "-" ((-16, 0, 0, 0), UTNumericConstant(0)) $1 $2 }
+  | MINUS nxapp       { binary_operator "-" (dummy_range, UTNumericConstant(0)) $1 $2 }
   | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply((extract_range $1, UTContentOf("not")), $2)) }
   | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
-                          (UTConstructor(extract_name $1, ((-2, 0, 0, 0), UTUnitConstant))) }
+                          (UTConstructor(extract_name $1, (dummy_range, UTUnitConstant))) }
   | nxapp             { $1 }
 /* -- for syntax error log -- */
   | MINUS error       { report_error (Tok $1) "-" }
@@ -836,7 +870,7 @@ nxbot:
 ;
 nxlist:
   | LISTPUNCT nxlet nxlist { make_standard (Tok $1) (Untyped $3) (UTListCons($2, $3)) }
-  |                        { ((-17, 0, 0, 0), UTEndOfList) }
+  |                        { (dummy_range, UTEndOfList) }
 /* -- for syntax error log -- */
   | LISTPUNCT error        { report_error (Tok $1) ";" }
 ;
@@ -844,11 +878,11 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { make_standard (TokArg $1) (VarntCons $5)
                                             (UTVariantCons(extract_name $1, $3, $5)) }
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
-                                            (UTVariantCons(extract_name $1, $3, ((-400, 0, 0, 0), UTEndOfVariant))) }
+                                            (UTVariantCons(extract_name $1, $3, (dummy_range, UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                             (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), $3)) }
+                                             (UTVariantCons(extract_name $1, UnitType(dummy_range), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-                    (UTVariantCons(extract_name $1, UnitType(-2, 0, 0, 0), ((-400, 0, 0, 0), UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, UnitType(dummy_range), (dummy_range, UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
@@ -894,7 +928,7 @@ txbot: /* -> type_struct */
   | LPAREN error         { report_error (Tok $1) "(" }
 ;
 tuple: /* -> untyped_tuple_cons */
-  | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, ((-5000, 0, 0, 0), UTEndOfTuple))) }
+  | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (dummy_range, UTEndOfTuple))) }
   | nxlet COMMA tuple { make_standard (Untyped $1) (Untyped $3) (UTTupleCons($1, $3)) }
 /* -- for syntax error log -- */
   | nxlet COMMA error { report_error (Tok $2) "," }
@@ -935,7 +969,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
   | VAR                { make_standard (TokArg $1) (TokArg $1) (UTPVariable(extract_name $1)) }
-  | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, ((-2, 0, 0, 0), UTPUnitConstant))) }
+  | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, (dummy_range, UTPUnitConstant))) }
   | LPAREN pattr RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN pattr COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
@@ -949,7 +983,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | OPENQT error             { report_error (Tok $1) "`" }
 ;
 pattuple: /* -> untyped_pattern_tree */
-  | pattr                { make_standard (Pat $1) (Pat $1) (UTPTupleCons($1, ((-5002, 0, 0, 0), UTPEndOfTuple))) }
+  | pattr                { make_standard (Pat $1) (Pat $1) (UTPTupleCons($1, (dummy_range, UTPEndOfTuple))) }
   | pattr COMMA pattuple { make_standard (Pat $1) (Pat $3) (UTPTupleCons($1, $3)) }
 /* -- for syntax error log -- */
   | pattr COMMA error    { report_error (Tok $2) "," }
@@ -981,13 +1015,13 @@ sxitemize:
 ;
 sxsepsub:
   | sxblock SEP sxsepsub { make_standard (Untyped $1) (Untyped $3) (UTListCons($1, $3)) }
-  |                      { ((-18, 0, 0, 0), UTEndOfList) }
+  |                      { (dummy_range, UTEndOfList) }
 /* -- for syntax error log -- */
   | sxblock SEP error    { report_error (Tok $2) "|" }
 ;
 sxblock:
   | sxbot sxblock { make_standard (Untyped $1) (Untyped $2) (UTConcat($1, $2)) }
-  |               { ((-19, 0, 0, 0), UTStringEmpty) }
+  |               { (dummy_range, UTStringEmpty) }
 ;
 sxbot:
   | CHAR  { let (rng, ch) = extract_range_and_name $1 in (rng, UTStringConstant(ch)) }
@@ -1003,10 +1037,10 @@ sxbot:
   | CTRLSEQ error  { report_error (TokArg $1) "" }
 sxclsnm:
   | CLASSNAME { make_standard (TokArg $1) (TokArg $1) (class_name_to_abstract_tree (extract_name $1)) }
-  |           { ((-20, 0, 0, 0), UTNoContent) }
+  |           { (dummy_range, UTNoContent) }
 sxidnm:
   | IDNAME    { make_standard (TokArg $1) (TokArg $1) (id_name_to_abstract_tree (extract_name $1)) }
-  |           { ((-21, 0, 0, 0), UTNoContent) }
+  |           { (dummy_range, UTNoContent) }
 ;
 narg: /* -> untyped_argument_cons */
   | OPENNUM nxlet CLOSENUM narg {
