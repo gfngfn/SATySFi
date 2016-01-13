@@ -201,9 +201,9 @@ rule numexpr = parse
   | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
         if !first_state = STATE_NUMEXPR then EOI else
-          raise (LexError(error_reporting lexbuf ("input ended while reading numeric expression")))
+          raise (LexError(error_reporting lexbuf ("text input ended while reading a program area")))
       }
-  | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in numeric expression"))) }
+  | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area"))) }
 
 and strexpr = parse
   | "%" {
@@ -227,7 +227,8 @@ and strexpr = parse
         end
       else
         if !strdepth = Stacklist.top strdepth_stack then
-          begin Stacklist.delete_top strdepth_stack ;
+          begin
+            Stacklist.delete_top strdepth_stack ;
             next_state := STATE_NUMEXPR ;
             CLOSESTR(get_pos lexbuf)
           end
@@ -260,7 +261,11 @@ and strexpr = parse
         CTRLSEQ(get_pos lexbuf, tok)
     }
   | ("\\" symbol) {
-      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in CHAR(get_pos lexbuf, tok)
+      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
+        begin
+          ignore_space := false ;
+          CHAR(get_pos lexbuf, tok)
+        end
     }
   | ("@" identifier) {
         let tok = Lexing.lexeme lexbuf in
@@ -279,14 +284,14 @@ and strexpr = parse
     }
   | eof {
       if !first_state = STATE_STREXPR then EOI else
-        raise (LexError(error_reporting lexbuf "input ended while reading string expression"))
+        raise (LexError(error_reporting lexbuf "program input ended while reading a text area"))
     }
   | str+ {
       ignore_space := false ;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
-  | _ as c { raise (LexError(error_reporting lexbuf "illegal token '" ^ (String.make 1 c) ^ "' in string expression"))}
+  | _ as c { raise (LexError(error_reporting lexbuf "illegal token '" ^ (String.make 1 c) ^ "' in a text area"))}
 
 and active = parse
   | "%" {
@@ -323,7 +328,7 @@ and active = parse
       END(get_pos lexbuf)
     }
   | eof {
-      raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
+      raise (LexError(error_reporting lexbuf "input ended while reading active area"))
     }
   | _ {
       let tok = Lexing.lexeme lexbuf in
@@ -342,6 +347,9 @@ and literal = parse
           begin next_state := !after_literal_state ; CLOSEQT(get_pos lexbuf) end
     }
   | "\n" { increment_line lexbuf ; CHAR(get_pos lexbuf, "\n") }
+  | eof {
+      raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
+    }
   | _ { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
 
 and comment = parse

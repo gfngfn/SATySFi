@@ -151,7 +151,7 @@ and sub-cfl lst =
   | head :: tail -> (insert-bar head) ^ {\ } ^ (sub-cfl tail)
 
 and insert-bar s =
-  if same s `*br*` then `\\&` ^ {\ }
+  if same s `!br`  then `\\&` ^ {\ }
                    else `|\enskip` ^ {\ } ^ s ^ `\enskip` ^ {\ }
 
 
@@ -254,9 +254,9 @@ and display-prod-type tylst =
       let shd = display-type tyhd in
       let stl = display-prod-type tytl in
       ( match tyhd with
-        | Func(_, _) -> {(@shd;) * @stl;}
-        | Prod(_)    -> {(@shd;) * @stl;}
-        | _          -> {@shd; * @stl;}
+        | Func(_, _) -> {(@shd;) \* @stl;}
+        | Prod(_)    -> {(@shd;) \* @stl;}
+        | _          -> {@shd; \* @stl;}
       )
 
 let \type tystr = type-synt (display-type tystr)

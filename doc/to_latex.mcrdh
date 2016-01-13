@@ -23,14 +23,21 @@ let \p p = `\indent` ^(deeper p)^ `\par`
 
 let \footnote footnote = `\footnote{` ^footnote^ `}`
 
-let \itemize list =
-  `{\samepage\begin{itemize}` ^(deeper (sub-itemize list))^ `\end{itemize}}`
+let \itemize itmz =
+  match itmz with Item(_, itmzlst) ->
+    `{\samepage\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}}`
 
-and sub-itemize list =
-  match list with
+and sub-itemize itmzlst =
+  match itmzlst with
   | []           -> {}
-  | head :: []   -> `\item` ^ {\ } ^ head
-  | head :: tail -> `\item` ^ {\ } ^ head ^ break ^ (sub-itemize tail)
+  | head :: tail -> (single-itemize head) ^ (sub-itemize tail)
+
+and single-itemize itmz =
+  match itmz with
+  | Item(it, []) ->
+    `\item` ^ {\ } ^ it ^ soft-break
+  | Item(it, itmzlst) ->
+    `\item` ^ {\ } ^ it ^ soft-break ^ `\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}` ^ soft-break
 
 let \math math = {\ $@math;$\ }
 

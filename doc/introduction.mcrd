@@ -293,11 +293,11 @@
         ひとまずは“値には特定の型がついている”と考えて差し支えありません。
         \newword{基本型}，すなわちMacrodownに最初から備わっている型は
         \itemize{
-          |\type(String);型
-          |\type(Int);型
-          |\type(Bool);型
-          |\type(Unit);型
-          |}
+          * \type(String);型
+          * \type(Int);型
+          * \type(Bool);型
+          * \type(Unit);型
+        }
         で，\type(String);型は文字列値，\type(Int);型は整数値，\type(Bool);型は真理値に対応しています。
         \type(Unit);型は原則として\mcrd`()`という値だけにつけられる\footnote{
           正確には\mcrd`()`だけでなくファイルの終端に附加される\mcrd`finish`という値にも\type(Unit);型がつきますが，
@@ -348,23 +348,23 @@
       \p{
         函数の型をはじめとして，“より小さい型”から“より大きい型”をつくる構造は
         \itemize{
-          | \type(Func(Meta`s`, Meta`t`));（\type(Meta`s`);型から\type(Meta`t`);型への函数の型）
-          | \type(List(Meta`t`));（\type(Meta`t`);型の\newword{リスト型}）
-          | \type(Ref(Meta`t`));（\type(Meta`t`);型への\newword{参照型}）
-          | \type(Prod[Meta`s1`; Meta`s2`; Meta{\metadots;}; Meta`sN`]);
+          * \type(Func(Meta`s`, Meta`t`));（\type(Meta`s`);型から\type(Meta`t`);型への函数の型）
+          * \type(List(Meta`t`));（\type(Meta`t`);型の\newword{リスト型}）
+          * \type(Ref(Meta`t`));（\type(Meta`t`);型への\newword{参照型}）
+          * \type(Prod[Meta`s1`; Meta`s2`; Meta{\metadots;}; Meta`sN`]);
               （\type(Meta`s1`);，\type(Meta`s2`);，…，\type(Meta`sN`);型の\newword{直積型}）
-          |}
+        }
         があります。これらの型の構成はいずれも値の扱い方と合わせて後述します。
       }
       \p{
         また，前節では乗算 \mcrd`*` を用いましたが，算術演算子には
         \itemize{
-          | 乗算 \mcrd-type(`*`)(Func(Int, Func(Int, Int))); 
-          | 除算 \mcrd-type(`/`)(Func(Int, Func(Int, Int)));
-          | 剰餘 \mcrd-type(`mod`)(Func(Int, Func(Int, Int)));
-          | 加算 \mcrd-type(`+`)(Func(Int, Func(Int, Int)));
-          | 減算 \mcrd-type(`-`)(Func(Int, Func(Int, Int)));
-          |}
+          * 乗算 \mcrd-type(`*`)(Func(Int, Func(Int, Int))); 
+          * 除算 \mcrd-type(`/`)(Func(Int, Func(Int, Int)));
+          * 剰餘 \mcrd-type(`mod`)(Func(Int, Func(Int, Int)));
+          * 加算 \mcrd-type(`+`)(Func(Int, Func(Int, Int)));
+          * 減算 \mcrd-type(`-`)(Func(Int, Func(Int, Int)));
+        }
         があります。\mcrd`-` は単項演算子としても使用することができます。
         なお，二項演算子は \mcrd`(` と \mcrd`)` で囲うことで普通の函数のように使うことができます。
         例えば \mcrd`(function n -> 3 + n)` と \mcrd`(+) 3` は同等です。
@@ -545,19 +545,19 @@
       \p{
         整数の比較で真理値を返す演算子として
         \itemize{
-          | 等価演算子 \mcrd-type(`==`)(Func(Int, Func(Int, Bool)));
-          | 非等価演算子 \mcrd-type(`<>`)(Func(Int, Func(Int, Bool)));
-          | 不等号演算子 \mcrd-type(`>=`)(Func(Int, Func(Int, Bool)));
-          | 不等号演算子 \mcrd-type(`<=`)(Func(Int, Func(Int, Bool)));
-          | 不等号演算子 \mcrd-type(`>`)(Func(Int, Func(Int, Bool)));
-          | 不等号演算子 \mcrd-type(`<`)(Func(Int, Func(Int, Bool)));
-          |}
+          * 等価演算子 \mcrd-type(`==`)(Func(Int, Func(Int, Bool)));
+          * 非等価演算子 \mcrd-type(`<>`)(Func(Int, Func(Int, Bool)));
+          * 不等号演算子 \mcrd-type(`>=`)(Func(Int, Func(Int, Bool)));
+          * 不等号演算子 \mcrd-type(`<=`)(Func(Int, Func(Int, Bool)));
+          * 不等号演算子 \mcrd-type(`>`)(Func(Int, Func(Int, Bool)));
+          * 不等号演算子 \mcrd-type(`<`)(Func(Int, Func(Int, Bool)));
+        }
         があります。またいわゆる論理演算子として
         \itemize{
-          | 選言 \mcrd-type(`||`)(Func(Bool, Func(Bool, Bool)));
-          | 連言 \mcrd-type(`&&`)(Func(Bool, Func(Bool, Bool)));
-          | 否定 \mcrd-type(`not`)(Func(Bool, Bool));
-          |}
+          * 選言 \mcrd-type(`||`)(Func(Bool, Func(Bool, Bool)));
+          * 連言 \mcrd-type(`&&`)(Func(Bool, Func(Bool, Bool)));
+          * 否定 \mcrd-type(`not`)(Func(Bool, Bool));
+        }
         があります。
       }
     }
@@ -565,11 +565,11 @@
       \p{
         文字列を“直接見る”或いは“加工する”プリミティヴとして
         \itemize{
-          | \mcrd-type(`\deeper`)(Func(String, String));
-          | \mcrd-type(`string-length`)(Func(String, Int));
-          | \mcrd-type(`string-sub`)(Func(String, Func(Int, Func(Int, String))));
-          | \mcrd-type(`same`)(Func(String, Func(String, Bool)));
-          |}
+          * \mcrd-type(`\deeper`)(Func(String, String));
+          * \mcrd-type(`string-length`)(Func(String, Int));
+          * \mcrd-type(`string-sub`)(Func(String, Func(Int, Func(Int, String))));
+          * \mcrd-type(`same`)(Func(String, Func(String, Bool)));
+        }
         があります。
         \mcrd`\deeper` は出力される文字列に於けるインデントを深めて返し，
         \code{\synt`string-length` \meta{s}} は与えられた文字列 \code{\meta{s}} の長さを返し，
@@ -1702,12 +1702,12 @@
         この章は，Macrodownのより詳細で厳密な仕様が気になるという方に向けた記述です。
         Macrodownは大きく分けて
         \itemize{
-          | テキスト階層
-          | プログラム階層
-          | アクティヴ階層
-          | リテラル階層
-          | コメント階層
-          |}
+          * テキスト階層
+          * プログラム階層
+          * アクティヴ階層
+          * リテラル階層
+          * コメント階層
+        }
         を行き来しながらソースコードをトークンとして解釈します。
         文書（拡張子が\extension{.mcrd}のもの）はテキスト階層で読み込みが開始され，一方で
         ヘッダ（拡張子が\extension{.mcrdh}のもの）はプログラム階層で読み込みが開始されます。
@@ -1748,11 +1748,11 @@
       \p{
         ただし，空白文字，タブ文字，改行文字をまとめて\newword{空白類文字}と呼ぶことにすると，
         \itemize{
-          | 行頭の空白類文字
-          | 空白類文字の直後の空白類文字
-          | \mcrd`{` の直後の空白類文字
-          | \mcrd`}` の手前に連続して並んでいる空白類文字
-          |}
+          * 行頭の空白類文字
+          * 空白類文字の直後の空白類文字
+          * \mcrd`{` の直後の空白類文字
+          * \mcrd`}` の手前に連続して並んでいる空白類文字
+        }
         はいずれも空白トークンおよび改行トークンと認識されることなく読み捨てられます。
         したがって \mcrd`{` の直後での改行やインデントなどを比較的自由に入れることができます。
       }
@@ -1939,29 +1939,29 @@
             |}
         | \cfl{\Expr;}{
             | \token-let; \Dec; \repeat-star{\token-and; \Dec;} \token-in; \Expr;
-            |*br*
+            |!br
             | \token-if; \Expr; \token-then; \Expr; \token-else; \Expr;
-            |*br*
+            |!br
             | \token-function; \Args; \token-arrow; \Expr;
-            |*br*
+            |!br
             | \Expr; \token-bin; \Expr; | \Expr; \Expr;
             | \token-ident;
             | \token-lparen; \Expr; \token-rparen;
-            |*br*
+            |!br
             | \GroupInExpr; | \token-int; | \token-true; | \token-false; | \token-unit; | \token-finish;
-            |*br*
+            |!br
             | \token-let-mutable; \token-ident; \token-oweq; \Expr; \token-in; \Expr;
             | \token-ident; \token-oweq; \Expr;
-            |*br*
+            |!br
             | \token-while; \Expr; \token-do; \Expr;
             | \Expr; \token-before; \Expr;
-            |*br*
+            |!br
             | \token-if-class-is-valid; \cfl-or{|\epsilon;|\token-then;|} \Expr; \token-else; \Expr;
-            |*br*
+            |!br
             | \token-if-id-is-valid; \cfl-or{|\epsilon;|\token-then;|} \Expr; \token-else; \Expr;
-            |*br*
+            |!br
             | \token-new-global-hash; \Expr; \token-owhash; \Expr;
-            |*br*
+            |!br
             | \token-renew-global-hash; \Expr; \token-owhash; \Expr;
             |}
         | \cfl{\Dec;}{| \cfl-or{|\token-ident;|\token-cs;|} \Args; \token-defeq; \Expr; |}
@@ -1970,7 +1970,7 @@
         | \cfl{\Single;}{
             | \token-char; | \token-space; | \token-break;
             | \token-varinstr; \token-ident; \token-end;
-            |*br*
+            |!br
             | \token-cs; \cfl-or{| \epsilon; | \token-class; |} \cfl-or{| \epsilon; | \token-id; |} \ExprArgs; \TextArgs;
             |}
         | \cfl{\ExprArgs;}{| \repeat-star{\token-opnprog; \Expr; \token-clsprog;} |}
