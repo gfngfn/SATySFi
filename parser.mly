@@ -183,11 +183,14 @@
   (* token_position * string -> code_range * string *)
   let extract_range_and_name ((ln, sttpos, endpos), name) = ((ln, sttpos, ln, endpos), name)
 
+  (* code_range *)
+  let dummy_range = (-42, 0, 0, 0)
+
 
   let binary_operator opname lft op rgt =
     let oprng = extract_range op in
     let rng = make_range (Untyped lft) (Untyped rgt) in
-      (rng, UTApply(((-15, 0, 0, 0), UTApply((oprng, UTContentOf(opname)), lft)), rgt))
+      (rng, UTApply((dummy_range, UTApply((oprng, UTContentOf(opname)), lft)), rgt))
 
 
   (* range_kind -> range_kind -> 'a -> code_range * 'a *)
@@ -213,21 +216,44 @@
   let make_variant_declaration firsttk varntdecs utastaft =
     make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
 
+  (* code_range -> code_range * type_name -> type_struct -> untyped_abstract_tree -> untyped_abstract_tree  *)
   let make_type_synonym_declaration firsttk tytk tystr utastaft =
     let tynm = extract_name tytk in
       make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareTypeSynonymIn(tynm, tystr, utastaft))
 
+
+  (* code_range -> untyped_argument_variable_cons -> untyed_abstract_tree -> untyped_mutual_let_cons
+    -> untyped_mutual_let_cons *)
   let make_mutual_let_cons vartk argcons utastdef tailcons =
     let (varrng, varnm) = extract_range_and_name vartk in
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(varnm, curried, tailcons)
 
-  let rec make_mutual_let_cons_par vartk (argletpatcons : untyped_let_pattern_cons) tailcons =
+
+  (* code_range -> untyped_let_pattern_cons -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
+  let rec make_mutual_let_cons_par vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
     let (varrng, varnm) = extract_range_and_name vartk in
     let patmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
     let abs        = make_lambda_abstract_for_parallel argletpatcons patmatcons in
       UTMutualLetCons(varnm, abs, tailcons)
 
+  (* untyped_let_pattern_cons -> untyped_pattern_match_cons *)
+  and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) =
+    match argletpatcons with
+    | UTEndOfLetPattern                                                 -> (dummy_range, UTEndOfPatternMatch)
+    | UTLetPatternCons(argpatcons, (rng, utastmain), argletpattailcons) ->
+        let tailpatmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
+        let prodpat        = make_product_pattern_of_argument_cons argpatcons in
+          ((-103, 0, 0, 0), UTPatternMatchCons(prodpat, (rng, utastmain), tailpatmatcons))
+
+  (* untyped_argument_variable_cons -> untyped_pattern_tree *)
+  and make_product_pattern_of_argument_cons (argpatcons : untyped_argument_variable_cons) =
+    match argpatcons with
+    | UTEndOfArgumentVariable                  -> (dummy_range, UTPEndOfTuple)
+    | UTArgumentVariableCons(argpat, tailcons) ->
+        ((-107, 0, 0, 0), UTPTupleCons(argpat, make_product_pattern_of_argument_cons tailcons))
+
+  (* untyped_let_pattern_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
   and make_lambda_abstract_for_parallel (argletpatcons : untyped_let_pattern_cons) (patmatcons : untyped_pattern_match_cons) =
     match argletpatcons with
     | UTEndOfLetPattern                  -> assert false
@@ -239,27 +265,16 @@
     | UTEndOfArgumentVariable             -> ((-93, 0, 0, 0), UTPatternMatch(make_dummy_tuple 0 i, patmatcons))
     | UTArgumentVariableCons(_, tailcons) ->
         let after = make_lambda_abstract_for_parallel_sub (i + 1) tailcons patmatcons in
-          ((-95, 0, 0, 0), UTLambdaAbstract((-89, 0, 0, 0), "%pattup" ^ (string_of_int i), after))
+          ((-95, 0, 0, 0), UTLambdaAbstract(dummy_range, numbered_var_name i, after))
 
   (* int -> int -> untyped_abstract_tree *)
   and make_dummy_tuple i n =
     if i >= n then
-      ((-97, 0, 0, 0), UTEndOfTuple)
+      (dummy_range, UTEndOfTuple)
     else
-      ((-98, 0, 0, 0), UTTupleCons(((-91, 0, 0, 0), UTContentOf("%pattup" ^ (string_of_int i))), make_dummy_tuple (i + 1) n))
+      (dummy_range, UTTupleCons((dummy_range, UTContentOf(numbered_var_name i)), make_dummy_tuple (i + 1) n))
 
-  and make_pattern_match_cons_of_argument_pattern_cons argletpatcons =
-    match argletpatcons with
-    | UTEndOfLetPattern -> ((-101, 0, 0, 0), UTEndOfPatternMatch)
-    | UTLetPatternCons(argpatcons, utastdef, argletpattailcons) ->
-        let tailpatmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
-        let prodpat = make_product_pattern_of_argument_cons argpatcons in
-          ((-103, 0, 0, 0), UTPatternMatchCons(prodpat, utastdef, tailpatmatcons))
-
-  and make_product_pattern_of_argument_cons argpatcons =
-    match argpatcons with
-    | UTEndOfArgumentVariable                  -> ((-105, 0, 0, 0), UTPEndOfTuple)
-    | UTArgumentVariableCons(argpat, tailcons) -> ((-107, 0, 0, 0), UTPTupleCons(argpat, make_product_pattern_of_argument_cons tailcons))
+  and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
   let make_mutual_variant_cons typenmtk constrdecs tailcons =
