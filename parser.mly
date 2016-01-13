@@ -8,7 +8,7 @@
     | Untyped   of untyped_abstract_tree
     | UnMdl     of untyped_module_tree
     | Pat       of untyped_pattern_tree
-    | PatCons   of untyped_pattern_match_cons
+    | Rng       of code_range
     | TypeStr   of type_struct
     | VarntCons of untyped_variant_cons
 
@@ -21,7 +21,7 @@
       | Untyped((sl, sp, _, _), _)   -> (sl, sp)
       | UnMdl((sl, sp, _, _), _)     -> (sl, sp)
       | Pat((sl, sp, _, _), _)       -> (sl, sp)
-      | PatCons((sl, sp, _, _), _)   -> (sl, sp)
+      | Rng(sl, sp, _, _)            -> (sl, sp)
       | VarntCons((sl, sp, _, _), _) -> (sl, sp)
       | TypeStr(tystr)               ->
           let (sl, sp, _, _) = Typeenv.get_range_from_type tystr in (sl, sp)
@@ -33,7 +33,7 @@
       | Untyped((_, _, el, ep), _)   -> (el, ep)
       | UnMdl((_, _, el, ep), _)     -> (el, ep)
       | Pat((_, _, el, ep), _)       -> (el, ep)
-      | PatCons((_, _, el, ep), _)   -> (el, ep)
+      | Rng(_, _, el, ep)            -> (el, ep)
       | VarntCons((_, _, el, ep), _) -> (el, ep)
       | TypeStr(tystr)               ->
           let (_, _, el, ep) = Typeenv.get_range_from_type tystr in (el, ep)
@@ -79,7 +79,7 @@
     | UTArgumentVariableCons((varrng, argpattr), avtail)        ->
         let afterabs     = curry_lambda_abstract rng avtail utastdef in
         let dummyutast   = (varrng, UTContentOf("%patarg")) in
-        let dummypatcons = (varrng, UTPatternMatchCons((varrng, argpattr), afterabs, ((-72, 0, 0, 0), UTEndOfPatternMatch))) in
+        let dummypatcons = UTPatternMatchCons((varrng, argpattr), afterabs, UTEndOfPatternMatch) in
           (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
 
 
@@ -240,11 +240,11 @@
   (* untyped_let_pattern_cons -> untyped_pattern_match_cons *)
   and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) =
     match argletpatcons with
-    | UTEndOfLetPattern                                                 -> (dummy_range, UTEndOfPatternMatch)
+    | UTEndOfLetPattern                                                 -> UTEndOfPatternMatch
     | UTLetPatternCons(argpatcons, (rng, utastmain), argletpattailcons) ->
         let tailpatmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
         let prodpat        = make_product_pattern_of_argument_cons argpatcons in
-          ((-103, 0, 0, 0), UTPatternMatchCons(prodpat, (rng, utastmain), tailpatmatcons))
+          UTPatternMatchCons(prodpat, (rng, utastmain), tailpatmatcons)
 
   (* untyped_argument_variable_cons -> untyped_pattern_tree *)
   and make_product_pattern_of_argument_cons (argpatcons : untyped_argument_variable_cons) =
@@ -431,7 +431,7 @@
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree> tuple
-%type <Types.untyped_pattern_match_cons> pats
+%type <Types.code_range * Types.untyped_pattern_match_cons> pats
 %type <Types.untyped_pattern_tree> pattr
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
@@ -635,8 +635,10 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
   | VAR DEFEQ BAR variants LETAND error { report_error (Tok $5) "and" }
 ;
 nxlet:
-  | MATCH nxlet WITH pats      { make_standard (Tok $1) (PatCons $4) (UTPatternMatch($2, $4)) }
-  | MATCH nxlet WITH BAR pats  { make_standard (Tok $1) (PatCons $5) (UTPatternMatch($2, $5)) }
+  | MATCH nxlet WITH pats      {
+        let (lastrng, pmcons) = $4 in make_standard (Tok $1) (Rng lastrng) (UTPatternMatch($2, pmcons)) }
+  | MATCH nxlet WITH BAR pats  {
+        let (lastrng, pmcons) = $5 in make_standard (Tok $1) (Rng lastrng) (UTPatternMatch($2, pmcons)) }
   | nxletsub                   { $1 }
 /* -- for syntax error log -- */
   | MATCH error                { report_error (Tok $1) "match" }
@@ -897,15 +899,19 @@ tuple: /* -> untyped_tuple_cons */
 /* -- for syntax error log -- */
   | nxlet COMMA error { report_error (Tok $2) "," }
 ;
-pats: /* -> untyped_patter_match_cons */
-  | pattr ARROW nxletsub 
-      { make_standard (Pat $1) (Untyped $3) (UTPatternMatchCons($1, $3, ((-5001, 0, 0, 0), UTEndOfPatternMatch))) }
-  | pattr ARROW nxletsub BAR pats 
-      { make_standard (Pat $1) (PatCons $5) (UTPatternMatchCons($1, $3, $5)) }
-  | pattr WHEN nxletsub ARROW nxletsub
-      { make_standard (Pat $1) (Untyped $5) (UTPatternMatchConsWhen($1, $3, $5, ((-5001, 0, 0, 0), UTEndOfPatternMatch))) }
-  | pattr WHEN nxletsub ARROW nxletsub BAR pats
-      { make_standard (Pat $1) (PatCons $7) (UTPatternMatchConsWhen($1, $3, $5, $7)) }
+pats: /* -> code_range * untyped_patter_match_cons */
+  | pattr ARROW nxletsub {
+        let (lastrng, _) = $3 in
+          (lastrng, UTPatternMatchCons($1, $3, UTEndOfPatternMatch)) }
+  | pattr ARROW nxletsub BAR pats {
+        let (lastrng, pmcons) = $5 in
+          (lastrng, UTPatternMatchCons($1, $3, pmcons)) }
+  | pattr WHEN nxletsub ARROW nxletsub {
+        let (lastrng, _) = $5 in
+          (lastrng, UTPatternMatchConsWhen($1, $3, $5, UTEndOfPatternMatch)) }
+  | pattr WHEN nxletsub ARROW nxletsub BAR pats {
+        let (lastrng, pmcons) = $7 in
+          (lastrng, UTPatternMatchConsWhen($1, $3, $5, pmcons)) }
 /* -- for syntax error log -- */
   | pattr ARROW error                            { report_error (Tok $2) "->" }
   | pattr ARROW nxletsub BAR error               { report_error (Tok $4) "|" }

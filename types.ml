@@ -115,8 +115,7 @@ and untyped_pattern_tree_main =
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
   | UTPConstructor         of constructor_name * untyped_pattern_tree
-and untyped_pattern_match_cons = code_range * untyped_pattern_match_cons_main
-and untyped_pattern_match_cons_main =
+and untyped_pattern_match_cons =
   | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTPatternMatchConsWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTEndOfPatternMatch

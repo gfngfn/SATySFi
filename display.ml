@@ -32,7 +32,7 @@ and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
     ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"
 
-and string_of_pmcons (_, pmcons) =
+and string_of_pmcons pmcons =
   match pmcons with
   | UTEndOfPatternMatch -> ""
   | UTPatternMatchCons(pat, ut, tail)

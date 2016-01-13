@@ -400,8 +400,8 @@ and add_list_to_type_environment mdlnm tyenv tvtylst =
 
 (* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
 	  -> (pattern_match_cons * type_struct * Subst.t) *)
-and typecheck_pattern_match_cons varntenv tyenv (rng, utpmconsmain) tyobj theta tyres =
-  match utpmconsmain with
+and typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj theta tyres =
+  match utpmcons with
   | UTEndOfPatternMatch -> (EndOfPatternMatch, (Subst.apply_to_type_struct theta tyres), theta)
 
   | UTPatternMatchCons(utpat, utast1, tailcons) ->
