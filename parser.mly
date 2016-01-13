@@ -71,14 +71,23 @@
   (* code_range -> untyped_argument_variable_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
   let rec curry_lambda_abstract rng argvarcons utastdef =
     match argvarcons with
-    | UTEndOfArgumentVariable                        -> utastdef
-    | UTArgumentVariableCons(varrng, argvar, avtail) ->
-        (rng, UTLambdaAbstract(varrng, argvar, curry_lambda_abstract (-11, 0, 0, 0) avtail utastdef))
+    | UTEndOfArgumentVariable                                      -> utastdef
+    | UTArgumentVariableCons((varrng, UTPVariable(varnm)), avtail) ->
+        (rng, UTLambdaAbstract(varrng, varnm, curry_lambda_abstract rng avtail utastdef))
+    | UTArgumentVariableCons((varrng, UTPWildCard), avtail)        ->
+        (rng, UTLambdaAbstract(varrng, "%wild", curry_lambda_abstract rng avtail utastdef))
+    | UTArgumentVariableCons((varrng, argpattr), avtail)        ->
+        let afterabs     = curry_lambda_abstract rng avtail utastdef in
+        let dummyutast   = (varrng, UTContentOf("%patarg")) in
+        let dummypatcons = (varrng, UTPatternMatchCons((varrng, argpattr), afterabs, ((-72, 0, 0, 0), UTEndOfPatternMatch))) in
+          (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
 
+(*
   let rec string_of_avc argvarcons =
     match argvarcons with
-    | UTEndOfArgumentVariable                   -> ""
-    | UTArgumentVariableCons(_, argvar, avtail) -> argvar ^ " " ^ (string_of_avc avtail)
+    | UTEndOfArgumentVariable                       -> ""
+    | UTArgumentVariableCons((_, argpattr), avtail) -> "(argpat)" ^ " " ^ (string_of_avc avtail)
+*)
 
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
@@ -318,7 +327,7 @@
 %token <Types.token_position> LAMBDA ARROW
 %token <Types.token_position> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
 %token <Types.token_position> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
-%token <Types.token_position> VARIANT OF TYPE MATCH WITH BAR WILDCARD WHEN AS
+%token <Types.token_position> VARIANT OF TYPE MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Types.token_position> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Types.token_position> REFNOW REFFINAL
 %token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
@@ -640,12 +649,13 @@ nxlambda:
   | LAMBDA argvar ARROW error                       { report_error (Tok $3) "->" }
 ;
 argvar: /* -> argument_variable_cons */
-  | VAR argvar {
-        let (varrng, varnm) = extract_range_and_name $1 in
-          UTArgumentVariableCons(varrng, varnm, $2) }
-  | { UTEndOfArgumentVariable }
-/* -- for syntax error log -- */
-  | VAR error { report_error (TokArg $1) "" }
+  | patbot argvar                           { UTArgumentVariableCons($1, $2) }
+/*
+  | patbot argvar                           { UTArgumentVariableCons($1, NoTypeAnnotationForArgument, $2) }
+  | LPAREN pattr RPAREN argvar              { UTArgumentVariableCons($2, NoTypeAnnotationForArgument, $4) }
+  | LPAREN pattr COLON txfunc RPAREN argvar { UTArgumentVariableCons($2, TypeAnnotationForArgument($4), $6) }
+*/
+  |                                         { UTEndOfArgumentVariable }
 ;
 nxlor:
   | nxland LOR nxlor    { binary_operator "||" $1 $2 $3 }
@@ -847,9 +857,10 @@ pats: /* -> untyped_patter_match_cons */
   | pattr WHEN nxletsub ARROW nxletsub BAR error { report_error (Tok $6) "|" }
 ;
 pattr: /* -> Types.untyped_pattern_tree */
-  | patbot CONS pattr { make_standard (Pat $1) (Pat $3) (UTPListCons($1, $3)) }
-  | pattr AS VAR      { make_standard (Pat $1) (TokArg $3) (UTPAsVariable(extract_name $3, $1)) }
-  | patbot            { $1 }
+  | patbot CONS pattr  { make_standard (Pat $1) (Pat $3) (UTPListCons($1, $3)) }
+  | pattr AS VAR       { make_standard (Pat $1) (TokArg $3) (UTPAsVariable(extract_name $3, $1)) }
+  | CONSTRUCTOR patbot { make_standard (TokArg $1) (Pat $2) (UTPConstructor(extract_name $1, $2)) }
+  | patbot             { $1 }
 /* -- for syntax error log -- */
   | patbot CONS error { report_error (Tok $2) "::" }
   | patbot AS error   { report_error (Tok $2) "as" }
@@ -861,7 +872,6 @@ patbot: /* -> Types.untyped_pattern_tree */
   | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
   | VAR                { make_standard (TokArg $1) (TokArg $1) (UTPVariable(extract_name $1)) }
-  | CONSTRUCTOR patbot { make_standard (TokArg $1) (Pat $2) (UTPConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, ((-2, 0, 0, 0), UTPUnitConstant))) }
   | LPAREN pattr RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN pattr COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }

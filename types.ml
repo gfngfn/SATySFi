@@ -38,10 +38,9 @@ type class_name_arg =
 
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons =
-  | UTArgumentVariableCons of code_range * var_name * untyped_argument_variable_cons
+  | UTArgumentVariableCons of untyped_pattern_tree * untyped_argument_variable_cons
   | UTEndOfArgumentVariable
-
-type untyped_argument_cons =
+and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
 and untyped_mutual_let_cons =

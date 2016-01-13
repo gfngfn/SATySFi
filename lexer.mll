@@ -155,6 +155,7 @@ rule numexpr = parse
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
   | "."   { DOT(get_pos lexbuf) }
+  | ":"   { COLON(get_pos lexbuf) }
 
   | identifier {
         let tok = Lexing.lexeme lexbuf in
@@ -375,6 +376,7 @@ and comment = parse
       | IGNORED -> cut_token lexbuf
       | _       -> output
 
+(*
   (* for test *)
   let rec make_token_list lexbuf =
     let output = cut_token lexbuf in
@@ -399,4 +401,6 @@ and comment = parse
 
         make_token_list lexbuf
       end
+*)
+
 }
