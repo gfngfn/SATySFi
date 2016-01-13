@@ -82,12 +82,6 @@
         let dummypatcons = (varrng, UTPatternMatchCons((varrng, argpattr), afterabs, ((-72, 0, 0, 0), UTEndOfPatternMatch))) in
           (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
 
-(*
-  let rec string_of_avc argvarcons =
-    match argvarcons with
-    | UTEndOfArgumentVariable                       -> ""
-    | UTArgumentVariableCons((_, argpattr), avtail) -> "(argpat)" ^ " " ^ (string_of_avc avtail)
-*)
 
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
@@ -228,6 +222,46 @@
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(varnm, curried, tailcons)
 
+  let rec make_mutual_let_cons_par vartk (argletpatcons : untyped_let_pattern_cons) tailcons =
+    let (varrng, varnm) = extract_range_and_name vartk in
+    let patmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
+    let abs        = make_lambda_abstract_for_parallel argletpatcons patmatcons in
+      UTMutualLetCons(varnm, abs, tailcons)
+
+  and make_lambda_abstract_for_parallel (argletpatcons : untyped_let_pattern_cons) (patmatcons : untyped_pattern_match_cons) =
+    match argletpatcons with
+    | UTEndOfLetPattern                  -> assert false
+    | UTLetPatternCons(argpatcons, _, _) -> make_lambda_abstract_for_parallel_sub 0 argpatcons patmatcons
+
+  (* int -> untyped_argument_variable_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
+  and make_lambda_abstract_for_parallel_sub (i : int) (argpatcons : untyped_argument_variable_cons) (patmatcons : untyped_pattern_match_cons) =
+    match argpatcons with
+    | UTEndOfArgumentVariable             -> ((-93, 0, 0, 0), UTPatternMatch(make_dummy_tuple 0 i, patmatcons))
+    | UTArgumentVariableCons(_, tailcons) ->
+        let after = make_lambda_abstract_for_parallel_sub (i + 1) tailcons patmatcons in
+          ((-95, 0, 0, 0), UTLambdaAbstract((-89, 0, 0, 0), "%pattup" ^ (string_of_int i), after))
+
+  (* int -> int -> untyped_abstract_tree *)
+  and make_dummy_tuple i n =
+    if i >= n then
+      ((-97, 0, 0, 0), UTEndOfTuple)
+    else
+      ((-98, 0, 0, 0), UTTupleCons(((-91, 0, 0, 0), UTContentOf("%pattup" ^ (string_of_int i))), make_dummy_tuple (i + 1) n))
+
+  and make_pattern_match_cons_of_argument_pattern_cons argletpatcons =
+    match argletpatcons with
+    | UTEndOfLetPattern -> ((-101, 0, 0, 0), UTEndOfPatternMatch)
+    | UTLetPatternCons(argpatcons, utastdef, argletpattailcons) ->
+        let tailpatmatcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
+        let prodpat = make_product_pattern_of_argument_cons argpatcons in
+          ((-103, 0, 0, 0), UTPatternMatchCons(prodpat, utastdef, tailpatmatcons))
+
+  and make_product_pattern_of_argument_cons argpatcons =
+    match argpatcons with
+    | UTEndOfArgumentVariable                  -> ((-105, 0, 0, 0), UTPEndOfTuple)
+    | UTArgumentVariableCons(argpat, tailcons) -> ((-107, 0, 0, 0), UTPTupleCons(argpat, make_product_pattern_of_argument_cons tailcons))
+
+
   let make_mutual_variant_cons typenmtk constrdecs tailcons =
     let typenm = extract_name typenmtk in
       UTMutualVariantCons(typenm, constrdecs, tailcons)
@@ -286,16 +320,14 @@
   and insert_last (resitmzlst : untyped_itemize list) (itmz : untyped_itemize) (i : int) (depth : int) (utast : untyped_abstract_tree) : untyped_itemize =
     match itmz with
     | UTItem(uta, []) ->
-(*        begin (* for debug *) 
-          print_string ("A " ^ (string_of_int i) ^ " / " ^ (string_of_int depth) ^ "\n") ; (* for debug *) *)
-          if i < depth then assert false else UTItem(uta, [UTItem(utast, [])])
-(*        end (* for debug *) *)
+        if i < depth then assert false else UTItem(uta, [UTItem(utast, [])])
     | UTItem(uta, hditmz :: []) ->
         if i < depth then
           UTItem(uta, resitmzlst @ [insert_last [] hditmz (i + 1) depth utast])
         else
           UTItem(uta, resitmzlst @ [hditmz] @ [UTItem(utast, [])])
-    | UTItem(uta, hditmz :: tlitmzlst) -> insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
+    | UTItem(uta, hditmz :: tlitmzlst) ->
+        insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
   (* range_kind -> string -> 'a *)
   let report_error rngknd tok =
@@ -496,17 +528,27 @@ nxmutual: /* -> Types.untyped_mutual_let_cons */
   | LET CTRLSEQ argvar DEFEQ error { report_error (Tok $4) "=" }
 ;
 nxdec: /* -> untyped_mutual_let_cons */
-  | VAR argvar DEFEQ nxlet LETAND nxdec     { make_mutual_let_cons $1 $2 $4 $6 }
-  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
-  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdec { make_mutual_let_cons $1 $2 $4 $6 }
-  | CTRLSEQ argvar DEFEQ nxlet              { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet LETAND nxdec                  { make_mutual_let_cons $1 $2 $4 $6 }
+  | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec     { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) $8 }
+  | VAR argvar DEFEQ nxlet                               { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet BAR nxdecpar                  { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons $1 $2 $4 $6 }
+  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) $8 }
+  | CTRLSEQ argvar DEFEQ nxlet                           { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | VAR error                               { report_error (TokArg $1) "" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
+  | VAR argvar DEFEQ nxlet BAR error        { report_error (Tok $5) "|" }
   | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
   | CTRLSEQ error                           { report_error (TokArg $1) "" }
   | CTRLSEQ argvar DEFEQ error              { report_error (Tok $3) "=" }
+  | CTRLSEQ argvar DEFEQ nxlet BAR error    { report_error (Tok $5) "|" }
   | CTRLSEQ argvar DEFEQ nxlet LETAND error { report_error (Tok $5) "and" }
+;
+nxdecpar:
+  | argvar DEFEQ nxlet BAR nxdecpar { UTLetPatternCons($1, $3, $5) }
+  | argvar DEFEQ nxlet              { UTLetPatternCons($1, $3, UTEndOfLetPattern) }
 ;
 nxlazydec:
   | VAR DEFEQ nxlet LETAND nxlazydec {

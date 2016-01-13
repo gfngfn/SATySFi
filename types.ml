@@ -120,6 +120,9 @@ and untyped_pattern_match_cons_main =
   | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTPatternMatchConsWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTEndOfPatternMatch
+and untyped_let_pattern_cons =
+  | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
+  | UTEndOfLetPattern
 and untyped_module_tree = code_range * untyped_module_tree_main
 and untyped_module_tree_main =
   | UTMFinishModule
