@@ -307,13 +307,14 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         typecheck varntenv_new tyenv utastaft
 
   | UTConstructor(constrnm, utastcont) ->
-      begin try
-        let (varntnm, tyvarnt) = Variantenv.find varntenv constrnm in
-          let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
-          let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
-            (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
-      with
-      | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
+      begin
+      	try
+          let (varntnm, tyvarnt) = Variantenv.find varntenv constrnm in
+            let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
+            let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
+              (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
+        with
+        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
 
   | UTModule(mdlnm, utmdltr, utastaft) ->
@@ -406,12 +407,13 @@ and typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj theta tyres =
 
   | UTPatternMatchCons(utpat, utast1, tailcons) ->
       let (epat, typat, tyenvpat) = typecheck_pattern varntenv tyenv utpat in
-      let thetapat  = Subst.compose (Subst.unify tyobj typat) theta in
+      let thetapat  = Subst.compose (Subst.unify typat tyobj) theta in
       let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
       let (e1, ty1, theta1)       = typecheck varntenv tyenv1 utast1 in
       let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
       let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
+      let tyobj_new = Subst.apply_to_type_struct theta2 tyobj in
+      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj_new theta2 tyres_new in
         (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
 
   | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
@@ -419,12 +421,13 @@ and typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj theta tyres =
       let (eb, tyb, thetab)       = typecheck varntenv tyenvpat utastb in
       let thetapat  = Subst.compose (Subst.unify tyb (BoolType(-400, 0, 0, 0)))
                         (Subst.compose thetab
-                        	(Subst.compose (Subst.unify tyobj typat) theta)) in
+                        	(Subst.compose (Subst.unify typat tyobj) theta)) in
       let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
       let (e1, ty1, theta1)       = typecheck varntenv tyenv1 utast1 in
       let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
       let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj theta2 tyres_new in
+      let tyobj_new = Subst.apply_to_type_struct theta2 tyobj in
+      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons varntenv tyenv tailcons tyobj_new theta2 tyres_new in
         (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
 
 
@@ -433,7 +436,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   match utpatmain with
   | UTPNumericConstant(nc) -> (PNumericConstant(nc), IntType(rng), tyenv)
   | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), BoolType(rng), tyenv)
-  | UTPStringConstant(ut1)  ->
+  | UTPStringConstant(ut1) ->
       let (e1, ty1, theta1) = typecheck varntenv tyenv ut1 in
       let theta_new = Subst.compose (Subst.unify (StringType(-201, 0, 0, 0)) ty1) theta1 in
       let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in

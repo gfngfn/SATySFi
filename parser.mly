@@ -233,10 +233,11 @@
 
   (* code_range -> untyped_let_pattern_cons -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
   let rec make_mutual_let_cons_par vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
-    let (varrng, varnm) = extract_range_and_name vartk in
+    let (_, varnm) = extract_range_and_name vartk in
     let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
     let fullrng = get_range_of_let_pattern_cons argletpatcons in
     let abs     = make_lambda_abstract_for_parallel fullrng argletpatcons pmcons in
+(*    let abs     = make_lambda_abstract_for_parallel (4000, 0, 0, 0) argletpatcons pmcons in (* for test *) *)
       UTMutualLetCons(varnm, abs, tailcons)
 
   (* untyped_let_pattern_cons -> code_range *)
@@ -262,6 +263,7 @@
         let tailpmcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
         let prodpatrng = get_range_of_argument_variable_cons argpatcons in
         let prodpat    = make_product_pattern_of_argument_cons prodpatrng argpatcons in
+(*        let prodpat    = make_product_pattern_of_argument_cons (5000, 0, 0, 0) argpatcons in (* for test *) *)
           UTPatternMatchCons(prodpat, utastdef, tailpmcons)
 
   and get_range_of_argument_variable_cons argpatcons =
@@ -284,8 +286,7 @@
     let rec subfunc argpatcons =
       match argpatcons with
       | UTEndOfArgumentVariable                  -> (dummy_range, UTPEndOfTuple)
-      | UTArgumentVariableCons(argpat, tailcons) ->
-          (dummy_range, UTPTupleCons(argpat, subfunc tailcons))
+      | UTArgumentVariableCons(argpat, tailcons) -> (dummy_range, UTPTupleCons(argpat, subfunc tailcons))
     in
       let (_, prodpatmain) = subfunc argpatcons in (prodpatrng, prodpatmain)
 
@@ -304,7 +305,9 @@
     match argpatcons with
     | UTEndOfArgumentVariable                    -> (fullrng, UTPatternMatch(k (dummy_range, UTEndOfTuple), pmcons))
     | UTArgumentVariableCons((rng, _), tailcons) ->
-        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in
+(*        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in *)
+(*        let knew = (fun u -> k (dummy_range, UTTupleCons(((3000, 0, 0, 0), UTContentOf(numbered_var_name i)), u))) in (* for test *) *)
+        let knew = (fun u -> k (dummy_range, UTTupleCons((dummy_range, UTContentOf(numbered_var_name i)), u))) in (* for test *)
         let after = make_lambda_abstract_for_parallel_sub fullrng knew (i + 1) tailcons pmcons in
           ((-95, 0, 0, 0), UTLambdaAbstract(dummy_range, numbered_var_name i, after))
 

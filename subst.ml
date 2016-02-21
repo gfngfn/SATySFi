@@ -196,11 +196,12 @@ and compose_prim theta2 theta1 =
   match theta2 with
   | []                     -> theta1
   | (tvid, tystr2) :: tail ->
-      begin try
-        let tystr1 = find theta1 tvid in
-          (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
-      with
-      | Not_found -> compose_prim tail (overwrite_or_add theta1 tvid tystr2)
+      begin
+        try
+          let tystr1 = find theta1 tvid in
+            (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
+        with
+        | Not_found -> compose_prim tail (overwrite_or_add theta1 tvid tystr2)
       end
 
 (* type_struct -> type_struct -> t *)
@@ -215,11 +216,13 @@ and unify tystr1 tystr2 =
   with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
-      begin                                                                                     (* for debug *)
-        print_for_debug ("contradiction: "                                                      (* for debug *)
-          ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ; (* for debug *)
+      begin                                                                                        (* for debug *)
+        print_for_debug ("contradiction: "                                                         (* for debug *)
+          ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ;    (* for debug *)
         let rng1 = Typeenv.get_range_from_type tystr1 in
         let rng2 = Typeenv.get_range_from_type tystr2 in
+          print_for_debug ((Display.describe_position rng1) ^ "\n") ;
+          print_for_debug ((Display.describe_position rng2) ^ "\n") ;
           if (is_invalid_range rng1) && (is_invalid_range rng2) then
             let (sttln1, _, _, _) = rng1 in
             let (sttln2, _, _, _) = rng2 in
