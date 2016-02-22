@@ -21,3 +21,4 @@ parser.ml
 parser.mli
 parser.output
 lexer_hand.ml
+*.png
