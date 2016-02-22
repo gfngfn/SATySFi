@@ -1,6 +1,6 @@
-(Readme in English is written after the one in Japanese.)
+![logo1](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo1.png)
 
-# Macrodown (ver. 1.00 beta)
+(Readme in English is written after the one in Japanese.)
 
 ## 概要
 
@@ -12,6 +12,8 @@ Macrodown（マクロダウン） は
 後者は函数・マクロを定義するためのML風の構文を持っています。
 函数・マクロ定義は強い静的型つけで，Hindley-Milner型システム（いわゆるlet多相）での型推論が可能です。
 Macrodownなら，意味マークアップの機能を持つ柔軟なマクロを駆使して文書を記述することができるでしょう。
+
+![logo2](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo2.png)
 
 ## 用法
 
