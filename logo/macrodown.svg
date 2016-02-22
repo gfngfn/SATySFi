@@ -25,8 +25,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.35"
-     inkscape:cx="792.58697"
-     inkscape:cy="-574.64851"
+     inkscape:cx="224.01554"
+     inkscape:cy="-346.07708"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -65,28 +65,28 @@
      inkscape:groupmode="layer"
      id="layer1">
     <path
-       style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#808080;stroke-width:15.99999905;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0"
+       style="fill:#f9f9f9;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:15.99999905000000000;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0"
        d="m -199.99999,1252.3621 1039.99996,0 0,720 -1039.99996,0 z"
        id="rect3884"
        inkscape:connector-curvature="0"
-       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\g3872.png"
-       inkscape:export-xdpi="120"
-       inkscape:export-ydpi="120" />
+       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
+       inkscape:export-xdpi="60"
+       inkscape:export-ydpi="60" />
     <path
        style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#808080;stroke-width:15.99999905;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="m -160,-147.63781 2520,0 0,751.99997 -2520,0 z"
        id="rect3888"
        inkscape:connector-curvature="0"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
        d="M 210 -67.625 C 49.837422 -67.625 -80 62.21242 -80 222.375 C -80 382.53758 49.837422 512.375 210 512.375 C 370.16258 512.375 500 382.53758 500 222.375 C 500 62.21242 370.16258 -67.625 210 -67.625 z M 209.28125 -47.625 C 358.79263 -47.625 480 73.258121 480 222.375 C 480 371.49189 358.79263 492.375 209.28125 492.375 C 59.769883 492.375 -61.4375 371.49189 -61.4375 222.375 C -61.4375 73.258121 59.769883 -47.625 209.28125 -47.625 z "
        id="path3013"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#ffffff;stroke:#ffffff;stroke-width:32;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="m 480,-67.637817 0,120.012817 1.4375,0 c -7.55788,11.1812 -13.37337,25.162311 -18.9375,40 l -22.5,60 -45,120 c 0,0 260,-0.0128 260,0 l -45,-120 -22.5,-60 C 580.00304,72.383097 572.05252,53.91473 560,41.8125 l 0,-109.450317 z"
@@ -94,15 +94,15 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccsccccsccc"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;stroke:none"
        d="M 525 27.375 C 490 27.375 475.54956 57.576166 462.5 92.375 L 440 152.375 L 395 272.375 L 470 272.375 L 525 125.71875 L 580 272.375 L 655 272.375 L 610 152.375 L 587.5 92.375 C 574.45044 57.576166 560 27.375 525 27.375 z "
        id="path2985"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#ff0000;stroke:none"
        d="m 70,32.375 22.5,60 L 95,99.03125 0,352.375 c 0,0 90,-0.0128 90,0 l 50,-133.3125 50,133.3125 90,0 -60,-160 -30,-80 -7.5,-20 -7.5,-20 -7.5,-20 c -4.36105,-11.629466 -12.5,-20 -27.5,-20 z"
@@ -110,8 +110,8 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccccccccssc"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#ff0000;stroke:none"
        d="m 307.5,52.362182 7.5,19.999999 15,39.999999 30,80 60,159.99999 -90,0 -120,-319.999987 70,0 c 15,0 23.13895,8.370533 27.5,19.999999 z"
@@ -119,8 +119,8 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="sccccccss"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;stroke:none"
        d="m 645,152.375 c 15,40 45,120 45,120 l 80,0 c 0,0 -22.5,-60 -33.75,-90 -5.625,-15 -10.91732,-31.22816 -16.875,-45 C 708.56342,112.38282 715,97.358978 740,97.362183 l 100,0.01282 0,-65 -115,-0.01282 C 645,32.353265 622.27824,91.783636 645,152.375 z"
@@ -128,8 +128,8 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="sccsssccss"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;stroke:none"
        d="m 857.5,92.375 c 0,0 -15,40 -22.5,60 -15,40 -45,120 -45,120 l 80,0 C 889.14062,221.33333 908.67264,170.43673 927.42187,119.25 932.94248,104.17833 940,97.364831 960,97.36218 c 20,-0.0027 40,3e-6 40,3e-6 l 0,-65 -60,0 c -40,0 -71.6883,31.181606 -82.5,60.012817 z"
@@ -137,15 +137,15 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ssccssccss"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
        d="M 1125 27.375 C 1055.9644 27.375 1000 83.339406 1000 152.375 C 1000 221.41059 1055.9644 277.375 1125 277.375 C 1194.0356 277.375 1250 221.41059 1250 152.375 C 1250 83.339406 1194.0356 27.375 1125 27.375 z M 1125 92.375 C 1158.1371 92.375 1185 119.23791 1185 152.375 C 1185 185.51209 1158.1371 212.375 1125 212.375 C 1091.8629 212.375 1065 185.51209 1065 152.375 C 1065 119.23791 1091.8629 92.375 1125 92.375 z "
        id="path3778"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        transform="matrix(0.89285712,0,0,0.89285715,-4119.2857,-19.389768)"
        d="m 1360,192.36218 a 140,140 0 1 1 -280,0 140,140 0 1 1 280,0 z"
@@ -213,16 +213,16 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="scccccccsccssscccsscc"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;stroke:none"
        d="m 1710,37.375 67.5,180 11.25,30 c 9.0833,24.22209 16.25,29.96875 31.25,29.96875 15,0 22.2525,-5.99226 30,-26.65625 l 5.625,-14.96875 -74.4062,-198.34375 -71.2188,0 z"
        id="path3810"
        inkscape:connector-curvature="0"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        id="path3817"
        d="m -1010,32.375 90,240 80,0 -40,-106.6875 -50,-133.3125 -80,0 z m 180,0 -10,26.65625 40,106.65625 50,-133.3125 -80,0 z"
@@ -238,8 +238,8 @@
        d="M 1595 27.375 C 1525.9644 27.375 1470 83.339406 1470 152.375 C 1470 221.41059 1525.9644 277.375 1595 277.375 C 1664.0356 277.375 1720 221.41059 1720 152.375 C 1720 83.339406 1664.0356 27.375 1595 27.375 z M 1595 92.375 C 1628.1371 92.375 1655 119.23791 1655 152.375 C 1655 185.51209 1628.1371 212.375 1595 212.375 C 1561.8629 212.375 1535 185.51209 1535 152.375 C 1535 119.23791 1561.8629 92.375 1595 92.375 z "
        id="path3821"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        sodipodi:nodetypes="cccccc"
        inkscape:connector-curvature="0"
@@ -258,8 +258,8 @@
        d="m 1825,37.349366 55,146.652314 55,-146.652314 z"
        style="fill:#000000;stroke:none"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;fill-opacity:1;fill-rule:nonzero;stroke:none"
        d="m 2050,117.36218 0,155 70,0 0,-150 c 0,-15 10,-26.999994 25,-29.999994 10,-2 30,-2 40,0 15,3 25,14.999994 25,29.999994 l 0,150 70,0 0,-155 c 0,-44.999997 -34.9984,-80.012611 -75,-85.012808 -23.9984,-2.999803 -56.0016,-2.999806 -80,-3e-6 -40.0016,5.000197 -75,40.012814 -75,85.012811 z"
@@ -267,16 +267,16 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cccsssscccssc"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        style="fill:#000000;stroke:none"
        d="m 1980,37.34375 -75,200 5,13.34375 c 7.7475,20.66399 15,26.65625 30,26.65625 15,0 22.1667,-5.77791 31.25,-30 l 11.25,-30 67.5,-180 -70,0 z"
        id="path3850"
        inkscape:connector-curvature="0"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        id="path3853"
        d="m -1910,32.375 30,80 -90,240 80,0 50,-133.3125 50,133.3125 80,0 -120,-320 -80,0 z"
@@ -328,8 +328,8 @@
        style="fill:#ffffff;stroke:none"
        d="M 107.5 -107.625 L 344.5 524.375 L 394.5 524.375 C 341.23056 382.3196 229.71093 84.935231 157.5 -107.625 L 107.5 -107.625 z "
        id="path3785"
-       inkscape:export-xdpi="36"
-       inkscape:export-ydpi="36" />
+       inkscape:export-xdpi="30"
+       inkscape:export-ydpi="30" />
     <path
        sodipodi:nodetypes="ccsssccc"
        inkscape:connector-curvature="0"
@@ -359,10 +359,13 @@
        d="m 320,1312.3489 c -12.40549,0 -24.62961,0.8008 -36.625,2.3124 2.34188,6.245 4.78778,12.8196 7.1875,19.2188 9.43632,-0.9923 19.01879,-1.5312 28.71875,-1.5312 149.51138,0 270.71875,120.8831 270.71875,270 0,91.6157 -45.75932,172.561 -115.71875,221.375 2.05315,5.4751 5.34943,14.265 7.3125,19.5 C 559.04926,1791.1582 610,1702.6929 610,1602.3489 c 0,-160.1625 -129.83742,-290 -290,-290 z"
        id="path3832"
        inkscape:connector-curvature="0"
-       sodipodi:nodetypes="sccssccss" />
+       sodipodi:nodetypes="sccssccss"
+       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
+       inkscape:export-xdpi="60"
+       inkscape:export-ydpi="60" />
     <path
-       inkscape:export-ydpi="36"
-       inkscape:export-xdpi="36"
+       inkscape:export-ydpi="60"
+       inkscape:export-xdpi="60"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
        sodipodi:nodetypes="sccccccss"
        inkscape:connector-curvature="0"
@@ -370,8 +373,8 @@
        d="m 417.5,1432.3494 7.5,20 15,40 30,80 60,160 -90,0 -120,-320 70,0 c 15,0 23.13895,8.3706 27.5,20 z"
        style="fill:#000080;stroke:none" />
     <path
-       inkscape:export-ydpi="36"
-       inkscape:export-xdpi="36"
+       inkscape:export-ydpi="60"
+       inkscape:export-xdpi="60"
        inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
        sodipodi:nodetypes="ccccccccccccssc"
        inkscape:connector-curvature="0"
@@ -383,10 +386,16 @@
        d="M 237.03125,1324.4113 C 117.29411,1360.0957 30,1471.0158 30,1602.3489 c 0,160.1625 129.83742,290 290,290 42.90061,0 83.6133,-9.3128 120.25,-26.0313 l -7.125,-18.9375 c -34.60897,16.0218 -73.17739,24.9688 -113.84375,24.9688 -149.51137,0 -270.71875,-120.8832 -270.71875,-270 0,-123.0545 82.53271,-226.8717 195.40625,-259.4063 z"
        style="fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none"
        inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cssccsscc" />
+       sodipodi:nodetypes="cssccsscc"
+       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
+       inkscape:export-xdpi="60"
+       inkscape:export-ydpi="60" />
     <g
        style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       id="text3854">
+       id="text3854"
+       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
+       inkscape:export-xdpi="60"
+       inkscape:export-ydpi="60">
       <path
          d="m -138.28683,1809.5051 0,-18.3203 -3.00782,0 0,-2.8906 3.00782,0 0,-2.5391 c -1e-5,-1.7447 0.2246,-3.1152 0.67382,-4.1113 0.44922,-0.9961 1.18489,-1.8229 2.20703,-2.4805 1.02213,-0.6575 2.36002,-0.9863 4.01368,-0.9863 1.30207,0 2.77342,0.2149 4.41406,0.6445 l 0,3.0469 c -1.73179,-0.5338 -3.1185,-0.8007 -4.16016,-0.8008 -0.59897,10e-5 -1.14584,0.094 -1.64062,0.2832 -0.4948,0.1889 -0.89194,0.5241 -1.19141,1.0059 -0.29949,0.4818 -0.44923,1.4779 -0.44922,2.9883 l 0,2.9492 5.29297,0 0,2.8906 -5.29297,0 0,18.3203 z"
          style="font-variant:normal;font-stretch:normal;fill:#ff0000;font-family:Lucida Sans;-inkscape-font-specification:Lucida Sans"
@@ -474,7 +483,10 @@
     </g>
     <g
        style="font-size:40px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
-       id="text3860">
+       id="text3860"
+       inkscape:export-filename="C:\Users\mistpc\mistpc_ocaml\macrodown\logo\path3785.png"
+       inkscape:export-xdpi="60"
+       inkscape:export-ydpi="60">
       <path
          d="m 582.25726,1419.1508 0,-3.5352 c 2.51302,1.25 4.70052,1.875 6.5625,1.875 1.09374,0 2.00846,-0.2995 2.74414,-0.8984 0.73567,-0.599 1.10351,-1.3477 1.10352,-2.2461 -10e-6,-0.5599 -0.18231,-1.1068 -0.54688,-1.6407 -0.36459,-0.5338 -1.20443,-1.0742 -2.51953,-1.621 l -2.24609,-0.9571 c -1.73178,-0.7161 -2.9948,-1.5494 -3.78906,-2.5 -0.79428,-0.9375 -1.19141,-2.0898 -1.19141,-3.457 0,-1.7057 0.61849,-3.125 1.85547,-4.2578 1.23697,-1.1328 3.0664,-1.6992 5.48828,-1.6992 1.18488,0 2.64973,0.1627 4.39453,0.4882 l 0.80078,0.1563 0,3.2031 c -2.14845,-0.638 -3.86069,-0.957 -5.13672,-0.957 -1.23698,0 -2.16146,0.2669 -2.77343,0.8008 -0.61199,0.5338 -0.91798,1.1653 -0.91797,1.8945 -10e-6,0.5729 0.20832,1.0872 0.625,1.543 0.40364,0.4687 1.1328,0.931 2.1875,1.3867 l 1.85547,0.7812 c 2.48696,1.0547 4.06899,2.0964 4.74609,3.125 0.67707,1.0287 1.01561,2.1485 1.01563,3.3594 -2e-5,1.1589 -0.31578,2.2331 -0.94727,3.2227 -0.63153,0.9895 -1.56251,1.7643 -2.79297,2.3242 -1.23048,0.5599 -2.60092,0.8398 -4.11133,0.8398 -1.75782,0 -3.89323,-0.4101 -6.40625,-1.2304 z"
          style="font-variant:normal;font-stretch:normal;text-align:end;text-anchor:end;fill:#000080;font-family:Lucida Sans;-inkscape-font-specification:Lucida Sans"
