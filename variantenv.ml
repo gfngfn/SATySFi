@@ -34,8 +34,8 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
   match tyargcons with
   | UTEndOfTypeArgument                 -> false
   | UTTypeArgumentCons(_, nm, tailcons) ->
-      begin                                    (* for debug *)
-        print_string ("tyarg: " ^ nm ^ "\n") ; (* for debug *)
+      begin                                       (* for debug *)
+        print_for_debug ("tyarg: " ^ nm ^ "\n") ; (* for debug *)
         if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
       end                                      (* for debug *)
 

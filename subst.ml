@@ -52,7 +52,7 @@ let rec apply_to_type_struct theta tystr =
   | ProductType(rng, tylist)             -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
   | TypeVariable(rng, tv)                -> begin try find theta tv with Not_found -> TypeVariable(rng, tv) end
   | VariantType(rng, tyarglist, varntnm) -> VariantType(rng, List.map (apply_to_type_struct theta) tyarglist, varntnm)
-  | other                       -> other
+  | other                                -> other
 
 
 (* t -> type_environment -> Typeenv.t *)
@@ -62,8 +62,7 @@ let rec apply_to_type_environment theta tyenv =
 and apply_to_type_environment_sub theta tyenvlst =
   match tyenvlst with
   | []                     -> tyenvlst
-  | (varnm, tystr) :: tail ->
-      (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment_sub theta tail)
+  | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment_sub theta tail)
 
 
 (* type_variable_id -> type_struct -> (bool * code_range) *)
@@ -192,7 +191,7 @@ and check_emergence theta =
           check_emergence tail
 
 
-let print_for_debug_subst = print_string
+let print_for_debug_subst msg = print_string msg (* () *)
 
 
 (* t -> t -> t *)
@@ -223,7 +222,7 @@ and unify tystr1 tystr2 =
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
       begin                                                                                        (* for debug *)
-        print_for_debug_subst ("contradiction: "                                                         (* for debug *)
+        print_for_debug_subst ("contradiction: "                                                   (* for debug *)
           ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ;    (* for debug *)
         let rng1 = Typeenv.get_range_from_type tystr1 in
         let rng2 = Typeenv.get_range_from_type tystr2 in
