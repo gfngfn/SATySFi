@@ -31,25 +31,27 @@ and eliminate_sub constr theta key =
       if k = key then constr @ tail else eliminate_sub ((k, v) :: constr) tail key
 
 
-(* type_struct -> type_variable_id -> type_struct -> type_variable *)
-let rec overwrite_type_struct tystr key value =
+(* type_struct -> type_variable_id -> type_struct -> type_struct *)
+let rec overwrite_type_struct (tystr : type_struct) (key : type_variable_id) (value : type_struct) =
   match tystr with
-  | FuncType(rng, dom, cod) -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
-  | ListType(rng, cont)     -> ListType(rng, overwrite_type_struct cont key value)
-  | RefType(rng, cont)      -> RefType(rng, overwrite_type_struct cont key value)
-  | ProductType(rng, lst)   -> ProductType(rng, List.map (fun ty -> overwrite_type_struct ty key value) lst)
-  | TypeVariable(rng, k)    -> if k = key then value else TypeVariable(rng, k)
+  | FuncType(rng, dom, cod)              -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
+  | ListType(rng, cont)                  -> ListType(rng, overwrite_type_struct cont key value)
+  | RefType(rng, cont)                   -> RefType(rng, overwrite_type_struct cont key value)
+  | ProductType(rng, lst)                -> ProductType(rng, List.map (fun ty -> overwrite_type_struct ty key value) lst)
+  | TypeVariable(rng, k)                 -> if k = key then value else TypeVariable(rng, k)
+  | VariantType(rng, tyarglist, varntnm) -> VariantType(rng, List.map (fun ty -> overwrite_type_struct ty key value) tyarglist, varntnm)
   | other                   -> other
 
 
 (* t -> type_struct -> type_struct *)
 let rec apply_to_type_struct theta tystr =
   match tystr with
-  | FuncType(rng, tydom, tycod) -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
-  | ListType(rng, tycont)       -> ListType(rng, apply_to_type_struct theta tycont)
-  | RefType(rng, tycont)        -> RefType(rng, apply_to_type_struct theta tycont)
-  | ProductType(rng, tylist)    -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
-  | TypeVariable(rng, tv)       -> begin try find theta tv with Not_found -> TypeVariable(rng, tv) end
+  | FuncType(rng, tydom, tycod)          -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
+  | ListType(rng, tycont)                -> ListType(rng, apply_to_type_struct theta tycont)
+  | RefType(rng, tycont)                 -> RefType(rng, apply_to_type_struct theta tycont)
+  | ProductType(rng, tylist)             -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
+  | TypeVariable(rng, tv)                -> begin try find theta tv with Not_found -> TypeVariable(rng, tv) end
+  | VariantType(rng, tyarglist, varntnm) -> VariantType(rng, List.map (apply_to_type_struct theta) tyarglist, varntnm)
   | other                       -> other
 
 
@@ -76,6 +78,7 @@ let rec emerge_in tvid tystr =
     | RefType(_, cont)         -> emerge_in tvid cont
     | ProductType(_, lst)      -> emerge_in_list tvid lst
     | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
+    | VariantType(rng, lst, _) -> emerge_in_list tvid lst
     | TypeSynonym(_, _, cont)  -> emerge_in tvid cont
     | _                        -> (false, dummy)
 
@@ -189,6 +192,9 @@ and check_emergence theta =
           check_emergence tail
 
 
+let print_for_debug_subst = print_string
+
+
 (* t -> t -> t *)
 let rec compose theta2 theta1 = fix_subst (compose_prim theta2 theta1)
 
@@ -206,7 +212,7 @@ and compose_prim theta2 theta1 =
 
 (* type_struct -> type_struct -> t *)
 and unify tystr1 tystr2 =
-  print_for_debug (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
+  print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
     match (tystr1, tystr2) with
@@ -217,12 +223,12 @@ and unify tystr1 tystr2 =
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
       begin                                                                                        (* for debug *)
-        print_for_debug ("contradiction: "                                                         (* for debug *)
+        print_for_debug_subst ("contradiction: "                                                         (* for debug *)
           ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ;    (* for debug *)
         let rng1 = Typeenv.get_range_from_type tystr1 in
         let rng2 = Typeenv.get_range_from_type tystr2 in
-          print_for_debug ((Display.describe_position rng1) ^ "\n") ;
-          print_for_debug ((Display.describe_position rng2) ^ "\n") ;
+          print_for_debug_subst ((Display.describe_position rng1) ^ "\n") ;
+          print_for_debug_subst ((Display.describe_position rng2) ^ "\n") ;
           if (is_invalid_range rng1) && (is_invalid_range rng2) then
             let (sttln1, _, _, _) = rng1 in
             let (sttln2, _, _, _) = rng2 in
@@ -237,7 +243,7 @@ and unify tystr1 tystr2 =
 
 (* type_struct -> type_struct -> t *)
 and unify_sub tystr1 tystr2 =
-  print_for_debug ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
+  print_for_debug_subst ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
 
   match (tystr1, tystr2) with
@@ -257,8 +263,8 @@ and unify_sub tystr1 tystr2 =
 
   | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
 
-  | (VariantType(_, varntnm1), VariantType(_, varntnm2))
-                              when varntnm1 = varntnm2 -> empty
+  | (VariantType(_, tyarglist1, varntnm1), VariantType(_, tyarglist2, varntnm2))
+                              when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
 
   | (TypeVariable(rng1, tvid1), tystr) ->
       begin match tystr with

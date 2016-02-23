@@ -26,7 +26,7 @@ let rec find_id_in_list elm lst =
   | _ :: tail                             -> find_id_in_list elm tail
 
 
-(* type_struct -> type_struct *)
+(* type_struct -> type_struct * (type_struct list) *)
 let rec make_bounded_free tystr = eliminate_forall tystr []
 
 and eliminate_forall tystr lst =
@@ -35,7 +35,10 @@ and eliminate_forall tystr lst =
       let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
 
-  | other                    -> replace_id other lst
+  | other ->
+      let tyfree    = replace_id other lst in
+      let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
+        (tyfree, tyarglist)
 
 
 (* type_struct -> type_variable_id list -> type_struct *)
@@ -71,8 +74,9 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
   | UTContentOf(varnm) ->
       begin
       	try
-          let tyforall = Typeenv.find tyenv varnm in
-          let ty = Typeenv.overwrite_range_of_type (make_bounded_free tyforall) rng in
+          let tyforall    = Typeenv.find tyenv varnm in
+          let (tyfree, _) = make_bounded_free tyforall in
+          let ty = Typeenv.overwrite_range_of_type tyfree rng in
             begin                                                                             (* for debug *)
               print_for_debug ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                          (* for debug *)
@@ -90,10 +94,12 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       begin
       	try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let tyvarnt = Typeenv.overwrite_range_of_type (make_bounded_free tyforall) rng in
+          let (tyfree, tyarglist) = make_bounded_free tyforall in
+          let tyvarnt = Typeenv.overwrite_range_of_type tyfree rng in
             let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
             let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
-              (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
+            let type_result  = Subst.apply_to_type_struct theta_result (VariantType(rng, tyarglist, varntnm)) in
+              (Constructor(constrnm, econt), type_result, theta_result)
         with
         | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
@@ -269,7 +275,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
   | UTItemize(utitmz) ->
       let (eitmz, thetaitmz) = typecheck_itemize varntenv tyenv utitmz in
-        (eitmz, VariantType(rng, "itemize"), thetaitmz)
+        (eitmz, VariantType(rng, [], "itemize"), thetaitmz)
 
 (* ---- list ---- *)
 
@@ -484,10 +490,13 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   | UTPConstructor(constrnm, utpat1) ->
       begin
         try
-          let (varntnm, tycont) = Variantenv.find varntenv constrnm in
+          let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
+          let (tyfree, tyarglist) = make_bounded_free tyforall in
           let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
-          let tyenv_new = Subst.apply_to_type_environment (Subst.unify tycont typat1) tyenv1 in
-            (PConstructor(constrnm, epat1), VariantType(rng, varntnm), tyenv_new)
+          let theta = Subst.unify tyfree typat1 in
+          let tyenv_new = Subst.apply_to_type_environment theta tyenv1 in
+          let type_result = Subst.apply_to_type_struct theta (VariantType(rng, tyarglist, varntnm)) in
+            (PConstructor(constrnm, epat1), type_result, tyenv_new)
         with
         | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end

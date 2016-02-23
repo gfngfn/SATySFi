@@ -1,6 +1,6 @@
 open Types
 
-type definition_kind   = Data | Hidden | Synonym of type_struct
+type definition_kind   = Data of int | Hidden of int | Synonym of type_struct
 type defined_type_list = (type_name * definition_kind) list
 type constructor_list  = (constructor_name * type_name * type_struct) list
 type t = defined_type_list * constructor_list
@@ -43,12 +43,19 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
 let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
 	let (defedtylst, varntenvmain) = varntenv in
   	match tystr with
-    | VariantType(rng, varntnm) ->
+    | VariantType(rng, tyarglist, varntnm) ->
         begin
           try
             match find_definition_kind defedtylst varntnm with
-            | Data           -> VariantType(rng, varntnm)
-            | Hidden         -> VariantType(rng, varntnm)
+            | (Data(argnum) | Hidden(argnum)) ->
+                let len = List.length tyarglist in
+                  if argnum = len then
+                    VariantType(rng, tyarglist, varntnm)
+                  else
+                    raise (TypeCheckError(
+                        "at " ^ (Display.describe_position rng) ^ ":\n"
+                      ^ "    variant type '" ^ varntnm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s),\n"
+                      ^ "    but it has " ^ (string_of_int len) ^ " type argument(s) here."))
             | Synonym(tystr) -> TypeSynonym(rng, varntnm, tystr)
           with
           | Not_found ->
@@ -77,12 +84,22 @@ let append_module_name mdlnm varntnm =
   | _  -> mdlnm ^ "." ^ varntnm
 
 
+let rec type_argument_length tyargcons =
+  match tyargcons with
+  | UTEndOfTypeArgument                -> 0
+  | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
+
+
 let add_variant (varntenv :t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
-  let (defedtypelist, varntenvmain) = varntenv in ((tynm, Data) :: defedtypelist, varntenvmain)
+  let len = type_argument_length tyargcons in
+  let (defedtypelist, varntenvmain) = varntenv in
+    ((tynm, Data(len)) :: defedtypelist, varntenvmain)
 
 
 let add_hidden_type (mdlnm : module_name) (varntenv : t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
-  let (defedtypelist, varntenvmain) = varntenv in ((append_module_name mdlnm tynm, Hidden) :: defedtypelist, varntenvmain)
+  let len = type_argument_length tyargcons in
+  let (defedtypelist, varntenvmain) = varntenv in
+    ((append_module_name mdlnm tynm, Hidden(len)) :: defedtypelist, varntenvmain)
 
 
 let add_type_synonym (varntenv : t) (tynm : type_name) (tystr : type_struct) =

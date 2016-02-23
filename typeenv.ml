@@ -42,44 +42,44 @@ let get_range_from_type tystr =
   | ProductType(rng, _)    -> rng
   | TypeVariable(rng, _)   -> rng
   | TypeSynonym(rng, _, _) -> rng
-  | VariantType(rng, _)    -> rng
+  | VariantType(rng, _, _) -> rng
   | ForallType(_, _)       -> (-31, 0, 0, 0)
   | TypeArgument(rng, _)   -> rng
 
 (* type_struct -> code_range -> type_struct *)
 let overwrite_range_of_type tystr rng =
   match tystr with
-  | IntType(_)                   -> IntType(rng)
-  | StringType(_)                -> StringType(rng)
-  | BoolType(_)                  -> BoolType(rng)
-  | UnitType(_)                  -> UnitType(rng)
-  | FuncType(_, tydom, tycod)    -> FuncType(rng, tydom, tycod)
-  | ListType(_, tycont)          -> ListType(rng, tycont)
-  | RefType(_, tycont)           -> RefType(rng, tycont)
-  | ProductType(_, tylist)       -> ProductType(rng, tylist)
-  | TypeVariable(_, tvid)        -> TypeVariable(rng, tvid)
-  | TypeSynonym(_, tynm, tycont) -> TypeSynonym(rng, tynm, tycont)
-  | VariantType(_, varntnm)      -> VariantType(rng, varntnm)
-  | ForallType(tvid, tycont)     -> ForallType(tvid, tycont)
-  | TypeArgument(_, tyarg)       -> TypeArgument(rng, tyarg)
+  | IntType(_)                         -> IntType(rng)
+  | StringType(_)                      -> StringType(rng)
+  | BoolType(_)                        -> BoolType(rng)
+  | UnitType(_)                        -> UnitType(rng)
+  | FuncType(_, tydom, tycod)          -> FuncType(rng, tydom, tycod)
+  | ListType(_, tycont)                -> ListType(rng, tycont)
+  | RefType(_, tycont)                 -> RefType(rng, tycont)
+  | ProductType(_, tylist)             -> ProductType(rng, tylist)
+  | TypeVariable(_, tvid)              -> TypeVariable(rng, tvid)
+  | TypeSynonym(_, tynm, tycont)       -> TypeSynonym(rng, tynm, tycont)
+  | VariantType(_, tyarglist, varntnm) -> VariantType(rng, tyarglist, varntnm)
+  | ForallType(tvid, tycont)           -> ForallType(tvid, tycont)
+  | TypeArgument(_, tyarg)             -> TypeArgument(rng, tyarg)
 
 (* type_struct -> type_struct *)
 let rec erase_range_of_type tystr =
   let dummy = (-2048, 0, 0, 0) in
     match tystr with
-    | IntType(_)                   -> IntType(dummy)
-    | StringType(_)                -> StringType(dummy)
-    | BoolType(_)                  -> BoolType(dummy)
-    | UnitType(_)                  -> UnitType(dummy)
-    | FuncType(_, tydom, tycod)    -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
-    | ListType(_, tycont)          -> ListType(dummy, erase_range_of_type tycont)
-    | RefType(_, tycont)           -> RefType(dummy, erase_range_of_type tycont)
-    | ProductType(_, tylist)       -> ProductType(dummy, List.map erase_range_of_type tylist)
-    | TypeVariable(_, tvid)        -> TypeVariable(dummy, tvid)
-    | TypeSynonym(_, tynm, tycont) -> TypeSynonym(dummy, tynm, erase_range_of_type tycont)
-    | VariantType(_, varntnm)      -> VariantType(dummy, varntnm)
-    | ForallType(tvid, tycont)     -> ForallType(tvid, erase_range_of_type tycont)
-    | TypeArgument(_, tyargnm)     -> TypeArgument(dummy, tyargnm)
+    | IntType(_)                         -> IntType(dummy)
+    | StringType(_)                      -> StringType(dummy)
+    | BoolType(_)                        -> BoolType(dummy)
+    | UnitType(_)                        -> UnitType(dummy)
+    | FuncType(_, tydom, tycod)          -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
+    | ListType(_, tycont)                -> ListType(dummy, erase_range_of_type tycont)
+    | RefType(_, tycont)                 -> RefType(dummy, erase_range_of_type tycont)
+    | ProductType(_, tylist)             -> ProductType(dummy, List.map erase_range_of_type tylist)
+    | TypeVariable(_, tvid)              -> TypeVariable(dummy, tvid)
+    | TypeSynonym(_, tynm, tycont)       -> TypeSynonym(dummy, tynm, erase_range_of_type tycont)
+    | VariantType(_, tyarglist, varntnm) -> VariantType(dummy, tyarglist, varntnm)
+    | ForallType(tvid, tycont)           -> ForallType(tvid, erase_range_of_type tycont)
+    | TypeArgument(_, tyargnm)           -> TypeArgument(dummy, tyargnm)
 
 
 (* type_variable_id -> type_variable_id list -> bool *)

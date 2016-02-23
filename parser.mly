@@ -929,7 +929,7 @@ txbot: /* -> type_struct */
           | "bool"   -> BoolType(rng)
           | "string" -> StringType(rng)
           | "unit"   -> UnitType(rng)
-          | other    -> VariantType(rng, other)
+          | other    -> VariantType(rng, [], other)
       }
   | TYPEVAR {
         let (rng, tyargnm) = extract_range_and_name $1 in TypeArgument(rng, tyargnm)

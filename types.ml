@@ -25,7 +25,7 @@ and type_struct =
   | ProductType  of code_range * (type_struct list)
   | TypeVariable of code_range * type_variable_id
   | TypeSynonym  of code_range * type_name * type_struct
-  | VariantType  of code_range * type_name
+  | VariantType  of code_range * (type_struct list) * type_name
   | ForallType   of type_variable_id * type_struct
   | TypeArgument of code_range * var_name
 
