@@ -69,20 +69,33 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       end
 
   | UTContentOf(varnm) ->
-      begin try
-        let forallty = Typeenv.find tyenv varnm in
-        let ty = Typeenv.overwrite_range_of_type (make_bounded_free forallty) rng in
-          begin                                                                             (* for debug *)
-            print_for_debug ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic forallty) (* for debug *)
-              ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                          (* for debug *)
-            (ContentOf(varnm), ty, Subst.empty)
-          end                                                                               (* for debug *)
-      with
-      | Not_found ->
-          	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ varnm ^ "'")))
-          (*
-            (ContentOf(nv), FuncType((-1,0,0,0), IntType(-1,0,0,0), IntType(-1,0,0,0)), Subst.empty) (* for test *)
-          *)
+      begin
+      	try
+          let tyforall = Typeenv.find tyenv varnm in
+          let ty = Typeenv.overwrite_range_of_type (make_bounded_free tyforall) rng in
+            begin                                                                             (* for debug *)
+              print_for_debug ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
+                ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                          (* for debug *)
+              (ContentOf(varnm), ty, Subst.empty)
+            end                                                                               (* for debug *)
+        with
+        | Not_found ->
+            	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ varnm ^ "'")))
+            (*
+              (ContentOf(nv), FuncType((-1,0,0,0), IntType(-1,0,0,0), IntType(-1,0,0,0)), Subst.empty) (* for test *)
+            *)
+      end
+
+  | UTConstructor(constrnm, utastcont) ->
+      begin
+      	try
+          let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
+          let tyvarnt = Typeenv.overwrite_range_of_type (make_bounded_free tyforall) rng in
+            let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
+            let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
+              (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
+        with
+        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
 
   | UTConcat(utast1, utast2) ->
@@ -305,17 +318,6 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
   | UTDeclareTypeSynonymIn(tynm, tystr, utastaft) ->
       let varntenv_new = Variantenv.add_type_synonym varntenv tynm tystr in
         typecheck varntenv_new tyenv utastaft
-
-  | UTConstructor(constrnm, utastcont) ->
-      begin
-      	try
-          let (varntnm, tyvarnt) = Variantenv.find varntenv constrnm in
-            let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
-            let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
-              (Constructor(constrnm, econt), VariantType(rng, varntnm), theta_result)
-        with
-        | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
-      end
 
   | UTModule(mdlnm, utmdltr, utastaft) ->
       let (varntenv_new, tyenv_new, emdltr, thetadef) = typecheck_module varntenv tyenv varntenv tyenv mdlnm utmdltr in
