@@ -314,9 +314,9 @@
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
-  let make_mutual_variant_cons typenmtk constrdecs tailcons =
+  let make_mutual_variant_cons xpltyvarcons typenmtk constrdecs tailcons =
     let typenm = extract_name typenmtk in
-      UTMutualVariantCons(typenm, constrdecs, tailcons)
+      UTMutualVariantCons(xpltyvarcons, typenm, constrdecs, tailcons)
 
   let make_module firsttk mdlnmtk utastdef utastaft =
     let mdlnm = extract_name mdlnmtk in
@@ -662,10 +662,10 @@ nxdirectlazydec:
   | CTRLSEQ DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
-  | xpltyvars VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $2 $4 $6 }
-  | xpltyvars VAR DEFEQ variants                         { make_mutual_variant_cons $2 $4 UTEndOfMutualVariant }
-  | xpltyvars VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $2 $5 $7 }
-  | xpltyvars VAR DEFEQ BAR variants                     { make_mutual_variant_cons $2 $5 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $1 $2 $4 $6 }
+  | xpltyvars VAR DEFEQ variants                         { make_mutual_variant_cons $1 $2 $4 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $1 $2 $5 $7 }
+  | xpltyvars VAR DEFEQ BAR variants                     { make_mutual_variant_cons $1 $2 $5 UTEndOfMutualVariant }
 /* -- for syntax error log -- */
   | xpltyvars VAR error                           { report_error (TokArg $2) "" }
   | xpltyvars VAR DEFEQ error                     { report_error (Tok $3) "=" }
@@ -673,8 +673,8 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
   | xpltyvars VAR DEFEQ BAR variants LETAND error { report_error (Tok $6) "and" }
 ;
 xpltyvars: /* -> untyped_explicit_type_variable_cons */
-  | TYPEVAR xpltyvars { let (rng, nm) = extract_range_and_name $1 in UTExplicitTypeVariableCons(rng, nm, $2) }
-  |                   { UTEndOfExplicitTypeVariable }
+  | TYPEVAR xpltyvars { let (rng, tyargnm) = extract_range_and_name $1 in UTTypeArgumentCons(rng, tyargnm, $2) }
+  |                   { UTEndOfTypeArgument }
 ;
 nxlet:
   | MATCH nxlet WITH pats      {
@@ -930,6 +930,9 @@ txbot: /* -> type_struct */
           | "string" -> StringType(rng)
           | "unit"   -> UnitType(rng)
           | other    -> VariantType(rng, other)
+      }
+  | TYPEVAR {
+        let (rng, tyargnm) = extract_range_and_name $1 in TypeArgument(rng, tyargnm)
       }
   | LPAREN txfunc RPAREN { $2 }
 /* -- for syntax error log -- */

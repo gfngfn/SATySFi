@@ -44,6 +44,7 @@ let get_range_from_type tystr =
   | TypeSynonym(rng, _, _) -> rng
   | VariantType(rng, _)    -> rng
   | ForallType(_, _)       -> (-31, 0, 0, 0)
+  | TypeArgument(rng, _)   -> rng
 
 (* type_struct -> code_range -> type_struct *)
 let overwrite_range_of_type tystr rng =
@@ -60,23 +61,25 @@ let overwrite_range_of_type tystr rng =
   | TypeSynonym(_, tynm, tycont) -> TypeSynonym(rng, tynm, tycont)
   | VariantType(_, varntnm)      -> VariantType(rng, varntnm)
   | ForallType(tvid, tycont)     -> ForallType(tvid, tycont)
+  | TypeArgument(_, tyarg)       -> TypeArgument(rng, tyarg)
 
 (* type_struct -> type_struct *)
 let rec erase_range_of_type tystr =
   let dummy = (-2048, 0, 0, 0) in
     match tystr with
-    | IntType(_)                -> IntType(dummy)
-    | StringType(_)             -> StringType(dummy)
-    | BoolType(_)               -> BoolType(dummy)
-    | UnitType(_)               -> UnitType(dummy)
-    | FuncType(_, tydom, tycod) -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
-    | ListType(_, tycont)       -> ListType(dummy, erase_range_of_type tycont)
-    | RefType(_, tycont)        -> RefType(dummy, erase_range_of_type tycont)
-    | ProductType(_, tylist)    -> ProductType(dummy, List.map erase_range_of_type tylist)
-    | TypeVariable(_, tvid)     -> TypeVariable(dummy, tvid)
+    | IntType(_)                   -> IntType(dummy)
+    | StringType(_)                -> StringType(dummy)
+    | BoolType(_)                  -> BoolType(dummy)
+    | UnitType(_)                  -> UnitType(dummy)
+    | FuncType(_, tydom, tycod)    -> FuncType(dummy, erase_range_of_type tydom, erase_range_of_type tycod)
+    | ListType(_, tycont)          -> ListType(dummy, erase_range_of_type tycont)
+    | RefType(_, tycont)           -> RefType(dummy, erase_range_of_type tycont)
+    | ProductType(_, tylist)       -> ProductType(dummy, List.map erase_range_of_type tylist)
+    | TypeVariable(_, tvid)        -> TypeVariable(dummy, tvid)
     | TypeSynonym(_, tynm, tycont) -> TypeSynonym(dummy, tynm, erase_range_of_type tycont)
-    | VariantType(_, varntnm)   -> VariantType(dummy, varntnm)
-    | ForallType(tvid, tycont)  -> ForallType(tvid, erase_range_of_type tycont)
+    | VariantType(_, varntnm)      -> VariantType(dummy, varntnm)
+    | ForallType(tvid, tycont)     -> ForallType(tvid, erase_range_of_type tycont)
+    | TypeArgument(_, tyargnm)     -> TypeArgument(dummy, tyargnm)
 
 
 (* type_variable_id -> type_variable_id list -> bool *)

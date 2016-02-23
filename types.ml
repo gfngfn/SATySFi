@@ -27,6 +27,7 @@ and type_struct =
   | TypeSynonym  of code_range * type_name * type_struct
   | VariantType  of code_range * type_name
   | ForallType   of type_variable_id * type_struct
+  | TypeArgument of code_range * var_name
 
 type id_name_arg =
   | IDName       of id_name
@@ -99,7 +100,8 @@ and untyped_variant_cons_main =
   | UTVariantCons          of constructor_name * type_struct * untyped_variant_cons
   | UTEndOfVariant
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualVariantCons    of untyped_type_argument_cons
+                                * type_name * untyped_variant_cons * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
@@ -134,9 +136,9 @@ and untyped_module_tree_main =
   | UTMPrivateDeclareTypeSynonymIn of type_name * type_struct * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
-and untyped_explicit_type_variable_cons =
-  | UTExplicitTypeVariableCons  of code_range * var_name * untyped_explicit_type_variable_cons
-  | UTEndOfExplicitTypeVariable
+and untyped_type_argument_cons =
+  | UTTypeArgumentCons  of code_range * var_name * untyped_type_argument_cons
+  | UTEndOfTypeArgument
 
 (* ---- typed ---- *)
 type argument_variable_cons =

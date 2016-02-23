@@ -161,6 +161,7 @@ let rec string_of_type_struct_basic tystr =
     | TypeSynonym(_, tynm, tycont) -> tynm ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")"
     | ForallType(tvid, tycont)     ->
         "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")" ^ (if sttln <= 0 then "+" else "")
+    | TypeArgument(_, tyargnm)     -> tyargnm
 
 and string_of_type_struct_list_basic tylist =
   match tylist with
@@ -285,6 +286,7 @@ and string_of_type_struct_sub tystr lst =
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
 
+  | TypeArgument(_, tyvarnm) -> tyvarnm
 
 and string_of_type_struct_list tylist lst =
   match tylist with

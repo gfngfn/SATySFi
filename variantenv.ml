@@ -34,8 +34,18 @@ let rec find_definition_kind defedtylst tynm =
   | _ :: tl                       -> find_definition_kind tl tynm
 
 
-(* t -> type_struct -> type_struct *)
-let rec check_type_defined varntenv tystr =
+let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyargnm : var_name) =
+  match tyargcons with
+  | UTEndOfTypeArgument                 -> false
+  | UTTypeArgumentCons(_, nm, tailcons) ->
+      begin
+        print_string ("tyarg: " ^ nm ^ "\n") ;
+        if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
+      end
+
+
+(* t -> untyped_type_argument_cons -> type_struct -> type_struct *)
+let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
 	let (defedtylst, varntenvmain) = varntenv in
   	match tystr with
     | VariantType(rng, varntnm) ->
@@ -51,10 +61,18 @@ let rec check_type_defined varntenv tystr =
                   "at " ^ (Display.describe_position rng) ^ ":\n"
                 ^ "    undefined type '" ^ varntnm ^ "'"))
         end
-  	| FuncType(rng, tydom, tycod) -> FuncType(rng, check_type_defined varntenv tydom, check_type_defined varntenv tycod)
-  	| ListType(rng, tycont)       -> ListType(rng, check_type_defined varntenv tycont)
-  	| RefType(rng, tycont)        -> RefType(rng, check_type_defined varntenv tycont)
-  	| ProductType(rng, tylist)    -> ProductType(rng, List.map (check_type_defined varntenv) tylist)
+  	| FuncType(rng, tydom, tycod) -> FuncType(rng, check_type_defined varntenv tyargcons tydom,
+                                                   check_type_defined varntenv tyargcons tycod)
+  	| ListType(rng, tycont)       -> ListType(rng, check_type_defined varntenv tyargcons tycont)
+  	| RefType(rng, tycont)        -> RefType(rng, check_type_defined varntenv tyargcons tycont)
+  	| ProductType(rng, tylist)    -> ProductType(rng, List.map (check_type_defined varntenv tyargcons) tylist)
+    | TypeArgument(rng, tyargnm)  ->
+          if is_defined_type_argument tyargcons tyargnm then
+            TypeArgument(rng, tyargnm)
+          else
+            raise (TypeCheckError(
+                "at " ^ (Display.describe_position rng) ^ ":\n"
+              ^ "    undefined type argument '" ^ tyargnm ^ "'"))
   	| other                       -> other
 
 
@@ -64,61 +82,61 @@ let append_module_name mdlnm varntnm =
   | _  -> mdlnm ^ "." ^ varntnm
 
 
-(* t -> type_name -> t *)
-let add_variant varntenv tynm =
+(* t -> type_name -> untyped_type_argument_cons -> t *)
+let add_variant (varntenv :t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in ((tynm, Data) :: defedtypelist, varntenvmain)
 
 
-(* t -> type_name -> t *)
-let add_hidden_type mdlnm varntenv tynm =
+let add_hidden_type (mdlnm : module_name) (varntenv : t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in ((append_module_name mdlnm tynm, Hidden) :: defedtypelist, varntenvmain)
 
 
 (* t -> type_name -> type_struct -> t *)
 let add_type_synonym varntenv tynm tystr =
   let (defedtypelist, varntenvmain) = varntenv in
-  let tystr_new = check_type_defined varntenv tystr in
+  let tystr_new = check_type_defined varntenv UTEndOfTypeArgument tystr in
     ((tynm, Synonym(tystr_new)) :: defedtypelist, varntenvmain)
 
 
-(* module_name -> t -> type_name -> untyped_variant_cons -> t *)
-let rec add_cons (mdlnm : module_name) (varntenv : t) (varntnm : type_name) (utvc : untyped_variant_cons) =
-	  add_cons_main mdlnm (add_variant varntenv varntnm) varntnm utvc
+let rec add_cons (mdlnm : module_name) (varntenv : t)
+                   (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
+	  add_cons_main mdlnm (add_variant varntenv tyargcons varntnm) tyargcons varntnm utvc
 
-and add_cons_main (mdlnm : module_name) (varntenv : t) (varntnm : type_name) (utvc : untyped_variant_cons) =
+and add_cons_main (mdlnm : module_name) (varntenv : t)
+                    (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
   let (rng, utvcmain) = utvc in
     match utvcmain with
     | UTEndOfVariant                           -> varntenv
     | UTVariantCons(constrnm, tystr, tailcons) ->
-        let tystr_new    = check_type_defined varntenv tystr in
+        let tystr_new    = check_type_defined varntenv tyargcons tystr in
         let varntenv_new = add varntenv constrnm tystr_new (append_module_name mdlnm varntnm) in
-          add_cons_main mdlnm varntenv_new varntnm tailcons
+          add_cons_main mdlnm varntenv_new tyargcons varntnm tailcons
 
 
 (* t -> untyped_mutual_variant_cons -> t *)
 let rec add_mutual_cons varntenv mutvarntcons =
   let varntenv_new = add_mutual_variant_type "" varntenv mutvarntcons in
     match mutvarntcons with
-    | UTEndOfMutualVariant                         -> varntenv_new
-    | UTMutualVariantCons(varntnm, utvc, tailcons) ->
-        add_mutual_cons (add_cons "" varntenv_new varntnm utvc) tailcons
+    | UTEndOfMutualVariant                                    -> varntenv_new
+    | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons) ->
+        add_mutual_cons (add_cons "" varntenv_new tyargcons varntnm utvc) tailcons
 
 
 (* module_name -> t -> untyped_mutual_variant_cons -> t *)
 and add_mutual_cons_hidden mdlnm varntenv mutvarntcons =
   let varntenv_new = add_mutual_variant_type mdlnm varntenv mutvarntcons in
     match mutvarntcons with
-    | UTEndOfMutualVariant                      -> varntenv_new
-    | UTMutualVariantCons(varntnm, _, tailcons) ->
-        add_mutual_cons_hidden mdlnm (add_hidden_type mdlnm varntenv_new varntnm) tailcons
+    | UTEndOfMutualVariant                                 -> varntenv_new
+    | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
+        add_mutual_cons_hidden mdlnm (add_hidden_type mdlnm varntenv_new tyargcons varntnm) tailcons
 
 
 (* module_name -> t -> untyped_mutual_variant_cons *)
 and add_mutual_variant_type mdlnm varntenv mutvarntcons =
   match mutvarntcons with
-  | UTEndOfMutualVariant                      -> varntenv
-  | UTMutualVariantCons(varntnm, _, tailcons) ->
-      add_mutual_variant_type mdlnm (add_variant varntenv (append_module_name mdlnm varntnm)) tailcons
+  | UTEndOfMutualVariant                                 -> varntenv
+  | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
+      add_mutual_variant_type mdlnm (add_variant varntenv tyargcons (append_module_name mdlnm varntnm)) tailcons
 
 
 
