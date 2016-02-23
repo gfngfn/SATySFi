@@ -157,6 +157,8 @@ rule numexpr = parse
   | "."   { DOT(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
 
+  | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
+
   | identifier {
         let tok = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in

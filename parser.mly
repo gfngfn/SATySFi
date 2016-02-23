@@ -402,6 +402,7 @@
 
 %token <Types.token_position * Types.var_name> VAR
 %token <Types.token_position * Types.var_name> VARINSTR
+%token <Types.token_position * Types.var_name> TYPEVAR
 %token <Types.token_position * Types.constructor_name> CONSTRUCTOR
 %token <Types.token_position * string> NUMCONST CHAR
 %token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
@@ -661,15 +662,19 @@ nxdirectlazydec:
   | CTRLSEQ DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
-  | VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $1 $3 $5 }
-  | VAR DEFEQ variants                         { make_mutual_variant_cons $1 $3 UTEndOfMutualVariant }
-  | VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $1 $4 $6 }
-  | VAR DEFEQ BAR variants                     { make_mutual_variant_cons $1 $4 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $2 $4 $6 }
+  | xpltyvars VAR DEFEQ variants                         { make_mutual_variant_cons $2 $4 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $2 $5 $7 }
+  | xpltyvars VAR DEFEQ BAR variants                     { make_mutual_variant_cons $2 $5 UTEndOfMutualVariant }
 /* -- for syntax error log -- */
-  | VAR error                           { report_error (TokArg $1) "" }
-  | VAR DEFEQ error                     { report_error (Tok $2) "=" }
-  | VAR DEFEQ BAR error                 { report_error (Tok $3) "|" }
-  | VAR DEFEQ BAR variants LETAND error { report_error (Tok $5) "and" }
+  | xpltyvars VAR error                           { report_error (TokArg $2) "" }
+  | xpltyvars VAR DEFEQ error                     { report_error (Tok $3) "=" }
+  | xpltyvars VAR DEFEQ BAR error                 { report_error (Tok $4) "|" }
+  | xpltyvars VAR DEFEQ BAR variants LETAND error { report_error (Tok $6) "and" }
+;
+xpltyvars: /* -> untyped_explicit_type_variable_cons */
+  | TYPEVAR xpltyvars { let (rng, nm) = extract_range_and_name $1 in UTExplicitTypeVariableCons(rng, nm, $2) }
+  |                   { UTEndOfExplicitTypeVariable }
 ;
 nxlet:
   | MATCH nxlet WITH pats      {

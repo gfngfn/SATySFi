@@ -5,8 +5,8 @@
 Macrodown is a markup language wrapping other markup languages such as TeX/LaTeX or HTML.
 It consists mainly of two “layers” ― the text layer and the program layer.
 The former is for writing documents in LaTeX-like syntax.
-The latter, that has ML-like syntax, is for defining functions and macros
-with polymorphic static typing.
+The latter, which has ML-like syntax, is for defining functions and macros
+with Hindley-Milner polymorphic static typing.
 It enables you to write documents semantically markuped with flexible macros of your own making.
 
 ![logo2](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo2.png)

@@ -134,6 +134,9 @@ and untyped_module_tree_main =
   | UTMPrivateDeclareTypeSynonymIn of type_name * type_struct * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
+and untyped_explicit_type_variable_cons =
+  | UTExplicitTypeVariableCons  of code_range * var_name * untyped_explicit_type_variable_cons
+  | UTEndOfExplicitTypeVariable
 
 (* ---- typed ---- *)
 type argument_variable_cons =
