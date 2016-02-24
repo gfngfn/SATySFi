@@ -3,9 +3,9 @@ open Display
 
 
 let print_for_debug_typecheck msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 (* !! mutable !! *)
