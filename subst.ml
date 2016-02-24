@@ -270,20 +270,24 @@ and unify_sub tystr1 tystr2 =
                               when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
 
   | (TypeVariable(rng1, tvid1), tystr) ->
-      begin match tystr with
-      | TypeVariable(rng2, tvid2) ->
-          if tvid1 = tvid2 then
-            empty
-          else if tvid1 < tvid2 then
-            if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
-                                      else [(tvid1, TypeVariable(rng2, tvid2))]
-          else
-            if is_invalid_range rng1  then [(tvid2, TypeVariable(rng2, tvid1))]
-                                      else [(tvid2, TypeVariable(rng1, tvid1))]
-      | other ->
-          let (b, _) = emerge_in tvid1 tystr in
-            if b  then report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
-                  else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
+      begin
+        match tystr with
+        | TypeVariable(rng2, tvid2) ->
+            if tvid1 = tvid2 then
+              empty
+            else if tvid1 < tvid2 then
+              if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
+                                        else [(tvid1, TypeVariable(rng2, tvid2))]
+            else
+              if is_invalid_range rng1  then [(tvid2, TypeVariable(rng2, tvid1))]
+                                        else [(tvid2, TypeVariable(rng1, tvid1))]
+        | other ->
+            let (b, _) = emerge_in tvid1 tystr in
+              if b then
+                report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
+              else
+                if is_invalid_range rng1 then [(tvid1, tystr)]
+                                         else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
       end
 
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr

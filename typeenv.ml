@@ -77,7 +77,7 @@ let rec erase_range_of_type tystr =
     | ProductType(_, tylist)             -> ProductType(dummy, List.map erase_range_of_type tylist)
     | TypeVariable(_, tvid)              -> TypeVariable(dummy, tvid)
     | TypeSynonym(_, tynm, tycont)       -> TypeSynonym(dummy, tynm, erase_range_of_type tycont)
-    | VariantType(_, tyarglist, varntnm) -> VariantType(dummy, tyarglist, varntnm)
+    | VariantType(_, tyarglist, varntnm) -> VariantType(dummy, List.map erase_range_of_type tyarglist, varntnm)
     | ForallType(tvid, tycont)           -> ForallType(tvid, erase_range_of_type tycont)
     | TypeArgument(_, tyargnm)           -> TypeArgument(dummy, tyargnm)
 

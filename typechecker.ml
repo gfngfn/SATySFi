@@ -91,6 +91,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             begin                                                                                       (* for debug *)
               print_for_debug_typecheck ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                                    (* for debug *)
+              print_for_debug_typecheck ((Display.describe_position rng) ^ "\n") ;                      (* for debug *)
               (ContentOf(varnm), ty, Subst.empty)
             end                                                                                         (* for debug *)
         with
@@ -109,8 +110,9 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             let type_result_sub = Subst.apply_to_type_struct theta_result (VariantType(rng, tyarglist, varntnm)) in
             let type_result     = Typeenv.overwrite_range_of_type type_result_sub rng in
             begin                                                                                         (* for debug *)
-              print_for_debug_typecheck ("#C " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
+              print_for_debug_typecheck ("#V " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic type_result) ^ "\n") ;                             (* for debug *)
+              print_for_debug_typecheck ((Display.describe_position rng) ^ "\n") ;                        (* for debug *)
               (Constructor(constrnm, econt), type_result, theta_result)
             end                                                                                           (* for debug *)
         with
@@ -132,8 +134,9 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
           match ty1 with
           | FuncType(_, tydom, tycod) ->
               let theta3 = Subst.unify ty2 tydom in
-                let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
-                let type_result  = Subst.apply_to_type_struct theta_result tycod in
+                let theta_result    = Subst.compose theta3 (Subst.compose theta2 theta1) in
+                let type_result_sub = Subst.apply_to_type_struct theta_result tycod in
+                let type_result     = Typeenv.overwrite_range_of_type type_result_sub rng in
                   begin                                                                               (* for debug *)
                     print_for_debug_typecheck ("\n%Apply1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
                       ^ (string_of_type_struct_basic type_result) ^ "\n") ;                           (* for debug *)
