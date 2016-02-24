@@ -622,12 +622,15 @@ nxlazydec:
   | VAR DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxpubdec: /* -> untyped_mutual_let_cons */
-  | VAR argvar DEFEQ nxlet LETAND nxpubdec  { make_mutual_let_cons $1 $2 $4 $6 }
-  | VAR argvar DEFEQ nxlet                  { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet LETAND nxpubdec           { make_mutual_let_cons $1 $2 $4 $6 }
+  | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) $8 }
+  | VAR argvar DEFEQ nxlet                           { make_mutual_let_cons $1 $2 $4 UTEndOfMutualLet }
+  | VAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par $1 (UTLetPatternCons($2, $4, $6)) UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | VAR error                               { report_error (TokArg $1) "" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
   | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
+  | VAR argvar DEFEQ nxlet BAR error        { report_error (Tok $5) "|" }
 ;
 nxpublazydec:
   | VAR DEFEQ nxlet LETAND nxpublazydec {
@@ -985,6 +988,12 @@ txbot: /* -> type_struct */
           | "unit"   -> UnitType(rng)
           | other    -> VariantType(rng, [], other)
       }
+  | CONSTRUCTOR DOT VAR {
+      let (rng1, mdlnm) = extract_range_and_name $1 in
+      let (rng2, tynm)  = extract_range_and_name $3 in
+      let rng = make_range (Rng rng1) (Rng rng2) in
+        VariantType(rng, [], mdlnm ^ "." ^ tynm)
+  }
   | TYPEVAR {
         let (rng, tyargnm) = extract_range_and_name $1 in TypeArgument(rng, tyargnm)
       }

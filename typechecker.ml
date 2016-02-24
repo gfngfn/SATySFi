@@ -395,6 +395,11 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout_new teout vein_new tein mdlnm utmdlaft in
         (veout_result, teout_result, eaft, thetaaft)
 
+  | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
+      let vein_new  = Variantenv.add_mutual_cons vein utmutvarntcons in
+      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout vein_new tein mdlnm utmdlaft in
+        (veout_result, teout_result, eaft, thetaaft)
+
   | UTMPublicLetMutableIn(varrng, varnm, utini, utmdlaft) ->
       let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein tein varrng varnm utini in
       let teout_new = add_list_to_type_environment mdlnm teout [(varnm, RefType(varrng, tyini))] in
@@ -408,7 +413,6 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
 
 (*
   | UTMPublicDeclareTypeSynonymIn(tynm, tystr, utmdlaft)  ->
-  | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
   | UTMPrivateDeclareTypeSynonymIn(tynm, tystr, utmdlaft) ->
 *)
 
