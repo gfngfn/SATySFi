@@ -4,7 +4,7 @@ open Types
 (* unit -> Variantenv.t *)
 let make_variant_environment () =
   Variantenv.add Variantenv.empty "Item"
-    (ProductType((-1, 0, 0, 0), [StringType(-1, 0, 0, 0); ListType((-1, 0, 0, 0), VariantType((-1, 0, 0, 0), "itemize"))]))
+    (ProductType((-1, 0, 0, 0), [StringType(-1, 0, 0, 0); ListType((-1, 0, 0, 0), VariantType((-1, 0, 0, 0), [], "itemize"))]))
     "itemize"
 
 
