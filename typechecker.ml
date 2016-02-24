@@ -1,6 +1,13 @@
 open Types
 open Display
 
+
+let print_for_debug_typecheck msg =
+(*
+  print_string msg ;
+*)
+  ()
+
 (* !! mutable !! *)
 let tvidmax        : type_variable_id ref = ref 0
 let final_tyenv    : Typeenv.t ref        = ref Typeenv.empty
@@ -36,22 +43,25 @@ and eliminate_forall tystr lst =
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
 
   | other ->
-      let tyfree    = replace_id other lst in
+      let tyfree    = replace_id lst other in
       let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
         (tyfree, tyarglist)
 
 
 (* type_struct -> type_variable_id list -> type_struct *)
-and replace_id tystr lst =
+and replace_id lst tystr =
   match tystr with
-  | TypeVariable(rng, tvid)     ->
-      ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
-
-  | ListType(rng, tycont)       -> ListType(rng, replace_id tycont lst)
-  | RefType(rng, tycont)        -> RefType(rng, replace_id tycont lst)
-  | ProductType(rng, tylist)    -> ProductType(rng, List.map (fun tl -> replace_id tl lst) tylist)
-  | FuncType(rng, tydom, tycod) -> FuncType(rng, replace_id tydom lst, replace_id tycod lst)
-  | other                       -> other
+  | TypeVariable(rng, tvid)           ->
+      begin
+      	try find_id_in_list tvid lst with
+      	| Not_found -> TypeVariable(rng, tvid)
+      end
+  | ListType(rng, tycont)             -> ListType(rng, replace_id lst tycont)
+  | RefType(rng, tycont)              -> RefType(rng, replace_id lst tycont)
+  | ProductType(rng, tylist)          -> ProductType(rng, List.map (replace_id lst) tylist)
+  | FuncType(rng, tydom, tycod)       -> FuncType(rng, replace_id lst tydom, replace_id lst tycod)
+  | VariantType(rng, tylist, varntnm) -> VariantType(rng, List.map (replace_id lst) tylist, varntnm)
+  | other                             -> other
 
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
@@ -77,11 +87,11 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
           let tyforall    = Typeenv.find tyenv varnm in
           let (tyfree, _) = make_bounded_free tyforall in
           let ty = Typeenv.overwrite_range_of_type tyfree rng in
-            begin                                                                             (* for debug *)
-              print_for_debug ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
-                ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                          (* for debug *)
+            begin                                                                                       (* for debug *)
+              print_for_debug_typecheck ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
+                ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                                    (* for debug *)
               (ContentOf(varnm), ty, Subst.empty)
-            end                                                                               (* for debug *)
+            end                                                                                         (* for debug *)
         with
         | Not_found ->
             	raise (TypeCheckError(error_reporting rng ("undefined variable '" ^ varnm ^ "'")))
@@ -99,7 +109,11 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
             let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
             let theta_result = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
             let type_result  = Subst.apply_to_type_struct theta_result (VariantType(rng, tyarglist, varntnm)) in
+            begin                                                                                         (* for debug *)
+              print_for_debug_typecheck ("#C " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
+                ^ " = " ^ (string_of_type_struct_basic tyvarnt) ^ "\n") ;                                 (* for debug *)
               (Constructor(constrnm, econt), type_result, theta_result)
+            end                                                                                           (* for debug *)
         with
         | Not_found -> raise (TypeCheckError(error_reporting rng "undefined constructor '" ^ constrnm ^ "'"))
       end
@@ -122,25 +136,25 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
                 let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
                 let term_result = Apply(e1, e2) in
                 let type_result = Subst.apply_to_type_struct theta_result tycod in
-                  begin                                                                 (* for debug *)
-                    print_for_debug ("\n%Apply1 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
-                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
-                    print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
+                  begin                                                                           (* for debug *)
+                    print_for_debug_typecheck ("\n%Apply1 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
+                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;                       (* for debug *)
+                    print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
                       (term_result, type_result, theta_result)
-                  end                                                                   (* for debug *)
+                  end                                                                             (* for debug *)
           | _ ->
               let beta = TypeVariable(rng, new_type_variable_id ()) in
               let theta3 = Subst.unify ty1 (FuncType(get_range utast1, ty2, beta)) in
                 let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
                 let term_result = Apply(e1, e2) in
                 let type_result = Subst.apply_to_type_struct theta_result beta in
-                  begin                                                                 (* for debug *)
-                    print_for_debug ("\n%Apply2 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
-                      ^ (string_of_type_struct_basic beta) ^ " = "                      (* for debug *)
-                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;             (* for debug *)
-                    print_for_debug ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
+                  begin                                                                           (* for debug *)
+                    print_for_debug_typecheck ("\n%Apply2 " ^ (string_of_ast term_result) ^ " : " (* for debug *)
+                      ^ (string_of_type_struct_basic beta) ^ " = "                                (* for debug *)
+                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;                       (* for debug *)
+                    print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;     (* for debug *)
                       (term_result, type_result, theta_result)
-                  end                                                                   (* for debug *)
+                  end                                                                             (* for debug *)
         end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
@@ -359,14 +373,14 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
 
   | UTMDirectLetIn(utmutletcons, utmdlaft) ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
-      let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
+      let _ = List.map (fun (x, _) -> print_for_debug_typecheck ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
         let teout_new = add_list_to_type_environment "" teout tvtylst_added in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
           (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), Subst.compose thetaaft theta)
 
   | UTMPublicLetIn(utmutletcons, utmdlaft) ->
       let (tein_new, tvtylst_added, mutletcons, theta) = make_type_environment_by_let vein tein utmutletcons in
-      let _ = List.map (fun (x, _) -> print_for_debug ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
+      let _ = List.map (fun (x, _) -> print_for_debug_typecheck ("[" ^ x ^ "]\n")) tvtylst_added in (* for debug *)
       let teout_new = add_list_to_type_environment mdlnm teout tvtylst_added in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout_new vein tein_new mdlnm utmdlaft in
         (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), Subst.compose thetaaft theta)
@@ -546,9 +560,9 @@ and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst tvtyls
   | (varnm, tvty) :: tvtytail ->
       let prety = Subst.apply_to_type_struct theta tvty in
         begin                                                                                     (* for debug *)
-          print_for_debug (Subst.string_of_subst theta) ;                                         (* for debug *)
-          print_for_debug (Typeenv.string_of_type_environment tyenv "MakeForall") ;               (* for debug *)
-          print_for_debug ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
+          print_for_debug_typecheck (Subst.string_of_subst theta) ;                                         (* for debug *)
+          print_for_debug_typecheck (Typeenv.string_of_type_environment tyenv "MakeForall") ;               (* for debug *)
+          print_for_debug_typecheck ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
           let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
           let tyenv_new = Typeenv.add tyenv varnm forallty in
           let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in

@@ -7,6 +7,13 @@ exception ContradictionError
 type t = (type_variable_id * type_struct) list
 
 
+let print_for_debug_subst msg =
+(*
+  print_string msg ;
+*)
+  ()
+
+
 let empty = []
 
 
@@ -189,9 +196,6 @@ and check_emergence theta =
             report_inclusion_error (TypeVariable(rng, tvid)) tystr
         else
           check_emergence tail
-
-
-let print_for_debug_subst msg = print_string msg (* () *)
 
 
 (* t -> t -> t *)

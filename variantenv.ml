@@ -37,7 +37,7 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
       begin                                       (* for debug *)
         print_for_debug ("tyarg: " ^ nm ^ "\n") ; (* for debug *)
         if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
-      end                                      (* for debug *)
+      end                                         (* for debug *)
 
 
 let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
@@ -55,7 +55,7 @@ let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_con
                     raise (TypeCheckError(
                         "at " ^ (Display.describe_position rng) ^ ":\n"
                       ^ "    variant type '" ^ varntnm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s),\n"
-                      ^ "    but it has " ^ (string_of_int len) ^ " type argument(s) here."))
+                      ^ "    but it has " ^ (string_of_int len) ^ " type argument(s) here"))
             | Synonym(tystr) -> TypeSynonym(rng, varntnm, tystr)
           with
           | Not_found ->
@@ -131,25 +131,18 @@ and make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_argum
         make_type_argument_quantified (var_id + 1) tailcons tystr_new
 
 and make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : type_struct) =
+  let f = make_type_argument_numbered var_id tyargnm in
   match tystr with
-  | TypeArgument(rng, nm) when nm = tyargnm -> TypeVariable(rng, -var_id)
-  | FuncType(rng, tydom, tycod) ->
-      let tydom_new = make_type_argument_numbered var_id tyargnm tydom in
-      let tycod_new = make_type_argument_numbered var_id tyargnm tycod in
-        FuncType(rng, tydom_new, tycod_new)
-  | ListType(rng, tycont) ->
-      let tycont_new = make_type_argument_numbered var_id tyargnm tycont in
-        ListType(rng, tycont_new)
-  | RefType(rng, tycont) ->
-      let tycont_new = make_type_argument_numbered var_id tyargnm tycont in
-        RefType(rng, tycont_new)
-  | ProductType(rng, tylist) ->
-      let tylist_new = List.map (make_type_argument_numbered var_id tyargnm) tylist in
-        ProductType(rng, tylist_new)
-  | ForallType(tvid, tycont) ->
-      let tycont_new = make_type_argument_numbered var_id tyargnm tycont in
-        ForallType(tvid, tycont_new)
-  | other -> other
+  | TypeArgument(rng, nm)
+                    when nm = tyargnm -> TypeVariable(rng, -var_id)
+  | FuncType(rng, tydom, tycod)       -> FuncType(rng, f tydom, f tycod)
+  | ListType(rng, tycont)             -> ListType(rng, f tycont)
+  | RefType(rng, tycont)              -> RefType(rng, f tycont)
+  | ProductType(rng, tylist)          -> ProductType(rng, List.map f tylist)
+  | ForallType(tvid, tycont)          -> ForallType(tvid, f tycont)
+      (* maybe contains bugs, when tvid = -var_id *)
+  | VariantType(rng, tylist, varntnm) -> VariantType(rng, List.map f tylist, varntnm)
+  | other                             -> other
 
 
 let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
