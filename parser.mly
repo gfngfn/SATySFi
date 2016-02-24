@@ -44,6 +44,9 @@
   (* code_range *)
   let dummy_range = (-42, 0, 0, 0)
 
+  let end_header : untyped_abstract_tree = ((-1, 0, 0, 0), UTFinishHeaderFile)
+
+  let end_struct : untyped_module_tree   = ((-1, 0, 0, 0), UTMFinishModule)
 
 
   (* untyped_argument_cons -> untyped_argument_cons -> untyped_argument_cons *)

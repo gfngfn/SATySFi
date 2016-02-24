@@ -34,48 +34,42 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
   match tyargcons with
   | UTEndOfTypeArgument                 -> false
   | UTTypeArgumentCons(_, nm, tailcons) ->
-      begin                                       (* for debug *)
-        print_for_debug ("tyarg: " ^ nm ^ "\n") ; (* for debug *)
-        if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
-      end                                         (* for debug *)
+      if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
 
 
 let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
-	let (defedtylst, varntenvmain) = varntenv in
-  	match tystr with
+  let (defedtylst, varntenvmain) = varntenv in
+  let f = check_type_defined varntenv tyargcons in
+    match tystr with
+    | FuncType(rng, tydom, tycod)          -> FuncType(rng, f tydom, f tycod)
+    | ListType(rng, tycont)                -> ListType(rng, f tycont)
+    | RefType(rng, tycont)                 -> RefType(rng, f tycont)
+    | ProductType(rng, tylist)             -> ProductType(rng, List.map f tylist)
     | VariantType(rng, tyarglist, varntnm) ->
         begin
           try
             match find_definition_kind defedtylst varntnm with
+            | Synonym(tystr)                  -> TypeSynonym(rng, varntnm, tystr)
             | (Data(argnum) | Hidden(argnum)) ->
                 let len = List.length tyarglist in
                   if argnum = len then
                     VariantType(rng, tyarglist, varntnm)
                   else
-                    raise (TypeCheckError(
-                        "at " ^ (Display.describe_position rng) ^ ":\n"
-                      ^ "    variant type '" ^ varntnm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s),\n"
-                      ^ "    but it has " ^ (string_of_int len) ^ " type argument(s) here"))
-            | Synonym(tystr) -> TypeSynonym(rng, varntnm, tystr)
+                    Display.report_error_with_range rng [
+                      "variant type '" ^ varntnm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
+                      "but it has " ^ (string_of_int len) ^ " type argument(s) here"
+                    ]
           with
-          | Not_found ->
-              raise (TypeCheckError(
-                  "at " ^ (Display.describe_position rng) ^ ":\n"
-                ^ "    undefined type '" ^ varntnm ^ "'"))
+          | Not_found -> Display.report_error_with_range rng ["undefined type '" ^ varntnm ^ "'"]
         end
-  	| FuncType(rng, tydom, tycod) -> FuncType(rng, check_type_defined varntenv tyargcons tydom,
-                                                   check_type_defined varntenv tyargcons tycod)
-  	| ListType(rng, tycont)       -> ListType(rng, check_type_defined varntenv tyargcons tycont)
-  	| RefType(rng, tycont)        -> RefType(rng, check_type_defined varntenv tyargcons tycont)
-  	| ProductType(rng, tylist)    -> ProductType(rng, List.map (check_type_defined varntenv tyargcons) tylist)
-    | TypeArgument(rng, tyargnm)  ->
+
+    | TypeArgument(rng, tyargnm)           ->
           if is_defined_type_argument tyargcons tyargnm then
             TypeArgument(rng, tyargnm)
           else
-            raise (TypeCheckError(
-                "at " ^ (Display.describe_position rng) ^ ":\n"
-              ^ "    undefined type argument '" ^ tyargnm ^ "'"))
-  	| other                       -> other
+            Display.report_error_with_range rng ["undefined type argument '" ^ tyargnm ^ "'"]
+
+    | other                                -> other
 
 
 let append_module_name mdlnm varntnm =
@@ -110,7 +104,7 @@ let add_type_synonym (varntenv : t) (tynm : type_name) (tystr : type_struct) =
 
 let rec add_cons (mdlnm : module_name) (varntenv : t)
                    (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
-	  add_cons_main mdlnm (add_variant varntenv tyargcons varntnm) tyargcons varntnm utvc
+    add_cons_main mdlnm (add_variant varntenv tyargcons varntnm) tyargcons varntnm utvc
 
 and add_cons_main (mdlnm : module_name) (varntenv : t)
                     (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
@@ -171,7 +165,7 @@ and add_mutual_variant_type (mdlnm : module_name) (varntenv : t) (mutvarntcons :
 
 
 let rec find (varntenv : t) (constrnm : constructor_name) =
-	let (_, varntenvmain) = varntenv in find_main varntenvmain constrnm
+  let (_, varntenvmain) = varntenv in find_main varntenvmain constrnm
 
 and find_main varntenvmain constrnm =
     match varntenvmain with

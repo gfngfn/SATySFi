@@ -6,9 +6,7 @@ val string_of_ast : abstract_tree -> string
 
 val describe_position : code_range -> string
 
-val error_reporting : code_range -> string -> string
-
-val bug_reporting : code_range -> string -> string
+val report_error_with_range : code_range -> string list -> 'a
 
 val string_of_type_struct_basic : type_struct -> string
 

@@ -254,16 +254,15 @@ type output_unit =
   | OBreakAndIndent     of int
   | OSoftBreakAndIndent of int
 
+
 (* !!!! ---- global variable ---- !!!! *)
 let global_hash_env : environment = Hashtbl.create 32
 
-(* for parser *)
-let end_header : untyped_abstract_tree = ((-1, 0, 0, 0), UTFinishHeaderFile)
-let end_struct : untyped_module_tree = ((-1, 0, 0, 0), UTMFinishModule)
 
 (* untyped_abstract_tree -> code_range *)
 let get_range utast =
   let (rng, _) = utast in rng
+
 
 let is_invalid_range rng =
   let (sttln, _, _, _) = rng in sttln <= 0
