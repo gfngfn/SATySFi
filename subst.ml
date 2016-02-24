@@ -80,13 +80,16 @@ let rec emerge_in tvid tystr =
         let (bdom, rngdom) = emerge_in tvid dom in
         let (bcod, rngcod) = emerge_in tvid cod in
           if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dummy)
-    | ListType(_, cont)        -> emerge_in tvid cont
-    | RefType(_, cont)         -> emerge_in tvid cont
-    | ProductType(_, lst)      -> emerge_in_list tvid lst
-    | TypeVariable(rng, tvidx) -> (tvidx = tvid, rng)
-    | VariantType(rng, lst, _) -> emerge_in_list tvid lst
-    | TypeSynonym(_, _, cont)  -> emerge_in tvid cont
-    | _                        -> (false, dummy)
+    | ListType(_, cont)            -> emerge_in tvid cont
+    | RefType(_, cont)             -> emerge_in tvid cont
+    | ProductType(_, lst)          -> emerge_in_list tvid lst
+    | TypeVariable(rng, tvidx)     -> (tvidx = tvid, rng)
+    | VariantType(rng, lst, _)     -> emerge_in_list tvid lst
+    | TypeSynonym(_, lst, _, cont) ->
+        let (bcont, rngcont) = emerge_in tvid cont in
+        let (blst, rnglst)   = emerge_in_list tvid lst in
+          if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dummy)
+    | _                            -> (false, dummy)
 
 and emerge_in_list tvid tylist =
   let dummy = (-2049, 0, 0, 0) in
@@ -219,9 +222,9 @@ and unify tystr1 tystr2 =
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
     match (tystr1, tystr2) with
-    | (TypeSynonym(_, _, tycont1), _) -> unify_sub tycont1 tystr2
-    | (_, TypeSynonym(_, _, tycont2)) -> unify_sub tystr1 tycont2
-    | _                               -> unify_sub tystr1 tystr2
+    | (TypeSynonym(_, tyarglist, _, tycont1), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist tycont1) tystr2
+    | (_, TypeSynonym(_, tyarglist, _, tycont2)) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist tycont2)
+    | _                                          -> unify_sub tystr1 tystr2
   with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
@@ -250,8 +253,8 @@ and unify_sub tystr1 tystr2 =
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
 
   match (tystr1, tystr2) with
-  | (TypeSynonym(_, _, _), _)      -> unify tystr1 tystr2
-  | (_, TypeSynonym(_, _, _))      -> unify tystr1 tystr2
+  | (TypeSynonym(_, _, _, _), _)   -> unify tystr1 tystr2
+  | (_, TypeSynonym(_, _, _, _))   -> unify tystr1 tystr2
 
   | (IntType(_), IntType(_))       -> empty
   | (StringType(_), StringType(_)) -> empty

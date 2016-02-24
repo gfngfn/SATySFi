@@ -9,60 +9,14 @@ let print_for_debug_typecheck msg =
   ()
 
 (* !! mutable !! *)
-let tvidmax        : type_variable_id ref = ref 0
 let final_tyenv    : Typeenv.t ref        = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref     = ref Variantenv.empty
-
-let initialize () = ( tvidmax := 0 )
-
-let new_type_variable_id () =
-  let res = !tvidmax in ( tvidmax := !tvidmax + 1 ; res )
 
 
 let make_module_var_name mdlnm varnm =
   match mdlnm with
   | "" -> varnm
   | _  -> mdlnm ^ "." ^ varnm
-
-
-(* 'a -> ('a * 'b) list -> 'b *)
-let rec find_id_in_list elm lst =
-  match lst with
-  | []                                    -> raise Not_found
-  | (tvid, tystr) :: tail when tvid = elm -> tystr
-  | _ :: tail                             -> find_id_in_list elm tail
-
-
-(* type_struct -> type_struct * (type_struct list) *)
-let rec make_bounded_free tystr = eliminate_forall tystr []
-
-and eliminate_forall tystr lst =
-  match tystr with
-  | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
-        eliminate_forall tycont ((tvid, ntvstr) :: lst)
-
-  | other ->
-      let tyfree    = replace_id lst other in
-      let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
-        (tyfree, tyarglist)
-
-
-(* type_struct -> type_variable_id list -> type_struct *)
-and replace_id lst tystr =
-  let f = replace_id lst in
-    match tystr with
-    | TypeVariable(rng, tvid)           ->
-        begin
-          try find_id_in_list tvid lst with
-          | Not_found -> TypeVariable(rng, tvid)
-        end
-    | ListType(rng, tycont)             -> ListType(rng, f tycont)
-    | RefType(rng, tycont)              -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)          -> ProductType(rng, List.map f tylist)
-    | FuncType(rng, tydom, tycod)       -> FuncType(rng, f tydom, f tycod)
-    | VariantType(rng, tylist, varntnm) -> VariantType(rng, List.map f tylist, varntnm)
-    | other                             -> other
 
 
 (* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
@@ -86,7 +40,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       begin
         try
           let tyforall    = Typeenv.find tyenv varnm in
-          let (tyfree, _) = make_bounded_free tyforall in
+          let (tyfree, _) = Typeenv.make_bounded_free tyforall in
           let ty = Typeenv.overwrite_range_of_type tyfree rng in
             begin                                                                                       (* for debug *)
               print_for_debug_typecheck ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
@@ -102,7 +56,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
       begin
         try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist) = make_bounded_free tyforall in
+          let (tyfree, tyarglist) = Typeenv.make_bounded_free tyforall in
           let (econt, tycont, thetacont) = typecheck varntenv tyenv utastcont in
 (*          let tyvarnt = Typeenv.overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
           let tyvarnt = tyfree in
@@ -144,7 +98,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
                       (Apply(e1, e2), type_result, theta_result)
                   end                                                                                 (* for debug *)
           | _ ->
-              let beta = TypeVariable(rng, new_type_variable_id ()) in
+              let beta = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
               let theta3 = Subst.unify ty1 (FuncType(get_range utast1, ty2, beta)) in
                 let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
                 let type_result  = Subst.apply_to_type_struct theta_result beta in
@@ -158,7 +112,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
-      let beta = TypeVariable(varrng, new_type_variable_id ()) in
+      let beta = TypeVariable(varrng, Typeenv.new_type_variable_id ()) in
       let tyenv_new = Typeenv.add tyenv varnm beta in
         let (e1, ty1, theta1) = typecheck varntenv tyenv_new utast1 in
           let term_result = LambdaAbstract(varnm, e1) in
@@ -301,7 +255,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
           (term_result, type_result, theta_result)
 
   | UTEndOfList ->
-      let ntyvar = TypeVariable(rng, new_type_variable_id ()) in
+      let ntyvar = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
         (EndOfList, ListType(rng, ntyvar), Subst.empty)
 
 (* ---- tuple ---- *)
@@ -326,7 +280,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
   | UTPatternMatch(utastobj, utpmcons) ->
       let (eobj, tyobj, thetaobj) = typecheck varntenv tyenv utastobj in
-      let ntv = TypeVariable((-300, 0, 0, 0), new_type_variable_id ()) in
+      let ntv = TypeVariable((-300, 0, 0, 0), Typeenv.new_type_variable_id ()) in
       let (pmcons, typm, thetapm) = typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj thetaobj ntv in
         (PatternMatch(eobj, pmcons), typm, thetapm)
 
@@ -478,7 +432,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
           (PListCons(epat1, epat2), type_result, tyenv_result)
 
   | UTPEndOfList ->
-      let ntv = TypeVariable(rng, new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
+      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
 
   | UTPTupleCons(utpat1, utpat2) ->
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
@@ -493,14 +447,14 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
 
   | UTPWildCard ->
-      let ntv = TypeVariable(rng, new_type_variable_id ()) in (PWildCard, ntv, tyenv)
+      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in (PWildCard, ntv, tyenv)
 
   | UTPVariable(varnm) ->
-      let ntv = TypeVariable(rng, new_type_variable_id ()) in
+      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
         (PVariable(varnm), ntv, Typeenv.add tyenv varnm ntv)
 
   | UTPAsVariable(varnm, utpat1) ->
-      let ntv = TypeVariable(rng, new_type_variable_id ()) in
+      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
         (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm ntv)
 
@@ -508,7 +462,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
       begin
         try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist) = make_bounded_free tyforall in
+          let (tyfree, tyarglist) = Typeenv.make_bounded_free tyforall in
           let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
           let theta = Subst.unify tyfree typat1 in
           let tyenv_new = Subst.apply_to_type_environment theta tyenv1 in
@@ -533,7 +487,7 @@ and add_mutual_variables varntenv tyenv mutletcons =
   match mutletcons with
   | UTEndOfMutualLet                         -> (tyenv, [])
   | UTMutualLetCons(varnm, astdef, tailcons) ->
-      let ntv = TypeVariable(get_range astdef, new_type_variable_id ()) in
+      let ntv = TypeVariable(get_range astdef, Typeenv.new_type_variable_id ()) in
         let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
           (tyenv_tail, ((varnm, ntv) :: tvtylst))
 

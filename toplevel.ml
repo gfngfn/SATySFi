@@ -2,8 +2,8 @@
 #load "types.cmo";;
 #load "typeenv.cmo";;
 #load "display.cmo";;
-#load "subst.cmo";;
 #load "variantenv.cmo";;
+#load "subst.cmo";;
 #load "parser.cmo";;
 #load "lexer.cmo";;
 #load "typechecker.cmo";;

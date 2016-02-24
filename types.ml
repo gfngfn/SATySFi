@@ -24,7 +24,7 @@ and type_struct =
   | RefType      of code_range * type_struct
   | ProductType  of code_range * (type_struct list)
   | TypeVariable of code_range * type_variable_id
-  | TypeSynonym  of code_range * type_name * type_struct
+  | TypeSynonym  of code_range * (type_struct list) * type_name * type_struct
   | VariantType  of code_range * (type_struct list) * type_name
   | ForallType   of type_variable_id * type_struct
   | TypeArgument of code_range * var_name
@@ -102,6 +102,8 @@ and untyped_variant_cons_main =
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons
                                 * type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument_cons
+                                * type_name * type_struct * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =

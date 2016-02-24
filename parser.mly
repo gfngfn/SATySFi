@@ -318,9 +318,13 @@
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
-  let make_mutual_variant_cons xpltyvarcons typenmtk constrdecs tailcons =
+  let make_mutual_variant_cons tyargcons typenmtk constrdecs tailcons =
     let typenm = extract_name typenmtk in
-      UTMutualVariantCons(xpltyvarcons, typenm, constrdecs, tailcons)
+      UTMutualVariantCons(tyargcons, typenm, constrdecs, tailcons)
+
+  let make_mutual_synonym_cons tyargcons typenmtk tystr tailcons =
+    let typenm = extract_name typenmtk in
+      UTMutualSynonymCons(tyargcons, typenm, tystr, tailcons)
 
   let make_module firsttk mdlnmtk utastdef utastaft =
     let mdlnm = extract_name mdlnmtk in
@@ -673,6 +677,8 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
   | xpltyvars VAR DEFEQ variants                         { make_mutual_variant_cons $1 $2 $4 UTEndOfMutualVariant }
   | xpltyvars VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $1 $2 $5 $7 }
   | xpltyvars VAR DEFEQ BAR variants                     { make_mutual_variant_cons $1 $2 $5 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ txfunc LETAND nxvariantdec       { make_mutual_synonym_cons $1 $2 $4 $6 }
+  | xpltyvars VAR DEFEQ txfunc                           { make_mutual_synonym_cons $1 $2 $4 UTEndOfMutualVariant }
 /* -- for syntax error log -- */
   | xpltyvars VAR error                           { report_error (TokArg $2) "" }
   | xpltyvars VAR DEFEQ error                     { report_error (Tok $3) "=" }
