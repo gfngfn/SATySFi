@@ -24,28 +24,32 @@ let is_standalone_file str =
 
 (* Variantenv.t -> Typeenv.t -> environment -> string -> (Variantenv.t * Typeenv.t * environment) *)
 let make_environment_from_header_file varntenv tyenv env file_name_in =
-  ( print_string (" ---- ---- ---- ----\n") ;
+  begin
+    print_string (" ---- ---- ---- ----\n") ;
     print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
     let file_in = open_in file_name_in in
-    ( Lexer.reset_to_numexpr () ;
-      let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-      let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
-      ( print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
-        let evaled = Evaluator.interpret env ast in
-          match evaled with
-          | EvaluatedEnvironment(newenv) ->
-              ( ( if !show_control_sequence_type then
-                    if !show_function_type then
-                      print_string (Typeenv.string_of_type_environment newtyenv "Environment")
-                    else
-                      print_string (Typeenv.string_of_control_sequence_type newtyenv)
-                  else () ) ;
-                (newvarntenv, newtyenv, newenv)
-              )
-          | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
-      )
-    )
-  )
+      begin
+        Lexer.reset_to_numexpr () ;
+        let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+        let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
+          begin
+            print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
+            let evaled = Evaluator.interpret env ast in
+              match evaled with
+              | EvaluatedEnvironment(newenv) ->
+                  begin
+                    ( if !show_control_sequence_type then
+                        if !show_function_type then
+                          print_string (Typeenv.string_of_type_environment newtyenv "Environment")
+                        else
+                          print_string (Typeenv.string_of_control_sequence_type newtyenv)
+                      else () ) ;
+                    (newvarntenv, newtyenv, newenv)
+                  end
+              | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
+          end
+      end
+  end
 
 
 (* Typeenv.t -> environment -> string -> string -> unit *)
@@ -129,14 +133,14 @@ let rec main varntenv tyenv env file_name_in_list file_name_out =
 
     | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with
-  | Lexer.LexError(s)             -> print_string ("! [ERROR IN LEXER] " ^ s ^ ".\n")
-  | Parsing.Parse_error           -> print_string ("! [ERROR IN PARSER] something is wrong.\n")
-  | ParseErrorDetail(s)           -> print_string ("! [ERROR IN PARSER] " ^ s ^ "\n")
-  | TypeCheckError(s)             -> print_string ("! [ERROR IN TYPECHECK] " ^ s ^ ".\n")
-  | Evaluator.EvalError(s)        -> print_string ("! [ERROR IN EVAL] " ^ s ^ ".\n")
-  | Out.IllegalOut(s)             -> print_string ("! [ERROR IN OUT] " ^ s ^ ".\n")
-  | MainError(s)                  -> print_string ("! [ERROR IN MAIN] " ^ s ^ ".\n")
-  | Sys_error(s)                  -> print_string ("! [ERROR IN MAIN] System error - " ^ s ^ "\n")
+  | Lexer.LexError(s)             -> print_string ("! [ERROR AT LEXER] " ^ s ^ ".\n")
+  | Parsing.Parse_error           -> print_string ("! [ERROR AT PARSER] something is wrong.\n")
+  | ParseErrorDetail(s)           -> print_string ("! [ERROR AT PARSER] " ^ s ^ "\n")
+  | TypeCheckError(s)             -> print_string ("! [ERROR AT TYPECHECKER] " ^ s ^ ".\n")
+  | Evaluator.EvalError(s)        -> print_string ("! [ERROR AT EVAL] " ^ s ^ ".\n")
+  | Out.IllegalOut(s)             -> print_string ("! [ERROR AT OUT] " ^ s ^ ".\n")
+  | MainError(s)                  -> print_string ("! [ERROR AT MAIN] " ^ s ^ ".\n")
+  | Sys_error(s)                  -> print_string ("! [ERROR AT MAIN] System error - " ^ s ^ "\n")
 
 
 (* int -> (string list) -> string -> unit *)
@@ -152,12 +156,22 @@ let rec see_argv num file_name_in_list file_name_out =
       end
     else
       match Sys.argv.(num) with
-      | "-v" -> print_string "  Macrodown version 1.00b\n"
+      | "-v" ->
+          print_string (
+              "  Macrodown version 1.00g\n"
+            ^ "    ____   ____       ________     _____   ______\n"
+            ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
+            ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
+            ^ "     /    \\  \\   \\  \\   \\       /   /   /   /  \\   \\\n"
+            ^ "    /      \\  \\   \\  \\   \\     /   /   /   /    \\   \\\n"
+            ^ "   /   /\\   \\  \\   \\  \\   \\   /   /   /   /      \\   \\\n"
+            ^ "  /   /  \\   \\  \\   \\  \\___\\ /___/   /   /        \\   \\\n"
+            ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
+            ^ "/___/      \\___\\  \\___\\            /_________________/\n"
+          )
       | "-o" ->
           begin
-            try
-              see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1))
-            with
+            try see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1)) with
             | Invalid_argument(s) -> print_string "! missing file name after '-o' option\n"
           end
       | "-t" ->
