@@ -42,8 +42,8 @@ let get_range_from_type tystr =
   | RefType(rng, _)           -> rng
   | ProductType(rng, _)       -> rng
   | TypeVariable(rng, _)      -> rng
-  | TypeSynonym(rng, _, _, _) -> rng
   | VariantType(rng, _, _)    -> rng
+  | TypeSynonym(rng, _, _, _) -> rng
   | ForallType(_, _)          -> (-31, 0, 0, 0)
   | TypeArgument(rng, _)      -> rng
 
@@ -60,8 +60,8 @@ let overwrite_range_of_type tystr rng =
   | RefType(_, tycont)                      -> RefType(rng, tycont)
   | ProductType(_, tylist)                  -> ProductType(rng, tylist)
   | TypeVariable(_, tvid)                   -> TypeVariable(rng, tvid)
-  | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(rng, tyarglist, tynm, tycont)
   | VariantType(_, tyarglist, varntnm)      -> VariantType(rng, tyarglist, varntnm)
+  | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(rng, tyarglist, tynm, tycont)
   | ForallType(tvid, tycont)                -> ForallType(tvid, tycont)
   | TypeArgument(_, tyarg)                  -> TypeArgument(rng, tyarg)
 
@@ -80,8 +80,8 @@ let rec erase_range_of_type tystr =
     | RefType(_, tycont)                      -> RefType(dummy, f tycont)
     | ProductType(_, tylist)                  -> ProductType(dummy, List.map f tylist)
     | TypeVariable(_, tvid)                   -> TypeVariable(dummy, tvid)
-    | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(dummy, List.map f tyarglist, tynm, f tycont)
     | VariantType(_, tyarglist, varntnm)      -> VariantType(dummy, List.map f tyarglist, varntnm)
+    | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(dummy, List.map f tyarglist, tynm, f tycont)
     | ForallType(tvid, tycont)                -> ForallType(tvid, f tycont)
     | TypeArgument(_, tyargnm)                -> TypeArgument(dummy, tyargnm)
 
@@ -217,14 +217,15 @@ and eliminate_forall tystr lst =
 and replace_id lst tystr =
   let f = replace_id lst in
     match tystr with
-    | TypeVariable(rng, tvid)           ->
+    | TypeVariable(rng, tvid)                   ->
         begin
           try find_id_in_list tvid lst with
           | Not_found -> TypeVariable(rng, tvid)
         end
-    | ListType(rng, tycont)             -> ListType(rng, f tycont)
-    | RefType(rng, tycont)              -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)          -> ProductType(rng, List.map f tylist)
-    | FuncType(rng, tydom, tycod)       -> FuncType(rng, f tydom, f tycod)
-    | VariantType(rng, tylist, varntnm) -> VariantType(rng, List.map f tylist, varntnm)
-    | other                             -> other
+    | ListType(rng, tycont)                     -> ListType(rng, f tycont)
+    | RefType(rng, tycont)                      -> RefType(rng, f tycont)
+    | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
+    | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
+    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
+    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
+    | other                                     -> other

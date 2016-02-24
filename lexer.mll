@@ -191,7 +191,6 @@ rule numexpr = parse
           | "as"                -> AS(pos)
           | "variant"           -> VARIANT(pos)
           | "of"                -> OF(pos)
-          | "type"              -> TYPE(pos)
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
           | "end-struct"        -> ENDSTRUCT(pos)

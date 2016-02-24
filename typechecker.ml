@@ -3,9 +3,9 @@ open Display
 
 
 let print_for_debug_typecheck msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 (* !! mutable !! *)
@@ -286,10 +286,6 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
   | UTDeclareVariantIn(mutvarntcons, utastaft) ->
       let varntenv_new = Variantenv.add_mutual_cons varntenv mutvarntcons in
-        typecheck varntenv_new tyenv utastaft
-
-  | UTDeclareTypeSynonymIn(tynm, tystr, utastaft) ->
-      let varntenv_new = Variantenv.add_type_synonym varntenv tynm tystr in
         typecheck varntenv_new tyenv utastaft
 
   | UTModule(mdlnm, utmdltr, utastaft) ->

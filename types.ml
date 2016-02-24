@@ -75,7 +75,6 @@ and untyped_abstract_tree_main =
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
-  | UTDeclareTypeSynonymIn of type_name * type_struct * untyped_abstract_tree
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of module_name * untyped_module_tree * untyped_abstract_tree
 (* -- implerative -- *)
@@ -131,11 +130,9 @@ and untyped_module_tree_main =
   | UTMFinishModule
   | UTMPublicLetIn                 of untyped_mutual_let_cons * untyped_module_tree
   | UTMPublicLetMutableIn          of code_range * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPublicDeclareTypeSynonymIn  of type_name * type_struct * untyped_module_tree
   | UTMPublicDeclareVariantIn      of untyped_mutual_variant_cons * untyped_module_tree
   | UTMPrivateLetIn                of untyped_mutual_let_cons * untyped_module_tree
   | UTMPrivateLetMutableIn         of code_range * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPrivateDeclareTypeSynonymIn of type_name * type_struct * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
 and untyped_type_argument_cons =
@@ -243,11 +240,9 @@ and module_tree =
   | MFinishModule
   | MPublicLetIn                 of mutual_let_cons * module_tree
   | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-(*  | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree *)
 (*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
   | MPrivateLetIn                of mutual_let_cons * module_tree
   | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-(*  | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree *)
 (*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
   | MDirectLetIn                 of mutual_let_cons * module_tree
 

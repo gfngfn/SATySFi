@@ -84,6 +84,7 @@ and string_of_type_struct_sub tystr lst =
   | BoolType(_)                        -> "bool"
   | UnitType(_)                        -> "unit"
   | VariantType(_, tyarglist, varntnm) -> (string_of_type_argument_list tyarglist) ^ varntnm
+  | TypeSynonym(_, tyarglist, tynm, tycont) -> tynm ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
@@ -125,8 +126,6 @@ and string_of_type_struct_sub tystr lst =
               end
       end
 
-  | TypeSynonym(_, tyarglist, tynm, tycont) -> tynm ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
-
   | ForallType(tvid, tycont) ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
@@ -141,14 +140,15 @@ and string_of_type_argument_list tyarglist =
       let strtl = string_of_type_argument_list tail in
         begin
           match head with
-          | FuncType(_, _, _)         -> "(" ^ strhd ^ ")"
-          | ListType(_, _)            -> "(" ^ strhd ^ ")"
-          | RefType(_, _)             -> "(" ^ strhd ^ ")"
-          | ProductType(_, _)         -> "(" ^ strhd ^ ")"
-          | TypeSynonym(_, _, _, _)   -> "(" ^ strhd ^ ")"
-          | VariantType(_, [], _)     -> strhd
-          | VariantType(_, _ :: _, _) -> "(" ^ strhd ^ ")"
-          | _                         -> strhd
+          | FuncType(_, _, _)            -> "(" ^ strhd ^ ")"
+          | ListType(_, _)               -> "(" ^ strhd ^ ")"
+          | RefType(_, _)                -> "(" ^ strhd ^ ")"
+          | ProductType(_, _)            -> "(" ^ strhd ^ ")"
+          | VariantType(_, [], _)        -> strhd
+          | VariantType(_, _ :: _, _)    -> "(" ^ strhd ^ ")"
+          | TypeSynonym(_, [], _, _)     -> strhd
+          | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strhd ^ ")"
+          | _                            -> strhd
         end ^ " " ^ strtl
 
 and string_of_type_struct_list tylist lst =
@@ -285,7 +285,7 @@ let rec string_of_type_struct_basic tystr =
     | UnitType(_)                        -> if sttln <= 0 then "unit?"   else "unit"
 
     | VariantType(_, tyarglist, varntnm) ->
-        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ (if sttln <= 0 then "?" else "")
+        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ (if sttln <= 0 then "@?" else "@")
 
     | TypeSynonym(_, tyarglist, tynm, tycont) ->
         (string_of_type_argument_list_basic tyarglist) ^ tynm ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")"
@@ -301,21 +301,25 @@ let rec string_of_type_struct_basic tystr =
     | ListType(_, tycont)          ->
         let strcont = string_of_type_struct_basic tycont in
           begin match tycont with
-          | FuncType(_, _, _)     -> "(" ^ strcont ^ ")"
-          | ProductType(_, _)     -> "(" ^ strcont ^ ")"
-          | VariantType(_, [], _) -> strcont
-          | VariantType(_, _, _)  -> "(" ^ strcont ^ ")"
-          | _                     -> strcont
+          | FuncType(_, _, _)            -> "(" ^ strcont ^ ")"
+          | ProductType(_, _)            -> "(" ^ strcont ^ ")"
+          | VariantType(_, [], _)        -> strcont
+          | VariantType(_, _, _)         -> "(" ^ strcont ^ ")"
+          | TypeSynonym(_, [], _, _)     -> strcont
+          | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strcont ^ ")"
+          | _                            -> strcont
           end ^ " list" ^ (if sttln <= 0 then "?" else "")
 
     | RefType(_, tycont)           ->
         let strcont = string_of_type_struct_basic tycont in
           begin match tycont with
-          | FuncType(_, _, _)     -> "(" ^ strcont ^ ")"
-          | ProductType(_, _)     -> "(" ^ strcont ^ ")"
-          | VariantType(_, [], _) -> strcont
-          | VariantType(_, _, _)  -> "(" ^ strcont ^ ")"
-          | _                 -> strcont
+          | FuncType(_, _, _)            -> "(" ^ strcont ^ ")"
+          | ProductType(_, _)            -> "(" ^ strcont ^ ")"
+          | VariantType(_, [], _)        -> strcont
+          | VariantType(_, _, _)         -> "(" ^ strcont ^ ")"
+          | TypeSynonym(_, [], _, _)     -> strcont
+          | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strcont ^ ")"
+          | _                            -> strcont
           end ^ " ref" ^ (if sttln <= 0 then "?" else "")
 
     | ProductType(_, tylist)       -> string_of_type_struct_list_basic tylist
@@ -331,14 +335,15 @@ and string_of_type_argument_list_basic tyarglist =
       let strtl = string_of_type_argument_list_basic tail in
         begin
           match head with
-          | FuncType(_, _, _)         -> "(" ^ strhd ^ ")"
-          | ListType(_, _)            -> "(" ^ strhd ^ ")"
-          | RefType(_, _)             -> "(" ^ strhd ^ ")"
-          | ProductType(_, _)         -> "(" ^ strhd ^ ")"
-          | TypeSynonym(_, _, _, _)   -> "(" ^ strhd ^ ")"
-          | VariantType(_, [], _)     -> strhd
-          | VariantType(_, _ :: _, _) -> "(" ^ strhd ^ ")"
-          | _                         -> strhd
+          | FuncType(_, _, _)            -> "(" ^ strhd ^ ")"
+          | ListType(_, _)               -> "(" ^ strhd ^ ")"
+          | RefType(_, _)                -> "(" ^ strhd ^ ")"
+          | ProductType(_, _)            -> "(" ^ strhd ^ ")"
+          | TypeSynonym(_, [], _, _)     -> strhd
+          | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strhd ^ ")"
+          | VariantType(_, [], _)        -> strhd
+          | VariantType(_, _ :: _, _)    -> "(" ^ strhd ^ ")"
+          | _                            -> strhd
         end ^ " " ^ strtl
 
 and string_of_type_struct_list_basic tylist =

@@ -8,9 +8,9 @@ type t = (type_variable_id * type_struct) list
 
 
 let print_for_debug_subst msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -40,36 +40,41 @@ and eliminate_sub constr theta key =
 
 (* type_struct -> type_variable_id -> type_struct -> type_struct *)
 let rec overwrite_type_struct (tystr : type_struct) (key : type_variable_id) (value : type_struct) =
-  match tystr with
-  | FuncType(rng, dom, cod)              -> FuncType(rng, overwrite_type_struct dom key value, overwrite_type_struct cod key value)
-  | ListType(rng, cont)                  -> ListType(rng, overwrite_type_struct cont key value)
-  | RefType(rng, cont)                   -> RefType(rng, overwrite_type_struct cont key value)
-  | ProductType(rng, lst)                -> ProductType(rng, List.map (fun ty -> overwrite_type_struct ty key value) lst)
-  | TypeVariable(rng, k)                 -> if k = key then value else TypeVariable(rng, k)
-  | VariantType(rng, tyarglist, varntnm) -> VariantType(rng, List.map (fun ty -> overwrite_type_struct ty key value) tyarglist, varntnm)
-  | other                   -> other
+  let f = fun ty -> overwrite_type_struct ty key value in
+    match tystr with
+    | FuncType(rng, dom, cod)                    -> FuncType(rng, f dom, f cod)
+    | ListType(rng, cont)                        -> ListType(rng, f cont)
+    | RefType(rng, cont)                         -> RefType(rng, f cont)
+    | ProductType(rng, lst)                      -> ProductType(rng, List.map f lst)
+    | TypeVariable(rng, k)                       -> if k = key then value else TypeVariable(rng, k)
+    | VariantType(rng, tyarglist, varntnm)       -> VariantType(rng, List.map f tyarglist, varntnm)
+    | TypeSynonym(rng, tyarglist, tysynnm, cont) -> TypeSynonym(rng, List.map f tyarglist, tysynnm, f cont)
+    | other                                      -> other
 
 
 (* t -> type_struct -> type_struct *)
 let rec apply_to_type_struct theta tystr =
-  match tystr with
-  | FuncType(rng, tydom, tycod)          -> FuncType(rng, apply_to_type_struct theta tydom, apply_to_type_struct theta tycod)
-  | ListType(rng, tycont)                -> ListType(rng, apply_to_type_struct theta tycont)
-  | RefType(rng, tycont)                 -> RefType(rng, apply_to_type_struct theta tycont)
-  | ProductType(rng, tylist)             -> ProductType(rng, List.map (apply_to_type_struct theta) tylist)
-  | TypeVariable(rng, tv)                -> begin try find theta tv with Not_found -> TypeVariable(rng, tv) end
-  | VariantType(rng, tyarglist, varntnm) -> VariantType(rng, List.map (apply_to_type_struct theta) tyarglist, varntnm)
-  | other                                -> other
+  let f = apply_to_type_struct theta in
+    match tystr with
+    | FuncType(rng, tydom, tycod)                  -> FuncType(rng, f tydom, f tycod)
+    | ListType(rng, tycont)                        -> ListType(rng, f tycont)
+    | RefType(rng, tycont)                         -> RefType(rng, f tycont)
+    | ProductType(rng, tylist)                     -> ProductType(rng, List.map f tylist)
+    | TypeVariable(rng, tv)                        -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
+    | VariantType(rng, tyarglist, varntnm)         -> VariantType(rng, List.map f tyarglist, varntnm)
+    | TypeSynonym(rng, tyarglist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tyarglist, tysynnm, f tycont)
+    | other                                        -> other
 
 
 (* t -> type_environment -> Typeenv.t *)
-let rec apply_to_type_environment theta tyenv =
-  Typeenv.from_list (apply_to_type_environment_sub theta (Typeenv.to_list tyenv))
+let apply_to_type_environment theta tyenv =
+  let rec f theta tyenvlst =
+    match tyenvlst with
+    | []                     -> tyenvlst
+    | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (f theta tail)
+  in
+    Typeenv.from_list (f theta (Typeenv.to_list tyenv))
 
-and apply_to_type_environment_sub theta tyenvlst =
-  match tyenvlst with
-  | []                     -> tyenvlst
-  | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (apply_to_type_environment_sub theta tail)
 
 
 (* type_variable_id -> type_struct -> (bool * code_range) *)
@@ -102,7 +107,7 @@ and emerge_in_list tvid tylist =
 
 
 (* t -> type_variable_id -> type_struct -> t *)
-let rec overwrite theta key value =
+let rec overwrite (theta : t) (key : type_variable_id) (value : type_struct) =
   match theta with
   | []             -> []
   | (k, v) :: tail ->
@@ -221,10 +226,12 @@ and unify tystr1 tystr2 =
   print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
+(*    | (TypeSynonym(_, tyarglist1, _, tycont1), TypeSynonym(_, tyarglist2, _, tycont2)) ->
+        unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) (Variantenv.apply_to_type_synonym tyarglist2 tystr2) *)
     match (tystr1, tystr2) with
-    | (TypeSynonym(_, tyarglist, _, tycont1), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist tycont1) tystr2
-    | (_, TypeSynonym(_, tyarglist, _, tycont2)) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist tycont2)
-    | _                                          -> unify_sub tystr1 tystr2
+    | (TypeSynonym(_, tyarglist1, _, tycont1), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) tystr2
+    | (_, TypeSynonym(_, tyarglist2, _, tycont2)) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist2 tycont2)
+    | _                                           -> unify_sub tystr1 tystr2
   with
   | InclusionError     -> report_inclusion_error tystr1 tystr2
   | ContradictionError ->
