@@ -227,4 +227,9 @@ and replace_id lst tystr =
     | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
     | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
     | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
+    | ForallType(tvid, tycont)                  ->
+        begin
+          try let _ = find_id_in_list tvid lst in ForallType(tvid, tycont)
+          with Not_found -> ForallType(tvid, f tycont)
+        end
     | other                                     -> other

@@ -6,6 +6,7 @@ type constructor_list  = (constructor_name * type_name * type_struct) list
 type t = defined_type_list * constructor_list
 
 type fix_mode = InnerMode | OuterMode
+type type_argument_mode = StrictMode of untyped_type_argument_cons | FreeMode of (var_name list) ref
 
 let empty = ([], [])
 
@@ -52,9 +53,9 @@ let report_illegal_type_argument_length rng tynm len_expected len =
   ]
 
 
-let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
+let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
   let (defedtylst, varntenvmain) = varntenv in
-  let f = fix_manual_type_general mode varntenv tyargcons in
+  let f = fix_manual_type_general mode varntenv tyargmode in
     match tystr with
 
     | FuncType(rng, tydom, tycod)           -> FuncType(rng, f tydom, f tycod)
@@ -102,32 +103,28 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargcons : un
         end
 
     | TypeArgument(rng, tyargnm)        ->
-          if is_defined_type_argument tyargcons tyargnm then
-            TypeArgument(rng, tyargnm)
-          else
-            Display.report_error_with_range rng ["undefined type argument '" ^ tyargnm ^ "'"]
+          begin
+            match tyargmode with
+            | StrictMode(tyargcons) ->
+                if is_defined_type_argument tyargcons tyargnm then
+                  TypeArgument(rng, tyargnm)
+                else
+                  Display.report_error_with_range rng ["undefined type argument '" ^ tyargnm ^ "'"]
+
+            | FreeMode(reftyarglst) ->
+                begin
+                  ( if List.mem tyargnm (!reftyarglst) then () else reftyarglst := tyargnm :: (!reftyarglst) ) ;
+                  TypeArgument(rng, tyargnm)
+                end
+          end
 
     | other                             -> assert false
 
-let fix_manual_type = fix_manual_type_general InnerMode
 
-let fix_manual_type_for_inner varntenv tystr = fix_manual_type_general InnerMode varntenv UTEndOfTypeArgument tystr
-
-let fix_manual_type_for_outer varntenv tystr = fix_manual_type_general OuterMode varntenv UTEndOfTypeArgument tystr
-
-
-let rec make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
-  match tyargcons with
-  | UTEndOfTypeArgument                        -> tystr
-  | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
-      let tystr_new = ForallType(-var_id, make_type_argument_numbered var_id tyargnm tystr) in
-        make_type_argument_quantified (var_id + 1) tailcons tystr_new
-
-and make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : type_struct) =
+let rec make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : type_struct) =
   let f = make_type_argument_numbered var_id tyargnm in
     match tystr with
-    | TypeArgument(rng, nm)
-                              when nm = tyargnm -> TypeVariable(rng, -var_id)
+    | TypeArgument(rng, nm)   when nm = tyargnm -> TypeVariable(rng, var_id)
     | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
     | ListType(rng, tycont)                     -> ListType(rng, f tycont)
     | RefType(rng, tycont)                      -> RefType(rng, f tycont)
@@ -137,6 +134,37 @@ and make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : typ
     | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
     | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, tycont)
     | other                                     -> other
+
+
+let fix_manual_type varntenv tyargcons tystr = fix_manual_type_general InnerMode varntenv (StrictMode(tyargcons)) tystr
+
+
+let free_type_argument_list : (var_name list) ref = ref []
+
+let rec make_type_argument_into_type_variable tyarglist tystr =
+  match tyarglist with
+  | []                   -> tystr
+  | tyargnm :: tyargtail ->
+      let ntv = Typeenv.new_type_variable_id () in
+      let tystr_new = make_type_argument_numbered ntv tyargnm tystr in
+        make_type_argument_into_type_variable tyargtail tystr_new
+
+
+let fix_manual_type_for_inner_and_outer (varntenv : t) (tystr : type_struct) =
+  free_type_argument_list := [] ;
+  let tystrin  = fix_manual_type_general InnerMode varntenv (FreeMode(free_type_argument_list)) tystr in
+  let tystrout = fix_manual_type_general OuterMode varntenv (FreeMode(free_type_argument_list)) tystr in
+    let tystrin_result = make_type_argument_into_type_variable (!free_type_argument_list) tystrin in
+    let tystrout_result = make_type_argument_into_type_variable (!free_type_argument_list) tystrout in
+      (tystrin_result, tystrout_result)
+
+
+let rec make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
+  match tyargcons with
+  | UTEndOfTypeArgument                        -> tystr
+  | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
+      let tystr_new = ForallType(-var_id, make_type_argument_numbered (-var_id) tyargnm tystr) in
+        make_type_argument_quantified (var_id + 1) tailcons tystr_new
 
 
 let rec type_argument_length tyargcons =
@@ -171,9 +199,12 @@ let add_synonym (scope : scope_kind) (varntenv : t)
 
 
 let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : type_struct) =
-  match (tystr_forall, tyarglist) with
-  | (ForallType(tvid, tycont), tyarghd :: tyargtl) -> apply_to_type_synonym tyargtl (Typeenv.replace_id [(tvid, tyarghd)] tycont)
-  | (_, [])                                        -> tystr_forall
+  match (tyarglist, tystr_forall) with
+  | (tyarghd :: tyargtl, ForallType(tvid, tycont)) ->
+      let tystr_forall_new = Typeenv.replace_id [(tvid, tyarghd)] tycont in
+        apply_to_type_synonym tyargtl tystr_forall_new
+  | ([], ForallType(_, _))                         -> assert false
+  | ([], _)                                        -> tystr_forall
   | _                                              -> assert false
 
 

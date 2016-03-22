@@ -497,8 +497,7 @@ and typecheck_mutual_contents (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utm
                 let tvtylstout_result = (varnm, tvty) :: tvtylstout_tail in
                   (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
           | Some(tystrmanu) ->
-              let tystrforin  = Variantenv.fix_manual_type_for_inner varntenv tystrmanu in
-              let tystrforout = Variantenv.fix_manual_type_for_outer varntenv tystrmanu in
+              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer varntenv tystrmanu in
               let theta1in  = Subst.compose (Subst.unify tystrforin tvty) (Subst.compose (Subst.unify ty1 tvty) theta1) in
               let theta1out = theta1 in
                 let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1in tyenv) varnm ty1 in
