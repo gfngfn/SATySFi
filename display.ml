@@ -35,7 +35,7 @@ let rec variable_name_of_int n =
 
 (* unit -> string *)
 let new_meta_type_variable_name () =
-  let res = variable_name_of_int (!meta_max) in
+  let res = "{" ^ (variable_name_of_int (!meta_max)) ^ "}" in
     begin meta_max := !meta_max + 1 ; res end
 
 (* (type_variable_id * string) list -> type_variable_id -> string *)
@@ -83,8 +83,9 @@ and string_of_type_struct_sub tystr lst =
   | IntType(_)                         -> "int"
   | BoolType(_)                        -> "bool"
   | UnitType(_)                        -> "unit"
-  | VariantType(_, tyarglist, varntnm) -> (string_of_type_argument_list tyarglist) ^ varntnm
-  | TypeSynonym(_, tyarglist, tynm, tycont) -> tynm ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
+  | VariantType(_, tyarglist, varntnm)      -> (string_of_type_argument_list tyarglist lst) ^ varntnm
+  | TypeSynonym(_, tyarglist, tynm, tycont) -> (string_of_type_argument_list tyarglist lst) ^ tynm
+                                                  ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
 
   | FuncType(_, tydom, tycod) ->
       let strdom = string_of_type_struct_sub tydom lst in
@@ -132,12 +133,12 @@ and string_of_type_struct_sub tystr lst =
 
   | TypeArgument(_, tyvarnm) -> "['" ^ tyvarnm ^ "]"
 
-and string_of_type_argument_list tyarglist =
+and string_of_type_argument_list tyarglist lst =
   match tyarglist with
   | []           -> ""
   | head :: tail ->
-      let strhd = string_of_type_struct head in
-      let strtl = string_of_type_argument_list tail in
+      let strhd = string_of_type_struct_sub head lst in
+      let strtl = string_of_type_argument_list tail lst in
         begin
           match head with
           | FuncType(_, _, _)            -> "(" ^ strhd ^ ")"
