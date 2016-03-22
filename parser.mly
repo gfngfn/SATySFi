@@ -931,17 +931,27 @@ txprod: /* -> type_struct */
 /* -- for syntax error log -- */
   | txapppre TIMES error { report_error (Tok $2) "*" }
 ;
-txapppre:
+txapppre: /* ->type_struct */
   | txapp {
-        let (lst, tystr) = $1 in
-          match tystr with
-          | VariantType(rng, [], tynm) -> VariantType(rng, lst, tynm)
-          | _                          -> assert false
+          match $1 with
+          | (lst, VariantType(rng, [], tynm)) -> VariantType(rng, lst, tynm)
+          | ([], tystr)                       -> tystr
+          | _                                 -> assert false
+      }
+  | LPAREN txfunc RPAREN { $2 }
+  | TYPEVAR {
+        let (rng, tyargnm) = extract_range_and_name $1 in TypeArgument(rng, tyargnm)
       }
 ;
 txapp: /* type_struct list * type_struct */
-  | txbot txapp { let (lst, tystr) = $2 in ($1 :: lst, tystr) }
-  | txbot       { ([], $1) }
+  | txbot txapp                { let (lst, tystr) = $2 in ($1 :: lst, tystr) }
+  | LPAREN txfunc RPAREN txapp { let (lst, tystr) = $4 in ($2 :: lst, tystr) }
+  | TYPEVAR txapp              {
+        let (rng, tyargnm) = extract_range_and_name $1 in
+        let (lst, tystr) = $2 in
+          (TypeArgument(rng, tyargnm) :: lst, tystr)
+      }
+  | txbot                      { ([], $1) }
 ;
 txbot: /* -> type_struct */
   | VAR {
@@ -953,12 +963,6 @@ txbot: /* -> type_struct */
       let rng = make_range (Rng rng1) (Rng rng2) in
         VariantType(rng, [], mdlnm ^ "." ^ tynm)
   }
-  | TYPEVAR {
-        let (rng, tyargnm) = extract_range_and_name $1 in TypeArgument(rng, tyargnm)
-      }
-  | LPAREN txfunc RPAREN { $2 }
-/* -- for syntax error log -- */
-  | LPAREN error         { report_error (Tok $1) "(" }
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (dummy_range, UTEndOfTuple))) }

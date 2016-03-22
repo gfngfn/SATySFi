@@ -13,6 +13,8 @@ type module_name = string
 type token_position = int * int * int
 type code_range = int * int * int * int
 
+type scope_kind = GlobalScope | LocalScope of module_name
+
 type type_variable_id = int
 and type_struct =
   | UnitType     of code_range
