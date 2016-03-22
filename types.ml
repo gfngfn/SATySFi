@@ -45,7 +45,7 @@ and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
 and untyped_mutual_let_cons =
-  | UTMutualLetCons        of var_name * untyped_abstract_tree * untyped_mutual_let_cons
+  | UTMutualLetCons        of type_struct option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
 and untyped_abstract_tree = code_range * untyped_abstract_tree_main
 and untyped_abstract_tree_main =

@@ -471,7 +471,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
 
 (* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons ->
     (Typeenv.t * (var_name * type_struct) list * mutual_let_cons * Subst.t) *)
-and make_type_environment_by_let varntenv tyenv utmutletcons =
+and make_type_environment_by_let varntenv tyenv (utmutletcons : untyped_mutual_let_cons) =
   let (tyenv_for_rec, tvtylst) = add_mutual_variables varntenv tyenv utmutletcons in
   let (tyenv_new, mutletcons, theta1) = typecheck_mutual_contents varntenv tyenv_for_rec utmutletcons tvtylst in
   let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual varntenv tyenv_new tyenv theta1 tvtylst [] in
@@ -479,24 +479,28 @@ and make_type_environment_by_let varntenv tyenv utmutletcons =
 
 
 (* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
-and add_mutual_variables varntenv tyenv mutletcons =
+and add_mutual_variables varntenv tyenv (mutletcons : untyped_mutual_let_cons) =
   match mutletcons with
-  | UTEndOfMutualLet                         -> (tyenv, [])
-  | UTMutualLetCons(varnm, astdef, tailcons) ->
+  | UTEndOfMutualLet                                 -> (tyenv, [])
+  | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
       let ntv = TypeVariable(get_range astdef, Typeenv.new_type_variable_id ()) in
-        let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
-          (tyenv_tail, ((varnm, ntv) :: tvtylst))
+      let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
+        (tyenv_tail, ((varnm, ntv) :: tvtylst))
 
 
 (* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
   -> (Typeenv.t * mutual_let_cons * Subst.t) *)
-and typecheck_mutual_contents varntenv tyenv mutletcons tvtylst =
+and typecheck_mutual_contents varntenv tyenv (mutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list) =
   match (mutletcons, tvtylst) with
   | (UTEndOfMutualLet, []) -> (tyenv, EndOfMutualLet, Subst.empty)
 
-  | (UTMutualLetCons(nv, utast1, tailcons), (_, tvty) :: tvtytail) ->
+  | (UTMutualLetCons(tyopt, nv, utast1, tailcons), (_, tvty) :: tvtytail) ->
       let (e1, ty1, theta1) = typecheck varntenv tyenv utast1 in
-        let theta1new = Subst.compose (Subst.unify ty1 tvty) theta1 in
+        let theta1new =
+          match tyopt with
+          | None            -> Subst.compose (Subst.unify ty1 tvty) theta1
+          | Some(tystrmanu) -> Subst.compose (Subst.unify tystrmanu tvty) (Subst.compose (Subst.unify ty1 tvty) theta1)
+        in
         let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1new tyenv) nv ty1 in
         let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents varntenv tyenv_new tailcons tvtytail in
         let theta1final = Subst.compose theta_tail theta1new in
