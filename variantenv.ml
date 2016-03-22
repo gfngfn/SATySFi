@@ -60,7 +60,7 @@ let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_con
                     TypeSynonym(rng, tyarglist, tynm, tystr)
                   else
                     Display.report_error_with_range rng [
-                      "type synonym '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
+                      "type '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
                       "but it has " ^ (string_of_int len) ^ " type argument(s) here"
                     ]
             | Data(argnum) ->
@@ -69,7 +69,7 @@ let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_con
                     VariantType(rng, tyarglist, tynm)
                   else
                     Display.report_error_with_range rng [
-                      "variant type '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
+                      "type '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
                       "but it has " ^ (string_of_int len) ^ " type argument(s) here"
                     ]
           with
@@ -125,23 +125,19 @@ let define_variant (mdlnm : module_name) (varntenv : t) (tyargcons : untyped_typ
   let (defedtypelist, varntenvmain) = varntenv in
     ((append_module_name mdlnm tynm, Data(len)) :: defedtypelist, varntenvmain)
 
-(*
-let define_synonym (mdlnm : module_name) (varntenv : t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
-  let len = type_argument_length tyargcons in
-  let (defedtypelist, varntenvmain) = varntenv in
-    ((append_module_name mdlnm tynm, Synonym(len, )) :: defedtypelist, varntenvmain)
-*)
 
 let add_synonym (mdlnm : module_name) (varntenv : t)
                   (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (tystr : type_struct) =
-  let len = type_argument_length tyargcons in
   let (defedtypelist, varntenvmain) = varntenv in
-  let tystr_new    = check_type_defined varntenv tyargcons tystr in
-  let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+  let len = type_argument_length tyargcons in
   let defkind =
     match mdlnm with
-    | "" -> Synonym(len, tystr_forall)
-    | _  -> Synonym(len, tystr_forall) (* Data(len) *)
+    | "" ->
+        let tystr_new    = check_type_defined varntenv tyargcons tystr in
+        let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+          Synonym(len, tystr_forall)
+
+    | _  -> Data(len)
   in
     ((append_module_name mdlnm tysynnm, defkind) :: defedtypelist, varntenvmain)
 

@@ -8,9 +8,9 @@ type t = (type_variable_id * type_struct) list
 
 
 let print_for_debug_subst msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 
@@ -228,8 +228,6 @@ and unify tystr1 tystr2 =
   print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
-(*    | (TypeSynonym(_, tyarglist1, _, tycont1), TypeSynonym(_, tyarglist2, _, tycont2)) ->
-        unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) (Variantenv.apply_to_type_synonym tyarglist2 tystr2) *)
     match (tystr1, tystr2) with
     | (TypeSynonym(_, tyarglist1, _, tycont1), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) tystr2
     | (_, TypeSynonym(_, tyarglist2, _, tycont2)) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist2 tycont2)
