@@ -13,6 +13,8 @@ type module_name = string
 type token_position = int * int * int
 type code_range = int * int * int * int
 
+type scope_kind = GlobalScope | LocalScope of module_name
+
 type type_variable_id = int
 and type_struct =
   | UnitType     of code_range
@@ -24,7 +26,7 @@ and type_struct =
   | RefType      of code_range * type_struct
   | ProductType  of code_range * (type_struct list)
   | TypeVariable of code_range * type_variable_id
-  | TypeSynonym  of code_range * type_name * type_struct
+  | TypeSynonym  of code_range * (type_struct list) * type_name * type_struct
   | VariantType  of code_range * (type_struct list) * type_name
   | ForallType   of type_variable_id * type_struct
   | TypeArgument of code_range * var_name
@@ -45,7 +47,7 @@ and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
 and untyped_mutual_let_cons =
-  | UTMutualLetCons        of var_name * untyped_abstract_tree * untyped_mutual_let_cons
+  | UTMutualLetCons        of type_struct option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
 and untyped_abstract_tree = code_range * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
@@ -75,7 +77,6 @@ and untyped_abstract_tree_main =
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
-  | UTDeclareTypeSynonymIn of type_name * type_struct * untyped_abstract_tree
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of module_name * untyped_module_tree * untyped_abstract_tree
 (* -- implerative -- *)
@@ -102,6 +103,8 @@ and untyped_variant_cons_main =
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons
                                 * type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument_cons
+                                * type_name * type_struct * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 and untyped_pattern_tree = code_range * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
@@ -129,11 +132,9 @@ and untyped_module_tree_main =
   | UTMFinishModule
   | UTMPublicLetIn                 of untyped_mutual_let_cons * untyped_module_tree
   | UTMPublicLetMutableIn          of code_range * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPublicDeclareTypeSynonymIn  of type_name * type_struct * untyped_module_tree
   | UTMPublicDeclareVariantIn      of untyped_mutual_variant_cons * untyped_module_tree
   | UTMPrivateLetIn                of untyped_mutual_let_cons * untyped_module_tree
   | UTMPrivateLetMutableIn         of code_range * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPrivateDeclareTypeSynonymIn of type_name * type_struct * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
 and untyped_type_argument_cons =
@@ -241,11 +242,9 @@ and module_tree =
   | MFinishModule
   | MPublicLetIn                 of mutual_let_cons * module_tree
   | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-(*  | MPublicDeclareTypeSynonymIn  of type_name * type_struct * module_tree *)
 (*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
   | MPrivateLetIn                of mutual_let_cons * module_tree
   | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-(*  | MPrivateDeclareTypeSynonymIn of type_name * type_struct * module_tree *)
 (*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
   | MDirectLetIn                 of mutual_let_cons * module_tree
 

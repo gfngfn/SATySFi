@@ -189,15 +189,14 @@ rule numexpr = parse
           | "with"              -> WITH(pos)
           | "when"              -> WHEN(pos)
           | "as"                -> AS(pos)
-          | "variant"           -> VARIANT(pos)
+          | "type"              -> VARIANT(pos)
           | "of"                -> OF(pos)
-          | "type"              -> TYPE(pos)
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
           | "end-struct"        -> ENDSTRUCT(pos)
           | "direct"            -> DIRECT(pos)
-          | "public"            -> PUBLIC(pos)
-          | "private"           -> PRIVATE(pos)
+          | "publ"              -> PUBLIC(pos)
+          | "priv"              -> PRIVATE(pos)
           | _                   -> VAR(pos, tok)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

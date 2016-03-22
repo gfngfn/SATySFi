@@ -148,7 +148,7 @@ let rec see_argv num file_name_in_list file_name_out =
     if num == Array.length Sys.argv then
       begin
         print_string ("  [output] " ^ file_name_out ^ "\n\n") ;
-        Typechecker.initialize () ;
+        Typeenv.initialize () ;
         let varntenv = Primitives.make_variant_environment () in
         let tyenv = Primitives.make_type_environment () in
         let env = Primitives.make_environment () in
@@ -158,7 +158,7 @@ let rec see_argv num file_name_in_list file_name_out =
       match Sys.argv.(num) with
       | "-v" ->
           print_string (
-              "  Macrodown version 1.00g\n"
+              "  Macrodown version 1.00d\n"
             ^ "    ____   ____       ________     _____   ______\n"
             ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
             ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
