@@ -38,40 +38,56 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
       if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
 
 
-let rec check_type_defined (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
+let report_illegal_type_argument_length rng tynm len_expected len =
+  Display.report_error_with_range rng [
+    "'" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s)," ;
+    "but it has " ^ (string_of_int len) ^ " type argument(s) here"
+  ]
+
+
+let rec fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
   let (defedtylst, varntenvmain) = varntenv in
-  let f = check_type_defined varntenv tyargcons in
+  let f = fix_manual_type varntenv tyargcons in
     match tystr with
-    | IntType(rng)                      -> IntType(rng)
-    | StringType(rng)                   -> StringType(rng)
-    | BoolType(rng)                     -> BoolType(rng)
-    | UnitType(rng)                     -> UnitType(rng)
-    | FuncType(rng, tydom, tycod)       -> FuncType(rng, f tydom, f tycod)
-    | ListType(rng, tycont)             -> ListType(rng, f tycont)
-    | RefType(rng, tycont)              -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)          -> ProductType(rng, List.map f tylist)
+    | IntType(rng)                          -> IntType(rng)
+    | StringType(rng)                       -> StringType(rng)
+    | BoolType(rng)                         -> BoolType(rng)
+    | UnitType(rng)                         -> UnitType(rng)
+
+    | FuncType(rng, tydom, tycod)           -> FuncType(rng, f tydom, f tycod)
+    | ListType(rng, tycont)                 -> ListType(rng, f tycont)
+    | RefType(rng, tycont)                  -> RefType(rng, f tycont)
+    | ProductType(rng, tylist)              -> ProductType(rng, List.map f tylist)
+
+    | VariantType(rng, [], "int")           -> IntType(rng)
+    | VariantType(rng, tyarglist, "int")    -> report_illegal_type_argument_length rng "int" 0 (List.length tyarglist)
+    | VariantType(rng, [], "string")        -> StringType(rng)
+    | VariantType(rng, tyarglist, "string") -> report_illegal_type_argument_length rng "string" 0 (List.length tyarglist)
+    | VariantType(rng, [], "bool")          -> BoolType(rng)
+    | VariantType(rng, tyarglist, "bool")   -> report_illegal_type_argument_length rng "bool" 0 (List.length tyarglist)
+    | VariantType(rng, [], "unit")          -> UnitType(rng)
+    | VariantType(rng, tyarglist, "unit")   -> report_illegal_type_argument_length rng "unit" 0 (List.length tyarglist)
+
+    | VariantType(rng, tyarg :: [], "list") -> ListType(rng, tyarg)
+    | VariantType(rng, tyarglist, "list")   -> report_illegal_type_argument_length rng "list" 1 (List.length tyarglist)
+    | VariantType(rng, tyarg :: [], "ref")  -> RefType(rng, tyarg)
+    | VariantType(rng, tyarglist, "ref")    -> report_illegal_type_argument_length rng "ref" 1 (List.length tyarglist)
     | VariantType(rng, tyarglist, tynm) ->
         begin
           try
             match find_definition_kind defedtylst tynm with
-            | Synonym(argnum, tystr)          ->
+            | Synonym(argnum, tystr_forall)          ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    TypeSynonym(rng, tyarglist, tynm, tystr)
+                    TypeSynonym(rng, List.map f tyarglist, tynm, tystr_forall)
                   else
-                    Display.report_error_with_range rng [
-                      "type '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
-                      "but it has " ^ (string_of_int len) ^ " type argument(s) here"
-                    ]
+                    report_illegal_type_argument_length rng tynm argnum len
             | Data(argnum) ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    VariantType(rng, tyarglist, tynm)
+                    VariantType(rng, List.map f tyarglist, tynm)
                   else
-                    Display.report_error_with_range rng [
-                      "type '" ^ tynm ^ "' is expected to have " ^ (string_of_int argnum) ^ " type argument(s)," ;
-                      "but it has " ^ (string_of_int len) ^ " type argument(s) here"
-                    ]
+                    report_illegal_type_argument_length rng tynm argnum len
           with
           | Not_found -> Display.report_error_with_range rng ["undefined type '" ^ tynm ^ "'"]
         end
@@ -133,7 +149,7 @@ let add_synonym (mdlnm : module_name) (varntenv : t)
   let defkind =
     match mdlnm with
     | "" ->
-        let tystr_new    = check_type_defined varntenv tyargcons tystr in
+        let tystr_new    = fix_manual_type varntenv tyargcons tystr in
         let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
           Synonym(len, tystr_forall)
 
@@ -159,7 +175,7 @@ and add_variant_cons_main (mdlnm : module_name) (varntenv : t)
     match utvcmain with
     | UTEndOfVariant                           -> varntenv
     | UTVariantCons(constrnm, tystr, tailcons) ->
-        let tystr_new    = check_type_defined varntenv tyargcons tystr in
+        let tystr_new    = fix_manual_type varntenv tyargcons tystr in
         let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
         let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
           add_variant_cons_main mdlnm varntenv_new tyargcons varntnm tailcons
@@ -167,39 +183,49 @@ and add_variant_cons_main (mdlnm : module_name) (varntenv : t)
 
 let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
-  let varntenv_syn = read_synonym_spec "" varntenv_mem mutvarntcons in
-  let varntenv_fin = read_variant_spec "" varntenv_syn mutvarntcons in
+  let varntenv_syn = read_synonym_spec varntenv_mem mutvarntcons in
+  let varntenv_fin = read_variant_spec varntenv_syn mutvarntcons in
     varntenv_fin
 
-and read_synonym_spec (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+and read_synonym_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
     | UTEndOfMutualVariant                                     -> varntenv
-    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec mdlnm varntenv tailcons
+    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tysynnm, tystr, tailcons) ->
         let varntenv_new = add_synonym "" varntenv tyargcons tysynnm tystr in
-          read_synonym_spec mdlnm varntenv_new tailcons
+          read_synonym_spec varntenv_new tailcons
 
-and read_variant_spec (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+and read_variant_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
     | UTEndOfMutualVariant                                     -> varntenv
     | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
         let varntenv_new = add_variant_cons "" varntenv tyargcons varntnm utvc in
-          read_variant_spec mdlnm varntenv_new tailcons
-    | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec mdlnm varntenv tailcons
+          read_variant_spec varntenv_new tailcons
+    | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec varntenv tailcons
 
 
 and add_mutual_cons_hidden (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  memo_variant_name mdlnm varntenv mutvarntcons
+  memo_all_name mdlnm varntenv mutvarntcons
 
 
 and memo_variant_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   match mutvarntcons with
   | UTEndOfMutualVariant                                 -> varntenv
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
-      let varntenv_new = define_variant mdlnm varntenv tyargcons (append_module_name mdlnm varntnm) in
+      let varntenv_new = define_variant mdlnm varntenv tyargcons varntnm in
         memo_variant_name mdlnm varntenv_new tailcons
+  | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) -> memo_variant_name mdlnm varntenv tailcons
+
+
+and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+  match mutvarntcons with
+  | UTEndOfMutualVariant                                 -> varntenv
+  | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
+      let varntenv_new = define_variant mdlnm varntenv tyargcons varntnm in
+        memo_all_name mdlnm varntenv_new tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) ->
-      memo_variant_name mdlnm varntenv tailcons
+      let varntenv_new = define_variant mdlnm varntenv tyargcons tysynnm in
+        memo_all_name mdlnm varntenv_new tailcons
 
 
 let rec find (varntenv : t) (constrnm : constructor_name) =

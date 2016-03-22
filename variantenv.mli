@@ -14,3 +14,5 @@ val add_mutual_cons_hidden : module_name -> t -> untyped_mutual_variant_cons -> 
 val find : t -> constructor_name -> (type_name * type_struct)
 
 val apply_to_type_synonym : type_struct list -> type_struct -> type_struct
+
+val fix_manual_type : t -> untyped_type_argument_cons -> type_struct -> type_struct

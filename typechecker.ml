@@ -361,10 +361,6 @@ and typecheck_module veout teout vein tein mdlnm (rng, utmdldef) =
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module veout teout vein tein_new mdlnm utmdlaft in
         (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), Subst.compose thetaaft thetaini)
 
-(*
-  | UTMPublicDeclareTypeSynonymIn(tynm, tystr, utmdlaft)  ->
-  | UTMPrivateDeclareTypeSynonymIn(tynm, tystr, utmdlaft) ->
-*)
 
 (* Typeenv.t -> (var_name * type_struct) list -> Typeenv.t *)
 and add_list_to_type_environment mdlnm tyenv tvtylst =
@@ -499,7 +495,9 @@ and typecheck_mutual_contents varntenv tyenv (mutletcons : untyped_mutual_let_co
         let theta1new =
           match tyopt with
           | None            -> Subst.compose (Subst.unify ty1 tvty) theta1
-          | Some(tystrmanu) -> Subst.compose (Subst.unify tystrmanu tvty) (Subst.compose (Subst.unify ty1 tvty) theta1)
+          | Some(tystrmanu) ->
+              let tystrfixed = Variantenv.fix_manual_type varntenv UTEndOfTypeArgument tystrmanu in
+                Subst.compose (Subst.unify tystrfixed tvty) (Subst.compose (Subst.unify ty1 tvty) theta1)
         in
         let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1new tyenv) nv ty1 in
         let (tyenv_tail, mutletcons_tail, theta_tail) = typecheck_mutual_contents varntenv tyenv_new tailcons tvtytail in

@@ -615,12 +615,28 @@ nxlazydec:
   | VAR DEFEQ nxlet LETAND error { report_error (Tok $4) "and" }
 ;
 nxpubdec: /* -> untyped_mutual_let_cons */
+  | VAR COLON txfunc DEFEQ nxlet LETAND nxpubdec     { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable $5 $7 }
+  | VAR COLON txfunc DEFEQ nxlet                     { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable $5 UTEndOfMutualLet }
+
   | VAR argvar DEFEQ nxlet LETAND nxpubdec           { make_mutual_let_cons None $1 $2 $4 $6 }
+  | VAR COLON txfunc BAR
+        argvar DEFEQ nxlet LETAND nxpubdec           { make_mutual_let_cons (Some $3) $1 $5 $7 $9 }
+
   | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) $8 }
+  | VAR COLON txfunc BAR
+        argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) $11 }
+
   | VAR argvar DEFEQ nxlet                           { make_mutual_let_cons None $1 $2 $4 UTEndOfMutualLet }
+  | VAR COLON txfunc BAR
+        argvar DEFEQ nxlet                           { make_mutual_let_cons (Some $3) $1 $5 $7 UTEndOfMutualLet }
+
   | VAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) UTEndOfMutualLet }
+  | VAR COLON txfunc BAR
+        argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | VAR error                               { report_error (TokArg $1) "" }
+  | VAR COLON error                         { report_error (Tok $2) ":" }
+  | VAR COLON txfunc BAR error              { report_error (Tok $4) "|" }
   | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
   | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
   | VAR argvar DEFEQ nxlet BAR error        { report_error (Tok $5) "|" }
@@ -911,16 +927,6 @@ txprod: /* -> type_struct */
           | ProductType(_, tylist) -> ProductType(rng, $1 :: tylist)
           | other                  -> ProductType(rng, [$1; $3])
       }
-/*
-  | txbot VAR {
-        let (_, tyschnm) = extract_range_and_name $2 in
-        let rng = make_range (TypeStr $1) (TokArg $2) in
-          match tyschnm with
-          | "list" -> ListType(rng, $1)
-          | "ref"  -> RefType(rng, $1)
-          | other  -> raise (ParseErrorDetail("undefined type scheme '" ^ other ^ "'"))
-      }
-*/
   | txapppre { $1 }
 /* -- for syntax error log -- */
   | txapppre TIMES error { report_error (Tok $2) "*" }
@@ -929,44 +935,8 @@ txapppre:
   | txapp {
         let (lst, tystr) = $1 in
           match tystr with
-          | VariantType(rng, [], "list") ->
-              begin
-                match lst with
-                | tyhd :: [] ->
-                    let listrng = make_range (TypeStr tyhd) (Rng rng) in ListType(listrng, tyhd)
-                | _          ->
-                    raise (ParseErrorDetail(
-                        "at " ^ (Display.describe_position rng) ^ ":\n"
-                      ^ "    'list' is expected to have 1 type argument(s),\n"
-                      ^ "    but it has " ^ (string_of_int (List.length lst)) ^ " type argument(s) here"))
-              end
-          | VariantType(rng, [], "ref") ->
-              begin
-                match lst with
-                | tyhd :: [] ->
-                    let refrng = make_range (TypeStr tyhd) (Rng rng) in RefType(refrng, tyhd)
-                | _          ->
-                    raise (ParseErrorDetail(
-                        "at " ^ (Display.describe_position rng) ^ ":\n"
-                      ^ "    'ref' is expected to have 1 type argument(s),\n"
-                      ^ "    but it has " ^ (string_of_int (List.length lst)) ^ " type argument(s) here"))
-              end
-          | VariantType(rng, [], varntnm) ->
-              let varntrng =
-                match lst with
-                | []        -> rng
-                | tyhd :: _ -> make_range (TypeStr tyhd) (Rng rng)
-              in
-                VariantType(varntrng, lst, varntnm)
-          | _ ->
-              begin
-                match lst with
-                | [] -> tystr
-                | _  -> raise (ParseErrorDetail(
-                            "at " ^ (Display.describe_position (Typeenv.get_range_from_type tystr)) ^ ":\n"
-                          ^ "    '" ^ (Display.string_of_type_struct tystr) ^ "' is expected not to have any type argument,"
-                          ^ "but it has " ^ (string_of_int (List.length lst)) ^ " type argument(s) here"))
-              end
+          | VariantType(rng, [], tynm) -> VariantType(rng, lst, tynm)
+          | _                          -> assert false
       }
 ;
 txapp: /* type_struct list * type_struct */
@@ -975,13 +945,7 @@ txapp: /* type_struct list * type_struct */
 ;
 txbot: /* -> type_struct */
   | VAR {
-        let (rng, tynm) = extract_range_and_name $1 in
-          match tynm with
-          | "int"    -> IntType(rng)
-          | "bool"   -> BoolType(rng)
-          | "string" -> StringType(rng)
-          | "unit"   -> UnitType(rng)
-          | other    -> VariantType(rng, [], other)
+        let (rng, tynm) = extract_range_and_name $1 in VariantType(rng, [], tynm)
       }
   | CONSTRUCTOR DOT VAR {
       let (rng1, mdlnm) = extract_range_and_name $1 in
