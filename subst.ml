@@ -25,17 +25,19 @@ let add theta key value = (key, value) :: theta
 let rec find theta key =
   match theta with
   | []             -> raise Not_found
-  | (k, v) :: tail -> if k == key then v else find tail key
+  | (k, v) :: tail -> if k = key then v else find tail key
 
 
 (* t -> type_variable_id -> t *)
-let rec eliminate theta key = eliminate_sub [] theta key
+let eliminate theta key =
+  let rec sub constr theta key =
+    match theta with
+    | []             -> raise Not_found
+    | (k, v) :: tail ->
+        if k = key then constr @ tail else sub ((k, v) :: constr) tail key
+  in
+    sub [] theta key
 
-and eliminate_sub constr theta key =
-  match theta with
-  | []             -> raise Not_found
-  | (k, v) :: tail ->
-      if k = key then constr @ tail else eliminate_sub ((k, v) :: constr) tail key
 
 
 (* type_struct -> type_variable_id -> type_struct -> type_struct *)

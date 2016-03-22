@@ -9,18 +9,19 @@ type t = defined_type_list * constructor_list
 let empty = ([], [])
 
 
-let rec add (varntenv : t) (constrnm : constructor_name) (tystr : type_struct) (varntnm : type_name) =
+(* t -> constructor_name -> type_struct -> type_name -> t *)
+let add varntenv constrnm tystr varntnm =
   let (defedtylst, varntenvmain) = varntenv in
+  let rec add_main varntenvmain constrnm tystr varntnm =
+    match varntenvmain with
+    | []                -> (constrnm, varntnm, tystr) :: []
+    | (c, v, t) :: tail ->
+        if c = constrnm then
+          (constrnm, varntnm, tystr) :: tail
+        else
+          (c, v, t) :: (add_main tail constrnm tystr varntnm)
+  in
     (defedtylst, add_main varntenvmain constrnm tystr varntnm)
-
-and add_main (varntenvmain : constructor_list) (constrnm : constructor_name) (tystr : type_struct) (varntnm : type_name) =
-  match varntenvmain with
-  | []                -> [(constrnm, varntnm, tystr)]
-  | (c, v, t) :: tail ->
-      if c = constrnm then
-        (constrnm, varntnm, tystr) :: tail
-      else
-        (c, v, t) :: (add_main tail constrnm tystr varntnm)
 
 
 let rec find_definition_kind (defedtylst : defined_type_list) (tynm : type_name) =
@@ -169,30 +170,40 @@ and add_variant_cons_main (mdlnm : module_name) (varntenv : t)
 
 
 let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  let varntenv_mut = define_mutual_cons "" varntenv mutvarntcons in
+  let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
+  let varntenv_syn = read_synonym_spec "" varntenv_mem mutvarntcons in
+  let varntenv_fin = read_variant_spec "" varntenv_syn mutvarntcons in
+    varntenv_fin
+
+and read_synonym_spec (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
-    | UTEndOfMutualVariant                                     -> varntenv_mut
-    | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
-        let varntenv_new = add_variant_cons "" varntenv_mut tyargcons varntnm utvc in
-          add_mutual_cons varntenv_new tailcons
+    | UTEndOfMutualVariant                                     -> varntenv
+    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec mdlnm varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tysynnm, tystr, tailcons) ->
-        let varntenv_new = add_synonym "" varntenv_mut tyargcons tysynnm tystr in
-          add_mutual_cons varntenv_new tailcons
+        let varntenv_new = add_synonym "" varntenv tyargcons tysynnm tystr in
+          read_synonym_spec mdlnm varntenv_new tailcons
+
+and read_variant_spec (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+    match mutvarntcons with
+    | UTEndOfMutualVariant                                     -> varntenv
+    | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
+        let varntenv_new = add_variant_cons "" varntenv tyargcons varntnm utvc in
+          read_variant_spec mdlnm varntenv_new tailcons
+    | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec mdlnm varntenv tailcons
 
 
 and add_mutual_cons_hidden (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  define_mutual_cons mdlnm varntenv mutvarntcons
+  memo_variant_name mdlnm varntenv mutvarntcons
 
 
-and define_mutual_cons (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+and memo_variant_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   match mutvarntcons with
   | UTEndOfMutualVariant                                 -> varntenv
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
       let varntenv_new = define_variant mdlnm varntenv tyargcons (append_module_name mdlnm varntnm) in
-        define_mutual_cons mdlnm varntenv_new tailcons
+        memo_variant_name mdlnm varntenv_new tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) ->
-      let varntenv_new = define_synonym mdlnm varntenv tyargcons (append_module_name mdlnm tysynnm) in
-        define_mutual_cons mdlnm varntenv_new tailcons
+      memo_variant_name mdlnm varntenv tailcons
 
 
 let rec find (varntenv : t) (constrnm : constructor_name) =

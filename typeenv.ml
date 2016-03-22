@@ -17,7 +17,7 @@ let from_list lst = lst
 (* t -> var_name -> type_struct -> t *)
 let rec add tyenv varnm tystr =
   match tyenv with
-  | []                               -> [(varnm, tystr)]
+  | []                               -> (varnm, tystr) :: []
   | (vn, ts) :: tail when vn = varnm -> (varnm, tystr) :: tail
   | (vn, ts) :: tail                 -> (vn, ts) :: (add tail varnm tystr)
 
@@ -55,11 +55,11 @@ let overwrite_range_of_type tystr rng =
   | StringType(_)                           -> StringType(rng)
   | BoolType(_)                             -> BoolType(rng)
   | UnitType(_)                             -> UnitType(rng)
+  | TypeVariable(_, tvid)                   -> TypeVariable(rng, tvid)
   | FuncType(_, tydom, tycod)               -> FuncType(rng, tydom, tycod)
   | ListType(_, tycont)                     -> ListType(rng, tycont)
   | RefType(_, tycont)                      -> RefType(rng, tycont)
   | ProductType(_, tylist)                  -> ProductType(rng, tylist)
-  | TypeVariable(_, tvid)                   -> TypeVariable(rng, tvid)
   | VariantType(_, tyarglist, varntnm)      -> VariantType(rng, tyarglist, varntnm)
   | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(rng, tyarglist, tynm, tycont)
   | ForallType(tvid, tycont)                -> ForallType(tvid, tycont)
@@ -75,11 +75,11 @@ let rec erase_range_of_type tystr =
     | StringType(_)                           -> StringType(dummy)
     | BoolType(_)                             -> BoolType(dummy)
     | UnitType(_)                             -> UnitType(dummy)
+    | TypeVariable(_, tvid)                   -> TypeVariable(dummy, tvid)
     | FuncType(_, tydom, tycod)               -> FuncType(dummy, f tydom, f tycod)
     | ListType(_, tycont)                     -> ListType(dummy, f tycont)
     | RefType(_, tycont)                      -> RefType(dummy, f tycont)
     | ProductType(_, tylist)                  -> ProductType(dummy, List.map f tylist)
-    | TypeVariable(_, tvid)                   -> TypeVariable(dummy, tvid)
     | VariantType(_, tyarglist, varntnm)      -> VariantType(dummy, List.map f tyarglist, varntnm)
     | TypeSynonym(_, tyarglist, tynm, tycont) -> TypeSynonym(dummy, List.map f tyarglist, tynm, f tycont)
     | ForallType(tvid, tycont)                -> ForallType(tvid, f tycont)
@@ -89,11 +89,11 @@ let rec erase_range_of_type tystr =
 (* type_variable_id -> type_struct -> bool *)
 let rec find_in_type_struct tvid tystr =
   match tystr with
+  | TypeVariable(_, tvidx)            -> tvidx = tvid
   | FuncType(_, tydom, tycod)         -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
   | ListType(_, tycont)               -> find_in_type_struct tvid tycont
   | RefType(_, tycont)                -> find_in_type_struct tvid tycont
   | ProductType(_, tylist)            -> find_in_type_struct_list tvid tylist
-  | TypeVariable(_, tvidx)            -> tvidx = tvid
   | VariantType(_, tylist, _)         -> find_in_type_struct_list tvid tylist
   | TypeSynonym(_, tylist, _, tycont) -> (find_in_type_struct_list tvid tylist) || (find_in_type_struct tvid tycont)
   | _                                 -> false
@@ -116,16 +116,19 @@ let unbound_id_list : type_variable_id list ref = ref []
 
 (* type_struct -> t -> (type_variable_id list) -> unit *)
 let rec listup_unbound_id tystr tyenv =
-  match tystr with
-  | TypeVariable(_, tvid)     ->
-      if find_in_type_environment tvid tyenv then ()
-      else if List.mem tvid !unbound_id_list then ()
-      else unbound_id_list := tvid :: !unbound_id_list
-  | FuncType(_, tydom, tycod) -> begin listup_unbound_id tydom tyenv ; listup_unbound_id tycod tyenv end
-  | ListType(_, tycont)       -> listup_unbound_id tycont tyenv
-  | RefType(_, tycont)        -> listup_unbound_id tycont tyenv
-  | ProductType(_, tylist)    -> let _ = List.map (fun ty -> listup_unbound_id ty tyenv) in ()
-  | _                         -> ()
+  let f = (fun ty -> listup_unbound_id ty tyenv) in
+    match tystr with
+    | TypeVariable(_, tvid)     ->
+        if find_in_type_environment tvid tyenv then ()
+        else if List.mem tvid !unbound_id_list then ()
+        else unbound_id_list := tvid :: !unbound_id_list
+    | FuncType(_, tydom, tycod)         -> begin f tydom ; f tycod end
+    | ListType(_, tycont)               -> f tycont
+    | RefType(_, tycont)                -> f tycont
+    | ProductType(_, tylist)            -> let _ = List.map f tylist in ()
+    | VariantType(_, tylist, _)         -> let _ = List.map f tylist in ()
+    | TypeSynonym(_, tylist, _, tycont) -> let _ = List.map f tylist in () (* doubtful implementation *)
+    | _                                 -> ()
 
 
 (* type_variable_id list -> type_struct -> type_struct *)
@@ -174,17 +177,17 @@ and string_of_control_sequence_type_sub tyenv =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
-      begin match String.sub vn 0 1 with
-      | "\\" ->
-          "    #  "
-            ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-            ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
-      | _    -> ""
-      end ^ (string_of_control_sequence_type_sub tail)
+      ( match String.sub vn 0 1 with
+        | "\\" ->
+            "    #  "
+              ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
+              ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
+        | _    -> ""
+      ) ^ (string_of_control_sequence_type_sub tail)
 
 
 
-let tvidmax        : type_variable_id ref = ref 0
+let tvidmax : type_variable_id ref = ref 0
 
 let initialize () = ( tvidmax := 0 )
 
@@ -217,11 +220,7 @@ and eliminate_forall tystr lst =
 and replace_id lst tystr =
   let f = replace_id lst in
     match tystr with
-    | TypeVariable(rng, tvid)                   ->
-        begin
-          try find_id_in_list tvid lst with
-          | Not_found -> TypeVariable(rng, tvid)
-        end
+    | TypeVariable(rng, tvid)                   -> ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
     | ListType(rng, tycont)                     -> ListType(rng, f tycont)
     | RefType(rng, tycont)                      -> RefType(rng, f tycont)
     | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
