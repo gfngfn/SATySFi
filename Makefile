@@ -5,11 +5,11 @@ ifeq ($(OS), Windows_NT)
 else
   TARGET=bin/macrodown
 endif
-all: lexer.ml parser.mli parser.ml types.cmo $(TARGET)
+all: lexer.ml parser.mli parser.ml types.cmo parser.output $(TARGET)
 lexer.ml: lexer.mll
 	ocamllex lexer.mll
-parser.mli parser.ml: parser.mly
-	ocamlyacc parser.mly
+parser.mli parser.ml parser.output: parser.mly
+	ocamlyacc -v parser.mly
 types.cmo: $(SRCS)
 	ocamlc -c $^
 $(TARGET): $(SRCS)
