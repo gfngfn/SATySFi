@@ -323,12 +323,12 @@
         例えば
         
         \mcrd-input`test.mcrds` ```
-          let is-bigger-at-0 f = if 0 < f 0 then {T} else {F}
+          let is-positive-at-0 f = if 0 < f 0 then {T} else {F}
 
           let succ n = n + 1
           let polyn x = x * x + 2 * x - 1
 
-          in (is-bigger-at-0 succ) ^ (is-bigger-at-0 polyn)
+          in (is-positive-at-0 succ) ^ (is-positive-at-0 polyn)
         ```
 
         で定義されている\mcrd`is-bigger-at-0`は\type(Func(Int, Int));型の値を受け取って\type(String);型を返すので，
@@ -1004,7 +1004,7 @@ The quick brown fox jumps over the lazy dog.
         
         \mcrd-input`3d.mcrdh` ```
           let square-size p =
-            match p1 with
+            match p with
             | (x, y, z) -> x * x + y * y + z * z
         ```
         
@@ -1048,11 +1048,11 @@ The quick brown fox jumps over the lazy dog.
         そこで直和型が登場します。直和型は
         
         \code-display{
-          \synt`variant` \meta`vtype` \synt`=` \meta`Constr1` \synt`of` \type(Meta`t1`); \synt`|`
+          \synt`type` \type(Meta`t`); \synt`=` \meta`Constr1` \synt`of` \type(Meta`t1`); \synt`|`
             \metadots; \synt`|` \meta`ConstrN` \synt`of` \type(Meta`tN`);
         }
         
-        という具合にして\code{\meta`vtype`}と名づけた型を宣言します。
+        という具合にして\code{\meta`t`}と名づけた型を宣言します。
         \code{\meta`Constr1`}，…，\code{\meta`ConstrN`}は\newword{コンストラクタ}と呼ばれ，
         “型をなす構成子”です。各\code{\synt`of` \type(Meta`tI`);}はコンストラクタがとる引数の型の指定で，
         \code{\synt`of` \type(Unit);}の場合は省略できます。
@@ -1061,8 +1061,8 @@ The quick brown fox jumps over the lazy dog.
         トランプカードの型を直和型を用いて定義してみましょう。
         
         \mcrd-input`cards.mcrdh` ```
-          variant suit = Spade | Heart | Diamond | Club
-          variant card = Normal of suit * int | Joker
+          type suit = Spade | Heart | Diamond | Club
+          type card = Normal of suit * int | Joker
         ```
         
         これで定義は終了です。\type(Data`suit`);型はスートを表現し，\type(Data`card`);型はカードを表現しています。
@@ -1093,7 +1093,7 @@ The quick brown fox jumps over the lazy dog.
         その頂点の合計を計算する函数\mcrd-type(`vertex-sum`)(Func(Data`tree`, Int));です。
         
         \mcrd-input`tree.mcrds` ```
-          variant tree = Leaf of int | Node of int * tree * tree
+          type tree = Leaf of int | Node of int * tree * tree
           
           let vertex-sum tr =
             match tr with
@@ -1102,10 +1102,48 @@ The quick brown fox jumps over the lazy dog.
         ```
       }
       \p{
-        このほか，失敗してしまうかもしれない整数の計算に対しても結果を返すための\mcrd`maybe-int`型を定義してみましょう。
+        ところで，\type(Int);型の木だけでなく\type(String);型の木も使いたいとき，どうすればよいでしょうか。
+        素直な方法としては両方とも別個に実装する，すなわち
         
-        \mcrd-input`maybe-int.mcrdh` ```
-          variant maybe-int = Just of int | None
+        \mcrd-input`tree.mcrds` ```
+          type treeI = LeafI of int | NodeI of int * treeI * treeI
+          type treeS = LeafS of string | NodeS of string * treeS * treeS
+        ```
+        
+        のように\type(Data`treeI`);型と\type(Data`treeS`);型をそれぞれ別に書いてしまうということが考えられます。
+        しかし，全く同様の構造であるのに型が違えばいちいち明示的に定義を書かねばならないというのはどう考えても煩わしく，
+        1度だけ構造を書いて各型で使い回したいものです。そのための仕組みとして\newword{型引数}があります。
+        
+        \code-display{
+          \synt`type` \synt`'`\meta`a1` \metadots; \synt`'`\meta`aM` \type(Meta`t`); \synt`=`
+            \meta`Constr1` \synt`of` \type(Meta`t1`); \synt`|`
+              \metadots; \synt`|` \meta`ConstrN` \synt`of` \type(Meta`tN`);
+        }
+        
+        という具合に\math{M}個の型引数\code{\synt`'`\meta`a1`}, \metadots;, \code{\synt`'`\meta`aM`}を用いて型を宣言します。
+        上の問題意識に対する解答を具体例として掲げると
+        
+        \mcrd-input`tree.mcrds` ```
+          type 'a tree = Leaf of 'a | Node 'a * 'a tree * 'a tree
+        ```
+        
+        となります。この\type(App(Meta`'a`, Data`tree`));型を宣言すると，例えば与えられた木の根にある値を返す函数は
+        
+        \mcrd-input`tree.mcrds` ```
+          let top tr =
+            match tr with
+            | Leaf(x)       -> x
+            | Node(x, _, _) -> x
+        ```
+        
+        と\mcrd-type(`top`)(Func(App(Meta`'a`, Data`tree`), Meta`'a`));で実装することができます。
+        この\mcrd`top`は具体的に\type(Meta`'a`);にどの型が入る場合も使い回すことができ，
+        \synt`top (Leaf 2)`は\synt`2`に，\synt``top (Node({f}, Leaf{g}, Leaf{n}))``は\synt`{f}`に，それぞれ評価されます。
+        このほか，失敗してしまうかもしれない整数の計算に対しても結果を返すための
+        \type(App(Meta`'a`, Data`maybe`));型を定義してみましょう。
+        
+        \mcrd-input`maybe.mcrdh` ```
+          type 'a maybe = Just of 'a | None
           
           let divide x y =
             match (x, y) with
@@ -1120,11 +1158,11 @@ The quick brown fox jumps over the lazy dog.
         相互再帰的に依存する直和型の定義は，例えば
         
         \mcrd-input`mut-variant.mcrds` ```
-          variant odd-tree  = OddLeaf of int
-                            | OddNode of int * even-tree * even-tree
+          type odd-tree  = OddLeaf of int
+                         | OddNode of int * even-tree * even-tree
           
-              and even-tree = EvenLeaf of int
-                            | EvenNode of int * odd-tree * odd-tree
+           and even-tree = EvenLeaf of int
+                         | EvenNode of int * odd-tree * odd-tree
         ```
         
         のように\mcrd`and`を用いて定義します。
@@ -1402,7 +1440,7 @@ The quick brown fox jumps over the lazy dog.
         
         \code-display{
           \synt`priv` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
-          \synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`
+          \code-tabx(5);\synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`
         }
         
         とすることができます。この場合\code{\meta`f`}と\code{\meta`g`}は共にモジュール内でしか使えない函数になります。
@@ -1410,7 +1448,7 @@ The quick brown fox jumps over the lazy dog.
         
         \code-display{
           \synt`priv` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
-          \code-tab;\code-tab;\code-tab;\code-tab;\synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`\code-break;
+          \code-tabx(5);\synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`\code-break;
           \synt`publ` \synt`let` \meta`h` \synt`=` \meta`f`
         }
         

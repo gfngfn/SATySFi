@@ -166,6 +166,9 @@ let \code-break = `\\`
 
 let \code-tab   = `\quad{}`
 
+let \code-tabx n = if n <= 0 then {}
+                             else `\enskip{}` ^ {\code-tabx(n - 1);}
+
 let \meta metacode = `\textcolor{violet}{\textit{\texttt{` ^metacode^ `}}}`
 
 let \metadots = `$\cdots$`
@@ -210,6 +213,7 @@ type type-struct =
   | Func  of type-struct * type-struct
   | Prod  of type-struct list
   | Paren of type-struct
+  | App of type-struct * type-struct
 
 let display-type tystr =
   match tystr with
@@ -225,12 +229,14 @@ let display-type tystr =
   | Func(tydom, tycod) -> display-func-type tydom tycod
   | Prod(tylst)        -> display-prod-type tylst
   | Paren(tycont)      -> let scont = display-type tycont in {(@scont;)}
+  | App(tyx, tyf)      -> display-s-type tyx (display-type tyf)
 
 and display-s-type tycont s =
   let scont = display-type tycont in
     match tycont with
     | Func(_, _) -> {(@scont;) @s;}
     | Prod(_)    -> {(@scont;) @s;}
+    | App(_, _)  -> {(@scont;) @s;}
     | _          -> {@scont; @s;}
 
 and display-func-type tydom tycod =
