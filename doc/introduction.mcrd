@@ -277,7 +277,7 @@
         Macrodownは文字列値しか出力することができないので，
         
         \mcrd-display```
-          ! [ERROR IN TYPECHECK] the output of 'test.mcrds' is not string.
+          ! [ERROR AT TYPECHECKER] the output of 'test.mcrds' is not string.
         ```
         
         とエラーが返されるようになっています。
@@ -592,6 +592,11 @@
             <p>\deeper{@cont;}</p>
           }
           let \p4 cont = {
+            <p>\deeper{
+              @cont;
+            }</p>
+          }
+          let \p5 cont = {
             <p>
               \deeper{@cont;}
             </p>
@@ -609,31 +614,35 @@
             \p4{
               The quick brown fox jumps over the lazy dog.
             }
+            \p5{
+              The quick brown fox jumps over the lazy dog.
+            }
           }
         ```
         \mcrd-output`deeper.html` ```
-          [<p>The quick brown fox jumps over the lazy dog.</p>]
-          <p>
-          The quick brown fox jumps over the lazy dog.
-          </p>
-          <p>
-            The quick brown fox jumps over the lazy dog.
-          </p>
-          <p>
-          
-            The quick brown fox jumps over the lazy dog.
-          
-          </p>
+[<p>The quick brown fox jumps over the lazy dog.</p>]
+<p>
+The quick brown fox jumps over the lazy dog.
+</p>
+<p>
+  The quick brown fox jumps over the lazy dog.
+</p>
+<p>
+  The quick brown fox jumps over the lazy dog.
+</p>
+<p>
+The quick brown fox jumps over the lazy dog.
+</p>
         ```
         
         文字\mcrd`[`と\mcrd`]`は改行位置を確認する目的で挿入したものです。
         第一に，Macrodownは\mcrd`{`の後ろか\mcrd`}`の手前にある改行文字と空白文字の連続は無視します。
         したがって\mcrd`\p1`では\mcrd`<p>`の手前や\mcrd`</p>`の直後に改行文字は出力されていません。
         続いて\mcrd`\p2`の結果からわかるように，Macrodownはコード中のインデントを出力に反映しません。
-        したがって，出力の\mcrd`<p>`と\mcrd`</p>`の間をインデントするには\mcrd`\p3`または\mcrd`\p4`のように
+        したがって，出力の\mcrd`<p>`と\mcrd`</p>`の間をインデントするには\mcrd`\p3`，\mcrd`\p4`，\mcrd`\p5`のように
         \mcrd`\deeper`を挿入する必要があります。
-        \mcrd`\p3`からわかるように\mcrd`\deeper`は前後に改行文字を自動的に挿入して出力しますから，
-        \mcrd`\p4`のように定義すると改行が冗長になってしまいます。
+        \mcrd`\p3`と\mcrd`\p4`からわかるように\mcrd`\deeper`は前後に改行文字を自動的に挿入して出力し，
+        \mcrd`\p5`のように定義すると改行が冗長になってしまいます。
         特に\LaTeX;のような空行に意味のある言語をターゲットにする場合は注意してください。
       }
       \p{
@@ -1379,20 +1388,20 @@
         モジュールの外で\code{\meta`Mod`\synt`.`\meta`f`}という名前で使えるようにしたい函数\code{\meta`f`}は
         
         \code-display{
-          \synt`public` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`Expr`
+          \synt`publ` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`Expr`
         }
         
-        のように先頭に\code{\synt`public`}をつけて，一方
+        のように先頭に\code{\synt`publ`}をつけて，一方
         外から見えずモジュール内でしか使えないようにしたい函数\code{\meta`g`}は
         
         \code-display{
-          \synt`private` \synt`let` \meta`g` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`Expr`
+          \synt`priv` \synt`let` \meta`g` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`Expr`
         }
         
-        のように\code{\synt`private`}をつけて定義します。並列定義も可能で，
+        のように\code{\synt`priv`}をつけて定義します。並列定義も可能で，
         
         \code-display{
-          \synt`private` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
+          \synt`priv` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
           \synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`
         }
         
@@ -1400,16 +1409,16 @@
         上の例で\code{\meta`f`}だけモジュール外で使いたい場合は，
         
         \code-display{
-          \synt`private` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
+          \synt`priv` \synt`let` \meta`f` \meta`x1` \metadots; \meta`xn` \synt`=` \meta`ExprA`\code-break;
           \code-tab;\code-tab;\code-tab;\code-tab;\synt`and` \meta`g` \meta`y1` \metadots; \meta`ym` \synt`=` \meta`ExprB`\code-break;
-          \synt`public` \synt`let` \meta`h` \synt`=` \meta`f`
+          \synt`publ` \synt`let` \meta`h` \synt`=` \meta`f`
         }
         
         などとすることで\code{\meta`Mod`\synt`.`\meta`h`}が使えます。
       }
       \p{
-        ただし，\code{\synt`public`}と\code{\synt`private`}のうち
-        \code{\synt`public`}の方は制御綴の定義には使えず，構文解析の段階でエラーを返します。
+        ただし，\code{\synt`publ`}と\code{\synt`priv`}のうち
+        \code{\synt`publ`}の方は制御綴の定義には使えず，構文解析の段階でエラーを返します。
         これは\code{\meta`Mod`\synt`.\`\meta`cs`}や\code{\synt`\`\meta`Mod`\synt`.`\meta`cs`}のような
         使い勝手の悪い制御綴を避けることを意図しています。
         代わりに制御綴の定義にのみ使える\code{\synt`direct`}を用いて
@@ -1428,13 +1437,13 @@
         
         \mcrd-input`module01.mcrds` ```
           module Display = struct
-            private let punct-sub lst =
+            priv let punct-sub lst =
               match lst with
               | []           -> {}
               | head :: []   -> head
-              | head :: tail -> head ^ {,\ } ^ (punct-sub tail)
+              | head :: tail -> let tailstr = punct-sub tail in {@head;, @tailstr;}
 
-            public  let punct lst = {[} ^ (punct-sub lst) ^{]}
+            publ let punct lst = let inner =punct-sub lst in {[@inner;]}
           end-struct
 
           in
@@ -1445,11 +1454,11 @@
           [hoge, piyo, fuga, moge]
         ```
         
-        \mcrd`punct-sub` はモジュール内でしか使えないように \mcrd`private` が指定されており，
+        \mcrd`punct-sub` はモジュール内でしか使えないように \mcrd`priv` が指定されており，
         \mcrd`Display.punct` の箇所を \mcrd`Display.punct-sub` に変更すると
         
         \mcrd-display```
-          ! [ERROR IN TYPECHECK] at line 12, characters 2-19:
+          ! [ERROR AT TYPECHECKER] at line 12, characters 2-19:
               undefined variable 'Display.punct-sub'.
         ```
         
@@ -1625,7 +1634,7 @@
         を処理すると，最終出力段階で
         
         \mcrd-display```
-          ! [ERROR IN OUT] undefined reference key "key0".
+          ! [ERROR AT OUTPUT] undefined reference key "key0".
         ```
         
         という具合にエラーが返されます。
@@ -1671,7 +1680,7 @@
         実際はそうではなく，
 
         \mcrd-display```
-          ! [ERROR IN EVAL] illegal argument for 'string-sub': undefined reference key "mcrd".
+          ! [ERROR AT EVALUATOR] illegal argument for 'string-sub': undefined reference key "mcrd".
         ```
         
         とエラーを返されます。これは\mcrd`string-sub`に対して\mcrd``!! `mcrd` ``が適用され，

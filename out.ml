@@ -23,11 +23,12 @@ and flatten indent value =
         begin
           try
             match !(Hashtbl.find global_hash_env str_key) with
-            | MutableValue(mutvalue) -> flatten indent mutvalue
-            | _                      -> begin
-                                          print_string ("!!!! reference key \"" ^ str_key ^ "\" contains non-mutable value") ;
-                                          assert false
-                                        end
+            | Location(loc) -> flatten indent (!loc)
+            | _             ->
+                begin
+                  print_string ("!!!! reference key \"" ^ str_key ^ "\" contains non-mutable value") ;
+                  assert false
+                end
           with
           | Not_found -> raise (IllegalOut("undefined reference key \"" ^ str_key ^ "\""))
         end

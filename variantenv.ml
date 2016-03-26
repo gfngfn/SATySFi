@@ -118,7 +118,11 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
                 end
           end
 
-    | other                             -> assert false
+    | other                             ->
+        begin
+          print_string ("OTHER: " ^ (Display.string_of_type_struct_basic other) ^ "\n") ;
+          assert false
+        end
 
 
 let rec make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : type_struct) =

@@ -137,10 +137,10 @@ let rec main varntenv tyenv env file_name_in_list file_name_out =
   | Parsing.Parse_error           -> print_string ("! [ERROR AT PARSER] something is wrong.\n")
   | ParseErrorDetail(s)           -> print_string ("! [ERROR AT PARSER] " ^ s ^ "\n")
   | TypeCheckError(s)             -> print_string ("! [ERROR AT TYPECHECKER] " ^ s ^ ".\n")
-  | Evaluator.EvalError(s)        -> print_string ("! [ERROR AT EVAL] " ^ s ^ ".\n")
-  | Out.IllegalOut(s)             -> print_string ("! [ERROR AT OUT] " ^ s ^ ".\n")
-  | MainError(s)                  -> print_string ("! [ERROR AT MAIN] " ^ s ^ ".\n")
-  | Sys_error(s)                  -> print_string ("! [ERROR AT MAIN] System error - " ^ s ^ "\n")
+  | Evaluator.EvalError(s)        -> print_string ("! [ERROR AT EVALUATOR] " ^ s ^ ".\n")
+  | Out.IllegalOut(s)             -> print_string ("! [ERROR AT OUTPUT] " ^ s ^ ".\n")
+  | MainError(s)                  -> print_string ("! [ERROR] " ^ s ^ ".\n")
+  | Sys_error(s)                  -> print_string ("! [ERROR] System error - " ^ s ^ "\n")
 
 
 (* int -> (string list) -> string -> unit *)

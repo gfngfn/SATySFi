@@ -1028,9 +1028,9 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
                                             (UTVariantCons(extract_name $1, $3, (dummy_range, UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                             (UTVariantCons(extract_name $1, UnitType(dummy_range), $3)) }
+                                             (UTVariantCons(extract_name $1, VariantType(dummy_range, [], "unit"), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-                    (UTVariantCons(extract_name $1, UnitType(dummy_range), (dummy_range, UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, VariantType(dummy_range, [], "unit"), (dummy_range, UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }

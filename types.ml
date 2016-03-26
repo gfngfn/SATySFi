@@ -188,7 +188,7 @@ and abstract_tree =
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of var_name * abstract_tree
-  | MutableValue          of abstract_tree
+  | Location              of abstract_tree ref
   | Reference             of abstract_tree
   | DeclareGlobalHash     of abstract_tree * abstract_tree
   | OverwriteGlobalHash   of abstract_tree * abstract_tree

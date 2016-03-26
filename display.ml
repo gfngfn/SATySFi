@@ -235,8 +235,8 @@ let rec string_of_ast ast =
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
   | ContentOf(v)                 -> v
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t)                 -> (string_of_ast s) ^ (string_of_ast t)
-  | StringEmpty                  -> ""
+  | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
+  | StringEmpty                  -> "{}"
   | StringConstant(sc)           -> "{" ^ sc ^ "}"
   | NumericConstant(nc)          -> string_of_int nc
   | BooleanConstant(bc)          -> string_of_bool bc
@@ -249,7 +249,7 @@ let rec string_of_ast ast =
   | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
   | Overwrite(vn, n)             -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
-  | MutableValue(mv)             -> "(mutable " ^ (string_of_ast mv) ^ ")"
+  | Location(loc)                -> "<mutable>"
   | UnitConstant                 -> "()"
   | LetMutableIn(vn, d, f)       -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"

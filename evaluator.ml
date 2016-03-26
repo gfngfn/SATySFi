@@ -6,15 +6,15 @@ exception EvalError of string
 
 let rec make_argument_cons lst =
   match lst with
-  | [] -> EndOfArgumentVariable
+  | []           -> EndOfArgumentVariable
   | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
 
 
-let copy_environment env = Hashtbl.copy env
+let copy_environment (env : environment) = Hashtbl.copy env
 
-let add_to_environment env varnm rfast = Hashtbl.add env varnm rfast
+let add_to_environment (env : environment) (varnm : var_name) (rfast : abstract_tree ref) = Hashtbl.add env varnm rfast
 
-let find_in_environment env varnm = Hashtbl.find env varnm
+let find_in_environment (env : environment) (varnm : var_name) = Hashtbl.find env varnm
 
 
 (* environment -> abstract_tree -> abstract_tree *)
@@ -146,10 +146,11 @@ let rec interpret env ast =
 (* ---- imperatives ---- *)
 
   | LetMutableIn(varnm, astdflt, astaft) ->
-      let valuedflt = interpret env astdflt in
+      let valueini = interpret env astdflt in
+      let loc = ref valueini in
       let env_new = copy_environment env in
         begin
-          add_to_environment env_new varnm (ref (MutableValue(valuedflt))) ;
+          add_to_environment env_new varnm (ref (Location(loc))) ;
           interpret env_new astaft
         end
 
@@ -162,19 +163,20 @@ let rec interpret env ast =
           | _            -> assert false
         end
 
-  | MutableValue(astmv) -> MutableValue(astmv)
+  | Location(loc) -> Location(loc)
 
   | Overwrite(varnm, astnew) ->
       begin
         try
           let rfvalue = find_in_environment env varnm in
             match !rfvalue with
-            | MutableValue(astmv) ->
-                begin
-                  rfvalue := MutableValue(interpret env astnew) ;
-                  UnitConstant
-                end
-            | _                   -> assert false
+            | Location(loc) ->
+                let newvalue = interpret env astnew in
+                  begin
+                    loc := newvalue ;
+                    UnitConstant
+                  end
+            | _             -> assert false
         with
         | Not_found -> raise (EvalError("this cannot happen: undefined mutable value '" ^ varnm ^ "'"))
       end
@@ -189,15 +191,11 @@ let rec interpret env ast =
       let valuecont = interpret env astcont in
         begin
           match valuecont with
-          | MutableValue(astmv) -> astmv
-          | _                   -> assert false
+          | Location(loc) -> !loc
+          | _             -> assert false
         end
 
-  | LazyContent(ast1) ->
-      begin                                                                (* for debug *)
-        print_for_debug ("Lazy: " ^ (Display.string_of_ast ast1) ^ "\n") ; (* for debug *)
-        LazyContentWithEnvironmentRef(ast1, (ref env))
-      end                                                                  (* for debug *)
+  | LazyContent(ast1) -> LazyContentWithEnvironmentRef(ast1, (ref env))
 
   | LazyContentWithEnvironmentRef(ast1, envref) -> LazyContentWithEnvironmentRef(ast1, envref)
 
@@ -207,9 +205,10 @@ let rec interpret env ast =
       begin
         try
           let str_key = Out.main (interpret env astkey) in
-          let valuedflt = interpret env astdflt in
+          let valueini = interpret env astdflt in
+          let loc = ref valueini in
             begin
-              add_to_environment global_hash_env str_key (ref (MutableValue(valuedflt))) ;
+              add_to_environment global_hash_env str_key (ref (Location(loc))) ;
               UnitConstant
             end
         with
@@ -223,8 +222,13 @@ let rec interpret env ast =
             try
               let rfvalue = find_in_environment global_hash_env str_key in
                 match !rfvalue with
-                | MutableValue(astmv) -> ( rfvalue := MutableValue(interpret env astnew) ; UnitConstant )
-                | _                   -> assert false
+                | Location(loc) ->
+                    let valuenew = interpret env astnew in
+                      begin
+                        loc := valuenew ;
+                        UnitConstant
+                      end
+                | _             -> assert false
             with
             | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
         with
@@ -330,7 +334,7 @@ let rec interpret env ast =
   | EqualTo(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        BooleanConstant(numl == numr)
+        BooleanConstant(numl = numr)
 
   | GreaterThan(astl, astr) ->
       let numl = interpret_int env astl in
@@ -408,16 +412,18 @@ and add_module_to_environment eout ein mdlnm mdltrdef =
 
   | MPublicLetMutableIn(varnm, astini, mdltraft) ->
       let valueini = interpret ein astini in
+      let loc = ref valueini in
         begin
-          add_to_environment ein varnm (ref (MutableValue(valueini))) ;
-          add_to_environment eout (make_variable_name mdlnm varnm) (ref (MutableValue(valueini))) ;
+          add_to_environment ein varnm (ref (Location(loc))) ;
+          add_to_environment eout (make_variable_name mdlnm varnm) (ref (Location(loc))) ;
           add_module_to_environment eout ein mdlnm mdltraft
         end
 
   | MPrivateLetMutableIn(varnm, astini, mdltraft) ->
       let valueini = interpret ein astini in
+      let loc = ref valueini in
         begin
-          add_to_environment ein varnm (ref (MutableValue(valueini))) ;
+          add_to_environment ein varnm (ref (Location(loc))) ;
           add_module_to_environment eout ein mdlnm mdltraft
         end
 
