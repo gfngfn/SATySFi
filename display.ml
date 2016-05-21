@@ -21,31 +21,32 @@ let report_error_with_range rng msglst =
     raise (TypeCheckError( "at " ^ (describe_position rng) ^ ":\n" ^ (lines_of_list msglst)))
 
 
-let meta_max    : type_variable_id ref = ref 0
-let unbound_max : type_variable_id ref = ref 0
-let unbound_type_valiable_name_list : (type_variable_id * string ) list ref = ref []
+let meta_max    : int ref = ref 0
+let unbound_max : int ref = ref 0
+let unbound_type_valiable_name_list : (Tyvarid.t * string) list ref = ref []
 
-(* int -> string *)
-let rec variable_name_of_int n =
+let rec variable_name_of_int (n : int) =
   ( if n >= 26 then
       variable_name_of_int ((n - n mod 26) / 26 - 1)
     else
       ""
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
-(* unit -> string *)
 let new_meta_type_variable_name () =
   let res = "{" ^ (variable_name_of_int (!meta_max)) ^ "}" in
-    begin meta_max := !meta_max + 1 ; res end
+    begin
+      meta_max := !meta_max + 1 ;
+      res
+    end
 
-(* (type_variable_id * string) list -> type_variable_id -> string *)
-let rec find_meta_type_variable lst tvid =
+
+let rec find_type_variable (lst : (Tyvarid.t * string) list) (tvid : Tyvarid.t) =
   match lst with
   | []             -> raise Not_found
-  | (k, v) :: tail -> if k = tvid then v else find_meta_type_variable tail tvid
+  | (k, v) :: tail -> if Tyvarid.same k tvid then v else find_type_variable tail tvid
 
-(* type_variable_id -> string *)
-let new_unbound_type_variable_name tvid =
+
+let new_unbound_type_variable_name (tvid : Tyvarid.t) =
   let res = variable_name_of_int (!unbound_max) in
     begin
       unbound_max := !unbound_max + 1 ;
@@ -53,12 +54,13 @@ let new_unbound_type_variable_name tvid =
       res
     end
 
-(* type_variable_id -> string *)
-let find_unbound_type_variable tvid =
-  find_meta_type_variable (!unbound_type_valiable_name_list) tvid
+
+let find_unbound_type_variable (tvid : Tyvarid.t) =
+  find_type_variable (!unbound_type_valiable_name_list) tvid
+
 
 (* type_struct -> string *)
-let rec string_of_type_struct tystr =
+let rec string_of_type_struct (tystr : type_struct) =
   begin
     meta_max := 0 ;
     unbound_max := 0 ;
@@ -66,7 +68,7 @@ let rec string_of_type_struct tystr =
     string_of_type_struct_sub tystr []
   end
 
-and string_of_type_struct_double tystr1 tystr2 =
+and string_of_type_struct_double (tystr1 : type_struct) (tystr2 : type_struct) =
   begin
     meta_max := 0 ;
     unbound_max := 0 ;
@@ -76,8 +78,7 @@ and string_of_type_struct_double tystr1 tystr2 =
       (strty1, strty2)
   end
 
-(* type_struct -> (type_variable_id * string) list -> string *)
-and string_of_type_struct_sub tystr lst =
+and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) list) =
   match tystr with
   | StringType(_)                      -> "string"
   | IntType(_)                         -> "int"
@@ -118,7 +119,7 @@ and string_of_type_struct_sub tystr lst =
 
   | TypeVariable(_, tvid) ->
       begin
-        try "'" ^ (find_meta_type_variable lst tvid) with
+        try "'" ^ (find_type_variable lst tvid) with
         | Not_found ->
             "'" ^
               begin
@@ -324,8 +325,8 @@ let rec string_of_type_struct_basic tystr =
           end ^ " ref" ^ (if sttln <= 0 then "?" else "")
 
     | ProductType(_, tylist)       -> string_of_type_struct_list_basic tylist
-    | TypeVariable(_, tvid)        -> "'" ^ (string_of_int tvid) ^ (if sttln <= 0 then "?" else "")
-    | ForallType(tvid, tycont)     -> "('" ^ (string_of_int tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | TypeVariable(_, tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ (if sttln <= 0 then "?" else "")
+    | ForallType(tvid, tycont)     -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(_, tyargnm)     -> tyargnm
 
 and string_of_type_argument_list_basic tyarglist =

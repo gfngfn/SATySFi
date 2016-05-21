@@ -5,11 +5,11 @@ type t
 
 val empty : t
 
-val add : t -> type_variable_id -> type_struct -> t
+val add : t -> Tyvarid.t -> type_struct -> t
 
-val find : t -> type_variable_id -> type_struct
+val find : t -> Tyvarid.t -> type_struct
 
-val eliminate : t -> type_variable_id -> t
+val eliminate : t -> Tyvarid.t -> t
 
 val apply_to_type_struct : t -> type_struct -> type_struct
 

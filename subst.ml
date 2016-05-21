@@ -4,7 +4,7 @@ open Display
 exception InclusionError
 exception ContradictionError
 
-type t = (type_variable_id * type_struct) list
+type t = (Tyvarid.t * type_struct) list
 
 
 let print_for_debug_subst msg =
@@ -17,31 +17,31 @@ let print_for_debug_subst msg =
 let empty = []
 
 
-(* t -> type_variable_id -> type_struct -> t *)
+(* t -> Tyvarid.t -> type_struct -> t *)
 let add theta key value = (key, value) :: theta
 
 
-(* t -> type_variable_id -> type_struct *)
-let rec find theta key =
+(* t -> Tyvarid.t -> type_struct *)
+let rec find (theta : t) (key : Tyvarid.t) =
   match theta with
   | []             -> raise Not_found
-  | (k, v) :: tail -> if k = key then v else find tail key
+  | (k, v) :: tail -> if Tyvarid.same k key then v else find tail key
 
 
-(* t -> type_variable_id -> t *)
-let eliminate theta key =
+(* t -> Tyvarid.t -> t *)
+let eliminate (theta : t) (key : Tyvarid.t) =
   let rec sub constr theta key =
     match theta with
     | []             -> raise Not_found
     | (k, v) :: tail ->
-        if k = key then constr @ tail else sub ((k, v) :: constr) tail key
+        if Tyvarid.same k key then constr @ tail else sub ((k, v) :: constr) tail key
   in
     sub [] theta key
 
 
 
-(* type_struct -> type_variable_id -> type_struct -> type_struct *)
-let rec overwrite_type_struct (tystr : type_struct) (key : type_variable_id) (value : type_struct) =
+(* type_struct -> Tyvarid.t -> type_struct -> type_struct *)
+let rec overwrite_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
   let f = fun ty -> overwrite_type_struct ty key value in
     match tystr with
     | FuncType(rng, dom, cod)                    -> FuncType(rng, f dom, f cod)
@@ -79,7 +79,7 @@ let apply_to_type_environment theta tyenv =
 
 
 
-(* type_variable_id -> type_struct -> (bool * code_range) *)
+(* Tyvarid.t -> type_struct -> (bool * code_range) *)
 let rec emerge_in tvid tystr =
   let dummy = (-2049, 0, 0, 0) in
     match tystr with
@@ -108,8 +108,8 @@ and emerge_in_list tvid tylist =
           if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dummy)
 
 
-(* t -> type_variable_id -> type_struct -> t *)
-let rec overwrite (theta : t) (key : type_variable_id) (value : type_struct) =
+(* t -> Tyvarid.t -> type_struct -> t *)
+let rec overwrite (theta : t) (key : Tyvarid.t) (value : type_struct) =
   match theta with
   | []             -> []
   | (k, v) :: tail ->
@@ -118,7 +118,7 @@ let rec overwrite (theta : t) (key : type_variable_id) (value : type_struct) =
       else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 
 
-(* t -> type_variable_id -> type_struct -> t *)
+(* t -> Tyvarid.t -> type_struct -> t *)
 let overwrite_or_add theta key value =
   overwrite (add theta key value) key value
 
@@ -283,14 +283,16 @@ and unify_sub tystr1 tystr2 =
       begin
         match tystr with
         | TypeVariable(rng2, tvid2) ->
-            if tvid1 = tvid2 then
+            if Tyvarid.same tvid1 tvid2 then
               empty
-            else if tvid1 < tvid2 then
-              if is_invalid_range rng2  then [(tvid1, TypeVariable(rng1, tvid2))]
-                                        else [(tvid1, TypeVariable(rng2, tvid2))]
             else
-              if is_invalid_range rng1  then [(tvid2, TypeVariable(rng2, tvid1))]
-                                        else [(tvid2, TypeVariable(rng1, tvid1))]
+              let (tvid1new, tvid2new) = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
+                if Tyvarid.less_than tvid1 tvid2 then
+                  if is_invalid_range rng2  then [(tvid1new, TypeVariable(rng1, tvid2new))]
+                                            else [(tvid1new, TypeVariable(rng2, tvid2new))]
+                else
+                  if is_invalid_range rng1  then [(tvid2new, TypeVariable(rng2, tvid1new))]
+                                            else [(tvid2new, TypeVariable(rng1, tvid1new))]
         | other ->
             let (b, _) = emerge_in tvid1 tystr in
               if b then
@@ -313,14 +315,14 @@ and unify_sub_list tylist1 tylist2 =
 
 
 (* for test *)
-let rec string_of_subst theta =
+let rec string_of_subst (theta : t) =
       " +-------------------------------\n"
     ^ (string_of_subst_sub theta)
     ^ " +-------------------------------\n"
 
-and string_of_subst_sub theta =
+and string_of_subst_sub (theta : t) =
   match theta with
   | []                    -> ""
   | (tvid, tystr) :: tail ->
-      " | '" ^ (string_of_int tvid) ^ " := " ^ (string_of_type_struct_basic tystr) ^ "\n"
+      " | '" ^ (Tyvarid.show_direct tvid) ^ " := " ^ (string_of_type_struct_basic tystr) ^ "\n"
         ^ (string_of_subst_sub tail)

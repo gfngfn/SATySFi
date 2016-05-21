@@ -18,9 +18,9 @@ val overwrite_range_of_type : type_struct -> code_range -> type_struct
 
 val erase_range_of_type : type_struct -> type_struct
 
-val find_in_type_struct : type_variable_id -> type_struct -> bool
+val find_in_type_struct : Tyvarid.t -> type_struct -> bool
 
-val find_in_type_environment : type_variable_id -> t -> bool
+val find_in_type_environment : Tyvarid.t -> t -> bool
 
 val make_forall_type : type_struct -> t -> type_struct
 
@@ -28,10 +28,6 @@ val string_of_type_environment : t -> string -> string
 
 val string_of_control_sequence_type : t -> string
 
-val replace_id : (type_variable_id * type_struct) list -> type_struct -> type_struct
+val replace_id : (Tyvarid.t * type_struct) list -> type_struct -> type_struct
 
 val make_bounded_free : type_struct -> type_struct * (type_struct list)
-
-val new_type_variable_id : unit -> int
-
-val initialize : unit -> unit

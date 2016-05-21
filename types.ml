@@ -15,8 +15,7 @@ type code_range = int * int * int * int
 
 type scope_kind = GlobalScope | LocalScope of module_name
 
-type type_variable_id = int
-and type_struct =
+type type_struct =
   | UnitType     of code_range
   | IntType      of code_range
   | StringType   of code_range
@@ -25,10 +24,10 @@ and type_struct =
   | ListType     of code_range * type_struct
   | RefType      of code_range * type_struct
   | ProductType  of code_range * (type_struct list)
-  | TypeVariable of code_range * type_variable_id
+  | TypeVariable of code_range * Tyvarid.t
   | TypeSynonym  of code_range * (type_struct list) * type_name * type_struct
   | VariantType  of code_range * (type_struct list) * type_name
-  | ForallType   of type_variable_id * type_struct
+  | ForallType   of Tyvarid.t * type_struct
   | TypeArgument of code_range * var_name
 
 type id_name_arg =

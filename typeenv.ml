@@ -23,7 +23,7 @@ let rec add tyenv varnm tystr =
 
 
 (* t -> var_name -> type_struct *)
-let rec find tyenv varnm =
+let rec find (tyenv : t) (varnm : var_name) =
   match tyenv with
   | []                               -> raise Not_found
   | (vn, ts) :: tail when vn = varnm -> ts
@@ -31,7 +31,7 @@ let rec find tyenv varnm =
 
 
 (* type_struct -> code_range *)
-let get_range_from_type tystr =
+let get_range_from_type (tystr : type_struct) =
   match tystr with
   | IntType(rng)              -> rng
   | StringType(rng)           -> rng
@@ -49,7 +49,7 @@ let get_range_from_type tystr =
 
 
 (* type_struct -> code_range -> type_struct *)
-let overwrite_range_of_type tystr rng =
+let overwrite_range_of_type (tystr : type_struct) (rng : code_range) =
   match tystr with
   | IntType(_)                              -> IntType(rng)
   | StringType(_)                           -> StringType(rng)
@@ -67,7 +67,7 @@ let overwrite_range_of_type tystr rng =
 
 
 (* type_struct -> type_struct *)
-let rec erase_range_of_type tystr =
+let rec erase_range_of_type (tystr : type_struct) =
   let dummy = (-2048, 0, 0, 0) in
   let f = erase_range_of_type in
     match tystr with
@@ -86,8 +86,8 @@ let rec erase_range_of_type tystr =
     | TypeArgument(_, tyargnm)                -> TypeArgument(dummy, tyargnm)
 
 
-(* type_variable_id -> type_struct -> bool *)
-let rec find_in_type_struct tvid tystr =
+(* Tyvarid.t -> type_struct -> bool *)
+let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
   match tystr with
   | TypeVariable(_, tvidx)            -> tvidx = tvid
   | FuncType(_, tydom, tycod)         -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
@@ -98,24 +98,24 @@ let rec find_in_type_struct tvid tystr =
   | TypeSynonym(_, tylist, _, tycont) -> (find_in_type_struct_list tvid tylist) || (find_in_type_struct tvid tycont)
   | _                                 -> false
 
-and find_in_type_struct_list tvid tystr =
-  match tystr with
+and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
+  match tystrlst with
   | []         -> false
   | ty :: tail -> if find_in_type_struct tvid ty then true else find_in_type_struct_list tvid tail
 
 
-(* type_variable_id -> t -> bool *)
-let rec find_in_type_environment tvid tyenv =
+(* Tyvarid.t -> t -> bool *)
+let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
   match tyenv with
   | []                 -> false
   | (_, tystr) :: tail ->
       if find_in_type_struct tvid tystr then true else find_in_type_environment tvid tail
 
 
-let unbound_id_list : type_variable_id list ref = ref []
+let unbound_id_list : Tyvarid.t list ref = ref []
 
-(* type_struct -> t -> (type_variable_id list) -> unit *)
-let rec listup_unbound_id tystr tyenv =
+(* type_struct -> t -> (Tyvarid.t list) -> unit *)
+let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
   let f = (fun ty -> listup_unbound_id ty tyenv) in
     match tystr with
     | TypeVariable(_, tvid)     ->
@@ -131,15 +131,15 @@ let rec listup_unbound_id tystr tyenv =
     | _                                 -> ()
 
 
-(* type_variable_id list -> type_struct -> type_struct *)
-let rec add_forall_struct lst tystr =
+(* Tyvarid.t list -> type_struct -> type_struct *)
+let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
   | tvid :: tail -> ForallType(tvid, add_forall_struct tail tystr)
 
 
 (* type_struct -> t -> type_struct *)
-let make_forall_type tystr tyenv =
+let make_forall_type (tystr : type_struct) (tyenv : t) =
   begin
     unbound_id_list := [] ;
     listup_unbound_id tystr tyenv ;
@@ -148,12 +148,12 @@ let make_forall_type tystr tyenv =
 
 
 (* t -> string -> string *)
-let rec string_of_type_environment tyenv msg =
+let rec string_of_type_environment (tyenv : t) (msg : string) =
     "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
   ^ (string_of_type_environment_sub tyenv)
   ^ "    #================================================================\n"
 
-and string_of_type_environment_sub tyenv =
+and string_of_type_environment_sub (tyenv : t) =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
@@ -168,12 +168,12 @@ and string_of_type_environment_sub tyenv =
 
 
 (* t -> string *)
-let rec string_of_control_sequence_type tyenv =
+let rec string_of_control_sequence_type (tyenv : t) =
     "    #================================================================\n"
   ^ (string_of_control_sequence_type_sub tyenv)
   ^ "    #================================================================\n"
 
-and string_of_control_sequence_type_sub tyenv =
+and string_of_control_sequence_type_sub (tyenv : t) =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
@@ -186,29 +186,21 @@ and string_of_control_sequence_type_sub tyenv =
       ) ^ (string_of_control_sequence_type_sub tail)
 
 
-
-let tvidmax : type_variable_id ref = ref 0
-
-let initialize () = ( tvidmax := 0 )
-
-let new_type_variable_id () =
-  let res = !tvidmax in ( tvidmax := !tvidmax + 1 ; res )
-
 (* 'a -> ('a * 'b) list -> 'b *)
-let rec find_id_in_list elm lst =
+let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list) =
   match lst with
-  | []                                    -> raise Not_found
-  | (tvid, tystr) :: tail when tvid = elm -> tystr
-  | _ :: tail                             -> find_id_in_list elm tail
+  | []                                               -> raise Not_found
+  | (tvid, tystr) :: tail when Tyvarid.same tvid elm -> tystr
+  | _ :: tail                                        -> find_id_in_list elm tail
 
 
 (* type_struct -> type_struct * (type_struct list) *)
-let rec make_bounded_free tystr = eliminate_forall tystr []
+let rec make_bounded_free (tystr : type_struct) = eliminate_forall tystr []
 
-and eliminate_forall tystr lst =
+and eliminate_forall (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
   match tystr with
   | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable((-2, 0, 0, 0), new_type_variable_id ()) in
+      let ntvstr = TypeVariable((-2, 0, 0, 0), Tyvarid.fresh ()) in
         eliminate_forall tycont ((tvid, ntvstr) :: lst)
 
   | other ->
@@ -217,10 +209,14 @@ and eliminate_forall tystr lst =
         (tyfree, tyarglist)
 
 
-and replace_id lst tystr =
+and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
   let f = replace_id lst in
     match tystr with
-    | TypeVariable(rng, tvid)                   -> ( try find_id_in_list tvid lst with Not_found -> TypeVariable(rng, tvid) )
+    | TypeVariable(rng, tvid)                   ->
+        begin
+          try find_id_in_list tvid lst
+          with Not_found -> TypeVariable(rng, tvid)
+        end
     | ListType(rng, tycont)                     -> ListType(rng, f tycont)
     | RefType(rng, tycont)                      -> RefType(rng, f tycont)
     | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)

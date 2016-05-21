@@ -125,7 +125,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
         end
 
 
-let rec make_type_argument_numbered (var_id : int) (tyargnm : var_name) (tystr : type_struct) =
+let rec make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (tystr : type_struct) =
   let f = make_type_argument_numbered var_id tyargnm in
     match tystr with
     | TypeArgument(rng, nm)   when nm = tyargnm -> TypeVariable(rng, var_id)
@@ -149,7 +149,7 @@ let rec make_type_argument_into_type_variable tyarglist tystr =
   match tyarglist with
   | []                   -> tystr
   | tyargnm :: tyargtail ->
-      let ntv = Typeenv.new_type_variable_id () in
+      let ntv = Tyvarid.fresh () in
       let tystr_new = make_type_argument_numbered ntv tyargnm tystr in
         make_type_argument_into_type_variable tyargtail tystr_new
 
@@ -167,7 +167,8 @@ let rec make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_a
   match tyargcons with
   | UTEndOfTypeArgument                        -> tystr
   | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
-      let tystr_new = ForallType(-var_id, make_type_argument_numbered (-var_id) tyargnm tystr) in
+      let tvidqtf = Tyvarid.of_int_for_quantifier var_id in
+      let tystr_new = ForallType(tvidqtf, make_type_argument_numbered tvidqtf tyargnm tystr) in
         make_type_argument_quantified (var_id + 1) tailcons tystr_new
 
 

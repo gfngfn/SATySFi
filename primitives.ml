@@ -19,14 +19,15 @@ let rec add_to_type_environment tyenv lst =
 
 (* unit -> type_environment *)
 let make_type_environment () =
-  let i = IntType((-32, 0, 0, 0)) in
-  let b = BoolType((-33, 0, 0, 0)) in
-  let s = StringType((-34, 0, 0, 0)) in
-  let v n = TypeVariable((-35, 0, 0, 0), n) in
-  let (-%) n cont = ForallType(n, cont) in
-  let l cont = ListType((-36, 0, 0, 0), cont) in
-  let r cont = RefType((-37, 0, 0, 0), cont) in
+  let i             = IntType((-32, 0, 0, 0)) in
+  let b             = BoolType((-33, 0, 0, 0)) in
+  let s             = StringType((-34, 0, 0, 0)) in
+  let v n           = TypeVariable((-35, 0, 0, 0), n) in
+  let (-%) n cont   = ForallType(n, cont) in
+  let l cont        = ListType((-36, 0, 0, 0), cont) in
+  let r cont        = RefType((-37, 0, 0, 0), cont) in
   let (-->) dom cod = FuncType((-38, 0, 0, 0), dom, cod) in
+  let (?.)          = Tyvarid.of_int_for_quantifier in
 
     add_to_type_environment Typeenv.empty
       [ ( "+",   i --> (i --> i) );
@@ -44,8 +45,8 @@ let make_type_environment () =
         ( "&&",  b --> (b --> b) );
         ( "||",  b --> (b --> b) );
         ( "not", b --> b );
-        ( "!",   (-5) -% ((r (v (-5))) --> (v (-5))) );
-        ( "::",  (-6) -% ((v (-6)) --> ((l (v (-6))) --> (l (v (-6))))) );
+        ( "!",   (?. (-5)) -% ((r (v (?. (-5)))) --> (v (?. (-5)))) );
+        ( "::",  (?. (-6)) -% ((v (?. (-6))) --> ((l (v (?. (-6)))) --> (l (v (?. (-6)))))) );
 
         ( "same",          s --> (s --> b) );
         ( "string-sub",    s --> (i --> (i --> s)) );

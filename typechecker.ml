@@ -92,7 +92,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
                       (Apply(e1, e2), type_result, theta_result)
                   end                                                                                 (* for debug *)
           | _ ->
-              let beta = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
+              let beta = TypeVariable(rng, Tyvarid.fresh ()) in
               let theta3 = Subst.unify ty1 (FuncType(get_range utast1, ty2, beta)) in
                 let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
                 let type_result  = Subst.apply_to_type_struct theta_result beta in
@@ -106,7 +106,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
         end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
-      let beta = TypeVariable(varrng, Typeenv.new_type_variable_id ()) in
+      let beta = TypeVariable(varrng, Tyvarid.fresh ()) in
       let tyenv_new = Typeenv.add tyenv varnm beta in
         let (e1, ty1, theta1) = typecheck varntenv tyenv_new utast1 in
           let term_result = LambdaAbstract(varnm, e1) in
@@ -249,7 +249,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
           (term_result, type_result, theta_result)
 
   | UTEndOfList ->
-      let ntyvar = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
+      let ntyvar = TypeVariable(rng, Tyvarid.fresh ()) in
         (EndOfList, ListType(rng, ntyvar), Subst.empty)
 
 (* ---- tuple ---- *)
@@ -274,7 +274,7 @@ let rec typecheck varntenv tyenv (rng, utastmain) =
 
   | UTPatternMatch(utastobj, utpmcons) ->
       let (eobj, tyobj, thetaobj) = typecheck varntenv tyenv utastobj in
-      let ntv = TypeVariable((-300, 0, 0, 0), Typeenv.new_type_variable_id ()) in
+      let ntv = TypeVariable((-300, 0, 0, 0), Tyvarid.fresh ()) in
       let (pmcons, typm, thetapm) = typecheck_pattern_match_cons varntenv tyenv utpmcons tyobj thetaobj ntv in
         (PatternMatch(eobj, pmcons), typm, thetapm)
 
@@ -300,7 +300,7 @@ and typecheck_itemize varntenv tyenv (UTItem(utast1, utitmzlst)) =
 (* Variantenv.t -> Typeenv.t -> untyped_itemize list -> abstract_tree * Subst.t *)
 and typecheck_itemize_list varntenv tyenv utitmzlst =
   match utitmzlst with
-  | []                    -> (EndOfList, Subst.empty)
+  | []                  -> (EndOfList, Subst.empty)
   | hditmz :: tlitmzlst ->
       let (ehd, thetahd) = typecheck_itemize varntenv tyenv hditmz in
       let (etl, thetatl) = typecheck_itemize_list varntenv tyenv tlitmzlst in
@@ -416,7 +416,7 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
           (PListCons(epat1, epat2), type_result, tyenv_result)
 
   | UTPEndOfList ->
-      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in (PEndOfList, ListType(rng, ntv), tyenv)
+      let ntv = TypeVariable(rng, Tyvarid.fresh ()) in (PEndOfList, ListType(rng, ntv), tyenv)
 
   | UTPTupleCons(utpat1, utpat2) ->
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
@@ -431,14 +431,14 @@ and typecheck_pattern varntenv tyenv (rng, utpatmain) =
   | UTPEndOfTuple -> (PEndOfTuple, ProductType(rng, []), tyenv)
 
   | UTPWildCard ->
-      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in (PWildCard, ntv, tyenv)
+      let ntv = TypeVariable(rng, Tyvarid.fresh ()) in (PWildCard, ntv, tyenv)
 
   | UTPVariable(varnm) ->
-      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
+      let ntv = TypeVariable(rng, Tyvarid.fresh ()) in
         (PVariable(varnm), ntv, Typeenv.add tyenv varnm ntv)
 
   | UTPAsVariable(varnm, utpat1) ->
-      let ntv = TypeVariable(rng, Typeenv.new_type_variable_id ()) in
+      let ntv = TypeVariable(rng, Tyvarid.fresh ()) in
       let (epat1, typat1, tyenv1) = typecheck_pattern varntenv tyenv utpat1 in
         (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm ntv)
 
@@ -471,7 +471,7 @@ and add_mutual_variables varntenv tyenv (mutletcons : untyped_mutual_let_cons) =
   match mutletcons with
   | UTEndOfMutualLet                             -> (tyenv, [])
   | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
-      let ntv = TypeVariable(get_range astdef, Typeenv.new_type_variable_id ()) in
+      let ntv = TypeVariable(get_range astdef, Tyvarid.fresh ()) in
       let (tyenv_tail, tvtylst) = add_mutual_variables varntenv (Typeenv.add tyenv varnm ntv) tailcons in
         (tyenv_tail, ((varnm, ntv) :: tvtylst))
 
