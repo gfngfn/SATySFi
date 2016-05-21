@@ -135,7 +135,11 @@ let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
 let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
-  | tvid :: tail -> ForallType(tvid, add_forall_struct tail tystr)
+  | tvid :: tail ->
+      if Tyvarid.is_quantifiable tvid then
+        ForallType(tvid, add_forall_struct tail tystr)
+      else
+        add_forall_struct tail tystr
 
 
 (* type_struct -> t -> type_struct *)
@@ -195,13 +199,13 @@ let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list)
 
 
 (* type_struct -> type_struct * (type_struct list) *)
-let rec make_bounded_free (tystr : type_struct) = eliminate_forall tystr []
+let rec make_bounded_free qtfbl (tystr : type_struct) = eliminate_forall qtfbl tystr []
 
-and eliminate_forall (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
+and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
   match tystr with
   | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable((-2, 0, 0, 0), Tyvarid.fresh ()) in
-        eliminate_forall tycont ((tvid, ntvstr) :: lst)
+      let ntvstr = TypeVariable((-2, 0, 0, 0), Tyvarid.fresh qtfbl) in
+        eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
 
   | other ->
       let tyfree    = replace_id lst other in

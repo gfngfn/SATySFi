@@ -90,7 +90,7 @@ let rec emerge_in tvid tystr =
     | ListType(_, cont)            -> emerge_in tvid cont
     | RefType(_, cont)             -> emerge_in tvid cont
     | ProductType(_, lst)          -> emerge_in_list tvid lst
-    | TypeVariable(rng, tvidx)     -> (tvidx = tvid, rng)
+    | TypeVariable(rng, tvidx)     -> (Tyvarid.same tvidx tvid, rng)
     | VariantType(rng, lst, _)     -> emerge_in_list tvid lst
     | TypeSynonym(_, lst, _, cont) ->
         let (bcont, rngcont) = emerge_in tvid cont in
@@ -113,7 +113,7 @@ let rec overwrite (theta : t) (key : Tyvarid.t) (value : type_struct) =
   match theta with
   | []             -> []
   | (k, v) :: tail ->
-      if k = key then
+      if Tyvarid.same k key then
         (key, value) :: (overwrite tail key value)
       else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 

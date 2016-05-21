@@ -30,4 +30,4 @@ val string_of_control_sequence_type : t -> string
 
 val replace_id : (Tyvarid.t * type_struct) list -> type_struct -> type_struct
 
-val make_bounded_free : type_struct -> type_struct * (type_struct list)
+val make_bounded_free : Tyvarid.quantifiability -> type_struct -> type_struct * (type_struct list)

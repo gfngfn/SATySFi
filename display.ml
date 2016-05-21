@@ -118,15 +118,15 @@ and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) 
   | ProductType(_, tylist) -> string_of_type_struct_list tylist lst
 
   | TypeVariable(_, tvid) ->
-      begin
-        try "'" ^ (find_type_variable lst tvid) with
-        | Not_found ->
-            "'" ^
+      ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
+        begin
+          try find_type_variable lst tvid with
+          | Not_found ->
               begin
                 try find_unbound_type_variable tvid with
                 | Not_found -> new_unbound_type_variable_name tvid
               end
-      end
+        end
 
   | ForallType(tvid, tycont) ->
       let meta = new_meta_type_variable_name () in

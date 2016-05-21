@@ -145,21 +145,21 @@ let fix_manual_type varntenv tyargcons tystr = fix_manual_type_general InnerMode
 
 let free_type_argument_list : (var_name list) ref = ref []
 
-let rec make_type_argument_into_type_variable tyarglist tystr =
+let rec make_type_argument_into_type_variable qtfbl tyarglist tystr =
   match tyarglist with
   | []                   -> tystr
   | tyargnm :: tyargtail ->
-      let ntv = Tyvarid.fresh () in
+      let ntv = Tyvarid.fresh qtfbl in
       let tystr_new = make_type_argument_numbered ntv tyargnm tystr in
-        make_type_argument_into_type_variable tyargtail tystr_new
+        make_type_argument_into_type_variable qtfbl tyargtail tystr_new
 
 
-let fix_manual_type_for_inner_and_outer (varntenv : t) (tystr : type_struct) =
+let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : type_struct) =
   free_type_argument_list := [] ;
   let tystrin  = fix_manual_type_general InnerMode varntenv (FreeMode(free_type_argument_list)) tystr in
   let tystrout = fix_manual_type_general OuterMode varntenv (FreeMode(free_type_argument_list)) tystr in
-    let tystrin_result = make_type_argument_into_type_variable (!free_type_argument_list) tystrin in
-    let tystrout_result = make_type_argument_into_type_variable (!free_type_argument_list) tystrout in
+    let tystrin_result = make_type_argument_into_type_variable qtfbl (!free_type_argument_list) tystrin in
+    let tystrout_result = make_type_argument_into_type_variable qtfbl (!free_type_argument_list) tystrout in
       (tystrin_result, tystrout_result)
 
 
