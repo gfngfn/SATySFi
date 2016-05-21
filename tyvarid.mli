@@ -18,3 +18,5 @@ val of_int_for_quantifier : int -> t
 val is_quantifiable : t -> bool
 
 val make_unquantifiable_if_needed : (t * t) -> (t * t)
+
+val set_quantifiability : quantifiability -> t -> t

@@ -48,3 +48,10 @@ let make_unquantifiable_if_needed (tvid1, tvid2) =
       ) ;
       (tvid1, tvid2)
     end
+
+let set_quantifiability qtfbl tvid =
+  let (tvn, q) = tvid in
+    begin
+      q := qtfbl ;
+      tvid
+    end

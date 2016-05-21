@@ -209,9 +209,27 @@ and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct
 
   | other ->
       let tyfree    = replace_id lst other in
+      let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
       let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
-        (tyfree, tyarglist)
+        (tyqtf, tyarglist)
 
+and make_unquantifiable_if_needed qtfbl tystr =
+  let f = make_unquantifiable_if_needed qtfbl in
+    match tystr with
+    | TypeVariable(rng, tvid)                   ->
+        begin
+          match qtfbl with
+          | Tyvarid.Quantifiable   -> TypeVariable(rng, tvid)
+          | Tyvarid.Unquantifiable -> TypeVariable(rng, Tyvarid.set_quantifiability Tyvarid.Unquantifiable tvid)
+        end
+    | ListType(rng, tycont)                     -> ListType(rng, f tycont)
+    | RefType(rng, tycont)                      -> RefType(rng, f tycont)
+    | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
+    | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
+    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
+    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
+    | ForallType(tvid, tycont)                  -> ForallType(tvid, f tycont)
+    | other                                     -> other
 
 and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
   let f = replace_id lst in

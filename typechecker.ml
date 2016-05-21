@@ -3,9 +3,9 @@ open Display
 
 
 let print_for_debug_typecheck msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 (* !! mutable !! *)
@@ -535,8 +535,11 @@ and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst tvtyls
     (Typeenv.t * abstract_tree * type_struct * Subst.t) *)
 and make_type_environment_by_let_mutable varntenv tyenv varrng varnm utastini =
   let (eini, tyini, thetaini) = typecheck Tyvarid.Unquantifiable varntenv tyenv utastini in
-    let tyenv_new = Subst.apply_to_type_environment thetaini (Typeenv.add tyenv varnm (RefType(varrng, tyini))) in
-      (tyenv_new, eini, tyini, thetaini)
+    begin                                                                               (* for debug *)
+      print_for_debug_typecheck ("#LM " ^ (string_of_type_struct_basic tyini) ^ "\n") ; (* for debug *)
+      let tyenv_new = Subst.apply_to_type_environment thetaini (Typeenv.add tyenv varnm (RefType(varrng, tyini))) in
+        (tyenv_new, eini, tyini, thetaini)
+    end                                                                                 (* for debug *)
 
 
 (* untyped_abstract_tree -> (type_struct * Variantenv.t * Typeenv.t) *)
