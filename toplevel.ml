@@ -1,4 +1,5 @@
 #load "stacklist.cmo";;
+#load "tyvarid.cmo";;
 #load "types.cmo";;
 #load "typeenv.cmo";;
 #load "display.cmo";;
