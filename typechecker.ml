@@ -27,7 +27,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       begin
         final_tyenv    := tyenv ;
         final_varntenv := varntenv ;
-        (FinishHeaderFile, UnitType(-1, 0, 0, 0), Subst.empty)
+        (FinishHeaderFile, UnitType(Range.dummy "finish-header-file"), Subst.empty)
       end
 
   | UTContentOf(varnm) ->
@@ -39,7 +39,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
             begin                                                                                       (* for debug *)
               print_for_debug_typecheck ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                                    (* for debug *)
-              print_for_debug_typecheck ((Display.describe_position rng) ^ "\n") ;                      (* for debug *)
+              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                      (* for debug *)
               (ContentOf(varnm), ty, Subst.empty)
             end                                                                                         (* for debug *)
         with
@@ -60,7 +60,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
             begin                                                                                         (* for debug *)
               print_for_debug_typecheck ("#V " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic type_result) ^ "\n") ;                             (* for debug *)
-              print_for_debug_typecheck ((Display.describe_position rng) ^ "\n") ;                        (* for debug *)
+              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                        (* for debug *)
               (Constructor(constrnm, econt), type_result, theta_result)
             end                                                                                           (* for debug *)
         with
@@ -128,7 +128,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let theta_result =  Subst.compose (Subst.unify ty2 ty1)
                             (Subst.compose theta2
                               (Subst.compose theta1
-                                (Subst.compose (Subst.unify tyb (BoolType(-7, 0, 0, 0)))
+                                (Subst.compose (Subst.unify tyb (BoolType(Range.dummy "if-bool")))
                                   thetab))) in
       let term_result = IfThenElse(eb, e1, e2) in
       let type_result = Subst.apply_to_type_struct theta_result ty1 in
@@ -210,7 +210,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
 (* ---- class/id option ---- *)
 
   | UTIfClassIsValid(utast1, utast2) ->
-      let tyenv_new = Typeenv.add tyenv "class" (StringType((-6, 0, 0, 0))) in
+      let tyenv_new = Typeenv.add tyenv "class" (StringType(Range.dummy "if-class-is-valid")) in
         let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
         let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
         let theta_result = Subst.compose (Subst.unify ty2 ty1) (Subst.compose theta2 theta1) in
@@ -218,7 +218,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
           (IfClassIsValid(e1, e2), type_result, theta_result)
 
   | UTIfIDIsValid(utast1, utast2) ->
-      let tyenv_new = Typeenv.add tyenv "id" (StringType((-7, 0, 0, 0))) in
+      let tyenv_new = Typeenv.add tyenv "id" (StringType(Range.dummy "if-id-is-valid")) in
         let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
         let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
         let theta_result = Subst.compose (Subst.unify ty2 ty1) (Subst.compose theta2 theta1) in
@@ -242,7 +242,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   | UTListCons(utasthd, utasttl) ->
       let (ehd, tyhd, thetahd) = typecheck qtfbl varntenv tyenv utasthd in
       let (etl, tytl, thetatl) = typecheck qtfbl varntenv tyenv utasttl in
-        let theta_result =  Subst.compose (Subst.unify tytl (ListType((-12, 0, 0, 0), tyhd)))
+        let theta_result =  Subst.compose (Subst.unify tytl (ListType(Range.dummy "list-cons", tyhd)))
                               (Subst.compose thetatl thetahd) in
         let type_result = ListType(rng, Subst.apply_to_type_struct theta_result tyhd) in
         let term_result = ListCons(ehd, etl) in
@@ -274,7 +274,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
 
   | UTPatternMatch(utastobj, utpmcons) ->
       let (eobj, tyobj, thetaobj) = typecheck qtfbl varntenv tyenv utastobj in
-      let ntv = TypeVariable((-300, 0, 0, 0), Tyvarid.fresh qtfbl) in
+      let ntv = TypeVariable(Range.dummy "ntv", Tyvarid.fresh qtfbl) in
       let (pmcons, typm, thetapm) = typecheck_pattern_match_cons qtfbl varntenv tyenv utpmcons tyobj thetaobj ntv in
         (PatternMatch(eobj, pmcons), typm, thetapm)
 
@@ -294,7 +294,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
 and typecheck_itemize qtfbl varntenv tyenv (UTItem(utast1, utitmzlst)) =
     let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
     let (elst, thetalst)  = typecheck_itemize_list qtfbl varntenv tyenv utitmzlst in
-      let theta_result = Subst.compose thetalst (Subst.compose theta1 (Subst.unify ty1 (StringType(-1, 0, 0, 0)))) in
+      let theta_result = Subst.compose thetalst (Subst.compose theta1 (Subst.unify ty1 (StringType(Range.dummy "typecheck_itemize_string")))) in
         (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), theta_result)
 
 (* Variantenv.t -> Typeenv.t -> untyped_itemize list -> abstract_tree * Subst.t *)
@@ -382,7 +382,7 @@ and typecheck_pattern_match_cons qtfbl varntenv tyenv utpmcons tyobj theta tyres
   | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
       let (epat, typat, tyenvpat) = typecheck_pattern qtfbl varntenv tyenv utpat in
       let (eb, tyb, thetab)       = typecheck qtfbl varntenv tyenvpat utastb in
-      let thetapat  = Subst.compose (Subst.unify tyb (BoolType(-400, 0, 0, 0)))
+      let thetapat  = Subst.compose (Subst.unify tyb (BoolType(Range.dummy "pattern-match-cons-when")))
                         (Subst.compose thetab
                           (Subst.compose (Subst.unify typat tyobj) theta)) in
       let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
@@ -401,7 +401,7 @@ and typecheck_pattern qtfbl varntenv tyenv (rng, utpatmain) =
   | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), BoolType(rng), tyenv)
   | UTPStringConstant(ut1) ->
       let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv ut1 in
-      let theta_new = Subst.compose (Subst.unify (StringType(-201, 0, 0, 0)) ty1) theta1 in
+      let theta_new = Subst.compose (Subst.unify (StringType(Range.dummy "pattern-string-constant")) ty1) theta1 in
       let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
         (PStringConstant(e1), StringType(rng), tyenv_new)
 
@@ -410,7 +410,7 @@ and typecheck_pattern qtfbl varntenv tyenv (rng, utpatmain) =
   | UTPListCons(utpat1, utpat2) ->
       let (epat1, typat1, tyenv1) = typecheck_pattern qtfbl varntenv tyenv utpat1 in
       let (epat2, typat2, tyenv2) = typecheck_pattern qtfbl varntenv tyenv1 utpat2 in
-        let theta = Subst.unify typat2 (ListType((-200, 0, 0, 0), typat1)) in
+        let theta = Subst.unify typat2 (ListType(Range.dummy "pattern-list-cons", typat1)) in
         let tyenv_result = Subst.apply_to_type_environment theta tyenv2 in
         let type_result = Subst.apply_to_type_struct theta typat2 in
           (PListCons(epat1, epat2), type_result, tyenv_result)

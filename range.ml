@@ -5,6 +5,18 @@ type t = Dummy of string | Normal of int * int * int * int
 let dummy msg = Dummy(msg)
 
 
+let is_dummy rng =
+  match rng with
+  | Dummy(_) -> true
+  | _        -> false
+
+
+let message rng =
+  match rng with
+  | Dummy(msg)         -> msg
+  | Normal(_, _, _, _) -> "*NORMAL*"
+
+
 let to_string rng =
   let s = string_of_int in
     match rng with

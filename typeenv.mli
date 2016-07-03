@@ -12,9 +12,9 @@ val add : t -> var_name -> type_struct -> t
 
 val find : t -> var_name -> type_struct
 
-val get_range_from_type : type_struct -> code_range
+val get_range_from_type : type_struct -> Range.t
 
-val overwrite_range_of_type : type_struct -> code_range -> type_struct
+val overwrite_range_of_type : type_struct -> Range.t -> type_struct
 
 val erase_range_of_type : type_struct -> type_struct
 

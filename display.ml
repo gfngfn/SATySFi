@@ -1,24 +1,14 @@
 open Types
 
-(* code_range -> string *)
-let describe_position (sttln, sttpos, endln, endpos) =
-  if sttln = endln then
-    "line " ^ (string_of_int sttln) ^ ", characters " ^ (string_of_int sttpos)
-      ^ "-" ^ (string_of_int endpos)
-  else
-    "line " ^ (string_of_int sttln) ^ ", character " ^ (string_of_int sttpos)
-      ^ " to line " ^ (string_of_int endln) ^ ", character " ^ (string_of_int endpos)
 
-
-(* code_range -> string list -> 'a *)
-let report_error_with_range rng msglst =
+let report_error_with_range (rng : Range.t) (msglst : string list) =
   let rec lines_of_list msglst =
     match msglst with
     | []             -> ""
     | msghd :: []    -> "    " ^ msghd
     | msghd :: msgtl -> "    " ^ msghd ^ "\n" ^ (lines_of_list msgtl)
   in
-    raise (TypeCheckError( "at " ^ (describe_position rng) ^ ":\n" ^ (lines_of_list msglst)))
+    raise (TypeCheckError( "at " ^ (Range.to_string rng) ^ ":\n" ^ (lines_of_list msglst)))
 
 
 let meta_max    : int ref = ref 0
@@ -31,6 +21,7 @@ let rec variable_name_of_int (n : int) =
     else
       ""
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
+
 
 let new_meta_type_variable_name () =
   let res = "{" ^ (variable_name_of_int (!meta_max)) ^ "}" in
@@ -279,15 +270,15 @@ let rec string_of_ast ast =
 
 
 let rec string_of_type_struct_basic tystr =
-  let (sttln, _, _, _) = Typeenv.get_range_from_type tystr in
+  let qstn = if Range.is_dummy (Typeenv.get_range_from_type tystr) then "?" else "" in
     match tystr with
-    | StringType(_)                      -> if sttln <= 0 then "string?" else "string"
-    | IntType(_)                         -> if sttln <= 0 then "int?"    else "int"
-    | BoolType(_)                        -> if sttln <= 0 then "bool?"   else "bool"
-    | UnitType(_)                        -> if sttln <= 0 then "unit?"   else "unit"
+    | StringType(_)                      -> "string" ^ qstn
+    | IntType(_)                         -> "int" ^ qstn
+    | BoolType(_)                        -> "bool" ^ qstn
+    | UnitType(_)                        -> "unit" ^ qstn
 
     | VariantType(_, tyarglist, varntnm) ->
-        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ (if sttln <= 0 then "@?" else "@")
+        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ "@" ^ qstn
 
     | TypeSynonym(_, tyarglist, tynm, tycont) ->
         (string_of_type_argument_list_basic tyarglist) ^ tynm ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")"
@@ -298,7 +289,7 @@ let rec string_of_type_struct_basic tystr =
           begin match tydom with
           | FuncType(_, _, _)     -> "(" ^ strdom ^ ")"
           | _                     -> strdom
-          end ^ " ->" ^ (if sttln <= 0 then "? " else " ") ^ strcod
+          end ^ " ->" ^ qstn ^ strcod
 
     | ListType(_, tycont)          ->
         let strcont = string_of_type_struct_basic tycont in
@@ -310,7 +301,7 @@ let rec string_of_type_struct_basic tystr =
           | TypeSynonym(_, [], _, _)     -> strcont
           | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strcont ^ ")"
           | _                            -> strcont
-          end ^ " list" ^ (if sttln <= 0 then "?" else "")
+          end ^ " list" ^ qstn
 
     | RefType(_, tycont)           ->
         let strcont = string_of_type_struct_basic tycont in
@@ -322,10 +313,10 @@ let rec string_of_type_struct_basic tystr =
           | TypeSynonym(_, [], _, _)     -> strcont
           | TypeSynonym(_, _ :: _, _, _) -> "(" ^ strcont ^ ")"
           | _                            -> strcont
-          end ^ " ref" ^ (if sttln <= 0 then "?" else "")
+          end ^ " ref" ^ qstn
 
     | ProductType(_, tylist)       -> string_of_type_struct_list_basic tylist
-    | TypeVariable(_, tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ (if sttln <= 0 then "?" else "")
+    | TypeVariable(_, tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
     | ForallType(tvid, tycont)     -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(_, tyargnm)     -> tyargnm
 

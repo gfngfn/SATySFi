@@ -81,7 +81,7 @@ let apply_to_type_environment theta tyenv =
 
 (* Tyvarid.t -> type_struct -> (bool * code_range) *)
 let rec emerge_in tvid tystr =
-  let dummy = (-2049, 0, 0, 0) in
+  let dummy = Range.dummy "emerge_in" in
     match tystr with
     | FuncType(_, dom, cod)    ->
         let (bdom, rngdom) = emerge_in tvid dom in
@@ -99,7 +99,7 @@ let rec emerge_in tvid tystr =
     | _                            -> (false, dummy)
 
 and emerge_in_list tvid tylist =
-  let dummy = (-2049, 0, 0, 0) in
+  let dummy = Range.dummy "emerge_in_list" in
     match tylist with
     | []           -> (false, dummy)
     | tyhd :: tytl ->
@@ -129,15 +129,13 @@ let report_inclusion_error tystr1 tystr2 =
   let rng2 = Typeenv.get_range_from_type tystr2 in
   let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
   let msg =
-    if is_invalid_range rng1 then
-      if is_invalid_range rng2 then
-        let (sttln1, _, _, _) = rng1 in
-        let (sttln2, _, _, _) = rng2 in
-          "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")"
+    if Range.is_dummy rng1 then
+      if Range.is_dummy rng2 then
+          "something is wrong; (" ^ (Range.message rng1) ^ ", " ^ (Range.message rng2) ^ ")"
       else
-        "at " ^ (describe_position rng2)
+        "at " ^ (Range.to_string rng2)
     else
-      "at " ^ (describe_position rng1)
+      "at " ^ (Range.to_string rng1)
   in
     raise (TypeCheckError(
         msg ^ ":\n"
@@ -156,10 +154,10 @@ let report_contradiction_error tystr1 tystr2 =
   let rng2 = Typeenv.get_range_from_type tystr2 in
   let strty1 = string_of_type_struct tystr1 in
   let strty2 = string_of_type_struct tystr2 in
-  let msg1 = describe_position rng1 in
-  let msg2 = describe_position rng2 in
-    if is_invalid_range rng1 then
-      if is_invalid_range rng2 then
+  let msg1 = Range.to_string rng1 in
+  let msg2 = Range.to_string rng2 in
+    if Range.is_dummy rng1 then
+      if Range.is_dummy rng2 then
         raise ContradictionError
       else
         raise (TypeCheckError(
@@ -169,7 +167,7 @@ let report_contradiction_error tystr1 tystr2 =
           ^ "    but is expected of type\n"
           ^ "      " ^ strty1))
     else
-      if is_invalid_range rng2 then
+      if Range.is_dummy rng2 then
         raise (TypeCheckError(
             "at " ^ msg1 ^ ":\n"
           ^ "    this expression has type\n"
@@ -200,7 +198,7 @@ and check_emergence theta =
   | (tvid, tystr) :: tail ->
       let (b, rng) = emerge_in tvid tystr in
         if b then
-          if is_invalid_range rng then
+          if Range.is_dummy rng then
             raise InclusionError
           else
             report_inclusion_error (TypeVariable(rng, tvid)) tystr
@@ -240,13 +238,11 @@ and unify tystr1 tystr2 =
           ^ (string_of_type_struct tystr1) ^ " and " ^ (string_of_type_struct tystr2) ^ "\n") ;    (* for debug *)
         let rng1 = Typeenv.get_range_from_type tystr1 in
         let rng2 = Typeenv.get_range_from_type tystr2 in
-          print_for_debug_subst ((Display.describe_position rng1) ^ "\n") ;
-          print_for_debug_subst ((Display.describe_position rng2) ^ "\n") ;
-          if (is_invalid_range rng1) && (is_invalid_range rng2) then
-            let (sttln1, _, _, _) = rng1 in
-            let (sttln2, _, _, _) = rng2 in
+          print_for_debug_subst ((Range.to_string rng1) ^ "\n") ;
+          print_for_debug_subst ((Range.to_string rng2) ^ "\n") ;
+          if (Range.is_dummy rng1) && (Range.is_dummy rng2) then
               raise (TypeCheckError(
-                 "something is wrong; (" ^ (string_of_int sttln1) ^ ", " ^ (string_of_int sttln2) ^ ")\n"
+                 "something is wrong; (" ^ (Range.message rng1) ^ ", " ^ (Range.message rng2) ^ ")\n"
                ^ "      " ^ (string_of_type_struct tystr1) ^ "\n"
                ^ "    and\n"
                ^ "      " ^ (string_of_type_struct tystr2)))
@@ -288,18 +284,18 @@ and unify_sub tystr1 tystr2 =
             else
               let (tvid1new, tvid2new) = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
                 if Tyvarid.less_than tvid1 tvid2 then
-                  if is_invalid_range rng2  then [(tvid1new, TypeVariable(rng1, tvid2new))]
-                                            else [(tvid1new, TypeVariable(rng2, tvid2new))]
+                  if Range.is_dummy rng2  then [(tvid1new, TypeVariable(rng1, tvid2new))]
+                                          else [(tvid1new, TypeVariable(rng2, tvid2new))]
                 else
-                  if is_invalid_range rng1  then [(tvid2new, TypeVariable(rng2, tvid1new))]
-                                            else [(tvid2new, TypeVariable(rng1, tvid1new))]
+                  if Range.is_dummy rng1  then [(tvid2new, TypeVariable(rng2, tvid1new))]
+                                          else [(tvid2new, TypeVariable(rng1, tvid1new))]
         | other ->
             let (b, _) = emerge_in tvid1 tystr in
               if b then
                 report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
               else
-                if is_invalid_range rng1 then [(tvid1, tystr)]
-                                         else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
+                if Range.is_dummy rng1 then [(tvid1, tystr)]
+                                       else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
       end
 
   | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr

@@ -2,27 +2,23 @@ open Types
 
 type t = (var_name * type_struct) list
 
-(* t *)
+
 let empty = []
 
 
-(* t -> (var_name * type_struct) list *)
 let to_list tyenv = tyenv
 
 
-(* (var_name * type_struct) list -> t *)
 let from_list lst = lst
 
 
-(* t -> var_name -> type_struct -> t *)
-let rec add tyenv varnm tystr =
+let rec add tyenv (varnm : var_name) (tystr : type_struct) =
   match tyenv with
-  | []                               -> (varnm, tystr) :: []
-  | (vn, ts) :: tail when vn = varnm -> (varnm, tystr) :: tail
-  | (vn, ts) :: tail                 -> (vn, ts) :: (add tail varnm tystr)
+  | []                                -> (varnm, tystr) :: []
+  | (vn, ts) :: tail  when vn = varnm -> (varnm, tystr) :: tail
+  | (vn, ts) :: tail                  -> (vn, ts) :: (add tail varnm tystr)
 
 
-(* t -> var_name -> type_struct *)
 let rec find (tyenv : t) (varnm : var_name) =
   match tyenv with
   | []                               -> raise Not_found
@@ -30,7 +26,6 @@ let rec find (tyenv : t) (varnm : var_name) =
   | (vn, ts) :: tail                 -> find tail varnm
 
 
-(* type_struct -> code_range *)
 let get_range_from_type (tystr : type_struct) =
   match tystr with
   | IntType(rng)              -> rng
@@ -44,12 +39,11 @@ let get_range_from_type (tystr : type_struct) =
   | TypeVariable(rng, _)      -> rng
   | VariantType(rng, _, _)    -> rng
   | TypeSynonym(rng, _, _, _) -> rng
-  | ForallType(_, _)          -> (-31, 0, 0, 0)
+  | ForallType(_, _)          -> Range.dummy "forall"
   | TypeArgument(rng, _)      -> rng
 
 
-(* type_struct -> code_range -> type_struct *)
-let overwrite_range_of_type (tystr : type_struct) (rng : code_range) =
+let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
   match tystr with
   | IntType(_)                              -> IntType(rng)
   | StringType(_)                           -> StringType(rng)
@@ -66,9 +60,8 @@ let overwrite_range_of_type (tystr : type_struct) (rng : code_range) =
   | TypeArgument(_, tyarg)                  -> TypeArgument(rng, tyarg)
 
 
-(* type_struct -> type_struct *)
 let rec erase_range_of_type (tystr : type_struct) =
-  let dummy = (-2048, 0, 0, 0) in
+  let dummy = Range.dummy "erased" in
   let f = erase_range_of_type in
     match tystr with
     | IntType(_)                              -> IntType(dummy)
@@ -86,7 +79,6 @@ let rec erase_range_of_type (tystr : type_struct) =
     | TypeArgument(_, tyargnm)                -> TypeArgument(dummy, tyargnm)
 
 
-(* Tyvarid.t -> type_struct -> bool *)
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
   match tystr with
   | TypeVariable(_, tvidx)            -> Tyvarid.same tvidx tvid
@@ -104,7 +96,6 @@ and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
   | ty :: tail -> if find_in_type_struct tvid ty then true else find_in_type_struct_list tvid tail
 
 
-(* Tyvarid.t -> t -> bool *)
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
   match tyenv with
   | []                 -> false
@@ -114,7 +105,7 @@ let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
 
 let unbound_id_list : Tyvarid.t list ref = ref []
 
-(* type_struct -> t -> (Tyvarid.t list) -> unit *)
+
 let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
   let f = (fun ty -> listup_unbound_id ty tyenv) in
     match tystr with
@@ -131,7 +122,6 @@ let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
     | _                                 -> ()
 
 
-(* Tyvarid.t list -> type_struct -> type_struct *)
 let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
@@ -142,7 +132,6 @@ let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
         add_forall_struct tail tystr
 
 
-(* type_struct -> t -> type_struct *)
 let make_forall_type (tystr : type_struct) (tyenv : t) =
   begin
     unbound_id_list := [] ;
@@ -151,7 +140,6 @@ let make_forall_type (tystr : type_struct) (tyenv : t) =
   end
 
 
-(* t -> string -> string *)
 let rec string_of_type_environment (tyenv : t) (msg : string) =
     "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
   ^ (string_of_type_environment_sub tyenv)
@@ -161,17 +149,12 @@ and string_of_type_environment_sub (tyenv : t) =
   match tyenv with
   | []               -> ""
   | (vn, ts) :: tail ->
-      let (a, _, _, _) = get_range_from_type ts in (* dirty code *)
-        if -38 <= a && a <= -1 then
-          string_of_type_environment_sub tail
-        else
           "    #  "
             ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
             ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
             ^ (string_of_type_environment_sub tail)
 
 
-(* t -> string *)
 let rec string_of_control_sequence_type (tyenv : t) =
     "    #================================================================\n"
   ^ (string_of_control_sequence_type_sub tyenv)
@@ -190,7 +173,6 @@ and string_of_control_sequence_type_sub (tyenv : t) =
       ) ^ (string_of_control_sequence_type_sub tail)
 
 
-(* 'a -> ('a * 'b) list -> 'b *)
 let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list) =
   match lst with
   | []                                               -> raise Not_found
@@ -198,13 +180,12 @@ let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list)
   | _ :: tail                                        -> find_id_in_list elm tail
 
 
-(* type_struct -> type_struct * (type_struct list) *)
 let rec make_bounded_free qtfbl (tystr : type_struct) = eliminate_forall qtfbl tystr []
 
 and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
   match tystr with
   | ForallType(tvid, tycont) ->
-      let ntvstr = TypeVariable((-2, 0, 0, 0), Tyvarid.fresh qtfbl) in
+      let ntvstr = TypeVariable(Range.dummy "eliminate_forall", Tyvarid.fresh qtfbl) in
         eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
 
   | other ->
@@ -236,8 +217,8 @@ and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
     match tystr with
     | TypeVariable(rng, tvid)                   ->
         begin
-          try find_id_in_list tvid lst
-          with Not_found -> TypeVariable(rng, tvid)
+          try find_id_in_list tvid lst with
+          | Not_found -> TypeVariable(rng, tvid)
         end
     | ListType(rng, tycont)                     -> ListType(rng, f tycont)
     | RefType(rng, tycont)                      -> RefType(rng, f tycont)
@@ -247,7 +228,7 @@ and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
     | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
     | ForallType(tvid, tycont)                  ->
         begin
-          try let _ = find_id_in_list tvid lst in ForallType(tvid, tycont)
-          with Not_found -> ForallType(tvid, f tycont)
+          try let _ = find_id_in_list tvid lst in ForallType(tvid, tycont) with
+          | Not_found -> ForallType(tvid, f tycont)
         end
     | other                                     -> other
