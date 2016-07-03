@@ -89,7 +89,7 @@ let rec erase_range_of_type (tystr : type_struct) =
 (* Tyvarid.t -> type_struct -> bool *)
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
   match tystr with
-  | TypeVariable(_, tvidx)            -> tvidx = tvid
+  | TypeVariable(_, tvidx)            -> Tyvarid.same tvidx tvid
   | FuncType(_, tydom, tycod)         -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
   | ListType(_, tycont)               -> find_in_type_struct tvid tycont
   | RefType(_, tycont)                -> find_in_type_struct tvid tycont

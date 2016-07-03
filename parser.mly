@@ -389,34 +389,34 @@
 
 %}
 
-%token <Types.token_position * Types.var_name> VAR
-%token <Types.token_position * Types.var_name> VARINSTR
-%token <Types.token_position * Types.var_name> TYPEVAR
-%token <Types.token_position * Types.constructor_name> CONSTRUCTOR
-%token <Types.token_position * string> NUMCONST CHAR
-%token <Types.token_position * Types.ctrlseq_name> CTRLSEQ
-%token <Types.token_position * Types.id_name>      IDNAME
-%token <Types.token_position * Types.class_name>   CLASSNAME
-%token <Types.token_position> SPACE BREAK
-%token <Types.token_position> LAMBDA ARROW
-%token <Types.token_position> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
-%token <Types.token_position> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
-%token <Types.token_position> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
-%token <Types.token_position> LETMUTABLE OVERWRITEEQ LETLAZY
-%token <Types.token_position> REFNOW REFFINAL
-%token <Types.token_position> IF THEN ELSE IFCLASSISVALID IFIDISVALID
-%token <Types.token_position> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
-%token <Types.token_position> LPAREN RPAREN
-%token <Types.token_position> BGRP EGRP
-%token <Types.token_position> OPENQT CLOSEQT
-%token <Types.token_position> OPENSTR CLOSESTR
-%token <Types.token_position> OPENNUM CLOSENUM
-%token <Types.token_position> TRUE FALSE
-%token <Types.token_position> SEP END COMMA
-%token <Types.token_position> BLIST LISTPUNCT ELIST CONS
-%token <Types.token_position> BEFORE UNITVALUE WHILE DO
-%token <Types.token_position> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
-%token <Types.token_position * int> ITEM
+%token <Range.t * Types.var_name> VAR
+%token <Range.t * Types.var_name> VARINSTR
+%token <Range.t * Types.var_name> TYPEVAR
+%token <Range.t * Types.constructor_name> CONSTRUCTOR
+%token <Range.t * string> NUMCONST CHAR
+%token <Range.t * Types.ctrlseq_name> CTRLSEQ
+%token <Range.t * Types.id_name>      IDNAME
+%token <Range.t * Types.class_name>   CLASSNAME
+%token <Range.t> SPACE BREAK
+%token <Range.t> LAMBDA ARROW
+%token <Range.t> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
+%token <Range.t> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
+%token <Range.t> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
+%token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
+%token <Range.t> REFNOW REFFINAL
+%token <Range.t> IF THEN ELSE IFCLASSISVALID IFIDISVALID
+%token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
+%token <Range.t> LPAREN RPAREN
+%token <Range.t> BGRP EGRP
+%token <Range.t> OPENQT CLOSEQT
+%token <Range.t> OPENSTR CLOSESTR
+%token <Range.t> OPENNUM CLOSENUM
+%token <Range.t> TRUE FALSE
+%token <Range.t> SEP END COMMA
+%token <Range.t> BLIST LISTPUNCT ELIST CONS
+%token <Range.t> BEFORE UNITVALUE WHILE DO
+%token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
+%token <Range.t * int> ITEM
 %token EOI
 %token IGNORED
 
@@ -459,7 +459,7 @@
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree> tuple
-%type <Types.code_range * Types.untyped_pattern_match_cons> pats
+%type <Range.t * Types.untyped_pattern_match_cons> pats
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist

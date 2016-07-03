@@ -6,6 +6,7 @@
 
   type lexer_state = STATE_NUMEXPR | STATE_STREXPR | STATE_ACTIVE | STATE_COMMENT | STATE_LITERAL
 
+
   let line_no             : int ref = ref 1
   let end_of_previousline : int ref = ref 0
 
@@ -21,12 +22,21 @@
   let numdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
   let strdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
 
+
   let increment rfn = ( rfn := !rfn + 1 )
 
   let decrement rfn = ( rfn := !rfn - 1 )
 
+
   let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
-  let get_end_pos lexbuf = (Lexing.lexeme_end lexbuf) - !end_of_previousline
+
+  let get_end_pos lexbuf   = (Lexing.lexeme_end lexbuf) - !end_of_previousline
+
+  let get_pos lexbuf =
+    let pos_from = get_start_pos lexbuf in
+    let pos_to = get_end_pos lexbuf in
+      Range.make (!line_no) pos_from pos_to
+
 
   let error_reporting lexbuf errmsg =
     let column_from = get_start_pos lexbuf in
@@ -34,45 +44,52 @@
       "at line " ^ (string_of_int !line_no) ^ ", column "
         ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ":\n    " ^ errmsg
 
-  let get_pos lexbuf =
-    let column_from = get_start_pos lexbuf in
-    let column_to = get_end_pos lexbuf in
-      (!line_no, column_from, column_to)
 
   let increment_line lexbuf =
-    end_of_previousline := (Lexing.lexeme_end lexbuf) ;
-    line_no := !line_no + 1
+    begin
+      end_of_previousline := (Lexing.lexeme_end lexbuf) ;
+      line_no := !line_no + 1
+    end
+
 
   let rec increment_line_for_each_break lexbuf str num =
     if num >= String.length str then () else
-    ( ( match str.[num] with
+      begin
+      ( match str.[num] with
         | '\n' -> ( increment_line lexbuf )
         | _ -> () ) ;
-      increment_line_for_each_break lexbuf str (num + 1)
-    )
+        increment_line_for_each_break lexbuf str (num + 1)
+      end
+
 
   let reset_to_numexpr () =
-    ( first_state := STATE_NUMEXPR ;
+    begin
+      first_state := STATE_NUMEXPR ;
       next_state := !first_state ;
       ignore_space := true ;
       line_no := 1 ;
+      end_of_previousline := 0;
       openqtdepth := 0 ;
       numdepth := 0 ;
       strdepth := 0 ;
       numdepth_stack := Stacklist.empty ;
       strdepth_stack := Stacklist.empty
-    )
+    end
+
+
   let reset_to_strexpr () =
-    ( first_state := STATE_STREXPR ;
+    begin
+      first_state := STATE_STREXPR ;
       next_state := !first_state ;
       ignore_space := true ;
       line_no := 1 ;
+      end_of_previousline := 0;
       openqtdepth := 0 ;
       numdepth := 0 ;
       strdepth := 0 ;
       numdepth_stack := Stacklist.empty ;
       strdepth_stack := Stacklist.empty
-    )
+    end
 
 }
 
@@ -376,32 +393,5 @@ and comment = parse
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output
-
-(*
-  (* for test *)
-  let rec make_token_list lexbuf =
-    let output = cut_token lexbuf in
-      match output with
-      | EOI -> [EOI]
-      | _   -> output :: (make_token_list lexbuf)
-
-  (* for test *)
-  let token_list_of_string instr =
-    let lexbuf = Lexing.from_string instr in
-      begin
-        line_no := 1 ;
-        end_of_previousline := 0 ;
-
-        numdepth := 0 ;
-        strdepth := 0 ;
-        numdepth_stack := Stacklist.empty ;
-        strdepth_stack := Stacklist.empty ;
-        openqtdepth := 0 ;
-
-        next_state := STATE_NUMEXPR ;
-
-        make_token_list lexbuf
-      end
-*)
 
 }
