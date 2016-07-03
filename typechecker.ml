@@ -109,12 +109,10 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let beta = TypeVariable(varrng, Tyvarid.fresh qtfbl) in
       let tyenv_new = Typeenv.add tyenv varnm beta in
         let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-          let term_result = LambdaAbstract(varnm, e1) in
           let tydom = (Subst.apply_to_type_struct theta1 beta) in
           let tycod = ty1 in
-          let type_result = FuncType(rng, tydom, tycod) in
           let theta_result = theta1 in
-            (term_result, type_result, theta_result)
+            (LambdaAbstract(varnm, e1), FuncType(rng, tydom, tycod), theta_result)
 
   | UTLetIn(utmutletcons, utast2) ->
       let (tyenv_forall, _, mutletcons, theta1, _) = make_type_environment_by_let qtfbl varntenv tyenv utmutletcons in
@@ -290,14 +288,12 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
         (Module(mdlnm, emdltr, eaft), type_result, theta_result)
 
 
-(* Variantenv.t -> Typeenv.t -> untyped_itemize -> abstract_tree * Subst.t *)
 and typecheck_itemize qtfbl varntenv tyenv (UTItem(utast1, utitmzlst)) =
     let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
     let (elst, thetalst)  = typecheck_itemize_list qtfbl varntenv tyenv utitmzlst in
       let theta_result = Subst.compose thetalst (Subst.compose theta1 (Subst.unify ty1 (StringType(Range.dummy "typecheck_itemize_string")))) in
         (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), theta_result)
 
-(* Variantenv.t -> Typeenv.t -> untyped_itemize list -> abstract_tree * Subst.t *)
 and typecheck_itemize_list qtfbl varntenv tyenv utitmzlst =
   match utitmzlst with
   | []                  -> (EndOfList, Subst.empty)
