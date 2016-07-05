@@ -1,5 +1,7 @@
 open Types
 
+exception Error of string
+
 type definition_kind   = Data of int | Synonym of int * type_struct | LocalSynonym of module_name * int * type_struct
 type defined_type_list = (type_name * definition_kind) list
 type constructor_list  = (constructor_name * type_name * type_struct) list
@@ -47,10 +49,10 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
 
 
 let report_illegal_type_argument_length rng tynm len_expected len =
-  Display.report_error_with_range rng [
-    "'" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s)," ;
-    "but it has " ^ (string_of_int len) ^ " type argument(s) here"
-  ]
+  raise(Error("at " ^ (Range.to_string rng) ^ ":\n" ^
+    "    '" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s),\n" ^
+    "    but it has " ^ (string_of_int len) ^ " type argument(s) here"
+  ))
 
 
 let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
@@ -99,7 +101,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
                   else
                     report_illegal_type_argument_length rng tynm argnum len
           with
-          | Not_found -> Display.report_error_with_range rng ["undefined type '" ^ tynm ^ "'"]
+          | Not_found -> raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type '" ^ tynm ^ "'"))
         end
 
     | TypeArgument(rng, tyargnm)        ->
@@ -109,7 +111,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
                 if is_defined_type_argument tyargcons tyargnm then
                   TypeArgument(rng, tyargnm)
                 else
-                  Display.report_error_with_range rng ["undefined type argument '" ^ tyargnm ^ "'"]
+                  raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type argument '" ^ tyargnm ^ "'"))
 
             | FreeMode(reftyarglst) ->
                 begin

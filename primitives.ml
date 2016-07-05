@@ -1,35 +1,25 @@
 open Types
 
 
-(* unit -> Variantenv.t *)
 let make_variant_environment () =
+  let dummy = Range.dummy "make_variant_emvironment" in
   Variantenv.add Variantenv.empty "Item"
-    (ProductType((-1, 0, 0, 0), [StringType(-1, 0, 0, 0); ListType((-1, 0, 0, 0), VariantType((-1, 0, 0, 0), [], "itemize"))]))
+    (ProductType(dummy, [StringType(dummy); ListType(dummy, VariantType(dummy, [], "itemize"))]))
     "itemize"
 
 
-(* type_environment -> (var_name * type_struct) list *)
-let rec add_to_type_environment tyenv lst =
-  match lst with
-  | []                     -> tyenv
-  | (varnm, tystr) :: tail ->
-      let tyenv_new = Typeenv.add tyenv varnm tystr in
-        add_to_type_environment tyenv_new tail
-
-
-(* unit -> type_environment *)
 let make_type_environment () =
-  let i             = IntType((-32, 0, 0, 0)) in
-  let b             = BoolType((-33, 0, 0, 0)) in
-  let s             = StringType((-34, 0, 0, 0)) in
-  let v n           = TypeVariable((-35, 0, 0, 0), n) in
+  let i             = IntType(Range.dummy "int") in
+  let b             = BoolType(Range.dummy "bool") in
+  let s             = StringType(Range.dummy "string") in
+  let v n           = TypeVariable(Range.dummy "tv", n) in
   let (-%) n cont   = ForallType(n, cont) in
-  let l cont        = ListType((-36, 0, 0, 0), cont) in
-  let r cont        = RefType((-37, 0, 0, 0), cont) in
-  let (-->) dom cod = FuncType((-38, 0, 0, 0), dom, cod) in
+  let l cont        = ListType(Range.dummy "list", cont) in
+  let r cont        = RefType(Range.dummy "ref", cont) in
+  let (-->) dom cod = FuncType(Range.dummy "func", dom, cod) in
   let (?.)          = Tyvarid.of_int_for_quantifier in
 
-    add_to_type_environment Typeenv.empty
+    Typeenv.from_list
       [ ( "+",   i --> (i --> i) );
         ( "-",   i --> (i --> i) );
         ( "mod", i --> (i --> i) );

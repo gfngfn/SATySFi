@@ -1,6 +1,5 @@
 
 exception ParseErrorDetail of string
-exception TypeCheckError of string
 
 type ctrlseq_name = string
 type var_name = string
@@ -10,25 +9,22 @@ type type_name = string
 type constructor_name = string
 type module_name = string
 
-type token_position = int * int * int
-type code_range = int * int * int * int
-
 type scope_kind = GlobalScope | LocalScope of module_name
 
 type type_struct =
-  | UnitType     of code_range
-  | IntType      of code_range
-  | StringType   of code_range
-  | BoolType     of code_range
-  | FuncType     of code_range * type_struct * type_struct
-  | ListType     of code_range * type_struct
-  | RefType      of code_range * type_struct
-  | ProductType  of code_range * (type_struct list)
-  | TypeVariable of code_range * Tyvarid.t
-  | TypeSynonym  of code_range * (type_struct list) * type_name * type_struct
-  | VariantType  of code_range * (type_struct list) * type_name
+  | UnitType     of Range.t
+  | IntType      of Range.t
+  | StringType   of Range.t
+  | BoolType     of Range.t
+  | FuncType     of Range.t * type_struct * type_struct
+  | ListType     of Range.t * type_struct
+  | RefType      of Range.t * type_struct
+  | ProductType  of Range.t * (type_struct list)
+  | TypeVariable of Range.t * Tyvarid.t
+  | TypeSynonym  of Range.t * (type_struct list) * type_name * type_struct
+  | VariantType  of Range.t * (type_struct list) * type_name
   | ForallType   of Tyvarid.t * type_struct
-  | TypeArgument of code_range * var_name
+  | TypeArgument of Range.t * var_name
 
 type id_name_arg =
   | IDName       of id_name
@@ -48,7 +44,7 @@ and untyped_argument_cons =
 and untyped_mutual_let_cons =
   | UTMutualLetCons        of type_struct option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
-and untyped_abstract_tree = code_range * untyped_abstract_tree_main
+and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
   | UTStringEmpty
@@ -70,7 +66,7 @@ and untyped_abstract_tree_main =
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaAbstract       of code_range * var_name * untyped_abstract_tree
+  | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
@@ -79,12 +75,12 @@ and untyped_abstract_tree_main =
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of module_name * untyped_module_tree * untyped_abstract_tree
 (* -- implerative -- *)
-  | UTLetMutableIn         of code_range * var_name * untyped_abstract_tree * untyped_abstract_tree
+  | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
   | UTDeclareGlobalHash    of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwriteGlobalHash  of untyped_abstract_tree * untyped_abstract_tree
-  | UTOverwrite            of code_range * var_name * untyped_abstract_tree
+  | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
   | UTReferenceFinal       of untyped_abstract_tree
   | UTLazyContent          of untyped_abstract_tree
 (* -- lightweight itemize -- *)
@@ -95,7 +91,7 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
-and untyped_variant_cons = code_range * untyped_variant_cons_main
+and untyped_variant_cons = Range.t * untyped_variant_cons_main
 and untyped_variant_cons_main =
   | UTVariantCons          of constructor_name * type_struct * untyped_variant_cons
   | UTEndOfVariant
@@ -105,7 +101,7 @@ and untyped_mutual_variant_cons =
   | UTMutualSynonymCons    of untyped_type_argument_cons
                                 * type_name * type_struct * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
-and untyped_pattern_tree = code_range * untyped_pattern_tree_main
+and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPNumericConstant     of int
   | UTPBooleanConstant     of bool
@@ -126,18 +122,18 @@ and untyped_pattern_match_cons =
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
-and untyped_module_tree = code_range * untyped_module_tree_main
+and untyped_module_tree = Range.t * untyped_module_tree_main
 and untyped_module_tree_main =
   | UTMFinishModule
   | UTMPublicLetIn                 of untyped_mutual_let_cons * untyped_module_tree
-  | UTMPublicLetMutableIn          of code_range * var_name * untyped_abstract_tree * untyped_module_tree
+  | UTMPublicLetMutableIn          of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
   | UTMPublicDeclareVariantIn      of untyped_mutual_variant_cons * untyped_module_tree
   | UTMPrivateLetIn                of untyped_mutual_let_cons * untyped_module_tree
-  | UTMPrivateLetMutableIn         of code_range * var_name * untyped_abstract_tree * untyped_module_tree
+  | UTMPrivateLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
 and untyped_type_argument_cons =
-  | UTTypeArgumentCons  of code_range * var_name * untyped_type_argument_cons
+  | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
   | UTEndOfTypeArgument
 
 (* ---- typed ---- *)
@@ -257,7 +253,7 @@ type output_unit =
 let global_hash_env : environment = Hashtbl.create 32
 
 
-(* untyped_abstract_tree -> code_range *)
+(* untyped_abstract_tree -> Range.t *)
 let get_range utast =
   let (rng, _) = utast in rng
 
