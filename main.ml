@@ -134,6 +134,7 @@ let rec main varntenv tyenv env file_name_in_list file_name_out =
   | Parsing.Parse_error           -> print_endline ("! [ERROR AT PARSER] something is wrong.")
   | ParseErrorDetail(s)           -> print_endline ("! [ERROR AT PARSER] " ^ s ^ "")
   | TypeCheckError(s)             -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
+  | Subst.ContradictionError(s)   -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
   | Evaluator.EvalError(s)        -> print_endline ("! [ERROR AT EVALUATOR] " ^ s ^ ".")
   | Out.IllegalOut(s)             -> print_endline ("! [ERROR AT OUTPUT] " ^ s ^ ".")
   | MainError(s)                  -> print_endline ("! [ERROR] " ^ s ^ ".")

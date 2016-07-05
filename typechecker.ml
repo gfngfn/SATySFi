@@ -9,11 +9,10 @@ let print_for_debug_typecheck msg =
   ()
 
 (* !! mutable !! *)
-let final_tyenv    : Typeenv.t ref        = ref Typeenv.empty
-let final_varntenv : Variantenv.t ref     = ref Variantenv.empty
+let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
+let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 
-(* type_environment -> untyped_abstract_tree -> (abstract_tree * type_struct_with_id * Subst.t) *)
 let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   match utastmain with
   | UTStringEmpty         -> (StringEmpty,         StringType(rng), Subst.empty)
@@ -128,9 +127,8 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
                               (Subst.compose theta1
                                 (Subst.compose (Subst.unify tyb (BoolType(Range.dummy "if-bool")))
                                   thetab))) in
-      let term_result = IfThenElse(eb, e1, e2) in
       let type_result = Subst.apply_to_type_struct theta_result ty1 in
-        (term_result, type_result, theta_result)
+        (IfThenElse(eb, e1, e2), type_result, theta_result)
 
 (* ---- impleratives ---- *)
 
@@ -156,8 +154,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv_new utast2 in
         let theta_result = Subst.compose theta2 theta_new in
         let type_result = Subst.apply_to_type_struct theta_result ty2 in
-        let term_result = Sequential(e1, e2) in
-            (term_result, type_result, theta_result)
+            (Sequential(e1, e2), type_result, theta_result)
 
   | UTWhileDo(utastb, utastc) ->
       let (eb, tyb, thetab) = typecheck qtfbl varntenv tyenv utastb in
@@ -167,8 +164,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
           let theta_result =  Subst.compose thetacsub
                                 (Subst.compose thetabsub
                                   (Subst.compose thetac thetab)) in
-          let term_result = WhileDo(eb, ec) in
-            (term_result, UnitType(rng), theta_result)
+            (WhileDo(eb, ec), UnitType(rng), theta_result)
 
   | UTLazyContent(utast1) ->
       let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
@@ -184,8 +180,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let theta_result =  Subst.compose thetasubini
                             (Subst.compose thetasubkey
                               (Subst.compose thetaini thetakey)) in
-      let term_result  = DeclareGlobalHash(ekey, eini) in
-        (term_result, UnitType(rng), theta_result)
+        (DeclareGlobalHash(ekey, eini), UnitType(rng), theta_result)
 
   | UTOverwriteGlobalHash(utastkey, utastnew) ->
       let (ekey, tykey, thetakey) = typecheck qtfbl varntenv tyenv utastkey in
@@ -195,15 +190,13 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let theta_result =  Subst.compose thetasubnew
                             (Subst.compose thetasubkey
                               (Subst.compose thetanew thetakey)) in
-      let term_result  = OverwriteGlobalHash(ekey, enew) in
-        (term_result, UnitType(rng), theta_result)
+        (OverwriteGlobalHash(ekey, enew), UnitType(rng), theta_result)
 
   | UTReferenceFinal(utast1) ->
       let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
       let thetasub = Subst.unify ty1 (StringType(rng)) in
       let theta_result = Subst.compose thetasub theta1 in
-      let term_result = ReferenceFinal(e1) in
-        (term_result, StringType(rng), theta_result)
+        (ReferenceFinal(e1), StringType(rng), theta_result)
 
 (* ---- class/id option ---- *)
 
@@ -243,8 +236,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
         let theta_result =  Subst.compose (Subst.unify tytl (ListType(Range.dummy "list-cons", tyhd)))
                               (Subst.compose thetatl thetahd) in
         let type_result = ListType(rng, Subst.apply_to_type_struct theta_result tyhd) in
-        let term_result = ListCons(ehd, etl) in
-          (term_result, type_result, theta_result)
+          (ListCons(ehd, etl), type_result, theta_result)
 
   | UTEndOfList ->
       let ntyvar = TypeVariable(rng, Tyvarid.fresh qtfbl) in

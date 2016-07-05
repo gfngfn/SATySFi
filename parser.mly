@@ -37,21 +37,18 @@
   let rec append_argument_list (arglsta : untyped_argument_cons) (arglstb : untyped_argument_cons) =
     match arglsta with
     | UTEndOfArgument              -> arglstb
-    | UTArgumentCons(arg, arglstl) ->
-        UTArgumentCons(arg, (append_argument_list arglstl arglstb))
+    | UTArgumentCons(arg, arglstl) -> UTArgumentCons(arg, (append_argument_list arglstl arglstb))
 
 
-  let rec convert_into_apply csutast (clsnmutast : untyped_abstract_tree)
+  let convert_into_apply (csutast : untyped_abstract_tree) (clsnmutast : untyped_abstract_tree)
                                (idnmutast : untyped_abstract_tree) (argcons : untyped_argument_cons) =
-    convert_into_apply_sub argcons (Range.dummy "convert_into_apply", UTApplyClassAndID(clsnmutast, idnmutast, csutast))
-
-
-  and convert_into_apply_sub (argcons : untyped_argument_cons) (utastconstr : untyped_abstract_tree) =
-    match argcons with
-    | UTEndOfArgument             -> utastconstr
-    | UTArgumentCons(arg, actail) ->
-        let (rng, _) = arg in
-          convert_into_apply_sub actail (rng, UTApply(utastconstr, arg))
+    let (csrng, _) = csutast in
+    let rec iter argcons utastconstr =
+      match argcons with
+      | UTEndOfArgument                           -> utastconstr
+      | UTArgumentCons((argrng, argmain), actail) -> iter actail (Range.unite csrng argrng, UTApply(utastconstr, (argrng, argmain)))
+    in
+      iter argcons (Range.dummy "apply-class-and-id", UTApplyClassAndID(clsnmutast, idnmutast, csutast))
 
 
   let class_name_to_abstract_tree (clsnm : class_name) =
@@ -951,11 +948,11 @@ nxrtimes:
 /* -- -- */
 ;
 nxun:
-  | MINUS nxapp       { binary_operator "-" (Range.dummy "minus", UTNumericConstant(0)) $1 $2 }
+  | MINUS nxapp       { binary_operator "-" (Range.dummy "zero-of-unary-minus", UTNumericConstant(0)) $1 $2 }
   | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("not")), $2)) }
   | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
-                          (UTConstructor(extract_name $1, (Range.dummy "constructor", UTUnitConstant))) }
+                          (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
   | nxapp             { $1 }
 /* -- for syntax error log -- */
   | MINUS error       { report_error (Tok $1) "-" }
@@ -994,7 +991,7 @@ nxbot:
 ;
 nxlist:
   | LISTPUNCT nxlet nxlist { make_standard (Tok $1) (Untyped $3) (UTListCons($2, $3)) }
-  |                        { (Range.dummy "endoflist", UTEndOfList) }
+  |                        { (Range.dummy "end-of-list", UTEndOfList) }
 /* -- for syntax error log -- */
   | LISTPUNCT error        { report_error (Tok $1) ";" }
 /* -- -- */
@@ -1003,11 +1000,11 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { make_standard (TokArg $1) (VarntCons $5)
                                             (UTVariantCons(extract_name $1, $3, $5)) }
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
-                                            (UTVariantCons(extract_name $1, $3, (Range.dummy "endofvariant", UTEndOfVariant))) }
+                                            (UTVariantCons(extract_name $1, $3, (Range.dummy "end-of-variant1", UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                             (UTVariantCons(extract_name $1, VariantType(Range.dummy "unit", [], "unit"), $3)) }
+                                             (UTVariantCons(extract_name $1, VariantType(Range.dummy "dec-constructor-unit1", [], "unit"), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-                    (UTVariantCons(extract_name $1, VariantType(Range.dummy "constructor_unit", [], "unit"), (Range.dummy "constructor_endofvariant", UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, VariantType(Range.dummy "dec-constructor-unit2", [], "unit"), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
@@ -1067,7 +1064,7 @@ txbot: /* -> type_struct */
   }
 ;
 tuple: /* -> untyped_tuple_cons */
-  | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (Range.dummy "endoftuple'", UTEndOfTuple))) }
+  | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }
   | nxlet COMMA tuple { make_standard (Untyped $1) (Untyped $3) (UTTupleCons($1, $3)) }
 /* -- for syntax error log -- */
   | nxlet COMMA error { report_error (Tok $2) "," }
@@ -1104,7 +1101,7 @@ patas:
 pattr: /* -> Types.untyped_pattern_tree */
   | patbot CONS pattr  { make_standard (Pat $1) (Pat $3) (UTPListCons($1, $3)) }
   | CONSTRUCTOR patbot { make_standard (TokArg $1) (Pat $2) (UTPConstructor(extract_name $1, $2)) }
-  | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, (Range.dummy "constructor_unitconst", UTPUnitConstant))) }
+  | CONSTRUCTOR        { make_standard (TokArg $1) (TokArg $1) (UTPConstructor(extract_name $1, (Range.dummy "constructor-unit-value", UTPUnitConstant))) }
   | patbot             { $1 }
 /* -- for syntax error log -- */
   | patbot CONS error { report_error (Tok $2) "::" }
@@ -1131,7 +1128,7 @@ patbot: /* -> Types.untyped_pattern_tree */
 /* -- -- */
 ;
 pattuple: /* -> untyped_pattern_tree */
-  | patas                { make_standard (Pat $1) (Pat $1) (UTPTupleCons($1, (Range.dummy "endoftuple''", UTPEndOfTuple))) }
+  | patas                { make_standard (Pat $1) (Pat $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Pat $1) (Pat $3) (UTPTupleCons($1, $3)) }
 /* -- for syntax error log -- */
   | patas COMMA error    { report_error (Tok $2) "," }
@@ -1165,14 +1162,14 @@ sxitemize:
 ;
 sxsepsub:
   | sxblock SEP sxsepsub { make_standard (Untyped $1) (Untyped $3) (UTListCons($1, $3)) }
-  |                      { (Range.dummy "endoflist'", UTEndOfList) }
+  |                      { (Range.dummy "end-of-string-list", UTEndOfList) }
 /* -- for syntax error log -- */
   | sxblock SEP error    { report_error (Tok $2) "|" }
 /* -- -- */
 ;
 sxblock:
   | sxbot sxblock { make_standard (Untyped $1) (Untyped $2) (UTConcat($1, $2)) }
-  |               { (Range.dummy "stringempty", UTStringEmpty) }
+  |               { (Range.dummy "string-empty", UTStringEmpty) }
 ;
 sxbot:
   | CHAR  { let (rng, ch) = $1 in (rng, UTStringConstant(ch)) }
@@ -1189,28 +1186,23 @@ sxbot:
 /* -- -- */
 sxclsnm:
   | CLASSNAME { make_standard (TokArg $1) (TokArg $1) (class_name_to_abstract_tree (extract_name $1)) }
-  |           { (Range.dummy "nocontent1", UTNoContent) }
+  |           { (Range.dummy "no-class-name", UTNoContent) }
 sxidnm:
   | IDNAME    { make_standard (TokArg $1) (TokArg $1) (id_name_to_abstract_tree (extract_name $1)) }
-  |           { (Range.dummy "nocontent2", UTNoContent) }
+  |           { (Range.dummy "no-id-name", UTNoContent) }
 ;
 narg: /* -> untyped_argument_cons */
-  | OPENNUM nxlet CLOSENUM narg {
-        let rng = make_range (Tok $1) (Tok $3) in
-          UTArgumentCons((rng, extract_main $2), $4) }
-  | { UTEndOfArgument }
+  | OPENNUM nxlet CLOSENUM narg { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
+  |                             { UTEndOfArgument }
 /* -- for syntax error log -- */
   | OPENNUM error                { report_error (Tok $1) "(" }
   | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ")" }
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
-  | BGRP sxsep EGRP sargsub { UTArgumentCons($2, $4) }
-  | OPENQT sxblock CLOSEQT sargsub {
-        let rng = make_range (Tok $1) (Tok $3) in
-          UTArgumentCons((rng, omit_spaces $2), $4)
-      }
-  | END { UTEndOfArgument }
+  | BGRP sxsep EGRP sargsub        { UTArgumentCons($2, $4) }
+  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, omit_spaces $2), $4) }
+  | END                            { UTEndOfArgument }
 /* -- for syntax error log --*/
   | BGRP error            { report_error (Tok $1) "{" }
   | BGRP sxsep EGRP error { report_error (Tok $3) "}" }

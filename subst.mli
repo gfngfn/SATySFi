@@ -1,6 +1,9 @@
 open Types
 open Typeenv
 
+exception ContradictionError of string
+exception InclusionError     of string
+
 type t
 
 val empty : t

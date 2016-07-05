@@ -31,7 +31,9 @@ let to_string rng =
 let unite rng1 rng2 =
   match (rng1, rng2) with
   | (Normal(ln1, pos1, _, _), Normal(_, _, ln2, pos2)) -> Normal(ln1, pos1, ln2, pos2)
-  | _                                                  -> Dummy("dummy")
+  | (Normal(_, _, _, _), _)                            -> rng1
+  | (_, Normal(_, _, _, _))                            -> rng2
+  | _                                                  -> Dummy("unite")
 
 
 let make ln pos1 pos2 = Normal(ln, pos1, ln, pos2)
