@@ -22,24 +22,24 @@ let is_standalone_file = is_suffix ".mcrds"
 (* Variantenv.t -> Typeenv.t -> environment -> string -> (Variantenv.t * Typeenv.t * environment) *)
 let make_environment_from_header_file varntenv tyenv env file_name_in =
   begin
-    print_string (" ---- ---- ---- ----\n") ;
-    print_string ("  reading '" ^ file_name_in ^ "' ...\n") ;
+    print_endline (" ---- ---- ---- ----") ;
+    print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
           begin
-            print_string ("  type check: " ^ (string_of_type_struct ty) ^ "\n") ;
+            print_endline ("  type check: " ^ (string_of_type_struct ty)) ;
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
                   begin
                     ( if !show_control_sequence_type then
                         if !show_function_type then
-                          print_string (Typeenv.string_of_type_environment newtyenv "Environment")
+                          print_endline (Typeenv.string_of_type_environment newtyenv "Environment")
                         else
-                          print_string (Typeenv.string_of_control_sequence_type newtyenv)
+                          print_endline (Typeenv.string_of_control_sequence_type newtyenv)
                       else () ) ;
                     (newvarntenv, newtyenv, newenv)
                   end
@@ -70,7 +70,7 @@ let read_standalone_file varntenv tyenv env file_name_in file_name_out =
                     print_endline (" ---- ---- ---- ----") ;
                     print_endline ("  output written on '" ^ file_name_out ^ "'.")
                   end
-            | _  -> raise (TypeCheckError("the output of '" ^ file_name_in ^ "' is not string"))
+            | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not string"))
           end
       end
   end
@@ -103,14 +103,13 @@ let read_document_file varntenv tyenv env file_name_in file_name_out =
                     print_endline " ---- ---- ---- ----" ;
                     print_endline ("  output written on '" ^ file_name_out ^ "'.")
                   end
-            | _ -> raise (TypeCheckError("the output of '" ^ file_name_in ^ "' is not string"))
+            | _ -> raise (MainError("the output of '" ^ file_name_in ^ "' is not string"))
           end
       end
   end
 
 
-(* Variantenv.t -> Typeenv.t -> environment -> string list -> string -> unit *)
-let rec main varntenv tyenv env file_name_in_list file_name_out =
+let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
   try
     match file_name_in_list with
     | [] ->
@@ -118,27 +117,28 @@ let rec main varntenv tyenv env file_name_in_list file_name_out =
           print_endline " ---- ---- ---- ----" ;
           print_endline "  no output."
         end
-    | file_name_in :: tail when is_document_file file_name_in ->
+    | file_name_in :: tail  when is_document_file file_name_in ->
           read_document_file varntenv tyenv env file_name_in file_name_out
 
-    | file_name_in :: tail when is_header_file file_name_in ->
+    | file_name_in :: tail  when is_header_file file_name_in ->
           let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
             main newvarntenv newtyenv newenv tail file_name_out
 
-    | file_name_in :: tail when is_standalone_file file_name_in ->
+    | file_name_in :: tail  when is_standalone_file file_name_in ->
           read_standalone_file varntenv tyenv env file_name_in file_name_out
 
     | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with
-  | Lexer.LexError(s)             -> print_endline ("! [ERROR AT LEXER] " ^ s ^ ".")
-  | Parsing.Parse_error           -> print_endline ("! [ERROR AT PARSER] something is wrong.")
-  | ParseErrorDetail(s)           -> print_endline ("! [ERROR AT PARSER] " ^ s ^ "")
-  | TypeCheckError(s)             -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
-  | Subst.ContradictionError(s)   -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
-  | Evaluator.EvalError(s)        -> print_endline ("! [ERROR AT EVALUATOR] " ^ s ^ ".")
-  | Out.IllegalOut(s)             -> print_endline ("! [ERROR AT OUTPUT] " ^ s ^ ".")
-  | MainError(s)                  -> print_endline ("! [ERROR] " ^ s ^ ".")
-  | Sys_error(s)                  -> print_endline ("! [ERROR] System error - " ^ s)
+  | Lexer.LexError(s)               -> print_endline ("! [ERROR AT LEXER] " ^ s ^ ".")
+  | Parsing.Parse_error             -> print_endline ("! [ERROR AT PARSER] something is wrong.")
+  | ParseErrorDetail(s)             -> print_endline ("! [ERROR AT PARSER] " ^ s ^ "")
+  | ( Typechecker.Error(s)
+    | Variantenv.Error(s)
+    | Subst.ContradictionError(s) ) -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
+  | Evaluator.EvalError(s)          -> print_endline ("! [ERROR AT EVALUATOR] " ^ s ^ ".")
+  | Out.IllegalOut(s)               -> print_endline ("! [ERROR AT OUTPUT] " ^ s ^ ".")
+  | MainError(s)                    -> print_endline ("! [ERROR] " ^ s ^ ".")
+  | Sys_error(s)                    -> print_endline ("! [ERROR] System error - " ^ s)
 
 
 (* int -> (string list) -> string -> unit *)

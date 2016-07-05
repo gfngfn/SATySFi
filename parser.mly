@@ -1200,7 +1200,7 @@ narg: /* -> untyped_argument_cons */
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
-  | BGRP sxsep EGRP sargsub        { UTArgumentCons($2, $4) }
+  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
   | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, omit_spaces $2), $4) }
   | END                            { UTEndOfArgument }
 /* -- for syntax error log --*/

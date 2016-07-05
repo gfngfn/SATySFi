@@ -107,18 +107,18 @@ let unbound_id_list : Tyvarid.t list ref = ref []
 
 
 let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
-  let f = (fun ty -> listup_unbound_id ty tyenv) in
+  let iter = (fun ty -> listup_unbound_id ty tyenv) in
     match tystr with
     | TypeVariable(_, tvid)     ->
         if find_in_type_environment tvid tyenv then ()
         else if List.mem tvid !unbound_id_list then ()
         else unbound_id_list := tvid :: !unbound_id_list
-    | FuncType(_, tydom, tycod)         -> begin f tydom ; f tycod end
-    | ListType(_, tycont)               -> f tycont
-    | RefType(_, tycont)                -> f tycont
-    | ProductType(_, tylist)            -> let _ = List.map f tylist in ()
-    | VariantType(_, tylist, _)         -> let _ = List.map f tylist in ()
-    | TypeSynonym(_, tylist, _, tycont) -> let _ = List.map f tylist in () (* doubtful implementation *)
+    | FuncType(_, tydom, tycod)         -> begin iter tydom ; iter tycod end
+    | ListType(_, tycont)               -> iter tycont
+    | RefType(_, tycont)                -> iter tycont
+    | ProductType(_, tylist)            -> let _ = List.map iter tylist in ()
+    | VariantType(_, tylist, _)         -> let _ = List.map iter tylist in ()
+    | TypeSynonym(_, tylist, _, tycont) -> let _ = List.map iter tylist in () (* doubtful implementation *)
     | _                                 -> ()
 
 
@@ -140,37 +140,38 @@ let make_forall_type (tystr : type_struct) (tyenv : t) =
   end
 
 
-let rec string_of_type_environment (tyenv : t) (msg : string) =
-    "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
-  ^ (string_of_type_environment_sub tyenv)
-  ^ "    #================================================================\n"
-
-and string_of_type_environment_sub (tyenv : t) =
-  match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
-          "    #  "
-            ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-            ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
-            ^ (string_of_type_environment_sub tail)
-
-
-let rec string_of_control_sequence_type (tyenv : t) =
-    "    #================================================================\n"
-  ^ (string_of_control_sequence_type_sub tyenv)
-  ^ "    #================================================================\n"
-
-and string_of_control_sequence_type_sub (tyenv : t) =
-  match tyenv with
-  | []               -> ""
-  | (vn, ts) :: tail ->
-      ( match String.sub vn 0 1 with
-        | "\\" ->
+let string_of_type_environment (tyenv : t) (msg : string) =
+  let rec iter (tyenv : t) =
+    match tyenv with
+    | []               -> ""
+    | (vn, ts) :: tail ->
             "    #  "
               ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
               ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
-        | _    -> ""
-      ) ^ (string_of_control_sequence_type_sub tail)
+              ^ (iter tail)
+  in
+      "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
+    ^ (iter tyenv)
+    ^ "    #================================================================\n"
+
+
+let string_of_control_sequence_type (tyenv : t) =
+  let rec iter (tyenv : t) =
+    match tyenv with
+    | []               -> ""
+    | (vn, ts) :: tail ->
+        ( match String.sub vn 0 1 with
+          | "\\" ->
+              "    #  "
+                ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
+                ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
+          | _    -> ""
+        ) ^ (iter tail)
+  in
+      "    #================================================================\n"
+    ^ (iter tyenv)
+    ^ "    #================================================================\n"
+
 
 
 let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list) =
@@ -195,7 +196,7 @@ and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct
         (tyqtf, tyarglist)
 
 and make_unquantifiable_if_needed qtfbl tystr =
-  let f = make_unquantifiable_if_needed qtfbl in
+  let iter = make_unquantifiable_if_needed qtfbl in
     match tystr with
     | TypeVariable(rng, tvid)                   ->
         begin
@@ -203,32 +204,32 @@ and make_unquantifiable_if_needed qtfbl tystr =
           | Tyvarid.Quantifiable   -> TypeVariable(rng, tvid)
           | Tyvarid.Unquantifiable -> TypeVariable(rng, Tyvarid.set_quantifiability Tyvarid.Unquantifiable tvid)
         end
-    | ListType(rng, tycont)                     -> ListType(rng, f tycont)
-    | RefType(rng, tycont)                      -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
-    | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
-    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
-    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
-    | ForallType(tvid, tycont)                  -> ForallType(tvid, f tycont)
+    | ListType(rng, tycont)                     -> ListType(rng, iter tycont)
+    | RefType(rng, tycont)                      -> RefType(rng, iter tycont)
+    | ProductType(rng, tylist)                  -> ProductType(rng, List.map iter tylist)
+    | FuncType(rng, tydom, tycod)               -> FuncType(rng, iter tydom, iter tycod)
+    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map iter tylist, varntnm)
+    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map iter tylist, tysynnm, iter tycont)
+    | ForallType(tvid, tycont)                  -> ForallType(tvid, iter tycont)
     | other                                     -> other
 
 and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
-  let f = replace_id lst in
+  let iter = replace_id lst in
     match tystr with
     | TypeVariable(rng, tvid)                   ->
         begin
           try find_id_in_list tvid lst with
           | Not_found -> TypeVariable(rng, tvid)
         end
-    | ListType(rng, tycont)                     -> ListType(rng, f tycont)
-    | RefType(rng, tycont)                      -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
-    | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
-    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
-    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, f tycont)
+    | ListType(rng, tycont)                     -> ListType(rng, iter tycont)
+    | RefType(rng, tycont)                      -> RefType(rng, iter tycont)
+    | ProductType(rng, tylist)                  -> ProductType(rng, List.map iter tylist)
+    | FuncType(rng, tydom, tycod)               -> FuncType(rng, iter tydom, iter tycod)
+    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map iter tylist, varntnm)
+    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map iter tylist, tysynnm, iter tycont)
     | ForallType(tvid, tycont)                  ->
         begin
           try let _ = find_id_in_list tvid lst in ForallType(tvid, tycont) with
-          | Not_found -> ForallType(tvid, f tycont)
+          | Not_found -> ForallType(tvid, iter tycont)
         end
     | other                                     -> other

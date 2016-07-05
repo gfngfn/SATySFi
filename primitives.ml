@@ -1,7 +1,6 @@
 open Types
 
 
-(* unit -> Variantenv.t *)
 let make_variant_environment () =
   let dummy = Range.dummy "make_variant_emvironment" in
   Variantenv.add Variantenv.empty "Item"
@@ -9,16 +8,6 @@ let make_variant_environment () =
     "itemize"
 
 
-(* type_environment -> (var_name * type_struct) list *)
-let rec add_to_type_environment tyenv lst =
-  match lst with
-  | []                     -> tyenv
-  | (varnm, tystr) :: tail ->
-      let tyenv_new = Typeenv.add tyenv varnm tystr in
-        add_to_type_environment tyenv_new tail
-
-
-(* unit -> type_environment *)
 let make_type_environment () =
   let i             = IntType(Range.dummy "int") in
   let b             = BoolType(Range.dummy "bool") in
@@ -30,7 +19,7 @@ let make_type_environment () =
   let (-->) dom cod = FuncType(Range.dummy "func", dom, cod) in
   let (?.)          = Tyvarid.of_int_for_quantifier in
 
-    add_to_type_environment Typeenv.empty
+    Typeenv.from_list
       [ ( "+",   i --> (i --> i) );
         ( "-",   i --> (i --> i) );
         ( "mod", i --> (i --> i) );

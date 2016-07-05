@@ -1,6 +1,8 @@
 open Types
 open Display
 
+exception Error of string
+
 type t
 
 val empty : t

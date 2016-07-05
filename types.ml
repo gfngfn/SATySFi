@@ -1,6 +1,5 @@
 
 exception ParseErrorDetail of string
-exception TypeCheckError of string
 
 type ctrlseq_name = string
 type var_name = string

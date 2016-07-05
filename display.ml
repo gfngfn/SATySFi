@@ -1,19 +1,9 @@
 open Types
 
-
-let report_error_with_range (rng : Range.t) (msglst : string list) =
-  let rec lines_of_list msglst =
-    match msglst with
-    | []             -> ""
-    | msghd :: []    -> "    " ^ msghd
-    | msghd :: msgtl -> "    " ^ msghd ^ "\n" ^ (lines_of_list msgtl)
-  in
-    raise (TypeCheckError( "at " ^ (Range.to_string rng) ^ ":\n" ^ (lines_of_list msglst)))
-
-
 let meta_max    : int ref = ref 0
 let unbound_max : int ref = ref 0
 let unbound_type_valiable_name_list : (Tyvarid.t * string) list ref = ref []
+
 
 let rec variable_name_of_int (n : int) =
   ( if n >= 26 then

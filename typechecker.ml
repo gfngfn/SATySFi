@@ -1,6 +1,7 @@
 open Types
 open Display
 
+exception Error of string
 
 let print_for_debug_typecheck msg =
 (*
@@ -8,9 +9,12 @@ let print_for_debug_typecheck msg =
 *)
   ()
 
-(* !! mutable !! *)
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
+
+
+let report_error_with_range (rng : Range.t) msg =
+  raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))
 
 
 let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
@@ -42,7 +46,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
               (ContentOf(varnm), ty, Subst.empty)
             end                                                                                         (* for debug *)
         with
-        | Not_found -> Display.report_error_with_range rng ["undefined variable '" ^ varnm ^ "'"]
+        | Not_found -> report_error_with_range rng ("undefined variable '" ^ varnm ^ "'")
       end
 
   | UTConstructor(constrnm, utastcont) ->
@@ -59,11 +63,11 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
             begin                                                                                         (* for debug *)
               print_for_debug_typecheck ("#V " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic type_result) ^ "\n") ;                             (* for debug *)
-              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                        (* for debug *)
+              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                                  (* for debug *)
               (Constructor(constrnm, econt), type_result, theta_result)
             end                                                                                           (* for debug *)
         with
-        | Not_found -> Display.report_error_with_range rng ["undefined constructor '" ^ constrnm ^ "'"]
+        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
       end
 
   | UTConcat(utast1, utast2) ->
@@ -441,7 +445,7 @@ and typecheck_pattern qtfbl varntenv tyenv (rng, utpatmain) =
           let type_result = Subst.apply_to_type_struct theta (VariantType(rng, tyarglist, varntnm)) in
             (PConstructor(constrnm, epat1), type_result, tyenv_new)
         with
-        | Not_found -> Display.report_error_with_range rng ["undefined constructor '" ^ constrnm ^ "'"]
+        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
       end
 
 
