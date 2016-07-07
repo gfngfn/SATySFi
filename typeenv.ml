@@ -26,10 +26,6 @@ let rec find (tyenv : t) (varnm : var_name) =
   | (vn, ts) :: tail                 -> find tail varnm
 
 
-let get_range_from_type (tystr : type_struct) =
-  let (rng, tymain) = tystr in rng
-
-
 let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
   let (_, tymain) = tystr in (rng, tymain)
 

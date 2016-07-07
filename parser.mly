@@ -24,7 +24,7 @@
       | Pat(rng, _)       -> rng
       | Rng(rng)          -> rng
       | VarntCons(rng, _) -> rng
-      | TypeStr(tystr)    -> Typeenv.get_range_from_type tystr
+      | TypeStr((rng, _)) -> rng
     in
       Range.unite (extract sttx) (extract endx)
 

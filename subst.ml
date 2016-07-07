@@ -120,8 +120,8 @@ let overwrite_or_add (theta : t) (key : Tyvarid.t) (value : type_struct) =
 
 
 let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
-  let rng1 = Typeenv.get_range_from_type tystr1 in
-  let rng2 = Typeenv.get_range_from_type tystr2 in
+  let (rng1, _) = tystr1 in
+  let (rng2, _) = tystr2 in
   let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
   let msg =
     match (Range.is_dummy rng1, Range.is_dummy rng2) with
@@ -141,8 +141,8 @@ let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
 
 
 let report_contradiction_error (tystr1 : type_struct) (tystr2 : type_struct) =
-  let rng1 = Typeenv.get_range_from_type tystr1 in
-  let rng2 = Typeenv.get_range_from_type tystr2 in
+  let (rng1, _) = tystr1 in
+  let (rng2, _) = tystr2 in
   let strty1 = string_of_type_struct tystr1 in
   let strty2 = string_of_type_struct tystr2 in
   let strrng1 = Range.to_string rng1 in
