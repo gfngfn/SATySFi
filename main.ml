@@ -62,7 +62,7 @@ let read_standalone_file varntenv tyenv env file_name_in file_name_out =
           begin
             print_endline ("  type check: " ^ (string_of_type_struct ty)) ;
             match ty with
-            | StringType(_) ->
+            | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
                 let content_out = Out.main evaled in
                   begin
@@ -89,7 +89,7 @@ let read_document_file varntenv tyenv env file_name_in file_name_out =
           begin
             print_endline ("  type check: " ^ (string_of_type_struct ty)) ;
             match ty with
-            | StringType(_) ->
+            | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
                 let content_out = Out.main evaled in
                 if (String.length content_out) = 0 then
