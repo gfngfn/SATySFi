@@ -1,14 +1,15 @@
 open Types
 
 
-let make_variant_environment () =
-  let dummy = Range.dummy "make_variant_emvironment" in
-  Variantenv.add Variantenv.empty "Item"
-    (ProductType(dummy, [StringType(dummy); ListType(dummy, VariantType(dummy, [], "itemize"))]))
-    "itemize"
+let make_variant_environment =
+  let dr = Range.dummy "make_variant_environment" in
+  Variantenv.add_list Variantenv.empty
+    [ ("Item", (ProductType(dr, [StringType(dr); ListType(dr, VariantType(dr, [], "itemize"))])), "itemize");
+(* ("Just", ); *)
+    ]
 
 
-let make_type_environment () =
+let make_type_environment =
   let i             = IntType(Range.dummy "int") in
   let b             = BoolType(Range.dummy "bool") in
   let s             = StringType(Range.dummy "string") in

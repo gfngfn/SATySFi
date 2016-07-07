@@ -5,33 +5,43 @@ exception Error of string
 type definition_kind   = Data of int | Synonym of int * type_struct | LocalSynonym of module_name * int * type_struct
 type defined_type_list = (type_name * definition_kind) list
 type constructor_list  = (constructor_name * type_name * type_struct) list
+
+(* public *)
 type t = defined_type_list * constructor_list
 
 type fix_mode = InnerMode | OuterMode
 type type_argument_mode = StrictMode of untyped_type_argument_cons | FreeMode of (var_name list) ref
 
+
+(* public *)
 let empty = ([], [])
 
 
-let append_module_name mdlnm varntnm =
-  match mdlnm with
-  | "" -> varntnm
-  | _  -> mdlnm ^ "." ^ varntnm
+(* public *)
+let append_module_name (mdlnm : module_name) (varntnm : type_name) =
+  match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
 
-(* t -> constructor_name -> type_struct -> type_name -> t *)
-let add varntenv constrnm tystr varntnm =
+(* public *)
+let add (varntenv : t) (constrnm : constructor_name) (tystr : type_struct) (varntnm : type_name) =
   let (defedtylst, varntenvmain) = varntenv in
-  let rec add_main varntenvmain constrnm tystr varntnm =
+  let rec iter varntenvmain constrnm tystr varntnm =
     match varntenvmain with
     | []                -> (constrnm, varntnm, tystr) :: []
     | (c, v, t) :: tail ->
         if c = constrnm then
           (constrnm, varntnm, tystr) :: tail
         else
-          (c, v, t) :: (add_main tail constrnm tystr varntnm)
+          (c, v, t) :: (iter tail constrnm tystr varntnm)
   in
-    (defedtylst, add_main varntenvmain constrnm tystr varntnm)
+    (defedtylst, iter varntenvmain constrnm tystr varntnm)
+
+
+(* public *)
+let rec add_list (varntenv : t) (lst : (constructor_name * type_struct * type_name) list) =
+  match lst with
+  | []                -> varntenv
+  | (c, v, t) :: tail -> add_list (add varntenv c v t) tail
 
 
 let rec find_definition_kind (defedtylst : defined_type_list) (tynm : type_name) =
@@ -48,7 +58,7 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
       if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
 
 
-let report_illegal_type_argument_length rng tynm len_expected len =
+let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_expected : int) (len : int) =
   raise(Error("at " ^ (Range.to_string rng) ^ ":\n" ^
     "    '" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s),\n" ^
     "    but it has " ^ (string_of_int len) ^ " type argument(s) here"
@@ -57,11 +67,11 @@ let report_illegal_type_argument_length rng tynm len_expected len =
 
 let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
   let (defedtylst, varntenvmain) = varntenv in
-  let f = fix_manual_type_general mode varntenv tyargmode in
+  let iter = fix_manual_type_general mode varntenv tyargmode in
     match tystr with
 
-    | FuncType(rng, tydom, tycod)           -> FuncType(rng, f tydom, f tycod)
-    | ProductType(rng, tylist)              -> ProductType(rng, List.map f tylist)
+    | FuncType(rng, tydom, tycod)           -> FuncType(rng, iter tydom, iter tycod)
+    | ProductType(rng, tylist)              -> ProductType(rng, List.map iter tylist)
 
     | VariantType(rng, [], "int")           -> IntType(rng)
     | VariantType(rng, tyarglist, "int")    -> report_illegal_type_argument_length rng "int" 0 (List.length tyarglist)
@@ -83,21 +93,21 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
             | Data(argnum) ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    VariantType(rng, List.map f tyarglist, tynm)
+                    VariantType(rng, List.map iter tyarglist, tynm)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
             | Synonym(argnum, tystr_forall) ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    TypeSynonym(rng, List.map f tyarglist, tynm, tystr_forall)
+                    TypeSynonym(rng, List.map iter tyarglist, tynm, tystr_forall)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
             | LocalSynonym(mdlnm, argnum, tystr_forall) ->
                 let len = List.length tyarglist in
                   if argnum = len then
                     match mode with
-                    | InnerMode -> TypeSynonym(rng, List.map f tyarglist, tynm, tystr_forall)
-                    | OuterMode -> VariantType(rng, List.map f tyarglist, append_module_name mdlnm tynm)
+                    | InnerMode -> TypeSynonym(rng, List.map iter tyarglist, tynm, tystr_forall)
+                    | OuterMode -> VariantType(rng, List.map iter tyarglist, append_module_name mdlnm tynm)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
           with
@@ -128,21 +138,22 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
 
 
 let rec make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (tystr : type_struct) =
-  let f = make_type_argument_numbered var_id tyargnm in
+  let iter = make_type_argument_numbered var_id tyargnm in
     match tystr with
     | TypeArgument(rng, nm)   when nm = tyargnm -> TypeVariable(rng, var_id)
-    | FuncType(rng, tydom, tycod)               -> FuncType(rng, f tydom, f tycod)
-    | ListType(rng, tycont)                     -> ListType(rng, f tycont)
-    | RefType(rng, tycont)                      -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)                  -> ProductType(rng, List.map f tylist)
-    | ForallType(tvid, tycont)                  -> ForallType(tvid, f tycont)
+    | FuncType(rng, tydom, tycod)               -> FuncType(rng, iter tydom, iter tycod)
+    | ListType(rng, tycont)                     -> ListType(rng, iter tycont)
+    | RefType(rng, tycont)                      -> RefType(rng, iter tycont)
+    | ProductType(rng, tylist)                  -> ProductType(rng, List.map iter tylist)
+    | ForallType(tvid, tycont)                  -> ForallType(tvid, iter tycont)
         (* maybe contains bugs, when tvid = -var_id *)
-    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map f tylist, varntnm)
-    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tylist, tysynnm, tycont)
+    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map iter tylist, varntnm)
+    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map iter tylist, tysynnm, tycont)
     | other                                     -> other
 
 
-let fix_manual_type varntenv tyargcons tystr = fix_manual_type_general InnerMode varntenv (StrictMode(tyargcons)) tystr
+let fix_manual_type (varntenv : t) tyargcons (tystr : type_struct) =
+  fix_manual_type_general InnerMode varntenv (StrictMode(tyargcons)) tystr
 
 
 let free_type_argument_list : (var_name list) ref = ref []
@@ -156,6 +167,7 @@ let rec make_type_argument_into_type_variable qtfbl tyarglist tystr =
         make_type_argument_into_type_variable qtfbl tyargtail tystr_new
 
 
+(* public *)
 let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : type_struct) =
   free_type_argument_list := [] ;
   let tystrin  = fix_manual_type_general InnerMode varntenv (FreeMode(free_type_argument_list)) tystr in
@@ -205,6 +217,7 @@ let add_synonym (scope : scope_kind) (varntenv : t)
     ((tysynnm, defkind) :: defedtypelist, varntenvmain)
 
 
+(* public *)
 let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : type_struct) =
   match (tyarglist, tystr_forall) with
   | (tyarghd :: tyargtl, ForallType(tvid, tycont)) ->
@@ -217,20 +230,21 @@ let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : typ
 
 let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
                            (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
-    add_variant_cons_main mdlnm (define_variant mdlnm varntenv tyargcons varntnm) tyargcons varntnm utvc
 
-and add_variant_cons_main (mdlnm : module_name) (varntenv : t)
-                            (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
-  let (rng, utvcmain) = utvc in
-    match utvcmain with
-    | UTEndOfVariant                           -> varntenv
-    | UTVariantCons(constrnm, tystr, tailcons) ->
-        let tystr_new    = fix_manual_type varntenv tyargcons tystr in
-        let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
-        let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
-          add_variant_cons_main mdlnm varntenv_new tyargcons varntnm tailcons
+  let rec iter mdlnm varntenv tyargcons varntnm utvc =
+    let (rng, utvcmain) = utvc in
+      match utvcmain with
+      | UTEndOfVariant                           -> varntenv
+      | UTVariantCons(constrnm, tystr, tailcons) ->
+          let tystr_new    = fix_manual_type varntenv tyargcons tystr in
+          let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+          let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
+            iter mdlnm varntenv_new tyargcons varntnm tailcons
+  in
+    iter mdlnm (define_variant mdlnm varntenv tyargcons varntnm) tyargcons varntnm utvc
 
 
+(* public *)
 let rec add_mutual_cons (scope : scope_kind) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
   let varntenv_syn = read_synonym_spec scope varntenv_mem mutvarntcons in
@@ -254,6 +268,7 @@ and read_variant_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons
     | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec varntenv tailcons
 
 
+(* public *)
 and add_mutual_cons_hidden (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   memo_all_name mdlnm varntenv mutvarntcons
 
@@ -278,6 +293,7 @@ and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_m
         memo_all_name mdlnm varntenv_new tailcons
 
 
+(* public *)
 let rec find (varntenv : t) (constrnm : constructor_name) =
   let (_, varntenvmain) = varntenv in
     let rec f varntenvmain constrnm =
