@@ -11,20 +11,21 @@ type module_name = string
 
 type scope_kind = GlobalScope | LocalScope of module_name
 
-type type_struct =
-  | UnitType     of Range.t
-  | IntType      of Range.t
-  | StringType   of Range.t
-  | BoolType     of Range.t
-  | FuncType     of Range.t * type_struct * type_struct
-  | ListType     of Range.t * type_struct
-  | RefType      of Range.t * type_struct
-  | ProductType  of Range.t * (type_struct list)
-  | TypeVariable of Range.t * Tyvarid.t
-  | TypeSynonym  of Range.t * (type_struct list) * type_name * type_struct
-  | VariantType  of Range.t * (type_struct list) * type_name
+type type_struct = Range.t * type_struct_main
+and type_struct_main =
+  | UnitType
+  | IntType
+  | StringType
+  | BoolType
+  | FuncType     of type_struct * type_struct
+  | ListType     of type_struct
+  | RefType      of type_struct
+  | ProductType  of (type_struct list)
+  | TypeVariable of Tyvarid.t
+  | TypeSynonym  of (type_struct list) * type_name * type_struct
+  | VariantType  of (type_struct list) * type_name
   | ForallType   of Tyvarid.t * type_struct
-  | TypeArgument of Range.t * var_name
+  | TypeArgument of var_name
 
 type id_name_arg =
   | IDName       of id_name

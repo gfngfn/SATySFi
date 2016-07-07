@@ -1002,9 +1002,9 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
                                             (UTVariantCons(extract_name $1, $3, (Range.dummy "end-of-variant1", UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                             (UTVariantCons(extract_name $1, VariantType(Range.dummy "dec-constructor-unit1", [], "unit"), $3)) }
+                                             (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit1", VariantType([], "unit")), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-                    (UTVariantCons(extract_name $1, VariantType(Range.dummy "dec-constructor-unit2", [], "unit"), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit2", VariantType([], "unit")), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
@@ -1012,7 +1012,7 @@ variants: /* -> untyped_variant_cons */
 ;
 txfunc: /* -> type_struct */
   | txprod ARROW txfunc {
-        let rng = make_range (TypeStr $1) (TypeStr $3) in FuncType(rng, $1, $3) }
+        let rng = make_range (TypeStr $1) (TypeStr $3) in (rng, FuncType($1, $3)) }
   | txprod { $1 }
 /* -- for syntax error log -- */
   | txprod ARROW error { report_error (Tok $2) "->" }
@@ -1022,8 +1022,8 @@ txprod: /* -> type_struct */
   | txapppre TIMES txprod {
         let rng = make_range (TypeStr $1) (TypeStr $3) in
           match $3 with
-          | ProductType(_, tylist) -> ProductType(rng, $1 :: tylist)
-          | other                  -> ProductType(rng, [$1; $3])
+          | (_, ProductType(tylist)) -> (rng, ProductType($1 :: tylist))
+          | other                    -> (rng, ProductType([$1; $3]))
       }
   | txapppre { $1 }
 /* -- for syntax error log -- */
@@ -1033,13 +1033,13 @@ txprod: /* -> type_struct */
 txapppre: /* ->type_struct */
   | txapp {
           match $1 with
-          | (lst, VariantType(rng, [], tynm)) -> VariantType(rng, lst, tynm)
-          | ([], tystr)                       -> tystr
-          | _                                 -> assert false
+          | (lst, (rng, VariantType([], tynm))) -> (rng, VariantType(lst, tynm))
+          | ([], tystr)                         -> tystr
+          | _                                   -> assert false
       }
   | LPAREN txfunc RPAREN { $2 }
   | TYPEVAR {
-        let (rng, tyargnm) = $1 in TypeArgument(rng, tyargnm)
+        let (rng, tyargnm) = $1 in (rng, TypeArgument(tyargnm))
       }
 ;
 txapp: /* type_struct list * type_struct */
@@ -1048,19 +1048,19 @@ txapp: /* type_struct list * type_struct */
   | TYPEVAR txapp              {
         let (rng, tyargnm) = $1 in
         let (lst, tystr) = $2 in
-          (TypeArgument(rng, tyargnm) :: lst, tystr)
+          ((rng, TypeArgument(tyargnm)) :: lst, tystr)
       }
   | txbot                      { ([], $1) }
 ;
 txbot: /* -> type_struct */
   | VAR {
-        let (rng, tynm) = $1 in VariantType(rng, [], tynm)
+        let (rng, tynm) = $1 in (rng, VariantType([], tynm))
       }
   | CONSTRUCTOR DOT VAR {
       let (rng1, mdlnm) = $1 in
       let (rng2, tynm)  = $3 in
       let rng = make_range (Rng rng1) (Rng rng2) in
-        VariantType(rng, [], mdlnm ^ "." ^ tynm)
+        (rng, VariantType([], mdlnm ^ "." ^ tynm))
   }
 ;
 tuple: /* -> untyped_tuple_cons */

@@ -68,88 +68,96 @@ let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_
 let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
   let (defedtylst, varntenvmain) = varntenv in
   let iter = fix_manual_type_general mode varntenv tyargmode in
-    match tystr with
+  let (rng, tymain) = tystr in
+  let tymainnew =
+    match tymain with
 
-    | FuncType(rng, tydom, tycod)           -> FuncType(rng, iter tydom, iter tycod)
-    | ProductType(rng, tylist)              -> ProductType(rng, List.map iter tylist)
+    | FuncType(tydom, tycod)           -> FuncType(iter tydom, iter tycod)
+    | ProductType(tylist)              -> ProductType(List.map iter tylist)
 
-    | VariantType(rng, [], "int")           -> IntType(rng)
-    | VariantType(rng, tyarglist, "int")    -> report_illegal_type_argument_length rng "int" 0 (List.length tyarglist)
-    | VariantType(rng, [], "string")        -> StringType(rng)
-    | VariantType(rng, tyarglist, "string") -> report_illegal_type_argument_length rng "string" 0 (List.length tyarglist)
-    | VariantType(rng, [], "bool")          -> BoolType(rng)
-    | VariantType(rng, tyarglist, "bool")   -> report_illegal_type_argument_length rng "bool" 0 (List.length tyarglist)
-    | VariantType(rng, [], "unit")          -> UnitType(rng)
-    | VariantType(rng, tyarglist, "unit")   -> report_illegal_type_argument_length rng "unit" 0 (List.length tyarglist)
+    | VariantType([], "int")           -> IntType
+    | VariantType(tyarglist, "int")    -> report_illegal_type_argument_length rng "int" 0 (List.length tyarglist)
+    | VariantType([], "string")        -> StringType
+    | VariantType(tyarglist, "string") -> report_illegal_type_argument_length rng "string" 0 (List.length tyarglist)
+    | VariantType([], "bool")          -> BoolType
+    | VariantType(tyarglist, "bool")   -> report_illegal_type_argument_length rng "bool" 0 (List.length tyarglist)
+    | VariantType([], "unit")          -> UnitType
+    | VariantType(tyarglist, "unit")   -> report_illegal_type_argument_length rng "unit" 0 (List.length tyarglist)
 
-    | VariantType(rng, tyarg :: [], "list") -> ListType(rng, tyarg)
-    | VariantType(rng, tyarglist, "list")   -> report_illegal_type_argument_length rng "list" 1 (List.length tyarglist)
-    | VariantType(rng, tyarg :: [], "ref")  -> RefType(rng, tyarg)
-    | VariantType(rng, tyarglist, "ref")    -> report_illegal_type_argument_length rng "ref" 1 (List.length tyarglist)
-    | VariantType(rng, tyarglist, tynm) ->
+    | VariantType(tyarg :: [], "list") -> ListType(tyarg)
+    | VariantType(tyarglist, "list")   -> report_illegal_type_argument_length rng "list" 1 (List.length tyarglist)
+    | VariantType(tyarg :: [], "ref")  -> RefType(tyarg)
+    | VariantType(tyarglist, "ref")    -> report_illegal_type_argument_length rng "ref" 1 (List.length tyarglist)
+    | VariantType(tyarglist, tynm) ->
         begin
           try
             match find_definition_kind defedtylst tynm with
             | Data(argnum) ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    VariantType(rng, List.map iter tyarglist, tynm)
+                    VariantType(List.map iter tyarglist, tynm)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
             | Synonym(argnum, tystr_forall) ->
                 let len = List.length tyarglist in
                   if argnum = len then
-                    TypeSynonym(rng, List.map iter tyarglist, tynm, tystr_forall)
+                    TypeSynonym(List.map iter tyarglist, tynm, tystr_forall)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
             | LocalSynonym(mdlnm, argnum, tystr_forall) ->
                 let len = List.length tyarglist in
                   if argnum = len then
                     match mode with
-                    | InnerMode -> TypeSynonym(rng, List.map iter tyarglist, tynm, tystr_forall)
-                    | OuterMode -> VariantType(rng, List.map iter tyarglist, append_module_name mdlnm tynm)
+                    | InnerMode -> TypeSynonym(List.map iter tyarglist, tynm, tystr_forall)
+                    | OuterMode -> VariantType(List.map iter tyarglist, append_module_name mdlnm tynm)
                   else
                     report_illegal_type_argument_length rng tynm argnum len
           with
           | Not_found -> raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type '" ^ tynm ^ "'"))
         end
 
-    | TypeArgument(rng, tyargnm)        ->
+    | TypeArgument(tyargnm)        ->
           begin
             match tyargmode with
             | StrictMode(tyargcons) ->
                 if is_defined_type_argument tyargcons tyargnm then
-                  TypeArgument(rng, tyargnm)
+                  TypeArgument(tyargnm)
                 else
                   raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type argument '" ^ tyargnm ^ "'"))
 
             | FreeMode(reftyarglst) ->
                 begin
                   ( if List.mem tyargnm (!reftyarglst) then () else reftyarglst := tyargnm :: (!reftyarglst) ) ;
-                  TypeArgument(rng, tyargnm)
+                  TypeArgument(tyargnm)
                 end
           end
 
     | other                             ->
         begin
-          print_string ("OTHER: " ^ (Display.string_of_type_struct_basic other) ^ "\n") ;
+          print_string ("OTHER: " ^ (Display.string_of_type_struct_basic (rng, other)) ^ "\n") ;
           assert false
         end
+  in
+    (rng, tymainnew)
 
 
 let rec make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (tystr : type_struct) =
   let iter = make_type_argument_numbered var_id tyargnm in
-    match tystr with
-    | TypeArgument(rng, nm)   when nm = tyargnm -> TypeVariable(rng, var_id)
-    | FuncType(rng, tydom, tycod)               -> FuncType(rng, iter tydom, iter tycod)
-    | ListType(rng, tycont)                     -> ListType(rng, iter tycont)
-    | RefType(rng, tycont)                      -> RefType(rng, iter tycont)
-    | ProductType(rng, tylist)                  -> ProductType(rng, List.map iter tylist)
-    | ForallType(tvid, tycont)                  -> ForallType(tvid, iter tycont)
+  let (rng, tymain) = tystr in
+  let tymainnew =
+    match tymain with
+    | TypeArgument(nm)   when nm = tyargnm -> TypeVariable(var_id)
+    | FuncType(tydom, tycod)               -> FuncType(iter tydom, iter tycod)
+    | ListType(tycont)                     -> ListType(iter tycont)
+    | RefType(tycont)                      -> RefType(iter tycont)
+    | ProductType(tylist)                  -> ProductType(List.map iter tylist)
+    | ForallType(tvid, tycont)             -> ForallType(tvid, iter tycont)
         (* maybe contains bugs, when tvid = -var_id *)
-    | VariantType(rng, tylist, varntnm)         -> VariantType(rng, List.map iter tylist, varntnm)
-    | TypeSynonym(rng, tylist, tysynnm, tycont) -> TypeSynonym(rng, List.map iter tylist, tysynnm, tycont)
-    | other                                     -> other
+    | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
+    | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, tycont)
+    | other                                -> other
+  in
+    (rng, tymainnew)
 
 
 let fix_manual_type (varntenv : t) tyargcons (tystr : type_struct) =
@@ -182,7 +190,7 @@ let rec make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_a
   | UTEndOfTypeArgument                        -> tystr
   | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
       let tvidqtf = Tyvarid.of_int_for_quantifier var_id in
-      let tystr_new = ForallType(tvidqtf, make_type_argument_numbered tvidqtf tyargnm tystr) in
+      let tystr_new = (Range.dummy "make_type_argument_quantified", ForallType(tvidqtf, make_type_argument_numbered tvidqtf tyargnm tystr)) in
         make_type_argument_quantified (var_id + 1) tailcons tystr_new
 
 
@@ -220,12 +228,12 @@ let add_synonym (scope : scope_kind) (varntenv : t)
 (* public *)
 let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : type_struct) =
   match (tyarglist, tystr_forall) with
-  | (tyarghd :: tyargtl, ForallType(tvid, tycont)) ->
+  | (tyarghd :: tyargtl, (_, ForallType(tvid, tycont))) ->
       let tystr_forall_new = Typeenv.replace_id [(tvid, tyarghd)] tycont in
         apply_to_type_synonym tyargtl tystr_forall_new
-  | ([], ForallType(_, _))                         -> assert false
-  | ([], _)                                        -> tystr_forall
-  | _                                              -> assert false
+  | ([], (_, ForallType(_, _)))                         -> assert false
+  | ([], _)                                             -> tystr_forall
+  | _                                                   -> assert false
 
 
 let rec add_variant_cons (mdlnm : module_name) (varntenv : t)

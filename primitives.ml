@@ -4,20 +4,20 @@ open Types
 let make_variant_environment =
   let dr = Range.dummy "make_variant_environment" in
   Variantenv.add_list Variantenv.empty
-    [ ("Item", (ProductType(dr, [StringType(dr); ListType(dr, VariantType(dr, [], "itemize"))])), "itemize");
+    [ ("Item", (dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))])), "itemize");
 (* ("Just", ); *)
     ]
 
 
 let make_type_environment =
-  let i             = IntType(Range.dummy "int") in
-  let b             = BoolType(Range.dummy "bool") in
-  let s             = StringType(Range.dummy "string") in
-  let v n           = TypeVariable(Range.dummy "tv", n) in
-  let (-%) n cont   = ForallType(n, cont) in
-  let l cont        = ListType(Range.dummy "list", cont) in
-  let r cont        = RefType(Range.dummy "ref", cont) in
-  let (-->) dom cod = FuncType(Range.dummy "func", dom, cod) in
+  let i             = (Range.dummy "int", IntType) in
+  let b             = (Range.dummy "bool", BoolType) in
+  let s             = (Range.dummy "string", StringType) in
+  let v n           = (Range.dummy "tv", TypeVariable(n)) in
+  let (-%) n cont   = (Range.dummy "forall", ForallType(n, cont)) in
+  let l cont        = (Range.dummy "list", ListType(cont)) in
+  let r cont        = (Range.dummy "ref", RefType(cont)) in
+  let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
   let (?.)          = Tyvarid.of_int_for_quantifier in
 
     Typeenv.from_list

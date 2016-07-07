@@ -42,28 +42,30 @@ let eliminate (theta : t) (key : Tyvarid.t) =
 
 let rec overwrite_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
   let iter = fun ty -> overwrite_type_struct ty key value in
-    match tystr with
-    | FuncType(rng, dom, cod)                    -> FuncType(rng, iter dom, iter cod)
-    | ListType(rng, cont)                        -> ListType(rng, iter cont)
-    | RefType(rng, cont)                         -> RefType(rng, iter cont)
-    | ProductType(rng, lst)                      -> ProductType(rng, List.map iter lst)
-    | TypeVariable(rng, k)                       -> if k = key then value else TypeVariable(rng, k)
-    | VariantType(rng, tyarglist, varntnm)       -> VariantType(rng, List.map iter tyarglist, varntnm)
-    | TypeSynonym(rng, tyarglist, tysynnm, cont) -> TypeSynonym(rng, List.map iter tyarglist, tysynnm, iter cont)
-    | other                                      -> other
+  let (rng, tymain) = tystr in
+    match tymain with
+    | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
+    | ListType(cont)                        -> (rng, ListType(iter cont))
+    | RefType(cont)                         -> (rng, RefType(iter cont))
+    | ProductType(lst)                      -> (rng, ProductType(List.map iter lst))
+    | TypeVariable(k)                       -> if k = key then value else (rng, TypeVariable(k))
+    | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
+    | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
+    | other                                 -> (rng, other)
 
 
 let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
-  let f = apply_to_type_struct theta in
-    match tystr with
-    | FuncType(rng, tydom, tycod)                  -> FuncType(rng, f tydom, f tycod)
-    | ListType(rng, tycont)                        -> ListType(rng, f tycont)
-    | RefType(rng, tycont)                         -> RefType(rng, f tycont)
-    | ProductType(rng, tylist)                     -> ProductType(rng, List.map f tylist)
-    | TypeVariable(rng, tv)                        -> ( try find theta tv with Not_found -> TypeVariable(rng, tv) )
-    | VariantType(rng, tyarglist, varntnm)         -> VariantType(rng, List.map f tyarglist, varntnm)
-    | TypeSynonym(rng, tyarglist, tysynnm, tycont) -> TypeSynonym(rng, List.map f tyarglist, tysynnm, f tycont)
-    | other                                        -> other
+  let iter = apply_to_type_struct theta in
+  let (rng, tymain) = tystr in
+    match tymain with
+    | FuncType(tydom, tycod)                  -> (rng, FuncType(iter tydom, iter tycod))
+    | ListType(tycont)                        -> (rng, ListType(iter tycont))
+    | RefType(tycont)                         -> (rng, RefType(iter tycont))
+    | ProductType(tylist)                     -> (rng, ProductType(List.map iter tylist))
+    | TypeVariable(tv)                        -> ( try find theta tv with Not_found -> (rng, TypeVariable(tv)) )
+    | VariantType(tyarglist, varntnm)         -> (rng, VariantType(List.map iter tyarglist, varntnm))
+    | TypeSynonym(tyarglist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter tycont))
+    | other                                   -> (rng, other)
 
 
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
@@ -76,22 +78,23 @@ let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
 
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
-  let dummy = Range.dummy "emerge_in" in
-    match tystr with
-    | FuncType(_, dom, cod)    ->
+  let dr = Range.dummy "emerge_in" in
+  let (rng, tymain) = tystr in
+    match tymain with
+    | FuncType(dom, cod)    ->
         let (bdom, rngdom) = emerge_in tvid dom in
         let (bcod, rngcod) = emerge_in tvid cod in
-          if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dummy)
-    | ListType(_, cont)            -> emerge_in tvid cont
-    | RefType(_, cont)             -> emerge_in tvid cont
-    | ProductType(_, lst)          -> emerge_in_list tvid lst
-    | TypeVariable(rng, tvidx)     -> (Tyvarid.same tvidx tvid, rng)
-    | VariantType(rng, lst, _)     -> emerge_in_list tvid lst
-    | TypeSynonym(_, lst, _, cont) ->
+          if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dr)
+    | ListType(cont)            -> emerge_in tvid cont
+    | RefType(cont)             -> emerge_in tvid cont
+    | ProductType(lst)          -> emerge_in_list tvid lst
+    | TypeVariable(tvidx)       -> (Tyvarid.same tvidx tvid, rng)
+    | VariantType(lst, _)       -> emerge_in_list tvid lst
+    | TypeSynonym(lst, _, cont) ->
         let (bcont, rngcont) = emerge_in tvid cont in
         let (blst, rnglst)   = emerge_in_list tvid lst in
-          if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dummy)
-    | _                            -> (false, dummy)
+          if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
+    | _                            -> (false, dr)
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
   let dummy = Range.dummy "emerge_in_list" in
@@ -187,7 +190,7 @@ and check_emergence (theta : t) =
           if Range.is_dummy rng then
             raise InternalInclusionError
           else
-            report_inclusion_error (TypeVariable(rng, tvid)) tystr
+            report_inclusion_error (rng, TypeVariable(tvid)) tystr
         else
           check_emergence tail
 
@@ -209,12 +212,12 @@ and compose_prim (theta2 : t) (theta1 : t) =
 
 and unify (tystr1 : type_struct) (tystr2 : type_struct) =
   print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
-                     ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
+                         ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
     match (tystr1, tystr2) with
-    | (TypeSynonym(_, tyarglist1, _, tycont1), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) tystr2
-    | (_, TypeSynonym(_, tyarglist2, _, tycont2)) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist2 tycont2)
-    | _                                           -> unify_sub tystr1 tystr2
+    | ((_, TypeSynonym(tyarglist1, _, tycont1)), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) tystr2
+    | (_, (_, TypeSynonym(tyarglist2, _, tycont2))) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist2 tycont2)
+    | _                                             -> unify_sub tystr1 tystr2
   with
   | InternalInclusionError     -> report_inclusion_error tystr1 tystr2
   | InternalContradictionError -> report_contradiction_error tystr1 tystr2
@@ -223,53 +226,54 @@ and unify (tystr1 : type_struct) (tystr2 : type_struct) =
 and unify_sub (tystr1 : type_struct) (tystr2 : type_struct) =
   print_for_debug_subst ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                      ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
+  let (rng1, tymain1) = tystr1 in
+  let (rng2, tymain2) = tystr2 in
+  match (tymain1, tymain2) with
+  | (TypeSynonym(_, _, _), _) -> unify tystr1 tystr2
+  | (_, TypeSynonym(_, _, _)) -> unify tystr1 tystr2
 
-  match (tystr1, tystr2) with
-  | (TypeSynonym(_, _, _, _), _)   -> unify tystr1 tystr2
-  | (_, TypeSynonym(_, _, _, _))   -> unify tystr1 tystr2
+  | (IntType, IntType)        -> empty
+  | (StringType, StringType)  -> empty
+  | (BoolType, BoolType)      -> empty
+  | (UnitType, UnitType)      -> empty
 
-  | (IntType(_), IntType(_))       -> empty
-  | (StringType(_), StringType(_)) -> empty
-  | (BoolType(_), BoolType(_))     -> empty
-  | (UnitType(_), UnitType(_))     -> empty
+  | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
 
-  | (FuncType(_, dom1, cod1), FuncType(_, dom2, cod2)) -> compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
+  | (ListType(cont1), ListType(cont2))           -> unify_sub cont1 cont2
 
-  | (ListType(_, cont1), ListType(_, cont2))           -> unify_sub cont1 cont2
+  | (RefType(cont1), RefType(cont2))             -> unify_sub cont1 cont2
 
-  | (RefType(_, cont1), RefType(_, cont2))             -> unify_sub cont1 cont2
+  | (ProductType(tylist1), ProductType(tylist2)) -> unify_sub_list tylist1 tylist2
 
-  | (ProductType(_, tylist1), ProductType(_, tylist2)) -> unify_sub_list tylist1 tylist2
-
-  | (VariantType(_, tyarglist1, varntnm1), VariantType(_, tyarglist2, varntnm2))
+  | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
                               when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
 
-  | (TypeVariable(rng1, tvid1), tystr) ->
+  | (TypeVariable(tvid1), _) ->
       begin
-        match tystr with
-        | TypeVariable(rng2, tvid2) ->
+        match tymain2 with
+        | TypeVariable(tvid2) ->
             if Tyvarid.same tvid1 tvid2 then
               empty
             else
               let (tvid1new, tvid2new) = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
                 if Tyvarid.less_than tvid1 tvid2 then
-                  if Range.is_dummy rng2  then [(tvid1new, TypeVariable(rng1, tvid2new))]
-                                          else [(tvid1new, TypeVariable(rng2, tvid2new))]
+                  if Range.is_dummy rng2 then [(tvid1new, (rng1, TypeVariable(tvid2new)))]
+                                         else [(tvid1new, (rng2, TypeVariable(tvid2new)))]
                 else
-                  if Range.is_dummy rng1  then [(tvid2new, TypeVariable(rng2, tvid1new))]
-                                          else [(tvid2new, TypeVariable(rng1, tvid1new))]
+                  if Range.is_dummy rng1 then [(tvid2new, (rng1, TypeVariable(tvid1new)))]
+                                         else [(tvid2new, (rng2, TypeVariable(tvid1new)))]
         | other ->
-            let (b, _) = emerge_in tvid1 tystr in
+            let (b, _) = emerge_in tvid1 tystr2 in
               if b then
-                report_inclusion_error (TypeVariable(rng1, tvid1)) tystr
+                report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
               else
-                if Range.is_dummy rng1 then [(tvid1, tystr)]
-                                       else [(tvid1, Typeenv.overwrite_range_of_type tystr rng1)]
+                if Range.is_dummy rng1 then [(tvid1, (rng2, tymain2))]
+                                       else [(tvid1, (rng1, tymain2))]
       end
 
-  | (tystr, TypeVariable(rng, tvid)) -> unify_sub (TypeVariable(rng, tvid)) tystr
+  | (_, TypeVariable(_)) -> unify_sub tystr2 tystr1
 
-  | _                                -> raise InternalContradictionError
+  | _                    -> raise InternalContradictionError
 
 
 and unify_sub_list (tylist1 : type_struct list) (tylist2 : type_struct list) =
