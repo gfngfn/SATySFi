@@ -1,0 +1,12 @@
+language: c
+os:
+  - linux
+  - osx
+env:
+  - OCAML_VERSION=4.02
+sudo: required
+install:
+  - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
+  - bash -ex .travis-ocaml.sh
+script:
+  - make all
