@@ -876,7 +876,7 @@ The quick brown fox jumps over the lazy dog.
           and ul-even lst =
             match lst with
             | []       -> {}
-            | hd :: tl -> {<li class="style-even"@hd;</li>>} ^ (ul-odd tl)
+            | hd :: tl -> {<li class="style-even">@hd;</li>>} ^ (ul-odd tl)
 
           let \ul lst = {<ul>\deeper(ul-odd lst);</ul>}
           in {

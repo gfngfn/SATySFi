@@ -1,89 +1,274 @@
 let \settings = {
   <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
   <link href="./intr_style.css" rel="stylesheet" type="text/css">
-} in
-let \version = {ver 1.00γ} in
-let \twitter-at-id at-id = `@` ^ at-id in
+}
+
+let \version = {ver 1.00delta}
+
+let \twitter-at-id at-id = {\@@at-id;}
+
 let \description dscr = {
   <div class="centered">\deeper{
     <table>\deeper(dscr-sep-lines dscr);</table>
   }</div>
 }
-and dscr-sep-lines dscr =
-  let head = list-head dscr in
-  let tail = list-tail dscr in
-    {<tr>\deeper{@head;}</tr>} ^
-      ( if is-empty tail then {} else {\break;} ^ (dscr-sep-lines tail) )
-in
-let \d-item di dd = {<td>@di;</td><td>@dd;</td>} in
-let \synt synt = {<span class="synt"><code>@synt;</code></span>} in
-let \newword nw = {<dfn>@nw;</dfn>} in
-%
-% ---- tokens ----
-let \toksty tok = {<span class="toksty"><u>@tok;</u></span>} in
-let \token-eoi = {\toksty{eoi}} in
-let \token-cs = {\toksty{cs}} in
-let \token-var = {\toksty{var}} in
-let \token-id = {\toksty{id}} in
-let \token-char = {\toksty{char}} in
-let \token-bgrp = {\toksty{\{}} in
-let \token-egrp = {\toksty{\}}} in
-let \token-sep = {\toksty{\|}} in
-let \token-end = {\toksty{\;}} in
-let \token-qt = {\toksty{\`}} in
-%
-let \math-dp-gather lst = {
-  <div class="centered">\deeper{
-    <table>\deeper(sub-math-dp-gather lst);</table>
-  }</div>
-}
-and sub-math-dp-gather lst =
-  if is-empty lst then {} else
-    let head = list-head lst in
-    let tail = list-tail lst in
-      {<tr>\deeper{@head;}</tr>} ^
-        ( if is-empty tail then {} else {\break;} ^ (sub-math-dp-gather tail) )
-in
-let \cfl nontm lst = {
-  <td><span class="math">@nontm;</span></td>%
-  <td><span class="math">&rarr\;\ } ^ (sub-cfl lst) ^ {</span></td>
-}
-and sub-cfl lst =
-  if is-empty lst then {} else
-    let head = list-head lst in
-    let tail = list-tail lst in
-      head ^
-        ( if is-empty tail then {} else {</span> \| <span class="math">} ^ (sub-cfl tail) )
-in
-let \escape-for-html str = sub-escape-for-html str 0
 
-and sub-escape-for-html str index =
-  if index >= string-length str then {} else
-    let ch = string-sub str index 1 in
-    ( if same ch {<} then {&lt\;}
-      else if same ch {>} then {&gt\;}
-      else if same ch {&} then {&amp\;}
-      else ch
-    ) ^ (sub-escape-for-html str (index + 1))
-in
-let \mcrd code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>} in
+and dscr-sep-lines dscr =
+  match dscr with
+  | head :: []   -> {<tr>\deeper{@head;}</tr>}
+  | head :: tail -> let tail-str = dscr-sep-lines tail in
+                      {<tr>\deeper{@head;}</tr>
+		       @tail-str;}
+
+let \d-item di dd = {<td>@di;</td><td>@dd;</td>}
+let \synt synt = {<span class="synt"><code>@synt;</code></span>}
+let \newword nw = {<dfn>@nw;</dfn>}
+
+% ---- tokens ----
+let toksty tok = {<span class="toksty"><u>@tok;</u></span>}
+let \token-eoi  = toksty `eoi`
+let \token-cs   = toksty `cs`
+let \token-var  = toksty `var`
+let \token-id   = toksty `id`
+let \token-class = toksty `class`
+let \token-ident = toksty `ident`
+let \token-int   = toksty `int`
+let \token-char = toksty `char`
+let \token-bgrp = toksty `{`
+let \token-egrp = toksty `}`
+let \token-sep  = toksty `|`
+let \token-end  = toksty `end`
+let \token-qt   = toksty `` ` ``
+let \token-varinstr = toksty `varinstr`
+let \token-opnqt    = toksty ``open` ``
+let \token-clsqt    = toksty ``close` ``
+let \token-opnstr   = toksty `t{`
+let \token-clsstr   = toksty `}t`
+let \token-space    = toksty `space`
+let \token-break    = toksty `break`
+let \token-lparen   = toksty `(`
+let \token-rparen   = toksty `)`
+let \token-opnprog  = toksty `e(`
+let \token-clsprog  = toksty `)e`
+let \token-blist    = toksty `[`
+let \token-elist    = toksty `]`
+let \token-listpunct = toksty `;`
+let \token-bin      = toksty `bin`
+let \token-let      = toksty `let`
+let \token-and      = toksty `and`
+let \token-defeq  = toksty `=`
+let \token-in     = toksty `in`
+let \token-if     = toksty `if`
+let \token-then   = toksty `then`
+let \token-else   = toksty `else`
+let \token-finish = toksty `finish`
+let \token-if-class-is-valid = toksty `if-class-is-valid`
+let \token-if-id-is-valid    = toksty `if-id-is-valid`
+let \token-let-mutable       = toksty `let-mutable`
+let \token-new-global-hash   = toksty `new-global-hash`
+let \token-renew-global-hash = toksty `renew-global-hash`
+let \token-owhash = toksty `<<-`
+let \token-function = toksty `function`
+let \token-arrow  = toksty `->`
+let \token-oweq   = toksty `<-`
+let \token-before = toksty `before`
+let \token-while  = toksty `while`
+let \token-do     = toksty `do`
+let \token-true   = toksty `true`
+let \token-false  = toksty `false`
+let \token-unit   = toksty `()`
+let \token-mutual     = toksty `mutual`
+let \token-end-mutual = toksty `end-mutual`
+% ---- ----
+
+let \repeat-star inner = {[@inner;]<sup>\*</sup>}
+let \repeat-plus inner = {[@inner;]<sup>+</sup>}
+let cfl-or-sub lst =
+  match lst with
+  | []           -> {}
+  | head :: []   -> head
+  | head :: tail -> head ^ `|` ^ (cfl-or-sub tail)
+
+let \cfl-or lst = {(} ^ (cfl-or-sub lst) ^ {)}
+
+let nontmsty nontm = {〈<span class="nonterminal">@nontm;</span>〉}
+let \TopLevel  = nontmsty `TopLevel`
+let \TopSingle = nontmsty `TopSingle`
+let \Expr      = nontmsty `Expr`
+let \Dec       = nontmsty `Dec`
+let \Text      = nontmsty `Text`
+let \Args      = nontmsty `Args`
+let \Literal   = nontmsty `Literal`
+let \Single    = nontmsty `Single`
+let \ExprArgs  = nontmsty `ExprArgs`
+let \TextArgs  = nontmsty `TextArgs`
+let \GroupInText = nontmsty `GroupInText`
+let \GroupInExpr = nontmsty `GroupInExpr`
+
+
+let \math-dp-gather lst =
+  let iter lst =
+    match lst with
+    | []           -> {}
+    | head :: []   -> {<tr>\deeper{@head;}</tr>}
+    | head :: tail -> let tail-str = iter tail in
+			{<tr>\deeper{@head;}</tr>
+			 @tail-str;}
+  in {
+    <div class="centered">\deeper{
+      <table>\deeper(iter lst);</table>
+    }</div>
+  }
+
+
+let \cfl nontm lst =
+  let lst-str = sub-cfl lst in {
+    <td><span class="math">@nontm;</span></td>%(no-break)
+    <td><span class="math">&rarr\;\ @lst-str;</span></td>
+  }
+
+and sub-cfl lst =
+  match lst with
+  | []           -> {}
+  | head :: []   -> head
+  | head :: tail -> let tail-str = sub-cfl tail in {@head;</span> \| <span class="math">@tail-str;}
+
+
+let \escape-for-html str =
+  let iter str index =
+    if index >= string-length str then {} else
+      let ch = string-sub str index 1 in
+      ( match ch with
+        | `<` -> `&lt;`
+	| `>` -> `&gt;`
+	| `&` -> `&amp;`
+	| _   -> ch
+      ) ^ (iter str (index + 1))
+  in
+    iter str 0
+
+
+let \mcrd code = {<span class="synt"><code>\escape-for-html{@code;}</code></span>}
+
 let \mcrd-display code = {
-  <div class="code-display"><pre><code>%
-    \escape-for-html{@code;}%
+  <div class="code-display"><pre><code>%(no-break)
+    \escape-for-html{@code;}%(no-break)
   </code></pre></div>
-} in
-let \mcrd-file name code = {
-  <div class="code-display-file">\deeper{
-    <div class="file-name">@name;</div>
-    <div class="code-display"><pre><code>%
-      \escape-for-html{@code;}%
-    </code></pre></div>
-  }</div>
-} in
-let \code-dp code = {<div class="code-display"><code>@code;</code></div>} in
-let \code code = {\ <code>@code;</code>\ } in
-let \meta metacode = {<span class="meta">@metacode;</span>} in
-let \metadots = {&middot\;&middot\;&middot\;} in
-let \type-synt ty = {<span class="type">ty</span>} in
-let \mcrd-type ident ty = {<span class="identifier">@ident;</span>\type-synt{@ty;}} in
-  finish
+}
+
+let \mcrd-input name code = {
+  <div class="code-table"><table>\deeper{
+    <tr><td>\deeper{
+      <span class="file-name">@name;</span>
+    }</td></tr>
+    <tr><td class="mcrd-input">\deeper{
+      <div class="code-display"><pre><code>\escape-for-html{@code;}</code></pre></div>
+    }</td></tr>
+  }</table></div>
+}
+
+let \mcrd-output name code = {
+  <div class="code-table"><table>\deeper{
+    <tr><td>\deeper{
+      <span class="file-name">@name;</span>
+    }</td></tr>
+    <tr><td class="mcrd-output">\deeper{
+      <div class="code-display"><pre><code>%(no-break)
+        \escape-for-html{@code;}%(no-break)
+      </code></pre></div>
+    }</tr></td>
+  }</table></div>
+}
+
+let \file-name flnm = {<span class="file-name">\escape-for-html{@flnm;}</span>}
+
+let \extension ext = {\file-name{@ext;}}
+
+let \code-display code = {<div class="code-display"><code>@code;</code></div>}
+
+let \code code = {\ <code>@code;</code>\ }
+
+let \code-break = {<br>}
+
+let \code-tab = {\ }
+
+let \code-tabx n =
+  if n <= 0 then {} else {\code-tab;\code-tabx(n - 1);}
+
+let \meta metacode = {<span class="meta">@metacode;</span>}
+
+let \metadots = {&middot\;&middot\;&middot\;}
+
+%let \type-synt ty = {<span class="type">ty</span>}
+
+let type-synt ty = {<span class="type-synt">@ty;</span>}
+let type-meta ty = {<span class="type-meta">@ty;</span>}
+
+type type-struct =
+  | Int | String | Bool | Unit
+  | Data  of string
+  | Meta  of string
+  | Bound of string
+  | List  of type-struct
+  | Ref   of type-struct
+  | Func  of type-struct * type-struct
+  | Prod  of type-struct list
+  | Paren of type-struct
+  | App of type-struct * type-struct
+
+let display-type tystr =
+  match tystr with
+  | Int                -> `int`
+  | String             -> `string`
+  | Bool               -> `bool`
+  | Unit               -> `unit`
+  | Data(s)            -> s
+  | Meta(s)            -> type-meta s
+  | Bound(s)           -> {'@s;}
+  | List(tycont)       -> display-s-type tycont `list`
+  | Ref(tycont)        -> display-s-type tycont `ref`
+  | Func(tydom, tycod) -> display-func-type tydom tycod
+  | Prod(tylst)        -> display-prod-type tylst
+  | Paren(tycont)      -> let scont = display-type tycont in {(@scont;)}
+  | App(tyx, tyf)      -> display-s-type tyx (display-type tyf)
+
+and display-s-type tycont s =
+  let scont = display-type tycont in
+    match tycont with
+    | Func(_, _) -> {(@scont;) @s;}
+    | Prod(_)    -> {(@scont;) @s;}
+    | App(_, _)  -> {(@scont;) @s;}
+    | _          -> {@scont; @s;}
+
+and display-func-type tydom tycod =
+  let sdom = display-type tydom in
+  let scod = display-type tycod in
+    match tydom with
+    | Func(_, _) -> {(@sdom;) -> @scod;}
+    | _          -> {@sdom; -> @scod;}
+
+and display-prod-type tylst =
+  match tylst with
+  | []           -> {}
+  | tyhd :: []   ->
+      let shd = display-type tyhd in
+      ( match tyhd with
+        | Func(_, _) -> {(@shd;)}
+        | Prod(_)    -> {(@shd;)}
+        | _          -> shd
+      )
+  | tyhd :: tytl ->
+      let shd = display-type tyhd in
+      let stl = display-prod-type tytl in
+      ( match tyhd with
+        | Func(_, _) -> {(@shd;) \* @stl;}
+        | Prod(_)    -> {(@shd;) \* @stl;}
+        | _          -> {@shd; \* @stl;}
+      )
+
+let \type tystr = type-synt (display-type tystr)
+
+let \mcrd-type code tystr = {\synt{@code;}\ :\ \type(tystr);}
+
+let \quad = `\quad{}`
+

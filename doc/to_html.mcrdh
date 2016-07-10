@@ -45,51 +45,53 @@ let \section sec cont =
   before
   ( let cntstr = (!section-prefix) ^ (arabic (!section-counter)) ^ (!section-postfix) in
       ( if-id-is-valid then
-          declare-global-hash id <<- cntstr
+          ( new-global-hash id <<- cntstr )
         else () )
       before
         {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
   )
 
-let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}} in
-let \p inner = {<p>\deeper{@inner;}</p>} in
-let \footnote footnote = {} in
+let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}}
+let \p inner = {<p>\deeper{@inner;}</p>}
+let \footnote footnote = {}
 let \table option table =
   {<table>\deeper(sub-table table);</table>}
 
 and sub-table table-content =
-  let row  = list-head table-content in
-  let rest = list-tail table-content in
-    {<tr>\deeper{@row;}</tr>} ^
-      ( if is-empty rest then {} else {\break;} ^ (sub-table rest) )
-in
+  match table-content with
+  | row :: []   -> {<tr>\deeper{@row;}</tr>}
+  | row :: rest -> let rest-str = sub-table rest in
+                     {<tr>\deeper{@row;}</tr>@break;}
 
-let \itemize lst = {<ul>\deeper(sub-itemize lst);</ul>}
-and sub-itemize lst =
-  let head = list-head lst in
-  let tail = list-tail lst in
-    {<li>@head;</li>} ^
-      ( if is-empty tail then {} else {\break;} ^ (sub-itemize tail) )
-in
-let \math math = {\ <span class="math">@math;</span>\ } in
-let \epsilon = {ε} in
+let \itemize (Item(_, lst)) =
+  let lst-str = itemize-sub lst in
+    {<ul>\deeper{@lst-str;}</ul>}
+
+and itemize-sub lst =
+  match lst with
+  | []                      -> {}
+  | (Item(s, [])) :: tail   -> let tail-str = itemize-sub tail in
+                                 {<li>@s;</li>@soft-break;@tail-str;}
+  | (Item(s, chld)) :: tail -> let tail-str = itemize-sub tail in
+                                 {<li>@s;<ul>\deeper(itemize-sub chld);</ul></li>@soft-break;@tail-str;}
+
+let \math math = {\ <span class="math">@math;</span>\ }
+let \epsilon = {e}
 %
-let \url url = {\ <code>@url;</code>\ } in
-let \url-display url = {<div class="centered">\deeper{\url{@url;}}</div>} in
-let \if-latex inner = {} in
-let \if-html  inner = {} in
-let \TeX = {TeX} in
-let \LaTeX = {LaTeX} in
-let \pLaTeX2e = {pLaTeX2ε} in
+let \url url = {\ <code>@url;</code>\ }
+let \url-display url = {<div class="centered">\deeper{\url{@url;}}</div>}
+let \if-latex inner = {}
+let \if-html  inner = inner
+let \TeX = {TeX}
+let \LaTeX = {LaTeX}
+let \pLaTeX2e = {pLaTeX2e}
 
-let-mutable table-counter <- 0 in
+let-mutable table-counter <- 0
 let \float-table title content =
     table-counter <- !table-counter + 1
   before
-  ( let cntstr = {表} ^ (arabic (!table-counter)) in
-      ( if-id-is-valid declare-global-hash id <<- cntstr else () )
+  ( let cntstr = {?} ^ (arabic (!table-counter)) in
+      ( if-id-is-valid new-global-hash id <<- cntstr else () )
       before
        {<div class="centered">\deeper{@content;}<div class="table-caption">@cntstr; @title;</div></div>}
   )
-in
-  finish
