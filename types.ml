@@ -1,13 +1,13 @@
 
 exception ParseErrorDetail of string
 
-type ctrlseq_name = string
-type var_name = string
-type id_name = string
-type class_name = string
-type type_name = string
+type ctrlseq_name     = string
+type var_name         = string
+type id_name          = string
+type class_name       = string
+type type_name        = string
 type constructor_name = string
-type module_name = string
+type module_name      = string
 
 type scope_kind = GlobalScope | LocalScope of module_name
 
@@ -20,7 +20,7 @@ and type_struct_main =
   | FuncType     of type_struct * type_struct
   | ListType     of type_struct
   | RefType      of type_struct
-  | ProductType  of (type_struct list)
+  | ProductType  of type_struct list
   | TypeVariable of Tyvarid.t
   | TypeSynonym  of (type_struct list) * type_name * type_struct
   | VariantType  of (type_struct list) * type_name

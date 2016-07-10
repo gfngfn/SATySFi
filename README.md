@@ -11,22 +11,26 @@ It enables you to write documents semantically markuped with flexible macros of 
 
 ![logo2](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo2.png)
 
-## Usage
+## Install
 
 Download the binary executable file from the Release of Macrodown on GitHub.
-Should you want to compile from the source codes,
-install `make` and `ocamlc`/`ocamlopt`.
-Clone this repository, and execute `make`.
-Then `macrodown.exe` is generated in `bin/`.
+Should you want to compile the binary file from the source codes,
+install `make` and `ocamlc`/`ocamlopt`, clone this repository, and execute `make`.
+Then `macrodown` or `macrodown.exe` is generated in `bin/`.
 
-In Windows you can type at `bin/` directory
+Finally, add the path to the binary file to `PATH`.
 
-    macrodown.exe <input files> -o <output file>
+## Usage
 
-or in UNIX enviroment
+Type
 
-    ./macrodown <input files> -o <output file>
+    macrodown <input files> -o <output file>
 
-in order to compile `<input files>` (file names separated with spaces) into `<output file>`.
+in order to convert `<input files>` (file names separated with spaces) into `<output file>`.
+For example, when you want to convert `doc.mcrd` into `output.tex` using your own header file `macros.mcrdh`,
+the following command will work:
 
-The specification of Macrodown is written in Japanese at `doc/introduction.mcrd`.
+    macrodown macros.mcrdh doc.mcrd -o output.tex
+
+Note that `macros.mcrdh` should precede `doc.mcrd`.
+The current specification of Macrodown is written in Japanese at `doc/introduction.mcrd`.

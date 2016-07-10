@@ -13,7 +13,6 @@
     | VarntCons of untyped_variant_cons
 
 
-  (* range_kind -> range_kind -> code_range *)
   let make_range (sttx : range_kind) (endx : range_kind) =
     let extract x =
       match x with
@@ -96,8 +95,8 @@
         | "\n" -> String.sub str 0 (len - 1)
         | _    -> str
 
-  (* untyped_abstract_tree -> untyped_abstract_tree_main *)
-  let rec omit_spaces ltrl =
+
+  let rec omit_spaces (ltrl : untyped_abstract_tree) =
     let str_ltrl = omit_post_spaces (omit_pre_spaces (stringify_literal ltrl)) in
       let min_indent = min_indent_space str_ltrl in
         let str_shaved = shave_indent str_ltrl min_indent in
@@ -111,16 +110,14 @@
           else
             UTStringConstant(str_shaved)
 
-  (* string -> int *)
-  and min_indent_space str_ltrl =
+
+  and min_indent_space (str_ltrl : string) =
     min_indent_space_sub str_ltrl 0 ReadingSpace 0 (String.length str_ltrl)
 
-  (* string -> int -> literal_reading_state -> int -> int -> int *)
-  and min_indent_space_sub str_ltrl index lrstate spnum minspnum =
+
+  and min_indent_space_sub (str_ltrl : string) (index : int) (lrstate : literal_reading_state) (spnum : int) (minspnum : int) =
     if index >= (String.length str_ltrl) then
-      (* ( print_string ("min_indent: " ^ (string_of_int minspnum) ^ "\n") ; *)
         minspnum
-      (* ) *)
     else
       match lrstate with
       | Normal ->
@@ -145,12 +142,14 @@
     else
       match lrstate with
       | Normal ->
-          ( match str_ltrl.[index] with
+          begin
+            match str_ltrl.[index] with
             | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
-          )
+          end
       | ReadingSpace ->
-          ( match str_ltrl.[index] with
+          begin
+            match str_ltrl.[index] with
             | ' ' ->
                 if spnum < minspnum then
                   shave_indent_sub str_ltrl minspnum (index + 1) str_constr ReadingSpace (spnum + 1)
@@ -159,7 +158,7 @@
 
             | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
-          )
+          end
 
   (* 'a * 'b -> 'b *)
   let extract_main (_, utastmain) = utastmain
