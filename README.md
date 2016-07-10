@@ -1,5 +1,7 @@
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo1.png)
 
+[![Build Status](https://travis-ci.org/gfngfn/Macrodown.svg?branch=master)](https://travis-ci.org/gfngfn/Macrodown)
+
 ## Summary
 
 Macrodown is a markup language wrapping other markup languages such as TeX/LaTeX or HTML.
