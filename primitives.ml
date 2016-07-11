@@ -3,10 +3,12 @@ open Types
 
 let make_variant_environment =
   let dr = Range.dummy "make_variant_environment" in
-  Variantenv.add_list Variantenv.empty
+  let varntenv = Variantenv.add_list Variantenv.empty
     [ ("Item", (dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))])), "itemize");
 (* ("Just", ); *)
     ]
+  in
+    Variantenv.register_variant varntenv 0 "itemize"
 
 
 let make_type_environment =

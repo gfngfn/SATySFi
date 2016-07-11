@@ -1,5 +1,6 @@
 #load "stacklist.cmo";;
 #load "tyvarid.cmo";;
+#load "range.cmo";;
 #load "types.cmo";;
 #load "typeenv.cmo";;
 #load "display.cmo";;
@@ -11,8 +12,8 @@
 #load "out.cmo";;
 #load "evaluator.cmo";;
 #load "primitives.cmo";;
-let varntenv = Primitives.make_variant_environment ();;
-let tyenv    = Primitives.make_type_environment ();;
+let varntenv = Primitives.make_variant_environment;;
+let tyenv    = Primitives.make_type_environment;;
 let env      = Primitives.make_environment ();;
 
 let init () = Lexer.reset_to_numexpr ();;

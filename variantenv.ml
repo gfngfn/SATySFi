@@ -61,14 +61,13 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
 let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_expected : int) (len : int) =
   raise(Error("at " ^ (Range.to_string rng) ^ ":\n" ^
     "    '" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s),\n" ^
-    "    but it has " ^ (string_of_int len) ^ " type argument(s) here"
-  ))
+    "    but it has " ^ (string_of_int len) ^ " type argument(s) here"))
 
 
 let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
   let (defedtylst, varntenvmain) = varntenv in
-  let iter = fix_manual_type_general mode varntenv tyargmode in
   let (rng, tymain) = tystr in
+  let iter = fix_manual_type_general mode varntenv tyargmode in
   let tymainnew =
     match tymain with
 
@@ -134,7 +133,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
 
     | other                             ->
         begin
-          print_string ("OTHER: " ^ (Display.string_of_type_struct_basic (rng, other)) ^ "\n") ;
+          print_endline ("OTHER: " ^ (Display.string_of_type_struct_basic (rng, other))) ;
           assert false
         end
   in
@@ -200,10 +199,9 @@ let rec type_argument_length tyargcons =
   | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
 
 
-let define_variant (mdlnm : module_name) (varntenv : t) (tyargcons : untyped_type_argument_cons) (tynm : type_name) =
-  let len = type_argument_length tyargcons in
+let register_variant (varntenv : t) (len : int) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in
-    ((append_module_name mdlnm tynm, Data(len)) :: defedtypelist, varntenvmain)
+    ((tynm, Data(len)) :: defedtypelist, varntenvmain)
 
 
 let add_synonym (scope : scope_kind) (varntenv : t)
@@ -249,7 +247,9 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
           let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
             iter mdlnm varntenv_new tyargcons varntnm tailcons
   in
-    iter mdlnm (define_variant mdlnm varntenv tyargcons varntnm) tyargcons varntnm utvc
+  let mdlvarntnm = append_module_name mdlnm varntnm in
+  let tyarglen   = type_argument_length tyargcons in
+    iter mdlnm (register_variant varntenv tyarglen mdlvarntnm) tyargcons varntnm utvc
 
 
 (* public *)
@@ -285,7 +285,9 @@ and memo_variant_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyp
   match mutvarntcons with
   | UTEndOfMutualVariant                                 -> varntenv
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
-      let varntenv_new = define_variant mdlnm varntenv tyargcons varntnm in
+      let mdlvarntnm = append_module_name mdlnm varntnm in
+      let tyarglen   = type_argument_length tyargcons in
+      let varntenv_new = register_variant varntenv tyarglen mdlvarntnm in
         memo_variant_name mdlnm varntenv_new tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) -> memo_variant_name mdlnm varntenv tailcons
 
@@ -294,10 +296,14 @@ and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_m
   match mutvarntcons with
   | UTEndOfMutualVariant                                 -> varntenv
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
-      let varntenv_new = define_variant mdlnm varntenv tyargcons varntnm in
+      let mdlvarntnm = append_module_name mdlnm varntnm in
+      let tyarglen   = type_argument_length tyargcons in
+      let varntenv_new = register_variant varntenv tyarglen mdlvarntnm in
         memo_all_name mdlnm varntenv_new tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) ->
-      let varntenv_new = define_variant mdlnm varntenv tyargcons tysynnm in
+      let mdltysynnm = append_module_name mdlnm tysynnm in
+      let tyarglen   = type_argument_length tyargcons in
+      let varntenv_new = register_variant varntenv tyarglen mdltysynnm in
         memo_all_name mdlnm varntenv_new tailcons
 
 
