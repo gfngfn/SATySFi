@@ -29,9 +29,6 @@ let show_direct (tvid : t) =
     | Unquantifiable -> "_" ^ (string_of_int tvn)
 
 
-let of_int_for_quantifier (var_id : int) = (-16 - var_id, ref Quantifiable)
-
-
 let is_quantifiable (tvid : t) =
   let (_, q) = tvid in
   match !q with

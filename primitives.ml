@@ -20,7 +20,8 @@ let make_type_environment =
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
-  let (?.)          = Tyvarid.of_int_for_quantifier in
+  let tv1           = Tyvarid.fresh Tyvarid.Quantifiable in
+  let tv2           = Tyvarid.fresh Tyvarid.Quantifiable in
 
     Typeenv.from_list
       [ ( "+",   i --> (i --> i) );
@@ -38,8 +39,8 @@ let make_type_environment =
         ( "&&",  b --> (b --> b) );
         ( "||",  b --> (b --> b) );
         ( "not", b --> b );
-        ( "!",   (?. (-5)) -% ((r (v (?. (-5)))) --> (v (?. (-5)))) );
-        ( "::",  (?. (-6)) -% ((v (?. (-6))) --> ((l (v (?. (-6)))) --> (l (v (?. (-6)))))) );
+        ( "!",   tv1 -% ((r (v tv1)) --> (v tv1)) );
+        ( "::",  tv2 -% ((v tv2) --> ((l (v tv2)) --> (l (v tv2)))) );
 
         ( "same",          s --> (s --> b) );
         ( "string-sub",    s --> (i --> (i --> s)) );

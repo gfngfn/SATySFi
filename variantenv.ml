@@ -38,12 +38,9 @@ let add (varntenv : t) (constrnm : constructor_name) (tystr : type_struct) (varn
 
 
 (* public *)
-let rec add_list (varntenv : t) (lst : (constructor_name * type_struct * type_name) list) =
-  match lst with
-  | []                -> varntenv
-  | (c, v, t) :: tail -> add_list (add varntenv c v t) tail
+let rec add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
 
-
+  
 let rec find_definition_kind (defedtylst : defined_type_list) (tynm : type_name) =
   match defedtylst with
   | []                            -> raise Not_found
@@ -184,13 +181,13 @@ let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : type_struc
       (tystrin_result, tystrout_result)
 
 
-let rec make_type_argument_quantified (var_id : int) (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
+let rec make_type_argument_quantified (tyargcons : untyped_type_argument_cons) (tystr : type_struct) =
   match tyargcons with
   | UTEndOfTypeArgument                        -> tystr
   | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
-      let tvidqtf = Tyvarid.of_int_for_quantifier var_id in
+      let tvidqtf = Tyvarid.fresh Tyvarid.Quantifiable in
       let tystr_new = (Range.dummy "make_type_argument_quantified", ForallType(tvidqtf, make_type_argument_numbered tvidqtf tyargnm tystr)) in
-        make_type_argument_quantified (var_id + 1) tailcons tystr_new
+        make_type_argument_quantified tailcons tystr_new
 
 
 let rec type_argument_length tyargcons =
@@ -212,12 +209,12 @@ let add_synonym (scope : scope_kind) (varntenv : t)
     match scope with
     | GlobalScope ->
         let tystr_new    = fix_manual_type varntenv tyargcons tystr in
-        let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+        let tystr_forall = make_type_argument_quantified tyargcons tystr_new in
           Synonym(len, tystr_forall)
 
     | LocalScope(mdlnm) ->
         let tystr_new    = fix_manual_type varntenv tyargcons tystr in
-        let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+        let tystr_forall = make_type_argument_quantified tyargcons tystr_new in
           LocalSynonym(mdlnm, len, tystr_forall)
   in
     ((tysynnm, defkind) :: defedtypelist, varntenvmain)
@@ -243,7 +240,7 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
       | UTEndOfVariant                           -> varntenv
       | UTVariantCons(constrnm, tystr, tailcons) ->
           let tystr_new    = fix_manual_type varntenv tyargcons tystr in
-          let tystr_forall = make_type_argument_quantified 1 tyargcons tystr_new in
+          let tystr_forall = make_type_argument_quantified tyargcons tystr_new in
           let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
             iter mdlnm varntenv_new tyargcons varntnm tailcons
   in
