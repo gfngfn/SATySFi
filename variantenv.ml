@@ -201,6 +201,9 @@ let register_variant (varntenv : t) (len : int) (tynm : type_name) =
     ((tynm, Data(len)) :: defedtypelist, varntenvmain)
 
 
+let register_variant_list = List.fold_left (fun ve (l, t) -> register_variant ve l t)
+
+
 let add_synonym (scope : scope_kind) (varntenv : t)
                   (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (tystr : type_struct) =
   let (defedtypelist, varntenvmain) = varntenv in

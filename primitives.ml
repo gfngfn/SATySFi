@@ -3,12 +3,13 @@ open Types
 
 let make_variant_environment =
   let dr = Range.dummy "make_variant_environment" in
+  let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in
   let varntenv = Variantenv.add_list Variantenv.empty
     [ ("Item", (dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))])), "itemize");
-(* ("Just", ); *)
-    ]
+      ("Just", (dr, ForallType(tv1, (dr, TypeVariable(tv1)))), "maybe");
+      ("Nothing", (dr, ForallType(tv1, (dr, UnitType))), "maybe") ]
   in
-    Variantenv.register_variant varntenv 0 "itemize"
+    Variantenv.register_variant_list varntenv [ (0, "itemize"); (1, "maybe") ]
 
 
 let make_type_environment =
