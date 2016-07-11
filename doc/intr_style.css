@@ -4,7 +4,7 @@ body {
 }
 .main {
 	/* max-width: 700px; */
-  background-color: #eeeeee;
+  background-color: #f8f8f8;
   padding-left: 5%;
   padding-right: 5%;
   padding-top: 20px;
@@ -63,6 +63,39 @@ dfn {
   font-style: normal;
   font-weight: bold;
 }
+.file-name {
+  font-family: "Latin Modern Typewriter 10",
+               "CMU Typewriter Text",
+               "Consolas",
+               "Lucida Console",
+	       "Courier new",
+	       "Courier",
+	       monospace;
+  font-size: 1.1em;
+}
+.type-synt {
+  font-family: "Latin Modern Typewriter 10",
+               "CMU Typewriter Text",
+               "Consolas",
+               "Lucida Console",
+	       "Courier new",
+	       "Courier",
+	       monospace;
+  font-size: 1.1em;
+  color: #aa2200;
+}
+.type-meta {
+  font-family: "Latin Modern Typewriter 10",
+               "CMU Typewriter Text",
+               "Consolas",
+               "Lucida Console",
+	       "Courier new",
+	       "Courier",
+	       monospace;
+  font-style: italic;
+  font-size: 1.1em;
+  color: #aa8800;
+}
 code {
   font-family: "Latin Modern Typewriter 10",
                "CMU Typewriter Text",
@@ -74,10 +107,10 @@ code {
   font-size: 1.1em;
 }
 .synt {
-  color: #4444ff;
+  color: #2222aa;
 }
 .meta {
-  color: #aa22ff;
+  color: #aa22aa;
   font-style: italic;
 }
 .centered {
@@ -96,7 +129,7 @@ code {
 }
 .code-display {
   width: 90%;
-  color: #4444ff;
+  color: #2222aa;
   font-style: normal;
   text-align: left;
   margin-left: auto;

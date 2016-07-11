@@ -765,9 +765,9 @@ The quick brown fox jumps over the lazy dog.
         }
         
         という記法をとり，\code{\meta{Expr0}} の値が
-        パターン \code{\meta{pat1}} に合致する場合は \meta{Expr1} を返し，
+        パターン \code{\meta{pat1}} に合致する場合は \code{\meta{Expr1}} を返し，
         パターン \code{\meta{pat1}} に合致しない場合は
-        次の \code{\meta{pat2}} と照らしあわせて合致すれば \meta{Expr2} を返し，
+        次の \code{\meta{pat2}} と照らしあわせて合致すれば \code{\meta{Expr2}} を返し，
         ……という，上から順にマッチする表現を探して対応する値を返す仕組みです。
         具体的に次の例を見てみましょう。
         

@@ -1,9 +1,7 @@
 let \ref ref = !! ref
 
-let \mut-content mut = !mut
-
 let \document head body = {
-  <html>\deeper{
+  <html lang="ja">\deeper{
     <head>\deeper{
       @head;
     }</head>
@@ -23,12 +21,14 @@ let-mutable mut-author <- {}
 let \author author =
   mut-author <- author before {<meta name="author" content="@author;">}
 
-let \maketitle = {
-  <div class="maketitle">\deeper{
-    <div class="title">\mut-content(mut-title);</div>
-    <div class="author">\mut-content(mut-author);</div>
-  }</div>
-}
+let-lazy \maketitle =
+  let title  = !mut-title in
+  let author = !mut-author in {
+    <div class="maketitle">\deeper{
+      <div class="title">@title;</div>
+      <div class="author">@author;</div>
+    }</div>
+  }
 
 let-mutable section-counter <- 0
 let-mutable section-prefix <- {}
