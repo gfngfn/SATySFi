@@ -621,6 +621,22 @@ nxlazydec:
         let rng = make_range (Untyped $5) (Untyped $5) in
           make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent($5)) UTEndOfMutualLet
       }
+  | CTRLSEQ DEFEQ nxlet LETAND nxlazydec {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) $5
+      }
+  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxlazydec {
+        let rng = make_range (Untyped $5) (Untyped $5) in
+          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent($5)) $7
+      }
+  | CTRLSEQ DEFEQ nxlet {
+        let rng = make_range (Untyped $3) (Untyped $3) in
+          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) UTEndOfMutualLet
+      }
+  | CTRLSEQ COLON txfunc DEFEQ nxlet {
+        let rng = make_range (Untyped $5) (Untyped $5) in
+          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent($5)) UTEndOfMutualLet
+      }
 /* -- for syntax error log -- */
   | VAR error                                 { report_error (TokArg $1) "" }
   | VAR COLON error                           { report_error (Tok $2) ":" }
