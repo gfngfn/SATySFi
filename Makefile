@@ -16,6 +16,9 @@ $(TARGET): $(SRCS)
 	ocamlopt -o $(TARGET) $^
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) lexer.ml parser.mli parser.ml *.cmi *.cmo *.cmx *.o
+
+clean-sub:
+	rm -f lexer.ml parser.mli parser.ml *.cmi *.cmx *.o
 
 .PHONY: clean
