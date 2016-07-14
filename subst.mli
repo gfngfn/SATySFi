@@ -20,6 +20,8 @@ val apply_to_type_environment : t -> Typeenv.t -> Typeenv.t
 
 val compose : t -> t -> t
 
+val compose_list : t list -> t
+
 val unify : type_struct -> type_struct -> t
 
 val string_of_subst : t -> string

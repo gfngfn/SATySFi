@@ -227,8 +227,6 @@ let rec string_of_ast ast =
   | BooleanConstant(bc)          -> string_of_bool bc
   | IfThenElse(b, t, f)          ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | IfClassIsValid(t, f)         -> "(if-class-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-  | IfIDIsValid(t, f)            -> "(if-id-is-valid " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
   | ApplyClassAndID(c, i, m)     ->
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
   | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"

@@ -181,9 +181,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let (eini, tyini, thetaini) = typecheck qtfbl varntenv tyenv utastini in
       let thetasubkey = Subst.unify tykey (get_range utastkey, StringType) in
       let thetasubini = Subst.unify tyini (get_range utastini, StringType) in
-      let theta_result =  Subst.compose thetasubini
-                            (Subst.compose thetasubkey
-                              (Subst.compose thetaini thetakey)) in
+      let theta_result =  Subst.compose_list [thetasubini; thetasubkey; thetaini; thetakey] in
         (DeclareGlobalHash(ekey, eini), (rng, UnitType), theta_result)
 
   | UTOverwriteGlobalHash(utastkey, utastnew) ->
@@ -191,9 +189,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
       let (enew, tynew, thetanew) = typecheck qtfbl varntenv tyenv utastnew in
       let thetasubkey = Subst.unify tykey (get_range utastkey, StringType) in
       let thetasubnew = Subst.unify tynew (get_range utastnew, StringType) in
-      let theta_result =  Subst.compose thetasubnew
-                            (Subst.compose thetasubkey
-                              (Subst.compose thetanew thetakey)) in
+      let theta_result =  Subst.compose_list [thetasubnew; thetasubkey; thetanew; thetakey] in
         (OverwriteGlobalHash(ekey, enew), (rng, UnitType), theta_result)
 
   | UTReferenceFinal(utast1) ->
@@ -204,27 +200,21 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
 
 (* ---- class/id option ---- *)
 
-  | UTIfClassIsValid(utast1, utast2) ->
-      let tyenv_new = Typeenv.add tyenv "class" (Range.dummy "if-class-is-valid", StringType) in
-        let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-        let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
-        let theta_result = Subst.compose (Subst.unify ty2 ty1) (Subst.compose theta2 theta1) in
-        let type_result  = Subst.apply_to_type_struct theta_result ty1 in
-          (IfClassIsValid(e1, e2), type_result, theta_result)
-
-  | UTIfIDIsValid(utast1, utast2) ->
-      let tyenv_new = Typeenv.add tyenv "id" (Range.dummy "if-id-is-valid", StringType) in
-        let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-        let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
-        let theta_result = Subst.compose (Subst.unify ty2 ty1) (Subst.compose theta2 theta1) in
-        let type_result  = Subst.apply_to_type_struct theta_result ty1 in
-          (IfIDIsValid(e1, e2), type_result, theta_result)
-
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
+      let dr = Range.dummy "ut-apply-class-and-id" in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
       let (ecls, _, _) = typecheck qtfbl varntenv tyenv utastcls in
       let (eid, _, _)  = typecheck qtfbl varntenv tyenv utastid in
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
+      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
         (ApplyClassAndID(ecls, eid, e1), ty1, theta1)
+
+  | UTClassAndIDRegion(utast1) ->
+      let dr = Range.dummy "ut-class-and-id-region" in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
+      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
+        (e1, ty1, theta1)
 
 (* ---- lightweight itemize ---- *)
 

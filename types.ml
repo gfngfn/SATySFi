@@ -87,9 +87,8 @@ and untyped_abstract_tree_main =
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
 (* -- class and id option -- *)
-  | UTIfClassIsValid       of untyped_abstract_tree * untyped_abstract_tree
-  | UTIfIDIsValid          of untyped_abstract_tree * untyped_abstract_tree
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+  | UTClassAndIDRegion     of untyped_abstract_tree
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
 and untyped_variant_cons = Range.t * untyped_variant_cons_main
@@ -192,8 +191,6 @@ and abstract_tree =
   | LazyContent           of abstract_tree
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
-  | IfClassIsValid        of abstract_tree * abstract_tree
-  | IfIDIsValid           of abstract_tree * abstract_tree
   | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree
 (* (* -- lightweight itemize -- *)
   | Itemize               of itemize *)
