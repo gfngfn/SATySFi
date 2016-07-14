@@ -197,6 +197,8 @@ and check_emergence (theta : t) =
 
 let rec compose (theta2 : t) (theta1 : t) = fix_subst (compose_prim theta2 theta1)
 
+and compose_list thetalst = List.fold_right compose thetalst empty
+
 and compose_prim (theta2 : t) (theta1 : t) =
   match theta2 with
   | []                     -> theta1

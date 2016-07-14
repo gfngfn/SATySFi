@@ -196,8 +196,6 @@ rule numexpr = parse
           | "do"                -> DO(pos)
           | "mutual"            -> MUTUAL(pos)
           | "end-mutual"        -> ENDMUTUAL(pos)
-          | "if-class-is-valid" -> IFCLASSISVALID(pos)
-          | "if-id-is-valid"    -> IFIDISVALID(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
           | "let-lazy"          -> LETLAZY(pos)
           | "new-global-hash"   -> NEWGLOBALHASH(pos)
