@@ -376,7 +376,7 @@
 %token <Range.t * Types.class_name>   CLASSNAME
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
-%token <Range.t> LET DEFEQ LETAND IN MUTUAL ENDMUTUAL
+%token <Range.t> LET DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
 %token <Range.t> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
@@ -465,8 +465,6 @@ nxtoplevel:
   | LET nxdec EOI                                       { make_let_expression $1 $2 end_header }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxtoplevel         { make_let_mutable_expression $1 $2 $4 $5 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet EOI                { make_let_mutable_expression $1 $2 $4 end_header }
-  | MUTUAL nxmutual nxtoplevel                          { make_let_expression $1 $2 $3 }
-  | MUTUAL nxmutual EOI                                 { make_let_expression $1 $2 end_header }
   | VARIANT nxvariantdec nxtoplevel                     { make_variant_declaration $1 $2 $3 }
   | VARIANT nxvariantdec EOI                            { make_variant_declaration $1 $2 end_header }
   | LETLAZY nxlazydec nxtoplevel                        { make_let_expression $1 $2 $3 }
@@ -476,7 +474,6 @@ nxtoplevel:
 /* ---- transition to expression style ---- */
   | LET nxdec IN nxlet EOI                                { make_let_expression $1 $2 $4 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI         { make_let_mutable_expression $1 $2 $4 $6 }
-  | MUTUAL nxmutual IN nxlet EOI                          { make_let_expression $1 $2 $4 }
   | VARIANT nxvariantdec IN nxlet EOI                     { make_variant_declaration $1 $2 $4 }
   | LETLAZY nxlazydec IN nxlet EOI                        { make_let_expression $1 $2 $4 }
   | MODULE CONSTRUCTOR DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $5 $7 }
@@ -487,7 +484,6 @@ nxtoplevel:
   | LETMUTABLE VAR error                      { report_error (TokArg $2) "" }
   | LETMUTABLE VAR OVERWRITEEQ error          { report_error (Tok $3) "<-" }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN error { report_error (Tok $5) "in" }
-  | MUTUAL error                              { report_error (Tok $1) "mutual" }
   | VARIANT error                             { report_error (Tok $1) "variant" }
   | MODULE error                              { report_error (Tok $1) "module" }
   | MODULE CONSTRUCTOR DEFEQ error            { report_error (Tok $3) "=" }
@@ -525,19 +521,6 @@ nxstruct: /* -> untyped_module_tree */
   | PRIVATE LET error        { report_error (Tok $2) "let" }
   | PRIVATE LETMUTABLE error { report_error (Tok $2) "let" }
   | PRIVATE VARIANT error    { report_error (Tok $2) "variant" }
-/* -- -- */
-;
-nxmutual: /* -> Types.untyped_mutual_let_cons */
-  | LET VAR argvar DEFEQ nxlet nxmutual      { make_mutual_let_cons None $2 $3 $5 $6 }
-  | LET VAR argvar DEFEQ nxlet ENDMUTUAL     { make_mutual_let_cons None $2 $3 $5 UTEndOfMutualLet }
-  | LET CTRLSEQ argvar DEFEQ nxlet nxmutual  { make_mutual_let_cons None $2 $3 $5 $6 }
-  | LET CTRLSEQ argvar DEFEQ nxlet ENDMUTUAL { make_mutual_let_cons None $2 $3 $5 UTEndOfMutualLet }
-/* -- for syntax error log -- */
-  | LET error                      { report_error (Tok $1) "and" }
-  | LET VAR error                  { report_error (TokArg $2) "" }
-  | LET VAR argvar DEFEQ error     { report_error (Tok $4) "=" }
-  | LET CTRLSEQ error              { report_error (TokArg $2) "" }
-  | LET CTRLSEQ argvar DEFEQ error { report_error (Tok $4) "=" }
 /* -- -- */
 ;
 nxdec: /* -> untyped_mutual_let_cons */

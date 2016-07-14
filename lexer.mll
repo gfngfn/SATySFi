@@ -194,8 +194,6 @@ rule numexpr = parse
           | "before"            -> BEFORE(pos)
           | "while"             -> WHILE(pos)
           | "do"                -> DO(pos)
-          | "mutual"            -> MUTUAL(pos)
-          | "end-mutual"        -> ENDMUTUAL(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
           | "let-lazy"          -> LETLAZY(pos)
           | "new-global-hash"   -> NEWGLOBALHASH(pos)
