@@ -705,25 +705,25 @@ nxpublazydec:
 /* -- -- */
 ;
 nxdirectdec: /* -> untyped_mutual_let_cons */
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable $5 $7 }
+  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (class_and_id_region $5) $7 }
 
-  | CTRLSEQ COLON txfunc DEFEQ nxlet                    { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable $5 UTEndOfMutualLet }
+  | CTRLSEQ COLON txfunc DEFEQ nxlet                    { make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (class_and_id_region $5) UTEndOfMutualLet }
 
-  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons None $1 $2 $4 $6 }
+  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons None $1 $2 (class_and_id_region $4) $6 }
   | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons (Some $3) $1 $5 $7 $9 }
+            argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) $9 }
 
-  | CTRLSEQ argvar DEFEQ nxlet                          { make_mutual_let_cons None $1 $2 $4 UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet                          { make_mutual_let_cons None $1 $2 (class_and_id_region $4) UTEndOfMutualLet }
   | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet                          { make_mutual_let_cons (Some $3) $1 $5 $7 UTEndOfMutualLet }
+            argvar DEFEQ nxlet                          { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) UTEndOfMutualLet }
 
-  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) $8 }
+  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) $8 }
   | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) $11 }
+            argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) $11 }
 
-  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) UTEndOfMutualLet }
+  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) UTEndOfMutualLet }
   | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) UTEndOfMutualLet }
+            argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) UTEndOfMutualLet }
 /* -- for syntax error log -- */
   | CTRLSEQ error                                        { report_error (TokArg $1) "" }
   | CTRLSEQ COLON error                                  { report_error (Tok $2) ":" }
@@ -748,19 +748,19 @@ nxdirectdec: /* -> untyped_mutual_let_cons */
 nxdirectlazydec:
   | CTRLSEQ DEFEQ nxlet LETAND nxdirectlazydec {
         let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) $5
+          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent(class_and_id_region $3)) $5
       }
   | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdirectlazydec {
         let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent($5)) $7
+          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent(class_and_id_region $5)) $7
       }
   | CTRLSEQ DEFEQ nxlet {
         let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent($3)) UTEndOfMutualLet
+          make_mutual_let_cons None $1 UTEndOfArgumentVariable (rng, UTLazyContent(class_and_id_region $3)) UTEndOfMutualLet
       }
   | CTRLSEQ COLON txfunc DEFEQ nxlet {
         let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent($5)) UTEndOfMutualLet
+          make_mutual_let_cons (Some $3) $1 UTEndOfArgumentVariable (rng, UTLazyContent(class_and_id_region $5)) UTEndOfMutualLet
       }
 /* -- for syntax error log -- */
   | CTRLSEQ error                                 { report_error (TokArg $1) "" }
