@@ -14,7 +14,14 @@ and flatten indent value =
   match value with
   | StringEmpty                 -> []
   | StringConstant(c)           -> [OString(c)]
-  | Concat(vf, vl)              -> (flatten indent vf) @ (flatten indent vl)
+  | Concat(v1, v2)              ->
+      let o1 = flatten indent v1 in
+      let o2 = flatten indent v2 in
+        begin
+          match (o1, o2) with
+          | (OString(c1) :: [], OString(c2) :: tail) -> OString(c1 ^ c2) :: tail
+          | _                                        -> o1 @ o2
+        end
   | DeeperIndent(value_content) -> flatten (indent + 1) value_content
   | BreakAndIndent              -> [OBreakAndIndent(indent)]
   | SoftBreakAndIndent          -> [OSoftBreakAndIndent(indent)]
