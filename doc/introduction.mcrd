@@ -1148,20 +1148,29 @@ The quick brown fox jumps over the lazy dog.
         と\mcrd-type(`top`)(Func(App(Meta`'a`, Data`tree`), Meta`'a`));で実装することができます。
         この\mcrd`top`は具体的に\type(Meta`'a`);にどの型が入る場合も使い回すことができ，
         \synt`top (Leaf 2)`は\synt`2`に，\synt``top (Node({f}, Leaf{g}, Leaf{n}))``は\synt`{f}`に，それぞれ評価されます。
-        このほか，失敗してしまうかもしれない整数の計算に対しても結果を返すための
-        \type(App(Meta`'a`, Data`maybe`));型を定義してみましょう。
+      }
+      \p{
+        Macrodownには，ユーザが定義せずとも最初から備わっている直和型が2つあり，ひとつは \type(Data`itemize`);型，もうひとつは
+        以下のように定義できる\type(App(Meta`'a`, Data`maybe`));型です。
         
         \mcrd-input`maybe.mcrdh` ```
-          type 'a maybe = Just of 'a | None
-          
+          type 'a maybe = Just of 'a | Nothing
+        ```
+
+        この型は，例えば“失敗するかもしれない演算”に使うことができます。整数の除算はいわゆる割る数が\mcrd`0`であったときにエラーとなりますが，
+
+        \mcrd-input`maybe.mcrdh` ```
           let divide x y =
             match (x, y) with
-            | (_, Just 0)      -> None
+            | (_, Just 0)      -> Nothing
             | (Just m, Just n) -> Just (m / n)
-            | _                -> None
+            | _                -> Nothing
         ```
         
         \mcrd`0`で除算してしまった場合も\mcrd`None`が返ってきます。
+        この\type(App(Meta`'a`, Data`maybe`));型について
+        「なぜユーザの手によっても簡単に定義できるのに最初から備わっているのか」と思われるかもしれませんが，
+        これは後述のクラス名・ID名オプションという機能で使用されるためです。
       }
       \p{
         相互再帰的に依存する直和型の定義は，例えば
@@ -1200,7 +1209,8 @@ The quick brown fox jumps over the lazy dog.
         そこでより簡潔に定文字列を書く方法として，プログラム階層で
         
         \mcrd-input`literal1.mcrds` ```
-          `In literal areas, you can use letters \, {, }, and @ directly.`
+          let s = `In literal areas, you can use letters \, {, }, and @ directly.`
+          in s
         ```
         
         と \mcrd`` ` `` で括って書くことで
@@ -1214,7 +1224,8 @@ The quick brown fox jumps over the lazy dog.
         \mcrd`` ` `` が含まれる文字列は全体を \mcrd``` `` ``` で囲んで
         
         \mcrd-input`literal2.mcrds` ```
-          ``You can also use ` in literal areas like this.``
+          let s = ``You can also use ` in literal areas like this.``
+          in s
         ```
         
         \mcrd-output`literal2.txt` ```
@@ -1272,28 +1283,26 @@ The quick brown fox jumps over the lazy dog.
         また両方書く場合はクラス名オプションを先に書かねばなりません。
         クラス名オプションは先頭の \mcrd`.` を除いた部分が文字列として変数 \mcrd`class` に，
         同様にID名オプションは先頭の \mcrd`#` を除いた部分が文字列として変数 \mcrd`id` に格納されてマクロが適用されます。
-        
+      }
+      \p{
         マクロ定義中でクラス名オプションの文字列を使用するには，
-        まず指定された場合と指定されなかった場合で分岐しなければなりませんから
+        まず指定された場合と指定されなかった場合で分岐しなければなりません。
+        この分岐のために，直和型の項目で紹介した\type(App(Meta`'a`, Data`maybe`));を用います。
+      }
+      \p{
+        クラス名とID名は，それぞれ\type(App(String, Data`maybe`));型をもつ\mcrd`class-name`と\mcrd`id-name`という変数により，
+        制御綴の定義式内で参照することができます。すなわち
         
         \code-display{
-          \synt`if-class-is-valid` \synt`then` \meta`ExprT` \synt`else` \meta`ExprF`
+          \synt`let` \synt`\`\meta`hoge` \metadots; \synt`=` \meta`ExprA` \synt`in` \meta`ExprB`
         }
         
-        という分岐を用います。\mcrd`if-class-is-valid` でひとつのトークンであることに注意してください。
-        また，\mcrd`then` は省略することができます。
-        この分岐に於いて，クラス名オプションが指定されている場合は \code{\meta`ExprT`} が，
-        指定されなかった場合は \code{\meta`ExprF`} がそれぞれ評価され，
-        このうち \code{\meta`ExprT`} 内でのみ変数 \mcrd`class` を用いることができます。
-        \code{\meta`ExprF`} 内や \mcrd`if-class-is-valid` の外で \mcrd`class` が用いられた場合は，
-        型検査時にエラーが返されます。ID名オプションも同様に
-
-        \code-display{
-          \synt`if-id-is-valid` \synt`then` \meta`ExprT` \synt`else` \meta`ExprF`
-        }
-        
-        で分岐し，\code{\meta`ExprT`} 内でのみ変数 \mcrd`id` を用いることができます。
-        使用例としては
+        の\code{\meta`ExprA`}内で使えます。同時に，このような制御綴の定義式以外では使えません。
+        マクロの適用箇所でクラス名\code{\synt`.`\meta`foo`}が指定された場合は\code{\synt`Just {`\meta`foo`\synt`}`}が，
+        指定されなかった場合は\code{\synt`Nothing`}が\mcrd`class-name`に格納された状態で評価が行なわれます。
+      }
+      \p{
+        \LaTeX;の例を見てみましょう。
         
         \mcrd-input`header.mcrdh` ```
           let deeper inner = {\deeper{@inner;}}
@@ -1302,7 +1311,9 @@ The quick brown fox jumps over the lazy dog.
 
           let \sect sect cont =
             `\section{` ^sect^ `}` ^
-              ( if-id-is-valid `\label{`^id^ `}` else {} ) ^
+              ( match id-name with
+                | Nothing -> {}
+                | Just(s) -> `\label{`^id^ `}` ) ^
               (deeper cont) ^
             `% ---- ----`
         ```
@@ -1315,7 +1326,7 @@ The quick brown fox jumps over the lazy dog.
           }
         ```
         
-        から
+        上の入力から以下を得ることができます。
         
         \mcrd-output`output.txt` ```
           \section{First Title}
@@ -1329,8 +1340,6 @@ The quick brown fox jumps over the lazy dog.
             \par
           % ---- ----
         ```
-        
-        を得ることができます。
       }
     }
     \subsection{手続き型プログラミング機能}{
