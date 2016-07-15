@@ -223,6 +223,7 @@ rule numexpr = parse
 and strexpr = parse
   | "%" {
       after_comment_state := STATE_STREXPR ;
+      ignore_space := true ;
       next_state := STATE_COMMENT ;
       IGNORED
     }
