@@ -243,8 +243,10 @@ and module_tree =
 
 type output_unit =
   | OString             of string
-  | OBreakAndIndent     of int
-  | OSoftBreakAndIndent of int
+  | OBreakAndIndent
+  | OSoftBreakAndIndent
+  | ODeepen
+  | OShallow
 
 
 (* !!!! ---- global variable ---- !!!! *)

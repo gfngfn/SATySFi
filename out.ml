@@ -7,30 +7,30 @@ let string_of_break_and_indent indent = "\n" ^ (if indent > 0 then String.make (
 
 
 (* abstract_tree -> string *)
-let rec main value = stringify (erase_soft_break (flatten 0 value))
+let rec main value = stringify 0 (erase_soft_break (flatten value))
 
-(* int -> abstract_tree -> output_unit list *)
-and flatten indent value =
+(* abstract_tree -> output_unit list *)
+and flatten value =
   match value with
   | StringEmpty                 -> []
   | StringConstant(c)           -> [OString(c)]
   | Concat(v1, v2)              ->
-      let o1 = flatten indent v1 in
-      let o2 = flatten indent v2 in
+      let o1 = flatten v1 in
+      let o2 = flatten v2 in
         begin
           match (o1, o2) with
           | (OString(c1) :: [], OString(c2) :: tail) -> OString(c1 ^ c2) :: tail
           | _                                        -> o1 @ o2
         end
-  | DeeperIndent(value_content) -> flatten (indent + 1) value_content
-  | BreakAndIndent              -> [OBreakAndIndent(indent)]
-  | SoftBreakAndIndent          -> [OSoftBreakAndIndent(indent)]
+  | DeeperIndent(value_content) -> [ODeepen] @ (flatten value_content) @ [OShallow]
+  | BreakAndIndent              -> [OBreakAndIndent]
+  | SoftBreakAndIndent          -> [OSoftBreakAndIndent]
   | ReferenceFinal(value_key)   ->
-      let str_key = out indent value_key in
+      let str_key = out 0 value_key in
         begin
           try
             match !(Hashtbl.find global_hash_env str_key) with
-            | Location(loc) -> flatten indent (!loc)
+            | Location(loc) -> flatten (!loc)
             | _             ->
                 begin
                   print_string ("!!!! reference key \"" ^ str_key ^ "\" contains non-mutable value") ;
@@ -39,25 +39,33 @@ and flatten indent value =
           with
           | Not_found -> raise (IllegalOut("undefined reference key \"" ^ str_key ^ "\""))
         end
-  | other -> begin print_string ("!!!! cannot output\n\n    " ^ (Display.string_of_ast other)) ; assert false end
+  | other ->
+      begin
+        print_string ("!!!! cannot output\n\n    " ^ (Display.string_of_ast other)) ;
+        assert false
+      end
 
-and erase_soft_break opu =
-  match opu with
-  | []                 -> []
-  | OBreakAndIndent(indent1) :: OSoftBreakAndIndent(_) :: tail ->
-      erase_soft_break (OBreakAndIndent(indent1) :: tail)
-  | OSoftBreakAndIndent(_) :: OSoftBreakAndIndent(indent2) :: tail ->
-      erase_soft_break (OSoftBreakAndIndent(indent2) :: tail)
-  | OSoftBreakAndIndent(_) :: OBreakAndIndent(indent2) :: tail ->
-      erase_soft_break (OBreakAndIndent(indent2) :: tail)
-  | head :: tail -> head :: (erase_soft_break tail)
 
-and stringify opu =
+and erase_soft_break (opu : output_unit list) =
   match opu with
-  | []                                  -> ""
-  | OString(c) :: tail                  -> c ^ (stringify tail)
-  | OBreakAndIndent(indent) :: tail     -> (string_of_break_and_indent indent) ^ (stringify tail)
-  | OSoftBreakAndIndent(indent) :: tail -> (string_of_break_and_indent indent) ^ (stringify tail)
+  | []                                                 -> []
+  | OBreakAndIndent :: OSoftBreakAndIndent :: tail     -> erase_soft_break (OBreakAndIndent :: tail)
+  | OSoftBreakAndIndent :: OSoftBreakAndIndent :: tail -> erase_soft_break (OSoftBreakAndIndent :: tail)
+  | OSoftBreakAndIndent :: OBreakAndIndent :: tail     -> erase_soft_break (OBreakAndIndent :: tail)
+  | OSoftBreakAndIndent :: OShallow :: tail            -> erase_soft_break (OShallow :: tail)
+  | head :: tail                                       -> head :: (erase_soft_break tail)
+
+
+and stringify (indent : int) (opu : output_unit list) =
+  match opu with
+  | []                                         -> ""
+  | OString(c) :: tail                         -> c ^ (stringify indent tail)
+  | ( OBreakAndIndent :: OShallow :: tail
+    | OSoftBreakAndIndent :: OShallow :: tail) -> (string_of_break_and_indent (indent - 1)) ^ (stringify (indent - 1) tail)
+  | ( OBreakAndIndent :: tail
+    | OSoftBreakAndIndent :: tail )            -> (string_of_break_and_indent indent) ^ (stringify indent tail)
+  | ODeepen :: tail                            -> stringify (indent + 1) tail
+  | OShallow :: tail                           -> stringify (indent - 1) tail
 
 
 (* int -> abstract_tree -> string *)
@@ -84,7 +92,7 @@ and out indent value =
         end
   | other -> begin print_string ("!!!! cannot output\n\n    " ^ (Display.string_of_ast other)) ; assert false end
 *)
-  | DeeperIndent(_)    -> raise (IllegalOut("invalid string for reference key; it consists 'deeper' operation"))
+  | DeeperIndent(_)    -> raise (IllegalOut("invalid string for reference key; it contains 'deeper' operation"))
   | BreakAndIndent     -> raise (IllegalOut("invalid string for reference key; it contains break"))
   | SoftBreakAndIndent -> raise (IllegalOut("invalid string for reference key; it contains soft break"))
   | ReferenceFinal(_)  -> raise (IllegalOut("invalid string for reference key; it contains '!!' operation"))
