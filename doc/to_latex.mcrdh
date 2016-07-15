@@ -98,9 +98,9 @@ let-mutable counter-table <- 0
 let \float-table cap content =
     counter-table <- !counter-table + 1
   before
-    ( if-id-is-valid
-        new-global-hash id <<- {表} ^ (arabic (!counter-table))
-      else () )
+    ( match id-name with
+      | Nothing -> ()
+      | Just(s) -> new-global-hash s <<- {表} ^ (arabic (!counter-table)) )
   before
     `\begin{table*}\centering{}`
       ^ {\deeper{@content;}}

@@ -44,9 +44,9 @@ let \section sec cont =
     subsection-counter    <- 0
   before
   ( let cntstr = (!section-prefix) ^ (arabic (!section-counter)) ^ (!section-postfix) in
-      ( if-id-is-valid then
-          ( new-global-hash id <<- cntstr )
-        else () )
+      ( match id-name with
+        | Nothing -> ()
+        | Just(s) -> new-global-hash s <<- cntstr )
       before
         {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
   )
@@ -91,7 +91,9 @@ let \float-table title content =
     table-counter <- !table-counter + 1
   before
   ( let cntstr = {?} ^ (arabic (!table-counter)) in
-      ( if-id-is-valid new-global-hash id <<- cntstr else () )
+      ( match id-name with
+        | Nothing -> ()
+        | Just(s) -> new-global-hash s <<- cntstr )
       before
        {<div class="centered">\deeper{@content;}<div class="table-caption">@cntstr; @title;</div></div>}
   )

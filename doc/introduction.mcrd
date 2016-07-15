@@ -966,37 +966,37 @@ The quick brown fox jumps over the lazy dog.
         と同等となります。最後の \mcrd`finish` は実際には書けないトークンで，値としては \mcrd`()` ですが，
         これが書かれた場所から“見える”函数・マクロの定義を次以降のファイルの読み込みに引き継ぐという機能を持っています。
       }
-      \p{
-        大域環境での相互再帰はやはり
-
-        \code-display{
-          \synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
-          \code-break;
-          \synt{and} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
-          \code-break;
-          \metadots;\code-break;
-          \code-break;
-          \synt{and} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}
-        }
-
-        と書きますが，
-        「定義の依存関係が明白になるなんて全然有用に思えん！\quad;\mcrd`and` なんて意識しないで書きたい！」
-        という方のために \mcrd`mutual`～\mcrd`end-mutual` という糖衣構文を用意しており，
-        
-        \code-display{
-          \synt{mutual}\code-break;
-          \code-tab;\synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
-          \code-break;
-          \code-tab;\synt{let} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
-          \code-break;
-          \code-tab;\metadots;\code-break;
-          \code-break;
-          \code-tab;\synt{let} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}\code-break;
-          \synt{end-mutual}
-        }
-        
-        と書くことで，上に掲げた \mcrd`and` を用いたものと同等となります。
-      }
+%      \p{
+%        大域環境での相互再帰はやはり
+%
+%        \code-display{
+%          \synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
+%          \code-break;
+%          \synt{and} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
+%          \code-break;
+%          \metadots;\code-break;
+%          \code-break;
+%          \synt{and} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}
+%        }
+%
+%        と書きますが，
+%        「定義の依存関係が明白になるなんて全然有用に思えん！\quad;\mcrd`and` なんて意識しないで書きたい！」
+%        という方のために \mcrd`mutual`～\mcrd`end-mutual` という糖衣構文を用意しており，
+%        
+%        \code-display{
+%          \synt{mutual}\code-break;
+%          \code-tab;\synt{let} \meta{f1} \meta{x11} \metadots; \meta{x1N} \synt{=} \meta{Expr1}\code-break;
+%          \code-break;
+%          \code-tab;\synt{let} \meta{f2} \meta{x21} \metadots; \meta{x2N} \synt{=} \meta{Expr2}\code-break;
+%          \code-break;
+%          \code-tab;\metadots;\code-break;
+%          \code-break;
+%          \code-tab;\synt{let} \meta{fM} \meta{xM1} \metadots; \meta{xMN} \synt{=} \meta{ExprM}\code-break;
+%          \synt{end-mutual}
+%        }
+%        
+%        と書くことで，上に掲げた \mcrd`and` を用いたものと同等となります。
+%      }
     }
     \subsection{直積とパターンマッチ}{
       \p{
