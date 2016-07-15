@@ -16,6 +16,15 @@ $(TARGET): $(SRCS)
 	ocamlopt -o $(TARGET) $^
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) lexer.ml parser.mli parser.ml *.cmi *.cmo *.cmx *.o
+
+clean-sub:
+	rm -f lexer.ml parser.mli parser.ml *.cmi *.cmx *.o
+
+cp:
+ifeq ($(OS), Windows_NT)
+else
+	sudo cp bin/macrodown /usr/bin/macrodown
+endif
 
 .PHONY: clean

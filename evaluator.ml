@@ -103,41 +103,19 @@ let rec interpret env ast =
 
 (* ---- class/id option ---- *)
 
-  | IfClassIsValid(asttru, astfls) ->
-      begin
-        try
-          let vcclass = interpret env (ContentOf("class")) in
-            match vcclass with
-            | NoContent -> interpret env astfls
-            | _         -> interpret env asttru
-        with
-        | EvalError(_) -> raise (EvalError("illegal 'if-class-is-valid'; 'class' cannot be used here"))
-      end
-
-  | IfIDIsValid(asttru, astfls) ->
-      begin
-        try
-          let vcid = interpret env (ContentOf("id")) in
-            match vcid with
-            | NoContent -> interpret env astfls
-            | _         -> interpret env asttru
-        with
-        | EvalError(_) -> raise (EvalError("illegal 'if-id-is-valid'; 'id' cannot be used here"))
-      end
-
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
       begin                                                             (* for debug *)
         print_for_debug ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
         let valuef =  interpret env
-                        (LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-                          LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astf))) in
+                        (LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
+                          LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astf))) in
           begin                                                         (* for debug *)
             print_for_debug ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
             match valuef with
             | FuncWithEnvironment(varnm, astdef, envf) ->
                 FuncWithEnvironment(varnm,
-                  LetIn(MutualLetCons("class", clsnmast, EndOfMutualLet),
-                    LetIn(MutualLetCons("id", idnmast, EndOfMutualLet), astdef)
+                  LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
+                    LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astdef)
                   ), envf)
             | other ->  valuef
           end                                                           (* for debug *)
