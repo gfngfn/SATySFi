@@ -20,7 +20,7 @@ let report_error_with_range (rng : Range.t) msg =
 let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   match utastmain with
   | UTStringEmpty         -> (StringEmpty,         (rng, StringType), Subst.empty)
-  | UTBreakAndIndent      -> (BreakAndIndent,      (rng, StringType), Subst.empty)
+  | UTBreakAndIndent      -> (SoftBreakAndIndent,  (rng, StringType), Subst.empty)
   | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, IntType),    Subst.empty)
   | UTStringConstant(sc)  -> (StringConstant(sc),  (rng, StringType), Subst.empty)
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType),   Subst.empty)
