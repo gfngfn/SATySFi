@@ -81,7 +81,7 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
   let dr = Range.dummy "emerge_in" in
   let (rng, tymain) = tystr in
     match tymain with
-    | FuncType(dom, cod)    ->
+    | FuncType(dom, cod)        ->
         let (bdom, rngdom) = emerge_in tvid dom in
         let (bcod, rngcod) = emerge_in tvid cod in
           if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dr)
@@ -94,7 +94,7 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
         let (bcont, rngcont) = emerge_in tvid cont in
         let (blst, rnglst)   = emerge_in_list tvid lst in
           if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
-    | _                            -> (false, dr)
+    | _                         -> (false, dr)
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
   let dummy = Range.dummy "emerge_in_list" in
@@ -248,7 +248,7 @@ and unify_sub (tystr1 : type_struct) (tystr2 : type_struct) =
   | (ProductType(tylist1), ProductType(tylist2)) -> unify_sub_list tylist1 tylist2
 
   | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
-                              when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
+                        when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
 
   | (TypeVariable(tvid1), _) ->
       begin
