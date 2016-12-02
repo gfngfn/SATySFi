@@ -12,7 +12,7 @@ let to_list tyenv = tyenv
 let from_list lst = lst
 
 
-let rec add tyenv (varnm : var_name) (tystr : type_struct) =
+let rec add (tyenv : t) (varnm : var_name) (tystr : type_struct) =
   match tyenv with
   | []                                -> (varnm, tystr) :: []
   | (vn, ts) :: tail  when vn = varnm -> (varnm, tystr) :: tail
@@ -35,7 +35,7 @@ let erase_range_of_type (tystr : type_struct) =
 
 
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
-  let iter = find_in_type_struct tvid in
+  let iter      = find_in_type_struct tvid in
   let iter_list = find_in_type_struct_list tvid in
   let (_, tymain) = tystr in
     match tymain with
