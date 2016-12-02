@@ -30,70 +30,75 @@ let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
   let (_, tymain) = tystr in (rng, tymain)
 
 
-let rec erase_range_of_type (tystr : type_struct) =
-  let (_, tymain) = tystr in (Range.dummy "erased", tymain)
+let erase_range_of_type (tystr : type_struct) =
+  overwrite_range_of_type tystr (Range.dummy "erased")
 
 
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
+  let iter = find_in_type_struct tvid in
+  let iter_list = find_in_type_struct_list tvid in
   let (_, tymain) = tystr in
     match tymain with
     | TypeVariable(tvidx)            -> Tyvarid.same tvidx tvid
-    | FuncType(tydom, tycod)         -> (find_in_type_struct tvid tydom) || (find_in_type_struct tvid tycod)
-    | ListType(tycont)               -> find_in_type_struct tvid tycont
-    | RefType(tycont)                -> find_in_type_struct tvid tycont
-    | ProductType(tylist)            -> find_in_type_struct_list tvid tylist
-    | VariantType(tylist, _)         -> find_in_type_struct_list tvid tylist
-    | TypeSynonym(tylist, _, tycont) -> (find_in_type_struct_list tvid tylist) || (find_in_type_struct tvid tycont)
+    | FuncType(tydom, tycod)         -> (iter tydom) || (iter tycod)
+    | ListType(tycont)               -> iter tycont
+    | RefType(tycont)                -> iter tycont
+    | ProductType(tylist)            -> iter_list tylist
+    | VariantType(tylist, _)         -> iter_list tylist
+    | TypeSynonym(tylist, _, tycont) -> (iter_list tylist) || (iter tycont)
     | _                              -> false
 
 and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
+  List.fold_left (fun b tystr -> b || find_in_type_struct tvid tystr) false tystrlst
+(*
   match tystrlst with
   | []         -> false
   | ty :: tail -> if find_in_type_struct tvid ty then true else find_in_type_struct_list tvid tail
-
+*)
 
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
+  List.fold_left (fun b (_, tystr) -> b || find_in_type_struct tvid tystr) false tyenv
+(*
   match tyenv with
   | []                 -> false
   | (_, tystr) :: tail ->
       if find_in_type_struct tvid tystr then true else find_in_type_environment tvid tail
+*)
+
+let quantifiable_unbound_id_list : Tyvarid.t list ref = ref []
 
 
-let unbound_id_list : Tyvarid.t list ref = ref []
-
-
-let rec listup_unbound_id (tystr : type_struct) (tyenv : t) =
-  let iter = (fun ty -> listup_unbound_id ty tyenv) in
+let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit =
+  let iter = (fun ty -> listup_quantifiable_unbound_id ty tyenv) in
   let (_, tymain) = tystr in
     match tymain with
-    | TypeVariable(tvid)     ->
-        if find_in_type_environment tvid tyenv then ()
-        else if List.mem tvid !unbound_id_list then ()
-        else unbound_id_list := tvid :: !unbound_id_list
+    | TypeVariable(tvid)             ->
+        if Tyvarid.is_quantifiable tvid then
+          if find_in_type_environment tvid tyenv then () else
+            if List.mem tvid !quantifiable_unbound_id_list then () else
+              quantifiable_unbound_id_list := tvid :: !quantifiable_unbound_id_list
+        else
+          ()
     | FuncType(tydom, tycod)         -> begin iter tydom ; iter tycod end
     | ListType(tycont)               -> iter tycont
     | RefType(tycont)                -> iter tycont
-    | ProductType(tylist)            -> let _ = List.map iter tylist in ()
-    | VariantType(tylist, _)         -> let _ = List.map iter tylist in ()
-    | TypeSynonym(tylist, _, tycont) -> let _ = List.map iter tylist in () (* doubtful implementation *)
+    | ProductType(tylist)            -> List.iter iter tylist
+    | VariantType(tylist, _)         -> List.iter iter tylist
+    | TypeSynonym(tylist, _, tycont) -> List.iter iter tylist (* doubtful implementation *)
     | _                              -> ()
 
 
 let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
-  | tvid :: tail ->
-      if Tyvarid.is_quantifiable tvid then
-        (Range.dummy "add_forall_struct", ForallType(tvid, add_forall_struct tail tystr))
-      else
-        add_forall_struct tail tystr
+  | tvid :: tail -> (Range.dummy "add_forall_struct", ForallType(tvid, add_forall_struct tail tystr))
 
 
 let make_forall_type (tystr : type_struct) (tyenv : t) =
   begin
-    unbound_id_list := [] ;
-    listup_unbound_id tystr tyenv ;
-    add_forall_struct (!unbound_id_list) tystr
+    quantifiable_unbound_id_list := [] ;
+    listup_quantifiable_unbound_id tystr tyenv ;
+    add_forall_struct (!quantifiable_unbound_id_list) tystr
   end
 
 
