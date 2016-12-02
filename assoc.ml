@@ -23,8 +23,12 @@ let rec map_value f asc =
   List.map (fun (k, v) -> (k, f v)) asc
 
 
-let rec fold_value f =
-  List.fold_left (fun x (_, v) -> f x v)
+let fold_value f init asc =
+  List.fold_left (fun x (_, v) -> f x v) init asc
 
 
 let to_value_list asc = List.map (fun (k, v) -> v) asc
+
+
+let rec fold f init asc =
+  List.fold_left f init asc

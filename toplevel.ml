@@ -1,3 +1,4 @@
+#load "assoc.cmo";;
 #load "stacklist.cmo";;
 #load "tyvarid.cmo";;
 #load "range.cmo";;
