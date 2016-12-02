@@ -973,16 +973,21 @@ nxbot:
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlet nxlist ELIST        { make_standard (Tok $1) (Tok $4) (UTListCons($2, $3)) }
   | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf($2)) }
+  | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
 /* -- for syntax error log -- */
   | BLIST error   { report_error (Tok $1) "[" }
   | OPENSTR error { report_error (Tok $1) "{ (beginning of text area)" }
   | LPAREN error  { report_error (Tok $1) "(" }
+  | BRECORD error { report_error (Tok $1) "(|" }
 /* -- -- */
 ;
 nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT nxrecord { (extract_name $1, $3) :: $5 }
+/* -- for syntax error log -- */
+  | VAR DEFEQ error { report_error (TokArg $1) ((extract_name $1) ^ " =") }
+/* -- -- */
 ;
 nxlist:
   | LISTPUNCT nxlet nxlist { make_standard (Tok $1) (Untyped $3) (UTListCons($2, $3)) }
