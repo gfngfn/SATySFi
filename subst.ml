@@ -30,14 +30,13 @@ let rec find (theta : t) (key : Tyvarid.t) =
 
 
 let eliminate (theta : t) (key : Tyvarid.t) =
-  let rec sub constr theta key =
+  let rec aux constr theta key =
     match theta with
     | []             -> raise Not_found
     | (k, v) :: tail ->
-        if Tyvarid.same k key then constr @ tail else sub ((k, v) :: constr) tail key
+        if Tyvarid.same k key then constr @ tail else aux ((k, v) :: constr) tail key
   in
-    sub [] theta key
-
+    aux [] theta key
 
 
 let rec overwrite_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
@@ -69,12 +68,12 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
 
 
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-  let rec iter theta tyenvlst =
+  let rec aux theta tyenvlst =
     match tyenvlst with
     | []                     -> tyenvlst
-    | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (iter theta tail)
+    | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (aux theta tail)
   in
-    Typeenv.from_list (iter theta (Typeenv.to_list tyenv))
+    Typeenv.from_list (aux theta (Typeenv.to_list tyenv))
 
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
@@ -97,13 +96,13 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
     | _                         -> (false, dr)
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
-  let dummy = Range.dummy "emerge_in_list" in
+  let dr = Range.dummy "emerge_in_list" in
     match tylist with
-    | []           -> (false, dummy)
+    | []           -> (false, dr)
     | tyhd :: tytl ->
         let (bhd, rnghd) = emerge_in tvid tyhd in
         let (btl, rngtl) = emerge_in_list tvid tytl in
-          if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dummy)
+          if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dr)
 
 
 let rec overwrite (theta : t) (key : Tyvarid.t) (value : type_struct) =
