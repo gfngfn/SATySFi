@@ -8,6 +8,7 @@ type class_name       = string
 type type_name        = string
 type constructor_name = string
 type module_name      = string
+type field_name       = string
 
 type scope_kind = GlobalScope | LocalScope of module_name
 
@@ -26,6 +27,7 @@ and type_struct_main =
   | VariantType  of (type_struct list) * type_name
   | ForallType   of Tyvarid.t * type_struct
   | TypeArgument of var_name
+  | RecordType   of (field_name, type_struct) Assoc.t
 
 type id_name_arg =
   | IDName       of id_name
@@ -62,6 +64,9 @@ and untyped_abstract_tree_main =
 (* -- tuple value -- *)
   | UTTupleCons            of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfTuple
+(* -- record value -- *)
+  | UTRecord               of (field_name * untyped_abstract_tree) list
+  | UTAccessField          of untyped_abstract_tree * field_name
 (* -- fundamental -- *)
   | UTContentOf            of var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
@@ -89,18 +94,22 @@ and untyped_abstract_tree_main =
 (* -- class and id option -- *)
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTClassAndIDRegion     of untyped_abstract_tree
+
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
+
 and untyped_variant_cons = Range.t * untyped_variant_cons_main
 and untyped_variant_cons_main =
   | UTVariantCons          of constructor_name * type_struct * untyped_variant_cons
   | UTEndOfVariant
+
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons
                                 * type_name * untyped_variant_cons * untyped_mutual_variant_cons
   | UTMutualSynonymCons    of untyped_type_argument_cons
                                 * type_name * type_struct * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
+
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
   | UTPNumericConstant     of int
@@ -115,13 +124,16 @@ and untyped_pattern_tree_main =
   | UTPVariable            of var_name
   | UTPAsVariable          of var_name * untyped_pattern_tree
   | UTPConstructor         of constructor_name * untyped_pattern_tree
+
 and untyped_pattern_match_cons =
   | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTPatternMatchConsWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree * untyped_pattern_match_cons
   | UTEndOfPatternMatch
+
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
+
 and untyped_module_tree = Range.t * untyped_module_tree_main
 and untyped_module_tree_main =
   | UTMFinishModule
@@ -132,22 +144,29 @@ and untyped_module_tree_main =
   | UTMPrivateLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
   | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
   | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
+
 and untyped_type_argument_cons =
   | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
   | UTEndOfTypeArgument
+
 
 (* ---- typed ---- *)
 type argument_variable_cons =
   | ArgumentVariableCons  of var_name * argument_variable_cons
   | EndOfArgumentVariable
+
 type argument_cons =
   | ArgumentCons          of abstract_tree * argument_cons
   | EndOfArgument
+
 and mutual_let_cons =
   | MutualLetCons         of var_name * abstract_tree * mutual_let_cons
   | EndOfMutualLet
+
 and environment = (var_name, location) Hashtbl.t
+
 and location = abstract_tree ref
+
 and abstract_tree =
 (* -- basic value -- *)
   | StringEmpty
@@ -168,6 +187,9 @@ and abstract_tree =
 (* -- tuple value -- *)
   | TupleCons             of abstract_tree * abstract_tree
   | EndOfTuple
+(* -- record value -- *)
+  | Record                of (field_name, abstract_tree) Assoc.t
+  | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
   | ContentOf             of var_name

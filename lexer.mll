@@ -129,6 +129,8 @@ rule numexpr = parse
         else
           RPAREN(get_pos lexbuf)
     }
+  | "(|" { BRECORD(get_pos lexbuf) }
+  | "|)" { ERECORD(get_pos lexbuf) }
   | "[" { BLIST(get_pos lexbuf) }
   | "]" { ELIST(get_pos lexbuf) }
   | ";" { LISTPUNCT(get_pos lexbuf) }

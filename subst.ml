@@ -50,6 +50,7 @@ let rec overwrite_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : t
     | TypeVariable(k)                       -> if k = key then value else (rng, TypeVariable(k))
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
+    | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
     | other                                 -> (rng, other)
 
 
@@ -64,6 +65,7 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
     | TypeVariable(tv)                        -> ( try find theta tv with Not_found -> (rng, TypeVariable(tv)) )
     | VariantType(tyarglist, varntnm)         -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter tycont))
+    | RecordType(asc)                         -> (rng, RecordType(Assoc.map_value iter asc))
     | other                                   -> (rng, other)
 
 
@@ -78,21 +80,24 @@ let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
   let dr = Range.dummy "emerge_in" in
+  let iter      = emerge_in tvid in
+  let iter_list = emerge_in_list tvid in
   let (rng, tymain) = tystr in
     match tymain with
     | FuncType(dom, cod)        ->
-        let (bdom, rngdom) = emerge_in tvid dom in
-        let (bcod, rngcod) = emerge_in tvid cod in
+        let (bdom, rngdom) = iter dom in
+        let (bcod, rngcod) = iter cod in
           if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dr)
-    | ListType(cont)            -> emerge_in tvid cont
-    | RefType(cont)             -> emerge_in tvid cont
-    | ProductType(lst)          -> emerge_in_list tvid lst
+    | ListType(cont)            -> iter cont
+    | RefType(cont)             -> iter cont
+    | ProductType(lst)          -> iter_list lst
     | TypeVariable(tvidx)       -> (Tyvarid.same tvidx tvid, rng)
-    | VariantType(lst, _)       -> emerge_in_list tvid lst
+    | VariantType(lst, _)       -> iter_list lst
     | TypeSynonym(lst, _, cont) ->
-        let (bcont, rngcont) = emerge_in tvid cont in
-        let (blst, rnglst)   = emerge_in_list tvid lst in
+        let (bcont, rngcont) = iter cont in
+        let (blst, rnglst)   = iter_list lst in
           if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
+    | RecordType(asc)           -> iter_list (Assoc.to_value_list asc)
     | _                         -> (false, dr)
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =

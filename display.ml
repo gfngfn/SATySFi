@@ -116,6 +116,9 @@ and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) 
 
   | TypeArgument(tyvarnm) -> "['" ^ tyvarnm ^ "]"
 
+  | RecordType(asc) -> "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_sub tystr lst ^ " ; ") "" asc) ^ "}"
+
+
 and string_of_type_argument_list tyarglist lst =
   match tyarglist with
   | []           -> ""
@@ -309,6 +312,8 @@ let rec string_of_type_struct_basic tystr =
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
     | ForallType(tvid, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
+    | RecordType(asc)           ->
+        "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_basic tystr ^ " ; ") "" asc) ^ "}"
 
 and string_of_type_argument_list_basic tyarglist =
   match tyarglist with
