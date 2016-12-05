@@ -25,16 +25,13 @@ let append_module_name (mdlnm : module_name) (varntnm : type_name) =
 (* public *)
 let add (varntenv : t) (constrnm : constructor_name) (tystr : type_struct) (varntnm : type_name) =
   let (defedtylst, varntenvmain) = varntenv in
-  let rec iter varntenvmain constrnm tystr varntnm =
+  let rec aux varntenvmain constrnm tystr varntnm =
     match varntenvmain with
-    | []                -> (constrnm, varntnm, tystr) :: []
-    | (c, v, t) :: tail ->
-        if c = constrnm then
-          (constrnm, varntnm, tystr) :: tail
-        else
-          (c, v, t) :: (iter tail constrnm tystr varntnm)
+    | []                                   -> (constrnm, varntnm, tystr) :: []
+    | (c, v, t) :: tail  when c = constrnm -> (constrnm, varntnm, tystr) :: tail
+    | (c, v, t) :: tail                    -> (c, v, t) :: (aux tail constrnm tystr varntnm)
   in
-    (defedtylst, iter varntenvmain constrnm tystr varntnm)
+    (defedtylst, aux varntenvmain constrnm tystr varntnm)
 
 
 (* public *)
@@ -43,9 +40,9 @@ let rec add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
   
 let rec find_definition_kind (defedtylst : defined_type_list) (tynm : type_name) =
   match defedtylst with
-  | []                            -> raise Not_found
-  | (tn, ts) :: tl when tn = tynm -> ts
-  | _ :: tl                       -> find_definition_kind tl tynm
+  | []                             -> raise Not_found
+  | (tn, ts) ::  tl when tn = tynm -> ts
+  | _ :: tl                        -> find_definition_kind tl tynm
 
 
 let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyargnm : var_name) =
@@ -151,6 +148,7 @@ let rec make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (t
         (* maybe contains bugs, when tvid = -var_id *)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
     | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, tycont)
+    | RecordType(asc)                      -> RecordType(Assoc.map_value iter asc)
     | other                                -> other
   in
     (rng, tymainnew)
@@ -237,7 +235,7 @@ let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : typ
 let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
                            (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
 
-  let rec iter mdlnm varntenv tyargcons varntnm utvc =
+  let rec aux mdlnm varntenv tyargcons varntnm utvc =
     let (rng, utvcmain) = utvc in
       match utvcmain with
       | UTEndOfVariant                           -> varntenv
@@ -245,11 +243,11 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
           let tystr_new    = fix_manual_type varntenv tyargcons tystr in
           let tystr_forall = make_type_argument_quantified tyargcons tystr_new in
           let varntenv_new = add varntenv constrnm tystr_forall (append_module_name mdlnm varntnm) in
-            iter mdlnm varntenv_new tyargcons varntnm tailcons
+            aux mdlnm varntenv_new tyargcons varntnm tailcons
   in
   let mdlvarntnm = append_module_name mdlnm varntnm in
   let tyarglen   = type_argument_length tyargcons in
-    iter mdlnm (register_variant varntenv tyarglen mdlvarntnm) tyargcons varntnm utvc
+    aux mdlnm (register_variant varntenv tyarglen mdlvarntnm) tyargcons varntnm utvc
 
 
 (* public *)
