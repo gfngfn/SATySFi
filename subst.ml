@@ -30,24 +30,24 @@ let rec find (theta : t) (key : Tyvarid.t) =
 
 
 let eliminate (theta : t) (key : Tyvarid.t) =
-  let rec aux constr theta key =
+  let rec aux accrev theta key =
     match theta with
     | []             -> raise Not_found
-    | (k, v) :: tail ->
-        if Tyvarid.same k key then constr @ tail else aux ((k, v) :: constr) tail key
+    | (k, v) :: tail -> if Tyvarid.same k key then List.append accrev tail
+                                              else aux ((k, v) :: accrev) tail key
   in
     aux [] theta key
 
 
 let rec overwrite_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
-  let iter = fun ty -> overwrite_type_struct ty key value in
+  let iter = (fun ty -> overwrite_type_struct ty key value) in
   let (rng, tymain) = tystr in
     match tymain with
     | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
     | ListType(cont)                        -> (rng, ListType(iter cont))
     | RefType(cont)                         -> (rng, RefType(iter cont))
     | ProductType(lst)                      -> (rng, ProductType(List.map iter lst))
-    | TypeVariable(k)                       -> if k = key then value else (rng, TypeVariable(k))
+    | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
@@ -62,7 +62,7 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
     | ListType(tycont)                        -> (rng, ListType(iter tycont))
     | RefType(tycont)                         -> (rng, RefType(iter tycont))
     | ProductType(tylist)                     -> (rng, ProductType(List.map iter tylist))
-    | TypeVariable(tv)                        -> ( try find theta tv with Not_found -> (rng, TypeVariable(tv)) )
+    | TypeVariable(tv)                        -> begin try find theta tv with Not_found -> (rng, TypeVariable(tv)) end
     | VariantType(tyarglist, varntnm)         -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter tycont))
     | RecordType(asc)                         -> (rng, RecordType(Assoc.map_value iter asc))
@@ -70,12 +70,7 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
 
 
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-  let rec aux theta tyenvlst =
-    match tyenvlst with
-    | []                     -> tyenvlst
-    | (varnm, tystr) :: tail -> (varnm, apply_to_type_struct theta tystr) :: (aux theta tail)
-  in
-    Typeenv.from_list (aux theta (Typeenv.to_list tyenv))
+    Typeenv.from_list (List.map (fun (varnm, tystr) -> (varnm, apply_to_type_struct theta tystr)) (Typeenv.to_list tyenv))
 
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
@@ -112,11 +107,9 @@ and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
 
 let rec overwrite (theta : t) (key : Tyvarid.t) (value : type_struct) =
   match theta with
-  | []             -> []
-  | (k, v) :: tail ->
-      if Tyvarid.same k key then
-        (key, value) :: (overwrite tail key value)
-      else (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
+  | []                                      -> []
+  | (k, v) :: tail  when Tyvarid.same k key -> (key, value) :: (overwrite tail key value)
+  | (k, v) :: tail                          -> (k, (overwrite_type_struct v key value)) :: (overwrite tail key value)
 
 
 let overwrite_or_add (theta : t) (key : Tyvarid.t) (value : type_struct) =
