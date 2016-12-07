@@ -25,7 +25,7 @@ let add (theta : t) (key : Tyvarid.t) (value : type_struct) =
     match theta with
     | []             -> List.rev ((key, value) :: accrev)
     | (k, v) :: tail -> if Tyvarid.same k key then List.rev_append accrev ((key, value) :: tail)
-                                              else aux key value theta ((k, v) :: accrev)
+                                              else aux key value tail ((k, v) :: accrev)
   in
     aux key value theta []
 
@@ -190,9 +190,8 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
   match eqnlst with
   | []                          -> acctheta
   | (tystr1, tystr2) :: eqntail ->
-    begin                                                                                (* for debug *)
-      print_for_debug_subst ("@@@@ [" ^ (string_of_type_struct_basic tystr1)             (* for debug *)
-                             ^ "] = [" ^ (string_of_type_struct_basic tystr2) ^ "]\n") ; (* for debug *)
+    let _ = print_for_debug_subst ("@@@@ [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
+                                   ^ "] = [" ^ (string_of_type_struct_basic tystr2) ^ "]\n") in (* for debug *)
     let iter_none newacctheta          = unify_sub eqntail newacctheta in
     let iter_add addedeqns newacctheta = unify_sub (List.append addedeqns eqntail) newacctheta in
     let iter_complete x y              = unify_sub x y in
@@ -231,7 +230,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
       | (TypeVariable(tvid1), _) ->
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
-                    report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
+                      report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
                   else
                     let rng = if Range.is_dummy rng1 then rng2 else rng1 in
                       iter_none (add acctheta tvid1 (rng, tymain2))
@@ -239,7 +238,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
       | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)] acctheta
 
       | _                    -> raise InternalContradictionError
-end(* for debug *)
+
 
 (* PUBLIC *)
 let unify (tystr1 : type_struct) (tystr2 : type_struct) =

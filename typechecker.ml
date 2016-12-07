@@ -87,6 +87,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   | UTApply(utast1, utast2) ->
       let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
       let (e2, ty2, theta2) = typecheck qtfbl varntenv (theta1 @=> tyenv) utast2 in
+      let _ = print_for_debug_typecheck ("\n#Apply " ^ (string_of_ast (Apply(e1, e2)))) in (* for debug *)
 (*      let ty1rfn = theta2 @> ty1 in
         begin
           match ty1rfn with
@@ -103,11 +104,10 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
           | _ -> *)
               let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
               let thetau = Subst.unify (theta2 @> ty1) (get_range utast1, FuncType(ty2, beta)) in
-              let _ = print_string "[point]" ; read_line () in (* for debug *)
                 let theta_result = thetau @@ theta2 @@ theta1 in
                 let type_result  = thetau @> beta in
                   begin                                                                               (* for debug *)
-                    print_for_debug_typecheck ("\n#Apply " ^ (string_of_ast (Apply(e1, e2))) ^ " : "  (* for debug *)
+                    print_for_debug_typecheck (" : "  (* for debug *)
                       ^ (string_of_type_struct_basic beta) ^ " = "                                    (* for debug *)
                       ^ (string_of_type_struct_basic type_result) ^ "\n") ;                           (* for debug *)
                     print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;         (* for debug *)
