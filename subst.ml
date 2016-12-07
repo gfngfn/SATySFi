@@ -29,27 +29,20 @@ let add (theta : t) (key : Tyvarid.t) (value : type_struct) =
   in
     aux key value theta []
 
+
 let find (theta : t) (key : Tyvarid.t) =
   let (_, value) = List.find (fun (k, v) -> Tyvarid.same k key) theta in
     value
 
+
 let mem (key : Tyvarid.t) (theta : t) =
-  try
+  try 
     let _ = find theta key in true
   with
   | Not_found -> false
 
-(*
-let eliminate (theta : t) (key : Tyvarid.t) =
-  let rec aux accrev theta key =
-    match theta with
-    | []             -> raise Not_found
-    | (k, v) :: tail -> if Tyvarid.same k key then List.append accrev tail
-                                              else aux ((k, v) :: accrev) tail key
-  in
-    aux [] theta key
-*)
 
+(* PUBLIC *)
 let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
   let iter = apply_to_type_struct theta in
   let (rng, tymain) = tystr in
@@ -65,6 +58,7 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
     | other                                   -> (rng, other)
 
 
+(* PUBLIC *)
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
     Typeenv.map (fun (varnm, tystr) -> (varnm, apply_to_type_struct theta tystr)) tyenv
 
@@ -114,17 +108,6 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
     | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
     | other                                 -> (rng, other)
-
-
-let rec overwrite (theta : t) (key : Tyvarid.t) (value : type_struct) =
-  match theta with
-  | []                                      -> []
-  | (k, v) :: tail -> if Tyvarid.same k key then (key, value) :: (overwrite tail key value)
-                                            else (k, (replace_type_variable v key value)) :: (overwrite tail key value)
-
-
-let overwrite_or_add (theta : t) (key : Tyvarid.t) (value : type_struct) =
-  overwrite (add theta key value) key value
 
 
 let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
@@ -181,27 +164,6 @@ let report_contradiction_error (tystr1 : type_struct) (tystr2 : type_struct) =
   in
     raise (ContradictionError(msg))
 
-(*
-let rec fix_subst (theta : t) = fix_subst_sub theta theta
-and fix_subst_sub rest from =
-  match rest with
-  | []                    -> begin check_emergence from ; from end
-  | (tvid, tystr) :: tail -> fix_subst_sub tail (overwrite from tvid tystr)
-
-
-and check_emergence (theta : t) =
-  match theta with
-  | []                    -> ()
-  | (tvid, tystr) :: tail ->
-      let (b, rng) = emerge_in tvid tystr in
-        if b then
-          if Range.is_dummy rng then
-            raise InternalInclusionError
-          else
-            report_inclusion_error (rng, TypeVariable(tvid)) tystr
-        else
-          check_emergence tail
-*)
 
 (* PUBLIC *)
 let compose (theta2 : t) (theta1 : t) =
@@ -210,20 +172,9 @@ let compose (theta2 : t) (theta1 : t) =
     List.append res1 res2
 
 
+(* PUBLIC *)
 let compose_list thetalst = List.fold_right compose thetalst empty
-(*
-and compose_prim (theta2 : t) (theta1 : t) =
-  match theta2 with
-  | []                     -> theta1
-  | (tvid, tystr2) :: tail ->
-      begin
-        try
-          let tystr1 = find theta1 tvid in
-            (tvid, tystr1) :: (compose_prim (eliminate theta1 tvid) (compose_prim tail (unify tystr1 tystr2)))
-        with
-        | Not_found -> compose_prim tail (overwrite_or_add theta1 tvid tystr2)
-      end
-*)
+
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
   let f = (fun tystr -> replace_type_variable tystr key value) in
@@ -235,6 +186,7 @@ let replace_type_variable_in_equations (eqnlst : (type_struct * type_struct) lis
     List.map (fun (tystr1, tystr2) -> (f tystr1, f tystr2)) eqnlst
 
 
+(* PUBLIC *)
 let rec unify (tystr1 : type_struct) (tystr2 : type_struct) =
   print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                          ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
@@ -298,15 +250,9 @@ and unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
   | _                    -> raise InternalContradictionError
 
-(*
-and unify_sub_list (tylist1 : type_struct list) (tylist2 : type_struct list) =
-  match (tylist1, tylist2) with
-  | ([], [])                 -> empty
-  | (hd1 :: tl1, hd2 :: tl2) -> compose (unify_sub hd1 hd2) (unify_sub_list tl1 tl2)
-  | _                        -> raise InternalContradictionError
-*)
 
 (* for test *)
+(* PUBLIC *)
 let string_of_subst (theta : t) =
   let rec iter (theta : t) =
     match theta with
