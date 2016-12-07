@@ -6,7 +6,7 @@ val empty : ('a, 'b) t
 
 val add : ('a, 'b) t -> 'a -> 'b -> ('a, 'b) t
 
-val find : ('a, 'b) t -> 'a -> 'b
+val find : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> 'a -> 'b
 
 val map_value : ('b -> 'c) -> ('a, 'b) t -> ('a, 'c) t
 

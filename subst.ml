@@ -20,15 +20,26 @@ let print_for_debug_subst msg =
 let empty = []
 
 
-let add (theta : t) (key : Tyvarid.t) (value : type_struct) = (key, value) :: theta
+let add (theta : t) (key : Tyvarid.t) (value : type_struct) =
+  let rec aux key value theta accrev =
+    match theta with
+    | []             -> List.rev ((key, value) :: accrev)
+    | (k, v) :: tail -> if Tyvarid.same k key then List.rev_append accrev ((key, value) :: tail)
+                                              else aux key value theta ((k, v) :: accrev)
+  in
+    aux key value theta []
 
+let find (theta : t) (key : Tyvarid.t) =
+  let (_, value) = List.find (fun (k, v) -> Tyvarid.same k key) theta in
+    value
 
-let rec find (theta : t) (key : Tyvarid.t) =
-  match theta with
-  | []             -> raise Not_found
-  | (k, v) :: tail -> if Tyvarid.same k key then v else find tail key
+let mem (key : Tyvarid.t) (theta : t) =
+  try
+    let _ = find theta key in true
+  with
+  | Not_found -> false
 
-
+(*
 let eliminate (theta : t) (key : Tyvarid.t) =
   let rec aux accrev theta key =
     match theta with
@@ -37,7 +48,7 @@ let eliminate (theta : t) (key : Tyvarid.t) =
                                               else aux ((k, v) :: accrev) tail key
   in
     aux [] theta key
-
+*)
 
 let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
   let iter = apply_to_type_struct theta in
@@ -55,7 +66,7 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
 
 
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-    Typeenv.from_list (List.map (fun (varnm, tystr) -> (varnm, apply_to_type_struct theta tystr)) (Typeenv.to_list tyenv))
+    Typeenv.map (fun (varnm, tystr) -> (varnm, apply_to_type_struct theta tystr)) tyenv
 
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
@@ -170,7 +181,7 @@ let report_contradiction_error (tystr1 : type_struct) (tystr2 : type_struct) =
   in
     raise (ContradictionError(msg))
 
-
+(*
 let rec fix_subst (theta : t) = fix_subst_sub theta theta
 and fix_subst_sub rest from =
   match rest with
@@ -190,12 +201,17 @@ and check_emergence (theta : t) =
             report_inclusion_error (rng, TypeVariable(tvid)) tystr
         else
           check_emergence tail
+*)
+
+(* PUBLIC *)
+let compose (theta2 : t) (theta1 : t) =
+  let res1 = List.map (fun (tvid, tystr) -> (tvid, apply_to_type_struct theta2 tystr)) theta1 in
+  let res2 = List.filter (fun (tvid, tystr) -> not (mem tvid theta1)) theta2 in
+    List.append res1 res2
 
 
-let rec compose (theta2 : t) (theta1 : t) = fix_subst (compose_prim theta2 theta1)
-
-and compose_list thetalst = List.fold_right compose thetalst empty
-
+let compose_list thetalst = List.fold_right compose thetalst empty
+(*
 and compose_prim (theta2 : t) (theta1 : t) =
   match theta2 with
   | []                     -> theta1
@@ -207,80 +223,88 @@ and compose_prim (theta2 : t) (theta1 : t) =
         with
         | Not_found -> compose_prim tail (overwrite_or_add theta1 tvid tystr2)
       end
+*)
+
+let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
+  let f = (fun tystr -> replace_type_variable tystr key value) in
+    List.map (fun (tvid, tystr) -> (tvid, f tystr)) theta
 
 
-and unify (tystr1 : type_struct) (tystr2 : type_struct) =
+let replace_type_variable_in_equations (eqnlst : (type_struct * type_struct) list) (key : Tyvarid.t) (value : type_struct) =
+  let f = (fun tystr -> replace_type_variable tystr key value) in
+    List.map (fun (tystr1, tystr2) -> (f tystr1, f tystr2)) eqnlst
+
+
+let rec unify (tystr1 : type_struct) (tystr2 : type_struct) =
   print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                          ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
-    match (tystr1, tystr2) with
-    | ((_, TypeSynonym(tyarglist1, _, tycont1)), _) -> unify_sub (Variantenv.apply_to_type_synonym tyarglist1 tycont1) tystr2
-    | (_, (_, TypeSynonym(tyarglist2, _, tycont2))) -> unify_sub tystr1 (Variantenv.apply_to_type_synonym tyarglist2 tycont2)
-    | _                                             -> unify_sub tystr1 tystr2
+    unify_sub [(tystr1, tystr2)] empty
   with
   | InternalInclusionError     -> report_inclusion_error tystr1 tystr2
   | InternalContradictionError -> report_contradiction_error tystr1 tystr2
 
 
-and unify_sub (tystr1 : type_struct) (tystr2 : type_struct) =
-  print_for_debug_subst ("  [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
-                     ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;     (* for debug *)
-  let (rng1, tymain1) = tystr1 in
-  let (rng2, tymain2) = tystr2 in
-  match (tymain1, tymain2) with
-  | (TypeSynonym(_, _, _), _) -> unify tystr1 tystr2
-  | (_, TypeSynonym(_, _, _)) -> unify tystr1 tystr2
+and unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
+  match eqnlst with
+  | []                          -> acctheta
+  | (tystr1, tystr2) :: eqntail ->
+    let iter_none newacctheta          = unify_sub eqntail newacctheta in
+    let iter_add addedeqns newacctheta = unify_sub (List.append addedeqns eqntail) newacctheta in
+    let iter_complete                  = unify_sub in
+    let (rng1, tymain1) = tystr1 in
+    let (rng2, tymain2) = tystr2 in
+      match (tymain1, tymain2) with
+      | (TypeSynonym(tyarglist1, _, tycont1), _) -> iter_add [(Variantenv.apply_to_type_synonym tyarglist1 tycont1, tystr2)] acctheta
+      | (_, TypeSynonym(tyarglist2, _, tycont2)) -> iter_add [(tystr1, Variantenv.apply_to_type_synonym tyarglist2 tycont2)] acctheta
 
-  | (IntType, IntType)        -> empty
-  | (StringType, StringType)  -> empty
-  | (BoolType, BoolType)      -> empty
-  | (UnitType, UnitType)      -> empty
+      | (IntType, IntType)        -> iter_none acctheta
+      | (StringType, StringType)  -> iter_none acctheta
+      | (BoolType, BoolType)      -> iter_none acctheta
+      | (UnitType, UnitType)      -> iter_none acctheta
 
-  | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> compose (unify_sub dom1 dom2) (unify_sub cod1 cod2)
+      | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> iter_add [(dom1, dom2); (cod1, cod2)] acctheta
+      | (ProductType(tylist1), ProductType(tylist2)) -> iter_add (List.combine tylist1 tylist2) acctheta
+      | (ListType(cont1), ListType(cont2))           -> iter_add [(cont1, cont2)] acctheta
+      | (RefType(cont1), RefType(cont2))             -> iter_add [(cont1, cont2)] acctheta
+      | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
+                            when varntnm1 = varntnm2 -> iter_add (List.combine tyarglist1 tyarglist2) acctheta
 
-  | (ListType(cont1), ListType(cont2))           -> unify_sub cont1 cont2
+      | (TypeVariable(tvid1), _) ->
+          begin
+            match tymain2 with
+            | TypeVariable(tvid2)  when Tyvarid.same tvid1 tvid2 -> iter_none acctheta
+            | TypeVariable(tvid2) ->
+                let () = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
+                  if Range.is_dummy rng1 then
+                    let neweqnlst = replace_type_variable_in_equations eqntail tvid1 tystr2 in
+                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 tystr2) tvid1 tystr2 in
+                      iter_complete neweqnlst newacctheta
+                  else
+                    let neweqnlst = replace_type_variable_in_equations eqntail tvid2 tystr1 in
+                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid2 tystr1) tvid2 tystr1 in
+                      iter_complete neweqnlst newacctheta
 
-  | (RefType(cont1), RefType(cont2))             -> unify_sub cont1 cont2
+            | other ->
+                let (b, _) = emerge_in tvid1 tystr2 in
+                  if b then
+                    report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
+                  else
+                    if Range.is_dummy rng1 then iter_none (add acctheta tvid1 (rng2, tymain2))
+                                           else iter_none (add acctheta tvid1 (rng1, tymain2))
+          end
 
-  | (ProductType(tylist1), ProductType(tylist2)) -> unify_sub_list tylist1 tylist2
-
-  | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
-                        when varntnm1 = varntnm2 -> unify_sub_list tyarglist1 tyarglist2
-
-  | (TypeVariable(tvid1), _) ->
-      begin
-        match tymain2 with
-        | TypeVariable(tvid2) ->
-            if Tyvarid.same tvid1 tvid2 then
-              empty
-            else
-              let (tvid1new, tvid2new) = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
-                if Tyvarid.less_than tvid1 tvid2 then
-                  if Range.is_dummy rng2 then [(tvid1new, (rng1, TypeVariable(tvid2new)))]
-                                         else [(tvid1new, (rng2, TypeVariable(tvid2new)))]
-                else
-                  if Range.is_dummy rng1 then [(tvid2new, (rng1, TypeVariable(tvid1new)))]
-                                         else [(tvid2new, (rng2, TypeVariable(tvid1new)))]
-        | other ->
-            let (b, _) = emerge_in tvid1 tystr2 in
-              if b then
-                report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
-              else
-                if Range.is_dummy rng1 then [(tvid1, (rng2, tymain2))]
-                                       else [(tvid1, (rng1, tymain2))]
-      end
-
-  | (_, TypeVariable(_)) -> unify_sub tystr2 tystr1
+  | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)] acctheta
 
   | _                    -> raise InternalContradictionError
 
-
+(*
 and unify_sub_list (tylist1 : type_struct list) (tylist2 : type_struct list) =
   match (tylist1, tylist2) with
   | ([], [])                 -> empty
   | (hd1 :: tl1, hd2 :: tl2) -> compose (unify_sub hd1 hd2) (unify_sub_list tl1 tl2)
   | _                        -> raise InternalContradictionError
-
+*)
 
 (* for test *)
 let string_of_subst (theta : t) =

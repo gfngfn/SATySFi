@@ -31,20 +31,18 @@ let show_direct (tvid : t) =
 
 let is_quantifiable (tvid : t) =
   let (_, q) = tvid in
-  match !q with
-  | Quantifiable   -> true
-  | Unquantifiable -> false
+    match !q with
+    | Quantifiable   -> true
+    | Unquantifiable -> false
+
 
 let make_unquantifiable_if_needed (tvid1, tvid2) =
-  let (tvn1, q1) = tvid1 in
-  let (tvn2, q2) = tvid2 in
-    begin
-      ( match (!q1, !q2) with
-        | (Quantifiable, Quantifiable) -> ()
-        | _                            -> begin q1 := Unquantifiable ; q2 := Unquantifiable end
-      ) ;
-      (tvid1, tvid2)
-    end
+  let (_, q1) = tvid1 in
+  let (_, q2) = tvid2 in
+    match (!q1, !q2) with
+    | (Quantifiable, Quantifiable) -> ()
+    | _                            -> begin q1 := Unquantifiable ; q2 := Unquantifiable end
+
 
 let set_quantifiability qtfbl tvid =
   let (tvn, q) = tvid in

@@ -12,11 +12,10 @@ let rec add asc key value =
   | (k, v) :: tail               -> (k, v) :: (add tail key value)
 
 
-let rec find asc key =
+let rec find ?eq:(eq = (=)) asc key =
   match asc with
-  | []                           -> raise Not_found
-  | (k, v) :: tail  when k = key -> v
-  | (k, v) :: tail               -> find tail key
+  | []             -> raise Not_found
+  | (k, v) :: tail -> if eq k key then v else find tail key
 
 
 let rec map_value f asc =

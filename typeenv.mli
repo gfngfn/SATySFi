@@ -8,6 +8,8 @@ val to_list : t -> (var_name * type_struct) list
 
 val from_list : (var_name * type_struct) list -> t
 
+val map : ((var_name * type_struct) -> (var_name * type_struct)) -> t -> t
+
 val add : t -> var_name -> type_struct -> t
 
 val find : t -> var_name -> type_struct

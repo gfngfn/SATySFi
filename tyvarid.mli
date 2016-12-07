@@ -15,6 +15,6 @@ val show_direct : t -> string
 
 val is_quantifiable : t -> bool
 
-val make_unquantifiable_if_needed : (t * t) -> (t * t)
+val make_unquantifiable_if_needed : (t * t) -> unit
 
 val set_quantifiability : quantifiability -> t -> t

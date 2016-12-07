@@ -12,6 +12,9 @@ let to_list tyenv = tyenv
 let from_list lst = lst
 
 
+let map f tyenv = List.map f tyenv
+
+
 let rec add (tyenv : t) (varnm : var_name) (tystr : type_struct) =
   match tyenv with
   | []                                -> (varnm, tystr) :: []
