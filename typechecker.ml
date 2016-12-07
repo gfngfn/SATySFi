@@ -13,7 +13,7 @@ let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 
-let report_error_with_range (rng : Range.t) msg =
+let report_error_with_range rng msg =
   raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))
 
 
