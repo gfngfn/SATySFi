@@ -62,8 +62,8 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
           let (econt, tycont, thetacont) = typecheck qtfbl varntenv tyenv utastcont in
 (*          let tyvarnt = Typeenv.overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
           let tyvarnt = tyfree in
-            let theta_result    = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
-            let type_result_sub = Subst.apply_to_type_struct theta_result (rng, VariantType(tyarglist, varntnm)) in
+            let theta_result    = (Subst.unify tycont tyvarnt) @@ thetacont in
+            let type_result_sub = theta_result @> (rng, VariantType(tyarglist, varntnm)) in
             let type_result     = Typeenv.overwrite_range_of_type type_result_sub rng in
             begin                                                                                         (* for debug *)
               print_for_debug_typecheck ("#V " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
@@ -100,7 +100,6 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
                 (Apply(e1, e2), type_result, theta_result)
             end                                                                                 (* for debug *)
 
-
   | UTLambdaAbstract(varrng, varnm, utast1) ->
       let beta = (varrng, TypeVariable(Tyvarid.fresh qtfbl)) in
       let (e1, ty1, theta1) = typecheck qtfbl varntenv (Typeenv.add tyenv varnm beta) utast1 in
@@ -111,7 +110,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   | UTLetIn(utmutletcons, utast2) ->
       let (tyenv_forall, _, mutletcons, theta1, _) = make_type_environment_by_let qtfbl varntenv tyenv utmutletcons in
       let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv_forall utast2 in
-        (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
+        (LetIn(mutletcons, e2), ty2, theta2 @@ theta1)
 
   | UTIfThenElse(utastb, utast1, utast2) ->
       let (eb, tyb, thetab) = typecheck qtfbl varntenv tyenv utastb in
@@ -198,7 +197,7 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->
-      let (eitmz, thetaitmz) = typecheck_itemize qtfbl varntenv tyenv utitmz in
+      let (eitmz, thetaitmz) = typecheck_itemize qtfbl varntenv tyenv utitmz Subst.empty in
         (eitmz, (rng, VariantType([], "itemize")), thetaitmz)
 
 (* ---- list ---- *)
@@ -247,23 +246,27 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
         (Module(mdlnm, emdltr, eaft), tyaft, thetaaft @@ thetadef)
 
 
-and typecheck_itemize qtfbl varntenv tyenv (UTItem(utast1, utitmzlst)) =
-    let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-    let (elst, thetalst)  = typecheck_itemize_list qtfbl varntenv (theta1 @=> tyenv) utitmzlst in
-      let theta_result = thetalst @@ theta1 @@ (Subst.unify ty1 (Range.dummy "typecheck_itemize_string", StringType)) in
-        (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), theta_result)
+and typecheck_itemize qtfbl varntenv tyenv (UTItem(utast1, utitmzlst)) (acctheta : Subst.t) =
+  let tyenv1 = acctheta @=> tyenv in
+  let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv1 utast1 in
+  let thetau1a = (Subst.unify ty1 (Range.dummy "typecheck_itemize_string", StringType)) @@ theta1 @@ acctheta in
+  let (elst, thetalst)  = typecheck_itemize_list qtfbl varntenv (thetau1a @=> tyenv1) utitmzlst thetau1a in
+    (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), thetalst)
 
 
-and typecheck_itemize_list qtfbl varntenv tyenv utitmzlst =
+and typecheck_itemize_list qtfbl varntenv tyenv (utitmzlst : untyped_itemize list) (acctheta : Subst.t) =
   match utitmzlst with
-  | []                  -> (EndOfList, Subst.empty)
+  | []                  -> (EndOfList, acctheta)
   | hditmz :: tlitmzlst ->
-      let (ehd, thetahd) = typecheck_itemize qtfbl varntenv tyenv hditmz in
-      let (etl, thetatl) = typecheck_itemize_list qtfbl varntenv (thetahd @=> tyenv) tlitmzlst in
-        (ListCons(ehd, etl), thetatl @@ thetahd)
+      let (ehd, thetahd) = typecheck_itemize qtfbl varntenv tyenv hditmz acctheta in
+      let (etl, thetatl) = typecheck_itemize_list qtfbl varntenv (thetahd @=> tyenv) tlitmzlst thetahd in
+        (ListCons(ehd, etl), thetatl)
 
 
-and typecheck_module qtfbl (veout : Variantenv.t) (teout : Typeenv.t) (vein : Variantenv.t) (tein : Typeenv.t) (mdlnm : module_name) (utmdltr : untyped_module_tree) =
+and typecheck_module
+    qtfbl (veout : Variantenv.t) (teout : Typeenv.t) (vein : Variantenv.t) (tein : Typeenv.t)
+    (mdlnm : module_name) (utmdltr : untyped_module_tree)
+=
   let (rng, utmdldef) = utmdltr in
   match utmdldef with
 
@@ -273,18 +276,18 @@ and typecheck_module qtfbl (veout : Variantenv.t) (teout : Typeenv.t) (vein : Va
       let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
         let teout_new = add_list_to_type_environment "" teout tvtylstout in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
+          (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPublicLetIn(utmutletcons, utmdlaft) ->
       let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
         let teout_new = add_list_to_type_environment mdlnm teout tvtylstout in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
+          (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPrivateLetIn(utmutletcons, utmdlaft) ->
       let (tein_new, _, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
         let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
+          (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft) ->
       let vein_new  = Variantenv.add_mutual_cons (LocalScope(mdlnm)) vein utmutvarntcons in
@@ -301,12 +304,12 @@ and typecheck_module qtfbl (veout : Variantenv.t) (teout : Typeenv.t) (vein : Va
       let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein tein varrng varnm utini in
       let teout_new = add_list_to_type_environment mdlnm teout [(varnm, (varrng, RefType(tyini)))] in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), Subst.compose thetaaft thetaini)
+        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
 
   | UTMPrivateLetMutableIn(varrng, varnm, utini, utmdlaft) ->
       let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein tein varrng varnm utini in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), Subst.compose thetaaft thetaini)
+        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
 
 
 and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * type_struct) list) =
@@ -472,15 +475,15 @@ and make_forall_type_mutual varntenv tyenv tyenv_before_let (theta : Subst.t) tv
   | []                        -> (tyenv, tvtylst_forall)
   | (varnm, tvty) :: tvtytail ->
       let prety = theta @> tvty in
-        begin                                                                                               (* for debug *)
-          print_for_debug_typecheck (Subst.string_of_subst theta) ;                                         (* for debug *)
-          print_for_debug_typecheck ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
+        begin                                                                                                        (* for debug *)
+          print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
+          print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
           let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
 (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
           let tyenv_new = Typeenv.add tyenv varnm forallty in
           let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
             make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail tvtylst_forall_new
-        end                                                                                                 (* for debug *)
+        end                                                                                                          (* for debug *)
 
 
 (* Variantenv.t -> Typeenv.t -> code_range -> var_name -> untyped_abstract_tree ->
@@ -488,8 +491,8 @@ and make_forall_type_mutual varntenv tyenv tyenv_before_let (theta : Subst.t) tv
 and make_type_environment_by_let_mutable varntenv tyenv varrng varnm utastini =
   let (eini, tyini, thetaini) = typecheck Tyvarid.Unquantifiable varntenv tyenv utastini in
     begin                                                                               (* for debug *)
-      print_for_debug_typecheck ("#LM " ^ (string_of_type_struct_basic tyini) ^ "\n") ; (* for debug *)
-      let tyenv_new = Subst.apply_to_type_environment thetaini (Typeenv.add tyenv varnm (varrng, RefType(tyini))) in
+      print_for_debug_typecheck ("#LetMutable " ^ (string_of_type_struct_basic tyini) ^ "\n") ; (* for debug *)
+      let tyenv_new = thetaini @=> (Typeenv.add tyenv varnm (varrng, RefType(tyini))) in
         (tyenv_new, eini, tyini, thetaini)
     end                                                                                 (* for debug *)
 
