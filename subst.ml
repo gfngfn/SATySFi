@@ -11,9 +11,9 @@ type t = (Tyvarid.t * type_struct) list
 
 
 let print_for_debug_subst msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -190,7 +190,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
   match eqnlst with
   | []                          -> acctheta
   | (tystr1, tystr2) :: eqntail ->
-    let _ = print_for_debug_subst ("@@@@ [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
+    let _ = print_for_debug_subst ("  |---- [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
                                    ^ "] = [" ^ (string_of_type_struct_basic tystr2) ^ "]\n") in (* for debug *)
     let iter_none newacctheta          = unify_sub eqntail newacctheta in
     let iter_add addedeqns newacctheta = unify_sub (List.append addedeqns eqntail) newacctheta in
@@ -242,7 +242,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
 (* PUBLIC *)
 let unify (tystr1 : type_struct) (tystr2 : type_struct) =
-  print_for_debug_subst (" unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
+  print_for_debug_subst ("  unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
                          ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
   try
     unify_sub [(tystr1, tystr2)] empty
