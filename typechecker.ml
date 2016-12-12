@@ -410,12 +410,12 @@ and typecheck_pattern qtfbl varntenv tyenv (rng, utpatmain) =
 and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
   let rec add_mutual_variables acctyenv (mutletcons : untyped_mutual_let_cons) =
     let iter = add_mutual_variables in
-    match mutletcons with
-    | UTEndOfMutualLet                             -> (acctyenv, [])
-    | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
-        let beta = (get_range astdef, TypeVariable(Tyvarid.fresh qtfbl)) in
-        let (tyenv_tail, tvtylst) = iter (Typeenv.add acctyenv varnm beta) tailcons in
-          (tyenv_tail, ((varnm, beta) :: tvtylst))
+      match mutletcons with
+      | UTEndOfMutualLet                             -> (acctyenv, [])
+      | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
+          let beta = (get_range astdef, TypeVariable(Tyvarid.fresh qtfbl)) in
+          let (tyenv_tail, tvtylst) = iter (Typeenv.add acctyenv varnm beta) tailcons in
+            (tyenv_tail, ((varnm, beta) :: tvtylst))
   in
   let rec typecheck_mutual_contents
       (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list)
@@ -426,28 +426,28 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
 
     | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, tvty) :: tvtytail) ->
         let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-          begin
-            match tyopt with
-            | None            ->
-                let theta1in  = (Subst.unify ty1 tvty) @@ theta1 @@ accthetain in
-                let theta1out = theta1 @@ accthetaout in
-                  let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
-                  let (tyenvfinal, mutletcons_tail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
-                        typecheck_mutual_contents tyenv_new tailcons tvtytail theta1in theta1out ((varnm, tvty) :: acctvtylstout) in
-                    (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
+        begin
+          match tyopt with
+          | None            ->
+              let theta1in  = (Subst.unify ty1 tvty) @@ theta1 @@ accthetain in
+              let theta1out = theta1 @@ accthetaout in
+                let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
+                let (tyenvfinal, mutletcons_tail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
+                      typecheck_mutual_contents tyenv_new tailcons tvtytail theta1in theta1out ((varnm, tvty) :: acctvtylstout) in
+                  (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
 (*
-            | Some(tystrmanu) ->
-                let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv tystrmanu in
-                let theta1in  = (Subst.unify tystrforin tvty) @@ (Subst.unify ty1 tvty) @@ theta1 in
-                let theta1out = theta1 in
-                  let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
-                  let (tyenv_tail, mutletcons_tail, thetain_tail, thetaout_tail, tvtylstout_tail) =
-                        typecheck_mutual_contents tyenv_new tailcons tvtytail in
-                    let thetain_result  = thetain_tail @@ theta1in in
-                    let thetaout_result = thetaout_tail @@ theta1out in
-                    let tyenv_result    = thetain_result @=> tyenv_tail in
-                    let tvtylstout_result = (varnm, tystrforout) :: tvtylstout_tail in
-                      (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
+          | Some(tystrmanu) ->
+              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv tystrmanu in
+              let theta1in  = (Subst.unify tystrforin tvty) @@ (Subst.unify ty1 tvty) @@ theta1 in
+              let theta1out = theta1 in
+                let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
+                let (tyenv_tail, mutletcons_tail, thetain_tail, thetaout_tail, tvtylstout_tail) =
+                      typecheck_mutual_contents tyenv_new tailcons tvtytail in
+                  let thetain_result  = thetain_tail @@ theta1in in
+                  let thetaout_result = thetaout_tail @@ theta1out in
+                  let tyenv_result    = thetain_result @=> tyenv_tail in
+                  let tvtylstout_result = (varnm, tystrforout) :: tvtylstout_tail in
+                    (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
 *)
           end
 
@@ -481,11 +481,11 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
     (Typeenv.t * abstract_tree * type_struct * Subst.t) *)
 and make_type_environment_by_let_mutable varntenv tyenv varrng varnm utastini =
   let (eini, tyini, thetaini) = typecheck Tyvarid.Unquantifiable varntenv tyenv utastini in
-    begin                                                                               (* for debug *)
+    begin                                                                                       (* for debug *)
       print_for_debug_typecheck ("#LetMutable " ^ (string_of_type_struct_basic tyini) ^ "\n") ; (* for debug *)
       let tyenv_new = thetaini @=> (Typeenv.add tyenv varnm (varrng, RefType(tyini))) in
         (tyenv_new, eini, tyini, thetaini)
-    end                                                                                 (* for debug *)
+    end                                                                                         (* for debug *)
 
 
 (* untyped_abstract_tree -> (type_struct * Variantenv.t * Typeenv.t) *)
