@@ -453,29 +453,28 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
 
     | _ -> assert false
   in
+  (* Typeenv.t -> Typeenv.t -> Subst.t -> (var_name * type_struct) list ->
+      (var_name * type_struct) list -> (Typeenv.t * ((var_name * type_struct) list) *)
+  let rec make_forall_type_mutual tyenv tyenv_before_let (theta : Subst.t) tvtylst tvtylst_forall =
+    match tvtylst with
+    | []                        -> (tyenv, tvtylst_forall)
+    | (varnm, tvty) :: tvtytail ->
+        let prety = theta @> tvty in
+          begin                                                                                                        (* for debug *)
+            print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
+            print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
+            let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
+  (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
+            let tyenv_new = Typeenv.add tyenv varnm forallty in
+            let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
+              make_forall_type_mutual tyenv_new tyenv_before_let theta tvtytail tvtylst_forall_new
+          end                                                                                                          (* for debug *)
+  in
   let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utmutletcons in
   let (tyenv_new, mutletcons, thetain, thetaout, tvtylstout) =
         typecheck_mutual_contents tyenvforrec utmutletcons tvtylstforrec Subst.empty Subst.empty [] in
-  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual varntenv tyenv_new tyenv thetain tvtylstout [] in
+  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual tyenv_new tyenv thetain tvtylstout [] in
     (tyenv_forall, tvtylst_forall, mutletcons, thetain, thetaout)
-
-
-(* Variantenv.t -> Typeenv.t -> Typeenv.t -> Subst.t -> (var_name * type_struct) list ->
-    (var_name * type_struct) list -> (Typeenv.t * ((var_name * type_struct) list) *)
-and make_forall_type_mutual varntenv tyenv tyenv_before_let (theta : Subst.t) tvtylst tvtylst_forall =
-  match tvtylst with
-  | []                        -> (tyenv, tvtylst_forall)
-  | (varnm, tvty) :: tvtytail ->
-      let prety = theta @> tvty in
-        begin                                                                                                        (* for debug *)
-          print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
-          print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-          let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
-(*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
-          let tyenv_new = Typeenv.add tyenv varnm forallty in
-          let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
-            make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail tvtylst_forall_new
-        end                                                                                                          (* for debug *)
 
 
 (* Variantenv.t -> Typeenv.t -> code_range -> var_name -> untyped_abstract_tree ->
