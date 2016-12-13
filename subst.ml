@@ -87,7 +87,7 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
       | BoolType
       | IntType
       | StringType )            -> (false, dr)
-    | ForallType(_, _)          -> (false, dr)
+    | ForallType(_, _, _)       -> (false, dr)
     | TypeArgument(_)           -> (false, dr)
 
 

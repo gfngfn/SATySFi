@@ -17,7 +17,7 @@ let rec add (kenv : t) (tvid : Tyvarid.t) (kdstr : kind_struct) =
 let replace_type_variable_in_kind_struct (kdstr : kind_struct) (tvid : Tyvarid.t) (tystr : type_struct) =
   match kdstr with
   | UniversalKind   -> UniversalKind
-  | RecordKind(acc) -> RecordKind(Assoc.map_value replace_type_variable acc)
+  | RecordKind(asc) -> RecordKind(Assoc.map_value (fun ty -> replace_type_variable tystr tvid tystr) asc)
 
 
 let rec replace_type_variable_in_kindenv (kenv : t) (tvid : Tyvarid.t) (tystr : type_struct) =
@@ -25,5 +25,4 @@ let rec replace_type_variable_in_kindenv (kenv : t) (tvid : Tyvarid.t) (tystr : 
     match kenv with
     | []                       -> []
     | (alpha, kdstr) :: tail   -> (alpha, replace_type_variable_in_kind_struct kdstr tvid tystr) :: (iter tail)
-
 

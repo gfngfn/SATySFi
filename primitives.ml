@@ -6,8 +6,8 @@ let make_variant_environment =
   let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in
   let varntenv = Variantenv.add_list Variantenv.empty
     [ ("Item", (dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))])), "itemize");
-      ("Just", (dr, ForallType(tv1, (dr, TypeVariable(tv1)))), "maybe");
-      ("Nothing", (dr, ForallType(tv1, (dr, UnitType))), "maybe") ]
+      ("Just", (dr, ForallType(tv1, UniversalKind, (dr, TypeVariable(tv1)))), "maybe");
+      ("Nothing", (dr, ForallType(tv1, UniversalKind, (dr, UnitType))), "maybe") ]
   in
     Variantenv.register_variant_list varntenv [ (0, "itemize"); (1, "maybe") ]
 
@@ -17,7 +17,7 @@ let make_type_environment =
   let b             = (Range.dummy "bool", BoolType) in
   let s             = (Range.dummy "string", StringType) in
   let v n           = (Range.dummy "tv", TypeVariable(n)) in
-  let (-%) n cont   = (Range.dummy "forall", ForallType(n, cont)) in
+  let (-%) n cont   = (Range.dummy "forall", ForallType(n, UniversalKind, cont)) in
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in

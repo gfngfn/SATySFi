@@ -110,7 +110,7 @@ and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) 
               end
         end
 
-  | ForallType(tvid, tycont) ->
+  | ForallType(tvid, kdstr, tycont) ->
       let meta = new_meta_type_variable_name () in
         (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
 
@@ -310,7 +310,8 @@ let rec string_of_type_struct_basic tystr =
 
     | ProductType(tylist)       -> string_of_type_struct_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-    | ForallType(tvid, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, UniversalKind, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, kdstr, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: _. " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           ->
         "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_basic tystr ^ " ; ") "" asc) ^ "}"

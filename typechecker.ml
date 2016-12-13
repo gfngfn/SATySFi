@@ -464,7 +464,7 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
           begin                                                                                                        (* for debug *)
             print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
             print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-            let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
+            let forallty  = erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
   (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
             let tyenv_new = Typeenv.add tyenv varnm forallty in
             let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in

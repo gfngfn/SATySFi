@@ -25,11 +25,11 @@ and type_struct_main =
   | TypeVariable of Tyvarid.t
   | TypeSynonym  of (type_struct list) * type_name * type_struct
   | VariantType  of (type_struct list) * type_name
-  | ForallType   of Tyvarid.t * type_struct
+  | ForallType   of Tyvarid.t * kind_struct * type_struct
   | TypeArgument of var_name
   | RecordType   of (field_name, type_struct) Assoc.t
 
-type kind_struct =
+and kind_struct =
   | UniversalKind
   | RecordKind of (field_name, type_struct) Assoc.t
 
@@ -287,7 +287,7 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-    | ForallType(tvid, tycont)              -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, iter tycont))
+    | ForallType(tvid, kdstr, tycont)       -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, kdstr, iter tycont))
     | other                                 -> (rng, other)
 
 
@@ -297,6 +297,30 @@ let get_range utast =
 
 let is_invalid_range rng =
   let (sttln, _, _, _) = rng in sttln <= 0
+
+
+let rec erase_range_of_type (tystr : type_struct) =
+  let iter = erase_range_of_type in
+  let (_, tymain) = tystr in
+  let dr = Range.dummy "erased" in
+  let newtymain =
+    match tymain with
+    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
+    | ProductType(tylist)               -> ProductType(List.map iter tylist)
+    | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
+    | ListType(tycont)                  -> ListType(iter tycont)
+    | RefType(tycont)                   -> RefType(iter tycont)
+    | TypeSynonym(tylist, tynm, tycont) -> TypeSynonym(List.map iter tylist, tynm, iter tycont)
+    | ForallType(tvid, kdstr, tycont)   -> ForallType(tvid, erase_range_of_kind kdstr, iter tycont)
+    | other                             -> other
+  in
+    (dr, newtymain)
+
+
+and erase_range_of_kind (kdstr : kind_struct) =
+  match kdstr with
+  | UniversalKind   -> UniversalKind
+  | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
 
 
 (* !!!! ---- global variable ---- !!!! *)

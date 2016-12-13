@@ -33,24 +33,6 @@ let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
   let (_, tymain) = tystr in (rng, tymain)
 
 
-let rec erase_range_of_type (tystr : type_struct) =
-  let iter = erase_range_of_type in
-  let (_, tymain) = tystr in
-  let dr = Range.dummy "erased" in
-  let newtymain =
-    match tymain with
-    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
-    | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
-    | ListType(tycont)                  -> ListType(iter tycont)
-    | RefType(tycont)                   -> RefType(iter tycont)
-    | TypeSynonym(tylist, tynm, tycont) -> TypeSynonym(List.map iter tylist, tynm, iter tycont)
-    | ForallType(tvid, tycont)          -> ForallType(tvid, iter tycont)
-    | other                             -> other
-  in
-    (dr, newtymain)
-
-
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
   let iter      = find_in_type_struct tvid in
   let iter_list = find_in_type_struct_list tvid in
@@ -100,7 +82,7 @@ let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit 
 let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
-  | tvid :: tail -> (Range.dummy "add_forall_struct", ForallType(tvid, add_forall_struct tail tystr))
+  | tvid :: tail -> (Range.dummy "add_forall_struct", ForallType(tvid, UniversalKind (* temporary *), add_forall_struct tail tystr))
 
 
 let make_forall_type (tystr : type_struct) (tyenv : t) =
@@ -157,7 +139,7 @@ let rec make_bounded_free qtfbl (tystr : type_struct) = eliminate_forall qtfbl t
 and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
   let (rng, tymain) = tystr in
   match tymain with
-  | ForallType(tvid, tycont) ->
+  | ForallType(tvid, kdstr, tycont) ->
       let ntvstr = (Range.dummy "eliminate_forall", TypeVariable(Tyvarid.fresh qtfbl)) in
         eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
 
@@ -184,7 +166,8 @@ and make_unquantifiable_if_needed qtfbl tystr =
     | FuncType(tydom, tycod)               -> FuncType(iter tydom, iter tycod)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
     | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, iter tycont)
-    | ForallType(tvid, tycont)             -> ForallType(tvid, iter tycont)
+    | ForallType(tvid, kdstr, tycont)      -> ForallType(tvid, kdstr, iter tycont)
+    | RecordType(asc)                      -> RecordType(Assoc.map_value (make_unquantifiable_if_needed qtfbl) asc)
     | other                                -> other
   in
     (rng, tymainnew)
@@ -205,9 +188,9 @@ and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
     | FuncType(tydom, tycod)               -> (rng, FuncType(iter tydom, iter tycod))
     | VariantType(tylist, varntnm)         -> (rng, VariantType(List.map iter tylist, varntnm))
     | TypeSynonym(tylist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tylist, tysynnm, iter tycont))
-    | ForallType(tvid, tycont)             ->
+    | ForallType(tvid, kdstr, tycont)      ->
         begin
-          try let _ = find_id_in_list tvid lst in (rng, ForallType(tvid, tycont)) with
-          | Not_found -> (rng, ForallType(tvid, iter tycont))
+          try let _ = find_id_in_list tvid lst in (rng, ForallType(tvid, kdstr, tycont)) with
+          | Not_found -> (rng, ForallType(tvid, kdstr, iter tycont))
         end
     | other                                -> (rng, other)

@@ -141,7 +141,7 @@ let rec make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (t
     | ListType(tycont)                     -> ListType(iter tycont)
     | RefType(tycont)                      -> RefType(iter tycont)
     | ProductType(tylist)                  -> ProductType(List.map iter tylist)
-    | ForallType(tvid, tycont)             -> ForallType(tvid, iter tycont)
+    | ForallType(tvid, kdstr, tycont)      -> ForallType(tvid, kdstr, iter tycont)
         (* maybe contains bugs, when tvid = -var_id *)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
     | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, tycont)
@@ -181,7 +181,7 @@ let rec make_type_argument_quantified (tyargcons : untyped_type_argument_cons) (
   | UTEndOfTypeArgument                        -> tystr
   | UTTypeArgumentCons(rng, tyargnm, tailcons) ->
       let tvidqtf = Tyvarid.fresh Tyvarid.Quantifiable in
-      let tystr_new = (Range.dummy "make_type_argument_quantified", ForallType(tvidqtf, make_type_argument_numbered tvidqtf tyargnm tystr)) in
+      let tystr_new = (Range.dummy "make_type_argument_quantified", ForallType(tvidqtf, UniversalKind (* temporary *), make_type_argument_numbered tvidqtf tyargnm tystr)) in
         make_type_argument_quantified tailcons tystr_new
 
 
@@ -221,10 +221,10 @@ let add_synonym (scope : scope_kind) (varntenv : t)
 (* public *)
 let rec apply_to_type_synonym (tyarglist : type_struct list) (tystr_forall : type_struct) =
   match (tyarglist, tystr_forall) with
-  | (tyarghd :: tyargtl, (_, ForallType(tvid, tycont))) ->
+  | (tyarghd :: tyargtl, (_, ForallType(tvid, kdstr, tycont))) ->
       let tystr_forall_new = Typeenv.replace_id [(tvid, tyarghd)] tycont in
         apply_to_type_synonym tyargtl tystr_forall_new
-  | ([], (_, ForallType(_, _)))                         -> assert false
+  | ([], (_, ForallType(_, _, _)))                      -> assert false
   | ([], _)                                             -> tystr_forall
   | _                                                   -> assert false
 
