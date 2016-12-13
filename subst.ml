@@ -218,18 +218,14 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
       | (TypeVariable(tvid1), TypeVariable(tvid2))
                      when Tyvarid.same tvid1 tvid2 -> iter_none acctheta
-(*
+
       | (TypeVariable(tvid1), TypeVariable(tvid2)) ->
                 let () = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
-(*                  if Range.is_dummy rng1 then *)
-                    let neweqnlst = replace_type_variable_in_equations eqntail tvid1 tystr2 in
-                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 tystr2) tvid1 tystr2 in
+                let (oldtvid, newtystr) = if Range.is_dummy rng1 then (tvid1, tystr2) else (tvid2, tystr1) in
+                    let neweqnlst = replace_type_variable_in_equations eqntail oldtvid newtystr in
+                    let newacctheta = add (replace_type_variable_in_subst acctheta oldtvid newtystr) oldtvid newtystr in
                       iter_complete neweqnlst newacctheta
-(*                  else
-                    let neweqnlst = replace_type_variable_in_equations eqntail tvid2 tystr1 in
-                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid2 tystr1) tvid2 tystr1 in
-                    iter_complete neweqnlst newacctheta *)
-*)
+
       | (TypeVariable(tvid1), _) ->
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
