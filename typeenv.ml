@@ -134,22 +134,30 @@ let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list)
   | _ :: tail                                        -> find_id_in_list elm tail
 
 
-let rec make_bounded_free qtfbl (tystr : type_struct) = eliminate_forall qtfbl tystr []
-
-and eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
+let rec replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
+  let iter = replace_id lst in
   let (rng, tymain) = tystr in
-  match tymain with
-  | ForallType(tvid, kdstr, tycont) ->
-      let ntvstr = (Range.dummy "eliminate_forall", TypeVariable(Tyvarid.fresh qtfbl)) in
-        eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
+    match tymain with
+    | TypeVariable(tvid)                   ->
+        begin
+          try find_id_in_list tvid lst with
+          | Not_found -> (rng, TypeVariable(tvid))
+        end
+    | ListType(tycont)                     -> (rng, ListType(iter tycont))
+    | RefType(tycont)                      -> (rng, RefType(iter tycont))
+    | ProductType(tylist)                  -> (rng, ProductType(List.map iter tylist))
+    | FuncType(tydom, tycod)               -> (rng, FuncType(iter tydom, iter tycod))
+    | VariantType(tylist, varntnm)         -> (rng, VariantType(List.map iter tylist, varntnm))
+    | TypeSynonym(tylist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tylist, tysynnm, iter tycont))
+    | ForallType(tvid, kdstr, tycont)      ->
+        begin
+          try let _ = find_id_in_list tvid lst in (rng, ForallType(tvid, kdstr, tycont)) with
+          | Not_found -> (rng, ForallType(tvid, kdstr, iter tycont))
+        end
+    | other                                -> (rng, other)
 
-  | _ ->
-      let tyfree    = replace_id lst tystr in
-      let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
-      let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
-        (tyqtf, tyarglist)
 
-and make_unquantifiable_if_needed qtfbl tystr =
+let rec make_unquantifiable_if_needed qtfbl tystr =
   let iter = make_unquantifiable_if_needed qtfbl in
   let (rng, tymain) = tystr in
   let tymainnew =
@@ -173,24 +181,18 @@ and make_unquantifiable_if_needed qtfbl tystr =
     (rng, tymainnew)
 
 
-and replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
-  let iter = replace_id lst in
-  let (rng, tymain) = tystr in
+let make_bounded_free qtfbl (tystr : type_struct) =
+  let rec eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
+    let (rng, tymain) = tystr in
     match tymain with
-    | TypeVariable(tvid)                   ->
-        begin
-          try find_id_in_list tvid lst with
-          | Not_found -> (rng, TypeVariable(tvid))
-        end
-    | ListType(tycont)                     -> (rng, ListType(iter tycont))
-    | RefType(tycont)                      -> (rng, RefType(iter tycont))
-    | ProductType(tylist)                  -> (rng, ProductType(List.map iter tylist))
-    | FuncType(tydom, tycod)               -> (rng, FuncType(iter tydom, iter tycod))
-    | VariantType(tylist, varntnm)         -> (rng, VariantType(List.map iter tylist, varntnm))
-    | TypeSynonym(tylist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tylist, tysynnm, iter tycont))
-    | ForallType(tvid, kdstr, tycont)      ->
-        begin
-          try let _ = find_id_in_list tvid lst in (rng, ForallType(tvid, kdstr, tycont)) with
-          | Not_found -> (rng, ForallType(tvid, kdstr, iter tycont))
-        end
-    | other                                -> (rng, other)
+    | ForallType(tvid, kdstr, tycont) ->
+        let ntvstr = (Range.dummy "eliminate_forall", TypeVariable(Tyvarid.fresh qtfbl)) in
+          eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
+
+    | _ ->
+        let tyfree    = replace_id lst tystr in
+        let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
+        let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
+          (tyqtf, tyarglist)
+  in
+    eliminate_forall qtfbl tystr []
