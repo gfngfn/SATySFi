@@ -33,8 +33,22 @@ let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
   let (_, tymain) = tystr in (rng, tymain)
 
 
-let erase_range_of_type (tystr : type_struct) =
-  overwrite_range_of_type tystr (Range.dummy "erased")
+let rec erase_range_of_type (tystr : type_struct) =
+  let iter = erase_range_of_type in
+  let (_, tymain) = tystr in
+  let dr = Range.dummy "erased" in
+  let newtymain =
+    match tymain with
+    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
+    | ProductType(tylist)               -> ProductType(List.map iter tylist)
+    | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
+    | ListType(tycont)                  -> ListType(iter tycont)
+    | RefType(tycont)                   -> RefType(iter tycont)
+    | TypeSynonym(tylist, tynm, tycont) -> TypeSynonym(List.map iter tylist, tynm, iter tycont)
+    | ForallType(tvid, tycont)          -> ForallType(tvid, iter tycont)
+    | other                             -> other
+  in
+    (dr, newtymain)
 
 
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
@@ -51,22 +65,14 @@ let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
     | TypeSynonym(tylist, _, tycont) -> (iter_list tylist) || (iter tycont)
     | _                              -> false
 
+
 and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
   List.fold_left (fun b tystr -> b || find_in_type_struct tvid tystr) false tystrlst
-(*
-  match tystrlst with
-  | []         -> false
-  | ty :: tail -> if find_in_type_struct tvid ty then true else find_in_type_struct_list tvid tail
-*)
+
 
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
   List.fold_left (fun b (_, tystr) -> b || find_in_type_struct tvid tystr) false tyenv
-(*
-  match tyenv with
-  | []                 -> false
-  | (_, tystr) :: tail ->
-      if find_in_type_struct tvid tystr then true else find_in_type_environment tvid tail
-*)
+
 
 let quantifiable_unbound_id_list : Tyvarid.t list ref = ref []
 

@@ -87,17 +87,22 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
   | UTApply(utast1, utast2) ->
       let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
       let (e2, ty2, theta2) = typecheck qtfbl varntenv (theta1 @=> tyenv) utast2 in
-        let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        let thetau = Subst.unify (theta2 @> ty1) (get_range utast1, FuncType(ty2, beta)) in
-          let theta_result = thetau @@ theta2 @@ theta1 in
-          let type_result  = thetau @> beta in
-            begin                                                                               (* for debug *)
-              print_for_debug_typecheck ("\n#Apply " ^ (string_of_ast (Apply(e1, e2))) ^ " : "  (* for debug *)
-                ^ (string_of_type_struct_basic beta) ^ " = "                                    (* for debug *)
-                ^ (string_of_type_struct_basic type_result) ^ "\n") ;                           (* for debug *)
-              print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;         (* for debug *)
-                (Apply(e1, e2), type_result, theta_result)
-            end                                                                                 (* for debug *)
+      let ty1new = theta2 @> ty1 in
+      let _ = print_for_debug_typecheck "#Apply" in (* for debug *)
+      begin
+        match ty1new with
+        | (_, FuncType(tydom, tycod)) ->
+            let thetau = Subst.unify tydom ty2 in
+            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_type_struct_basic (thetau @> tycod)) ^ "\n") in (* for debug *)
+            let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetau @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
+              (Apply(e1, e2), thetau @> tycod, thetau @@ theta2 @@ theta1)
+        | _ ->
+            let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
+            let thetau = Subst.unify (theta2 @> ty1) (get_range utast1, FuncType(ty2, beta)) in
+            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_type_struct_basic beta) ^ " = " ^ (string_of_type_struct_basic (thetau @> beta)) ^ "\n") in (* for debug *)
+            let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetau @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
+                (Apply(e1, e2), thetau @> beta, thetau @@ theta2 @@ theta1)
+      end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
       let beta = (varrng, TypeVariable(Tyvarid.fresh qtfbl)) in
