@@ -11,9 +11,9 @@ type t = (Tyvarid.t * type_struct) list
 
 
 let print_for_debug_subst msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 
@@ -188,9 +188,9 @@ let compose_list thetalst = List.fold_right compose thetalst empty
 
 
 let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
-    let _ = print_for_debug_subst " |---- " in (* for debug *)
+    let _ = print_for_debug_subst "    |----" in (* for debug *)
     let _ = List.iter (fun (tystr1, tystr2) -> print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
-                                                                      ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "] ")) eqnlst in (* for debug *)
+                                                                      ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in (* for debug *)
     let _ = print_for_debug_subst "\n" in (* for debug *)
   match eqnlst with
   | []                          -> acctheta
@@ -235,6 +235,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
                   if b then
                       report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
                   else
+                    let _ = print_for_debug_subst ("    substitute " ^ (string_of_type_struct_basic tystr1) ^ " with " ^ (string_of_type_struct_basic tystr2) ^ "\n") in (* for debug *)
                     let newtystr = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let neweqnlst = replace_type_variable_in_equations eqntail tvid1 newtystr in
                     let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr) tvid1 newtystr in

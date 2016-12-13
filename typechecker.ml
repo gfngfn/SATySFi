@@ -4,9 +4,9 @@ open Display
 exception Error of string
 
 let print_for_debug_typecheck msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
@@ -418,22 +418,22 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
             (tyenv_tail, ((varnm, beta) :: tvtylst))
   in
   let rec typecheck_mutual_contents
-      (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list)
+      (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list)
       (accthetain : Subst.t) (accthetaout : Subst.t) acctvtylstout
   =
     match (utmutletcons, tvtylst) with
-    | (UTEndOfMutualLet, []) -> (tyenv, EndOfMutualLet, accthetain, accthetaout, List.rev acctvtylstout)
+    | (UTEndOfMutualLet, []) -> (tyenvforrec, EndOfMutualLet, accthetain, accthetaout, List.rev acctvtylstout)
 
-    | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, tvty) :: tvtytail) ->
-        let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
+    | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, beta) :: tvtytail) ->
+        let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenvforrec utast1 in
         begin
           match tyopt with
           | None            ->
-              let theta1in  = (Subst.unify ty1 tvty) @@ theta1 @@ accthetain in
+              let theta1a = theta1 @@ accthetain in
+              let theta1in  = (Subst.unify ty1 (theta1a @> beta)) @@ theta1a in
               let theta1out = theta1 @@ accthetaout in
-                let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
                 let (tyenvfinal, mutletcons_tail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
-                      typecheck_mutual_contents tyenv_new tailcons tvtytail theta1in theta1out ((varnm, tvty) :: acctvtylstout) in
+                      typecheck_mutual_contents (theta1in @=> tyenvforrec) tailcons tvtytail theta1in theta1out ((varnm, beta) :: acctvtylstout) in
                   (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
 (*
           | Some(tystrmanu) ->
