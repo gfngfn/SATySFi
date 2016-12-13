@@ -83,7 +83,13 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
         let (blst, rnglst)   = iter_list lst in
           if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
     | RecordType(asc)           -> iter_list (Assoc.to_value_list asc)
-    | _                         -> (false, dr)
+    | ( UnitType
+      | BoolType
+      | IntType
+      | StringType )            -> (false, dr)
+    | ForallType(_, _)          -> (false, dr)
+    | TypeArgument(_)           -> (false, dr)
+
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
   let dr = Range.dummy "emerge_in_list" in
@@ -93,22 +99,6 @@ and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
         let (bhd, rnghd) = emerge_in tvid tyhd in
         let (btl, rngtl) = emerge_in_list tvid tytl in
           if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dr)
-
-
-let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
-  let iter = (fun ty -> replace_type_variable ty key value) in
-  let (rng, tymain) = tystr in
-    match tymain with
-    | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
-    | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
-    | ProductType(lst)                      -> (rng, ProductType(List.map iter lst))
-    | ListType(cont)                        -> (rng, ListType(iter cont))
-    | RefType(cont)                         -> (rng, RefType(iter cont))
-    | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
-    | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
-    | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-    | ForallType(tvid, tycont)              -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, iter tycont))
-    | other                                 -> (rng, other)
 
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =

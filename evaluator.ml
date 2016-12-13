@@ -4,6 +4,13 @@ open Display
 exception EvalError of string
 
 
+let print_for_debug_evaluator msg =
+(*
+  print_string msg ;
+*)
+  ()
+
+
 let rec make_argument_cons lst =
   match lst with
   | []           -> EndOfArgumentVariable
@@ -105,12 +112,12 @@ let rec interpret env ast =
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
       begin                                                             (* for debug *)
-        print_for_debug ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
+        print_for_debug_evaluator ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
         let valuef =  interpret env
                         (LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
                           LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astf))) in
           begin                                                         (* for debug *)
-            print_for_debug ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
+            print_for_debug_evaluator ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
             match valuef with
             | FuncWithEnvironment(varnm, astdef, envf) ->
                 FuncWithEnvironment(varnm,
@@ -230,7 +237,7 @@ let rec interpret env ast =
       let env_out = copy_environment env in
       let env_in  = copy_environment env in
         begin
-          print_for_debug ("module1 [" ^ mdlnm ^ "]\n");                (* for debug *)
+          print_for_debug_evaluator ("module1 [" ^ mdlnm ^ "]\n");                (* for debug *)
           add_module_to_environment env_out env_in mdlnm mdltrdef ;
           interpret env_out astaft
         end
@@ -468,7 +475,7 @@ and check_pattern_matching env pat astobj =
 and add_mutuals_to_environment is_public eout ein mdlnm mutletcons =
   let lst = add_mutuals_to_environment_sub is_public [] mdlnm eout ein mutletcons in
     begin                                              (* for debug *)
-      print_for_debug ("module3 [" ^ mdlnm ^ "]\n") ;  (* for debug *)
+      print_for_debug_evaluator ("module3 [" ^ mdlnm ^ "]\n") ;  (* for debug *)
       add_zeroary_mutuals is_public lst mdlnm eout ein
     end                                                (* for debug *)
 
@@ -487,7 +494,7 @@ and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
               if is_public then
                 begin                                                   (* for debug *)
                   add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
-                  ; print_for_debug ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
+                  ; print_for_debug_evaluator ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
                 end                                                     (* for debug *)
               else () ;
               add_mutuals_to_environment_sub is_public lst mdlnm eout ein tailcons

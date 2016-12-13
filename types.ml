@@ -275,11 +275,22 @@ type output_unit =
   | OShallow
 
 
-(* !!!! ---- global variable ---- !!!! *)
-let global_hash_env : environment = Hashtbl.create 32
+let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
+  let iter = (fun ty -> replace_type_variable ty key value) in
+  let (rng, tymain) = tystr in
+    match tymain with
+    | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
+    | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
+    | ProductType(lst)                      -> (rng, ProductType(List.map iter lst))
+    | ListType(cont)                        -> (rng, ListType(iter cont))
+    | RefType(cont)                         -> (rng, RefType(iter cont))
+    | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
+    | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
+    | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
+    | ForallType(tvid, tycont)              -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, iter tycont))
+    | other                                 -> (rng, other)
 
 
-(* untyped_abstract_tree -> Range.t *)
 let get_range utast =
   let (rng, _) = utast in rng
 
@@ -288,9 +299,15 @@ let is_invalid_range rng =
   let (sttln, _, _, _) = rng in sttln <= 0
 
 
+(* !!!! ---- global variable ---- !!!! *)
+
+let global_hash_env : environment = Hashtbl.create 32
+
+(*
 let print_for_debug msg =
 (* enable below to see the process of type inference *)
 (*
   print_string msg ;
 *)
   ()
+*)
