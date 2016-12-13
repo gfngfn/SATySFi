@@ -210,7 +210,12 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
       | (UnitType, UnitType)      -> iter_none acctheta
 
       | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> iter_add [(dom1, dom2); (cod1, cod2)] acctheta
-      | (ProductType(tylist1), ProductType(tylist2)) -> iter_add (List.combine tylist1 tylist2) acctheta
+      | (ProductType(tylist1), ProductType(tylist2)) ->
+          if List.length tylist1 <> List.length tylist2 then
+            raise InternalContradictionError
+          else
+            iter_add (List.combine tylist1 tylist2) acctheta
+
       | (ListType(cont1), ListType(cont2))           -> iter_add [(cont1, cont2)] acctheta
       | (RefType(cont1), RefType(cont2))             -> iter_add [(cont1, cont2)] acctheta
       | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
