@@ -107,6 +107,7 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
+    | ForallType(tvid, tycont)              -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, iter tycont))
     | other                                 -> (rng, other)
 
 
@@ -187,11 +188,13 @@ let compose_list thetalst = List.fold_right compose thetalst empty
 
 
 let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
+    let _ = print_for_debug_subst " |---- " in (* for debug *)
+    let _ = List.iter (fun (tystr1, tystr2) -> print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
+                                                                      ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "] ")) eqnlst in (* for debug *)
+    let _ = print_for_debug_subst "\n" in (* for debug *)
   match eqnlst with
   | []                          -> acctheta
   | (tystr1, tystr2) :: eqntail ->
-    let _ = print_for_debug_subst ("  |---- [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
-                                   ^ "] = [" ^ (string_of_type_struct_basic tystr2) ^ "]\n") in (* for debug *)
     let iter_none newacctheta          = unify_sub eqntail newacctheta in
     let iter_add addedeqns newacctheta = unify_sub (List.append addedeqns eqntail) newacctheta in
     let iter_complete x y              = unify_sub x y in
@@ -215,25 +218,27 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
       | (TypeVariable(tvid1), TypeVariable(tvid2))
                      when Tyvarid.same tvid1 tvid2 -> iter_none acctheta
-
+(*
       | (TypeVariable(tvid1), TypeVariable(tvid2)) ->
                 let () = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
-                  if Range.is_dummy rng1 then
+(*                  if Range.is_dummy rng1 then *)
                     let neweqnlst = replace_type_variable_in_equations eqntail tvid1 tystr2 in
                     let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 tystr2) tvid1 tystr2 in
                       iter_complete neweqnlst newacctheta
-                  else
+(*                  else
                     let neweqnlst = replace_type_variable_in_equations eqntail tvid2 tystr1 in
                     let newacctheta = add (replace_type_variable_in_subst acctheta tvid2 tystr1) tvid2 tystr1 in
-                      iter_complete neweqnlst newacctheta
-
+                    iter_complete neweqnlst newacctheta *)
+*)
       | (TypeVariable(tvid1), _) ->
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
                       report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
                   else
-                    let rng = if Range.is_dummy rng1 then rng2 else rng1 in
-                      iter_none (add acctheta tvid1 (rng, tymain2))
+                    let newtystr = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let neweqnlst = replace_type_variable_in_equations eqntail tvid1 newtystr in
+                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr) tvid1 newtystr in
+                      iter_complete neweqnlst newacctheta
 
       | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)] acctheta
 
@@ -242,8 +247,9 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
 (* PUBLIC *)
 let unify (tystr1 : type_struct) (tystr2 : type_struct) =
-  print_for_debug_subst ("  unify [" ^ (string_of_type_struct_basic tystr1) ^ "] = ["  (* for debug *)
-                         ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *)
+(*  print_for_debug_subst ("  unify [" ^ (string_of_type_struct_basic tystr1) ^ " = "  (* for debug *)
+    ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *) *)
+  let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
     unify_sub [(tystr1, tystr2)] empty
   with
