@@ -62,6 +62,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
   let (defedtylst, varntenvmain) = varntenv in
   let (rng, tymain) = tystr in
   let iter = fix_manual_type_general mode varntenv tyargmode in
+  let error = report_illegal_type_argument_length rng in
   let tymainnew =
     match tymain with
 
@@ -69,42 +70,38 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
     | ProductType(tylist)              -> ProductType(List.map iter tylist)
 
     | VariantType([], "int")           -> IntType
-    | VariantType(tyarglist, "int")    -> report_illegal_type_argument_length rng "int" 0 (List.length tyarglist)
+    | VariantType(tyarglist, "int")    -> error "int" 0 (List.length tyarglist)
     | VariantType([], "string")        -> StringType
-    | VariantType(tyarglist, "string") -> report_illegal_type_argument_length rng "string" 0 (List.length tyarglist)
+    | VariantType(tyarglist, "string") -> error "string" 0 (List.length tyarglist)
     | VariantType([], "bool")          -> BoolType
-    | VariantType(tyarglist, "bool")   -> report_illegal_type_argument_length rng "bool" 0 (List.length tyarglist)
+    | VariantType(tyarglist, "bool")   -> error "bool" 0 (List.length tyarglist)
     | VariantType([], "unit")          -> UnitType
-    | VariantType(tyarglist, "unit")   -> report_illegal_type_argument_length rng "unit" 0 (List.length tyarglist)
+    | VariantType(tyarglist, "unit")   -> error "unit" 0 (List.length tyarglist)
 
     | VariantType(tyarg :: [], "list") -> ListType(tyarg)
-    | VariantType(tyarglist, "list")   -> report_illegal_type_argument_length rng "list" 1 (List.length tyarglist)
+    | VariantType(tyarglist, "list")   -> error "list" 1 (List.length tyarglist)
     | VariantType(tyarg :: [], "ref")  -> RefType(tyarg)
-    | VariantType(tyarglist, "ref")    -> report_illegal_type_argument_length rng "ref" 1 (List.length tyarglist)
+    | VariantType(tyarglist, "ref")    -> error "ref" 1 (List.length tyarglist)
     | VariantType(tyarglist, tynm) ->
         begin
           try
             match find_definition_kind defedtylst tynm with
             | Data(argnum) ->
                 let len = List.length tyarglist in
-                  if argnum = len then
+                  if argnum <> len then error tynm argnum len else
                     VariantType(List.map iter tyarglist, tynm)
-                  else
-                    report_illegal_type_argument_length rng tynm argnum len
+
             | Synonym(argnum, tystr_forall) ->
                 let len = List.length tyarglist in
-                  if argnum = len then
+                  if argnum <> len then error tynm argnum len else
                     TypeSynonym(List.map iter tyarglist, tynm, tystr_forall)
-                  else
-                    report_illegal_type_argument_length rng tynm argnum len
+
             | LocalSynonym(mdlnm, argnum, tystr_forall) ->
                 let len = List.length tyarglist in
-                  if argnum = len then
+                  if argnum <> len then error tynm argnum len else
                     match mode with
                     | InnerMode -> TypeSynonym(List.map iter tyarglist, tynm, tystr_forall)
                     | OuterMode -> VariantType(List.map iter tyarglist, append_module_name mdlnm tynm)
-                  else
-                    report_illegal_type_argument_length rng tynm argnum len
           with
           | Not_found -> raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type '" ^ tynm ^ "'"))
         end

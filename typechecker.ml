@@ -209,8 +209,8 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
           (ListCons(ehd, etl), type_result, thetau @@ thetatl @@ thetahd)
 
   | UTEndOfList ->
-      let ntyvar = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (EndOfList, (rng, ListType(ntyvar)), Subst.empty)
+      let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
+        (EndOfList, (rng, ListType(beta)), Subst.empty)
 
 (* ---- tuple ---- *)
 
@@ -236,8 +236,8 @@ let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
         (PatternMatch(eobj, pmcons), typm, thetapm)
 
   | UTDeclareVariantIn(mutvarntcons, utastaft) ->
-      let varntenv_new = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
-        typecheck qtfbl varntenv_new tyenv utastaft
+      let varntenvnew = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
+        typecheck qtfbl varntenvnew tyenv utastaft
 
   | UTModule(mdlnm, utmdltr, utastaft) ->
       let (varntenv_new, tyenv_new, emdltr, thetadef) = typecheck_module qtfbl varntenv tyenv varntenv tyenv mdlnm utmdltr in
@@ -426,29 +426,25 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
 
     | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, beta) :: tvtytail) ->
         let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenvforrec utast1 in
+        let theta1a = theta1 @@ accthetain in
         begin
           match tyopt with
-          | None            ->
-              let theta1a = theta1 @@ accthetain in
+          | None ->
               let theta1in  = (Subst.unify ty1 (theta1a @> beta)) @@ theta1a in
               let theta1out = theta1 @@ accthetaout in
                 let (tyenvfinal, mutletcons_tail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
                       typecheck_mutual_contents (theta1in @=> tyenvforrec) tailcons tvtytail theta1in theta1out ((varnm, beta) :: acctvtylstout) in
                   (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
-(*
+
           | Some(tystrmanu) ->
               let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv tystrmanu in
-              let theta1in  = (Subst.unify tystrforin tvty) @@ (Subst.unify ty1 tvty) @@ theta1 in
-              let theta1out = theta1 in
-                let tyenv_new = Typeenv.add (theta1in @=> tyenv) varnm ty1 in
-                let (tyenv_tail, mutletcons_tail, thetain_tail, thetaout_tail, tvtylstout_tail) =
-                      typecheck_mutual_contents tyenv_new tailcons tvtytail in
-                  let thetain_result  = thetain_tail @@ theta1in in
-                  let thetaout_result = thetaout_tail @@ theta1out in
-                  let tyenv_result    = thetain_result @=> tyenv_tail in
-                  let tvtylstout_result = (varnm, tystrforout) :: tvtylstout_tail in
-                    (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
-*)
+              let thetau1a = (Subst.unify ty1 (theta1a @> beta)) @@ theta1a in
+              let theta1in  = (Subst.unify tystrforin (thetau1a @> beta)) @@ thetau1a in
+              let theta1out = theta1 @@ accthetaout in
+                let (tyenvfinal, mutletconstail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
+                      typecheck_mutual_contents (theta1in @=> tyenvforrec) tailcons tvtytail theta1in theta1out ((varnm, beta (* <-doubtful *)) :: acctvtylstout) in
+                    (tyenvfinal, MutualLetCons(varnm, e1, mutletconstail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
+
           end
 
     | _ -> assert false
