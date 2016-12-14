@@ -238,12 +238,10 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 
 
 (* PUBLIC *)
-let unify (tystr1 : type_struct) (tystr2 : type_struct) =
-(*  print_for_debug_subst ("  unify [" ^ (string_of_type_struct_basic tystr1) ^ " = "  (* for debug *)
-    ^ (string_of_type_struct_basic tystr2) ^ "]\n") ;          (* for debug *) *)
+let unify (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
-    unify_sub [(tystr1, tystr2)] empty
+    (unify_sub [(tystr1, tystr2)] empty, kdenv) (* temporary *)
   with
   | InternalInclusionError     -> report_inclusion_error tystr1 tystr2
   | InternalContradictionError -> report_contradiction_error tystr1 tystr2

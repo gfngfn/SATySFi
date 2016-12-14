@@ -20,6 +20,6 @@ val compose : t -> t -> t
 
 val compose_list : t list -> t
 
-val unify : type_struct -> type_struct -> t
+val unify : Kindenv.t -> type_struct -> type_struct -> (t * Kindenv.t)
 
 val string_of_subst : t -> string
