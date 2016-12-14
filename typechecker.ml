@@ -125,8 +125,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 (* ---- impleratives ---- *)
 
   | UTLetMutableIn(varrng, varnm, utastI, utastA) ->
-      let (tyenvI, eI, tyI, thetaI) = make_type_environment_by_let_mutable kdenv varntenv tyenv varrng varnm utastI in
-      let (eA, tyA, thetaA, kdenvA) = typecheck_iter kdenv tyenvI utastA in
+      let (tyenvI, eI, tyI, thetaI, kdenvI) = make_type_environment_by_let_mutable varntenv kdenv tyenv varrng varnm utastI in
+      let (eA, tyA, thetaA, kdenvA) = typecheck_iter kdenvI tyenvI utastA in
         (LetMutableIn(varnm, eI, eA), tyA, thetaA @@ thetaI, kdenvA (* temporary *))
 
   | UTOverwrite(varrng, varnm, utastN) ->
@@ -484,19 +484,13 @@ and make_type_environment_by_let qtfbl (kdenv : Kindenv.t) (varntenv : Varianten
     (tyenv_forall, tvtylst_forall, mutletcons, thetain, thetaout)
 
 
-(* Variantenv.t -> Typeenv.t -> code_range -> var_name -> untyped_abstract_tree ->
-    (Typeenv.t * abstract_tree * type_struct * Subst.t) *)
-and make_type_environment_by_let_mutable kdenv varntenv tyenv varrng varnm utastI =
+and make_type_environment_by_let_mutable (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI, thetaI, kdenvI) = typecheck Tyvarid.Unquantifiable varntenv kdenv tyenv utastI in
-    begin                                                                                       (* for debug *)
-      print_for_debug_typecheck ("#LetMutable " ^ (string_of_type_struct_basic tyI) ^ "\n") ; (* for debug *)
-      let tyenv_new = thetaI @=> (Typeenv.add tyenv varnm (varrng, RefType(tyI))) in
-        (tyenv_new, eI, tyI, thetaI)
-    end                                                                                         (* for debug *)
+  let tyenvI = thetaI @=> (Typeenv.add tyenv varnm (varrng, RefType(tyI))) in
+    (tyenvI, eI, tyI, thetaI, kdenvI)
 
 
-(* untyped_abstract_tree -> (type_struct * Variantenv.t * Typeenv.t) *)
-let main varntenv tyenv utast =
+let main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
     begin
 (*
       final_varntenv := varntenv ;
