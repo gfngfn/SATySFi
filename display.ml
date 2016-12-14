@@ -185,7 +185,7 @@ let rec string_of_utast (_, utastmain) =
   | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
   | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
 (*  | UTDeclareVariantIn() *)
-  | _ -> "?"
+  | _ -> "OTHER"
 
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
@@ -260,7 +260,9 @@ let rec string_of_ast ast =
       "(string-sub " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ " " ^ (string_of_ast o) ^ ")"
   | PrimitiveStringLength(m)     -> "(string-length " ^ (string_of_ast m) ^ ")"
   | PrimitiveArabic(m)           -> "(arabic " ^ (string_of_ast m) ^ ")"
-  | _                            -> "?"
+  | Record(asc)                  -> "(| ... |)"
+  | AccessField(r, f)            -> (string_of_ast r) ^ "#" ^ f
+  | _                            -> "OTHER"
 
 
 let rec string_of_type_struct_basic tystr =
@@ -311,10 +313,11 @@ let rec string_of_type_struct_basic tystr =
     | ProductType(tylist)       -> string_of_type_struct_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
     | ForallType(tvid, UniversalKind, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
-    | ForallType(tvid, kdstr, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: _. " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, kdstr, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           ->
         "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_basic tystr ^ " ; ") "" asc) ^ "}"
+
 
 and string_of_type_argument_list_basic tyarglist =
   match tyarglist with
@@ -333,6 +336,7 @@ and string_of_type_argument_list_basic tyarglist =
             | VariantType(_ :: _, _) ) -> "(" ^ strhd ^ ")"
           | _                          -> strhd
         end ^ " " ^ strtl
+
 
 and string_of_type_struct_list_basic tylist =
   match tylist with
@@ -356,3 +360,15 @@ and string_of_type_struct_list_basic tylist =
             | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
           | _                  -> strhd
         end ^ " * " ^ strtl
+
+
+and string_of_kind_struct_basic (kdstr : kind_struct) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (string_of_type_struct_basic tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (string_of_type_struct_basic tystr) ^ "; " ^ (aux tail)
+  in
+    match kdstr with
+    | UniversalKind   -> "U"
+    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
