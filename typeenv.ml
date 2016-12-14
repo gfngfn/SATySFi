@@ -76,6 +76,7 @@ let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit 
     | ProductType(tylist)            -> List.iter iter tylist
     | VariantType(tylist, _)         -> List.iter iter tylist
     | TypeSynonym(tylist, _, tycont) -> List.iter iter tylist (* doubtful implementation *)
+    | RecordType(_)                  -> failwith "remains to be implemented" (* write more *)
     | _                              -> ()
 
 

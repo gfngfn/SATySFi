@@ -36,7 +36,7 @@ let find (theta : t) (key : Tyvarid.t) =
 
 
 let mem (key : Tyvarid.t) (theta : t) =
-  try 
+  try
     let _ = find theta key in true
   with
   | Not_found -> false
