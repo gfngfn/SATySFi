@@ -31,6 +31,8 @@ let tcraw s =
 
 let tc s = Display.string_of_type_struct (tcraw s);;
 
+let tcb s = Display.string_of_type_struct_basic (tcraw s);;
+
 let eval s =
   init () ;
   let (typed, _, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in
