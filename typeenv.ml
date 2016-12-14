@@ -80,17 +80,19 @@ let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit 
     | _                              -> ()
 
 
-let rec add_forall_struct (lst : Tyvarid.t list) (tystr : type_struct) =
+let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
   | []           -> tystr
-  | tvid :: tail -> (Range.dummy "add_forall_struct", ForallType(tvid, UniversalKind (* temporary *), add_forall_struct tail tystr))
+  | tvid :: tail ->
+     let kdstr = try Kindenv.find kdenv tvid with Not_found -> failwith "add_forall_struct" in
+       (Range.dummy "add_forall_struct", ForallType(tvid, kdstr, add_forall_struct kdenv tail tystr))
 
 
-let make_forall_type (tystr : type_struct) (tyenv : t) =
+let make_forall_type (tystr : type_struct) (tyenv_before : t) (kdenv : Kindenv.t) =
   begin
     quantifiable_unbound_id_list := [] ;
-    listup_quantifiable_unbound_id tystr tyenv ;
-    add_forall_struct (!quantifiable_unbound_id_list) tystr
+    listup_quantifiable_unbound_id tystr tyenv_before ;
+    add_forall_struct kdenv (!quantifiable_unbound_id_list) tystr
   end
 
 
@@ -182,18 +184,20 @@ let rec make_unquantifiable_if_needed qtfbl tystr =
     (rng, tymainnew)
 
 
-let make_bounded_free qtfbl (tystr : type_struct) =
-  let rec eliminate_forall qtfbl (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
+let make_bounded_free qtfbl (kdenv : Kindenv.t) (tystr : type_struct) =
+  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
     let (rng, tymain) = tystr in
     match tymain with
     | ForallType(tvid, kdstr, tycont) ->
-        let ntvstr = (Range.dummy "eliminate_forall", TypeVariable(Tyvarid.fresh qtfbl)) in
-          eliminate_forall qtfbl tycont ((tvid, ntvstr) :: lst)
+        let tvid = Tyvarid.fresh qtfbl in
+        let beta = (Range.dummy "eliminate_forall", TypeVariable(tvid)) in
+          eliminate_forall qtfbl (Kindenv.add kdenv tvid kdstr) tycont ((tvid, beta) :: lst)
 
     | _ ->
         let tyfree    = replace_id lst tystr in
+        let kdenvfree = List.fold_left (fun oldkdenv (tvid, beta) -> Kindenv.replace_type_variable_in_kindenv oldkdenv tvid beta) kdenv lst in
         let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
         let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
-          (tyqtf, tyarglist)
+          (tyqtf, tyarglist, kdenvfree)
   in
-    eliminate_forall qtfbl tystr []
+    eliminate_forall qtfbl kdenv tystr []
