@@ -3,6 +3,7 @@
 #load "tyvarid.cmo";;
 #load "range.cmo";;
 #load "types.cmo";;
+#load "kindenv.cmo";;
 #load "typeenv.cmo";;
 #load "display.cmo";;
 #load "variantenv.cmo";;
