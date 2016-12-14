@@ -150,6 +150,7 @@ rule numexpr = parse
   | ("\\" (identifier | constructor)) {
         let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
       }
+  | "#"   { ACCESS(get_pos lexbuf) }
   | "+"   { PLUS(get_pos lexbuf) }
   | "-"   { MINUS(get_pos lexbuf) }
   | "*"   { TIMES(get_pos lexbuf) }

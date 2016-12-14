@@ -233,13 +233,28 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTEndOfTuple -> (EndOfTuple, (rng, ProductType([])), Subst.empty, kdenv)
 
+(* ---- records ---- *)
+
+  | UTRecord(flutlst) -> typecheck_record qtfbl varntenv kdenv tyenv flutlst rng
+
+  | UTAccessField(utast1, fldnm) ->
+      let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv utast1 in
+      let tvid1 = Tyvarid.fresh qtfbl in
+      let beta1 = (get_range utast1, TypeVariable(tvid1)) in
+      let tvidF = Tyvarid.fresh qtfbl in
+      let betaF = (rng, TypeVariable(tvidF)) in
+      let kdenvnew = Kindenv.add (Kindenv.add kdenv tvid1 UniversalKind) tvidF (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
+      let (thetaU, kdenvU) = Subst.unify kdenvnew beta1 ty1 in
+        (AccessField(e1, fldnm), thetaU @> betaF, thetaU @@ theta1, kdenvU)
+
 (* ---- other fundamentals ---- *)
 
   | UTPatternMatch(utastO, utpmcons) ->
       let (eO, tyO, thetaO, kdenvO) = typecheck_iter kdenv tyenv utastO in
       let tvid = Tyvarid.fresh qtfbl in
       let beta = (Range.dummy "ut-pattern-match", TypeVariable(tvid)) in
-      let (pmcons, tyP, thetaP, kdenvP) = typecheck_pattern_match_cons qtfbl varntenv (Kindenv.add kdenvO tvid UniversalKind) (thetaO @=> tyenv) utpmcons tyO thetaO beta in
+      let (pmcons, tyP, thetaP, kdenvP) =
+            typecheck_pattern_match_cons qtfbl varntenv (Kindenv.add kdenvO tvid UniversalKind) (thetaO @=> tyenv) utpmcons tyO thetaO beta in
         (PatternMatch(eO, pmcons), tyP, thetaP @@ thetaO, kdenvP)
 
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
@@ -251,6 +266,25 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       let (eA, tyA, thetaA, kdenvA) = typecheck_iter ~v:varntenvnew kdenv tyenvnew utastA in (* temporary *)
         (Module(mdlnm, emdltr, eA), tyaft, thetaA @@ thetaD, kdenvA)
 *)
+
+and typecheck_record
+    qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
+    (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
+=
+  let rec aux
+      (kdenv : Kindenv.t) (tyenv : Typeenv.t) (lst : (field_name * untyped_abstract_tree) list)
+      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * type_struct) list) (acctheta : Subst.t)
+  =
+    match lst with
+    | []                       -> (List.rev accelst, List.rev acctylst, acctheta, kdenv)
+    | (fldnmX, utastX) :: tail ->
+        let (eX, tyX, thetaX, kdenvX) = typecheck qtfbl varntenv kdenv tyenv utastX in
+          aux kdenvX (thetaX @=> tyenv) tail ((fldnmX, eX) :: accelst) ((fldnmX, tyX) :: acctylst) (thetaX @@ acctheta)
+  in
+  let (elst, tylst, thetares, kdenvres) = aux kdenv tyenv flutlst [] [] Subst.empty in
+  let tylstfinal = List.map (fun (fldnm, tystr) -> (fldnm, thetares @> tystr)) tylst in
+    (Record(Assoc.of_list elst), (rng, RecordType(Assoc.of_list tylstfinal)), thetares, kdenvres)
+
 
 and typecheck_itemize qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) (acctheta : Subst.t) =
   let tyenv1 = acctheta @=> tyenv in

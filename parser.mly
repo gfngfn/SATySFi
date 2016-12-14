@@ -390,7 +390,7 @@
 %token <Range.t> OPENNUM CLOSENUM
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP END COMMA
-%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD
+%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
 %token <Range.t> BEFORE UNITVALUE WHILE DO
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Range.t * int> ITEM
@@ -960,7 +960,8 @@ nxapp:
 /* -- -- */
 ;
 nxbot:
-  | VAR                 { make_standard (TokArg $1) (TokArg $1)  (UTContentOf(extract_name $1)) }
+  | nxbot ACCESS VAR    { make_standard (Untyped $1) (TokArg $3) (UTAccessField($1, extract_name $3)) }
+  | VAR                 { make_standard (TokArg $1) (TokArg $1) (UTContentOf(extract_name $1)) }
   | CONSTRUCTOR DOT VAR { make_standard (TokArg $1) (TokArg $3) (UTContentOf((extract_name $1) ^ "." ^ (extract_name $3))) }
   | NUMCONST            { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
