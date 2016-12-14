@@ -235,8 +235,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTPatternMatch(utastO, utpmcons) ->
       let (eO, tyO, thetaO, kdenvO) = typecheck_iter kdenv tyenv utastO in
       let beta = (Range.dummy "ut-pattern-match", TypeVariable(Tyvarid.fresh qtfbl)) in
-      let (pmcons, tyP, thetaP) = typecheck_pattern_match_cons qtfbl kdenvO varntenv (thetaO @=> tyenv) utpmcons tyO thetaO beta in
-        (PatternMatch(eO, pmcons), tyP, thetaP @@ thetaO, kdenvO (* temporary *))
+      let (pmcons, tyP, thetaP, kdenvP) = typecheck_pattern_match_cons qtfbl varntenv kdenvO (thetaO @=> tyenv) utpmcons tyO thetaO beta in
+        (PatternMatch(eO, pmcons), tyP, thetaP @@ thetaO, kdenvP)
 
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
       let varntenvnew = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
@@ -325,98 +325,104 @@ and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvty
 (* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
     -> (pattern_match_cons * type_struct * Subst.t) *)
 and typecheck_pattern_match_cons
-    qtfbl kdenv varntenv tyenv (utpmcons : untyped_pattern_match_cons) (tyobj : type_struct) (acctheta : Subst.t) (tyres : type_struct) =
+  qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
+  (utpmcons : untyped_pattern_match_cons) (tyobj : type_struct) (acctheta : Subst.t) (tyres : type_struct)
+=
+  let iter = typecheck_pattern_match_cons qtfbl varntenv in
   match utpmcons with
-  | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, acctheta)
+  | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, acctheta, kdenv)
 
   | UTPatternMatchCons(utpat, utast1, tailcons) ->
-      let (epat, typat, tyenvpat) = typecheck_pattern qtfbl kdenv varntenv tyenv utpat in
-      let (thetaU, kdenvU) = Subst.unify kdenv (* temporary *) typat tyobj in
+      let (epat, typat, tyenvpat, kdenvpat) = typecheck_pattern qtfbl varntenv kdenv tyenv utpat in
+      let (thetaU, kdenvU) = Subst.unify kdenvpat typat tyobj in
       let thetaUa = thetaU @@ acctheta in
       let (e1, ty1, theta1, kdenv1) = typecheck qtfbl varntenv kdenvU (thetaUa @=> tyenvpat) utast1 in
       let (thetaV, kdenvV) = Subst.unify kdenv1 ty1 tyres in
       let thetaV1Ua = thetaV @@ theta1 @@ thetaUa in
-      let (pmctl, tytl, thetatl) =
-            typecheck_pattern_match_cons qtfbl kdenv varntenv (thetaV1Ua @=> tyenv) tailcons (thetaV1Ua @> tyobj) thetaV1Ua (thetaV1Ua @> tyres) in
-        (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
+      let (pmctl, tytl, thetatl, kdenvtl) =
+            iter kdenvV (thetaV1Ua @=> tyenv) tailcons (thetaV1Ua @> tyobj) thetaV1Ua (thetaV1Ua @> tyres) in
+        (PatternMatchCons(epat, e1, pmctl), tytl, thetatl, kdenvtl)
 
   | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
-      let (epat, typat, tyenvpat) = typecheck_pattern qtfbl kdenv varntenv tyenv utpat in
-      let (thetaU, kdenvU) = Subst.unify kdenv (* temporary *) typat tyobj in
+      let (epat, typat, tyenvpat, kdenvpat) = typecheck_pattern qtfbl varntenv kdenv tyenv utpat in
+      let (thetaU, kdenvU) = Subst.unify kdenvpat typat tyobj in
       let (eB, tyB, thetaB, kdenvB) = typecheck qtfbl varntenv kdenvU tyenvpat utastb in
       let (thetaW, kdenvW) = Subst.unify kdenvB tyB (Range.dummy "pattern-match-cons-when", BoolType) in
       let thetaWBUa = thetaW @@ thetaB @@ thetaU @@ acctheta in
       let (e1, ty1, theta1, kdenv1) = typecheck qtfbl varntenv kdenvW (thetaWBUa @=> tyenvpat) utast1 in
       let (thetaV, kdenvV) = Subst.unify kdenv1 ty1 tyres in
       let thetaV1WBUa = thetaV @@ theta1 @@ thetaWBUa in
-      let (pmctl, tytl, thetatl) =
-            typecheck_pattern_match_cons qtfbl kdenvV varntenv (thetaV1WBUa @=> tyenv) tailcons (thetaV1WBUa @> tyobj) thetaV1WBUa (thetaV1WBUa @> tyres) in
-        (PatternMatchConsWhen(epat, eB, e1, pmctl), tytl, thetatl)
+      let (pmctl, tytl, thetatl, kdenvtl) =
+            iter kdenvV (thetaV1WBUa @=> tyenv) tailcons (thetaV1WBUa @> tyobj) thetaV1WBUa (thetaV1WBUa @> tyres) in
+        (PatternMatchConsWhen(epat, eB, e1, pmctl), tytl, thetatl, kdenvtl)
 
 
-and typecheck_pattern qtfbl (kdenv : Kindenv.t) (varntenv : Variantenv.t) (tyenv : Typeenv.t) (rng, utpatmain) =
-  let iter = typecheck_pattern qtfbl kdenv varntenv in
+and typecheck_pattern qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (rng, utpatmain) =
+  let iter = typecheck_pattern qtfbl varntenv in
   match utpatmain with
-  | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, IntType), tyenv)
-  | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BoolType), tyenv)
+  | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, IntType), tyenv, kdenv)
+  | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BoolType), tyenv, kdenv)
   | UTPStringConstant(ut1) ->
       let (e1, ty1, theta1, kdenv1) = typecheck qtfbl varntenv kdenv tyenv ut1 in
       let (thetaU, kdenvU) = Subst.unify kdenv1 (Range.dummy "pattern-string-constant", StringType) ty1 in
       let thetaU1 = thetaU @@ theta1 in
-        (PStringConstant(e1), (rng, StringType), thetaU1 @=> tyenv)
+        (PStringConstant(e1), (rng, StringType), thetaU1 @=> tyenv, kdenvU)
 
-  | UTPUnitConstant        -> (PUnitConstant, (rng, UnitType), tyenv)
+  | UTPUnitConstant        -> (PUnitConstant, (rng, UnitType), tyenv, kdenv)
 
   | UTPListCons(utpat1, utpat2) ->
-      let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-      let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
-        let (thetaU, kdenvU) = Subst.unify kdenv typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
-          (PListCons(epat1, epat2), thetaU @> typat2, thetaU @=> tyenv2)
+      let (epat1, typat1, tyenv1, kdenv1) = iter kdenv tyenv utpat1 in
+      let (epat2, typat2, tyenv2, kdenv2) = iter kdenv1 tyenv1 utpat2 in
+        let (thetaU, kdenvU) = Subst.unify kdenv2 typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
+          (PListCons(epat1, epat2), thetaU @> typat2, thetaU @=> tyenv2, kdenvU)
 
   | UTPEndOfList ->
       let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (PEndOfList, (rng, ListType(beta)), tyenv)
+        (PEndOfList, (rng, ListType(beta)), tyenv, kdenv)
 
   | UTPTupleCons(utpat1, utpat2) ->
-      let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-      let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
+      let (epat1, typat1, tyenv1, kdenv1) = iter kdenv tyenv utpat1 in
+      let (epat2, typat2, tyenv2, kdenv2) = iter kdenv1 tyenv1 utpat2 in
       let type_result =
         match typat2 with
         | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
         | _                          -> assert false
       in
-        (PTupleCons(epat1, epat2), type_result, tyenv2)
+        (PTupleCons(epat1, epat2), type_result, tyenv2, kdenv2)
 
-  | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv)
+  | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv, kdenv)
 
   | UTPWildCard ->
-      let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (PWildCard, beta, tyenv)
+      let tvid = Tyvarid.fresh qtfbl in
+      let beta = (rng, TypeVariable(tvid)) in
+        (PWildCard, beta, tyenv, Kindenv.add kdenv tvid UniversalKind)
 
   | UTPVariable(varnm) ->
-      let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (PVariable(varnm), beta, Typeenv.add tyenv varnm beta)
+      let tvid = Tyvarid.fresh qtfbl in
+      let beta = (rng, TypeVariable(tvid)) in
+        (PVariable(varnm), beta, Typeenv.add tyenv varnm beta, Kindenv.add kdenv tvid UniversalKind)
 
   | UTPAsVariable(varnm, utpat1) ->
-      let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-      let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-        (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm beta)
+      let tvid = Tyvarid.fresh qtfbl in
+      let beta = (rng, TypeVariable(tvid)) in
+      let (epat1, typat1, tyenv1, kdenv1) = iter (Kindenv.add kdenv tvid UniversalKind) tyenv utpat1 in
+        (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm beta, kdenv1)
 
   | UTPConstructor(constrnm, utpat1) ->
       begin
         try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
           let (tyfree, tyarglist) = Typeenv.make_bounded_free qtfbl tyforall in
-          let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-          let (thetaU, kdenvU) = Subst.unify kdenv tyfree typat1 in
-            (PConstructor(constrnm, epat1), thetaU @> (rng, VariantType(tyarglist, varntnm)), thetaU @=> tyenv1)
+          let (epat1, typat1, tyenv1, kdenv1) = iter kdenv tyenv utpat1 in
+          let (thetaU, kdenvU) = Subst.unify kdenv1 tyfree typat1 in
+            (PConstructor(constrnm, epat1), thetaU @> (rng, VariantType(tyarglist, varntnm)), thetaU @=> tyenv1, kdenvU)
         with
         | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
       end
 
 
 and make_type_environment_by_let qtfbl (kdenv : Kindenv.t) (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
-  let rec add_mutual_variables acctyenv (mutletcons : untyped_mutual_let_cons) =
+  let rec add_mutual_variables (acctyenv : Typeenv.t) (mutletcons : untyped_mutual_let_cons) =
     let iter = add_mutual_variables in
       match mutletcons with
       | UTEndOfMutualLet                             -> (acctyenv, [])
@@ -427,7 +433,7 @@ and make_type_environment_by_let qtfbl (kdenv : Kindenv.t) (varntenv : Varianten
   in
   let rec typecheck_mutual_contents
       (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list)
-      (accthetain : Subst.t) (accthetaout : Subst.t) acctvtylstout
+      (accthetain : Subst.t) (accthetaout : Subst.t) (acctvtylstout : (var_name * type_struct) list)
   =
     match (utmutletcons, tvtylst) with
     | (UTEndOfMutualLet, []) -> (tyenvforrec, EndOfMutualLet, accthetain, accthetaout, List.rev acctvtylstout)
