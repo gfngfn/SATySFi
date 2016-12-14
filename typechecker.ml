@@ -200,8 +200,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->
-      let (eitmz, thetaitmz) = typecheck_itemize qtfbl kdenv varntenv tyenv utitmz Subst.empty in
-        (eitmz, (rng, VariantType([], "itemize")), thetaitmz, kdenv) (* temporary *)
+      let (eitmz, thetaitmz, kdenvitmz) = typecheck_itemize qtfbl varntenv kdenv tyenv utitmz Subst.empty in
+        (eitmz, (rng, VariantType([], "itemize")), thetaitmz, kdenvitmz)
 
 (* ---- list ---- *)
 
@@ -248,22 +248,23 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
         (Module(mdlnm, emdltr, eA), tyaft, thetaA @@ thetaD, kdenvA)
 *)
 
-and typecheck_itemize qtfbl kdenv varntenv tyenv (UTItem(utast1, utitmzlst)) (acctheta : Subst.t) =
+and typecheck_itemize qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) (acctheta : Subst.t) =
   let tyenv1 = acctheta @=> tyenv in
   let (e1, ty1, theta1, kdenv1) = typecheck qtfbl varntenv kdenv tyenv1 utast1 in
   let (thetaU, kdenvU) = Subst.unify kdenv1 ty1 (Range.dummy "typecheck_itemize_string", StringType) in
   let thetaU1a = thetaU @@ theta1 @@ acctheta in
-  let (elst, thetalst) = typecheck_itemize_list qtfbl kdenvU varntenv (thetaU1a @=> tyenv1) utitmzlst thetaU1a in
-    (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), thetalst)
+  let (elst, thetalst, kdenvlst) = typecheck_itemize_list qtfbl varntenv kdenvU (thetaU1a @=> tyenv1) utitmzlst thetaU1a in
+    (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), thetalst, kdenvlst)
 
 
-and typecheck_itemize_list qtfbl kdenv varntenv tyenv (utitmzlst : untyped_itemize list) (acctheta : Subst.t) =
+and typecheck_itemize_list qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
+    (utitmzlst : untyped_itemize list) (acctheta : Subst.t) =
   match utitmzlst with
-  | []                  -> (EndOfList, acctheta)
+  | []                  -> (EndOfList, acctheta, kdenv)
   | hditmz :: tlitmzlst ->
-      let (ehd, thetahd) = typecheck_itemize qtfbl kdenv varntenv tyenv hditmz acctheta in
-      let (etl, thetatl) = typecheck_itemize_list qtfbl kdenv varntenv (thetahd @=> tyenv) tlitmzlst thetahd in
-        (ListCons(ehd, etl), thetatl)
+      let (ehd, thetahd, kdenvhd) = typecheck_itemize qtfbl varntenv kdenv tyenv hditmz acctheta in
+      let (etl, thetatl, kdenvtl) = typecheck_itemize_list qtfbl varntenv kdenvhd (thetahd @=> tyenv) tlitmzlst thetahd in
+        (ListCons(ehd, etl), thetatl, kdenvtl)
 
 (*
 and typecheck_module
