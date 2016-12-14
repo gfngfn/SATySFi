@@ -11,7 +11,7 @@ let rec add (kdenv : t) (tvid : Tyvarid.t) (kdstr : kind_struct) =
   match kdenv with
   | []                                               -> (tvid, kdstr) :: []
   | (alpha, _) :: tail  when Tyvarid.same alpha tvid -> (tvid, kdstr) :: tail
-  | (alpha, kd) :: tail                              -> (alpha, kd) :: (add kdenv tvid kdstr)
+  | (alpha, kd) :: tail                              -> (alpha, kd) :: (add tail tvid kdstr)
 
 
 let rec find (kdenv : t) (tvid : Tyvarid.t) =
