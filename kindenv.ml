@@ -35,6 +35,5 @@ let rec replace_type_variable_in_kindenv (kdenv : t) (tvid : Tyvarid.t) (tystr :
 
 
 (* for test *)
-let to_string (kdenv : t) =
-  List.fold_left (fun str (tvid, kdstr) -> str ^ (Tyvarid.show_direct tvid) ^ " :: " ^ "_" (* (Display.string_of_kind_struct_basic kdstr) *) ^ ", ") "" kdenv
-
+let to_string (fk : kind_struct -> string) (kdenv : t) =
+  List.fold_left (fun str (tvid, kdstr) -> str ^ (Tyvarid.show_direct tvid) ^ " :: " ^ (fk kdstr) ^ ", ") "" kdenv

@@ -92,7 +92,7 @@ and string_of_type_struct_sub (kdenv : Kindenv.t) (tystr : type_struct) (lst : (
           | Not_found ->
               begin
                 try new_unbound_type_variable_name tvid (Kindenv.find kdenv tvid) with
-                | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment: " ^ (Kindenv.to_string kdenv))
+                | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment")
               end
         end
 
@@ -377,3 +377,6 @@ and string_of_type_struct_list_basic tylist =
 
 
 let string_of_kind_struct_basic kdstr = string_of_kind_struct string_of_type_struct_basic kdstr
+
+
+let string_of_kind_environment kdenv = Kindenv.to_string string_of_kind_struct_basic kdenv
