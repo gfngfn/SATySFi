@@ -390,7 +390,7 @@
 %token <Range.t> OPENNUM CLOSENUM
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP END COMMA
-%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
+%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD OPENNUM_AND_BRECORD CLOSENUM_AND_ERECORD ACCESS
 %token <Range.t> BEFORE UNITVALUE WHILE DO
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Range.t * int> ITEM
@@ -985,6 +985,7 @@ nxbot:
 ;
 nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
+  | VAR DEFEQ nxlet LISTPUNCT          { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT nxrecord { (extract_name $1, $3) :: $5 }
 /* -- for syntax error log -- */
   | VAR DEFEQ error { report_error (TokArg $1) ((extract_name $1) ^ " =") }
@@ -1194,6 +1195,10 @@ sxidnm:
 ;
 narg: /* -> untyped_argument_cons */
   | OPENNUM nxlet CLOSENUM narg { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
+  | OPENNUM CLOSENUM narg       { let rng = make_range (Tok $1) (Tok $2) in UTArgumentCons((rng, UTUnitConstant), $3) }
+  | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD narg {
+        let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, UTRecord($2)), $4)
+      }
   |                             { UTEndOfArgument }
 /* -- for syntax error log -- */
   | OPENNUM error                { report_error (Tok $1) "(" }

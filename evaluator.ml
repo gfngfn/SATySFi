@@ -11,6 +11,10 @@ let print_for_debug_evaluator msg =
   ()
 
 
+let report_bug_evaluator msg =
+  failwith msg
+
+
 let rec make_argument_cons lst =
   match lst with
   | []           -> EndOfArgumentVariable
@@ -79,7 +83,7 @@ let rec interpret env ast =
             | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
             | _                                           -> content
         with
-        | Not_found -> begin print_string ("!!!! not found: " ^ varnm ^ "\n") ; assert false end
+        | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ varnm ^ "' not found")
       end
 
   | LetIn(mutletcons, astrest) ->
@@ -102,11 +106,23 @@ let rec interpret env ast =
                   add_to_environment env_new varnm (ref valuel) ;
                   interpret env_new astdef
                 end
-          | _ -> assert false
+          | _ -> report_bug_evaluator "Apply: not a function"
         end
 
   | IfThenElse(astb, astf, astl) ->
       if interpret_bool env astb then interpret env astf else interpret env astl
+
+(* ---- record ---- *)
+
+  | Record(asc) -> Record(Assoc.map_value (interpret env) asc)
+
+  | AccessField(ast1, fldnm) ->
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | Record(asc1) -> Assoc.find asc1 fldnm
+        | _            -> report_bug_evaluator "AccessField: not a Record"
+      end
 
 (* ---- class/id option ---- *)
 
@@ -145,7 +161,7 @@ let rec interpret env ast =
         begin
           match value1 with
           | UnitConstant -> value2
-          | _            -> assert false
+          | _            -> report_bug_evaluator "Sequential: first operand value is not a UnitConstant"
         end
 
   | Location(loc) -> Location(loc)
@@ -161,9 +177,9 @@ let rec interpret env ast =
                     loc := newvalue ;
                     UnitConstant
                   end
-            | _             -> assert false
+            | _             -> report_bug_evaluator "Overwrite: value is not a Location"
         with
-        | Not_found -> raise (EvalError("this cannot happen: undefined mutable value '" ^ varnm ^ "'"))
+        | Not_found -> report_bug_evaluator ("Overwrite: mutable value '" ^ varnm ^ "' not found")
       end
 
   | WhileDo(astb, astc) ->
@@ -177,7 +193,7 @@ let rec interpret env ast =
         begin
           match valuecont with
           | Location(loc) -> !loc
-          | _             -> assert false
+          | _             -> report_bug_evaluator "Reference"
         end
 
   | LazyContent(ast1) -> LazyContentWithEnvironmentRef(ast1, (ref env))
@@ -213,7 +229,7 @@ let rec interpret env ast =
                         loc := valuenew ;
                         UnitConstant
                       end
-                | _             -> assert false
+                | _             -> report_bug_evaluator "OverwriteGlobalHash: value is not a Location"
             with
             | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
         with
@@ -354,7 +370,7 @@ and interpret_bool env ast =
   let vb = interpret env ast in
     match vb with
     | BooleanConstant(bc) -> bc
-    | other               -> assert false
+    | other               -> report_bug_evaluator "interpret_bool: not a BooleanConstant"
 
 
 (* environment -> abstract_tree -> int *)
@@ -362,7 +378,7 @@ and interpret_int env ast =
   let vi = interpret env ast in
     match vi with
     | NumericConstant(nc) -> nc
-    | other               -> assert false
+    | other               -> report_bug_evaluator "interpret_int: not a NumericConstant"
 
 
 (* module_name -> var_name -> var_name *)
