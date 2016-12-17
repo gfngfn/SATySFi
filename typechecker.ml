@@ -541,13 +541,11 @@ and make_type_environment_by_let_mutable (varntenv : Variantenv.t) (kdenv : Kind
     (tyenvI, eI, tyI, thetaI, kdenvI)
 
 
-let main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
+let main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
     begin
-(*
       final_varntenv := varntenv ;
       final_tyenv := tyenv ;
-      final_kdenv := Kindenv.empty ;
-*)
+      final_kdenv := kdenv ;
       let (e, ty, theta, _) = typecheck Tyvarid.Quantifiable varntenv Kindenv.empty tyenv utast in
-        (ty, !final_varntenv, !final_tyenv, e)
+        (ty, !final_varntenv, !final_kdenv, !final_tyenv, e)
     end

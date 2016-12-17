@@ -2,42 +2,7 @@ open Types
 
 let meta_max    : int ref = ref 0
 let unbound_max : int ref = ref 0
-let unbound_type_valiable_name_list : (Tyvarid.t * string) list ref = ref []
-
-
-let rec variable_name_of_int (n : int) =
-  ( if n >= 26 then
-      variable_name_of_int ((n - n mod 26) / 26 - 1)
-    else
-      ""
-  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
-
-
-let new_meta_type_variable_name () =
-  let res = "{" ^ (variable_name_of_int (!meta_max)) ^ "}" in
-    begin
-      meta_max := !meta_max + 1 ;
-      res
-    end
-
-
-let rec find_type_variable (lst : (Tyvarid.t * string) list) (tvid : Tyvarid.t) =
-  match lst with
-  | []             -> raise Not_found
-  | (k, v) :: tail -> if Tyvarid.same k tvid then v else find_type_variable tail tvid
-
-
-let new_unbound_type_variable_name (tvid : Tyvarid.t) =
-  let res = variable_name_of_int (!unbound_max) in
-    begin
-      unbound_max := !unbound_max + 1 ;
-      unbound_type_valiable_name_list := (tvid, res) :: (!unbound_type_valiable_name_list) ;
-      res
-    end
-
-
-let find_unbound_type_variable (tvid : Tyvarid.t) =
-  find_type_variable (!unbound_type_valiable_name_list) tvid
+let unbound_type_valiable_name_list : (Tyvarid.t * string * kind_struct) list ref = ref []
 
 
 let string_of_record_type (f : type_struct -> string) (asc : (field_name, type_struct) Assoc.t) =
@@ -50,39 +15,109 @@ let string_of_record_type (f : type_struct -> string) (asc : (field_name, type_s
     "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
+let string_of_kind_struct (f : type_struct -> string) (kdstr : kind_struct) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    match kdstr with
+    | UniversalKind   -> "U"
+    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
+let rec variable_name_of_int (n : int) =
+  ( if n >= 26 then
+      variable_name_of_int ((n - n mod 26) / 26 - 1)
+    else
+      ""
+  ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
+
+
+let new_meta_type_variable_name () =
+  let res = "#" ^ (variable_name_of_int (!meta_max)) in
+    begin
+      meta_max := !meta_max + 1 ;
+      res
+    end
+
+
+let rec find_type_variable (f : type_struct -> string) (lst : (Tyvarid.t * string * kind_struct) list) (tvid : Tyvarid.t) =
+  match lst with
+  | []                            -> raise Not_found
+  | (k, v, UniversalKind) :: tail -> if Tyvarid.same k tvid then v else find_type_variable f tail tvid
+  | (k, v, kdstr) :: tail         -> if Tyvarid.same k tvid then v ^ " ( <: " ^ (string_of_kind_struct f kdstr) ^ ")"
+                                                            else find_type_variable f tail tvid
+
+
+let new_unbound_type_variable_name (tvid : Tyvarid.t) (kdstr : kind_struct) =
+  let res = variable_name_of_int (!unbound_max) in
+    begin
+      unbound_max := !unbound_max + 1 ;
+      unbound_type_valiable_name_list := (tvid, res, kdstr) :: (!unbound_type_valiable_name_list) ;
+      res
+    end
+
+
+let find_unbound_type_variable (f : type_struct -> string) (tvid : Tyvarid.t) =
+  find_type_variable f (!unbound_type_valiable_name_list) tvid
+
+
 (* type_struct -> string *)
-let rec string_of_type_struct (tystr : type_struct) =
+let rec string_of_type_struct (kdenv : Kindenv.t) (tystr : type_struct) =
   begin
     meta_max := 0 ;
     unbound_max := 0 ;
     unbound_type_valiable_name_list := [] ;
-    string_of_type_struct_sub tystr []
+    string_of_type_struct_sub kdenv tystr []
   end
 
-and string_of_type_struct_double (tystr1 : type_struct) (tystr2 : type_struct) =
+and string_of_type_struct_double (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   begin
     meta_max := 0 ;
     unbound_max := 0 ;
     unbound_type_valiable_name_list := [] ;
-    let strty1 = string_of_type_struct_sub tystr1 [] in
-    let strty2 = string_of_type_struct_sub tystr2 [] in
+    let strty1 = string_of_type_struct_sub kdenv tystr1 [] in
+    let strty2 = string_of_type_struct_sub kdenv tystr2 [] in
       (strty1, strty2)
   end
 
-and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) list) =
+and string_of_type_struct_sub (kdenv : Kindenv.t) (tystr : type_struct) (lst : (Tyvarid.t * string * kind_struct) list) =
+  let iter = string_of_type_struct_sub kdenv in
+  let iter_args = string_of_type_argument_list kdenv in
+  let iter_list = string_of_type_struct_list kdenv in
   let (_, tymain) = tystr in
   match tymain with
+  | TypeVariable(tvid) ->
+      ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
+        begin
+          try find_type_variable (fun ty -> string_of_type_struct_sub kdenv ty lst) lst tvid with
+          | Not_found ->
+              begin
+                try find_unbound_type_variable (fun ty -> string_of_type_struct_sub kdenv ty lst) tvid with
+                | Not_found ->
+                   try new_unbound_type_variable_name tvid (Kindenv.find kdenv tvid) with
+                   | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment: " ^ (Kindenv.to_string kdenv))
+              end
+        end
+
+  | ForallType(tvid, kdstr, tycont) ->
+      let meta = new_meta_type_variable_name () in
+        (iter tycont ((tvid, meta, kdstr) :: lst))
+
   | StringType                      -> "string"
   | IntType                         -> "int"
   | BoolType                        -> "bool"
   | UnitType                        -> "unit"
-  | VariantType(tyarglist, varntnm) -> (string_of_type_argument_list tyarglist lst) ^ varntnm
-  | TypeSynonym(tyarglist, tynm, tycont) -> (string_of_type_argument_list tyarglist lst) ^ tynm
-                                                  ^ " (= " ^ (string_of_type_struct_sub tycont lst) ^ ")"
+
+  | VariantType(tyarglist, varntnm) -> (iter_args tyarglist lst) ^ varntnm
+
+  | TypeSynonym(tyarglist, tynm, tycont) -> (iter_args tyarglist lst) ^ tynm ^ " (= " ^ (iter tycont lst) ^ ")"
 
   | FuncType(tydom, tycod) ->
-      let strdom = string_of_type_struct_sub tydom lst in
-      let strcod = string_of_type_struct_sub tycod lst in
+      let strdom = iter tydom lst in
+      let strcod = iter tycod lst in
         begin
           match tydom with
           | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
@@ -90,75 +125,57 @@ and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) 
         end ^ " -> " ^ strcod
 
   | ListType(tycont) ->
-      let strcont = string_of_type_struct_sub tycont lst in
+      let strcont = iter tycont lst in
         begin
           match tycont with
-          | (_, FuncType(_, _)) -> "(" ^ strcont ^ ")"
-          | (_, ProductType(_)) -> "(" ^ strcont ^ ")"
-          | _                   -> strcont
+          | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
+          | _                                             -> strcont
         end ^ " list"
 
   | RefType(tycont) ->
-      let strcont = string_of_type_struct_sub tycont lst in
+      let strcont = iter tycont lst in
         begin
           match tycont with
-          | (_, FuncType(_, _)) -> "(" ^ strcont ^ ")"
-          | (_, ProductType(_)) -> "(" ^ strcont ^ ")"
-          | _              -> strcont
+          | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
+          | _                                             -> strcont
         end ^ " ref"
 
-  | ProductType(tylist) -> string_of_type_struct_list tylist lst
-
-  | TypeVariable(tvid) ->
-      ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
-        begin
-          try find_type_variable lst tvid with
-          | Not_found ->
-              begin
-                try find_unbound_type_variable tvid with
-                | Not_found -> new_unbound_type_variable_name tvid
-              end
-        end
-
-  | ForallType(tvid, kdstr, tycont) ->
-      let meta = new_meta_type_variable_name () in
-        (string_of_type_struct_sub tycont ((tvid, meta) :: lst))
+  | ProductType(tylist) -> iter_list tylist lst
 
   | TypeArgument(tyvarnm) -> "['" ^ tyvarnm ^ "]"
 
-  | RecordType(asc) -> string_of_record_type (fun ty -> string_of_type_struct_sub ty lst) asc
+  | RecordType(asc) -> string_of_record_type (fun ty -> iter ty lst) asc
 
 
-and string_of_type_argument_list tyarglist lst =
+and string_of_type_argument_list kdenv tyarglist lst =
+  let iter = string_of_type_struct_sub kdenv in
+  let iter_args = string_of_type_argument_list kdenv in
   match tyarglist with
   | []           -> ""
   | head :: tail ->
-      let strhd = string_of_type_struct_sub head lst in
-      let strtl = string_of_type_argument_list tail lst in
+      let strhd = iter head lst in
+      let strtl = iter_args tail lst in
       let (_, headmain) = head in
         begin
           match headmain with
-          | ( FuncType(_, _)
-            | ListType(_)
-            | RefType(_)
-            | ProductType(_)
-            | VariantType(_ :: _, _)
-            | TypeSynonym(_ :: _, _, _) ) -> "(" ^ strhd ^ ")"
-          | _                             -> strhd
+          | ( FuncType(_, _) | ProductType(_) | TypeSynonym(_ :: _, _, _)
+            | ListType(_) | RefType(_) | VariantType(_ :: _, _) )         -> "(" ^ strhd ^ ")"
+          | _                                                             -> strhd
         end ^ " " ^ strtl
 
-and string_of_type_struct_list tylist lst =
+and string_of_type_struct_list kdenv tylist lst =
+  let iter = string_of_type_struct_sub kdenv in
+  let iter_list = string_of_type_struct_list kdenv in
   match tylist with
   | []           -> ""
   | head :: tail ->
-      let strhead = string_of_type_struct_sub head lst in
-      let strtail = string_of_type_struct_list tail lst in
+      let strhead = iter head lst in
+      let strtail = iter_list tail lst in
       let (_, headmain) = head in
       begin
         match headmain with
-        | ( ProductType(_)
-          | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
-        | _                  -> strhead
+        | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
+        | _                                   -> strhead
       end ^
       begin
         match tail with
@@ -323,7 +340,7 @@ let rec string_of_type_struct_basic tystr =
     | ProductType(tylist)       -> string_of_type_struct_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
     | ForallType(tvid, UniversalKind, tycont) -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
-    | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct string_of_type_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           -> string_of_record_type string_of_type_struct_basic asc
 
@@ -365,13 +382,4 @@ and string_of_type_struct_list_basic tylist =
         end ^ " * " ^ strtl
 
 
-and string_of_kind_struct_basic (kdstr : kind_struct) =
-  let rec aux lst =
-    match lst with
-    | []                     -> " -- "
-    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (string_of_type_struct_basic tystr)
-    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (string_of_type_struct_basic tystr) ^ "; " ^ (aux tail)
-  in
-    match kdstr with
-    | UniversalKind   -> "U"
-    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+let string_of_kind_struct_basic kdstr = string_of_kind_struct string_of_type_struct_basic kdstr

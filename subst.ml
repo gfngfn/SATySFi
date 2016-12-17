@@ -121,10 +121,10 @@ let replace_type_variable_in_kind_struct (kdstr : kind_struct) (key : Tyvarid.t)
   | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_type_struct tystr key value) asc)
 *)
 
-let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
+let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
-  let (strty1, strty2) = string_of_type_struct_double tystr1 tystr2 in
+  let (strty1, strty2) = string_of_type_struct_double kdenv tystr1 tystr2 in
   let msg =
     match (Range.is_dummy rng1, Range.is_dummy rng2) with
     | (true, true) -> "(cannot report position: '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')"
@@ -142,11 +142,11 @@ let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
     ))
 
 
-let report_contradiction_error (tystr1 : type_struct) (tystr2 : type_struct) =
+let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
-  let strty1 = string_of_type_struct tystr1 in
-  let strty2 = string_of_type_struct tystr2 in
+  let strty1 = string_of_type_struct kdenv tystr1 in
+  let strty2 = string_of_type_struct kdenv tystr2 in
   let strrng1 = Range.to_string rng1 in
   let strrng2 = Range.to_string rng2 in
   let msg =
@@ -261,7 +261,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                 let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
-                    report_inclusion_error tystr1 tystr2
+                    report_inclusion_error kdenv tystr1 tystr2
                   else if not binc then
                     raise InternalContradictionError
                   else
@@ -284,7 +284,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
       | (TypeVariable(tvid1), _) ->
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
-                      report_inclusion_error tystr1 tystr2
+                      report_inclusion_error kdenv tystr1 tystr2
                   else
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let _ = print_for_debug_subst                                      (* for debug *)
@@ -309,8 +309,8 @@ let unify (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   try
     unify_sub kdenv [(tystr1, tystr2)] empty Kindenv.empty
   with
-  | InternalInclusionError     -> report_inclusion_error tystr1 tystr2
-  | InternalContradictionError -> report_contradiction_error tystr1 tystr2
+  | InternalInclusionError     -> report_inclusion_error kdenv tystr1 tystr2
+  | InternalContradictionError -> report_contradiction_error kdenv tystr1 tystr2
 
 
 (* for test *)
