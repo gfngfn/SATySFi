@@ -9,8 +9,6 @@ val fresh : quantifiability -> t
 
 val same : t -> t -> bool
 
-val less_than : t-> t -> bool
-
 val show_direct : t -> string
 
 val is_quantifiable : t -> bool

@@ -265,8 +265,10 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                   else if not binc then
                     raise InternalContradictionError
                   else
-                    let _ = print_for_debug_subst ("    substitute " ^ (string_of_type_struct_basic tystr1) ^ " with " ^ (string_of_type_struct_basic tystr2) ^ "\n") in (* for debug *)
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let _ = print_for_debug_subst                                      (* for debug *)
+                      ("    substitute<1> " ^ (string_of_type_struct_basic tystr1)        (* for debug *)
+                       ^ " with " ^ (string_of_type_struct_basic newtystr2) ^ "\n") in (* for debug *)
                     let eqnlstbyrecord =
                       match kdstr1 with
                       | UniversalKind    -> []
@@ -284,12 +286,16 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                   if b then
                       report_inclusion_error tystr1 tystr2
                   else
-                    let _ = print_for_debug_subst ("    substitute " ^ (string_of_type_struct_basic tystr1) ^ " with " ^ (string_of_type_struct_basic tystr2) ^ "\n") in (* for debug *)
-                    let newtystr = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                    let newkdenv = Kindenv.replace_type_variable_in_kindenv kdenv tvid1 newtystr in
-                    let neweqnlst = replace_type_variable_in_equations eqntail tvid1 newtystr in
-                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr) tvid1 newtystr in
-                    let newacckdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv acckdenv tvid1 newtystr) tvid1 UniversalKind in
+                    let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let _ = print_for_debug_subst                                      (* for debug *)
+                      ("    substitute<2> " ^ (string_of_type_struct_basic tystr1)     (* for debug *)
+                       ^ " with " ^ (string_of_type_struct_basic newtystr2) ^ "\n") in (* for debug *)
+                    let newkdenv = Kindenv.replace_type_variable_in_kindenv kdenv tvid1 newtystr2 in
+                    let _ = print_for_debug_subst ("    kinds(old) " ^ (Kindenv.to_string kdenv) ^ "\n") in (* for debug *)
+                    let _ = print_for_debug_subst ("    kinds(new) " ^ (Kindenv.to_string newkdenv) ^ "\n") in (* for debug *)
+                    let neweqnlst = replace_type_variable_in_equations eqntail tvid1 newtystr2 in
+                    let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr2) tvid1 newtystr2 in
+                    let newacckdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv acckdenv tvid1 newtystr2) tvid1 UniversalKind in
                       iter_complete newkdenv neweqnlst newacctheta newacckdenv
 
       | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)]

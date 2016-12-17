@@ -16,11 +16,6 @@ let same (tvid1 : t) (tvid2 : t) =
   let (tvn2, _) = tvid2 in
     (tvn1 = tvn2)
 
-let less_than (tvid1 : t) (tvid2 : t) =
-  let (tvn1, _) = tvid1 in
-  let (tvn2, _) = tvid2 in
-    (tvn1 < tvn2)
-
 
 let show_direct (tvid : t) =
   let (tvn, q) = tvid in
