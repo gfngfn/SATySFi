@@ -258,7 +258,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
 
       | (TypeVariable(tvid1), RecordType(asc2)) ->
                 let kdstr1 = Kindenv.find kdenv tvid1 in
-                let binc = match kdstr1 with UniversalKind -> false | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
+                let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b || not binc then
                       report_inclusion_error tystr1 tystr2

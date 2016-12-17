@@ -312,8 +312,8 @@ let rec string_of_type_struct_basic tystr =
 
     | ProductType(tylist)       -> string_of_type_struct_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-    | ForallType(tvid, UniversalKind, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
-    | ForallType(tvid, kdstr, tycont)  -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, UniversalKind, tycont) -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           ->
         "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_basic tystr ^ " ; ") "" asc) ^ "}"
@@ -328,13 +328,9 @@ and string_of_type_argument_list_basic tyarglist =
       let (_, headmain) = head in
         begin
           match headmain with
-          | ( FuncType(_, _)
-            | ListType(_)
-            | RefType(_)
-            | ProductType(_)
-            | TypeSynonym(_ :: _, _, _)
-            | VariantType(_ :: _, _) ) -> "(" ^ strhd ^ ")"
-          | _                          -> strhd
+          | ( FuncType(_, _) | ProductType(_) | TypeSynonym(_ :: _, _, _)
+            | ListType(_) | RefType(_) | VariantType(_ :: _, _) )          -> "(" ^ strhd ^ ")"
+          | _                                                              -> strhd
         end ^ " " ^ strtl
 
 
@@ -346,9 +342,8 @@ and string_of_type_struct_list_basic tylist =
       let (_, headmain) = head in
         begin
           match headmain with
-          | ( ProductType(_)
-            | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
-          | _                  -> strhd
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
         end
   | head :: tail ->
       let strhd = string_of_type_struct_basic head in
@@ -356,9 +351,8 @@ and string_of_type_struct_list_basic tylist =
       let (_, headmain) = head in
         begin
           match headmain with
-          | ( ProductType(_)
-            | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
-          | _                  -> strhd
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
         end ^ " * " ^ strtl
 
 
