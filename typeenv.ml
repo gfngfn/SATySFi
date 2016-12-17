@@ -84,7 +84,7 @@ let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : ty
   match lst with
   | []           -> tystr
   | tvid :: tail ->
-     let kdstr = try Kindenv.find kdenv tvid with Not_found -> failwith "add_forall_struct" in
+     let kdstr = try Kindenv.find kdenv tvid with Not_found -> failwith ("add_forall_struct '" ^ (Tyvarid.show_direct tvid) ^ "'") in
        (Range.dummy "add_forall_struct", ForallType(tvid, kdstr, add_forall_struct kdenv tail tystr))
 
 
@@ -185,19 +185,19 @@ let rec make_unquantifiable_if_needed qtfbl tystr =
 
 
 let make_bounded_free qtfbl (kdenv : Kindenv.t) (tystr : type_struct) =
-  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (tystr : type_struct) (lst : (Tyvarid.t * type_struct) list) =
+  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (tystr : type_struct) (lst : (Tyvarid.t * Tyvarid.t * type_struct) list) =
     let (rng, tymain) = tystr in
     match tymain with
-    | ForallType(tvid, kdstr, tycont) ->
-        let tvid = Tyvarid.fresh qtfbl in
-        let beta = (Range.dummy "eliminate_forall", TypeVariable(tvid)) in
-          eliminate_forall qtfbl (Kindenv.add kdenv tvid kdstr) tycont ((tvid, beta) :: lst)
+    | ForallType(oldtvid, kdstr, tycont) ->
+        let newtvid = Tyvarid.fresh qtfbl in
+        let beta = (Range.dummy "eliminate_forall", TypeVariable(newtvid)) in
+          eliminate_forall qtfbl (Kindenv.add kdenv newtvid kdstr) tycont ((oldtvid, newtvid, beta) :: lst)
 
     | _ ->
-        let tyfree    = replace_id lst tystr in
-        let kdenvfree = List.fold_left (fun oldkdenv (tvid, beta) -> Kindenv.replace_type_variable_in_kindenv oldkdenv tvid beta) kdenv lst in
+        let tyfree    = replace_id (List.map (fun (o, n, b) -> (n, b)) lst) tystr in
+        let kdenvfree = List.fold_left (fun oldkdenv (oldtvid, newtvid, beta) -> Kindenv.replace_type_variable_in_kindenv oldkdenv oldtvid beta) kdenv lst in
         let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
-        let tyarglist = List.map (fun (tvid, ntvstr) -> ntvstr) lst in
+        let tyarglist = List.map (fun (o, n, b) -> b) lst in
           (tyqtf, tyarglist, kdenvfree)
   in
     eliminate_forall qtfbl kdenv tystr []

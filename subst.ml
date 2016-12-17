@@ -11,9 +11,9 @@ type t = (Tyvarid.t * type_struct) list
 
 
 let print_for_debug_subst msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -193,8 +193,10 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
       print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)                      (* for debug *)
                              ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in (* for debug *)
     let _ = print_for_debug_subst "\n" in (* for debug *)
+    let _ = print_for_debug_subst ("        (kinds(K) " ^ (Kindenv.to_string kdenv) ^ ")\n") in (* for debug *)
+    let _ = print_for_debug_subst ("        (kinds(S) " ^ (Kindenv.to_string acckdenv) ^ ")\n") in (* for debug *)
   match eqnlst with
-  | []                          -> (acctheta, acckdenv)
+  | []                          -> (acctheta, kdenv)
   | (tystr1, tystr2) :: eqntail ->
     let iter_none ()       = unify_sub kdenv eqntail acctheta acckdenv in
     let iter_add addedeqns = unify_sub kdenv (List.append addedeqns eqntail) acctheta acckdenv in

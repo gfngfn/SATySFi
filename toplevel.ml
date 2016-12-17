@@ -3,9 +3,9 @@
 #load "tyvarid.cmo";;
 #load "range.cmo";;
 #load "types.cmo";;
+#load "display.cmo";;
 #load "kindenv.cmo";;
 #load "typeenv.cmo";;
-#load "display.cmo";;
 #load "variantenv.cmo";;
 #load "subst.cmo";;
 #load "parser.cmo";;
