@@ -111,6 +111,16 @@ let replace_type_variable_in_equations (eqnlst : (type_struct * type_struct) lis
     List.map (fun (tystr1, tystr2) -> (f tystr1, f tystr2)) eqnlst
 
 
+let replace_type_variable_in_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
+  Typeenv.replace_id [(key, value)] tystr
+
+(*
+let replace_type_variable_in_kind_struct (kdstr : kind_struct) (key : Tyvarid.t) (value : type_struct) =
+  match kdstr with
+  | UniversalKind   -> UniversalKind
+  | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_type_struct tystr key value) asc)
+*)
+
 let report_inclusion_error (tystr1 : type_struct) (tystr2 : type_struct) =
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
@@ -177,62 +187,107 @@ let compose (theta2 : t) (theta1 : t) =
 let compose_list thetalst = List.fold_right compose thetalst empty
 
 
-let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
+let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list) (acctheta : t) (acckdenv : Kindenv.t) =
     let _ = print_for_debug_subst "    |----" in (* for debug *)
-    let _ = List.iter (fun (tystr1, tystr2) -> print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)              (* for debug *)
-                                                                      ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in (* for debug *)
+    let _ = List.iter (fun (tystr1, tystr2) ->
+      print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)                      (* for debug *)
+                             ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in (* for debug *)
     let _ = print_for_debug_subst "\n" in (* for debug *)
   match eqnlst with
-  | []                          -> acctheta
+  | []                          -> (acctheta, acckdenv)
   | (tystr1, tystr2) :: eqntail ->
-    let iter_none newacctheta          = unify_sub eqntail newacctheta in
-    let iter_add addedeqns newacctheta = unify_sub (List.append addedeqns eqntail) newacctheta in
-    let iter_complete x y              = unify_sub x y in
+    let iter_none ()       = unify_sub kdenv eqntail acctheta acckdenv in
+    let iter_add addedeqns = unify_sub kdenv (List.append addedeqns eqntail) acctheta acckdenv in
+    let iter_complete      = unify_sub in
     let (rng1, tymain1) = tystr1 in
     let (rng2, tymain2) = tystr2 in
       match (tymain1, tymain2) with
-      | (TypeSynonym(tyarglist1, _, tycont1), _) -> iter_add [(Variantenv.apply_to_type_synonym tyarglist1 tycont1, tystr2)] acctheta
-      | (_, TypeSynonym(tyarglist2, _, tycont2)) -> iter_add [(tystr1, Variantenv.apply_to_type_synonym tyarglist2 tycont2)] acctheta
+      | (TypeSynonym(tyarglist1, _, tycont1), _) -> iter_add [(Variantenv.apply_to_type_synonym tyarglist1 tycont1, tystr2)]
+      | (_, TypeSynonym(tyarglist2, _, tycont2)) -> iter_add [(tystr1, Variantenv.apply_to_type_synonym tyarglist2 tycont2)]
 
-      | (IntType, IntType)        -> iter_none acctheta
-      | (StringType, StringType)  -> iter_none acctheta
-      | (BoolType, BoolType)      -> iter_none acctheta
-      | (UnitType, UnitType)      -> iter_none acctheta
+      | (IntType, IntType)        -> iter_none ()
+      | (StringType, StringType)  -> iter_none ()
+      | (BoolType, BoolType)      -> iter_none ()
+      | (UnitType, UnitType)      -> iter_none ()
 
-      | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> iter_add [(dom1, dom2); (cod1, cod2)] acctheta
+      | (FuncType(dom1, cod1), FuncType(dom2, cod2)) -> iter_add [(dom1, dom2); (cod1, cod2)]
+
       | (ProductType(tylist1), ProductType(tylist2)) ->
           if List.length tylist1 <> List.length tylist2 then
             raise InternalContradictionError
           else
-            iter_add (List.combine tylist1 tylist2) acctheta
+            iter_add (List.combine tylist1 tylist2)
 
-      | (ListType(cont1), ListType(cont2))           -> iter_add [(cont1, cont2)] acctheta
-      | (RefType(cont1), RefType(cont2))             -> iter_add [(cont1, cont2)] acctheta
+      | (RecordType(asc1), RecordType(asc2)) ->
+          if not (Assoc.domain_same asc1 asc2) then
+            raise InternalContradictionError
+          else
+            iter_add (Assoc.combine_value asc1 asc2)
+
       | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
-                            when varntnm1 = varntnm2 -> iter_add (List.combine tyarglist1 tyarglist2) acctheta
+                            when varntnm1 = varntnm2 -> iter_add (List.combine tyarglist1 tyarglist2)
+
+      | (ListType(cont1), ListType(cont2))           -> iter_add [(cont1, cont2)]
+      | (RefType(cont1), RefType(cont2))             -> iter_add [(cont1, cont2)]
 
       | (TypeVariable(tvid1), TypeVariable(tvid2))
-                     when Tyvarid.same tvid1 tvid2 -> iter_none acctheta
+                     when Tyvarid.same tvid1 tvid2 -> iter_none ()
 
       | (TypeVariable(tvid1), TypeVariable(tvid2)) ->
                 let () = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
                 let (oldtvid, newtystr) = if Range.is_dummy rng1 then (tvid1, tystr2) else (tvid2, tystr1) in
-                    let neweqnlst = replace_type_variable_in_equations eqntail oldtvid newtystr in
-                    let newacctheta = add (replace_type_variable_in_subst acctheta oldtvid newtystr) oldtvid newtystr in
-                      iter_complete neweqnlst newacctheta
+                let kdstr1 = Kindenv.find kdenv tvid1 in
+                let kdstr2 = Kindenv.find kdenv tvid2 in
+                let (eqnlstbyrecord, kdstrunion) =
+                  match (kdstr1, kdstr2) with
+                  | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
+                  | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
+                  | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
+                  | (RecordKind(asc1), RecordKind(asc2)) ->
+                      let pureunion = RecordKind(Assoc.union asc1 asc2) in
+                        (Assoc.intersection asc1 asc2, Kindenv.replace_type_variable_in_kind_struct pureunion oldtvid newtystr)
+                in
+                  let neweqnlst = replace_type_variable_in_equations (List.append eqnlstbyrecord eqntail) oldtvid newtystr in
+                  let newkdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv kdenv oldtvid newtystr) oldtvid kdstrunion in
+                  let newacctheta = add (replace_type_variable_in_subst acctheta oldtvid newtystr) oldtvid newtystr in
+                  let newacckdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv kdenv oldtvid newtystr) oldtvid kdstr1 in
+                      (* doubtful *)
+                    iter_complete newkdenv neweqnlst newacctheta newacckdenv
+
+      | (TypeVariable(tvid1), RecordType(asc2)) ->
+                let kdstr1 = Kindenv.find kdenv tvid1 in
+                let binc = match kdstr1 with UniversalKind -> false | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
+                let (b, _) = emerge_in tvid1 tystr2 in
+                  if b || not binc then
+                      report_inclusion_error tystr1 tystr2
+                  else
+                    let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let eqnlstbyrecord =
+                      match kdstr1 with
+                      | UniversalKind    -> []
+                      | RecordKind(asc1) -> Assoc.intersection asc1 asc2
+                    in
+                      let neweqnlst = replace_type_variable_in_equations (List.append eqnlstbyrecord eqntail) tvid1 newtystr2 in
+                      let newkdenv = Kindenv.replace_type_variable_in_kindenv kdenv tvid1 newtystr2 in
+                      let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr2) tvid1 newtystr2 in
+                      let newacckdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv acckdenv tvid1 newtystr2) tvid1 kdstr1 in
+                        iter_complete newkdenv neweqnlst newacctheta newacckdenv
+
 
       | (TypeVariable(tvid1), _) ->
                 let (b, _) = emerge_in tvid1 tystr2 in
                   if b then
-                      report_inclusion_error (rng1, TypeVariable(tvid1)) tystr2
+                      report_inclusion_error tystr1 tystr2
                   else
                     let _ = print_for_debug_subst ("    substitute " ^ (string_of_type_struct_basic tystr1) ^ " with " ^ (string_of_type_struct_basic tystr2) ^ "\n") in (* for debug *)
                     let newtystr = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let newkdenv = Kindenv.replace_type_variable_in_kindenv kdenv tvid1 newtystr in
                     let neweqnlst = replace_type_variable_in_equations eqntail tvid1 newtystr in
                     let newacctheta = add (replace_type_variable_in_subst acctheta tvid1 newtystr) tvid1 newtystr in
-                      iter_complete neweqnlst newacctheta
+                    let newacckdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv acckdenv tvid1 newtystr) tvid1 UniversalKind in
+                      iter_complete newkdenv neweqnlst newacctheta newacckdenv
 
-      | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)] acctheta
+      | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)]
 
       | _                    -> raise InternalContradictionError
 
@@ -241,7 +296,7 @@ let rec unify_sub (eqnlst : (type_struct * type_struct) list) (acctheta : t) =
 let unify (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
-    (unify_sub [(tystr1, tystr2)] empty, kdenv) (* temporary *)
+    unify_sub kdenv [(tystr1, tystr2)] empty Kindenv.empty
   with
   | InternalInclusionError     -> report_inclusion_error tystr1 tystr2
   | InternalContradictionError -> report_contradiction_error tystr1 tystr2

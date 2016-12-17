@@ -19,3 +19,15 @@ val fold_value : ('c -> 'b -> 'c) -> 'c -> ('a, 'b) t -> 'c
 val to_value_list : ('a, 'b) t -> 'b list
 
 val fold : ('c -> ('a * 'b) -> 'c) -> 'c -> ('a, 'b) t -> 'c
+
+val mem : ?eq:('a -> 'a -> bool) -> 'a -> ('a, 'b) t -> bool
+
+val domain_included : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+
+val domain_same : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+
+val combine_value : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> ('b * 'c) list
+
+val intersection : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t -> ('b * 'b) list
+
+val union : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
