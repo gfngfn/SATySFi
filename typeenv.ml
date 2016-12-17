@@ -194,7 +194,7 @@ let make_bounded_free qtfbl (kdenv : Kindenv.t) (tystr : type_struct) =
           eliminate_forall qtfbl (Kindenv.add kdenv newtvid kdstr) tycont ((oldtvid, newtvid, beta) :: lst)
 
     | _ ->
-        let tyfree    = replace_id (List.map (fun (o, n, b) -> (n, b)) lst) tystr in
+        let tyfree    = replace_id (List.map (fun (o, n, b) -> (o, b)) lst) tystr in
         let kdenvfree = List.fold_left (fun oldkdenv (oldtvid, newtvid, beta) -> Kindenv.replace_type_variable_in_kindenv oldkdenv oldtvid beta) kdenv lst in
         let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
         let tyarglist = List.map (fun (o, n, b) -> b) lst in
