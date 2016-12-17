@@ -4,6 +4,8 @@ type t
 
 val empty : t
 
+val to_kind_struct_list : t -> kind_struct list
+
 val add : t -> Tyvarid.t -> kind_struct -> t
 
 val find : t -> Tyvarid.t -> kind_struct

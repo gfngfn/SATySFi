@@ -70,14 +70,24 @@ let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit 
               quantifiable_unbound_id_list := tvid :: !quantifiable_unbound_id_list
         else
           ()
+    | TypeSynonym(tylist, _, tycont) -> List.iter iter tylist (* doubtful implementation *)
     | FuncType(tydom, tycod)         -> begin iter tydom ; iter tycod end
+    | ProductType(tylist)            -> List.iter iter tylist
+    | RecordType(asc)                -> List.iter iter (List.map (fun (fldnm, tystr) -> tystr) (Assoc.to_list asc))
+    | VariantType(tylist, _)         -> List.iter iter tylist
     | ListType(tycont)               -> iter tycont
     | RefType(tycont)                -> iter tycont
-    | ProductType(tylist)            -> List.iter iter tylist
-    | VariantType(tylist, _)         -> List.iter iter tylist
-    | TypeSynonym(tylist, _, tycont) -> List.iter iter tylist (* doubtful implementation *)
-    | RecordType(asc)                -> List.iter iter (List.map (fun (fldnm, tystr) -> tystr) (Assoc.to_list asc))
-    | _                              -> ()
+    | ( IntType | BoolType | UnitType | StringType ) -> ()
+    | ( ForallType(_, _, _) | TypeArgument(_) )      -> failwith "listup_quantifiable_unbound_id"
+
+
+let listup_quantifiable_unbound_id_in_kind_environment (kdenv : Kindenv.t) (tyenv : t) =
+  let aux kdstr =
+    match kdstr with
+    | UniversalKind   -> ()
+    | RecordKind(asc) -> List.iter (fun ty -> listup_quantifiable_unbound_id ty tyenv) (List.map (fun (fldnm, tystr) -> tystr) (Assoc.to_list asc))
+  in
+    List.iter aux (Kindenv.to_kind_struct_list kdenv)
 
 
 let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : type_struct) =
@@ -92,6 +102,7 @@ let make_forall_type (tystr : type_struct) (tyenv_before : t) (kdenv : Kindenv.t
   begin
     quantifiable_unbound_id_list := [] ;
     listup_quantifiable_unbound_id tystr tyenv_before ;
+    listup_quantifiable_unbound_id_in_kind_environment kdenv tyenv_before ;
     add_forall_struct kdenv (!quantifiable_unbound_id_list) tystr
   end
 

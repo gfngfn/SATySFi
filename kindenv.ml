@@ -7,6 +7,9 @@ type t = (Tyvarid.t * kind_struct) list
 let empty : t = []
 
 
+let to_kind_struct_list kdenv = List.map (fun (tvid, tystr) -> tystr) kdenv
+
+
 let rec add (kdenv : t) (tvid : Tyvarid.t) (kdstr : kind_struct) =
   match kdenv with
   | []                                               -> (tvid, kdstr) :: []
