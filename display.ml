@@ -40,6 +40,16 @@ let find_unbound_type_variable (tvid : Tyvarid.t) =
   find_type_variable (!unbound_type_valiable_name_list) tvid
 
 
+let string_of_record_type (f : type_struct -> string) (asc : (field_name, type_struct) Assoc.t) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
 (* type_struct -> string *)
 let rec string_of_type_struct (tystr : type_struct) =
   begin
@@ -116,7 +126,7 @@ and string_of_type_struct_sub (tystr : type_struct) (lst : (Tyvarid.t * string) 
 
   | TypeArgument(tyvarnm) -> "['" ^ tyvarnm ^ "]"
 
-  | RecordType(asc) -> "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_sub tystr lst ^ " ; ") "" asc) ^ "}"
+  | RecordType(asc) -> string_of_record_type (fun ty -> string_of_type_struct_sub ty lst) asc
 
 
 and string_of_type_argument_list tyarglist lst =
@@ -315,8 +325,7 @@ let rec string_of_type_struct_basic tystr =
     | ForallType(tvid, UniversalKind, tycont) -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | TypeArgument(tyargnm)     -> tyargnm
-    | RecordType(asc)           ->
-        "{" ^ (Assoc.fold (fun s (k, tystr) -> s ^ k ^ ": " ^ string_of_type_struct_basic tystr ^ " ; ") "" asc) ^ "}"
+    | RecordType(asc)           -> string_of_record_type string_of_type_struct_basic asc
 
 
 and string_of_type_argument_list_basic tyarglist =
