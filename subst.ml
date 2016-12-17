@@ -260,9 +260,12 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                 let kdstr1 = Kindenv.find kdenv tvid1 in
                 let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
                 let (b, _) = emerge_in tvid1 tystr2 in
-                  if b || not binc then
-                      report_inclusion_error tystr1 tystr2
+                  if b then
+                    report_inclusion_error tystr1 tystr2
+                  else if not binc then
+                    raise InternalContradictionError
                   else
+                    let _ = print_for_debug_subst ("    substitute " ^ (string_of_type_struct_basic tystr1) ^ " with " ^ (string_of_type_struct_basic tystr2) ^ "\n") in (* for debug *)
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let eqnlstbyrecord =
                       match kdstr1 with

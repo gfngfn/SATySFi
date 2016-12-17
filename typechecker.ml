@@ -246,6 +246,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       let tvidF = Tyvarid.fresh qtfbl in
       let betaF = (rng, TypeVariable(tvidF)) in
       let kdenvnew = Kindenv.add (Kindenv.add kdenv tvidF UniversalKind) tvid1 (RecordKind(Assoc.of_list [(fldnm, betaF)])) in
+      let _ = print_for_debug_typecheck ("#Kinds(access) " ^ (Kindenv.to_string kdenvnew) ^ "\n") in (* for debug *)
       let (thetaU, kdenvU) = Subst.unify kdenvnew beta1 ty1 in
         (AccessField(e1, fldnm), thetaU @> betaF, thetaU @@ theta1, kdenvU)
 
