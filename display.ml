@@ -1,8 +1,7 @@
 open Types
 
-let meta_max    : int ref = ref 0
-let unbound_max : int ref = ref 0
-let unbound_type_valiable_name_list : (Tyvarid.t * string * kind_struct) list ref = ref []
+let type_variable_name_max : int ref = ref 0
+let type_valiable_name_list : (Tyvarid.t * string * bool * kind_struct) list ref = ref []
 
 
 let string_of_record_type (f : type_struct -> string) (asc : (field_name, type_struct) Assoc.t) =
@@ -35,49 +34,46 @@ let rec variable_name_of_int (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let new_meta_type_variable_name () =
-  let res = "#" ^ (variable_name_of_int (!meta_max)) in
-    begin
-      meta_max := !meta_max + 1 ;
-      res
-    end
 
-
-let rec find_type_variable (f : type_struct -> string) (lst : (Tyvarid.t * string * kind_struct) list) (tvid : Tyvarid.t) =
+let rec find_type_variable (f : type_struct -> string) (lst : (Tyvarid.t * string * bool * kind_struct) list) (tvid : Tyvarid.t) =
   match lst with
-  | []                            -> raise Not_found
-  | (k, v, UniversalKind) :: tail -> if Tyvarid.same k tvid then v else find_type_variable f tail tvid
-  | (k, v, kdstr) :: tail         -> if Tyvarid.same k tvid then v ^ " ( <: " ^ (string_of_kind_struct f kdstr) ^ ")"
-                                                            else find_type_variable f tail tvid
+  | []                               -> raise Not_found
+  | (k, v, _, UniversalKind) :: tail -> if Tyvarid.same k tvid then v else find_type_variable f tail tvid
+  | (k, v, bound, kdstr) :: tail     ->
+      if Tyvarid.same k tvid then
+        if bound then v else  "(" ^ v ^ " <: " ^ (string_of_kind_struct f kdstr) ^ ")"
+      else
+        find_type_variable f tail tvid
 
 
-let new_unbound_type_variable_name (tvid : Tyvarid.t) (kdstr : kind_struct) =
-  let res = variable_name_of_int (!unbound_max) in
+let new_type_variable_name (bound : bool) (tvid : Tyvarid.t) (kdstr : kind_struct) =
+  let res = variable_name_of_int (!type_variable_name_max) in
     begin
-      unbound_max := !unbound_max + 1 ;
-      unbound_type_valiable_name_list := (tvid, res, kdstr) :: (!unbound_type_valiable_name_list) ;
+      type_variable_name_max := !type_variable_name_max + 1 ;
+      type_valiable_name_list := (tvid, res, bound, kdstr) :: (!type_valiable_name_list) ;
       res
     end
+
+let new_bound_type_variable_name   = new_type_variable_name true
+let new_unbound_type_variable_name = new_type_variable_name false
 
 
 let find_unbound_type_variable (f : type_struct -> string) (tvid : Tyvarid.t) =
-  find_type_variable f (!unbound_type_valiable_name_list) tvid
+  find_type_variable f (!type_valiable_name_list) tvid
 
 
 (* type_struct -> string *)
 let rec string_of_type_struct (kdenv : Kindenv.t) (tystr : type_struct) =
   begin
-    meta_max := 0 ;
-    unbound_max := 0 ;
-    unbound_type_valiable_name_list := [] ;
+    type_variable_name_max := 0 ;
+    type_valiable_name_list := [] ;
     string_of_type_struct_sub kdenv tystr []
   end
 
 and string_of_type_struct_double (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
   begin
-    meta_max := 0 ;
-    unbound_max := 0 ;
-    unbound_type_valiable_name_list := [] ;
+    type_variable_name_max := 0 ;
+    type_valiable_name_list := [] ;
     let strty1 = string_of_type_struct_sub kdenv tystr1 [] in
     let strty2 = string_of_type_struct_sub kdenv tystr2 [] in
       (strty1, strty2)
@@ -92,19 +88,17 @@ and string_of_type_struct_sub (kdenv : Kindenv.t) (tystr : type_struct) (lst : (
   | TypeVariable(tvid) ->
       ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
         begin
-          try find_type_variable (fun ty -> string_of_type_struct_sub kdenv ty lst) lst tvid with
+          try find_unbound_type_variable (fun ty -> string_of_type_struct_sub kdenv ty lst) tvid with
           | Not_found ->
               begin
-                try find_unbound_type_variable (fun ty -> string_of_type_struct_sub kdenv ty lst) tvid with
-                | Not_found ->
-                   try new_unbound_type_variable_name tvid (Kindenv.find kdenv tvid) with
-                   | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment: " ^ (Kindenv.to_string kdenv))
+                try new_unbound_type_variable_name tvid (Kindenv.find kdenv tvid) with
+                | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment: " ^ (Kindenv.to_string kdenv))
               end
         end
 
   | ForallType(tvid, kdstr, tycont) ->
-      let meta = new_meta_type_variable_name () in
-        (iter tycont ((tvid, meta, kdstr) :: lst))
+      let meta = new_bound_type_variable_name tvid kdstr in
+        "(forall " ^ meta ^ " <: " ^ (string_of_kind_struct (fun ty -> string_of_type_struct_sub kdenv ty lst) kdstr) ^ ". " ^ (iter tycont ((tvid, meta, kdstr) :: lst)) ^ ")"
 
   | StringType                      -> "string"
   | IntType                         -> "int"
