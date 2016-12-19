@@ -237,16 +237,29 @@ and string_of_utpat (_, pat) =
   | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_utpat p) ^ ")"
 
 
+let escape_letters str =
+  let rec aux str index =
+    if index <= 0 then "" else
+      let head =
+        match str.[0] with
+        | '\\'  -> "\\\\"
+        | '"'   -> "\\\""
+        | other -> String.make 1 other
+      in
+        head ^ (aux (String.sub str 1 (index - 1)) (index - 1))
+  in
+    aux str (String.length str)
+
 (* abstract_tree -> string *)
 let rec string_of_ast ast =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)                 -> v
+  | ContentOf(v)                 -> "_" ^ v ^ "_"
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
-  | StringEmpty                  -> "{}"
-  | StringConstant(sc)           -> "{" ^ sc ^ "}"
+  | StringEmpty                  -> "\"\""
+  | StringConstant(sc)           -> "\"" ^ (escape_letters sc) ^ "\""
   | NumericConstant(nc)          -> string_of_int nc
   | BooleanConstant(bc)          -> string_of_bool bc
   | IfThenElse(b, t, f)          ->
@@ -262,13 +275,12 @@ let rec string_of_ast ast =
   | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
   | EndOfList                    -> "[]"
   | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
-  | EndOfTuple                   -> "$"
+  | EndOfTuple                   -> "end-of-tuple"
   | BreakAndIndent               -> "break"
   | FinishHeaderFile             -> "finish-header-file"
   | EvaluatedEnvironment(_)      -> "evaluated-environment"
   | DeeperIndent(m)              -> "(deeper " ^ (string_of_ast m) ^ ")"
   | Constructor(c, m)            -> "(constructor " ^ c ^ " " ^ (string_of_ast m) ^ ")"
-  | NoContent                    -> "no-content"
   | PatternMatch(_, _)           -> "(match ...)"
   | LetIn(_, m)                  -> "(let ... in " ^ (string_of_ast m) ^ ")"
   | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"

@@ -28,14 +28,13 @@ let add_to_environment (env : environment) (varnm : var_name) (rfast : abstract_
 let find_in_environment (env : environment) (varnm : var_name) = Hashtbl.find env varnm
 
 
-(* environment -> abstract_tree -> abstract_tree *)
 let rec interpret env ast =
   match ast with
 
 (* ---- basic value ---- *)
 
   | StringEmpty                           -> StringEmpty
-  | NoContent                             -> NoContent
+(*  | NoContent                             -> NoContent *)
   | NumericConstant(nc)                   -> NumericConstant(nc)
   | StringConstant(c)                     -> StringConstant(c)
   | BooleanConstant(bc)                   -> BooleanConstant(bc)
@@ -127,12 +126,12 @@ let rec interpret env ast =
 (* ---- class/id option ---- *)
 
   | ApplyClassAndID(clsnmast, idnmast, astf) ->
-      begin                                                             (* for debug *)
+      begin                                                                       (* for debug *)
         print_for_debug_evaluator ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
         let valuef =  interpret env
                         (LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
                           LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astf))) in
-          begin                                                         (* for debug *)
+          begin                                                                   (* for debug *)
             print_for_debug_evaluator ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
             match valuef with
             | FuncWithEnvironment(varnm, astdef, envf) ->
@@ -253,7 +252,7 @@ let rec interpret env ast =
       let env_out = copy_environment env in
       let env_in  = copy_environment env in
         begin
-          print_for_debug_evaluator ("module1 [" ^ mdlnm ^ "]\n");                (* for debug *)
+          print_for_debug_evaluator ("module '" ^ mdlnm ^ "'\n") ;                (* for debug *)
           add_module_to_environment env_out env_in mdlnm mdltrdef ;
           interpret env_out astaft
         end
@@ -274,7 +273,7 @@ let rec interpret env ast =
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str =
         try Out.main (interpret env aststr) with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'string-sub': " ^ s))
+        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'string-sub':\n    " ^ s))
       in
         let pos = interpret_int env astpos in
         let wid = interpret_int env astwid in
@@ -378,7 +377,7 @@ and interpret_int env ast =
   let vi = interpret env ast in
     match vi with
     | NumericConstant(nc) -> nc
-    | other               -> report_bug_evaluator "interpret_int: not a NumericConstant"
+    | other               -> report_bug_evaluator ("interpret_int: not a NumericConstant; " ^ (string_of_ast ast) ^ " ->* " ^ (string_of_ast vi))
 
 
 (* module_name -> var_name -> var_name *)
@@ -487,18 +486,17 @@ and check_pattern_matching env pat astobj =
   | _                                            -> false
 
 
-(* bool -> environment -> mutual_let_cons -> unit *)
-and add_mutuals_to_environment is_public eout ein mdlnm mutletcons =
+and add_mutuals_to_environment (is_public : bool) (eout : environment) (ein : environment) (mdlnm : module_name) (mutletcons : mutual_let_cons) =
   let lst = add_mutuals_to_environment_sub is_public [] mdlnm eout ein mutletcons in
-    begin                                              (* for debug *)
-      print_for_debug_evaluator ("module3 [" ^ mdlnm ^ "]\n") ;  (* for debug *)
+    begin                                                                           (* for debug *)
+      print_for_debug_evaluator ("add_mutuals_to_environment '" ^ mdlnm ^ "'\n") ;  (* for debug *)
       add_zeroary_mutuals is_public lst mdlnm eout ein
-    end                                                (* for debug *)
+    end                                                                             (* for debug *)
 
 
-(* bool -> (var_name * abstract_tree) list -> module_name ->
-    environment -> environment -> mutual_let_cons -> (var_name * abstract_tree) list *)
-and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
+and add_mutuals_to_environment_sub
+    (is_public : bool) (lst : (var_name * abstract_tree) list) (mdlnm : module_name)
+    (eout : environment) (ein : environment) (mutletcons : mutual_let_cons) =
   match mutletcons with
   | EndOfMutualLet                          -> lst
   | MutualLetCons(varnm, astcont, tailcons) ->
@@ -508,10 +506,10 @@ and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
             begin
               add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
               if is_public then
-                begin                                                   (* for debug *)
+                begin                                                                 (* for debug *)
                   add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
-                  ; print_for_debug_evaluator ("[" ^ mdlnm ^ "." ^ varnm ^ "]\n") (* for debug *)
-                end                                                     (* for debug *)
+                  ; print_for_debug_evaluator ("sub '" ^ mdlnm ^ "." ^ varnm ^ "'\n") (* for debug *)
+                end                                                                   (* for debug *)
               else () ;
               add_mutuals_to_environment_sub is_public lst mdlnm eout ein tailcons
             end
@@ -521,8 +519,7 @@ and add_mutuals_to_environment_sub is_public lst mdlnm eout ein mutletcons =
       end
 
 
-(* bool -> (var_name * abstract_tree) list -> module_name -> environment -> unit *)
-and add_zeroary_mutuals is_public lst mdlnm eout ein =
+and add_zeroary_mutuals (is_public : bool) (lst : (var_name * abstract_tree) list) (mdlnm : module_name) (eout : environment) (ein : environment) =
   let newlst = add_zeroary_mutuals_sub is_public lst mdlnm eout ein [] in
     if List.length newlst = 0 then
       ()
@@ -532,11 +529,11 @@ and add_zeroary_mutuals is_public lst mdlnm eout ein =
       add_zeroary_mutuals is_public newlst mdlnm eout ein
 
 
-(* bool -> (var_name * abstract_tree) list -> module_name ->
-    enviroment -> environment -> (var_name * abstract_tree) list -> (var_name * abstract_tree) list *)
-and add_zeroary_mutuals_sub is_public lst mdlnm eout ein constr =
+and add_zeroary_mutuals_sub
+    (is_public : bool) (lst : (var_name * abstract_tree) list) (mdlnm : module_name)
+    (eout : environment) (ein : environment) (acc : (var_name * abstract_tree) list) =
   match lst with
-  | []                       -> constr
+  | []                       -> acc
   | (varnm, astcont) :: tail ->
       begin
         try
@@ -545,8 +542,8 @@ and add_zeroary_mutuals_sub is_public lst mdlnm eout ein constr =
               add_to_environment ein (make_variable_name "" varnm) (ref valuecont) ;
               if is_public  then add_to_environment eout (make_variable_name mdlnm varnm) (ref valuecont)
                             else () ;
-              add_zeroary_mutuals_sub is_public tail mdlnm eout ein constr
+              add_zeroary_mutuals_sub is_public tail mdlnm eout ein acc
             end
         with
-        | EvalError(_) -> add_zeroary_mutuals_sub is_public tail mdlnm eout ein ((varnm, astcont) :: constr)
+        | EvalError(_) -> add_zeroary_mutuals_sub is_public tail mdlnm eout ein ((varnm, astcont) :: acc)
       end

@@ -31,7 +31,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTStringConstant(sc)  -> (StringConstant(sc),  (rng, StringType), Subst.empty, kdenv)
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType),   Subst.empty, kdenv)
   | UTUnitConstant        -> (UnitConstant,        (rng, UnitType),   Subst.empty, kdenv)
-  | UTNoContent           -> (NoContent,           (rng, StringType), Subst.empty, kdenv)
+(*  | UTNoContent           -> (NoContent,           (rng, StringType), Subst.empty, kdenv) *)
   | UTFinishHeaderFile    ->
       begin
         final_tyenv    := tyenv ;

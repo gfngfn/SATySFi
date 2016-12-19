@@ -61,7 +61,7 @@ and untyped_abstract_tree_main =
   | UTUnitConstant
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTBreakAndIndent
-  | UTNoContent
+(*  | UTNoContent *)
 (* -- list value -- *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -182,7 +182,7 @@ and abstract_tree =
   | BreakAndIndent
   | SoftBreakAndIndent
   | Concat                of abstract_tree * abstract_tree
-  | NoContent (* for class and id *)
+(*  | NoContent (* for class and id *) *)
   | FuncWithEnvironment   of var_name * abstract_tree * environment
   | EvaluatedEnvironment  of environment
 (* -- list value -- *)
