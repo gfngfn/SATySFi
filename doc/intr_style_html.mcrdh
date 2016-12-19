@@ -1,7 +1,3 @@
-let \settings = {
-  <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
-  <link href="./intr_style.css" rel="stylesheet" type="text/css">
-}
 
 let \version = {ver 1.00delta}
 

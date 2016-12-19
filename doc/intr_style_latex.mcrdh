@@ -1,25 +1,4 @@
-let \settings = {
-  \\usepackage\{amsmath\}
-  \\usepackage\{amssymb\}
-  \\usepackage[T1]\{fontenc\}
-  \\usepackage\{lmodern\}
-  \\usepackage[dvipdfmx]\{xcolor\}
-  \\usepackage[dvipdfmx]\{graphicx\}
-  \\usepackage\{tikz\}
-  \\usepackage\{eclbkbox\}
-  \\usepackage\{gfncls\}
-  \\setsectiontheme\{strongline\}
-  \\setlength\\parskip\{1zw\}
-  \\usepackage\{mdframed\}
-  \\mdfdefinestyle\{codebox\}\{\deeper{
-    frametitlerule=true,
-    frametitlefont=\\normalfont,
-    frametitlebackgroundcolor=gray!20,
-    linewidth=1pt
-  }\}
-}
-
-let \version = {ver. 1.00 gamma}
+let \version = {ver. 1.00 epsilon}
 
 let \twitter-at-id at-id = `\texttt{@` ^ {\escape-for-latex{@at-id;}} ^ `}`
 

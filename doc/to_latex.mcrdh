@@ -1,25 +1,65 @@
 let deeper s = {\deeper{@s;}}
 
-let \document head body = {
-  \\documentclass\{jsarticle\}
-  \\makeatletter\deeper{
-    @head;
-  }\\makeatother
-  \\begin\{document\}\deeper{
-    @body;
-  }\\end\{document\}
-}
-let \title title = `\title{` ^ title ^ `}`
 
-let \author author = `\author{` ^ author ^ `}`
+let make-option-string optlst =
+  let aux optlst =
+    match optlst with
+    | head :: []   -> head
+    | head :: tail -> let res = aux tail in {@head;,@res;}
+  in
+    match optlst with
+    | [] -> {}
+    | _  -> let res = aux optlst in {[@res;]}
+
+let make-package-string lst =
+  match lst with
+  | []                        -> {}
+  | (optlst, package) :: tail ->
+      let optres = make-option-string optlst in
+      let tailres = make-package-string tail in
+      {
+        \\usepackage@optres;\{@package;\}
+        @tailres;
+      }
+
+let \document head body =
+  let class-file = head#latex-class-file in
+  let title = head#title in
+  let author = head#author in
+  let additional-settings = head#latex-additional-settings in
+  let packages = make-package-string head#latex-packages in
+  {
+    \\documentclass\{@class-file;\}
+    \\makeatletter\deeper{
+      \\title\{@title;\}
+      \\author\{@author;\}
+      @packages;
+      @additional-settings;
+    }\\makeatother
+    \\begin\{document\}\deeper{
+      @body;
+    }\\end\{document\}
+  }
 
 let \maketitle = `\maketitle` ^ {\ }
 
-let \section sec cont = `\section{` ^sec^ `}` ^(deeper cont)^ `%`
+let section-scheme idopt category heading cont =
+  let id-string =
+    match idopt with
+    | Nothing -> {}
+    | Just(s) -> {\\label\{@s;\}}
+  in
+  {
+    \\@category;\{@heading;\}@id-string;\deeper{
+      @cont;
+    }
+  }
 
-let \subsection subsec cont = `\subsection{` ^subsec^ `}` ^(deeper cont)^ `%`
+let \section heading cont = section-scheme id-name `section` heading cont
 
-let \p p = `\indent` ^(deeper p)^ `\par`
+let \subsection heading cont = section-scheme id-name `subsection` heading cont
+
+let \p p = `\indent` ^(deeper p)^ `\par` ^ {\ }
 
 let \footnote footnote = `\footnote{` ^footnote^ `}`
 
@@ -34,10 +74,8 @@ and sub-itemize itmzlst =
 
 and single-itemize itmz =
   match itmz with
-  | Item(it, []) ->
-    `\item` ^ {\ } ^ it ^ soft-break
-  | Item(it, itmzlst) ->
-    `\item` ^ {\ } ^ it ^ soft-break ^ `\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}` ^ soft-break
+  | Item(it, [])      -> `\item` ^ {\ } ^ it ^ soft-break
+  | Item(it, itmzlst) -> `\item` ^ {\ } ^ it ^ soft-break ^ `\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}` ^ soft-break
 
 let \math math = {\ $@math;$\ }
 

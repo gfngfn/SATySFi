@@ -1,25 +1,28 @@
 let \ref ref = !! ref
 
-let \document head body = {
-  <html lang="ja">\deeper{
-    <head>\deeper{
-      @head;
-    }</head>
-    <body><div class="main">\deeper{
-      @body;
-    }</div></body>
-  }</html>
-}
-
 let-mutable mut-title <- {}
-
-let \title title =
-  mut-title <- title before {<title>@title;</title>}
-
 let-mutable mut-author <- {}
 
-let \author author =
-  mut-author <- author before {<meta name="author" content="@author;">}
+let \document head body =
+  let title = head#title in
+  let lang = head#lang in
+  let author = head#author in
+  let style-sheet = head#html-style-sheet in
+  let dummy = mut-title <- title in
+  let dummy = mut-author <- author in
+    {
+      <html lang="@lang;">\deeper{
+        <head>\deeper{
+          <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
+          <title>@title;</title>
+          <meta name="author" content="@author;">
+          <link href="@style-sheet;" rel="stylesheet" type="text/css">
+        }</head>
+        <body><div class="main">\deeper{
+          @body;
+        }</div></body>
+      }</html>
+    }
 
 let-lazy \maketitle =
   let title  = !mut-title in
