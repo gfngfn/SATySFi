@@ -1,5 +1,5 @@
 
-let \version = {ver 1.00delta}
+let \version = {ver 1.00 epsilon}
 
 let \twitter-at-id at-id = {\@@at-id;}
 

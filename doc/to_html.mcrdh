@@ -8,8 +8,8 @@ let \document head body =
   let lang = head#lang in
   let author = head#author in
   let style-sheet = head#html-style-sheet in
-  let dummy = mut-title <- title in
-  let dummy = mut-author <- author in
+    new-global-hash `to-html:title` <<- title before
+    new-global-hash `to-html:author` <<- author before
     {
       <html lang="@lang;">\deeper{
         <head>\deeper{
@@ -25,8 +25,8 @@ let \document head body =
     }
 
 let-lazy \maketitle =
-  let title  = !mut-title in
-  let author = !mut-author in {
+  let title  = !! `to-html:title` in
+  let author = !! `to-html:author` in {
     <div class="maketitle">\deeper{
       <div class="title">@title;</div>
       <div class="author">@author;</div>
