@@ -14,7 +14,7 @@ let make-option-string optlst =
 let make-package-string lst =
   match lst with
   | []                        -> {}
-  | (optlst, package) :: tail ->
+  | (package, optlst) :: tail ->
       let optres = make-option-string optlst in
       let tailres = make-package-string tail in
       {

@@ -8,17 +8,17 @@
 
   latex-class-file = `jsarticle`;
   latex-packages = [
-    ([], `amsmath`);
-    ([], `amssymb`);
-    ([`T1`], `fontenc`);
-    ([], `lmodern`);
-    ([`dvipdfmx`], `xcolor`);
-    ([`dvipdfmx`], `graphicx`);
-    ([], `tikz`);
-    ([], `eclbkbox`);
+    (`amsmath`, []);
+    (`amssymb`, []);
+    (`fontenc`, [`T1`]);
+    (`lmodern`, []);
+    (`graphicx`, [`dvipdfmx`]);
+    (`xcolor`, [`dvipdfmx`]);
+    (`tikz`, []);
+    (`eclbkbox`, []);
 
-    ([], `gfncls`);
-    ([], `mdframed`)
+    (`gfncls`, []);
+    (`mdframed`, []);
   ];
   latex-additional-settings = {
     \\setsectiontheme\{strongline\}
