@@ -972,7 +972,7 @@ nxbot:
   | OPENSTR sxsep CLOSESTR          { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | OPENQT sxblock CLOSEQT          { make_standard (Tok $1) (Tok $3) (omit_spaces $2) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
-  | BLIST nxlet nxlist ELIST        { make_standard (Tok $1) (Tok $4) (UTListCons($2, $3)) }
+  | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf($2)) }
   | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
@@ -992,10 +992,11 @@ nxrecord:
 /* -- -- */
 ;
 nxlist:
-  | LISTPUNCT nxlet nxlist { make_standard (Tok $1) (Untyped $3) (UTListCons($2, $3)) }
-  |                        { (Range.dummy "end-of-list", UTEndOfList) }
+  | nxlet LISTPUNCT nxlist { make_standard (Untyped $1) (Untyped $3) (UTListCons($1, $3)) }
+  | nxlet LISTPUNCT        { make_standard (Untyped $1) (Tok $2) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
+  | nxlet                  { make_standard (Untyped $1) (Untyped $1) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
 /* -- for syntax error log -- */
-  | LISTPUNCT error        { report_error (Tok $1) ";" }
+  | nxlet LISTPUNCT error  { report_error (Tok $2) ";" }
 /* -- -- */
 ;
 variants: /* -> untyped_variant_cons */
