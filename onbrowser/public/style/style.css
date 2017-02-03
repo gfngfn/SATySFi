@@ -1,0 +1,28 @@
+@charset "UTF-8";
+
+
+#input-side {
+    display: inline-block;
+    vertical-align: top;
+    width: 45%;
+    height: 200px;
+    border: #444444 solid 2px;
+    padding: 0px;
+    margin: 0px;
+}
+
+#input-area {
+    width: 100%;
+    height: 200px;
+    padding: 0px;
+    border: 0px;
+    margin: 0px;
+}
+
+#output-side {
+    display: inline-block;
+    vertical-align: top;
+    width: 45%;
+    border: #cccccc solid 2px;
+    min-height: 100px;
+}
