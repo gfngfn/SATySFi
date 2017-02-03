@@ -40,13 +40,13 @@ let output inputCode =
 let _ =
   afterLoadingHTML (fun () ->
     let inputArea = documentVar##inputForm##inputArea in
-    let outputArea = document |> getElementById "output-area" in
+    let outputArea = document |> getElementById "output-side" in
     let submissionButton = document |> getElementById "submission-button" in
     begin
       submissionButton |> addEventListener Click (fun e ->
         let outputText = output inputArea##value in
         begin
-          outputArea |> setInnerText outputText |> ignore ; (* temporary *)
+          outputArea |> setInnerHtml outputText |> ignore ; (* temporary *)
         end
       ) ;
     end

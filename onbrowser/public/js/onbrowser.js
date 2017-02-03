@@ -94,11 +94,11 @@ function output(inputCode) {
 
 Curry._1(Domstd.afterLoadingHTML, function () {
       var inputArea = document.inputForm.inputArea;
-      var outputArea = Curry._2(Domstd.getElementById, "output-area", Domstd.$$document);
+      var outputArea = Curry._2(Domstd.getElementById, "output-side", Domstd.$$document);
       var submissionButton = Curry._2(Domstd.getElementById, "submission-button", Domstd.$$document);
       return Domstd.addEventListener(/* Click */0, function () {
                   var outputText = output(inputArea.value);
-                  Curry._2(Domstd.setInnerText, outputText, outputArea);
+                  Curry._2(Domstd.setInnerHtml, outputText, outputArea);
                   return /* () */0;
                 }, submissionButton);
     });

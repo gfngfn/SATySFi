@@ -24,6 +24,7 @@ parser.mli
 parser.output
 *.png
 *.cmj
+public/js/
 crt2.o
 libadvapi32
 libgcc

@@ -241,9 +241,8 @@ function addEventListener(k, f, elem) {
 }
 
 
-  var setInnerText_aux = function(txt, nd) {
+  var setInnerHtml_aux = function(txt, nd) {
     nd.innerHTML = txt;
-    console.log("A: " + txt);
     return nd;
   }
 
@@ -290,8 +289,8 @@ function createComment(prim, prim$1) {
   return prim$1.createComment(prim);
 }
 
-function setInnerText(prim, prim$1) {
-  return setInnerText_aux(prim, prim$1);
+function setInnerHtml(prim, prim$1) {
+  return setInnerHtml_aux(prim, prim$1);
 }
 
 exports.afterLoadingHTML     = afterLoadingHTML;
@@ -307,7 +306,7 @@ exports.createElement        = createElement;
 exports.createTextNode       = createTextNode;
 exports.createComment        = createComment;
 exports.addEventListener     = addEventListener;
-exports.setInnerText         = setInnerText;
+exports.setInnerHtml         = setInnerHtml;
 exports.createSvgElement     = createSvgElement;
 exports.setAttributeMap      = setAttributeMap;
 /* afterLoadingHTML Not a pure module */

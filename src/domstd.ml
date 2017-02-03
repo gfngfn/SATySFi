@@ -364,11 +364,10 @@ let setInnerText txt nd =
     nd |> removeAllChild |> appendChild txtnd
 *)
 
-external setInnerText : string -> #node -> node = "setInnerText_aux" [@@bs.val]
+external setInnerHtml : string -> (#node as 'a) -> 'a = "setInnerHtml_aux" [@@bs.val]
 [%%bs.raw{|
-  var setInnerText_aux = function(txt, nd) {
+  var setInnerHtml_aux = function(txt, nd) {
     nd.innerHTML = txt;
-    console.log("A: " + txt);
     return nd;
   }
 |}]

@@ -107,7 +107,7 @@ val addEventListener : 'a event_kind -> ('a -> unit) -> element -> unit
 
 (* ---- extension ---- *)
 
-val setInnerText : string -> #node -> node
+val setInnerHtml : string -> (#node as 'a) -> 'a
 
 val createSvgElement : tag_name -> document -> element
 
