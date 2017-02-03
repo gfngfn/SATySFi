@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "bs-platform": "1.0.1"
+  },
+  "scripts": {
+    "build": "bsc.exe -c -bs-main onbrowser.ml"
+  }
+}

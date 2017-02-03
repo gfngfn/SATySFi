@@ -39,7 +39,7 @@ val setInterval : (unit -> unit) -> int -> unit
 
 val setAttribute : string -> string -> #node -> unit
 
-val appendChild : #node -> #node -> node
+val appendChild : (#node as 'a) -> #node -> 'a
 
 val appendChildMap : #node list -> #node -> unit
 (*

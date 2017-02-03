@@ -196,7 +196,7 @@ external setInterval : (unit -> unit) -> int -> unit = "setInterval" [@@bs.val]
 
 external setAttribute : string -> string -> unit = "setAttribute" [@@bs.send.pipe: #node]
 
-external appendChild : #node -> node = "appendChild" [@@bs.send.pipe: #node]
+external appendChild : (#node as 'a) -> 'a = "appendChild" [@@bs.send.pipe: #node]
 
 let appendChildMap (lst : #node list) (prnt : #node) : unit =
   List.iter (fun x -> prnt |> appendChild x |> ignore) lst

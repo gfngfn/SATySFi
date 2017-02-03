@@ -73,7 +73,7 @@
       numdepth := 0 ;
       strdepth := 0 ;
       numdepth_stack := Stacklist.empty ;
-      strdepth_stack := Stacklist.empty
+      strdepth_stack := Stacklist.empty ;
     end
 
 
@@ -88,7 +88,7 @@
       numdepth := 0 ;
       strdepth := 0 ;
       numdepth_stack := Stacklist.empty ;
-      strdepth_stack := Stacklist.empty
+      strdepth_stack := Stacklist.empty ;
     end
 
 }
@@ -414,5 +414,4 @@ and comment = parse
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output
-
 }
