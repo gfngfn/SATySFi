@@ -5,7 +5,14 @@ open Domstd
 exception OnBrowserError of string
 
 
-external documentVar : < .. > Js.t = "document" [@@bs.val]
+external documentUnsafe : < .. > Js.t = "document" [@@bs.val]
+
+let setBackgroundColor_ext : string -> element -> unit =
+  [%bs.raw{|
+    function(clr, domobj) { domobj.style.backgroundColor = clr; }
+  |}]
+
+let setBackgroundColor clr domobj = setBackgroundColor_ext clr domobj
 
 
 let varntenv_default = Primitives.make_variant_environment
@@ -39,15 +46,28 @@ let output inputCode =
 
 let _ =
   afterLoadingHTML (fun () ->
-    let inputArea = documentVar##inputForm##inputArea in
+    let inputArea = documentUnsafe##inputForm##inputArea in
     let outputArea = document |> getElementById "output-side" in
     let submissionButton = document |> getElementById "submission-button" in
+    let nowConverting = ref false in
     begin
+      submissionButton |> addEventListener MouseOver (fun e ->
+        submissionButton |> setBackgroundColor "#cccccc"
+      ) ;
+      submissionButton |> addEventListener MouseOut  (fun e ->
+        submissionButton |> setBackgroundColor "#eeeeee"
+      ) ;
       submissionButton |> addEventListener Click (fun e ->
-        let outputText = output inputArea##value in
+        if !nowConverting then () else
         begin
-          outputArea |> setInnerHtml outputText |> ignore ; (* temporary *)
-        end
+          nowConverting := true ;
+          submissionButton |> setBackgroundColor "#aaaaaa" ;
+          let outputText = output inputArea##value in
+          begin
+            outputArea |> setInnerHtml outputText |> ignore ; (* temporary *)
+            nowConverting := false ;
+          end
+       end
       ) ;
     end
   )

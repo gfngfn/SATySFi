@@ -5,7 +5,7 @@
     display: inline-block;
     vertical-align: top;
     width: 45%;
-    height: 200px;
+    height: 500px;
     border: #444444 solid 2px;
     padding: 0px;
     margin: 0px;
@@ -13,7 +13,7 @@
 
 #input-area {
     width: 100%;
-    height: 200px;
+    height: 500px;
     padding: 0px;
     border: 0px;
     margin: 0px;
@@ -25,4 +25,17 @@
     width: 45%;
     border: #cccccc solid 2px;
     min-height: 100px;
+}
+
+#submission-button {
+    display: inline-block;
+    border: #444444 solid 2px;
+    border-radius: 4px;
+    padding: 4px;
+    margin: 4px;
+}
+
+textarea {
+    font-family: "Latin Modern Mono" "Ubuntu Mono" "Consolas" "Courier" "Courier new" monospace;
+    font-size: 1.5em;
 }
