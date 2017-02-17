@@ -377,7 +377,7 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
+%token <Range.t> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT
 %token <Range.t> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Range.t> REFNOW REFFINAL
@@ -484,7 +484,7 @@ nxtoplevel:
   | LETMUTABLE VAR error                      { report_error (TokArg $2) "" }
   | LETMUTABLE VAR OVERWRITEEQ error          { report_error (Tok $3) "<-" }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN error { report_error (Tok $5) "in" }
-  | VARIANT error                             { report_error (Tok $1) "variant" }
+  | VARIANT error                             { report_error (Tok $1) "type" }
   | MODULE error                              { report_error (Tok $1) "module" }
   | MODULE CONSTRUCTOR DEFEQ error            { report_error (Tok $3) "=" }
   | MODULE CONSTRUCTOR DEFEQ STRUCT error     { report_error (Tok $4) "struct" }
@@ -516,11 +516,11 @@ nxstruct: /* -> untyped_module_tree */
   | PUBLIC error             { report_error (Tok $1) "private" }
   | PUBLIC LET error         { report_error (Tok $2) "let" }
   | PUBLIC LETMUTABLE error  { report_error (Tok $2) "let" }
-  | PUBLIC VARIANT error     { report_error (Tok $2) "variant" }
+  | PUBLIC VARIANT error     { report_error (Tok $2) "type" }
   | PRIVATE error            { report_error (Tok $1) "private" }
   | PRIVATE LET error        { report_error (Tok $2) "let" }
   | PRIVATE LETMUTABLE error { report_error (Tok $2) "let" }
-  | PRIVATE VARIANT error    { report_error (Tok $2) "variant" }
+  | PRIVATE VARIANT error    { report_error (Tok $2) "type" }
 /* -- -- */
 ;
 nxdec: /* -> untyped_mutual_let_cons */
@@ -938,19 +938,17 @@ nxrtimes:
 /* -- -- */
 ;
 nxun:
-  | MINUS nxapp       { binary_operator "-" (Range.dummy "zero-of-unary-minus", UTNumericConstant(0)) $1 $2 }
-  | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("not")), $2)) }
-  | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
-  | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
-                          (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
-  | nxapp             { $1 }
+  | MINUS nxapp          { binary_operator "-" (Range.dummy "zero-of-unary-minus", UTNumericConstant(0)) $1 $2 }
+  | LNOT nxapp           { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("not")), $2)) }
+  | CONSTRUCTOR nxconstr { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
+  | nxapp                { $1 }
 /* -- for syntax error log -- */
-  | MINUS error       { report_error (Tok $1) "-" }
-  | LNOT error        { report_error (Tok $1) "not" }
+  | MINUS error          { report_error (Tok $1) "-" }
+  | LNOT error           { report_error (Tok $1) "not" }
 /* -- -- */
 ;
 nxapp:
-  | nxapp nxbot    { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
+  | nxapp nxconstr { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
   | REFNOW nxbot   { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("!")), $2)) }
   | REFFINAL nxbot { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
   | nxbot          { $1 }
@@ -959,10 +957,14 @@ nxapp:
   | REFFINAL error { report_error (Tok $1) "!!" }
 /* -- -- */
 ;
+nxconstr:
+  | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
+                    (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
+  | nxbot       { $1 }
+;
 nxbot:
   | nxbot ACCESS VAR    { make_standard (Untyped $1) (TokArg $3) (UTAccessField($1, extract_name $3)) }
   | VAR                 { make_standard (TokArg $1) (TokArg $1) (UTContentOf(extract_name $1)) }
-  | CONSTRUCTOR DOT VAR { make_standard (TokArg $1) (TokArg $3) (UTContentOf((extract_name $1) ^ "." ^ (extract_name $3))) }
   | NUMCONST            { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
@@ -1059,12 +1061,6 @@ txbot: /* -> type_struct */
   | VAR {
         let (rng, tynm) = $1 in (rng, VariantType([], tynm))
       }
-  | CONSTRUCTOR DOT VAR {
-      let (rng1, mdlnm) = $1 in
-      let (rng2, tynm)  = $3 in
-      let rng = make_range (Rng rng1) (Rng rng2) in
-        (rng, VariantType([], mdlnm ^ "." ^ tynm))
-  }
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }

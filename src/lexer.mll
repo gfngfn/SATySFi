@@ -189,7 +189,6 @@ rule numexpr = parse
   | ","   { COMMA(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
-  | "."   { DOT(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
 
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
@@ -231,6 +230,11 @@ rule numexpr = parse
           | _                   -> VAR(pos, tok)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (constructor "." identifier) {
+        let tok = Lexing.lexeme lexbuf in
+        let pos = get_pos lexbuf in
+          VAR(pos, tok)
+      }
   | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
         if !first_state = STATE_NUMEXPR then EOI else
