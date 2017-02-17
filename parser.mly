@@ -1060,11 +1060,29 @@ txbot: /* -> type_struct */
         let (rng, tynm) = $1 in (rng, VariantType([], tynm))
       }
   | CONSTRUCTOR DOT VAR {
-      let (rng1, mdlnm) = $1 in
-      let (rng2, tynm)  = $3 in
-      let rng = make_range (Rng rng1) (Rng rng2) in
-        (rng, VariantType([], mdlnm ^ "." ^ tynm))
+        let (rng1, mdlnm) = $1 in
+        let (rng2, tynm)  = $3 in
+        let rng = make_range (Rng rng1) (Rng rng2) in
+          (rng, VariantType([], mdlnm ^ "." ^ tynm))
+      }
+  | BRECORD txrecord ERECORD {
+        let asc = Assoc.of_list $2 in
+        let rng = make_range (Tok $1) (Tok $3) in
+          (rng, RecordType(asc))
   }
+/* -- for syntax error log -- */
+  | CONSTRUCTOR DOT error { report_error (Tok $2) "." }
+  | BRECORD error         { report_error (Tok $1) "(|" }
+/* -- -- */
+;
+txrecord: /* -> (field_name * type_struct) list */
+  | VAR COLON txfunc LISTPUNCT txrecord { let (_, fldnm) = $1 in (fldnm, $3) :: $5 }
+  | VAR COLON txfunc LISTPUNCT          { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
+  | VAR COLON txfunc                    { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
+/* -- for syntax error log -- */
+  | VAR COLON error                  { let (_, fldnm) = $1 in report_error (TokArg $1) (fldnm ^ " : ") }
+  | VAR COLON txfunc LISTPUNCT error { report_error (Tok $4) ";" }
+/* -- -- */
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Untyped $1) (Untyped $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }

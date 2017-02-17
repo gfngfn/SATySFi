@@ -68,6 +68,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
 
     | FuncType(tydom, tycod)           -> FuncType(iter tydom, iter tycod)
     | ProductType(tylist)              -> ProductType(List.map iter tylist)
+    | RecordType(asc)                  -> RecordType(Assoc.map_value iter asc)
 
     | VariantType([], "int")           -> IntType
     | VariantType(tyarglist, "int")    -> error "int" 0 (List.length tyarglist)
