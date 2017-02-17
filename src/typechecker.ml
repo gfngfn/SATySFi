@@ -129,7 +129,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 (* ---- impleratives ---- *)
 
   | UTLetMutableIn(varrng, varnm, utastI, utastA) ->
-      let (tyenvI, eI, tyI, thetaI, kdenvI) = make_type_environment_by_let_mutable varntenv kdenv tyenv varrng varnm utastI in
+      let (kdenvI, tyenvI, eI, tyI, thetaI) = make_type_environment_by_let_mutable varntenv kdenv tyenv varrng varnm utastI in
       let (eA, tyA, thetaA, kdenvA) = typecheck_iter kdenvI tyenvI utastA in
         (LetMutableIn(varnm, eI, eA), tyA, thetaA @@ thetaI, kdenvA)
 
@@ -263,12 +263,13 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
       let varntenvnew = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
         typecheck_iter ~v:varntenvnew kdenv tyenv utastA
-(*
+
   | UTModule(mdlnm, utmdltr, utastA) ->
-      let (varntenvnew, tyenvnew, emdltr, thetaD) = typecheck_module qtfbl kdenv varntenv tyenv varntenv tyenv mdlnm utmdltr in
-      let (eA, tyA, thetaA, kdenvA) = typecheck_iter ~v:varntenvnew kdenv tyenvnew utastA in (* temporary *)
-        (Module(mdlnm, emdltr, eA), tyaft, thetaA @@ thetaD, kdenvA)
-*)
+      let (varntenvnew, kdenvnew, tyenvnew, emdltr, thetaD) =
+            typecheck_module qtfbl varntenv kdenv tyenv varntenv kdenv tyenv mdlnm utmdltr in
+      let (eA, tyA, thetaA, kdenvA) = typecheck_iter ~v:varntenvnew kdenvnew tyenvnew utastA in
+        (Module(mdlnm, emdltr, eA), tyA, thetaA @@ thetaD, kdenvA)
+
 
 and typecheck_record
     qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
@@ -307,55 +308,64 @@ and typecheck_itemize_list qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (
       let (etl, thetatl, kdenvtl) = typecheck_itemize_list qtfbl varntenv kdenvhd (thetahd @=> tyenv) tlitmzlst thetahd in
         (ListCons(ehd, etl), thetatl, kdenvtl)
 
-(*
+
 and typecheck_module
-    qtfbl (kdenv : Kindenv.t) (veout : Variantenv.t) (teout : Typeenv.t) (vein : Variantenv.t) (tein : Typeenv.t)
+    qtfbl (veout : Variantenv.t) (keout : Kindenv.t) (teout : Typeenv.t) (vein : Variantenv.t) (kein : Kindenv.t) (tein : Typeenv.t)
     (mdlnm : module_name) (utmdltr : untyped_module_tree)
 =
   let (rng, utmdldef) = utmdltr in
   match utmdldef with
 
-  | UTMFinishModule -> (veout, teout, MFinishModule, Subst.empty)
+  | UTMFinishModule -> (veout, keout, teout, MFinishModule, Subst.empty)
 
   | UTMDirectLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl kdenv vein tein utmutletcons in
-        let teout_new = add_list_to_type_environment "" teout tvtylstout in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), thetaaft @@ thetaout)
+      let (kein_new, tein_new, tvtylstout, mutletcons, thetain, thetaout) =
+            make_type_environment_by_let qtfbl vein kein tein utmutletcons in
+      let teout_new = add_list_to_type_environment "" teout tvtylstout in
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout_new vein kein_new tein_new mdlnm utmdlaft in
+        (veout_result, keout_result, teout_result, MDirectLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPublicLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl kdenv vein tein utmutletcons in
-        let teout_new = add_list_to_type_environment mdlnm teout tvtylstout in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), thetaaft @@ thetaout)
+      let (kein_new, tein_new, tvtylstout, mutletcons, thetain, thetaout) =
+            make_type_environment_by_let qtfbl vein kein tein utmutletcons in
+      let teout_new = add_list_to_type_environment mdlnm teout tvtylstout in
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout_new vein kein_new tein_new mdlnm utmdlaft in
+          (veout_result, keout_result, teout_result, MPublicLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPrivateLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, _, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl kdenv vein tein utmutletcons in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), thetaaft @@ thetaout)
+      let (kein_new, tein_new, _, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein kein tein utmutletcons in
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout vein kein_new tein_new mdlnm utmdlaft in
+          (veout_result, keout_result, teout_result, MPrivateLetIn(mutletcons, eaft), thetaaft @@ thetaout)
 
   | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft) ->
       let vein_new  = Variantenv.add_mutual_cons (LocalScope(mdlnm)) vein utmutvarntcons in
       let veout_new = Variantenv.add_mutual_cons_hidden mdlnm veout utmutvarntcons in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout_new teout vein_new tein mdlnm utmdlaft in
-        (veout_result, teout_result, eaft, thetaaft)
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout_new keout teout vein_new kein tein mdlnm utmdlaft in
+        (veout_result, keout_result, teout_result, eaft, thetaaft)
 
   | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
       let vein_new  = Variantenv.add_mutual_cons (LocalScope(mdlnm)) vein utmutvarntcons in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout vein_new tein mdlnm utmdlaft in
-        (veout_result, teout_result, eaft, thetaaft)
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout vein_new kein tein mdlnm utmdlaft in
+        (veout_result, keout_result, teout_result, eaft, thetaaft)
 
   | UTMPublicLetMutableIn(varrng, varnm, utini, utmdlaft) ->
-      let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable kdenv vein tein varrng varnm utini in
+      let (kein_new, tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein kein tein varrng varnm utini in
       let teout_new = add_list_to_type_environment mdlnm teout [(varnm, (varrng, RefType(tyini)))] in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout_new vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout_new vein kein_new tein_new mdlnm utmdlaft in
+        (veout_result, keout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
 
   | UTMPrivateLetMutableIn(varrng, varnm, utini, utmdlaft) ->
-      let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable kdenv vein tein varrng varnm utini in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
-*)
+      let (kein_new, tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein kein tein varrng varnm utini in
+      let (veout_result, keout_result, teout_result, eaft, thetaaft) =
+            typecheck_module qtfbl veout keout teout vein kein_new tein_new mdlnm utmdlaft in
+        (veout_result, keout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
+
 
 and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * type_struct) list) =
   match tvtylst with
@@ -538,7 +548,7 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
 and make_type_environment_by_let_mutable (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI, thetaI, kdenvI) = typecheck Tyvarid.Unquantifiable varntenv kdenv tyenv utastI in
   let tyenvI = thetaI @=> (Typeenv.add tyenv varnm (varrng, RefType(tyI))) in
-    (tyenvI, eI, tyI, thetaI, kdenvI)
+    (kdenvI, tyenvI, eI, tyI, thetaI)
 
 
 let main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
