@@ -1,25 +1,25 @@
-SRCS=assoc.mli assoc.ml stacklist.mli stacklist.ml tyvarid.mli tyvarid.ml range.mli range.ml types.ml kindenv.mli kindenv.ml typeenv.mli typeenv.ml display.mli display.ml variantenv.mli variantenv.ml subst.mli subst.ml parser.mli parser.ml lexer.ml primitives.mli primitives.ml typechecker.mli typechecker.ml out.mli out.ml evaluator.mli evaluator.ml files.ml main.mli main.ml
+SRCS=src/assoc.mli src/assoc.ml src/stacklist.mli src/stacklist.ml src/tyvarid.mli src/tyvarid.ml src/range.mli src/range.ml src/types.ml src/kindenv.mli src/kindenv.ml src/typeenv.mli src/typeenv.ml src/display.mli src/display.ml src/variantenv.mli src/variantenv.ml src/subst.mli src/subst.ml src/parser.mli src/parser.ml src/lexer.ml src/primitives.mli src/primitives.ml src/typechecker.mli src/typechecker.ml src/out.mli src/out.ml src/evaluator.mli src/evaluator.ml src/files.ml src/main.mli src/main.ml
 
 ifeq ($(OS), Windows_NT)
   TARGET=bin/macrodown.exe
 else
   TARGET=bin/macrodown
 endif
-all: lexer.ml parser.mli parser.ml types.cmo parser.output $(TARGET)
-lexer.ml: lexer.mll
-	ocamllex lexer.mll
-parser.mli parser.ml parser.output: parser.mly
-	ocamlyacc -v parser.mly
-types.cmo: $(SRCS)
-	ocamlc -c $^
+all: src/lexer.ml src/parser.mli src/parser.ml src/types.cmo src/parser.output $(TARGET)
+src/lexer.ml: src/lexer.mll
+	ocamllex src/lexer.mll
+src/parser.mli src/parser.ml src/parser.output: src/parser.mly
+	ocamlyacc -v src/parser.mly
+src/types.cmo: $(SRCS)
+	ocamlc -I src -c $^
 $(TARGET): $(SRCS)
-	ocamlopt -o $(TARGET) $^
+	ocamlopt -I src -o $(TARGET) $^
 
 clean:
-	rm -f $(TARGET) lexer.ml parser.mli parser.ml *.cmi *.cmo *.cmx *.o
+	rm -f $(TARGET) src/lexer.ml src/parser.mli src/parser.ml src/*.cmi src/*.cmo src/*.cmx src/*.o
 
 clean-sub:
-	rm -f lexer.ml parser.mli parser.ml *.cmi *.cmx *.o
+	rm -f src/lexer.ml src/parser.mli src/parser.ml src/*.cmi src/*.cmx src/*.o
 
 cp:
 ifeq ($(OS), Windows_NT)
