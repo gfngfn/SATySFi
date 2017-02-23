@@ -31,7 +31,6 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTStringConstant(sc)  -> (StringConstant(sc),  (rng, StringType), Subst.empty, kdenv)
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType),   Subst.empty, kdenv)
   | UTUnitConstant        -> (UnitConstant,        (rng, UnitType),   Subst.empty, kdenv)
-(*  | UTNoContent           -> (NoContent,           (rng, StringType), Subst.empty, kdenv) *)
   | UTFinishHeaderFile    ->
       begin
         final_tyenv    := tyenv ;
@@ -43,9 +42,9 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTContentOf(varnm) ->
       begin
         try
-          let tyforall    = Typeenv.find tyenv varnm in
+          let tyforall = Typeenv.find tyenv varnm in
           let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
-          let tyres = Typeenv.overwrite_range_of_type tyfree rng in
+          let tyres = overwrite_range_of_type tyfree rng in
             begin                                                                                             (* for debug *)
               print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
                 ^ " = " ^ (string_of_type_struct_basic tyres) ^ " ("                                          (* for debug *)
@@ -64,11 +63,11 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
           let (tyfree, tyarglist, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
           let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenvfree tyenv utast1 in
-(*          let tyvarnt = Typeenv.overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
+(*          let tyvarnt = overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
           let tyvarnt = tyfree in
             let (thetaU, kdenvU) = Subst.unify kdenv1 ty1 tyvarnt in
             let thetaU1 = thetaU @@ theta1 in
-            let tyres  = Typeenv.overwrite_range_of_type (thetaU1 @> (rng, VariantType(tyarglist, varntnm))) rng in
+            let tyres  = overwrite_range_of_type (thetaU1 @> (rng, VariantType(tyarglist, varntnm))) rng in
               (Constructor(constrnm, e1), tyres, thetaU1, kdenvU)
         with
         | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
@@ -92,8 +91,9 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
         | (_, FuncType(tydom, tycod)) ->
             let (thetaU, kdenvU) = Subst.unify kdenv2 tydom ty2 in
             let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_type_struct_basic (thetaU @> tycod)) ^ "\n") in (* for debug *)
+            let tycodnew = overwrite_range_of_type tycod rng in
             let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetaU @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
-              (Apply(e1, e2), thetaU @> tycod, thetaU @@ theta2 @@ theta1, kdenvU)
+              (Apply(e1, e2), thetaU @> tycodnew, thetaU @@ theta2 @@ theta1, kdenvU)
         | _ ->
             let tvid = Tyvarid.fresh qtfbl in
             let beta = (rng, TypeVariable(tvid)) in

@@ -299,7 +299,14 @@ let is_invalid_range rng =
   let (sttln, _, _, _) = rng in sttln <= 0
 
 
+let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
+  let (_, tymain) = tystr in (rng, tymain)
+
+
 let rec erase_range_of_type (tystr : type_struct) =
+(*
+  tystr
+*)
   let iter = erase_range_of_type in
   let (_, tymain) = tystr in
   let dr = Range.dummy "erased" in

@@ -172,12 +172,12 @@
   let extract_name (_, name) = name
 
 
-  let binary_operator (opname : var_name) (lft : untyped_abstract_tree) (oprng : Range.t) (rgt : untyped_abstract_tree) =
-    let rng = make_range (Untyped lft) (Untyped rgt) in
-      (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf(opname)), lft)), rgt))
+  let binary_operator (opname : var_name) (utastl : untyped_abstract_tree) (oprng : Range.t) (utastr : untyped_abstract_tree) =
+    let rng = make_range (Untyped utastl) (Untyped utastr) in
+      (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf(opname)), utastl)), utastr))
 
 
-  let make_standard (sttknd : range_kind) (endknd : range_kind) main =
+  let make_standard (sttknd : range_kind) (endknd : range_kind) (main : 'a) =
     let rng = make_range sttknd endknd in (rng, main)
 
 

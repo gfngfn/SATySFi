@@ -29,10 +29,6 @@ let rec find (tyenv : t) (varnm : var_name) =
   | (vn, ts) :: tail                 -> find tail varnm
 
 
-let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
-  let (_, tymain) = tystr in (rng, tymain)
-
-
 let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
   let iter      = find_in_type_struct tvid in
   let iter_list = find_in_type_struct_list tvid in
