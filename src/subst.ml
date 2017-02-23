@@ -151,7 +151,12 @@ let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr
   let strrng2 = Range.to_string rng2 in
   let msg =
     match (Range.is_dummy rng1, Range.is_dummy rng2) with
-    | (true, true)  -> "(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')"
+    | (true, true)  ->
+            "(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')\n"
+          ^ "    this expression has type\n"
+          ^ "      " ^ strty2 ^ "\n"
+          ^ "    but is expected of type\n"
+          ^ "      " ^ strty1
     | (true, false) ->
             "at " ^ strrng2 ^ ":\n"
           ^ "    this expression has type\n"
