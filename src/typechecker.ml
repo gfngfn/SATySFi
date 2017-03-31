@@ -9,9 +9,11 @@ let print_for_debug_typecheck msg =
 *)
   ()
 
+
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 let final_kdenv    : Kindenv.t ref    = ref Kindenv.empty
+
 
 let report_error_with_range rng msg =
   raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))

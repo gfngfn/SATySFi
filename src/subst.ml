@@ -21,13 +21,13 @@ let empty = []
 
 
 let add (theta : t) (key : Tyvarid.t) (value : type_struct) =
-  let rec aux key value theta accrev =
+  let rec aux theta accrev =
     match theta with
-    | []             -> List.rev ((key, value) :: accrev)
-    | (k, v) :: tail -> if Tyvarid.same k key then List.rev_append accrev ((key, value) :: tail)
-                                              else aux key value tail ((k, v) :: accrev)
+    | []                                      -> List.rev ((key, value) :: accrev)
+    | (k, v) :: tail  when Tyvarid.same k key -> List.rev_append accrev ((key, value) :: tail)
+    | (k, v) :: tail                          -> aux tail ((k, v) :: accrev)
   in
-    aux key value theta []
+    aux theta []
 
 
 let find (theta : t) (key : Tyvarid.t) =
@@ -70,11 +70,11 @@ let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
   Typeenv.map (fun (varnm, pty) -> (varnm, apply_to_type_struct_poly theta pty)) tyenv
 
 
-let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
-  let dr = Range.dummy "emerge_in" in
-  let iter      = emerge_in tvid in
-  let iter_list = emerge_in_list tvid in
-  let iter_poly = emerge_in_poly tvid in
+let rec occurs (tvid : Tyvarid.t) (tystr : type_struct) =
+  let dr = Range.dummy "occurs" in
+  let iter      = occurs tvid in
+  let iter_list = occurs_list tvid in
+  let iter_poly = occurs_poly tvid in
   let (rng, tymain) = tystr in
     match tymain with
     | FuncType(dom, cod)        ->
@@ -98,20 +98,20 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
     | TypeArgument(_)           -> (false, dr)
 
 
-and emerge_in_poly (tvid : Tyvarid.t) (pty : poly_type) =
+and occurs_poly (tvid : Tyvarid.t) (pty : poly_type) =
   match pty with
-  | Mono(ty)                               -> emerge_in tvid ty
-  | Forall(tvidx, _, _)  when tvidx = tvid -> (false, Range.dummy "emerge_in_poly")
-  | Forall(_, kd, ptysub)              -> emerge_in_poly tvid ptysub (* temporary *)
+  | Mono(ty)                                          -> occurs tvid ty
+  | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> (false, Range.dummy "occurs_poly")
+  | Forall(_, kd, ptysub)                             -> occurs_poly tvid ptysub (* temporary : this should traverse kd? *)
 
 
-and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =
-  let dr = Range.dummy "emerge_in_list" in
+and occurs_list (tvid : Tyvarid.t) (tylist : type_struct list) =
+  let dr = Range.dummy "occurs_list" in
     match tylist with
     | []           -> (false, dr)
     | tyhd :: tytl ->
-        let (bhd, rnghd) = emerge_in tvid tyhd in
-        let (btl, rngtl) = emerge_in_list tvid tytl in
+        let (bhd, rnghd) = occurs tvid tyhd in
+        let (btl, rngtl) = occurs_list tvid tytl in
           if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dr)
 
 
@@ -281,7 +281,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
       | (TypeVariable(tvid1), RecordType(asc2)) ->
                 let kdstr1 = Kindenv.find kdenv tvid1 in
                 let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
-                let (b, _) = emerge_in tvid1 tystr2 in
+                let (b, _) = occurs tvid1 tystr2 in
                   if b then
                     report_inclusion_error kdenv tystr1 tystr2
                   else if not binc then
@@ -304,7 +304,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
 
 
       | (TypeVariable(tvid1), _) ->
-                let (b, _) = emerge_in tvid1 tystr2 in
+                let (b, _) = occurs tvid1 tystr2 in
                   if b then
                       report_inclusion_error kdenv tystr1 tystr2
                   else
