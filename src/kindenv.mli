@@ -4,14 +4,14 @@ type t
 
 val empty : t
 
-val to_kind_struct_list : t -> kind_struct list
+val to_kind_list : t -> kind list
 
-val add : t -> Tyvarid.t -> kind_struct -> t
+val add : t -> Tyvarid.t -> kind -> t
 
-val find : t -> Tyvarid.t -> kind_struct
+val find : t -> Tyvarid.t -> kind
 
-val replace_type_variable_in_kindenv : t -> Tyvarid.t -> type_struct -> t
+val replace_type_variable_in_kindenv : t -> Tyvarid.t -> mono_type -> t
 
-val replace_type_variable_in_kind_struct : kind_struct -> Tyvarid.t -> type_struct -> kind_struct
+val replace_type_variable_in_kind : kind -> Tyvarid.t -> mono_type -> kind
 
-val to_string : (kind_struct -> string) -> t -> string
+val to_string : (kind -> string) -> t -> string

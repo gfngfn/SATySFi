@@ -58,7 +58,7 @@ let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_
     "    but it has " ^ (string_of_int len) ^ " type argument(s) here"))
 
 
-let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : type_struct) =
+let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : mono_type) =
   let (defedtylst, varntenvmain) = varntenv in
   let (rng, tymain) = tystr in
   let iter = fix_manual_type_general mode varntenv tyargmode in
@@ -125,14 +125,14 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
 
     | other                             ->
         begin
-          print_endline ("OTHER: " ^ (Display.string_of_type_struct_basic (rng, other))) ;
+          print_endline ("OTHER: " ^ (Display.string_of_mono_type_basic (rng, other))) ;
           assert false
         end
   in
     (rng, tymainnew)
 
 
-let rec make_type_argument_numbered_mono (var_id : Tyvarid.t) (tyargnm : var_name) ((rng, tymain) : type_struct) =
+let rec make_type_argument_numbered_mono (var_id : Tyvarid.t) (tyargnm : var_name) ((rng, tymain) : mono_type) =
   let iter = make_type_argument_numbered_mono var_id tyargnm in
   let tymainnew =
     match tymain with
@@ -162,13 +162,13 @@ let make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (pty :
     aux_poly pty
 
 
-let fix_manual_type (varntenv : t) tyargcons (tystr : type_struct) =
+let fix_manual_type (varntenv : t) tyargcons (tystr : mono_type) =
   fix_manual_type_general InnerMode varntenv (StrictMode(tyargcons)) tystr
 
 
 let free_type_argument_list : (var_name list) ref = ref []
 
-let rec make_type_argument_into_type_variable qtfbl (tyarglist : var_name list) (ty : type_struct) =
+let rec make_type_argument_into_type_variable qtfbl (tyarglist : var_name list) (ty : mono_type) =
   match tyarglist with
   | []                   -> ty
   | tyargnm :: tyargtail ->
@@ -178,7 +178,7 @@ let rec make_type_argument_into_type_variable qtfbl (tyarglist : var_name list) 
 
 
 (* public *)
-let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : type_struct) =
+let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : mono_type) =
   free_type_argument_list := [] ;
   let tystrin  = fix_manual_type_general InnerMode varntenv (FreeMode(free_type_argument_list)) tystr in
   let tystrout = fix_manual_type_general OuterMode varntenv (FreeMode(free_type_argument_list)) tystr in
@@ -187,7 +187,7 @@ let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (tystr : type_struc
       (tystrin_result, tystrout_result)
 
 
-let rec make_type_argument_quantified (tyargcons : untyped_type_argument_cons) (ty : type_struct) =
+let rec make_type_argument_quantified (tyargcons : untyped_type_argument_cons) (ty : mono_type) =
   let rec aux tyargcons pty =
     match tyargcons with
     | UTEndOfTypeArgument                        -> pty
@@ -213,7 +213,7 @@ let register_variant_list = List.fold_left (fun ve (l, t) -> register_variant ve
 
 
 let add_synonym (scope : scope_kind) (varntenv : t)
-                  (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (tystr : type_struct) =
+                  (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (tystr : mono_type) =
   let (defedtypelist, varntenvmain) = varntenv in
   let len = type_argument_length tyargcons in
   let defkind =
@@ -232,7 +232,7 @@ let add_synonym (scope : scope_kind) (varntenv : t)
 
 
 (* public *)
-let rec apply_to_type_synonym (tyarglist : type_struct list) (pty : poly_type) =
+let rec apply_to_type_synonym (tyarglist : mono_type list) (pty : poly_type) =
   match (tyarglist, pty) with
   | (tyarghd :: tyargtl, Forall(tvid, kdstr, ptysub)) ->
       let ptynew = Typeenv.replace_id_poly [(tvid, tyarghd)] pty in

@@ -29,9 +29,9 @@ let rec find (tyenv : t) (varnm : var_name) =
   | (vn, ts) :: tail                 -> find tail varnm
 
 
-let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
-  let iter      = find_in_type_struct tvid in
-  let iter_list = find_in_type_struct_list tvid in
+let rec find_in_mono_type (tvid : Tyvarid.t) (tystr : mono_type) =
+  let iter      = find_in_mono_type tvid in
+  let iter_list = find_in_mono_type_list tvid in
   let (_, tymain) = tystr in
     match tymain with
     | TypeVariable(tvidx)            -> Tyvarid.same tvidx tvid
@@ -44,25 +44,25 @@ let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
     | _                              -> false
 
 
-and find_in_type_struct_poly (tvid : Tyvarid.t) (pty : poly_type) =
+and find_in_mono_type_poly (tvid : Tyvarid.t) (pty : poly_type) =
   match pty with
-  | Mono(ty)                                          -> find_in_type_struct tvid ty
+  | Mono(ty)                                          -> find_in_mono_type tvid ty
   | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> false
-  | Forall(_, kd, ptysub)                             -> find_in_type_struct_poly tvid ptysub
+  | Forall(_, kd, ptysub)                             -> find_in_mono_type_poly tvid ptysub
 
 
-and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
-  List.fold_left (fun b tystr -> b || find_in_type_struct tvid tystr) false tystrlst
+and find_in_mono_type_list (tvid : Tyvarid.t) (tystrlst : mono_type list) =
+  List.fold_left (fun b tystr -> b || find_in_mono_type tvid tystr) false tystrlst
 
 
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
-  List.fold_left (fun b (_, pty) -> b || find_in_type_struct_poly tvid pty) false tyenv
+  List.fold_left (fun b (_, pty) -> b || find_in_mono_type_poly tvid pty) false tyenv
 
 
 let quantifiable_unbound_id_list : Tyvarid.t list ref = ref []
 
 
-let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit =
+let rec listup_quantifiable_unbound_id (tystr : mono_type) (tyenv : t) : unit =
   let iter = (fun ty -> listup_quantifiable_unbound_id ty tyenv) in
   let (_, tymain) = tystr in
     match tymain with
@@ -90,10 +90,10 @@ let listup_quantifiable_unbound_id_in_kind_environment (kdenv : Kindenv.t) (tyen
     | UniversalKind   -> ()
     | RecordKind(asc) -> List.iter (fun ty -> listup_quantifiable_unbound_id ty tyenv) (List.map (fun (fldnm, tystr) -> tystr) (Assoc.to_list asc))
   in
-    List.iter aux (Kindenv.to_kind_struct_list kdenv)
+    List.iter aux (Kindenv.to_kind_list kdenv)
 
 
-let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : type_struct) =
+let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : mono_type) =
   match lst with
   | []           -> Mono(tystr)
   | tvid :: tail ->
@@ -104,7 +104,7 @@ let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : ty
        Forall(tvid, kdstr, add_forall_struct kdenv tail tystr)
 
 
-let make_forall_type (tystr : type_struct) (tyenv_before : t) (kdenv : Kindenv.t) =
+let make_forall_type (tystr : mono_type) (tyenv_before : t) (kdenv : Kindenv.t) =
   begin
     quantifiable_unbound_id_list := [] ;
     listup_quantifiable_unbound_id tystr tyenv_before ;
@@ -120,7 +120,7 @@ let string_of_type_environment (tyenv : t) (msg : string) =
     | (vn, ts) :: tail ->
             "    #  "
               ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-              ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
+              ^ " : " ^ ((* string_of_mono_type ts *) "type") ^ "\n" (* remains to be implemented *)
               ^ (iter tail)
   in
       "    #==== " ^ msg ^ " " ^ (String.make (58 - (String.length msg)) '=') ^ "\n"
@@ -137,7 +137,7 @@ let string_of_control_sequence_type (tyenv : t) =
           | "\\" ->
               "    #  "
                 ^ ( let len = String.length vn in if len >= 16 then vn else vn ^ (String.make (16 - len) ' ') )
-                ^ " : " ^ ((* string_of_type_struct ts *) "type") ^ "\n" (* remains to be implemented *)
+                ^ " : " ^ ((* string_of_mono_type ts *) "type") ^ "\n" (* remains to be implemented *)
           | _    -> ""
         ) ^ (iter tail)
   in
@@ -147,14 +147,14 @@ let string_of_control_sequence_type (tyenv : t) =
 
 
 
-let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * type_struct) list) =
+let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * mono_type) list) =
   match lst with
   | []                                               -> raise Not_found
   | (tvid, tystr) :: tail when Tyvarid.same tvid elm -> tystr
   | _ :: tail                                        -> find_id_in_list elm tail
 
 
-let rec replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) =
+let rec replace_id (lst : (Tyvarid.t * mono_type) list) (tystr : mono_type) =
   let iter = replace_id lst in
   let (rng, tymain) = tystr in
     match tymain with
@@ -172,7 +172,7 @@ let rec replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) 
     | other                                -> (rng, other)
 
 
-let rec replace_id_poly (lst : (Tyvarid.t * type_struct) list) (pty : poly_type) =
+let rec replace_id_poly (lst : (Tyvarid.t * mono_type) list) (pty : poly_type) =
   match pty with
   | Mono(ty)                 -> Mono(replace_id lst ty)
   | Forall(tvid, kd, ptysub) ->
@@ -212,7 +212,7 @@ let rec make_unquantifiable_if_needed qtfbl tystr =
 
 
 let make_bounded_free qtfbl (kdenv : Kindenv.t) (pty : poly_type) =
-  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (pty : poly_type) (lst : (Tyvarid.t * Tyvarid.t * type_struct) list) =
+  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (pty : poly_type) (lst : (Tyvarid.t * Tyvarid.t * mono_type) list) =
     match pty with
     | Forall(oldtvid, kdstr, ptysub) ->
         let newtvid = Tyvarid.fresh qtfbl in

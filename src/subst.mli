@@ -8,11 +8,11 @@ type t
 
 val empty : t
 
-val add : t -> Tyvarid.t -> type_struct -> t
+val add : t -> Tyvarid.t -> mono_type -> t
 
-val find : t -> Tyvarid.t -> type_struct
+val find : t -> Tyvarid.t -> mono_type
 
-val apply_to_type_struct : t -> type_struct -> type_struct
+val apply_to_mono_type : t -> mono_type -> mono_type
 
 val apply_to_type_environment : t -> Typeenv.t -> Typeenv.t
 
@@ -20,6 +20,6 @@ val compose : t -> t -> t
 
 val compose_list : t list -> t
 
-val unify : Kindenv.t -> type_struct -> type_struct -> (t * Kindenv.t)
+val unify : Kindenv.t -> mono_type -> mono_type -> (t * Kindenv.t)
 
 val string_of_subst : t -> string

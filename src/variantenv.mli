@@ -21,8 +21,8 @@ val add_mutual_cons_hidden : module_name -> t -> untyped_mutual_variant_cons -> 
 
 val find : t -> constructor_name -> (type_name * poly_type)
 
-val apply_to_type_synonym : type_struct list -> poly_type -> type_struct
+val apply_to_type_synonym : mono_type list -> poly_type -> mono_type
 
-val fix_manual_type_for_inner_and_outer : Tyvarid.quantifiability -> t -> type_struct -> (type_struct * type_struct)
+val fix_manual_type_for_inner_and_outer : Tyvarid.quantifiability -> t -> mono_type -> (mono_type * mono_type)
 
 val append_module_name : module_name -> var_name -> var_name

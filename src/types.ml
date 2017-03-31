@@ -12,29 +12,29 @@ type field_name       = string
 
 type scope_kind = GlobalScope | LocalScope of module_name
 
-type type_struct = Range.t * type_struct_main
-and type_struct_main =
+type mono_type = Range.t * mono_type_main
+and mono_type_main =
   | UnitType
   | IntType
   | StringType
   | BoolType
-  | FuncType     of type_struct * type_struct
-  | ListType     of type_struct
-  | RefType      of type_struct
-  | ProductType  of type_struct list
+  | FuncType     of mono_type * mono_type
+  | ListType     of mono_type
+  | RefType      of mono_type
+  | ProductType  of mono_type list
   | TypeVariable of Tyvarid.t
-  | TypeSynonym  of (type_struct list) * type_name * poly_type
-  | VariantType  of (type_struct list) * type_name
+  | TypeSynonym  of (mono_type list) * type_name * poly_type
+  | VariantType  of (mono_type list) * type_name
   | TypeArgument of var_name
-  | RecordType   of (field_name, type_struct) Assoc.t
+  | RecordType   of (field_name, mono_type) Assoc.t
 
 and poly_type =
-  | Mono   of type_struct
-  | Forall of Tyvarid.t * kind_struct * poly_type
+  | Mono   of mono_type
+  | Forall of Tyvarid.t * kind * poly_type
 
-and kind_struct =
+and kind =
   | UniversalKind
-  | RecordKind of (field_name, type_struct) Assoc.t
+  | RecordKind of (field_name, mono_type) Assoc.t
 
 type id_name_arg =
   | IDName       of id_name
@@ -52,7 +52,7 @@ and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
 and untyped_mutual_let_cons =
-  | UTMutualLetCons        of type_struct option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
+  | UTMutualLetCons        of mono_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
@@ -107,14 +107,14 @@ and untyped_itemize =
 
 and untyped_variant_cons = Range.t * untyped_variant_cons_main
 and untyped_variant_cons_main =
-  | UTVariantCons          of constructor_name * type_struct * untyped_variant_cons
+  | UTVariantCons          of constructor_name * mono_type * untyped_variant_cons
   | UTEndOfVariant
 
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons
                                 * type_name * untyped_variant_cons * untyped_mutual_variant_cons
   | UTMutualSynonymCons    of untyped_type_argument_cons
-                                * type_name * type_struct * untyped_mutual_variant_cons
+                                * type_name * mono_type * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
@@ -279,7 +279,7 @@ type output_unit =
 
 
 let poly_extend_general
-    (fmono : type_struct -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind_struct -> poly_type -> 'a) : (poly_type -> 'a) =
+    (fmono : mono_type -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind -> poly_type -> 'a) : (poly_type -> 'a) =
   let rec iter pty =
     match pty with
     | Mono(ty)                 -> fmono ty
@@ -288,7 +288,7 @@ let poly_extend_general
     iter
 
 
-let poly_extend (fmono : type_struct -> type_struct) : (poly_type -> poly_type) =
+let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
   let rec iter pty =
     match pty with
     | Mono(ty)                 -> Mono(fmono ty)
@@ -297,9 +297,8 @@ let poly_extend (fmono : type_struct -> type_struct) : (poly_type -> poly_type) 
     iter
 
 
-let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
+let rec replace_type_variable ((rng, tymain) : mono_type) (key : Tyvarid.t) (value : mono_type) =
   let iter = (fun ty -> replace_type_variable ty key value) in
-  let (rng, tymain) = tystr in
     match tymain with
     | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
     | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
@@ -314,28 +313,17 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
                                                                      if Tyvarid.same tvid key then Forall(tvid, kd, ptysub)
                                                                                               else Forall(tvid, kd, it ptysub)) pty))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-    | other                                 -> (rng, other)
+    | _                                     -> (rng, tymain)
 
 
-let get_range utast =
-  let (rng, _) = utast in rng
+let get_range (rng, _) = rng
 
 
-let is_invalid_range rng =
-  let (sttln, _, _, _) = rng in sttln <= 0
+let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, tymain)
 
 
-let overwrite_range_of_type (tystr : type_struct) (rng : Range.t) =
-  let (_, tymain) = tystr in (rng, tymain)
-
-
-let rec erase_range_of_type (tystr : type_struct) =
-(*
-  tystr
-*)
+let rec erase_range_of_type ((_, tymain) : mono_type) =
   let iter = erase_range_of_type in
-  let (_, tymain) = tystr in
-  let dr = Range.dummy "erased" in
   let newtymain =
     match tymain with
     | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
@@ -344,19 +332,13 @@ let rec erase_range_of_type (tystr : type_struct) =
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
     | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, poly_extend erase_range_of_type pty)
-    | other                             -> other
+    | _                                 -> tymain
   in
-    (dr, newtymain)
+    (Range.dummy "erased", newtymain)
 
-(*
-and erase_range_of_type_poly (pty : poly_type) =
-  match pty with
-  | Mono(ty)                 -> Mono(erase_range_of_type ty)
-  | Forall(tvid, kd, ptysub) -> Forall(tvid, kd, erase_range_of_type_poly ptysub)
-*)
 
-and erase_range_of_kind (kdstr : kind_struct) =
-  match kdstr with
+and erase_range_of_kind (kd : kind) =
+  match kd with
   | UniversalKind   -> UniversalKind
   | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
 

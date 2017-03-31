@@ -7,7 +7,7 @@ exception InclusionError     of string
 exception ContradictionError of string
 
 
-type t = (Tyvarid.t * type_struct) list
+type t = (Tyvarid.t * mono_type) list
 
 
 let print_for_debug_subst msg =
@@ -20,7 +20,7 @@ let print_for_debug_subst msg =
 let empty = []
 
 
-let add (theta : t) (key : Tyvarid.t) (value : type_struct) =
+let add (theta : t) (key : Tyvarid.t) (value : mono_type) =
   let rec aux theta accrev =
     match theta with
     | []                                      -> List.rev ((key, value) :: accrev)
@@ -43,9 +43,9 @@ let mem (key : Tyvarid.t) (theta : t) =
 
 
 (* PUBLIC *)
-let rec apply_to_type_struct (theta : t) ((rng, tymain) : type_struct) =
-  let iter      = apply_to_type_struct theta in
-  let iter_poly = poly_extend (apply_to_type_struct theta) in
+let rec apply_to_mono_type (theta : t) ((rng, tymain) : mono_type) =
+  let iter      = apply_to_mono_type theta in
+  let iter_poly = poly_extend (apply_to_mono_type theta) in
     match tymain with
     | TypeVariable(tv)                        -> begin try find theta tv with Not_found -> (rng, TypeVariable(tv)) end
     | FuncType(tydom, tycod)                  -> (rng, FuncType(iter tydom, iter tycod))
@@ -60,10 +60,10 @@ let rec apply_to_type_struct (theta : t) ((rng, tymain) : type_struct) =
 
 (* PUBLIC *)
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-  Typeenv.map (fun (varnm, pty) -> (varnm, poly_extend (apply_to_type_struct theta) pty)) tyenv
+  Typeenv.map (fun (varnm, pty) -> (varnm, poly_extend (apply_to_mono_type theta) pty)) tyenv
 
 
-let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
+let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) : bool =
   let iter      = occurs tvid in
   let iter_list = List.fold_left (fun b ty -> b || occurs tvid ty) false in
   let iter_poly = poly_extend_general (occurs tvid) (fun it _ _ ptysub -> it ptysub) in (* temporary : this should traverse kd? *)
@@ -83,30 +83,30 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
     | TypeArgument(_)           -> false
 
 
-let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
+let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : mono_type) =
   let f = (fun tystr -> replace_type_variable tystr key value) in
     List.map (fun (tvid, tystr) -> (tvid, f tystr)) theta
 
 
-let replace_type_variable_in_equations (eqnlst : (type_struct * type_struct) list) (key : Tyvarid.t) (value : type_struct) =
+let replace_type_variable_in_equations (eqnlst : (mono_type * mono_type) list) (key : Tyvarid.t) (value : mono_type) =
   let f = (fun tystr -> replace_type_variable tystr key value) in
     List.map (fun (tystr1, tystr2) -> (f tystr1, f tystr2)) eqnlst
 
 
-let replace_type_variable_in_type_struct (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
+let replace_type_variable_in_mono_type (tystr : mono_type) (key : Tyvarid.t) (value : mono_type) =
   Typeenv.replace_id [(key, value)] tystr
 
 (*
-let replace_type_variable_in_kind_struct (kdstr : kind_struct) (key : Tyvarid.t) (value : type_struct) =
+let replace_type_variable_in_kind (kdstr : kind) (key : Tyvarid.t) (value : mono_type) =
   match kdstr with
   | UniversalKind   -> UniversalKind
-  | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_type_struct tystr key value) asc)
+  | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_mono_type tystr key value) asc)
 *)
 
-let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
+let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
-  let (strty1, strty2) = string_of_type_struct_double kdenv tystr1 tystr2 in
+  let (strty1, strty2) = string_of_mono_type_double kdenv tystr1 tystr2 in
   let msg =
     match (Range.is_dummy rng1, Range.is_dummy rng2) with
     | (true, true) -> "(cannot report position: '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')"
@@ -124,11 +124,11 @@ let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : 
     ))
 
 
-let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
+let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
-  let strty1 = string_of_type_struct kdenv tystr1 in
-  let strty2 = string_of_type_struct kdenv tystr2 in
+  let strty1 = string_of_mono_type kdenv tystr1 in
+  let strty2 = string_of_mono_type kdenv tystr2 in
   let strrng1 = Range.to_string rng1 in
   let strrng2 = Range.to_string rng2 in
   let msg =
@@ -165,7 +165,7 @@ let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr
 
 (* PUBLIC *)
 let compose (theta2 : t) (theta1 : t) =
-  let res1 = List.map (fun (tvid, tystr) -> (tvid, apply_to_type_struct theta2 tystr)) theta1 in
+  let res1 = List.map (fun (tvid, tystr) -> (tvid, apply_to_mono_type theta2 tystr)) theta1 in
   let res2 = List.filter (fun (tvid, tystr) -> not (mem tvid theta1)) theta2 in
     List.append res1 res2
 
@@ -174,11 +174,11 @@ let compose (theta2 : t) (theta1 : t) =
 let compose_list thetalst = List.fold_right compose thetalst empty
 
 
-let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list) (acctheta : t) (acckdenv : Kindenv.t) =
+let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (acctheta : t) (acckdenv : Kindenv.t) =
     let _ = print_for_debug_subst "    |----" in                                                                    (* for debug *)
     let _ = List.iter (fun (tystr1, tystr2) ->                                                                      (* for debug *)
-      print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)                                            (* for debug *)
-                             ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in                       (* for debug *)
+      print_for_debug_subst (" [" ^ (string_of_mono_type_basic tystr1)                                            (* for debug *)
+                             ^ " = " ^ (string_of_mono_type_basic tystr2) ^ "]")) eqnlst in                       (* for debug *)
     let _ = print_for_debug_subst "\n" in                                                                           (* for debug *)
     let _ = print_for_debug_subst ("        (kinds(K) " ^ (Display.string_of_kind_environment kdenv) ^ ")\n") in    (* for debug *)
     let _ = print_for_debug_subst ("        (kinds(S) " ^ (Display.string_of_kind_environment acckdenv) ^ ")\n") in (* for debug *)
@@ -226,8 +226,8 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                 let () = Tyvarid.make_unquantifiable_if_needed (tvid1, tvid2) in
                 let (oldtvid, newtvid, newtystr) = if Range.is_dummy rng1 then (tvid1, tvid2, tystr2) else (tvid2, tvid1, tystr1) in
                 let _ = print_for_debug_subst                                                                      (* for debug *)
-                  ("    substituteVV " ^ (string_of_type_struct_basic (Range.dummy "", TypeVariable(oldtvid)))     (* for debug *)
-                   ^ " with " ^ (string_of_type_struct_basic newtystr) ^ "\n") in                                  (* for debug *)
+                  ("    substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvid)))     (* for debug *)
+                   ^ " with " ^ (string_of_mono_type_basic newtystr) ^ "\n") in                                  (* for debug *)
                 let kdstr1 = Kindenv.find kdenv tvid1 in
                 let kdstr2 = Kindenv.find kdenv tvid2 in
                 let (eqnlstbyrecord, kdstrunion) =
@@ -237,7 +237,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                   | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
                   | (RecordKind(asc1), RecordKind(asc2)) ->
                       let pureunion = RecordKind(Assoc.union asc1 asc2) in
-                        (Assoc.intersection asc1 asc2, Kindenv.replace_type_variable_in_kind_struct pureunion oldtvid newtystr)
+                        (Assoc.intersection asc1 asc2, Kindenv.replace_type_variable_in_kind pureunion oldtvid newtystr)
                 in
                   let neweqnlst = replace_type_variable_in_equations (List.append eqnlstbyrecord eqntail) oldtvid newtystr in
                   let newkdenv = Kindenv.add (Kindenv.replace_type_variable_in_kindenv kdenv oldtvid newtystr) newtvid kdstrunion in
@@ -256,8 +256,8 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                   else
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let _ = print_for_debug_subst                                      (* for debug *)
-                      ("    substituteVR " ^ (string_of_type_struct_basic tystr1)     (* for debug *)
-                       ^ " with " ^ (string_of_type_struct_basic newtystr2) ^ "\n") in (* for debug *)
+                      ("    substituteVR " ^ (string_of_mono_type_basic tystr1)     (* for debug *)
+                       ^ " with " ^ (string_of_mono_type_basic newtystr2) ^ "\n") in (* for debug *)
                     let eqnlstbyrecord =
                       match kdstr1 with
                       | UniversalKind    -> []
@@ -280,8 +280,8 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
                     | UniversalKind -> *)
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let _ = print_for_debug_subst                                      (* for debug *)
-                      ("    substituteVX " ^ (string_of_type_struct_basic tystr1)      (* for debug *)
-                       ^ " with " ^ (string_of_type_struct_basic newtystr2) ^ "\n") in (* for debug *)
+                      ("    substituteVX " ^ (string_of_mono_type_basic tystr1)      (* for debug *)
+                       ^ " with " ^ (string_of_mono_type_basic newtystr2) ^ "\n") in (* for debug *)
                     let newkdenv = Kindenv.replace_type_variable_in_kindenv kdenv tvid1 newtystr2 in
                     let _ = print_for_debug_subst ("    kinds(old) " ^ (Display.string_of_kind_environment kdenv) ^ "\n") in    (* for debug *)
                     let _ = print_for_debug_subst ("    kinds(new) " ^ (Display.string_of_kind_environment newkdenv) ^ "\n") in (* for debug *)
@@ -297,7 +297,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
 
 
 (* PUBLIC *)
-let unify (kdenv : Kindenv.t) (tystr1 : type_struct) (tystr2 : type_struct) =
+let unify (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
   let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
     unify_sub kdenv [(tystr1, tystr2)] empty Kindenv.empty
@@ -313,7 +313,7 @@ let string_of_subst (theta : t) =
     match theta with
     | []                    -> ""
     | (tvid, tystr) :: tail ->
-        " | '" ^ (Tyvarid.show_direct tvid) ^ " := " ^ (string_of_type_struct_basic tystr) ^ "\n"
+        " | '" ^ (Tyvarid.show_direct tvid) ^ " := " ^ (string_of_mono_type_basic tystr) ^ "\n"
           ^ (iter tail)
   in
       " +-------------------------------\n"
