@@ -278,6 +278,25 @@ type output_unit =
   | OShallow
 
 
+let poly_extend_general
+    (fmono : type_struct -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind_struct -> poly_type -> 'a) : (poly_type -> 'a) =
+  let rec iter pty =
+    match pty with
+    | Mono(ty)                 -> fmono ty
+    | Forall(tvid, kd, ptysub) -> fpoly iter tvid kd ptysub
+  in
+    iter
+
+
+let poly_extend (fmono : type_struct -> type_struct) : (poly_type -> poly_type) =
+  let rec iter pty =
+    match pty with
+    | Mono(ty)                 -> Mono(fmono ty)
+    | Forall(tvid, kd, ptysub) -> Forall(tvid, kd, iter ptysub)
+  in
+    iter
+
+
 let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : type_struct) =
   let iter = (fun ty -> replace_type_variable ty key value) in
   let (rng, tymain) = tystr in
@@ -288,9 +307,13 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
     | ListType(cont)                        -> (rng, ListType(iter cont))
     | RefType(cont)                         -> (rng, RefType(iter cont))
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
-    | TypeSynonym(tyarglist, tysynnm, pty)  -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, pty (* temporary *)))
+    | TypeSynonym(tyarglist, tysynnm, pty)  -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm,
+                                                                 poly_extend_general
+                                                                   (fun ty -> Mono(iter ty))
+                                                                   (fun it tvid kd ptysub ->
+                                                                     if Tyvarid.same tvid key then Forall(tvid, kd, ptysub)
+                                                                                              else Forall(tvid, kd, it ptysub)) pty))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-(*    | ForallType(tvid, kdstr, tycont)       -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, kdstr, iter tycont)) *)
     | other                                 -> (rng, other)
 
 
@@ -320,17 +343,17 @@ let rec erase_range_of_type (tystr : type_struct) =
     | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
-    | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, erase_range_of_type_poly pty)
-(*    | ForallType(tvid, kdstr, tycont)   -> ForallType(tvid, erase_range_of_kind kdstr, iter tycont) *)
+    | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, poly_extend erase_range_of_type pty)
     | other                             -> other
   in
     (dr, newtymain)
 
-
+(*
 and erase_range_of_type_poly (pty : poly_type) =
   match pty with
   | Mono(ty)                 -> Mono(erase_range_of_type ty)
   | Forall(tvid, kd, ptysub) -> Forall(tvid, kd, erase_range_of_type_poly ptysub)
+*)
 
 and erase_range_of_kind (kdstr : kind_struct) =
   match kdstr with

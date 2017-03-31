@@ -521,11 +521,11 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
           begin                                                                                                        (* for debug *)
             print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
             print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-            print_for_debug_typecheck ("#Kinds " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                                 (* for debug *)
-            let forallty = erase_range_of_type_poly (Typeenv.make_forall_type prety tyenv_before_let kdenv) in
+            print_for_debug_typecheck ("#Kinds " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                (* for debug *)
+            let pty = poly_extend erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let kdenv) in
   (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
-            let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
-              make_forall_type_mutual kdenv (Typeenv.add tyenv varnm forallty) tyenv_before_let theta tvtytail tvtylst_forall_new
+            let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
+              make_forall_type_mutual kdenv (Typeenv.add tyenv varnm pty) tyenv_before_let theta tvtytail tvtylst_forall_new
           end                                                                                                          (* for debug *)
   in
   let (kdenvforrec, tyenvforrec, tvtylstforrec) = add_mutual_variables kdenv tyenv utmutletcons in
