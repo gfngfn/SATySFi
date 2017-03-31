@@ -1,8 +1,8 @@
 open Types
 open Typeenv
 
-exception ContradictionError of string
-exception InclusionError     of string
+exception ContradictionError of Kindenv.t * mono_type * mono_type
+exception InclusionError     of Kindenv.t * mono_type * mono_type
 
 type t
 

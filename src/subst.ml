@@ -1,10 +1,10 @@
 open Types
 open Display
 
-exception InternalInclusionError
-exception InternalContradictionError
-exception InclusionError     of string
-exception ContradictionError of string
+exception InternalInclusionError     of Kindenv.t
+exception InternalContradictionError of Kindenv.t
+exception InclusionError     of Kindenv.t * mono_type * mono_type
+exception ContradictionError of Kindenv.t * mono_type * mono_type
 
 
 type t = (Tyvarid.t * mono_type) list
@@ -103,7 +103,8 @@ let replace_type_variable_in_kind (kdstr : kind) (key : Tyvarid.t) (value : mono
   | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_mono_type tystr key value) asc)
 *)
 
-let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
+let report_inclusion_error (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+(*
   let (rng1, _) = tystr1 in
   let (rng2, _) = tystr2 in
   let (strty1, strty2) = string_of_mono_type_double kdenv tystr1 tystr2 in
@@ -113,7 +114,9 @@ let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mo
     | (_, false)   -> "at " ^ (Range.to_string rng2)
     | (false, _)   -> "at " ^ (Range.to_string rng1)
   in
-    raise (InclusionError(
+*)
+    raise (InclusionError(kdenv, ty1, ty2))
+(*
         msg ^ ":\n"
       ^ "    this expression has types\n"
       ^ "      " ^ strty1 ^ "\n"
@@ -122,45 +125,10 @@ let report_inclusion_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mo
       ^ "    at the same time,\n"
       ^ "    but these are incompatible with each other"
     ))
+*)
 
-
-let report_contradiction_error (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
-  let (rng1, _) = tystr1 in
-  let (rng2, _) = tystr2 in
-  let strty1 = string_of_mono_type kdenv tystr1 in
-  let strty2 = string_of_mono_type kdenv tystr2 in
-  let strrng1 = Range.to_string rng1 in
-  let strrng2 = Range.to_string rng2 in
-  let msg =
-    match (Range.is_dummy rng1, Range.is_dummy rng2) with
-    | (true, true)  ->
-            "(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')\n"
-          ^ "    this expression has type\n"
-          ^ "      " ^ strty2 ^ "\n"
-          ^ "    but is expected of type\n"
-          ^ "      " ^ strty1
-    | (true, false) ->
-            "at " ^ strrng2 ^ ":\n"
-          ^ "    this expression has type\n"
-          ^ "      " ^ strty2 ^ "\n"
-          ^ "    but is expected of type\n"
-          ^ "      " ^ strty1
-    | (false, true) ->
-            "at " ^ strrng1 ^ ":\n"
-          ^ "    this expression has type\n"
-          ^ "      " ^ strty1 ^ "\n"
-          ^ "    but is expected of type\n"
-          ^ "      " ^ strty2
-    | (false, false) ->
-            "at " ^ strrng1 ^ ":\n"
-          ^ "    this expression has type\n"
-          ^ "      " ^ strty1 ^ "\n"
-          ^ "    but is expected of type\n"
-          ^ "      " ^ strty2 ^ ";\n"
-          ^ "    this constraint is required by the expression\n"
-          ^ "    at " ^ strrng2
-  in
-    raise (ContradictionError(msg))
+let report_contradiction_error (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  raise (ContradictionError(kdenv, ty1, ty2))
 
 
 (* PUBLIC *)
@@ -203,13 +171,13 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
 
       | (ProductType(tylist1), ProductType(tylist2)) ->
           if List.length tylist1 <> List.length tylist2 then
-            raise InternalContradictionError
+            raise (InternalContradictionError(kdenv))
           else
             iter_add (List.combine tylist1 tylist2)
 
       | (RecordType(asc1), RecordType(asc2)) ->
           if not (Assoc.domain_same asc1 asc2) then
-            raise InternalContradictionError
+            raise (InternalContradictionError(kdenv))
           else
             iter_add (Assoc.combine_value asc1 asc2)
 
@@ -252,7 +220,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
                   if occurs tvid1 tystr2 then
                     report_inclusion_error kdenv tystr1 tystr2
                   else if not binc then
-                    raise InternalContradictionError
+                    raise (InternalContradictionError(kdenv))
                   else
                     let newtystr2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
                     let _ = print_for_debug_subst                                      (* for debug *)
@@ -293,7 +261,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
 
       | (_, TypeVariable(_)) -> iter_add [(tystr2, tystr1)]
 
-      | _                    -> raise InternalContradictionError
+      | _                    -> raise (InternalContradictionError(kdenv))
 
 
 (* PUBLIC *)
@@ -302,8 +270,8 @@ let unify (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
   try
     unify_sub kdenv [(tystr1, tystr2)] empty Kindenv.empty
   with
-  | InternalInclusionError     -> report_inclusion_error kdenv tystr1 tystr2
-  | InternalContradictionError -> report_contradiction_error kdenv tystr1 tystr2
+  | InternalInclusionError(kdenvsub)     -> report_inclusion_error kdenvsub tystr1 tystr2
+  | InternalContradictionError(kdenvsub) -> report_contradiction_error kdenvsub tystr1 tystr2
 
 
 (* for test *)
