@@ -10,7 +10,7 @@ type constructor_name = string
 type module_name      = string
 type field_name       = string
 
-type scope_kind = GlobalScope | LocalScope of module_name
+type scope = GlobalScope | LocalScope of module_name
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =

@@ -212,7 +212,7 @@ let register_variant (varntenv : t) (len : int) (tynm : type_name) =
 let register_variant_list = List.fold_left (fun ve (l, t) -> register_variant ve l t)
 
 
-let add_synonym (scope : scope_kind) (varntenv : t)
+let add_synonym (scope : scope) (varntenv : t)
                   (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (tystr : mono_type) =
   let (defedtypelist, varntenvmain) = varntenv in
   let len = type_argument_length tyargcons in
@@ -261,13 +261,13 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
 
 
 (* public *)
-let rec add_mutual_cons (scope : scope_kind) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+let rec add_mutual_cons (scope : scope) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
   let varntenv_syn = read_synonym_spec scope varntenv_mem mutvarntcons in
   let varntenv_fin = read_variant_spec varntenv_syn mutvarntcons in
     varntenv_fin
 
-and read_synonym_spec (scope : scope_kind) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+and read_synonym_spec (scope : scope) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
     | UTEndOfMutualVariant                                     -> varntenv
     | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec scope varntenv tailcons
