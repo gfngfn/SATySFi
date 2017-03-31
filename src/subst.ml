@@ -43,10 +43,9 @@ let mem (key : Tyvarid.t) (theta : t) =
 
 
 (* PUBLIC *)
-let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
-  let iter = apply_to_type_struct theta in
-  let iter_poly = apply_to_type_struct_poly theta in
-  let (rng, tymain) = tystr in
+let rec apply_to_type_struct (theta : t) ((rng, tymain) : type_struct) =
+  let iter      = apply_to_type_struct theta in
+  let iter_poly = poly_extend (apply_to_type_struct theta) in
     match tymain with
     | TypeVariable(tv)                        -> begin try find theta tv with Not_found -> (rng, TypeVariable(tv)) end
     | FuncType(tydom, tycod)                  -> (rng, FuncType(iter tydom, iter tycod))
@@ -56,24 +55,18 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
     | VariantType(tyarglist, varntnm)         -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, pty)    -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter_poly pty))
     | RecordType(asc)                         -> (rng, RecordType(Assoc.map_value iter asc))
-    | other                                   -> (rng, other)
-
-
-and apply_to_type_struct_poly (theta : t) (pty : poly_type) =
-  match pty with
-  | Mono(ty)                  -> Mono(apply_to_type_struct theta ty)
-  | Forall(tvidx, kd, ptysub) -> Forall(tvidx, kd, apply_to_type_struct_poly theta ptysub)
+    | _                                       -> (rng, tymain)
 
 
 (* PUBLIC *)
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-  Typeenv.map (fun (varnm, pty) -> (varnm, apply_to_type_struct_poly theta pty)) tyenv
+  Typeenv.map (fun (varnm, pty) -> (varnm, poly_extend (apply_to_type_struct theta) pty)) tyenv
 
 
 let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
   let iter      = occurs tvid in
   let iter_list = List.fold_left (fun b ty -> b || occurs tvid ty) false in
-  let iter_poly = poly_extend_general (occurs tvid) (fun it _ _ ptysub -> it ptysub) in
+  let iter_poly = poly_extend_general (occurs tvid) (fun it _ _ ptysub -> it ptysub) in (* temporary : this should traverse kd? *)
     match tymain with
     | FuncType(dom, cod)        -> iter dom || iter cod
     | ListType(cont)            -> iter cont
@@ -88,14 +81,6 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
       | IntType
       | StringType )            -> false
     | TypeArgument(_)           -> false
-
-(*
-and occurs_poly (tvid : Tyvarid.t) (pty : poly_type) =
-  match pty with
-  | Mono(ty)                                          -> occurs tvid ty
-  | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> false
-  | Forall(_, kd, ptysub)                             -> occurs_poly tvid ptysub (* temporary : this should traverse kd? *)
-*)
 
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
