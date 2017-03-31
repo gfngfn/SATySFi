@@ -45,6 +45,7 @@ let mem (key : Tyvarid.t) (theta : t) =
 (* PUBLIC *)
 let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
   let iter = apply_to_type_struct theta in
+  let iter_poly = apply_to_type_struct_poly theta in
   let (rng, tymain) = tystr in
     match tymain with
     | TypeVariable(tv)                        -> begin try find theta tv with Not_found -> (rng, TypeVariable(tv)) end
@@ -53,20 +54,27 @@ let rec apply_to_type_struct (theta : t) (tystr : type_struct) =
     | ListType(tycont)                        -> (rng, ListType(iter tycont))
     | RefType(tycont)                         -> (rng, RefType(iter tycont))
     | VariantType(tyarglist, varntnm)         -> (rng, VariantType(List.map iter tyarglist, varntnm))
-    | TypeSynonym(tyarglist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter tycont))
+    | TypeSynonym(tyarglist, tysynnm, pty)    -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter_poly pty))
     | RecordType(asc)                         -> (rng, RecordType(Assoc.map_value iter asc))
     | other                                   -> (rng, other)
 
 
+and apply_to_type_struct_poly (theta : t) (pty : poly_type) =
+  match pty with
+  | Mono(ty)                  -> Mono(apply_to_type_struct theta ty)
+  | Forall(tvidx, kd, ptysub) -> Forall(tvidx, kd, apply_to_type_struct_poly theta ptysub)
+
+
 (* PUBLIC *)
 let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
-  Typeenv.map (fun (varnm, tystr) -> (varnm, apply_to_type_struct theta tystr)) tyenv
+  Typeenv.map (fun (varnm, pty) -> (varnm, apply_to_type_struct_poly theta pty)) tyenv
 
 
 let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
   let dr = Range.dummy "emerge_in" in
   let iter      = emerge_in tvid in
   let iter_list = emerge_in_list tvid in
+  let iter_poly = emerge_in_poly tvid in
   let (rng, tymain) = tystr in
     match tymain with
     | FuncType(dom, cod)        ->
@@ -78,8 +86,8 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
     | ProductType(lst)          -> iter_list lst
     | TypeVariable(tvidx)       -> (Tyvarid.same tvidx tvid, rng)
     | VariantType(lst, _)       -> iter_list lst
-    | TypeSynonym(lst, _, cont) ->
-        let (bcont, rngcont) = iter cont in
+    | TypeSynonym(lst, _, pty)  ->
+        let (bcont, rngcont) = iter_poly pty in
         let (blst, rnglst)   = iter_list lst in
           if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
     | RecordType(asc)           -> iter_list (Assoc.to_value_list asc)
@@ -87,8 +95,14 @@ let rec emerge_in (tvid : Tyvarid.t) (tystr : type_struct) =
       | BoolType
       | IntType
       | StringType )            -> (false, dr)
-    | ForallType(_, _, _)       -> (false, dr)
     | TypeArgument(_)           -> (false, dr)
+
+
+and emerge_in_poly (tvid : Tyvarid.t) (pty : poly_type) =
+  match pty with
+  | Mono(ty)                               -> emerge_in tvid ty
+  | Forall(tvidx, _, _)  when tvidx = tvid -> (false, Range.dummy "emerge_in_poly")
+  | Forall(_, kd, ptysub)              -> emerge_in_poly tvid ptysub (* temporary *)
 
 
 and emerge_in_list (tvid : Tyvarid.t) (tylist : type_struct list) =

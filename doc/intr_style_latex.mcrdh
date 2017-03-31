@@ -1,4 +1,6 @@
-let \version = {ver. 1.00 epsilon}
+let \embed v = v
+
+let \version = {ver. 1.00 gamma}
 
 let \twitter-at-id at-id = `\texttt{@` ^ {\escape-for-latex{@at-id;}} ^ `}`
 

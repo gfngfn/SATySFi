@@ -1,6 +1,6 @@
 open Types
 
-type t = (var_name * type_struct) list
+type t = (var_name * poly_type) list
 
 
 let empty = []
@@ -15,11 +15,11 @@ let from_list lst = lst
 let map f tyenv = List.map f tyenv
 
 
-let rec add (tyenv : t) (varnm : var_name) (tystr : type_struct) =
+let rec add (tyenv : t) (varnm : var_name) (pty : poly_type) =
   match tyenv with
-  | []                                -> (varnm, tystr) :: []
-  | (vn, ts) :: tail  when vn = varnm -> (varnm, tystr) :: tail
-  | (vn, ts) :: tail                  -> (vn, ts) :: (add tail varnm tystr)
+  | []                                -> (varnm, pty) :: []
+  | (vn, pt) :: tail  when vn = varnm -> (varnm, pty) :: tail
+  | (vn, pt) :: tail                  -> (vn, pt) :: (add tail varnm pty)
 
 
 let rec find (tyenv : t) (varnm : var_name) =
@@ -40,8 +40,15 @@ let rec find_in_type_struct (tvid : Tyvarid.t) (tystr : type_struct) =
     | RefType(tycont)                -> iter tycont
     | ProductType(tylist)            -> iter_list tylist
     | VariantType(tylist, _)         -> iter_list tylist
-    | TypeSynonym(tylist, _, tycont) -> (iter_list tylist) || (iter tycont)
+    | TypeSynonym(tylist, _, pty)    -> (iter_list tylist)(* || (iter tycont) *) (* temporary *)
     | _                              -> false
+
+
+and find_in_type_struct_poly (tvid : Tyvarid.t) (pty : poly_type) =
+  match pty with
+  | Mono(ty)                                          -> find_in_type_struct tvid ty
+  | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> false
+  | Forall(_, kd, ptysub)                             -> find_in_type_struct_poly tvid ptysub
 
 
 and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
@@ -49,7 +56,7 @@ and find_in_type_struct_list (tvid : Tyvarid.t) (tystrlst : type_struct list) =
 
 
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
-  List.fold_left (fun b (_, tystr) -> b || find_in_type_struct tvid tystr) false tyenv
+  List.fold_left (fun b (_, pty) -> b || find_in_type_struct_poly tvid pty) false tyenv
 
 
 let quantifiable_unbound_id_list : Tyvarid.t list ref = ref []
@@ -74,7 +81,7 @@ let rec listup_quantifiable_unbound_id (tystr : type_struct) (tyenv : t) : unit 
     | ListType(tycont)               -> iter tycont
     | RefType(tycont)                -> iter tycont
     | ( IntType | BoolType | UnitType | StringType ) -> ()
-    | ( ForallType(_, _, _) | TypeArgument(_) )      -> failwith "listup_quantifiable_unbound_id"
+    | TypeArgument(_)                -> failwith "listup_quantifiable_unbound_id"
 
 
 let listup_quantifiable_unbound_id_in_kind_environment (kdenv : Kindenv.t) (tyenv : t) =
@@ -88,10 +95,13 @@ let listup_quantifiable_unbound_id_in_kind_environment (kdenv : Kindenv.t) (tyen
 
 let rec add_forall_struct (kdenv : Kindenv.t) (lst : Tyvarid.t list) (tystr : type_struct) =
   match lst with
-  | []           -> tystr
+  | []           -> Mono(tystr)
   | tvid :: tail ->
-     let kdstr = try Kindenv.find kdenv tvid with Not_found -> failwith ("add_forall_struct '" ^ (Tyvarid.show_direct tvid) ^ "'") in
-       (Range.dummy "add_forall_struct", ForallType(tvid, kdstr, add_forall_struct kdenv tail tystr))
+     let kdstr =
+       try Kindenv.find kdenv tvid with
+       | Not_found -> failwith ("add_forall_struct '" ^ (Tyvarid.show_direct tvid) ^ "'")
+     in
+       Forall(tvid, kdstr, add_forall_struct kdenv tail tystr)
 
 
 let make_forall_type (tystr : type_struct) (tyenv_before : t) (kdenv : Kindenv.t) =
@@ -158,13 +168,21 @@ let rec replace_id (lst : (Tyvarid.t * type_struct) list) (tystr : type_struct) 
     | ProductType(tylist)                  -> (rng, ProductType(List.map iter tylist))
     | FuncType(tydom, tycod)               -> (rng, FuncType(iter tydom, iter tycod))
     | VariantType(tylist, varntnm)         -> (rng, VariantType(List.map iter tylist, varntnm))
-    | TypeSynonym(tylist, tysynnm, tycont) -> (rng, TypeSynonym(List.map iter tylist, tysynnm, iter tycont))
-    | ForallType(tvid, kdstr, tycont)      ->
-        begin
-          try let _ = find_id_in_list tvid lst in (rng, ForallType(tvid, kdstr, tycont)) with
-          | Not_found -> (rng, ForallType(tvid, kdstr, iter tycont))
-        end
+    | TypeSynonym(tylist, tysynnm, pty)    -> (rng, TypeSynonym(List.map iter tylist, tysynnm, pty (* temporary *)))
     | other                                -> (rng, other)
+
+
+let rec replace_id_poly (lst : (Tyvarid.t * type_struct) list) (pty : poly_type) =
+  match pty with
+  | Mono(ty)                 -> Mono(replace_id lst ty)
+  | Forall(tvid, kd, ptysub) ->
+      begin
+        try
+          let _ = find_id_in_list tvid lst in
+            Forall(tvid, kd, ptysub) (* temporary *)
+        with
+        | Not_found -> Forall(tvid, kd, replace_id_poly lst ptysub)
+      end
 
 
 let rec make_unquantifiable_if_needed qtfbl tystr =
@@ -183,28 +201,29 @@ let rec make_unquantifiable_if_needed qtfbl tystr =
     | ProductType(tylist)                  -> ProductType(List.map iter tylist)
     | FuncType(tydom, tycod)               -> FuncType(iter tydom, iter tycod)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
-    | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, iter tycont)
+    | TypeSynonym(tylist, tysynnm, pty)    -> TypeSynonym(List.map iter tylist, tysynnm, pty (* temporary *))
+(*
     | ForallType(tvid, kdstr, tycont)      -> ForallType(tvid, kdstr, iter tycont)
+*)
     | RecordType(asc)                      -> RecordType(Assoc.map_value (make_unquantifiable_if_needed qtfbl) asc)
     | other                                -> other
   in
     (rng, tymainnew)
 
 
-let make_bounded_free qtfbl (kdenv : Kindenv.t) (tystr : type_struct) =
-  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (tystr : type_struct) (lst : (Tyvarid.t * Tyvarid.t * type_struct) list) =
-    let (rng, tymain) = tystr in
-    match tymain with
-    | ForallType(oldtvid, kdstr, tycont) ->
+let make_bounded_free qtfbl (kdenv : Kindenv.t) (pty : poly_type) =
+  let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (pty : poly_type) (lst : (Tyvarid.t * Tyvarid.t * type_struct) list) =
+    match pty with
+    | Forall(oldtvid, kdstr, ptysub) ->
         let newtvid = Tyvarid.fresh qtfbl in
         let beta = (Range.dummy "eliminate_forall", TypeVariable(newtvid)) in
-          eliminate_forall qtfbl (Kindenv.add kdenv newtvid kdstr) tycont ((oldtvid, newtvid, beta) :: lst)
+          eliminate_forall qtfbl (Kindenv.add kdenv newtvid kdstr) ptysub ((oldtvid, newtvid, beta) :: lst)
 
-    | _ ->
-        let tyfree    = replace_id (List.map (fun (o, n, b) -> (o, b)) lst) tystr in
+    | Mono(ty) ->
+        let tyfree    = replace_id (List.map (fun (o, n, b) -> (o, b)) lst) ty in
         let kdenvfree = List.fold_left (fun oldkdenv (oldtvid, newtvid, beta) -> Kindenv.replace_type_variable_in_kindenv oldkdenv oldtvid beta) kdenv lst in
         let tyqtf     = make_unquantifiable_if_needed qtfbl tyfree in
         let tyarglist = List.map (fun (o, n, b) -> b) lst in
           (tyqtf, tyarglist, kdenvfree)
   in
-    eliminate_forall qtfbl kdenv tystr []
+    eliminate_forall qtfbl kdenv pty []

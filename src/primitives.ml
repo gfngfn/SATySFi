@@ -5,9 +5,9 @@ let make_variant_environment =
   let dr = Range.dummy "make_variant_environment" in
   let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in
   let varntenv = Variantenv.add_list Variantenv.empty
-    [ ("Item", (dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))])), "itemize");
-      ("Just", (dr, ForallType(tv1, UniversalKind, (dr, TypeVariable(tv1)))), "maybe");
-      ("Nothing", (dr, ForallType(tv1, UniversalKind, (dr, UnitType))), "maybe") ]
+    [ ("Item", Mono((dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))]))), "itemize");
+      ("Just", Forall(tv1, UniversalKind, Mono((dr, TypeVariable(tv1)))), "maybe");
+      ("Nothing", Forall(tv1, UniversalKind, Mono((dr, UnitType))), "maybe") ]
   in
     Variantenv.register_variant_list varntenv [ (0, "itemize"); (1, "maybe") ]
 
@@ -17,7 +17,8 @@ let make_type_environment =
   let b             = (Range.dummy "bool", BoolType) in
   let s             = (Range.dummy "string", StringType) in
   let v n           = (Range.dummy "tv", TypeVariable(n)) in
-  let (-%) n cont   = (Range.dummy "forall", ForallType(n, UniversalKind, cont)) in
+  let (-%) n ptysub = Forall(n, UniversalKind, ptysub) in
+  let (~%) ty       = Mono(ty) in
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
@@ -25,35 +26,35 @@ let make_type_environment =
   let tv2           = Tyvarid.fresh Tyvarid.Quantifiable in
 
     Typeenv.from_list
-      [ ( "+",   i --> (i --> i) );
-        ( "-",   i --> (i --> i) );
-        ( "mod", i --> (i --> i) );
-        ( "*",   i --> (i --> i) );
-        ( "/",   i --> (i --> i) );
-        ( "^",   s --> (s --> s) );
-        ( "==",  i --> (i --> b) );
-        ( "<>",  i --> (i --> b) );
-        ( ">",   i --> (i --> b) );
-        ( "<",   i --> (i --> b) );
-        ( ">=",  i --> (i --> b) );
-        ( "<=",  i --> (i --> b) );
-        ( "&&",  b --> (b --> b) );
-        ( "||",  b --> (b --> b) );
-        ( "not", b --> b );
-        ( "!",   tv1 -% ((r (v tv1)) --> (v tv1)) );
-        ( "::",  tv2 -% ((v tv2) --> ((l (v tv2)) --> (l (v tv2)))) );
+      [ ( "+",   ~% (i --> (i --> i)) );
+        ( "-",   ~% (i --> (i --> i)) );
+        ( "mod", ~% (i --> (i --> i)) );
+        ( "*",   ~% (i --> (i --> i)) );
+        ( "/",   ~% (i --> (i --> i)) );
+        ( "^",   ~% (s --> (s --> s)) );
+        ( "==",  ~% (i --> (i --> b)) );
+        ( "<>",  ~% (i --> (i --> b)) );
+        ( ">",   ~% (i --> (i --> b)) );
+        ( "<",   ~% (i --> (i --> b)) );
+        ( ">=",  ~% (i --> (i --> b)) );
+        ( "<=",  ~% (i --> (i --> b)) );
+        ( "&&",  ~% (b --> (b --> b)) );
+        ( "||",  ~% (b --> (b --> b)) );
+        ( "not", ~% (b --> b) );
+        ( "!",   tv1 -% (~% ((r (v tv1)) --> (v tv1))) );
+        ( "::",  tv2 -% (~% ((v tv2) --> ((l (v tv2)) --> (l (v tv2))))) );
 
-        ( "same",          s --> (s --> b) );
-        ( "string-sub",    s --> (i --> (i --> s)) );
-        ( "string-length", s --> i );
-        ( "\\deeper",      s --> s );
-        ( "deeper",        s --> s );
-        ( "break",         s );
-        ( "soft-break",    s );
-        ( "space",         s );
+        ( "same",          ~% (s --> (s --> b)) );
+        ( "string-sub",    ~% (s --> (i --> (i --> s))) );
+        ( "string-length", ~% (s --> i) );
+        ( "\\deeper",      ~% (s --> s) );
+        ( "deeper",        ~% (s --> s) );
+        ( "break",         ~% s );
+        ( "soft-break",    ~% s );
+        ( "space",         ~% s );
 (*        ( "break-char",    s ); *)
 (*        ( "\\include",     s --> s ); *)
-        ( "arabic",      i --> s );
+        ( "arabic",      ~% (i --> s) );
       ]
 
 let rec lambdas env vlst ast =

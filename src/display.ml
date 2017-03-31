@@ -95,11 +95,11 @@ and string_of_type_struct_sub (kdenv : Kindenv.t) (tystr : type_struct) =
                 | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment")
               end
         end
-
+(*
   | ForallType(tvid, kdstr, tycont) ->
       let meta = new_bound_type_variable_name iter tvid kdstr in
         "(forall " ^ meta ^ " <: " ^ (string_of_kind_struct (string_of_type_struct_sub kdenv) kdstr) ^ ". " ^ (iter tycont) ^ ")"
-
+*)
   | StringType                      -> "string"
   | IntType                         -> "int"
   | BoolType                        -> "bool"
@@ -107,7 +107,7 @@ and string_of_type_struct_sub (kdenv : Kindenv.t) (tystr : type_struct) =
 
   | VariantType(tyarglist, varntnm) -> (iter_args tyarglist) ^ varntnm
 
-  | TypeSynonym(tyarglist, tynm, tycont) -> (iter_args tyarglist) ^ tynm ^ " (= " ^ (iter tycont) ^ ")"
+  | TypeSynonym(tyarglist, tynm, pty) -> (iter_args tyarglist) ^ tynm (* ^ " (= " ^ (iter tycont) ^ ")" *) (* temporary *)
 
   | FuncType(tydom, tycod) ->
       let strdom = iter tydom in
@@ -310,8 +310,8 @@ let rec string_of_type_struct_basic tystr =
     | VariantType(tyarglist, varntnm) ->
         (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ "@" ^ qstn
 
-    | TypeSynonym(tyarglist, tynm, tycont) ->
-        (string_of_type_argument_list_basic tyarglist) ^ tynm ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")"
+    | TypeSynonym(tyarglist, tynm, pty) ->
+        (string_of_type_argument_list_basic tyarglist) ^ tynm (* ^ "(= " ^ (string_of_type_struct_basic tycont) ^ ")" *) (* temporary *)
 
     | FuncType(tydom, tycod)    ->
         let strdom = string_of_type_struct_basic tydom in
@@ -345,8 +345,10 @@ let rec string_of_type_struct_basic tystr =
 
     | ProductType(tylist)       -> string_of_type_struct_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
+(*
     | ForallType(tvid, UniversalKind, tycont) -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
     | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_struct string_of_type_struct_basic kdstr) ^ ". " ^ (string_of_type_struct_basic tycont) ^ ")"
+*)
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           -> string_of_record_type string_of_type_struct_basic asc
 

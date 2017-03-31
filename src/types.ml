@@ -23,11 +23,14 @@ and type_struct_main =
   | RefType      of type_struct
   | ProductType  of type_struct list
   | TypeVariable of Tyvarid.t
-  | TypeSynonym  of (type_struct list) * type_name * type_struct
+  | TypeSynonym  of (type_struct list) * type_name * poly_type
   | VariantType  of (type_struct list) * type_name
-  | ForallType   of Tyvarid.t * kind_struct * type_struct
   | TypeArgument of var_name
   | RecordType   of (field_name, type_struct) Assoc.t
+
+and poly_type =
+  | Mono   of type_struct
+  | Forall of Tyvarid.t * kind_struct * poly_type
 
 and kind_struct =
   | UniversalKind
@@ -285,9 +288,9 @@ let rec replace_type_variable (tystr : type_struct) (key : Tyvarid.t) (value : t
     | ListType(cont)                        -> (rng, ListType(iter cont))
     | RefType(cont)                         -> (rng, RefType(iter cont))
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
-    | TypeSynonym(tyarglist, tysynnm, cont) -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, iter cont))
+    | TypeSynonym(tyarglist, tysynnm, pty)  -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm, pty (* temporary *)))
     | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-    | ForallType(tvid, kdstr, tycont)       -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, kdstr, iter tycont))
+(*    | ForallType(tvid, kdstr, tycont)       -> if Tyvarid.same tvid key then tystr else (rng, ForallType(tvid, kdstr, iter tycont)) *)
     | other                                 -> (rng, other)
 
 
@@ -317,12 +320,17 @@ let rec erase_range_of_type (tystr : type_struct) =
     | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
-    | TypeSynonym(tylist, tynm, tycont) -> TypeSynonym(List.map iter tylist, tynm, iter tycont)
-    | ForallType(tvid, kdstr, tycont)   -> ForallType(tvid, erase_range_of_kind kdstr, iter tycont)
+    | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, erase_range_of_type_poly pty)
+(*    | ForallType(tvid, kdstr, tycont)   -> ForallType(tvid, erase_range_of_kind kdstr, iter tycont) *)
     | other                             -> other
   in
     (dr, newtymain)
 
+
+and erase_range_of_type_poly (pty : poly_type) =
+  match pty with
+  | Mono(ty)                 -> Mono(erase_range_of_type ty)
+  | Forall(tvid, kd, ptysub) -> Forall(tvid, kd, erase_range_of_type_poly ptysub)
 
 and erase_range_of_kind (kdstr : kind_struct) =
   match kdstr with
