@@ -70,49 +70,37 @@ let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
   Typeenv.map (fun (varnm, pty) -> (varnm, apply_to_type_struct_poly theta pty)) tyenv
 
 
-let rec occurs (tvid : Tyvarid.t) (tystr : type_struct) =
-  let dr = Range.dummy "occurs" in
+let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
   let iter      = occurs tvid in
   let iter_list = occurs_list tvid in
   let iter_poly = occurs_poly tvid in
-  let (rng, tymain) = tystr in
     match tymain with
-    | FuncType(dom, cod)        ->
-        let (bdom, rngdom) = iter dom in
-        let (bcod, rngcod) = iter cod in
-          if bdom then (bdom, rngdom) else if bcod then (bcod, rngcod) else (false, dr)
+    | FuncType(dom, cod)        -> iter dom || iter cod
     | ListType(cont)            -> iter cont
     | RefType(cont)             -> iter cont
     | ProductType(lst)          -> iter_list lst
-    | TypeVariable(tvidx)       -> (Tyvarid.same tvidx tvid, rng)
+    | TypeVariable(tvidx)       -> Tyvarid.same tvidx tvid
     | VariantType(lst, _)       -> iter_list lst
-    | TypeSynonym(lst, _, pty)  ->
-        let (bcont, rngcont) = iter_poly pty in
-        let (blst, rnglst)   = iter_list lst in
-          if bcont then (bcont, rngcont) else if blst then (blst, rnglst) else (false, dr)
+    | TypeSynonym(lst, _, pty)  -> iter_list lst || iter_poly pty
     | RecordType(asc)           -> iter_list (Assoc.to_value_list asc)
     | ( UnitType
       | BoolType
       | IntType
-      | StringType )            -> (false, dr)
-    | TypeArgument(_)           -> (false, dr)
+      | StringType )            -> false
+    | TypeArgument(_)           -> false
 
 
 and occurs_poly (tvid : Tyvarid.t) (pty : poly_type) =
   match pty with
   | Mono(ty)                                          -> occurs tvid ty
-  | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> (false, Range.dummy "occurs_poly")
+  | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> false
   | Forall(_, kd, ptysub)                             -> occurs_poly tvid ptysub (* temporary : this should traverse kd? *)
 
 
 and occurs_list (tvid : Tyvarid.t) (tylist : type_struct list) =
-  let dr = Range.dummy "occurs_list" in
     match tylist with
-    | []           -> (false, dr)
-    | tyhd :: tytl ->
-        let (bhd, rnghd) = occurs tvid tyhd in
-        let (btl, rngtl) = occurs_list tvid tytl in
-          if bhd then (bhd, rnghd) else if btl then (btl, rngtl) else (false, dr)
+    | []           -> false
+    | tyhd :: tytl -> occurs tvid tyhd || occurs_list tvid tytl
 
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
@@ -207,12 +195,12 @@ let compose_list thetalst = List.fold_right compose thetalst empty
 
 
 let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list) (acctheta : t) (acckdenv : Kindenv.t) =
-    let _ = print_for_debug_subst "    |----" in (* for debug *)
-    let _ = List.iter (fun (tystr1, tystr2) ->
-      print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)                      (* for debug *)
-                             ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in (* for debug *)
-    let _ = print_for_debug_subst "\n" in (* for debug *)
-    let _ = print_for_debug_subst ("        (kinds(K) " ^ (Display.string_of_kind_environment kdenv) ^ ")\n") in (* for debug *)
+    let _ = print_for_debug_subst "    |----" in                                                                    (* for debug *)
+    let _ = List.iter (fun (tystr1, tystr2) ->                                                                      (* for debug *)
+      print_for_debug_subst (" [" ^ (string_of_type_struct_basic tystr1)                                            (* for debug *)
+                             ^ " = " ^ (string_of_type_struct_basic tystr2) ^ "]")) eqnlst in                       (* for debug *)
+    let _ = print_for_debug_subst "\n" in                                                                           (* for debug *)
+    let _ = print_for_debug_subst ("        (kinds(K) " ^ (Display.string_of_kind_environment kdenv) ^ ")\n") in    (* for debug *)
     let _ = print_for_debug_subst ("        (kinds(S) " ^ (Display.string_of_kind_environment acckdenv) ^ ")\n") in (* for debug *)
   match eqnlst with
   | []                          -> (acctheta, kdenv)
@@ -281,8 +269,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
       | (TypeVariable(tvid1), RecordType(asc2)) ->
                 let kdstr1 = Kindenv.find kdenv tvid1 in
                 let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
-                let (b, _) = occurs tvid1 tystr2 in
-                  if b then
+                  if occurs tvid1 tystr2 then
                     report_inclusion_error kdenv tystr1 tystr2
                   else if not binc then
                     raise InternalContradictionError
@@ -304,8 +291,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (type_struct * type_struct) list
 
 
       | (TypeVariable(tvid1), _) ->
-                let (b, _) = occurs tvid1 tystr2 in
-                  if b then
+                  if occurs tvid1 tystr2 then
                       report_inclusion_error kdenv tystr1 tystr2
                   else
 (*                  begin
