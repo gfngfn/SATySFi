@@ -72,8 +72,8 @@ let apply_to_type_environment (theta : t) (tyenv : Typeenv.t) =
 
 let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
   let iter      = occurs tvid in
-  let iter_list = occurs_list tvid in
-  let iter_poly = occurs_poly tvid in
+  let iter_list = List.fold_left (fun b ty -> b || occurs tvid ty) false in
+  let iter_poly = poly_extend_general (occurs tvid) (fun it _ _ ptysub -> it ptysub) in
     match tymain with
     | FuncType(dom, cod)        -> iter dom || iter cod
     | ListType(cont)            -> iter cont
@@ -89,18 +89,13 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : type_struct) : bool =
       | StringType )            -> false
     | TypeArgument(_)           -> false
 
-
+(*
 and occurs_poly (tvid : Tyvarid.t) (pty : poly_type) =
   match pty with
   | Mono(ty)                                          -> occurs tvid ty
   | Forall(tvidx, _, _)  when Tyvarid.same tvidx tvid -> false
   | Forall(_, kd, ptysub)                             -> occurs_poly tvid ptysub (* temporary : this should traverse kd? *)
-
-
-and occurs_list (tvid : Tyvarid.t) (tylist : type_struct list) =
-    match tylist with
-    | []           -> false
-    | tyhd :: tytl -> occurs tvid tyhd || occurs_list tvid tytl
+*)
 
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : type_struct) =
