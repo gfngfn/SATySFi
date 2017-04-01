@@ -11,16 +11,18 @@ type module_name      = string
 type field_name       = string
 
 module Typeid : sig
-  type t = int
+  type t
   val initialize : unit -> unit
   val fresh : unit -> t
   val to_string : t -> string
+  val eq : t -> t -> bool
 end = struct
   type t = int
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
   let fresh () = ( incr current_id ; !current_id )
   let to_string = string_of_int
+  let eq = (=)
 end
 (*
 type scope = GlobalScope | LocalScope of module_name

@@ -25,11 +25,30 @@ let append_module_name (mdlnm : module_name) (varntnm : type_name) =
   match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
 
-let rec find_definition (defedtylst : defined_type_list) (tynm : type_name) =
-  match defedtylst with
-  | []                                           -> raise Not_found
-  | (tynmx, tyid, ts) :: tail  when tynmx = tynm -> (tyid, ts)
-  | _ :: tail                                    -> find_definition tail tynm
+let find_definition (defedtylst : defined_type_list) (tynm : type_name) =
+  let rec aux lst =
+    match lst with
+    | []                                            -> raise Not_found
+    | (tynmx, tyid, dfn) :: tail  when tynmx = tynm -> (tyid, dfn)
+    | _ :: tail                                     -> aux tail
+  in
+    aux defedtylst
+
+
+(* PUBLIC *)
+let find_type_id ((defedtylst, _) : t) (tynm : type_name) =
+  let (tyid, _) = find_definition defedtylst tynm in tyid
+
+
+(* PUBLIC *)
+let find_type_name ((defedtylst, _) : t) (tyid : Typeid.t) =
+  let rec aux lst =
+    match lst with
+    | []                                                  -> raise Not_found
+    | (tynm, tyidx, _) :: tail  when Typeid.eq tyidx tyid -> tynm
+    | _ :: tail                                           -> aux tail
+  in
+    aux defedtylst
 
 
 (* public *)
