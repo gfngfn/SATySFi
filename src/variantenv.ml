@@ -4,22 +4,23 @@ exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
 
-type definition        = Data of int | Synonym of int * poly_type (* | LocalSynonym of module_name * int * poly_type *)
+type definition        = Data of int | Synonym of int * poly_type
 type defined_type_list = (type_name * Typeid.t * definition) list
 type constructor_list  = (constructor_name * Typeid.t * poly_type) list
 
-(* public *)
+(* PUBLIC *)
 type t = defined_type_list * constructor_list
 
-type fix_mode = InnerMode | OuterMode
-type type_argument_mode = StrictMode of untyped_type_argument_cons | FreeMode of (var_name list) ref
+type type_argument_mode =
+  | StrictMode of untyped_type_argument_cons  (* case where all type arguments should be declared; e.g. for type definitions *)
+  | FreeMode   of (var_name list) ref         (* case where type arguments do not need to be declared; e.g. for type annotations *)
 
 
-(* public *)
+(* PUBLIC *)
 let empty = ([], [])
 
 
-(* public *)
+(* PUBLIC *)
 let append_module_name (mdlnm : module_name) (varntnm : type_name) =
   match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
@@ -44,25 +45,21 @@ let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (pty : po
 
 
 (* public *)
-let rec add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
+let add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
 
 
 let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyargnm : var_name) =
   match tyargcons with
-  | UTEndOfTypeArgument                 -> false
-  | UTTypeArgumentCons(_, nm, tailcons) ->
-      if nm = tyargnm then true else is_defined_type_argument tailcons tyargnm
+  | UTEndOfTypeArgument                                    -> false
+  | UTTypeArgumentCons(_, nm, tailcons)  when nm = tyargnm -> true
+  | UTTypeArgumentCons(_, _, tailcons)                     -> is_defined_type_argument tailcons tyargnm
 
 
-let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_expected : int) (len : int) =
-  raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len))
-
-
-let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
+let rec fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let (defedtylst, varntenvmain) = varntenv in
   let (rng, mntymain) = mnty in
-  let iter = fix_manual_type_general mode varntenv tyargmode in
-  let error = report_illegal_type_argument_length rng in
+  let iter = fix_manual_type_general varntenv tyargmode in
+  let error tynm lenexp lenerr = raise (IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr)) in
   let tymainnew =
     match mntymain with
 
@@ -95,13 +92,6 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
             | (tyid, Synonym(argnum, pty)) ->
                 if argnum <> len then error tynm argnum len else
                   TypeSynonym(List.map iter mntyarglist, tyid, pty)
-(*
-            | (tyid, LocalSynonym(mdlnm, argnum, pty)) ->
-                if argnum <> len then error tynm argnum len else
-                  match mode with
-                  | InnerMode -> TypeSynonym(List.map iter mntyarglist, tyid, pty)
-                  | OuterMode -> VariantType(List.map iter mntyarglist, append_module_name mdlnm tynm)
-*)
           with
           | Not_found -> raise (UndefinedTypeName(rng, tynm))
         end
@@ -152,7 +142,7 @@ let make_type_argument_numbered (var_id : Tyvarid.t) (tyargnm : var_name) (pty :
 
 
 let fix_manual_type (varntenv : t) tyargcons (mnty : manual_type) =
-  fix_manual_type_general InnerMode varntenv (StrictMode(tyargcons)) mnty
+  fix_manual_type_general varntenv (StrictMode(tyargcons)) mnty
 
 
 let free_type_argument_list : (var_name list) ref = ref []
@@ -169,8 +159,8 @@ let rec make_type_argument_into_type_variable qtfbl (tyarglist : var_name list) 
 (* public *)
 let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (mnty : manual_type) =
   free_type_argument_list := [] ;
-  let tyin  = fix_manual_type_general InnerMode varntenv (FreeMode(free_type_argument_list)) mnty in
-  let tyout = fix_manual_type_general OuterMode varntenv (FreeMode(free_type_argument_list)) mnty in
+  let tyin  = fix_manual_type_general varntenv (FreeMode(free_type_argument_list)) mnty in
+  let tyout = fix_manual_type_general varntenv (FreeMode(free_type_argument_list)) mnty in
     let tyin_result = make_type_argument_into_type_variable qtfbl (!free_type_argument_list) tyin in
     let tyout_result = make_type_argument_into_type_variable qtfbl (!free_type_argument_list) tyout in
       (tyin_result, tyout_result)
