@@ -4,9 +4,9 @@ open Display
 exception Error of string
 
 let print_for_debug_typecheck msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -44,19 +44,17 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTContentOf(varnm) ->
       begin
         try
-          let tyforall = Typeenv.find tyenv varnm in
-          let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
+          let pty = Typeenv.find tyenv varnm in
+          let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv pty in
           let tyres = overwrite_range_of_type tyfree rng in
-            begin                                                                                             (* for debug *)
-(*
-              print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_mono_type_basic tyforall) (* for debug *)
-                ^ " = " ^ (string_of_mono_type_basic tyres) ^ " ("                                          (* for debug *)
-                                         ^ (Range.to_string rng) ^ ")\n") ;                                   (* for debug *)
-*)
-              print_for_debug_typecheck ("#Kinds(old) " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                 (* for debug *)
-              print_for_debug_typecheck ("#Kinds(new) " ^ (Display.string_of_kind_environment kdenvfree) ^ "\n") ;             (* for debug *)
+            begin                                                                                                   (* for debug *)
+              print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)              (* for debug *)
+                ^ " = " ^ (string_of_mono_type_basic tyres) ^ " ("                                                  (* for debug *)
+                                         ^ (Range.to_string rng) ^ ")\n") ;                                         (* for debug *)
+              print_for_debug_typecheck ("#Kinds(old) " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;      (* for debug *)
+              print_for_debug_typecheck ("#Kinds(new) " ^ (Display.string_of_kind_environment kdenvfree) ^ "\n") ;  (* for debug *)
               (ContentOf(varnm), tyres, Subst.empty, kdenvfree)
-            end                                                                                               (* for debug *)
+            end                                                                                                     (* for debug *)
         with
         | Not_found -> report_error_with_range rng ("undefined variable '" ^ varnm ^ "'")
       end
@@ -89,12 +87,13 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv utast1 in
       let (e2, ty2, theta2, kdenv2) = typecheck_iter kdenv1 (theta1 @=> tyenv) utast2 in
       let ty1new = theta2 @> ty1 in
-      let _ = print_for_debug_typecheck "#Apply" in (* for debug *)
+      let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain)) ^ "\n") in (* for debug *)
       begin
         match ty1new with
         | (_, FuncType(tydom, tycod)) ->
             let (thetaU, kdenvU) = Subst.unify kdenv2 tydom ty2 in
-            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic (thetaU @> tycod)) ^ "\n") in (* for debug *)
+            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : "                  (* for debug *)
+                                               ^ (string_of_mono_type_basic (thetaU @> tycod)) ^ "\n") in      (* for debug *)
             let tycodnew = overwrite_range_of_type tycod rng in
             let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetaU @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
               (Apply(e1, e2), thetaU @> tycodnew, thetaU @@ theta2 @@ theta1, kdenvU)
@@ -359,21 +358,19 @@ and typecheck_module
       let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable kdenv vein tein varrng varnm utini in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout vein tein_new mdlnm utmdlaft in
         (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
-*)
+
 
 and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * mono_type) list) =
   match tvtylst with
   | []                      -> tyenv
   | (varnm, ty) :: tvtytail ->
       add_list_to_type_environment mdlnm (Typeenv.add tyenv (Variantenv.append_module_name mdlnm varnm) (Mono(ty))) tvtytail
+*)
 
 
-(* Typeenv.t -> untyped_pattern_match_cons -> mono_type -> Subst.t -> mono_type
-    -> (pattern_match_cons * mono_type * Subst.t) *)
 and typecheck_pattern_match_cons
-  qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
-  (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (acctheta : Subst.t) (tyres : mono_type)
-=
+    qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
+      (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (acctheta : Subst.t) (tyres : mono_type) =
   let iter = typecheck_pattern_match_cons qtfbl varntenv in
   match utpmcons with
   | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, acctheta, kdenv)

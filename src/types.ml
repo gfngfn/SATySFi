@@ -301,10 +301,10 @@ let rec replace_type_variable ((rng, tymain) : mono_type) (key : Tyvarid.t) (val
   let iter = (fun ty -> replace_type_variable ty key value) in
     match tymain with
     | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
-    | FuncType(dom, cod)                    -> (rng, FuncType(iter dom, iter cod))
-    | ProductType(lst)                      -> (rng, ProductType(List.map iter lst))
-    | ListType(cont)                        -> (rng, ListType(iter cont))
-    | RefType(cont)                         -> (rng, RefType(iter cont))
+    | FuncType(tydom, tycod)                -> (rng, FuncType(iter tydom, iter tycod))
+    | ProductType(tylst)                    -> (rng, ProductType(List.map iter tylst))
+    | ListType(tycont)                      -> (rng, ListType(iter tycont))
+    | RefType(tycont)                       -> (rng, RefType(iter tycont))
     | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
     | TypeSynonym(tyarglist, tysynnm, pty)  -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm,
                                                                  poly_extend_general

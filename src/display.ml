@@ -319,7 +319,7 @@ let rec string_of_mono_type_basic tystr =
           begin match tydom with
           | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
           | _                   -> strdom
-          end ^ " ->" ^ qstn ^ strcod
+          end ^ " ->" ^ qstn ^ " " ^ strcod
 
     | ListType(tycont)          ->
         let strcont = string_of_mono_type_basic tycont in
@@ -345,10 +345,6 @@ let rec string_of_mono_type_basic tystr =
 
     | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-(*
-    | ForallType(tvid, UniversalKind, tycont) -> "('" ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_mono_type_basic tycont) ^ ")"
-    | ForallType(tvid, kdstr, tycont)         -> "('" ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind string_of_mono_type_basic kdstr) ^ ". " ^ (string_of_mono_type_basic tycont) ^ ")"
-*)
     | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
 
@@ -390,7 +386,15 @@ and string_of_mono_type_list_basic tylist =
         end ^ " * " ^ strtl
 
 
-let string_of_kind_basic kdstr = string_of_kind string_of_mono_type_basic kdstr
+and string_of_poly_type_basic pty =
+  match pty with
+  | Mono(ty)                            -> string_of_mono_type_basic ty
+  | Forall(tvid, UniversalKind, ptysub) -> "(forall " ^ (Tyvarid.show_direct tvid) ^ ". " ^ (string_of_poly_type_basic ptysub) ^ ")"
+  | Forall(tvid, kd, ptysub)            -> "(forall " ^ (Tyvarid.show_direct tvid) ^ " <: " ^ (string_of_kind_basic kd) ^ ". " ^
+                                             (string_of_poly_type_basic ptysub) ^ ")"
+
+
+and string_of_kind_basic kdstr = string_of_kind string_of_mono_type_basic kdstr
 
 
 let string_of_kind_environment kdenv = Kindenv.to_string string_of_kind_basic kdenv

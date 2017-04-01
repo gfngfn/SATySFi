@@ -11,9 +11,9 @@ type t = (Tyvarid.t * mono_type) list
 
 
 let print_for_debug_subst msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 

@@ -1,7 +1,7 @@
 open Types
 
 
-let make_variant_environment =
+let make_variant_environment () =
   let dr = Range.dummy "make_variant_environment" in
   let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in
   let varntenv = Variantenv.add_list Variantenv.empty
@@ -12,7 +12,7 @@ let make_variant_environment =
     Variantenv.register_variant_list varntenv [ (0, "itemize"); (1, "maybe") ]
 
 
-let make_type_environment =
+let make_type_environment () =
   let i             = (Range.dummy "int", IntType) in
   let b             = (Range.dummy "bool", BoolType) in
   let s             = (Range.dummy "string", StringType) in
