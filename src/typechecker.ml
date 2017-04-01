@@ -188,8 +188,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
       let dr = Range.dummy "ut-apply-class-and-id" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], 0 (* temporary : type_id of maybe *))))) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], 0 (* temporary : type_id of maybe *))))) in
       let (ecls, _, _, _) = typecheck_iter kdenv tyenv utastcls in
       let (eid, _, _, _)  = typecheck_iter kdenv tyenv utastid in
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv_new utast1 in
@@ -197,8 +197,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTClassAndIDRegion(utast1) ->
       let dr = Range.dummy "ut-class-and-id-region" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], 0 (* temporary : type_id of maybe *))))) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], 0 (* temporary : type_id of maybe *))))) in
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv_new utast1 in
         (e1, ty1, theta1, kdenv1)
 
@@ -206,7 +206,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTItemize(utitmz) ->
       let (eitmz, thetaitmz, kdenvitmz) = typecheck_itemize qtfbl varntenv kdenv tyenv utitmz Subst.empty in
-        (eitmz, (rng, VariantType([], "itemize")), thetaitmz, kdenvitmz)
+        (eitmz, (rng, VariantType([], 1 (* temporary : type_id of itemize *))), thetaitmz, kdenvitmz)
 
 (* ---- list ---- *)
 
@@ -262,7 +262,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
         (PatternMatch(eO, pmcons), tyP, thetaP @@ thetaO, kdenvP)
 
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
-      let varntenvnew = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
+      let varntenvnew = Variantenv.add_mutual_cons varntenv mutvarntcons in
         typecheck_iter ~v:varntenvnew kdenv tyenv utastA
 (*
   | UTModule(mdlnm, utmdltr, utastA) ->

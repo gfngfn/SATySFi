@@ -95,19 +95,14 @@ and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
                 | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment")
               end
         end
-(*
-  | ForallType(tvid, kdstr, tycont) ->
-      let meta = new_bound_type_variable_name iter tvid kdstr in
-        "(forall " ^ meta ^ " <: " ^ (string_of_kind (string_of_mono_type_sub kdenv) kdstr) ^ ". " ^ (iter tycont) ^ ")"
-*)
   | StringType                      -> "string"
   | IntType                         -> "int"
   | BoolType                        -> "bool"
   | UnitType                        -> "unit"
 
-  | VariantType(tyarglist, varntnm) -> (iter_args tyarglist) ^ varntnm
+  | VariantType(tyarglist, tyid)    -> (iter_args tyarglist) ^ (Typeid.to_string tyid) (* temporary *)
 
-  | TypeSynonym(tyarglist, tynm, pty) -> (iter_args tyarglist) ^ tynm (* ^ " (= " ^ (iter tycont) ^ ")" *) (* temporary *)
+  | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Typeid.to_string tyid) (* ^ " (= " ^ (iter tycont) ^ ")" *) (* temporary *)
 
   | FuncType(tydom, tycod) ->
       let strdom = iter tydom in
@@ -307,11 +302,11 @@ let rec string_of_mono_type_basic tystr =
     | BoolType                        -> "bool" ^ qstn
     | UnitType                        -> "unit" ^ qstn
 
-    | VariantType(tyarglist, varntnm) ->
-        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ "@" ^ qstn
+    | VariantType(tyarglist, tyid) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
 
-    | TypeSynonym(tyarglist, tynm, pty) ->
-        (string_of_type_argument_list_basic tyarglist) ^ tynm (* ^ "(= " ^ (string_of_mono_type_basic tycont) ^ ")" *) (* temporary *)
+    | TypeSynonym(tyarglist, tyid, pty) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) (* ^ "(= " ^ (string_of_mono_type_basic tycont) ^ ")" *) (* temporary *)
 
     | FuncType(tydom, tycod)    ->
         let strdom = string_of_mono_type_basic tydom in

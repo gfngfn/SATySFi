@@ -3,14 +3,30 @@ open Types
 
 let make_variant_environment () =
   let dr = Range.dummy "make_variant_environment" in
-  let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in
-  let varntenv = Variantenv.add_list Variantenv.empty
+(*  let tv1 = Tyvarid.fresh Tyvarid.Quantifiable in *)
+  let mutvarntcons =
+    UTMutualVariantCons(
+      UTTypeArgumentCons(dr, "%a", UTEndOfTypeArgument),  "maybe",
+        (dr, UTVariantCons("Nothing", (dr, MTypeName([], "unit")),
+        (dr, UTVariantCons("Just", (dr, MTypeParam("%a")),
+        (dr, UTEndOfVariant))))),
+    UTMutualVariantCons(
+      UTEndOfTypeArgument, "itemize",
+        (dr, UTVariantCons("Item", (dr, MProductType([(dr, MTypeName([], "string")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])),
+        (dr, UTEndOfVariant))),
+    UTEndOfMutualVariant))
+  in
+    Variantenv.add_mutual_cons Variantenv.empty mutvarntcons
+
+(*
+  let varntenvreg = Variantenv.register_variant_list Variantenv.empty [ (0, "itemize"); (1, "maybe") ] in
+  let varntenv = Variantenv.add_list varntenvreg
     [ ("Item", Mono((dr, ProductType([(dr, StringType); (dr, ListType((dr, VariantType([], "itemize"))))]))), "itemize");
       ("Just", Forall(tv1, UniversalKind, Mono((dr, TypeVariable(tv1)))), "maybe");
       ("Nothing", Forall(tv1, UniversalKind, Mono((dr, UnitType))), "maybe") ]
   in
-    Variantenv.register_variant_list varntenv [ (0, "itemize"); (1, "maybe") ]
-
+    varntenv
+*)
 
 let make_type_environment () =
   let i             = (Range.dummy "int", IntType) in

@@ -4,9 +4,9 @@ exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
 
-type definition_kind   = Data of int | Synonym of int * poly_type | LocalSynonym of module_name * int * poly_type
-type defined_type_list = (type_name * definition_kind) list
-type constructor_list  = (constructor_name * type_name * poly_type) list
+type definition        = Data of int | Synonym of int * poly_type (* | LocalSynonym of module_name * int * poly_type *)
+type defined_type_list = (type_name * Typeid.t * definition) list
+type constructor_list  = (constructor_name * Typeid.t * poly_type) list
 
 (* public *)
 type t = defined_type_list * constructor_list
@@ -23,28 +23,37 @@ let empty = ([], [])
 let append_module_name (mdlnm : module_name) (varntnm : type_name) =
   match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
+(*
+let rec find_type_id (tynm : type_name) (lst : defined_type_list) =
+  let iter = find_type_id tynm in
+    match lst with
+    | []                                          -> assert false
+    | (tynmx, tyid, _) :: tail  when tynmx = tynm -> tyid
+    | _ :: tail                                   -> iter tail
+*)
+
+let rec find_definition (defedtylst : defined_type_list) (tynm : type_name) =
+  match defedtylst with
+  | []                                           -> raise Not_found
+  | (tynmx, tyid, ts) :: tail  when tynmx = tynm -> (tyid, ts)
+  | _ :: tail                                    -> find_definition tail tynm
+
 
 (* public *)
 let add (varntenv : t) (constrnm : constructor_name) (pty : poly_type) (varntnm : type_name) =
   let (defedtylst, varntenvmain) = varntenv in
-  let rec aux varntenvmain constrnm pty varntnm =
-    match varntenvmain with
-    | []                                   -> (constrnm, varntnm, pty) :: []
-    | (c, v, t) :: tail  when c = constrnm -> (constrnm, varntnm, pty) :: tail
-    | (c, v, t) :: tail                    -> (c, v, t) :: (aux tail constrnm pty varntnm)
+  let (tyid, _) = find_definition defedtylst varntnm in
+  let rec aux lst pty =
+    match lst with
+    | []                                   -> (constrnm, tyid, pty) :: []
+    | (c, v, t) :: tail  when c = constrnm -> (constrnm, tyid, pty) :: tail
+    | (c, v, t) :: tail                    -> (c, v, t) :: (aux tail pty)
   in
-    (defedtylst, aux varntenvmain constrnm pty varntnm)
+    (defedtylst, aux varntenvmain pty)
 
 
 (* public *)
 let rec add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
-
-  
-let rec find_definition_kind (defedtylst : defined_type_list) (tynm : type_name) =
-  match defedtylst with
-  | []                             -> raise Not_found
-  | (tn, ts) ::  tl when tn = tynm -> ts
-  | _ :: tl                        -> find_definition_kind tl tynm
 
 
 let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyargnm : var_name) =
@@ -86,23 +95,24 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
     | MTypeName(mntyarglist, tynm) ->
         begin
           try
-            match find_definition_kind defedtylst tynm with
-            | Data(argnum) ->
+            match find_definition defedtylst tynm with
+            | (tyid, Data(argnum)) ->
                 let len = List.length mntyarglist in
                   if argnum <> len then error tynm argnum len else
-                    VariantType(List.map iter mntyarglist, tynm)
+                    VariantType(List.map iter mntyarglist, tyid)
 
-            | Synonym(argnum, pty) ->
+            | (tyid, Synonym(argnum, pty)) ->
                 let len = List.length mntyarglist in
                   if argnum <> len then error tynm argnum len else
-                    TypeSynonym(List.map iter mntyarglist, tynm, pty)
-
-            | LocalSynonym(mdlnm, argnum, pty) ->
+                    TypeSynonym(List.map iter mntyarglist, tyid, pty)
+(*
+            | (tyid, LocalSynonym(mdlnm, argnum, pty)) ->
                 let len = List.length mntyarglist in
                   if argnum <> len then error tynm argnum len else
                     match mode with
-                    | InnerMode -> TypeSynonym(List.map iter mntyarglist, tynm, pty)
+                    | InnerMode -> TypeSynonym(List.map iter mntyarglist, tyid, pty)
                     | OuterMode -> VariantType(List.map iter mntyarglist, append_module_name mdlnm tynm)
+*)
           with
           | Not_found -> raise (UndefinedTypeName(rng, tynm))
         end
@@ -135,10 +145,6 @@ let rec make_type_argument_numbered_mono (var_id : Tyvarid.t) (tyargnm : var_nam
     | ListType(tycont)                     -> ListType(iter tycont)
     | RefType(tycont)                      -> RefType(iter tycont)
     | ProductType(tylist)                  -> ProductType(List.map iter tylist)
-(*
-    | ForallType(tvid, kdstr, tycont)      -> ForallType(tvid, kdstr, iter tycont)
-        (* maybe contains bugs, when tvid = -var_id *)
-*)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
     | TypeSynonym(tylist, tysynnm, tycont) -> TypeSynonym(List.map iter tylist, tysynnm, tycont)
     | RecordType(asc)                      -> RecordType(Assoc.map_value iter asc)
@@ -200,29 +206,24 @@ let rec type_argument_length tyargcons =
 
 let register_variant (varntenv : t) (len : int) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in
-    ((tynm, Data(len)) :: defedtypelist, varntenvmain)
+  let tyid = Typeid.fresh () in
+    ((tynm, tyid, Data(len)) :: defedtypelist, varntenvmain)
 
 
 let register_variant_list = List.fold_left (fun ve (l, t) -> register_variant ve l t)
 
 
-let add_synonym (scope : scope) (varntenv : t)
+let add_synonym (varntenv : t)
                   (tyargcons : untyped_type_argument_cons) (tysynnm : type_name) (mnty : manual_type) =
   let (defedtypelist, varntenvmain) = varntenv in
   let len = type_argument_length tyargcons in
   let defkind =
-    match scope with
-    | GlobalScope ->
-        let tynew = fix_manual_type varntenv tyargcons mnty in
-        let pty = make_type_argument_quantified tyargcons tynew in
-          Synonym(len, pty)
-
-    | LocalScope(mdlnm) ->
-        let tynew = fix_manual_type varntenv tyargcons mnty in
-        let pty = make_type_argument_quantified tyargcons tynew in
-          LocalSynonym(mdlnm, len, pty)
+    let tynew = fix_manual_type varntenv tyargcons mnty in
+    let pty = make_type_argument_quantified tyargcons tynew in
+      Synonym(len, pty)
   in
-    ((tysynnm, defkind) :: defedtypelist, varntenvmain)
+  let tyid = Typeid.fresh () in
+    ((tysynnm, tyid, defkind) :: defedtypelist, varntenvmain)
 
 
 (* public *)
@@ -255,19 +256,19 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
 
 
 (* public *)
-let rec add_mutual_cons (scope : scope) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
-  let varntenv_syn = read_synonym_spec scope varntenv_mem mutvarntcons in
+  let varntenv_syn = read_synonym_spec varntenv_mem mutvarntcons in
   let varntenv_fin = read_variant_spec varntenv_syn mutvarntcons in
     varntenv_fin
 
-and read_synonym_spec (scope : scope) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+and read_synonym_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
     | UTEndOfMutualVariant                                     -> varntenv
-    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec scope varntenv tailcons
+    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tysynnm, mnty, tailcons) ->
-        let varntenv_new = add_synonym scope varntenv tyargcons tysynnm mnty in
-          read_synonym_spec scope varntenv_new tailcons
+        let varntenv_new = add_synonym varntenv tyargcons tysynnm mnty in
+          read_synonym_spec varntenv_new tailcons
 
 and read_variant_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with

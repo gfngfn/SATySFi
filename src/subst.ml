@@ -181,8 +181,8 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
           else
             iter_add (Assoc.combine_value asc1 asc2)
 
-      | (VariantType(tyarglist1, varntnm1), VariantType(tyarglist2, varntnm2))
-                            when varntnm1 = varntnm2 -> iter_add (List.combine tyarglist1 tyarglist2)
+      | (VariantType(tyarglist1, tyid1), VariantType(tyarglist2, tyid2))
+                                  when tyid1 = tyid2 -> iter_add (List.combine tyarglist1 tyarglist2)
 
       | (ListType(cont1), ListType(cont2))           -> iter_add [(cont1, cont2)]
       | (RefType(cont1), RefType(cont2))             -> iter_add [(cont1, cont2)]

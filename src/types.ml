@@ -10,8 +10,21 @@ type constructor_name = string
 type module_name      = string
 type field_name       = string
 
+module Typeid : sig
+  type t = int
+  val initialize : unit -> unit
+  val fresh : unit -> t
+  val to_string : t -> string
+end = struct
+  type t = int
+  let current_id = ref 0
+  let initialize () = ( current_id := 0 )
+  let fresh () = ( incr current_id ; !current_id )
+  let to_string = string_of_int
+end
+(*
 type scope = GlobalScope | LocalScope of module_name
-
+*)
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
   | MTypeName    of (manual_type list) * type_name
@@ -31,8 +44,8 @@ and mono_type_main =
   | RefType      of mono_type
   | ProductType  of mono_type list
   | TypeVariable of Tyvarid.t
-  | TypeSynonym  of (mono_type list) * type_name * poly_type
-  | VariantType  of (mono_type list) * type_name
+  | TypeSynonym  of (mono_type list) * Typeid.t * poly_type
+  | VariantType  of (mono_type list) * Typeid.t
   | TypeArgument of var_name
   | RecordType   of (field_name, mono_type) Assoc.t
 
