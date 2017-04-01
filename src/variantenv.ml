@@ -23,14 +23,6 @@ let empty = ([], [])
 let append_module_name (mdlnm : module_name) (varntnm : type_name) =
   match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
-(*
-let rec find_type_id (tynm : type_name) (lst : defined_type_list) =
-  let iter = find_type_id tynm in
-    match lst with
-    | []                                          -> assert false
-    | (tynmx, tyid, _) :: tail  when tynmx = tynm -> tyid
-    | _ :: tail                                   -> iter tail
-*)
 
 let rec find_definition (defedtylst : defined_type_list) (tynm : type_name) =
   match defedtylst with
@@ -40,16 +32,15 @@ let rec find_definition (defedtylst : defined_type_list) (tynm : type_name) =
 
 
 (* public *)
-let add (varntenv : t) (constrnm : constructor_name) (pty : poly_type) (varntnm : type_name) =
-  let (defedtylst, varntenvmain) = varntenv in
+let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (pty : poly_type) (varntnm : type_name) =
   let (tyid, _) = find_definition defedtylst varntnm in
-  let rec aux lst pty =
+  let rec aux accrev lst pty =
     match lst with
-    | []                                   -> (constrnm, tyid, pty) :: []
-    | (c, v, t) :: tail  when c = constrnm -> (constrnm, tyid, pty) :: tail
-    | (c, v, t) :: tail                    -> (c, v, t) :: (aux tail pty)
+    | []                                   -> (constrnm, tyid, pty) :: varntenvmain
+    | (c, v, t) :: tail  when c = constrnm -> List.rev_append accrev ((constrnm, tyid, pty) :: tail)
+    | (c, v, t) :: tail                    -> aux ((c, v, t) :: accrev) tail pty
   in
-    (defedtylst, aux varntenvmain pty)
+    (defedtylst, aux [] varntenvmain pty)
 
 
 (* public *)
@@ -93,25 +84,23 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
     | MTypeName(mntyarg :: [], "ref")  -> RefType(iter mntyarg)
     | MTypeName(mntyarglist, "ref")    -> error "ref" 1 (List.length mntyarglist)
     | MTypeName(mntyarglist, tynm) ->
+        let len = List.length mntyarglist in
         begin
           try
             match find_definition defedtylst tynm with
             | (tyid, Data(argnum)) ->
-                let len = List.length mntyarglist in
-                  if argnum <> len then error tynm argnum len else
-                    VariantType(List.map iter mntyarglist, tyid)
+                if argnum <> len then error tynm argnum len else
+                  VariantType(List.map iter mntyarglist, tyid)
 
             | (tyid, Synonym(argnum, pty)) ->
-                let len = List.length mntyarglist in
-                  if argnum <> len then error tynm argnum len else
-                    TypeSynonym(List.map iter mntyarglist, tyid, pty)
+                if argnum <> len then error tynm argnum len else
+                  TypeSynonym(List.map iter mntyarglist, tyid, pty)
 (*
             | (tyid, LocalSynonym(mdlnm, argnum, pty)) ->
-                let len = List.length mntyarglist in
-                  if argnum <> len then error tynm argnum len else
-                    match mode with
-                    | InnerMode -> TypeSynonym(List.map iter mntyarglist, tyid, pty)
-                    | OuterMode -> VariantType(List.map iter mntyarglist, append_module_name mdlnm tynm)
+                if argnum <> len then error tynm argnum len else
+                  match mode with
+                  | InnerMode -> TypeSynonym(List.map iter mntyarglist, tyid, pty)
+                  | OuterMode -> VariantType(List.map iter mntyarglist, append_module_name mdlnm tynm)
 *)
           with
           | Not_found -> raise (UndefinedTypeName(rng, tynm))
