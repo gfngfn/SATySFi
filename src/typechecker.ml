@@ -483,11 +483,11 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
     match (utmutletcons, tvtylst) with
     | (UTEndOfMutualLet, []) -> (kdenvforrec, tyenvforrec, EndOfMutualLet, accthetain, accthetaout, List.rev acctvtylstout)
 
-    | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, beta) :: tvtytail) ->
+    | (UTMutualLetCons(mntyopt, varnm, utast1, tailcons), (_, beta) :: tvtytail) ->
         let (e1, ty1, theta1, kdenv1) = typecheck qtfbl varntenv kdenvforrec tyenvforrec utast1 in
         let theta1a = theta1 @@ accthetain in
         begin
-          match tyopt with
+          match mntyopt with
           | None ->
               let (thetaU, kdenvU) = (Subst.unify kdenv1 ty1 (theta1a @> beta)) in
               let theta1in = thetaU @@ theta1a in
@@ -495,8 +495,8 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
                 let (kdenvfinal, tyenvfinal, mutletcons_tail, thetainfinal, thetaoutfinal, tvtylstoutfinal) = typecheck_mutual_contents kdenvU (theta1in @=> tyenvforrec) tailcons tvtytail theta1in theta1out ((varnm, beta) :: acctvtylstout) in
                   (kdenvfinal, tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
 
-          | Some(tystrmanu) ->
-              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv tystrmanu in
+          | Some(mnty) ->
+              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv mnty in
               let (thetaU, kdenvU) = Subst.unify kdenv1 ty1 (theta1a @> beta) in
               let thetaU1a = thetaU @@ theta1a in
               let (thetaV, kdenvV) = Subst.unify kdenvU tystrforin (thetaU1a @> beta) in

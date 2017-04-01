@@ -103,33 +103,6 @@ let replace_type_variable_in_kind (kdstr : kind) (key : Tyvarid.t) (value : mono
   | RecordKind(asc) -> RecordKind(Assoc.map_value (fun tystr -> replace_type_variable_in_mono_type tystr key value) asc)
 *)
 
-let report_inclusion_error (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
-(*
-  let (rng1, _) = tystr1 in
-  let (rng2, _) = tystr2 in
-  let (strty1, strty2) = string_of_mono_type_double kdenv tystr1 tystr2 in
-  let msg =
-    match (Range.is_dummy rng1, Range.is_dummy rng2) with
-    | (true, true) -> "(cannot report position: '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')"
-    | (_, false)   -> "at " ^ (Range.to_string rng2)
-    | (false, _)   -> "at " ^ (Range.to_string rng1)
-  in
-*)
-    raise (InclusionError(kdenv, ty1, ty2))
-(*
-        msg ^ ":\n"
-      ^ "    this expression has types\n"
-      ^ "      " ^ strty1 ^ "\n"
-      ^ "    and\n"
-      ^ "      " ^ strty2 ^ "\n"
-      ^ "    at the same time,\n"
-      ^ "    but these are incompatible with each other"
-    ))
-*)
-
-let report_contradiction_error (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
-  raise (ContradictionError(kdenv, ty1, ty2))
-
 
 (* PUBLIC *)
 let compose (theta2 : t) (theta1 : t) =
@@ -145,8 +118,8 @@ let compose_list thetalst = List.fold_right compose thetalst empty
 let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (acctheta : t) (acckdenv : Kindenv.t) =
     let _ = print_for_debug_subst "    |----" in                                                                    (* for debug *)
     let _ = List.iter (fun (tystr1, tystr2) ->                                                                      (* for debug *)
-      print_for_debug_subst (" [" ^ (string_of_mono_type_basic tystr1)                                            (* for debug *)
-                             ^ " = " ^ (string_of_mono_type_basic tystr2) ^ "]")) eqnlst in                       (* for debug *)
+      print_for_debug_subst (" [" ^ (string_of_mono_type_basic tystr1)                                              (* for debug *)
+                             ^ " = " ^ (string_of_mono_type_basic tystr2) ^ "]")) eqnlst in                         (* for debug *)
     let _ = print_for_debug_subst "\n" in                                                                           (* for debug *)
     let _ = print_for_debug_subst ("        (kinds(K) " ^ (Display.string_of_kind_environment kdenv) ^ ")\n") in    (* for debug *)
     let _ = print_for_debug_subst ("        (kinds(S) " ^ (Display.string_of_kind_environment acckdenv) ^ ")\n") in (* for debug *)
@@ -218,7 +191,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
                 let kdstr1 = Kindenv.find kdenv tvid1 in
                 let binc = match kdstr1 with UniversalKind -> true | RecordKind(asc1) -> Assoc.domain_included asc1 asc2 in
                   if occurs tvid1 tystr2 then
-                    report_inclusion_error kdenv tystr1 tystr2
+                    raise (InternalInclusionError(kdenv))
                   else if not binc then
                     raise (InternalContradictionError(kdenv))
                   else
@@ -240,7 +213,7 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
 
       | (TypeVariable(tvid1), _) ->
                   if occurs tvid1 tystr2 then
-                      report_inclusion_error kdenv tystr1 tystr2
+                      raise (InternalInclusionError(kdenv))
                   else
 (*                  begin
                     match Kindenv.find kdenv tvid1 with
@@ -265,13 +238,13 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
 
 
 (* PUBLIC *)
-let unify (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
+let unify (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
-    unify_sub kdenv [(tystr1, tystr2)] empty Kindenv.empty
+    unify_sub kdenv [(ty1, ty2)] empty Kindenv.empty
   with
-  | InternalInclusionError(kdenvsub)     -> report_inclusion_error kdenvsub tystr1 tystr2
-  | InternalContradictionError(kdenvsub) -> report_contradiction_error kdenvsub tystr1 tystr2
+  | InternalInclusionError(kdenvsub)     -> raise (InclusionError(kdenvsub, ty1, ty2))
+  | InternalContradictionError(kdenvsub) -> raise (ContradictionError(kdenvsub, ty1, ty2))
 
 
 (* for test *)
