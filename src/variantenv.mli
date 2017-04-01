@@ -25,6 +25,6 @@ val find : t -> constructor_name -> (type_name * poly_type)
 
 val apply_to_type_synonym : mono_type list -> poly_type -> mono_type
 
-val fix_manual_type_for_inner_and_outer : Tyvarid.quantifiability -> t -> mono_type -> (mono_type * mono_type)
+val fix_manual_type_for_inner_and_outer : Tyvarid.quantifiability -> t -> manual_type -> (mono_type * mono_type)
 
 val append_module_name : module_name -> var_name -> var_name

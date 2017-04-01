@@ -184,8 +184,12 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
       ]
 
   | Subst.ContradictionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+(*
       let strty1 = string_of_mono_type kdenv ty1 in
       let strty2 = string_of_mono_type kdenv ty2 in
+*)
+      let strty1 = string_of_mono_type_basic ty1 in
+      let strty2 = string_of_mono_type_basic ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =

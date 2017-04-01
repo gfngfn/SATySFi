@@ -9,7 +9,7 @@
     | UnMdl     of untyped_module_tree
     | Pat       of untyped_pattern_tree
     | Rng       of Range.t
-    | TypeStr   of mono_type
+    | TypeStr   of manual_type
     | VarntCons of untyped_variant_cons
 
 
@@ -194,22 +194,22 @@
   let make_variant_declaration firsttk varntdecs utastaft =
     make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
 
-  (* mono_type option -> (code_range * var_name) -> untyped_argument_variable_cons ->
+  (* manual_type option -> (code_range * var_name) -> untyped_argument_variable_cons ->
       untyed_abstract_tree -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let make_mutual_let_cons (tyopt : mono_type option) vartk argcons utastdef tailcons =
+  let make_mutual_let_cons (mntyopt : manual_type option) vartk argcons utastdef tailcons =
     let (varrng, varnm) = vartk in
     let curried = curry_lambda_abstract varrng argcons utastdef in
-      UTMutualLetCons(tyopt, varnm, curried, tailcons)
+      UTMutualLetCons(mntyopt, varnm, curried, tailcons)
 
 
-  (* mono_type option -> (code_range * var_name) -> untyped_let_pattern_cons ->
+  (* manual_type option -> (code_range * var_name) -> untyped_let_pattern_cons ->
       untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let rec make_mutual_let_cons_par (tyopt : mono_type option) vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
+  let rec make_mutual_let_cons_par (mntyopt : manual_type option) vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
     let (_, varnm) = vartk in
     let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
     let fullrng = get_range_of_let_pattern_cons argletpatcons in
     let abs     = make_lambda_abstract_for_parallel fullrng argletpatcons pmcons in
-      UTMutualLetCons(tyopt, varnm, abs, tailcons)
+      UTMutualLetCons(mntyopt, varnm, abs, tailcons)
 
   (* untyped_let_pattern_cons -> code_range *)
   and get_range_of_let_pattern_cons argletpatcons =
@@ -288,9 +288,9 @@
     let typenm = extract_name typenmtk in
       UTMutualVariantCons(tyargcons, typenm, constrdecs, tailcons)
 
-  let make_mutual_synonym_cons tyargcons typenmtk tystr tailcons =
+  let make_mutual_synonym_cons tyargcons typenmtk (mnty : manual_type) tailcons =
     let typenm = extract_name typenmtk in
-      UTMutualSynonymCons(tyargcons, typenm, tystr, tailcons)
+      UTMutualSynonymCons(tyargcons, typenm, mnty, tailcons)
 
   let make_module firsttk mdlnmtk utastdef utastaft =
     let mdlnm = extract_name mdlnmtk in
@@ -1013,77 +1013,77 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
                                             (UTVariantCons(extract_name $1, $3, (Range.dummy "end-of-variant1", UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
-                                             (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit1", VariantType([], "unit")), $3)) }
+                                             (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit")), $3)) }
   | CONSTRUCTOR { make_standard (TokArg $1) (TokArg $1)
-                    (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit2", VariantType([], "unit")), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
+                    (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit")), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
 /* -- -- */
 ;
-txfunc: /* -> mono_type */
+txfunc: /* -> manual_type */
   | txprod ARROW txfunc {
-        let rng = make_range (TypeStr $1) (TypeStr $3) in (rng, FuncType($1, $3)) }
+        let rng = make_range (TypeStr $1) (TypeStr $3) in (rng, MFuncType($1, $3)) }
   | txprod { $1 }
 /* -- for syntax error log -- */
   | txprod ARROW error { report_error (Tok $2) "->" }
 /* -- -- */
 ;
-txprod: /* -> mono_type */
+txprod: /* -> manual_type */
   | txapppre TIMES txprod {
         let rng = make_range (TypeStr $1) (TypeStr $3) in
           match $3 with
-          | (_, ProductType(tylist)) -> (rng, ProductType($1 :: tylist))
-          | other                    -> (rng, ProductType([$1; $3]))
+          | (_, MProductType(tylist)) -> (rng, MProductType($1 :: tylist))
+          | other                     -> (rng, MProductType([$1; $3]))
       }
   | txapppre { $1 }
 /* -- for syntax error log -- */
   | txapppre TIMES error { report_error (Tok $2) "*" }
 /* -- -- */
 ;
-txapppre: /* ->mono_type */
+txapppre: /* -> manual_type */
   | txapp {
           match $1 with
-          | (lst, (rng, VariantType([], tynm))) -> (rng, VariantType(lst, tynm))
-          | ([], tystr)                         -> tystr
-          | _                                   -> assert false
+          | (lst, (rng, MTypeName([], tynm))) -> (rng, MTypeName(lst, tynm))
+          | ([], mnty)                        -> mnty
+          | _                                 -> assert false
       }
   | LPAREN txfunc RPAREN { $2 }
   | TYPEVAR {
-        let (rng, tyargnm) = $1 in (rng, TypeArgument(tyargnm))
+        let (rng, tyargnm) = $1 in (rng, MTypeParam(tyargnm))
       }
 ;
-txapp: /* mono_type list * mono_type */
-  | txbot txapp                { let (lst, tystr) = $2 in ($1 :: lst, tystr) }
-  | LPAREN txfunc RPAREN txapp { let (lst, tystr) = $4 in ($2 :: lst, tystr) }
+txapp: /* manual_type list * manual_type */
+  | txbot txapp                { let (lst, mnty) = $2 in ($1 :: lst, mnty) }
+  | LPAREN txfunc RPAREN txapp { let (lst, mnty) = $4 in ($2 :: lst, mnty) }
   | TYPEVAR txapp              {
         let (rng, tyargnm) = $1 in
-        let (lst, tystr) = $2 in
-          ((rng, TypeArgument(tyargnm)) :: lst, tystr)
+        let (lst, mnty) = $2 in
+          ((rng, MTypeParam(tyargnm)) :: lst, mnty)
       }
   | txbot                      { ([], $1) }
 ;
-txbot: /* -> mono_type */
+txbot: /* -> manual_type */
   | VAR {
-        let (rng, tynm) = $1 in (rng, VariantType([], tynm))
+        let (rng, tynm) = $1 in (rng, MTypeName([], tynm))
       }
   | CONSTRUCTOR DOT VAR {
         let (rng1, mdlnm) = $1 in
         let (rng2, tynm)  = $3 in
         let rng = make_range (Rng rng1) (Rng rng2) in
-          (rng, VariantType([], mdlnm ^ "." ^ tynm))
+          (rng, MTypeName([], mdlnm ^ "." ^ tynm))
       }
   | BRECORD txrecord ERECORD {
         let asc = Assoc.of_list $2 in
         let rng = make_range (Tok $1) (Tok $3) in
-          (rng, RecordType(asc))
+          (rng, MRecordType(asc))
   }
 /* -- for syntax error log -- */
   | CONSTRUCTOR DOT error { report_error (Tok $2) "." }
   | BRECORD error         { report_error (Tok $1) "(|" }
 /* -- -- */
 ;
-txrecord: /* -> (field_name * mono_type) list */
+txrecord: /* -> (field_name * manual_type) list */
   | VAR COLON txfunc LISTPUNCT txrecord { let (_, fldnm) = $1 in (fldnm, $3) :: $5 }
   | VAR COLON txfunc LISTPUNCT          { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
   | VAR COLON txfunc                    { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
