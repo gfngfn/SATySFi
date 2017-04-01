@@ -176,6 +176,28 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
           DisplayLine(strtyB ^ ".");
         ] additional)
 
+  | Subst.InclusionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type kdenv ty1 in
+      let strty2 = string_of_mono_type kdenv ty2 in
+      let strrng1 = Range.to_string rng1 in
+      let strrng2 = Range.to_string rng2 in
+      let (posmsg, strtyA, strtyB, additional) =
+        match (Range.is_dummy rng1, Range.is_dummy rng2) with
+        | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
+        | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
+        | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
+        | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
+                                                                      NormalLine("at " ^ strrng2 ^ "."); ])
+      in
+        report_error "Typechecker" (List.append [
+          NormalLine(posmsg);
+          NormalLine("this expression has types");
+          DisplayLine(strtyA);
+          NormalLine("and");
+          DisplayLine(strtyB);
+          NormalLine("at the same time, but these are incompatible.");
+        ] additional)
+
   | Evaluator.EvalError(s)          -> report_error "Evaluator" [ NormalLine(s); ]
   | Out.IllegalOut(s)               -> report_error "Output" [ NormalLine(s); ]
   | MainError(s)                    -> report_error "Toplevel" [ NormalLine(s); ]
