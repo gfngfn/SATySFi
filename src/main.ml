@@ -3,8 +3,30 @@ open Display
 
 exception MainError of string
 
+type line = NormalLine of string | DisplayLine of string
+
+
 let show_control_sequence_type : bool ref = ref false
 let show_function_type         : bool ref = ref false
+
+
+let report_error (category : string) (lines : line list) =
+  let rec aux lst =
+    match lst with
+    | []                     -> ()
+    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s)   ; aux tail end
+    | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s) ; aux tail end
+  in
+  let first lst =
+    match lst with
+    | []                     -> ()
+    | NormalLine(s) :: tail  -> begin print_endline s ; aux tail end
+    | DisplayLine(s) :: tail -> begin print_endline ("\n      " ^ s) ; aux tail end
+  in
+  begin
+    print_string ("! [Error at " ^ category ^ "] ") ;
+    first lines
+  end
 
 
 let is_suffix pfx str =
@@ -29,7 +51,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, newvarntenv, newkdenv, newtyenv, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_type_struct newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
@@ -48,7 +70,6 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
   end
 
 
-(* Typeenv.t -> environment -> string -> string -> unit *)
 let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
@@ -59,7 +80,7 @@ let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : 
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_type_struct newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -85,7 +106,7 @@ let read_document_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Ty
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_type_struct newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -127,16 +148,60 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
 
     | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   with
-  | Lexer.LexError(s)               -> print_endline ("! [ERROR AT LEXER] " ^ s ^ ".")
-  | Parsing.Parse_error             -> print_endline ("! [ERROR AT PARSER] something is wrong.")
-  | ParseErrorDetail(s)             -> print_endline ("! [ERROR AT PARSER] " ^ s ^ "")
+  | Lexer.LexError(s)               -> report_error "Lexer" [ NormalLine(s); ]
+  | Parsing.Parse_error             -> report_error "Parser" [ NormalLine("something is wrong."); ]
+  | ParseErrorDetail(s)             -> report_error "Parser" [ NormalLine(s); ]
   | ( Typechecker.Error(s)
-    | Variantenv.Error(s)
-    | Subst.ContradictionError(s) ) -> print_endline ("! [ERROR AT TYPECHECKER] " ^ s ^ ".")
-  | Evaluator.EvalError(s)          -> print_endline ("! [ERROR AT EVALUATOR] " ^ s ^ ".")
-  | Out.IllegalOut(s)               -> print_endline ("! [ERROR AT OUTPUT] " ^ s ^ ".")
-  | MainError(s)                    -> print_endline ("! [ERROR] " ^ s ^ ".")
-  | Sys_error(s)                    -> print_endline ("! [ERROR] System error - " ^ s)
+    | Variantenv.Error(s) ) ->
+      report_error "Typechecker" [ NormalLine(s); ]
+
+  | Subst.ContradictionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type kdenv ty1 in
+      let strty2 = string_of_mono_type kdenv ty2 in
+      let strrng1 = Range.to_string rng1 in
+      let strrng2 = Range.to_string rng2 in
+      let (posmsg, strtyA, strtyB, additional) =
+        match (Range.is_dummy rng1, Range.is_dummy rng2) with
+        | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
+        | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
+        | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
+        | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
+                                                                      NormalLine("at " ^ strrng2 ^ "."); ])
+      in
+        report_error "Typechecker" (List.append [
+          NormalLine(posmsg);
+          NormalLine("this expression has type");
+          DisplayLine(strtyA ^ ",");
+          NormalLine("but is expected of type");
+          DisplayLine(strtyB ^ ".");
+        ] additional)
+
+  | Subst.InclusionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type kdenv ty1 in
+      let strty2 = string_of_mono_type kdenv ty2 in
+      let strrng1 = Range.to_string rng1 in
+      let strrng2 = Range.to_string rng2 in
+      let (posmsg, strtyA, strtyB, additional) =
+        match (Range.is_dummy rng1, Range.is_dummy rng2) with
+        | (true, true)   -> ("(cannot report position; '" ^ (Range.message rng1) ^ "', '" ^ (Range.message rng2) ^ "')", strty1, strty2, [])
+        | (true, false)  -> ("at " ^ strrng2 ^ ":", strty2, strty1, [])
+        | (false, true)  -> ("at " ^ strrng1 ^ ":", strty1, strty2, [])
+        | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
+                                                                      NormalLine("at " ^ strrng2 ^ "."); ])
+      in
+        report_error "Typechecker" (List.append [
+          NormalLine(posmsg);
+          NormalLine("this expression has types");
+          DisplayLine(strtyA);
+          NormalLine("and");
+          DisplayLine(strtyB);
+          NormalLine("at the same time, but these are incompatible.");
+        ] additional)
+
+  | Evaluator.EvalError(s)          -> report_error "Evaluator" [ NormalLine(s); ]
+  | Out.IllegalOut(s)               -> report_error "Output" [ NormalLine(s); ]
+  | MainError(s)                    -> report_error "Toplevel" [ NormalLine(s); ]
+  | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
 
 
 let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =
@@ -145,9 +210,9 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
         print_endline ("  [output] " ^ file_name_out) ;
         print_endline "" ;
         Tyvarid.initialize () ;
-        let varntenv = Primitives.make_variant_environment in
+        let varntenv = Primitives.make_variant_environment () in
         let kdenv = Kindenv.empty in
-        let tyenv = Primitives.make_type_environment in
+        let tyenv = Primitives.make_type_environment () in
         let env = Primitives.make_environment () in
           main varntenv kdenv tyenv env file_name_in_list file_name_out
       end

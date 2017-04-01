@@ -9,15 +9,17 @@ let print_for_debug_typecheck msg =
 *)
   ()
 
+
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 let final_kdenv    : Kindenv.t ref    = ref Kindenv.empty
+
 
 let report_error_with_range rng msg =
   raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))
 
 
-let (@>)  = Subst.apply_to_type_struct
+let (@>)  = Subst.apply_to_mono_type
 let (@=>) = Subst.apply_to_type_environment
 let (@@)  = Subst.compose (* right assoc. *)
 
@@ -42,17 +44,17 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTContentOf(varnm) ->
       begin
         try
-          let tyforall = Typeenv.find tyenv varnm in
-          let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
+          let pty = Typeenv.find tyenv varnm in
+          let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv pty in
           let tyres = overwrite_range_of_type tyfree rng in
-            begin                                                                                             (* for debug *)
-              print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
-                ^ " = " ^ (string_of_type_struct_basic tyres) ^ " ("                                          (* for debug *)
-                                         ^ (Range.to_string rng) ^ ")\n") ;                                   (* for debug *)
-              print_for_debug_typecheck ("#Kinds(old) " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                 (* for debug *)
-              print_for_debug_typecheck ("#Kinds(new) " ^ (Display.string_of_kind_environment kdenvfree) ^ "\n") ;             (* for debug *)
+            begin                                                                                                   (* for debug *)
+              print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)              (* for debug *)
+                ^ " = " ^ (string_of_mono_type_basic tyres) ^ " ("                                                  (* for debug *)
+                                         ^ (Range.to_string rng) ^ ")\n") ;                                         (* for debug *)
+              print_for_debug_typecheck ("#Kinds(old) " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;      (* for debug *)
+              print_for_debug_typecheck ("#Kinds(new) " ^ (Display.string_of_kind_environment kdenvfree) ^ "\n") ;  (* for debug *)
               (ContentOf(varnm), tyres, Subst.empty, kdenvfree)
-            end                                                                                               (* for debug *)
+            end                                                                                                     (* for debug *)
         with
         | Not_found -> report_error_with_range rng ("undefined variable '" ^ varnm ^ "'")
       end
@@ -85,12 +87,13 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv utast1 in
       let (e2, ty2, theta2, kdenv2) = typecheck_iter kdenv1 (theta1 @=> tyenv) utast2 in
       let ty1new = theta2 @> ty1 in
-      let _ = print_for_debug_typecheck "#Apply" in (* for debug *)
+      let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain)) ^ "\n") in (* for debug *)
       begin
         match ty1new with
         | (_, FuncType(tydom, tycod)) ->
             let (thetaU, kdenvU) = Subst.unify kdenv2 tydom ty2 in
-            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_type_struct_basic (thetaU @> tycod)) ^ "\n") in (* for debug *)
+            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : "                  (* for debug *)
+                                               ^ (string_of_mono_type_basic (thetaU @> tycod)) ^ "\n") in      (* for debug *)
             let tycodnew = overwrite_range_of_type tycod rng in
             let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetaU @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
               (Apply(e1, e2), thetaU @> tycodnew, thetaU @@ theta2 @@ theta1, kdenvU)
@@ -98,7 +101,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
             let tvid = Tyvarid.fresh qtfbl in
             let beta = (rng, TypeVariable(tvid)) in
             let (thetaU, kdenvU) = Subst.unify (Kindenv.add kdenv2 tvid UniversalKind) (theta2 @> ty1) (get_range utast1, FuncType(ty2, beta)) in
-            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_type_struct_basic beta) ^ " = " ^ (string_of_type_struct_basic (thetaU @> beta)) ^ "\n") in (* for debug *)
+            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic (thetaU @> beta)) ^ "\n") in (* for debug *)
             let _ = print_for_debug_typecheck ((Subst.string_of_subst (thetaU @@ theta2 @@ theta1)) ^ "\n") in (* for debug *)
                 (Apply(e1, e2), thetaU @> beta, thetaU @@ theta2 @@ theta1, kdenvU)
       end
@@ -106,7 +109,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
   | UTLambdaAbstract(varrng, varnm, utast1) ->
       let tvid = Tyvarid.fresh qtfbl in
       let beta = (varrng, TypeVariable(tvid)) in
-      let (e1, ty1, theta1, kdenv1) = typecheck_iter (Kindenv.add kdenv tvid UniversalKind) (Typeenv.add tyenv varnm beta) utast1 in
+      let (e1, ty1, theta1, kdenv1) = typecheck_iter (Kindenv.add kdenv tvid UniversalKind) (Typeenv.add tyenv varnm (Mono(beta))) utast1 in
         let tydom = theta1 @> beta in
         let tycod = ty1 in
           (LambdaAbstract(varnm, e1), (rng, FuncType(tydom, tycod)), theta1, kdenv1)
@@ -187,8 +190,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
       let dr = Range.dummy "ut-apply-class-and-id" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
       let (ecls, _, _, _) = typecheck_iter kdenv tyenv utastcls in
       let (eid, _, _, _)  = typecheck_iter kdenv tyenv utastid in
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv_new utast1 in
@@ -196,8 +199,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
 
   | UTClassAndIDRegion(utast1) ->
       let dr = Range.dummy "ut-class-and-id-region" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
+      let tyenv1    = Typeenv.add tyenv  "class-name" (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
+      let tyenv_new = Typeenv.add tyenv1 "id-name"    (Mono((dr, VariantType([(dr, StringType)], "maybe")))) in
       let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenv tyenv_new utast1 in
         (e1, ty1, theta1, kdenv1)
 
@@ -276,7 +279,7 @@ and typecheck_record
 =
   let rec aux
       (kdenv : Kindenv.t) (tyenv : Typeenv.t) (lst : (field_name * untyped_abstract_tree) list)
-      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * type_struct) list) (acctheta : Subst.t)
+      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * mono_type) list) (acctheta : Subst.t)
   =
     match lst with
     | []                       -> (List.rev accelst, List.rev acctylst, acctheta, kdenv)
@@ -355,21 +358,19 @@ and typecheck_module
       let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable kdenv vein tein varrng varnm utini in
       let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl kdenv veout teout vein tein_new mdlnm utmdlaft in
         (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), thetaaft @@ thetaini)
+
+
+and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * mono_type) list) =
+  match tvtylst with
+  | []                      -> tyenv
+  | (varnm, ty) :: tvtytail ->
+      add_list_to_type_environment mdlnm (Typeenv.add tyenv (Variantenv.append_module_name mdlnm varnm) (Mono(ty))) tvtytail
 *)
 
-and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * type_struct) list) =
-  match tvtylst with
-  | []                         -> tyenv
-  | (varnm, tystr) :: tvtytail ->
-      add_list_to_type_environment mdlnm (Typeenv.add tyenv (Variantenv.append_module_name mdlnm varnm) tystr) tvtytail
 
-
-(* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
-    -> (pattern_match_cons * type_struct * Subst.t) *)
 and typecheck_pattern_match_cons
-  qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
-  (utpmcons : untyped_pattern_match_cons) (tyobj : type_struct) (acctheta : Subst.t) (tyres : type_struct)
-=
+    qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t)
+      (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (acctheta : Subst.t) (tyres : mono_type) =
   let iter = typecheck_pattern_match_cons qtfbl varntenv in
   match utpmcons with
   | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres, acctheta, kdenv)
@@ -443,13 +444,13 @@ and typecheck_pattern qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv
   | UTPVariable(varnm) ->
       let tvid = Tyvarid.fresh qtfbl in
       let beta = (rng, TypeVariable(tvid)) in
-        (PVariable(varnm), beta, Typeenv.add tyenv varnm beta, Kindenv.add kdenv tvid UniversalKind)
+        (PVariable(varnm), beta, Typeenv.add tyenv varnm (Mono(beta)), Kindenv.add kdenv tvid UniversalKind)
 
   | UTPAsVariable(varnm, utpat1) ->
       let tvid = Tyvarid.fresh qtfbl in
       let beta = (rng, TypeVariable(tvid)) in
       let (epat1, typat1, tyenv1, kdenv1) = iter (Kindenv.add kdenv tvid UniversalKind) tyenv utpat1 in
-        (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm beta, kdenv1)
+        (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm (Mono(beta)), kdenv1)
 
   | UTPConstructor(constrnm, utpat1) ->
       begin
@@ -474,12 +475,12 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
           let beta = (get_range astdef, TypeVariable(tvid)) in
           let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : " ^ (Tyvarid.show_direct tvid) ^ " :: U\n") in (* for debug *)
           let _ = print_for_debug_typecheck ("#Kinds(old) " ^ (Display.string_of_kind_environment acckdenv) ^ "\n") in                      (* for debug *)
-          let (kdenvfinal, tyenvfinal, tvtylst) = iter (Kindenv.add acckdenv tvid UniversalKind) (Typeenv.add acctyenv varnm beta) tailcons in
+          let (kdenvfinal, tyenvfinal, tvtylst) = iter (Kindenv.add acckdenv tvid UniversalKind) (Typeenv.add acctyenv varnm (Mono(beta))) tailcons in
             (kdenvfinal, tyenvfinal, ((varnm, beta) :: tvtylst))
   in
   let rec typecheck_mutual_contents
-      (kdenvforrec : Kindenv.t) (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list)
-      (accthetain : Subst.t) (accthetaout : Subst.t) (acctvtylstout : (var_name * type_struct) list)
+      (kdenvforrec : Kindenv.t) (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * mono_type) list)
+      (accthetain : Subst.t) (accthetaout : Subst.t) (acctvtylstout : (var_name * mono_type) list)
   =
     match (utmutletcons, tvtylst) with
     | (UTEndOfMutualLet, []) -> (kdenvforrec, tyenvforrec, EndOfMutualLet, accthetain, accthetaout, List.rev acctvtylstout)
@@ -518,12 +519,12 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
         let prety = theta @> tvty in
           begin                                                                                                        (* for debug *)
             print_for_debug_typecheck (Subst.string_of_subst theta) ;                                                  (* for debug *)
-            print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-            print_for_debug_typecheck ("#Kinds " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                                 (* for debug *)
-            let forallty = erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let kdenv) in
+            print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") ;  (* for debug *)
+            print_for_debug_typecheck ("#Kinds " ^ (Display.string_of_kind_environment kdenv) ^ "\n") ;                (* for debug *)
+            let pty = poly_extend erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let kdenv) in
   (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
-            let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
-              make_forall_type_mutual kdenv (Typeenv.add tyenv varnm forallty) tyenv_before_let theta tvtytail tvtylst_forall_new
+            let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
+              make_forall_type_mutual kdenv (Typeenv.add tyenv varnm pty) tyenv_before_let theta tvtytail tvtylst_forall_new
           end                                                                                                          (* for debug *)
   in
   let (kdenvforrec, tyenvforrec, tvtylstforrec) = add_mutual_variables kdenv tyenv utmutletcons in
@@ -537,7 +538,7 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
 
 and make_type_environment_by_let_mutable (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI, thetaI, kdenvI) = typecheck Tyvarid.Unquantifiable varntenv kdenv tyenv utastI in
-  let tyenvI = thetaI @=> (Typeenv.add tyenv varnm (varrng, RefType(tyI))) in
+  let tyenvI = thetaI @=> (Typeenv.add tyenv varnm (Mono(varrng, RefType(tyI)))) in
     (tyenvI, eI, tyI, thetaI, kdenvI)
 
 

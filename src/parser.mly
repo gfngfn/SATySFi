@@ -9,7 +9,7 @@
     | UnMdl     of untyped_module_tree
     | Pat       of untyped_pattern_tree
     | Rng       of Range.t
-    | TypeStr   of type_struct
+    | TypeStr   of mono_type
     | VarntCons of untyped_variant_cons
 
 
@@ -194,17 +194,17 @@
   let make_variant_declaration firsttk varntdecs utastaft =
     make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
 
-  (* type_struct option -> (code_range * var_name) -> untyped_argument_variable_cons ->
+  (* mono_type option -> (code_range * var_name) -> untyped_argument_variable_cons ->
       untyed_abstract_tree -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let make_mutual_let_cons (tyopt : type_struct option) vartk argcons utastdef tailcons =
+  let make_mutual_let_cons (tyopt : mono_type option) vartk argcons utastdef tailcons =
     let (varrng, varnm) = vartk in
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(tyopt, varnm, curried, tailcons)
 
 
-  (* type_struct option -> (code_range * var_name) -> untyped_let_pattern_cons ->
+  (* mono_type option -> (code_range * var_name) -> untyped_let_pattern_cons ->
       untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let rec make_mutual_let_cons_par (tyopt : type_struct option) vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
+  let rec make_mutual_let_cons_par (tyopt : mono_type option) vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
     let (_, varnm) = vartk in
     let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
     let fullrng = get_range_of_let_pattern_cons argletpatcons in
@@ -1021,7 +1021,7 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
 /* -- -- */
 ;
-txfunc: /* -> type_struct */
+txfunc: /* -> mono_type */
   | txprod ARROW txfunc {
         let rng = make_range (TypeStr $1) (TypeStr $3) in (rng, FuncType($1, $3)) }
   | txprod { $1 }
@@ -1029,7 +1029,7 @@ txfunc: /* -> type_struct */
   | txprod ARROW error { report_error (Tok $2) "->" }
 /* -- -- */
 ;
-txprod: /* -> type_struct */
+txprod: /* -> mono_type */
   | txapppre TIMES txprod {
         let rng = make_range (TypeStr $1) (TypeStr $3) in
           match $3 with
@@ -1041,7 +1041,7 @@ txprod: /* -> type_struct */
   | txapppre TIMES error { report_error (Tok $2) "*" }
 /* -- -- */
 ;
-txapppre: /* ->type_struct */
+txapppre: /* ->mono_type */
   | txapp {
           match $1 with
           | (lst, (rng, VariantType([], tynm))) -> (rng, VariantType(lst, tynm))
@@ -1053,7 +1053,7 @@ txapppre: /* ->type_struct */
         let (rng, tyargnm) = $1 in (rng, TypeArgument(tyargnm))
       }
 ;
-txapp: /* type_struct list * type_struct */
+txapp: /* mono_type list * mono_type */
   | txbot txapp                { let (lst, tystr) = $2 in ($1 :: lst, tystr) }
   | LPAREN txfunc RPAREN txapp { let (lst, tystr) = $4 in ($2 :: lst, tystr) }
   | TYPEVAR txapp              {
@@ -1063,7 +1063,7 @@ txapp: /* type_struct list * type_struct */
       }
   | txbot                      { ([], $1) }
 ;
-txbot: /* -> type_struct */
+txbot: /* -> mono_type */
   | VAR {
         let (rng, tynm) = $1 in (rng, VariantType([], tynm))
       }
@@ -1083,7 +1083,7 @@ txbot: /* -> type_struct */
   | BRECORD error         { report_error (Tok $1) "(|" }
 /* -- -- */
 ;
-txrecord: /* -> (field_name * type_struct) list */
+txrecord: /* -> (field_name * mono_type) list */
   | VAR COLON txfunc LISTPUNCT txrecord { let (_, fldnm) = $1 in (fldnm, $3) :: $5 }
   | VAR COLON txfunc LISTPUNCT          { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
   | VAR COLON txfunc                    { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
