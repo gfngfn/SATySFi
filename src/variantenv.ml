@@ -1,6 +1,8 @@
 open Types
 
-exception Error of string
+exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
+exception UndefinedTypeName            of Range.t * type_name
+exception UndefinedTypeArgument        of Range.t * var_name
 
 type definition_kind   = Data of int | Synonym of int * poly_type | LocalSynonym of module_name * int * poly_type
 type defined_type_list = (type_name * definition_kind) list
@@ -53,9 +55,7 @@ let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyarg
 
 
 let report_illegal_type_argument_length (rng : Range.t) (tynm : type_name) (len_expected : int) (len : int) =
-  raise(Error("at " ^ (Range.to_string rng) ^ ":\n" ^
-    "    '" ^ tynm ^ "' is expected to have " ^ (string_of_int len_expected) ^ " type argument(s),\n" ^
-    "    but it has " ^ (string_of_int len) ^ " type argument(s) here"))
+  raise (IllegalNumberOfTypeArguments(rng, tynm, len_expected, len))
 
 
 let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : type_argument_mode) (tystr : mono_type) =
@@ -104,7 +104,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
                     | InnerMode -> TypeSynonym(List.map iter tyarglist, tynm, pty)
                     | OuterMode -> VariantType(List.map iter tyarglist, append_module_name mdlnm tynm)
           with
-          | Not_found -> raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type '" ^ tynm ^ "'"))
+          | Not_found -> raise (UndefinedTypeName(rng, tynm))
         end
 
     | TypeArgument(tyargnm)        ->
@@ -114,7 +114,7 @@ let rec fix_manual_type_general (mode : fix_mode) (varntenv : t) (tyargmode : ty
                 if is_defined_type_argument tyargcons tyargnm then
                   TypeArgument(tyargnm)
                 else
-                  raise (Error("at " ^ (Range.to_string rng) ^ ":\n" ^ "    undefined type argument '" ^ tyargnm ^ "'"))
+                  raise (UndefinedTypeArgument(rng, tyargnm))
 
             | FreeMode(reftyarglst) ->
                 begin

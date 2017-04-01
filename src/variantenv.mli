@@ -1,7 +1,9 @@
 open Types
 open Display
 
-exception Error of string
+exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
+exception UndefinedTypeName            of Range.t * type_name
+exception UndefinedTypeArgument        of Range.t * var_name
 
 type t
 

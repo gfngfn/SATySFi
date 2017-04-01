@@ -1,7 +1,9 @@
 open Types
 open Display
 
-exception Error of string
+exception UndefinedVariable    of Range.t * var_name
+exception UndefinedConstructor of Range.t * var_name
+
 
 let print_for_debug_typecheck msg =
 (*
@@ -13,10 +15,6 @@ let print_for_debug_typecheck msg =
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 let final_kdenv    : Kindenv.t ref    = ref Kindenv.empty
-
-
-let report_error_with_range rng msg =
-  raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))
 
 
 let (@>)  = Subst.apply_to_mono_type
@@ -56,7 +54,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
               (ContentOf(varnm), tyres, Subst.empty, kdenvfree)
             end                                                                                                     (* for debug *)
         with
-        | Not_found -> report_error_with_range rng ("undefined variable '" ^ varnm ^ "'")
+        | Not_found -> raise (UndefinedVariable(rng, varnm))
       end
 
   | UTConstructor(constrnm, utast1) ->
@@ -72,7 +70,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
             let tyres  = overwrite_range_of_type (thetaU1 @> (rng, VariantType(tyarglist, varntnm))) rng in
               (Constructor(constrnm, e1), tyres, thetaU1, kdenvU)
         with
-        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
+        | Not_found -> raise (UndefinedConstructor(rng, constrnm))
       end
 
   | UTConcat(utast1, utast2) ->
@@ -461,7 +459,7 @@ and typecheck_pattern qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv
           let (thetaU, kdenvU) = Subst.unify kdenv1 tyfree typat1 in
             (PConstructor(constrnm, epat1), thetaU @> (rng, VariantType(tyarglist, varntnm)), thetaU @=> tyenv1, kdenvU)
         with
-        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
+        | Not_found -> raise (UndefinedConstructor(rng, constrnm))
       end
 
 

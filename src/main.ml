@@ -151,9 +151,37 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
   | Lexer.LexError(s)               -> report_error "Lexer" [ NormalLine(s); ]
   | Parsing.Parse_error             -> report_error "Parser" [ NormalLine("something is wrong."); ]
   | ParseErrorDetail(s)             -> report_error "Parser" [ NormalLine(s); ]
-  | ( Typechecker.Error(s)
-    | Variantenv.Error(s) ) ->
-      report_error "Typechecker" [ NormalLine(s); ]
+
+  | Typechecker.UndefinedVariable(rng, varnm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined variable '" ^ varnm ^ "'.");
+      ]
+
+  | Typechecker.UndefinedConstructor(rng, constrnm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined constructor '" ^ constrnm ^ "'.");
+      ]
+
+  | Variantenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
+      report_error "Typechecker" [
+        NormalLine("at" ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
+        NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
+      ]
+
+  | Variantenv.UndefinedTypeName(rng, tynm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined type name '" ^ tynm ^ "'");
+      ]
+
+  | Variantenv.UndefinedTypeArgument(rng, tyargnm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined type argument '" ^ tyargnm ^ "'");
+      ]
 
   | Subst.ContradictionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = string_of_mono_type kdenv ty1 in
