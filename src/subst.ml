@@ -3,8 +3,8 @@ open Display
 
 exception InternalInclusionError     of Kindenv.t
 exception InternalContradictionError of Kindenv.t
-exception InclusionError     of Kindenv.t * mono_type * mono_type
-exception ContradictionError of Kindenv.t * mono_type * mono_type
+exception InclusionError     of Variantenv.t * Kindenv.t * mono_type * mono_type
+exception ContradictionError of Variantenv.t * Kindenv.t * mono_type * mono_type
 
 
 type t = (Tyvarid.t * mono_type) list
@@ -238,13 +238,13 @@ let rec unify_sub (kdenv : Kindenv.t) (eqnlst : (mono_type * mono_type) list) (a
 
 
 (* PUBLIC *)
-let unify (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+let unify (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   let _ = print_for_debug_subst "  unify\n" in (* for debug *)
   try
     unify_sub kdenv [(ty1, ty2)] empty Kindenv.empty
   with
-  | InternalInclusionError(kdenvsub)     -> raise (InclusionError(kdenvsub, ty1, ty2))
-  | InternalContradictionError(kdenvsub) -> raise (ContradictionError(kdenvsub, ty1, ty2))
+  | InternalInclusionError(kdenvsub)     -> raise (InclusionError(varntenv, kdenvsub, ty1, ty2))
+  | InternalContradictionError(kdenvsub) -> raise (ContradictionError(varntenv, kdenvsub, ty1, ty2))
 
 
 (* for test *)

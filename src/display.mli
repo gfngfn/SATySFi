@@ -10,8 +10,8 @@ val string_of_poly_type_basic : poly_type -> string
 
 val string_of_kind_basic : kind -> string
 
-val string_of_mono_type : Kindenv.t -> mono_type -> string
+val string_of_mono_type : Variantenv.t -> Kindenv.t -> mono_type -> string
 
-val string_of_mono_type_double : Kindenv.t -> mono_type -> mono_type -> (string * string)
+val string_of_mono_type_double : Variantenv.t -> Kindenv.t -> mono_type -> mono_type -> (string * string)
 
 val string_of_kind_environment : Kindenv.t -> string

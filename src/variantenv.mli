@@ -1,5 +1,4 @@
 open Types
-open Display
 
 exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name

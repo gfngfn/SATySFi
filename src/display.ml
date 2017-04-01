@@ -61,34 +61,34 @@ let find_type_variable (f : mono_type -> string) (tvid : Tyvarid.t) =
     aux (!type_valiable_name_list)
 
 
-let rec string_of_mono_type (kdenv : Kindenv.t) (tystr : mono_type) =
+let rec string_of_mono_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
   begin
     type_variable_name_max := 0 ;
     type_valiable_name_list := [] ;
-    string_of_mono_type_sub kdenv tystr
+    string_of_mono_type_sub varntenv kdenv ty
   end
 
 
-and string_of_mono_type_double (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
+and string_of_mono_type_double (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   begin
     type_variable_name_max := 0 ;
     type_valiable_name_list := [] ;
-    let strty1 = string_of_mono_type_sub kdenv tystr1 in
-    let strty2 = string_of_mono_type_sub kdenv tystr2 in
+    let strty1 = string_of_mono_type_sub varntenv kdenv ty1 in
+    let strty2 = string_of_mono_type_sub varntenv kdenv ty2 in
       (strty1, strty2)
   end
 
 
-and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_args = string_of_type_argument_list kdenv in
-  let iter_list = string_of_mono_type_list kdenv in
-  let (_, tymain) = tystr in
+and string_of_mono_type_sub (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_args = string_of_type_argument_list varntenv kdenv in
+  let iter_list = string_of_mono_type_list varntenv kdenv in
+  let (_, tymain) = ty in
   match tymain with
   | TypeVariable(tvid) ->
       ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
         begin
-          try find_type_variable (string_of_mono_type_sub kdenv) tvid with
+          try find_type_variable iter tvid with
           | Not_found ->
               begin
                 try new_unbound_type_variable_name iter tvid (Kindenv.find kdenv tvid) with
@@ -100,9 +100,10 @@ and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
   | BoolType                        -> "bool"
   | UnitType                        -> "unit"
 
-  | VariantType(tyarglist, tyid)    -> (iter_args tyarglist) ^ (Typeid.to_string tyid) (* temporary *)
+  | VariantType(tyarglist, tyid)    -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
 
-  | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Typeid.to_string tyid) (* ^ " (= " ^ (iter tycont) ^ ")" *) (* temporary *)
+  | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+                                           ^ " (= " ^ (iter (Variantenv.apply_to_type_synonym tyarglist pty)) ^ ")"
 
   | FuncType(tydom, tycod) ->
       let strdom = iter tydom in
@@ -136,9 +137,9 @@ and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
   | RecordType(asc) -> string_of_record_type iter asc
 
 
-and string_of_type_argument_list kdenv tyarglist =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_args = string_of_type_argument_list kdenv in
+and string_of_type_argument_list varntenv kdenv tyarglist =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_args = string_of_type_argument_list varntenv kdenv in
   match tyarglist with
   | []           -> ""
   | head :: tail ->
@@ -152,9 +153,9 @@ and string_of_type_argument_list kdenv tyarglist =
           | _                                                             -> strhd
         end ^ " " ^ strtl
 
-and string_of_mono_type_list kdenv tylist =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_list = string_of_mono_type_list kdenv in
+and string_of_mono_type_list varntenv kdenv tylist =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_list = string_of_mono_type_list varntenv kdenv in
   match tylist with
   | []           -> ""
   | head :: tail ->
@@ -176,8 +177,7 @@ and string_of_mono_type_list kdenv tylist =
 (* -- following are all for debug -- *)
 
 
-(* untyped_abstract_tree -> string *)
-let rec string_of_utast (_, utastmain) =
+let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   match utastmain with
   | UTStringEmpty                  -> "{}"
   | UTNumericConstant(nc)          -> string_of_int nc
@@ -245,8 +245,8 @@ let escape_letters str =
   in
     aux str (String.length str)
 
-(* abstract_tree -> string *)
-let rec string_of_ast ast =
+
+let rec string_of_ast (ast : abstract_tree) =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"

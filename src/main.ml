@@ -51,7 +51,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, newvarntenv, newkdenv, newtyenv, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
@@ -80,7 +80,7 @@ let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : 
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -106,7 +106,7 @@ let read_document_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Ty
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -183,9 +183,9 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
 
-  | Subst.ContradictionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type kdenv ty1 in
-      let strty2 = string_of_mono_type kdenv ty2 in
+  | Subst.ContradictionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv kdenv ty1 in
+      let strty2 = string_of_mono_type varntenv kdenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -204,9 +204,9 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
           DisplayLine(strtyB ^ ".");
         ] additional)
 
-  | Subst.InclusionError(kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type kdenv ty1 in
-      let strty2 = string_of_mono_type kdenv ty2 in
+  | Subst.InclusionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv kdenv ty1 in
+      let strty2 = string_of_mono_type varntenv kdenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
