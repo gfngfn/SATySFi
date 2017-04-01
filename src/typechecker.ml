@@ -4,9 +4,9 @@ open Display
 exception Error of string
 
 let print_for_debug_typecheck msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 
