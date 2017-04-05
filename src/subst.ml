@@ -80,7 +80,6 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) : bool =
       | BoolType
       | IntType
       | StringType )            -> false
-    | TypeArgument(_)           -> false
 
 
 let replace_type_variable_in_subst (theta : t) (key : Tyvarid.t) (value : mono_type) =

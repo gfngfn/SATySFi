@@ -132,8 +132,6 @@ and string_of_mono_type_sub (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : 
 
   | ProductType(tylist) -> iter_list tylist
 
-  | TypeArgument(tyvarnm) -> "['" ^ tyvarnm ^ "]"
-
   | RecordType(asc) -> string_of_record_type iter asc
 
 
@@ -340,7 +338,6 @@ let rec string_of_mono_type_basic tystr =
 
     | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-    | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
 
 

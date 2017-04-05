@@ -1,14 +1,15 @@
 
 exception ParseErrorDetail of string
 
-type ctrlseq_name     = string
-type var_name         = string
-type id_name          = string
-type class_name       = string
-type type_name        = string
-type constructor_name = string
-type module_name      = string
-type field_name       = string
+type ctrlseq_name       = string
+type var_name           = string
+type id_name            = string
+type class_name         = string
+type type_name          = string
+type constructor_name   = string
+type module_name        = string
+type field_name         = string
+type type_argument_name = string
 
 module Typeid : sig
   type t
@@ -48,7 +49,6 @@ and mono_type_main =
   | TypeVariable of Tyvarid.t
   | TypeSynonym  of (mono_type list) * Typeid.t * poly_type
   | VariantType  of (mono_type list) * Typeid.t
-  | TypeArgument of var_name
   | RecordType   of (field_name, mono_type) Assoc.t
 
 and poly_type =

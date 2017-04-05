@@ -44,7 +44,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       begin
         try
           let pty = Typeenv.find tyenv varnm in
-          let (tyfree, _, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv pty in
+          let (tyfree, _, kdenvfree) = Typeenv.instantiate qtfbl kdenv pty in
           let tyres = overwrite_range_of_type tyfree rng in
             begin                                                                                                   (* for debug *)
               print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)              (* for debug *)
@@ -62,7 +62,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : T
       begin
         try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
+          let (tyfree, tyarglist, kdenvfree) = Typeenv.instantiate qtfbl kdenv tyforall in
           let (e1, ty1, theta1, kdenv1) = typecheck_iter kdenvfree tyenv utast1 in
 (*          let tyvarnt = overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
           let tyvarnt = tyfree in
@@ -457,7 +457,7 @@ and typecheck_pattern qtfbl (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv
       begin
         try
           let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist, kdenvfree) = Typeenv.make_bounded_free qtfbl kdenv tyforall in
+          let (tyfree, tyarglist, kdenvfree) = Typeenv.instantiate qtfbl kdenv tyforall in
           let (epat1, typat1, tyenv1, kdenv1) = iter kdenvfree tyenv utpat1 in
           let (thetaU, kdenvU) = unify kdenv1 tyfree typat1 in
             (PConstructor(constrnm, epat1), thetaU @> (rng, VariantType(tyarglist, varntnm)), thetaU @=> tyenv1, kdenvU)
@@ -502,10 +502,11 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (kdenv : Kinden
                   (kdenvfinal, tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), thetainfinal, thetaoutfinal, tvtylstoutfinal)
 
           | Some(mnty) ->
-              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv mnty in
-              let (thetaU, kdenvU) = unify kdenv1 ty1 (theta1a @> beta) in
+              let (ptyin, ptyout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv mnty in
+              let (tyin, _, kdenvX) = Typeenv.instantiate qtfbl kdenv1 ptyin in
+              let (thetaU, kdenvU) = unify kdenvX ty1 (theta1a @> beta) in
               let thetaU1a = thetaU @@ theta1a in
-              let (thetaV, kdenvV) = unify kdenvU tystrforin (thetaU1a @> beta) in
+              let (thetaV, kdenvV) = unify kdenvU tyin (thetaU1a @> beta) in
               let theta1in  = thetaV @@ thetaU1a in
               let theta1out = theta1 @@ accthetaout in
                 let (kdenvfinal, tyenvfinal, mutletconstail, thetainfinal, thetaoutfinal, tvtylstoutfinal) =
