@@ -9,21 +9,21 @@
     | UnMdl     of untyped_module_tree
     | Pat       of untyped_pattern_tree
     | Rng       of Range.t
-    | TypeStr   of manual_type
+    | ManuType  of manual_type
     | VarntCons of untyped_variant_cons
 
 
   let make_range (sttx : range_kind) (endx : range_kind) =
     let extract x =
       match x with
-      | Tok(rng)          -> rng
-      | TokArg(rng, _)    -> rng
-      | Untyped(rng, _)   -> rng
-      | UnMdl(rng, _)     -> rng
-      | Pat(rng, _)       -> rng
-      | Rng(rng)          -> rng
-      | VarntCons(rng, _) -> rng
-      | TypeStr((rng, _)) -> rng
+      | Tok(rng)            -> rng
+      | TokArg((rng, _))    -> rng
+      | Untyped((rng, _))   -> rng
+      | UnMdl((rng, _))     -> rng
+      | Pat((rng, _))       -> rng
+      | Rng(rng)            -> rng
+      | VarntCons((rng, _)) -> rng
+      | ManuType((rng, _))  -> rng
     in
       Range.unite (extract sttx) (extract endx)
 
@@ -164,15 +164,13 @@
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           end
 
-  (* 'a * 'b -> 'b *)
   let extract_main (_, utastmain) = utastmain
 
 
-  (* token_position * string -> string *)
   let extract_name (_, name) = name
 
 
-  let binary_operator (opname : var_name) (utastl : untyped_abstract_tree) (oprng : Range.t) (utastr : untyped_abstract_tree) =
+  let binary_operator (opname : var_name) (utastl : untyped_abstract_tree) (oprng : Range.t) (utastr : untyped_abstract_tree) : untyped_abstract_tree =
     let rng = make_range (Untyped utastl) (Untyped utastr) in
       (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf(opname)), utastl)), utastr))
 
@@ -184,35 +182,45 @@
   let make_let_expression (lettk : Range.t) (decs : untyped_mutual_let_cons) (utastaft : untyped_abstract_tree) =
     make_standard (Tok lettk) (Untyped utastaft) (UTLetIn(decs, utastaft))
 
-  (* code_range -> (code_range * var_name) -> untyped_abstract_tree
-      -> untyped_abstract_tree -> untyped_abstract_tree -> untyped_abstract_tree *)
-  let make_let_mutable_expression letmuttk vartk utastdef utastaft =
+
+  let make_let_mutable_expression
+      (letmuttk : Range.t) (vartk : Range.t * var_name)
+      (utastdef : untyped_abstract_tree) (utastaft : untyped_abstract_tree)
+  : untyped_abstract_tree
+  =
     let (varrng, varnm) = vartk in
       make_standard (Tok letmuttk) (Untyped utastaft) (UTLetMutableIn(varrng, varnm, utastdef, utastaft))
 
-  (* code_range -> untyped_mutual_variant_cons -> untyped_abstract_tree -> untyped_abstract_tree *)
-  let make_variant_declaration firsttk varntdecs utastaft =
+
+  let make_variant_declaration (firsttk : Range.t) (varntdecs : untyped_mutual_variant_cons) (utastaft : untyped_abstract_tree) : untyped_abstract_tree =
     make_standard (Tok firsttk) (Untyped utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
 
-  (* manual_type option -> (code_range * var_name) -> untyped_argument_variable_cons ->
-      untyed_abstract_tree -> untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let make_mutual_let_cons (mntyopt : manual_type option) vartk argcons utastdef tailcons =
+
+  let make_mutual_let_cons
+      (mntyopt : manual_type option)
+      (vartk : Range.t * var_name) (argcons : untyped_argument_variable_cons) (utastdef : untyped_abstract_tree)
+      (tailcons : untyped_mutual_let_cons)
+  : untyped_mutual_let_cons
+  =
     let (varrng, varnm) = vartk in
     let curried = curry_lambda_abstract varrng argcons utastdef in
       UTMutualLetCons(mntyopt, varnm, curried, tailcons)
 
 
-  (* manual_type option -> (code_range * var_name) -> untyped_let_pattern_cons ->
-      untyped_mutual_let_cons -> untyped_mutual_let_cons *)
-  let rec make_mutual_let_cons_par (mntyopt : manual_type option) vartk (argletpatcons : untyped_let_pattern_cons) (tailcons : untyped_mutual_let_cons) =
+  let rec make_mutual_let_cons_par
+      (mntyopt : manual_type option)
+      (vartk : Range.t * var_name) (argletpatcons : untyped_let_pattern_cons)
+      (tailcons : untyped_mutual_let_cons)
+  : untyped_mutual_let_cons
+  =
     let (_, varnm) = vartk in
     let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
     let fullrng = get_range_of_let_pattern_cons argletpatcons in
     let abs     = make_lambda_abstract_for_parallel fullrng argletpatcons pmcons in
       UTMutualLetCons(mntyopt, varnm, abs, tailcons)
 
-  (* untyped_let_pattern_cons -> code_range *)
-  and get_range_of_let_pattern_cons argletpatcons =
+
+  and get_range_of_let_pattern_cons (argletpatcons : untyped_let_pattern_cons) : Range.t =
     let get_first_range argletpatcons =
       match argletpatcons with
       | UTLetPatternCons(UTArgumentVariableCons((argpatrng, _), _), _, _) -> argpatrng
@@ -226,8 +234,8 @@
     in
       make_range (Rng (get_first_range argletpatcons)) (Rng (get_last_range argletpatcons))
 
-  (* code_range -> untyped_let_pattern_cons -> untyped_pattern_match_cons * code_range *)
-  and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) =
+
+  and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) : untyped_pattern_match_cons =
     match argletpatcons with
     | UTEndOfLetPattern                                         -> UTEndOfPatternMatch
     | UTLetPatternCons(argpatcons, utastdef, argletpattailcons) ->
@@ -236,7 +244,7 @@
         let prodpat    = make_product_pattern_of_argument_cons prodpatrng argpatcons in
           UTPatternMatchCons(prodpat, utastdef, tailpmcons)
 
-  and get_range_of_argument_variable_cons argpatcons =
+  and get_range_of_argument_variable_cons (argpatcons : untyped_argument_variable_cons) : Range.t =
     let get_first_range argpatcons =
       match argpatcons with
       | UTArgumentVariableCons((fstrng, _), _) -> fstrng
@@ -251,27 +259,31 @@
       make_range (Rng (get_first_range argpatcons)) (Rng (get_last_range argpatcons))
 
 
-  (* untyped_argument_variable_cons -> untyped_pattern_tree *)
-  and make_product_pattern_of_argument_cons prodpatrng (argpatcons : untyped_argument_variable_cons) =
-    let rec subfunc argpatcons =
+  and make_product_pattern_of_argument_cons (prodpatrng : Range.t) (argpatcons : untyped_argument_variable_cons) : untyped_pattern_tree =
+    let rec aux argpatcons =
       match argpatcons with
       | UTEndOfArgumentVariable                  -> (Range.dummy "endofargvar", UTPEndOfTuple)
-      | UTArgumentVariableCons(argpat, tailcons) -> (Range.dummy "argvarcons", UTPTupleCons(argpat, subfunc tailcons))
+      | UTArgumentVariableCons(argpat, tailcons) -> (Range.dummy "argvarcons", UTPTupleCons(argpat, aux tailcons))
     in
-      let (_, prodpatmain) = subfunc argpatcons in (prodpatrng, prodpatmain)
+      let (_, prodpatmain) = aux argpatcons in (prodpatrng, prodpatmain)
 
-  (* untyped_let_pattern_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
-  and make_lambda_abstract_for_parallel (fullrng : Range.t) (argletpatcons : untyped_let_pattern_cons)
-                                          (pmcons : untyped_pattern_match_cons) =
+
+  and make_lambda_abstract_for_parallel
+      (fullrng : Range.t) (argletpatcons : untyped_let_pattern_cons)
+      (pmcons : untyped_pattern_match_cons)
+  =
     match argletpatcons with
     | UTEndOfLetPattern                  -> assert false
     | UTLetPatternCons(argpatcons, _, _) ->
         make_lambda_abstract_for_parallel_sub fullrng (fun u -> u) 0 argpatcons pmcons
 
-  (* code_range -> int -> untyped_argument_variable_cons -> untyped_pattern_match_cons -> untyped_abstract_tree *)
-  and make_lambda_abstract_for_parallel_sub (fullrng : Range.t) (k : untyped_abstract_tree -> untyped_abstract_tree)
-                                              (i : int) (argpatcons : untyped_argument_variable_cons)
-                                                (pmcons : untyped_pattern_match_cons) =
+
+  and make_lambda_abstract_for_parallel_sub
+      (fullrng : Range.t) (k : untyped_abstract_tree -> untyped_abstract_tree)
+      (i : int) (argpatcons : untyped_argument_variable_cons)
+      (pmcons : untyped_pattern_match_cons)
+  : untyped_abstract_tree
+  =
     match argpatcons with
     | UTEndOfArgumentVariable                    -> (fullrng, UTPatternMatch(k (Range.dummy "endoftuple", UTEndOfTuple), pmcons))
     | UTArgumentVariableCons((rng, _), tailcons) ->
@@ -292,7 +304,11 @@
     let typenm = extract_name typenmtk in
       UTMutualSynonymCons(tyargcons, typenm, mnty, tailcons)
 
-  let make_module firsttk mdlnmtk utastdef utastaft =
+  let make_module
+      (firsttk : Range.t) (mdlnmtk : Range.t * module_name)
+      (utastdef : untyped_module_tree) (utastaft : untyped_abstract_tree)
+  : untyped_abstract_tree
+  =
     let mdlnm = extract_name mdlnmtk in
       make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, utastdef, utastaft))
 
@@ -1010,7 +1026,7 @@ nxlist:
 variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { make_standard (TokArg $1) (VarntCons $5)
                                             (UTVariantCons(extract_name $1, $3, $5)) }
-  | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (TypeStr $3)
+  | CONSTRUCTOR OF txfunc               { make_standard (TokArg $1) (ManuType $3)
                                             (UTVariantCons(extract_name $1, $3, (Range.dummy "end-of-variant1", UTEndOfVariant))) }
   | CONSTRUCTOR BAR variants            { make_standard (TokArg $1) (VarntCons $3)
                                              (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit")), $3)) }
@@ -1023,7 +1039,7 @@ variants: /* -> untyped_variant_cons */
 ;
 txfunc: /* -> manual_type */
   | txprod ARROW txfunc {
-        let rng = make_range (TypeStr $1) (TypeStr $3) in (rng, MFuncType($1, $3)) }
+        let rng = make_range (ManuType $1) (ManuType $3) in (rng, MFuncType($1, $3)) }
   | txprod { $1 }
 /* -- for syntax error log -- */
   | txprod ARROW error { report_error (Tok $2) "->" }
@@ -1031,7 +1047,7 @@ txfunc: /* -> manual_type */
 ;
 txprod: /* -> manual_type */
   | txapppre TIMES txprod {
-        let rng = make_range (TypeStr $1) (TypeStr $3) in
+        let rng = make_range (ManuType $1) (ManuType $3) in
           match $3 with
           | (_, MProductType(tylist)) -> (rng, MProductType($1 :: tylist))
           | other                     -> (rng, MProductType([$1; $3]))
