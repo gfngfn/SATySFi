@@ -1,7 +1,7 @@
 open Types
 
 let type_variable_name_max : int ref = ref 0
-let type_valiable_name_list : (Tyvarid.t * string * bool * kind) list ref = ref []
+let type_variable_name_list : (Tyvarid.t * string * bool * kind) list ref = ref []
 
 
 let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
@@ -44,11 +44,10 @@ let new_type_variable_name (bound : bool) (f : mono_type -> string) (tvid : Tyva
   let res = variable_name_of_int (!type_variable_name_max) in
     begin
       type_variable_name_max := !type_variable_name_max + 1 ;
-      type_valiable_name_list := (tvid, res, bound, kdstr) :: (!type_valiable_name_list) ;
+      type_variable_name_list := (tvid, res, bound, kdstr) :: (!type_variable_name_list) ;
       show_type_variable f res bound kdstr
     end
 
-let new_bound_type_variable_name   = new_type_variable_name true
 let new_unbound_type_variable_name = new_type_variable_name false
 
 
@@ -58,28 +57,10 @@ let find_type_variable (f : mono_type -> string) (tvid : Tyvarid.t) =
     | []                           -> raise Not_found
     | (k, v, bound, kdstr) :: tail -> if Tyvarid.same k tvid then show_type_variable f v bound kdstr else aux tail
   in
-    aux (!type_valiable_name_list)
+    aux (!type_variable_name_list)
 
 
-let rec string_of_mono_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
-  begin
-    type_variable_name_max := 0 ;
-    type_valiable_name_list := [] ;
-    string_of_mono_type_sub varntenv kdenv ty
-  end
-
-
-and string_of_mono_type_double (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
-  begin
-    type_variable_name_max := 0 ;
-    type_valiable_name_list := [] ;
-    let strty1 = string_of_mono_type_sub varntenv kdenv ty1 in
-    let strty2 = string_of_mono_type_sub varntenv kdenv ty2 in
-      (strty1, strty2)
-  end
-
-
-and string_of_mono_type_sub (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
+let rec string_of_mono_type_sub (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
   let iter = string_of_mono_type_sub varntenv kdenv in
   let iter_args = string_of_type_argument_list varntenv kdenv in
   let iter_list = string_of_mono_type_list varntenv kdenv in
@@ -171,6 +152,38 @@ and string_of_mono_type_list varntenv kdenv tylist =
         | _  -> " * " ^ strtail
       end
 
+
+let string_of_mono_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    string_of_mono_type_sub varntenv kdenv ty
+  end
+
+
+let string_of_mono_type_double (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    let strty1 = string_of_mono_type_sub varntenv kdenv ty1 in
+    let strty2 = string_of_mono_type_sub varntenv kdenv ty2 in
+      (strty1, strty2)
+  end
+
+
+let string_of_poly_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (pty : poly_type) =
+  let rec aux pty =
+    match pty with
+    | Mono(ty)                 -> string_of_mono_type_sub varntenv kdenv ty
+    | Forall(tvid, kd, ptysub) ->
+        "(" ^ (new_unbound_type_variable_name (string_of_mono_type varntenv kdenv) tvid kd) ^ ". " ^ (aux ptysub) ^ ")"
+  in
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    aux pty
+  end
+  
 
 (* -- following are all for debug -- *)
 
