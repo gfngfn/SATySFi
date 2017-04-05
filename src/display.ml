@@ -1,7 +1,7 @@
 open Types
 
 let type_variable_name_max : int ref = ref 0
-let type_variable_name_list : (Tyvarid.t * string * bool * kind) list ref = ref []
+let type_variable_name_list : (Tyvarid.t * string * kind) list ref = ref []
 
 
 let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
@@ -34,28 +34,29 @@ let rec variable_name_of_int (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (f : mono_type -> string) (name : string) (bound : bool) (kdstr : kind) =
+let show_type_variable (f : mono_type -> string) (name : string) (kdstr : kind) =
   match kdstr with
-  | UniversalKind   -> if bound then name else "#" ^ name
-  | RecordKind(asc) -> if bound then name else "(#" ^ name ^ " <: " ^ (string_of_kind f kdstr) ^ ")"
+  | UniversalKind   -> name
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kdstr) ^ ")"
 
 
-let new_type_variable_name (bound : bool) (f : mono_type -> string) (tvid : Tyvarid.t) (kdstr : kind) =
+let new_type_variable_name (f : mono_type -> string) (tvid : Tyvarid.t) (kdstr : kind) =
   let res = variable_name_of_int (!type_variable_name_max) in
     begin
       type_variable_name_max := !type_variable_name_max + 1 ;
-      type_variable_name_list := (tvid, res, bound, kdstr) :: (!type_variable_name_list) ;
-      show_type_variable f res bound kdstr
+      type_variable_name_list := (tvid, res, kdstr) :: (!type_variable_name_list) ;
+      show_type_variable f res kdstr
     end
 
-let new_unbound_type_variable_name = new_type_variable_name false
+let new_unbound_type_variable_name = new_type_variable_name
 
 
 let find_type_variable (f : mono_type -> string) (tvid : Tyvarid.t) =
-  let rec aux (lst : (Tyvarid.t * string * bool * kind) list) =
+  let rec aux (lst : (Tyvarid.t * string * kind) list) =
     match lst with
-    | []                           -> raise Not_found
-    | (k, v, bound, kdstr) :: tail -> if Tyvarid.same k tvid then show_type_variable f v bound kdstr else aux tail
+    | []                                              -> raise Not_found
+    | (k, v, kdstr) :: tail  when Tyvarid.same k tvid -> show_type_variable f v kdstr
+    | _ :: tail                                       -> aux tail
   in
     aux (!type_variable_name_list)
 
@@ -176,7 +177,8 @@ let string_of_poly_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (pty : pol
     match pty with
     | Mono(ty)                 -> string_of_mono_type_sub varntenv kdenv ty
     | Forall(tvid, kd, ptysub) ->
-        "(" ^ (new_unbound_type_variable_name (string_of_mono_type varntenv kdenv) tvid kd) ^ ". " ^ (aux ptysub) ^ ")"
+        let s = new_unbound_type_variable_name (string_of_mono_type varntenv kdenv) tvid kd in
+          "(forall " ^ s ^ ". " ^ (aux ptysub) ^ ")"
   in
   begin
     type_variable_name_max := 0 ;
