@@ -63,15 +63,8 @@ let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (pty : po
     (defedtylst, aux [] varntenvmain pty)
 
 
-(* public *)
+(* PUBLIC *)
 let add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
-
-
-let rec is_defined_type_argument (tyargcons : untyped_type_argument_cons) (tyargnm : var_name) =
-  match tyargcons with
-  | UTEndOfTypeArgument                                    -> false
-  | UTTypeArgumentCons(_, nm, tailcons)  when nm = tyargnm -> true
-  | UTTypeArgumentCons(_, _, tailcons)                     -> is_defined_type_argument tailcons tyargnm
 
 
 let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) : poly_type =
