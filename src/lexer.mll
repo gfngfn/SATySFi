@@ -146,8 +146,21 @@ rule numexpr = parse
           else
             ERECORD(get_pos lexbuf)
       }
-  | "[" { BLIST(get_pos lexbuf) }
-  | "]" { ELIST(get_pos lexbuf) }
+  | "[" { increment numdepth ; BLIST(get_pos lexbuf) }
+  | "]" {
+        decrement numdepth ;
+        if Stacklist.is_empty numdepth_stack then
+          ELIST(get_pos lexbuf)
+        else
+          if !numdepth = Stacklist.top numdepth_stack then
+          begin
+            Stacklist.delete_top numdepth_stack ;
+            next_state := STATE_ACTIVE ;
+            CLOSENUM_AND_ELIST(get_pos lexbuf)
+          end
+          else
+            ELIST(get_pos lexbuf)
+         }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
@@ -348,6 +361,12 @@ and active = parse
       increment numdepth ;
       next_state := STATE_NUMEXPR ;
       OPENNUM_AND_BRECORD(get_pos lexbuf)
+    }
+  | "[" {
+      Stacklist.push numdepth_stack !numdepth ;
+      increment numdepth ;
+      next_state := STATE_NUMEXPR ;
+      OPENNUM_AND_BLIST(get_pos lexbuf)
     }
   | "{" {
       increment strdepth ;

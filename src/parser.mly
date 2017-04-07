@@ -364,21 +364,19 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
   (* range_kind -> string -> 'a *)
-  let report_error rngknd tok =
+  let report_error (rngknd : range_kind) (tok : string) =
     match rngknd with
-    | Tok(tp) ->
-        let rng = tp in
+    | Tok(rng) ->
           raise (ParseErrorDetail(
             "syntax error:\n"
             ^ "    unexpected token after '" ^ tok ^ "'\n"
             ^ "    " ^ (Range.to_string rng)))
-    | TokArg(tp, nm) ->
-        let rng = tp in
+    | TokArg(rng, nm) ->
           raise (ParseErrorDetail(
             "syntax error:\n"
             ^ "    unexpected token after '" ^ nm ^ "'\n"
             ^ "    " ^ (Range.to_string rng)))
-    | _ -> raise (ParseErrorDetail("something is wrong"))
+    | _ -> assert false
 
 %}
 
@@ -406,7 +404,8 @@
 %token <Range.t> OPENNUM CLOSENUM
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP END COMMA
-%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD OPENNUM_AND_BRECORD CLOSENUM_AND_ERECORD ACCESS
+%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
+%token <Range.t> OPENNUM_AND_BRECORD CLOSENUM_AND_ERECORD OPENNUM_AND_BLIST CLOSENUM_AND_ELIST
 %token <Range.t> BEFORE UNITVALUE WHILE DO
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Range.t * int> ITEM
@@ -1242,10 +1241,17 @@ narg: /* -> untyped_argument_cons */
   | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD narg {
         let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, UTRecord($2)), $4)
       }
+  | OPENNUM_AND_BLIST nxlist CLOSENUM_AND_ELIST narg {
+        let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4)
+      }
   |                             { UTEndOfArgument }
 /* -- for syntax error log -- */
-  | OPENNUM error                { report_error (Tok $1) "(" }
-  | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ")" }
+  | OPENNUM error                { report_error (Tok $1) "( (in active area)" }
+  | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ") (in active area)" }
+  | OPENNUM_AND_BRECORD error    { report_error (Tok $1) "(| (in active area)" }
+  | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD error { report_error (Tok $3) "|) (in active area)" }
+  | OPENNUM_AND_BLIST error      { report_error (Tok $1) "[ (in active area)" }
+  | OPENNUM_AND_BLIST nxlist CLOSENUM_AND_ELIST error { report_error (Tok $3) "] (in active area)" }
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
