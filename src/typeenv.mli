@@ -28,4 +28,4 @@ val replace_id : (Tyvarid.t * mono_type) list -> mono_type -> mono_type
 
 val replace_id_poly : (Tyvarid.t * mono_type) list -> poly_type -> poly_type
 
-val make_bounded_free : Tyvarid.quantifiability -> Kindenv.t -> poly_type -> (mono_type * (mono_type list) * Kindenv.t)
+val instantiate : Tyvarid.quantifiability -> Kindenv.t -> poly_type -> (mono_type * (mono_type list) * Kindenv.t)

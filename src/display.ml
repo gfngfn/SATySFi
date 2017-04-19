@@ -1,7 +1,7 @@
 open Types
 
 let type_variable_name_max : int ref = ref 0
-let type_valiable_name_list : (Tyvarid.t * string * bool * kind) list ref = ref []
+let type_variable_name_list : (Tyvarid.t * string * kind) list ref = ref []
 
 
 let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
@@ -34,80 +34,58 @@ let rec variable_name_of_int (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (f : mono_type -> string) (name : string) (bound : bool) (kdstr : kind) =
+let show_type_variable (f : mono_type -> string) (name : string) (kdstr : kind) =
   match kdstr with
-  | UniversalKind   -> if bound then name else "#" ^ name
-  | RecordKind(asc) -> if bound then name else "(#" ^ name ^ " <: " ^ (string_of_kind f kdstr) ^ ")"
+  | UniversalKind   -> name
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kdstr) ^ ")"
 
 
-let new_type_variable_name (bound : bool) (f : mono_type -> string) (tvid : Tyvarid.t) (kdstr : kind) =
+let new_type_variable_name (f : mono_type -> string) (tvid : Tyvarid.t) (kdstr : kind) =
   let res = variable_name_of_int (!type_variable_name_max) in
     begin
       type_variable_name_max := !type_variable_name_max + 1 ;
-      type_valiable_name_list := (tvid, res, bound, kdstr) :: (!type_valiable_name_list) ;
-      show_type_variable f res bound kdstr
+      type_variable_name_list := (tvid, res, kdstr) :: (!type_variable_name_list) ;
+      show_type_variable f res kdstr
     end
 
-let new_bound_type_variable_name   = new_type_variable_name true
-let new_unbound_type_variable_name = new_type_variable_name false
+let new_unbound_type_variable_name = new_type_variable_name
 
 
 let find_type_variable (f : mono_type -> string) (tvid : Tyvarid.t) =
-  let rec aux (lst : (Tyvarid.t * string * bool * kind) list) =
+  let rec aux (lst : (Tyvarid.t * string * kind) list) =
     match lst with
-    | []                           -> raise Not_found
-    | (k, v, bound, kdstr) :: tail -> if Tyvarid.same k tvid then show_type_variable f v bound kdstr else aux tail
+    | []                                              -> raise Not_found
+    | (k, v, kdstr) :: tail  when Tyvarid.same k tvid -> show_type_variable f v kdstr
+    | _ :: tail                                       -> aux tail
   in
-    aux (!type_valiable_name_list)
+    aux (!type_variable_name_list)
 
 
-let rec string_of_mono_type (kdenv : Kindenv.t) (tystr : mono_type) =
-  begin
-    type_variable_name_max := 0 ;
-    type_valiable_name_list := [] ;
-    string_of_mono_type_sub kdenv tystr
-  end
-
-
-and string_of_mono_type_double (kdenv : Kindenv.t) (tystr1 : mono_type) (tystr2 : mono_type) =
-  begin
-    type_variable_name_max := 0 ;
-    type_valiable_name_list := [] ;
-    let strty1 = string_of_mono_type_sub kdenv tystr1 in
-    let strty2 = string_of_mono_type_sub kdenv tystr2 in
-      (strty1, strty2)
-  end
-
-
-and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_args = string_of_type_argument_list kdenv in
-  let iter_list = string_of_mono_type_list kdenv in
-  let (_, tymain) = tystr in
+let rec string_of_mono_type_sub (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_args = string_of_type_argument_list varntenv kdenv in
+  let iter_list = string_of_mono_type_list varntenv kdenv in
+  let (_, tymain) = ty in
   match tymain with
   | TypeVariable(tvid) ->
       ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
         begin
-          try find_type_variable (string_of_mono_type_sub kdenv) tvid with
+          try find_type_variable iter tvid with
           | Not_found ->
               begin
                 try new_unbound_type_variable_name iter tvid (Kindenv.find kdenv tvid) with
                 | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment")
               end
         end
-(*
-  | ForallType(tvid, kdstr, tycont) ->
-      let meta = new_bound_type_variable_name iter tvid kdstr in
-        "(forall " ^ meta ^ " <: " ^ (string_of_kind (string_of_mono_type_sub kdenv) kdstr) ^ ". " ^ (iter tycont) ^ ")"
-*)
   | StringType                      -> "string"
   | IntType                         -> "int"
   | BoolType                        -> "bool"
   | UnitType                        -> "unit"
 
-  | VariantType(tyarglist, varntnm) -> (iter_args tyarglist) ^ varntnm
+  | VariantType(tyarglist, tyid)    -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
 
-  | TypeSynonym(tyarglist, tynm, pty) -> (iter_args tyarglist) ^ tynm (* ^ " (= " ^ (iter tycont) ^ ")" *) (* temporary *)
+  | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+                                           ^ " (= " ^ (iter (Variantenv.apply_to_type_synonym tyarglist pty)) ^ ")"
 
   | FuncType(tydom, tycod) ->
       let strdom = iter tydom in
@@ -136,14 +114,12 @@ and string_of_mono_type_sub (kdenv : Kindenv.t) (tystr : mono_type) =
 
   | ProductType(tylist) -> iter_list tylist
 
-  | TypeArgument(tyvarnm) -> "['" ^ tyvarnm ^ "]"
-
   | RecordType(asc) -> string_of_record_type iter asc
 
 
-and string_of_type_argument_list kdenv tyarglist =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_args = string_of_type_argument_list kdenv in
+and string_of_type_argument_list varntenv kdenv tyarglist =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_args = string_of_type_argument_list varntenv kdenv in
   match tyarglist with
   | []           -> ""
   | head :: tail ->
@@ -157,9 +133,9 @@ and string_of_type_argument_list kdenv tyarglist =
           | _                                                             -> strhd
         end ^ " " ^ strtl
 
-and string_of_mono_type_list kdenv tylist =
-  let iter = string_of_mono_type_sub kdenv in
-  let iter_list = string_of_mono_type_list kdenv in
+and string_of_mono_type_list varntenv kdenv tylist =
+  let iter = string_of_mono_type_sub varntenv kdenv in
+  let iter_list = string_of_mono_type_list varntenv kdenv in
   match tylist with
   | []           -> ""
   | head :: tail ->
@@ -178,11 +154,43 @@ and string_of_mono_type_list kdenv tylist =
       end
 
 
+let string_of_mono_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty : mono_type) =
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    string_of_mono_type_sub varntenv kdenv ty
+  end
+
+
+let string_of_mono_type_double (varntenv : Variantenv.t) (kdenv : Kindenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    let strty1 = string_of_mono_type_sub varntenv kdenv ty1 in
+    let strty2 = string_of_mono_type_sub varntenv kdenv ty2 in
+      (strty1, strty2)
+  end
+
+
+let string_of_poly_type (varntenv : Variantenv.t) (kdenv : Kindenv.t) (pty : poly_type) =
+  let rec aux pty =
+    match pty with
+    | Mono(ty)                 -> string_of_mono_type_sub varntenv kdenv ty
+    | Forall(tvid, kd, ptysub) ->
+        let s = new_unbound_type_variable_name (string_of_mono_type varntenv kdenv) tvid kd in
+          "(forall " ^ s ^ ". " ^ (aux ptysub) ^ ")"
+  in
+  begin
+    type_variable_name_max := 0 ;
+    type_variable_name_list := [] ;
+    aux pty
+  end
+  
+
 (* -- following are all for debug -- *)
 
 
-(* untyped_abstract_tree -> string *)
-let rec string_of_utast (_, utastmain) =
+let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   match utastmain with
   | UTStringEmpty                  -> "{}"
   | UTNumericConstant(nc)          -> string_of_int nc
@@ -250,8 +258,8 @@ let escape_letters str =
   in
     aux str (String.length str)
 
-(* abstract_tree -> string *)
-let rec string_of_ast ast =
+
+let rec string_of_ast (ast : abstract_tree) =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
@@ -307,11 +315,11 @@ let rec string_of_mono_type_basic tystr =
     | BoolType                        -> "bool" ^ qstn
     | UnitType                        -> "unit" ^ qstn
 
-    | VariantType(tyarglist, varntnm) ->
-        (string_of_type_argument_list_basic tyarglist) ^ varntnm ^ "@" ^ qstn
+    | VariantType(tyarglist, tyid) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
 
-    | TypeSynonym(tyarglist, tynm, pty) ->
-        (string_of_type_argument_list_basic tyarglist) ^ tynm (* ^ "(= " ^ (string_of_mono_type_basic tycont) ^ ")" *) (* temporary *)
+    | TypeSynonym(tyarglist, tyid, pty) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) (* ^ "(= " ^ (string_of_mono_type_basic tycont) ^ ")" *) (* temporary *)
 
     | FuncType(tydom, tycod)    ->
         let strdom = string_of_mono_type_basic tydom in
@@ -345,7 +353,6 @@ let rec string_of_mono_type_basic tystr =
 
     | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
     | TypeVariable(tvid)        -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-    | TypeArgument(tyargnm)     -> tyargnm
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
 
 

@@ -81,7 +81,6 @@ let rec listup_quantifiable_unbound_id (tystr : mono_type) (tyenv : t) : unit =
     | ListType(tycont)               -> iter tycont
     | RefType(tycont)                -> iter tycont
     | ( IntType | BoolType | UnitType | StringType ) -> ()
-    | TypeArgument(_)                -> failwith "listup_quantifiable_unbound_id"
 
 
 let listup_quantifiable_unbound_id_in_kind_environment (kdenv : Kindenv.t) (tyenv : t) =
@@ -202,16 +201,13 @@ let rec make_unquantifiable_if_needed qtfbl tystr =
     | FuncType(tydom, tycod)               -> FuncType(iter tydom, iter tycod)
     | VariantType(tylist, varntnm)         -> VariantType(List.map iter tylist, varntnm)
     | TypeSynonym(tylist, tysynnm, pty)    -> TypeSynonym(List.map iter tylist, tysynnm, pty (* temporary *))
-(*
-    | ForallType(tvid, kdstr, tycont)      -> ForallType(tvid, kdstr, iter tycont)
-*)
     | RecordType(asc)                      -> RecordType(Assoc.map_value (make_unquantifiable_if_needed qtfbl) asc)
     | other                                -> other
   in
     (rng, tymainnew)
 
 
-let make_bounded_free qtfbl (kdenv : Kindenv.t) (pty : poly_type) =
+let instantiate qtfbl (kdenv : Kindenv.t) (pty : poly_type) =
   let rec eliminate_forall qtfbl (kdenv : Kindenv.t) (pty : poly_type) (lst : (Tyvarid.t * Tyvarid.t * mono_type) list) =
     match pty with
     | Forall(oldtvid, kdstr, ptysub) ->

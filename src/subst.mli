@@ -1,8 +1,8 @@
 open Types
 open Typeenv
 
-exception ContradictionError of Kindenv.t * mono_type * mono_type
-exception InclusionError     of Kindenv.t * mono_type * mono_type
+exception ContradictionError of Variantenv.t * Kindenv.t * mono_type * mono_type
+exception InclusionError     of Variantenv.t * Kindenv.t * mono_type * mono_type
 
 type t
 
@@ -20,6 +20,6 @@ val compose : t -> t -> t
 
 val compose_list : t list -> t
 
-val unify : Kindenv.t -> mono_type -> mono_type -> (t * Kindenv.t)
+val unify : Variantenv.t -> Kindenv.t -> mono_type -> mono_type -> (t * Kindenv.t)
 
 val string_of_subst : t -> string

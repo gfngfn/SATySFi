@@ -1,16 +1,40 @@
 
 exception ParseErrorDetail of string
 
-type ctrlseq_name     = string
-type var_name         = string
-type id_name          = string
-type class_name       = string
-type type_name        = string
-type constructor_name = string
-type module_name      = string
-type field_name       = string
+type ctrlseq_name       = string
+type var_name           = string
+type id_name            = string
+type class_name         = string
+type type_name          = string
+type constructor_name   = string
+type module_name        = string
+type field_name         = string
+type type_argument_name = string
 
+module Typeid : sig
+  type t
+  val initialize : unit -> unit
+  val fresh : unit -> t
+  val to_string : t -> string
+  val eq : t -> t -> bool
+end = struct
+  type t = int
+  let current_id = ref 0
+  let initialize () = ( current_id := 0 )
+  let fresh () = ( incr current_id ; !current_id )
+  let to_string = string_of_int
+  let eq = (=)
+end
+(*
 type scope = GlobalScope | LocalScope of module_name
+*)
+type manual_type = Range.t * manual_type_main
+and manual_type_main =
+  | MTypeName    of (manual_type list) * type_name
+  | MTypeParam   of var_name
+  | MFuncType    of manual_type * manual_type
+  | MProductType of manual_type list
+  | MRecordType  of (field_name, manual_type) Assoc.t
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -23,9 +47,8 @@ and mono_type_main =
   | RefType      of mono_type
   | ProductType  of mono_type list
   | TypeVariable of Tyvarid.t
-  | TypeSynonym  of (mono_type list) * type_name * poly_type
-  | VariantType  of (mono_type list) * type_name
-  | TypeArgument of var_name
+  | TypeSynonym  of (mono_type list) * Typeid.t * poly_type
+  | VariantType  of (mono_type list) * Typeid.t
   | RecordType   of (field_name, mono_type) Assoc.t
 
 and poly_type =
@@ -52,7 +75,7 @@ and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
 and untyped_mutual_let_cons =
-  | UTMutualLetCons        of mono_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
+  | UTMutualLetCons        of manual_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
@@ -107,14 +130,12 @@ and untyped_itemize =
 
 and untyped_variant_cons = Range.t * untyped_variant_cons_main
 and untyped_variant_cons_main =
-  | UTVariantCons          of constructor_name * mono_type * untyped_variant_cons
+  | UTVariantCons          of constructor_name * manual_type * untyped_variant_cons
   | UTEndOfVariant
 
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument_cons
-                                * type_name * untyped_variant_cons * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument_cons
-                                * type_name * mono_type * untyped_mutual_variant_cons
+  | UTMutualVariantCons    of untyped_type_argument_cons * type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument_cons * type_name * manual_type * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
