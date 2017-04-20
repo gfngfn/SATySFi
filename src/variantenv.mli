@@ -8,9 +8,9 @@ type t
 
 val empty : t
 
-val add : t -> constructor_name -> poly_type -> type_name -> t
+val add : t -> constructor_name -> (type_variable_info ref) list -> mono_type -> type_name -> t
 
-val add_list : t -> (constructor_name * poly_type * type_name) list -> t
+val add_list : t -> (constructor_name * (type_variable_info ref) list * mono_type * type_name) list -> t
 
 val register_variant : t -> int -> type_name -> t
 
@@ -20,13 +20,13 @@ val add_mutual_cons : t -> untyped_mutual_variant_cons -> t
 
 val add_mutual_cons_hidden : module_name -> t -> untyped_mutual_variant_cons -> t
 
-val find : t -> constructor_name -> (Typeid.t * mono_type)
+val find : t -> constructor_name -> (Typeid.t * (type_variable_info ref) list * mono_type)
 
 (*
 val apply_to_type_synonym : mono_type list -> poly_type -> mono_type
 *) (* temporary *)
 
-val fix_manual_type_for_inner_and_outer : quantifiability -> t -> manual_type -> (poly_type * poly_type)
+val fix_manual_type_for_inner_and_outer : quantifiability -> t -> manual_type -> (((type_variable_info ref) list * mono_type) * ((type_variable_info ref) list * mono_type))
 
 val append_module_name : module_name -> var_name -> var_name
 

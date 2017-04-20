@@ -4,16 +4,18 @@ exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
 
-type definition        = Data of int | Synonym of int * poly_type
+type definition        = Data of int | Synonym of int * mono_type
 type defined_type_list = (type_name * Typeid.t * definition) list
-type constructor_list  = (constructor_name * Typeid.t * poly_type) list
+type constructor_list  = (constructor_name * Typeid.t * ((type_variable_info ref) list) * mono_type) list
 
 (* PUBLIC *)
 type t = defined_type_list * constructor_list
 
+type maplist = ((type_argument_name * type_variable_info ref) list) ref
+
 type type_argument_mode =
-  | StrictMode of (type_argument_name, type_variable_info ref) Hashtbl.t  (* case where all type arguments should be declared; e.g. for type definitions *)
-  | FreeMode   of (type_argument_name, type_variable_info ref) Hashtbl.t  (* case where type arguments do not need to be declared; e.g. for type annotations *)
+  | StrictMode of maplist  (* case where all type arguments should be declared; e.g. for type definitions *)
+  | FreeMode   of maplist  (* case where type arguments do not need to be declared; e.g. for type annotations *)
 
 
 (* PUBLIC *)
@@ -52,22 +54,22 @@ let find_type_name ((defedtylst, _) : t) (tyid : Typeid.t) =
 
 
 (* PUBLIC *)
-let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (pty : poly_type) (varntnm : type_name) =
+let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (paramlist : (type_variable_info ref) list) (ty : mono_type) (varntnm : type_name) =
   let (tyid, _) = find_definition defedtylst varntnm in
-  let rec aux accrev lst pty =
+  let rec aux accrev lst =
     match lst with
-    | []                                   -> (constrnm, tyid, pty) :: varntenvmain
-    | (c, v, t) :: tail  when c = constrnm -> List.rev_append accrev ((constrnm, tyid, pty) :: tail)
-    | (c, v, t) :: tail                    -> aux ((c, v, t) :: accrev) tail pty
+    | []                                      -> (constrnm, tyid, paramlist, ty) :: varntenvmain
+    | (c, v, p, t) :: tail  when c = constrnm -> List.rev_append accrev ((constrnm, tyid, paramlist, ty) :: tail)
+    | (c, v, p, t) :: tail                    -> aux ((c, v, p, t) :: accrev) tail
   in
-    (defedtylst, aux [] varntenvmain pty)
+    (defedtylst, aux [] varntenvmain)
 
 
 (* PUBLIC *)
-let add_list = List.fold_left (fun ve (c, v, t) -> add ve c v t)
+let add_list = List.fold_left (fun ve (c, v, p, t) -> add ve c v p t)
 
 
-let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) : poly_type =
+let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (defedtylst, varntenvmain) = varntenv in
     let (rng, mntymain) = mnty in
@@ -113,51 +115,58 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
       | MTypeParam(tyargnm) ->
             begin
               match tyargmode with
-              | StrictMode(tyarght) ->
+              | StrictMode(tyargmaplist) ->
                   begin
                     try
-                      TypeVariable(Hashtbl.find tyarght tyargnm)
+                      TypeVariable(List.assoc tyargnm (!tyargmaplist))
                     with
                     | Not_found -> raise (UndefinedTypeArgument(rng, tyargnm))
                   end
 
-              | FreeMode(tyarght) ->
+              | FreeMode(tyargmaplist) ->
                   begin
                     try
-                      TypeVariable(Hashtbl.find tyarght tyargnm)
+                      TypeVariable(List.assoc tyargnm (!tyargmaplist))
                     with
                     | Not_found ->
                         let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
                         let tvref = ref (Free(tvid)) in
-                        begin Hashtbl.add tyarght tyargnm tvref ; TypeVariable(tvref) end
+                        begin
+                          tyargmaplist := (tyargnm, tvref) :: !tyargmaplist ;
+                          TypeVariable(tvref)
+                        end
                   end
             end
     in
       (rng, tymainnew)
   in
-    Poly(aux mnty)
+  let ty = aux mnty in
+  match tyargmode with
+  | ( StrictMode(tyargmaplist)
+    | FreeMode(tyargmaplist) ) ->
+        (List.map (fun (_, tvref) -> tvref) (!tyargmaplist), ty)
 
 
 let fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
-  let tyarght : (type_argument_name, type_variable_info ref) Hashtbl.t = Hashtbl.create 32 in
+  let tyargmaplist : maplist = ref [] in
   let rec aux cons =
     match cons with
     | UTEndOfTypeArgument                      -> ()
     | UTTypeArgumentCons(_, tyargnm, tailcons) ->
        let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
-       begin Hashtbl.add tyarght tyargnm (ref (Free(tvid))) ; aux tailcons end
+       begin tyargmaplist :=  (tyargnm, (ref (Free(tvid)))) :: !tyargmaplist ; aux tailcons end
   in
   begin
     aux tyargcons ;
-    fix_manual_type_general varntenv (StrictMode(tyarght)) mnty
+    fix_manual_type_general varntenv (StrictMode(tyargmaplist)) mnty
   end
 
 
 (* PUBLIC *)
 let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (mnty : manual_type) =
-  let tyarght = Hashtbl.create 32 in
-  let tyin  = fix_manual_type_general varntenv (FreeMode(tyarght)) mnty in
-  let tyout = fix_manual_type_general varntenv (FreeMode(tyarght)) mnty in
+  let tyargmaplist : maplist = ref [] in
+  let tyin  = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
+  let tyout = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
     (tyin, tyout)
 
 
@@ -181,8 +190,8 @@ let add_synonym (varntenv : t)
   let (defedtypelist, varntenvmain) = varntenv in
   let len = type_argument_length tyargcons in
   let defkind =
-    let pty = fix_manual_type varntenv tyargcons mnty in
-      Synonym(len, pty)
+    let (_, ty) = fix_manual_type varntenv tyargcons mnty in
+      Synonym(len, ty)
   in
   let tyid = Typeid.fresh () in
     ((tysynnm, tyid, defkind) :: defedtypelist, varntenvmain)
@@ -207,8 +216,8 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
       match utvcmain with
       | UTEndOfVariant                          -> varntenv
       | UTVariantCons(constrnm, mnty, tailcons) ->
-          let pty = fix_manual_type varntenv tyargcons mnty in
-          let varntenvnew = add varntenv constrnm pty (append_module_name mdlnm varntnm) in
+          let (paramlist, ty) = fix_manual_type varntenv tyargcons mnty in
+          let varntenvnew = add varntenv constrnm paramlist ty (append_module_name mdlnm varntnm) in
             aux mdlnm varntenvnew tyargcons varntnm tailcons
   in
   let mdlvarntnm = append_module_name mdlnm varntnm in
@@ -274,10 +283,10 @@ and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_m
 (* PUBLIC *)
 let rec find (varntenv : t) (constrnm : constructor_name) =
   let (_, varntenvmain) = varntenv in
-    let rec aux varntenvmain constrnm =
+    let rec aux varntenvmain =
       match varntenvmain with
-      | []                                   -> raise Not_found
-      | (c, v, t) :: tail  when c = constrnm -> (v, t)
-      | _ :: tail                            -> aux tail constrnm
+      | []                                      -> raise Not_found
+      | (c, v, p, t) :: tail  when c = constrnm -> (v, p, t)
+      | _ :: tail                               -> aux tail
     in
-      aux varntenvmain constrnm
+      aux varntenvmain
