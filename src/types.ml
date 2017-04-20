@@ -39,7 +39,8 @@ module Tyvarid_
     val eq : 'a t_ -> 'a t_ -> bool
     val is_quantifiable : 'a t_ -> bool
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
-    val get_kind: 'a t_ -> 'a
+    val get_kind : 'a t_ -> 'a
+    val set_kind : 'a t_ -> 'a -> 'a t_
     val show_direct : 'a t_ -> string
   end
 = struct
@@ -65,6 +66,8 @@ module Tyvarid_
     let set_quantifiability qtfbl (idmain, kd, _) = (idmain, kd, qtfbl)
 
     let get_kind (_, kd, _) = kd
+
+    let set_kind (idmain, _, qtfbl) kd = (idmain, kd, qtfbl)
 
     let show_direct (idmain, _, _) = string_of_int idmain
 

@@ -3,6 +3,10 @@ open Display
 
 exception UndefinedVariable    of Range.t * var_name
 exception UndefinedConstructor of Range.t * var_name
+exception InclusionError       of Variantenv.t * mono_type * mono_type
+exception ContradictionError   of Variantenv.t * mono_type * mono_type
+exception InternalInclusionError
+exception InternalContradictionError
 
 
 let print_for_debug_typecheck msg =
@@ -12,7 +16,141 @@ let print_for_debug_typecheck msg =
   ()
 
 
-let rec unify_ (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) = () (* temporary *)
+let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) =
+  let iter = occurs tvid in
+  let iter_list = List.fold_left (fun b ty -> b || iter ty) false in
+  match tymain with
+  | TypeVariable(tvref) ->
+      begin
+        match !tvref with
+        | Link(tyl)   -> iter tyl
+        | Free(tvidx) -> Tyvarid.eq tvidx tvid
+        | Bound(_)    -> false
+      end
+  | FuncType(tydom, tycod) -> iter tydom || iter tycod
+  | ProductType(tylist)    -> iter_list tylist
+  | ListType(tysub)        -> iter tysub
+  | RefType(tysub)         -> iter tysub
+  | VariantType(tylist, _) -> iter_list tylist
+(*  | TypeSynonym(lst, _, pty)  -> iter_list lst || iter_poly pty *)
+  | RecordType(tyasc)      -> iter_list (Assoc.to_value_list tyasc)
+    | ( UnitType
+      | BoolType
+      | IntType
+      | StringType )       -> false
+
+
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+  let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
+    match (tymain1, tymain2) with
+    | ( (UnitType, UnitType)
+      | (BoolType, BoolType)
+      | (IntType, IntType)
+      | (StringType, StringType) ) -> ()
+
+    | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
+        begin unify_sub tydom1 tydom2 ; unify_sub tycod1 tycod2 end
+
+    | (ProductType(tylist1), ProductType(tylist2)) ->
+        begin
+          try
+            unify_list (List.combine tylist1 tylist2)
+          with
+          | Invalid_argument(_) -> (* not of the same length *)
+              raise InternalContradictionError
+        end
+
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        if not (Assoc.domain_same tyasc1 tyasc2) then
+          raise InternalContradictionError
+        else
+          unify_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (VariantType(tyarglist1, tyid1), VariantType(tyarglist2, tyid2))
+        when tyid1 = tyid2 ->
+          unify_list (List.combine tyarglist1 tyarglist2)
+
+    | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
+
+    | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
+
+    | (TypeVariable({contents= Link(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
+
+    | (_, TypeVariable({contents= Link(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
+
+    | ( (TypeVariable({contents= Bound(_)}), _)
+      | (_, TypeVariable({contents= Bound(_)})) ) -> assert false
+
+    | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
+        if Tyvarid.eq tvid1 tvid2 then
+          ()
+        else
+          let () =
+            if Tyvarid.is_quantifiable tvid1 && Tyvarid.is_quantifiable tvid2 then
+              ()
+            else
+              let tvid1uq = Tyvarid.set_quantifiability Unquantifiable tvid1 in
+              let tvid2uq = Tyvarid.set_quantifiability Unquantifiable tvid2 in
+              begin
+                tvref1 := Free(tvid1uq) ;
+                tvref2 := Free(tvid2uq)
+              end
+          in
+          let (oldtvref, newtvref, newtvid, newty) =
+            if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
+          in
+                let _ = print_for_debug_typecheck                                                                      (* for debug *)
+                  ("    substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvref)))     (* for debug *)
+                   ^ " with " ^ (string_of_mono_type_basic newty) ^ "\n") in                                  (* for debug *)
+          let () = ( oldtvref := Link(newty) ) in
+          let kd1 = Tyvarid.get_kind tvid1 in
+          let kd2 = Tyvarid.get_kind tvid2 in
+          let (eqnlst, kdunion) =
+            match (kd1, kd2) with
+            | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
+            | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
+            | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
+            | (RecordKind(asc1), RecordKind(asc2)) ->
+                let kdunion = RecordKind(Assoc.union asc1 asc2) in
+                  (Assoc.intersection asc1 asc2, kdunion)
+          in
+          begin
+            newtvref := Free(Tyvarid.set_kind newtvid kdunion) ;
+            unify_list eqnlst
+          end
+
+      | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
+          let kd1 = Tyvarid.get_kind tvid1 in
+          let binc = match kd1 with UniversalKind -> true | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2 in
+            if occurs tvid1 ty2 then
+              raise InternalInclusionError
+            else if not binc then
+              raise InternalContradictionError
+            else
+              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let _ = print_for_debug_typecheck                                      (* for debug *)
+                      ("    substituteVR " ^ (string_of_mono_type_basic ty1)     (* for debug *)
+                       ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
+              let eqnlst =
+                match kd1 with
+                | UniversalKind      -> []
+                | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
+              in
+              begin
+                tvref1 := Link(newty2) ;
+                unify_list eqnlst
+              end
+
+(*
+    | (TypeVariable({content= Free(tvid1)}), _) ->
+*)
+
+let unify_ (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  try
+    unify_sub ty1 ty2
+  with
+  | InternalInclusionError     -> raise (InclusionError(varntenv, ty1, ty2))
+  | InternalContradictionError -> raise (ContradictionError(varntenv, ty1, ty2))
 
 
 let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
