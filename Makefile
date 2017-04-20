@@ -1,4 +1,4 @@
-SRCS=src/assoc.mli src/assoc.ml src/stacklist.mli src/stacklist.ml src/tyvarid.mli src/tyvarid.ml src/range.mli src/range.ml src/types.ml src/kindenv.mli src/kindenv.ml src/typeenv.mli src/typeenv.ml src/variantenv.mli src/variantenv.ml src/display.mli src/display.ml src/subst.mli src/subst.ml src/parser.mli src/parser.ml src/lexer.ml src/primitives.mli src/primitives.ml src/typechecker.mli src/typechecker.ml src/out.mli src/out.ml src/evaluator.mli src/evaluator.ml src/files.ml src/main.mli src/main.ml
+SRCS=src/assoc.mli src/assoc.ml src/stacklist.mli src/stacklist.ml src/range.mli src/range.ml src/types.ml src/typeenv.mli src/typeenv.ml src/variantenv.mli src/variantenv.ml src/display.mli src/display.ml src/parser.mli src/parser.ml src/lexer.ml src/primitives.mli src/primitives.ml src/typechecker.mli src/typechecker.ml src/out.mli src/out.ml src/evaluator.mli src/evaluator.ml src/files.ml src/main.mli src/main.ml
 
 ifeq ($(OS), Windows_NT)
   TARGET=bin/macrodown.exe

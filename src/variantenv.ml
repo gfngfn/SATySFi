@@ -12,8 +12,8 @@ type constructor_list  = (constructor_name * Typeid.t * poly_type) list
 type t = defined_type_list * constructor_list
 
 type type_argument_mode =
-  | StrictMode of (type_argument_name, Tyvarid.t) Hashtbl.t  (* case where all type arguments should be declared; e.g. for type definitions *)
-  | FreeMode   of (type_argument_name, Tyvarid.t) Hashtbl.t  (* case where type arguments do not need to be declared; e.g. for type annotations *)
+  | StrictMode of (type_argument_name, type_variable_info ref) Hashtbl.t  (* case where all type arguments should be declared; e.g. for type definitions *)
+  | FreeMode   of (type_argument_name, type_variable_info ref) Hashtbl.t  (* case where type arguments do not need to be declared; e.g. for type annotations *)
 
 
 (* PUBLIC *)
@@ -25,7 +25,7 @@ let append_module_name (mdlnm : module_name) (varntnm : type_name) =
   match mdlnm with "" -> varntnm | _  -> mdlnm ^ "." ^ varntnm
 
 
-let find_definition (defedtylst : defined_type_list) (tynm : type_name) =
+let find_definition (defedtylst : defined_type_list) (tynm : type_name) : Typeid.t * definition =
   let rec aux lst =
     match lst with
     | []                                            -> raise Not_found
@@ -101,10 +101,11 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
               | (tyid, Data(argnum)) ->
                   if argnum <> len then error tynm argnum len else
                     VariantType(List.map iter mntyarglist, tyid)
-
+(*
               | (tyid, Synonym(argnum, pty)) ->
                   if argnum <> len then error tynm argnum len else
                     TypeSynonym(List.map iter mntyarglist, tyid, pty)
+*) (* temporary *)
             with
             | Not_found -> raise (UndefinedTypeName(rng, tynm))
           end
@@ -126,27 +127,25 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
                       TypeVariable(Hashtbl.find tyarght tyargnm)
                     with
                     | Not_found ->
-                        let tvid = Tyvarid.fresh Tyvarid.Quantifiable (* temporary *) in
-                        begin Hashtbl.add tyarght tyargnm tvid ; TypeVariable(tvid) end
+                        let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
+                        let tvref = ref (Free(tvid)) in
+                        begin Hashtbl.add tyarght tyargnm tvref ; TypeVariable(tvref) end
                   end
             end
     in
       (rng, tymainnew)
   in
-  let tybare = aux mnty in
-    match tyargmode with
-    | ( StrictMode(tyarght) | FreeMode(tyarght) ) ->
-        Hashtbl.fold (fun _ tvid pty -> Forall(tvid, UniversalKind (* temporary *), pty)) tyarght (Mono(tybare))
+    Poly(aux mnty)
 
 
 let fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
-  let tyarght = Hashtbl.create 32 in
+  let tyarght : (type_argument_name, type_variable_info ref) Hashtbl.t = Hashtbl.create 32 in
   let rec aux cons =
     match cons with
     | UTEndOfTypeArgument                      -> ()
     | UTTypeArgumentCons(_, tyargnm, tailcons) ->
-       let tvid = Tyvarid.fresh Tyvarid.Quantifiable (* temporary *) in
-       begin Hashtbl.add tyarght tyargnm tvid ; aux tailcons end
+       let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
+       begin Hashtbl.add tyarght tyargnm (ref (Free(tvid))) ; aux tailcons end
   in
   begin
     aux tyargcons ;
@@ -188,7 +187,7 @@ let add_synonym (varntenv : t)
   let tyid = Typeid.fresh () in
     ((tysynnm, tyid, defkind) :: defedtypelist, varntenvmain)
 
-
+(*
 (* PUBLIC *)
 let rec apply_to_type_synonym (tyarglist : mono_type list) (pty : poly_type) =
   match (tyarglist, pty) with
@@ -198,7 +197,7 @@ let rec apply_to_type_synonym (tyarglist : mono_type list) (pty : poly_type) =
   | ([], Forall(_, _, _))                             -> assert false
   | ([], Mono(ty))                                    -> ty
   | (_ :: _, Mono(_))                                 -> assert false
-
+*) (* temporary *)
 
 let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
                            (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =

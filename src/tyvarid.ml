@@ -1,14 +1,18 @@
 
 type quantifiability = Quantifiable | Unquantifiable
-type t = int * (quantifiability ref)
+type t = int * kind * quantifiability
 
 
 let tvidmax : int ref = ref 0
 
 let initialize () = ( tvidmax := 0 )
 
-let fresh qtfbl =
-  let res = !tvidmax in ( tvidmax := !tvidmax + 1 ; (res, ref qtfbl) )
+let fresh kd qtfbl =
+  let res = !tvidmax in
+  begin
+    incr tvidmax ;
+    (res, kd, qtfbl)
+  end
 
 
 let same (tvid1 : t) (tvid2 : t) =
