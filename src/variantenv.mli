@@ -12,9 +12,7 @@ val add : t -> constructor_name -> (type_variable_info ref) list -> mono_type ->
 
 val add_list : t -> (constructor_name * (type_variable_info ref) list * mono_type * type_name) list -> t
 
-val register_variant : t -> int -> type_name -> t
-
-val register_variant_list : t -> (int * type_name) list -> t
+val register_variant_type : t -> int -> type_name -> t
 
 val add_mutual_cons : t -> untyped_mutual_variant_cons -> t
 

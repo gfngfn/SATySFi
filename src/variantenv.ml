@@ -1,10 +1,12 @@
 open Types
 
+
 exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
 
-type definition        = Data of int | Synonym of int * mono_type
+
+type definition        = Data of int | Synonym of (* (type_variable_info ref) list *) int * mono_type
 type defined_type_list = (type_name * Typeid.t * definition) list
 type constructor_list  = (constructor_name * Typeid.t * (type_variable_info ref) list * mono_type) list
 
@@ -201,13 +203,10 @@ let rec type_argument_length tyargcons =
   | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
 
 
-let register_variant (varntenv : t) (len : int) (tynm : type_name) =
+let register_variant_type (varntenv : t) (len : int) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in
   let tyid = Typeid.fresh () in
     ((tynm, tyid, Data(len)) :: defedtypelist, varntenvmain)
-
-
-let register_variant_list = List.fold_left (fun ve (l, t) -> register_variant ve l t)
 
 
 let add_synonym (varntenv : t)
@@ -236,18 +235,19 @@ let rec apply_to_type_synonym (tyarglist : mono_type list) (pty : poly_type) =
 let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
                            (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
 
-  let rec aux mdlnm varntenv tyargcons varntnm utvc =
+  let mdlvarntnm = append_module_name mdlnm varntnm in
+  let rec aux varntenv tyargcons utvc =
     let (rng, utvcmain) = utvc in
       match utvcmain with
       | UTEndOfVariant                          -> varntenv
       | UTVariantCons(constrnm, mnty, tailcons) ->
           let (paramlist, ty) = fix_manual_type varntenv tyargcons mnty in
-          let varntenvnew = add varntenv constrnm paramlist ty (append_module_name mdlnm varntnm) in
-            aux mdlnm varntenvnew tyargcons varntnm tailcons
+          let varntenvnew = add varntenv constrnm paramlist ty mdlvarntnm in
+            aux varntenvnew tyargcons tailcons
   in
-  let mdlvarntnm = append_module_name mdlnm varntnm in
-  let tyarglen   = type_argument_length tyargcons in
-    aux mdlnm (register_variant varntenv tyarglen mdlvarntnm) tyargcons varntnm utvc
+  let tyarglen = type_argument_length tyargcons in
+  let varntenvreg = register_variant_type varntenv tyarglen mdlvarntnm in
+    aux varntenvreg tyargcons utvc
 
 
 (* PUBLIC *)
@@ -257,13 +257,15 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
   let varntenv_fin = read_variant_spec varntenv_syn mutvarntcons in
     varntenv_fin
 
+
 and read_synonym_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
-    | UTEndOfMutualVariant                                     -> varntenv
-    | UTMutualVariantCons(_, _, _, tailcons)                   -> read_synonym_spec varntenv tailcons
+    | UTEndOfMutualVariant                                    -> varntenv
+    | UTMutualVariantCons(_, _, _, tailcons)                  -> read_synonym_spec varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tysynnm, mnty, tailcons) ->
         let varntenv_new = add_synonym varntenv tyargcons tysynnm mnty in
           read_synonym_spec varntenv_new tailcons
+
 
 and read_variant_spec (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
@@ -284,9 +286,9 @@ and memo_variant_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyp
   | UTEndOfMutualVariant                                 -> varntenv
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
       let mdlvarntnm = append_module_name mdlnm varntnm in
-      let tyarglen   = type_argument_length tyargcons in
-      let varntenv_new = register_variant varntenv tyarglen mdlvarntnm in
-        memo_variant_name mdlnm varntenv_new tailcons
+      let tyarglen = type_argument_length tyargcons in
+      let varntenvnew = register_variant_type varntenv tyarglen mdlvarntnm in
+        memo_variant_name mdlnm varntenvnew tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) -> memo_variant_name mdlnm varntenv tailcons
 
 
@@ -296,12 +298,12 @@ and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_m
   | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
       let mdlvarntnm = append_module_name mdlnm varntnm in
       let tyarglen   = type_argument_length tyargcons in
-      let varntenv_new = register_variant varntenv tyarglen mdlvarntnm in
+      let varntenv_new = register_variant_type varntenv tyarglen mdlvarntnm in
         memo_all_name mdlnm varntenv_new tailcons
   | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) ->
       let mdltysynnm = append_module_name mdlnm tysynnm in
       let tyarglen   = type_argument_length tyargcons in
-      let varntenv_new = register_variant varntenv tyarglen mdltysynnm in
+      let varntenv_new = register_variant_type varntenv tyarglen mdltysynnm in
         memo_all_name mdlnm varntenv_new tailcons
 
 
