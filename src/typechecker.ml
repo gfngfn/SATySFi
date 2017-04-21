@@ -10,9 +10,9 @@ exception InternalContradictionError
 
 
 let print_for_debug_typecheck msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -49,7 +49,10 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
       | (StringType, StringType) ) -> ()
 
     | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
-        begin unify_sub tydom1 tydom2 ; unify_sub tycod1 tycod2 end
+        begin
+          unify_sub tydom1 tydom2 ;
+          unify_sub tycod1 tycod2 ;
+        end
 
     | (ProductType(tylist1), ProductType(tylist2)) ->
         begin
@@ -89,11 +92,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             if Tyvarid.is_quantifiable tvid1 && Tyvarid.is_quantifiable tvid2 then
               ()
             else
-              let tvid1uq = Tyvarid.set_quantifiability Unquantifiable tvid1 in
-              let tvid2uq = Tyvarid.set_quantifiability Unquantifiable tvid2 in
               begin
-                tvref1 := Free(tvid1uq) ;
-                tvref2 := Free(tvid2uq)
+                tvref1 := Free(Tyvarid.set_quantifiability Unquantifiable tvid1) ;
+                tvref2 := Free(Tyvarid.set_quantifiability Unquantifiable tvid2) ;
               end
           in
           let (oldtvref, newtvref, newtvid, newty) =
@@ -116,20 +117,24 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           in
           begin
             newtvref := Free(Tyvarid.set_kind newtvid kdunion) ;
-            unify_list eqnlst
+            unify_list eqnlst ;
           end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = Tyvarid.get_kind tvid1 in
-          let binc = match kd1 with UniversalKind -> true | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2 in
+          let binc =
+            match kd1 with
+            | UniversalKind      -> true
+            | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
+          in
             if occurs tvid1 ty2 then
               raise InternalInclusionError
             else if not binc then
               raise InternalContradictionError
             else
               let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                    let _ = print_for_debug_typecheck                                      (* for debug *)
-                      ("    substituteVR " ^ (string_of_mono_type_basic ty1)     (* for debug *)
+                    let _ = print_for_debug_typecheck                             (* for debug *)
+                      ("    substituteVR " ^ (string_of_mono_type_basic ty1)      (* for debug *)
                        ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
               let eqnlst =
                 match kd1 with
@@ -138,12 +143,23 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               in
               begin
                 tvref1 := Link(newty2) ;
-                unify_list eqnlst
+                unify_list eqnlst ;
               end
 
-(*
-    | (TypeVariable({content= Free(tvid1)}), _) ->
-*)
+      | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
+          if occurs tvid1 ty2 then
+            raise InternalInclusionError
+          else
+            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let _ = print_for_debug_typecheck                             (* for debug *)
+                      ("    substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
+                       ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
+              tvref1 := Link(newty2)
+
+    | (_, TypeVariable(_)) -> unify_sub ty2 ty1
+
+    | _ -> raise InternalContradictionError
+
 
 let unify_ (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   try
@@ -584,7 +600,7 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
       | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
           let tvid = Tyvarid.fresh UniversalKind qtfbl () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
-          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : " ^ (Tyvarid.show_direct tvid) ^ " :: U\n") in (* for debug *)
+          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct tvid) ^ " :: U\n") in (* for debug *)
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta))) tailcons in
             (tyenvfinal, ((varnm, beta) :: tvtylst))
   in
@@ -625,9 +641,9 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
     | (varnm, tvty) :: tvtytail ->
         let prety = tvty in
           begin                                                                                                        (* for debug *)
-            print_for_debug_typecheck ("#MakeForall " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") ;  (* for debug *)
+            print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") ;  (* for debug *)
             let pty = poly_extend erase_range_of_type (Typeenv.generalize prety tyenv_before_let) in
-  (*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
+            print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ "\n") ; (* for debug *)
             let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
               make_forall_type_mutual (Typeenv.add tyenv varnm pty) tyenv_before_let tvtytail tvtylst_forall_new
           end                                                                                                          (* for debug *)

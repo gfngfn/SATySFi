@@ -56,7 +56,7 @@ module Tyvarid_
         (!current_id, kd, qtfbl)
       end
 
-    let eq = (=)
+    let eq (i1, _, _) (i2, _, _) = (i1 = i2)
 
     let is_quantifiable (_, _, qtfbl) =
         match qtfbl with
@@ -79,7 +79,9 @@ module Boundid_
     type 'a t_
     val initialize : unit -> unit
     val fresh : 'a -> unit -> 'a t_
+    val eq : 'a t_ -> 'a t_ -> bool
     val get_kind : 'a t_ -> 'a
+    val show_direct : 'a t_ -> string
   end
 = struct
     type 'a t_ = int * 'a
@@ -94,7 +96,11 @@ module Boundid_
         (!current_id, kd)
       end
 
+    let eq (i1, _) (i2, _) = (i1 = i2)
+
     let get_kind (_, kd) = kd
+
+    let show_direct (i, _) = string_of_int i
 
   end
 

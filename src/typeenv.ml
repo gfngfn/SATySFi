@@ -108,7 +108,7 @@ let rec add_forall_struct (lst : (type_variable_info ref) list) (ty : mono_type)
 
 
 let generalize (ty : mono_type) (tyenv_before : t) =
-  let rec iter (rng, tymain) =
+  let rec iter ((rng, tymain) as ty) =
     match tymain with
     | TypeVariable(tvref) ->
         begin
@@ -117,7 +117,9 @@ let generalize (ty : mono_type) (tyenv_before : t) =
           | Bound(_)   -> ty
           | Free(tvid) ->
               if Tyvarid.is_quantifiable tvid then
-                if find_in_type_environment tvid tyenv_before then ty else
+                if find_in_type_environment tvid tyenv_before then
+                  ty
+                else
                   let bid = Boundid.fresh (Tyvarid.get_kind tvid) () in
                   begin
                     tvref := Bound(bid) ;
