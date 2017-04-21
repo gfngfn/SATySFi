@@ -62,50 +62,6 @@ and find_in_mono_type_list (tvid : Tyvarid.t) (tystrlst : mono_type list) =
 let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
   List.fold_left (fun b (_, pty) -> b || find_in_poly_type tvid pty) false tyenv
 
-(*
-let quantifiable_unbound_id_list : (type_variable_info ref) list ref = ref []
-
-
-let rec listup_quantifiable_unbound_id ((_, tymain) : mono_type) (tyenv : t) : unit =
-  let iter = (fun ty -> listup_quantifiable_unbound_id ty tyenv) in
-    match tymain with
-    | TypeVariable(tvref)             ->
-        begin
-          match !tvref with
-          | Link(ty)   -> iter ty
-          | Free(tvid) ->
-              if Tyvarid.is_quantifiable tvid then
-                if find_in_type_environment tvid tyenv then () else (* computation bottleneck *)
-                  if List.mem tvref !quantifiable_unbound_id_list then () else
-                    quantifiable_unbound_id_list := tvref :: !quantifiable_unbound_id_list
-              else
-                ()
-          | Bound(_) -> ()
-        end
-(*    | TypeSynonym(tylist, _, tycont) -> List.iter iter tylist (* doubtful implementation *) *)
-    | FuncType(tydom, tycod)         -> begin iter tydom ; iter tycod end
-    | ProductType(tylist)            -> List.iter iter tylist
-    | RecordType(asc)                -> List.iter iter (List.map (fun (fldnm, tystr) -> tystr) (Assoc.to_list asc))
-    | VariantType(tylist, _)         -> List.iter iter tylist
-    | ListType(tycont)               -> iter tycont
-    | RefType(tycont)                -> iter tycont
-    | ( IntType | BoolType | UnitType | StringType ) -> ()
-
-
-let rec add_forall_struct (lst : (type_variable_info ref) list) (ty : mono_type) =
-  match lst with
-  | []            -> Mono(ty)
-  | tvref :: tail ->
-      match !tvref with
-      | Free(tvid) ->
-          let bid = Boundid.fresh (Tyvarid.get_kind tvid) () in
-          begin
-            tvref := Bound(bid) ;
-            Forall(bid, add_forall_struct tail ty)
-          end
-      | ( Bound(_) | Link(_) ) -> assert false
-*)
-
 
 let generalize (ty : mono_type) (tyenv_before : t) =
   let rec iter ((rng, tymain) as ty) =
@@ -184,38 +140,6 @@ let rec find_id_in_list (elm : Tyvarid.t) (lst : (Tyvarid.t * mono_type) list) =
   | (tvid, tystr) :: tail  when Tyvarid.eq tvid elm -> tystr
   | _ :: tail                                       -> find_id_in_list elm tail
 
-(*
-let rec replace_id (lst : (Tyvarid.t * mono_type) list) (tystr : mono_type) =
-  let iter = replace_id lst in
-  let (rng, tymain) = tystr in
-    match tymain with
-    | TypeVariable(tvid)                   ->
-        begin
-          try find_id_in_list tvid lst with
-          | Not_found -> (rng, TypeVariable(tvid))
-        end
-    | ListType(tycont)                     -> (rng, ListType(iter tycont))
-    | RefType(tycont)                      -> (rng, RefType(iter tycont))
-    | ProductType(tylist)                  -> (rng, ProductType(List.map iter tylist))
-    | FuncType(tydom, tycod)               -> (rng, FuncType(iter tydom, iter tycod))
-    | VariantType(tylist, varntnm)         -> (rng, VariantType(List.map iter tylist, varntnm))
-    | TypeSynonym(tylist, tysynnm, pty)    -> (rng, TypeSynonym(List.map iter tylist, tysynnm, pty (* temporary *)))
-    | other                                -> (rng, other)
-*)
-
-(*
-let rec replace_id_poly (lst : (Tyvarid.t * mono_type) list) (pty : poly_type) =
-  match pty with
-  | Mono(ty)                 -> Mono(replace_id lst ty)
-  | Forall(tvid, kd, ptysub) ->
-      begin
-        try
-          let _ = find_id_in_list tvid lst in
-            Forall(tvid, kd, ptysub) (* temporary *)
-        with
-        | Not_found -> Forall(tvid, kd, replace_id_poly lst ptysub)
-      end
-*)
 
 let rec make_unquantifiable ((_, tymain) : mono_type) =
   let iter = make_unquantifiable in
@@ -235,5 +159,3 @@ let rec make_unquantifiable ((_, tymain) : mono_type) =
 (*    | TypeSynonym(tylist, tysynnm, pty)    -> begin List.iter iter tylist ; () (* temporary *) end *)
     | RecordType(asc)                      -> Assoc.iter_value iter asc
     | other                                -> ()
-
-
