@@ -23,9 +23,9 @@ let string_of_kind (f : mono_type -> string) (kdstr : kind) =
     | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let rec variable_name_of_int (n : int) =
+let rec variable_name_of_number (n : int) =
   ( if n >= 26 then
-      variable_name_of_int ((n - n mod 26) / 26 - 1)
+      variable_name_of_number ((n - n mod 26) / 26 - 1)
     else
       ""
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
@@ -40,13 +40,7 @@ let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
 type general_id = FreeID of Tyvarid.t | BoundID of Boundid.t
 
 
-let get_kind (gid : general_id) =
-  match gid with
-  | FreeID(tvid) -> Tyvarid.get_kind tvid
-  | BoundID(bid) -> Boundid.get_kind bid
-
-
-module GeneralidHashtbl = Hashtbl.Make(
+module GeneralidHashtbl_ = Hashtbl.Make(
   struct
     type t = general_id
 
@@ -60,91 +54,108 @@ module GeneralidHashtbl = Hashtbl.Make(
   end)
 
 
-let type_variable_name_max : int ref = ref 0
-let type_variable_name_ht : string GeneralidHashtbl.t = GeneralidHashtbl.create 32
+module GeneralidHashtbl
+: sig
+    include Hashtbl.S
+    val initialize : unit -> unit
+    val intern_number : int t -> general_id -> int
+  end
+= struct
+    include GeneralidHashtbl_
 
+    let current_number = ref 0
 
-let new_type_variable_name (f : mono_type -> string) (gid : general_id) =
-  let res = variable_name_of_int (!type_variable_name_max) in
-    begin
-      incr type_variable_name_max ;
-      GeneralidHashtbl.add type_variable_name_ht gid res ;
-        show_type_variable f res (get_kind gid)
-    end
+    let initialize () = ( current_number := 0 )
 
-
-let find_type_variable (f : mono_type -> string) (gid : general_id) =
-  let nm = GeneralidHashtbl.find type_variable_name_ht gid in
-    show_type_variable f nm (get_kind gid)
-
-
-let rec string_of_mono_type_sub (varntenv : Variantenv.t) (ty : mono_type) =
-  let iter = string_of_mono_type_sub varntenv in
-  let iter_args = string_of_type_argument_list varntenv in
-  let iter_list = string_of_mono_type_list varntenv in
-  let (_, tymain) = ty in
-  match tymain with
-  | TypeVariable(tvref) ->
+    (* --
+      'new_number' is required to be 0-origin by 'variable_name_of_number'
+    -- *)
+    let new_number () =
+      let res = !current_number in
       begin
-        match !tvref with
-        | Link(tyl)  -> iter tyl
-        | Bound(bid) ->
-            "'#" ^
-            begin
-              try find_type_variable iter (BoundID(bid)) with
-              | Not_found -> new_type_variable_name iter (BoundID(bid))
-            end
-
-        | Free(tvid) ->
-            ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
-            begin
-              try find_type_variable iter (FreeID(tvid)) with
-              | Not_found -> new_type_variable_name iter (FreeID(tvid))
-            end
+        incr current_number ;
+        res
       end
-  | StringType                      -> "string"
-  | IntType                         -> "int"
-  | BoolType                        -> "bool"
-  | UnitType                        -> "unit"
 
-  | VariantType(tyarglist, tyid)    -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+    let intern_number (current_ht : 'a t) (gid : general_id) =
+      try
+        find current_ht gid
+      with
+      | Not_found ->
+          let num = new_number () in
+          begin
+            add current_ht gid num ;
+            num
+          end
 
-(*  | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
-                                           ^ " (= " ^ (iter (Variantenv.apply_to_type_synonym tyarglist pty)) ^ ")"  *) (* temporary *)
+  end
 
-  | FuncType(tydom, tycod) ->
-      let strdom = iter tydom in
-      let strcod = iter tycod in
+
+let rec string_of_mono_type_sub (varntenv : Variantenv.t) (current_ht : int GeneralidHashtbl.t) ((_, tymain) : mono_type) =
+  let iter = string_of_mono_type_sub varntenv current_ht in
+  let iter_args = string_of_type_argument_list varntenv current_ht in
+  let iter_list = string_of_mono_type_list varntenv current_ht in
+    match tymain with
+
+    | TypeVariable(tvref) ->
         begin
-          match tydom with
-          | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
-          | _                   -> strdom
-        end ^ " -> " ^ strcod
+          match !tvref with
+          | Link(tyl)  -> iter tyl
+          | Bound(bid) ->
+              let num = GeneralidHashtbl.intern_number current_ht (BoundID(bid)) in
+              let s = "'#" ^ (variable_name_of_number num) in
+                show_type_variable iter s (Boundid.get_kind bid)
 
-  | ListType(tycont) ->
-      let strcont = iter tycont in
-        begin
-          match tycont with
-          | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-          | _                                             -> strcont
-        end ^ " list"
+          | Free(tvid) ->
+              let num = GeneralidHashtbl.intern_number current_ht (FreeID(tvid)) in
+              let s = (if Tyvarid.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
+                show_type_variable iter s (Tyvarid.get_kind tvid)
+        end
 
-  | RefType(tycont) ->
-      let strcont = iter tycont in
-        begin
-          match tycont with
-          | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-          | _                                             -> strcont
-        end ^ " ref"
+    | StringType -> "string"
+    | IntType    -> "int"
+    | BoolType   -> "bool"
+    | UnitType   -> "unit"
 
-  | ProductType(tylist) -> iter_list tylist
+    | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+(*
+    | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+                                             ^ " (= " ^ (iter (Variantenv.apply_to_type_synonym tyarglist pty)) ^ ")"
+*) (* temporary *)
 
-  | RecordType(asc) -> string_of_record_type iter asc
+    | FuncType(tydom, tycod) ->
+        let strdom = iter tydom in
+        let strcod = iter tycod in
+          begin
+            match tydom with
+            | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
+            | _                   -> strdom
+          end ^ " -> " ^ strcod
+
+    | ListType(tycont) ->
+        let strcont = iter tycont in
+          begin
+            match tycont with
+            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
+            | _                                             -> strcont
+          end ^ " list"
+
+    | RefType(tycont) ->
+        let strcont = iter tycont in
+          begin
+            match tycont with
+            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
+            | _                                             -> strcont
+          end ^ " ref"
+
+    | ProductType(tylist) -> iter_list tylist
+
+    | RecordType(asc) -> string_of_record_type iter asc
 
 
-and string_of_type_argument_list varntenv tyarglist =
-  let iter = string_of_mono_type_sub varntenv in
-  let iter_args = string_of_type_argument_list varntenv in
+and string_of_type_argument_list varntenv current_ht tyarglist =
+  let iter = string_of_mono_type_sub varntenv current_ht in
+  let iter_args = string_of_type_argument_list varntenv current_ht in
     match tyarglist with
     | []           -> ""
     | head :: tail ->
@@ -159,9 +170,9 @@ and string_of_type_argument_list varntenv tyarglist =
           end ^ " " ^ strtl
 
 
-and string_of_mono_type_list varntenv tylist =
-  let iter = string_of_mono_type_sub varntenv in
-  let iter_list = string_of_mono_type_list varntenv in
+and string_of_mono_type_list varntenv current_ht tylist =
+  let iter = string_of_mono_type_sub varntenv current_ht in
+  let iter_list = string_of_mono_type_list varntenv current_ht in
     match tylist with
     | []           -> ""
     | head :: tail ->
@@ -182,18 +193,18 @@ and string_of_mono_type_list varntenv tylist =
 
 let string_of_mono_type (varntenv : Variantenv.t) (ty : mono_type) =
   begin
-    type_variable_name_max := 0 ;
-    GeneralidHashtbl.clear type_variable_name_ht ;
-    string_of_mono_type_sub varntenv ty
+    GeneralidHashtbl.initialize () ;
+    let current_ht = GeneralidHashtbl.create 32 in
+      string_of_mono_type_sub varntenv current_ht ty
   end
 
 
 let string_of_mono_type_double (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   begin
-    type_variable_name_max := 0 ;
-    GeneralidHashtbl.clear type_variable_name_ht ;
-    let strty1 = string_of_mono_type_sub varntenv ty1 in
-    let strty2 = string_of_mono_type_sub varntenv ty2 in
+    GeneralidHashtbl.initialize () ;
+    let current_ht = GeneralidHashtbl.create 32 in
+    let strty1 = string_of_mono_type_sub varntenv current_ht ty1 in
+    let strty2 = string_of_mono_type_sub varntenv current_ht ty2 in
       (strty1, strty2)
   end
 
