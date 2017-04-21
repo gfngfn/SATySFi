@@ -441,10 +441,16 @@ and erase_range_of_kind (kd : kind) =
   | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
 
 
+module BoundidHashtbl = Hashtbl.Make(
+  struct
+    type t = Boundid.t
+    let equal = Boundid.eq
+    let hash = Hashtbl.hash
+  end)
 
 
 let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
-  let current_list : ((Boundid.t * type_variable_info ref) list) ref = ref [] in
+  let current_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
   let rec aux ((rng, tymain) as ty) =
     match tymain with
     | TypeVariable(tvref) ->
@@ -455,14 +461,14 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
           | Bound(bid) ->
               begin
                 try
-                  let tvrefnew = List.assoc bid (!current_list) in
+                  let tvrefnew = BoundidHashtbl.find current_ht bid in
                     (rng, TypeVariable(tvrefnew))
                 with
                 | Not_found ->
                     let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
                     let tvrefnew = ref (Free(tvid)) in
                     begin
-                      current_list := (bid, tvrefnew) :: !current_list ;
+                      BoundidHashtbl.add current_ht bid tvrefnew ;
                       (rng, TypeVariable(tvrefnew))
                     end
               end
@@ -478,10 +484,7 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
       | IntType
       | StringType ) -> ty
   in
-  begin
-    current_list := [] ;
     aux ty
-  end
 
 
 (* !!!! ---- global variable ---- !!!! *)

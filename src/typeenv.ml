@@ -142,6 +142,8 @@ let generalize (ty : mono_type) (tyenv_before : t) =
     Poly(iter ty)
 
 
+(* ---- following are all for debugging --- *)
+
 let string_of_type_environment (tyenv : t) (msg : string) =
   let rec iter (tyenv : t) =
     match tyenv with
