@@ -40,40 +40,42 @@ let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
 type general_id = FreeID of Tyvarid.t | BoundID of Boundid.t
 
 
+let get_kind (gid : general_id) =
+  match gid with
+  | FreeID(tvid) -> Tyvarid.get_kind tvid
+  | BoundID(bid) -> Boundid.get_kind bid
+
+
+module GeneralidHashtbl = Hashtbl.Make(
+  struct
+    type t = general_id
+
+    let equal gid1 gid2 =
+      match (gid1, gid2) with
+      | (FreeID(tvid1), FreeID(tvid2)) -> Tyvarid.eq tvid1 tvid2
+      | (BoundID(bid1), BoundID(bid2)) -> Boundid.eq bid1 bid2
+      | (_, _)                         -> false
+
+    let hash = Hashtbl.hash
+  end)
+
+
 let type_variable_name_max : int ref = ref 0
-let type_variable_name_list : (general_id * string) list ref = ref []
+let type_variable_name_ht : string GeneralidHashtbl.t = GeneralidHashtbl.create 32
 
 
 let new_type_variable_name (f : mono_type -> string) (gid : general_id) =
   let res = variable_name_of_int (!type_variable_name_max) in
     begin
-      type_variable_name_max := !type_variable_name_max + 1 ;
-      type_variable_name_list := (gid, res) :: (!type_variable_name_list) ;
-      let kd =
-        match gid with
-        | FreeID(tvid) -> Tyvarid.get_kind tvid
-        | BoundID(bid) -> Boundid.get_kind bid
-      in
-        show_type_variable f res kd
+      incr type_variable_name_max ;
+      GeneralidHashtbl.add type_variable_name_ht gid res ;
+        show_type_variable f res (get_kind gid)
     end
 
 
 let find_type_variable (f : mono_type -> string) (gid : general_id) =
-  let rec aux_free (tvid : Tyvarid.t) (lst : (general_id * string) list) =
-    match lst with
-    | []                                             -> raise Not_found
-    | (FreeID(k), v) :: tail  when Tyvarid.eq k tvid -> show_type_variable f v (Tyvarid.get_kind k)
-    | _ :: tail                                      -> aux_free tvid tail
-  in
-  let rec aux_bound (bid : Boundid.t) lst =
-    match lst with
-    | []                                             -> raise Not_found
-    | (BoundID(k), v) :: tail  when Boundid.eq k bid -> show_type_variable f v (Boundid.get_kind k)
-    | _ :: tail                                      -> aux_bound bid tail
-  in
-    match gid with
-    | FreeID(tvid) -> aux_free tvid (!type_variable_name_list)
-    | BoundID(bid) -> aux_bound bid (!type_variable_name_list)
+  let nm = GeneralidHashtbl.find type_variable_name_ht gid in
+    show_type_variable f nm (get_kind gid)
 
 
 let rec string_of_mono_type_sub (varntenv : Variantenv.t) (ty : mono_type) =
@@ -181,7 +183,7 @@ and string_of_mono_type_list varntenv tylist =
 let string_of_mono_type (varntenv : Variantenv.t) (ty : mono_type) =
   begin
     type_variable_name_max := 0 ;
-    type_variable_name_list := [] ;
+    GeneralidHashtbl.clear type_variable_name_ht ;
     string_of_mono_type_sub varntenv ty
   end
 
@@ -189,7 +191,7 @@ let string_of_mono_type (varntenv : Variantenv.t) (ty : mono_type) =
 let string_of_mono_type_double (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   begin
     type_variable_name_max := 0 ;
-    type_variable_name_list := [] ;
+    GeneralidHashtbl.clear type_variable_name_ht ;
     let strty1 = string_of_mono_type_sub varntenv ty1 in
     let strty2 = string_of_mono_type_sub varntenv ty2 in
       (strty1, strty2)
