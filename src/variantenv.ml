@@ -6,16 +6,41 @@ exception UndefinedTypeArgument        of Range.t * var_name
 
 type definition        = Data of int | Synonym of int * mono_type
 type defined_type_list = (type_name * Typeid.t * definition) list
-type constructor_list  = (constructor_name * Typeid.t * ((type_variable_info ref) list) * mono_type) list
+type constructor_list  = (constructor_name * Typeid.t * (type_variable_info ref) list * mono_type) list
 
 (* PUBLIC *)
 type t = defined_type_list * constructor_list
 
-type maplist = ((type_argument_name * type_variable_info ref) list) ref
+
+module MapList
+: sig
+    type ('a, 'b) t
+    val create : unit -> ('a, 'b) t
+    val add : ('a, 'b) t -> 'a -> 'b -> unit
+    val find : ('a, 'b) t -> 'a -> 'b
+    val to_list : ('a, 'b) t -> ('a * 'b) list
+  end
+= struct
+    type ('a, 'b) t = (('a * 'b) list) ref
+
+    let create () = ref []
+
+    let add mapl k v = ( mapl := (k, v) :: !mapl )
+
+    let find mapl k = List.assoc k (!mapl)
+
+    let to_list = (!)
+
+  end
+
 
 type type_argument_mode =
-  | StrictMode of maplist  (* case where all type arguments should be declared; e.g. for type definitions *)
-  | FreeMode   of maplist  (* case where type arguments do not need to be declared; e.g. for type annotations *)
+  | StrictMode of (type_argument_name, type_variable_info ref) MapList.t
+  | FreeMode   of (type_argument_name, type_variable_info ref) MapList.t
+      (* --
+        StrictMode : case where all type arguments should be declared; e.g. for type definitions
+        FreeMode   : case where type arguments do not need to be declared; e.g. for type annotations
+      -- *)
 
 
 (* PUBLIC *)
@@ -118,7 +143,7 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
               | StrictMode(tyargmaplist) ->
                   begin
                     try
-                      TypeVariable(List.assoc tyargnm (!tyargmaplist))
+                      TypeVariable(MapList.find tyargmaplist tyargnm)
                     with
                     | Not_found -> raise (UndefinedTypeArgument(rng, tyargnm))
                   end
@@ -126,13 +151,13 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
               | FreeMode(tyargmaplist) ->
                   begin
                     try
-                      TypeVariable(List.assoc tyargnm (!tyargmaplist))
+                      TypeVariable(MapList.find tyargmaplist tyargnm)
                     with
                     | Not_found ->
                         let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
                         let tvref = ref (Free(tvid)) in
                         begin
-                          tyargmaplist := (tyargnm, tvref) :: !tyargmaplist ;
+                          MapList.add tyargmaplist tyargnm tvref ;
                           TypeVariable(tvref)
                         end
                   end
@@ -144,17 +169,17 @@ let fix_manual_type_general (varntenv : t) (tyargmode : type_argument_mode) (mnt
   match tyargmode with
   | ( StrictMode(tyargmaplist)
     | FreeMode(tyargmaplist) ) ->
-        (List.map (fun (_, tvref) -> tvref) (!tyargmaplist), ty)
+        (List.map (fun (_, tvref) -> tvref) (MapList.to_list tyargmaplist), ty)
 
 
 let fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
-  let tyargmaplist : maplist = ref [] in
+  let tyargmaplist = MapList.create () in
   let rec aux cons =
     match cons with
     | UTEndOfTypeArgument                      -> ()
     | UTTypeArgumentCons(_, tyargnm, tailcons) ->
        let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
-       begin tyargmaplist :=  (tyargnm, (ref (Free(tvid)))) :: !tyargmaplist ; aux tailcons end
+       begin MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ; aux tailcons end
   in
   begin
     aux tyargcons ;
@@ -164,7 +189,7 @@ let fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnt
 
 (* PUBLIC *)
 let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (mnty : manual_type) =
-  let tyargmaplist : maplist = ref [] in
+  let tyargmaplist = MapList.create () in
   let tyin  = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
   let tyout = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
     (tyin, tyout)
