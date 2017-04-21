@@ -1,5 +1,6 @@
 open Types
 
+
 let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
   let rec aux lst =
     match lst with
@@ -30,33 +31,49 @@ let rec variable_name_of_int (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (f : mono_type -> string) (name : string) (kdstr : kind) =
-  match kdstr with
+let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
+  match kd with
   | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kdstr) ^ ")"
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
+
+
+type general_id = FreeID of Tyvarid.t | BoundID of Boundid.t
 
 
 let type_variable_name_max : int ref = ref 0
-let type_variable_name_list : (Tyvarid.t * string) list ref = ref []
+let type_variable_name_list : (general_id * string) list ref = ref []
 
 
-let new_type_variable_name (f : mono_type -> string) (tvid : Tyvarid.t) =
+let new_type_variable_name (f : mono_type -> string) (gid : general_id) =
   let res = variable_name_of_int (!type_variable_name_max) in
     begin
       type_variable_name_max := !type_variable_name_max + 1 ;
-      type_variable_name_list := (tvid, res) :: (!type_variable_name_list) ;
-      show_type_variable f res (Tyvarid.get_kind tvid)
+      type_variable_name_list := (gid, res) :: (!type_variable_name_list) ;
+      let kd =
+        match gid with
+        | FreeID(tvid) -> Tyvarid.get_kind tvid
+        | BoundID(bid) -> Boundid.get_kind bid
+      in
+        show_type_variable f res kd
     end
 
 
-let find_type_variable (f : mono_type -> string) (tvid : Tyvarid.t) =
-  let rec aux (lst : (Tyvarid.t * string) list) =
+let find_type_variable (f : mono_type -> string) (gid : general_id) =
+  let rec aux_free (tvid : Tyvarid.t) (lst : (general_id * string) list) =
     match lst with
-    | []                                     -> raise Not_found
-    | (k, v) :: tail  when Tyvarid.eq k tvid -> show_type_variable f v (Tyvarid.get_kind k)
-    | _ :: tail                              -> aux tail
+    | []                                             -> raise Not_found
+    | (FreeID(k), v) :: tail  when Tyvarid.eq k tvid -> show_type_variable f v (Tyvarid.get_kind k)
+    | _ :: tail                                      -> aux_free tvid tail
   in
-    aux (!type_variable_name_list)
+  let rec aux_bound (bid : Boundid.t) lst =
+    match lst with
+    | []                                             -> raise Not_found
+    | (BoundID(k), v) :: tail  when Boundid.eq k bid -> show_type_variable f v (Boundid.get_kind k)
+    | _ :: tail                                      -> aux_bound bid tail
+  in
+    match gid with
+    | FreeID(tvid) -> aux_free tvid (!type_variable_name_list)
+    | BoundID(bid) -> aux_bound bid (!type_variable_name_list)
 
 
 let rec string_of_mono_type_sub (varntenv : Variantenv.t) (ty : mono_type) =
@@ -69,16 +86,18 @@ let rec string_of_mono_type_sub (varntenv : Variantenv.t) (ty : mono_type) =
       begin
         match !tvref with
         | Link(tyl)  -> iter tyl
-        | Bound(bid) -> "'#" (* temporary *)
+        | Bound(bid) ->
+            "'#" ^
+            begin
+              try find_type_variable iter (BoundID(bid)) with
+              | Not_found -> new_type_variable_name iter (BoundID(bid))
+            end
+
         | Free(tvid) ->
             ( if Tyvarid.is_quantifiable tvid then "'" else "'_") ^
             begin
-              try find_type_variable iter tvid with
-              | Not_found ->
-                  begin
-                    try new_type_variable_name iter tvid with
-                    | Not_found -> failwith ("type variable id '" ^ (Tyvarid.show_direct tvid) ^ " not found in kind environment")
-                  end
+              try find_type_variable iter (FreeID(tvid)) with
+              | Not_found -> new_type_variable_name iter (FreeID(tvid))
             end
       end
   | StringType                      -> "string"
@@ -124,38 +143,39 @@ let rec string_of_mono_type_sub (varntenv : Variantenv.t) (ty : mono_type) =
 and string_of_type_argument_list varntenv tyarglist =
   let iter = string_of_mono_type_sub varntenv in
   let iter_args = string_of_type_argument_list varntenv in
-  match tyarglist with
-  | []           -> ""
-  | head :: tail ->
-      let strhd = iter head in
-      let strtl = iter_args tail in
-      let (_, headmain) = head in
-        begin
-          match headmain with
-          | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
-            | ListType(_) | RefType(_) | VariantType(_ :: _, _) )         -> "(" ^ strhd ^ ")"
-          | _                                                             -> strhd
-        end ^ " " ^ strtl
+    match tyarglist with
+    | []           -> ""
+    | head :: tail ->
+        let strhd = iter head in
+        let strtl = iter_args tail in
+        let (_, headmain) = head in
+          begin
+            match headmain with
+            | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
+              | ListType(_) | RefType(_) | VariantType(_ :: _, _) )         -> "(" ^ strhd ^ ")"
+            | _                                                             -> strhd
+          end ^ " " ^ strtl
+
 
 and string_of_mono_type_list varntenv tylist =
   let iter = string_of_mono_type_sub varntenv in
   let iter_list = string_of_mono_type_list varntenv in
-  match tylist with
-  | []           -> ""
-  | head :: tail ->
-      let strhead = iter head in
-      let strtail = iter_list tail in
-      let (_, headmain) = head in
-      begin
-        match headmain with
-        | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
-        | _                                   -> strhead
-      end ^
-      begin
-        match tail with
-        | [] -> ""
-        | _  -> " * " ^ strtail
-      end
+    match tylist with
+    | []           -> ""
+    | head :: tail ->
+        let strhead = iter head in
+        let strtail = iter_list tail in
+        let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
+          | _                                   -> strhead
+        end ^
+        begin
+          match tail with
+          | [] -> ""
+          | _  -> " * " ^ strtail
+        end
 
 
 let string_of_mono_type (varntenv : Variantenv.t) (ty : mono_type) =
@@ -178,20 +198,7 @@ let string_of_mono_type_double (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 
 
 let string_of_poly_type (varntenv : Variantenv.t) (Poly(ty) : poly_type) =
   string_of_mono_type varntenv ty (* temporary *)
-(*
-  let rec aux pty =
-    match pty with
-    | Mono(ty)                 -> string_of_mono_type_sub varntenv kdenv ty
-    | Forall(tvid, kd, ptysub) ->
-        let s = new_unbound_type_variable_name (string_of_mono_type varntenv kdenv) tvid kd in
-          "(forall " ^ s ^ ". " ^ (aux ptysub) ^ ")"
-  in
-  begin
-    type_variable_name_max := 0 ;
-    type_variable_name_list := [] ;
-    aux pty
-  end
-*)
+
 
 (* -- following are all for debug -- *)
 
@@ -363,7 +370,7 @@ let rec string_of_mono_type_basic tystr =
           match !tvref with
           | Link(tyl)  -> string_of_mono_type_basic tyl
           | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-          | Bound(bid) -> "'#" (* temporary *)
+          | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
         end
 
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
