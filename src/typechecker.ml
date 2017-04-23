@@ -10,9 +10,9 @@ exception InternalContradictionError
 
 
 let print_for_debug_typecheck msg =
-
+(*
   print_string msg ;
-
+*)
   ()
 
 
@@ -82,7 +82,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (_, TypeVariable({contents= Link(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
 
     | ( (TypeVariable({contents= Bound(_)}), _)
-      | (_, TypeVariable({contents= Bound(_)})) ) -> assert false
+      | (_, TypeVariable({contents= Bound(_)})) ) ->
+          failwith ("unify_sub: bound type variable in " ^ (Display.string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (Display.string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
 
     | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
         if Tyvarid.eq tvid1 tvid2 then

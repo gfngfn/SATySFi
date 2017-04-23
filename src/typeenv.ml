@@ -76,7 +76,9 @@ let generalize (ty : mono_type) (tyenv_before : t) =
                 if find_in_type_environment tvid tyenv_before then
                   ty
                 else
-                  let bid = Boundid.fresh (Tyvarid.get_kind tvid) () in
+                  let kd = Tyvarid.get_kind tvid in
+                  let kdgen = generalize_kind kd in
+                  let bid = Boundid.fresh kdgen () in
                   begin
                     tvref := Bound(bid) ;
                     ty
@@ -86,7 +88,7 @@ let generalize (ty : mono_type) (tyenv_before : t) =
         end
     | FuncType(tydom, tycod)    -> (rng, FuncType(iter tydom, iter tycod))
     | ProductType(tylist)       -> (rng, ProductType(List.map iter tylist))
-    | RecordType(asc)           -> (rng, RecordType(Assoc.map_value iter asc))
+    | RecordType(tyasc)         -> (rng, RecordType(Assoc.map_value iter tyasc))
     | VariantType(tylist, tyid) -> (rng, VariantType(List.map iter tylist, tyid))
     | ListType(tysub)           -> (rng, ListType(iter tysub))
     | RefType(tysub)            -> (rng, RefType(iter tysub))
@@ -94,6 +96,11 @@ let generalize (ty : mono_type) (tyenv_before : t) =
       | IntType
       | BoolType
       | StringType ) -> ty
+
+  and generalize_kind kd =
+    match kd with
+    | UniversalKind     -> UniversalKind
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
   in
     Poly(iter ty)
 

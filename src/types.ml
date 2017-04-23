@@ -465,7 +465,9 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
                     (rng, TypeVariable(tvrefnew))
                 with
                 | Not_found ->
-                    let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
+                    let kd = Boundid.get_kind bid in
+                    let kdfree = instantiate_kind kd in
+                    let tvid = Tyvarid.fresh kdfree qtfbl () in
                     let tvrefnew = ref (Free(tvid)) in
                     begin
                       BoundidHashtbl.add current_ht bid tvrefnew ;
@@ -483,6 +485,11 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
       | BoolType
       | IntType
       | StringType ) -> ty
+
+  and instantiate_kind kd =
+    match kd with
+    | UniversalKind     -> UniversalKind
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value aux tyasc)
   in
     aux ty
 
