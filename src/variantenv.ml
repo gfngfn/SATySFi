@@ -254,13 +254,14 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
 : sig
     type state = Remained | Touched | Done
     type vertex
-    type t
+    type 'a t
     exception UndefinedSourceVertex
     exception UndefinedDestinationVertex
-    val create : int -> t
-    val add_vertex : t -> vertex -> unit
-    val add_edge : t -> vertex -> vertex -> unit
-    val find_cycle : t -> (vertex list) option
+    val create : int -> 'a t
+    val add_vertex : 'a t -> vertex -> 'a -> unit
+    val find_vertex : 'a t -> vertex -> 'a
+    val add_edge : 'a t -> vertex -> vertex -> unit
+    val find_cycle : 'a t -> (vertex list) option
   end
 = struct
 
@@ -279,33 +280,41 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
         let compare = Vertex.compare
       end)
 
-    type t = (vertex, state ref * (DestSet.t) ref) Hashtbl.t
+    type 'a t = (vertex, 'a * state ref * (DestSet.t) ref) Hashtbl.t
 
 
     let create initsize = Hashtbl.create initsize
 
 
-    let add_vertex dg v =
-      if Hashtbl.mem dg v then () else
-        Hashtbl.add dg v (ref Remained, ref DestSet.empty)
+    let add_vertex dg vtx label =
+      if Hashtbl.mem dg vtx then () else
+        Hashtbl.add dg vtx (label, ref Remained, ref DestSet.empty)
 
 
-    let add_edge dg v1 v2 =
-      if not (Hashtbl.mem dg v2) then
+    let find_vertex dg vtx =
+      try
+        let (label, _, _) = Hashtbl.find dg vtx in
+          label
+      with
+      | Not_found -> raise UndefinedSourceVertex
+
+
+    let add_edge dg vtx1 vtx2 =
+      if not (Hashtbl.mem dg vtx2) then
         raise UndefinedDestinationVertex
       else
-        let (_, destsetref) =
-          try Hashtbl.find dg v1 with
+        let (_, _, destsetref) =
+          try Hashtbl.find dg vtx1 with
           | Not_found -> raise UndefinedSourceVertex
         in
-          if DestSet.mem v2 (!destsetref) then () else
-            destsetref := DestSet.add v2 (!destsetref)
+          if DestSet.mem vtx2 (!destsetref) then () else
+            destsetref := DestSet.add vtx2 (!destsetref)
 
 
     let find_cycle dg =
-      let rec aux v1 =
+      let rec aux vtx1 =
         try
-          let (sttref, destsetref) = Hashtbl.find dg v1 in
+          let (_, sttref, destsetref) = Hashtbl.find dg vtx1 in
             match !sttref with
             | Done     -> ()
             | Touched  -> raise Cyclic
@@ -320,9 +329,9 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
       in
         try
           begin
-            Hashtbl.iter (fun v1 (sttref, _) ->
+            Hashtbl.iter (fun vtx1 (_, sttref, _) ->
               match !sttref with
-              | Remained -> aux v1
+              | Remained -> aux vtx1
               | _        -> ()
             ) dg ;
             None
@@ -330,9 +339,9 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
         with
         | Cyclic ->
             let cycle =
-              Hashtbl.fold (fun v1 (sttref, _) lst ->
+              Hashtbl.fold (fun vtx1 (_, sttref, _) lst ->
                 match !sttref with
-                | Touched -> v1 :: lst
+                | Touched -> vtx1 :: lst
                 | _       -> lst
               ) dg []
             in
@@ -350,6 +359,16 @@ module DependencyGraph = DirectedGraph(
 
 (* PUBLIC *)
 let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+(*
+  let dg = DependencyGraph.create 32 in
+  let rec register_each_type_name mutvarntcons =
+    match mutvarntcons with
+    | UTEndOfMutualVariant -> ()
+    | UTMutualVariantCons(tyargcons, tynm, _, tailcons) -> read_synonym_spec varntenv tailcons
+    | UTMutualSynonymCons(tyargcons, tynm, _, tailcons) ->
+  in
+    register_each_type_name mutvarntcons 
+*)
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
   let varntenv_syn = read_synonym_spec varntenv_mem mutvarntcons in
   let varntenv_fin = read_variant_spec varntenv_syn mutvarntcons in
