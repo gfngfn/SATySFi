@@ -1,6 +1,8 @@
 open Types
 open Typeenv
 
+exception InclusionError       of Variantenv.t * mono_type * mono_type
+exception ContradictionError   of Variantenv.t * mono_type * mono_type
 exception UndefinedVariable    of Range.t * var_name
 exception UndefinedConstructor of Range.t * var_name
 

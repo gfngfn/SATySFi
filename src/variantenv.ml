@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-(*
+
   print_endline msg ;
-*)
+
   ()
 
 
@@ -400,8 +400,8 @@ let rec add_variant_cons (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (
           let varntenvnew = add varntenv constrnm paramlist ty varntnm in
             aux varntenvnew tyargcons tailcons
   in
-  let tyarglen = type_argument_length tyargcons in
-  let varntenvreg = register_variant_type dg varntenv tyarglen varntnm in
+  let len = type_argument_length tyargcons in
+  let varntenvreg = register_variant_type dg varntenv len varntnm in
     aux varntenvreg tyargcons utvc
 
 
@@ -436,37 +436,34 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
         end
   in
 
-  let rec add_dependency_of_each_synonym_type varntenv mutvarntcons =
-    let iter = add_dependency_of_each_synonym_type in
+  let rec add_dependency_and_each_synonym_type varntenv mutvarntcons =
+    let iter = add_dependency_and_each_synonym_type in
     match mutvarntcons with
-    | UTEndOfMutualVariant -> varntenv
+    | UTEndOfMutualVariant                                 -> varntenv
     | UTMutualVariantCons(tyargcons, tynm, utvc, tailcons) -> iter varntenv tailcons
-        (* fix_manual_type (DependentMode(VariantMode, tynm, dg)) varntenv tyargcons *)
     | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
         let (_, ty) = fix_manual_type (DependentMode(SynonymMode, tynm, dg)) varntenv tyargcons mnty in
         let len = type_argument_length tyargcons in
         let varntenvnew = register_synonym_type dg varntenv tynm len ty in
           iter varntenvnew tailcons
   in
+  let rec add_each_variant_type varntenv mutvarntcons =
+    let iter = add_each_variant_type in
+      match mutvarntcons with
+      | UTEndOfMutualVariant                                     -> varntenv
+      | UTMutualSynonymCons(_, _, _, tailcons)                   -> iter varntenv tailcons
+      | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
+          let varntenvnew = add_variant_cons dg varntenv tyargcons varntnm utvc in
+            iter varntenvnew tailcons
+  in
   begin
     register_each_type_name mutvarntcons ;
-    let varntenvnew = add_dependency_of_each_synonym_type varntenv mutvarntcons in
+    let varntenvnew = add_dependency_and_each_synonym_type varntenv mutvarntcons in
     let cycleopt = DependencyGraph.find_cycle dg in
       match cycleopt with
       | Some(lst) -> raise (CyclicTypeDefinition(lst))
-      | None      ->
-          let varntenv_fin = read_variant_spec dg varntenvnew mutvarntcons in
-            varntenv_fin
+      | None      -> add_each_variant_type varntenvnew mutvarntcons
   end
-
-
-and read_variant_spec dg (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-    match mutvarntcons with
-    | UTEndOfMutualVariant                                     -> varntenv
-    | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
-        let varntenvnew = add_variant_cons dg varntenv tyargcons varntnm utvc in
-          read_variant_spec dg varntenvnew tailcons
-    | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec dg varntenv tailcons
 
 
 (* PUBLIC *)

@@ -10,9 +10,9 @@ exception InternalContradictionError
 
 
 let print_for_debug_typecheck msg =
-(*
+
   print_string msg ;
-*)
+
   ()
 
 
@@ -210,6 +210,7 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) ((rng, uta
       begin
         try
           let (tyid, typaramlist, tyc) = Variantenv.find varntenv constrnm in
+          let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " >> " ^ (Variantenv.find_type_name varntenv tyid) ^ "\n") in (* for debug *)
           let (e1, ty1) = typecheck_iter tyenv utast1 in
           let () = unify ty1 tyc in
           let tyarglist = List.map (fun tvref -> (Range.dummy "tc-constructor", TypeVariable(tvref))) typaramlist in
