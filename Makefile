@@ -15,6 +15,9 @@ src/types.cmo: $(SRCS)
 $(TARGET): $(SRCS)
 	ocamlopt -I src -o $(TARGET) $^
 
+debug: $(SRCS)
+	ocamlopt -g -I src -o $(TARGET) -c $^
+
 clean:
 	rm -f $(TARGET) src/lexer.ml src/parser.mli src/parser.ml src/*.cmi src/*.cmo src/*.cmx src/*.o
 

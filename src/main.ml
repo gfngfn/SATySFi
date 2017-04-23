@@ -128,25 +128,9 @@ let read_document_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_na
   end
 
 
-let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
+let error_log_environment suspended =
   try
-    match file_name_in_list with
-    | [] ->
-        begin
-          print_endline " ---- ---- ---- ----" ;
-          print_endline "  no output."
-        end
-    | file_name_in :: tail  when is_document_file file_name_in ->
-          read_document_file varntenv tyenv env file_name_in file_name_out
-
-    | file_name_in :: tail  when is_header_file file_name_in ->
-          let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
-            main newvarntenv newtyenv newenv tail file_name_out
-
-    | file_name_in :: tail  when is_standalone_file file_name_in ->
-          read_standalone_file varntenv tyenv env file_name_in file_name_out
-
-    | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
+    suspended ()
   with
   | Lexer.LexError(s)               -> report_error "Lexer" [ NormalLine(s); ]
   | Parsing.Parse_error             -> report_error "Parser" [ NormalLine("something is wrong."); ]
@@ -182,10 +166,10 @@ let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
-(*
-  | Subst.ContradictionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv kdenv ty1 in
-      let strty2 = string_of_mono_type varntenv kdenv ty2 in
+
+  | Typechecker.ContradictionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv ty1 in
+      let strty2 = string_of_mono_type varntenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -204,9 +188,9 @@ let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (
           DisplayLine(strtyB ^ ".");
         ] additional)
 
-  | Subst.InclusionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv kdenv ty1 in
-      let strty2 = string_of_mono_type varntenv kdenv ty2 in
+  | Typechecker.InclusionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv ty1 in
+      let strty2 = string_of_mono_type varntenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -225,11 +209,33 @@ let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (
           DisplayLine(strtyB);
           NormalLine("at the same time, but these are incompatible.");
         ] additional)
-*)
+
   | Evaluator.EvalError(s)          -> report_error "Evaluator" [ NormalLine(s); ]
   | Out.IllegalOut(s)               -> report_error "Output" [ NormalLine(s); ]
   | MainError(s)                    -> report_error "Toplevel" [ NormalLine(s); ]
   | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
+
+
+let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
+  error_log_environment (fun () ->
+    match file_name_in_list with
+    | [] ->
+        begin
+          print_endline " ---- ---- ---- ----" ;
+          print_endline "  no output."
+        end
+    | file_name_in :: tail  when is_document_file file_name_in ->
+          read_document_file varntenv tyenv env file_name_in file_name_out
+
+    | file_name_in :: tail  when is_header_file file_name_in ->
+          let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
+            main newvarntenv newtyenv newenv tail file_name_out
+
+    | file_name_in :: tail  when is_standalone_file file_name_in ->
+          read_standalone_file varntenv tyenv env file_name_in file_name_out
+
+    | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
+  )
 
 
 let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =

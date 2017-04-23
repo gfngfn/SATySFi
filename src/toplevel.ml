@@ -12,6 +12,8 @@
 #load "out.cmo";;
 #load "evaluator.cmo";;
 #load "primitives.cmo";;
+#load "files.cmo";;
+#load "main.cmo";;
 let varntenv = Primitives.make_variant_environment ();;
 let tyenv    = Primitives.make_type_environment ();;
 let env      = Primitives.make_environment ();;
@@ -28,13 +30,22 @@ let tcraw s =
 ;;
 
 let tc s v =
-  let (tyres, _, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
-    Display.string_of_poly_type varntenv (Typeenv.find tyenvres v)
+  Main.error_log_environment (fun () ->
+    let (tyres, _, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+    try
+      let pty = Typeenv.find tyenvres v in
+      print_endline ("TYPE = " ^ (Display.string_of_poly_type varntenv pty))
+    with
+    | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ v ^ "' not found.")
+  )
 ;;
 
 let tcb s v =
-  let (tyres, _, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
-    Display.string_of_poly_type_basic (Typeenv.find tyenvres v)
+  Main.error_log_environment (fun () ->
+    init () ;
+    let (tyres, _, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+      print_endline (Display.string_of_poly_type_basic (Typeenv.find tyenvres v))
+  )
 ;;
 
 let eval s =
