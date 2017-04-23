@@ -89,12 +89,12 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
     let create initsize = Hashtbl.create initsize
 
 
-    let add_vertex dg vtx label =
+    let add_vertex (dg : 'a t) (vtx : vertex) (label : 'a) =
       if Hashtbl.mem dg vtx then () else
         Hashtbl.add dg vtx (label, ref Remained, ref DestSet.empty)
 
 
-    let find_vertex dg vtx =
+    let find_vertex (dg : 'a t) (vtx : vertex) =
       try
         let (label, _, _) = Hashtbl.find dg vtx in
           label
@@ -102,7 +102,7 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
       | Not_found -> raise UndefinedSourceVertex
 
 
-    let add_edge dg vtx1 vtx2 =
+    let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =
       if not (Hashtbl.mem dg vtx2) then
         raise UndefinedDestinationVertex
       else
@@ -114,7 +114,7 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
             destsetref := DestSet.add vtx2 (!destsetref)
 
 
-    let find_cycle dg =
+    let find_cycle (dg : 'a t) =
       let rec aux vtx1 =
         try
           let (_, sttref, destsetref) = Hashtbl.find dg vtx1 in
@@ -458,17 +458,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
           let varntenv_fin = read_variant_spec dg varntenvnew mutvarntcons in
             varntenv_fin
   end
-(*  let varntenv_syn = read_synonym_spec dg varntenv mutvarntcons in *)
 
-(*
-and read_synonym_spec dg (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-    match mutvarntcons with
-    | UTEndOfMutualVariant                                    -> varntenv
-    | UTMutualVariantCons(_, _, _, tailcons)                  -> read_synonym_spec dg varntenv tailcons
-    | UTMutualSynonymCons(tyargcons, tysynnm, mnty, tailcons) ->
-        let varntenv_new = register_synonym_type dg varntenv tyargcons tysynnm mnty in
-          read_synonym_spec dg varntenv_new tailcons
-*)
 
 and read_variant_spec dg (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
     match mutvarntcons with
@@ -478,37 +468,6 @@ and read_variant_spec dg (varntenv : t) (mutvarntcons : untyped_mutual_variant_c
           read_variant_spec dg varntenvnew tailcons
     | UTMutualSynonymCons(_, _, _, tailcons)                   -> read_variant_spec dg varntenv tailcons
 
-(*
-(* PUBLIC *)
-and add_mutual_cons_hidden (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  memo_all_name mdlnm varntenv mutvarntcons
-
-
-and memo_variant_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  match mutvarntcons with
-  | UTEndOfMutualVariant                                 -> varntenv
-  | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
-      let mdlvarntnm = append_module_name mdlnm varntnm in
-      let tyarglen = type_argument_length tyargcons in
-      let varntenvnew = register_variant_type dg varntenv tyarglen mdlvarntnm in
-        memo_variant_name mdlnm varntenvnew tailcons
-  | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) -> memo_variant_name mdlnm varntenv tailcons
-
-
-and memo_all_name (mdlnm : module_name) (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
-  match mutvarntcons with
-  | UTEndOfMutualVariant                                 -> varntenv
-  | UTMutualVariantCons(tyargcons, varntnm, _, tailcons) ->
-      let mdlvarntnm = append_module_name mdlnm varntnm in
-      let tyarglen   = type_argument_length tyargcons in
-      let varntenv_new = register_variant_type varntenv tyarglen mdlvarntnm in
-        memo_all_name mdlnm varntenv_new tailcons
-  | UTMutualSynonymCons(tyargcons, tysynnm, _, tailcons) ->
-      let mdltysynnm = append_module_name mdlnm tysynnm in
-      let tyarglen   = type_argument_length tyargcons in
-      let varntenv_new = register_variant_type varntenv tyarglen mdltysynnm in
-        memo_all_name mdlnm varntenv_new tailcons
-*)
 
 (* PUBLIC *)
 let rec find (varntenv : t) (constrnm : constructor_name) =
