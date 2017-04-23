@@ -265,11 +265,6 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
   end
 = struct
 
-    exception Cyclic
-    exception UndefinedSourceVertex
-    exception UndefinedDestinationVertex
-
-
     type state = Remained | Touched | Done
 
     type vertex = Vertex.t
@@ -281,6 +276,12 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
       end)
 
     type 'a t = (vertex, 'a * state ref * (DestSet.t) ref) Hashtbl.t
+
+
+    exception Cyclic
+    exception Loop of vertex
+    exception UndefinedSourceVertex
+    exception UndefinedDestinationVertex
 
 
     let create initsize = Hashtbl.create initsize
@@ -329,14 +330,23 @@ module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
       in
         try
           begin
-            Hashtbl.iter (fun vtx1 (_, sttref, _) ->
-              match !sttref with
-              | Remained -> aux vtx1
-              | _        -> ()
+            Hashtbl.iter (fun vtx1 (_, sttref, destsetref) ->
+              begin
+                begin
+                  if DestSet.mem vtx1 (!destsetref) then
+                    raise (Loop(vtx1))
+                  else
+                    ()
+                end ;
+                match !sttref with
+                | Remained -> aux vtx1
+                | _        -> ()
+              end
             ) dg ;
             None
           end
         with
+        | Loop(vtx) -> Some([vtx])
         | Cyclic ->
             let cycle =
               Hashtbl.fold (fun vtx1 (_, sttref, _) lst ->
@@ -364,10 +374,15 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
   let rec register_each_type_name mutvarntcons =
     match mutvarntcons with
     | UTEndOfMutualVariant -> ()
-    | UTMutualVariantCons(tyargcons, tynm, _, tailcons) -> read_synonym_spec varntenv tailcons
-    | UTMutualSynonymCons(tyargcons, tynm, _, tailcons) ->
+    | UTMutualVariantCons(tyargcons, tynm, _, tailcons) -> DependencyGraph.add_vertex tynm (type_argument_length tyargcons)
+    | UTMutualSynonymCons(tyargcons, tynm, _, tailcons) -> DependencyGraph.add_vertex tynm (type_argument_length tyargcons)
   in
-    register_each_type_name mutvarntcons 
+  let rec add_dependency mutvarntcons =
+    match mutvarntcons with
+    | UTEndOfMutualVariant -> ()
+    | UTMutualVariantCons
+  begin
+    register_each_type_name mutvarntcons ;
 *)
   let varntenv_mem = memo_variant_name "" varntenv mutvarntcons in
   let varntenv_syn = read_synonym_spec varntenv_mem mutvarntcons in
