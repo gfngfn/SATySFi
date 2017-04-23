@@ -190,7 +190,7 @@ let fix_manual_type (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnt
 
 
 (* PUBLIC *)
-let fix_manual_type_for_inner_and_outer qtfbl (varntenv : t) (mnty : manual_type) =
+let fix_manual_type_for_inner_and_outer (qtfbl : quantifiability) (varntenv : t) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
   let tyin  = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
   let tyout = fix_manual_type_general varntenv (FreeMode(tyargmaplist)) mnty in
@@ -248,6 +248,104 @@ let rec add_variant_cons (mdlnm : module_name) (varntenv : t)
   let tyarglen = type_argument_length tyargcons in
   let varntenvreg = register_variant_type varntenv tyarglen mdlvarntnm in
     aux varntenvreg tyargcons utvc
+
+
+module DirectedGraph (Vertex : sig type t val compare : t -> t -> int end)
+: sig
+    type state = Remained | Touched | Done
+    type vertex
+    type t
+    exception UndefinedSourceVertex
+    exception UndefinedDestinationVertex
+    val create : int -> t
+    val add_vertex : t -> vertex -> unit
+    val add_edge : t -> vertex -> vertex -> unit
+    val find_cycle : t -> (vertex list) option
+  end
+= struct
+
+    exception Cyclic
+    exception UndefinedSourceVertex
+    exception UndefinedDestinationVertex
+
+
+    type state = Remained | Touched | Done
+
+    type vertex = Vertex.t
+
+    module DestSet = Set.Make(
+      struct
+        type t = vertex
+        let compare = Vertex.compare
+      end)
+
+    type t = (vertex, state ref * (DestSet.t) ref) Hashtbl.t
+
+
+    let create initsize = Hashtbl.create initsize
+
+
+    let add_vertex dg v =
+      if Hashtbl.mem dg v then () else
+        Hashtbl.add dg v (ref Remained, ref DestSet.empty)
+
+
+    let add_edge dg v1 v2 =
+      if not (Hashtbl.mem dg v2) then
+        raise UndefinedDestinationVertex
+      else
+        let (_, destsetref) =
+          try Hashtbl.find dg v1 with
+          | Not_found -> raise UndefinedSourceVertex
+        in
+          if DestSet.mem v2 (!destsetref) then () else
+            destsetref := DestSet.add v2 (!destsetref)
+
+
+    let find_cycle dg =
+      let rec aux v1 =
+        try
+          let (sttref, destsetref) = Hashtbl.find dg v1 in
+            match !sttref with
+            | Done     -> ()
+            | Touched  -> raise Cyclic
+            | Remained ->
+                begin
+                  sttref := Touched ;
+                  DestSet.iter aux (!destsetref) ;
+                  sttref := Done ;
+                end
+        with
+        | Not_found -> assert false
+      in
+        try
+          begin
+            Hashtbl.iter (fun v1 (sttref, _) ->
+              match !sttref with
+              | Remained -> aux v1
+              | _        -> ()
+            ) dg ;
+            None
+          end
+        with
+        | Cyclic ->
+            let cycle =
+              Hashtbl.fold (fun v1 (sttref, _) lst ->
+                match !sttref with
+                | Touched -> v1 :: lst
+                | _       -> lst
+              ) dg []
+            in
+              Some(cycle)
+
+  end
+
+
+module DependencyGraph = DirectedGraph(
+  struct
+    type t = type_name
+    let compare = compare
+  end)
 
 
 (* PUBLIC *)
