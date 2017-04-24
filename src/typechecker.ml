@@ -257,8 +257,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) ((rng, uta
           (LambdaAbstract(varnm, e1), (rng, FuncType(tydom, tycod)))
 
   | UTLetIn(utmutletcons, utast2) ->
-      let (tyenv_forall, _, mutletcons) = make_type_environment_by_let qtfbl varntenv tyenv utmutletcons in
-      let (e2, ty2) = typecheck_iter tyenv_forall utast2 in
+      let (tyenvnew, _, mutletcons) = make_type_environment_by_let qtfbl varntenv tyenv utmutletcons in
+      let (e2, ty2) = typecheck_iter tyenvnew utast2 in
         (LetIn(mutletcons, e2), ty2)
 
   | UTIfThenElse(utastB, utast1, utast2) ->
