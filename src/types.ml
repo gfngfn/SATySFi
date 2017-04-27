@@ -125,7 +125,7 @@ and mono_type_main =
   | RefType      of mono_type
   | ProductType  of mono_type list
   | TypeVariable of type_variable_info ref
-(*  | TypeSynonym  of (mono_type list) * Typeid.t * poly_type *) (* temporary *)
+  | SynonymType  of (mono_type list) * Typeid.t * mono_type
   | VariantType  of (mono_type list) * Typeid.t
   | RecordType   of (field_name, mono_type) Assoc.t
 
@@ -426,10 +426,10 @@ let rec erase_range_of_type ((_, tymain) : mono_type) =
     match tymain with
     | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
     | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
+    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
+    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
-(*    | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, (* poly_extend erase_range_of_type pty*) pty) *) (* temporary *)
     | _                                 -> tymain
   in
     (Range.dummy "erased", newtymain)
@@ -475,12 +475,13 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
                     end
               end
         end
-    | FuncType(tydom, tycod)    -> (rng, FuncType(aux tydom, aux tycod))
-    | ProductType(tylist)       -> (rng, ProductType(List.map aux tylist))
-    | RecordType(tyasc)         -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | VariantType(tylist, tyid) -> (rng, VariantType(List.map aux tylist, tyid))
-    | ListType(tysub)           -> (rng, ListType(aux tysub))
-    | RefType(tysub)            -> (rng, RefType(aux tysub))
+    | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(aux tysub))
+    | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | ( UnitType
       | BoolType
       | IntType

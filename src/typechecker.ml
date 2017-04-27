@@ -27,22 +27,26 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) =
         | Free(tvidx) -> Tyvarid.eq tvidx tvid
         | Bound(_)    -> false
       end
-  | FuncType(tydom, tycod) -> iter tydom || iter tycod
-  | ProductType(tylist)    -> iter_list tylist
-  | ListType(tysub)        -> iter tysub
-  | RefType(tysub)         -> iter tysub
-  | VariantType(tylist, _) -> iter_list tylist
-(*  | TypeSynonym(lst, _, pty)  -> iter_list lst || iter_poly pty *)
-  | RecordType(tyasc)      -> iter_list (Assoc.to_value_list tyasc)
+  | FuncType(tydom, tycod)         -> iter tydom || iter tycod
+  | ProductType(tylist)            -> iter_list tylist
+  | ListType(tysub)                -> iter tysub
+  | RefType(tysub)                 -> iter tysub
+  | VariantType(tylist, _)         -> iter_list tylist
+  | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
+  | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | ( UnitType
       | BoolType
       | IntType
-      | StringType )       -> false
+      | StringType )               -> false
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
   let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
     match (tymain1, tymain2) with
+
+    | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
+    | (_, SynonymType(_, _, tyreal2)) -> unify_sub ty1 tyreal2
+
     | ( (UnitType, UnitType)
       | (BoolType, BoolType)
       | (IntType, IntType)

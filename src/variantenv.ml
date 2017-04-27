@@ -13,7 +13,7 @@ exception UndefinedTypeArgument        of Range.t * var_name
 exception CyclicTypeDefinition         of type_name list
 
 
-type definition        = Data of int | Synonym of (* (type_variable_info ref) list *) int * mono_type
+type definition        = Data of int | Alias of (type_variable_info ref) list * poly_type
 type defined_type_list = (type_name * Typeid.t * definition) list
 type constructor_list  = (constructor_name * Typeid.t * (type_variable_info ref) list * mono_type) list
 
@@ -225,6 +225,58 @@ let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (paramlis
 let add_list = List.fold_left (fun ve (c, v, p, t) -> add ve c v p t)
 
 
+module InforefHashtbl = Hashtbl.Make(
+  struct
+    type t = type_variable_info ref
+    let equal = (==)
+    let hash = Hashtbl.hash
+  end)
+
+
+let make_real_type (tyarglist : mono_type list) (tvreflist : (type_variable_info ref) list) (Poly(ty) : poly_type) =
+  let bid_to_type_ht : mono_type InforefHashtbl.t = InforefHashtbl.create 32 in
+  let rec pre tyargs tvrefs =
+    match (tyargs, tvrefs) with
+    | ([], [])                                 -> ()
+    | (tyarg :: tyargtail, tvref :: tvreftail) ->
+        begin
+          InforefHashtbl.add bid_to_type_ht tvref tyarg ;
+          pre tyargtail tvreftail
+        end
+    | (_, _)                                   -> failwith "variantenv.ml > make_real_type > pre"
+  in
+  let rec aux (rng, tymain) =
+    let tymainres =
+      match tymain with
+      | TypeVariable({contents= Bound(_)} as tvref) ->
+          begin
+            try
+              let tysubst = InforefHashtbl.find bid_to_type_ht tvref in
+                TypeVariable(ref (Link(tysubst)))
+            with
+            | Not_found -> failwith "variantenv.ml > make_real_type > aux : bound type variable"
+          end
+      | TypeVariable(_)                   -> tymain
+      | FuncType(tydom, tycod)            -> FuncType(aux tydom, aux tycod)
+      | ProductType(tylist)               -> ProductType(List.map aux tylist)
+      | RecordType(tyasc)                 -> RecordType(Assoc.map_value aux tyasc)
+      | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map aux tylist, tyid, aux tyreal)
+      | VariantType(tylist, tyid)         -> VariantType(List.map aux tylist, tyid)
+      | ListType(tysub)                   -> ListType(aux tysub)
+      | RefType(tysub)                    -> RefType(aux tysub)
+      | ( UnitType
+        | BoolType
+        | IntType
+        | StringType ) -> tymain
+    in
+    (rng, tymainres)
+  in
+  begin
+    pre tyarglist tvreflist ;
+    aux ty
+  end
+    
+
 let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (defedtylst, varntenvmain) = varntenv in
@@ -259,11 +311,14 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
               | (tyid, Data(argnum)) ->
                   if argnum <> len then error tynm argnum len else
                     VariantType(List.map iter mntyarglist, tyid)
-(*
-              | (tyid, Synonym(argnum, pty)) ->
-                  if argnum <> len then error tynm argnum len else
-                    TypeSynonym(List.map iter mntyarglist, tyid, pty)
-*) (* temporary *)
+
+              | (tyid, Alias(tvreflist, ptyscheme)) ->
+                  let argnum = List.length tvreflist in
+                    if argnum  <> len then error tynm argnum len else
+                      let tyarglist = List.map iter mntyarglist in
+                      let tyreal = make_real_type tyarglist tvreflist ptyscheme in
+                      SynonymType(tyarglist, tyid, tyreal)
+
             with
             | Not_found -> raise (UndefinedTypeName(rng, tynm))
           in
@@ -334,7 +389,28 @@ let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyp
     | UTEndOfTypeArgument                      -> ()
     | UTTypeArgumentCons(_, tyargnm, tailcons) ->
        let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
-       begin MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ; aux tailcons end
+       begin
+         MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ;
+         aux tailcons
+       end
+  in
+  begin
+    aux tyargcons ;
+    fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
+  end
+
+
+let fix_manual_type_for_synonym (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
+  let tyargmaplist = MapList.create () in
+  let rec aux cons =
+    match cons with
+    | UTEndOfTypeArgument                      -> ()
+    | UTTypeArgumentCons(_, tyargnm, tailcons) ->
+       let bid = Boundid.fresh UniversalKind () (* temporary *) in
+       begin
+         MapList.add tyargmaplist tyargnm (ref (Bound(bid))) ;
+         aux tailcons
+       end
   in
   begin
     aux tyargcons ;
@@ -367,12 +443,12 @@ let register_variant_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) 
 
 
 let register_synonym_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (varntenv : t)
-                  (tynm : type_name) (len : int) (ty : mono_type) =
+                  (tynm : type_name) (tvreflist : (type_variable_info ref) list) (ty : mono_type) =
   let (defedtypelist, varntenvmain) = varntenv in
   print_for_debug_variantenv ("RS " ^ tynm) ; (* for debug *)
   try
     let (_, tyid, _) = DependencyGraph.find_vertex dg tynm in
-      ((tynm, tyid, Synonym(len, ty)) :: defedtypelist, varntenvmain)
+      ((tynm, tyid, Alias(tvreflist, Poly(ty))) :: defedtypelist, varntenvmain)
   with
   | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
@@ -442,9 +518,8 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
     | UTEndOfMutualVariant                                 -> varntenv
     | UTMutualVariantCons(tyargcons, tynm, utvc, tailcons) -> iter varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
-        let (_, ty) = fix_manual_type (DependentMode(SynonymMode, tynm, dg)) varntenv tyargcons mnty in
-        let len = type_argument_length tyargcons in
-        let varntenvnew = register_synonym_type dg varntenv tynm len ty in
+        let (tvreflist, ty) = fix_manual_type_for_synonym (DependentMode(SynonymMode, tynm, dg)) varntenv tyargcons mnty in
+        let varntenvnew = register_synonym_type dg varntenv tynm tvreflist ty in
           iter varntenvnew tailcons
   in
   let rec add_each_variant_type varntenv mutvarntcons =

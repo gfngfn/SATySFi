@@ -86,12 +86,13 @@ let generalize (ty : mono_type) (tyenv_before : t) =
               else
                 ty
         end
-    | FuncType(tydom, tycod)    -> (rng, FuncType(iter tydom, iter tycod))
-    | ProductType(tylist)       -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyasc)         -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | VariantType(tylist, tyid) -> (rng, VariantType(List.map iter tylist, tyid))
-    | ListType(tysub)           -> (rng, ListType(iter tysub))
-    | RefType(tysub)            -> (rng, RefType(iter tysub))
+    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(iter tysub))
+    | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | ( UnitType
       | IntType
       | BoolType

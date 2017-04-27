@@ -118,10 +118,9 @@ let rec string_of_mono_type_sub (varntenv : Variantenv.t) (current_ht : int Gene
     | UnitType   -> "unit"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
-(*
-    | TypeSynonym(tyarglist, tyid, pty) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
-                                             ^ " (= " ^ (iter (Variantenv.apply_to_type_synonym tyarglist pty)) ^ ")"
-*) (* temporary *)
+
+    | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+                                             ^ " (= " ^ (iter tyreal) ^ ")"
 
     | FuncType(tydom, tycod) ->
         let strdom = iter tydom in
@@ -343,10 +342,10 @@ let rec string_of_mono_type_basic tystr =
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
-(*
-    | TypeSynonym(tyarglist, tyid, pty) ->
-        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) (* ^ "(= " ^ (string_of_mono_type_basic tycont) ^ ")" *) (* temporary *)
-*) (* temporary *)
+
+    | SynonymType(tyarglist, tyid, tyreal) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) ^ "(= " ^ (string_of_mono_type_basic tyreal) ^ ")"
+
     | FuncType(tydom, tycod)    ->
         let strdom = string_of_mono_type_basic tydom in
         let strcod = string_of_mono_type_basic tycod in
