@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-
+(*
   print_endline msg ;
-
+*)
   ()
 
 
@@ -152,33 +152,34 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t li
   in
 
   let rec aux (rng, tymain) =
-    let () = print_for_debug_variantenv ("{aux " ^ (string_of_mono_type_basic (rng, tymain))) in (* for debug *)
-    let tymainres =
+    let () = print_for_debug_variantenv ("aux " ^ (string_of_mono_type_basic (rng, tymain))) in (* for debug *)
       match tymain with
-      | TypeVariable({contents= Bound(bid)}) ->
+      | TypeVariable(tvref) ->
           begin
-            try
-              let tvref = BoundidHashtbl.find bid_to_type_ht bid in
-              let () = print_for_debug_variantenv (match !tvref with Link(tysub) -> "access " ^ (string_of_mono_type_basic tysub) | _ -> "?") in (* for debug *)
-                TypeVariable(tvref)
-            with
-            | Not_found -> assert false
+            match !tvref with
+            | Link(tysub) -> aux tysub
+            | Free(tvid)  -> (rng, tymain)
+            | Bound(bid)  ->
+                begin
+                  try
+                    let tvrefsubst = BoundidHashtbl.find bid_to_type_ht bid in
+                      (rng, TypeVariable(tvrefsubst))
+                  with
+                  | Not_found -> assert false
+                end
           end
-      | TypeVariable(_)                   -> let () = print_for_debug_variantenv "!" in (* for debug *) tymain
-      | FuncType(tydom, tycod)            -> FuncType(aux tydom, aux tycod)
-      | ProductType(tylist)               -> ProductType(List.map aux tylist)
-      | RecordType(tyasc)                 -> RecordType(Assoc.map_value aux tyasc)
-      | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map aux tylist, tyid, aux tyreal)
-      | VariantType(tylist, tyid)         -> VariantType(List.map aux tylist, tyid)
-      | ListType(tysub)                   -> ListType(aux tysub)
-      | RefType(tysub)                    -> RefType(aux tysub)
+
+      | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
+      | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+      | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+      | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
+      | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+      | ListType(tysub)                   -> (rng, ListType(aux tysub))
+      | RefType(tysub)                    -> (rng, RefType(aux tysub))
       | ( UnitType
         | BoolType
         | IntType
-        | StringType ) -> tymain
-    in
-    let () = print_for_debug_variantenv ("= " ^ (string_of_mono_type_basic (rng, tymainres)) ^ "}") in (* for debug *)
-      (rng, tymainres)
+        | StringType )                    -> (rng, tymain)
   in
   begin
     pre tyarglist bidlist ;
