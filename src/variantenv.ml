@@ -11,9 +11,10 @@ exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
 exception CyclicTypeDefinition         of type_name list
+exception MultipleTypeDefinition       of type_name
 
-
-type definition        = Data of int | Alias of (type_variable_info ref) list * poly_type
+type alias             = (type_variable_info ref) list * poly_type
+type definition        = Data of int | Alias of alias
 type defined_type_list = (type_name * Typeid.t * definition) list
 type constructor_list  = (constructor_name * Typeid.t * (type_variable_info ref) list * mono_type) list
 
@@ -67,14 +68,14 @@ module InforefHashtbl = Hashtbl.Make(
   end)
 
 
-type type_mode =
-  | VariantMode
-  | SynonymMode
+type vertex_label =
+  | VariantVertex of Typeid.t * untyped_type_argument_cons * untyped_variant_cons
+  | SynonymVertex of Typeid.t * untyped_type_argument_cons * manual_type * (alias option) ref
 
 
 type dependency_mode =
   | NoDependency
-  | DependentMode of type_mode * type_name * (type_mode * Typeid.t * int) DependencyGraph.t * (mono_type list * Typeid.t) InforefHashtbl.t
+  | DependentMode of vertex_label DependencyGraph.t
 
 
 (* PUBLIC *)
@@ -133,17 +134,17 @@ let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (paramlis
 let add_list = List.fold_left (fun ve (c, v, p, t) -> add ve c v p t)
 
 
-let make_real_type (tyarglist : mono_type list) (tvreflist : (type_variable_info ref) list) (Poly(ty) : poly_type) =
-  let bid_to_type_ht : mono_type InforefHashtbl.t = InforefHashtbl.create 32 in
+let instantiate_synonym_type (tyarglist : mono_type list) (tvreflist : (type_variable_info ref) list) (Poly(ty) : poly_type) =
+  let tvref_to_type_ht : mono_type InforefHashtbl.t = InforefHashtbl.create 32 in
   let rec pre tyargs tvrefs =
     match (tyargs, tvrefs) with
     | ([], [])                                 -> ()
     | (tyarg :: tyargtail, tvref :: tvreftail) ->
         begin
-          InforefHashtbl.add bid_to_type_ht tvref tyarg ;
-          pre tyargtail tvreftail
+          InforefHashtbl.add tvref_to_type_ht tvref tyarg ;
+          pre tyargtail tvreftail ;
         end
-    | (_, _)                                   -> failwith "variantenv.ml > make_real_type > pre"
+    | (_, _)                                   -> assert false
   in
   let rec aux (rng, tymain) =
     let tymainres =
@@ -151,13 +152,13 @@ let make_real_type (tyarglist : mono_type list) (tvreflist : (type_variable_info
       | TypeVariable({contents= Bound(_)} as tvref) ->
           begin
             try
-              let tysubst = InforefHashtbl.find bid_to_type_ht tvref in
+              let tysubst = InforefHashtbl.find tvref_to_type_ht tvref in
               begin
                 tvref := Link(tysubst) ;
                 tymain
               end
             with
-            | Not_found -> failwith "variantenv.ml > make_real_type > aux : bound type variable"
+            | Not_found -> assert false
           end
       | TypeVariable(_)                   -> tymain
       | FuncType(tydom, tycod)            -> FuncType(aux tydom, aux tycod)
@@ -180,6 +181,12 @@ let make_real_type (tyarglist : mono_type list) (tvreflist : (type_variable_info
   end
     
 
+let rec type_argument_length tyargcons =
+  match tyargcons with
+  | UTEndOfTypeArgument                -> 0
+  | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
+
+
 let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (defedtylst, varntenvmain) = varntenv in
@@ -189,9 +196,9 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
     let tymainnew =
       match mntymain with
 
-      | MFuncType(mntydom, mntycod)    -> FuncType(iter mntydom, iter mntycod)
-      | MProductType(mntylist)         -> ProductType(List.map iter mntylist)
-      | MRecordType(mnasc)             -> RecordType(Assoc.map_value iter mnasc)
+      | MFuncType(mntydom, mntycod)      -> FuncType(iter mntydom, iter mntycod)
+      | MProductType(mntylist)           -> ProductType(List.map iter mntylist)
+      | MRecordType(mnasc)               -> RecordType(Assoc.map_value iter mnasc)
 
       | MTypeName([], "int")             -> IntType
       | MTypeName(mntyarglist, "int")    -> error "int" 0 (List.length mntyarglist)
@@ -208,19 +215,19 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
       | MTypeName(mntyarglist, "ref")    -> error "ref" 1 (List.length mntyarglist)
       | MTypeName(mntyarglist, tynm) ->
           let len = List.length mntyarglist in
+          let tyarglist = List.map iter mntyarglist in
           let find_in_variant_environment () =
             try
               match find_definition defedtylst tynm with
-              | (tyid, Data(argnum)) ->
-                  if argnum <> len then error tynm argnum len else
+              | (tyid, Data(lenexp)) ->
+                  if lenexp <> len then error tynm lenexp len else
                     let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ Typeid.to_string tyid) in (* for debug *)
-                    VariantType(List.map iter mntyarglist, tyid)
+                      VariantType(List.map iter mntyarglist, tyid)
 
               | (tyid, Alias(tvreflist, ptyscheme)) ->
-                  let argnum = List.length tvreflist in
-                    if argnum  <> len then error tynm argnum len else
-                      let tyarglist = List.map iter mntyarglist in
-                      let tyreal = make_real_type tyarglist tvreflist ptyscheme in
+                  let lenexp = List.length tvreflist in
+                    if lenexp <> len then error tynm lenexp len else
+                      let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
                       let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ Typeid.to_string tyid) in (* for debug *)
                         SynonymType(tyarglist, tyid, tyreal)
 
@@ -230,31 +237,24 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
           begin
             match dpmode with
             | NoDependency -> find_in_variant_environment ()
-            | DependentMode(objtymode, objtynm, dg, synonym_ht) ->
+            | DependentMode(dg) ->
                 begin
                   try
-                    let (tymode, tyid, objlen) = DependencyGraph.find_vertex dg tynm in
-                      if len <> objlen then error tynm objlen len else
-                      begin
-                        begin
-                          match objtymode with
-                          | VariantMode -> ()
-                          | SynonymMode ->
-                              let () = print_for_debug_variantenv ("AddE " ^ objtynm ^ " ----> " ^ tynm) in (* for debug*)
-                                DependencyGraph.add_edge dg objtynm tynm
-                        end ;
-                        match tymode with
-                        | VariantMode -> VariantType(List.map iter mntyarglist, tyid)
-                        | SynonymMode ->
-                            let tvid = Tyvarid.fresh UniversalKind Quantifiable () in
-                              (* -- type variable for afterward replacement -- *)
-                            let tvref = ref (Free(tvid)) in
-                            let tyarglist = List.map iter mntyarglist in
-                            begin
-                              InforefHashtbl.add synonym_ht tvref (tyarglist, tyid) ;
-                              TypeVariable(tvref)
-                            end
-                      end
+                    match DependencyGraph.find_vertex dg tynm with
+
+                    | VariantVertex(tyid, tyargcons, utvarntcons) ->
+                        let lenexp = type_argument_length tyargcons in
+                          if len <> lenexp then error tynm lenexp len else
+                            VariantType(tyarglist, tyid)
+
+                    | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(tvreflist, ptyscheme)}) ->
+                        let lenexp = type_argument_length tyargcons in
+                          if len <> lenexp then error tynm lenexp len else
+                            let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
+                              SynonymType(tyarglist, tyid, tyreal)
+
+                    | SynonymVertex(_, _, _, {contents= None}) -> assert false
+
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
                 end
@@ -312,7 +312,7 @@ let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyp
     fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
   end
 
-
+(*
 let fix_manual_type_for_synonym (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
   let rec aux cons =
@@ -329,7 +329,7 @@ let fix_manual_type_for_synonym (dpmode : dependency_mode) (varntenv : t) (tyarg
     aux tyargcons ;
     fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
   end
-
+*)
 
 (* PUBLIC *)
 let fix_manual_type_for_inner_and_outer (qtfbl : quantifiability) (varntenv : t) (mnty : manual_type) =
@@ -339,22 +339,24 @@ let fix_manual_type_for_inner_and_outer (qtfbl : quantifiability) (varntenv : t)
     (tyin, tyout)
 
 
-let rec type_argument_length tyargcons =
-  match tyargcons with
-  | UTEndOfTypeArgument                -> 0
-  | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
-
-
-let register_variant_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (varntenv : t) (len : int) (tynm : type_name) =
+let register_type (dg : vertex_label DependencyGraph.t) (varntenv : t) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in
   print_for_debug_variantenv ("RV " ^ tynm) ; (* for debug *)
   try
-    let (_, tyid, _) = DependencyGraph.find_vertex dg tynm in
-      ((tynm, tyid, Data(len)) :: defedtypelist, varntenvmain)
+    match DependencyGraph.find_vertex dg tynm with
+
+    | VariantVertex(tyid, tyargcons, _) ->
+        let len = type_argument_length tyargcons in
+          ((tynm, tyid, Data(len)) :: defedtypelist, varntenvmain)
+
+    | SynonymVertex(tyid, _, _, {contents= Some((tvreflist, ptyscheme))}) ->
+        ((tynm, tyid, Alias(tvreflist, ptyscheme)) :: defedtypelist, varntenvmain)
+
+    | SynonymVertex(_, _, _, {contents= None}) -> assert false
   with
   | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
-
+(*
 let register_synonym_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (varntenv : t)
                   (tynm : type_name) (tvreflist : (type_variable_info ref) list) (ty : mono_type) =
   let (defedtypelist, varntenvmain) = varntenv in
@@ -364,61 +366,78 @@ let register_synonym_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) 
       ((tynm, tyid, Alias(tvreflist, Poly(ty))) :: defedtypelist, varntenvmain)
   with
   | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
-
-
-let rec add_variant_cons (synonym_ht : (mono_type list * Typeid.t) InforefHashtbl.t) (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (varntenv : t)
-                           (tyargcons : untyped_type_argument_cons) (varntnm : type_name) (utvc : untyped_variant_cons) =
-
-  let rec aux varntenv tyargcons utvc =
-    let (rng, utvcmain) = utvc in
-      match utvcmain with
-      | UTEndOfVariant                          -> varntenv
-      | UTVariantCons(constrnm, mnty, tailcons) ->
-          let (paramlist, ty) = fix_manual_type (DependentMode(VariantMode, varntnm, dg, synonym_ht)) varntenv tyargcons mnty in
-          let varntenvnew = add varntenv constrnm paramlist ty varntnm in
-            aux varntenvnew tyargcons tailcons
-  in
-  let len = type_argument_length tyargcons in
-  let varntenvreg = register_variant_type dg varntenv len varntnm in
-    aux varntenvreg tyargcons utvc
+*)
 
 
 (* PUBLIC *)
 let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
 
-  let synonym_ht = InforefHashtbl.create 128 in
-
   let dg = DependencyGraph.create 32 in
 
-  let rec register_each_type_name mutvarntcons =
-    let iter = register_each_type_name in
+  let rec add_each_type_as_vertex mutvarntcons =
+    let iter = add_each_type_as_vertex in
     match mutvarntcons with
     | UTEndOfMutualVariant -> ()
-    | UTMutualVariantCons(tyargcons, tynm, _, tailcons) ->
-        let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
-        let tyid = Typeid.fresh () in
-        begin
-          DependencyGraph.add_vertex dg tynm (VariantMode, tyid, type_argument_length tyargcons) ;
-          iter tailcons
-        end
+    | UTMutualVariantCons(tyargcons, tynm, utvarntcons, tailcons) ->
+        if DependencyGraph.mem_vertex tynm dg then
+          raise (MultipleTypeDefinition(tynm))
+        else
+          let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
+          let tyid = Typeid.fresh () in
+          begin
+            DependencyGraph.add_vertex dg tynm (VariantVertex(tyid, tyargcons, utvarntcons)) ;
+            iter tailcons ;
+          end
 
-    | UTMutualSynonymCons(tyargcons, tynm, _, tailcons) ->
-        let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
-        let tyid = Typeid.fresh () in
-        begin
-          DependencyGraph.add_vertex dg tynm (SynonymMode, tyid, type_argument_length tyargcons) ;
-          iter tailcons
-        end
+    | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
+        if DependencyGraph.mem_vertex tynm dg then
+          raise (MultipleTypeDefinition(tynm))
+        else
+          let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
+          let tyid = Typeid.fresh () in
+          begin
+            DependencyGraph.add_vertex dg tynm (SynonymVertex(tyid, tyargcons, mnty, ref None)) ;
+            iter tailcons ;
+          end
   in
 
+  let rec add_each_dependency_as_edge mutvarntcons =
+    let rec add_dependency tynm1 (rng, mtymain) =
+      let iter = add_dependency tynm1 in
+        match mtymain with
+        | MTypeParam(varnm)           -> ()
+        | MFuncType(mtydom, mtycod)   -> begin iter mtydom ; iter mtycod ; end
+        | MProductType(mtylist)       -> List.iter iter mtylist
+        | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
+        | MTypeName(mtyarglist, tynm) ->
+            if DependencyGraph.mem_vertex tynm dg then
+              begin
+                DependencyGraph.add_edge dg tynm1 tynm ;
+                List.iter iter mtyarglist ;
+              end
+            else
+              ()
+    in
+    let iter = add_each_dependency_as_edge in
+      match mutvarntcons with
+      | UTEndOfMutualVariant                                -> ()
+      | UTMutualVariantCons(_, tynm, utvarntcons, tailcons) -> iter tailcons
+      | UTMutualSynonymCons(_, tynm, mnty, tailcons)        ->
+          begin
+            add_dependency tynm mnty ;
+            iter tailcons ;
+          end
+
+  in
+(*
   let rec add_dependency_and_each_synonym_type varntenv mutvarntcons =
     let iter = add_dependency_and_each_synonym_type in
     match mutvarntcons with
     | UTEndOfMutualVariant                                 -> varntenv
     | UTMutualVariantCons(tyargcons, tynm, utvc, tailcons) -> iter varntenv tailcons
     | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
-        let (tvreflist, ty) = fix_manual_type_for_synonym (DependentMode(SynonymMode, tynm, dg, synonym_ht)) varntenv tyargcons mnty in
-        let varntenvnew = register_synonym_type dg varntenv tynm tvreflist ty in
+        let (tvreflist, ty) = fix_manual_type_for_synonym (DependentMode(dg)) varntenv tyargcons mnty in
+        let varntenvnew = register_type dg varntenv tynm in
           iter varntenvnew tailcons
   in
 
@@ -428,12 +447,65 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
       | UTEndOfMutualVariant                                     -> varntenv
       | UTMutualSynonymCons(_, _, _, tailcons)                   -> iter varntenv tailcons
       | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
-          let varntenvnew = add_variant_cons synonym_ht dg varntenv tyargcons varntnm utvc in
+          let varntenvnew = add_variant_cons dg varntenv tyargcons varntnm utvc in
             iter varntenvnew tailcons
+  in
+*)
+  let check_cyclic_type_definition () =
+    let cycleopt = DependencyGraph.find_cycle dg in
+      match cycleopt with
+      | Some(lst) -> raise (CyclicTypeDefinition(lst))
+      | None      -> ()
+  in
+
+  let embody_each_synonym_type_definition () =
+    dg |> DependencyGraph.backward_bfs (fun _ label ->
+      match label with
+      | VariantVertex(_, _, _)                                               -> ()
+      | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(_)})            -> assert false
+      | SynonymVertex(tyid, tyargcons, mnty, ({contents= None} as tyoptref)) ->
+          let (tvreflist, ty) = fix_manual_type (DependentMode(dg)) varntenv tyargcons mnty in
+            tyoptref := Some((tvreflist, Poly(ty)))
+    )
+  in
+
+  let add_each_synonym_type_definition (varntenvold : t) =
+    DependencyGraph.fold_vertex (fun tynm label varntenv ->
+      match label with
+      | VariantVertex(_, _, _)                      -> varntenv
+      | SynonymVertex(_, _, _, {contents= None})    -> assert false
+      | SynonymVertex(_, _, _, {contents= Some(_)}) -> register_type dg varntenv tynm
+    ) dg varntenvold
+  in
+
+  let add_each_variant_type_definition (varntenvold : t) =
+    let rec register_each_constructor tyargcons tynm accvarntenv utvarntcons =
+      let iter = register_each_constructor tyargcons tynm in
+      let (rng, utvcmain) = utvarntcons in
+        match utvcmain with
+        | UTEndOfVariant                          -> accvarntenv
+        | UTVariantCons(constrnm, mnty, tailcons) ->
+            let (paramlist, ty) = fix_manual_type (DependentMode(dg)) accvarntenv tyargcons mnty in
+              iter (add accvarntenv constrnm paramlist ty tynm) tailcons
+    in
+      DependencyGraph.fold_vertex (fun tynm label varntenv ->
+        match label with
+        | SynonymVertex(_, _, _, _)                   -> varntenv
+        | VariantVertex(tyid, tyargcons, utvarntcons) ->
+            let varntenvreg = register_type dg varntenv tynm in
+              register_each_constructor tyargcons tynm varntenvreg utvarntcons
+      ) dg varntenvold
   in
 
   begin
-    register_each_type_name mutvarntcons ;
+    add_each_type_as_vertex mutvarntcons ;
+    add_each_dependency_as_edge mutvarntcons ;
+    check_cyclic_type_definition () ;
+    embody_each_synonym_type_definition () ;
+    let varntenvS = add_each_synonym_type_definition varntenv in
+    let varntenvV = add_each_variant_type_definition varntenvS in
+      varntenvV
+(*
     let varntenvnew = add_dependency_and_each_synonym_type varntenv mutvarntcons in
     let () =
       InforefHashtbl.iter (fun tvref (tyarglist, tyid) ->
@@ -443,14 +515,10 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
           match dfn with
           | Data(_)                     -> failwith "Data"
           | Alias(tvreflist, ptyscheme) ->
-              let tyreal = make_real_type tyarglist tvreflist ptyscheme in
+              let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
                 tvref := Link((Range.dummy "register", SynonymType(tyarglist, tyid, tyreal)))
       ) synonym_ht
-    in
-    let cycleopt = DependencyGraph.find_cycle dg in
-      match cycleopt with
-      | Some(lst) -> raise (CyclicTypeDefinition(lst))
-      | None      -> add_each_variant_type varntenvnew mutvarntcons
+*)
   end
 
 
