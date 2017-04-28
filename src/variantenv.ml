@@ -57,6 +57,7 @@ module DependencyGraph = DirectedGraph.Make(
   struct
     type t = type_name
     let compare = compare
+    let show s = s (* for debug *)
   end)
 
 
@@ -341,7 +342,7 @@ let fix_manual_type_for_inner_and_outer (qtfbl : quantifiability) (varntenv : t)
 
 let register_type (dg : vertex_label DependencyGraph.t) (varntenv : t) (tynm : type_name) =
   let (defedtypelist, varntenvmain) = varntenv in
-  print_for_debug_variantenv ("RV " ^ tynm) ; (* for debug *)
+  let () = print_for_debug_variantenv ("Register " ^ tynm) in (* for debug *)
   try
     match DependencyGraph.find_vertex dg tynm with
 
@@ -413,6 +414,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
             if DependencyGraph.mem_vertex tynm dg then
               begin
                 DependencyGraph.add_edge dg tynm1 tynm ;
+                print_for_debug_variantenv ("AddE " ^ tynm1 ^ " ---> " ^ tynm) ; (* for debug *)
                 List.iter iter mtyarglist ;
               end
             else
@@ -473,7 +475,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
     DependencyGraph.fold_vertex (fun tynm label varntenv ->
       match label with
       | VariantVertex(_, _, _)                      -> varntenv
-      | SynonymVertex(_, _, _, {contents= None})    -> assert false
+      | SynonymVertex(_, _, _, {contents= None})    -> failwith (tynm ^ " has no embodied definition")
       | SynonymVertex(_, _, _, {contents= Some(_)}) -> register_type dg varntenv tynm
     ) dg varntenvold
   in
