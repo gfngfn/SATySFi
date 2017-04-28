@@ -15,7 +15,8 @@ module type S =
     val create : int -> 'a t
     val add_vertex : 'a t -> vertex -> 'a -> unit
     val find_vertex : 'a t -> vertex -> 'a
-    val iter_vertex : (vertex -> unit) -> 'a t -> unit
+    val iter_vertex : (vertex -> 'a -> unit) -> 'a t -> unit
+    val fold_vertex : (vertex -> 'a -> 'b -> 'b) -> 'a t -> 'b -> 'b
     val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
@@ -62,8 +63,12 @@ module Make (Vertex : VertexType) =
       | Not_found -> raise UndefinedSourceVertex
 
 
-    let iter_vertex (f : vertex -> unit) (dg : 'a t) =
-      dg |> Hashtbl.iter (fun vtx _ -> f vtx)
+    let iter_vertex (f : vertex -> 'a -> unit) (dg : 'a t) =
+      dg |> Hashtbl.iter (fun vtx (label, _, _, _) -> f vtx label)
+
+
+    let fold_vertex (f : vertex -> 'a -> 'b -> 'b) (dg : 'a t) (init : 'b) =
+      Hashtbl.fold (fun vtx (label, _, _, _) acc -> f vtx label acc) dg init
 
 
     let mem_vertex (vtx : vertex) (dg : 'a t) =
