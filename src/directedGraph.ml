@@ -1,4 +1,11 @@
 
+let print_for_debug_digraph msg =
+
+  print_endline msg ;
+
+  ()
+
+
 module type VertexType =
   sig
     type t
@@ -151,19 +158,19 @@ module Make (Vertex : VertexType) =
         let rec step () =
           try
             let vtx = Queue.pop vq in
-              let () = print_endline ("pop " ^ (Vertex.show vtx)) in (* for debug *)
+              let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
             let (label, _, sttref, srcsetref, _) = get_vertex_data dg vtx in
             begin
               f vtx label ;
               sttref := Done ;
               (!srcsetref) |> VertexSet.iter (fun vtx1 ->
-                let () = print_endline ("see " ^ (Vertex.show vtx1)) in (* for debug *)
+                let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
                 let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
                   match !sttref1 with
                   | Done     -> ()
                   | Touched  -> assert false
                   | Remained ->
-                      let () = print_endline ("push " ^ (Vertex.show vtx)) in (* for debug *)
+                      let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx)) in (* for debug *)
                         Queue.push vtx1 vq
               ) ;
               step () ;
@@ -175,7 +182,7 @@ module Make (Vertex : VertexType) =
           initialize_state dg ;
           dg |> Hashtbl.iter (fun vtx (_, degref, _, _, _) ->
             if !degref = 0 then
-              let () = print_endline ("push0 " ^ (Vertex.show vtx)) in (* for debug *)
+              let () = print_for_debug_digraph ("push0 " ^ (Vertex.show vtx)) in (* for debug *)
               Queue.push vtx vq
             else ()
           ) ;
