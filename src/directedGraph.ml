@@ -16,6 +16,7 @@ module type S =
     val add_vertex : 'a t -> vertex -> 'a -> unit
     val find_vertex : 'a t -> vertex -> 'a
     val iter_vertex : (vertex -> unit) -> 'a t -> unit
+    val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
     val backward_bfs : ('a -> unit) -> 'a t -> unit
@@ -64,6 +65,10 @@ module Make (Vertex : VertexType) =
 
     let iter_vertex (f : vertex -> unit) (dg : 'a t) =
       dg |> Hashtbl.iter (fun vtx _ -> f vtx)
+
+
+    let mem_vertex (vtx : vertex) (dg : 'a t) =
+      Hashtbl.mem dg vtx
 
 
     let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =

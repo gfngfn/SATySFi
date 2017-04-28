@@ -16,6 +16,7 @@ module type S =
     val add_vertex : 'a t -> vertex -> 'a -> unit
     val find_vertex : 'a t -> vertex -> 'a
     val iter_vertex : (vertex -> unit) -> 'a t -> unit
+    val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
     val backward_bfs : ('a -> unit) -> 'a t -> unit
