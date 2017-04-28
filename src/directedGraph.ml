@@ -170,7 +170,7 @@ module Make (Vertex : VertexType) =
                   | Done     -> ()
                   | Touched  -> assert false
                   | Remained ->
-                      let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx)) in (* for debug *)
+                      let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
                         Queue.push vtx1 vq
               ) ;
               step () ;
