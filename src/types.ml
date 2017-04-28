@@ -507,3 +507,129 @@ let print_for_debug msg =
 *)
   ()
 *)
+
+
+
+(* -- following are all for debugging -- *)
+
+let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
+let string_of_kind (f : mono_type -> string) (kdstr : kind) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    match kdstr with
+    | UniversalKind   -> "U"
+    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
+let rec string_of_mono_type_basic tystr =
+  let (rng, tymain) = tystr in
+  let qstn = if Range.is_dummy rng then "?" else "" in
+    match tymain with
+    | StringType                      -> "string" ^ qstn
+    | IntType                         -> "int" ^ qstn
+    | BoolType                        -> "bool" ^ qstn
+    | UnitType                        -> "unit" ^ qstn
+
+    | VariantType(tyarglist, tyid) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
+
+    | SynonymType(tyarglist, tyid, tyreal) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
+
+    | FuncType(tydom, tycod)    ->
+        let strdom = string_of_mono_type_basic tydom in
+        let strcod = string_of_mono_type_basic tycod in
+          begin match tydom with
+          | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
+          | _                   -> strdom
+          end ^ " ->" ^ qstn ^ " " ^ strcod
+
+    | ListType(tycont)          ->
+        let strcont = string_of_mono_type_basic tycont in
+        let (_, tycontmain) = tycont in
+          begin match tycontmain with
+          | ( FuncType(_, _)
+            | ProductType(_)
+            | VariantType(_ :: _, _)
+(*            | TypeSynonym(_ :: _, _, _) *) ) -> "(" ^ strcont ^ ")"
+          | _                             -> strcont
+          end ^ " list" ^ qstn
+
+    | RefType(tycont)           ->
+        let strcont = string_of_mono_type_basic tycont in
+        let (_, tycontmain) = tycont in
+          begin match tycontmain with
+          | ( FuncType(_, _)
+            | ProductType(_)
+            | VariantType(_ :: _, _)
+(*            | TypeSynonym(_ :: _, _, _) *) ) -> "(" ^ strcont ^ ")"
+          | _                                -> strcont
+          end ^ " ref" ^ qstn
+
+    | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
+    | TypeVariable(tvref)       ->
+        begin
+          match !tvref with
+          | Link(tyl)  -> string_of_mono_type_basic tyl
+          | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
+          | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
+        end
+
+    | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
+
+
+and string_of_type_argument_list_basic tyarglist =
+  match tyarglist with
+  | []           -> ""
+  | head :: tail ->
+      let strhd = string_of_mono_type_basic head in
+      let strtl = string_of_type_argument_list_basic tail in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
+            | ListType(_) | RefType(_) | VariantType(_ :: _, _) )          -> "(" ^ strhd ^ ")"
+          | _                                                              -> strhd
+        end ^ " " ^ strtl
+
+
+and string_of_mono_type_list_basic tylist =
+  match tylist with
+  | []           -> ""
+  | head :: []   ->
+      let strhd = string_of_mono_type_basic head in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
+        end
+  | head :: tail ->
+      let strhd = string_of_mono_type_basic head in
+      let strtl = string_of_mono_type_list_basic tail in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
+        end ^ " * " ^ strtl
+
+
+and string_of_poly_type_basic (Poly(ty)) =
+  string_of_mono_type_basic ty (* temporary *)
+
+
+and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd

@@ -87,7 +87,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | ( (TypeVariable({contents= Bound(_)}), _)
       | (_, TypeVariable({contents= Bound(_)})) ) ->
-          failwith ("unify_sub: bound type variable in " ^ (Display.string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (Display.string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
+          failwith ("unify_sub: bound type variable in " ^ (string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
 
     | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
         if Tyvarid.eq tvid1 tvid2 then
@@ -201,12 +201,8 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) ((rng, uta
           let pty = Typeenv.find tyenv varnm in
           let tyfree = instantiate qtfbl pty in
           let tyres = overwrite_range_of_type tyfree rng in
-            begin                                                                                                   (* for debug *)
-              print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)              (* for debug *)
-                ^ " = " ^ (string_of_mono_type_basic tyres) ^ " ("                                                  (* for debug *)
-                                         ^ (Range.to_string rng) ^ ")\n") ;                                         (* for debug *)
+          let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")\n") in (* for debug *)
               (ContentOf(varnm), tyres)
-            end                                                                                                     (* for debug *)
         with
         | Not_found -> raise (UndefinedVariable(rng, varnm))
       end
@@ -214,11 +210,10 @@ let rec typecheck qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) ((rng, uta
   | UTConstructor(constrnm, utast1) ->
       begin
         try
-          let (tyid, typaramlist, tyc) = Variantenv.find varntenv constrnm in
-          let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " >> " ^ (Variantenv.find_type_name varntenv tyid) ^ "\n") in (* for debug *)
+          let (tyarglist, tyid, tyc) = Variantenv.find_constructor qtfbl varntenv constrnm in
+          let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Variantenv.find_type_name varntenv tyid) ^ ")\n") in (* for debug *)
           let (e1, ty1) = typecheck_iter tyenv utast1 in
           let () = unify ty1 tyc in
-          let tyarglist = List.map (fun tvref -> (Range.dummy "tc-constructor", TypeVariable(tvref))) typaramlist in
           let tyres = (rng, VariantType(tyarglist, tyid)) in
             (Constructor(constrnm, e1), tyres)
         with
@@ -588,11 +583,11 @@ and typecheck_pattern (qtfbl : quantifiability) (varntenv : Variantenv.t) (tyenv
   | UTPConstructor(constrnm, utpat1) ->
       begin
         try
-          let (varntnm, typaramlist, tyc) = Variantenv.find varntenv constrnm in
-          let tyarglist = List.map (fun tyref -> (Range.dummy "tc-p-constructor", TypeVariable(tyref))) typaramlist in
+          let (tyarglist, tyid, tyc) = Variantenv.find_constructor qtfbl varntenv constrnm in
+          let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ "\n") in (* for debug *)
           let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
           let () = unify tyc typat1 in
-            (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, varntnm)), tyenv1)
+            (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
         with
         | Not_found -> raise (UndefinedConstructor(rng, constrnm))
       end
@@ -630,7 +625,7 @@ and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeen
                   (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), tvtylstoutfinal)
 
           | Some(mnty) ->
-              let ((pin, tyin), (pout, ptyout)) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv mnty in
+              let tyin = Variantenv.fix_manual_type_for_inner qtfbl varntenv mnty in
               let () = unify ty1 beta in
               let () = unify tyin beta in
                 let (tyenvfinal, mutletconstail, tvtylstoutfinal) =

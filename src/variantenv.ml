@@ -13,10 +13,10 @@ exception UndefinedTypeArgument        of Range.t * var_name
 exception CyclicTypeDefinition         of type_name list
 exception MultipleTypeDefinition       of type_name
 
-type alias             = (type_variable_info ref) list * poly_type
-type definition        = Data of int | Alias of alias
+type type_scheme       = Boundid.t list * poly_type
+type definition        = Data of int | Alias of type_scheme
 type defined_type_list = (type_name * Typeid.t * definition) list
-type constructor_list  = (constructor_name * Typeid.t * (type_variable_info ref) list * mono_type) list
+type constructor_list  = (constructor_name * Typeid.t * type_scheme) list
 
 (* PUBLIC *)
 type t = defined_type_list * constructor_list
@@ -60,18 +60,18 @@ module DependencyGraph = DirectedGraph.Make(
     let show s = s (* for debug *)
   end)
 
-
+(*
 module InforefHashtbl = Hashtbl.Make(
   struct
     type t = type_variable_info ref
     let equal = (==)
     let hash = Hashtbl.hash
   end)
-
+*)
 
 type vertex_label =
   | VariantVertex of Typeid.t * untyped_type_argument_cons * untyped_variant_cons
-  | SynonymVertex of Typeid.t * untyped_type_argument_cons * manual_type * (alias option) ref
+  | SynonymVertex of Typeid.t * untyped_type_argument_cons * manual_type * (type_scheme option) ref
 
 
 type dependency_mode =
@@ -120,48 +120,51 @@ let find_type_name ((defedtylst, _) : t) (tyid : Typeid.t) =
 
 
 (* PUBLIC *)
-let add ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (paramlist : (type_variable_info ref) list) (ty : mono_type) (varntnm : type_name) =
+let add_constructor ((defedtylst, varntenvmain) : t) (constrnm : constructor_name) (bidlist : Boundid.t list) (pty : poly_type) (varntnm : type_name) =
+  let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
   let (tyid, _) = find_definition defedtylst varntnm in
   let rec aux accrev lst =
     match lst with
-    | []                                      -> (constrnm, tyid, paramlist, ty) :: varntenvmain
-    | (c, v, p, t) :: tail  when c = constrnm -> List.rev_append accrev ((constrnm, tyid, paramlist, ty) :: tail)
-    | (c, v, p, t) :: tail                    -> aux ((c, v, p, t) :: accrev) tail
+    | []                                         -> (constrnm, tyid, (bidlist, pty)) :: varntenvmain
+    | (c, v, (bl, pt)) :: tail  when c = constrnm -> List.rev_append accrev ((constrnm, tyid, (bidlist, pty)) :: tail)
+    | (c, v, (bl, pt)) :: tail                    -> aux ((c, v, (bl, pt)) :: accrev) tail
   in
     (defedtylst, aux [] varntenvmain)
 
 
-(* PUBLIC *)
-let add_list = List.fold_left (fun ve (c, v, p, t) -> add ve c v p t)
+let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t list) (Poly(ty) : poly_type) =
 
+  let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
 
-let instantiate_synonym_type (tyarglist : mono_type list) (tvreflist : (type_variable_info ref) list) (Poly(ty) : poly_type) =
-  let tvref_to_type_ht : mono_type InforefHashtbl.t = InforefHashtbl.create 32 in
-  let rec pre tyargs tvrefs =
-    match (tyargs, tvrefs) with
-    | ([], [])                                 -> ()
-    | (tyarg :: tyargtail, tvref :: tvreftail) ->
+  let bid_to_type_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
+
+  let rec pre tyargs bids =
+    match (tyargs, bids) with
+    | ([], [])                             -> ()
+    | (tyarg :: tyargtail, bid :: bidtail) ->
+        let tvref = ref (Link(tyarg)) in
         begin
-          InforefHashtbl.add tvref_to_type_ht tvref tyarg ;
-          pre tyargtail tvreftail ;
+          print_for_debug_variantenv ("I-add '#" ^ (Boundid.show_direct bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)) ; (* for debug *)
+          BoundidHashtbl.add bid_to_type_ht bid tvref ;
+          pre tyargtail bidtail ;
         end
-    | (_, _)                                   -> assert false
+    | (_, _)                                -> assert false
   in
+
   let rec aux (rng, tymain) =
+    let () = print_for_debug_variantenv ("{aux " ^ (string_of_mono_type_basic (rng, tymain))) in (* for debug *)
     let tymainres =
       match tymain with
-      | TypeVariable({contents= Bound(_)} as tvref) ->
+      | TypeVariable({contents= Bound(bid)}) ->
           begin
             try
-              let tysubst = InforefHashtbl.find tvref_to_type_ht tvref in
-              begin
-                tvref := Link(tysubst) ;
-                tymain
-              end
+              let tvref = BoundidHashtbl.find bid_to_type_ht bid in
+              let () = print_for_debug_variantenv (match !tvref with Link(tysub) -> "access " ^ (string_of_mono_type_basic tysub) | _ -> "?") in (* for debug *)
+                TypeVariable(tvref)
             with
             | Not_found -> assert false
           end
-      | TypeVariable(_)                   -> tymain
+      | TypeVariable(_)                   -> let () = print_for_debug_variantenv "!" in (* for debug *) tymain
       | FuncType(tydom, tycod)            -> FuncType(aux tydom, aux tycod)
       | ProductType(tylist)               -> ProductType(List.map aux tylist)
       | RecordType(tyasc)                 -> RecordType(Assoc.map_value aux tyasc)
@@ -174,10 +177,11 @@ let instantiate_synonym_type (tyarglist : mono_type list) (tvreflist : (type_var
         | IntType
         | StringType ) -> tymain
     in
+    let () = print_for_debug_variantenv ("= " ^ (string_of_mono_type_basic (rng, tymainres)) ^ "}") in (* for debug *)
       (rng, tymainres)
   in
   begin
-    pre tyarglist tvreflist ;
+    pre tyarglist bidlist ;
     aux ty
   end
     
@@ -225,10 +229,10 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
                     let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ Typeid.to_string tyid) in (* for debug *)
                       VariantType(List.map iter mntyarglist, tyid)
 
-              | (tyid, Alias(tvreflist, ptyscheme)) ->
-                  let lenexp = List.length tvreflist in
+              | (tyid, Alias(bidlist, ptyscheme)) ->
+                  let lenexp = List.length bidlist in
                     if lenexp <> len then error tynm lenexp len else
-                      let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
+                      let tyreal = instantiate_type_scheme tyarglist bidlist ptyscheme in
                       let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ Typeid.to_string tyid) in (* for debug *)
                         SynonymType(tyarglist, tyid, tyreal)
 
@@ -248,10 +252,10 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
                           if len <> lenexp then error tynm lenexp len else
                             VariantType(tyarglist, tyid)
 
-                    | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(tvreflist, ptyscheme)}) ->
+                    | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
                         let lenexp = type_argument_length tyargcons in
                           if len <> lenexp then error tynm lenexp len else
-                            let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
+                            let tyreal = instantiate_type_scheme tyarglist bidlist ptyscheme in
                               SynonymType(tyarglist, tyid, tyreal)
 
                     | SynonymVertex(_, _, _, {contents= None}) -> assert false
@@ -293,7 +297,16 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
   match tyargmode with
   | ( StrictMode(tyargmaplist)
     | FreeMode(tyargmaplist) ) ->
-        (List.map (fun (_, tvref) -> tvref) (MapList.to_list tyargmaplist), ty)
+        let bidlist =
+          (MapList.to_list tyargmaplist) |> List.map (fun (_, tvref) ->
+            let bid = Boundid.fresh UniversalKind () in
+            begin
+              tvref := Bound(bid) ;
+              bid
+            end
+          )
+        in
+        (bidlist, Poly(ty))
 
 
 let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
@@ -313,31 +326,18 @@ let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyp
     fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
   end
 
-(*
-let fix_manual_type_for_synonym (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
-  let tyargmaplist = MapList.create () in
-  let rec aux cons =
-    match cons with
-    | UTEndOfTypeArgument                      -> ()
-    | UTTypeArgumentCons(_, tyargnm, tailcons) ->
-       let bid = Boundid.fresh UniversalKind () (* temporary *) in
-       begin
-         MapList.add tyargmaplist tyargnm (ref (Bound(bid))) ;
-         aux tailcons
-       end
-  in
-  begin
-    aux tyargcons ;
-    fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
-  end
-*)
 
 (* PUBLIC *)
-let fix_manual_type_for_inner_and_outer (qtfbl : quantifiability) (varntenv : t) (mnty : manual_type) =
+let fix_manual_type_for_inner (qtfbl : quantifiability) (varntenv : t) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
-  let tyin  = fix_manual_type_general NoDependency varntenv (FreeMode(tyargmaplist)) mnty in
-  let tyout = fix_manual_type_general NoDependency varntenv (FreeMode(tyargmaplist)) mnty in
-    (tyin, tyout)
+  let (bidlist, ptyin) = fix_manual_type_general NoDependency varntenv (FreeMode(tyargmaplist)) mnty in
+  let tyarglist =
+    bidlist |> List.map (fun bid ->
+      let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
+        (Range.dummy "fix_manual_type_for_inner", TypeVariable(ref (Free(tvid))))
+    )
+  in
+    instantiate_type_scheme tyarglist bidlist ptyin
 
 
 let register_type (dg : vertex_label DependencyGraph.t) (varntenv : t) (tynm : type_name) =
@@ -350,8 +350,8 @@ let register_type (dg : vertex_label DependencyGraph.t) (varntenv : t) (tynm : t
         let len = type_argument_length tyargcons in
           ((tynm, tyid, Data(len)) :: defedtypelist, varntenvmain)
 
-    | SynonymVertex(tyid, _, _, {contents= Some((tvreflist, ptyscheme))}) ->
-        ((tynm, tyid, Alias(tvreflist, ptyscheme)) :: defedtypelist, varntenvmain)
+    | SynonymVertex(tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
+        ((tynm, tyid, Alias(bidlist, ptyscheme)) :: defedtypelist, varntenvmain)
 
     | SynonymVertex(_, _, _, {contents= None}) -> assert false
   with
@@ -431,28 +431,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
           end
 
   in
-(*
-  let rec add_dependency_and_each_synonym_type varntenv mutvarntcons =
-    let iter = add_dependency_and_each_synonym_type in
-    match mutvarntcons with
-    | UTEndOfMutualVariant                                 -> varntenv
-    | UTMutualVariantCons(tyargcons, tynm, utvc, tailcons) -> iter varntenv tailcons
-    | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
-        let (tvreflist, ty) = fix_manual_type_for_synonym (DependentMode(dg)) varntenv tyargcons mnty in
-        let varntenvnew = register_type dg varntenv tynm in
-          iter varntenvnew tailcons
-  in
 
-  let rec add_each_variant_type varntenv mutvarntcons =
-    let iter = add_each_variant_type in
-      match mutvarntcons with
-      | UTEndOfMutualVariant                                     -> varntenv
-      | UTMutualSynonymCons(_, _, _, tailcons)                   -> iter varntenv tailcons
-      | UTMutualVariantCons(tyargcons, varntnm, utvc, tailcons)  ->
-          let varntenvnew = add_variant_cons dg varntenv tyargcons varntnm utvc in
-            iter varntenvnew tailcons
-  in
-*)
   let check_cyclic_type_definition () =
     let cycleopt = DependencyGraph.find_cycle dg in
       match cycleopt with
@@ -466,8 +445,8 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
       | VariantVertex(_, _, _)                                               -> ()
       | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(_)})            -> assert false
       | SynonymVertex(tyid, tyargcons, mnty, ({contents= None} as tyoptref)) ->
-          let (tvreflist, ty) = fix_manual_type (DependentMode(dg)) varntenv tyargcons mnty in
-            tyoptref := Some((tvreflist, Poly(ty)))
+          let (bidlist, pty) = fix_manual_type (DependentMode(dg)) varntenv tyargcons mnty in
+            tyoptref := Some((bidlist, pty))
     )
   in
 
@@ -487,8 +466,8 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
         match utvcmain with
         | UTEndOfVariant                          -> accvarntenv
         | UTVariantCons(constrnm, mnty, tailcons) ->
-            let (paramlist, ty) = fix_manual_type (DependentMode(dg)) accvarntenv tyargcons mnty in
-              iter (add accvarntenv constrnm paramlist ty tynm) tailcons
+            let (bidlist, pty) = fix_manual_type (DependentMode(dg)) accvarntenv tyargcons mnty in
+              iter (add_constructor accvarntenv constrnm bidlist pty tynm) tailcons
     in
       DependencyGraph.fold_vertex (fun tynm label varntenv ->
         match label with
@@ -517,7 +496,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
           match dfn with
           | Data(_)                     -> failwith "Data"
           | Alias(tvreflist, ptyscheme) ->
-              let tyreal = instantiate_synonym_type tyarglist tvreflist ptyscheme in
+              let tyreal = instantiate_type_scheme tyarglist tvreflist ptyscheme in
                 tvref := Link((Range.dummy "register", SynonymType(tyarglist, tyid, tyreal)))
       ) synonym_ht
 *)
@@ -525,12 +504,20 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
 
 
 (* PUBLIC *)
-let rec find (varntenv : t) (constrnm : constructor_name) =
-  let (_, varntenvmain) = varntenv in
-    let rec aux varntenvmain =
-      match varntenvmain with
-      | []                                      -> raise Not_found
-      | (c, v, p, t) :: tail  when c = constrnm -> (v, p, t)
-      | _ :: tail                               -> aux tail
-    in
-      aux varntenvmain
+let rec find_constructor (qtfbl : quantifiability) ((_, varntenvmain) : t) (constrnm : constructor_name) =
+  let rec aux varntenvmain =
+    match varntenvmain with
+    | []                                                   -> raise Not_found
+    | (c, tyid, (bidlist, pty)) :: tail  when c = constrnm ->
+        let tyarglist =
+          bidlist |> List.map (fun bid ->
+            let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
+              (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
+          )
+        in
+        let ty = instantiate_type_scheme tyarglist bidlist pty in
+          (tyarglist, tyid, ty)
+
+    | _ :: tail                                              -> aux tail
+  in
+    aux varntenvmain
