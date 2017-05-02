@@ -88,7 +88,10 @@ module Tyvarid_
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, _, lev) = (string_of_int idmain) ^ "(" ^ (string_of_int lev) ^ ")"
+    let show_direct (idmain, _, qtfbl, lev) =
+      match qtfbl with
+      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "]"
+      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "]"
 
   end
 
