@@ -30,10 +30,11 @@ end
 
 type quantifiability = Quantifiable | Unquantifiable
 
-
 module Tyvarid_
 : sig
+    type level
     type 'a t_
+    val succ_level : level -> level
     val initialize : unit -> unit
     val fresh : 'a -> quantifiability -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
@@ -44,32 +45,38 @@ module Tyvarid_
     val show_direct : 'a t_ -> string
   end
 = struct
-    type 'a t_ = int * 'a * quantifiability
+    type level = int
+    type 'a t_ = int * 'a * quantifiability * level
+
+    let succ_level lev = lev + 1
 
     let current_id = ref 0
 
-    let initialize () = ( current_id := 0 )
+    let initialize () =
+      begin
+        current_id := 0 ;
+      end
 
     let fresh kd qtfbl () =
       begin
         incr current_id ;
-        (!current_id, kd, qtfbl)
+        (!current_id, kd, qtfbl, 0) (* temporary *)
       end
 
-    let eq (i1, _, _) (i2, _, _) = (i1 = i2)
+    let eq (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
 
-    let is_quantifiable (_, _, qtfbl) =
+    let is_quantifiable (_, _, qtfbl, _) =
         match qtfbl with
         | Quantifiable   -> true
         | Unquantifiable -> false
 
-    let set_quantifiability qtfbl (idmain, kd, _) = (idmain, kd, qtfbl)
+    let set_quantifiability qtfbl (idmain, kd, _, lev) = (idmain, kd, qtfbl, lev)
 
-    let get_kind (_, kd, _) = kd
+    let get_kind (_, kd, _, _) = kd
 
-    let set_kind (idmain, _, qtfbl) kd = (idmain, kd, qtfbl)
+    let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, _) = string_of_int idmain
+    let show_direct (idmain, _, _, _) = string_of_int idmain
 
   end
 
