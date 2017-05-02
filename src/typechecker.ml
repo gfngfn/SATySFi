@@ -107,6 +107,16 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 tvref2 := Free(Tyvarid.set_quantifiability Unquantifiable tvid2) ;
               end
           in
+          let () =
+            let lev1 = Tyvarid.get_level tvid1 in
+            let lev2 = Tyvarid.get_level tvid2 in
+              if Tyvarid.less_than lev1 lev2 then
+                tvref2 := Free(Tyvarid.set_level tvid2 lev1)
+              else if Tyvarid.less_than lev2 lev1 then
+                tvref1 := Free(Tyvarid.set_level tvid1 lev2)
+              else
+                ()
+          in
           let (oldtvref, newtvref, newtvid, newty) =
             if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
           in
@@ -137,7 +147,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             | UniversalKind      -> true
             | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
           in
-            if occurs tvid1 ty2 then
+          let chk = occurs tvid1 ty2 in
+            if chk then
               raise InternalInclusionError
             else if not binc then
               raise InternalContradictionError
@@ -157,14 +168,15 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
-          if occurs tvid1 ty2 then
-            raise InternalInclusionError
-          else
-            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                    let _ = print_for_debug_typecheck                             (* for debug *)
-                      ("    substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
-                       ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
-              tvref1 := Link(newty2)
+          let chk = occurs tvid1 ty2 in
+            if chk then
+              raise InternalInclusionError
+            else
+              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                      let _ = print_for_debug_typecheck                             (* for debug *)
+                        ("    substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
+                         ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
+                tvref1 := Link(newty2)
 
     | (_, TypeVariable(_)) -> unify_sub ty2 ty1
 

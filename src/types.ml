@@ -36,6 +36,7 @@ module Tyvarid_
     type 'a t_
     val bottom_level : level
     val succ_level : level -> level
+    val less_than : level -> level -> bool
     val get_level : 'a t_ -> level
     val set_level : 'a t_ -> level -> 'a t_
     val initialize : unit -> unit
@@ -54,6 +55,8 @@ module Tyvarid_
     let bottom_level = 0
 
     let succ_level lev = lev + 1
+
+    let less_than = (<)
 
     let get_level (_, _, _, lev) = lev
 
