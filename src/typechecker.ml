@@ -623,7 +623,7 @@ and make_type_environment_by_let
       match mutletcons with
       | UTEndOfMutualLet                             -> (acctyenv, [])
       | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
-          let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+          let tvid = Tyvarid.fresh UniversalKind qtfbl (Tyvarid.succ_level lev) () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
           let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct tvid) ^ " :: U\n") in (* for debug *)
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta))) tailcons in
@@ -667,7 +667,7 @@ and make_type_environment_by_let
         let prety = tvty in
           begin                                                                                                        (* for debug *)
             print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") ;  (* for debug *)
-            let pty = poly_extend erase_range_of_type (Typeenv.generalize prety tyenv_before_let) in
+            let pty = poly_extend erase_range_of_type (Typeenv.generalize lev prety tyenv_before_let) in
             print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ "\n") ; (* for debug *)
             let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
               make_forall_type_mutual (Typeenv.add tyenv varnm pty) tyenv_before_let tvtytail tvtylst_forall_new

@@ -88,7 +88,7 @@ module Tyvarid_
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, _, _) = string_of_int idmain
+    let show_direct (idmain, _, _, lev) = (string_of_int idmain) ^ "(" ^ (string_of_int lev) ^ ")"
 
   end
 
@@ -602,7 +602,7 @@ let rec string_of_mono_type_basic tystr =
     | TypeVariable(tvref)       ->
         begin
           match !tvref with
-          | Link(tyl)  -> string_of_mono_type_basic tyl
+          | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
           | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
           | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
         end

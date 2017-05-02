@@ -63,7 +63,7 @@ let rec find_in_type_environment (tvid : Tyvarid.t) (tyenv : t) =
   List.fold_left (fun b (_, pty) -> b || find_in_poly_type tvid pty) false tyenv
 
 
-let generalize (ty : mono_type) (tyenv_before : t) =
+let generalize (lev : Tyvarid.level) (ty : mono_type) (tyenv_before : t) =
   let rec iter ((rng, tymain) as ty) =
     match tymain with
     | TypeVariable(tvref) ->
@@ -72,8 +72,10 @@ let generalize (ty : mono_type) (tyenv_before : t) =
           | Link(tyl)  -> iter tyl
           | Bound(_)   -> ty
           | Free(tvid) ->
-              if Tyvarid.is_quantifiable tvid then
-                if find_in_type_environment tvid tyenv_before then
+              if not (Tyvarid.is_quantifiable tvid) then
+                ty
+              else
+                if not (Tyvarid.less_than lev (Tyvarid.get_level tvid)) (* find_in_type_environment tvid tyenv_before *) then
                   ty
                 else
                   let kd = Tyvarid.get_kind tvid in
@@ -83,8 +85,6 @@ let generalize (ty : mono_type) (tyenv_before : t) =
                     tvref := Bound(bid) ;
                     ty
                   end
-              else
-                ty
         end
     | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))

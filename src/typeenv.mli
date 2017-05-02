@@ -18,7 +18,7 @@ val find_in_mono_type : Tyvarid.t -> mono_type -> bool
 
 val find_in_type_environment : Tyvarid.t -> t -> bool
 
-val generalize : mono_type -> t -> poly_type
+val generalize : Tyvarid.level -> mono_type -> t -> poly_type
 
 val string_of_type_environment : t -> string -> string
 

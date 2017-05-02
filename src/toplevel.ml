@@ -4,6 +4,7 @@
 #load "range.cmo";;
 #load "types.cmo";;
 #load "typeenv.cmo";;
+#load "directedGraph.cmo";;
 #load "variantenv.cmo";;
 #load "display.cmo";;
 #load "parser.cmo";;
@@ -62,7 +63,7 @@ let tcb s varnm =
       let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
       try
         let pty = Typeenv.find tyenvres varnm in
-          print_endline ("TYPE = " ^ (Display.string_of_poly_type_basic pty))
+          print_endline ("TYPE = " ^ (Types.string_of_poly_type_basic pty))
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
     end
