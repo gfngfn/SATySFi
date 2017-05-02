@@ -514,19 +514,52 @@ let instantiate (lev : Tyvarid.level) (qtfbl : quantifiability) ((Poly(ty)) : po
     aux ty
 
 
+let generalize (lev : Tyvarid.level) (ty : mono_type) =
+  let rec iter ((rng, tymain) as ty) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | Link(tyl)  -> iter tyl
+          | Bound(_)   -> ty
+          | Free(tvid) ->
+              if not (Tyvarid.is_quantifiable tvid) then
+                ty
+              else
+                if not (Tyvarid.less_than lev (Tyvarid.get_level tvid)) then
+                  ty
+                else
+                  let kd = Tyvarid.get_kind tvid in
+                  let kdgen = generalize_kind kd in
+                  let bid = Boundid.fresh kdgen () in
+                  begin
+                    tvref := Bound(bid) ;
+                    ty
+                  end
+        end
+    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(iter tysub))
+    | RefType(tysub)                    -> (rng, RefType(iter tysub))
+    | ( UnitType
+      | IntType
+      | BoolType
+      | StringType ) -> ty
+
+  and generalize_kind kd =
+    match kd with
+    | UniversalKind     -> UniversalKind
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
+  in
+    Poly(iter ty)
+
+
 (* !!!! ---- global variable ---- !!!! *)
 
 let global_hash_env : environment = Hashtbl.create 32
-
-(*
-let print_for_debug msg =
-(* enable below to see the process of type inference *)
-(*
-  print_string msg ;
-*)
-  ()
-*)
-
 
 
 (* -- following are all for debugging -- *)

@@ -665,13 +665,11 @@ and make_type_environment_by_let
     | []                        -> (tyenv, tvtylst_forall)
     | (varnm, tvty) :: tvtytail ->
         let prety = tvty in
-          begin                                                                                                        (* for debug *)
-            print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") ;  (* for debug *)
-            let pty = poly_extend erase_range_of_type (Typeenv.generalize lev prety tyenv_before_let) in
-            print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ "\n") ; (* for debug *)
-            let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
-              make_forall_type_mutual (Typeenv.add tyenv varnm pty) tyenv_before_let tvtytail tvtylst_forall_new
-          end                                                                                                          (* for debug *)
+          let () = print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety) ^ "\n") in  (* for debug *)
+          let pty = poly_extend erase_range_of_type (generalize lev prety) in
+          let () = print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ "\n") in (* for debug *)
+          let tvtylst_forall_new = (varnm, pty) :: tvtylst_forall in
+            make_forall_type_mutual (Typeenv.add tyenv varnm pty) tyenv_before_let tvtytail tvtylst_forall_new
   in
   let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utmutletcons in
   let (tyenv_new, mutletcons, tvtylstout) =
