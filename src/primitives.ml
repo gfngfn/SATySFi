@@ -15,7 +15,7 @@ let make_variant_environment () =
         (dr, UTEndOfVariant))),
     UTEndOfMutualVariant))
   in
-    Variantenv.add_mutual_cons Variantenv.empty mutvarntcons
+    Variantenv.add_mutual_cons Variantenv.empty Tyvarid.bottom_level mutvarntcons
 
 
 let make_type_environment () =
@@ -28,8 +28,8 @@ let make_type_environment () =
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
-  let tv1           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable ())) in
-  let tv2           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable ())) in
+  let tv1           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
+  let tv2           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
 
     Typeenv.from_list
       [ ( "+",   ~% (i --> (i --> i)) );

@@ -34,9 +34,13 @@ module Tyvarid_
 : sig
     type level
     type 'a t_
+    val bottom_level : level
     val succ_level : level -> level
+    val less_than : level -> level -> bool
+    val get_level : 'a t_ -> level
+    val set_level : 'a t_ -> level -> 'a t_
     val initialize : unit -> unit
-    val fresh : 'a -> quantifiability -> unit -> 'a t_
+    val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
     val is_quantifiable : 'a t_ -> bool
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
@@ -48,7 +52,15 @@ module Tyvarid_
     type level = int
     type 'a t_ = int * 'a * quantifiability * level
 
+    let bottom_level = 0
+
     let succ_level lev = lev + 1
+
+    let less_than = (<)
+
+    let get_level (_, _, _, lev) = lev
+
+    let set_level (idmain, kd, qtfbl, _) lev = (idmain, kd, qtfbl, lev)
 
     let current_id = ref 0
 
@@ -57,10 +69,10 @@ module Tyvarid_
         current_id := 0 ;
       end
 
-    let fresh kd qtfbl () =
+    let fresh kd qtfbl lev () =
       begin
         incr current_id ;
-        (!current_id, kd, qtfbl, 0) (* temporary *)
+        (!current_id, kd, qtfbl, lev)
       end
 
     let eq (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
@@ -76,7 +88,10 @@ module Tyvarid_
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, _, _) = string_of_int idmain
+    let show_direct (idmain, _, qtfbl, lev) =
+      match qtfbl with
+      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "]"
+      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "]"
 
   end
 
@@ -456,7 +471,7 @@ module BoundidHashtbl = Hashtbl.Make(
   end)
 
 
-let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
+let instantiate (lev : Tyvarid.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
   let current_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
   let rec aux ((rng, tymain) as ty) =
     match tymain with
@@ -474,7 +489,7 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
                 | Not_found ->
                     let kd = Boundid.get_kind bid in
                     let kdfree = instantiate_kind kd in
-                    let tvid = Tyvarid.fresh kdfree qtfbl () in
+                    let tvid = Tyvarid.fresh kdfree qtfbl lev () in
                     let tvrefnew = ref (Free(tvid)) in
                     begin
                       BoundidHashtbl.add current_ht bid tvrefnew ;
@@ -502,19 +517,52 @@ let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
     aux ty
 
 
+let generalize (lev : Tyvarid.level) (ty : mono_type) =
+  let rec iter ((rng, tymain) as ty) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | Link(tyl)  -> iter tyl
+          | Bound(_)   -> ty
+          | Free(tvid) ->
+              if not (Tyvarid.is_quantifiable tvid) then
+                ty
+              else
+                if not (Tyvarid.less_than lev (Tyvarid.get_level tvid)) then
+                  ty
+                else
+                  let kd = Tyvarid.get_kind tvid in
+                  let kdgen = generalize_kind kd in
+                  let bid = Boundid.fresh kdgen () in
+                  begin
+                    tvref := Bound(bid) ;
+                    ty
+                  end
+        end
+    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(iter tysub))
+    | RefType(tysub)                    -> (rng, RefType(iter tysub))
+    | ( UnitType
+      | IntType
+      | BoolType
+      | StringType ) -> ty
+
+  and generalize_kind kd =
+    match kd with
+    | UniversalKind     -> UniversalKind
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
+  in
+    Poly(iter ty)
+
+
 (* !!!! ---- global variable ---- !!!! *)
 
 let global_hash_env : environment = Hashtbl.create 32
-
-(*
-let print_for_debug msg =
-(* enable below to see the process of type inference *)
-(*
-  print_string msg ;
-*)
-  ()
-*)
-
 
 
 (* -- following are all for debugging -- *)
@@ -590,7 +638,7 @@ let rec string_of_mono_type_basic tystr =
     | TypeVariable(tvref)       ->
         begin
           match !tvref with
-          | Link(tyl)  -> string_of_mono_type_basic tyl
+          | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
           | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
           | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
         end

@@ -193,7 +193,7 @@ let rec type_argument_length tyargcons =
   | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
 
 
-let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode : type_argument_mode) (mnty : manual_type) =
+let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (lev : Tyvarid.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (defedtylst, varntenvmain) = varntenv in
     let (rng, mntymain) = mnty in
@@ -283,7 +283,7 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
                       TypeVariable(MapList.find tyargmaplist tyargnm)
                     with
                     | Not_found ->
-                        let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
+                        let tvid = Tyvarid.fresh UniversalKind Quantifiable lev () (* temporary *) in
                         let tvref = ref (Free(tvid)) in
                         begin
                           MapList.add tyargmaplist tyargnm tvref ;
@@ -310,13 +310,13 @@ let fix_manual_type_general (dpmode : dependency_mode) (varntenv : t) (tyargmode
         (bidlist, Poly(ty))
 
 
-let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
+let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (lev : Tyvarid.level) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
   let rec aux cons =
     match cons with
     | UTEndOfTypeArgument                      -> ()
     | UTTypeArgumentCons(_, tyargnm, tailcons) ->
-       let tvid = Tyvarid.fresh UniversalKind Quantifiable () (* temporary *) in
+       let tvid = Tyvarid.fresh UniversalKind Quantifiable lev () (* temporary *) in
        begin
          MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ;
          aux tailcons
@@ -324,17 +324,17 @@ let fix_manual_type (dpmode : dependency_mode) (varntenv : t) (tyargcons : untyp
   in
   begin
     aux tyargcons ;
-    fix_manual_type_general dpmode varntenv (StrictMode(tyargmaplist)) mnty
+    fix_manual_type_general dpmode varntenv lev (StrictMode(tyargmaplist)) mnty
   end
 
 
 (* PUBLIC *)
-let fix_manual_type_for_inner (qtfbl : quantifiability) (varntenv : t) (mnty : manual_type) =
+let fix_manual_type_for_inner (qtfbl : quantifiability) (varntenv : t) (lev : Tyvarid.level) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
-  let (bidlist, ptyin) = fix_manual_type_general NoDependency varntenv (FreeMode(tyargmaplist)) mnty in
+  let (bidlist, ptyin) = fix_manual_type_general NoDependency varntenv lev (FreeMode(tyargmaplist)) mnty in
   let tyarglist =
     bidlist |> List.map (fun bid ->
-      let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
+      let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl lev () in
         (Range.dummy "fix_manual_type_for_inner", TypeVariable(ref (Free(tvid))))
     )
   in
@@ -372,7 +372,7 @@ let register_synonym_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) 
 
 
 (* PUBLIC *)
-let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_cons) =
+let rec add_mutual_cons (varntenv : t) (lev : Tyvarid.level) (mutvarntcons : untyped_mutual_variant_cons) =
 
   let dg = DependencyGraph.create 32 in
 
@@ -446,7 +446,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
       | VariantVertex(_, _, _)                                               -> ()
       | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(_)})            -> assert false
       | SynonymVertex(tyid, tyargcons, mnty, ({contents= None} as tyoptref)) ->
-          let (bidlist, pty) = fix_manual_type (DependentMode(dg)) varntenv tyargcons mnty in
+          let (bidlist, pty) = fix_manual_type (DependentMode(dg)) varntenv lev tyargcons mnty in
             tyoptref := Some((bidlist, pty))
     )
   in
@@ -467,7 +467,7 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
         match utvcmain with
         | UTEndOfVariant                          -> accvarntenv
         | UTVariantCons(constrnm, mnty, tailcons) ->
-            let (bidlist, pty) = fix_manual_type (DependentMode(dg)) accvarntenv tyargcons mnty in
+            let (bidlist, pty) = fix_manual_type (DependentMode(dg)) accvarntenv lev tyargcons mnty in
               iter (add_constructor accvarntenv constrnm bidlist pty tynm) tailcons
     in
       DependencyGraph.fold_vertex (fun tynm label varntenv ->
@@ -505,14 +505,14 @@ let rec add_mutual_cons (varntenv : t) (mutvarntcons : untyped_mutual_variant_co
 
 
 (* PUBLIC *)
-let rec find_constructor (qtfbl : quantifiability) ((_, varntenvmain) : t) (constrnm : constructor_name) =
+let rec find_constructor (qtfbl : quantifiability) ((_, varntenvmain) : t) (lev : Tyvarid.level) (constrnm : constructor_name) =
   let rec aux varntenvmain =
     match varntenvmain with
     | []                                                   -> raise Not_found
     | (c, tyid, (bidlist, pty)) :: tail  when c = constrnm ->
         let tyarglist =
           bidlist |> List.map (fun bid ->
-            let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl () in
+            let tvid = Tyvarid.fresh (Boundid.get_kind bid) qtfbl lev () in
               (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
           )
         in
