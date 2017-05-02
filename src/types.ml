@@ -11,6 +11,7 @@ type module_name        = string
 type field_name         = string
 type type_argument_name = string
 
+
 module Typeid : sig
   type t
   val initialize : unit -> unit
@@ -21,13 +22,97 @@ end = struct
   type t = int
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
-  let fresh () = ( incr current_id ; !current_id )
+  let fresh () = begin incr current_id ; !current_id end
   let to_string = string_of_int
   let eq = (=)
 end
-(*
-type scope = GlobalScope | LocalScope of module_name
-*)
+
+
+type quantifiability = Quantifiable | Unquantifiable
+
+module Tyvarid_
+: sig
+    type level
+    type 'a t_
+    val succ_level : level -> level
+    val initialize : unit -> unit
+    val fresh : 'a -> quantifiability -> unit -> 'a t_
+    val eq : 'a t_ -> 'a t_ -> bool
+    val is_quantifiable : 'a t_ -> bool
+    val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
+    val get_kind : 'a t_ -> 'a
+    val set_kind : 'a t_ -> 'a -> 'a t_
+    val show_direct : 'a t_ -> string
+  end
+= struct
+    type level = int
+    type 'a t_ = int * 'a * quantifiability * level
+
+    let succ_level lev = lev + 1
+
+    let current_id = ref 0
+
+    let initialize () =
+      begin
+        current_id := 0 ;
+      end
+
+    let fresh kd qtfbl () =
+      begin
+        incr current_id ;
+        (!current_id, kd, qtfbl, 0) (* temporary *)
+      end
+
+    let eq (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
+
+    let is_quantifiable (_, _, qtfbl, _) =
+        match qtfbl with
+        | Quantifiable   -> true
+        | Unquantifiable -> false
+
+    let set_quantifiability qtfbl (idmain, kd, _, lev) = (idmain, kd, qtfbl, lev)
+
+    let get_kind (_, kd, _, _) = kd
+
+    let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
+
+    let show_direct (idmain, _, _, _) = string_of_int idmain
+
+  end
+
+
+module Boundid_
+: sig
+    type 'a t_
+    val initialize : unit -> unit
+    val fresh : 'a -> unit -> 'a t_
+    val eq : 'a t_ -> 'a t_ -> bool
+    val get_kind : 'a t_ -> 'a
+    val show_direct : 'a t_ -> string
+  end
+= struct
+    type 'a t_ = int * 'a
+
+    let current_id = ref 0
+
+    let initialize () = ( current_id := 0 )
+
+    let fresh kd () =
+      begin
+        incr current_id ;
+        (!current_id, kd)
+      end
+
+    let eq (i1, _) (i2, _) = (i1 = i2)
+
+    let get_kind (_, kd) = kd
+
+    let show_direct (i, _) = string_of_int i
+
+  end
+
+
+
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
   | MTypeName    of (manual_type list) * type_name
@@ -46,25 +131,48 @@ and mono_type_main =
   | ListType     of mono_type
   | RefType      of mono_type
   | ProductType  of mono_type list
-  | TypeVariable of Tyvarid.t
-  | TypeSynonym  of (mono_type list) * Typeid.t * poly_type
+  | TypeVariable of type_variable_info ref
+  | SynonymType  of (mono_type list) * Typeid.t * mono_type
   | VariantType  of (mono_type list) * Typeid.t
   | RecordType   of (field_name, mono_type) Assoc.t
 
 and poly_type =
+  | Poly of mono_type
+(*
   | Mono   of mono_type
-  | Forall of Tyvarid.t * kind * poly_type
+  | Forall of (kind Boundid_.t_) * poly_type
+*)
 
 and kind =
   | UniversalKind
   | RecordKind of (field_name, mono_type) Assoc.t
 
+and type_variable_info =
+  | Free  of kind Tyvarid_.t_
+  | Bound of kind Boundid_.t_
+  | Link  of mono_type
+
+
+module Tyvarid =
+  struct
+    include Tyvarid_
+    type t = kind Tyvarid_.t_
+  end
+
+
+module Boundid =
+  struct
+    include Boundid_
+    type t = kind Boundid_.t_
+  end
+
+
 type id_name_arg =
-  | IDName       of id_name
+  | IDName   of id_name
   | NoIDName
 
 type class_name_arg =
-  | ClassName    of class_name
+  | ClassName   of class_name
   | NoClassName
 
 (* ---- untyped ---- *)
@@ -87,7 +195,6 @@ and untyped_abstract_tree_main =
   | UTUnitConstant
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTBreakAndIndent
-(*  | UTNoContent *)
 (* -- list value -- *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -298,43 +405,20 @@ type output_unit =
   | ODeepen
   | OShallow
 
-
+(*
 let poly_extend_general
     (fmono : mono_type -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind -> poly_type -> 'a) : (poly_type -> 'a) =
   let rec iter pty =
     match pty with
-    | Mono(ty)                 -> fmono ty
-    | Forall(tvid, kd, ptysub) -> fpoly iter tvid kd ptysub
+    | Mono(ty)              -> fmono ty
+    | Forall(tvref, ptysub) -> fpoly iter tvid kd ptysub
   in
     iter
+*)
 
 
 let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
-  let rec iter pty =
-    match pty with
-    | Mono(ty)                 -> Mono(fmono ty)
-    | Forall(tvid, kd, ptysub) -> Forall(tvid, kd, iter ptysub)
-  in
-    iter
-
-
-let rec replace_type_variable ((rng, tymain) : mono_type) (key : Tyvarid.t) (value : mono_type) =
-  let iter = (fun ty -> replace_type_variable ty key value) in
-    match tymain with
-    | TypeVariable(k)                       -> if Tyvarid.same k key then value else (rng, TypeVariable(k))
-    | FuncType(tydom, tycod)                -> (rng, FuncType(iter tydom, iter tycod))
-    | ProductType(tylst)                    -> (rng, ProductType(List.map iter tylst))
-    | ListType(tycont)                      -> (rng, ListType(iter tycont))
-    | RefType(tycont)                       -> (rng, RefType(iter tycont))
-    | VariantType(tyarglist, varntnm)       -> (rng, VariantType(List.map iter tyarglist, varntnm))
-    | TypeSynonym(tyarglist, tysynnm, pty)  -> (rng, TypeSynonym(List.map iter tyarglist, tysynnm,
-                                                                 poly_extend_general
-                                                                   (fun ty -> Mono(iter ty))
-                                                                   (fun it tvid kd ptysub ->
-                                                                     if Tyvarid.same tvid key then Forall(tvid, kd, ptysub)
-                                                                                              else Forall(tvid, kd, it ptysub)) pty))
-    | RecordType(asc)                       -> (rng, RecordType(Assoc.map_value iter asc))
-    | _                                     -> (rng, tymain)
+  (fun (Poly(ty)) -> Poly(fmono ty))
 
 
 let get_range (rng, _) = rng
@@ -349,10 +433,10 @@ let rec erase_range_of_type ((_, tymain) : mono_type) =
     match tymain with
     | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
     | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | VariantType(tylist, tynm)         -> VariantType(List.map iter tylist, tynm)
+    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
+    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
-    | TypeSynonym(tylist, tynm, pty)    -> TypeSynonym(List.map iter tylist, tynm, poly_extend erase_range_of_type pty)
     | _                                 -> tymain
   in
     (Range.dummy "erased", newtymain)
@@ -362,6 +446,60 @@ and erase_range_of_kind (kd : kind) =
   match kd with
   | UniversalKind   -> UniversalKind
   | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
+
+
+module BoundidHashtbl = Hashtbl.Make(
+  struct
+    type t = Boundid.t
+    let equal = Boundid.eq
+    let hash = Hashtbl.hash
+  end)
+
+
+let instantiate (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
+  let current_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
+  let rec aux ((rng, tymain) as ty) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | Link(tyl)  -> aux tyl
+          | Free(tvid) -> ty
+          | Bound(bid) ->
+              begin
+                try
+                  let tvrefnew = BoundidHashtbl.find current_ht bid in
+                    (rng, TypeVariable(tvrefnew))
+                with
+                | Not_found ->
+                    let kd = Boundid.get_kind bid in
+                    let kdfree = instantiate_kind kd in
+                    let tvid = Tyvarid.fresh kdfree qtfbl () in
+                    let tvrefnew = ref (Free(tvid)) in
+                    begin
+                      BoundidHashtbl.add current_ht bid tvrefnew ;
+                      (rng, TypeVariable(tvrefnew))
+                    end
+              end
+        end
+    | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(aux tysub))
+    | RefType(tysub)                    -> (rng, RefType(aux tysub))
+    | ( UnitType
+      | BoolType
+      | IntType
+      | StringType ) -> ty
+
+  and instantiate_kind kd =
+    match kd with
+    | UniversalKind     -> UniversalKind
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value aux tyasc)
+  in
+    aux ty
 
 
 (* !!!! ---- global variable ---- !!!! *)
@@ -376,3 +514,129 @@ let print_for_debug msg =
 *)
   ()
 *)
+
+
+
+(* -- following are all for debugging -- *)
+
+let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
+let string_of_kind (f : mono_type -> string) (kdstr : kind) =
+  let rec aux lst =
+    match lst with
+    | []                     -> " -- "
+    | (fldnm, tystr) :: []   -> fldnm ^ " : " ^ (f tystr)
+    | (fldnm, tystr) :: tail -> fldnm ^ " : " ^ (f tystr) ^ "; " ^ (aux tail)
+  in
+    match kdstr with
+    | UniversalKind   -> "U"
+    | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
+
+
+let rec string_of_mono_type_basic tystr =
+  let (rng, tymain) = tystr in
+  let qstn = if Range.is_dummy rng then "?" else "" in
+    match tymain with
+    | StringType                      -> "string" ^ qstn
+    | IntType                         -> "int" ^ qstn
+    | BoolType                        -> "bool" ^ qstn
+    | UnitType                        -> "unit" ^ qstn
+
+    | VariantType(tyarglist, tyid) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
+
+    | SynonymType(tyarglist, tyid, tyreal) ->
+        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
+
+    | FuncType(tydom, tycod)    ->
+        let strdom = string_of_mono_type_basic tydom in
+        let strcod = string_of_mono_type_basic tycod in
+          begin match tydom with
+          | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
+          | _                   -> strdom
+          end ^ " ->" ^ qstn ^ " " ^ strcod
+
+    | ListType(tycont)          ->
+        let strcont = string_of_mono_type_basic tycont in
+        let (_, tycontmain) = tycont in
+          begin match tycontmain with
+          | ( FuncType(_, _)
+            | ProductType(_)
+            | VariantType(_ :: _, _)
+(*            | TypeSynonym(_ :: _, _, _) *) ) -> "(" ^ strcont ^ ")"
+          | _                             -> strcont
+          end ^ " list" ^ qstn
+
+    | RefType(tycont)           ->
+        let strcont = string_of_mono_type_basic tycont in
+        let (_, tycontmain) = tycont in
+          begin match tycontmain with
+          | ( FuncType(_, _)
+            | ProductType(_)
+            | VariantType(_ :: _, _)
+(*            | TypeSynonym(_ :: _, _, _) *) ) -> "(" ^ strcont ^ ")"
+          | _                                -> strcont
+          end ^ " ref" ^ qstn
+
+    | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
+    | TypeVariable(tvref)       ->
+        begin
+          match !tvref with
+          | Link(tyl)  -> string_of_mono_type_basic tyl
+          | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
+          | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
+        end
+
+    | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
+
+
+and string_of_type_argument_list_basic tyarglist =
+  match tyarglist with
+  | []           -> ""
+  | head :: tail ->
+      let strhd = string_of_mono_type_basic head in
+      let strtl = string_of_type_argument_list_basic tail in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
+            | ListType(_) | RefType(_) | VariantType(_ :: _, _) )          -> "(" ^ strhd ^ ")"
+          | _                                                              -> strhd
+        end ^ " " ^ strtl
+
+
+and string_of_mono_type_list_basic tylist =
+  match tylist with
+  | []           -> ""
+  | head :: []   ->
+      let strhd = string_of_mono_type_basic head in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
+        end
+  | head :: tail ->
+      let strhd = string_of_mono_type_basic head in
+      let strtl = string_of_mono_type_list_basic tail in
+      let (_, headmain) = head in
+        begin
+          match headmain with
+          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhd ^ ")"
+          | _                                   -> strhd
+        end ^ " * " ^ strtl
+
+
+and string_of_poly_type_basic (Poly(ty)) =
+  string_of_mono_type_basic ty (* temporary *)
+
+
+and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd

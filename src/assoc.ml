@@ -25,8 +25,12 @@ let of_list ?eq:(eq = (=)) lst =
   List.fold_right (fun (k, v) a -> add ~eq:eq a k v) empty lst
 
 
-let rec map_value f asc =
+let map_value f asc =
   List.map (fun (k, v) -> (k, f v)) asc
+
+
+let iter_value f asc =
+  List.iter (fun (_, v) -> f v) asc
 
 
 let fold_value f init asc =

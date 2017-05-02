@@ -3,46 +3,74 @@
 #load "tyvarid.cmo";;
 #load "range.cmo";;
 #load "types.cmo";;
-#load "kindenv.cmo";;
 #load "typeenv.cmo";;
 #load "variantenv.cmo";;
 #load "display.cmo";;
-#load "subst.cmo";;
 #load "parser.cmo";;
 #load "lexer.cmo";;
 #load "typechecker.cmo";;
 #load "out.cmo";;
 #load "evaluator.cmo";;
 #load "primitives.cmo";;
+#load "files.cmo";;
+#load "main.cmo";;
+let init () = Lexer.reset_to_numexpr ();;
+Tyvarid.initialize () ;;
 let varntenv = Primitives.make_variant_environment ();;
-let kdenv    = Kindenv.empty;;
 let tyenv    = Primitives.make_type_environment ();;
 let env      = Primitives.make_environment ();;
+init ();;
 
-let init () = Lexer.reset_to_numexpr ();;
 
-let parse s = init () ; Parser.main Lexer.cut_token (Lexing.from_string s);;
+let parse s =
+  let p = ref (Range.dummy "init", Types.UTNumericConstant(0)) in
+  begin
+    Main.error_log_environment (fun () ->
+      begin
+        init () ;
+        p := Parser.main Lexer.cut_token (Lexing.from_string s)
+      end
+    ) ;
+    !p
+  end
+;;
 
 let parsestr s = Display.string_of_utast (parse s);;
 
 let tcraw s =
   init () ;
-  let (tyres, _, _, _, _) = (Typechecker.main varntenv kdenv tyenv (parse s)) in tyres
+  let (tyres, _, _, _) = (Typechecker.main varntenv tyenv (parse s)) in tyres
 ;;
 
-let tc s v =
-  let (tyres, _, kdenvres, tyenvres, _) = (Typechecker.main varntenv kdenv tyenv (parse s)) in
-    Display.string_of_poly_type varntenv kdenvres (Typeenv.find tyenvres v)
-;;
+let tc s varnm =
+  Main.error_log_environment (fun () ->
+    begin
+      init () ;
+      let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+      try
+        let pty = Typeenv.find tyenvres varnm in
+          print_endline ("TYPE = " ^ (Display.string_of_poly_type varntenvres pty))
+      with
+      | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
+    end
+  );;
 
-let tcb s v =
-  let (tyres, _, _, tyenvres, _) = (Typechecker.main varntenv kdenv tyenv (parse s)) in
-    Display.string_of_poly_type_basic (Typeenv.find tyenvres v)
-;;
+let tcb s varnm =
+  Main.error_log_environment (fun () ->
+    begin
+      init () ;
+      let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+      try
+        let pty = Typeenv.find tyenvres varnm in
+          print_endline ("TYPE = " ^ (Display.string_of_poly_type_basic pty))
+      with
+      | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
+    end
+  );;
 
 let eval s =
   init () ;
-  let (_, _, _, _, ast) = (Typechecker.main varntenv kdenv tyenv (parse s)) in
+  let (_, _, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in
     Evaluator.interpret env ast
 ;;
 

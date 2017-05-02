@@ -41,7 +41,7 @@ let is_header_file     = is_suffix ".mcrdh"
 let is_standalone_file = is_suffix ".mcrds"
 
 
-let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) env file_name_in =
+let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -49,9 +49,9 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, newvarntenv, newkdenv, newtyenv, ast) = Typechecker.main varntenv kdenv tyenv utast in
+        let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
@@ -62,7 +62,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
                         else
                           print_endline (Typeenv.string_of_control_sequence_type newtyenv)
                       else () ) ;
-                    (newvarntenv, newkdenv, newtyenv, newenv)
+                    (newvarntenv, newtyenv, newenv)
                   end
               | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
           end
@@ -70,7 +70,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (kdenv : Kindenv
   end
 
 
-let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
+let read_standalone_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -78,9 +78,9 @@ let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : 
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
+        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -96,7 +96,7 @@ let read_standalone_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : 
   end
 
 
-let read_document_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
+let read_document_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -104,9 +104,9 @@ let read_document_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Ty
       begin
         Lexer.reset_to_strexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, newkdenv, _, ast) = Typechecker.main varntenv kdenv tyenv utast in
+        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv newkdenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -128,25 +128,9 @@ let read_document_file (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Ty
   end
 
 
-let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
+let error_log_environment suspended =
   try
-    match file_name_in_list with
-    | [] ->
-        begin
-          print_endline " ---- ---- ---- ----" ;
-          print_endline "  no output."
-        end
-    | file_name_in :: tail  when is_document_file file_name_in ->
-          read_document_file varntenv kdenv tyenv env file_name_in file_name_out
-
-    | file_name_in :: tail  when is_header_file file_name_in ->
-          let (newvarntenv, newkdenv, newtyenv, newenv) = make_environment_from_header_file varntenv kdenv tyenv env file_name_in in
-            main newvarntenv newkdenv newtyenv newenv tail file_name_out
-
-    | file_name_in :: tail  when is_standalone_file file_name_in ->
-          read_standalone_file varntenv kdenv tyenv env file_name_in file_name_out
-
-    | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
+    suspended ()
   with
   | Lexer.LexError(s)               -> report_error "Lexer" [ NormalLine(s); ]
   | Parsing.Parse_error             -> report_error "Parser" [ NormalLine("something is wrong."); ]
@@ -183,9 +167,9 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
 
-  | Subst.ContradictionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv kdenv ty1 in
-      let strty2 = string_of_mono_type varntenv kdenv ty2 in
+  | Typechecker.ContradictionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv ty1 in
+      let strty2 = string_of_mono_type varntenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -204,9 +188,9 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
           DisplayLine(strtyB ^ ".");
         ] additional)
 
-  | Subst.InclusionError(varntenv, kdenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv kdenv ty1 in
-      let strty2 = string_of_mono_type varntenv kdenv ty2 in
+  | Typechecker.InclusionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type varntenv ty1 in
+      let strty2 = string_of_mono_type varntenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -232,6 +216,28 @@ let rec main (varntenv : Variantenv.t) (kdenv : Kindenv.t) (tyenv : Typeenv.t) (
   | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
 
 
+let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
+  error_log_environment (fun () ->
+    match file_name_in_list with
+    | [] ->
+        begin
+          print_endline " ---- ---- ---- ----" ;
+          print_endline "  no output."
+        end
+    | file_name_in :: tail  when is_document_file file_name_in ->
+          read_document_file varntenv tyenv env file_name_in file_name_out
+
+    | file_name_in :: tail  when is_header_file file_name_in ->
+          let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
+            main newvarntenv newtyenv newenv tail file_name_out
+
+    | file_name_in :: tail  when is_standalone_file file_name_in ->
+          read_standalone_file varntenv tyenv env file_name_in file_name_out
+
+    | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
+  )
+
+
 let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =
     if num = Array.length Sys.argv then
       begin
@@ -239,10 +245,9 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
         print_endline "" ;
         Tyvarid.initialize () ;
         let varntenv = Primitives.make_variant_environment () in
-        let kdenv = Kindenv.empty in
         let tyenv = Primitives.make_type_environment () in
         let env = Primitives.make_environment () in
-          main varntenv kdenv tyenv env file_name_in_list file_name_out
+          main varntenv tyenv env file_name_in_list file_name_out
       end
     else
       match Sys.argv.(num) with

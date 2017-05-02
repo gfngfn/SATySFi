@@ -55,9 +55,11 @@
   let rec increment_line_for_each_break lexbuf str num =
     if num >= String.length str then () else
       begin
-      ( match str.[num] with
-        | '\n' -> ( increment_line lexbuf )
-        | _ -> () ) ;
+        begin
+          match str.[num] with
+          | ( '\n' | '\r' ) -> ( increment_line lexbuf )
+          | _               -> ()
+        end ;
         increment_line_for_each_break lexbuf str (num + 1)
       end
 
@@ -94,7 +96,7 @@
 }
 
 let space = [' ' '\t']
-let break = ['\n']
+let break = ['\n' '\r']
 let digit = ['0'-'9']
 let capital = ['A'-'Z']
 let small = ['a'-'z']
@@ -103,7 +105,7 @@ let item  = "*"+
 let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
-let str = [^ ' ' '\t' '\n' '@' '`' '\\' '{' '}' '%' '|' '*']
+let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*']
 rule numexpr = parse
   | "%" {
       after_comment_state := STATE_NUMEXPR ;
@@ -405,7 +407,7 @@ and literal = parse
         else
           begin next_state := !after_literal_state ; CLOSEQT(get_pos lexbuf) end
     }
-  | "\n" { increment_line lexbuf ; CHAR(get_pos lexbuf, "\n") }
+  | break { increment_line lexbuf ; CHAR(get_pos lexbuf, "\n") }
   | eof {
       raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
     }

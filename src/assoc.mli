@@ -14,6 +14,8 @@ val of_list : ?eq:('a -> 'a -> bool) -> ('a * 'b) list -> ('a, 'b) t
 
 val map_value : ('b -> 'c) -> ('a, 'b) t -> ('a, 'c) t
 
+val iter_value : ('b -> unit) -> ('a, 'b) t -> unit
+
 val fold_value : ('c -> 'b -> 'c) -> 'c -> ('a, 'b) t -> 'c
 
 val to_value_list : ('a, 'b) t -> 'b list

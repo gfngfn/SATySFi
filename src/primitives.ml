@@ -23,13 +23,13 @@ let make_type_environment () =
   let b             = (Range.dummy "bool", BoolType) in
   let s             = (Range.dummy "string", StringType) in
   let v n           = (Range.dummy "tv", TypeVariable(n)) in
-  let (-%) n ptysub = Forall(n, UniversalKind, ptysub) in
-  let (~%) ty       = Mono(ty) in
+  let (-%) n ptysub = ptysub in
+  let (~%) ty       = Poly(ty) in
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
-  let tv1           = Tyvarid.fresh Tyvarid.Quantifiable in
-  let tv2           = Tyvarid.fresh Tyvarid.Quantifiable in
+  let tv1           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable ())) in
+  let tv2           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable ())) in
 
     Typeenv.from_list
       [ ( "+",   ~% (i --> (i --> i)) );
