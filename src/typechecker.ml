@@ -178,9 +178,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                          ^ " with " ^ (string_of_mono_type_basic newty2) ^ "\n") in (* for debug *)
                 tvref1 := Link(newty2)
 
-    | (_, TypeVariable(_)) -> unify_sub ty2 ty1
+      | (_, TypeVariable(_)) -> unify_sub ty2 ty1
 
-    | _ -> raise InternalContradictionError
+      | _ -> raise InternalContradictionError
 
 
 let unify_ (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
