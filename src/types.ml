@@ -36,6 +36,8 @@ module Tyvarid_
     type 'a t_
     val bottom_level : level
     val succ_level : level -> level
+    val get_level : 'a t_ -> level
+    val set_level : 'a t_ -> level -> 'a t_
     val initialize : unit -> unit
     val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
@@ -52,6 +54,10 @@ module Tyvarid_
     let bottom_level = 0
 
     let succ_level lev = lev + 1
+
+    let get_level (_, _, _, lev) = lev
+
+    let set_level (idmain, kd, qtfbl, _) lev = (idmain, kd, qtfbl, lev)
 
     let current_id = ref 0
 

@@ -24,8 +24,13 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) =
       begin
         match !tvref with
         | Link(tyl)   -> iter tyl
-        | Free(tvidx) -> Tyvarid.eq tvidx tvid
         | Bound(_)    -> false
+        | Free(tvidx) ->
+            if Tyvarid.eq tvidx tvid then true else
+              begin
+                tvref := Free(Tyvarid.set_level tvidx (Tyvarid.get_level tvid)) ;
+                false
+              end
       end
   | FuncType(tydom, tycod)         -> iter tydom || iter tycod
   | ProductType(tylist)            -> iter_list tylist
