@@ -35,3 +35,5 @@ libmsvcrt
 libshell32
 libuser32
 libws2_32
+_build
+macrodown

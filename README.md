@@ -15,12 +15,21 @@ It enables you to write documents semantically markuped with flexible macros of 
 
 ## Install
 
-Download the binary executable file from the Release of Macrodown on GitHub.
-Should you want to compile the binary file from the source codes,
-install `make` and `ocamlc`/`ocamlopt`, clone this repository, and execute `make`.
-Then `macrodown` or `macrodown.exe` is generated in `bin/`.
+First, clone/download this repo
 
-Finally, add the path to the binary file to `PATH`.
+### Use OPAM
+* In repositry, run `opam pin add macrodown .`  
+* To reinstall, run `opam reinstsall macrodown`  
+* To uninstall, run `opam uninstall macrodown`.  
+
+### Manual build
+1. Install ocamlbuild, ocamlfind, and Menhir.
+2. In repository, run `make`.
+3. `macrodown` should then be available under the diretory
+
+### Download release from GitHub
+
+See [release page](https://github.com/gfngfn/Macrodown/releases)
 
 ## Usage
 
