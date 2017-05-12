@@ -34,12 +34,16 @@
 
   let end_of_argument_variable : untyped_argument_variable_cons = []
 
+  let end_of_argument : untyped_argument_cons = []
+
 
   let rec append_argument_list (arglsta : untyped_argument_cons) (arglstb : untyped_argument_cons) =
+    List.append arglsta arglstb
+(*
     match arglsta with
-    | UTEndOfArgument              -> arglstb
-    | UTArgumentCons(arg, arglstl) -> UTArgumentCons(arg, (append_argument_list arglstl arglstb))
-
+    | []             -> arglstb
+    | arg :: arglstl -> arg :: (append_argument_list arglstl arglstb)
+*)
 
   let class_and_id_region (utast : untyped_abstract_tree) =
     (Range.dummy "class_and_id_region", UTClassAndIDRegion(utast))
@@ -50,8 +54,8 @@
     let (csrng, _) = csutast in
     let rec iter argcons utastconstr =
       match argcons with
-      | UTEndOfArgument                           -> utastconstr
-      | UTArgumentCons((argrng, argmain), actail) -> iter actail (Range.unite csrng argrng, UTApply(utastconstr, (argrng, argmain)))
+      | []                          -> utastconstr
+      | (argrng, argmain) :: actail -> iter actail (Range.unite csrng argrng, UTApply(utastconstr, (argrng, argmain)))
     in
       iter argcons (Range.dummy "convert_into_apply", UTApplyClassAndID(clsnmutast, idnmutast, csutast))
 
@@ -1238,15 +1242,15 @@ sxidnm:
   |           { (Range.dummy "no-id-name1", UTConstructor("Nothing", (Range.dummy "no-id-name2", UTUnitConstant))) }
 ;
 narg: /* -> untyped_argument_cons */
-  | OPENNUM nxlet CLOSENUM narg { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
-  | OPENNUM CLOSENUM narg       { let rng = make_range (Tok $1) (Tok $2) in UTArgumentCons((rng, UTUnitConstant), $3) }
+  | OPENNUM nxlet CLOSENUM narg { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENNUM CLOSENUM narg       { let rng = make_range (Tok $1) (Tok $2) in (rng, UTUnitConstant) :: $3 }
   | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD narg {
-        let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, UTRecord($2)), $4)
+        let rng = make_range (Tok $1) (Tok $3) in (rng, UTRecord($2)) :: $4
       }
   | OPENNUM_AND_BLIST nxlist CLOSENUM_AND_ELIST narg {
-        let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4)
+        let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4
       }
-  |                             { UTEndOfArgument }
+  |                             { end_of_argument }
 /* -- for syntax error log -- */
   | OPENNUM error                { report_error (Tok $1) "( (in active area)" }
   | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ") (in active area)" }
@@ -1257,18 +1261,18 @@ narg: /* -> untyped_argument_cons */
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
-  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
-  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, omit_spaces $2), $4) }
-  | END                            { UTEndOfArgument }
+  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
+  | END                            { end_of_argument }
 /* -- for syntax error log --*/
   | BGRP error            { report_error (Tok $1) "{" }
   | BGRP sxsep EGRP error { report_error (Tok $3) "}" }
 /* -- -- */
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, extract_main $2), $4) }
-  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in UTArgumentCons((rng, omit_spaces $2), $4) }
-  |                                { UTEndOfArgument }
+  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
+  |                                { end_of_argument }
 /* -- for syntax error log -- */
   | BGRP error                   { report_error (Tok $1) "{" }
   | BGRP sxsep EGRP error        { report_error (Tok $3) "}" }
