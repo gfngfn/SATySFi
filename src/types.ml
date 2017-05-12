@@ -188,15 +188,9 @@ type class_name_arg =
 
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons = untyped_pattern_tree list
-(*
-  | UTArgumentVariableCons of untyped_pattern_tree * untyped_argument_variable_cons
-  | UTEndOfArgumentVariable
-*)
+
 and untyped_argument_cons = untyped_abstract_tree list
-(*
-  | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
-  | UTEndOfArgument
-*)
+
 and untyped_mutual_let_cons =
   | UTMutualLetCons        of manual_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
