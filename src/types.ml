@@ -153,10 +153,6 @@ and mono_type_main =
 
 and poly_type =
   | Poly of mono_type
-(*
-  | Mono   of mono_type
-  | Forall of (kind Boundid_.t_) * poly_type
-*)
 
 and kind =
   | UniversalKind
@@ -191,9 +187,11 @@ type class_name_arg =
   | NoClassName
 
 (* ---- untyped ---- *)
-type untyped_argument_variable_cons =
+type untyped_argument_variable_cons = untyped_pattern_tree list
+(*
   | UTArgumentVariableCons of untyped_pattern_tree * untyped_argument_variable_cons
   | UTEndOfArgumentVariable
+*)
 and untyped_argument_cons =
   | UTArgumentCons         of untyped_abstract_tree * untyped_argument_cons
   | UTEndOfArgument
