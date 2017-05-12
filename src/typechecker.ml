@@ -630,8 +630,8 @@ and make_type_environment_by_let
   let rec add_mutual_variables (acctyenv : Typeenv.t) (mutletcons : untyped_mutual_let_cons) =
     let iter = add_mutual_variables in
       match mutletcons with
-      | UTEndOfMutualLet                             -> (acctyenv, [])
-      | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
+      | []                             -> (acctyenv, [])
+      | (_, varnm, astdef) :: tailcons ->
           let tvid = Tyvarid.fresh UniversalKind qtfbl (Tyvarid.succ_level lev) () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
           let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct tvid) ^ " :: U") in (* for debug *)
@@ -646,9 +646,9 @@ and make_type_environment_by_let
     let iter = typecheck_mutual_contents varntenv lev in
     let unify = unify_ varntenv in
     match (utmutletcons, tvtylst) with
-    | (UTEndOfMutualLet, []) -> (tyenvforrec, EndOfMutualLet, List.rev acctvtylstout)
+    | ([], []) -> (tyenvforrec, EndOfMutualLet, List.rev acctvtylstout)
 
-    | (UTMutualLetCons(mntyopt, varnm, utast1, tailcons), (_, beta) :: tvtytail) ->
+    | ((mntyopt, varnm, utast1) :: tailcons, (_, beta) :: tvtytail) ->
         let (e1, ty1) = typecheck qtfbl varntenv (Tyvarid.succ_level lev) tyenvforrec utast1 in
         begin
           match mntyopt with

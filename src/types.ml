@@ -191,9 +191,11 @@ type untyped_argument_variable_cons = untyped_pattern_tree list
 
 and untyped_argument_cons = untyped_abstract_tree list
 
-and untyped_mutual_let_cons =
+and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
+(*
   | UTMutualLetCons        of manual_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
   | UTEndOfMutualLet
+*)
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
