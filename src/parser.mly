@@ -6,7 +6,9 @@
     | Tok       of Range.t
     | TokArg    of (Range.t * string)
     | Untyped   of untyped_abstract_tree
+(*
     | UnMdl     of untyped_module_tree
+*)
     | Pat       of untyped_pattern_tree
     | Rng       of Range.t
     | ManuType  of manual_type
@@ -19,7 +21,9 @@
       | Tok(rng)            -> rng
       | TokArg((rng, _))    -> rng
       | Untyped((rng, _))   -> rng
+(*
       | UnMdl((rng, _))     -> rng
+*)
       | Pat((rng, _))       -> rng
       | Rng(rng)            -> rng
       | VarntCons((rng, _)) -> rng
@@ -29,8 +33,10 @@
 
 
   let end_header : untyped_abstract_tree = (Range.dummy "end_header", UTFinishHeaderFile)
-
+(*
   let end_struct : untyped_module_tree   = (Range.dummy "end_struct", UTMFinishModule)
+*)
+  let end_struct : untyped_abstract_tree = (Range.dummy "end_struct", UTFinishHeaderFile)
 
   let end_of_argument_variable : untyped_argument_variable_cons = []
 
@@ -314,34 +320,11 @@
 
   let make_module
       (firsttk : Range.t) (mdlnmtk : Range.t * module_name)
-      (utastdef : untyped_module_tree) (utastaft : untyped_abstract_tree)
+      utastdef (utastaft : untyped_abstract_tree)
   : untyped_abstract_tree
   =
     let mdlnm = extract_name mdlnmtk in
       make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, utastdef, utastaft))
-
-  let make_direct_let_expression lettk decs utmdlaft =
-      make_standard (Tok lettk) (UnMdl utmdlaft) (UTMDirectLetIn(decs, utmdlaft))
-
-  let make_public_let_expression lettk decs utmdlaft =
-      make_standard (Tok lettk) (UnMdl utmdlaft) (UTMPublicLetIn(decs, utmdlaft))
-
-  let make_private_let_expression lettk decs utmdlaft =
-      make_standard (Tok lettk) (UnMdl utmdlaft) (UTMPrivateLetIn(decs, utmdlaft))
-
-  let make_public_let_mutable_expression letmuttk vartk utastdef utmdlaft =
-    let (varrng, varnm) = vartk in
-      make_standard (Tok letmuttk) (UnMdl utmdlaft) (UTMPublicLetMutableIn(varrng, varnm, utastdef, utmdlaft))
-
-  let make_private_let_mutable_expression letmuttk vartk utastdef utmdlaft =
-    let (varrng, varnm) = vartk in
-      make_standard (Tok letmuttk) (UnMdl utmdlaft) (UTMPrivateLetMutableIn(varrng, varnm, utastdef, utmdlaft))
-
-  let make_public_variant_declaration firsttk varntdecs utmdlaft =
-    make_standard (Tok firsttk) (UnMdl utmdlaft) (UTMPublicDeclareVariantIn(varntdecs, utmdlaft))
-
-  let make_private_variant_declaration firsttk varntdecs utmdlaft =
-    make_standard (Tok firsttk) (UnMdl utmdlaft) (UTMPrivateDeclareVariantIn(varntdecs, utmdlaft))
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -513,18 +496,15 @@ nxtoplevel:
   | MODULE CONSTRUCTOR DEFEQ STRUCT error     { report_error (Tok $4) "struct" }
 ;
 nxstruct: /* -> untyped_module_tree */
-  | DIRECT LET nxdirectdec nxstruct                    { make_direct_let_expression $1 $3 $4 }
-  | DIRECT LET nxdirectdec END                         { make_direct_let_expression $1 $3 end_struct }
-  | DIRECT LETLAZY nxdirectlazydec nxstruct            { make_direct_let_expression $1 $3 $4 }
-  | DIRECT LETLAZY nxdirectlazydec END                 { make_direct_let_expression $1 $3 end_struct }
-  | PUBLIC LET nxpubdec nxstruct                       { make_public_let_expression $1 $3 $4 }
-  | PUBLIC LET nxpubdec END                            { make_public_let_expression $1 $3 end_struct }
-  | PUBLIC LETLAZY nxpublazydec nxstruct               { make_public_let_expression $1 $3 $4 }
-  | PUBLIC LETLAZY nxpublazydec END                    { make_public_let_expression $1 $3 end_struct }
-  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct   { make_public_let_mutable_expression $1 $3 $5 $6 }
-  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet END        { make_public_let_mutable_expression $1 $3 $5 end_struct }
-  | PUBLIC VARIANT nxvariantdec nxstruct               { make_public_variant_declaration $1 $3 $4 }
-  | PUBLIC VARIANT nxvariantdec END                    { make_public_variant_declaration $1 $3 end_struct }
+  | LET nxdec nxstruct                          { make_let_expression $1 $2 $3 }
+  | LET nxdec END                               { make_let_expression $1 $2 end_struct }
+  | LETLAZY nxlazydec nxstruct                  { make_let_expression $1 $2 $3 }
+  | LETLAZY nxlazydec END                       { make_let_expression $1 $2 end_struct }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct   { make_let_mutable_expression $1 $2 $4 $5 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet END        { make_let_mutable_expression $1 $2 $4 end_struct }
+  | VARIANT nxvariantdec nxstruct               { make_variant_declaration $1 $2 $3 }
+  | VARIANT nxvariantdec END                    { make_variant_declaration $1 $2 end_struct }
+/*
   | PRIVATE LET nxdec nxstruct                         { make_private_let_expression $1 $3 $4 }
   | PRIVATE LET nxdec END                              { make_private_let_expression $1 $3 end_struct }
   | PRIVATE LETLAZY nxlazydec nxstruct                 { make_private_let_expression $1 $3 $4 }
@@ -533,7 +513,8 @@ nxstruct: /* -> untyped_module_tree */
   | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet END       { make_private_let_mutable_expression $1 $3 $5 end_struct }
   | PRIVATE VARIANT nxvariantdec nxstruct              { make_private_variant_declaration $1 $3 $4 }
   | PRIVATE VARIANT nxvariantdec END                   { make_private_variant_declaration $1 $3 end_struct }
-/* -- for syntax error log -- */
+*/
+/* -- for syntax error log --
   | DIRECT error             { report_error (Tok $1) "direct" }
   | DIRECT LET error         { report_error (Tok $2) "let" }
   | PUBLIC error             { report_error (Tok $1) "private" }
@@ -544,7 +525,7 @@ nxstruct: /* -> untyped_module_tree */
   | PRIVATE LET error        { report_error (Tok $2) "let" }
   | PRIVATE LETMUTABLE error { report_error (Tok $2) "let" }
   | PRIVATE VARIANT error    { report_error (Tok $2) "variant" }
-/* -- -- */
+-- -- */
 ;
 nxdec: /* -> untyped_mutual_let_cons */
   | VAR COLON txfunc DEFEQ nxlet LETAND nxdec            { make_mutual_let_cons (Some $3) $1 end_of_argument_variable $5 $7 }

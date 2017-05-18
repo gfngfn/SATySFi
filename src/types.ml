@@ -227,7 +227,7 @@ and untyped_abstract_tree_main =
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of module_name * untyped_module_tree * untyped_abstract_tree
+  | UTModule               of module_name * untyped_abstract_tree * untyped_abstract_tree
 (* -- implerative -- *)
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
@@ -279,18 +279,14 @@ and untyped_pattern_match_cons =
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
-
+(*
 and untyped_module_tree = Range.t * untyped_module_tree_main
 and untyped_module_tree_main =
   | UTMFinishModule
-  | UTMPublicLetIn                 of untyped_mutual_let_cons * untyped_module_tree
-  | UTMPublicLetMutableIn          of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPublicDeclareVariantIn      of untyped_mutual_variant_cons * untyped_module_tree
-  | UTMPrivateLetIn                of untyped_mutual_let_cons * untyped_module_tree
-  | UTMPrivateLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMPrivateDeclareVariantIn     of untyped_mutual_variant_cons * untyped_module_tree
-  | UTMDirectLetIn                 of untyped_mutual_let_cons * untyped_module_tree
-
+  | UTMLetIn            of untyped_mutual_let_cons * untyped_module_tree
+  | UTMLetMutableIn     of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
+  | UTMDeclareVariantIn of untyped_mutual_variant_cons * untyped_module_tree
+*)
 and untyped_type_argument_cons =
   | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
   | UTEndOfTypeArgument
