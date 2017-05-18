@@ -399,7 +399,7 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT ENDSTRUCT PUBLIC PRIVATE DIRECT DOT
+%token <Range.t> MODULE STRUCT END PUBLIC PRIVATE DIRECT DOT
 %token <Range.t> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Range.t> REFNOW REFFINAL
@@ -411,7 +411,7 @@
 %token <Range.t> OPENSTR CLOSESTR
 %token <Range.t> OPENNUM CLOSENUM
 %token <Range.t> TRUE FALSE
-%token <Range.t> SEP END COMMA
+%token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
 %token <Range.t> OPENNUM_AND_BRECORD CLOSENUM_AND_ERECORD OPENNUM_AND_BLIST CLOSENUM_AND_ELIST
 %token <Range.t> BEFORE UNITVALUE WHILE DO
@@ -514,25 +514,25 @@ nxtoplevel:
 ;
 nxstruct: /* -> untyped_module_tree */
   | DIRECT LET nxdirectdec nxstruct                    { make_direct_let_expression $1 $3 $4 }
-  | DIRECT LET nxdirectdec ENDSTRUCT                   { make_direct_let_expression $1 $3 end_struct }
+  | DIRECT LET nxdirectdec END                         { make_direct_let_expression $1 $3 end_struct }
   | DIRECT LETLAZY nxdirectlazydec nxstruct            { make_direct_let_expression $1 $3 $4 }
-  | DIRECT LETLAZY nxdirectlazydec ENDSTRUCT           { make_direct_let_expression $1 $3 end_struct }
+  | DIRECT LETLAZY nxdirectlazydec END                 { make_direct_let_expression $1 $3 end_struct }
   | PUBLIC LET nxpubdec nxstruct                       { make_public_let_expression $1 $3 $4 }
-  | PUBLIC LET nxpubdec ENDSTRUCT                      { make_public_let_expression $1 $3 end_struct }
+  | PUBLIC LET nxpubdec END                            { make_public_let_expression $1 $3 end_struct }
   | PUBLIC LETLAZY nxpublazydec nxstruct               { make_public_let_expression $1 $3 $4 }
-  | PUBLIC LETLAZY nxpublazydec ENDSTRUCT              { make_public_let_expression $1 $3 end_struct }
+  | PUBLIC LETLAZY nxpublazydec END                    { make_public_let_expression $1 $3 end_struct }
   | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct   { make_public_let_mutable_expression $1 $3 $5 $6 }
-  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT  { make_public_let_mutable_expression $1 $3 $5 end_struct }
+  | PUBLIC LETMUTABLE VAR OVERWRITEEQ nxlet END        { make_public_let_mutable_expression $1 $3 $5 end_struct }
   | PUBLIC VARIANT nxvariantdec nxstruct               { make_public_variant_declaration $1 $3 $4 }
-  | PUBLIC VARIANT nxvariantdec ENDSTRUCT              { make_public_variant_declaration $1 $3 end_struct }
+  | PUBLIC VARIANT nxvariantdec END                    { make_public_variant_declaration $1 $3 end_struct }
   | PRIVATE LET nxdec nxstruct                         { make_private_let_expression $1 $3 $4 }
-  | PRIVATE LET nxdec ENDSTRUCT                        { make_private_let_expression $1 $3 end_struct }
+  | PRIVATE LET nxdec END                              { make_private_let_expression $1 $3 end_struct }
   | PRIVATE LETLAZY nxlazydec nxstruct                 { make_private_let_expression $1 $3 $4 }
-  | PRIVATE LETLAZY nxlazydec ENDSTRUCT                { make_private_let_expression $1 $3 end_struct }
+  | PRIVATE LETLAZY nxlazydec END                      { make_private_let_expression $1 $3 end_struct }
   | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct  { make_private_let_mutable_expression $1 $3 $5 $6 }
-  | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet ENDSTRUCT { make_private_let_mutable_expression $1 $3 $5 end_struct }
+  | PRIVATE LETMUTABLE VAR OVERWRITEEQ nxlet END       { make_private_let_mutable_expression $1 $3 $5 end_struct }
   | PRIVATE VARIANT nxvariantdec nxstruct              { make_private_variant_declaration $1 $3 $4 }
-  | PRIVATE VARIANT nxvariantdec ENDSTRUCT             { make_private_variant_declaration $1 $3 end_struct }
+  | PRIVATE VARIANT nxvariantdec END                   { make_private_variant_declaration $1 $3 end_struct }
 /* -- for syntax error log -- */
   | DIRECT error             { report_error (Tok $1) "direct" }
   | DIRECT LET error         { report_error (Tok $2) "let" }
@@ -1227,7 +1227,7 @@ sxbot:
   | CHAR  { let (rng, ch) = $1 in (rng, UTStringConstant(ch)) }
   | SPACE { let rng = $1 in (rng, UTStringConstant(" ")) }
   | BREAK { let rng = $1 in (rng, UTBreakAndIndent) }
-  | VARINSTR END { make_standard (TokArg $1) (Tok $2) (UTContentOf(extract_name $1)) }
+  | VARINSTR ENDACTIVE { make_standard (TokArg $1) (Tok $2) (UTContentOf(extract_name $1)) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (csrng, csnm) = $1 in
           convert_into_apply (csrng, UTContentOf(csnm)) $2 $3 (append_argument_list $4 $5)
@@ -1265,7 +1265,7 @@ narg: /* -> untyped_argument_cons */
 sarg: /* -> Types.untyped_argument_cons */
   | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
   | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
-  | END                            { end_of_argument }
+  | ENDACTIVE                      { end_of_argument }
 /* -- for syntax error log --*/
   | BGRP error            { report_error (Tok $1) "{" }
   | BGRP sxsep EGRP error { report_error (Tok $3) "}" }

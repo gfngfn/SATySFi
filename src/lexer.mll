@@ -239,7 +239,7 @@ rule numexpr = parse
           | "of"                -> OF(pos)
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
-          | "end-struct"        -> ENDSTRUCT(pos)
+          | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
           | "publ"              -> PUBLIC(pos)
           | "priv"              -> PRIVATE(pos)
@@ -386,7 +386,7 @@ and active = parse
   | ";" {
       next_state := STATE_STREXPR ;
       ignore_space := false ;
-      END(get_pos lexbuf)
+      ENDACTIVE(get_pos lexbuf)
     }
   | eof {
       raise (LexError(error_reporting lexbuf "input ended while reading active area"))
