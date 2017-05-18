@@ -227,7 +227,7 @@ and untyped_abstract_tree_main =
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of module_name * untyped_abstract_tree * untyped_abstract_tree
+  | UTModule               of module_name * (signature_content list) option * untyped_abstract_tree * untyped_abstract_tree
 (* -- implerative -- *)
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree

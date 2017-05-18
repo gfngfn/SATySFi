@@ -311,12 +311,12 @@
       UTMutualSynonymCons(tyargcons, typenm, mnty, tailcons)
 
   let make_module
-      (firsttk : Range.t) (mdlnmtk : Range.t * module_name)
+      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (sigopt : (signature_content list) option)
       utastdef (utastaft : untyped_abstract_tree)
   : untyped_abstract_tree
   =
     let mdlnm = extract_name mdlnmtk in
-      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, utastdef, utastaft))
+      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, sigopt, utastdef, utastaft))
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -467,14 +467,14 @@ nxtoplevel:
   | TYPE nxvariantdec EOI                                          { make_variant_declaration $1 $2 end_header }
   | LETLAZY nxlazydec nxtoplevel                                   { make_let_expression $1 $2 $3 }
   | LETLAZY nxlazydec EOI                                          { make_let_expression $1 $2 end_header }
-  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxtoplevel   { make_module $1 $2 $6 $7 }
-  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct EOI          { make_module $1 $2 $6 end_header }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxtoplevel   { make_module $1 $2 $3 $6 $7 }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct EOI          { make_module $1 $2 $3 $6 end_header }
 /* ---- transition to expression style ---- */
   | LET nxdec IN nxlet EOI                                         { make_let_expression $1 $2 $4 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet EOI                  { make_let_mutable_expression $1 $2 $4 $6 }
   | TYPE nxvariantdec IN nxlet EOI                                 { make_variant_declaration $1 $2 $4 }
   | LETLAZY nxlazydec IN nxlet EOI                                 { make_let_expression $1 $2 $4 }
-  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $6 $8 }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $3 $6 $8 }
 /* ---- for syntax error log -- */
   | LET error                                 { report_error (Tok $1) "let" }
   | LET nxdec IN error                        { report_error (Tok $3) "in" }
@@ -489,7 +489,7 @@ nxtoplevel:
 ;
 nxsigopt:
   |                 { None }
-  | COLON SIG nxsig { Some($1) }
+  | COLON SIG nxsig { Some($3) }
 ;
 nxsig:
   | END                        { [] }
