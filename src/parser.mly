@@ -6,9 +6,6 @@
     | Tok       of Range.t
     | TokArg    of (Range.t * string)
     | Untyped   of untyped_abstract_tree
-(*
-    | UnMdl     of untyped_module_tree
-*)
     | Pat       of untyped_pattern_tree
     | Rng       of Range.t
     | ManuType  of manual_type
@@ -21,9 +18,6 @@
       | Tok(rng)            -> rng
       | TokArg((rng, _))    -> rng
       | Untyped((rng, _))   -> rng
-(*
-      | UnMdl((rng, _))     -> rng
-*)
       | Pat((rng, _))       -> rng
       | Rng(rng)            -> rng
       | VarntCons((rng, _)) -> rng
@@ -33,9 +27,7 @@
 
 
   let end_header : untyped_abstract_tree = (Range.dummy "end_header", UTFinishHeaderFile)
-(*
-  let end_struct : untyped_module_tree   = (Range.dummy "end_struct", UTMFinishModule)
-*)
+
   let end_struct : untyped_abstract_tree = (Range.dummy "end_struct", UTFinishHeaderFile)
 
   let end_of_argument_variable : untyped_argument_variable_cons = []
@@ -382,7 +374,7 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT END PUBLIC PRIVATE DIRECT DOT
+%token <Range.t> MODULE STRUCT END PUBLIC PRIVATE DIRECT DOT SIG
 %token <Range.t> VARIANT OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Range.t> REFNOW REFFINAL
@@ -643,127 +635,6 @@ nxlazydec:
   | VAR COLON txfunc DEFEQ nxlet LETAND error { report_error (Tok $6) "and" }
   | VAR DEFEQ error                           { report_error (Tok $2) "=" }
   | VAR DEFEQ nxlet LETAND error              { report_error (Tok $4) "and" }
-/* -- -- */
-;
-nxpubdec: /* -> untyped_mutual_let_cons */
-  | VAR COLON txfunc DEFEQ nxlet LETAND nxpubdec     { make_mutual_let_cons (Some $3) $1 end_of_argument_variable $5 $7 }
-  | VAR COLON txfunc DEFEQ nxlet                     { make_mutual_let_cons (Some $3) $1 end_of_argument_variable $5 end_of_mutual_let }
-
-  | VAR argvar DEFEQ nxlet LETAND nxpubdec           { make_mutual_let_cons None $1 $2 $4 $6 }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet LETAND nxpubdec           { make_mutual_let_cons (Some $3) $1 $5 $7 $9 }
-
-  | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) $8 }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) $11 }
-
-  | VAR argvar DEFEQ nxlet                           { make_mutual_let_cons None $1 $2 $4 end_of_mutual_let }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet                           { make_mutual_let_cons (Some $3) $1 $5 $7 end_of_mutual_let }
-
-  | VAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) end_of_mutual_let }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) end_of_mutual_let }
-/* -- for syntax error log -- */
-  | VAR error                               { report_error (TokArg $1) "" }
-  | VAR COLON error                         { report_error (Tok $2) ":" }
-  | VAR COLON txfunc BAR error              { report_error (Tok $4) "|" }
-  | VAR argvar DEFEQ error                  { report_error (Tok $3) "=" }
-  | VAR argvar DEFEQ nxlet LETAND error     { report_error (Tok $5) "and" }
-  | VAR argvar DEFEQ nxlet BAR error        { report_error (Tok $5) "|" }
-/* -- -- */
-;
-nxpublazydec:
-  | VAR DEFEQ nxlet LETAND nxpublazydec {
-        let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent($3)) $5
-      }
-  | VAR COLON txfunc DEFEQ nxlet LETAND nxpublazydec {
-        let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent($5)) $7
-      }
-  | VAR DEFEQ nxlet {
-        let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent($3)) end_of_mutual_let
-      }
-  | VAR COLON txfunc DEFEQ nxlet {
-        let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent($5)) end_of_mutual_let
-      }
-/* -- for syntax error log -- */
-  | VAR error                                 { report_error (TokArg $1) "" }
-  | VAR COLON error                           { report_error (Tok $2) ":" }
-  | VAR COLON txfunc DEFEQ error              { report_error (Tok $4) "=" }
-  | VAR COLON txfunc DEFEQ nxlet LETAND error { report_error (Tok $6) "and" }
-  | VAR DEFEQ error                           { report_error (Tok $2) "=" }
-  | VAR DEFEQ nxlet LETAND error              { report_error (Tok $4) "and" }
-/* -- -- */
-;
-nxdirectdec: /* -> untyped_mutual_let_cons */
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdirectdec { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) $7 }
-
-  | CTRLSEQ COLON txfunc DEFEQ nxlet                    { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) end_of_mutual_let }
-
-  | CTRLSEQ argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons None $1 $2 (class_and_id_region $4) $6 }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet LETAND nxdirectdec       { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) $9 }
-
-  | CTRLSEQ argvar DEFEQ nxlet                          { make_mutual_let_cons None $1 $2 (class_and_id_region $4) end_of_mutual_let }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet                          { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) end_of_mutual_let }
-
-  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) $8 }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar LETAND nxdirectdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) $11 }
-
-  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) end_of_mutual_let }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar                    { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) end_of_mutual_let }
-/* -- for syntax error log -- */
-  | CTRLSEQ error                                        { report_error (TokArg $1) "" }
-  | CTRLSEQ COLON error                                  { report_error (Tok $2) ":" }
-  | CTRLSEQ COLON txfunc DEFEQ error                     { report_error (Tok $4) "=" }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND error        { report_error (Tok $6) "and" }
-  | CTRLSEQ COLON txfunc BAR
-            error                                        { report_error (Tok $4) "|" }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ error                           { report_error (Tok $6) "=" }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet LETAND error              { report_error (Tok $8) "and" }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR error                 { report_error (Tok $8) "|" }
-  | CTRLSEQ COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar LETAND error { report_error (Tok $10) "and" }
-  | CTRLSEQ argvar DEFEQ error                           { report_error (Tok $3) "=" }
-  | CTRLSEQ argvar DEFEQ nxlet LETAND error              { report_error (Tok $5) "and" }
-  | CTRLSEQ argvar DEFEQ nxlet BAR error                 { report_error (Tok $5) "|" }
-  | CTRLSEQ argvar DEFEQ nxlet BAR nxdecpar LETAND error { report_error (Tok $7) "and" }
-/* -- -- */
-;
-nxdirectlazydec:
-  | CTRLSEQ DEFEQ nxlet LETAND nxdirectlazydec {
-        let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $3)) $5
-      }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdirectlazydec {
-        let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $5)) $7
-      }
-  | CTRLSEQ DEFEQ nxlet {
-        let rng = make_range (Untyped $3) (Untyped $3) in
-          make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $3)) end_of_mutual_let
-      }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet {
-        let rng = make_range (Untyped $5) (Untyped $5) in
-          make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $5)) end_of_mutual_let
-      }
-/* -- for syntax error log -- */
-  | CTRLSEQ error                                 { report_error (TokArg $1) "" }
-  | CTRLSEQ COLON error                           { report_error (Tok $2) ":" }
-  | CTRLSEQ COLON txfunc DEFEQ error              { report_error (Tok $4) "=" }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND error { report_error (Tok $6) "and" }
-  | CTRLSEQ DEFEQ error                           { report_error (Tok $2) "=" }
-  | CTRLSEQ DEFEQ nxlet LETAND error              { report_error (Tok $4) "and" }
 /* -- -- */
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */

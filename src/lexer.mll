@@ -239,6 +239,7 @@ rule numexpr = parse
           | "of"                -> OF(pos)
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
+          | "sig"               -> SIG(pos)
           | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
           | "publ"              -> PUBLIC(pos)
