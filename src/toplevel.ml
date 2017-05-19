@@ -3,6 +3,7 @@
 #load "tyvarid.cmo";;
 #load "range.cmo";;
 #load "types.cmo";;
+#load "hashTree.cmo";;
 #load "typeenv.cmo";;
 #load "directedGraph.cmo";;
 #load "variantenv.cmo";;
