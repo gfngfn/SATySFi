@@ -2,38 +2,27 @@ open Types
 
 module ModuleTree = HashTree.Make(String)
 
-type single_environment = (var_name * poly_type) list
+module VarMap = Map.Make(String)
+
+type single_environment = poly_type VarMap.t
 
 type t = single_environment ModuleTree.t
 
 
-let empty = ModuleTree.empty []
+let empty : t = ModuleTree.empty VarMap.empty
 
 
-let from_list (lst : (var_name * poly_type) list) = ModuleTree.empty lst
-
-
-let map f (tyenv : t) = ModuleTree.update tyenv [] (List.map f)
+let from_list (lst : (var_name * poly_type) list) =
+  let vmapinit = List.fold_left (fun vmap (varnm, pty) -> VarMap.add varnm pty vmap) VarMap.empty lst in
+    ModuleTree.empty vmapinit
 
 
 let add (tyenv : t) (varnm : var_name) (pty : poly_type) =
-  let rec aux sgl =
-    match sgl with
-    | []                                -> (varnm, pty) :: []
-    | (vn, pt) :: tail  when vn = varnm -> (varnm, pty) :: tail
-    | (vn, pt) :: tail                  -> (vn, pt) :: (aux tail)
-  in
-    ModuleTree.update tyenv [] aux
+  ModuleTree.update tyenv [] (VarMap.add varnm pty)
 
 
 let find (tyenv : t) (varnm : var_name) =
-  let rec aux sgl =
-    match sgl with
-    | []                               -> raise Not_found
-    | (vn, ts) :: tail when vn = varnm -> ts
-    | (vn, ts) :: tail                 -> aux tail
-  in
-    aux (ModuleTree.get tyenv [])
+  VarMap.find varnm (ModuleTree.get tyenv [])
 
 
 (* ---- following are all for debugging --- *)

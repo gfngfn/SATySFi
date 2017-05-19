@@ -6,8 +6,6 @@ val empty : t
 
 val from_list : (var_name * poly_type) list -> t
 
-val map : ((var_name * poly_type) -> (var_name * poly_type)) -> t -> t
-
 val add : t -> var_name -> poly_type -> t
 
 val find : t -> var_name -> poly_type
