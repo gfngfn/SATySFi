@@ -62,6 +62,14 @@ let find ((addr, _, mtr) : t) (varnm : var_name) =
     | Some(pty) -> pty
 
 
+let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) =
+  let mdlid = ModuleID.fresh () in
+  let addrnew = List.append addr [mdlid] in
+  let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
+  let mtrnew = ModuleTree.add_stage mtr addr mdlid VarMap.empty in
+    ((addrnew, nmtoidnew, mtrnew), (addr, nmtoidnew, mtrnew))
+
+
 (* ---- following are all for debugging --- *)
 (*
 let string_of_type_environment (tyenv : t) (msg : string) =
