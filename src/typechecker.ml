@@ -223,10 +223,10 @@ let rec typecheck
         (FinishHeaderFile, (Range.dummy "finish-header-file", UnitType))
       end
 
-  | UTContentOf(varnm) ->
+  | UTContentOf(mdlnmlst, varnm) ->
       begin
         try
-          let pty = Typeenv.find tyenv varnm in
+          let pty = Typeenv.find tyenv mdlnmlst varnm in
           let tyfree = instantiate lev qtfbl pty in
           let tyres = overwrite_range_of_type tyfree rng in
           let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
@@ -304,11 +304,13 @@ let rec typecheck
         (LetMutableIn(varnm, eI, eA), tyA)
 
   | UTOverwrite(varrng, varnm, utastN) ->
-      let (_, tyvar) = typecheck_iter tyenv (varrng, UTContentOf(varnm)) in
+      let (_, tyvar) = typecheck_iter tyenv (varrng, UTContentOf([], varnm)) in
       let (eN, tyN) = typecheck_iter tyenv utastN in
       let () = unify tyvar (get_range utastN, RefType(tyN)) in
-          (*  actually 'get_range utastnew' is not good
-              since the right side expression has type 't, not 't ref *)
+          (* --
+             actually 'get_range utastnew' is not good
+             since the right side expression has type 't, not 't ref 
+          -- *)
         (Overwrite(varnm, eN), (rng, UnitType))
 
   | UTSequential(utast1, utast2) ->

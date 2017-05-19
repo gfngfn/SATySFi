@@ -77,7 +77,7 @@
         (rng, UTLambdaAbstract(varrng, "%wild", curry_lambda_abstract rng avtail utastdef))
     | (varrng, argpatas) :: avtail           ->
         let afterabs     = curry_lambda_abstract rng avtail utastdef in
-        let dummyutast   = (varrng, UTContentOf("%patarg")) in
+        let dummyutast   = (varrng, UTContentOf([], "%patarg")) in
         let dummypatcons = UTPatternMatchCons((varrng, argpatas), afterabs, UTEndOfPatternMatch) in
           (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
 
@@ -178,7 +178,7 @@
 
   let binary_operator (opname : var_name) (utastl : untyped_abstract_tree) (oprng : Range.t) (utastr : untyped_abstract_tree) : untyped_abstract_tree =
     let rng = make_range (Untyped utastl) (Untyped utastr) in
-      (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf(opname)), utastl)), utastr))
+      (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf([], opname)), utastl)), utastr))
 
 
   let make_standard (sttknd : range_kind) (endknd : range_kind) (main : 'a) =
@@ -295,7 +295,7 @@
     | (rng, _) :: tailcons ->
 (*        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in *)
 (*        let knew = (fun u -> k (dummy_range, UTTupleCons(((3000, 0, 0, 0), UTContentOf(numbered_var_name i)), u))) in (* for test *) *)
-        let knew = (fun u -> k (Range.dummy "knew1", UTTupleCons((Range.dummy "knew2", UTContentOf(numbered_var_name i)), u))) in (* for test *)
+        let knew = (fun u -> k (Range.dummy "knew1", UTTupleCons((Range.dummy "knew2", UTContentOf([], numbered_var_name i)), u))) in (* for test *)
         let after = make_lambda_abstract_for_parallel_sub fullrng knew (i + 1) tailcons pmcons in
           (Range.dummy "pattup1", UTLambdaAbstract(Range.dummy "pattup2", numbered_var_name i, after))
 
@@ -476,16 +476,16 @@ nxtoplevel:
   | LETLAZY nxlazydec IN nxlet EOI                                 { make_let_expression $1 $2 $4 }
   | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct IN nxlet EOI { make_module $1 $2 $3 $6 $8 }
 /* ---- for syntax error log -- */
-  | LET error                                 { report_error (Tok $1) "let" }
-  | LET nxdec IN error                        { report_error (Tok $3) "in" }
-  | LETMUTABLE error                          { report_error (Tok $1) "let-mutable"}
-  | LETMUTABLE VAR error                      { report_error (TokArg $2) "" }
-  | LETMUTABLE VAR OVERWRITEEQ error          { report_error (Tok $3) "<-" }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet IN error { report_error (Tok $5) "in" }
-  | TYPE error                                { report_error (Tok $1) "variant" }
-  | MODULE error                              { report_error (Tok $1) "module" }
-  | MODULE CONSTRUCTOR DEFEQ error            { report_error (Tok $3) "=" }
-  | MODULE CONSTRUCTOR DEFEQ STRUCT error     { report_error (Tok $4) "struct" }
+  | LET error                                      { report_error (Tok $1) "let" }
+  | LET nxdec IN error                             { report_error (Tok $3) "in" }
+  | LETMUTABLE error                               { report_error (Tok $1) "let-mutable"}
+  | LETMUTABLE VAR error                           { report_error (TokArg $2) "" }
+  | LETMUTABLE VAR OVERWRITEEQ error               { report_error (Tok $3) "<-" }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet IN error      { report_error (Tok $5) "in" }
+  | TYPE error                                     { report_error (Tok $1) "variant" }
+  | MODULE error                                   { report_error (Tok $1) "module" }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ error        { report_error (Tok $4) "=" }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT error { report_error (Tok $5) "struct" }
 ;
 nxsigopt:
   |                 { None }
@@ -821,7 +821,7 @@ nxrtimes:
 ;
 nxun:
   | MINUS nxapp       { binary_operator "-" (Range.dummy "zero-of-unary-minus", UTNumericConstant(0)) $1 $2 }
-  | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("not")), $2)) }
+  | LNOT nxapp        { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf([], "not")), $2)) }
   | CONSTRUCTOR nxbot { make_standard (TokArg $1) (Untyped $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (TokArg $1) (TokArg $1)
                           (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
@@ -833,7 +833,7 @@ nxun:
 ;
 nxapp:
   | nxapp nxbot    { make_standard (Untyped $1) (Untyped $2) (UTApply($1, $2)) }
-  | REFNOW nxbot   { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf("!")), $2)) }
+  | REFNOW nxbot   { make_standard (Tok $1) (Untyped $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
   | REFFINAL nxbot { make_standard (Tok $1) (Untyped $2) (UTReferenceFinal($2)) }
   | nxbot          { $1 }
 /* -- for syntax error log -- */
@@ -842,10 +842,12 @@ nxapp:
 /* -- -- */
 ;
 nxbot:
-  | nxbot ACCESS VAR    { make_standard (Untyped $1) (TokArg $3) (UTAccessField($1, extract_name $3)) }
-  | VAR                 { make_standard (TokArg $1) (TokArg $1) (UTContentOf(extract_name $1)) }
-  | CONSTRUCTOR DOT VAR { make_standard (TokArg $1) (TokArg $3) (UTContentOf((extract_name $1) ^ "." ^ (extract_name $3))) }
-  | NUMCONST            { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
+  | nxbot ACCESS VAR                { make_standard (Untyped $1) (TokArg $3) (UTAccessField($1, extract_name $3)) }
+  | modulevar                       {
+        let (sttrng, mdlnmlst, vartok) = $1 in
+          make_standard (Rng sttrng) (TokArg vartok) (UTContentOf(mdlnmlst, extract_name vartok))
+      }
+  | NUMCONST                        { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
   | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
@@ -855,7 +857,7 @@ nxbot:
   | OPENQT sxblock CLOSEQT          { make_standard (Tok $1) (Tok $3) (omit_spaces $2) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf($2)) }
+  | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf([], $2)) }
   | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
 /* -- for syntax error log -- */
@@ -864,6 +866,10 @@ nxbot:
   | LPAREN error  { report_error (Tok $1) "(" }
   | BRECORD error { report_error (Tok $1) "(|" }
 /* -- -- */
+;
+modulevar:
+  | VAR                       { (get_range $1, [], $1) }
+  | CONSTRUCTOR DOT modulevar { let (_, mdlnmlst, vartok) = $3 in (get_range $1, (extract_name $1) :: mdlnmlst, vartok) }
 ;
 nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
@@ -1078,10 +1084,10 @@ sxbot:
   | CHAR  { let (rng, ch) = $1 in (rng, UTStringConstant(ch)) }
   | SPACE { let rng = $1 in (rng, UTStringConstant(" ")) }
   | BREAK { let rng = $1 in (rng, UTBreakAndIndent) }
-  | VARINSTR ENDACTIVE { make_standard (TokArg $1) (Tok $2) (UTContentOf(extract_name $1)) }
+  | VARINSTR ENDACTIVE { make_standard (TokArg $1) (Tok $2) (UTContentOf([], extract_name $1)) }
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (csrng, csnm) = $1 in
-          convert_into_apply (csrng, UTContentOf(csnm)) $2 $3 (append_argument_list $4 $5)
+          convert_into_apply (csrng, UTContentOf([], csnm)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | VARINSTR error { report_error (TokArg $1) "" }

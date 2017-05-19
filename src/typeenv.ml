@@ -50,7 +50,7 @@ let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) =
     (addr, nmtoid, mtrnew)
 
 
-let find ((addr, _, mtr) : t) (varnm : var_name) =
+let find ((addr, _, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) =
   let ptyopt =
     ModuleTree.search_backward mtr addr (fun sgl ->
       try Some(VarMap.find varnm sgl) with

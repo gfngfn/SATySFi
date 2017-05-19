@@ -216,7 +216,7 @@ and untyped_abstract_tree_main =
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
 (* -- fundamental -- *)
-  | UTContentOf            of var_name
+  | UTContentOf            of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree

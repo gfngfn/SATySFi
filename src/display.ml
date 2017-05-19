@@ -222,7 +222,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTBooleanConstant(bc)          -> string_of_bool bc
   | UTStringConstant(sc)           -> "{" ^ sc ^ "}"
   | UTUnitConstant                 -> "()"
-  | UTContentOf(varnm)             -> varnm
+  | UTContentOf(lst, varnm)        -> (List.fold_left (fun mdlnm s -> s ^ mdlnm ^ ".") "" lst) ^ varnm
   | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
   | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
   | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"

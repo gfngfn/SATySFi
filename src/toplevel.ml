@@ -50,7 +50,7 @@ let tc s varnm =
       init () ;
       let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
       try
-        let pty = Typeenv.find tyenvres varnm in
+        let pty = Typeenv.find tyenvres [] varnm in
           print_endline ("TYPE = " ^ (Display.string_of_poly_type varntenvres pty))
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
@@ -63,7 +63,7 @@ let tcb s varnm =
       init () ;
       let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
       try
-        let pty = Typeenv.find tyenvres varnm in
+        let pty = Typeenv.find tyenvres [] varnm in
           print_endline ("TYPE = " ^ (Types.string_of_poly_type_basic pty))
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
