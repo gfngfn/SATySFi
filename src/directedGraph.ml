@@ -35,19 +35,15 @@ module type S =
 module Make (Vertex : VertexType) =
   struct
 
+    module VertexSet = Set.Make(Vertex)
+
     type state = Remained | Touched | Done
 
     type vertex = Vertex.t
-    module VertexSet = Set.Make(
-      struct
-        type t = vertex
-        let compare = Vertex.compare
-      end)
 
     type degree_out = int
 
     type 'a t = (vertex, 'a * degree_out ref * state ref * VertexSet.t ref * VertexSet.t ref) Hashtbl.t
-
 
     exception Cyclic
     exception Loop of vertex

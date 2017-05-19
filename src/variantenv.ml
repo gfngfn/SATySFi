@@ -60,14 +60,6 @@ module DependencyGraph = DirectedGraph.Make(
     let show s = s (* for debug *)
   end)
 
-(*
-module InforefHashtbl = Hashtbl.Make(
-  struct
-    type t = type_variable_info ref
-    let equal = (==)
-    let hash = Hashtbl.hash
-  end)
-*)
 
 type vertex_label =
   | VariantVertex of Typeid.t * untyped_type_argument_cons * untyped_variant_cons
@@ -357,18 +349,6 @@ let register_type (dg : vertex_label DependencyGraph.t) (varntenv : t) (tynm : t
     | SynonymVertex(_, _, _, {contents= None}) -> assert false
   with
   | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
-
-(*
-let register_synonym_type (dg : (type_mode * Typeid.t * int) DependencyGraph.t) (varntenv : t)
-                  (tynm : type_name) (tvreflist : (type_variable_info ref) list) (ty : mono_type) =
-  let (defedtypelist, varntenvmain) = varntenv in
-  print_for_debug_variantenv ("RS " ^ tynm) ; (* for debug *)
-  try
-    let (_, tyid, _) = DependencyGraph.find_vertex dg tynm in
-      ((tynm, tyid, Alias(tvreflist, Poly(ty))) :: defedtypelist, varntenvmain)
-  with
-  | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
-*)
 
 
 (* PUBLIC *)
