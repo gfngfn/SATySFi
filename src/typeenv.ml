@@ -1,33 +1,43 @@
 open Types
 
-type t = (var_name * poly_type) list
+module ModuleTree = HashTree.Make(String)
+
+type single_environment = (var_name * poly_type) list
+
+type t = single_environment ModuleTree.t
 
 
-let empty = []
+let empty = ModuleTree.empty []
 
 
-let from_list lst = lst
+let from_list (lst : (var_name * poly_type) list) = ModuleTree.empty lst
 
 
-let map f tyenv = List.map f tyenv
+let map f (tyenv : t) = ModuleTree.update tyenv [] (List.map f)
 
 
-let rec add (tyenv : t) (varnm : var_name) (pty : poly_type) =
-  match tyenv with
-  | []                                -> (varnm, pty) :: []
-  | (vn, pt) :: tail  when vn = varnm -> (varnm, pty) :: tail
-  | (vn, pt) :: tail                  -> (vn, pt) :: (add tail varnm pty)
+let add (tyenv : t) (varnm : var_name) (pty : poly_type) =
+  let rec aux sgl =
+    match sgl with
+    | []                                -> (varnm, pty) :: []
+    | (vn, pt) :: tail  when vn = varnm -> (varnm, pty) :: tail
+    | (vn, pt) :: tail                  -> (vn, pt) :: (aux tail)
+  in
+    ModuleTree.update tyenv [] aux
 
 
-let rec find (tyenv : t) (varnm : var_name) =
-  match tyenv with
-  | []                               -> raise Not_found
-  | (vn, ts) :: tail when vn = varnm -> ts
-  | (vn, ts) :: tail                 -> find tail varnm
+let find (tyenv : t) (varnm : var_name) =
+  let rec aux sgl =
+    match sgl with
+    | []                               -> raise Not_found
+    | (vn, ts) :: tail when vn = varnm -> ts
+    | (vn, ts) :: tail                 -> aux tail
+  in
+    aux (ModuleTree.get tyenv [])
 
 
 (* ---- following are all for debugging --- *)
-
+(*
 let string_of_type_environment (tyenv : t) (msg : string) =
   let rec iter (tyenv : t) =
     match tyenv with
@@ -59,3 +69,4 @@ let string_of_control_sequence_type (tyenv : t) =
       "    #================================================================\n"
     ^ (iter tyenv)
     ^ "    #================================================================\n"
+*)

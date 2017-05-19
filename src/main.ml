@@ -58,9 +58,9 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv
                   begin
                     ( if !show_control_sequence_type then
                         if !show_function_type then
-                          print_endline (Typeenv.string_of_type_environment newtyenv "Environment")
+                          (* print_endline (Typeenv.string_of_type_environment newtyenv "Environment") *) ()
                         else
-                          print_endline (Typeenv.string_of_control_sequence_type newtyenv)
+                          (* print_endline (Typeenv.string_of_control_sequence_type newtyenv) *) ()
                       else () ) ;
                     (newvarntenv, newtyenv, newenv)
                   end
