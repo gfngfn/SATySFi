@@ -10,7 +10,9 @@ val add : t -> var_name -> poly_type -> t
 
 val find : t -> (module_name list) -> var_name -> poly_type
 
-val enter_new_module : t -> module_name -> t * t
+val enter_new_module : t -> module_name -> t
+
+val leave_module : t -> t
 (*
 val string_of_type_environment : t -> string -> string
 

@@ -50,9 +50,10 @@ let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) =
     (addr, nmtoid, mtrnew)
 
 
-let find ((addr, _, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) =
+let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) =
+  let addrlast = List.map (fun nm -> ModuleNameMap.find nm nmtoid) mdlnmlst in
   let ptyopt =
-    ModuleTree.search_backward mtr addr (fun sgl ->
+    ModuleTree.search_backward mtr addr addrlast (fun sgl ->
       try Some(VarMap.find varnm sgl) with
       | Not_found -> None
     )
@@ -67,7 +68,11 @@ let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) =
   let addrnew = List.append addr [mdlid] in
   let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
   let mtrnew = ModuleTree.add_stage mtr addr mdlid VarMap.empty in
-    ((addrnew, nmtoidnew, mtrnew), (addr, nmtoidnew, mtrnew))
+    (addrnew, nmtoidnew, mtrnew)
+
+
+let leave_module ((addr, nmtoid, mtr) : t) =
+  (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
 
 
 (* ---- following are all for debugging --- *)

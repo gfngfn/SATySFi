@@ -216,7 +216,12 @@ let rec typecheck
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, StringType))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType)  )
   | UTUnitConstant        -> (UnitConstant       , (rng, UnitType)  )
-  | UTFinishStruct        -> (FinishStruct       , (rng, UnitType)  )
+  | UTFinishStruct        ->
+      begin
+        final_tyenv := tyenv ;
+        (FinishStruct, (Range.dummy "finish-struct", UnitType))
+      end
+
   | UTFinishHeaderFile    ->
       begin
         final_tyenv    := tyenv ;
@@ -432,8 +437,9 @@ let rec typecheck
         typecheck_iter ~v:varntenvnew tyenv utastA
 
   | UTModule(mdlnm, sigopt, utastM, utastA) -> (* temporary; will use sigopt *)
-      let (tyenvinner, tyenvouter) = Typeenv.enter_new_module tyenv mdlnm in
+      let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
+      let tyenvouter = Typeenv.leave_module (!final_tyenv) in (* temporary; dirty *)
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(mdlnm, eM, eA), tyA)
 

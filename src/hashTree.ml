@@ -8,7 +8,7 @@ module type S =
     val find_stage : 'a t -> key list -> 'a
     val update : 'a t -> key list -> ('a -> 'a) -> 'a t
     val add_stage : 'a t -> key list -> key -> 'a -> 'a t
-    val search_backward : 'a t -> key list -> ('a -> 'b option) -> 'b option
+    val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
   end
 
 
@@ -54,12 +54,20 @@ module Make (Key : Map.OrderedType) =
             Stage(x, imapnew)
 
 
-    let rec search_backward (Stage(x, imap) : 'a t) (addr : key list) (findf : 'a -> 'b option) =
+    let rec search_backward (Stage(x, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) =
       match addr with
-      | []        -> findf x
+      | []        ->
+          begin
+            try
+              let xsub = find_stage hshtr addrlast in
+                findf xsub
+            with
+            | Not_found -> None
+          end
+
       | k :: tail ->
           let hshtr = InternalMap.find k imap in
-          let res = search_backward hshtr tail findf in
+          let res = search_backward hshtr tail addrlast findf in
           begin
             match res with
             | None    -> findf x

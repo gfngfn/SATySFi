@@ -44,13 +44,13 @@ let tcraw s =
   let (tyres, _, _, _) = (Typechecker.main varntenv tyenv (parse s)) in tyres
 ;;
 
-let tc s varnm =
+let tc s mdlnmlst varnm =
   Main.error_log_environment (fun () ->
     begin
       init () ;
       let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
       try
-        let pty = Typeenv.find tyenvres [] varnm in
+        let pty = Typeenv.find tyenvres mdlnmlst varnm in
           print_endline ("TYPE = " ^ (Display.string_of_poly_type varntenvres pty))
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")

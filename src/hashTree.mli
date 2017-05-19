@@ -8,7 +8,7 @@ module type S =
     val find_stage : 'a t -> key list -> 'a
     val update : 'a t -> key list -> ('a -> 'a) -> 'a t
     val add_stage : 'a t -> key list -> key -> 'a -> 'a t
-    val search_backward : 'a t -> key list -> ('a -> 'b option) -> 'b option
+    val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
   end
 
 
