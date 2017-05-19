@@ -210,12 +210,13 @@ let rec typecheck
   let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) ?v:(v = varntenv) t u = typecheck q v l t u in
   let unify = unify_ varntenv in
   match utastmain with
-  | UTStringEmpty         -> (StringEmpty,         (rng, StringType))
-  | UTBreakAndIndent      -> (SoftBreakAndIndent,  (rng, StringType))
+  | UTStringEmpty         -> (StringEmpty        , (rng, StringType))
+  | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, StringType))
   | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, IntType)   )
-  | UTStringConstant(sc)  -> (StringConstant(sc),  (rng, StringType))
+  | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, StringType))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType)  )
-  | UTUnitConstant        -> (UnitConstant,        (rng, UnitType)  )
+  | UTUnitConstant        -> (UnitConstant       , (rng, UnitType)  )
+  | UTFinishStruct        -> (FinishStruct       , (rng, UnitType)  )
   | UTFinishHeaderFile    ->
       begin
         final_tyenv    := tyenv ;
@@ -429,12 +430,13 @@ let rec typecheck
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
       let varntenvnew = Variantenv.add_mutual_cons varntenv lev mutvarntcons in
         typecheck_iter ~v:varntenvnew tyenv utastA
-(*
-  | UTModule(mdlnm, utmdltr, utastA) ->
-      let (varntenvnew, tyenvnew, emdltr, thetaD) = typecheck_module qtfbl kdenv varntenv tyenv varntenv tyenv mdlnm utmdltr in
-      let (eA, tyA, thetaA, kdenvA) = typecheck_iter ~v:varntenvnew kdenv tyenvnew utastA in (* temporary *)
-        (Module(mdlnm, emdltr, eA), tyaft, thetaA @@ thetaD, kdenvA)
-*)
+
+  | UTModule(mdlnm, sigopt, utastM, utastA) -> (* temporary; will use sigopt *)
+      let (tyenvinner, tyenvouter) = Typeenv.enter_new_module tyenv mdlnm in
+      let (eM, _) = typecheck_iter tyenvinner utastM in
+      let (eA, tyA) = typecheck_iter tyenvouter utastA in
+        (Module(mdlnm, eM, eA), tyA)
+
 
 and typecheck_record
     (qtfbl : quantifiability) (varntenv : Variantenv.t) (lev : Tyvarid.level) (tyenv : Typeenv.t)

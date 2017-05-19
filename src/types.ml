@@ -222,6 +222,7 @@ and untyped_abstract_tree_main =
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
+  | UTFinishStruct
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
   | UTConstructor          of constructor_name * untyped_abstract_tree
@@ -343,6 +344,7 @@ and abstract_tree =
   | LambdaAbstract        of var_name * abstract_tree
   | Apply                 of abstract_tree * abstract_tree
   | FinishHeaderFile
+  | FinishStruct
 (* -- pattern match -- *)
   | PatternMatch          of abstract_tree * pattern_match_cons
   | Constructor           of constructor_name * abstract_tree
@@ -379,7 +381,7 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
-  | Module                of module_name * module_tree * abstract_tree
+  | Module                of module_name * abstract_tree * abstract_tree
 (* and itemize =
   | Item                  of abstract_tree * (itemize list) *)
 and pattern_match_cons =
@@ -399,16 +401,17 @@ and pattern_tree =
   | PVariable             of var_name
   | PAsVariable           of var_name * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
+(*
 and module_tree =
   | MFinishModule
   | MPublicLetIn                 of mutual_let_cons * module_tree
   | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-(*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
+  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree
   | MPrivateLetIn                of mutual_let_cons * module_tree
   | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-(*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
+  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree
   | MDirectLetIn                 of mutual_let_cons * module_tree
-
+*)
 type output_unit =
   | OString             of string
   | OBreakAndIndent

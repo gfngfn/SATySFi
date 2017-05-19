@@ -28,7 +28,7 @@
 
   let end_header : untyped_abstract_tree = (Range.dummy "end_header", UTFinishHeaderFile)
 
-  let end_struct : untyped_abstract_tree = (Range.dummy "end_struct", UTFinishHeaderFile)
+  let end_struct : untyped_abstract_tree = (Range.dummy "end_struct", UTFinishStruct)
 
   let end_of_argument_variable : untyped_argument_variable_cons = []
 

@@ -247,16 +247,16 @@ let rec interpret env ast =
   | Constructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
         Constructor(constrnm, valuecont)
-
-  | Module(mdlnm, mdltrdef, astaft) ->
+(*
+  | Module(mdlnm, astmdl, astaft) ->
       let env_out = copy_environment env in
       let env_in  = copy_environment env in
         begin
           print_for_debug_evaluator ("module '" ^ mdlnm ^ "'\n") ;                (* for debug *)
-          add_module_to_environment env_out env_in mdlnm mdltrdef ;
+          add_module_to_environment env_out env_in mdlnm astmdl ;
           interpret env_out astaft
         end
-
+*)
 (* -- primitive operation -- *)
 
   | PrimitiveSame(ast1, ast2) ->
@@ -386,7 +386,7 @@ and make_variable_name mdlnm varnm =
   | "" -> varnm
   | _  -> mdlnm ^ "." ^ varnm
 
-
+(*
 (* environment -> environment -> module_name -> module_tree -> unit *)
 and add_module_to_environment eout ein mdlnm mdltrdef =
   match mdltrdef with
@@ -426,7 +426,7 @@ and add_module_to_environment eout ein mdlnm mdltrdef =
           add_to_environment ein varnm (ref (Location(loc))) ;
           add_module_to_environment eout ein mdlnm mdltraft
         end
-
+*)
 
 (* environment -> abstract_tree -> pattern_match_cons -> abstract_tree *)
 and select_pattern env astobj pmcons =
