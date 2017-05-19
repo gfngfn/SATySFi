@@ -302,7 +302,7 @@ let rec typecheck
       let () = unify ty2 ty1 in
         (IfThenElse(eB, e1, e2), ty1)
 
-(* ---- impleratives ---- *)
+(* ---- imperatives ---- *)
 
   | UTLetMutableIn(varrng, varnm, utastI, utastA) ->
       let (tyenvI, eI, tyI) = make_type_environment_by_let_mutable varntenv lev tyenv varrng varnm utastI in
