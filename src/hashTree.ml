@@ -9,6 +9,13 @@ module Make (Key : Map.OrderedType) =
     type 'a t = Stage of 'a * ('a t) InternalMap.t
 
 
+    let empty (vroot : 'a) = Stage(vroot, InternalMap.empty)
+
+
+    let rec to_string (strk : key -> string) (strf : 'a -> string) (Stage(x, imap) : 'a t) =
+      (strf x) ^ ", { " ^ (InternalMap.fold (fun k hshtr s -> (strk k) ^ ": " ^ (to_string strk strf hshtr) ^ " " ^ s) imap "") ^ "}"
+
+
     let rec get (Stage(x, imap) : 'a t) (addr : key list) =
       match addr with
       | []        -> x
