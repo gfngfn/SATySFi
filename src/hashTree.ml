@@ -5,7 +5,7 @@ module type S =
     type 'a t
     val empty : 'a -> 'a t
     val to_string : (key -> string) -> ('a -> string) -> 'a t -> string
-    val get : 'a t -> key list -> 'a
+    val find_stage : 'a t -> key list -> 'a
     val update : 'a t -> key list -> ('a -> 'a) -> 'a t
     val add_stage : 'a t -> key list -> key -> 'a -> 'a t
     val search_backward : 'a t -> key list -> ('a -> 'b option) -> 'b option
@@ -29,11 +29,11 @@ module Make (Key : Map.OrderedType) =
       (strf x) ^ ", { " ^ (InternalMap.fold (fun k hshtr s -> (strk k) ^ ": " ^ (to_string strk strf hshtr) ^ " " ^ s) imap "") ^ "}"
 
 
-    let rec get (Stage(x, imap) : 'a t) (addr : key list) =
+    let rec find_stage (Stage(x, imap) : 'a t) (addr : key list) =
       match addr with
       | []        -> x
       | k :: tail ->
-          let hshtr = InternalMap.find k imap in get hshtr tail
+          let hshtr = InternalMap.find k imap in find_stage hshtr tail
 
 
     let rec update (Stage(x, imap) : 'a t) (addr : key list) (f : 'a -> 'a) =

@@ -1,9 +1,9 @@
 open Types
 
 type t
-
+(*
 val empty : t
-
+*)
 val from_list : (var_name * poly_type) list -> t
 
 val add : t -> var_name -> poly_type -> t

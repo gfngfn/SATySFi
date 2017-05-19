@@ -200,7 +200,7 @@ let unify_ (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   | InternalContradictionError -> raise (ContradictionError(varntenv, ty1, ty2))
 
 
-let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
+let final_tyenv    : Typeenv.t ref    = ref (Typeenv.from_list [])
 let final_varntenv : Variantenv.t ref = ref Variantenv.empty
 
 
