@@ -192,10 +192,7 @@ type untyped_argument_variable_cons = untyped_pattern_tree list
 and untyped_argument_cons = untyped_abstract_tree list
 
 and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
-(*
-  | UTMutualLetCons        of manual_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
-  | UTEndOfMutualLet
-*)
+
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
@@ -284,14 +281,7 @@ and untyped_pattern_match_cons =
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
-(*
-and untyped_module_tree = Range.t * untyped_module_tree_main
-and untyped_module_tree_main =
-  | UTMFinishModule
-  | UTMLetIn            of untyped_mutual_let_cons * untyped_module_tree
-  | UTMLetMutableIn     of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMDeclareVariantIn of untyped_mutual_variant_cons * untyped_module_tree
-*)
+
 and untyped_type_argument_cons =
   | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
   | UTEndOfTypeArgument
@@ -325,7 +315,6 @@ and abstract_tree =
   | BreakAndIndent
   | SoftBreakAndIndent
   | Concat                of abstract_tree * abstract_tree
-(*  | NoContent (* for class and id *) *)
   | FuncWithEnvironment   of var_name * abstract_tree * environment
   | EvaluatedEnvironment  of environment
 (* -- list value -- *)
@@ -401,34 +390,13 @@ and pattern_tree =
   | PVariable             of var_name
   | PAsVariable           of var_name * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
-(*
-and module_tree =
-  | MFinishModule
-  | MPublicLetIn                 of mutual_let_cons * module_tree
-  | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree
-  | MPrivateLetIn                of mutual_let_cons * module_tree
-  | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree
-  | MDirectLetIn                 of mutual_let_cons * module_tree
-*)
+
 type output_unit =
   | OString             of string
   | OBreakAndIndent
   | OSoftBreakAndIndent
   | ODeepen
   | OShallow
-
-(*
-let poly_extend_general
-    (fmono : mono_type -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind -> poly_type -> 'a) : (poly_type -> 'a) =
-  let rec iter pty =
-    match pty with
-    | Mono(ty)              -> fmono ty
-    | Forall(tvref, ptysub) -> fpoly iter tvid kd ptysub
-  in
-    iter
-*)
 
 
 let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
