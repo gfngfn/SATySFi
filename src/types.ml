@@ -16,16 +16,18 @@ type type_argument_name = string
 module Typeid : sig
   type t
   val initialize : unit -> unit
-  val fresh : unit -> t
+  val fresh : type_name -> t
   val to_string : t -> string
+  val extract_name : t -> type_name
   val eq : t -> t -> bool
 end = struct
-  type t = int
+  type t = int * type_name
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
-  let fresh () = begin incr current_id ; !current_id end
-  let to_string = string_of_int
-  let eq = (=)
+  let fresh tynm = begin incr current_id ; (!current_id, tynm) end
+  let to_string (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
+  let extract_name (_, tynm) = tynm
+  let eq (n1, _) (n2, _) = (n1 = n2)
 end
 
 

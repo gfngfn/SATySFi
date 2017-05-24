@@ -1,12 +1,10 @@
 #load "assoc.cmo";;
 #load "stacklist.cmo";;
-#load "tyvarid.cmo";;
 #load "range.cmo";;
 #load "types.cmo";;
 #load "hashTree.cmo";;
-#load "typeenv.cmo";;
 #load "directedGraph.cmo";;
-#load "variantenv.cmo";;
+#load "typeenv.cmo";;
 #load "display.cmo";;
 #load "parser.cmo";;
 #load "lexer.cmo";;
@@ -17,8 +15,7 @@
 #load "files.cmo";;
 #load "main.cmo";;
 let init () = Lexer.reset_to_numexpr ();;
-Tyvarid.initialize () ;;
-let varntenv = Primitives.make_variant_environment ();;
+Types.Tyvarid.initialize () ;;
 let tyenv    = Primitives.make_type_environment ();;
 let env      = Primitives.make_environment ();;
 init ();;
@@ -41,17 +38,17 @@ let parsestr s = Display.string_of_utast (parse s);;
 
 let tcraw s =
   init () ;
-  let (tyres, _, _, _) = (Typechecker.main varntenv tyenv (parse s)) in tyres
+  let (tyres, _, _) = (Typechecker.main tyenv (parse s)) in tyres
 ;;
 
 let tc s mdlnmlst varnm =
   Main.error_log_environment (fun () ->
     begin
       init () ;
-      let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+      let (tyres, tyenvres, _) = (Typechecker.main tyenv (parse s)) in
       try
         let pty = Typeenv.find tyenvres mdlnmlst varnm in
-          print_endline ("TYPE = " ^ (Display.string_of_poly_type varntenvres pty))
+          print_endline ("TYPE = " ^ (Display.string_of_poly_type tyenvres pty))
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
     end
@@ -61,7 +58,7 @@ let tcb s varnm =
   Main.error_log_environment (fun () ->
     begin
       init () ;
-      let (tyres, varntenvres, tyenvres, _) = (Typechecker.main varntenv tyenv (parse s)) in
+      let (tyres, tyenvres, _) = (Typechecker.main tyenv (parse s)) in
       try
         let pty = Typeenv.find tyenvres [] varnm in
           print_endline ("TYPE = " ^ (Types.string_of_poly_type_basic pty))
@@ -72,7 +69,7 @@ let tcb s varnm =
 
 let eval s =
   init () ;
-  let (_, _, _, ast) = (Typechecker.main varntenv tyenv (parse s)) in
+  let (_, _, ast) = (Typechecker.main tyenv (parse s)) in
     Evaluator.interpret env ast
 ;;
 

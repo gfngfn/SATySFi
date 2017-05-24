@@ -1,7 +1,7 @@
 open Types
 
 
-let make_variant_environment () =
+let add_default_types tyenvmid =
   let dr = Range.dummy "make_variant_environment" in
   let mutvarntcons =
     UTMutualVariantCons(
@@ -15,7 +15,7 @@ let make_variant_environment () =
         (dr, UTEndOfVariant))),
     UTEndOfMutualVariant))
   in
-    Variantenv.add_mutual_cons Variantenv.empty Tyvarid.bottom_level mutvarntcons
+    Typeenv.add_mutual_cons tyenvmid Tyvarid.bottom_level mutvarntcons
 
 
 let make_type_environment () =
@@ -31,6 +31,7 @@ let make_type_environment () =
   let tv1           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
   let tv2           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
 
+  let tyenvmid =
     Typeenv.from_list
       [ ( "+",   ~% (i --> (i --> i)) );
         ( "-",   ~% (i --> (i --> i)) );
@@ -62,6 +63,9 @@ let make_type_environment () =
 (*        ( "\\include",     s --> s ); *)
         ( "arabic",      ~% (i --> s) );
       ]
+  in
+    add_default_types tyenvmid
+
 
 let rec lambdas env vlst ast =
   match vlst with

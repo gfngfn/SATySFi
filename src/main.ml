@@ -41,7 +41,7 @@ let is_header_file     = is_suffix ".mcrdh"
 let is_standalone_file = is_suffix ".mcrds"
 
 
-let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in =
+let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -49,9 +49,9 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, newvarntenv, newtyenv, ast) = Typechecker.main varntenv tyenv utast in
+        let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
@@ -62,7 +62,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv
                         else
                           (* print_endline (Typeenv.string_of_control_sequence_type newtyenv) *) ()
                       else () ) ;
-                    (newvarntenv, newtyenv, newenv)
+                    (newtyenv, newenv)
                   end
               | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
           end
@@ -70,7 +70,7 @@ let make_environment_from_header_file (varntenv : Variantenv.t) (tyenv : Typeenv
   end
 
 
-let read_standalone_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
+let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -78,9 +78,9 @@ let read_standalone_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_
       begin
         Lexer.reset_to_numexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
+        let (ty, _, ast) = Typechecker.main tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -96,7 +96,7 @@ let read_standalone_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_
   end
 
 
-let read_document_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_name_in file_name_out =
+let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -104,9 +104,9 @@ let read_document_file (varntenv : Variantenv.t) (tyenv : Typeenv.t) env file_na
       begin
         Lexer.reset_to_strexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, _, ast) = Typechecker.main varntenv tyenv utast in
+        let (ty, _, ast) = Typechecker.main tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type varntenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             match ty with
             | (_, StringType) ->
                 let evaled = Evaluator.interpret env ast in
@@ -148,28 +148,28 @@ let error_log_environment suspended =
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
 
-  | Variantenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
+  | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error "Typechecker" [
         NormalLine("at" ^ (Range.to_string rng) ^ ":");
         NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]
 
-  | Variantenv.UndefinedTypeName(rng, tynm) ->
+  | Typeenv.UndefinedTypeName(rng, tynm) ->
       report_error "Typechecker" [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type name '" ^ tynm ^ "'");
       ]
 
-  | Variantenv.UndefinedTypeArgument(rng, tyargnm) ->
+  | Typeenv.UndefinedTypeArgument(rng, tyargnm) ->
       report_error "Typechecker" [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
 
-  | Typechecker.ContradictionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv ty1 in
-      let strty2 = string_of_mono_type varntenv ty2 in
+  | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type tyenv ty1 in
+      let strty2 = string_of_mono_type tyenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -188,9 +188,9 @@ let error_log_environment suspended =
           DisplayLine(strtyB ^ ".");
         ] additional)
 
-  | Typechecker.InclusionError(varntenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
-      let strty1 = string_of_mono_type varntenv ty1 in
-      let strty2 = string_of_mono_type varntenv ty2 in
+  | Typechecker.InclusionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
+      let strty1 = string_of_mono_type tyenv ty1 in
+      let strty2 = string_of_mono_type tyenv ty2 in
       let strrng1 = Range.to_string rng1 in
       let strrng2 = Range.to_string rng2 in
       let (posmsg, strtyA, strtyB, additional) =
@@ -216,7 +216,7 @@ let error_log_environment suspended =
   | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
 
 
-let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
+let rec main (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
   error_log_environment (fun () ->
     match file_name_in_list with
     | [] ->
@@ -225,14 +225,14 @@ let rec main (varntenv : Variantenv.t) (tyenv : Typeenv.t) (env : environment) (
           print_endline "  no output."
         end
     | file_name_in :: tail  when is_document_file file_name_in ->
-          read_document_file varntenv tyenv env file_name_in file_name_out
+          read_document_file tyenv env file_name_in file_name_out
 
     | file_name_in :: tail  when is_header_file file_name_in ->
-          let (newvarntenv, newtyenv, newenv) = make_environment_from_header_file varntenv tyenv env file_name_in in
-            main newvarntenv newtyenv newenv tail file_name_out
+          let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
+            main newtyenv newenv tail file_name_out
 
     | file_name_in :: tail  when is_standalone_file file_name_in ->
-          read_standalone_file varntenv tyenv env file_name_in file_name_out
+          read_standalone_file tyenv env file_name_in file_name_out
 
     | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
   )
@@ -244,10 +244,9 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
         print_endline ("  [output] " ^ file_name_out) ;
         print_endline "" ;
         Tyvarid.initialize () ;
-        let varntenv = Primitives.make_variant_environment () in
         let tyenv = Primitives.make_type_environment () in
         let env = Primitives.make_environment () in
-          main varntenv tyenv env file_name_in_list file_name_out
+          main tyenv env file_name_in_list file_name_out
       end
     else
       match Sys.argv.(num) with
