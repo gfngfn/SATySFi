@@ -68,24 +68,29 @@ type type_definition = Data of int | Alias of type_scheme
 type typename_to_typedef_map = (Typeid.t * type_definition) TyNameMap.t
 type constructor_to_def_map = (Typeid.t * type_scheme) ConstrMap.t
 type current_address = ModuleID.t list
-type t = current_address * name_to_id_map * (var_to_type_map ModuleTree.t)
+type single_stage = var_to_type_map * typename_to_typedef_map * constructor_to_def_map (* signature * sigvar_to_sig_map *)
+type t = current_address * name_to_id_map * (single_stage ModuleTree.t)
 
 
 let from_list (lst : (var_name * poly_type) list) =
-  let vmapinit = List.fold_left (fun vmap (varnm, pty) -> VarMap.add varnm pty vmap) VarMap.empty lst in
-    ([], ModuleNameMap.empty, ModuleTree.empty vmapinit)
+  let vtmapinit = List.fold_left (fun vmap (varnm, pty) -> VarMap.add varnm pty vmap) VarMap.empty lst in
+    ([], ModuleNameMap.empty, ModuleTree.empty (vtmapinit, TyNameMap.empty, ConstrMap.empty))
+
+
+let update_vt (vtf : var_to_type_map -> var_to_type_map) ((vtmap, tdmap, cdmap) : single_stage) =
+  (vtf vtmap, tdmap, cdmap)
 
 
 let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) =
-  let mtrnew = ModuleTree.update mtr addr (VarMap.add varnm pty) in
+  let mtrnew = ModuleTree.update mtr addr (update_vt (VarMap.add varnm pty)) in
     (addr, nmtoid, mtrnew)
 
 
 let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) =
   let addrlast = List.map (fun nm -> ModuleNameMap.find nm nmtoid) mdlnmlst in
   let ptyopt =
-    ModuleTree.search_backward mtr addr addrlast (fun sgl ->
-      try Some(VarMap.find varnm sgl) with
+    ModuleTree.search_backward mtr addr addrlast (fun (vtmap, _, _) ->
+      try Some(VarMap.find varnm vtmap) with
       | Not_found -> None
     )
   in
@@ -98,7 +103,7 @@ let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) =
   let mdlid = ModuleID.fresh () in
   let addrnew = List.append addr [mdlid] in
   let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
-  let mtrnew = ModuleTree.add_stage mtr addr mdlid VarMap.empty in
+  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty) in
     (addrnew, nmtoidnew, mtrnew)
 
 
