@@ -167,6 +167,12 @@ let error_log_environment suspended =
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
 
+  | Typeenv.CyclicTypeDefinition(strtylist) ->
+      report_error "Typechecker" (
+        (NormalLine("cyclic synonym type definition:"))
+        :: (List.map (fun strty -> DisplayLine(strty)) strtylist)
+      )
+
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = string_of_mono_type tyenv ty1 in
       let strty2 = string_of_mono_type tyenv ty2 in

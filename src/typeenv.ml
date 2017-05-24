@@ -168,8 +168,8 @@ module DependencyGraph = DirectedGraph.Make(
 
 
 type vertex_label =
-  | VariantVertex of Typeid.t * untyped_type_argument_cons * untyped_variant_cons
-  | SynonymVertex of Typeid.t * untyped_type_argument_cons * manual_type * (type_scheme option) ref
+  | VariantVertex of Range.t * Typeid.t * untyped_type_argument_cons * untyped_variant_cons
+  | SynonymVertex of Range.t * Typeid.t * untyped_type_argument_cons * manual_type * (type_scheme option) ref
 
 
 type dependency_mode =
@@ -334,18 +334,18 @@ let fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvari
                   try
                     match DependencyGraph.find_vertex dg tynm with
 
-                    | VariantVertex(tyid, tyargcons, utvarntcons) ->
+                    | VariantVertex(_, tyid, tyargcons, utvarntcons) ->
                         let lenexp = type_argument_length tyargcons in
                           if len <> lenexp then error tynm lenexp len else
                             VariantType(tyarglist, tyid)
 
-                    | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
+                    | SynonymVertex(_, tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
                         let lenexp = type_argument_length tyargcons in
                           if len <> lenexp then error tynm lenexp len else
                             let tyreal = instantiate_type_scheme tyarglist bidlist ptyscheme in
                               SynonymType(tyarglist, tyid, tyreal)
 
-                    | SynonymVertex(_, _, _, {contents= None}) -> assert false
+                    | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
 
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
@@ -435,14 +435,14 @@ let register_type (dg : vertex_label DependencyGraph.t) ((addr, nmtoid, mtr) : t
     try
       match DependencyGraph.find_vertex dg tynm with
 
-      | VariantVertex(tyid, tyargcons, _) ->
+      | VariantVertex(_, tyid, tyargcons, _) ->
           let len = type_argument_length tyargcons in
             ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, Data(len))))
 
-      | SynonymVertex(tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
+      | SynonymVertex(_, tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
           ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, Alias(bidlist, ptyscheme))))
 
-      | SynonymVertex(_, _, _, {contents= None}) -> assert false
+      | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
     with
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
   in
@@ -491,7 +491,7 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh (get_moduled_var_name tyenv tynm) in
           begin
-            DependencyGraph.add_vertex dg tynm (VariantVertex(tyid, tyargcons, utvarntcons)) ;
+            DependencyGraph.add_vertex dg tynm (VariantVertex(Range.dummy "X" (* temporary *), tyid, tyargcons, utvarntcons)) ;
             iter tailcons ;
           end
 
@@ -502,7 +502,7 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh tynm in
           begin
-            DependencyGraph.add_vertex dg tynm (SynonymVertex(tyid, tyargcons, mnty, ref None)) ;
+            DependencyGraph.add_vertex dg tynm (SynonymVertex(Range.dummy "Y" (* temporary *), tyid, tyargcons, mnty, ref None)) ;
             iter tailcons ;
           end
   in
@@ -547,9 +547,9 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
   let embody_each_synonym_type_definition () =
     dg |> DependencyGraph.backward_bfs (fun _ label ->
       match label with
-      | VariantVertex(_, _, _)                                               -> ()
-      | SynonymVertex(tyid, tyargcons, mnty, {contents= Some(_)})            -> assert false
-      | SynonymVertex(tyid, tyargcons, mnty, ({contents= None} as tyoptref)) ->
+      | VariantVertex(_, _, _, _)                                               -> ()
+      | SynonymVertex(_, tyid, tyargcons, mnty, {contents= Some(_)})            -> assert false
+      | SynonymVertex(_, tyid, tyargcons, mnty, ({contents= None} as tyoptref)) ->
           let (bidlist, pty) = fix_manual_type (DependentMode(dg)) tyenv lev tyargcons mnty in
             tyoptref := Some((bidlist, pty))
     )
@@ -558,9 +558,9 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
   let add_each_synonym_type_definition (tyenvold : t) =
     DependencyGraph.fold_vertex (fun tynm label tyenv ->
       match label with
-      | VariantVertex(_, _, _)                      -> tyenv
-      | SynonymVertex(_, _, _, {contents= None})    -> failwith (tynm ^ " has no embodied definition")
-      | SynonymVertex(_, _, _, {contents= Some(_)}) -> register_type dg tyenv tynm
+      | VariantVertex(_, _, _, _)                      -> tyenv
+      | SynonymVertex(_, _, _, _, {contents= None})    -> failwith (tynm ^ " has no embodied definition")
+      | SynonymVertex(_, _, _, _, {contents= Some(_)}) -> register_type dg tyenv tynm
     ) dg tyenvold
   in
 
@@ -576,8 +576,8 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
     in
       DependencyGraph.fold_vertex (fun tynm label tyenv ->
         match label with
-        | SynonymVertex(_, _, _, _)                   -> tyenv
-        | VariantVertex(tyid, tyargcons, utvarntcons) ->
+        | SynonymVertex(_, _, _, _, _)                   -> tyenv
+        | VariantVertex(_, tyid, tyargcons, utvarntcons) ->
             let tyenvreg = register_type dg tyenv tynm in
               register_each_constructor tyargcons tynm tyenvreg utvarntcons
       ) dg tyenvold
