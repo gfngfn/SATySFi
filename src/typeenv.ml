@@ -9,8 +9,8 @@ let print_for_debug_variantenv msg =
 exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
-exception CyclicTypeDefinition         of (type_name * Range.t) list
-exception MultipleTypeDefinition       of type_name
+exception CyclicTypeDefinition         of (Range.t * type_name) list
+exception MultipleTypeDefinition       of Range.t * Range.t * type_name
 
 
 module VarMap = Map.Make(
@@ -170,6 +170,12 @@ module DependencyGraph = DirectedGraph.Make(
 type vertex_label =
   | VariantVertex of Range.t * Typeid.t * untyped_type_argument_cons * untyped_variant_cons
   | SynonymVertex of Range.t * Typeid.t * untyped_type_argument_cons * manual_type * (type_scheme option) ref
+
+
+let extract_range_in_vertex_label vtxlabel =
+  match vtxlabel with
+  | VariantVertex(rng, _, _, _)    -> rng
+  | SynonymVertex(rng, _, _, _, _) -> rng
 
 
 type dependency_mode =
@@ -486,7 +492,8 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
     | UTEndOfMutualVariant -> ()
     | UTMutualVariantCons(tyargcons, tynmrng, tynm, utvarntcons, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
-          raise (MultipleTypeDefinition(tynm))
+          let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
+            raise (MultipleTypeDefinition(rng, tynmrng, tynm))
         else
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh (get_moduled_var_name tyenv tynm) in
@@ -497,7 +504,8 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
 
     | UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
-          raise (MultipleTypeDefinition(tynm))
+          let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
+            raise (MultipleTypeDefinition(rng, tynmrng, tynm))
         else
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh tynm in
@@ -542,14 +550,7 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
       match cycleopt with
       | None      -> ()
       | Some(lst) ->
-          let midlst = List.map (fun strty -> (strty, DependencyGraph.get_vertex dg strty)) lst in
-          let reslst =
-            midlst |> List.map (fun (strty, vtxlabel) ->
-              match vtxlabel with
-              | VariantVertex(rng, _, _, _)    -> (strty, rng)
-              | SynonymVertex(rng, _, _, _, _) -> (strty, rng)
-            )
-          in
+          let reslst = lst |> List.map (fun strty -> (extract_range_in_vertex_label (DependencyGraph.get_vertex dg strty), strty)) in
             raise (CyclicTypeDefinition(reslst))
   in
 

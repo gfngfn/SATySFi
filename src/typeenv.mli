@@ -3,8 +3,8 @@ open Types
 exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
-exception CyclicTypeDefinition         of (type_name * Range.t) list
-exception MultipleTypeDefinition       of type_name
+exception CyclicTypeDefinition         of (Range.t * type_name) list
+exception MultipleTypeDefinition       of Range.t * Range.t * type_name
 
 type t
 
