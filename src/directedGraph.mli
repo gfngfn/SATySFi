@@ -22,6 +22,7 @@ module type S =
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
+    val get_vertex : 'a t -> vertex -> 'a
   end
 
 

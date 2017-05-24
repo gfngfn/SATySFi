@@ -302,13 +302,15 @@
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
-  let make_mutual_variant_cons tyargcons typenmtk constrdecs tailcons =
-    let typenm = extract_name typenmtk in
-      UTMutualVariantCons(tyargcons, typenm, constrdecs, tailcons)
+  let make_mutual_variant_cons tyargcons tynmtk constrdecs tailcons =
+    let tynm = extract_name tynmtk in
+    let tynmrng = get_range tynmtk in
+      UTMutualVariantCons(tyargcons, tynmrng, tynm, constrdecs, tailcons)
 
-  let make_mutual_synonym_cons tyargcons typenmtk (mnty : manual_type) tailcons =
-    let typenm = extract_name typenmtk in
-      UTMutualSynonymCons(tyargcons, typenm, mnty, tailcons)
+  let make_mutual_synonym_cons tyargcons tynmtk (mnty : manual_type) tailcons =
+    let tynm = extract_name tynmtk in
+    let tynmrng = get_range tynmtk in
+      UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
       (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (sigopt : (signature_content list) option)

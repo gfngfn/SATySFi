@@ -9,7 +9,7 @@ let print_for_debug_variantenv msg =
 exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
 exception UndefinedTypeName            of Range.t * type_name
 exception UndefinedTypeArgument        of Range.t * var_name
-exception CyclicTypeDefinition         of type_name list
+exception CyclicTypeDefinition         of (type_name * Range.t) list
 exception MultipleTypeDefinition       of type_name
 
 
@@ -484,25 +484,25 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
     let iter = add_each_type_as_vertex in
     match mutvarntcons with
     | UTEndOfMutualVariant -> ()
-    | UTMutualVariantCons(tyargcons, tynm, utvarntcons, tailcons) ->
+    | UTMutualVariantCons(tyargcons, tynmrng, tynm, utvarntcons, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
           raise (MultipleTypeDefinition(tynm))
         else
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh (get_moduled_var_name tyenv tynm) in
           begin
-            DependencyGraph.add_vertex dg tynm (VariantVertex(Range.dummy "X" (* temporary *), tyid, tyargcons, utvarntcons)) ;
+            DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, tyargcons, utvarntcons)) ;
             iter tailcons ;
           end
 
-    | UTMutualSynonymCons(tyargcons, tynm, mnty, tailcons) ->
+    | UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
           raise (MultipleTypeDefinition(tynm))
         else
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
           let tyid = Typeid.fresh tynm in
           begin
-            DependencyGraph.add_vertex dg tynm (SynonymVertex(Range.dummy "Y" (* temporary *), tyid, tyargcons, mnty, ref None)) ;
+            DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None)) ;
             iter tailcons ;
           end
   in
@@ -527,9 +527,9 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
     in
     let iter = add_each_dependency_as_edge in
       match mutvarntcons with
-      | UTEndOfMutualVariant                                -> ()
-      | UTMutualVariantCons(_, tynm, utvarntcons, tailcons) -> iter tailcons
-      | UTMutualSynonymCons(_, tynm, mnty, tailcons)        ->
+      | UTEndOfMutualVariant                                   -> ()
+      | UTMutualVariantCons(_, _, tynm, utvarntcons, tailcons) -> iter tailcons
+      | UTMutualSynonymCons(_, _, tynm, mnty, tailcons)        ->
           begin
             add_dependency tynm mnty ;
             iter tailcons ;
@@ -540,8 +540,17 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
   let check_cyclic_type_definition () =
     let cycleopt = DependencyGraph.find_cycle dg in
       match cycleopt with
-      | Some(lst) -> raise (CyclicTypeDefinition(lst))
       | None      -> ()
+      | Some(lst) ->
+          let midlst = List.map (fun strty -> (strty, DependencyGraph.get_vertex dg strty)) lst in
+          let reslst =
+            midlst |> List.map (fun (strty, vtxlabel) ->
+              match vtxlabel with
+              | VariantVertex(rng, _, _, _)    -> (strty, rng)
+              | SynonymVertex(rng, _, _, _, _) -> (strty, rng)
+            )
+          in
+            raise (CyclicTypeDefinition(reslst))
   in
 
   let embody_each_synonym_type_definition () =

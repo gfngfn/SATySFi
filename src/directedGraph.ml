@@ -29,6 +29,7 @@ module type S =
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
+    val get_vertex : 'a t -> vertex -> 'a
   end
 
 
@@ -103,6 +104,10 @@ module Make (Vertex : VertexType) =
     let get_vertex_data (dg : 'a t) (vtx : vertex) =
       try Hashtbl.find dg vtx with
       |  Not_found -> assert false
+
+
+    let get_vertex (dg : 'a t) (vtx : vertex) =
+      let (res, _, _, _, _) = get_vertex_data dg vtx in res
 
 
     let find_cycle (dg : 'a t) =

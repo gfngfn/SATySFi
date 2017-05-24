@@ -257,8 +257,8 @@ and untyped_variant_cons_main =
   | UTEndOfVariant
 
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument_cons * type_name * untyped_variant_cons * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument_cons * type_name * manual_type * untyped_mutual_variant_cons
+  | UTMutualVariantCons    of untyped_type_argument_cons * Range.t * type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument_cons * Range.t * type_name * manual_type * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
