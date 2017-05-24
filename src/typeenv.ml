@@ -28,13 +28,47 @@ module ModuleID
 
 module ModuleTree = HashTree.Make(ModuleID)
 
-module ModuleNameMap = Map.Make(String)
+module ModuleNameMap = Map.Make(
+  struct
+    type t = module_name
+    let compare = String.compare
+  end)
+
+module ConstrMap = Map.Make(
+  struct
+    type t = constructor_name
+    let compare = String.compare
+  end)
+
+module TyNameMap = Map.Make(
+  struct
+    type t = type_name
+    let compare = String.compare
+  end)
+
+module SigVarMap = Map.Make(
+  struct
+    type t = sig_var_name
+    let compare = String.compare
+  end)
+
 
 type name_to_id_map = ModuleID.t ModuleNameMap.t
 
-type single_environment = poly_type VarMap.t
+type var_to_type_map = poly_type VarMap.t
 
-type t = (ModuleID.t list) * name_to_id_map * (single_environment ModuleTree.t)
+(*
+  type signature = ...
+  type sigvar_to_sig_map = signature SigVarMap.t
+*)
+
+type type_scheme = Boundid.t list * poly_type
+type type_definition = Data of int | Alias of type_scheme
+
+type typename_to_typedef_map = (Typeid.t * type_definition) TyNameMap.t
+type constructor_to_def_map = (Typeid.t * type_scheme) ConstrMap.t
+type current_address = ModuleID.t list
+type t = current_address * name_to_id_map * (var_to_type_map ModuleTree.t)
 
 
 let from_list (lst : (var_name * poly_type) list) =

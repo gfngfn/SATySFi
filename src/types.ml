@@ -8,6 +8,7 @@ type class_name         = string
 type type_name          = string
 type constructor_name   = string
 type module_name        = string
+type sig_var_name       = string
 type field_name         = string
 type type_argument_name = string
 
