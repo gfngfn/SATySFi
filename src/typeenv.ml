@@ -472,7 +472,7 @@ let rec find_constructor (qtfbl : quantifiability) ((addr, nmtoid, mtr) : t) (le
 
 
 let get_moduled_var_name ((addr, nmtoid, mtr) : t) (varnm : var_name) =
-  ((List.map ModuleID.extract_name addr) |> List.fold_left (fun mdlnm s -> s ^ mdlnm ^ ".") "") ^ varnm
+  varnm |> ((List.map ModuleID.extract_name addr) |> List.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
 
 
 (* PUBLIC *)

@@ -496,7 +496,19 @@ nxsig:
   | TYPE xpltyvars VAR nxsig   { let (_, tynm) = $3 in (SigType($2, tynm)) :: $4 }
   | VAL VAR COLON txfunc nxsig { let (_, varnm) = $2 in (SigValue(varnm, $4)) :: $5 }
 ;
-nxstruct: /* -> untyped_module_tree */
+nxstruct:
+/* ---- toplevel style ---- */
+  | LET nxdec nxstruct                                             { make_let_expression $1 $2 $3 }
+  | LET nxdec END                                                  { make_let_expression $1 $2 end_struct }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
+  | LETMUTABLE VAR OVERWRITEEQ nxlet END                           { make_let_mutable_expression $1 $2 $4 end_struct }
+  | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
+  | TYPE nxvariantdec END                                          { make_variant_declaration $1 $2 end_struct }
+  | LETLAZY nxlazydec nxstruct                                     { make_let_expression $1 $2 $3 }
+  | LETLAZY nxlazydec END                                          { make_let_expression $1 $2 end_struct }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
+  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct END          { make_module $1 $2 $3 $6 end_struct }
+/*
   | LET nxdec nxstruct                        { make_let_expression $1 $2 $3 }
   | LET nxdec END                             { make_let_expression $1 $2 end_struct }
   | LETLAZY nxlazydec nxstruct                { make_let_expression $1 $2 $3 }
@@ -505,7 +517,7 @@ nxstruct: /* -> untyped_module_tree */
   | LETMUTABLE VAR OVERWRITEEQ nxlet END      { make_let_mutable_expression $1 $2 $4 end_struct }
   | TYPE nxvariantdec nxstruct                { make_variant_declaration $1 $2 $3 }
   | TYPE nxvariantdec END                     { make_variant_declaration $1 $2 end_struct }
-/* -- for syntax error log --
+ -- for syntax error log --
   | DIRECT error             { report_error (Tok $1) "direct" }
   | DIRECT LET error         { report_error (Tok $2) "let" }
   | PUBLIC error             { report_error (Tok $1) "private" }
