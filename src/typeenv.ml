@@ -23,19 +23,16 @@ module ModuleID
 : sig
     type t
     val compare : t -> t -> int
-    val fresh : unit -> t
+    val fresh : module_name -> t
+    val extract_name : t -> module_name
   end
 = struct
-
-    type t = int
-
-    let compare i1 i2 = i1 - i2
-
+    type t = int * module_name
+    let compare (i1, _) (i2, _) = i1 - i2
     let current_id = ref 0
-
-    let fresh () =
-      begin incr current_id ; !current_id end
-
+    let fresh mdlnm =
+      begin incr current_id ; (!current_id, mdlnm) end
+    let extract_name (_, mdlnm) = mdlnm
   end
 
 module ModuleTree = HashTree.Make(ModuleID)
@@ -120,7 +117,7 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
 
 
 let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) =
-  let mdlid = ModuleID.fresh () in
+  let mdlid = ModuleID.fresh mdlnm in
   let addrnew = List.append addr [mdlid] in
   let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
   let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty) in
@@ -474,6 +471,9 @@ let rec find_constructor (qtfbl : quantifiability) ((addr, nmtoid, mtr) : t) (le
 
 
 
+let get_moduled_var_name ((addr, nmtoid, mtr) : t) (varnm : var_name) =
+  ((List.map ModuleID.extract_name addr) |> List.fold_left (fun mdlnm s -> s ^ mdlnm ^ ".") "") ^ varnm
+
 
 (* PUBLIC *)
 let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untyped_mutual_variant_cons) =
@@ -489,7 +489,7 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
           raise (MultipleTypeDefinition(tynm))
         else
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
-          let tyid = Typeid.fresh tynm in
+          let tyid = Typeid.fresh (get_moduled_var_name tyenv tynm) in
           begin
             DependencyGraph.add_vertex dg tynm (VariantVertex(tyid, tyargcons, utvarntcons)) ;
             iter tailcons ;
