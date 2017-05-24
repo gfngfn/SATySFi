@@ -150,7 +150,7 @@ let error_log_environment suspended =
 
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error "Typechecker" [
-        NormalLine("at" ^ (Range.to_string rng) ^ ":");
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]

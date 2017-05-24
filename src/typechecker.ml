@@ -74,7 +74,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           try
             unify_list (List.combine tylist1 tylist2)
           with
-          | Invalid_argument(_) -> (* not of the same length *)
+          | Invalid_argument(_) -> (* -- not of the same length -- *)
               raise InternalContradictionError
         end
 
