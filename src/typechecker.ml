@@ -10,9 +10,9 @@ exception InternalContradictionError
 
 
 let print_for_debug_typecheck msg =
-(*
+
   print_endline msg ;
-*)
+
   ()
 
 
@@ -437,7 +437,7 @@ let rec typecheck
   | UTModule(mdlnm, sigopt, utastM, utastA) -> (* temporary; will use sigopt *)
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
-      let tyenvmid = Typeenv.sigcheck qtfbl lev (!final_tyenv) sigopt in
+      let tyenvmid = Typeenv.sigcheck qtfbl lev (!final_tyenv) tyenv sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(mdlnm, eM, eA), tyA)
@@ -610,7 +610,7 @@ and make_type_environment_by_let
                   (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), tvtylstoutfinal)
 
           | Some(mnty) ->
-              let tyin = Typeenv.fix_manual_type_for_inner qtfbl tyenv lev mnty in
+              let tyin = Typeenv.fix_manual_type_free qtfbl tyenv lev mnty in
               let () = unify ty1 beta in
               let () = unify tyin beta in
                 let (tyenvfinal, mutletconstail, tvtylstoutfinal) =
