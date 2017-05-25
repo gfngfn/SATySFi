@@ -48,7 +48,10 @@ let tc s mdlnmlst varnm =
       let (tyres, tyenvres, _) = (Typechecker.main tyenv (parse s)) in
       try
         let pty = Typeenv.find tyenvres mdlnmlst varnm in
-          print_endline ("TYPE = " ^ (Display.string_of_poly_type tyenvres pty))
+        begin
+          print_endline ("TYPE = " ^ (Display.string_of_poly_type tyenvres pty)) ;
+(*          print_endline ("TYPE = " ^ (Types.string_of_poly_type_basic pty)) ; *)
+        end
       with
       | Not_found -> print_endline ("! [Error at TOPLEVEL] '" ^ varnm ^ "' not found.")
     end

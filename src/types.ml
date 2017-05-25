@@ -50,6 +50,7 @@ module Tyvarid_
     val get_kind : 'a t_ -> 'a
     val set_kind : 'a t_ -> 'a -> 'a t_
     val show_direct : 'a t_ -> string
+    val show_direct_level : level -> string
   end
 = struct
     type level = int
@@ -95,6 +96,8 @@ module Tyvarid_
       match qtfbl with
       | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "]"
       | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "]"
+
+    let show_direct_level = string_of_int
 
   end
 

@@ -437,7 +437,7 @@ let rec typecheck
   | UTModule(mdlnm, sigopt, utastM, utastA) -> (* temporary; will use sigopt *)
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
-      let tyenvmid = Typeenv.sigcheck sigopt (!final_tyenv) in
+      let tyenvmid = Typeenv.sigcheck qtfbl lev (!final_tyenv) sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(mdlnm, eM, eA), tyA)
