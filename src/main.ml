@@ -180,6 +180,29 @@ let error_log_environment suspended =
         DisplayLine(tynm ^ " (at " ^ (Range.to_string rng2) ^ ")");
       ]
 
+  | Typeenv.NotProvidingTypeImplementation(rng, tynm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("The implementation does not provide type '" ^ tynm ^ "',");
+        NormalLine("which is required by the signature.");
+      ]
+
+  | Typeenv.NotProvidingValueImplementation(rng, varnm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("The implementation does not provide value '" ^ varnm ^ "',");
+        NormalLine("which is required by the signature.");
+      ]
+
+  | Typeenv.NotMatchingInterface(rng, varnm, tyenv1, pty1, tyenv2, pty2) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("The implementation of value '" ^ varnm ^ "' has type");
+        DisplayLine(Display.string_of_poly_type tyenv1 pty1);
+        NormalLine("but the signature expects it of type");
+        DisplayLine(Display.string_of_poly_type tyenv2 pty2);
+      ]
+
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
       let strty1 = string_of_mono_type tyenv ty1 in
       let strty2 = string_of_mono_type tyenv ty2 in

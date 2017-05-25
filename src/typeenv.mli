@@ -1,15 +1,15 @@
 open Types
 
+type t
+
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
 exception UndefinedTypeName               of Range.t * type_name
 exception UndefinedTypeArgument           of Range.t * var_name
 exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
-exception NotProvidingValueImplementation of var_name (* temporary; must be more detailed *)
-exception NotProvidingTypeImplementation  of type_name (* temporary; must be more detailed *)
-exception NotMatchingInterface            of var_name * poly_type * poly_type (* temporary; must be more detailed *)
-
-type t
+exception NotProvidingValueImplementation of Range.t * var_name
+exception NotProvidingTypeImplementation  of Range.t * type_name
+exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 
 val from_list : (var_name * poly_type) list -> t
 
@@ -31,4 +31,4 @@ val find_type_id : t -> type_name -> Typeid.t
 
 val find_type_name : t -> Typeid.t -> type_name
 
-val sigcheck : quantifiability -> Tyvarid.level -> t -> t -> manual_signature option -> t
+val sigcheck : Range.t -> quantifiability -> Tyvarid.level -> t -> t -> manual_signature option -> t

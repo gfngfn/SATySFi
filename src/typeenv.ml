@@ -1,19 +1,10 @@
 open Types
 
 let print_for_debug_variantenv msg =
-
+(*
   print_endline msg ;
-
+*)
   ()
-
-exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
-exception UndefinedTypeName               of Range.t * type_name
-exception UndefinedTypeArgument           of Range.t * var_name
-exception CyclicTypeDefinition            of (Range.t * type_name) list
-exception MultipleTypeDefinition          of Range.t * Range.t * type_name
-exception NotProvidingValueImplementation of var_name (* temporary; must be more detailed *)
-exception NotProvidingTypeImplementation  of type_name (* temporary; must be more detailed *)
-exception NotMatchingInterface            of var_name * poly_type * poly_type (* temporary; must be more detailed *)
 
 
 module VarMap = Map.Make(
@@ -81,6 +72,16 @@ type sigvar_to_sig_map = signature SigVarMap.t
 type current_address = ModuleID.t list
 type single_stage = var_to_type_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
 type t = current_address * name_to_id_map * (single_stage ModuleTree.t)
+
+
+exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
+exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeArgument           of Range.t * var_name
+exception CyclicTypeDefinition            of (Range.t * type_name) list
+exception MultipleTypeDefinition          of Range.t * Range.t * type_name
+exception NotProvidingValueImplementation of Range.t * var_name
+exception NotProvidingTypeImplementation  of Range.t * type_name
+exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 
 
 let from_list (lst : (var_name * poly_type) list) : t =
@@ -699,7 +700,7 @@ let is_subtype_for_module (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool
     aux ty1 ty2
 
 
-let sigcheck (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
 
   let rec read_manual_signature (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
@@ -709,7 +710,7 @@ let sigcheck (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (tyenvp
       | SigType(tyargcons, tynm) :: tail ->
           let (tyid, dfn) =
             try find_type_definition_for_inner tyenv tynm with
-            | Not_found -> raise (NotProvidingTypeImplementation(tynm)) (* temporary; must be more detailed *)
+            | Not_found -> raise (NotProvidingTypeImplementation(rng, tynm))
           in
           let tyenvforsigInew = add_type_definition tyenvforsigI tynm (tyid, dfn) in
           let len = type_argument_length tyargcons in (* temporary; should check whether len is valid as to dfn *)
@@ -730,13 +731,13 @@ let sigcheck (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (tyenvp
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " -> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           let ptyimp =
             try find_for_inner tyenv varnm with
-            | Not_found -> raise (NotProvidingValueImplementation(varnm)) (* temporary; must be more detailed *)
+            | Not_found -> raise (NotProvidingValueImplementation(rng, varnm))
           in
             if is_subtype_for_module ptysigI ptyimp then
               let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                 iter tyenvforsigI tyenvforsigO tail sigoptaccnew
             else
-              raise (NotMatchingInterface(varnm, ptyimp, ptysigO)) (* temporary; must be more detailed *)
+              raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
   in
 
     match msigopt with
