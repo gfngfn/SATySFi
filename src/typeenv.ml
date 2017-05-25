@@ -61,52 +61,55 @@ module SigVarMap = Map.Make(
     let compare = String.compare
   end)
 
-
 type name_to_id_map = ModuleID.t ModuleNameMap.t
 
 type var_to_type_map = poly_type VarMap.t
-
-(*
-  type signature = ...
-  type sigvar_to_sig_map = signature SigVarMap.t
-*)
 
 type type_scheme = Boundid.t list * poly_type
 type type_definition = Data of int | Alias of type_scheme
 
 type typename_to_typedef_map = (Typeid.t * type_definition) TyNameMap.t
 type constructor_to_def_map = (Typeid.t * type_scheme) ConstrMap.t
+
+type signature = var_to_type_map * typename_to_typedef_map
+
+type sigvar_to_sig_map = signature SigVarMap.t
+
 type current_address = ModuleID.t list
-type single_stage = var_to_type_map * typename_to_typedef_map * constructor_to_def_map (* signature * sigvar_to_sig_map *)
+type single_stage = var_to_type_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
 type t = current_address * name_to_id_map * (single_stage ModuleTree.t)
 
 
-let from_list (lst : (var_name * poly_type) list) =
+let from_list (lst : (var_name * poly_type) list) : t =
   let vtmapinit = List.fold_left (fun vmap (varnm, pty) -> VarMap.add varnm pty vmap) VarMap.empty lst in
-    ([], ModuleNameMap.empty, ModuleTree.empty (vtmapinit, TyNameMap.empty, ConstrMap.empty))
+    ([], ModuleNameMap.empty, ModuleTree.empty (vtmapinit, TyNameMap.empty, ConstrMap.empty, None))
 
 
-let update_vt (vtf : var_to_type_map -> var_to_type_map) ((vtmap, tdmap, cdmap) : single_stage) =
-  (vtf vtmap, tdmap, cdmap)
+let update_vt (vtf : var_to_type_map -> var_to_type_map) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
+  (vtf vtmap, tdmap, cdmap, sigopt)
 
 
-let update_td (tdf : typename_to_typedef_map -> typename_to_typedef_map) ((vtmap, tdmap, cdmap) : single_stage) =
-  (vtmap, tdf tdmap, cdmap)
+let update_td (tdf : typename_to_typedef_map -> typename_to_typedef_map) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
+  (vtmap, tdf tdmap, cdmap, sigopt)
 
 
-let update_cd (cdf : constructor_to_def_map -> constructor_to_def_map) ((vtmap, tdmap, cdmap) : single_stage) =
-  (vtmap, tdmap, cdf cdmap)
+let update_cd (cdf : constructor_to_def_map -> constructor_to_def_map) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
+  (vtmap, tdmap, cdf cdmap, sigopt)
 
 
-let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) =
+let update_so (sof : signature option -> signature option) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
+  (vtmap, tdmap, cdmap, sof sigopt)
+
+
+let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) : t =
   let mtrnew = ModuleTree.update mtr addr (update_vt (VarMap.add varnm pty)) in
     (addr, nmtoid, mtrnew)
 
 
-let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) =
+let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) : poly_type =
   let addrlast = List.map (fun nm -> ModuleNameMap.find nm nmtoid) mdlnmlst in
   let ptyopt =
-    ModuleTree.search_backward mtr addr addrlast (fun (vtmap, _, _) ->
+    ModuleTree.search_backward mtr addr addrlast (fun (vtmap, _, _, _) ->
       try Some(VarMap.find varnm vtmap) with
       | Not_found -> None
     )
@@ -115,16 +118,18 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
     | None      -> raise Not_found
     | Some(pty) -> pty
 
+  (* temporary; should consult signatures *)
 
-let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) =
+
+let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
   let addrnew = List.append addr [mdlid] in
   let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
-  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty) in
+  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
     (addrnew, nmtoidnew, mtrnew)
 
 
-let leave_module ((addr, nmtoid, mtr) : t) =
+let leave_module ((addr, nmtoid, mtr) : t) : t =
   (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
 
 
@@ -185,7 +190,7 @@ type dependency_mode =
 
 let find_definition ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * type_definition =
   let opt =
-    ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _) ->
+    ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, _) ->
       try Some(TyNameMap.find tynm tdmap) with
       | Not_found -> None
     )
@@ -194,24 +199,16 @@ let find_definition ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * ty
     | None              -> raise Not_found
     | Some((tyid, dfn)) -> (tyid, dfn)
 
-(*
-let find_definition_by_id ((defedtylst, _) : t) (tyid : Typeid.t) : definition =
-  let rec aux lst =
-    match lst with
-    | []                                                 -> raise Not_found
-    | (_, tyidx, dfn) :: tail  when Typeid.eq tyidx tyid -> dfn
-    | _ :: tail                                          -> aux tail
-  in
-    aux defedtylst
-*)
+  (* temporary; should consult signatures *)
+
 
 (* PUBLIC *)
-let find_type_id (tyenv : t) (tynm : type_name) =
+let find_type_id (tyenv : t) (tynm : type_name) : Typeid.t =
   let (tyid, _) = find_definition tyenv tynm in tyid
 
 
 (* PUBLIC *)
-let find_type_name (_ : t) (tyid : Typeid.t) =
+let find_type_name (_ : t) (tyid : Typeid.t) : type_name =
   Typeid.extract_name tyid
 
 
@@ -458,7 +455,7 @@ let register_type (dg : vertex_label DependencyGraph.t) ((addr, nmtoid, mtr) : t
 
 let rec find_constructor (qtfbl : quantifiability) ((addr, nmtoid, mtr) : t) (lev : Tyvarid.level) (constrnm : constructor_name) =
   let defopt : (Typeid.t * type_scheme) option =
-    ModuleTree.search_backward mtr addr [] (fun (_, _, cdmap) ->
+    ModuleTree.search_backward mtr addr [] (fun (_, _, cdmap, _) ->
       try Some(ConstrMap.find constrnm cdmap) with
       | Not_found -> None
     )
@@ -601,18 +598,10 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
     let tyenvS = add_each_synonym_type_definition tyenv in
     let tyenvV = add_each_variant_type_definition tyenvS in
       tyenvV
-(*
-    let tyenvnew = add_dependency_and_each_synonym_type tyenv mutvarntcons in
-    let () =
-      InforefHashtbl.iter (fun tvref (tyarglist, tyid) ->
-        let dfn =
-          try find_definition_by_id tyenvnew tyid with Not_found -> failwith "dfn"
-        in
-          match dfn with
-          | Data(_)                     -> failwith "Data"
-          | Alias(tvreflist, ptyscheme) ->
-              let tyreal = instantiate_type_scheme tyarglist tvreflist ptyscheme in
-                tvref := Link((Range.dummy "register", SynonymType(tyarglist, tyid, tyreal)))
-      ) synonym_ht
-*)
   end
+
+
+let sigcheck (msigopt : manual_signature option) (tyenv : t) =
+  match msigopt with
+  | None       -> tyenv (* temporary *)
+  | Some(msig) -> tyenv (* temporary *)

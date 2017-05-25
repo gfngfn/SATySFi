@@ -313,12 +313,12 @@
       UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
-      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (sigopt : (signature_content list) option)
+      (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (msigopt : (manual_signature_content list) option)
       utastdef (utastaft : untyped_abstract_tree)
   : untyped_abstract_tree
   =
     let mdlnm = extract_name mdlnmtk in
-      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, sigopt, utastdef, utastaft))
+      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, msigopt, utastdef, utastaft))
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =

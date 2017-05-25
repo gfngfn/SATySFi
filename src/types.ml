@@ -228,7 +228,7 @@ and untyped_abstract_tree_main =
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of module_name * (signature_content list) option * untyped_abstract_tree * untyped_abstract_tree
+  | UTModule               of module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
 (* -- implerative -- *)
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
@@ -244,9 +244,14 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTClassAndIDRegion     of untyped_abstract_tree
 
-and signature_content =
-  | SigType  of untyped_type_argument_cons * type_name
-  | SigValue of var_name * manual_type
+and manual_signature_content =
+  | SigType   of untyped_type_argument_cons * type_name
+  | SigValue  of var_name * manual_type
+(*
+  | SigModule of module_name * manual_signature
+*)
+
+and manual_signature = manual_signature_content list
 
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)

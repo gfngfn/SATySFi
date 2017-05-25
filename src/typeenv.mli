@@ -28,3 +28,4 @@ val find_type_id : t -> type_name -> Typeid.t
 
 val find_type_name : t -> Typeid.t -> type_name
 
+val sigcheck : manual_signature option -> t -> t
