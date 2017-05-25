@@ -1,10 +1,13 @@
 open Types
 
-exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
-exception UndefinedTypeName            of Range.t * type_name
-exception UndefinedTypeArgument        of Range.t * var_name
-exception CyclicTypeDefinition         of (Range.t * type_name) list
-exception MultipleTypeDefinition       of Range.t * Range.t * type_name
+exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
+exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeArgument           of Range.t * var_name
+exception CyclicTypeDefinition            of (Range.t * type_name) list
+exception MultipleTypeDefinition          of Range.t * Range.t * type_name
+exception NotProvidingValueImplementation of var_name (* temporary; must be more detailed *)
+exception NotProvidingTypeImplementation  of type_name (* temporary; must be more detailed *)
+exception NotMatchingInterface            of var_name * poly_type * poly_type (* temporary; must be more detailed *)
 
 type t
 

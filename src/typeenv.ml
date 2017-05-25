@@ -6,13 +6,14 @@ let print_for_debug_variantenv msg =
 *)
   ()
 
-exception IllegalNumberOfTypeArguments of Range.t * type_name * int * int
-exception UndefinedTypeName            of Range.t * type_name
-exception UndefinedTypeArgument        of Range.t * var_name
-exception CyclicTypeDefinition         of (Range.t * type_name) list
-exception MultipleTypeDefinition       of Range.t * Range.t * type_name
-exception NotProvidingImplementation   of var_name (* temporary; must be more detailed *)
-exception NotMatchingInterface         of var_name * poly_type * poly_type (* temporary; must be more detailed *)
+exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
+exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeArgument           of Range.t * var_name
+exception CyclicTypeDefinition            of (Range.t * type_name) list
+exception MultipleTypeDefinition          of Range.t * Range.t * type_name
+exception NotProvidingValueImplementation of var_name (* temporary; must be more detailed *)
+exception NotProvidingTypeImplementation  of type_name (* temporary; must be more detailed *)
+exception NotMatchingInterface            of var_name * poly_type * poly_type (* temporary; must be more detailed *)
 
 
 module VarMap = Map.Make(
@@ -131,8 +132,6 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
     | None      -> raise Not_found
     | Some(pty) -> pty
 
-  (* temporary; should consult signatures *)
-
 
 let find_in_current_module ((addr, nmtoid, mtr) : t) (varnm : var_name) : poly_type =
   let (vtmap, _, _, _) = ModuleTree.find_stage mtr addr in
@@ -206,7 +205,7 @@ type dependency_mode =
   | DependentMode of vertex_label DependencyGraph.t
 
 
-let find_definition ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * type_definition =
+let find_type_definition_for_inner ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * type_definition =
   let opt =
     ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, _) ->
       try Some(TyNameMap.find tynm tdmap) with
@@ -217,12 +216,31 @@ let find_definition ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * ty
     | None              -> raise Not_found
     | Some((tyid, dfn)) -> (tyid, dfn)
 
-  (* temporary; should consult signatures *)
+
+let find_type_definition_for_outer ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * type_definition =
+  let opt =
+    ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, sigopt) ->
+      match sigopt with
+      | None ->
+          begin
+            try Some(TyNameMap.find tynm tdmap) with
+            | Not_found -> None
+          end
+      | Some((tdmapsig, _)) ->
+          begin
+            try Some(TyNameMap.find tynm tdmapsig) with
+            | Not_found -> None
+          end
+    )
+  in
+    match opt with
+    | None              -> raise Not_found
+    | Some((tyid, dfn)) -> (tyid, dfn)
 
 
 (* PUBLIC *)
 let find_type_id (tyenv : t) (tynm : type_name) : Typeid.t =
-  let (tyid, _) = find_definition tyenv tynm in tyid
+  let (tyid, _) = find_type_definition_for_outer tyenv tynm in tyid
 
 
 (* PUBLIC *)
@@ -235,7 +253,7 @@ let add_constructor ((addr, nmtoid, mtr) as tyenv : t) (constrnm : constructor_n
 
   let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 
-  let (tyid, _) = find_definition tyenv varntnm in
+  let (tyid, _) = find_type_definition_for_inner tyenv varntnm in
   let mtrnew = ModuleTree.update mtr addr (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) in
     (addr, nmtoid, mtrnew)
 
@@ -331,7 +349,7 @@ let fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvari
           let tyarglist = List.map iter mntyarglist in
           let find_in_variant_environment () =
             try
-              match find_definition tyenv tynm with
+              match find_type_definition_for_outer tyenv tynm with
               | (tyid, Data(lenexp)) ->
                   if lenexp <> len then error tynm lenexp len else
                     let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ Typeid.to_string tyid) in (* for debug *)
@@ -496,6 +514,10 @@ let get_moduled_var_name ((addr, nmtoid, mtr) : t) (varnm : var_name) =
   varnm |> ((List.map ModuleID.extract_name addr) |> List.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
 
 
+let get_moduled_type_name ((addr, nmtoid, mtr) : t) (tynm : type_name) =
+  tynm |> ((List.map ModuleID.extract_name addr) |> List.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
+
+
 (* PUBLIC *)
 let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untyped_mutual_variant_cons) =
 
@@ -631,30 +653,74 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
+let is_subtype_for_module (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
+
+  let current_ht : Boundid.t BoundidHashtbl.t = BoundidHashtbl.create 32 in
+
+  let rec aux ((_, tymain1) : mono_type) ((_, tymain2) : mono_type) =
+    let aux_list tylistcomb = tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true in
+    match (tymain1, tymain2) with
+    | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
+    | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
+    | (TypeVariable({contents= Link(tysub1)}), _)          -> aux tysub1 ty2
+    | (_, TypeVariable({contents= Link(tysub2)}))          -> aux ty1 tysub2
+
+    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)})) ->
+        begin
+          try
+            let bidcounterpart = BoundidHashtbl.find current_ht bid1 in
+              Boundid.eq bid2 bidcounterpart
+          with
+          | Not_found -> begin BoundidHashtbl.add current_ht bid1 bid2 ; true end
+        end
+
+    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd2 tyd1) && (aux tyc1 tyc2)
+    | (ProductType(tyl1), ProductType(tyl2))               -> aux_list (List.combine tyl1 tyl2)
+    | (RecordType(tyasc1), RecordType(tyasc2))             -> (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> (Typeid.eq tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2))
+    | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2 (* doubtful *)
+    | ( (UnitType, UnitType)
+      | (IntType, IntType)
+      | (BoolType, BoolType)
+      | (StringType, StringType) )                         -> true
+    | _                                                    -> false
+  in
+    aux ty1 ty2
+
+
 let sigcheck (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (msigopt : manual_signature option) =
 
-  let subtype _ _ = true (* temporary *)
-  in
-
-  let rec read_manual_signature (msig : manual_signature) (sigoptacc : signature option) =
+  let rec read_manual_signature (tyenvprev : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
       match msig with
       | [] -> sigoptacc
 
       | SigType(tyargcons, tynm) :: tail ->
-          let tyid = find_type_id tyenv tynm in
-          iter tail (add_type_to_signature sigoptacc tynm tyid (type_argument_length tyargcons))
+          let (tyid, dfn) =
+            try find_type_definition_for_inner tyenv tynm with
+            | Not_found -> raise (NotProvidingTypeImplementation(tynm)) (* temporary; must be more detailed *)
+          in
+          let len = type_argument_length tyargcons in (* temporary; should check whether len is valid as to dfn *)
+          let tyenvprevnew =
+            let (addrprev, nmtoidprev, mtrprev) = tyenvprev in
+            let mtrprevnew = ModuleTree.update mtrprev addrprev (update_td (TyNameMap.add tynm (tyid, dfn))) in
+              (addrprev, nmtoidprev, mtrprevnew)
+          in
+          let tyidout = Typeid.fresh (get_moduled_type_name tyenv tynm) in
+            iter tyenvprevnew tail (add_type_to_signature sigoptacc tynm tyidout len)
 
       | SigValue(varnm, mty) :: tail ->
-          let tysig = fix_manual_type_for_inner qtfbl tyenv (Tyvarid.succ_level lev) mty in
+          let tysig = fix_manual_type_for_inner qtfbl tyenvprev (Tyvarid.succ_level lev) mty in
           let ptysig = generalize lev tysig in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysig) ^ " -> " ^ (string_of_poly_type_basic ptysig)) in (* for debug *)
           let ptyimp =
             try find_in_current_module tyenv varnm with
-            | Not_found -> raise (NotProvidingImplementation(varnm)) (* temporary; must be more detailed *)
+            | Not_found -> raise (NotProvidingValueImplementation(varnm)) (* temporary; must be more detailed *)
           in
-            if subtype ptysig ptyimp then
-              iter tail (add_val_to_signature sigoptacc varnm (ptysig))
+            if is_subtype_for_module ptysig ptyimp then
+              iter tyenvprev tail (add_val_to_signature sigoptacc varnm ptysig)
             else
               raise (NotMatchingInterface(varnm, ptyimp, ptysig)) (* temporary; must be more detailed *)
   in
@@ -663,5 +729,6 @@ let sigcheck (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (msigop
     | None       -> tyenv
     | Some(msig) ->
         let (addr, nmtoid, mtr) = tyenv in
-        let mtrnew = ModuleTree.update mtr addr (update_so (read_manual_signature msig)) in
+        let tyenvprev = leave_module tyenv in
+        let mtrnew = ModuleTree.update mtr addr (update_so (read_manual_signature tyenvprev msig)) in
           (addr, nmtoid, mtrnew) (* temporary *)
