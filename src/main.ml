@@ -199,7 +199,7 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation of value '" ^ varnm ^ "' has type");
         DisplayLine(Display.string_of_poly_type tyenv1 pty1);
-        NormalLine("but the signature expects it of type");
+        NormalLine("which is inconsistent with the type required by the signature");
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
       ]
 

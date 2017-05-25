@@ -241,6 +241,8 @@ let rec interpret env ast =
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)
 
+  | FinishStruct     -> EvaluatedEnvironment(env)
+
   | PatternMatch(astobj, pmcons) ->
       let valueobj = interpret env astobj in select_pattern env valueobj pmcons
 
@@ -252,7 +254,6 @@ let rec interpret env ast =
       let env_out = copy_environment env in
       let env_in  = copy_environment env in
         begin
-          print_for_debug_evaluator ("module '" ^ mdlnm ^ "'\n") ;                (* for debug *)
           add_module_to_environment env_out env_in mdlnm astmdl ;
           interpret env_out astaft
         end

@@ -663,11 +663,12 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
-let is_subtype_for_module (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
+let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
   let current_ht : Boundid.t BoundidHashtbl.t = BoundidHashtbl.create 32 in
 
-  let rec aux ((_, tymain1) : mono_type) ((_, tymain2) : mono_type) =
+  let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
+    let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* fr debug *)
     let aux_list tylistcomb = tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true in
     match (tymain1, tymain2) with
     | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
@@ -684,7 +685,9 @@ let is_subtype_for_module (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool
           | Not_found -> begin BoundidHashtbl.add current_ht bid1 bid2 ; true end
         end
 
-    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd2 tyd1) && (aux tyc1 tyc2)
+    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
+                                                                (* -- both domain and codomain are covariant -- *)
+
     | (ProductType(tyl1), ProductType(tyl2))               -> aux_list (List.combine tyl1 tyl2)
     | (RecordType(tyasc1), RecordType(tyasc2))             -> (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
 
@@ -708,6 +711,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
       | [] -> sigoptacc
 
       | SigType(tyargcons, tynm) :: tail ->
+          let () = print_for_debug_variantenv ("SIGT " ^ tynm) in (* for debug *)
           let (tyid, dfn) =
             try find_type_definition_for_inner tyenv tynm with
             | Not_found -> raise (NotProvidingTypeImplementation(rng, tynm))
@@ -724,16 +728,17 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
             iter tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
 
       | SigValue(varnm, mty) :: tail ->
+          let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
           let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
           let ptysigI = generalize lev tysigI in
           let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty in
           let ptysigO = generalize lev tysigO in
-          let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " -> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
+          let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           let ptyimp =
             try find_for_inner tyenv varnm with
             | Not_found -> raise (NotProvidingValueImplementation(rng, varnm))
           in
-            if is_subtype_for_module ptysigI ptyimp then
+            if reflects ptysigI ptyimp then
               let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                 iter tyenvforsigI tyenvforsigO tail sigoptaccnew
             else
