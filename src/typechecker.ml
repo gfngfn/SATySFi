@@ -434,10 +434,10 @@ let rec typecheck
       let tyenvnew = Typeenv.add_mutual_cons tyenv lev mutvarntcons in
         typecheck_iter tyenvnew utastA
 
-  | UTModule(mdlnm, sigopt, utastM, utastA) ->
+  | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
       let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
       let (eM, _) = typecheck_iter tyenvinner utastM in
-      let tyenvmid = Typeenv.sigcheck rng qtfbl lev (!final_tyenv) tyenv sigopt in
+      let tyenvmid = Typeenv.sigcheck mdlrng qtfbl lev (!final_tyenv) tyenv sigopt in
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(mdlnm, eM, eA), tyA)

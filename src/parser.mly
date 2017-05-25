@@ -28,7 +28,7 @@
 
   let end_header : untyped_abstract_tree = (Range.dummy "end_header", UTFinishHeaderFile)
 
-  let end_struct : untyped_abstract_tree = (Range.dummy "end_struct", UTFinishStruct)
+  let end_struct (rng : Range.t) : untyped_abstract_tree = (rng, UTFinishStruct)
 
   let end_of_argument_variable : untyped_argument_variable_cons = []
 
@@ -314,11 +314,12 @@
 
   let make_module
       (firsttk : Range.t) (mdlnmtk : Range.t * module_name) (msigopt : (manual_signature_content list) option)
-      utastdef (utastaft : untyped_abstract_tree)
+      (utastdef : untyped_abstract_tree) (utastaft : untyped_abstract_tree)
   : untyped_abstract_tree
   =
+    let mdlrng = make_range (Tok firsttk) (Untyped utastdef) in
     let mdlnm = extract_name mdlnmtk in
-      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlnm, msigopt, utastdef, utastaft))
+      make_standard (Tok firsttk) (Untyped utastaft) (UTModule(mdlrng, mdlnm, msigopt, utastdef, utastaft))
 
 
   let rec make_list_to_itemize (lst : (Range.t * int * untyped_abstract_tree) list) =
@@ -500,16 +501,12 @@ nxsig:
 ;
 nxstruct:
 /* ---- toplevel style ---- */
+  | END                                                            { (end_struct $1) }
   | LET nxdec nxstruct                                             { make_let_expression $1 $2 $3 }
-  | LET nxdec END                                                  { make_let_expression $1 $2 end_struct }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet END                           { make_let_mutable_expression $1 $2 $4 end_struct }
   | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
-  | TYPE nxvariantdec END                                          { make_variant_declaration $1 $2 end_struct }
   | LETLAZY nxlazydec nxstruct                                     { make_let_expression $1 $2 $3 }
-  | LETLAZY nxlazydec END                                          { make_let_expression $1 $2 end_struct }
   | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
-  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct END          { make_module $1 $2 $3 $6 end_struct }
 /*
   | LET nxdec nxstruct                        { make_let_expression $1 $2 $3 }
   | LET nxdec END                             { make_let_expression $1 $2 end_struct }
@@ -681,6 +678,8 @@ nxlet:
 /* -- -- */
 nxletsub:
   | LET nxdec IN nxlet                        { make_let_expression $1 $2 $4 }
+  | LET patbot DEFEQ nxlet IN nxlet           { make_standard (Tok $1) (Untyped $6)
+                                                  (UTPatternMatch($4, UTPatternMatchCons($2, $6, UTEndOfPatternMatch))) }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet { make_let_mutable_expression $1 $2 $4 $6 }
   | nxwhl { $1 }
 /* -- for syntax error log -- */
