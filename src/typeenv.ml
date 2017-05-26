@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-(*
+
   print_endline msg ;
-*)
+
   ()
 
 
@@ -264,7 +264,7 @@ let find_type_name (_ : t) (tyid : Typeid.t) : type_name =
 (* PUBLIC *)
 let add_constructor ((addr, nmtoid, mtr) as tyenv : t) (constrnm : constructor_name) (bidlist : Boundid.t list) (pty : poly_type) (varntnm : type_name) : t =
 
-  let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+  let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 
   let (tyid, _) = find_type_definition_for_inner tyenv varntnm in
   let mtrnew = ModuleTree.update mtr addr (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) in
@@ -273,7 +273,7 @@ let add_constructor ((addr, nmtoid, mtr) as tyenv : t) (constrnm : constructor_n
 
 let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t list) (Poly(ty) : poly_type) =
 
-  let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
+  let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
 
   let bid_to_type_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
 
@@ -283,7 +283,7 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t li
     | (tyarg :: tyargtail, bid :: bidtail) ->
         let tvref = ref (Link(tyarg)) in
         begin
-          print_for_debug_variantenv ("I-add '#" ^ (Boundid.show_direct bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)) ; (* for debug *)
+          print_for_debug_variantenv ("I-add '#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)) ; (* for debug *)
           BoundidHashtbl.add bid_to_type_ht bid tvref ;
           pre tyargtail bidtail ;
         end

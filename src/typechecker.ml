@@ -590,7 +590,7 @@ and make_type_environment_by_let
       | (_, varnm, astdef) :: tailcons ->
           let tvid = Tyvarid.fresh UniversalKind qtfbl (Tyvarid.succ_level lev) () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
-          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct tvid) ^ " :: U") in (* for debug *)
+          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta))) tailcons in
             (tyenvfinal, ((varnm, beta) :: tvtylst))
   in

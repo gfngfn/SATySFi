@@ -49,7 +49,7 @@ module Tyvarid_
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
     val get_kind : 'a t_ -> 'a
     val set_kind : 'a t_ -> 'a -> 'a t_
-    val show_direct : 'a t_ -> string
+    val show_direct : ('a -> string) -> 'a t_ -> string
     val show_direct_level : level -> string
   end
 = struct
@@ -92,10 +92,10 @@ module Tyvarid_
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, qtfbl, lev) =
+    let show_direct f (idmain, kd, qtfbl, lev) =
       match qtfbl with
-      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "]"
-      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "]"
+      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "::" ^ (f kd) ^ "]"
+      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "::" ^ (f kd) ^ "]"
 
     let show_direct_level = string_of_int
 
@@ -109,7 +109,7 @@ module Boundid_
     val fresh : 'a -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
     val get_kind : 'a t_ -> 'a
-    val show_direct : 'a t_ -> string
+    val show_direct : ('a -> string) -> 'a t_ -> string
   end
 = struct
     type 'a t_ = int * 'a
@@ -128,7 +128,7 @@ module Boundid_
 
     let get_kind (_, kd) = kd
 
-    let show_direct (i, _) = string_of_int i
+    let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
 
   end
 
@@ -622,8 +622,8 @@ let rec string_of_mono_type_basic tystr =
         begin
           match !tvref with
           | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-          | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-          | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
+          | Free(tvid) -> "'" ^ (Tyvarid.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+          | Bound(bid) -> "'#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ qstn
         end
 
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
