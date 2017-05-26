@@ -328,11 +328,11 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t li
 
 let rec type_argument_length tyargcons =
   match tyargcons with
-  | UTEndOfTypeArgument                -> 0
-  | UTTypeArgumentCons(_, _, tailcons) -> 1 + (type_argument_length tailcons)
+  | UTEndOfTypeArgument                   -> 0
+  | UTTypeArgumentCons(_, _, _, tailcons) -> 1 + (type_argument_length tailcons)
 
 
-let fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
+let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (rng, mntymain) = mnty in
     let iter = aux in
@@ -448,13 +448,25 @@ let fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvari
         (bidlist, Poly(ty))
 
 
+and fix_manual_kind_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level) (tyargmode : type_argument_mode) (mnkd : manual_kind) : kind =
+  match mnkd with
+  | MUniversalKind       -> UniversalKind
+  | MRecordKind(mntyasc) ->
+      let aux asc =
+        let (_, Poly(ty)) = fix_manual_type_general dpmode tyenv lev tyargmode asc in
+          ty
+      in
+         RecordKind(Assoc.map_value aux mntyasc)
+
+
 let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
   let rec aux cons =
     match cons with
-    | UTEndOfTypeArgument                      -> ()
-    | UTTypeArgumentCons(_, tyargnm, tailcons) ->
-       let tvid = Tyvarid.fresh UniversalKind Quantifiable lev () (* temporary *) in
+    | UTEndOfTypeArgument                            -> ()
+    | UTTypeArgumentCons(_, tyargnm, mnkd, tailcons) ->
+       let kd = fix_manual_kind_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnkd in
+       let tvid = Tyvarid.fresh kd Quantifiable lev () (* temporary *) in
        begin
          MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ;
          aux tailcons

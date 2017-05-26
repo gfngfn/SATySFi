@@ -5,7 +5,7 @@ let add_default_types tyenvmid =
   let dr = Range.dummy "make_variant_environment" in
   let mutvarntcons =
     UTMutualVariantCons(
-      UTTypeArgumentCons(dr, "%a", UTEndOfTypeArgument),  Range.dummy "primitives-maybe", "maybe",
+      UTTypeArgumentCons(dr, "%a", MUniversalKind, UTEndOfTypeArgument),  Range.dummy "primitives-maybe", "maybe",
         (dr, UTVariantCons("Nothing", (dr, MTypeName([], "unit")),
         (dr, UTVariantCons("Just", (dr, MTypeParam("%a")),
         (dr, UTEndOfVariant))))),

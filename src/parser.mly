@@ -643,8 +643,12 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
 /* -- -- */
 ;
 xpltyvars: /* -> untyped_explicit_type_variable_cons */
-  | TYPEVAR xpltyvars { let (rng, tyargnm) = $1 in UTTypeArgumentCons(rng, tyargnm, $2) }
-  |                   { UTEndOfTypeArgument }
+  | TYPEVAR xpltyvars                          { let (rng, tyargnm) = $1 in UTTypeArgumentCons(rng, tyargnm, MUniversalKind, $2) }
+  | LPAREN TYPEVAR CONS kxtop RPAREN xpltyvars { let (rng, tyargnm) = $2 in UTTypeArgumentCons(rng, tyargnm, $4, $6) }
+  |                                            { UTEndOfTypeArgument }
+;
+kxtop:
+  | BRECORD txrecord ERECORD { MRecordKind(Assoc.of_list $2) }
 ;
 nxlet:
   | MATCH nxlet WITH pats      {

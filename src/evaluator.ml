@@ -34,7 +34,6 @@ let rec interpret env ast =
 (* ---- basic value ---- *)
 
   | StringEmpty                           -> StringEmpty
-(*  | NoContent                             -> NoContent *)
   | NumericConstant(nc)                   -> NumericConstant(nc)
   | StringConstant(c)                     -> StringConstant(c)
   | BooleanConstant(bc)                   -> BooleanConstant(bc)

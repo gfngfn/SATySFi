@@ -142,6 +142,10 @@ and manual_type_main =
   | MProductType of manual_type list
   | MRecordType  of (field_name, manual_type) Assoc.t
 
+type manual_kind =
+  | MUniversalKind
+  | MRecordKind    of (field_name, manual_type) Assoc.t
+
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
   | UnitType
@@ -295,7 +299,7 @@ and untyped_let_pattern_cons =
   | UTEndOfLetPattern
 
 and untyped_type_argument_cons =
-  | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
+  | UTTypeArgumentCons  of Range.t * var_name * manual_kind * untyped_type_argument_cons
   | UTEndOfTypeArgument
 
 
