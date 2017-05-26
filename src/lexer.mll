@@ -243,8 +243,6 @@ rule numexpr = parse
           | "val"               -> VAL(pos)
           | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
-          | "publ"              -> PUBLIC(pos)
-          | "priv"              -> PRIVATE(pos)
           | _                   -> VAR(pos, tok)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

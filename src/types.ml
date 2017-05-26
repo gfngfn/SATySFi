@@ -250,6 +250,7 @@ and untyped_abstract_tree_main =
 and manual_signature_content =
   | SigType   of untyped_type_argument_cons * type_name
   | SigValue  of var_name * manual_type
+  | SigDirect of var_name * manual_type
 (*
   | SigModule of module_name * manual_signature
 *)

@@ -377,7 +377,7 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT END PUBLIC PRIVATE DIRECT DOT SIG VAL
+%token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Range.t> REFNOW REFFINAL
@@ -495,9 +495,11 @@ nxsigopt:
   | COLON SIG nxsig { Some($3) }
 ;
 nxsig:
-  | END                        { [] }
-  | TYPE xpltyvars VAR nxsig   { let (_, tynm) = $3 in (SigType($2, tynm)) :: $4 }
-  | VAL VAR COLON txfunc nxsig { let (_, varnm) = $2 in (SigValue(varnm, $4)) :: $5 }
+  | END                               { [] }
+  | TYPE xpltyvars VAR nxsig          { let (_, tynm) = $3 in (SigType($2, tynm)) :: $4 }
+  | VAL VAR COLON txfunc nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4)) :: $5 }
+  | VAL CTRLSEQ COLON txfunc nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4)) :: $5 }
+  | DIRECT CTRLSEQ COLON txfunc nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4)) :: $5 }
 ;
 nxstruct:
 /* ---- toplevel style ---- */
@@ -507,27 +509,6 @@ nxstruct:
   | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
   | LETLAZY nxlazydec nxstruct                                     { make_let_expression $1 $2 $3 }
   | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
-/*
-  | LET nxdec nxstruct                        { make_let_expression $1 $2 $3 }
-  | LET nxdec END                             { make_let_expression $1 $2 end_struct }
-  | LETLAZY nxlazydec nxstruct                { make_let_expression $1 $2 $3 }
-  | LETLAZY nxlazydec END                     { make_let_expression $1 $2 end_struct }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct { make_let_mutable_expression $1 $2 $4 $5 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet END      { make_let_mutable_expression $1 $2 $4 end_struct }
-  | TYPE nxvariantdec nxstruct                { make_variant_declaration $1 $2 $3 }
-  | TYPE nxvariantdec END                     { make_variant_declaration $1 $2 end_struct }
- -- for syntax error log --
-  | DIRECT error             { report_error (Tok $1) "direct" }
-  | DIRECT LET error         { report_error (Tok $2) "let" }
-  | PUBLIC error             { report_error (Tok $1) "private" }
-  | PUBLIC LET error         { report_error (Tok $2) "let" }
-  | PUBLIC LETMUTABLE error  { report_error (Tok $2) "let" }
-  | PUBLIC TYPE error        { report_error (Tok $2) "variant" }
-  | PRIVATE error            { report_error (Tok $1) "private" }
-  | PRIVATE LET error        { report_error (Tok $2) "let" }
-  | PRIVATE LETMUTABLE error { report_error (Tok $2) "let" }
-  | PRIVATE TYPE error       { report_error (Tok $2) "variant" }
--- -- */
 ;
 nxdec: /* -> untyped_mutual_let_cons */
   | VAR COLON txfunc DEFEQ nxlet LETAND nxdec            { make_mutual_let_cons (Some $3) $1 end_of_argument_variable $5 $7 }

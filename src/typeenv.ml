@@ -150,7 +150,10 @@ let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
 
 
 let leave_module ((addr, nmtoid, mtr) : t) : t =
-  (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
+  try
+    (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
+  with
+  | Failure("tl") -> assert false
 
 
 module MapList
@@ -685,6 +688,10 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           | Not_found -> begin BoundidHashtbl.add current_ht bid1 bid2 ; true end
         end
 
+    | (_, TypeVariable({contents= Bound(_)} as tvref))     -> begin tvref := Link(ty1) ; true end
+                                                                (* -- valid substitution of bound type variable -- *)
+    | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1) ; true end
+
     | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
                                                                 (* -- both domain and codomain are covariant -- *)
 
@@ -693,7 +700,7 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
     | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> (Typeid.eq tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2))
     | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2 (* doubtful *)
+    | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2
     | ( (UnitType, UnitType)
       | (IntType, IntType)
       | (BoolType, BoolType)
@@ -705,10 +712,10 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
 let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
 
-  let rec read_manual_signature (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
+  let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
       match msig with
-      | [] -> sigoptacc
+      | [] -> (sigoptacc, tyenvacc)
 
       | SigType(tyargcons, tynm) :: tail ->
           let () = print_for_debug_variantenv ("SIGT " ^ tynm) in (* for debug *)
@@ -725,7 +732,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
             let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigoptaccnew)) in
               (addr, nmtoid, mtrnew)
           in
-            iter tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
+            iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
 
       | SigValue(varnm, mty) :: tail ->
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
@@ -740,14 +747,39 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
           in
             if reflects ptysigI ptyimp then
               let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
-                iter tyenvforsigI tyenvforsigO tail sigoptaccnew
+                iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
             else
               raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
+
+
+      | SigDirect(csnm, mty) :: tail ->
+          let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
+          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
+          let ptysigI = generalize lev tysigI in
+          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty in
+          let ptysigO = generalize lev tysigO in
+          let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
+          let ptyimp =
+            try find_for_inner tyenv csnm with
+            | Not_found -> raise (NotProvidingValueImplementation(rng, csnm))
+          in
+            if reflects ptysigI ptyimp then
+              let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
+              let tyenvaccnew =
+                let (addr, nmtoid, mtr) = tyenvacc in
+                let mtrnew = ModuleTree.update mtr [] (update_vt (VarMap.add csnm ptysigO)) in
+                  (addr, nmtoid, mtrnew)
+              in
+                iter tyenvaccnew tyenvforsigI tyenvforsigO tail sigoptaccnew
+            else
+              raise (NotMatchingInterface(rng, csnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
+
   in
 
     match msigopt with
     | None       -> tyenv
     | Some(msig) ->
-        let (addr, nmtoid, mtr) = tyenv in
-        let mtrnew = ModuleTree.update mtr addr (update_so (read_manual_signature tyenvprev tyenvprev msig)) in
-          (addr, nmtoid, mtrnew) (* temporary *)
+        let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvprev tyenvprev msig None in
+        let (addr, nmtoid, mtr) = tyenvdir in
+        let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigopt)) in
+          (addr, nmtoid, mtrnew)

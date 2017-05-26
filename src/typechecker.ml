@@ -203,6 +203,10 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
 let final_tyenv    : Typeenv.t ref = ref (Typeenv.from_list [])
 
 
+let append_module_names mdlnmlst varnm =
+  (List.fold_right (fun mdlnm s -> mdlnm ^ "." ^ s) mdlnmlst "") ^ varnm
+
+
 let rec typecheck
     (qtfbl : quantifiability) (lev : Tyvarid.level)
     (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
@@ -236,7 +240,7 @@ let rec typecheck
           let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
               (ContentOf(varnm), tyres)
         with
-        | Not_found -> raise (UndefinedVariable(rng, varnm))
+        | Not_found -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
       end
 
   | UTConstructor(constrnm, utast1) ->
