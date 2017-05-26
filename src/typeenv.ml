@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-
+(*
   print_endline msg ;
-
+*)
   ()
 
 
@@ -438,11 +438,14 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Ty
     | FreeMode(tyargmaplist) ) ->
         let bidlist =
           (MapList.to_list tyargmaplist) |> List.map (fun (_, tvref) ->
-            let bid = Boundid.fresh UniversalKind () in
-            begin
-              tvref := Bound(bid) ;
-              bid
-            end
+            match !tvref with
+            | Free(tvid) ->
+                let bid = Boundid.fresh (Tyvarid.get_kind tvid) () in
+                begin
+                  tvref := Bound(bid) ;
+                  bid
+                end
+            | _ -> assert false
           )
         in
         (bidlist, Poly(ty))
@@ -466,7 +469,8 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level)
     | UTEndOfTypeArgument                            -> ()
     | UTTypeArgumentCons(_, tyargnm, mnkd, tailcons) ->
        let kd = fix_manual_kind_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnkd in
-       let tvid = Tyvarid.fresh kd Quantifiable lev () (* temporary *) in
+       let () = print_for_debug_variantenv ("FMT " ^ tyargnm ^ " :: " ^ (string_of_kind string_of_mono_type_basic kd)) in (* for debug *)
+       let tvid = Tyvarid.fresh kd Quantifiable lev () in
        begin
          MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ;
          aux tailcons
