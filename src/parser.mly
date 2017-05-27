@@ -367,6 +367,8 @@
 %}
 
 %token <Range.t * Types.var_name> VAR
+%token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> CTRLSEQWITHMOD
 %token <Range.t * Types.var_name> VARINSTR
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
@@ -663,7 +665,7 @@ nxlet:
 /* -- -- */
 nxletsub:
   | LET nxdec IN nxlet                        { make_let_expression $1 $2 $4 }
-  | LET patbot DEFEQ nxlet IN nxlet           { make_standard (Tok $1) (Untyped $6)
+  | LET patbotwithoutvar DEFEQ nxlet IN nxlet { make_standard (Tok $1) (Untyped $6)
                                                   (UTPatternMatch($4, UTPatternMatchCons($2, $6, UTEndOfPatternMatch))) }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet { make_let_mutable_expression $1 $2 $4 $6 }
   | nxwhl { $1 }
@@ -841,10 +843,8 @@ nxapp:
 ;
 nxbot:
   | nxbot ACCESS VAR                { make_standard (Untyped $1) (TokArg $3) (UTAccessField($1, extract_name $3)) }
-  | modulevar                       {
-        let (sttrng, mdlnmlst, vartok) = $1 in
-          make_standard (Rng sttrng) (TokArg vartok) (UTContentOf(mdlnmlst, extract_name vartok))
-      }
+  | VAR                             { let (rng, varnm) = $1 in (rng, UTContentOf([], varnm)) }
+  | VARWITHMOD                      { let (rng, mdlnmlst, varnm) = $1 in (rng, UTContentOf(mdlnmlst, varnm)) }
   | NUMCONST                        { make_standard (TokArg $1) (TokArg $1)  (UTNumericConstant(int_of_string (extract_name $1))) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
@@ -865,10 +865,12 @@ nxbot:
   | BRECORD error { report_error (Tok $1) "(|" }
 /* -- -- */
 ;
+/*
 modulevar:
   | VAR                       { (get_range $1, [], $1) }
   | CONSTRUCTOR DOT modulevar { let (_, mdlnmlst, vartok) = $3 in (get_range $1, (extract_name $1) :: mdlnmlst, vartok) }
 ;
+*/
 nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT          { (extract_name $1, $3) :: [] }
@@ -1033,6 +1035,23 @@ patbot: /* -> Types.untyped_pattern_tree */
   | BLIST error              { report_error (Tok $1) "[" }
   | OPENQT error             { report_error (Tok $1) "`" }
 /* -- -- */
+patbotwithoutvar: /* -> Types.untyped_pattern_tree */
+  | NUMCONST           { make_standard (TokArg $1) (TokArg $1) (UTPNumericConstant(int_of_string (extract_name $1))) }
+  | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
+  | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
+  | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
+  | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
+  | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
+  | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
+  | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
+  | OPENQT sxblock CLOSEQT {
+        let rng = make_range (Tok $1) (Tok $3) in (rng, UTPStringConstant(rng, omit_spaces $2)) }
+/* -- for syntax error log -- */
+  | LPAREN error             { report_error (Tok $1) "(" }
+  | LPAREN patas COMMA error { report_error (Tok $3) "," }
+  | BLIST error              { report_error (Tok $1) "[" }
+  | OPENQT error             { report_error (Tok $1) "`" }
+/* -- -- */
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Pat $1) (Pat $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
@@ -1086,6 +1105,10 @@ sxbot:
   | CTRLSEQ sxclsnm sxidnm narg sarg {
         let (csrng, csnm) = $1 in
           convert_into_apply (csrng, UTContentOf([], csnm)) $2 $3 (append_argument_list $4 $5)
+      }
+  | CTRLSEQWITHMOD sxclsnm sxidnm narg sarg {
+        let (csrng, mdlnmlst, csnm) = $1 in
+          convert_into_apply (csrng, UTContentOf(mdlnmlst, csnm)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | VARINSTR error { report_error (TokArg $1) "" }
