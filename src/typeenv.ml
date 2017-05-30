@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-
+(*
   print_endline msg ;
-
+*)
   ()
 
 
@@ -148,6 +148,12 @@ let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
   let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
     (addrnew, nmtoidnew, mtrnew)
 
+(*
+let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
+  let addrnew = List.append addr [mdlid] in
+  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
+    (addrnew, nmtoid, mtrnew)
+*)
 
 let leave_module ((addr, nmtoid, mtr) : t) : t =
   try
@@ -229,23 +235,25 @@ let find_type_definition_for_inner ((addr, nmtoid, mtr) : t) (tynm : type_name) 
 
 
 let find_type_definition_for_outer ((addr, nmtoid, mtr) : t) (tynm : type_name) : Typeid.t * type_definition =
+  let straddr = String.concat "." (List.map ModuleID.extract_name addr) in (* for debug *)
   let opt =
     ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, sigopt) ->
       match sigopt with
       | None ->
           begin
-            print_for_debug_variantenv ("FTD " ^ tynm ^ " -> no signature") ; (* for debug *)
+            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> no signature") ; (* for debug *)
             try let (tyid, dfn) = TyNameMap.find tynm tdmap in Some((tyid, dfn)) with
             | Not_found -> None
           end
       | Some((tdmapsig, _)) ->
           begin
-            print_for_debug_variantenv ("FTD " ^ tynm ^ " -> signature found") ; (* for debug *)
+            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> signature found") ; (* for debug *)
             try Some(TyNameMap.find tynm tdmapsig) with
             | Not_found -> None
           end
     )
   in
+  let () = print_for_debug_variantenv "FTDE" in (* for debug *)
     match opt with
     | None              -> raise Not_found
     | Some((tyid, dfn)) -> (tyid, dfn)
@@ -673,8 +681,8 @@ let rec add_mutual_cons (tyenv : t) (lev : Tyvarid.level) (mutvarntcons : untype
 
 let add_type_to_signature (sigopt : signature option) (tynm : type_name) (tyid : Typeid.t) (len : int) : signature option =
   match sigopt with
-  | None               -> Some(TyNameMap.add tynm (tyid, Data(len)) TyNameMap.empty, VarMap.empty)
-  | Some(tdmap, vtmap) -> Some(TyNameMap.add tynm (tyid, Data(len)) tdmap, vtmap)
+  | None                 -> Some((TyNameMap.add tynm (tyid, Data(len)) TyNameMap.empty, VarMap.empty))
+  | Some((tdmap, vtmap)) -> Some((TyNameMap.add tynm (tyid, Data(len)) tdmap, vtmap))
 
 
 let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : poly_type) : signature option =
@@ -771,9 +779,12 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
 
       | SigDirect(csnm, mty) :: tail ->
           let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
+          let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
           let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
+          let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in
           let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty in
+          let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           let ptyimp =
@@ -796,7 +807,15 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
     match msigopt with
     | None       -> tyenv
     | Some(msig) ->
-        let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvprev tyenvprev msig None in
+        let sigoptini = Some((TyNameMap.empty, VarMap.empty)) in
+        let (tyenvforsigIini, tyenvforsigOini) =
+          let (addr, nmtoid, _) = tyenv in
+          let (addrprev, _, mtrprev) = tyenvprev in
+          let mtrprevInew = ModuleTree.add_stage mtrprev addrprev (List.hd (List.rev addr)) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
+          let mtrprevOnew = ModuleTree.add_stage mtrprev addrprev (List.hd (List.rev addr)) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) in
+            ((addr, nmtoid, mtrprevInew), (addr, nmtoid, mtrprevOnew))
+        in
+        let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
         let (addr, nmtoid, mtr) = tyenvdir in
         let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigopt)) in
           (addr, nmtoid, mtrnew)

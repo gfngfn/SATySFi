@@ -668,3 +668,13 @@ and string_of_poly_type_basic (Poly(ty)) =
 
 
 and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
+
+
+let rec string_of_manual_type (_, mtymain) =
+  let iter = string_of_manual_type in
+  match mtymain with
+  | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
+  | MTypeParam(tpnm)          -> "'" ^ tpnm
+  | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
+  | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
+  | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
