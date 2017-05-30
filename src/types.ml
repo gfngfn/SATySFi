@@ -298,10 +298,7 @@ and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
 
-and untyped_type_argument_cons =
-  | UTTypeArgumentCons  of Range.t * var_name * manual_kind * untyped_type_argument_cons
-  | UTEndOfTypeArgument
-
+and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
 
 (* ---- typed ---- *)
 type argument_variable_cons =

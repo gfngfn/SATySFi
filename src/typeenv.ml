@@ -1,9 +1,9 @@
 open Types
 
 let print_for_debug_variantenv msg =
-(*
+
   print_endline msg ;
-*)
+
   ()
 
 
@@ -326,11 +326,12 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : Boundid.t li
   end
 
 
-let rec type_argument_length tyargcons =
+let rec type_argument_length tyargcons = List.length tyargcons
+(*
   match tyargcons with
   | UTEndOfTypeArgument                   -> 0
   | UTTypeArgumentCons(_, _, _, tailcons) -> 1 + (type_argument_length tailcons)
-
+*)
 
 let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
@@ -466,8 +467,8 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level)
   let tyargmaplist = MapList.create () in
   let rec aux cons =
     match cons with
-    | UTEndOfTypeArgument                            -> ()
-    | UTTypeArgumentCons(_, tyargnm, mnkd, tailcons) ->
+    | []                             -> ()
+    | (_, tyargnm, mnkd) :: tailcons ->
        let kd = fix_manual_kind_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnkd in
        let () = print_for_debug_variantenv ("FMT " ^ tyargnm ^ " :: " ^ (string_of_kind string_of_mono_type_basic kd)) in (* for debug *)
        let tvid = Tyvarid.fresh kd Quantifiable lev () in

@@ -39,11 +39,7 @@
 
   let rec append_argument_list (arglsta : untyped_argument_cons) (arglstb : untyped_argument_cons) =
     List.append arglsta arglstb
-(*
-    match arglsta with
-    | []             -> arglstb
-    | arg :: arglstl -> arg :: (append_argument_list arglstl arglstb)
-*)
+
 
   let class_and_id_region (utast : untyped_abstract_tree) =
     (Range.dummy "class_and_id_region", UTClassAndIDRegion(utast))
@@ -502,6 +498,17 @@ nxsig:
   | VAL VAR COLON txfunc nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4)) :: $5 }
   | VAL CTRLSEQ COLON txfunc nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4)) :: $5 }
   | DIRECT CTRLSEQ COLON txfunc nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4)) :: $5 }
+/* ---- for syntax error log -- */
+  | TYPE error                 { report_error (Tok $1) "type" }
+  | TYPE xpltyvars VAR error   { report_error (TokArg $3) "" }
+  | VAL error                  { report_error (Tok $1) "val" }
+  | VAL VAR error              { report_error (TokArg $2) "" }
+  | VAL VAR COLON error        { report_error (Tok $3) ":" }
+  | VAL CTRLSEQ error          { report_error (TokArg $2) "" }
+  | VAL CTRLSEQ COLON error    { report_error (Tok $3) ":" }
+  | DIRECT error               { report_error (Tok $1) "direct" }
+  | DIRECT CTRLSEQ error       { report_error (TokArg $2) "" }
+  | DIRECT CTRLSEQ COLON error { report_error (Tok $3) ":" }
 ;
 nxstruct:
 /* ---- toplevel style ---- */
@@ -645,9 +652,9 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
 /* -- -- */
 ;
 xpltyvars: /* -> untyped_explicit_type_variable_cons */
-  | TYPEVAR xpltyvars                          { let (rng, tyargnm) = $1 in UTTypeArgumentCons(rng, tyargnm, MUniversalKind, $2) }
-  | LPAREN TYPEVAR CONS kxtop RPAREN xpltyvars { let (rng, tyargnm) = $2 in UTTypeArgumentCons(rng, tyargnm, $4, $6) }
-  |                                            { UTEndOfTypeArgument }
+  | TYPEVAR xpltyvars                          { let (rng, tyargnm) = $1 in (rng, tyargnm, MUniversalKind) :: $2 }
+  | LPAREN TYPEVAR CONS kxtop RPAREN xpltyvars { let (rng, tyargnm) = $2 in (rng, tyargnm, $4) :: $6 }
+  |                                            { [] }
 ;
 kxtop:
   | BRECORD txrecord ERECORD { MRecordKind(Assoc.of_list $2) }

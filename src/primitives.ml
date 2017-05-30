@@ -5,12 +5,12 @@ let add_default_types tyenvmid =
   let dr = Range.dummy "make_variant_environment" in
   let mutvarntcons =
     UTMutualVariantCons(
-      UTTypeArgumentCons(dr, "%a", MUniversalKind, UTEndOfTypeArgument),  Range.dummy "primitives-maybe", "maybe",
+      [(dr, "%a", MUniversalKind)],  Range.dummy "primitives-maybe", "maybe",
         (dr, UTVariantCons("Nothing", (dr, MTypeName([], "unit")),
         (dr, UTVariantCons("Just", (dr, MTypeParam("%a")),
         (dr, UTEndOfVariant))))),
     UTMutualVariantCons(
-      UTEndOfTypeArgument, Range.dummy "primitives-itemize", "itemize",
+      [], Range.dummy "primitives-itemize", "itemize",
         (dr, UTVariantCons("Item", (dr, MProductType([(dr, MTypeName([], "string")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])),
         (dr, UTEndOfVariant))),
     UTEndOfMutualVariant))
@@ -28,9 +28,14 @@ let make_type_environment () =
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
-  let tv1           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
-  let tv2           = ref (Free(Tyvarid.fresh UniversalKind Quantifiable Tyvarid.bottom_level ())) in
-
+  let tv1           =
+    let bid1 = Boundid.fresh UniversalKind () in
+      ref (Bound(bid1))
+  in
+  let tv2           =
+    let bid2 = Boundid.fresh UniversalKind () in
+      ref (Bound(bid2))
+  in
   let tyenvmid =
     Typeenv.from_list
       [ ( "+",   ~% (i --> (i --> i)) );
