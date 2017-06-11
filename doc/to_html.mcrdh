@@ -16,6 +16,14 @@ module Doc
     direct \table : 'a -> string list -> string
     direct \itemize : itemize -> string
     direct \math : string -> string
+    direct \url : string -> string
+    direct \url-display : string -> string
+    direct \if-html : string -> string
+    direct \if-latex : string -> string
+    direct \TeX : string
+    direct \LaTeX : string
+    direct \pLaTeX2e : string
+    direct \float-table : string -> string -> string
   end
 = struct
 
