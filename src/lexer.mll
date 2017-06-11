@@ -259,6 +259,7 @@ rule numexpr = parse
           | "val"               -> VAL(pos)
           | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
+          | "constraint"        -> CONSTRAINT(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

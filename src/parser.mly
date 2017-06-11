@@ -298,14 +298,30 @@
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
-  let make_mutual_variant_cons tyargcons tynmtk constrdecs tailcons =
+  let make_mutual_variant_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (constrdecs : untyped_variant_cons) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
+    let tyargcons =
+      uktyargcons |> List.map (fun (rng, tyvarnm) ->
+        try
+          let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
+        with
+        | Not_found -> (rng, tyvarnm, MUniversalKind)
+      )
+    in
       UTMutualVariantCons(tyargcons, tynmrng, tynm, constrdecs, tailcons)
 
-  let make_mutual_synonym_cons tyargcons tynmtk (mnty : manual_type) tailcons =
+  let make_mutual_synonym_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (mnty : manual_type) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
+    let tyargcons =
+      uktyargcons |> List.map (fun (rng, tyvarnm) ->
+        try
+          let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
+        with
+        | Not_found -> (rng, tyvarnm, MUniversalKind)
+      )
+    in
       UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
@@ -375,7 +391,7 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL
+%token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
 %token <Range.t> REFNOW REFFINAL
@@ -450,6 +466,7 @@
 %type <Types.untyped_argument_cons> sargsub
 %type <Types.untyped_argument_variable_cons> argvar
 %type <string> binop
+%type <Types.untyped_unkinded_type_argument_cons> xpltyvars
 
 %%
 
@@ -493,11 +510,11 @@ nxsigopt:
   | COLON SIG nxsig { Some($3) }
 ;
 nxsig:
-  | END                               { [] }
-  | TYPE xpltyvars VAR nxsig          { let (_, tynm) = $3 in (SigType($2, tynm)) :: $4 }
-  | VAL VAR COLON txfunc nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4)) :: $5 }
-  | VAL CTRLSEQ COLON txfunc nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4)) :: $5 }
-  | DIRECT CTRLSEQ COLON txfunc nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4)) :: $5 }
+  | END                                        { [] }
+  | TYPE xpltyvars VAR constrnt nxsig          { let (_, tynm) = $3 in (SigType($2, tynm, $4)) :: $5 }
+  | VAL VAR COLON txfunc constrnt nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4, $5)) :: $6 }
+  | VAL CTRLSEQ COLON txfunc constrnt nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4, $5)) :: $6 }
+  | DIRECT CTRLSEQ COLON txfunc constrnt nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4, $5)) :: $6 }
 /* ---- for syntax error log -- */
   | TYPE error                 { report_error (Tok $1) "type" }
   | TYPE xpltyvars VAR error   { report_error (TokArg $3) "" }
@@ -509,6 +526,10 @@ nxsig:
   | DIRECT error               { report_error (Tok $1) "direct" }
   | DIRECT CTRLSEQ error       { report_error (TokArg $2) "" }
   | DIRECT CTRLSEQ COLON error { report_error (Tok $3) ":" }
+;
+constrnt:
+  |                                        { [] }
+  | CONSTRAINT TYPEVAR CONS kxtop constrnt { let (_, tyvarnm) = $2 in (tyvarnm, $4) :: $5 }
 ;
 nxstruct:
 /* ---- toplevel style ---- */
@@ -638,12 +659,12 @@ nxlazydec:
 /* -- -- */
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
-  | xpltyvars VAR DEFEQ variants LETAND nxvariantdec     { make_mutual_variant_cons $1 $2 $4 $6 }
-  | xpltyvars VAR DEFEQ variants                         { make_mutual_variant_cons $1 $2 $4 UTEndOfMutualVariant }
-  | xpltyvars VAR DEFEQ BAR variants LETAND nxvariantdec { make_mutual_variant_cons $1 $2 $5 $7 }
-  | xpltyvars VAR DEFEQ BAR variants                     { make_mutual_variant_cons $1 $2 $5 UTEndOfMutualVariant }
-  | xpltyvars VAR DEFEQ txfunc LETAND nxvariantdec       { make_mutual_synonym_cons $1 $2 $4 $6 }
-  | xpltyvars VAR DEFEQ txfunc                           { make_mutual_synonym_cons $1 $2 $4 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ variants constrnt LETAND nxvariantdec     { make_mutual_variant_cons $1 $2 $4 $5 $7 }
+  | xpltyvars VAR DEFEQ variants constrnt                         { make_mutual_variant_cons $1 $2 $4 $5 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ BAR variants constrnt LETAND nxvariantdec { make_mutual_variant_cons $1 $2 $5 $6 $8 }
+  | xpltyvars VAR DEFEQ BAR variants constrnt                     { make_mutual_variant_cons $1 $2 $5 $6 UTEndOfMutualVariant }
+  | xpltyvars VAR DEFEQ txfunc constrnt LETAND nxvariantdec       { make_mutual_synonym_cons $1 $2 $4 $5 $7 }
+  | xpltyvars VAR DEFEQ txfunc constrnt                           { make_mutual_synonym_cons $1 $2 $4 $5 UTEndOfMutualVariant }
 /* -- for syntax error log -- */
   | xpltyvars VAR error                           { report_error (TokArg $2) "" }
   | xpltyvars VAR DEFEQ error                     { report_error (Tok $3) "=" }
@@ -651,9 +672,11 @@ nxvariantdec: /* -> untyped_mutual_variant_cons */
   | xpltyvars VAR DEFEQ BAR variants LETAND error { report_error (Tok $6) "and" }
 /* -- -- */
 ;
-xpltyvars: /* -> untyped_explicit_type_variable_cons */
-  | TYPEVAR xpltyvars                          { let (rng, tyargnm) = $1 in (rng, tyargnm, MUniversalKind) :: $2 }
+xpltyvars:
+  | TYPEVAR xpltyvars                          { let (rng, tyargnm) = $1 in (rng, tyargnm) :: $2 }
+/*
   | LPAREN TYPEVAR CONS kxtop RPAREN xpltyvars { let (rng, tyargnm) = $2 in (rng, tyargnm, $4) :: $6 }
+*/
   |                                            { [] }
 ;
 kxtop:

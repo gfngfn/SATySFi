@@ -251,10 +251,12 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTClassAndIDRegion     of untyped_abstract_tree
 
+and constraint_cons = (var_name * manual_kind) list
+
 and manual_signature_content =
-  | SigType   of untyped_type_argument_cons * type_name
-  | SigValue  of var_name * manual_type
-  | SigDirect of var_name * manual_type
+  | SigType   of untyped_unkinded_type_argument_cons * type_name * constraint_cons
+  | SigValue  of var_name * manual_type * constraint_cons
+  | SigDirect of var_name * manual_type * constraint_cons
 (*
   | SigModule of module_name * manual_signature
 *)
@@ -297,6 +299,8 @@ and untyped_pattern_match_cons =
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
+
+and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
 
 and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
 
