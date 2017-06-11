@@ -742,7 +742,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
       match msig with
       | [] -> (sigoptacc, tyenvacc)
 
-      | SigType(tyargcons, tynm, constrntcons) :: tail ->
+      | SigType(tyargcons, tynm) :: tail ->
           let () = print_for_debug_variantenv ("SIGT " ^ tynm) in (* for debug *)
           let (tyid, dfn) =
             try find_type_definition_for_inner tyenv tynm with
@@ -759,7 +759,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
           in
             iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
 
-      | SigValue(varnm, mty, constrntcons) :: tail ->
+      | SigValue(varnm, mty, constrntcons) :: tail -> (* temporary; should use constrcons *)
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
           let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
           let ptysigI = generalize lev tysigI in
@@ -777,7 +777,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
               raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
 
 
-      | SigDirect(csnm, mty, constrntcons) :: tail ->
+      | SigDirect(csnm, mty, constrntcons) :: tail -> (* temporary; should use constrcons *)
           let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
           let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in

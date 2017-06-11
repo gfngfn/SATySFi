@@ -298,30 +298,25 @@
   and numbered_var_name i = "%pattup" ^ (string_of_int i)
 
 
+  let kind_type_argument_cons (uktyargcons : untyped_unkinded_type_argument_cons) (constrntcons : constraint_cons) : untyped_type_argument_cons =
+    uktyargcons |> List.map (fun (rng, tyvarnm) ->
+      try
+        let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
+      with
+      | Not_found -> (rng, tyvarnm, MUniversalKind)
+    )
+
+
   let make_mutual_variant_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (constrdecs : untyped_variant_cons) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
-    let tyargcons =
-      uktyargcons |> List.map (fun (rng, tyvarnm) ->
-        try
-          let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
-        with
-        | Not_found -> (rng, tyvarnm, MUniversalKind)
-      )
-    in
+    let tyargcons = kind_type_argument_cons uktyargcons constrntcons in
       UTMutualVariantCons(tyargcons, tynmrng, tynm, constrdecs, tailcons)
 
   let make_mutual_synonym_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (mnty : manual_type) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
-    let tyargcons =
-      uktyargcons |> List.map (fun (rng, tyvarnm) ->
-        try
-          let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
-        with
-        | Not_found -> (rng, tyvarnm, MUniversalKind)
-      )
-    in
+    let tyargcons = kind_type_argument_cons uktyargcons constrntcons in
       UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
@@ -511,7 +506,7 @@ nxsigopt:
 ;
 nxsig:
   | END                                        { [] }
-  | TYPE xpltyvars VAR constrnt nxsig          { let (_, tynm) = $3 in (SigType($2, tynm, $4)) :: $5 }
+  | TYPE xpltyvars VAR constrnt nxsig          { let (_, tynm) = $3 in (SigType(kind_type_argument_cons $2 $4, tynm)) :: $5 }
   | VAL VAR COLON txfunc constrnt nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4, $5)) :: $6 }
   | VAL CTRLSEQ COLON txfunc constrnt nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4, $5)) :: $6 }
   | DIRECT CTRLSEQ COLON txfunc constrnt nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4, $5)) :: $6 }

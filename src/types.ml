@@ -254,7 +254,7 @@ and untyped_abstract_tree_main =
 and constraint_cons = (var_name * manual_kind) list
 
 and manual_signature_content =
-  | SigType   of untyped_unkinded_type_argument_cons * type_name * constraint_cons
+  | SigType   of untyped_type_argument_cons * type_name
   | SigValue  of var_name * manual_type * constraint_cons
   | SigDirect of var_name * manual_type * constraint_cons
 (*
