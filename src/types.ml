@@ -31,6 +31,22 @@ end = struct
 end
 
 
+module EvalID
+: sig
+    type t
+    val initialize : unit -> unit
+    val fresh : unit -> t
+    val eq : t -> t -> bool
+  end
+= struct
+    type t = int
+    let current_id = ref 0
+    let initialize () = ( current_id := 0 )
+    let fresh () = begin incr current_id ; !current_id end
+    let eq = (=)
+  end
+
+
 type quantifiability = Quantifiable | Unquantifiable
 
 module Tyvarid_
