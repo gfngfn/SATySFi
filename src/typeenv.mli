@@ -25,7 +25,7 @@ val add_mutual_cons : t -> Tyvarid.level -> untyped_mutual_variant_cons -> t
 
 val find_constructor : quantifiability -> t -> Tyvarid.level -> constructor_name -> (mono_type list * Typeid.t * mono_type)
 
-val fix_manual_type_free : quantifiability -> t -> Tyvarid.level -> manual_type -> mono_type
+val fix_manual_type_free : quantifiability -> t -> Tyvarid.level -> manual_type -> constraint_cons -> mono_type
 
 val find_type_id : t -> type_name -> Typeid.t
 

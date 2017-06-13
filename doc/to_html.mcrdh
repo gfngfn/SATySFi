@@ -1,13 +1,13 @@
 module Doc
 : sig
     direct \ref : string -> string
-    type ('a ::
-      (|title : string;
-        lang : string;
-        author : string;
-        html-style-sheet : string;
-      |) ) head
-    direct \document : 'a head -> string -> string
+    direct \document : 'a -> string -> string
+      constraint 'a ::
+        (|title : string;
+          lang : string;
+          author : string;
+          html-style-sheet : string;
+        |)
     direct \maketitle : string
     direct \section : string -> string -> string
     direct \subsection : string -> string -> string
@@ -26,8 +26,6 @@ module Doc
     direct \float-table : string -> string -> string
   end
 = struct
-
-    type 'a head = 'a
 
     let \ref ref = !! ref
 

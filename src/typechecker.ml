@@ -614,7 +614,7 @@ and make_type_environment_by_let
                   (tyenvfinal, MutualLetCons(varnm, e1, mutletcons_tail), tvtylstoutfinal)
 
           | Some(mnty) ->
-              let tyin = Typeenv.fix_manual_type_free qtfbl tyenv lev mnty in
+              let tyin = Typeenv.fix_manual_type_free qtfbl tyenv lev mnty [] in
               let () = unify ty1 beta in
               let () = unify tyin beta in
                 let (tyenvfinal, mutletconstail, tvtylstoutfinal) =

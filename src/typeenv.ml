@@ -430,7 +430,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Ty
                       TypeVariable(MapList.find tyargmaplist tyargnm)
                     with
                     | Not_found ->
-                        let tvid = Tyvarid.fresh UniversalKind Quantifiable lev () (* temporary *) in
+                        let tvid = Tyvarid.fresh UniversalKind Quantifiable lev () in
                         let tvref = ref (Free(tvid)) in
                         begin
                           MapList.add tyargmaplist tyargnm tvref ;
@@ -492,8 +492,19 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : Tyvarid.level)
 
 
 (* PUBLIC *)
-let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : Tyvarid.level) (mnty : manual_type) =
+let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : Tyvarid.level) (mnty : manual_type) (constrntcons : constraint_cons) =
+
   let tyargmaplist = MapList.create () in
+
+  let () =
+    constrntcons |> List.iter (fun (tyargnm, mkd) ->
+      let kd = fix_manual_kind_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mkd in
+      let tvid = Tyvarid.fresh kd qtfbl lev () in
+      let tvref = ref (Free(tvid)) in
+        MapList.add tyargmaplist tyargnm tvref
+    )
+  in
+
   let (bidlist, ptyin) = fix_manual_type_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mnty in
   let tyarglist =
     bidlist |> List.map (fun bid ->
@@ -710,7 +721,11 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
             let bidcounterpart = BoundidHashtbl.find current_ht bid1 in
               Boundid.eq bid2 bidcounterpart
           with
-          | Not_found -> begin BoundidHashtbl.add current_ht bid1 bid2 ; true end
+          | Not_found ->
+              if is_stronger_kind (Boundid.get_kind bid1) (Boundid.get_kind bid2) then
+                begin BoundidHashtbl.add current_ht bid1 bid2 ; true end
+              else
+                false
         end
 
     | (_, TypeVariable({contents= Bound(_)} as tvref))     -> begin tvref := Link(ty1) ; true end
@@ -731,6 +746,21 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
       | (BoolType, BoolType)
       | (StringType, StringType) )                         -> true
     | _                                                    -> false
+
+  and is_stronger_kind (kd1 : kind) (kd2 : kind) =
+    match (kd1, kd2) with
+    | (_, UniversalKind)                       -> true
+    | (UniversalKind, _)                       -> false
+    | (RecordKind(tyasc1), RecordKind(tyasc2)) ->
+        begin
+          try
+            tyasc2 |> Assoc.fold (fun b (k, ty2) ->
+              let ty1 = Assoc.find tyasc1 k in
+                b && (aux ty1 ty2)
+            ) true
+          with
+          | Not_found -> false
+        end
   in
     aux ty1 ty2
 
@@ -759,11 +789,11 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
           in
             iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
 
-      | SigValue(varnm, mty, constrntcons) :: tail -> (* temporary; should use constrcons *)
+      | SigValue(varnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
+          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty constrntcons in
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty in
+          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty constrntcons in
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           let ptyimp =
@@ -777,13 +807,13 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
               raise (NotMatchingInterface(rng, varnm, tyenv, ptyimp, tyenvforsigO, ptysigO))
 
 
-      | SigDirect(csnm, mty, constrntcons) :: tail -> (* temporary; should use constrcons *)
+      | SigDirect(csnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty in
+          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Tyvarid.succ_level lev) mty constrntcons in
           let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty in
+          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty constrntcons in
           let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
