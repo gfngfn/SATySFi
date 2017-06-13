@@ -369,20 +369,20 @@ let rec typecheck
 
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
       let dr = Range.dummy "ut-apply-class-and-id" in
-      let evidcls = EvalVarID.fresh "(dummy:class-name)" in
+      let evidcls = EvalVarID.for_class_name in
       let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.fresh "(dummy:id-name)" in
+      let evidid = EvalVarID.for_id_name in
       let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let (ecls, _) = typecheck_iter tyenv utastcls in
       let (eid, _)  = typecheck_iter tyenv utastid in
       let (e1, ty1) = typecheck_iter tyenvnew utast1 in
-        (Apply(LambdaAbstract(evidcls, Apply(LambdaAbstract(evidid, e1), eid)), ecls), ty1)
+        (ApplyClassAndID(evidcls, evidid, ecls, eid, e1), ty1)
 
   | UTClassAndIDRegion(utast1) ->
       let dr = Range.dummy "ut-class-and-id-region" in
-      let evidcls = EvalVarID.fresh "(dummy:class-name)" in
+      let evidcls = EvalVarID.for_class_name in
       let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.fresh "(dummy:id-name)" in
+      let evidid = EvalVarID.for_id_name in
       let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let (e1, ty1) = typecheck_iter tyenvnew utast1 in
         (e1, ty1)

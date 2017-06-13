@@ -36,7 +36,9 @@ module EvalVarID
     type t
     val initialize : unit -> unit
     val fresh : var_name -> t
-    val eq : t -> t -> bool
+    val equal : t -> t -> bool
+    val for_class_name : t
+    val for_id_name : t
     val show_direct : t -> string
   end
 = struct
@@ -44,7 +46,9 @@ module EvalVarID
     let current_id = ref 0
     let initialize () = ( current_id := 0 )
     let fresh varnm = begin incr current_id ; (!current_id, varnm) end
-    let eq (i1, _) (i2, _) = (i1 = i2)
+    let equal (i1, _) (i2, _) = (i1 = i2)
+    let for_class_name = (-1, "*class-name*")
+    let for_id_name = (-2, "*id-name*")
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
   end
 
@@ -385,7 +389,7 @@ and abstract_tree =
   | LazyContent           of abstract_tree
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
-(*  | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree *)
+  | ApplyClassAndID       of EvalVarID.t * EvalVarID.t * abstract_tree * abstract_tree * abstract_tree
 (* (* -- lightweight itemize -- *)
   | Itemize               of itemize *)
 (* -- primitive operation -- *)

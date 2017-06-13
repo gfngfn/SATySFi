@@ -32,12 +32,6 @@
   };
 |){
   \maketitle;
-  \embed`
-    \noindent
-      【参考資料1】この文書は2016年11月以前の，やや古い安定版のMacrodownに関する解説ですが，
-      現在実装を進めているMacrodownの仕様と極端に大きな差異はありませんので，参考として頂ければ幸いです。
-    \par
-  `
   \section{概要}{
     \p{
       \newword{Macrodown}（\newword{マクロダウン}）は

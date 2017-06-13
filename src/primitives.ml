@@ -38,7 +38,7 @@ let rec lambda3 astf env =
   let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
     FuncWithEnvironment(evid1, LambdaAbstract(evid2, LambdaAbstract(evid3,
-      astf (ContentOf(evid1)) (ContentOf(evid2)) (ContentOf(evid2)))), env)
+      astf (ContentOf(evid1)) (ContentOf(evid2)) (ContentOf(evid3)))), env)
 
 
 let make_environments () =

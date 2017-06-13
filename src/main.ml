@@ -302,7 +302,7 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
       | "-o" ->
           begin
             try see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1)) with
-            | Invalid_argument(s) -> print_endline "! missing file name after '-o' option"
+            | Invalid_argument(s) -> print_endline ("! missing file name after '-o' option; " ^ s)
           end
       | "-t" ->
           begin

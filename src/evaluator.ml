@@ -1,5 +1,4 @@
 open Types
-open Display
 
 exception EvalError of string
 
@@ -123,25 +122,23 @@ let rec interpret env ast =
       end
 
 (* ---- class/id option ---- *)
-(*
-  | ApplyClassAndID(clsnmast, idnmast, astf) ->
-      begin                                                                       (* for debug *)
-        print_for_debug_evaluator ("%1 " ^ (string_of_ast astf) ^ "\n") ;         (* for debug *)
-        let valuef =  interpret env
-                        (LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
-                          LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astf))) in
-          begin                                                                   (* for debug *)
-            print_for_debug_evaluator ("%2 " ^ (string_of_ast valuef) ^ "\n") ;   (* for debug *)
-            match valuef with
-            | FuncWithEnvironment(varnm, astdef, envf) ->
-                FuncWithEnvironment(varnm,
-                  LetIn(MutualLetCons("class-name", clsnmast, EndOfMutualLet),
-                    LetIn(MutualLetCons("id-name", idnmast, EndOfMutualLet), astdef)
-                  ), envf)
-            | other ->  valuef
-          end                                                           (* for debug *)
-      end                                                               (* for debug *)
-*)
+
+  | ApplyClassAndID(evidcls, evidid, clsnmast, idnmast, astf) ->
+      let () = print_for_debug_evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
+      let valuef =  interpret env
+                      (LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
+                        LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astf))) in
+      begin
+        print_for_debug_evaluator ("%2 " ^ (Display.string_of_ast valuef) ^ "\n") ;   (* for debug *)
+        match valuef with
+        | FuncWithEnvironment(varnm, astdef, envf) ->
+            FuncWithEnvironment(varnm,
+              LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
+                LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astdef)
+              ), envf)
+        | other ->  valuef
+      end
+
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astdflt, astaft) ->
@@ -250,8 +247,13 @@ let rec interpret env ast =
         Constructor(constrnm, valuecont)
 
   | Module(astmdl, astaft) ->
-      let _ = interpret env astmdl in
-        interpret env astaft
+      let value = interpret env astmdl in
+      begin
+        match value with
+        | EvaluatedEnvironment(envfinal) -> interpret envfinal astaft
+        | _                              -> report_bug_evaluator ("module did evaluate not to EvaluatedEnvironment; "
+                                                                  ^ (Display.string_of_ast value))
+      end
 
 (* -- primitive operation -- *)
 
@@ -273,7 +275,11 @@ let rec interpret env ast =
       in
         let pos = interpret_int env astpos in
         let wid = interpret_int env astwid in
-          StringConstant(String.sub str pos wid)
+        let resstr =
+          try String.sub str pos wid with
+          | Invalid_argument(s) -> raise (EvalError("illegal index for 'string-sub'"))
+        in
+          StringConstant(resstr)
 
   | PrimitiveStringLength(aststr) ->
       let str =
@@ -364,14 +370,18 @@ and interpret_bool (env : environment) (ast : abstract_tree) : bool =
   let vb = interpret env ast in
     match vb with
     | BooleanConstant(bc) -> bc
-    | other               -> report_bug_evaluator ("interpret_bool: not a BooleanConstant; " ^ (string_of_ast ast) ^ " ->* " ^ (string_of_ast vb))
+    | other               -> report_bug_evaluator ("interpret_bool: not a BooleanConstant; "
+                                                   ^ (Display.string_of_ast ast)
+                                                   ^ " ->* " ^ (Display.string_of_ast vb))
 
 
 and interpret_int (env : environment) (ast : abstract_tree) : int =
   let vi = interpret env ast in
     match vi with
     | NumericConstant(nc) -> nc
-    | other               -> report_bug_evaluator ("interpret_int: not a NumericConstant; " ^ (string_of_ast ast) ^ " ->* " ^ (string_of_ast vi))
+    | other               -> report_bug_evaluator ("interpret_int: not a NumericConstant; "
+                                                   ^ (Display.string_of_ast ast)
+                                                   ^ " ->* " ^ (Display.string_of_ast vi))
 
 
 and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =
@@ -460,7 +470,8 @@ and add_zeroary_mutuals (lst : (EvalVarID.t * abstract_tree) list) (env : enviro
     if List.length newlst = 0 then
       ()
     else if (List.length newlst) = (List.length lst) then
-      raise (EvalError("meaningless 0-ary mutual recursion"))
+      let msg = lst |> List.fold_left (fun s (evid, _) -> s ^ (EvalVarID.show_direct evid) ^ " ") "" in
+      raise (EvalError("meaningless 0-ary mutual recursion; " ^ msg))
     else
       add_zeroary_mutuals newlst env
 
