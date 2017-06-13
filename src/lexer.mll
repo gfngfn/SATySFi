@@ -22,11 +22,11 @@
   let numdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
   let strdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
 
-
+(*
   let increment rfn = ( rfn := !rfn + 1 )
 
   let decrement rfn = ( rfn := !rfn - 1 )
-
+*)
 
   let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
 
@@ -93,6 +93,15 @@
       strdepth_stack := Stacklist.empty
     end
 
+
+  let split_module_list tokstr =
+    let rec aux imax i acclst accstr =
+      if i >= imax then (List.rev acclst, accstr) else
+        match tokstr.[i] with
+        | '.' -> aux imax (i + 1) (accstr :: acclst) ""
+        | c   -> aux imax (i + 1) acclst (accstr ^ (String.make 1 c))
+    in
+      aux (String.length tokstr) 0 [] ""
 }
 
 let space = [' ' '\t']
@@ -118,9 +127,9 @@ rule numexpr = parse
       numexpr lexbuf
     }
   | ("(" (space | break)* ")") { UNITVALUE(get_pos lexbuf) }
-  | "(" { increment numdepth ; LPAREN(get_pos lexbuf) }
+  | "(" { incr numdepth ; LPAREN(get_pos lexbuf) }
   | ")" {
-      decrement numdepth ;
+      decr numdepth ;
       if Stacklist.is_empty numdepth_stack then
         RPAREN(get_pos lexbuf)
       else
@@ -133,9 +142,9 @@ rule numexpr = parse
         else
           RPAREN(get_pos lexbuf)
     }
-  | "(|" { increment numdepth ; BRECORD(get_pos lexbuf) }
+  | "(|" { incr numdepth ; BRECORD(get_pos lexbuf) }
   | "|)" {
-        decrement numdepth ;
+        decr numdepth ;
         if Stacklist.is_empty numdepth_stack then
           ERECORD(get_pos lexbuf)
         else
@@ -148,9 +157,9 @@ rule numexpr = parse
           else
             ERECORD(get_pos lexbuf)
       }
-  | "[" { increment numdepth ; BLIST(get_pos lexbuf) }
+  | "[" { incr numdepth ; BLIST(get_pos lexbuf) }
   | "]" {
-        decrement numdepth ;
+        decr numdepth ;
         if Stacklist.is_empty numdepth_stack then
           ELIST(get_pos lexbuf)
         else
@@ -166,7 +175,7 @@ rule numexpr = parse
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
       Stacklist.push strdepth_stack !strdepth ;
-      increment strdepth ;
+      incr strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
       OPENSTR(get_pos lexbuf)
@@ -209,10 +218,17 @@ rule numexpr = parse
 
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
-  | identifier {
-        let tok = Lexing.lexeme lexbuf in
+  | ((constructor ".")+ identifier) {
+        let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
-          match tok with
+        let (mdlnmlst, varnm) = split_module_list tokstr in
+          VARWITHMOD(pos, mdlnmlst, varnm)
+      }
+
+  | identifier {
+        let tokstr = Lexing.lexeme lexbuf in
+        let pos = get_pos lexbuf in
+          match tokstr with
           | "not"               -> LNOT(pos)
           | "mod"               -> MOD(pos)
           | "if"                -> IF(pos)
@@ -235,15 +251,16 @@ rule numexpr = parse
           | "with"              -> WITH(pos)
           | "when"              -> WHEN(pos)
           | "as"                -> AS(pos)
-          | "type"              -> VARIANT(pos)
+          | "type"              -> TYPE(pos)
           | "of"                -> OF(pos)
           | "module"            -> MODULE(pos)
           | "struct"            -> STRUCT(pos)
+          | "sig"               -> SIG(pos)
+          | "val"               -> VAL(pos)
           | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
-          | "publ"              -> PUBLIC(pos)
-          | "priv"              -> PRIVATE(pos)
-          | _                   -> VAR(pos, tok)
+          | "constraint"        -> CONSTRAINT(pos)
+          | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -262,12 +279,12 @@ and strexpr = parse
     }
   | ((break | space)* "{") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      increment strdepth ;
+      incr strdepth ;
       ignore_space := true ;
       BGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
-      decrement strdepth ;
+      decr strdepth ;
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
       if Stacklist.is_empty strdepth_stack then
         begin
@@ -306,8 +323,17 @@ and strexpr = parse
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in
+      let rng = get_pos lexbuf in
         next_state := STATE_ACTIVE ;
-        CTRLSEQ(get_pos lexbuf, tok)
+        CTRLSEQ(rng, tok)
+    }
+  | ("\\" (constructor ".")* (identifier | constructor)) {
+      let tokstrpure = Lexing.lexeme lexbuf in
+      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list tokstr in
+      let rng = get_pos lexbuf in
+        next_state := STATE_ACTIVE ;
+        CTRLSEQWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
@@ -354,24 +380,24 @@ and active = parse
   | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
   | "(" {
       Stacklist.push numdepth_stack !numdepth ;
-      increment numdepth ;
+      incr numdepth ;
       next_state := STATE_NUMEXPR ;
       OPENNUM(get_pos lexbuf)
     }
   | "(|" {
       Stacklist.push numdepth_stack !numdepth ;
-      increment numdepth ;
+      incr numdepth ;
       next_state := STATE_NUMEXPR ;
       OPENNUM_AND_BRECORD(get_pos lexbuf)
     }
   | "[" {
       Stacklist.push numdepth_stack !numdepth ;
-      increment numdepth ;
+      incr numdepth ;
       next_state := STATE_NUMEXPR ;
       OPENNUM_AND_BLIST(get_pos lexbuf)
     }
   | "{" {
-      increment strdepth ;
+      incr strdepth ;
       next_state := STATE_STREXPR ;
       ignore_space := true ;
       BGRP(get_pos lexbuf)

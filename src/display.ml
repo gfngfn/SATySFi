@@ -91,10 +91,10 @@ module GeneralidHashtbl
   end
 
 
-let rec string_of_mono_type_sub (varntenv : Variantenv.t) (current_ht : int GeneralidHashtbl.t) ((_, tymain) : mono_type) =
-  let iter = string_of_mono_type_sub varntenv current_ht in
-  let iter_args = string_of_type_argument_list varntenv current_ht in
-  let iter_list = string_of_mono_type_list varntenv current_ht in
+let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidHashtbl.t) ((_, tymain) : mono_type) =
+  let iter = string_of_mono_type_sub tyenv current_ht in
+  let iter_args = string_of_type_argument_list tyenv current_ht in
+  let iter_list = string_of_mono_type_list tyenv current_ht in
     match tymain with
 
     | TypeVariable(tvref) ->
@@ -117,9 +117,9 @@ let rec string_of_mono_type_sub (varntenv : Variantenv.t) (current_ht : int Gene
     | BoolType   -> "bool"
     | UnitType   -> "unit"
 
-    | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+    | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 
-    | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Variantenv.find_type_name varntenv tyid)
+    | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
                                              ^ " (= " ^ (iter tyreal) ^ ")"
 
     | FuncType(tydom, tycod) ->
@@ -152,9 +152,9 @@ let rec string_of_mono_type_sub (varntenv : Variantenv.t) (current_ht : int Gene
     | RecordType(asc) -> string_of_record_type iter asc
 
 
-and string_of_type_argument_list varntenv current_ht tyarglist =
-  let iter = string_of_mono_type_sub varntenv current_ht in
-  let iter_args = string_of_type_argument_list varntenv current_ht in
+and string_of_type_argument_list tyenv current_ht tyarglist =
+  let iter = string_of_mono_type_sub tyenv current_ht in
+  let iter_args = string_of_type_argument_list tyenv current_ht in
     match tyarglist with
     | []           -> ""
     | head :: tail ->
@@ -169,9 +169,9 @@ and string_of_type_argument_list varntenv current_ht tyarglist =
           end ^ " " ^ strtl
 
 
-and string_of_mono_type_list varntenv current_ht tylist =
-  let iter = string_of_mono_type_sub varntenv current_ht in
-  let iter_list = string_of_mono_type_list varntenv current_ht in
+and string_of_mono_type_list tyenv current_ht tylist =
+  let iter = string_of_mono_type_sub tyenv current_ht in
+  let iter_list = string_of_mono_type_list tyenv current_ht in
     match tylist with
     | []           -> ""
     | head :: tail ->
@@ -190,26 +190,26 @@ and string_of_mono_type_list varntenv current_ht tylist =
         end
 
 
-let string_of_mono_type (varntenv : Variantenv.t) (ty : mono_type) =
+let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
   begin
     GeneralidHashtbl.initialize () ;
     let current_ht = GeneralidHashtbl.create 32 in
-      string_of_mono_type_sub varntenv current_ht ty
+      string_of_mono_type_sub tyenv current_ht ty
   end
 
 
-let string_of_mono_type_double (varntenv : Variantenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   begin
     GeneralidHashtbl.initialize () ;
     let current_ht = GeneralidHashtbl.create 32 in
-    let strty1 = string_of_mono_type_sub varntenv current_ht ty1 in
-    let strty2 = string_of_mono_type_sub varntenv current_ht ty2 in
+    let strty1 = string_of_mono_type_sub tyenv current_ht ty1 in
+    let strty2 = string_of_mono_type_sub tyenv current_ht ty2 in
       (strty1, strty2)
   end
 
 
-let string_of_poly_type (varntenv : Variantenv.t) (Poly(ty) : poly_type) =
-  string_of_mono_type varntenv ty (* temporary *)
+let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
+  string_of_mono_type tyenv ty (* temporary *)
 
 
 (* -- following are all for debug -- *)
@@ -222,7 +222,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTBooleanConstant(bc)          -> string_of_bool bc
   | UTStringConstant(sc)           -> "{" ^ sc ^ "}"
   | UTUnitConstant                 -> "()"
-  | UTContentOf(varnm)             -> varnm
+  | UTContentOf(lst, varnm)        -> (List.fold_left (fun mdlnm s -> s ^ mdlnm ^ ".") "" lst) ^ varnm
   | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
   | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
   | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
@@ -286,9 +286,9 @@ let escape_letters str =
 
 let rec string_of_ast (ast : abstract_tree) =
   match ast with
-  | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)                 -> "_" ^ v ^ "_"
+  | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(" ^ (EvalVarID.show_direct x) ^ " *-> " ^ (string_of_ast m) ^ ")"
+  | ContentOf(x)                 -> "_" ^ (EvalVarID.show_direct x) ^ "_"
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
   | StringEmpty                  -> "\"\""
@@ -297,14 +297,16 @@ let rec string_of_ast (ast : abstract_tree) =
   | BooleanConstant(bc)          -> string_of_bool bc
   | IfThenElse(b, t, f)          ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+(*
   | ApplyClassAndID(c, i, m)     ->
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
+*)
   | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
-  | Overwrite(vn, n)             -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | Overwrite(x, n)              -> "(" ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast n) ^ ")"
   | Location(loc)                -> "<mutable>"
   | UnitConstant                 -> "()"
-  | LetMutableIn(vn, d, f)       -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
+  | LetMutableIn(x, d, f)        -> "(let-mutable " ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
   | EndOfList                    -> "[]"
   | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
@@ -319,7 +321,7 @@ let rec string_of_ast (ast : abstract_tree) =
   | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"
   | DeclareGlobalHash(m, n)      -> "(declare-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
   | OverwriteGlobalHash(m, n)    -> "(overwrite-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
-  | Module(mn, _, _)             -> "(module " ^ mn ^ " = struct ... end-struct)"
+  | Module(m, n)                 -> "(module " ^ (string_of_ast m) ^ " end in " ^ (string_of_ast n) ^ ")"
   | Sequential(m, n)             -> "(sequential " ^ (string_of_ast m) ^ " ; " ^ (string_of_ast n) ^ ")"
   | PrimitiveSame(m, n)          -> "(same " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | PrimitiveStringSub(m, n, o)  ->

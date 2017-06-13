@@ -29,25 +29,22 @@ module type S =
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
+    val get_vertex : 'a t -> vertex -> 'a
   end
 
 
 module Make (Vertex : VertexType) =
   struct
 
+    module VertexSet = Set.Make(Vertex)
+
     type state = Remained | Touched | Done
 
     type vertex = Vertex.t
-    module VertexSet = Set.Make(
-      struct
-        type t = vertex
-        let compare = Vertex.compare
-      end)
 
     type degree_out = int
 
     type 'a t = (vertex, 'a * degree_out ref * state ref * VertexSet.t ref * VertexSet.t ref) Hashtbl.t
-
 
     exception Cyclic
     exception Loop of vertex
@@ -107,6 +104,10 @@ module Make (Vertex : VertexType) =
     let get_vertex_data (dg : 'a t) (vtx : vertex) =
       try Hashtbl.find dg vtx with
       |  Not_found -> assert false
+
+
+    let get_vertex (dg : 'a t) (vtx : vertex) =
+      let (res, _, _, _, _) = get_vertex_data dg vtx in res
 
 
     let find_cycle (dg : 'a t) =

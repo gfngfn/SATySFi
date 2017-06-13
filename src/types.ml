@@ -8,6 +8,7 @@ type class_name         = string
 type type_name          = string
 type constructor_name   = string
 type module_name        = string
+type sig_var_name       = string
 type field_name         = string
 type type_argument_name = string
 
@@ -15,17 +16,41 @@ type type_argument_name = string
 module Typeid : sig
   type t
   val initialize : unit -> unit
-  val fresh : unit -> t
+  val fresh : type_name -> t
   val to_string : t -> string
+  val extract_name : t -> type_name
   val eq : t -> t -> bool
 end = struct
-  type t = int
+  type t = int * type_name
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
-  let fresh () = begin incr current_id ; !current_id end
-  let to_string = string_of_int
-  let eq = (=)
+  let fresh tynm = begin incr current_id ; (!current_id, tynm) end
+  let to_string (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
+  let extract_name (_, tynm) = tynm
+  let eq (n1, _) (n2, _) = (n1 = n2)
 end
+
+
+module EvalVarID
+: sig
+    type t
+    val initialize : unit -> unit
+    val fresh : var_name -> t
+    val equal : t -> t -> bool
+    val for_class_name : t
+    val for_id_name : t
+    val show_direct : t -> string
+  end
+= struct
+    type t = int * string
+    let current_id = ref 0
+    let initialize () = ( current_id := 0 )
+    let fresh varnm = begin incr current_id ; (!current_id, varnm) end
+    let equal (i1, _) (i2, _) = (i1 = i2)
+    let for_class_name = (-1, "*class-name*")
+    let for_id_name = (-2, "*id-name*")
+    let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
+  end
 
 
 type quantifiability = Quantifiable | Unquantifiable
@@ -46,7 +71,8 @@ module Tyvarid_
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
     val get_kind : 'a t_ -> 'a
     val set_kind : 'a t_ -> 'a -> 'a t_
-    val show_direct : 'a t_ -> string
+    val show_direct : ('a -> string) -> 'a t_ -> string
+    val show_direct_level : level -> string
   end
 = struct
     type level = int
@@ -88,10 +114,12 @@ module Tyvarid_
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
 
-    let show_direct (idmain, _, qtfbl, lev) =
+    let show_direct f (idmain, kd, qtfbl, lev) =
       match qtfbl with
-      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "]"
-      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "]"
+      | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (string_of_int lev) ^ "::" ^ (f kd) ^ "]"
+      | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (string_of_int lev) ^ "::" ^ (f kd) ^ "]"
+
+    let show_direct_level = string_of_int
 
   end
 
@@ -103,7 +131,7 @@ module Boundid_
     val fresh : 'a -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
     val get_kind : 'a t_ -> 'a
-    val show_direct : 'a t_ -> string
+    val show_direct : ('a -> string) -> 'a t_ -> string
   end
 = struct
     type 'a t_ = int * 'a
@@ -122,7 +150,7 @@ module Boundid_
 
     let get_kind (_, kd) = kd
 
-    let show_direct (i, _) = string_of_int i
+    let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
 
   end
 
@@ -135,6 +163,10 @@ and manual_type_main =
   | MFuncType    of manual_type * manual_type
   | MProductType of manual_type list
   | MRecordType  of (field_name, manual_type) Assoc.t
+
+type manual_kind =
+  | MUniversalKind
+  | MRecordKind    of (field_name, manual_type) Assoc.t
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -192,10 +224,7 @@ type untyped_argument_variable_cons = untyped_pattern_tree list
 and untyped_argument_cons = untyped_abstract_tree list
 
 and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
-(*
-  | UTMutualLetCons        of manual_type option * var_name * untyped_abstract_tree * untyped_mutual_let_cons
-  | UTEndOfMutualLet
-*)
+
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
@@ -216,18 +245,19 @@ and untyped_abstract_tree_main =
   | UTRecord               of (field_name * untyped_abstract_tree) list
   | UTAccessField          of untyped_abstract_tree * field_name
 (* -- fundamental -- *)
-  | UTContentOf            of var_name
+  | UTContentOf            of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
+  | UTFinishStruct
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
   | UTConstructor          of constructor_name * untyped_abstract_tree
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
-  | UTModule               of module_name * untyped_abstract_tree * untyped_abstract_tree
+  | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
 (* -- implerative -- *)
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
@@ -243,6 +273,18 @@ and untyped_abstract_tree_main =
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTClassAndIDRegion     of untyped_abstract_tree
 
+and constraint_cons = (var_name * manual_kind) list
+
+and manual_signature_content =
+  | SigType   of untyped_type_argument_cons * type_name
+  | SigValue  of var_name * manual_type * constraint_cons
+  | SigDirect of var_name * manual_type * constraint_cons
+(*
+  | SigModule of module_name * manual_signature
+*)
+
+and manual_signature = manual_signature_content list
+
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
 
@@ -252,8 +294,8 @@ and untyped_variant_cons_main =
   | UTEndOfVariant
 
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument_cons * type_name * untyped_variant_cons * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument_cons * type_name * manual_type * untyped_mutual_variant_cons
+  | UTMutualVariantCons    of untyped_type_argument_cons * Range.t * type_name * untyped_variant_cons * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument_cons * Range.t * type_name * manual_type * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
@@ -279,18 +321,10 @@ and untyped_pattern_match_cons =
 and untyped_let_pattern_cons =
   | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
   | UTEndOfLetPattern
-(*
-and untyped_module_tree = Range.t * untyped_module_tree_main
-and untyped_module_tree_main =
-  | UTMFinishModule
-  | UTMLetIn            of untyped_mutual_let_cons * untyped_module_tree
-  | UTMLetMutableIn     of Range.t * var_name * untyped_abstract_tree * untyped_module_tree
-  | UTMDeclareVariantIn of untyped_mutual_variant_cons * untyped_module_tree
-*)
-and untyped_type_argument_cons =
-  | UTTypeArgumentCons  of Range.t * var_name * untyped_type_argument_cons
-  | UTEndOfTypeArgument
 
+and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
+
+and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
 
 (* ---- typed ---- *)
 type argument_variable_cons =
@@ -302,10 +336,10 @@ type argument_cons =
   | EndOfArgument
 
 and mutual_let_cons =
-  | MutualLetCons         of var_name * abstract_tree * mutual_let_cons
+  | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 
-and environment = (var_name, location) Hashtbl.t
+and environment = (EvalVarID.t, location) Hashtbl.t
 
 and location = abstract_tree ref
 
@@ -320,8 +354,7 @@ and abstract_tree =
   | BreakAndIndent
   | SoftBreakAndIndent
   | Concat                of abstract_tree * abstract_tree
-(*  | NoContent (* for class and id *) *)
-  | FuncWithEnvironment   of var_name * abstract_tree * environment
+  | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
 (* -- list value -- *)
   | ListCons              of abstract_tree * abstract_tree
@@ -334,19 +367,20 @@ and abstract_tree =
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
-  | ContentOf             of var_name
+  | ContentOf             of EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | LambdaAbstract        of var_name * abstract_tree
+  | LambdaAbstract        of EvalVarID.t * abstract_tree
   | Apply                 of abstract_tree * abstract_tree
   | FinishHeaderFile
+  | FinishStruct
 (* -- pattern match -- *)
   | PatternMatch          of abstract_tree * pattern_match_cons
   | Constructor           of constructor_name * abstract_tree
 (* -- imperative -- *)
-  | LetMutableIn          of var_name * abstract_tree * abstract_tree
+  | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
-  | Overwrite             of var_name * abstract_tree
+  | Overwrite             of EvalVarID.t * abstract_tree
   | Location              of abstract_tree ref
   | Reference             of abstract_tree
   | DeclareGlobalHash     of abstract_tree * abstract_tree
@@ -355,7 +389,7 @@ and abstract_tree =
   | LazyContent           of abstract_tree
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
-  | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree
+  | ApplyClassAndID       of EvalVarID.t * EvalVarID.t * abstract_tree * abstract_tree * abstract_tree
 (* (* -- lightweight itemize -- *)
   | Itemize               of itemize *)
 (* -- primitive operation -- *)
@@ -375,7 +409,7 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
-  | Module                of module_name * module_tree * abstract_tree
+  | Module                of abstract_tree * abstract_tree
 (* and itemize =
   | Item                  of abstract_tree * (itemize list) *)
 and pattern_match_cons =
@@ -392,18 +426,9 @@ and pattern_tree =
   | PTupleCons            of pattern_tree * pattern_tree
   | PEndOfTuple
   | PWildCard
-  | PVariable             of var_name
-  | PAsVariable           of var_name * pattern_tree
+  | PVariable             of EvalVarID.t
+  | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
-and module_tree =
-  | MFinishModule
-  | MPublicLetIn                 of mutual_let_cons * module_tree
-  | MPublicLetMutableIn          of var_name * abstract_tree * module_tree
-(*  | MPublicDeclareVariantIn      of mutual_variant_cons * module_tree *)
-  | MPrivateLetIn                of mutual_let_cons * module_tree
-  | MPrivateLetMutableIn         of var_name * abstract_tree * module_tree
-(*  | MPrivateDeclareVariantIn     of mutual_variant_cons * module_tree *)
-  | MDirectLetIn                 of mutual_let_cons * module_tree
 
 type output_unit =
   | OString             of string
@@ -411,17 +436,6 @@ type output_unit =
   | OSoftBreakAndIndent
   | ODeepen
   | OShallow
-
-(*
-let poly_extend_general
-    (fmono : mono_type -> 'a) (fpoly : (poly_type -> 'a) -> Tyvarid.t -> kind -> poly_type -> 'a) : (poly_type -> 'a) =
-  let rec iter pty =
-    match pty with
-    | Mono(ty)              -> fmono ty
-    | Forall(tvref, ptysub) -> fpoly iter tvid kd ptysub
-  in
-    iter
-*)
 
 
 let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
@@ -554,7 +568,7 @@ let generalize (lev : Tyvarid.level) (ty : mono_type) =
 
 (* !!!! ---- global variable ---- !!!! *)
 
-let global_hash_env : environment = Hashtbl.create 32
+let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
 
 
 (* -- following are all for debugging -- *)
@@ -631,8 +645,8 @@ let rec string_of_mono_type_basic tystr =
         begin
           match !tvref with
           | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-          | Free(tvid) -> "'" ^ (Tyvarid.show_direct tvid) ^ qstn
-          | Bound(bid) -> "'#" ^ (Boundid.show_direct bid) ^ qstn
+          | Free(tvid) -> "'" ^ (Tyvarid.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+          | Bound(bid) -> "'#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ qstn
         end
 
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
@@ -680,3 +694,13 @@ and string_of_poly_type_basic (Poly(ty)) =
 
 
 and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
+
+
+let rec string_of_manual_type (_, mtymain) =
+  let iter = string_of_manual_type in
+  match mtymain with
+  | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
+  | MTypeParam(tpnm)          -> "'" ^ tpnm
+  | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
+  | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
+  | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"

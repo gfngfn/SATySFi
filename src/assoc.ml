@@ -54,6 +54,7 @@ let rec mem ?eq:(eq = (=)) key asc =
 let domain_included ?eq:(eq = (=)) asc1 asc2 =
   List.fold_left (fun b (k, _) -> b && (mem ~eq:eq k asc2)) true asc1
 
+
 let domain_same ?eq:(eq = (=)) asc1 asc2 =
   (domain_included ~eq:eq asc1 asc2) && (domain_included ~eq:eq asc2 asc1)
 

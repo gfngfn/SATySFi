@@ -1,102 +1,133 @@
-let \ref ref = !! ref
+module Doc
+: sig
+    direct \ref : string -> string
+    direct \document : 'a -> string -> string
+      constraint 'a ::
+        (|title : string;
+          lang : string;
+          author : string;
+          html-style-sheet : string;
+        |)
+    direct \maketitle : string
+    direct \section : string -> string -> string
+    direct \subsection : string -> string -> string
+    direct \p : string -> string
+    direct \footnote : string -> string
+    direct \table : 'a -> string list -> string
+    direct \itemize : itemize -> string
+    direct \math : string -> string
+    direct \url : string -> string
+    direct \url-display : string -> string
+    direct \if-html : string -> string
+    direct \if-latex : string -> string
+    direct \TeX : string
+    direct \LaTeX : string
+    direct \pLaTeX2e : string
+    direct \float-table : string -> string -> string
+  end
+= struct
 
-let-mutable mut-title <- {}
-let-mutable mut-author <- {}
+    let \ref ref = !! ref
 
-let \document head body =
-  let title = head#title in
-  let lang = head#lang in
-  let author = head#author in
-  let style-sheet = head#html-style-sheet in
-    new-global-hash `to-html:title` <<- title before
-    new-global-hash `to-html:author` <<- author before
-    {
-      <html lang="@lang;">\deeper{
-        <head>\deeper{
-          <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
-          <title>@title;</title>
-          <meta name="author" content="@author;">
-          <link href="@style-sheet;" rel="stylesheet" type="text/css">
-        }</head>
-        <body><div class="main">\deeper{
-          @body;
-        }</div></body>
-      }</html>
-    }
+    let-mutable mut-title <- {}
+    let-mutable mut-author <- {}
 
-let-lazy \maketitle =
-  let title  = !! `to-html:title` in
-  let author = !! `to-html:author` in {
-    <div class="maketitle">\deeper{
-      <div class="title">@title;</div>
-      <div class="author">@author;</div>
-    }</div>
-  }
+    let \document head body =
+      let title = head#title in
+      let lang = head#lang in
+      let author = head#author in
+      let style-sheet = head#html-style-sheet in
+        new-global-hash `to-html:title` <<- title before
+        new-global-hash `to-html:author` <<- author before
+        {
+          <html lang="@lang;">\deeper{
+            <head>\deeper{
+              <meta http-equiv="Content-Type" content="text/html\; charset=utf-8">
+              <title>@title;</title>
+              <meta name="author" content="@author;">
+              <link href="@style-sheet;" rel="stylesheet" type="text/css">
+            }</head>
+            <body><div class="main">\deeper{
+              @body;
+            }</div></body>
+          }</html>
+        }
 
-let-mutable section-counter <- 0
-let-mutable section-prefix <- {}
-let-mutable section-postfix <- {.}
+    let-lazy \maketitle =
+      let title  = !! `to-html:title` in
+      let author = !! `to-html:author` in {
+        <div class="maketitle">\deeper{
+          <div class="title">@title;</div>
+          <div class="author">@author;</div>
+        }</div>
+      }
 
-let-mutable subsection-counter <- 0
-let-mutable subsection-prefix <- {}
-let-mutable subsection-postfix <- {}
+    let-mutable section-counter <- 0
+    let-mutable section-prefix <- {}
+    let-mutable section-postfix <- {.}
 
-let \section sec cont =
-    section-counter       <- !section-counter + 1
-  before
-    subsection-counter    <- 0
-  before
-  ( let cntstr = (!section-prefix) ^ (arabic (!section-counter)) ^ (!section-postfix) in
-      ( match id-name with
-        | Nothing -> ()
-        | Just(s) -> new-global-hash s <<- cntstr )
+    let-mutable subsection-counter <- 0
+    let-mutable subsection-prefix <- {}
+    let-mutable subsection-postfix <- {}
+
+    let \section sec cont =
+        section-counter       <- !section-counter + 1
       before
-        {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
-  )
+        subsection-counter    <- 0
+      before
+      ( let cntstr = (!section-prefix) ^ (arabic (!section-counter)) ^ (!section-postfix) in
+          ( match id-name with
+            | Nothing -> ()
+            | Just(s) -> new-global-hash s <<- cntstr )
+          before
+            {<h1>@cntstr; @sec;</h1>\deeper{@cont;}}
+      )
 
-let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}}
-let \p inner = {<p>\deeper{@inner;}</p>}
-let \footnote footnote = {}
-let \table option table =
-  {<table>\deeper(sub-table table);</table>}
+    let \subsection subsec cont = {<h2>@subsec;</h2>\deeper{@cont;}}
+    let \p inner = {<p>\deeper{@inner;}</p>}
+    let \footnote footnote = {}
+    let \table option table =
+      {<table>\deeper(sub-table table);</table>}
 
-and sub-table table-content =
-  match table-content with
-  | row :: []   -> {<tr>\deeper{@row;}</tr>}
-  | row :: rest -> let rest-str = sub-table rest in
-                     {<tr>\deeper{@row;}</tr>@break;}
+    and sub-table table-content =
+      match table-content with
+      | row :: []   -> {<tr>\deeper{@row;}</tr>}
+      | row :: rest -> let rest-str = sub-table rest in
+                         {<tr>\deeper{@row;}</tr>@break;}
 
-let \itemize (Item(_, lst)) =
-  let lst-str = itemize-sub lst in
-    {<ul>\deeper{@lst-str;}</ul>}
+    let \itemize (Item(_, lst)) =
+      let lst-str = itemize-sub lst in
+        {<ul>\deeper{@lst-str;}</ul>}
 
-and itemize-sub lst =
-  match lst with
-  | []                      -> {}
-  | (Item(s, [])) :: tail   -> let tail-str = itemize-sub tail in
-                                 {<li>@s;</li>@soft-break;@tail-str;}
-  | (Item(s, chld)) :: tail -> let tail-str = itemize-sub tail in
-                                 {<li>@s;<ul>\deeper(itemize-sub chld);</ul></li>@soft-break;@tail-str;}
+    and itemize-sub lst =
+      match lst with
+      | []                      -> {}
+      | (Item(s, [])) :: tail   -> let tail-str = itemize-sub tail in
+                                     {<li>@s;</li>@soft-break;@tail-str;}
+      | (Item(s, chld)) :: tail -> let tail-str = itemize-sub tail in
+                                     {<li>@s;<ul>\deeper(itemize-sub chld);</ul></li>@soft-break;@tail-str;}
 
-let \math math = {\ <span class="math">@math;</span>\ }
-let \epsilon = {e}
+    let \math math = {\ <span class="math">@math;</span>\ }
+    let \epsilon = {e}
 %
-let \url url = {\ <code>@url;</code>\ }
-let \url-display url = {<div class="centered">\deeper{\url{@url;}}</div>}
-let \if-latex inner = {}
-let \if-html  inner = inner
-let \TeX = {TeX}
-let \LaTeX = {LaTeX}
-let \pLaTeX2e = {pLaTeX2e}
+    let \url url = {\ <code>@url;</code>\ }
+    let \url-display url = {<div class="centered">\deeper{\url{@url;}}</div>}
+    let \if-latex inner = {}
+    let \if-html  inner = inner
+    let \TeX = {TeX}
+    let \LaTeX = {LaTeX}
+    let \pLaTeX2e = {pLaTeX2e}
 
-let-mutable table-counter <- 0
-let \float-table title content =
-    table-counter <- !table-counter + 1
-  before
-  ( let cntstr = {?} ^ (arabic (!table-counter)) in
-      ( match id-name with
-        | Nothing -> ()
-        | Just(s) -> new-global-hash s <<- cntstr )
+    let-mutable table-counter <- 0
+    let \float-table title content =
+        table-counter <- !table-counter + 1
       before
-       {<div class="centered">\deeper{@content;}<div class="table-caption">@cntstr; @title;</div></div>}
-  )
+      ( let cntstr = {?} ^ (arabic (!table-counter)) in
+          ( match id-name with
+            | Nothing -> ()
+            | Just(s) -> new-global-hash s <<- cntstr )
+          before
+           {<div class="centered">\deeper{@content;}<div class="table-caption">@cntstr; @title;</div></div>}
+      )
+
+end
