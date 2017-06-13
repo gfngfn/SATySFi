@@ -11,11 +11,14 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 
+(*
 val from_list : (var_name * poly_type) list -> t
+*)
+val empty : t
 
-val add : t -> var_name -> poly_type -> t
+val add : t -> var_name -> (poly_type * EvalVarID.t) -> t
 
-val find : t -> (module_name list) -> var_name -> poly_type
+val find : t -> (module_name list) -> var_name -> (poly_type * EvalVarID.t)
 
 val enter_new_module : t -> module_name -> t
 

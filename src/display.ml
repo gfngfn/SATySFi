@@ -286,9 +286,9 @@ let escape_letters str =
 
 let rec string_of_ast (ast : abstract_tree) =
   match ast with
-  | LambdaAbstract(x, m)         -> "(" ^ x ^ " -> " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(" ^ x ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(v)                 -> "_" ^ v ^ "_"
+  | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
+  | FuncWithEnvironment(x, m, _) -> "(" ^ (EvalVarID.show_direct x) ^ " *-> " ^ (string_of_ast m) ^ ")"
+  | ContentOf(x)                 -> "_" ^ (EvalVarID.show_direct x) ^ "_"
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
   | StringEmpty                  -> "\"\""
@@ -297,14 +297,16 @@ let rec string_of_ast (ast : abstract_tree) =
   | BooleanConstant(bc)          -> string_of_bool bc
   | IfThenElse(b, t, f)          ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
+(*
   | ApplyClassAndID(c, i, m)     ->
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
+*)
   | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
-  | Overwrite(vn, n)             -> "(" ^ vn ^ " <- " ^ (string_of_ast n) ^ ")"
+  | Overwrite(x, n)              -> "(" ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast n) ^ ")"
   | Location(loc)                -> "<mutable>"
   | UnitConstant                 -> "()"
-  | LetMutableIn(vn, d, f)       -> "(let-mutable " ^ vn ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
+  | LetMutableIn(x, d, f)        -> "(let-mutable " ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
   | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
   | EndOfList                    -> "[]"
   | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
@@ -319,7 +321,7 @@ let rec string_of_ast (ast : abstract_tree) =
   | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"
   | DeclareGlobalHash(m, n)      -> "(declare-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
   | OverwriteGlobalHash(m, n)    -> "(overwrite-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
-  | Module(mn, _, _)             -> "(module " ^ mn ^ " = struct ... end-struct)"
+  | Module(m, n)                 -> "(module " ^ (string_of_ast m) ^ " end in " ^ (string_of_ast n) ^ ")"
   | Sequential(m, n)             -> "(sequential " ^ (string_of_ast m) ^ " ; " ^ (string_of_ast n) ^ ")"
   | PrimitiveSame(m, n)          -> "(same " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | PrimitiveStringSub(m, n, o)  ->

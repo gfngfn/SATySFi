@@ -58,6 +58,7 @@ module SigVarMap = Map.Make(
 type name_to_id_map = ModuleID.t ModuleNameMap.t
 
 type var_to_type_map = poly_type VarMap.t
+type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
 
 type type_scheme = Boundid.t list * poly_type
 type type_definition = Data of int | Alias of type_scheme
@@ -70,7 +71,7 @@ type signature = typename_to_typedef_map * var_to_type_map
 type sigvar_to_sig_map = signature SigVarMap.t
 
 type current_address = ModuleID.t list
-type single_stage = var_to_type_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
+type single_stage = var_to_vardef_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
 type t = current_address * name_to_id_map * (single_stage ModuleTree.t)
 
 
@@ -84,12 +85,11 @@ exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 
 
-let from_list (lst : (var_name * poly_type) list) : t =
-  let vtmapinit = List.fold_left (fun vmap (varnm, pty) -> VarMap.add varnm pty vmap) VarMap.empty lst in
-    ([], ModuleNameMap.empty, ModuleTree.empty (vtmapinit, TyNameMap.empty, ConstrMap.empty, None))
+let empty : t =
+  ([], ModuleNameMap.empty, ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None))
 
 
-let update_vt (vtf : var_to_type_map -> var_to_type_map) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
+let update_vt (vtf : var_to_vardef_map -> var_to_vardef_map) ((vtmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
   (vtf vtmap, tdmap, cdmap, sigopt)
 
 
@@ -106,15 +106,15 @@ let update_so (sof : signature option -> signature option) ((vtmap, tdmap, cdmap
 
 
 (* PUBLIC *)
-let add ((addr, nmtoid, mtr) : t) (varnm : var_name) (pty : poly_type) : t =
-  let mtrnew = ModuleTree.update mtr addr (update_vt (VarMap.add varnm pty)) in
+let add ((addr, nmtoid, mtr) : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
+  let mtrnew = ModuleTree.update mtr addr (update_vt (VarMap.add varnm (pty, evid))) in
     (addr, nmtoid, mtrnew)
 
 
 (* PUBLIC *)
-let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) : poly_type =
+let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) : (poly_type * EvalVarID.t) =
   let addrlast = List.map (fun nm -> ModuleNameMap.find nm nmtoid) mdlnmlst in
-  let ptyopt =
+  let vardefopt =
     ModuleTree.search_backward mtr addr addrlast (fun (vtmap, _, _, sigopt) ->
       match sigopt with
       | None ->
@@ -123,20 +123,24 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
             try Some(VarMap.find varnm vtmap) with
             | Not_found -> None
           end
-      | Some(_, vtmapsig) ->
+      | Some((_, vtmapsig)) ->
           begin
             print_for_debug_variantenv ("FVD " ^ varnm ^ " -> signature found") ; (* for debug *)
-            try Some(VarMap.find varnm vtmapsig) with
+            try
+              let ptysig = VarMap.find varnm vtmapsig in
+              let (_, evid) = VarMap.find varnm vtmap in
+                Some((ptysig, evid))
+            with
             | Not_found -> None
           end
     )
   in
-    match ptyopt with
-    | None      -> raise Not_found
-    | Some(pty) -> pty
+    match vardefopt with
+    | None         -> raise Not_found
+    | Some(vardef) -> vardef
 
 
-let find_for_inner ((addr, nmtoid, mtr) : t) (varnm : var_name) : poly_type =
+let find_for_inner ((addr, nmtoid, mtr) : t) (varnm : var_name) : (poly_type * EvalVarID.t) =
   let (vtmap, _, _, _) = ModuleTree.find_stage mtr addr in
     VarMap.find varnm vtmap
 
@@ -796,7 +800,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
           let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Tyvarid.succ_level lev) mty constrntcons in
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
-          let ptyimp =
+          let (ptyimp, _) =
             try find_for_inner tyenv varnm with
             | Not_found -> raise (NotProvidingValueImplementation(rng, varnm))
           in
@@ -817,7 +821,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
           let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
           let () = print_for_debug_variantenv ("LEVEL " ^ (Tyvarid.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
-          let ptyimp =
+          let (ptyimp, evidimp) =
             try find_for_inner tyenv csnm with
             | Not_found -> raise (NotProvidingValueImplementation(rng, csnm))
           in
@@ -825,7 +829,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : Tyvarid.level) (ty
               let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
               let tyenvaccnew =
                 let (addr, nmtoid, mtr) = tyenvacc in
-                let mtrnew = ModuleTree.update mtr [] (update_vt (VarMap.add csnm ptysigO)) in
+                let mtrnew = ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) in
                   (addr, nmtoid, mtrnew)
               in
                 iter tyenvaccnew tyenvforsigI tyenvforsigO tail sigoptaccnew

@@ -280,8 +280,8 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
         print_endline ("  [output] " ^ file_name_out) ;
         print_endline "" ;
         Tyvarid.initialize () ;
-        let tyenv = Primitives.make_type_environment () in
-        let env = Primitives.make_environment () in
+        EvalVarID.initialize () ;
+        let (tyenv, env) = Primitives.make_environments () in
           main tyenv env file_name_in_list file_name_out
       end
     else

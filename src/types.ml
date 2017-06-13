@@ -31,19 +31,21 @@ end = struct
 end
 
 
-module EvalID
+module EvalVarID
 : sig
     type t
     val initialize : unit -> unit
-    val fresh : unit -> t
+    val fresh : var_name -> t
     val eq : t -> t -> bool
+    val show_direct : t -> string
   end
 = struct
-    type t = int
+    type t = int * string
     let current_id = ref 0
     let initialize () = ( current_id := 0 )
-    let fresh () = begin incr current_id ; !current_id end
-    let eq = (=)
+    let fresh varnm = begin incr current_id ; (!current_id, varnm) end
+    let eq (i1, _) (i2, _) = (i1 = i2)
+    let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
   end
 
 
@@ -330,10 +332,10 @@ type argument_cons =
   | EndOfArgument
 
 and mutual_let_cons =
-  | MutualLetCons         of var_name * abstract_tree * mutual_let_cons
+  | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 
-and environment = (var_name, location) Hashtbl.t
+and environment = (EvalVarID.t, location) Hashtbl.t
 
 and location = abstract_tree ref
 
@@ -348,7 +350,7 @@ and abstract_tree =
   | BreakAndIndent
   | SoftBreakAndIndent
   | Concat                of abstract_tree * abstract_tree
-  | FuncWithEnvironment   of var_name * abstract_tree * environment
+  | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
 (* -- list value -- *)
   | ListCons              of abstract_tree * abstract_tree
@@ -361,9 +363,9 @@ and abstract_tree =
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
-  | ContentOf             of var_name
+  | ContentOf             of EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | LambdaAbstract        of var_name * abstract_tree
+  | LambdaAbstract        of EvalVarID.t * abstract_tree
   | Apply                 of abstract_tree * abstract_tree
   | FinishHeaderFile
   | FinishStruct
@@ -371,10 +373,10 @@ and abstract_tree =
   | PatternMatch          of abstract_tree * pattern_match_cons
   | Constructor           of constructor_name * abstract_tree
 (* -- imperative -- *)
-  | LetMutableIn          of var_name * abstract_tree * abstract_tree
+  | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
-  | Overwrite             of var_name * abstract_tree
+  | Overwrite             of EvalVarID.t * abstract_tree
   | Location              of abstract_tree ref
   | Reference             of abstract_tree
   | DeclareGlobalHash     of abstract_tree * abstract_tree
@@ -383,7 +385,7 @@ and abstract_tree =
   | LazyContent           of abstract_tree
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
-  | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree
+(*  | ApplyClassAndID       of abstract_tree * abstract_tree * abstract_tree *)
 (* (* -- lightweight itemize -- *)
   | Itemize               of itemize *)
 (* -- primitive operation -- *)
@@ -403,7 +405,7 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
-  | Module                of module_name * abstract_tree * abstract_tree
+  | Module                of abstract_tree * abstract_tree
 (* and itemize =
   | Item                  of abstract_tree * (itemize list) *)
 and pattern_match_cons =
@@ -420,8 +422,8 @@ and pattern_tree =
   | PTupleCons            of pattern_tree * pattern_tree
   | PEndOfTuple
   | PWildCard
-  | PVariable             of var_name
-  | PAsVariable           of var_name * pattern_tree
+  | PVariable             of EvalVarID.t
+  | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
 type output_unit =
@@ -562,7 +564,7 @@ let generalize (lev : Tyvarid.level) (ty : mono_type) =
 
 (* !!!! ---- global variable ---- !!!! *)
 
-let global_hash_env : environment = Hashtbl.create 32
+let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
 
 
 (* -- following are all for debugging -- *)
