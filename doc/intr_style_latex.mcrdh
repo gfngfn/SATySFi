@@ -1,3 +1,5 @@
+% -*- coding: utf-8 -*-
+
 let \embed v = v
 
 let \version = {ver. 1.00 gamma}
@@ -18,7 +20,7 @@ and dscr-sep-lines dscr =
   | head :: tail ->
       head ^
         {\\\\
-          \\hline} ^ (dscr-sep-lines tail)
+          \\hline\ } ^ (dscr-sep-lines tail)
 
 let \d-item di dd = {@di; & @dd;}
 
@@ -167,12 +169,12 @@ let \mcrd-display code =
   ^ `\end{breakbox}}\noindent` ^ {\ }
 
 let \mcrd-input name code =
-    `\begin{mdframed}[style=codebox, frametitle={\textsf{入力}\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
+    `\begin{mdframed}[style=codebox, frametitle={\textsf{入力\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}}]`
   ^ `{\small\begin{verbatim}` ^code^ `\end{verbatim}}`
   ^ `\end{mdframed}`
 
 let \mcrd-output name code =
-    `\begin{mdframed}[style=codebox, frametitle={\textsf{出力}\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}]`
+    `\begin{mdframed}[style=codebox, frametitle={\textsf{出力\quad\texttt{` ^{\escape-for-latex{@name;}}^ `}}}]`
   ^ `{\small\begin{verbatim}` ^code^ `\end{verbatim}}`
   ^ `\end{mdframed}`
 
