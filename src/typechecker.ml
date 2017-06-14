@@ -30,6 +30,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
               let lev = FreeID.get_level tvid in
               let levx = FreeID.get_level tvidx in
               let () =
+                (* -- update level -- *)
                 if FreeID.less_than lev levx then
                   tvref := Free(FreeID.set_level tvidx lev)
                 else

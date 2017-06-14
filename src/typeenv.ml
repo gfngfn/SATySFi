@@ -738,8 +738,26 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
                 false
         end
 
-    | (_, TypeVariable({contents= Bound(_)} as tvref))     -> begin tvref := Link(ty1) ; true end
-                                                                (* -- valid substitution of bound type variable -- *)
+    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref)) ->
+        let kd2 = BoundID.get_kind bid2 in
+        let binc =
+          match kd2 with
+          | UniversalKind      -> true
+          | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
+        in
+          if not binc then false else
+            begin tvref := Link(ty1) ; true end
+              (* -- valid substitution of bound type variables -- *)
+
+    | (_, TypeVariable({contents= Bound(bid2)} as tvref)) ->
+        let kd2 = BoundID.get_kind bid2 in
+        begin
+          match kd2 with
+          | UniversalKind -> begin tvref := Link(ty1) ; true end
+          | RecordKind(_) -> false
+        end
+          (* -- valid substitution of bound type variables -- *)
+
     | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1) ; true end
 
     | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
