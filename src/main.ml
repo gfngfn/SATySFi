@@ -279,7 +279,10 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
       begin
         print_endline ("  [output] " ^ file_name_out) ;
         print_endline "" ;
-        Tyvarid.initialize () ;
+        FreeID.initialize () ;
+        BoundID.initialize () ;
+        TypeID.initialize () ;
+        Typeenv.initialize_id () ;
         EvalVarID.initialize () ;
         let (tyenv, env) = Primitives.make_environments () in
           main tyenv env file_name_in_list file_name_out

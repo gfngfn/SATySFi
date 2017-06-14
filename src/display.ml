@@ -37,7 +37,7 @@ let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
   | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
 
 
-type general_id = FreeID of Tyvarid.t | BoundID of Boundid.t
+type general_id = FreeID of FreeID.t | BoundID of BoundID.t
 
 
 module GeneralidHashtbl_ = Hashtbl.Make(
@@ -46,8 +46,8 @@ module GeneralidHashtbl_ = Hashtbl.Make(
 
     let equal gid1 gid2 =
       match (gid1, gid2) with
-      | (FreeID(tvid1), FreeID(tvid2)) -> Tyvarid.eq tvid1 tvid2
-      | (BoundID(bid1), BoundID(bid2)) -> Boundid.eq bid1 bid2
+      | (FreeID(tvid1), FreeID(tvid2)) -> FreeID.equal tvid1 tvid2
+      | (BoundID(bid1), BoundID(bid2)) -> BoundID.eq bid1 bid2
       | (_, _)                         -> false
 
     let hash = Hashtbl.hash
@@ -104,12 +104,12 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
           | Bound(bid) ->
               let num = GeneralidHashtbl.intern_number current_ht (BoundID(bid)) in
               let s = "'#" ^ (variable_name_of_number num) in
-                show_type_variable iter s (Boundid.get_kind bid)
+                show_type_variable iter s (BoundID.get_kind bid)
 
           | Free(tvid) ->
               let num = GeneralidHashtbl.intern_number current_ht (FreeID(tvid)) in
-              let s = (if Tyvarid.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
-                show_type_variable iter s (Tyvarid.get_kind tvid)
+              let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
+                show_type_variable iter s (FreeID.get_kind tvid)
         end
 
     | StringType -> "string"

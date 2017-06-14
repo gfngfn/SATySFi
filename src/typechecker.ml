@@ -16,7 +16,7 @@ let print_for_debug_typecheck msg =
   ()
 
 
-let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) =
+let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   let iter = occurs tvid in
   let iter_list = List.fold_left (fun b ty -> b || iter ty) false in
   match tymain with
@@ -26,12 +26,12 @@ let rec occurs (tvid : Tyvarid.t) ((_, tymain) : mono_type) =
         | Link(tyl)   -> iter tyl
         | Bound(_)    -> false
         | Free(tvidx) ->
-            if Tyvarid.eq tvidx tvid then true else
-              let lev = Tyvarid.get_level tvid in
-              let levx = Tyvarid.get_level tvidx in
+            if FreeID.equal tvidx tvid then true else
+              let lev = FreeID.get_level tvid in
+              let levx = FreeID.get_level tvidx in
               let () =
-                if Tyvarid.less_than lev levx then
-                  tvref := Free(Tyvarid.set_level tvidx lev)
+                if FreeID.less_than lev levx then
+                  tvref := Free(FreeID.set_level tvidx lev)
                 else
                   ()
               in
@@ -101,22 +101,22 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           failwith ("unify_sub: bound type variable in " ^ (string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
 
     | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
-        if Tyvarid.eq tvid1 tvid2 then
+        if FreeID.equal tvid1 tvid2 then
           ()
         else
           let (tvid1q, tvid2q) =
-            if Tyvarid.is_quantifiable tvid1 && Tyvarid.is_quantifiable tvid2 then
+            if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
               (tvid1, tvid2)
             else
-              (Tyvarid.set_quantifiability Unquantifiable tvid1, Tyvarid.set_quantifiability Unquantifiable tvid2)
+              (FreeID.set_quantifiability Unquantifiable tvid1, FreeID.set_quantifiability Unquantifiable tvid2)
           in
           let (tvid1l, tvid2l) =
-            let lev1 = Tyvarid.get_level tvid1q in
-            let lev2 = Tyvarid.get_level tvid2q in
-              if Tyvarid.less_than lev1 lev2 then
-                (tvid1q, Tyvarid.set_level tvid2q lev1)
-              else if Tyvarid.less_than lev2 lev1 then
-                (Tyvarid.set_level tvid1q lev2, tvid2q)
+            let lev1 = FreeID.get_level tvid1q in
+            let lev2 = FreeID.get_level tvid2q in
+              if FreeID.less_than lev1 lev2 then
+                (tvid1q, FreeID.set_level tvid2q lev1)
+              else if FreeID.less_than lev2 lev1 then
+                (FreeID.set_level tvid1q lev2, tvid2q)
               else
                 (tvid1q, tvid2q)
           in
@@ -133,8 +133,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                   ("    substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvref)))     (* for debug *)
                    ^ " with " ^ (string_of_mono_type_basic newty)) in                                             (* for debug *)
           let () = ( oldtvref := Link(newty) ) in
-          let kd1 = Tyvarid.get_kind tvid1l in
-          let kd2 = Tyvarid.get_kind tvid2l in
+          let kd1 = FreeID.get_kind tvid1l in
+          let kd2 = FreeID.get_kind tvid2l in
           let (eqnlst, kdunion) =
             match (kd1, kd2) with
             | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
@@ -145,12 +145,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                   (Assoc.intersection asc1 asc2, kdunion)
           in
           begin
-            newtvref := Free(Tyvarid.set_kind newtvid kdunion) ;
+            newtvref := Free(FreeID.set_kind newtvid kdunion) ;
             unify_list eqnlst ;
           end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
-          let kd1 = Tyvarid.get_kind tvid1 in
+          let kd1 = FreeID.get_kind tvid1 in
           let binc =
             match kd1 with
             | UniversalKind      -> true
@@ -208,7 +208,7 @@ let append_module_names mdlnmlst varnm =
 
 
 let rec typecheck
-    (qtfbl : quantifiability) (lev : Tyvarid.level)
+    (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
   let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) t u = typecheck q l t u in
   let unify = unify_ tyenv in
@@ -276,7 +276,7 @@ let rec typecheck
             let tycodnew = overwrite_range_of_type tycod rng in
               (Apply(e1, e2), tycodnew)
         | _ ->
-            let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
             let beta = (rng, TypeVariable(ref (Free(tvid)))) in
             let () = unify ty1 (get_range utast1, FuncType(ty2, beta)) in
             let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
@@ -284,7 +284,7 @@ let rec typecheck
       end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
-      let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
       let evid = EvalVarID.fresh varnm in
       let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnm (Poly(beta), evid)) utast1 in
@@ -403,7 +403,7 @@ let rec typecheck
         (ListCons(eH, eT), tyres)
 
   | UTEndOfList ->
-      let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (rng, TypeVariable(ref (Free(tvid)))) in
         (EndOfList, (rng, ListType(beta)))
 
@@ -427,9 +427,9 @@ let rec typecheck
 
   | UTAccessField(utast1, fldnm) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let tvidF = Tyvarid.fresh UniversalKind qtfbl lev () in
+      let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
       let betaF = (rng, TypeVariable(ref (Free(tvidF)))) in
-      let tvid1 = Tyvarid.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
+      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
       let beta1 = (get_range utast1, TypeVariable(ref (Free(tvid1)))) in
       let () = unify beta1 ty1 in
         (AccessField(e1, fldnm), betaF)
@@ -438,7 +438,7 @@ let rec typecheck
 
   | UTPatternMatch(utastO, utpmcons) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
-      let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
       let (pmcons, tyP) =
             typecheck_pattern_match_cons qtfbl lev tyenv utpmcons tyO beta in
@@ -458,7 +458,7 @@ let rec typecheck
 
 
 and typecheck_record
-    (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : Typeenv.t)
+    (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t)
     (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
 =
   let rec aux
@@ -476,7 +476,7 @@ and typecheck_record
     (Record(Assoc.of_list elst), (rng, RecordType(Assoc.of_list tylstfinal)))
 
 
-and typecheck_itemize (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
+and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
   let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", StringType) in
   let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
@@ -484,7 +484,7 @@ and typecheck_itemize (qtfbl : quantifiability) (lev : Tyvarid.level) (tyenv : T
 
 
 and typecheck_itemize_list
-    (qtfbl : quantifiability) (lev : Tyvarid.level)
+    (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
   | []                  -> EndOfList
@@ -495,7 +495,7 @@ and typecheck_itemize_list
 
 
 and typecheck_pattern_match_cons
-    (qtfbl : quantifiability) (lev : Tyvarid.level)
+    (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (tyres : mono_type) =
   let iter = typecheck_pattern_match_cons qtfbl lev in
   let unify = unify_ tyenv in
@@ -524,7 +524,7 @@ and typecheck_pattern_match_cons
 
 
 and typecheck_pattern
-    (qtfbl : quantifiability) (lev : Tyvarid.level)
+    (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (rng, utpatmain) =
   let iter = typecheck_pattern qtfbl lev in
   let unify = unify_ tyenv in
@@ -545,7 +545,7 @@ and typecheck_pattern
           (PListCons(epat1, epat2), typat2, tyenv2)
 
     | UTPEndOfList ->
-        let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
           (PEndOfList, (rng, ListType(beta)), tyenv)
 
@@ -562,18 +562,18 @@ and typecheck_pattern
     | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv)
 
     | UTPWildCard ->
-        let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
           (PWildCard, beta, tyenv)
 
     | UTPVariable(varnm) ->
-        let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
         let evid = EvalVarID.fresh varnm in
           (PVariable(evid), beta, Typeenv.add tyenv varnm (Poly(beta), evid))
 
     | UTPAsVariable(varnm, utpat1) ->
-        let tvid = Tyvarid.fresh UniversalKind qtfbl lev () in
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
         let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
         let evid = EvalVarID.fresh varnm in
@@ -593,7 +593,7 @@ and typecheck_pattern
 
 
 and make_type_environment_by_let
-    (qtfbl : quantifiability) (lev : Tyvarid.level)
+    (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
 
   let rec add_mutual_variables (acctyenv : Typeenv.t) (mutletcons : untyped_mutual_let_cons) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
@@ -601,16 +601,16 @@ and make_type_environment_by_let
       match mutletcons with
       | []                             -> (acctyenv, [])
       | (_, varnm, astdef) :: tailcons ->
-          let tvid = Tyvarid.fresh UniversalKind qtfbl (Tyvarid.succ_level lev) () in
+          let tvid = FreeID.fresh UniversalKind qtfbl (FreeID.succ_level lev) () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
-          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (Tyvarid.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
+          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
           let evid = EvalVarID.fresh varnm in
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta), evid)) tailcons in
             (tyenvfinal, ((varnm, beta, evid) :: tvtylst))
   in
 
   let rec typecheck_mutual_contents
-      (lev : Tyvarid.level)
+      (lev : FreeID.level)
       (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
       (acctvtylstout : (var_name * mono_type * EvalVarID.t) list)
   =
@@ -620,7 +620,7 @@ and make_type_environment_by_let
     | ([], []) -> (tyenvforrec, EndOfMutualLet, List.rev acctvtylstout)
 
     | ((mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
-        let (e1, ty1) = typecheck qtfbl (Tyvarid.succ_level lev) tyenvforrec utast1 in
+        let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenvforrec utast1 in
         begin
           match mntyopt with
           | None ->
@@ -660,7 +660,7 @@ and make_type_environment_by_let
     (tyenv_forall, tvtylst_forall, mutletcons)
 
 
-and make_type_environment_by_let_mutable (lev : Tyvarid.level) (tyenv : Typeenv.t) varrng varnm utastI =
+and make_type_environment_by_let_mutable (lev : FreeID.level) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI) = typecheck Unquantifiable lev tyenv utastI in
   let () = print_for_debug_typecheck ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
   let evid = EvalVarID.fresh varnm in
@@ -671,6 +671,6 @@ and make_type_environment_by_let_mutable (lev : Tyvarid.level) (tyenv : Typeenv.
 let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
     final_tyenv := tyenv ;
-    let (e, ty) = typecheck Quantifiable Tyvarid.bottom_level tyenv utast in
+    let (e, ty) = typecheck Quantifiable FreeID.bottom_level tyenv utast in
       (ty, !final_tyenv, e)
   end

@@ -15,7 +15,7 @@ let add_default_types tyenvmid =
         (dr, UTEndOfVariant))),
     UTEndOfMutualVariant))
   in
-    Typeenv.add_mutual_cons tyenvmid Tyvarid.bottom_level mutvarntcons
+    Typeenv.add_mutual_cons tyenvmid FreeID.bottom_level mutvarntcons
 
 
 let add_to_environment env varnm rfast =
@@ -52,8 +52,8 @@ let make_environments () =
   let l cont        = (Range.dummy "list", ListType(cont)) in
   let r cont        = (Range.dummy "ref", RefType(cont)) in
   let (-->) dom cod = (Range.dummy "func", FuncType(dom, cod)) in
-  let tv1 = (let bid1 = Boundid.fresh UniversalKind () in ref (Bound(bid1))) in
-  let tv2 = (let bid2 = Boundid.fresh UniversalKind () in ref (Bound(bid2))) in
+  let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
+  let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
   let temporary_ast = StringEmpty in
   let loc_plus         : location = ref temporary_ast in
@@ -80,13 +80,12 @@ let make_environments () =
   let loc_break        : location = ref temporary_ast in
   let loc_softbreak    : location = ref temporary_ast in
   let loc_space        : location = ref temporary_ast in
-(*  let loc_breakchar    : location = ref temporary_ast in *)
-(*  let loc_include      : location = ref temporary_ast in *)
   let loc_arabic       : location = ref temporary_ast in
 
   let table : (var_name * poly_type * location * (environment -> abstract_tree)) list =
     let ptyderef = tv1 -% (~% ((r (~@ tv1)) --> (~@ tv1))) in
     let ptycons  = tv2 -% (~% ((~@ tv2) --> ((l (~@ tv2)) --> (l (~@ tv2))))) in
+    let astfdeeper = lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) in
       [ ( "+"  , ~% (i --> (i --> i)), loc_plus       , lambda2 (fun v1 v2 -> Plus(v1, v2)) );
         ( "-"  , ~% (i --> (i --> i)), loc_minus      , lambda2 (fun v1 v2 -> Minus(v1, v2)) );
         ( "mod", ~% (i --> (i --> i)), loc_mod        , lambda2 (fun v1 v2 -> Mod(v1, v2)) );
@@ -108,8 +107,8 @@ let make_environments () =
         ( "same"         , ~% (s --> (s --> b))        , loc_same        , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s --> (i --> (i --> s))), loc_stringsub   , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
         ( "string-length", ~% (s --> i)                , loc_stringlength, lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
-        ( "\\deeper"     , ~% (s --> s)                , loc_deeper      , lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) );
-        ( "deeper"       , ~% (s --> s)                , loc_deeper      , lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) );
+        ( "\\deeper"     , ~% (s --> s)                , loc_deeper      , astfdeeper );
+        ( "deeper"       , ~% (s --> s)                , loc_deeper      , astfdeeper );
         ( "break"        , ~% s                        , loc_break       , (fun _ -> BreakAndIndent) );
         ( "soft-break"   , ~% s                        , loc_softbreak   , (fun _ -> SoftBreakAndIndent) );
         ( "space"        , ~% s                        , loc_space       , (fun _ -> StringConstant(" ")) );

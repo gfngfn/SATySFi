@@ -13,21 +13,21 @@ type field_name         = string
 type type_argument_name = string
 
 
-module Typeid : sig
+module TypeID : sig
   type t
   val initialize : unit -> unit
   val fresh : type_name -> t
-  val to_string : t -> string
   val extract_name : t -> type_name
-  val eq : t -> t -> bool
+  val equal : t -> t -> bool
+  val show_direct : t -> string
 end = struct
   type t = int * type_name
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
   let fresh tynm = begin incr current_id ; (!current_id, tynm) end
-  let to_string (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
   let extract_name (_, tynm) = tynm
-  let eq (n1, _) (n2, _) = (n1 = n2)
+  let equal (n1, _) (n2, _) = (n1 = n2)
+  let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
 end
 
 
@@ -55,7 +55,7 @@ module EvalVarID
 
 type quantifiability = Quantifiable | Unquantifiable
 
-module Tyvarid_
+module FreeID_
 : sig
     type level
     type 'a t_
@@ -66,7 +66,7 @@ module Tyvarid_
     val set_level : 'a t_ -> level -> 'a t_
     val initialize : unit -> unit
     val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
-    val eq : 'a t_ -> 'a t_ -> bool
+    val equal : 'a t_ -> 'a t_ -> bool
     val is_quantifiable : 'a t_ -> bool
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
     val get_kind : 'a t_ -> 'a
@@ -90,10 +90,7 @@ module Tyvarid_
 
     let current_id = ref 0
 
-    let initialize () =
-      begin
-        current_id := 0 ;
-      end
+    let initialize () = ( current_id := 0 )
 
     let fresh kd qtfbl lev () =
       begin
@@ -101,7 +98,7 @@ module Tyvarid_
         (!current_id, kd, qtfbl, lev)
       end
 
-    let eq (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
+    let equal (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
 
     let is_quantifiable (_, _, qtfbl, _) =
         match qtfbl with
@@ -124,7 +121,7 @@ module Tyvarid_
   end
 
 
-module Boundid_
+module BoundID_
 : sig
     type 'a t_
     val initialize : unit -> unit
@@ -179,8 +176,8 @@ and mono_type_main =
   | RefType      of mono_type
   | ProductType  of mono_type list
   | TypeVariable of type_variable_info ref
-  | SynonymType  of (mono_type list) * Typeid.t * mono_type
-  | VariantType  of (mono_type list) * Typeid.t
+  | SynonymType  of (mono_type list) * TypeID.t * mono_type
+  | VariantType  of (mono_type list) * TypeID.t
   | RecordType   of (field_name, mono_type) Assoc.t
 
 and poly_type =
@@ -191,22 +188,22 @@ and kind =
   | RecordKind of (field_name, mono_type) Assoc.t
 
 and type_variable_info =
-  | Free  of kind Tyvarid_.t_
-  | Bound of kind Boundid_.t_
+  | Free  of kind FreeID_.t_
+  | Bound of kind BoundID_.t_
   | Link  of mono_type
 
 
-module Tyvarid =
+module FreeID =
   struct
-    include Tyvarid_
-    type t = kind Tyvarid_.t_
+    include FreeID_
+    type t = kind FreeID_.t_
   end
 
 
-module Boundid =
+module BoundID =
   struct
-    include Boundid_
-    type t = kind Boundid_.t_
+    include BoundID_
+    type t = kind BoundID_.t_
   end
 
 
@@ -469,16 +466,16 @@ and erase_range_of_kind (kd : kind) =
   | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
 
 
-module BoundidHashtbl = Hashtbl.Make(
+module BoundIDHashtbl = Hashtbl.Make(
   struct
-    type t = Boundid.t
-    let equal = Boundid.eq
+    type t = BoundID.t
+    let equal = BoundID.eq
     let hash = Hashtbl.hash
   end)
 
 
-let instantiate (lev : Tyvarid.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
-  let current_ht : (type_variable_info ref) BoundidHashtbl.t = BoundidHashtbl.create 32 in
+let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
+  let current_ht : (type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
   let rec aux ((rng, tymain) as ty) =
     match tymain with
     | TypeVariable(tvref) ->
@@ -489,16 +486,16 @@ let instantiate (lev : Tyvarid.level) (qtfbl : quantifiability) ((Poly(ty)) : po
           | Bound(bid) ->
               begin
                 try
-                  let tvrefnew = BoundidHashtbl.find current_ht bid in
+                  let tvrefnew = BoundIDHashtbl.find current_ht bid in
                     (rng, TypeVariable(tvrefnew))
                 with
                 | Not_found ->
-                    let kd = Boundid.get_kind bid in
+                    let kd = BoundID.get_kind bid in
                     let kdfree = instantiate_kind kd in
-                    let tvid = Tyvarid.fresh kdfree qtfbl lev () in
+                    let tvid = FreeID.fresh kdfree qtfbl lev () in
                     let tvrefnew = ref (Free(tvid)) in
                     begin
-                      BoundidHashtbl.add current_ht bid tvrefnew ;
+                      BoundIDHashtbl.add current_ht bid tvrefnew ;
                       (rng, TypeVariable(tvrefnew))
                     end
               end
@@ -523,7 +520,7 @@ let instantiate (lev : Tyvarid.level) (qtfbl : quantifiability) ((Poly(ty)) : po
     aux ty
 
 
-let generalize (lev : Tyvarid.level) (ty : mono_type) =
+let generalize (lev : FreeID.level) (ty : mono_type) =
   let rec iter ((rng, tymain) as ty) =
     match tymain with
     | TypeVariable(tvref) ->
@@ -532,15 +529,15 @@ let generalize (lev : Tyvarid.level) (ty : mono_type) =
           | Link(tyl)  -> iter tyl
           | Bound(_)   -> ty
           | Free(tvid) ->
-              if not (Tyvarid.is_quantifiable tvid) then
+              if not (FreeID.is_quantifiable tvid) then
                 ty
               else
-                if not (Tyvarid.less_than lev (Tyvarid.get_level tvid)) then
+                if not (FreeID.less_than lev (FreeID.get_level tvid)) then
                   ty
                 else
-                  let kd = Tyvarid.get_kind tvid in
+                  let kd = FreeID.get_kind tvid in
                   let kdgen = generalize_kind kd in
-                  let bid = Boundid.fresh kdgen () in
+                  let bid = BoundID.fresh kdgen () in
                   begin
                     tvref := Bound(bid) ;
                     ty
@@ -605,10 +602,10 @@ let rec string_of_mono_type_basic tystr =
     | UnitType                        -> "unit" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
-        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) (* temporary *) ^ "@" ^ qstn
+        (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
 
     | SynonymType(tyarglist, tyid, tyreal) ->
-        (string_of_type_argument_list_basic tyarglist) ^ (Typeid.to_string tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
+        (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
 
     | FuncType(tydom, tycod)    ->
         let strdom = string_of_mono_type_basic tydom in
@@ -645,8 +642,8 @@ let rec string_of_mono_type_basic tystr =
         begin
           match !tvref with
           | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-          | Free(tvid) -> "'" ^ (Tyvarid.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
-          | Bound(bid) -> "'#" ^ (Boundid.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ qstn
+          | Free(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+          | Bound(bid) -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ qstn
         end
 
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
