@@ -2,30 +2,35 @@ open Types
 
 type t
 
+exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
+exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeArgument           of Range.t * var_name
+exception CyclicTypeDefinition            of (Range.t * type_name) list
+exception MultipleTypeDefinition          of Range.t * Range.t * type_name
+exception NotProvidingValueImplementation of Range.t * var_name
+exception NotProvidingTypeImplementation  of Range.t * type_name
+exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+
+val initialize_id : unit -> unit
+
 val empty : t
 
-val to_list : t -> (var_name * type_struct) list
+val add : t -> var_name -> (poly_type * EvalVarID.t) -> t
 
-val from_list : (var_name * type_struct) list -> t
+val find : t -> (module_name list) -> var_name -> (poly_type * EvalVarID.t)
 
-val add : t -> var_name -> type_struct -> t
+val enter_new_module : t -> module_name -> t
 
-val find : t -> var_name -> type_struct
+val leave_module : t -> t
 
-val overwrite_range_of_type : type_struct -> Range.t -> type_struct
+val add_mutual_cons : t -> FreeID.level -> untyped_mutual_variant_cons -> t
 
-val erase_range_of_type : type_struct -> type_struct
+val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name -> (mono_type list * TypeID.t * mono_type)
 
-val find_in_type_struct : Tyvarid.t -> type_struct -> bool
+val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraint_cons -> mono_type
 
-val find_in_type_environment : Tyvarid.t -> t -> bool
+val find_type_id : t -> type_name -> TypeID.t
 
-val make_forall_type : type_struct -> t -> type_struct
+val find_type_name : t -> TypeID.t -> type_name
 
-val string_of_type_environment : t -> string -> string
-
-val string_of_control_sequence_type : t -> string
-
-val replace_id : (Tyvarid.t * type_struct) list -> type_struct -> type_struct
-
-val make_bounded_free : Tyvarid.quantifiability -> type_struct -> type_struct * (type_struct list)
+val sigcheck : Range.t -> quantifiability -> FreeID.level -> t -> t -> manual_signature option -> t

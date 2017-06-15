@@ -1,8 +1,38 @@
-\document{
-  \settings;
-  \title{Macrodown \version; 解説}
-  \author{\twitter-at-id{bd_gfngfn}}
-}{
+% -*- coding: utf-8 -*-
+
+\document(|
+  title = {Macrodown \version; 解説};
+  author = {Takshi SUWA};
+
+  lang = `ja`;
+
+  html-style-sheet = `./intr_style.css`;
+
+  latex-class-file = `jsarticle`;
+  latex-packages = [
+    (`amsmath`, []);
+    (`amssymb`, []);
+    (`fontenc`, [`T1`]);
+    (`lmodern`, []);
+    (`graphicx`, [`dvipdfmx`]);
+    (`xcolor`, [`dvipdfmx`]);
+    (`tikz`, []);
+    (`eclbkbox`, []);
+
+    (`gfncls`, []);
+    (`mdframed`, []);
+  ];
+  latex-additional-settings = {
+    \\setsectiontheme\{strongline\}
+    \\setlength\\parskip\{1zw\}
+    \\mdfdefinestyle\{codebox\}\{\deeper{
+      frametitlerule=true,
+      frametitlefont=\\normalfont,
+      frametitlebackgroundcolor=gray!20,
+      linewidth=1pt
+    }\}
+  };
+|){
   \maketitle;
   \section{概要}{
     \p{

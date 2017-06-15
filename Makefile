@@ -21,6 +21,6 @@ clean:
 	$(OCB) -clean
 
 clean-sub:
-	rm -f lexer.ml parser.mli parser.ml *.cmi *.cmx *.o
+	rm -f src/lexer.ml src/parser.mli src/parser.ml src/*.cmi src/*.cmx src/*.o
 
 .PHONY: clean clean-sub

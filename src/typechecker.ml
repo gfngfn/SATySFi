@@ -1,535 +1,677 @@
 open Types
 open Display
 
-exception Error of string
+exception UndefinedVariable    of Range.t * var_name
+exception UndefinedConstructor of Range.t * var_name
+exception InclusionError       of Typeenv.t * mono_type * mono_type
+exception ContradictionError   of Typeenv.t * mono_type * mono_type
+exception InternalInclusionError
+exception InternalContradictionError
+
 
 let print_for_debug_typecheck msg =
 (*
-  print_string msg ;
+  print_endline msg ;
 *)
   ()
 
-let final_tyenv    : Typeenv.t ref    = ref Typeenv.empty
-let final_varntenv : Variantenv.t ref = ref Variantenv.empty
+
+let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
+  let iter = occurs tvid in
+  let iter_list = List.fold_left (fun b ty -> b || iter ty) false in
+  match tymain with
+  | TypeVariable(tvref) ->
+      begin
+        match !tvref with
+        | Link(tyl)   -> iter tyl
+        | Bound(_)    -> false
+        | Free(tvidx) ->
+            if FreeID.equal tvidx tvid then true else
+              let lev = FreeID.get_level tvid in
+              let levx = FreeID.get_level tvidx in
+              let () =
+                (* -- update level -- *)
+                if FreeID.less_than lev levx then
+                  tvref := Free(FreeID.set_level tvidx lev)
+                else
+                  ()
+              in
+                false
+      end
+  | FuncType(tydom, tycod)         -> iter tydom || iter tycod
+  | ProductType(tylist)            -> iter_list tylist
+  | ListType(tysub)                -> iter tysub
+  | RefType(tysub)                 -> iter tysub
+  | VariantType(tylist, _)         -> iter_list tylist
+  | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
+  | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | ( UnitType
+      | BoolType
+      | IntType
+      | StringType )               -> false
 
 
-let report_error_with_range (rng : Range.t) msg =
-  raise (Error("at " ^ (Range.to_string rng) ^ ":\n    " ^ msg))
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+  let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
+  let () = print_for_debug_typecheck ("| unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
+    match (tymain1, tymain2) with
+
+    | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
+    | (_, SynonymType(_, _, tyreal2)) -> unify_sub ty1 tyreal2
+
+    | ( (UnitType, UnitType)
+      | (BoolType, BoolType)
+      | (IntType, IntType)
+      | (StringType, StringType) ) -> ()
+
+    | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
+        begin
+          unify_sub tydom1 tydom2 ;
+          unify_sub tycod1 tycod2 ;
+        end
+
+    | (ProductType(tylist1), ProductType(tylist2)) ->
+        begin
+          try
+            unify_list (List.combine tylist1 tylist2)
+          with
+          | Invalid_argument(_) -> (* -- not of the same length -- *)
+              raise InternalContradictionError
+        end
+
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        if not (Assoc.domain_same tyasc1 tyasc2) then
+          raise InternalContradictionError
+        else
+          unify_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (VariantType(tyarglist1, tyid1), VariantType(tyarglist2, tyid2))
+        when tyid1 = tyid2 ->
+          unify_list (List.combine tyarglist1 tyarglist2)
+
+    | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
+
+    | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
+
+    | (TypeVariable({contents= Link(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
+
+    | (_, TypeVariable({contents= Link(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
+
+    | ( (TypeVariable({contents= Bound(_)}), _)
+      | (_, TypeVariable({contents= Bound(_)})) ) ->
+          failwith ("unify_sub: bound type variable in " ^ (string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
+
+    | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
+        if FreeID.equal tvid1 tvid2 then
+          ()
+        else
+          let (tvid1q, tvid2q) =
+            if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
+              (tvid1, tvid2)
+            else
+              (FreeID.set_quantifiability Unquantifiable tvid1, FreeID.set_quantifiability Unquantifiable tvid2)
+          in
+          let (tvid1l, tvid2l) =
+            let lev1 = FreeID.get_level tvid1q in
+            let lev2 = FreeID.get_level tvid2q in
+              if FreeID.less_than lev1 lev2 then
+                (tvid1q, FreeID.set_level tvid2q lev1)
+              else if FreeID.less_than lev2 lev1 then
+                (FreeID.set_level tvid1q lev2, tvid2q)
+              else
+                (tvid1q, tvid2q)
+          in
+          let () =
+            begin
+              tvref1 := Free(tvid1l) ;
+              tvref2 := Free(tvid2l) ;
+            end
+          in
+          let (oldtvref, newtvref, newtvid, newty) =
+            if Range.is_dummy rng1 then (tvref1, tvref2, tvid2l, ty2) else (tvref2, tvref1, tvid1l, ty1)
+          in
+                let _ = print_for_debug_typecheck                                                                 (* for debug *)
+                  ("    substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvref)))     (* for debug *)
+                   ^ " with " ^ (string_of_mono_type_basic newty)) in                                             (* for debug *)
+          let () = ( oldtvref := Link(newty) ) in
+          let kd1 = FreeID.get_kind tvid1l in
+          let kd2 = FreeID.get_kind tvid2l in
+          let (eqnlst, kdunion) =
+            match (kd1, kd2) with
+            | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
+            | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
+            | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
+            | (RecordKind(asc1), RecordKind(asc2)) ->
+                let kdunion = RecordKind(Assoc.union asc1 asc2) in
+                  (Assoc.intersection asc1 asc2, kdunion)
+          in
+          begin
+            newtvref := Free(FreeID.set_kind newtvid kdunion) ;
+            unify_list eqnlst ;
+          end
+
+      | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
+          let kd1 = FreeID.get_kind tvid1 in
+          let binc =
+            match kd1 with
+            | UniversalKind      -> true
+            | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
+          in
+          let chk = occurs tvid1 ty2 in
+            if chk then
+              raise InternalInclusionError
+            else if not binc then
+              raise InternalContradictionError
+            else
+              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                    let _ = print_for_debug_typecheck                             (* for debug *)
+                      ("    substituteVR " ^ (string_of_mono_type_basic ty1)      (* for debug *)
+                       ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
+              let eqnlst =
+                match kd1 with
+                | UniversalKind      -> []
+                | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
+              in
+              begin
+                tvref1 := Link(newty2) ;
+                unify_list eqnlst ;
+              end
+
+      | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
+          let chk = occurs tvid1 ty2 in
+            if chk then
+              raise InternalInclusionError
+            else
+              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+                      let _ = print_for_debug_typecheck                             (* for debug *)
+                        ("    substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
+                         ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
+                tvref1 := Link(newty2)
+
+      | (_, TypeVariable(_)) -> unify_sub ty2 ty1
+
+      | _ -> raise InternalContradictionError
 
 
-let rec typecheck qtfbl varntenv tyenv (rng, utastmain) =
+let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  try
+    unify_sub ty1 ty2
+  with
+  | InternalInclusionError     -> raise (InclusionError(tyenv, ty1, ty2))
+  | InternalContradictionError -> raise (ContradictionError(tyenv, ty1, ty2))
+
+
+let final_tyenv    : Typeenv.t ref = ref (Typeenv.empty)
+
+
+let append_module_names mdlnmlst varnm =
+  (List.fold_right (fun mdlnm s -> mdlnm ^ "." ^ s) mdlnmlst "") ^ varnm
+
+
+let rec typecheck
+    (qtfbl : quantifiability) (lev : FreeID.level)
+    (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
+  let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) t u = typecheck q l t u in
+  let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (StringEmpty,         (rng, StringType), Subst.empty)
-  | UTBreakAndIndent      -> (SoftBreakAndIndent,  (rng, StringType), Subst.empty)
-  | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, IntType),    Subst.empty)
-  | UTStringConstant(sc)  -> (StringConstant(sc),  (rng, StringType), Subst.empty)
-  | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType),   Subst.empty)
-  | UTUnitConstant        -> (UnitConstant,        (rng, UnitType),   Subst.empty)
-  | UTNoContent           -> (NoContent,           (rng, StringType), Subst.empty)
+  | UTStringEmpty         -> (StringEmpty        , (rng, StringType))
+  | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, StringType))
+  | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, IntType)   )
+  | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, StringType))
+  | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType)  )
+  | UTUnitConstant        -> (UnitConstant       , (rng, UnitType)  )
+  | UTFinishStruct        ->
+      begin
+        final_tyenv := tyenv ;
+        (FinishStruct, (Range.dummy "finish-struct", UnitType))
+      end
+
   | UTFinishHeaderFile    ->
       begin
-        final_tyenv    := tyenv ;
-        final_varntenv := varntenv ;
-        (FinishHeaderFile, (Range.dummy "finish-header-file", UnitType), Subst.empty)
+        final_tyenv := tyenv ;
+        (FinishHeaderFile, (Range.dummy "finish-header-file", UnitType))
       end
 
-  | UTContentOf(varnm) ->
+  | UTContentOf(mdlnmlst, varnm) ->
       begin
         try
-          let tyforall    = Typeenv.find tyenv varnm in
-          let (tyfree, _) = Typeenv.make_bounded_free qtfbl tyforall in
-          let ty = Typeenv.overwrite_range_of_type tyfree rng in
-            begin                                                                                       (* for debug *)
-              print_for_debug_typecheck ("#C " ^ varnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
-                ^ " = " ^ (string_of_type_struct_basic ty) ^ "\n") ;                                    (* for debug *)
-              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                                (* for debug *)
-              (ContentOf(varnm), ty, Subst.empty)
-            end                                                                                         (* for debug *)
+          let (pty, evid) = Typeenv.find tyenv mdlnmlst varnm in
+          let tyfree = instantiate lev qtfbl pty in
+          let tyres = overwrite_range_of_type tyfree rng in
+          let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+              (ContentOf(evid), tyres)
         with
-        | Not_found -> report_error_with_range rng ("undefined variable '" ^ varnm ^ "'")
+        | Not_found -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
       end
 
-  | UTConstructor(constrnm, utastcont) ->
+  | UTConstructor(constrnm, utast1) ->
       begin
         try
-          let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist) = Typeenv.make_bounded_free qtfbl tyforall in
-          let (econt, tycont, thetacont) = typecheck qtfbl varntenv tyenv utastcont in
-(*          let tyvarnt = Typeenv.overwrite_range_of_type tyfree (Typeenv.get_range_from_type tycont) in *)
-          let tyvarnt = tyfree in
-            let theta_result    = Subst.compose (Subst.unify tycont tyvarnt) thetacont in
-            let type_result_sub = Subst.apply_to_type_struct theta_result (rng, VariantType(tyarglist, varntnm)) in
-            let type_result     = Typeenv.overwrite_range_of_type type_result_sub rng in
-            begin                                                                                         (* for debug *)
-              print_for_debug_typecheck ("#V " ^ varntnm ^ " : " ^ (string_of_type_struct_basic tyforall) (* for debug *)
-                ^ " = " ^ (string_of_type_struct_basic type_result) ^ "\n") ;                             (* for debug *)
-              print_for_debug_typecheck ((Range.to_string rng) ^ "\n") ;                                  (* for debug *)
-              (Constructor(constrnm, econt), type_result, theta_result)
-            end                                                                                           (* for debug *)
+          let (tyarglist, tyid, tyc) = Typeenv.find_constructor qtfbl tyenv lev constrnm in
+          let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+          let (e1, ty1) = typecheck_iter tyenv utast1 in
+          let () = unify ty1 tyc in
+          let tyres = (rng, VariantType(tyarglist, tyid)) in
+            (Constructor(constrnm, e1), tyres)
         with
-        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
+        | Not_found -> raise (UndefinedConstructor(rng, constrnm))
       end
 
   | UTConcat(utast1, utast2) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-      let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
-      let theta3 = Subst.unify ty1 (get_range utast1, StringType) in
-      let theta4 = Subst.unify ty2 (get_range utast2, StringType) in
-      let theta_result = Subst.compose theta4 (Subst.compose theta3 (Subst.compose theta2 theta1)) in
-        (Concat(e1, e2), (rng, StringType), theta_result)
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let () = unify ty1 (get_range utast1, StringType) in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let () = unify ty2 (get_range utast2, StringType) in
+        (Concat(e1, e2), (rng, StringType))
 
   | UTApply(utast1, utast2) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-      let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
-        begin
-          match ty1 with
-          | (_, FuncType(tydom, tycod)) ->
-              let theta3 = Subst.unify ty2 tydom in
-                let theta_result    = Subst.compose theta3 (Subst.compose theta2 theta1) in
-                let type_result_sub = Subst.apply_to_type_struct theta_result tycod in
-                let type_result     = Typeenv.overwrite_range_of_type type_result_sub rng in
-                  begin                                                                               (* for debug *)
-                    print_for_debug_typecheck ("\n%Apply1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
-                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;                           (* for debug *)
-                    print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;         (* for debug *)
-                      (Apply(e1, e2), type_result, theta_result)
-                  end                                                                                 (* for debug *)
-          | _ ->
-              let beta = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-              let theta3 = Subst.unify ty1 (get_range utast1, FuncType(ty2, beta)) in
-                let theta_result = Subst.compose theta3 (Subst.compose theta2 theta1) in
-                let type_result  = Subst.apply_to_type_struct theta_result beta in
-                  begin                                                                               (* for debug *)
-                    print_for_debug_typecheck ("\n%Apply2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
-                      ^ (string_of_type_struct_basic beta) ^ " = "                                    (* for debug *)
-                      ^ (string_of_type_struct_basic type_result) ^ "\n") ;                           (* for debug *)
-                    print_for_debug_typecheck ((Subst.string_of_subst theta_result) ^ "\n") ;         (* for debug *)
-                      (Apply(e1, e2), type_result, theta_result)
-                  end                                                                                 (* for debug *)
-        end
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain))) in (* for debug *)
+      begin
+        match ty1 with
+        | (_, FuncType(tydom, tycod)) ->
+            let () = unify tydom ty2 in
+            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
+                                               ^ (string_of_mono_type_basic tycod)) in        (* for debug *)
+            let tycodnew = overwrite_range_of_type tycod rng in
+              (Apply(e1, e2), tycodnew)
+        | _ ->
+            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+            let () = unify ty1 (get_range utast1, FuncType(ty2, beta)) in
+            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
+                (Apply(e1, e2), beta)
+      end
 
   | UTLambdaAbstract(varrng, varnm, utast1) ->
-      let beta = (varrng, TypeVariable(Tyvarid.fresh qtfbl)) in
-      let tyenv_new = Typeenv.add tyenv varnm beta in
-        let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-          let tydom = (Subst.apply_to_type_struct theta1 beta) in
-          let tycod = ty1 in
-          let theta_result = theta1 in
-            (LambdaAbstract(varnm, e1), (rng, FuncType(tydom, tycod)), theta_result)
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
+      let evid = EvalVarID.fresh varnm in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnm (Poly(beta), evid)) utast1 in
+        let tydom = beta in
+        let tycod = ty1 in
+          (LambdaAbstract(evid, e1), (rng, FuncType(tydom, tycod)))
 
   | UTLetIn(utmutletcons, utast2) ->
-      let (tyenv_forall, _, mutletcons, theta1, _) = make_type_environment_by_let qtfbl varntenv tyenv utmutletcons in
-      let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv_forall utast2 in
-        (LetIn(mutletcons, e2), ty2, Subst.compose theta2 theta1)
+      let (tyenvnew, _, mutletcons) = make_type_environment_by_let qtfbl lev tyenv utmutletcons in
+      let (e2, ty2) = typecheck_iter tyenvnew utast2 in
+        (LetIn(mutletcons, e2), ty2)
 
-  | UTIfThenElse(utastb, utast1, utast2) ->
-      let (eb, tyb, thetab) = typecheck qtfbl varntenv tyenv utastb in
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-      let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv utast2 in
-      let theta_result =  Subst.compose (Subst.unify ty2 ty1)
-                            (Subst.compose theta2
-                              (Subst.compose theta1
-                                (Subst.compose (Subst.unify tyb (Range.dummy "if-bool", BoolType))
-                                  thetab))) in
-      let type_result = Subst.apply_to_type_struct theta_result ty1 in
-        (IfThenElse(eb, e1, e2), type_result, theta_result)
+  | UTIfThenElse(utastB, utast1, utast2) ->
+      let (eB, tyB) = typecheck_iter tyenv utastB in
+      let () = unify tyB (Range.dummy "if-bool", BoolType) in
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let () = unify ty2 ty1 in
+        (IfThenElse(eB, e1, e2), ty1)
 
-(* ---- impleratives ---- *)
+(* ---- imperatives ---- *)
 
-  | UTLetMutableIn(varrng, varnm, utastini, utastaft) ->
-      let (tyenv_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable varntenv tyenv varrng varnm utastini in
-      let (eaft, tyaft, thetaaft) = typecheck qtfbl varntenv tyenv_new utastaft in
-        let theta_result = Subst.compose thetaaft thetaini in
-        let type_result  = Subst.apply_to_type_struct theta_result tyaft in
-          (LetMutableIn(varnm, eini, eaft), type_result, theta_result)
+  | UTLetMutableIn(varrng, varnm, utastI, utastA) ->
+      let (tyenvI, evid, eI, tyI) = make_type_environment_by_let_mutable lev tyenv varrng varnm utastI in
+      let (eA, tyA) = typecheck_iter tyenvI utastA in
+        (LetMutableIn(evid, eI, eA), tyA)
 
-  | UTOverwrite(varrng, varnm, utastnew) ->
-      let (_, tyvar, _) = typecheck qtfbl varntenv tyenv (varrng, UTContentOf(varnm)) in
-      let (enew, tynew, thetanew) = typecheck qtfbl varntenv tyenv utastnew in
-      let thetasub = Subst.unify tyvar (get_range utastnew, RefType(tynew)) in
-          (*  actually 'get_range utastnew' is not good
-              since the right side expression has type 't, not 't ref *)
-        (Overwrite(varnm, enew), (rng, UnitType), Subst.compose thetasub thetanew)
+  | UTOverwrite(varrng, varnm, utastN) ->
+      begin
+        match typecheck_iter tyenv (varrng, UTContentOf([], varnm)) with
+        | (ContentOf(evid), tyvar) ->
+            let (eN, tyN) = typecheck_iter tyenv utastN in
+            let () = unify tyvar (get_range utastN, RefType(tyN)) in
+              (* --
+                 actually 'get_range utastnew' is not good
+                 since the right side expression has type 't, not 't ref 
+              -- *)
+              (Overwrite(evid, eN), (rng, UnitType))
+
+        | _ -> assert false
+      end
 
   | UTSequential(utast1, utast2) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-      let theta_new = Subst.compose (Subst.unify ty1 (get_range utast1, UnitType)) theta1 in
-      let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
-      let (e2, ty2, theta2) = typecheck qtfbl varntenv tyenv_new utast2 in
-        let theta_result = Subst.compose theta2 theta_new in
-        let type_result = Subst.apply_to_type_struct theta_result ty2 in
-            (Sequential(e1, e2), type_result, theta_result)
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let () = unify ty1 (get_range utast1, UnitType) in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+        (Sequential(e1, e2), ty2)
 
-  | UTWhileDo(utastb, utastc) ->
-      let (eb, tyb, thetab) = typecheck qtfbl varntenv tyenv utastb in
-      let (ec, tyc, thetac) = typecheck qtfbl varntenv tyenv utastc in
-        let thetabsub = Subst.unify tyb (get_range utastb, BoolType) in
-        let thetacsub = Subst.unify tyc (get_range utastc, UnitType) in
-          let theta_result =  Subst.compose thetacsub
-                                (Subst.compose thetabsub
-                                  (Subst.compose thetac thetab)) in
-            (WhileDo(eb, ec), (rng, UnitType), theta_result)
+  | UTWhileDo(utastB, utastC) ->
+      let (eB, tyB) = typecheck_iter tyenv utastB in
+      let () = unify tyB (get_range utastB, BoolType) in
+      let (eC, tyC) = typecheck_iter tyenv utastC in
+      let () = unify tyC (get_range utastC, UnitType) in
+        (WhileDo(eB, eC), (rng, UnitType))
 
   | UTLazyContent(utast1) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-        (LazyContent(e1), ty1, theta1)
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+        (LazyContent(e1), ty1)
 
 (* ---- final reference ---- *)
 
-  | UTDeclareGlobalHash(utastkey, utastini) ->
-      let (ekey, tykey, thetakey) = typecheck qtfbl varntenv tyenv utastkey in
-      let (eini, tyini, thetaini) = typecheck qtfbl varntenv tyenv utastini in
-      let thetasubkey = Subst.unify tykey (get_range utastkey, StringType) in
-      let thetasubini = Subst.unify tyini (get_range utastini, StringType) in
-      let theta_result =  Subst.compose_list [thetasubini; thetasubkey; thetaini; thetakey] in
-        (DeclareGlobalHash(ekey, eini), (rng, UnitType), theta_result)
+  | UTDeclareGlobalHash(utastK, utastI) ->
+      let (eK, tyK) = typecheck_iter tyenv utastK in
+      let () = (unify tyK (get_range utastK, StringType)) in
+      let (eI, tyI) = typecheck_iter tyenv utastI in
+      let () = unify tyI (get_range utastI, StringType) in
+        (DeclareGlobalHash(eK, eI), (rng, UnitType))
 
-  | UTOverwriteGlobalHash(utastkey, utastnew) ->
-      let (ekey, tykey, thetakey) = typecheck qtfbl varntenv tyenv utastkey in
-      let (enew, tynew, thetanew) = typecheck qtfbl varntenv tyenv utastnew in
-      let thetasubkey = Subst.unify tykey (get_range utastkey, StringType) in
-      let thetasubnew = Subst.unify tynew (get_range utastnew, StringType) in
-      let theta_result =  Subst.compose_list [thetasubnew; thetasubkey; thetanew; thetakey] in
-        (OverwriteGlobalHash(ekey, enew), (rng, UnitType), theta_result)
+  | UTOverwriteGlobalHash(utastK, utastN) ->
+      let (eK, tyK) = typecheck_iter tyenv utastK in
+      let () = unify tyK (get_range utastK, StringType) in
+      let (eN, tyN) = typecheck_iter tyenv utastN in
+      let () = unify tyN (get_range utastN, StringType) in
+        (OverwriteGlobalHash(eK, eN), (rng, UnitType))
 
   | UTReferenceFinal(utast1) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-      let thetasub = Subst.unify ty1 (rng, StringType) in
-      let theta_result = Subst.compose thetasub theta1 in
-        (ReferenceFinal(e1), (rng, StringType), theta_result)
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let () = unify ty1 (rng, StringType) in
+        (ReferenceFinal(e1), (rng, StringType))
 
 (* ---- class/id option ---- *)
 
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
       let dr = Range.dummy "ut-apply-class-and-id" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
-      let (ecls, _, _) = typecheck qtfbl varntenv tyenv utastcls in
-      let (eid, _, _)  = typecheck qtfbl varntenv tyenv utastid in
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-        (ApplyClassAndID(ecls, eid, e1), ty1, theta1)
+      let evidcls = EvalVarID.for_class_name in
+      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let evidid = EvalVarID.for_id_name in
+      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let (ecls, _) = typecheck_iter tyenv utastcls in
+      let (eid, _)  = typecheck_iter tyenv utastid in
+      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
+        (ApplyClassAndID(evidcls, evidid, ecls, eid, e1), ty1)
 
   | UTClassAndIDRegion(utast1) ->
       let dr = Range.dummy "ut-class-and-id-region" in
-      let tyenv1    = Typeenv.add tyenv  "class-name" (dr, VariantType([(dr, StringType)], "maybe")) in
-      let tyenv_new = Typeenv.add tyenv1 "id-name"    (dr, VariantType([(dr, StringType)], "maybe")) in
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv_new utast1 in
-        (e1, ty1, theta1)
+      let evidcls = EvalVarID.for_class_name in
+      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let evidid = EvalVarID.for_id_name in
+      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
+        (e1, ty1)
 
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->
-      let (eitmz, thetaitmz) = typecheck_itemize qtfbl varntenv tyenv utitmz in
-        (eitmz, (rng, VariantType([], "itemize")), thetaitmz)
+      let eitmz = typecheck_itemize qtfbl lev tyenv utitmz in
+        (eitmz, (rng, VariantType([], Typeenv.find_type_id tyenv "itemize"))) (* temporary *)
 
 (* ---- list ---- *)
 
-  | UTListCons(utasthd, utasttl) ->
-      let (ehd, tyhd, thetahd) = typecheck qtfbl varntenv tyenv utasthd in
-      let (etl, tytl, thetatl) = typecheck qtfbl varntenv tyenv utasttl in
-        let theta_result =  Subst.compose (Subst.unify tytl (Range.dummy "list-cons", ListType(tyhd)))
-                              (Subst.compose thetatl thetahd) in
-        let type_result = (rng, ListType(Subst.apply_to_type_struct theta_result tyhd)) in
-          (ListCons(ehd, etl), type_result, theta_result)
+  | UTListCons(utastH, utastT) ->
+      let (eH, tyH) = typecheck_iter tyenv utastH in
+      let (eT, tyT) = typecheck_iter tyenv utastT in
+      let () = unify tyT (Range.dummy "list-cons", ListType(tyH)) in
+      let tyres = (rng, ListType(tyH)) in
+        (ListCons(eH, eT), tyres)
 
   | UTEndOfList ->
-      let ntyvar = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (EndOfList, (rng, ListType(ntyvar)), Subst.empty)
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        (EndOfList, (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
 
-  | UTTupleCons(utasthd, utasttl) ->
-      let (ehd, tyhd, thetahd) = typecheck qtfbl varntenv tyenv utasthd in
-      let (etl, tytl, thetatl) = typecheck qtfbl varntenv tyenv utasttl in
-      let theta_result = Subst.compose thetatl thetahd in
-      let term_result = (TupleCons(ehd, etl)) in
-      let type_result = Subst.apply_to_type_struct theta_result
-        begin
-          match tytl with
-          | (rngtl, ProductType(tylist)) -> (rng, ProductType(tyhd :: tylist))
-          | _                            -> assert false
-        end
+  | UTTupleCons(utastH, utastT) ->
+      let (eH, tyH) = typecheck_iter tyenv utastH in
+      let (eT, tyT) = typecheck_iter tyenv utastT in
+      let tyres =
+        match tyT with
+        | (_, ProductType(tylist)) -> (rng, ProductType(tyH :: tylist))
+        | _                        -> assert false
       in
-        (term_result, type_result, theta_result)
+        (TupleCons(eH, eT), tyres)
 
-  | UTEndOfTuple -> (EndOfTuple, (rng, ProductType([])), Subst.empty)
+  | UTEndOfTuple -> (EndOfTuple, (rng, ProductType([])))
+
+(* ---- records ---- *)
+
+  | UTRecord(flutlst) -> typecheck_record qtfbl lev tyenv flutlst rng
+
+  | UTAccessField(utast1, fldnm) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
+      let betaF = (rng, TypeVariable(ref (Free(tvidF)))) in
+      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
+      let beta1 = (get_range utast1, TypeVariable(ref (Free(tvid1)))) in
+      let () = unify beta1 ty1 in
+        (AccessField(e1, fldnm), betaF)
 
 (* ---- other fundamentals ---- *)
 
-  | UTPatternMatch(utastobj, utpmcons) ->
-      let (eobj, tyobj, thetaobj) = typecheck qtfbl varntenv tyenv utastobj in
-      let ntv = (Range.dummy "ntv", TypeVariable(Tyvarid.fresh qtfbl)) in
-      let (pmcons, typm, thetapm) = typecheck_pattern_match_cons qtfbl varntenv tyenv utpmcons tyobj thetaobj ntv in
-        (PatternMatch(eobj, pmcons), typm, thetapm)
+  | UTPatternMatch(utastO, utpmcons) ->
+      let (eO, tyO) = typecheck_iter tyenv utastO in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
+      let (pmcons, tyP) =
+            typecheck_pattern_match_cons qtfbl lev tyenv utpmcons tyO beta in
+        (PatternMatch(eO, pmcons), tyP)
 
-  | UTDeclareVariantIn(mutvarntcons, utastaft) ->
-      let varntenv_new = Variantenv.add_mutual_cons GlobalScope varntenv mutvarntcons in
-        typecheck qtfbl varntenv_new tyenv utastaft
+  | UTDeclareVariantIn(mutvarntcons, utastA) ->
+      let tyenvnew = Typeenv.add_mutual_cons tyenv lev mutvarntcons in
+        typecheck_iter tyenvnew utastA
 
-  | UTModule(mdlnm, utmdltr, utastaft) ->
-      let (varntenv_new, tyenv_new, emdltr, thetadef) = typecheck_module qtfbl varntenv tyenv varntenv tyenv mdlnm utmdltr in
-      let (eaft, tyaft, thetaaft) = typecheck qtfbl varntenv_new tyenv_new utastaft in
-      let theta_result = Subst.compose thetaaft thetadef in
-      let type_result  = Subst.apply_to_type_struct theta_result tyaft in
-        (Module(mdlnm, emdltr, eaft), type_result, theta_result)
+  | UTModule(mdlrng, mdlnm, sigopt, utastM, utastA) ->
+      let tyenvinner = Typeenv.enter_new_module tyenv mdlnm in
+      let (eM, _) = typecheck_iter tyenvinner utastM in
+      let tyenvmid = Typeenv.sigcheck mdlrng qtfbl lev (!final_tyenv) tyenv sigopt in
+      let tyenvouter = Typeenv.leave_module tyenvmid in
+      let (eA, tyA) = typecheck_iter tyenvouter utastA in
+        (Module(eM, eA), tyA)
 
 
-and typecheck_itemize qtfbl varntenv tyenv (UTItem(utast1, utitmzlst)) =
-    let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
-    let (elst, thetalst)  = typecheck_itemize_list qtfbl varntenv tyenv utitmzlst in
-      let theta_result = Subst.compose thetalst (Subst.compose theta1 (Subst.unify ty1 (Range.dummy "typecheck_itemize_string", StringType))) in
-        (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))), theta_result)
+and typecheck_record
+    (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t)
+    (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
+=
+  let rec aux
+      (tyenv : Typeenv.t) (lst : (field_name * untyped_abstract_tree) list)
+      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * mono_type) list)
+  =
+    match lst with
+    | []                       -> (List.rev accelst, List.rev acctylst)
+    | (fldnmX, utastX) :: tail ->
+        let (eX, tyX) = typecheck qtfbl lev tyenv utastX in
+          aux tyenv tail ((fldnmX, eX) :: accelst) ((fldnmX, tyX) :: acctylst)
+  in
+  let (elst, tylst) = aux tyenv flutlst [] [] in
+  let tylstfinal = List.map (fun (fldnm, ty) -> (fldnm, ty)) tylst in
+    (Record(Assoc.of_list elst), (rng, RecordType(Assoc.of_list tylstfinal)))
 
-and typecheck_itemize_list qtfbl varntenv tyenv utitmzlst =
+
+and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
+  let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
+  let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", StringType) in
+  let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
+    (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))))
+
+
+and typecheck_itemize_list
+    (qtfbl : quantifiability) (lev : FreeID.level)
+    (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
-  | []                  -> (EndOfList, Subst.empty)
+  | []                  -> EndOfList
   | hditmz :: tlitmzlst ->
-      let (ehd, thetahd) = typecheck_itemize qtfbl varntenv tyenv hditmz in
-      let (etl, thetatl) = typecheck_itemize_list qtfbl varntenv tyenv tlitmzlst in
-        (ListCons(ehd, etl), Subst.compose thetatl thetahd)
+      let ehd = typecheck_itemize qtfbl lev tyenv hditmz in
+      let etl = typecheck_itemize_list qtfbl lev tyenv tlitmzlst in
+        ListCons(ehd, etl)
 
 
-(* Variantenv.t -> Typeenv.t -> Variantenv.t -> Typeenv.t -> module_name -> untyped_module_tree
-    -> (Variantenv.t * Typeenv.t * module_tree * Subst.t) *)
-and typecheck_module qtfbl (veout : Variantenv.t) (teout : Typeenv.t) (vein : Variantenv.t) (tein : Typeenv.t) (mdlnm : module_name) (utmdltr : untyped_module_tree) =
-  let (rng, utmdldef) = utmdltr in
-  match utmdldef with
+and typecheck_pattern_match_cons
+    (qtfbl : quantifiability) (lev : FreeID.level)
+    (tyenv : Typeenv.t) (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (tyres : mono_type) =
+  let iter = typecheck_pattern_match_cons qtfbl lev in
+  let unify = unify_ tyenv in
+    match utpmcons with
+    | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres)
 
-  | UTMFinishModule -> (veout, teout, MFinishModule, Subst.empty)
+    | UTPatternMatchCons(utpat, utast1, tailcons) ->
+        let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
+        let () = unify typat tyobj in
+        let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
+        let () = unify ty1 tyres in
+        let (pmctl, tytl) =
+              iter tyenv tailcons tyobj tyres in
+          (PatternMatchCons(epat, e1, pmctl), tytl)
 
-  | UTMDirectLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
-        let teout_new = add_list_to_type_environment "" teout tvtylstout in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MDirectLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
-
-  | UTMPublicLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, tvtylstout, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
-        let teout_new = add_list_to_type_environment mdlnm teout tvtylstout in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPublicLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
-
-  | UTMPrivateLetIn(utmutletcons, utmdlaft) ->
-      let (tein_new, _, mutletcons, thetain, thetaout) = make_type_environment_by_let qtfbl vein tein utmutletcons in
-        let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout vein tein_new mdlnm utmdlaft in
-          (veout_result, teout_result, MPrivateLetIn(mutletcons, eaft), Subst.compose thetaaft thetaout)
-
-  | UTMPublicDeclareVariantIn(utmutvarntcons, utmdlaft) ->
-      let vein_new  = Variantenv.add_mutual_cons (LocalScope(mdlnm)) vein utmutvarntcons in
-      let veout_new = Variantenv.add_mutual_cons_hidden mdlnm veout utmutvarntcons in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout_new teout vein_new tein mdlnm utmdlaft in
-        (veout_result, teout_result, eaft, thetaaft)
-
-  | UTMPrivateDeclareVariantIn(utmutvarntcons, utmdlaft)  ->
-      let vein_new  = Variantenv.add_mutual_cons (LocalScope(mdlnm)) vein utmutvarntcons in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout vein_new tein mdlnm utmdlaft in
-        (veout_result, teout_result, eaft, thetaaft)
-
-  | UTMPublicLetMutableIn(varrng, varnm, utini, utmdlaft) ->
-      let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein tein varrng varnm utini in
-      let teout_new = add_list_to_type_environment mdlnm teout [(varnm, (varrng, RefType(tyini)))] in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout_new vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), Subst.compose thetaaft thetaini)
-
-  | UTMPrivateLetMutableIn(varrng, varnm, utini, utmdlaft) ->
-      let (tein_new, eini, tyini, thetaini) = make_type_environment_by_let_mutable vein tein varrng varnm utini in
-      let (veout_result, teout_result, eaft, thetaaft) = typecheck_module qtfbl veout teout vein tein_new mdlnm utmdlaft in
-        (veout_result, teout_result, MPublicLetMutableIn(varnm, eini, eaft), Subst.compose thetaaft thetaini)
+    | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
+        let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
+        let () = unify typat tyobj in
+        let (eB, tyB) = typecheck qtfbl lev tyenvpat utastb in
+        let () = unify tyB (Range.dummy "pattern-match-cons-when", BoolType) in
+        let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
+        let () = unify ty1 tyres in
+        let (pmctl, tytl) =
+              iter tyenv tailcons tyobj tyres in
+          (PatternMatchConsWhen(epat, eB, e1, pmctl), tytl)
 
 
-(* module_name -> Typeenv.t -> (var_name * type_struct) list -> Typeenv.t *)
-and add_list_to_type_environment (mdlnm : module_name) (tyenv : Typeenv.t) (tvtylst : (var_name * type_struct) list) =
-  match tvtylst with
-  | []                         -> tyenv
-  | (varnm, tystr) :: tvtytail ->
-      add_list_to_type_environment mdlnm (Typeenv.add tyenv (Variantenv.append_module_name mdlnm varnm) tystr) tvtytail
+and typecheck_pattern
+    (qtfbl : quantifiability) (lev : FreeID.level)
+    (tyenv : Typeenv.t) (rng, utpatmain) =
+  let iter = typecheck_pattern qtfbl lev in
+  let unify = unify_ tyenv in
+    match utpatmain with
+    | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, IntType), tyenv)
+    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BoolType), tyenv)
+    | UTPStringConstant(ut1) ->
+        let (e1, ty1) = typecheck qtfbl lev tyenv ut1 in
+        let () = unify (Range.dummy "pattern-string-constant", StringType) ty1 in
+          (PStringConstant(e1), (rng, StringType), tyenv)
 
+    | UTPUnitConstant        -> (PUnitConstant, (rng, UnitType), tyenv)
 
-(* Typeenv.t -> untyped_pattern_match_cons -> type_struct -> Subst.t -> type_struct
-    -> (pattern_match_cons * type_struct * Subst.t) *)
-and typecheck_pattern_match_cons qtfbl varntenv tyenv utpmcons tyobj theta tyres =
-  match utpmcons with
-  | UTEndOfPatternMatch -> (EndOfPatternMatch, (Subst.apply_to_type_struct theta tyres), theta)
+    | UTPListCons(utpat1, utpat2) ->
+        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+        let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
+        let () = unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
+          (PListCons(epat1, epat2), typat2, tyenv2)
 
-  | UTPatternMatchCons(utpat, utast1, tailcons) ->
-      let (epat, typat, tyenvpat) = typecheck_pattern qtfbl varntenv tyenv utpat in
-      let thetapat  = Subst.compose (Subst.unify typat tyobj) theta in
-      let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
-      let (e1, ty1, theta1)       = typecheck qtfbl varntenv tyenv1 utast1 in
-      let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
-      let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let tyobj_new = Subst.apply_to_type_struct theta2 tyobj in
-      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons qtfbl varntenv tyenv tailcons tyobj_new theta2 tyres_new in
-        (PatternMatchCons(epat, e1, pmctl), tytl, thetatl)
+    | UTPEndOfList ->
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+          (PEndOfList, (rng, ListType(beta)), tyenv)
 
-  | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
-      let (epat, typat, tyenvpat) = typecheck_pattern qtfbl varntenv tyenv utpat in
-      let (eb, tyb, thetab)       = typecheck qtfbl varntenv tyenvpat utastb in
-      let thetapat  = Subst.compose (Subst.unify tyb (Range.dummy "pattern-match-cons-when", BoolType))
-                        (Subst.compose thetab
-                          (Subst.compose (Subst.unify typat tyobj) theta)) in
-      let tyenv1    = Subst.apply_to_type_environment thetapat tyenvpat in
-      let (e1, ty1, theta1)       = typecheck qtfbl varntenv tyenv1 utast1 in
-      let theta2    = Subst.compose (Subst.unify ty1 tyres) (Subst.compose theta1 thetapat) in
-      let tyres_new = Subst.apply_to_type_struct theta2 tyres in
-      let tyobj_new = Subst.apply_to_type_struct theta2 tyobj in
-      let (pmctl, tytl, thetatl)  = typecheck_pattern_match_cons qtfbl varntenv tyenv tailcons tyobj_new theta2 tyres_new in
-        (PatternMatchConsWhen(epat, eb, e1, pmctl), tytl, thetatl)
+    | UTPTupleCons(utpat1, utpat2) ->
+        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+        let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
+        let tyres =
+          match typat2 with
+          | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
+          | _                          -> assert false
+        in
+          (PTupleCons(epat1, epat2), tyres, tyenv2)
 
+    | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv)
 
-(* Typeenv.t * untyped_pattern_tree -> (pattern_tree * type_struct * Typeenv.t) *)
-and typecheck_pattern qtfbl varntenv tyenv (rng, utpatmain) =
-  match utpatmain with
-  | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, IntType), tyenv)
-  | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BoolType), tyenv)
-  | UTPStringConstant(ut1) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv ut1 in
-      let theta_new = Subst.compose (Subst.unify (Range.dummy "pattern-string-constant", StringType) ty1) theta1 in
-      let tyenv_new = Subst.apply_to_type_environment theta_new tyenv in
-        (PStringConstant(e1), (rng, StringType), tyenv_new)
+    | UTPWildCard ->
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+          (PWildCard, beta, tyenv)
 
-  | UTPUnitConstant        -> (PUnitConstant, (rng, UnitType), tyenv)
+    | UTPVariable(varnm) ->
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        let evid = EvalVarID.fresh varnm in
+          (PVariable(evid), beta, Typeenv.add tyenv varnm (Poly(beta), evid))
 
-  | UTPListCons(utpat1, utpat2) ->
-      let (epat1, typat1, tyenv1) = typecheck_pattern qtfbl varntenv tyenv utpat1 in
-      let (epat2, typat2, tyenv2) = typecheck_pattern qtfbl varntenv tyenv1 utpat2 in
-        let theta = Subst.unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
-        let tyenv_result = Subst.apply_to_type_environment theta tyenv2 in
-        let type_result = Subst.apply_to_type_struct theta typat2 in
-          (PListCons(epat1, epat2), type_result, tyenv_result)
+    | UTPAsVariable(varnm, utpat1) ->
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+        let evid = EvalVarID.fresh varnm in
+          (PAsVariable(evid, epat1), typat1, Typeenv.add tyenv varnm (Poly(beta), evid))
 
-  | UTPEndOfList ->
-      let ntv = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in (PEndOfList, (rng, ListType(ntv)), tyenv)
-
-  | UTPTupleCons(utpat1, utpat2) ->
-      let (epat1, typat1, tyenv1) = typecheck_pattern qtfbl varntenv tyenv utpat1 in
-      let (epat2, typat2, tyenv2) = typecheck_pattern qtfbl varntenv tyenv1 utpat2 in
-      let type_result =
-        match typat2 with
-        | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
-        | _                          -> assert false
-      in
-        (PTupleCons(epat1, epat2), type_result, tyenv2)
-
-  | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv)
-
-  | UTPWildCard ->
-      let ntv = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in (PWildCard, ntv, tyenv)
-
-  | UTPVariable(varnm) ->
-      let ntv = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-        (PVariable(varnm), ntv, Typeenv.add tyenv varnm ntv)
-
-  | UTPAsVariable(varnm, utpat1) ->
-      let ntv = (rng, TypeVariable(Tyvarid.fresh qtfbl)) in
-      let (epat1, typat1, tyenv1) = typecheck_pattern qtfbl varntenv tyenv utpat1 in
-        (PAsVariable(varnm, epat1), typat1, Typeenv.add tyenv varnm ntv)
-
-  | UTPConstructor(constrnm, utpat1) ->
-      begin
-        try
-          let (varntnm, tyforall) = Variantenv.find varntenv constrnm in
-          let (tyfree, tyarglist) = Typeenv.make_bounded_free qtfbl tyforall in
-          let (epat1, typat1, tyenv1) = typecheck_pattern qtfbl varntenv tyenv utpat1 in
-          let theta = Subst.unify tyfree typat1 in
-          let tyenv_new = Subst.apply_to_type_environment theta tyenv1 in
-          let type_result = Subst.apply_to_type_struct theta (rng, VariantType(tyarglist, varntnm)) in
-            (PConstructor(constrnm, epat1), type_result, tyenv_new)
-        with
-        | Not_found -> report_error_with_range rng ("undefined constructor '" ^ constrnm ^ "'")
-      end
-
-
-(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons ->
-    (Typeenv.t * (var_name * type_struct) list * mutual_let_cons * Subst.t) *)
-and make_type_environment_by_let qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
-  let (tyenv_for_rec, tvtylst_for_rec) = add_mutual_variables qtfbl varntenv tyenv utmutletcons in
-  let (tyenv_new, mutletcons, thetain, thetaout, tvtylstout) = typecheck_mutual_contents qtfbl varntenv tyenv_for_rec utmutletcons tvtylst_for_rec in
-  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual varntenv tyenv_new tyenv thetain tvtylstout [] in
-    (tyenv_forall, tvtylst_forall, mutletcons, thetain, thetaout)
-
-
-(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> (Typeenv.t * ((var_name * type_struct) list)) *)
-and add_mutual_variables qtfbl varntenv tyenv (mutletcons : untyped_mutual_let_cons) =
-  match mutletcons with
-  | UTEndOfMutualLet                             -> (tyenv, [])
-  | UTMutualLetCons(_, varnm, astdef, tailcons)  ->
-      let ntv = (get_range astdef, TypeVariable(Tyvarid.fresh qtfbl)) in
-      let (tyenv_tail, tvtylst) = add_mutual_variables qtfbl varntenv (Typeenv.add tyenv varnm ntv) tailcons in
-        (tyenv_tail, ((varnm, ntv) :: tvtylst))
-
-
-(* Variantenv.t -> Typeenv.t -> untyped_mutual_let_cons -> ((var_name * type_struct) list)
-  -> (Typeenv.t * mutual_let_cons * Subst.t * Subst.t) *)
-and typecheck_mutual_contents qtfbl (varntenv : Variantenv.t) (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * type_struct) list) =
-  match (utmutletcons, tvtylst) with
-  | (UTEndOfMutualLet, []) -> (tyenv, EndOfMutualLet, Subst.empty, Subst.empty, [])
-
-  | (UTMutualLetCons(tyopt, varnm, utast1, tailcons), (_, tvty) :: tvtytail) ->
-      let (e1, ty1, theta1) = typecheck qtfbl varntenv tyenv utast1 in
+    | UTPConstructor(constrnm, utpat1) ->
         begin
-          match tyopt with
-          | None            ->
-              let theta1in  = Subst.compose (Subst.unify ty1 tvty) theta1 in
-              let theta1out = theta1 in
-                let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1in tyenv) varnm ty1 in
-                let (tyenv_tail, mutletcons_tail, thetain_tail, thetaout_tail, tvtylstout_tail) = typecheck_mutual_contents qtfbl varntenv tyenv_new tailcons tvtytail in
-                let thetain_result  = Subst.compose thetain_tail theta1in in
-                let thetaout_result = Subst.compose thetaout_tail theta1out in
-                let tyenv_result    = Subst.apply_to_type_environment thetain_result tyenv_tail in
-                let tvtylstout_result = (varnm, tvty) :: tvtylstout_tail in
-                  (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
-          | Some(tystrmanu) ->
-              let (tystrforin, tystrforout) = Variantenv.fix_manual_type_for_inner_and_outer qtfbl varntenv tystrmanu in
-              let theta1in  = Subst.compose (Subst.unify tystrforin tvty) (Subst.compose (Subst.unify ty1 tvty) theta1) in
-              let theta1out = theta1 in
-                let tyenv_new = Typeenv.add (Subst.apply_to_type_environment theta1in tyenv) varnm ty1 in
-                let (tyenv_tail, mutletcons_tail, thetain_tail, thetaout_tail, tvtylstout_tail) = typecheck_mutual_contents qtfbl varntenv tyenv_new tailcons tvtytail in
-                  let thetain_result  = Subst.compose thetain_tail theta1in in
-                  let thetaout_result = Subst.compose thetaout_tail theta1out in
-                  let tyenv_result    = Subst.apply_to_type_environment thetain_result tyenv_tail in
-                  let tvtylstout_result = (varnm, tystrforout) :: tvtylstout_tail in
-                    (tyenv_result, MutualLetCons(varnm, e1, mutletcons_tail), thetain_result, thetaout_result, tvtylstout_result)
+          try
+            let (tyarglist, tyid, tyc) = Typeenv.find_constructor qtfbl tyenv lev constrnm in
+            let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+            let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+            let () = unify tyc typat1 in
+              (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
+          with
+          | Not_found -> raise (UndefinedConstructor(rng, constrnm))
         end
 
-  | _ -> assert false
+
+and make_type_environment_by_let
+    (qtfbl : quantifiability) (lev : FreeID.level)
+    (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
+
+  let rec add_mutual_variables (acctyenv : Typeenv.t) (mutletcons : untyped_mutual_let_cons) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
+    let iter = add_mutual_variables in
+      match mutletcons with
+      | []                             -> (acctyenv, [])
+      | (_, varnm, astdef) :: tailcons ->
+          let tvid = FreeID.fresh UniversalKind qtfbl (FreeID.succ_level lev) () in
+          let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
+          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
+          let evid = EvalVarID.fresh varnm in
+          let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta), evid)) tailcons in
+            (tyenvfinal, ((varnm, beta, evid) :: tvtylst))
+  in
+
+  let rec typecheck_mutual_contents
+      (lev : FreeID.level)
+      (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
+      (acctvtylstout : (var_name * mono_type * EvalVarID.t) list)
+  =
+    let iter = typecheck_mutual_contents lev in
+    let unify = unify_ tyenv in
+    match (utmutletcons, tvtylst) with
+    | ([], []) -> (tyenvforrec, EndOfMutualLet, List.rev acctvtylstout)
+
+    | ((mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
+        let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenvforrec utast1 in
+        begin
+          match mntyopt with
+          | None ->
+              let () = unify ty1 beta in
+                let (tyenvfinal, mutletcons_tail, tvtylstoutfinal) = iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout) in
+                  (tyenvfinal, MutualLetCons(evid, e1, mutletcons_tail), tvtylstoutfinal)
+
+          | Some(mnty) ->
+              let tyin = Typeenv.fix_manual_type_free qtfbl tyenv lev mnty [] in
+              let () = unify ty1 beta in
+              let () = unify tyin beta in
+                let (tyenvfinal, mutletconstail, tvtylstoutfinal) =
+                      iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout) in
+                    (tyenvfinal, MutualLetCons(evid, e1, mutletconstail), tvtylstoutfinal)
+
+        end
+
+    | _ -> assert false
+  in
+
+  let rec make_forall_type_mutual (tyenv : Typeenv.t) (tyenv_before_let : Typeenv.t) tvtylst tvtylst_forall =
+    match tvtylst with
+    | []                              -> (tyenv, tvtylst_forall)
+    | (varnm, tvty, evid) :: tvtytail ->
+        let prety = tvty in
+          let () = print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
+          let pty = poly_extend erase_range_of_type (generalize lev prety) in
+          let () = print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+          let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
+            make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid)) tyenv_before_let tvtytail tvtylst_forall_new
+  in
+
+  let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utmutletcons in
+  let (tyenv_new, mutletcons, tvtylstout) =
+        typecheck_mutual_contents lev tyenvforrec utmutletcons tvtylstforrec [] in
+  let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual tyenv_new tyenv tvtylstout [] in
+    (tyenv_forall, tvtylst_forall, mutletcons)
 
 
-(* Variantenv.t -> Typeenv.t -> Typeenv.t -> Subst.t -> (var_name * type_struct) list ->
-    (var_name * type_struct) list -> (Typeenv.t * ((var_name * type_struct) list) *)
-and make_forall_type_mutual varntenv tyenv tyenv_before_let theta tvtylst tvtylst_forall =
-  match tvtylst with
-  | []                        -> (tyenv, tvtylst_forall)
-  | (varnm, tvty) :: tvtytail ->
-      let prety = Subst.apply_to_type_struct theta tvty in
-        begin                                                                                               (* for debug *)
-          print_for_debug_typecheck (Subst.string_of_subst theta) ;                                         (* for debug *)
-          print_for_debug_typecheck (Typeenv.string_of_type_environment tyenv "MakeForall") ;               (* for debug *)
-          print_for_debug_typecheck ("#M " ^ varnm ^ " : " ^ (string_of_type_struct_basic prety) ^ "\n") ;  (* for debug *)
-          let forallty  = Typeenv.erase_range_of_type (Typeenv.make_forall_type prety tyenv_before_let) in
-(*          let forallty  = Typeenv.make_forall_type prety tyenv_before_let in                              (* for test *) *)
-          let tyenv_new = Typeenv.add tyenv varnm forallty in
-          let tvtylst_forall_new = (varnm, forallty) :: tvtylst_forall in
-            make_forall_type_mutual varntenv tyenv_new tyenv_before_let theta tvtytail tvtylst_forall_new
-        end                                                                                       (* for debug *)
+and make_type_environment_by_let_mutable (lev : FreeID.level) (tyenv : Typeenv.t) varrng varnm utastI =
+  let (eI, tyI) = typecheck Unquantifiable lev tyenv utastI in
+  let () = print_for_debug_typecheck ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
+  let evid = EvalVarID.fresh varnm in
+  let tyenvI = Typeenv.add tyenv varnm (Poly((varrng, RefType(tyI))), evid) in
+    (tyenvI, evid, eI, tyI)
 
 
-(* Variantenv.t -> Typeenv.t -> code_range -> var_name -> untyped_abstract_tree ->
-    (Typeenv.t * abstract_tree * type_struct * Subst.t) *)
-and make_type_environment_by_let_mutable varntenv tyenv varrng varnm utastini =
-  let (eini, tyini, thetaini) = typecheck Tyvarid.Unquantifiable varntenv tyenv utastini in
-    begin                                                                               (* for debug *)
-      print_for_debug_typecheck ("#LM " ^ (string_of_type_struct_basic tyini) ^ "\n") ; (* for debug *)
-      let tyenv_new = Subst.apply_to_type_environment thetaini (Typeenv.add tyenv varnm (varrng, RefType(tyini))) in
-        (tyenv_new, eini, tyini, thetaini)
-    end                                                                                 (* for debug *)
-
-
-(* untyped_abstract_tree -> (type_struct * Variantenv.t * Typeenv.t) *)
-let main varntenv tyenv utast =
-    begin
-      final_varntenv := varntenv ;
-      final_tyenv := tyenv ;
-      let (e, ty, theta) = typecheck Tyvarid.Quantifiable varntenv tyenv utast in
-        (ty, !final_varntenv, !final_tyenv, e)
-    end
+let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
+  begin
+    final_tyenv := tyenv ;
+    let (e, ty) = typecheck Quantifiable FreeID.bottom_level tyenv utast in
+      (ty, !final_tyenv, e)
+  end

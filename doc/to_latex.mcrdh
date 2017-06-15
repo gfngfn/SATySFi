@@ -1,108 +1,168 @@
-let deeper s = {\deeper{@s;}}
+% -*- coding: utf-8 -*-
+module Doc
+: sig
+    direct \document : 'a -> string -> string
+      constraint 'a :: (|
+        title : string;
+        author : string;
+        latex-packages : (string * string list) list;
+        latex-additional-settings : string;
+        latex-class-file : string;
+      |)
+    direct \maketitle : string
+    direct \section : string -> string -> string
+    direct \subsection : string -> string -> string
+    direct \p : string -> string
+    direct \footnote : string -> string
+    direct \math : string -> string
+    direct \itemize : itemize -> string
+    direct \ref : string -> string
+    direct \float-table : string -> string -> string
 
-let \document head body = {
-  \\documentclass\{jsarticle\}
-  \\makeatletter\deeper{
-    @head;
-  }\\makeatother
-  \\begin\{document\}\deeper{
-    @body;
-  }\\end\{document\}
-}
-let \title title = `\title{` ^ title ^ `}`
+    direct \escape-for-latex : string -> string
+    direct \TeX : string
+    direct \LaTeX : string
+    direct \pLaTeX2e : string
+    direct \epsilon : string
+  end
+= struct
+    let deeper s = {\deeper{@s;}}
 
-let \author author = `\author{` ^ author ^ `}`
 
-let \maketitle = `\maketitle` ^ {\ }
+    let make-option-string optlst =
+      let aux optlst =
+        match optlst with
+        | head :: []   -> head
+        | head :: tail -> let res = aux tail in {@head;,@res;}
+      in
+        match optlst with
+        | [] -> {}
+        | _  -> let res = aux optlst in {[@res;]}
 
-let \section sec cont = `\section{` ^sec^ `}` ^(deeper cont)^ `%`
+    let make-package-string lst =
+      match lst with
+      | []                        -> {}
+      | (package, optlst) :: tail ->
+          let optres = make-option-string optlst in
+          let tailres = make-package-string tail in
+          {
+            \\usepackage@optres;\{@package;\}
+            @tailres;
+          }
 
-let \subsection subsec cont = `\subsection{` ^subsec^ `}` ^(deeper cont)^ `%`
+    let \document head body =
+      let class-file = head#latex-class-file in
+      let title = head#title in
+      let author = head#author in
+      let additional-settings = head#latex-additional-settings in
+      let packages = make-package-string head#latex-packages in
+      {
+        \\documentclass\{@class-file;\}
+        \\makeatletter\deeper{
+          \\title\{@title;\}
+          \\author\{@author;\}
+          @packages;
+          @additional-settings;
+        }\\makeatother
+        \\begin\{document\}\deeper{
+          @body;
+        }\\end\{document\}
+      }
 
-let \p p = `\indent` ^(deeper p)^ `\par`
+    let \maketitle = `\maketitle` ^ {\ }
 
-let \footnote footnote = `\footnote{` ^footnote^ `}`
+    let section-scheme idopt category heading cont =
+      let id-string =
+        match idopt with
+        | Nothing -> {}
+        | Just(s) -> {\\label\{@s;\}}
+      in
+      {
+        \\@category;\{@heading;\}@id-string;\deeper{
+          @cont;
+        }
+      }
 
-let \itemize itmz =
-  match itmz with Item(_, itmzlst) ->
-    `{\samepage\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}}`
+    let \section heading cont = section-scheme id-name `section` heading cont
 
-and sub-itemize itmzlst =
-  match itmzlst with
-  | []           -> {}
-  | head :: tail -> (single-itemize head) ^ (sub-itemize tail)
+    let \subsection heading cont = section-scheme id-name `subsection` heading cont
 
-and single-itemize itmz =
-  match itmz with
-  | Item(it, []) ->
-    `\item` ^ {\ } ^ it ^ soft-break
-  | Item(it, itmzlst) ->
-    `\item` ^ {\ } ^ it ^ soft-break ^ `\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}` ^ soft-break
+    let \p p = `\indent` ^(deeper p)^ `\par` ^ {\ }
 
-let \math math = {\ $@math;$\ }
+    let \footnote footnote = `\footnote{` ^footnote^ `}`
 
-let \epsilon = `\varepsilon{}`
+    let \itemize itmz =
+      match itmz with Item(_, itmzlst) ->
+        `{\samepage\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}}`
 
-let \beta = `\beta{}`
+    and sub-itemize itmzlst =
+      match itmzlst with
+      | []           -> {}
+      | head :: tail -> (single-itemize head) ^ (sub-itemize tail)
 
-let \url url = `\texttt{` ^url^ `}`
+    and single-itemize itmz =
+      match itmz with
+      | Item(it, [])      -> `\item` ^ {\ } ^ it ^ soft-break
+      | Item(it, itmzlst) -> `\item` ^ {\ } ^ it ^ soft-break ^ `\begin{itemize}` ^(deeper (sub-itemize itmzlst))^ `\end{itemize}` ^ soft-break
 
-let \url-dp url =
-    `\begin{center}`
-  ^ (deeper (`\texttt{` ^url^ `}`))
-  ^ `\end{center}`
+    let \math math = {\ $@math;$\ }
 
-let \TeX = `\TeX{}`
-let \LaTeX = `\LaTeX{}`
-let \pLaTeX2e = `p\LaTeX 2\raise-0.125em\hbox{$\varepsilon$}`
+    let \epsilon = `\varepsilon{}`
 
-let escape-single-char ch =
-  match ch with
-  | `{` -> `\{`
-  | `}` -> `\}`
-  | `#` -> `\#`
-  | `\` -> `\symbol{"5C}`
-  | `%` -> `\%`
-  | `$` -> `\$`
-  | `^` -> `\^{}`
-  | `_` -> `\_`
-  | `&` -> `\&`
-  | _   -> ch
+    let \beta = `\beta{}`
 
-let escape-double-chars ch2 =
-  match ch2 with
-  | `<<`       -> `<{}<{}`
-  | `>>`       -> `>{}>{}`
-  | ``` `` ``` -> `` `{}`{}``
-  | `''`       -> `'{}'{}`
-  | _          ->
-    (escape-single-char (string-sub ch2 0 1))
-      ^ (escape-single-char (string-sub ch2 1 1))
+    let \TeX = `\TeX{}`
+    let \LaTeX = `\LaTeX{}`
+    let \pLaTeX2e = `p\LaTeX 2\raise-0.125em\hbox{$\varepsilon$}`
 
-let escape-for-latex str index =
-  if index >= string-length str then {} else
-    if index <= (string-length str) - 2 then
-      let ch2 = string-sub str index 2 in
-        escape-double-chars ch2
-          ^ (escape-for-latex str (index + 2))
-    else
-      let ch = string-sub str index 1 in
-        escape-single-char ch
+    let escape-single-char ch =
+      match ch with
+      | `{` -> `\{`
+      | `}` -> `\}`
+      | `#` -> `\#`
+      | `\` -> `\symbol{"5C}`
+      | `%` -> `\%`
+      | `$` -> `\$`
+      | `^` -> `\^{}`
+      | `_` -> `\_`
+      | `&` -> `\&`
+      | _   -> ch
 
-let \escape-for-latex str = escape-for-latex str 0
+    let escape-double-chars ch2 =
+      match ch2 with
+      | `<<`       -> `<{}<{}`
+      | `>>`       -> `>{}>{}`
+      | ``` `` ``` -> `` `{}`{}``
+      | `''`       -> `'{}'{}`
+      | _          ->
+        (escape-single-char (string-sub ch2 0 1))
+          ^ (escape-single-char (string-sub ch2 1 1))
 
-let \ref ref = !! ref
+    let escape-for-latex str index =
+      if index >= string-length str then {} else
+        if index <= (string-length str) - 2 then
+          let ch2 = string-sub str index 2 in
+            escape-double-chars ch2
+              ^ (escape-for-latex str (index + 2))
+        else
+          let ch = string-sub str index 1 in
+            escape-single-char ch
 
-let-mutable counter-table <- 0
+    let \escape-for-latex str = escape-for-latex str 0
 
-let \float-table cap content =
-    counter-table <- !counter-table + 1
-  before
-    ( match id-name with
-      | Nothing -> ()
-      | Just(s) -> new-global-hash s <<- {表} ^ (arabic (!counter-table)) )
-  before
-    `\begin{table*}\centering{}`
-      ^ {\deeper{@content;}}
-      ^ `\parbox{\textwidth}{\centering 表` ^ (arabic (!counter-table)) ^ `\quad{}` ^ cap ^ `}`
-      ^ `\end{table*}`
+    let \ref ref = !! ref
+
+    let-mutable counter-table <- 0
+
+    let \float-table cap content =
+        counter-table <- !counter-table + 1
+      before
+        ( match id-name with
+          | Nothing -> ()
+          | Just(s) -> new-global-hash s <<- {表} ^ (arabic (!counter-table)) )
+      before
+        `\begin{table*}\centering{}`
+          ^ {\deeper{@content;}}
+          ^ `\parbox{\textwidth}{\centering 表` ^ (arabic (!counter-table)) ^ `\quad{}` ^ cap ^ `}`
+          ^ `\end{table*}`
+  end

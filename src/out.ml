@@ -69,7 +69,7 @@ and stringify (indent : int) (opu : output_unit list) =
 
 
 (* int -> abstract_tree -> string *)
-and out indent value =
+and out (indent : int) (value : abstract_tree) : string =
   match value with
   | StringEmpty                 -> ""
   | StringConstant(c)           -> c
