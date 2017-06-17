@@ -291,7 +291,7 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
       match Sys.argv.(num) with
       | "-v" ->
           print_string (
-              "  Macrodown version 1.00e\n"
+              "  Macrodown version 1.00z\n"
             ^ "    ____   ____       ________     _____   ______\n"
             ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
             ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"

@@ -1,12 +1,11 @@
-OCB_FLAGS = -use-ocamlfind -use-menhir -I src/
-OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
-
+OCB_FLAGS = -use-ocamlfind -use-menhir -I src/
 TARGET=macrodown
+OCB = ocamlbuild $(OCB_FLAGS)
 
-all: macrodown
+all: $(TARGET)
 
-macrodown:
+$(TARGET):
 	$(OCB) main.native
 	mv main.native $(TARGET)
 
