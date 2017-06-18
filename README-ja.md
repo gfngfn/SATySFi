@@ -15,23 +15,27 @@ Macrodownなら，意味マークアップの機能を持つ柔軟なマクロ�
 
 ![logo2](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo2.png)
 
+## インストール
+
+### OPAMによる場合
+* インストール： `opam pin add macrodown` を実行
+* 再インストール： `opam reinstall macrodown` を実行
+* アンインストール： `opam uninstall macrodown` を実行
+
+###手動ビルド
+1. ocamlbuild，ocamlfind，Menhirをインストール
+2. このリポジトリをクローンし，`make` を実行
+3. バイナリ `macrodown` が `Macrodown/` 直下に生成される
+4. `make install` を実行し `/bin/macrodown` としてインストール
+
 ## 用法
 
-まずMacrodownのGitHubリポジトリのReleaseから実行ファイルをダウンロードします。
-もし自身でソースコードからコンパイルして実行ファイルを生成したいのであれば，
-`make`と`ocamlc`/`ocamlopt`をあらかじめインストールしておき，
-このリポジトリをクローンして`make`を実行してください。
-すると`macrodown.exe`または`macrodown`が`bin/`に生成されます。
+    macrodown <input files> -o <output file>
 
+で`<input files>`（入力ファイルをスペースで区切ったもの）から`<output file>`を出力します。例えばソースファイル `doc.mcrd` からマクロ集 `macros.mcrdh` を用いて `output.tex` を出力したい場合，次のようにします：
 
-Windowsならば`macrodown.exe`にパスを通し，
+    macrodown macros.mcrdh doc.mcrd -o output.tex
 
-    macrodown.exe <input files> -o <output file>
-
-と，UNIX系の環境ならば
-
-    ./macrodown <input files> -o <output file>
-
-とそれぞれ打つことで`<input files>`（入力ファイルをスペースで区切ったもの）から`<output file>`を出力します。
+注意として，`macros.mcrdh` は `doc.mcrd` よりも先に記述されていなければなりません。
 
 言語仕様は`doc/introduction.mcrd`に日本語で記述されています。

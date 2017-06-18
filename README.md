@@ -18,14 +18,15 @@ It enables you to write documents semantically markuped with flexible macros of 
 First, clone/download this repo
 
 ### Use OPAM
-* In repositry, run `opam pin add macrodown .`  
-* To reinstall, run `opam reinstsall macrodown`  
-* To uninstall, run `opam uninstall macrodown`.  
+* In repository, run `opam pin add macrodown`.
+* To reinstall, run `opam reinstall macrodown`.
+* To uninstall, run `opam uninstall macrodown`.
 
 ### Manual build
 1. Install ocamlbuild, ocamlfind, and Menhir.
 2. In repository, run `make`.
-3. `macrodown` should then be available under the diretory
+3. `macrodown` should then be available under the diretory.
+4. Run `make install` to install `macrodown` as `/bin/macrodown`.
 
 ### Download release from GitHub
 
@@ -44,4 +45,4 @@ the following command will work:
     macrodown macros.mcrdh doc.mcrd -o output.tex
 
 Note that `macros.mcrdh` should precede `doc.mcrd`.
-The current specification of Macrodown is written in Japanese at `doc/introduction.mcrd`.
+The current specification of Macrodown is written (currently only in Japanese) at `doc/introduction.mcrd`.
