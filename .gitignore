@@ -27,3 +27,4 @@ lexer_hand.ml
 *.png
 _build
 macrodown
+*.ttf
