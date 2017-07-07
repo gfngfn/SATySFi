@@ -14,12 +14,49 @@ type horz_fixed_atom =
 type horz_outer_atom =
   | OuterEmpty of skip_width * (skip_width -> float)
 
-type discretionary_id = int
+
+module DiscretionaryID
+: sig
+    type t
+    val initialize : unit -> unit
+    val fresh : unit -> t
+    val equal : t -> t -> bool
+    val beginning : t
+    val final : t
+  end
+= struct
+
+    type t = Beginning | Middle of int | Final
+
+    let current_id = ref 0
+
+    let beginning = Beginning
+
+    let final = Final
+
+    let initialize () =
+      begin current_id := 0 ; end
+
+    let fresh () =
+      begin
+        incr current_id ;
+          Middle(!current_id)
+      end
+
+    let equal did1 did2 =
+      match (did1, did2) with
+      | (Beginning, Beginning)   -> true
+      | (Middle(i1), Middle(i2)) -> i1 = i2
+      | (Final, Final)           -> true
+      | _                        -> false
+
+  end
+
 
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom
   | HorzOuterBoxAtom  of horz_outer_atom
-  | HorzDiscretionary of discretionary_id * horz_box * horz_box * horz_box
+  | HorzDiscretionary of DiscretionaryID.t * horz_box * horz_box * horz_box
 
 
 let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : (skip_width * skip_height * skip_depth) =
@@ -41,14 +78,14 @@ module WidthMap
     type t
     val empty : t
     val add_width_all : skip_width -> t -> t
-    val add : discretionary_id -> skip_width -> t -> t
-    val iter : (discretionary_id -> skip_width -> unit) -> t -> unit
+    val add : DiscretionaryID.t -> skip_width -> t -> t
+    val iter : (DiscretionaryID.t -> skip_width -> unit) -> t -> unit
   end
 = struct
 
     module DiscretionaryIDMap = Map.Make(
       struct
-        type t = discretionary_id
+        type t = DiscretionaryID.t
         let compare = compare
       end)
 
@@ -68,8 +105,10 @@ module WidthMap
 
 module LineBreakGraph = FlowGraph.Make(
   struct
-    type vertex = discretionary_id
+    type t = DiscretionaryID.t
     type weight = badness
+    let equal = DiscretionaryID.equal
+    let hash = Hashtbl.hash
   end)
 
 
@@ -116,9 +155,9 @@ let break_horz_box_list (hblst : horz_box list) =
         let wmapnew = wmap |> WidthMap.add_width_all wid in
           aux wmapnew tail
   in
-  let wmapinit = WidthMap.empty |> WidthMap.add 0 0.0 in (* temporary; 0 |-> 0.0 *)
+  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning 0.0 in (* temporary; 0.0 *)
   begin
-    LineBreakGraph.add_vertex gr 0 (* 0 : beginning of the paragraph *) ;
+    LineBreakGraph.add_vertex gr DiscretionaryID.beginning (* 0 : beginning of the paragraph *) ;
     aux wmapinit hblst
   end
 
