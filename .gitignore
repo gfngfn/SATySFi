@@ -5,6 +5,7 @@
 *.cmx
 *.o
 *.exe
+*.native
 *.html
 *.tex
 *.log
@@ -24,16 +25,5 @@ parser.mli
 parser.output
 lexer_hand.ml
 *.png
-crt2.o
-libadvapi32
-libgcc
-libkernel32
-libmingw32
-libmingwex
-libmoldname
-libmsvcrt
-libshell32
-libuser32
-libws2_32
 _build
 macrodown
