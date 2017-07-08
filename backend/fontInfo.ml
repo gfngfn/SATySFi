@@ -115,7 +115,14 @@ let get_width_of_word (fntabrv : font_abbrev) (uword : Uchar.t list) =
     chwidlst (* temporary *)
 
 
-let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) =
+type contour_element =
+  | OnCurve   of int * int
+  | Quadratic of int * int * int * int
+
+type contour = contour_element list
+
+
+let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int * int * int * int) =
   let gid = get_glyph_id dcdr uch in
   let gloc =
     match Otfm.loca dcdr gid with
@@ -123,11 +130,29 @@ let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) =
     | Ok(None)    -> raise (NoGlyph(uch))
     | Ok(Some(l)) -> l
   in
+  let (precntrlst, bbox) =
     match Otfm.glyf dcdr gloc with
-    | Error(e)                     -> raise (FontFormatBroken(e))
-    | Ok((`Composite(_), _))       -> raise (NoGlyph(uch)) (* temporary; does not deal with composite glyphs *)
-    | Ok((`Simple(cntrlst), bbox)) -> (cntrlst, bbox)
-
+    | Error(e)               -> raise (FontFormatBroken(e))
+    | Ok((`Composite(_), _)) -> raise (NoGlyph(uch)) (* temporary; does not deal with composite glyphs *)
+    | Ok((`Simple(pcl), bb)) -> (pcl, bb)
+  in
+  let transform_contour (precntr : (bool * int * int) list) : contour =
+    let (xfirst, yfirst) =
+      match precntr with
+      | (_, x, y) :: _ -> (x, y)
+      | [] -> assert false
+    in
+    let rec aux acc lst =
+    match lst with
+    | []                                                  -> List.rev acc
+    | (true, x, y) :: tail                                -> aux (OnCurve(x, y) :: acc) tail
+    | (false, x1, y1) :: (true, x, y) :: tail             -> aux (Quadratic(x1, y1, x, y) :: acc) tail
+    | (false, x1, y1) :: (((false, x2, y2) :: _) as tail) -> aux (Quadratic(x1, y1, (x1 + x2) / 2, (y1 + y2) / 2) :: acc) tail
+    | (false, x1, y1) :: []                               -> List.rev (Quadratic(x1, y1, xfirst, yfirst) :: acc)
+    in
+      aux [] precntr
+  in
+    (List.map transform_contour precntrlst, bbox)
 
 let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (cntrlst, (xmin, ymin, xmax, ymax)) = get_contour_list dcdr uch in
@@ -139,15 +164,21 @@ let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t
   let path_string_of_contour cntr =
     let isfirst = ref true in
     let lst =
-      cntr |> List.map (fun (oncurve, xpos, ypos) ->
-        let prefix =
-          if !isfirst then begin isfirst := false ; "M" end else "L"
-        in
-        let circ =
-          "<circle cx=\"" ^ (~$ (display_x xpos)) ^ "\" cy=\"" ^ (~$ (display_y ypos)) ^ "\" r=\"5\" fill=\"" ^
-            (if oncurve then "green" else "orange") ^ "\" />"
-        in
-          (prefix ^ (~$ (display_x xpos)) ^ "," ^ (~$ (display_y ypos)), circ)
+      cntr |> List.map (function
+        | OnCurve(xto, yto) ->
+            let prefix =
+              if !isfirst then begin isfirst := false ; "M" end else "L"
+            in
+            let circ =
+              "<circle cx=\"" ^ (~$ (display_x xto)) ^ "\" cy=\"" ^ (~$ (display_y yto)) ^ "\" r=\"5\" fill=\"green\" />"
+            in
+              (prefix ^ (~$ (display_x xto)) ^ "," ^ (~$ (display_y yto)), circ)
+        | Quadratic(x1, y1, xto, yto) ->
+            let circ =
+              "<circle cx=\"" ^ (~$ (display_x x1)) ^ "\" cy=\"" ^ (~$ (display_y y1)) ^ "\" r=\"5\" fill=\"orange\" />"
+                ^ "<circle cx=\"" ^ (~$ (display_x xto)) ^ "\" cy=\"" ^ (~$ (display_y yto)) ^ "\" r=\"5\" fill=\"green\" />"
+            in
+              ("Q" ^ (~$ (display_x x1)) ^ "," ^ (~$ (display_y y1)) ^ " " ^ (~$ (display_x xto)) ^ "," ^ (~$ (display_y yto)), circ)
       )
     in
     let strlst = List.map (fun (x, _) -> x) lst in
