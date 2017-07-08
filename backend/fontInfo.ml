@@ -12,24 +12,59 @@ exception FailToLoadFontFormatOwingToSize   of file_name
 exception FailToLoadFontFormatOwingToSystem of string
 
 
-module FontAbbrevHashTable = Hashtbl.Make(
-  struct
-    type t = font_abbrev
-    let equal = (=)
-    let hash = Hashtbl.hash
-  end)
+module FontAbbrevHashTable
+: sig
+    val add : font_abbrev -> file_name -> unit
+    val find_opt : font_abbrev -> file_name option
+  end
+= struct
 
-module FontFileNameHashTable = Hashtbl.Make(
-  struct
-    type t = file_name
-    let equal = (=)
-    let hash = Hashtbl.hash
-  end)
+    module Ht = Hashtbl.Make(
+      struct
+        type t = font_abbrev
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    let abbrev_to_file_name_hash_table : file_name Ht.t = Ht.create 32
+
+    let add = Ht.add abbrev_to_file_name_hash_table
+
+    let find_opt (abbrev : font_abbrev) =
+      try Some(Ht.find abbrev_to_file_name_hash_table abbrev) with
+      | Not_found -> None
+
+  end
+
+module FontFileNameHashTable
+: sig
+    val add : file_name -> Otfm.decoder -> unit
+    val find_opt : file_name -> Otfm.decoder option
+  end
+= struct
+
+    module Ht = Hashtbl.Make(
+      struct
+        type t = file_name
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    let file_name_to_decoder_hash_table : Otfm.decoder Ht.t = Ht.create 32
+
+    let add = Ht.add file_name_to_decoder_hash_table
+
+    let find_opt (flnmin : file_name) =
+      try Some(Ht.find file_name_to_decoder_hash_table flnmin) with
+      | Not_found -> None
+
+  end
 
 
-let font_abbrev_hash_table : file_name FontAbbrevHashTable.t = FontAbbrevHashTable.create 32
-
-let font_file_name_hash_table : Otfm.decoder FontFileNameHashTable.t = FontFileNameHashTable.create 32
+let initialize () =
+  List.iter (fun (abbrev, flnmin) -> FontAbbrevHashTable.add abbrev flnmin) [
+    ("Hlv", "HelveticaBlack.ttf");
+  ]
 
 
 let string_of_file (flnmin : file_name) : string =
@@ -56,22 +91,18 @@ let string_of_file (flnmin : file_name) : string =
 
 
 let get_decoder (fntabrv : font_abbrev) : Otfm.decoder =
-  let flnmin = 
-    try
-      FontAbbrevHashTable.find font_abbrev_hash_table fntabrv
-    with
-    | Not_found -> raise (InvalidFontAbbrev(fntabrv))
-  in
-    try
-      FontFileNameHashTable.find font_file_name_hash_table flnmin
-    with
-    | Not_found ->
-        let s = string_of_file flnmin in
-        let dcdr = Otfm.decoder (`String(s)) in
-        begin
-          FontFileNameHashTable.add font_file_name_hash_table flnmin dcdr ;
-          dcdr
-        end
+    match FontAbbrevHashTable.find_opt fntabrv with
+    | None         -> raise (InvalidFontAbbrev(fntabrv))
+    | Some(flnmin) ->
+        match FontFileNameHashTable.find_opt flnmin with
+        | Some(dcdr) -> dcdr
+        | None       ->
+            let s = string_of_file flnmin in
+            let dcdr = Otfm.decoder (`String(s)) in
+            begin
+              FontFileNameHashTable.add flnmin dcdr ;
+              dcdr
+            end
 
 
 let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
@@ -207,7 +238,7 @@ let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t
 
 
 let () =
-  FontAbbrevHashTable.add font_abbrev_hash_table "Hlv" "HelveticaBlack.ttf" ;
+  initialize () ;
 (*
   let testword = List.map Uchar.of_char ['O'; 'C'; 'a'; 'm'; 'l'] in
   let res = get_width_of_word "Hlv" testword in
