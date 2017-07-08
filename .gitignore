@@ -28,3 +28,4 @@ lexer_hand.ml
 _build
 macrodown
 *.ttf
+*.svg
