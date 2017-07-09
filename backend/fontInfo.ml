@@ -69,7 +69,7 @@ let initialize () =
 
 let string_of_file (flnmin : file_name) : string =
   try
-    let bufsize = 65536 in
+    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
     let buf : Buffer.t = Buffer.create bufsize in
     let byt : bytes = Bytes.create bufsize in
     let ic : in_channel = open_in_bin flnmin in
@@ -142,8 +142,7 @@ let get_uchar_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
 let get_width_of_word (fntabrv : font_abbrev) (uword : Uchar.t list) =
   let dcdr = get_decoder fntabrv in
   let chwidlst = List.map (fun uch -> get_uchar_width dcdr uch) uword in
-(* List.fold_left (+) 0 chwidlst *)
-    chwidlst (* temporary *)
+    List.fold_left (+) 0 chwidlst
 
 
 type contour_element =
@@ -184,6 +183,7 @@ let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int
       aux [] precntr
   in
     (List.map transform_contour precntrlst, bbox)
+
 
 let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (cntrlst, (xmin, ymin, xmax, ymax)) = get_contour_list dcdr uch in
@@ -237,6 +237,8 @@ let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t
     (String.concat "" lst, newpos)
 
 
+(* for test *)
+(*
 let () =
   initialize () ;
 (*
@@ -247,4 +249,4 @@ let () =
   let dcdr = get_decoder "Hlv" in
   let (paths, _) = svg_of_uchar (100, 100) dcdr (Uchar.of_char 'R') in
     print_endline paths
-
+*)

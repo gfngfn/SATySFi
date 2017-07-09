@@ -6,3 +6,6 @@ fontInfo.native: fontInfo.ml
 horzBox.native: horzBox.ml
 	$(OCBFLAGS) horzBox.native
 
+lineBreak.native: lineBreak.ml
+	$(OCBFLAGS) lineBreak.native
+
