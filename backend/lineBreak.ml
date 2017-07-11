@@ -122,7 +122,64 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let break_horz_box_list (hblst : horz_box list) =
+let paragraph_width = 50000 (* temporary; should be variable *)
+
+let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list =
+  let natural_width =
+    lhblst |> List.map (function
+      | LBHorzFixedBoxAtom(wid, _)      -> wid
+      | LBHorzOuterBoxAtom(wid, _)      -> wid
+      | LBHorzDiscretionary(_, _, _, _) -> assert false
+    ) |> List.fold_left (+) 0
+  in
+    if natural_width <= required_width then
+(*
+      let stretchable_width =
+        lhblst |> List.map (function
+          | LBHorzFixedBoxAtom(_, _)                             -> 0
+          | LBHorzOuterBoxAtom(_, OuterEmpty(_, _, stretchable)) -> stretchable
+        ) |> List.fold_left (+) 0
+      in
+      let ( @. ) = float_of_int in
+      let ratio = (@. stretchable) /. (@. (required_width - natural_width)) in
+        ...
+*)
+      [] (* temporary; should return the stretched box list *)
+    else
+      [] (* temporary; should return the shrunk box list *)
+  
+
+
+let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : evaled_vert_box list =
+  let rec aux (acclines : evaled_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
+    match lhblst with
+    | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
+        if List.mem dscrid path then
+          let line =
+            match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline
+          in
+          let acclinefresh =
+            match lhbopt2 with None -> [] | Some(lhb2) -> lhb2 :: []
+          in
+          let evhblst = determine_widths paragraph_width (List.rev line) in
+            aux (EvVertLine(evhblst) :: acclines) acclinefresh tail
+        else
+          let acclinenew =
+            match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline)
+          in
+            aux acclines acclinenew tail
+
+    | hb :: tail ->
+        aux acclines (hb :: accline) tail
+
+    | [] ->
+        let evhblst = determine_widths paragraph_width (List.rev accline) in
+          List.rev (EvVertLine(evhblst) :: acclines)
+  in
+    aux [] [] lhblst
+
+
+let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let get_badness_for_linebreaking (_ : skip_width) : badness = Badness(100) (* temporary *) in
 
@@ -181,26 +238,39 @@ let break_horz_box_list (hblst : horz_box list) =
         let wmapfinal = update_graph wmap dscrid 0 in
           (List.rev acc, wmapfinal)
   in
-  let indent_width = 1000 in (* temporary; should specify indent width (or make it variable) later *)
-  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning indent_width in
+  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning 0 in
   begin
     DiscretionaryID.initialize () ;
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
     let (lhblst, wmapfinal) = aux wmapinit [] hblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
-      lhblst (* temporary *)
-    (* TODO: will implement here how to break lines according to `wmap` *)
+      match pathopt with
+      | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
+          [EvVertLine([])] (* temporary *)
+      | Some(path) ->
+          break_into_lines path lhblst
   end
 
 
 (* for test *)
+let print_evaled_vert_box (EvVertLine(evhblst)) =
+  begin
+    Format.printf "@[(vert@ " ;
+    evhblst |> List.iter (function
+      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ %s@ :@ %d)@]@ " str wid
+      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %d)@]" wid
+    ) ;
+    Format.printf ")@]" ;
+  end
+
+
 let () =
   begin
     FontInfo.initialize () ;
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
     let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> abs (1000 - x))))), None, None) in
-    let _ =
+    let evvblst =
       break_horz_box_list [
         word "The";
         space;
@@ -210,5 +280,10 @@ let () =
         space;
         word "fox";
       ]
-    in ()
+    in
+    begin
+      Format.printf "--------@\n" ;
+      List.iter print_evaled_vert_box evvblst ;
+      Format.printf "@\n--------@\n" ;
+    end
   end

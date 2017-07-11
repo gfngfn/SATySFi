@@ -84,6 +84,17 @@ module Make (GraphScheme : SchemeType)
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
 
+      let rec backtrack (acc : vertex list) (vtx : vertex) =
+        let (_, _, lblref) =
+          try MainTable.find grph vtx with
+          | Not_found -> assert false
+        in
+          match !lblref with
+          | Infinite                   -> assert false
+          | Finite(_, None)            -> List.rev acc
+          | Finite(_, Some(vtxparent)) -> backtrack (vtxparent :: acc) vtxparent
+      in
+
       let hp : vertex Heap.t = Heap.create ~cmp:(compare_vertex grph) () in
 
       let rec aux () =
@@ -104,8 +115,9 @@ module Make (GraphScheme : SchemeType)
                 None
             | Finite(distP, _) ->
                 begin
-                  if equal_vertex vtxP vtxS then
-                    Some([]) (* temporary; should backtrack vertices and return the path *)
+                  if equal_vertex vtxP vtxT then
+                    let path = backtrack [] vtxT in 
+                    Some(path)
                   else
                     begin
                       dstblP |> DestinationTable.iter (fun vtx wgt ->
