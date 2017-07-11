@@ -19,9 +19,9 @@ type horz_fixed_atom =
   | FixedString of font_info * string
 
 type horz_outer_atom =
-  | OuterEmpty of skip_width * (skip_width -> badness)
+  | OuterEmpty of skip_width * (skip_width -> pure_badness)
 
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom
   | HorzOuterBoxAtom  of horz_outer_atom
-  | HorzDiscretionary of horz_box * horz_box * horz_box
+  | HorzDiscretionary of horz_box option * horz_box option * horz_box option

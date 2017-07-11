@@ -38,10 +38,10 @@ module DiscretionaryID
   end
 
 
-type horz_box_for_line_break =
+type lb_horz_box =
   | LBHorzFixedBoxAtom  of skip_width * horz_fixed_atom
   | LBHorzOuterBoxAtom  of skip_width * horz_outer_atom
-  | LBHorzDiscretionary of DiscretionaryID.t * horz_box_for_line_break * horz_box_for_line_break * horz_box_for_line_break
+  | LBHorzDiscretionary of DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
 let size_of_horz_fixed_atom (hfa : horz_fixed_atom) =
@@ -69,6 +69,12 @@ let get_natural_width (hb : horz_box) =
   | HorzDiscretionary(_, _, _) -> assert false
   | HorzFixedBoxAtom(hfa)      -> let wid = size_of_horz_fixed_atom hfa in (wid, LBHorzFixedBoxAtom(wid, hfa))
   | HorzOuterBoxAtom(hoa)      -> let wid = size_of_horz_outer_atom hoa in (wid, LBHorzOuterBoxAtom(wid, hoa))
+
+
+let get_natural_width_opt (hbopt : horz_box option) =
+  match hbopt with
+  | None     -> (0, None)
+  | Some(hb) -> let (wid, lhb) = get_natural_width hb in (wid, Some(lhb))
 
 
 module WidthMap
@@ -149,12 +155,12 @@ let break_horz_box_list (hblst : horz_box list) =
           end
   in
 
-  let rec aux (wmap : WidthMap.t) (acc : horz_box_for_line_break list) (hblst : horz_box list) =
+  let rec aux (wmap : WidthMap.t) (acc : lb_horz_box list) (hblst : horz_box list) =
     match hblst with
-    | HorzDiscretionary(hb0, hb1, hb2) :: tail -> 
-        let (wid0, lhb0) = get_natural_width hb0 in
-        let (wid1, lhb1) = get_natural_width hb1 in
-        let (wid2, lhb2) = get_natural_width hb2 in
+    | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail -> 
+        let (wid0, lhbopt0) = get_natural_width_opt hbopt0 in
+        let (wid1, lhbopt1) = get_natural_width_opt hbopt1 in
+        let (wid2, lhbopt2) = get_natural_width_opt hbopt2 in
         let dscrid = DiscretionaryID.fresh () in
         let wmapsub = update_graph wmap dscrid wid1 in
         let wmapnew =
@@ -163,7 +169,7 @@ let break_horz_box_list (hblst : horz_box list) =
           else
             wmapsub |> WidthMap.add_width_all wid0
         in
-          aux wmapnew (LBHorzDiscretionary(dscrid, lhb0, lhb1, lhb2) :: acc) tail
+          aux wmapnew (LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: acc) tail
 
     | hb :: tail ->
         let (wid, lhb) = get_natural_width hb in
@@ -193,9 +199,7 @@ let () =
     FontInfo.initialize () ;
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> Badness(abs (1000 - x))))),
-                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> TooLong))),
-                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> TooLong)))) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> abs (1000 - x))))), None, None) in
     let _ =
       break_horz_box_list [
         word "The";
