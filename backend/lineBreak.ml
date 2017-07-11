@@ -78,6 +78,7 @@ module WidthMap
     val add_width_all : skip_width -> t -> t
     val add : DiscretionaryID.t -> skip_width -> t -> t
     val iter : (DiscretionaryID.t -> skip_width -> unit) -> t -> unit
+    val remove : DiscretionaryID.t -> t -> t
   end
 = struct
 
@@ -98,13 +99,15 @@ module WidthMap
     let add_width_all (wid : skip_width) (wmap : t) : t =
       wmap |> DiscretionaryIDMap.map (fun dist -> dist + wid)
 
+    let remove = DiscretionaryIDMap.remove
+
   end
 
 
 module LineBreakGraph = FlowGraph.Make(
   struct
     type t = DiscretionaryID.t
-    type weight = badness
+    type weight = pure_badness
     let equal = DiscretionaryID.equal
     let hash = Hashtbl.hash
     let add = ( + )
@@ -115,13 +118,36 @@ module LineBreakGraph = FlowGraph.Make(
 
 let break_horz_box_list (hblst : horz_box list) =
 
+  let get_badness_for_linebreaking (_ : skip_width) : badness = Badness(100) (* temporary *) in
+
   let grph = LineBreakGraph.create () in
 
   let found_candidate = ref false in
 
-  let breakable (badns : badness) = badns < 10000 (* temporary *) in
+  let htomit : (DiscretionaryID.t, unit) Hashtbl.t = Hashtbl.create 32 in
 
-  let get_badness_for_linebreaking (_ : skip_width) : badness = 100 (* temporary *) in
+  let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widbreak : skip_width) : WidthMap.t =
+          begin
+            LineBreakGraph.add_vertex grph dscrid ;
+            found_candidate := false ;
+            Hashtbl.clear htomit ;
+            wmap |> WidthMap.iter (fun dscridX widX ->
+              let badns = get_badness_for_linebreaking (widX + widbreak) in
+                match badns with
+                | TooShort    -> ()
+                | TooLong     ->
+                    begin
+                      Hashtbl.add htomit dscridX () ;
+                    end
+                | Badness(pb) ->
+                    begin
+                      found_candidate := true ;
+                      LineBreakGraph.add_edge grph dscridX dscrid pb ;
+                    end
+            ) ;
+            Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap
+          end
+  in
 
   let rec aux (wmap : WidthMap.t) (acc : horz_box_for_line_break list) (hblst : horz_box list) =
     match hblst with
@@ -130,25 +156,12 @@ let break_horz_box_list (hblst : horz_box list) =
         let (wid1, lhb1) = get_natural_width hb1 in
         let (wid2, lhb2) = get_natural_width hb2 in
         let dscrid = DiscretionaryID.fresh () in
-        let () =
-          begin
-            LineBreakGraph.add_vertex grph dscrid ;
-            found_candidate := false ;
-            wmap |> WidthMap.iter (fun dscridX widX ->
-              let badns = get_badness_for_linebreaking (widX + wid1) in
-                if breakable badns then
-                begin
-                  found_candidate := true ;
-                  LineBreakGraph.add_edge grph dscridX dscrid badns ;
-                end
-            ) ;
-          end
-        in
+        let wmapsub = update_graph wmap dscrid wid1 in
         let wmapnew =
           if !found_candidate then
-            wmap |> WidthMap.add_width_all wid0 |> WidthMap.add dscrid wid2
+            wmapsub |> WidthMap.add_width_all wid0 |> WidthMap.add dscrid wid2
           else
-            wmap |> WidthMap.add_width_all wid0
+            wmapsub |> WidthMap.add_width_all wid0
         in
           aux wmapnew (LBHorzDiscretionary(dscrid, lhb0, lhb1, lhb2) :: acc) tail
 
@@ -159,19 +172,8 @@ let break_horz_box_list (hblst : horz_box list) =
 
     | [] ->
         let dscrid = DiscretionaryID.final in
-        begin
-          LineBreakGraph.add_vertex grph dscrid ;
-          found_candidate := false ;
-          wmap |> WidthMap.iter (fun dscridX widX ->
-            let badns = get_badness_for_linebreaking widX in
-              if breakable badns then
-              begin
-                found_candidate := true ;
-                LineBreakGraph.add_edge grph dscridX dscrid badns ;
-              end
-          ) ;
-          (List.rev acc, wmap)
-        end
+        let wmapfinal = update_graph wmap dscrid 0 in
+          (List.rev acc, wmapfinal)
   in
   let indent_width = 1000 in (* temporary; should specify indent width (or make it variable) later *)
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning indent_width in
@@ -191,9 +193,9 @@ let () =
     FontInfo.initialize () ;
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> abs (1000 - x)))),
-                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> 10000))),
-                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> 10000)))) in
+    let space = HorzDiscretionary(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> Badness(abs (1000 - x))))),
+                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> TooLong))),
+                                  HorzOuterBoxAtom(OuterEmpty(0, (fun x -> TooLong)))) in
     let _ =
       break_horz_box_list [
         word "The";

@@ -4,7 +4,12 @@ type skip_width  = skip_length
 type skip_height = skip_length
 type skip_depth  = skip_length
 
-type badness = int
+type pure_badness = int
+
+type badness =
+  | TooShort
+  | Badness of pure_badness
+  | TooLong
 
 type font_abbrev = string
 
