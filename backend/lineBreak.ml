@@ -108,6 +108,7 @@ module LineBreakGraph = FlowGraph.Make(
     let equal = DiscretionaryID.equal
     let hash = Hashtbl.hash
     let add = ( + )
+    let compare w1 w2 = w2 - w1
     let zero = 0
   end)
 
