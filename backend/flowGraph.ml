@@ -89,12 +89,18 @@ module Make (GraphScheme : SchemeType)
         match Heap.pop hp with
         | None       -> None
         | Some(vtxP) ->
-            let (dstblP, vherefP, lblrefP) =
-              try MainTable.find grph vtxP with
+            let (dstblP, vherefP, vheP, lblrefP) =
+              try
+                let (dstblP, vherefP, lblrefP) = MainTable.find grph vtxP in
+                  match !vherefP with
+                  | None       -> assert false
+                  | Some(vheP) -> (dstblP, vherefP, vheP, lblrefP)
+              with
               | Not_found -> assert false
             in
             match !lblrefP with
-            | Infinite         -> None  (* -- `vtxT` is unreachable -- *)
+            | Infinite         -> (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                None
             | Finite(distP, _) ->
                 begin
                   if equal_vertex vtxP vtxS then
@@ -116,6 +122,8 @@ module Make (GraphScheme : SchemeType)
                                       begin lblref := Finite(distfromP, Some(vtxP)) end
                                     else ()
                       ) ;
+                    Heap.remove hp vheP ;
+                    vherefP := None ;
                     aux ()
                     end
                 end
