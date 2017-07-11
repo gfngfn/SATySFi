@@ -115,13 +115,13 @@ module LineBreakGraph = FlowGraph.Make(
 
 let break_horz_box_list (hblst : horz_box list) =
 
-  let gr = LineBreakGraph.create () in
+  let grph = LineBreakGraph.create () in
 
   let found_candidate = ref false in
 
-  let breakable _ = true (* temporary *) in
+  let breakable (badns : badness) = badns < 10000 (* temporary *) in
 
-  let get_badness_for_linebreaking _ = 100 (* temporary *) in
+  let get_badness_for_linebreaking (_ : skip_width) : badness = 100 (* temporary *) in
 
   let rec aux (wmap : WidthMap.t) (acc : horz_box_for_line_break list) (hblst : horz_box list) =
     match hblst with
@@ -132,14 +132,14 @@ let break_horz_box_list (hblst : horz_box list) =
         let dscrid = DiscretionaryID.fresh () in
         let () =
           begin
-            LineBreakGraph.add_vertex gr dscrid ;
+            LineBreakGraph.add_vertex grph dscrid ;
             found_candidate := false ;
             wmap |> WidthMap.iter (fun dscridX widX ->
               let badns = get_badness_for_linebreaking (widX + wid1) in
                 if breakable badns then
                 begin
                   found_candidate := true ;
-                  LineBreakGraph.add_edge gr dscridX dscrid badns ;
+                  LineBreakGraph.add_edge grph dscridX dscrid badns ;
                 end
             ) ;
           end
@@ -160,14 +160,14 @@ let break_horz_box_list (hblst : horz_box list) =
     | [] ->
         let dscrid = DiscretionaryID.final in
         begin
-          LineBreakGraph.add_vertex gr dscrid ;
+          LineBreakGraph.add_vertex grph dscrid ;
           found_candidate := false ;
           wmap |> WidthMap.iter (fun dscridX widX ->
             let badns = get_badness_for_linebreaking widX in
               if breakable badns then
               begin
                 found_candidate := true ;
-                LineBreakGraph.add_edge gr dscridX dscrid badns ;
+                LineBreakGraph.add_edge grph dscridX dscrid badns ;
               end
           ) ;
           (List.rev acc, wmap)
@@ -177,8 +177,9 @@ let break_horz_box_list (hblst : horz_box list) =
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning indent_width in
   begin
     DiscretionaryID.initialize () ;
-    LineBreakGraph.add_vertex gr DiscretionaryID.beginning ;
+    LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
     let (lhblst, wmapfinal) = aux wmapinit [] hblst in
+    let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       lhblst (* temporary *)
     (* TODO: will implement here how to break lines according to `wmap` *)
   end

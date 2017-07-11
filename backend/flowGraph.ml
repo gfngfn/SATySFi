@@ -24,6 +24,7 @@ module Make (GraphScheme : SchemeType)
     val create : unit -> t
     val add_vertex : t -> vertex -> unit
     val add_edge : t -> vertex -> vertex -> weight -> unit
+    val shortest_path : t -> vertex -> vertex -> (vertex list) option
   end
 = struct
     module MainTable = Hashtbl.Make(GraphScheme)
