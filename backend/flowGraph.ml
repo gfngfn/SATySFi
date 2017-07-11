@@ -1,4 +1,8 @@
 
+let print_for_debug msg =
+  print_endline msg
+
+
 module Heap = Core.Heap.Removable
 
 
@@ -8,6 +12,7 @@ module type SchemeType =
     type weight
     val equal : t -> t -> bool
     val hash : t -> int
+    val show : t -> string (* for debug *)
     val add : weight -> weight -> weight
     val compare : weight -> weight -> int
     val zero : weight
@@ -68,6 +73,7 @@ module Make (GraphScheme : SchemeType)
         if not (MainTable.mem grph vtx2) then
           raise UndefinedDestinationVertex
         else
+        let () = print_for_debug ("add (" ^ (GraphScheme.show vtx1) ^ " ----> " ^ (GraphScheme.show vtx2) ^ ")") in (* for debug *)
           DestinationTable.add dstbl1 vtx2 wgt
 
 
@@ -111,8 +117,7 @@ module Make (GraphScheme : SchemeType)
               | Not_found -> assert false
             in
             match !lblrefP with
-            | Infinite         -> (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
-                None
+            | Infinite         -> None  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
             | Finite(distP, _) ->
                 begin
                   if equal_vertex vtxP vtxT then

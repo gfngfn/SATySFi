@@ -8,6 +8,7 @@ module DiscretionaryID
     val equal : t -> t -> bool
     val beginning : t
     val final : t
+    val show : t -> string
   end
 = struct
 
@@ -35,6 +36,12 @@ module DiscretionaryID
       | (Final, Final)           -> true
       | _                        -> false
 
+    let show did =
+      match did with
+      | Beginning -> "<beginning>"
+      | Final     -> "<final>"
+      | Middle(i) -> "<" ^ (string_of_int i) ^ ">"
+
   end
 
 
@@ -61,7 +68,7 @@ let size_of_horz_fixed_atom (hfa : horz_fixed_atom) =
 
 let size_of_horz_outer_atom (hoa : horz_outer_atom) =
   match hoa with
-  | OuterEmpty(wid, _) -> wid
+  | OuterEmpty(wid, _, _) -> wid
 
 
 let get_natural_width (hb : horz_box) =
@@ -116,13 +123,14 @@ module LineBreakGraph = FlowGraph.Make(
     type weight = pure_badness
     let equal = DiscretionaryID.equal
     let hash = Hashtbl.hash
+    let show = DiscretionaryID.show (* for debug *)
     let add = ( + )
     let compare w1 w2 = w2 - w1
     let zero = 0
   end)
 
 
-let paragraph_width = 50000 (* temporary; should be variable *)
+let paragraph_width = 10000 (* temporary; should be variable *)
 
 let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list =
   let natural_width =
@@ -132,21 +140,21 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
       | LBHorzDiscretionary(_, _, _, _) -> assert false
     ) |> List.fold_left (+) 0
   in
-    if natural_width <= required_width then
-(*
+    let is_short = (natural_width <= required_width) in
       let stretchable_width =
         lhblst |> List.map (function
-          | LBHorzFixedBoxAtom(_, _)                             -> 0
-          | LBHorzOuterBoxAtom(_, OuterEmpty(_, _, stretchable)) -> stretchable
+          | LBHorzFixedBoxAtom(_, _)                                    -> 0
+          | LBHorzOuterBoxAtom(_, OuterEmpty(_, widshrink, widstretch)) -> if is_short then widstretch else widshrink
+          | LBHorzDiscretionary(_, _, _, _)                             -> assert false
         ) |> List.fold_left (+) 0
       in
-      let ( @. ) = float_of_int in
-      let ratio = (@. stretchable) /. (@. (required_width - natural_width)) in
-        ...
-*)
-      [] (* temporary; should return the stretched box list *)
-    else
-      [] (* temporary; should return the shrunk box list *)
+      let ( ~. ) = float_of_int in
+      let ratio = (~. stretchable_width) /. (~. (required_width - natural_width)) in
+        lhblst |> List.map (function
+          | LBHorzFixedBoxAtom(wid, hfa)                                    -> EvHorzFixedBoxAtom(wid, hfa)
+          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, _, stretchable) as hoa)) -> EvHorzOuterBoxAtom(wid + (int_of_float ((~. stretchable) *. ratio)), hoa)
+          | LBHorzDiscretionary(_, _, _, _)                                 -> assert false
+        )
   
 
 
@@ -181,7 +189,14 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
-  let get_badness_for_linebreaking (_ : skip_width) : badness = Badness(100) (* temporary *) in
+  let get_badness_for_linebreaking (required_width : skip_width) (natural_width : skip_width) : badness =
+    let diff = required_width - natural_width in
+      match () with
+(*      | _ when diff > 100000 -> TooShort *)
+      | _ when diff < -1000 -> TooLong
+      | _                   -> Badness(abs diff)
+    (* temporary; should be like `determine_widths` *)
+  in
 
   let grph = LineBreakGraph.create () in
 
@@ -195,7 +210,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
             found_candidate := false ;
             Hashtbl.clear htomit ;
             wmap |> WidthMap.iter (fun dscridX widX ->
-              let badns = get_badness_for_linebreaking (widX + widbreak) in
+              let badns = get_badness_for_linebreaking paragraph_width (widX + widbreak) in
                 match badns with
                 | TooShort    -> ()
                 | TooLong     ->
@@ -269,16 +284,11 @@ let () =
     FontInfo.initialize () ;
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, (fun x -> abs (1000 - x))))), None, None) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, 500, 500))), None, None) in
     let evvblst =
       break_horz_box_list [
-        word "The";
-        space;
-        word "quick";
-        space;
-        word "brown";
-        space;
-        word "fox";
+        word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
+        word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog"
       ]
     in
     begin
