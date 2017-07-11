@@ -3,10 +3,12 @@ os:
   - linux
   - osx
 env:
-  - OCAML_VERSION=4.02
+  - OCAML_VERSION=4.04
 sudo: required
 install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
+  - opam install otfm
+  - opam install core
 script:
   - make all
