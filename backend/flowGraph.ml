@@ -107,6 +107,7 @@ module Make (GraphScheme : SchemeType)
         match Heap.pop hp with
         | None       -> None
         | Some(vtxP) ->
+            let () = print_for_debug ("see " ^ (GraphScheme.show vtxP)) in (* for debug *)
             let (dstblP, vherefP, vheP, lblrefP) =
               try
                 let (dstblP, vherefP, lblrefP) = MainTable.find grph vtxP in
@@ -117,15 +118,18 @@ module Make (GraphScheme : SchemeType)
               | Not_found -> assert false
             in
             match !lblrefP with
-            | Infinite         -> None  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+            | Infinite         ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                let () = print_for_debug "|--> infinite" in
+                  None
             | Finite(distP, _) ->
                 begin
                   if equal_vertex vtxP vtxT then
                     let path = backtrack [] vtxT in 
-                    Some(path)
+                      Some(path)
                   else
                     begin
                       dstblP |> DestinationTable.iter (fun vtx wgt ->
+                        let () = print_for_debug ("|--> " ^ (GraphScheme.show vtx)) in (*for debug *)
                         let (_, vheref, lblref) =
                           try MainTable.find grph vtx with Not_found -> assert false
                         in
@@ -147,7 +151,7 @@ module Make (GraphScheme : SchemeType)
                 end
       in
 
-      let (_, _, lblrefS) =
+      let (dstblS, _, lblrefS) =
         try MainTable.find grph vtxS with
         | Not_found -> raise UndefinedSourceVertex
       in
@@ -159,6 +163,13 @@ module Make (GraphScheme : SchemeType)
               if equal_vertex vtx vtxS then () else
                 let vhe = Heap.add_removable hp vtx in
                 begin vheref := Some(vhe) end
+            ) ;
+            dstblS |> MainTable.iter (fun vtx wgt ->
+              let (_, _, lblref) =
+                try MainTable.find grph vtx with
+                | Not_found -> assert false
+              in
+              begin lblref := Finite(wgt, Some(vtxS)) end
             ) ;
             (* -- main iteration -- *)
             aux ()

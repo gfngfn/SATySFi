@@ -1,3 +1,8 @@
+
+let print_for_debug msg =
+  print_endline msg
+
+
 open HorzBox
 
 module DiscretionaryID
@@ -144,17 +149,32 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
       let stretchable_width =
         lhblst |> List.map (function
           | LBHorzFixedBoxAtom(_, _)                                    -> 0
-          | LBHorzOuterBoxAtom(_, OuterEmpty(_, widshrink, widstretch)) -> if is_short then widstretch else widshrink
+          | LBHorzOuterBoxAtom(_, OuterEmpty(_, widshrink, widstretch)) -> if is_short then widstretch else widshrink  (* -- both are positive -- *)
           | LBHorzDiscretionary(_, _, _, _)                             -> assert false
         ) |> List.fold_left (+) 0
       in
       let ( ~. ) = float_of_int in
-      let ratio = (~. stretchable_width) /. (~. (required_width - natural_width)) in
+      let ratio = (~. (required_width - natural_width)) /. (~. stretchable_width) in
+      let evhblst =
         lhblst |> List.map (function
-          | LBHorzFixedBoxAtom(wid, hfa)                                    -> EvHorzFixedBoxAtom(wid, hfa)
-          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, _, stretchable) as hoa)) -> EvHorzOuterBoxAtom(wid + (int_of_float ((~. stretchable) *. ratio)), hoa)
-          | LBHorzDiscretionary(_, _, _, _)                                 -> assert false
+          | LBHorzFixedBoxAtom(wid, hfa)                                           -> EvHorzFixedBoxAtom(wid, hfa)
+          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) -> EvHorzOuterBoxAtom(wid + (int_of_float ((~. (if is_short then widstretch else widshrink)) *. ratio)), hoa)
+          | LBHorzDiscretionary(_, _, _, _)                                        -> assert false
         )
+      in
+      (* begin : for debug *)
+      let checksum =
+        evhblst |> List.map (function
+        | EvHorzFixedBoxAtom(wid, _) -> wid
+        | EvHorzOuterBoxAtom(wid, _) -> wid
+        ) |> List.fold_left (+) 0
+      in
+      let () = print_for_debug ("natural = " ^ (string_of_int natural_width)) in
+      let () = print_for_debug ("stretchable = " ^ (string_of_int stretchable_width)) in
+      let () = print_for_debug ("ratio = " ^ (string_of_float ratio)) in
+      let () = print_for_debug ("checksum = " ^ (string_of_int checksum)) in
+      (* end : for debug *)
+        evhblst
   
 
 
@@ -272,10 +292,10 @@ let print_evaled_vert_box (EvVertLine(evhblst)) =
   begin
     Format.printf "@[(vert@ " ;
     evhblst |> List.iter (function
-      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ %s@ :@ %d)@]@ " str wid
-      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %d)@]" wid
+      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %d)@]@ " str wid
+      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %d)@]@ " wid
     ) ;
-    Format.printf ")@]" ;
+    Format.printf ")@]@ " ;
   end
 
 
@@ -284,7 +304,7 @@ let () =
     FontInfo.initialize () ;
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, 500, 500))), None, None) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, 100, 500))), None, None) in
     let evvblst =
       break_horz_box_list [
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
