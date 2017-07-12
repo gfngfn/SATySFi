@@ -8,7 +8,7 @@ sudo: required
 install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
-  - opam install menhir
+  - opam install -y menhir
   - opam install -y otfm
   - opam install -y core
   - eval `opam config env`
