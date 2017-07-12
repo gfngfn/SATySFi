@@ -84,8 +84,8 @@ module Make (GraphScheme : SchemeType)
         | Not_found -> assert false
       in
         match (!lblref1, !lblref2) with
-        | (_, Infinite)                  -> 1
-        | (Infinite, _)                  -> -1
+        | (Infinite, _)                  -> 1
+        | (_, Infinite)                  -> -1
         | (Finite(d1, _), Finite(d2, _)) -> GraphScheme.compare d1 d2
 
 
@@ -171,18 +171,26 @@ module Make (GraphScheme : SchemeType)
           begin
             (* -- initialization -- *)
             lblrefS := Finite(weight_zero, None) ;
-            grph |> MainTable.iter (fun vtx (_, vheref, _) ->
-              if equal_vertex vtx vtxS then () else
-                let vhe = Heap.add_removable hp vtx in
-                begin vheref := Some(vhe) end
-            ) ;
-            dstblS |> MainTable.iter (fun vtx wgt ->
+            dstblS |> DestinationTable.iter (fun vtx wgt ->
               let (_, _, lblref) =
                 try MainTable.find grph vtx with
                 | Not_found -> assert false
               in
-              begin lblref := Finite(wgt, Some(vtxS)) end
+              let () = print_for_debug ("set " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight wgt)) in (* for debug *)
+              begin lblref := Finite(wgt, Some(vtxS)) ; end
             ) ;
+            grph |> MainTable.iter (fun vtx (_, vheref, _) ->
+              if equal_vertex vtx vtxS then () else
+                let vhe = Heap.add_removable hp vtx in
+                begin vheref := Some(vhe) ; end
+            ) ;
+            (* begin : for debug *)
+            grph |> MainTable.iter (fun vtx (_, _, lblref) ->
+              match !lblref with
+              | Infinite       -> print_for_debug ("initially " ^ (GraphScheme.show vtx) ^ " : infinite")
+              | Finite(wgt, _) -> print_for_debug ("initially " ^ (GraphScheme.show vtx) ^ " : " ^ (GraphScheme.show_weight wgt))
+            ) ;
+            (* end : for debug *)
             (* -- main iteration -- *)
             aux ()
           end

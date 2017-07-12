@@ -136,9 +136,9 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let paragraph_width = 10000 (* temporary; should be variable *)
+let paragraph_width = 50000 (* temporary; should be variable *)
 
-let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list =
+let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
   let natural_width =
     lhblst |> List.map (function
       | LBHorzFixedBoxAtom(wid, _)      -> wid
@@ -157,17 +157,32 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
       let ( ~. ) = float_of_int in
       let ( ~@ ) = int_of_float in
       let ratio =
-        if stretchable_width = 0 then  (* when no box is stretchable/shrinkable *)
+        if stretchable_width = 0 then  (* -- when no box is stretchable/shrinkable -- *)
           0.0
         else
           (~. (required_width - natural_width)) /. (~. stretchable_width)
       in
-      let evhblst =
+      let pairlst =
         lhblst |> List.map (function
-          | LBHorzFixedBoxAtom(wid, hfa)                                           -> EvHorzFixedBoxAtom(wid, hfa)
-          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) -> EvHorzOuterBoxAtom(wid + (~@ ((~. (if is_short then widstretch else widshrink)) *. ratio)), hoa)
           | LBHorzDiscretionary(_, _, _, _)                                        -> assert false
+          | LBHorzFixedBoxAtom(wid, hfa)                                           -> (EvHorzFixedBoxAtom(wid, hfa), 0)
+          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) ->
+              let widdiff =
+                if is_short then
+                  ~@ ((~. widstretch) *. ratio)
+                else
+                  ~@ ((~. widshrink) *. ratio)
+              in
+                (EvHorzOuterBoxAtom(wid + widdiff, hoa), abs (~@ (ratio *. 100.0)))
         )
+      in
+      let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
+      let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
+      let badns =
+        if is_short then
+          if totalpb >= 10000 then TooShort else Badness(totalpb)
+        else
+          if totalpb >= 10000 then TooLong else Badness(totalpb)
       in
       (* begin : for debug *)
       let checksum =
@@ -176,12 +191,12 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
         | EvHorzOuterBoxAtom(wid, _) -> wid
         ) |> List.fold_left (+) 0
       in
-      let () = print_for_debug ("natural = " ^ (string_of_int natural_width)) in
-      let () = print_for_debug ("stretchable = " ^ (string_of_int stretchable_width)) in
-      let () = print_for_debug ("ratio = " ^ (string_of_float ratio)) in
-      let () = print_for_debug ("checksum = " ^ (string_of_int checksum)) in
+      let () = print_for_debug ("natural = " ^ (string_of_int natural_width) ^ ", " ^
+                                "stretchable = " ^ (string_of_int stretchable_width) ^ ", " ^
+                                "ratio = " ^ (string_of_float ratio) ^ ", " ^
+                                "checksum = " ^ (string_of_int checksum)) in
       (* end : for debug *)
-        evhblst
+        (evhblst, badns)
   
 
 
@@ -196,7 +211,7 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
           let acclinefresh =
             match lhbopt2 with None -> [] | Some(lhb2) -> lhb2 :: []
           in
-          let evhblst = determine_widths paragraph_width (List.rev line) in
+          let (evhblst, _) = determine_widths paragraph_width (List.rev line) in
             aux (EvVertLine(evhblst) :: acclines) acclinefresh tail
         else
           let acclinenew =
@@ -208,7 +223,7 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
         aux acclines (hb :: accline) tail
 
     | [] ->
-        let evhblst = determine_widths paragraph_width (List.rev accline) in
+        let (evhblst, _) = determine_widths paragraph_width (List.rev accline) in
           List.rev (EvVertLine(evhblst) :: acclines)
   in
     aux [] [] lhblst
@@ -216,11 +231,11 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
-  let get_badness_for_linebreaking (required_width : skip_width) (natural_width : skip_width) : badness =
+  let get_badness_for_line_breaking (required_width : skip_width) (natural_width : skip_width) : badness =
     let diff = required_width - natural_width in
       match () with
-(*      | _ when diff > 100000 -> TooShort *)
-      | _ when diff < -1000 -> TooLong
+(*      | _ when diff > 5000  -> TooShort *)
+      | _ when diff < -5000 -> TooLong
       | _                   -> Badness(abs diff)
     (* temporary; should be like `determine_widths` *)
   in
@@ -231,13 +246,13 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let htomit : (DiscretionaryID.t, unit) Hashtbl.t = Hashtbl.create 32 in
 
-  let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widbreak : skip_width) : WidthMap.t =
+  let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widbreak : skip_width) : bool * WidthMap.t =
           begin
             LineBreakGraph.add_vertex grph dscrid ;
             found_candidate := false ;
             Hashtbl.clear htomit ;
             wmap |> WidthMap.iter (fun dscridX widX ->
-              let badns = get_badness_for_linebreaking paragraph_width (widX + widbreak) in
+              let badns = get_badness_for_line_breaking paragraph_width (widX + widbreak) in
                 match badns with
                 | TooShort    -> ()
                 | TooLong     ->
@@ -250,20 +265,20 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
                       LineBreakGraph.add_edge grph dscridX dscrid pb ;
                     end
             ) ;
-            Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap
+            (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
           end
   in
 
   let rec aux (wmap : WidthMap.t) (acc : lb_horz_box list) (hblst : horz_box list) =
     match hblst with
-    | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail -> 
+    | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail ->
         let (wid0, lhbopt0) = get_natural_width_opt hbopt0 in
         let (wid1, lhbopt1) = get_natural_width_opt hbopt1 in
         let (wid2, lhbopt2) = get_natural_width_opt hbopt2 in
         let dscrid = DiscretionaryID.fresh () in
-        let wmapsub = update_graph wmap dscrid wid1 in
+        let (found, wmapsub) = update_graph wmap dscrid wid1 in
         let wmapnew =
-          if !found_candidate then
+          if found then
             wmapsub |> WidthMap.add_width_all wid0 |> WidthMap.add dscrid wid2
           else
             wmapsub |> WidthMap.add_width_all wid0
@@ -277,7 +292,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
     | [] ->
         let dscrid = DiscretionaryID.final in
-        let wmapfinal = update_graph wmap dscrid 0 in
+        let (_, wmapfinal) = update_graph wmap dscrid 0 in
           (List.rev acc, wmapfinal)
   in
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning 0 in
@@ -315,9 +330,14 @@ let () =
     let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
     let evvblst =
       break_horz_box_list [
+        word "hyphen"; space;
+        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "discre"; soft_hyphen; word "tionary"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
         word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";
+        space;
+        word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
+        word "needs"; space; word "priceless"; space; word "fixing.";
       ]
     in
     begin
