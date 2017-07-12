@@ -10,5 +10,6 @@ install:
   - bash -ex .travis-ocaml.sh
   - opam install -y otfm
   - opam install -y core
+  - eval `opam config env`
 script:
   - make all
