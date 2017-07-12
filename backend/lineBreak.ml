@@ -129,8 +129,9 @@ module LineBreakGraph = FlowGraph.Make(
     let equal = DiscretionaryID.equal
     let hash = Hashtbl.hash
     let show = DiscretionaryID.show (* for debug *)
+    let show_weight = string_of_int
     let add = ( + )
-    let compare w1 w2 = w2 - w1
+    let compare w1 w2 = w1 - w2
     let zero = 0
   end)
 
@@ -154,11 +155,17 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
         ) |> List.fold_left (+) 0
       in
       let ( ~. ) = float_of_int in
-      let ratio = (~. (required_width - natural_width)) /. (~. stretchable_width) in
+      let ( ~@ ) = int_of_float in
+      let ratio =
+        if stretchable_width = 0 then  (* when no box is stretchable/shrinkable *)
+          0.0
+        else
+          (~. (required_width - natural_width)) /. (~. stretchable_width)
+      in
       let evhblst =
         lhblst |> List.map (function
           | LBHorzFixedBoxAtom(wid, hfa)                                           -> EvHorzFixedBoxAtom(wid, hfa)
-          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) -> EvHorzOuterBoxAtom(wid + (int_of_float ((~. (if is_short then widstretch else widshrink)) *. ratio)), hoa)
+          | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) -> EvHorzOuterBoxAtom(wid + (~@ ((~. (if is_short then widstretch else widshrink)) *. ratio)), hoa)
           | LBHorzDiscretionary(_, _, _, _)                                        -> assert false
         )
       in
@@ -305,10 +312,12 @@ let () =
     let hlv = ("Hlv", 32) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
     let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, 100, 500))), None, None) in
+    let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
     let evvblst =
       break_horz_box_list [
+        word "discre"; soft_hyphen; word "tionary"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
-        word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog"
+        word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";
       ]
     in
     begin

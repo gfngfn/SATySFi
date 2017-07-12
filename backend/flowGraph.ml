@@ -13,6 +13,7 @@ module type SchemeType =
     val equal : t -> t -> bool
     val hash : t -> int
     val show : t -> string (* for debug *)
+    val show_weight : weight -> string (* for debug *)
     val add : weight -> weight -> weight
     val compare : weight -> weight -> int
     val zero : weight
@@ -73,7 +74,7 @@ module Make (GraphScheme : SchemeType)
         if not (MainTable.mem grph vtx2) then
           raise UndefinedDestinationVertex
         else
-        let () = print_for_debug ("add (" ^ (GraphScheme.show vtx1) ^ " ----> " ^ (GraphScheme.show vtx2) ^ ")") in (* for debug *)
+        let () = print_for_debug ("add (" ^ (GraphScheme.show vtx1) ^ " ----> " ^ (GraphScheme.show vtx2) ^ ") : " ^ (GraphScheme.show_weight wgt)) in (* for debug *)
           DestinationTable.add dstbl1 vtx2 wgt
 
 
@@ -108,28 +109,28 @@ module Make (GraphScheme : SchemeType)
         | None       -> None
         | Some(vtxP) ->
             let () = print_for_debug ("see " ^ (GraphScheme.show vtxP)) in (* for debug *)
-            let (dstblP, vherefP, vheP, lblrefP) =
-              try
-                let (dstblP, vherefP, lblrefP) = MainTable.find grph vtxP in
-                  match !vherefP with
-                  | None       -> assert false
-                  | Some(vheP) -> (dstblP, vherefP, vheP, lblrefP)
-              with
-              | Not_found -> assert false
-            in
-            match !lblrefP with
-            | Infinite         ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
-                let () = print_for_debug "|--> infinite" in
-                  None
-            | Finite(distP, _) ->
-                begin
-                  if equal_vertex vtxP vtxT then
-                    let path = backtrack [] vtxT in 
-                      Some(path)
-                  else
+              if equal_vertex vtxP vtxT then
+                let path = backtrack [] vtxT in 
+                  Some(path)
+              else
+                let (dstblP, vherefP, vheP, lblrefP) =
+                  try
+                    let (dstblP, vherefP, lblrefP) = MainTable.find grph vtxP in
+                      match !vherefP with
+                      | None       -> assert false
+                      | Some(vheP) -> (dstblP, vherefP, vheP, lblrefP)
+                  with
+                  | Not_found -> assert false
+                in
+                match !lblrefP with
+                | Infinite         ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                    let () = print_for_debug "| infinite" in (* for debug *)
+                      None
+                | Finite(distP, _) ->
+                    let () = print_for_debug ("| " ^ (GraphScheme.show_weight distP)) in (* for debug *)
                     begin
                       dstblP |> DestinationTable.iter (fun vtx wgt ->
-                        let () = print_for_debug ("|--> " ^ (GraphScheme.show vtx)) in (*for debug *)
+                        let () = print_for_debug ("|--> " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight wgt)) in (*for debug *)
                         let (_, vheref, lblref) =
                           try MainTable.find grph vtx with Not_found -> assert false
                         in
@@ -137,18 +138,29 @@ module Make (GraphScheme : SchemeType)
                           | None      -> ()  (* -- when `vtx` is not a member of `hp`; equivalent to `Heap.mem ?equal:equal_vertex hp vtx` -- *)
                           | Some(vhe) ->
                               match !lblref with
-                              | Infinite        -> begin lblref := Finite(distP +@ wgt, Some(vtxP)) end
+                              | Infinite        ->
+                                  let distfromP = distP +@ wgt in
+                                  begin
+                                    lblref := Finite(distP +@ wgt, Some(vtxP)) ;
+                                    print_for_debug ("  update " ^ (GraphScheme.show vtx) ^ " infinite -> " ^ (GraphScheme.show_weight distfromP)) ;
+                                    let vhenew = Heap.update hp vhe vtx in
+                                    vheref := Some(vhenew) ;
+                                  end
                               | Finite(dist, _) ->
                                   let distfromP = distP +@ wgt in
                                     if distfromP <@ dist then
-                                      begin lblref := Finite(distfromP, Some(vtxP)) end
+                                      begin
+                                        lblref := Finite(distfromP, Some(vtxP)) ;
+                                        print_for_debug ("  update " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight dist) ^ " -> " ^ (GraphScheme.show_weight distfromP)) ;
+                                        let vhenew = Heap.update hp vhe vtx in
+                                        vheref := Some(vhenew) ;
+                                      end
                                     else ()
                       ) ;
-                    Heap.remove hp vheP ;
-                    vherefP := None ;
-                    aux ()
+                      Heap.remove hp vheP ;
+                      vherefP := None ;
+                      aux ()
                     end
-                end
       in
 
       let (dstblS, _, lblrefS) =
