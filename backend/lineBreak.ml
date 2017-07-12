@@ -76,17 +76,27 @@ let size_of_horz_outer_atom (hoa : horz_outer_atom) =
   | OuterEmpty(wid, _, _) -> wid
 
 
-let get_natural_width (hb : horz_box) =
-  match hb with
+let convert_box_for_line_breaking = function
   | HorzDiscretionary(_, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)      -> let wid = size_of_horz_fixed_atom hfa in (wid, LBHorzFixedBoxAtom(wid, hfa))
-  | HorzOuterBoxAtom(hoa)      -> let wid = size_of_horz_outer_atom hoa in (wid, LBHorzOuterBoxAtom(wid, hoa))
+  | HorzFixedBoxAtom(hfa)      -> let wid = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(wid, hfa)
+  | HorzOuterBoxAtom(hoa)      -> let wid = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(wid, hoa)
 
 
-let get_natural_width_opt (hbopt : horz_box option) =
+let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
   match hbopt with
-  | None     -> (0, None)
-  | Some(hb) -> let (wid, lhb) = get_natural_width hb in (wid, Some(lhb))
+  | None     -> None
+  | Some(hb) -> Some(convert_box_for_line_breaking hb)
+
+
+let get_natural_width = function
+  | LBHorzDiscretionary(_, _, _, _) -> assert false
+  | LBHorzFixedBoxAtom(wid, _)      -> wid
+  | LBHorzOuterBoxAtom(wid, _)      -> wid
+
+
+let get_natural_width_opt = function
+  | None      -> 0
+  | Some(lhb) -> get_natural_width lhb
 
 
 module WidthMap
@@ -205,18 +215,12 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
     match lhblst with
     | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         if List.mem dscrid path then
-          let line =
-            match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline
-          in
-          let acclinefresh =
-            match lhbopt2 with None -> [] | Some(lhb2) -> lhb2 :: []
-          in
+          let line         = match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline in
+          let acclinefresh = match lhbopt2 with None -> [] | Some(lhb2) -> lhb2 :: [] in
           let (evhblst, _) = determine_widths paragraph_width (List.rev line) in
             aux (EvVertLine(evhblst) :: acclines) acclinefresh tail
         else
-          let acclinenew =
-            match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline)
-          in
+          let acclinenew   = match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline) in
             aux acclines acclinenew tail
 
     | hb :: tail ->
@@ -242,40 +246,57 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let grph = LineBreakGraph.create () in
 
-  let found_candidate = ref false in
-
   let htomit : (DiscretionaryID.t, unit) Hashtbl.t = Hashtbl.create 32 in
 
   let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widbreak : skip_width) : bool * WidthMap.t =
-          begin
-            LineBreakGraph.add_vertex grph dscrid ;
-            found_candidate := false ;
-            Hashtbl.clear htomit ;
-            wmap |> WidthMap.iter (fun dscridX widX ->
-              let badns = get_badness_for_line_breaking paragraph_width (widX + widbreak) in
-                match badns with
-                | TooShort    -> ()
-                | TooLong     ->
-                    begin
-                      Hashtbl.add htomit dscridX () ;
-                    end
-                | Badness(pb) ->
-                    begin
-                      found_candidate := true ;
-                      LineBreakGraph.add_edge grph dscridX dscrid pb ;
-                    end
-            ) ;
-            (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
-          end
+    let found_candidate = ref false in
+      begin
+        LineBreakGraph.add_vertex grph dscrid ;
+        found_candidate := false ;
+        Hashtbl.clear htomit ;
+        wmap |> WidthMap.iter (fun dscridX widX ->
+          let badns = get_badness_for_line_breaking paragraph_width (widX + widbreak) in
+            match badns with
+            | TooShort    -> ()
+            | TooLong     ->
+                begin
+                  Hashtbl.add htomit dscridX () ;
+                end
+            | Badness(pb) ->
+                begin
+                  found_candidate := true ;
+                  LineBreakGraph.add_edge grph dscridX dscrid pb ;
+                end
+        ) ;
+        (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
+      end
   in
 
-  let rec aux (wmap : WidthMap.t) (acc : lb_horz_box list) (hblst : horz_box list) =
-    match hblst with
-    | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail ->
-        let (wid0, lhbopt0) = get_natural_width_opt hbopt0 in
-        let (wid1, lhbopt1) = get_natural_width_opt hbopt1 in
-        let (wid2, lhbopt2) = get_natural_width_opt hbopt2 in
-        let dscrid = DiscretionaryID.fresh () in
+  let convert_for_line_breaking (hblst : horz_box list) : lb_horz_box list =
+    let rec aux acc hblst =
+      match hblst with
+      | [] -> List.rev acc
+
+      | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail ->
+          let lhbopt0 = convert_box_for_line_breaking_opt hbopt0 in
+          let lhbopt1 = convert_box_for_line_breaking_opt hbopt1 in
+          let lhbopt2 = convert_box_for_line_breaking_opt hbopt2 in
+          let dscrid = DiscretionaryID.fresh () in
+            aux (LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: acc) tail
+
+      | hb :: tail ->
+          let lhb = convert_box_for_line_breaking hb in
+            aux (lhb :: acc) tail
+    in
+      aux [] hblst
+  in
+
+  let rec aux (wmap : WidthMap.t) (lhblst : lb_horz_box list) =
+    match lhblst with
+    | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
+        let wid0 = get_natural_width_opt lhbopt0 in
+        let wid1 = get_natural_width_opt lhbopt1 in
+        let wid2 = get_natural_width_opt lhbopt2 in
         let (found, wmapsub) = update_graph wmap dscrid wid1 in
         let wmapnew =
           if found then
@@ -283,23 +304,24 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
           else
             wmapsub |> WidthMap.add_width_all wid0
         in
-          aux wmapnew (LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: acc) tail
+          aux wmapnew tail
 
     | hb :: tail ->
-        let (wid, lhb) = get_natural_width hb in
+        let wid = get_natural_width hb in
         let wmapnew = wmap |> WidthMap.add_width_all wid in
-          aux wmapnew (lhb :: acc) tail
+          aux wmapnew tail
 
     | [] ->
         let dscrid = DiscretionaryID.final in
         let (_, wmapfinal) = update_graph wmap dscrid 0 in
-          (List.rev acc, wmapfinal)
+          wmapfinal
   in
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning 0 in
   begin
     DiscretionaryID.initialize () ;
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
-    let (lhblst, wmapfinal) = aux wmapinit [] hblst in
+    let lhblst = convert_for_line_breaking hblst in
+    let wmapfinal = aux wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
