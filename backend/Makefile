@@ -1,4 +1,4 @@
-OCBFLAGS = ocamlbuild -use-ocamlfind -pkgs "core,otfm" -tag thread
+OCBFLAGS = ocamlbuild -use-ocamlfind -pkgs "core,otfm,camlpdf" -tag thread
 
 fontInfo.native: fontInfo.ml
 	$(OCBFLAGS) fontInfo.native
@@ -6,6 +6,6 @@ fontInfo.native: fontInfo.ml
 horzBox.native: horzBox.ml
 	$(OCBFLAGS) horzBox.native
 
-lineBreak.native: lineBreak.ml flowGraph.ml horzBox.ml
+lineBreak.native: lineBreak.ml flowGraph.ml horzBox.ml handlePdf.ml
 	$(OCBFLAGS) lineBreak.native
 

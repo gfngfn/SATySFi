@@ -151,7 +151,7 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let paragraph_width = SkipLength.of_pdf_point 800.0 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 400.0 (* temporary; should be variable *)
 
 let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
   let natural_width =
@@ -349,9 +349,9 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let hlv = ("Hlv", ~% 32.) in
+    let hlv = ("Hlv", ~% 16.) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 32., ~% 3.2, ~% 16.))), None, None) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 3.2, ~% 8.))), None, None) in
     let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
     let evvblst =
       break_horz_box_list [
@@ -369,5 +369,6 @@ let () =
       Format.printf "--------@\n" ;
       List.iter print_evaled_vert_box evvblst ;
       Format.printf "@\n--------@\n" ;
+      HandlePdf.write_vert_lines evvblst ;
     end
   end
