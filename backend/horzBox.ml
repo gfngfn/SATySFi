@@ -48,6 +48,13 @@ type skip_width  = SkipLength.t
 type skip_height = SkipLength.t
 type skip_depth  = SkipLength.t
 
+type skip_width_info = {
+  naturalWidth:     skip_width;
+  shrinkableWidth:  skip_width;
+  stretchableWidth: skip_width;
+  numberOfFils:     int;
+}
+
 type pure_badness = int
 
 type badness =
@@ -64,6 +71,7 @@ type horz_fixed_atom =
 
 type horz_outer_atom =
   | OuterEmpty of skip_width * skip_width * skip_width
+  | OuterFil
 
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom

@@ -1,13 +1,12 @@
 open HorzBox
 
-(*
-let font =
-  Pdf.Dictionary [
-    ("/Type", Pdf.Name "/Font");
-    ("/Subtype", Pdf.Name "/Type1");
-    ("/BaseFont", Pdf.Name "/Times-Italic");
-  ]
-*)
+let op_cm (xdiff, ydiff) = Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xdiff, SkipLength.to_pdf_point ydiff)])
+let op_Tm_translate (xpos, ypos) = Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)])
+let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
+let op_Tj str = Pdfops.Op_Tj(str)
+let op_BT = Pdfops.Op_BT
+let op_ET = Pdfops.Op_ET
+
 
 let write_vert_lines (evvblst : evaled_vert_box list) : unit =
   let left_margin = SkipLength.of_pdf_point 50. in
@@ -21,9 +20,9 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
             | EvHorzFixedBoxAtom(wid, FixedString((fntabrv, size), word)) ->
                 let tag = FontInfo.get_tag fntabrv in
                   (wid, [
-                    Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)]);
-                    Pdfops.Op_Tf(tag, SkipLength.to_pdf_point size);
-                    Pdfops.Op_Tj(word);
+                    op_Tm_translate (xpos, ypos);
+                    op_Tf tag size;
+                    op_Tj word;
                   ])
             | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
           in
@@ -35,7 +34,7 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
     ) ((left_margin, top_margin), [])
   in
 
-  let oplst = Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (0., 0.)]) :: Pdfops.Op_BT :: (List.rev (Pdfops.Op_ET :: opaccend)) in
+  let oplst = op_cm (SkipLength.zero, SkipLength.zero) :: op_BT :: (List.rev (op_ET :: opaccend)) in
 
   let page =
     {(Pdfpage.blankpage Pdfpaper.a4) with
