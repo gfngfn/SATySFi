@@ -1,5 +1,5 @@
-
 open Core.Result
+open HorzBox
 
 
 type font_abbrev = string
@@ -135,14 +135,15 @@ let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
     | Ok(Some((adv, lsb))) -> (adv, lsb)
 
 
-let get_uchar_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
+let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
 
 
-let get_width_of_word (fntabrv : font_abbrev) (uword : Uchar.t list) =
+let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (uword : Uchar.t list) : SkipLength.t =
   let dcdr = get_decoder fntabrv in
-  let chwidlst = List.map (fun uch -> get_uchar_width dcdr uch) uword in
-    List.fold_left (+) 0 chwidlst
+  let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
+  let awtotal = List.fold_left (+) 0 chwidlst in
+    (fntsize *% ((float_of_int awtotal) /. 1000.))
 
 
 type contour_element =

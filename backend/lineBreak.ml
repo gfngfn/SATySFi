@@ -2,6 +2,9 @@
 let print_for_debug msg =
   print_endline msg
 
+let ( ~. ) = float_of_int
+let ( ~@ ) = int_of_float
+
 
 open HorzBox
 
@@ -56,7 +59,7 @@ type lb_horz_box =
   | LBHorzDiscretionary of DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
-let size_of_horz_fixed_atom (hfa : horz_fixed_atom) =
+let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : SkipLength.t * SkipLength.t * SkipLength.t =
   let uchar_list_of_string str =
     let rec aux acc i =
       if i < 0 then List.rev acc else
@@ -67,19 +70,19 @@ let size_of_horz_fixed_atom (hfa : horz_fixed_atom) =
     match hfa with
     | FixedString((fntabrv, size), str) ->
         let uchlst = uchar_list_of_string str in
-        let wid = FontInfo.get_width_of_word fntabrv uchlst in
-          wid (* temporary; should get height and depth *)
+        let wid = FontInfo.get_width_of_word fntabrv size uchlst in
+          (wid, SkipLength.zero, SkipLength.zero) (* temporary; should get height and depth *)
 
 
-let size_of_horz_outer_atom (hoa : horz_outer_atom) =
+let size_of_horz_outer_atom (hoa : horz_outer_atom) : SkipLength.t * SkipLength.t * SkipLength.t =
   match hoa with
-  | OuterEmpty(wid, _, _) -> wid
+  | OuterEmpty(wid, widshrink, widstretch) -> (wid, widshrink, widstretch)
 
 
 let convert_box_for_line_breaking = function
   | HorzDiscretionary(_, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)      -> let wid = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(wid, hfa)
-  | HorzOuterBoxAtom(hoa)      -> let wid = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(wid, hoa)
+  | HorzFixedBoxAtom(hfa)      -> let (wid, _, _) = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(wid, hfa)
+  | HorzOuterBoxAtom(hoa)      -> let (wid, _, _) = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(wid, hoa)
 
 
 let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
@@ -95,7 +98,7 @@ let get_natural_width = function
 
 
 let get_natural_width_opt = function
-  | None      -> 0
+  | None      -> SkipLength.zero
   | Some(lhb) -> get_natural_width lhb
 
 
@@ -125,7 +128,7 @@ module WidthMap
     let iter = DiscretionaryIDMap.iter
 
     let add_width_all (wid : skip_width) (wmap : t) : t =
-      wmap |> DiscretionaryIDMap.map (fun dist -> dist + wid)
+      wmap |> DiscretionaryIDMap.map (fun dist -> dist +% wid)
 
     let remove = DiscretionaryIDMap.remove
 
@@ -143,12 +146,12 @@ module LineBreakGraph = FlowGraph.Make(
     type t = pure_badness
     let show = string_of_int
     let add = ( + )
-    let compare w1 w2 = w1 - w2
+    let compare b1 b2 = b1 - b2
     let zero = 0
   end)
 
 
-let paragraph_width = 50000 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 800.0 (* temporary; should be variable *)
 
 let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
   let natural_width =
@@ -156,23 +159,21 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
       | LBHorzFixedBoxAtom(wid, _)      -> wid
       | LBHorzOuterBoxAtom(wid, _)      -> wid
       | LBHorzDiscretionary(_, _, _, _) -> assert false
-    ) |> List.fold_left (+) 0
+    ) |> List.fold_left (+%) SkipLength.zero
   in
     let is_short = (natural_width <= required_width) in
       let stretchable_width =
         lhblst |> List.map (function
-          | LBHorzFixedBoxAtom(_, _)                                    -> 0
+          | LBHorzFixedBoxAtom(_, _)                                    -> SkipLength.zero
           | LBHorzOuterBoxAtom(_, OuterEmpty(_, widshrink, widstretch)) -> if is_short then widstretch else widshrink  (* -- both are positive -- *)
           | LBHorzDiscretionary(_, _, _, _)                             -> assert false
-        ) |> List.fold_left (+) 0
+        ) |> List.fold_left ( +% ) SkipLength.zero
       in
-      let ( ~. ) = float_of_int in
-      let ( ~@ ) = int_of_float in
       let ratio =
-        if stretchable_width = 0 then  (* -- when no box is stretchable/shrinkable -- *)
+        if SkipLength.is_nearly_zero stretchable_width then  (* -- when no box is stretchable/shrinkable -- *)
           0.0
         else
-          (~. (required_width - natural_width)) /. (~. stretchable_width)
+          (required_width -% natural_width) /% stretchable_width
       in
       let pairlst =
         lhblst |> List.map (function
@@ -181,11 +182,11 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
           | LBHorzOuterBoxAtom(wid, (OuterEmpty(_, widshrink, widstretch) as hoa)) ->
               let widdiff =
                 if is_short then
-                  ~@ ((~. widstretch) *. ratio)
+                  widstretch *% ratio
                 else
-                  ~@ ((~. widshrink) *. ratio)
+                  widshrink *% ratio
               in
-                (EvHorzOuterBoxAtom(wid + widdiff, hoa), abs (~@ (ratio *. 100.0)))
+                (EvHorzOuterBoxAtom(wid +% widdiff, hoa), abs (~@ (ratio *. 100.0)))
         )
       in
       let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
@@ -201,12 +202,12 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
         evhblst |> List.map (function
         | EvHorzFixedBoxAtom(wid, _) -> wid
         | EvHorzOuterBoxAtom(wid, _) -> wid
-        ) |> List.fold_left (+) 0
+        ) |> List.fold_left ( +% ) SkipLength.zero
       in
-      let () = print_for_debug ("natural = " ^ (string_of_int natural_width) ^ ", " ^
-                                "stretchable = " ^ (string_of_int stretchable_width) ^ ", " ^
+      let () = print_for_debug ("natural = " ^ (SkipLength.show natural_width) ^ ", " ^
+                                "stretchable = " ^ (SkipLength.show stretchable_width) ^ ", " ^
                                 "ratio = " ^ (string_of_float ratio) ^ ", " ^
-                                "checksum = " ^ (string_of_int checksum)) in
+                                "checksum = " ^ (SkipLength.show checksum)) in
       (* end : for debug *)
         (evhblst, badns)
 
@@ -237,11 +238,12 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let get_badness_for_line_breaking (required_width : skip_width) (natural_width : skip_width) : badness =
-    let diff = required_width - natural_width in
+    let widdiff = required_width -% natural_width in
+    let widcriterion = SkipLength.of_pdf_point (-80.0) in
       match () with
 (*      | _ when diff > 5000  -> TooShort *)
-      | _ when diff < -5000 -> TooLong
-      | _                   -> Badness(abs diff)
+      | _ when widdiff <% widcriterion -> TooLong
+      | _                              -> Badness(abs (~@ ((widdiff /% widcriterion) *. 10000.)))
     (* temporary; should be like `determine_widths` *)
   in
 
@@ -258,7 +260,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
         found_candidate := false ;
         Hashtbl.clear htomit ;
         wmap |> WidthMap.iter (fun dscridX widX ->
-          let badns = get_badness_for_line_breaking paragraph_width (widX + widbreak) in
+          let badns = get_badness_for_line_breaking paragraph_width (widX +% widbreak) in
             match badns with
             | TooShort    -> ()
             | TooLong     -> begin Hashtbl.add htomit dscridX () ; end
@@ -313,10 +315,10 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
     | [] ->
         let dscrid = DiscretionaryID.final in
-        let (_, wmapfinal) = update_graph wmap dscrid 0 in
+        let (_, wmapfinal) = update_graph wmap dscrid SkipLength.zero in
           wmapfinal
   in
-  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning 0 in
+  let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning SkipLength.zero in
   begin
     DiscretionaryID.initialize () ;
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
@@ -336,19 +338,20 @@ let print_evaled_vert_box (EvVertLine(evhblst)) =
   begin
     Format.printf "@[(vert@ " ;
     evhblst |> List.iter (function
-      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %d)@]@ " str wid
-      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %d)@]@ " wid
+      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (SkipLength.show wid)
+      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (SkipLength.show wid)
     ) ;
     Format.printf ")@]@ " ;
   end
 
 
 let () =
+  let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let hlv = ("Hlv", 32) in
+    let hlv = ("Hlv", ~% 32.) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(1000, 100, 500))), None, None) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 32., ~% 3.2, ~% 16.))), None, None) in
     let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
     let evvblst =
       break_horz_box_list [
