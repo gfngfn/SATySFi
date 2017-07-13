@@ -4,6 +4,10 @@ open HorzBox
 
 type font_abbrev = string
 type file_name = string
+type font_definition =
+  | File of file_name
+  | Standard14 of Pdftext.standard_font
+
 
 exception FontFormatBroken of Otfm.error
 exception NoGlyph of Uchar.t
@@ -14,8 +18,8 @@ exception FailToLoadFontFormatOwingToSystem of string
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> file_name -> unit
-    val find_opt : font_abbrev -> file_name option
+    val add : font_abbrev -> font_definition -> unit
+    val find_opt : font_abbrev -> font_definition option
   end
 = struct
 
@@ -26,12 +30,12 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_file_name_hash_table : file_name Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : font_definition Ht.t = Ht.create 32
 
-    let add = Ht.add abbrev_to_file_name_hash_table
+    let add = Ht.add abbrev_to_definition_hash_table
 
     let find_opt (abbrev : font_abbrev) =
-      try Some(Ht.find abbrev_to_file_name_hash_table abbrev) with
+      try Some(Ht.find abbrev_to_definition_hash_table abbrev) with
       | Not_found -> None
 
   end
@@ -62,8 +66,9 @@ module FontFileNameHashTable
 
 
 let initialize () =
-  List.iter (fun (abbrev, flnmin) -> FontAbbrevHashTable.add abbrev flnmin) [
-    ("Hlv", "HelveticaBlack.ttf");
+  List.iter (fun (abbrev, fntdef) -> FontAbbrevHashTable.add abbrev fntdef) [
+    ("Hlv", File("HelveticaBlack.ttf"));
+    ("TimesIt", Standard14(Pdftext.TimesItalic));
   ]
 
 
@@ -90,19 +95,16 @@ let string_of_file (flnmin : file_name) : string =
   | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
 
 
-let get_decoder (fntabrv : font_abbrev) : Otfm.decoder =
-    match FontAbbrevHashTable.find_opt fntabrv with
-    | None         -> raise (InvalidFontAbbrev(fntabrv))
-    | Some(flnmin) ->
-        match FontFileNameHashTable.find_opt flnmin with
-        | Some(dcdr) -> dcdr
-        | None       ->
-            let s = string_of_file flnmin in
-            let dcdr = Otfm.decoder (`String(s)) in
-            begin
-              FontFileNameHashTable.add flnmin dcdr ;
-              dcdr
-            end
+let get_decoder (flnmin : file_name) : Otfm.decoder =
+  match FontFileNameHashTable.find_opt flnmin with
+  | Some(dcdr) -> dcdr
+  | None       ->
+      let s = string_of_file flnmin in
+      let dcdr = Otfm.decoder (`String(s)) in
+      begin
+        FontFileNameHashTable.add flnmin dcdr ;
+        dcdr
+      end
 
 
 let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
@@ -139,11 +141,27 @@ let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
 
 
-let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (uword : Uchar.t list) : SkipLength.t =
-  let dcdr = get_decoder fntabrv in
-  let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
-  let awtotal = List.fold_left (+) 0 chwidlst in
-    (fntsize *% ((float_of_int awtotal) /. 1000.))
+let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
+  let uchar_list_of_string str =
+    let rec aux acc i =
+      if i < 0 then List.rev acc else
+        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
+    in
+      aux [] ((String.length str) - 1)
+  in
+    match FontAbbrevHashTable.find_opt fntabrv with
+    | None               -> raise (InvalidFontAbbrev(fntabrv))
+
+    | Some(File(flnmin)) ->
+        let uword = uchar_list_of_string word in
+        let dcdr = get_decoder flnmin in
+        let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
+        let awtotal = List.fold_left (+) 0 chwidlst in
+          (fntsize *% ((float_of_int awtotal) /. 1000.))
+
+    | Some(Standard14(stdfnt)) ->
+        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfnt word in
+          (fntsize *% ((float_of_int awtotal) /. 1000.))
 
 
 type contour_element =

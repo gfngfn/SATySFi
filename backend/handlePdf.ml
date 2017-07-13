@@ -19,12 +19,9 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
             match evhb with
             | EvHorzFixedBoxAtom(wid, FixedString(_ (* temporary; should use font_info *), str)) ->
                 (wid, [
-                  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (0., 0.)]);
-                  Pdfops.Op_BT;
                   Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)]);
                   Pdfops.Op_Tf("/F0", 16.); (* temporary; should use font_info *)
                   Pdfops.Op_Tj(str);
-                  Pdfops.Op_ET;
                 ])
             | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
           in
@@ -36,7 +33,7 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
     ) ((left_margin, top_margin), [])
   in
 
-  let oplst = List.rev opaccend in
+  let oplst = Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (0., 0.)]) :: Pdfops.Op_BT :: (List.rev (Pdfops.Op_ET :: opaccend)) in
 
   let page =
     {(Pdfpage.blankpage Pdfpaper.a4) with
@@ -46,12 +43,3 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
   let (pdfsub, pageroot) = Pdfpage.add_pagetree [page] (Pdf.empty ()) in
   let pdf = Pdfpage.add_root pageroot [] pdfsub in
     Pdfwrite.pdf_to_file pdf "hello.pdf"
-
-(*
-let ops =
-  [Pdfops.Op_cm (Pdftransform.matrix_of_transform [Pdftransform.Translate (50., 770.)]);
-   Pdfops.Op_BT;
-   Pdfops.Op_Tf ("/F0", 32.);
-   Pdfops.Op_Tj "Hello, World!";
-   Pdfops.Op_ET]
-*)

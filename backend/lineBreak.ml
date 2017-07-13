@@ -60,18 +60,11 @@ type lb_horz_box =
 
 
 let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : SkipLength.t * SkipLength.t * SkipLength.t =
-  let uchar_list_of_string str =
-    let rec aux acc i =
-      if i < 0 then List.rev acc else
-        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
-    in
-      aux [] ((String.length str) - 1)
-  in
-    match hfa with
-    | FixedString((fntabrv, size), str) ->
-        let uchlst = uchar_list_of_string str in
-        let wid = FontInfo.get_width_of_word fntabrv size uchlst in
-          (wid, SkipLength.zero, SkipLength.zero) (* temporary; should get height and depth *)
+  match hfa with
+  | FixedString((fntabrv, size), word) ->
+      let wid = FontInfo.get_width_of_word fntabrv size word in
+        (wid, SkipLength.zero, SkipLength.zero)
+          (* temporary; should get height and depth *)
 
 
 let size_of_horz_outer_atom (hoa : horz_outer_atom) : SkipLength.t * SkipLength.t * SkipLength.t =
@@ -151,7 +144,7 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let paragraph_width = SkipLength.of_pdf_point 400.0 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 200.0 (* temporary; should be variable *)
 
 let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
   let natural_width =
@@ -349,15 +342,15 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let hlv = ("Hlv", ~% 16.) in
+    let hlv = ("TimesIt", ~% 16.) in
     let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 3.2, ~% 8.))), None, None) in
+    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 12., ~% 1., ~% 4.))), None, None) in
     let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
     let evvblst =
       break_horz_box_list [
-        word "hyphen"; space;
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word "discre"; soft_hyphen; word "tionary"; space;
+        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
+        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
         word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";
         space;

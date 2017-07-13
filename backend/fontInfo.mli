@@ -10,4 +10,4 @@ exception FailToLoadFontFormatOwingToSystem of string
 
 val initialize : unit -> unit
 
-val get_width_of_word : font_abbrev -> SkipLength.t -> Uchar.t list -> SkipLength.t
+val get_width_of_word : font_abbrev -> SkipLength.t -> string -> SkipLength.t
