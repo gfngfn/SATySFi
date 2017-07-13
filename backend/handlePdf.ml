@@ -1,12 +1,13 @@
 open HorzBox
 
-
+(*
 let font =
   Pdf.Dictionary [
     ("/Type", Pdf.Name "/Font");
     ("/Subtype", Pdf.Name "/Type1");
     ("/BaseFont", Pdf.Name "/Times-Italic");
   ]
+*)
 
 let write_vert_lines (evvblst : evaled_vert_box list) : unit =
   let left_margin = SkipLength.of_pdf_point 50. in
@@ -17,12 +18,13 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
         evhblst |> List.fold_left (fun (xpos, opacc) evhb ->
           let (widdiff, ops) =
             match evhb with
-            | EvHorzFixedBoxAtom(wid, FixedString(_ (* temporary; should use font_info *), str)) ->
-                (wid, [
-                  Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)]);
-                  Pdfops.Op_Tf("/F0", 16.); (* temporary; should use font_info *)
-                  Pdfops.Op_Tj(str);
-                ])
+            | EvHorzFixedBoxAtom(wid, FixedString((fntabrv, size), word)) ->
+                let tag = FontInfo.get_tag fntabrv in
+                  (wid, [
+                    Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)]);
+                    Pdfops.Op_Tf(tag, SkipLength.to_pdf_point size);
+                    Pdfops.Op_Tj(word);
+                  ])
             | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
           in
           let opaccnew = List.rev_append ops opacc in
@@ -38,7 +40,7 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
   let page =
     {(Pdfpage.blankpage Pdfpaper.a4) with
         Pdfpage.content = [Pdfops.stream_of_ops oplst];
-        Pdfpage.resources = Pdf.Dictionary [("/Font", Pdf.Dictionary [("/F0", font)])]}
+        Pdfpage.resources = Pdf.Dictionary [("/Font", Pdf.Dictionary (FontInfo.get_font_dictionary ()))]}
   in
   let (pdfsub, pageroot) = Pdfpage.add_pagetree [page] (Pdf.empty ()) in
   let pdf = Pdfpage.add_root pageroot [] pdfsub in

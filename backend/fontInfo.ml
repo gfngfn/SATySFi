@@ -5,8 +5,8 @@ open HorzBox
 type font_abbrev = string
 type file_name = string
 type font_definition =
-  | File of file_name
-  | Standard14 of Pdftext.standard_font
+  | ExternalFile of file_name
+  | Internal     of Pdftext.font
 
 
 exception FontFormatBroken of Otfm.error
@@ -18,8 +18,9 @@ exception FailToLoadFontFormatOwingToSystem of string
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> font_definition -> unit
-    val find_opt : font_abbrev -> font_definition option
+    val add : font_abbrev -> font_definition * string * Pdf.pdfobject -> unit
+    val fold : (font_abbrev -> font_definition * string * Pdf.pdfobject -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (font_definition * string * Pdf.pdfobject) option
   end
 = struct
 
@@ -30,9 +31,11 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : font_definition Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (font_definition * string * Pdf.pdfobject) Ht.t = Ht.create 32
 
     let add = Ht.add abbrev_to_definition_hash_table
+
+    let fold f init = Ht.fold f abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
       try Some(Ht.find abbrev_to_definition_hash_table abbrev) with
@@ -65,10 +68,32 @@ module FontFileNameHashTable
   end
 
 
+let get_tag (fntabrv : font_abbrev) =
+  match FontAbbrevHashTable.find_opt fntabrv with
+  | None              -> raise (InvalidFontAbbrev(fntabrv))
+  | Some((_, tag, _)) -> tag
+
+
+let get_font_dictionary () =
+  FontAbbrevHashTable.fold (fun _ (_, tag, pdfobj) acc -> (tag, pdfobj) :: acc) []
+
+
 let initialize () =
   List.iter (fun (abbrev, fntdef) -> FontAbbrevHashTable.add abbrev fntdef) [
-    ("Hlv", File("HelveticaBlack.ttf"));
-    ("TimesIt", Standard14(Pdftext.TimesItalic));
+(*
+    ("Hlv",
+     (ExternalFile("HelveticaBlack.ttf"),
+      "/F1",
+      Pdf.Null));
+*)
+    ("TimesIt",
+     (Internal(Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding)),
+      "/F0",
+      Pdf.Dictionary [
+        ("/Type", Pdf.Name "/Font");
+        ("/Subtype", Pdf.Name "/Type1");
+        ("/BaseFont", Pdf.Name "/Times-Italic");
+      ]));
   ]
 
 
@@ -152,17 +177,27 @@ let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : s
     match FontAbbrevHashTable.find_opt fntabrv with
     | None               -> raise (InvalidFontAbbrev(fntabrv))
 
-    | Some(File(flnmin)) ->
+    | Some((ExternalFile(flnmin), _, _)) ->
         let uword = uchar_list_of_string word in
         let dcdr = get_decoder flnmin in
         let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
         let awtotal = List.fold_left (+) 0 chwidlst in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
 
-    | Some(Standard14(stdfnt)) ->
+    | Some((Internal(Pdftext.StandardFont(stdfnt, enc)), _, _)) ->
         let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfnt word in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
+(*
+    | Some((Internal(Pdftext.SimpleFont(smplfnt)), _, _)) ->
+        let bsfnt = smplfnt.basefont in
+        begin
+          match smplfnt.fonttype with
+          | Pdftext.TrueType ->
+          | _ -> failwith "other than TrueType; remains to be implemented."
+        end
 
+    | Some((Internal(Pdftext.CIDKeyedFont(_, _, _)), _, _)) -> failwith "CIDKeyedFont; remains to be implemented."
+*)
 
 type contour_element =
   | OnCurve   of int * int
