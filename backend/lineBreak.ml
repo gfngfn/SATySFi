@@ -135,11 +135,13 @@ module WidthMap
 module LineBreakGraph = FlowGraph.Make(
   struct
     type t = DiscretionaryID.t
-    type weight = pure_badness
     let equal = DiscretionaryID.equal
     let hash = Hashtbl.hash
     let show = DiscretionaryID.show (* for debug *)
-    let show_weight = string_of_int
+  end)
+  (struct
+    type t = pure_badness
+    let show = string_of_int
     let add = ( + )
     let compare w1 w2 = w1 - w2
     let zero = 0
@@ -207,7 +209,6 @@ let determine_widths (required_width : skip_width) (lhblst : lb_horz_box list) :
                                 "checksum = " ^ (string_of_int checksum)) in
       (* end : for debug *)
         (evhblst, badns)
-  
 
 
 let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : evaled_vert_box list =
@@ -216,7 +217,7 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
     | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         if List.mem dscrid path then
           let line         = match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline in
-          let acclinefresh = match lhbopt2 with None -> [] | Some(lhb2) -> lhb2 :: [] in
+          let acclinefresh = match lhbopt2 with None -> []      | Some(lhb2) -> lhb2 :: [] in
           let (evhblst, _) = determine_widths paragraph_width (List.rev line) in
             aux (EvVertLine(evhblst) :: acclines) acclinefresh tail
         else
@@ -248,8 +249,10 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let htomit : (DiscretionaryID.t, unit) Hashtbl.t = Hashtbl.create 32 in
 
+  let found_candidate = ref false in
+
   let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widbreak : skip_width) : bool * WidthMap.t =
-    let found_candidate = ref false in
+
       begin
         LineBreakGraph.add_vertex grph dscrid ;
         found_candidate := false ;
@@ -258,10 +261,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
           let badns = get_badness_for_line_breaking paragraph_width (widX + widbreak) in
             match badns with
             | TooShort    -> ()
-            | TooLong     ->
-                begin
-                  Hashtbl.add htomit dscridX () ;
-                end
+            | TooLong     -> begin Hashtbl.add htomit dscridX () ; end
             | Badness(pb) ->
                 begin
                   found_candidate := true ;

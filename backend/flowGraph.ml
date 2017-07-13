@@ -6,25 +6,29 @@ let print_for_debug msg =
 module Heap = Core.Heap.Removable
 
 
-module type SchemeType =
+module type VertexType =
   sig
     type t
-    type weight
     val equal : t -> t -> bool
     val hash : t -> int
     val show : t -> string (* for debug *)
-    val show_weight : weight -> string (* for debug *)
-    val add : weight -> weight -> weight
-    val compare : weight -> weight -> int
-    val zero : weight
+  end
+
+module type WeightType =
+  sig
+    type t
+    val show : t -> string (* for debug *)
+    val add : t -> t -> t
+    val compare : t -> t -> int
+    val zero : t
   end
 
 
-module Make (GraphScheme : SchemeType)
+module Make (Vertex : VertexType) (Weight : WeightType)
 : sig
     type t
-    type vertex = GraphScheme.t
-    type weight = GraphScheme.weight
+    type vertex = Vertex.t
+    type weight = Weight.t
     exception UndefinedSourceVertex
     exception UndefinedDestinationVertex
     val create : unit -> t
@@ -33,11 +37,11 @@ module Make (GraphScheme : SchemeType)
     val shortest_path : t -> vertex -> vertex -> (vertex list) option
   end
 = struct
-    module MainTable = Hashtbl.Make(GraphScheme)
-    module DestinationTable = Hashtbl.Make(GraphScheme)
+    module MainTable = Hashtbl.Make(Vertex)
+    module DestinationTable = Hashtbl.Make(Vertex)
 
-    type vertex = GraphScheme.t
-    type weight = GraphScheme.weight
+    type vertex = Vertex.t
+    type weight = Weight.t
 
     type label = Infinite | Finite of weight * vertex option
 
@@ -46,13 +50,13 @@ module Make (GraphScheme : SchemeType)
 
     type t = (weight DestinationTable.t * ((vertex Heap.Elt.t) option) ref * label ref) MainTable.t
 
-    let ( +@ ) = GraphScheme.add
+    let ( +@ ) = Weight.add
 
-    let ( <@ ) wgt1 wgt2 = (GraphScheme.compare wgt1 wgt2) < 0
+    let ( <@ ) wgt1 wgt2 = (Weight.compare wgt1 wgt2) < 0
 
-    let weight_zero = GraphScheme.zero
+    let weight_zero = Weight.zero
 
-    let equal_vertex = GraphScheme.equal
+    let equal_vertex = Vertex.equal
 
 
     let create () =
@@ -74,7 +78,7 @@ module Make (GraphScheme : SchemeType)
         if not (MainTable.mem grph vtx2) then
           raise UndefinedDestinationVertex
         else
-        let () = print_for_debug ("add (" ^ (GraphScheme.show vtx1) ^ " ----> " ^ (GraphScheme.show vtx2) ^ ") : " ^ (GraphScheme.show_weight wgt)) in (* for debug *)
+        let () = print_for_debug ("add (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
           DestinationTable.add dstbl1 vtx2 wgt
 
 
@@ -86,7 +90,7 @@ module Make (GraphScheme : SchemeType)
         match (!lblref1, !lblref2) with
         | (Infinite, _)                  -> 1
         | (_, Infinite)                  -> -1
-        | (Finite(d1, _), Finite(d2, _)) -> GraphScheme.compare d1 d2
+        | (Finite(d1, _), Finite(d2, _)) -> Weight.compare d1 d2
 
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
@@ -108,7 +112,7 @@ module Make (GraphScheme : SchemeType)
         match Heap.pop hp with
         | None       -> None
         | Some(vtxP) ->
-            let () = print_for_debug ("see " ^ (GraphScheme.show vtxP)) in (* for debug *)
+            let () = print_for_debug ("see " ^ (Vertex.show vtxP)) in (* for debug *)
               if equal_vertex vtxP vtxT then
                 let path = backtrack [] vtxT in 
                   Some(path)
@@ -127,10 +131,10 @@ module Make (GraphScheme : SchemeType)
                     let () = print_for_debug "| infinite" in (* for debug *)
                       None
                 | Finite(distP, _) ->
-                    let () = print_for_debug ("| " ^ (GraphScheme.show_weight distP)) in (* for debug *)
+                    let () = print_for_debug ("| " ^ (Weight.show distP)) in (* for debug *)
                     begin
                       dstblP |> DestinationTable.iter (fun vtx wgt ->
-                        let () = print_for_debug ("|--> " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight wgt)) in (*for debug *)
+                        let () = print_for_debug ("|--> " ^ (Vertex.show vtx) ^ " " ^ (Weight.show wgt)) in (*for debug *)
                         let (_, vheref, lblref) =
                           try MainTable.find grph vtx with Not_found -> assert false
                         in
@@ -142,7 +146,7 @@ module Make (GraphScheme : SchemeType)
                                   let distfromP = distP +@ wgt in
                                   begin
                                     lblref := Finite(distP +@ wgt, Some(vtxP)) ;
-                                    print_for_debug ("  update " ^ (GraphScheme.show vtx) ^ " infinite -> " ^ (GraphScheme.show_weight distfromP)) ;
+                                    print_for_debug ("  update " ^ (Vertex.show vtx) ^ " infinite -> " ^ (Weight.show distfromP)) ;
                                     let vhenew = Heap.update hp vhe vtx in
                                     vheref := Some(vhenew) ;
                                   end
@@ -151,7 +155,7 @@ module Make (GraphScheme : SchemeType)
                                     if distfromP <@ dist then
                                       begin
                                         lblref := Finite(distfromP, Some(vtxP)) ;
-                                        print_for_debug ("  update " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight dist) ^ " -> " ^ (GraphScheme.show_weight distfromP)) ;
+                                        print_for_debug ("  update " ^ (Vertex.show vtx) ^ " " ^ (Weight.show dist) ^ " -> " ^ (Weight.show distfromP)) ;
                                         let vhenew = Heap.update hp vhe vtx in
                                         vheref := Some(vhenew) ;
                                       end
@@ -176,7 +180,7 @@ module Make (GraphScheme : SchemeType)
                 try MainTable.find grph vtx with
                 | Not_found -> assert false
               in
-              let () = print_for_debug ("set " ^ (GraphScheme.show vtx) ^ " " ^ (GraphScheme.show_weight wgt)) in (* for debug *)
+              let () = print_for_debug ("set " ^ (Vertex.show vtx) ^ " " ^ (Weight.show wgt)) in (* for debug *)
               begin lblref := Finite(wgt, Some(vtxS)) ; end
             ) ;
             grph |> MainTable.iter (fun vtx (_, vheref, _) ->
@@ -187,8 +191,8 @@ module Make (GraphScheme : SchemeType)
             (* begin : for debug *)
             grph |> MainTable.iter (fun vtx (_, _, lblref) ->
               match !lblref with
-              | Infinite       -> print_for_debug ("initially " ^ (GraphScheme.show vtx) ^ " : infinite")
-              | Finite(wgt, _) -> print_for_debug ("initially " ^ (GraphScheme.show vtx) ^ " : " ^ (GraphScheme.show_weight wgt))
+              | Infinite       -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : infinite")
+              | Finite(wgt, _) -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : " ^ (Weight.show wgt))
             ) ;
             (* end : for debug *)
             (* -- main iteration -- *)
