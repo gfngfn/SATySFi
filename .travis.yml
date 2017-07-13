@@ -9,8 +9,9 @@ install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - opam install -y menhir
-  - opam install -y otfm
   - opam install -y core
+  - opam install -y otfm
+  - opam install -y camlpdf
   - eval `opam config env`
 script:
   - make all
