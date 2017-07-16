@@ -4,23 +4,20 @@ open HorzBox
 
 type font_abbrev = string
 type file_name = string
-type font_definition =
-  | ExternalFile of file_name
-  | Internal     of Pdftext.font
 
 
-exception FontFormatBroken of Otfm.error
-exception NoGlyph of Uchar.t
-exception InvalidFontAbbrev of font_abbrev
+exception FontFormatBroken                  of Otfm.error
+exception NoGlyph                           of Uchar.t
+exception InvalidFontAbbrev                 of font_abbrev
 exception FailToLoadFontFormatOwingToSize   of file_name
 exception FailToLoadFontFormatOwingToSystem of string
 
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> font_definition * string * Pdf.pdfobject -> unit
-    val fold : (font_abbrev -> font_definition * string * Pdf.pdfobject -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (font_definition * string * Pdf.pdfobject) option
+    val add : font_abbrev -> Pdftext.font * string -> unit
+    val fold : (font_abbrev -> Pdftext.font * string -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (Pdftext.font * string) option
   end
 = struct
 
@@ -31,7 +28,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (font_definition * string * Pdf.pdfobject) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (Pdftext.font * string) Ht.t = Ht.create 32
 
     let add = Ht.add abbrev_to_definition_hash_table
 
@@ -70,12 +67,115 @@ module FontFileNameHashTable
 
 let get_tag (fntabrv : font_abbrev) =
   match FontAbbrevHashTable.find_opt fntabrv with
-  | None              -> raise (InvalidFontAbbrev(fntabrv))
-  | Some((_, tag, _)) -> tag
+  | None           -> raise (InvalidFontAbbrev(fntabrv))
+  | Some((_, tag)) -> tag
 
 
-let get_font_dictionary () =
-  FontAbbrevHashTable.fold (fun _ (_, tag, pdfobj) acc -> (tag, pdfobj) :: acc) []
+let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
+  match Otfm.decoder_src dcdr with
+  | `String(s) ->
+      let s85 = Base85.encode s in
+        Pdfio.bytes_of_string s85
+
+
+let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) : int =
+  let bt85 = to_base85_pdf_bytes dcdr in
+  let len = Pdfio.bytes_size bt85 in
+  let objstream =
+    Pdf.Stream(ref (Pdf.Dictionary[("/Length", Pdf.Integer(len))], Pdf.Got(bt85)))
+  in
+  let irstream = Pdf.addobj pdf objstream in
+    irstream
+
+
+let font_definition_to_dictionary (pdf : Pdf.t) (fntdef : Pdftext.font) () =
+  match fntdef with
+  | Pdftext.StandardFont(stdfont, _) ->
+      Pdf.Dictionary[
+        ("/Type", Pdf.Name("/Font"));
+        ("/Subtype", Pdf.Name("/Type1"));
+        ("/BaseFont", Pdf.Name("/" ^ (Pdftext.string_of_standard_font stdfont)));
+      ]
+
+  | Pdftext.SimpleFont(smplfont) ->
+      let fontname = smplfont.Pdftext.basefont in
+      begin
+        match FontFileNameHashTable.find_opt fontname with (* doubtful *)
+        | None       -> assert false
+        | Some(dcdr) ->
+            match smplfont.Pdftext.fonttype with
+            | Pdftext.Truetype ->
+                let irstream = add_stream_of_decoder pdf dcdr in
+                  (* -- add to the PDF the stream in which the font file is embedded -- *)
+                let objdescr =
+                  Pdf.Dictionary[
+                    ("/Type", Pdf.Name("/FontDescriptor"));
+                    ("/FontName", Pdf.Name(fontname));
+                    ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
+                    ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
+                    ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
+                    ("/Ascent", Pdf.Integer(0)); (* temporary; should be variable *)
+                    ("/Descent", Pdf.Integer(0)); (* temporary; should be variable *)
+                    ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
+                    ("/FontFile2", Pdf.Indirect(irstream));
+                  ]
+                in
+                let irdescr = Pdf.addobj pdf objdescr in
+                Pdf.Dictionary[
+                  ("/Type", Pdf.Name("/Font"));
+                  ("/Subtype", Pdf.Name("/TrueType"));
+                  ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
+                  ("/FirstChar", Pdf.Integer(0));  (* temporary; should be more general *)
+                  ("/LastChar", Pdf.Integer(1));  (* temporary; should be more general *)
+                  ("/FontDescriptor", Pdf.Indirect(irdescr));
+                ]
+
+            | _ -> failwith "simple font other than TrueType; remains to be implemented."
+      end
+
+      
+  | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapnm)) ->
+      begin
+        match FontFileNameHashTable.find_opt fontname with (* doubtful *)
+        | None       -> assert false
+        | Some(dcdr) ->
+            let irstream = add_stream_of_decoder pdf dcdr in
+              (* -- add to the PDF the stream in which the font file is embedded -- *)
+            let cidfontdescr = cidrecord.Pdftext.cid_fontdescriptor in
+            let objdescr =
+              Pdf.Dictionary[
+                ("/Type", Pdf.Name("/FontDescriptor"));
+                ("/FontName", Pdf.Name(cidrecord.Pdftext.cid_basefont));
+                ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
+                ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
+                ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
+                ("/Ascent", Pdf.Real(cidfontdescr.Pdftext.ascent));
+                ("/Descent", Pdf.Real(cidfontdescr.Pdftext.descent));
+                ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
+                ("/FontFile2", Pdf.Indirect(irstream));
+              ]
+            in
+            let irdescr = Pdf.addobj pdf objdescr in
+            let cidsysinfo = cidrecord.Pdftext.cid_system_info in
+              Pdf.Dictionary[
+                ("/Type", Pdf.Name("/Font"));
+                ("/Subtype", Pdf.Name("/CIDFontType0")); (* temporary; should be variable *)
+                ("/BaseFont", Pdf.Name(cidrecord.Pdftext.cid_basefont));
+                ("/CIDSystemInfo", Pdf.Dictionary[
+                  ("/Registry", Pdf.String(cidsysinfo.Pdftext.registry));
+                  ("/Ordering", Pdf.String(cidsysinfo.Pdftext.ordering));
+                  ("/Supplement", Pdf.Integer(cidsysinfo.Pdftext.supplement));
+                ]);
+                ("/FontDescriptor", Pdf.Indirect(irdescr));
+              ]
+      end
+
+
+let get_font_dictionary (pdf : Pdf.t) =
+  [] |> FontAbbrevHashTable.fold (fun _ (fntdef, tag) acc ->
+    let obj = font_definition_to_dictionary pdf fntdef () in
+      (tag, obj) :: acc
+  )
 
 
 let initialize () =
@@ -87,13 +187,14 @@ let initialize () =
       Pdf.Null));
 *)
     ("TimesIt",
-     (Internal(Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding)),
-      "/F0",
-      Pdf.Dictionary [
+     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding),
+      "/F0")
+(*    Pdf.Dictionary [
         ("/Type", Pdf.Name "/Font");
         ("/Subtype", Pdf.Name "/Type1");
         ("/BaseFont", Pdf.Name "/Times-Italic");
-      ]));
+      ] *)
+    );
   ]
 
 
@@ -177,15 +278,15 @@ let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : s
     match FontAbbrevHashTable.find_opt fntabrv with
     | None               -> raise (InvalidFontAbbrev(fntabrv))
 
-    | Some((ExternalFile(flnmin), _, _)) ->
+    | Some((Pdftext.CIDKeyedFont(fontname, _, _), _)) ->
         let uword = uchar_list_of_string word in
-        let dcdr = get_decoder flnmin in
+        let dcdr = get_decoder fontname in (* doubtful *)
         let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
         let awtotal = List.fold_left (+) 0 chwidlst in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
 
-    | Some((Internal(Pdftext.StandardFont(stdfnt, enc)), _, _)) ->
-        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfnt word in
+    | Some((Pdftext.StandardFont(stdfont, enc), _)) ->
+        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
 (*
     | Some((Internal(Pdftext.SimpleFont(smplfnt)), _, _)) ->
@@ -198,13 +299,6 @@ let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : s
 
     | Some((Internal(Pdftext.CIDKeyedFont(_, _, _)), _, _)) -> failwith "CIDKeyedFont; remains to be implemented."
 *)
-
-
-let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
-  match Otfm.decoder_src dcdr with
-  | `String(s) ->
-      let s85 = Base85.encode s in
-        Pdfio.bytes_of_string s85
 
 
 type contour_element =

@@ -44,11 +44,15 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
 
   let oplst = op_cm (SkipLength.zero, SkipLength.zero) :: op_BT :: (List.rev (op_ET :: opaccend)) in
 
+  let pdfinit = Pdf.empty () in
+
+  let fontdict = FontInfo.get_font_dictionary pdfinit in
+
   let page =
     {(Pdfpage.blankpage Pdfpaper.a4) with
         Pdfpage.content = [Pdfops.stream_of_ops oplst];
-        Pdfpage.resources = Pdf.Dictionary [("/Font", Pdf.Dictionary (FontInfo.get_font_dictionary ()))]}
+        Pdfpage.resources = Pdf.Dictionary [("/Font", Pdf.Dictionary fontdict)]}
   in
-  let (pdfsub, pageroot) = Pdfpage.add_pagetree [page] (Pdf.empty ()) in
+  let (pdfsub, pageroot) = Pdfpage.add_pagetree [page] pdfinit in
   let pdf = Pdfpage.add_root pageroot [] pdfsub in
     Pdfwrite.pdf_to_file pdf "hello.pdf"
