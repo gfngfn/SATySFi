@@ -199,6 +199,14 @@ let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : s
     | Some((Internal(Pdftext.CIDKeyedFont(_, _, _)), _, _)) -> failwith "CIDKeyedFont; remains to be implemented."
 *)
 
+
+let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
+  match Otfm.decoder_src dcdr with
+  | `String(s) ->
+      let s85 = Base85.encode s in
+        Pdfio.bytes_of_string s85
+
+
 type contour_element =
   | OnCurve   of int * int
   | Quadratic of int * int * int * int

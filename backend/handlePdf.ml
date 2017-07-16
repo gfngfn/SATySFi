@@ -1,7 +1,15 @@
 open HorzBox
 
-let op_cm (xdiff, ydiff) = Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xdiff, SkipLength.to_pdf_point ydiff)])
-let op_Tm_translate (xpos, ypos) = Pdfops.Op_Tm(Pdftransform.matrix_of_transform [Pdftransform.Translate (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)])
+let op_cm (xdiff, ydiff) =
+  Pdfops.Op_cm(Pdftransform.matrix_of_transform
+                 [Pdftransform.Translate
+                     (SkipLength.to_pdf_point xdiff, SkipLength.to_pdf_point ydiff)])
+
+let op_Tm_translate (xpos, ypos) =
+  Pdfops.Op_Tm(Pdftransform.matrix_of_transform
+                 [Pdftransform.Translate
+                     (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)])
+
 let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_BT = Pdfops.Op_BT

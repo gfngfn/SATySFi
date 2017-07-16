@@ -402,7 +402,7 @@ let () =
         word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";
         space;
         word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
-        word "needs"; space; word "priceless"; space; word "fixing."; fill;
+        word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
       ]
     in
     begin
