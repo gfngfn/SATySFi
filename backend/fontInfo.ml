@@ -122,7 +122,9 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) : int =
   let bt85 = to_base85_pdf_bytes dcdr in
   let len = Pdfio.bytes_size bt85 in
   let objstream =
-    Pdf.Stream(ref (Pdf.Dictionary[("/Length", Pdf.Integer(len))], Pdf.Got(bt85)))
+    Pdf.Stream(ref (Pdf.Dictionary[
+      ("/Length", Pdf.Integer(len));
+      ("/Filter", Pdf.Name("/ASCII85Decode"));], Pdf.Got(bt85)))
   in
   let irstream = Pdf.addobj pdf objstream in
     irstream
@@ -166,6 +168,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
                   ("/Subtype", Pdf.Name("/TrueType"));
                   ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
                   ("/FirstChar", Pdf.Integer(0));  (* temporary; should be more general *)
+                  ("/Widths", Pdf.Array[Pdf.Integer(0)]); (* temporary; should get array from the decoder *)
                   ("/LastChar", Pdf.Integer(255));  (* temporary; should be more general *)
                   ("/FontDescriptor", Pdf.Indirect(irdescr));
                 ]
