@@ -150,7 +150,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
                 let objdescr =
                   Pdf.Dictionary[
                     ("/Type", Pdf.Name("/FontDescriptor"));
-                    ("/FontName", Pdf.Name(fontname));
+                    ("/FontName", Pdf.Name("/" ^ fontname));
                     ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
                     ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
                     ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
@@ -166,7 +166,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
                   ("/Subtype", Pdf.Name("/TrueType"));
                   ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
                   ("/FirstChar", Pdf.Integer(0));  (* temporary; should be more general *)
-                  ("/LastChar", Pdf.Integer(1));  (* temporary; should be more general *)
+                  ("/LastChar", Pdf.Integer(255));  (* temporary; should be more general *)
                   ("/FontDescriptor", Pdf.Indirect(irdescr));
                 ]
 
@@ -284,7 +284,8 @@ let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : st
     match FontAbbrevHashTable.find_opt abbrev with
     | None               -> raise (InvalidFontAbbrev(abbrev))
 
-    | Some((Pdftext.CIDKeyedFont(fontname, _, _), _, dcdropt)) ->
+    | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
+    | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
         let uword = uchar_list_of_string word in
         let dcdr =
           match dcdropt with
@@ -298,14 +299,6 @@ let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : st
     | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
         let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
-
-    | Some((Pdftext.SimpleFont(smplfont), _, _)) ->
-        let basefont = smplfont.Pdftext.basefont in
-        begin
-          match smplfont.Pdftext.fonttype with
-          | Pdftext.Truetype (* -> *) 
-          | _ -> failwith "other than TrueType; remains to be implemented."
-        end
 
 
 
