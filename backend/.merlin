@@ -1,0 +1,3 @@
+PKG otfm camlpdf core ctypes
+S .
+B _build

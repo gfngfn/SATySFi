@@ -29,3 +29,4 @@ _build
 macrodown
 *.ttf
 *.svg
+*.dat

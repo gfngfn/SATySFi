@@ -388,15 +388,17 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let hlv = ("TimesIt", ~% 16.) in
-    let word s = HorzFixedBoxAtom(FixedString(hlv, s)) in
+    let font0 = ("TimesIt", ~% 16.) in
+    let font1 = ("Hlv", ~% 16.) in
+    let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
+    let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
     let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 4.))), None, None) in
     let fill = HorzOuterBoxAtom(OuterFil) in
-    let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(hlv, "-"))), None) in
+    let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
     let evvblst =
       break_horz_box_list [
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
+        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
         word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";

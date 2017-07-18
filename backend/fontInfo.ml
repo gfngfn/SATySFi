@@ -173,6 +173,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
             | _ -> failwith "simple font other than TrueType; remains to be implemented."
       end
 
+  | Pdftext.CIDKeyedFont(fontname, cidrecord, Pdftext.CMap(_)) -> failwith "CMap; remains to be implemented"
       
   | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapnm)) ->
       begin
@@ -221,19 +222,17 @@ let get_font_dictionary (pdf : Pdf.t) =
 
 let initialize () =
   List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
-(*
     ("Hlv",
-     (ExternalFile("HelveticaBlack.ttf"),
-      "/F1",
-      Pdf.Null));
-*)
+     (Pdftext.SimpleFont({
+       Pdftext.fonttype= Pdftext.Truetype;
+       Pdftext.basefont= "Helvetica-Black";
+       Pdftext.fontdescriptor= None;
+       Pdftext.fontmetrics= None;
+       Pdftext.encoding= Pdftext.StandardEncoding;
+     }), "/F1", Some("./HelveticaBlack.ttf"))
+    );
     ("TimesIt",
-     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), "/F0", None)
-(*    Pdf.Dictionary [
-        ("/Type", Pdf.Name "/Font");
-        ("/Subtype", Pdf.Name "/Type1");
-        ("/BaseFont", Pdf.Name "/Times-Italic");
-      ] *)
+      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), "/F0", None)
     );
   ]
 
@@ -299,15 +298,15 @@ let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : st
     | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
         let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
-(*
-    | Some((Pdftext.SimpleFont(smplfont), _)) ->
+
+    | Some((Pdftext.SimpleFont(smplfont), _, _)) ->
         let basefont = smplfont.Pdftext.basefont in
         begin
-          match smplfnt.fonttype with
-          | Pdftext.TrueType ->
+          match smplfont.Pdftext.fonttype with
+          | Pdftext.Truetype (* -> *) 
           | _ -> failwith "other than TrueType; remains to be implemented."
         end
-*)
+
 
 
 (* -- following are operations about handling glyphs -- *)
