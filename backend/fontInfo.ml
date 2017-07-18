@@ -12,12 +12,43 @@ exception InvalidFontAbbrev                 of font_abbrev
 exception FailToLoadFontFormatOwingToSize   of file_name
 exception FailToLoadFontFormatOwingToSystem of string
 
+type tag = string
+
+
+let string_of_file (flnmin : file_name) : string =
+  try
+    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
+    let buf : Buffer.t = Buffer.create bufsize in
+    let byt : bytes = Bytes.create bufsize in
+    let ic : in_channel = open_in_bin flnmin in
+      try
+        begin
+          while true do
+            let c = input ic byt 0 bufsize in
+              if c = 0 then raise Exit else
+                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
+          done ;
+          assert false
+        end
+      with
+      | Exit           -> begin close_in ic ; Buffer.contents buf end
+      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
+      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
+  with
+  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
+
+
+let get_decoder (src : file_name) () : Otfm.decoder =
+  let s = string_of_file src in
+  let dcdr = Otfm.decoder (`String(s)) in
+    dcdr
+
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> Pdftext.font * string -> unit
-    val fold : (font_abbrev -> Pdftext.font * string -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (Pdftext.font * string) option
+    val add : font_abbrev -> Pdftext.font * tag * file_name option -> unit
+    val fold : (font_abbrev -> Pdftext.font * tag * Otfm.decoder option -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (Pdftext.font * tag * Otfm.decoder option) option
   end
 = struct
 
@@ -28,18 +59,27 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (Pdftext.font * string) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (Pdftext.font * tag * Otfm.decoder option) Ht.t = Ht.create 32
 
-    let add = Ht.add abbrev_to_definition_hash_table
+    let add abbrev (font, tag, srcopt) =
+      let dcdropt =
+        match srcopt with
+        | None      -> None
+        | Some(src) -> Some(get_decoder src ())
+      in
+        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdropt)
 
-    let fold f init = Ht.fold f abbrev_to_definition_hash_table init
+    let fold f init =
+      Ht.fold f abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
-      try Some(Ht.find abbrev_to_definition_hash_table abbrev) with
+      try
+        Some(Ht.find abbrev_to_definition_hash_table abbrev)
+      with
       | Not_found -> None
 
   end
-
+(*
 module FontFileNameHashTable
 : sig
     val add : file_name -> Otfm.decoder -> unit
@@ -63,12 +103,12 @@ module FontFileNameHashTable
       | Not_found -> None
 
   end
+*)
 
-
-let get_tag (fntabrv : font_abbrev) =
-  match FontAbbrevHashTable.find_opt fntabrv with
-  | None           -> raise (InvalidFontAbbrev(fntabrv))
-  | Some((_, tag)) -> tag
+let get_tag (abbrev : font_abbrev) =
+  match FontAbbrevHashTable.find_opt abbrev with
+  | None              -> raise (InvalidFontAbbrev(abbrev))
+  | Some((_, tag, _)) -> tag
 
 
 let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
@@ -88,8 +128,8 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) : int =
     irstream
 
 
-let font_definition_to_dictionary (pdf : Pdf.t) (fntdef : Pdftext.font) () =
-  match fntdef with
+let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () =
+  match fontdfn with
   | Pdftext.StandardFont(stdfont, _) ->
       Pdf.Dictionary[
         ("/Type", Pdf.Name("/Font"));
@@ -100,7 +140,7 @@ let font_definition_to_dictionary (pdf : Pdf.t) (fntdef : Pdftext.font) () =
   | Pdftext.SimpleFont(smplfont) ->
       let fontname = smplfont.Pdftext.basefont in
       begin
-        match FontFileNameHashTable.find_opt fontname with (* doubtful *)
+        match dcdropt with
         | None       -> assert false
         | Some(dcdr) ->
             match smplfont.Pdftext.fonttype with
@@ -136,7 +176,7 @@ let font_definition_to_dictionary (pdf : Pdf.t) (fntdef : Pdftext.font) () =
       
   | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapnm)) ->
       begin
-        match FontFileNameHashTable.find_opt fontname with (* doubtful *)
+        match dcdropt with
         | None       -> assert false
         | Some(dcdr) ->
             let irstream = add_stream_of_decoder pdf dcdr in
@@ -172,14 +212,15 @@ let font_definition_to_dictionary (pdf : Pdf.t) (fntdef : Pdftext.font) () =
 
 
 let get_font_dictionary (pdf : Pdf.t) =
-  [] |> FontAbbrevHashTable.fold (fun _ (fntdef, tag) acc ->
-    let obj = font_definition_to_dictionary pdf fntdef () in
+  [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
+    let obj = make_dictionary pdf abbrev tuple () in
+    let (_, tag, _) = tuple in
       (tag, obj) :: acc
   )
 
 
 let initialize () =
-  List.iter (fun (abbrev, fntdef) -> FontAbbrevHashTable.add abbrev fntdef) [
+  List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
 (*
     ("Hlv",
      (ExternalFile("HelveticaBlack.ttf"),
@@ -187,8 +228,7 @@ let initialize () =
       Pdf.Null));
 *)
     ("TimesIt",
-     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding),
-      "/F0")
+     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), "/F0", None)
 (*    Pdf.Dictionary [
         ("/Type", Pdf.Name "/Font");
         ("/Subtype", Pdf.Name "/Type1");
@@ -198,39 +238,6 @@ let initialize () =
   ]
 
 
-let string_of_file (flnmin : file_name) : string =
-  try
-    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
-    let buf : Buffer.t = Buffer.create bufsize in
-    let byt : bytes = Bytes.create bufsize in
-    let ic : in_channel = open_in_bin flnmin in
-      try
-        begin
-          while true do
-            let c = input ic byt 0 bufsize in
-              if c = 0 then raise Exit else
-                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
-          done ;
-          assert false
-        end
-      with
-      | Exit           -> begin close_in ic ; Buffer.contents buf end
-      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
-      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
-  with
-  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
-
-
-let get_decoder (flnmin : file_name) : Otfm.decoder =
-  match FontFileNameHashTable.find_opt flnmin with
-  | Some(dcdr) -> dcdr
-  | None       ->
-      let s = string_of_file flnmin in
-      let dcdr = Otfm.decoder (`String(s)) in
-      begin
-        FontFileNameHashTable.add flnmin dcdr ;
-        dcdr
-      end
 
 
 let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
@@ -267,7 +274,7 @@ let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
 
 
-let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
+let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
   let uchar_list_of_string str =
     let rec aux acc i =
       if i < 0 then List.rev acc else
@@ -275,30 +282,35 @@ let get_width_of_word (fntabrv : font_abbrev) (fntsize : SkipLength.t) (word : s
     in
       aux [] ((String.length str) - 1)
   in
-    match FontAbbrevHashTable.find_opt fntabrv with
-    | None               -> raise (InvalidFontAbbrev(fntabrv))
+    match FontAbbrevHashTable.find_opt abbrev with
+    | None               -> raise (InvalidFontAbbrev(abbrev))
 
-    | Some((Pdftext.CIDKeyedFont(fontname, _, _), _)) ->
+    | Some((Pdftext.CIDKeyedFont(fontname, _, _), _, dcdropt)) ->
         let uword = uchar_list_of_string word in
-        let dcdr = get_decoder fontname in (* doubtful *)
+        let dcdr =
+          match dcdropt with
+          | None       -> assert false
+          | Some(dcdr) -> dcdr
+        in
         let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
         let awtotal = List.fold_left (+) 0 chwidlst in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
 
-    | Some((Pdftext.StandardFont(stdfont, enc), _)) ->
+    | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
         let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
           (fntsize *% ((float_of_int awtotal) /. 1000.))
 (*
-    | Some((Internal(Pdftext.SimpleFont(smplfnt)), _, _)) ->
-        let bsfnt = smplfnt.basefont in
+    | Some((Pdftext.SimpleFont(smplfont), _)) ->
+        let basefont = smplfont.Pdftext.basefont in
         begin
           match smplfnt.fonttype with
           | Pdftext.TrueType ->
           | _ -> failwith "other than TrueType; remains to be implemented."
         end
-
-    | Some((Internal(Pdftext.CIDKeyedFont(_, _, _)), _, _)) -> failwith "CIDKeyedFont; remains to be implemented."
 *)
+
+
+(* -- following are operations about handling glyphs -- *)
 
 
 type contour_element =
