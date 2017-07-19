@@ -269,21 +269,12 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_width_info) : badness =
-    let criterion = 2. in
+    let criterion_short = 4. in
+    let criterion_long = -.1. in
     let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
-      if      ratio > criterion    then TooShort
-      else if ratio < -. criterion then TooLong
-      else                              Badness(~@ (ratio *. 10000. /. criterion))
-(*
-    let widdiff = required_width -% widinfo.naturalWidth in
-    let is_short = (widdiff <% SkipLength.zero) in
-    let widcriterion = SkipLength.of_pdf_point (-80.0) in
-      match () with
-(*      | _ when diff > 5000  -> TooShort *)
-      | _ when widdiff <% widcriterion -> TooLong
-      | _                              -> Badness(abs (~@ ((widdiff /% widcriterion) *. 10000.)))
-    (* temporary; should be like `determine_widths` *)
-*)
+      if      ratio > criterion_short then TooShort
+      else if ratio < criterion_long  then TooLong
+      else Badness(abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_short))))
   in
 
   let grph = LineBreakGraph.create () in
@@ -292,25 +283,24 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let found_candidate = ref false in
 
-  let update_graph (wmap : WidthMap.t) (dscrid : DiscretionaryID.t) (widinfobreak : skip_width_info) : bool * WidthMap.t =
-
-      begin
-        LineBreakGraph.add_vertex grph dscrid ;
-        found_candidate := false ;
-        Hashtbl.clear htomit ;
-        wmap |> WidthMap.iter (fun dscridX widinfoX ->
-          let badns = get_badness_for_line_breaking paragraph_width (widinfoX +%@ widinfobreak) in
-            match badns with
-            | TooShort    -> ()
-            | TooLong     -> begin Hashtbl.add htomit dscridX () ; end
-            | Badness(pb) ->
-                begin
-                  found_candidate := true ;
-                  LineBreakGraph.add_edge grph dscridX dscrid pb ;
-                end
-        ) ;
-        (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
-      end
+  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_width_info) : bool * WidthMap.t =
+    begin
+      LineBreakGraph.add_vertex grph dscridto ;
+      found_candidate := false ;
+      Hashtbl.clear htomit ;
+      wmap |> WidthMap.iter (fun dscridfrom widinfofrom ->
+        let badns = get_badness_for_line_breaking paragraph_width (widinfofrom +%@ widinfobreak) in
+          match badns with
+          | TooShort    -> ()
+          | TooLong     -> begin Hashtbl.add htomit dscridfrom () ; end
+          | Badness(pb) ->
+              begin
+                found_candidate := true ;
+                LineBreakGraph.add_edge grph dscridfrom dscridto pb ;
+              end
+      ) ;
+      (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
+    end
   in
 
   let convert_for_line_breaking (hblst : horz_box list) : lb_horz_box list =
@@ -398,11 +388,11 @@ let () =
     let evvblst =
       break_horz_box_list [
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-(*        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space; *)
-        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space;
+        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
+(*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
-        word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";
+        word "jumps"; space; word "over"; space; word "the"; space; word1 "lazy"; space; word "dog.";
         space;
         word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
         word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
