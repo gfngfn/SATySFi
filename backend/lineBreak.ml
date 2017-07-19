@@ -367,7 +367,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
     DiscretionaryID.initialize () ;
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
     let lhblst = convert_for_line_breaking hblst in
-    let wmapfinal = aux wmapinit lhblst in
+    let _ (* wmapfinal *) = aux wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
