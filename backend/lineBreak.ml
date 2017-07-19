@@ -34,6 +34,8 @@ module DiscretionaryID
     val beginning : t
     val final : t
     val show : t -> string
+    val hash : t -> int
+    val compare : t -> t -> int
   end
 = struct
 
@@ -66,6 +68,10 @@ module DiscretionaryID
       | Beginning -> "<beginning>"
       | Final     -> "<final>"
       | Middle(i) -> "<" ^ (string_of_int i) ^ ">"
+
+    let hash = Hashtbl.hash
+
+    let compare = compare
 
   end
 
@@ -122,40 +128,31 @@ module WidthMap
     val empty : t
     val add_width_all : skip_width_info -> t -> t
     val add : DiscretionaryID.t -> skip_width_info -> t -> t
-    val iter : (DiscretionaryID.t -> skip_width_info -> unit) -> t -> unit
+    val iter : (DiscretionaryID.t -> skip_width_info -> bool ref -> unit) -> t -> unit
     val remove : DiscretionaryID.t -> t -> t
   end
 = struct
 
-    module DiscretionaryIDMap = Map.Make(
-      struct
-        type t = DiscretionaryID.t
-        let compare = compare
-      end)
+    module DiscretionaryIDMap = Map.Make (DiscretionaryID)
 
-    type t = skip_width_info DiscretionaryIDMap.t
+    type t = (skip_width_info * bool ref) DiscretionaryIDMap.t
 
     let empty = DiscretionaryIDMap.empty
 
-    let add = DiscretionaryIDMap.add
+    let add dscrid widinfo wmap = wmap |> DiscretionaryIDMap.add dscrid (widinfo, ref false)
 
-    let iter = DiscretionaryIDMap.iter
+    let iter f = DiscretionaryIDMap.iter (fun dscrid (widinfo, bref) -> f dscrid widinfo bref)
 
     let add_width_all (widinfo : skip_width_info) (wmap : t) : t =
-      wmap |> DiscretionaryIDMap.map (fun distinfo -> distinfo +%@ widinfo)
+      wmap |> DiscretionaryIDMap.map (fun (distinfo, bref) -> (distinfo +%@ widinfo, bref))
 
     let remove = DiscretionaryIDMap.remove
 
   end
 
 
-module LineBreakGraph = FlowGraph.Make(
-  struct
-    type t = DiscretionaryID.t
-    let equal = DiscretionaryID.equal
-    let hash = Hashtbl.hash
-    let show = DiscretionaryID.show (* for debug *)
-  end)
+module LineBreakGraph = FlowGraph.Make
+  (DiscretionaryID)
   (struct
     type t = pure_badness
     let show = string_of_int
@@ -165,28 +162,32 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let paragraph_width = SkipLength.of_pdf_point 400.0 (* temporary; should be variable *)
+module RemovalSet = MutableSet.Make
+  (DiscretionaryID)
+
+
+let paragraph_width = SkipLength.of_pdf_point 220.0 (* temporary; should be variable *)
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_width_info) : bool * float * skip_width =
-    let widnatural = widinfo_total.naturalWidth in
-    let widdiff = widrequired -% widnatural in
-    let widstretch = widinfo_total.stretchableWidth in
-    let widshrink = widinfo_total.shrinkableWidth in
-    let nfil = widinfo_total.numberOfFils in
-    let is_short = (widnatural <% widrequired) in
-    let (ratio, widperfil) =
-      if is_short then
-        if nfil > 0 then  (* -- when the line contains fils -- *)
-          (0., widdiff *% (1. /. (~. nfil)))
-        else if nfil = 0 then
-          if SkipLength.is_nearly_zero widstretch then (+.infinity, SkipLength.zero) else
-            (widdiff /% widstretch, SkipLength.zero)
-        else
-          assert false
+  let widnatural = widinfo_total.naturalWidth in
+  let widdiff = widrequired -% widnatural in
+  let widstretch = widinfo_total.stretchableWidth in
+  let widshrink = widinfo_total.shrinkableWidth in
+  let nfil = widinfo_total.numberOfFils in
+  let is_short = (widnatural <% widrequired) in
+  let (ratio, widperfil) =
+    if is_short then
+      if nfil > 0 then  (* -- when the line contains fils -- *)
+        (0., widdiff *% (1. /. (~. nfil)))
+      else if nfil = 0 then
+        if SkipLength.is_nearly_zero widstretch then (+.infinity, SkipLength.zero) else
+          (widdiff /% widstretch, SkipLength.zero)
       else
-        if SkipLength.is_nearly_zero widshrink then (-.infinity, SkipLength.zero) else (widdiff /% widshrink, SkipLength.zero)
-    in
-      (is_short, ratio, widperfil)
+        assert false
+    else
+      if SkipLength.is_nearly_zero widshrink then (-.infinity, SkipLength.zero) else (widdiff /% widshrink, SkipLength.zero)
+  in
+    (is_short, ratio, widperfil)
 
 
 let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
@@ -222,7 +223,7 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
         if is_short then
           if totalpb >= 10000 then TooShort else Badness(totalpb)
         else
-          if totalpb >= 10000 then TooLong else Badness(totalpb)
+          if totalpb >= 10000 then TooLong(totalpb) else Badness(totalpb)
       in
       (* begin : for debug *)
       let checksum =
@@ -269,17 +270,18 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_width_info) : badness =
-    let criterion_short = 4. in
+    let criterion_short = 10. in
     let criterion_long = -.1. in
     let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
+    let pb = abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_short))) in
       if      ratio > criterion_short then TooShort
-      else if ratio < criterion_long  then TooLong
-      else Badness(abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_short))))
+      else if ratio < criterion_long  then TooLong(pb)
+      else Badness(pb)
   in
 
   let grph = LineBreakGraph.create () in
 
-  let htomit : (DiscretionaryID.t, unit) Hashtbl.t = Hashtbl.create 32 in
+  let htomit : RemovalSet.t = RemovalSet.create 32 in
 
   let found_candidate = ref false in
 
@@ -287,19 +289,32 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
     begin
       LineBreakGraph.add_vertex grph dscridto ;
       found_candidate := false ;
-      Hashtbl.clear htomit ;
-      wmap |> WidthMap.iter (fun dscridfrom widinfofrom ->
+      RemovalSet.clear htomit ;
+      wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
         let badns = get_badness_for_line_breaking paragraph_width (widinfofrom +%@ widinfobreak) in
           match badns with
-          | TooShort    -> ()
-          | TooLong     -> begin Hashtbl.add htomit dscridfrom () ; end
           | Badness(pb) ->
               begin
                 found_candidate := true ;
                 LineBreakGraph.add_edge grph dscridfrom dscridto pb ;
               end
+
+          | TooShort    -> ()
+
+          | TooLong(pb) ->
+              if !is_already_too_long then
+                begin
+                  RemovalSet.add htomit dscridfrom ;
+                end
+              else
+                begin
+                  is_already_too_long := true ;
+                  found_candidate := true ;
+                  LineBreakGraph.add_edge grph dscridfrom dscridto pb ;
+                end
+                  
       ) ;
-      (!found_candidate, Hashtbl.fold (fun dscrid () wm -> wm |> WidthMap.remove dscrid) htomit wmap)
+      (!found_candidate, RemovalSet.fold (fun dscrid wm -> wm |> WidthMap.remove dscrid) htomit wmap)
     end
   in
 
@@ -385,10 +400,11 @@ let () =
     let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 4.))), None, None) in
     let fill = HorzOuterBoxAtom(OuterFil) in
     let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
+    let soft_hyphen1 = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
     let evvblst =
       break_horz_box_list [
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
+        word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
 (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;

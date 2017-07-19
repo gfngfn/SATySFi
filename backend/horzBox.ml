@@ -60,7 +60,7 @@ type pure_badness = int
 type badness =
   | TooShort
   | Badness of pure_badness
-  | TooLong
+  | TooLong of pure_badness
 
 type font_abbrev = string
 

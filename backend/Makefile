@@ -6,6 +6,6 @@ fontInfo.native: fontInfo.ml
 horzBox.native: horzBox.ml
 	$(OCBFLAGS) horzBox.native
 
-lineBreak.native: lineBreak.ml flowGraph.ml horzBox.ml handlePdf.ml fontInfo.ml base85.ml
+lineBreak.native: lineBreak.ml flowGraph.ml horzBox.ml handlePdf.ml fontInfo.ml base85.ml mutableSet.ml
 	$(OCBFLAGS) lineBreak.native
 
