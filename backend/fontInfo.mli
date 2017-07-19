@@ -14,4 +14,4 @@ val get_width_of_word : font_abbrev -> SkipLength.t -> string -> SkipLength.t
 
 val get_tag : font_abbrev -> string
 
-val get_font_dictionary : Pdf.t -> (string * Pdf.pdfobject) list
+val get_font_dictionary : Pdf.t -> unit -> (string * Pdf.pdfobject) list

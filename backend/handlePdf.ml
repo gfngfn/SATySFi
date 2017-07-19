@@ -17,8 +17,8 @@ let op_ET = Pdfops.Op_ET
 
 
 let write_vert_lines (evvblst : evaled_vert_box list) : unit =
-  let left_margin = SkipLength.of_pdf_point 50. in
-  let top_margin = SkipLength.of_pdf_point (700.) in
+  let left_margin = SkipLength.of_pdf_point 50. in (* temporary; should be variable *)
+  let top_margin = SkipLength.of_pdf_point (700.) in (* temporary; should be variable *)
   let (_, opaccend) =
     evvblst |> List.fold_left (fun ((xpos, ypos), opacc) (EvVertLine(evhblst)) ->
       let (xposend, opaccend) =
@@ -46,7 +46,7 @@ let write_vert_lines (evvblst : evaled_vert_box list) : unit =
 
   let pdfinit = Pdf.empty () in
 
-  let fontdict = FontInfo.get_font_dictionary pdfinit in
+  let fontdict = FontInfo.get_font_dictionary pdfinit () in
 
   let page =
     {(Pdfpage.blankpage Pdfpaper.a4) with

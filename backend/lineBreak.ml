@@ -165,7 +165,7 @@ module LineBreakGraph = FlowGraph.Make(
   end)
 
 
-let paragraph_width = SkipLength.of_pdf_point 350.0 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 400.0 (* temporary; should be variable *)
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_width_info) : bool * float * skip_width =
     let widnatural = widinfo_total.naturalWidth in
@@ -398,7 +398,8 @@ let () =
     let evvblst =
       break_horz_box_list [
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
+(*        word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space; *)
+        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space;
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
         word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
         word "jumps"; space; word "over"; space; word "the"; space; word "lazy"; space; word "dog.";

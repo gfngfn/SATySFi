@@ -130,6 +130,81 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) : int =
     irstream
 
 
+let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
+  let cp = Uchar.to_int uch in
+  let cmapres =
+    Otfm.cmap dcdr (fun accopt mapkd (u0, u1) gid ->
+      match accopt with
+      | Some(_) -> accopt
+      | None    -> if u0 <= cp && cp <= u1 then Some(gid + (cp - u0)) else None
+    ) None
+  in
+    match cmapres with
+    | Error(e)                   -> raise (FontFormatBroken(e))
+    | Ok(((_, _, _), None))      -> raise (NoGlyph(uch))
+    | Ok(((_, _, _), Some(gid))) -> gid
+
+
+let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
+  let gidkey = get_glyph_id dcdr uch in
+  let hmtxres =
+    Otfm.hmtx dcdr (fun accopt gid adv lsb ->
+      match accopt with
+      | Some(_) -> accopt
+      | None    -> if gid = gidkey then Some((adv, lsb)) else None
+    ) None
+  in
+    match hmtxres with
+    | Error(e)             -> raise (FontFormatBroken(e))
+    | Ok(None)             -> assert false
+    | Ok(Some((adv, lsb))) -> (adv, lsb)
+
+
+let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
+  try
+    let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
+  with
+  | NoGlyph(_) -> 0
+
+
+let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
+  let uchar_list_of_string str =
+    let rec aux acc i =
+      if i < 0 then List.rev acc else
+        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
+    in
+      aux [] ((String.length str) - 1)
+  in
+    match FontAbbrevHashTable.find_opt abbrev with
+    | None               -> raise (InvalidFontAbbrev(abbrev))
+
+    | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
+    | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
+        let uword = uchar_list_of_string word in
+        let dcdr =
+          match dcdropt with
+          | None       -> assert false
+          | Some(dcdr) -> dcdr
+        in
+        let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
+        let awtotal = List.fold_left (+) 0 chwidlst in
+          (fntsize *% ((float_of_int awtotal) /. 1000.))
+
+    | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
+        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
+          (fntsize *% ((float_of_int awtotal) /. 1000.))
+
+
+let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
+  let rec range acc m n =
+    if m > n then List.rev acc else
+      range (m :: acc) (m + 1) n
+  in
+    (range [] firstchar lastchar) |> List.map (fun charcode ->
+      get_uchar_advance_width dcdr (Uchar.of_int charcode)
+    )
+
+
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () =
   match fontdfn with
   | Pdftext.StandardFont(stdfont, _) ->
@@ -163,15 +238,17 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
                   ]
                 in
                 let irdescr = Pdf.addobj pdf objdescr in
-                Pdf.Dictionary[
-                  ("/Type", Pdf.Name("/Font"));
-                  ("/Subtype", Pdf.Name("/TrueType"));
-                  ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
-                  ("/FirstChar", Pdf.Integer(0));  (* temporary; should be more general *)
-                  ("/Widths", Pdf.Array[Pdf.Integer(0)]); (* temporary; should get array from the decoder *)
-                  ("/LastChar", Pdf.Integer(255));  (* temporary; should be more general *)
-                  ("/FontDescriptor", Pdf.Indirect(irdescr));
-                ]
+                let firstchar = 0 in  (* temporary; should be variable *)
+                let lastchar = 255 in  (* temporary; should be variable *)
+                  Pdf.Dictionary[
+                    ("/Type", Pdf.Name("/Font"));
+                    ("/Subtype", Pdf.Name("/TrueType"));
+                    ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
+                    ("/FirstChar", Pdf.Integer(firstchar));
+                    ("/LastChar", Pdf.Integer(lastchar));
+                    ("/Widths", Pdf.Array(List.map (fun x -> Pdf.Integer(x)) (get_truetype_widths_list dcdr firstchar lastchar)));
+                    ("/FontDescriptor", Pdf.Indirect(irdescr));
+                  ]
 
             | _ -> failwith "simple font other than TrueType; remains to be implemented."
       end
@@ -215,7 +292,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
       end
 
 
-let get_font_dictionary (pdf : Pdf.t) =
+let get_font_dictionary (pdf : Pdf.t) () =
   [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
     let obj = make_dictionary pdf abbrev tuple () in
     let (_, tag, _) = tuple in
@@ -239,69 +316,6 @@ let initialize () =
     );
   ]
 
-
-
-
-let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
-  let cp = Uchar.to_int uch in
-  let cmapres =
-    Otfm.cmap dcdr (fun accopt mapkd (u0, u1) gid ->
-      match accopt with
-      | Some(_) -> accopt
-      | None    -> if u0 <= cp && cp <= u1 then Some(gid + (cp - u0)) else None
-    ) None
-  in
-    match cmapres with
-    | Error(e)                   -> raise (FontFormatBroken(e))
-    | Ok(((_, _, _), None))      -> raise (NoGlyph(uch))
-    | Ok(((_, _, _), Some(gid))) -> gid
-
-
-let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
-  let gidkey = get_glyph_id dcdr uch in
-  let hmtxres =
-    Otfm.hmtx dcdr (fun accopt gid adv lsb ->
-      match accopt with
-      | Some(_) -> accopt
-      | None    -> if gid = gidkey then Some((adv, lsb)) else None
-    ) None
-  in
-    match hmtxres with
-    | Error(e)             -> raise (FontFormatBroken(e))
-    | Ok(None)             -> assert false
-    | Ok(Some((adv, lsb))) -> (adv, lsb)
-
-
-let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
-  let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
-
-
-let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
-  let uchar_list_of_string str =
-    let rec aux acc i =
-      if i < 0 then List.rev acc else
-        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
-    in
-      aux [] ((String.length str) - 1)
-  in
-    match FontAbbrevHashTable.find_opt abbrev with
-    | None               -> raise (InvalidFontAbbrev(abbrev))
-
-    | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
-    | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
-        let uword = uchar_list_of_string word in
-        let dcdr =
-          match dcdropt with
-          | None       -> assert false
-          | Some(dcdr) -> dcdr
-        in
-        let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
-        let awtotal = List.fold_left (+) 0 chwidlst in
-          (fntsize *% ((float_of_int awtotal) /. 1000.))
-
-    | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
-        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
-          (fntsize *% ((float_of_int awtotal) /. 1000.))
 
 
 
