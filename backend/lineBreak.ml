@@ -25,61 +25,10 @@ let ( +%@ ) wi1 wi2 =
   }
 
 
-module DiscretionaryID
-: sig
-    type t
-    val initialize : unit -> unit
-    val fresh : unit -> t
-    val equal : t -> t -> bool
-    val beginning : t
-    val final : t
-    val show : t -> string
-    val hash : t -> int
-    val compare : t -> t -> int
-  end
-= struct
-
-    type t = Beginning | Middle of int | Final
-
-    let current_id = ref 0
-
-    let beginning = Beginning
-
-    let final = Final
-
-    let initialize () =
-      begin current_id := 0 ; end
-
-    let fresh () =
-      begin
-        incr current_id ;
-          Middle(!current_id)
-      end
-
-    let equal did1 did2 =
-      match (did1, did2) with
-      | (Beginning, Beginning)   -> true
-      | (Middle(i1), Middle(i2)) -> i1 = i2
-      | (Final, Final)           -> true
-      | _                        -> false
-
-    let show did =
-      match did with
-      | Beginning -> "<beginning>"
-      | Final     -> "<final>"
-      | Middle(i) -> "<" ^ (string_of_int i) ^ ">"
-
-    let hash = Hashtbl.hash
-
-    let compare = compare
-
-  end
-
-
 type lb_horz_box =
   | LBHorzFixedBoxAtom  of skip_width_info * horz_fixed_atom
   | LBHorzOuterBoxAtom  of skip_width_info * horz_outer_atom
-  | LBHorzDiscretionary of DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
+  | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
 let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_width_info =
@@ -100,9 +49,9 @@ let size_of_horz_outer_atom (hoa : horz_outer_atom) : skip_width_info =
 
 
 let convert_box_for_line_breaking = function
-  | HorzDiscretionary(_, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)      -> let widinfo = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hfa)
-  | HorzOuterBoxAtom(hoa)      -> let widinfo = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hoa)
+  | HorzDiscretionary(_, _, _, _) -> assert false
+  | HorzFixedBoxAtom(hfa)         -> let widinfo = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hfa)
+  | HorzOuterBoxAtom(hoa)         -> let widinfo = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hoa)
 
 
 let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
@@ -112,9 +61,9 @@ let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
 
 
 let get_width_info = function
-  | LBHorzDiscretionary(_, _, _, _) -> assert false
-  | LBHorzFixedBoxAtom(widinfo, _)      -> widinfo
-  | LBHorzOuterBoxAtom(widinfo, _)      -> widinfo
+  | LBHorzDiscretionary(_, _, _, _, _) -> assert false
+  | LBHorzFixedBoxAtom(widinfo, _)     -> widinfo
+  | LBHorzOuterBoxAtom(widinfo, _)     -> widinfo
 
 
 let get_width_info_opt = function
@@ -193,17 +142,17 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_width_info
 let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
   let widinfo_total =
     lhblst |> List.map (function
-      | LBHorzFixedBoxAtom(widinfo, _)      -> widinfo
-      | LBHorzOuterBoxAtom(widinfo, _)      -> widinfo
-      | LBHorzDiscretionary(_, _, _, _) -> assert false
+      | LBHorzFixedBoxAtom(widinfo, _)     -> widinfo
+      | LBHorzOuterBoxAtom(widinfo, _)     -> widinfo
+      | LBHorzDiscretionary(_, _, _, _, _) -> assert false
     ) |> List.fold_left (+%@) widinfo_zero
   in
   let (is_short, ratio, widperfil) = calculate_ratios widrequired widinfo_total in
       let pairlst =
         lhblst |> List.map (function
-          | LBHorzDiscretionary(_, _, _, _)  -> assert false
-          | LBHorzFixedBoxAtom(widinfo, hfa) -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
-          | LBHorzOuterBoxAtom(widinfo, hoa) ->
+          | LBHorzDiscretionary(_, _, _, _, _)  -> assert false
+          | LBHorzFixedBoxAtom(widinfo, hfa)    -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
+          | LBHorzOuterBoxAtom(widinfo, hoa)    ->
               let nfil = widinfo.fils in
                 if nfil > 0 then
                   (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
@@ -247,7 +196,7 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
 let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : evaled_vert_box list =
   let rec aux (acclines : evaled_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
     match lhblst with
-    | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
+    | LBHorzDiscretionary(_, dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         if List.mem dscrid path then
           let line         = match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline in
           let acclinefresh = match lhbopt2 with None -> []      | Some(lhb2) -> lhb2 :: [] in
@@ -285,7 +234,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let found_candidate = ref false in
 
-  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_width_info) : bool * WidthMap.t =
+  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_width_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
     begin
       LineBreakGraph.add_vertex grph dscridto ;
       found_candidate := false ;
@@ -296,7 +245,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
           | Badness(pb) ->
               begin
                 found_candidate := true ;
-                LineBreakGraph.add_edge grph dscridfrom dscridto pb ;
+                LineBreakGraph.add_edge grph dscridfrom dscridto (pb + pnltybreak) ;
               end
 
           | TooShort    -> ()
@@ -323,12 +272,12 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
       match hblst with
       | [] -> List.rev acc
 
-      | HorzDiscretionary(hbopt0, hbopt1, hbopt2) :: tail ->
+      | HorzDiscretionary(pnlty, hbopt0, hbopt1, hbopt2) :: tail ->
           let lhbopt0 = convert_box_for_line_breaking_opt hbopt0 in
           let lhbopt1 = convert_box_for_line_breaking_opt hbopt1 in
           let lhbopt2 = convert_box_for_line_breaking_opt hbopt2 in
           let dscrid = DiscretionaryID.fresh () in
-            aux (LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: acc) tail
+            aux (LBHorzDiscretionary(pnlty, dscrid, lhbopt0, lhbopt1, lhbopt2) :: acc) tail
 
       | hb :: tail ->
           let lhb = convert_box_for_line_breaking hb in
@@ -339,11 +288,11 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let rec aux (wmap : WidthMap.t) (lhblst : lb_horz_box list) =
     match lhblst with
-    | LBHorzDiscretionary(dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
+    | LBHorzDiscretionary(pnlty, dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         let widinfo0 = get_width_info_opt lhbopt0 in
         let widinfo1 = get_width_info_opt lhbopt1 in
         let widinfo2 = get_width_info_opt lhbopt2 in
-        let (found, wmapsub) = update_graph wmap dscrid widinfo1 in
+        let (found, wmapsub) = update_graph wmap dscrid widinfo1 pnlty () in
         let wmapnew =
           if found then
             wmapsub |> WidthMap.add_width_all widinfo0 |> WidthMap.add dscrid widinfo2
@@ -359,7 +308,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
     | [] ->
         let dscrid = DiscretionaryID.final in
-        let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero in
+        let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
           wmapfinal
   in
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning widinfo_zero in
@@ -389,6 +338,10 @@ let print_evaled_vert_box (EvVertLine(evhblst)) =
   end
 
 
+let penalty_break_space = 100
+let penalty_soft_hyphen = 1000
+
+
 let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
@@ -397,10 +350,10 @@ let () =
     let font1 = ("Hlv", ~% 16.) in
     let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
-    let space = HorzDiscretionary(Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 4.))), None, None) in
+    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 4.))), None, None) in
     let fill = HorzOuterBoxAtom(OuterFil) in
-    let soft_hyphen = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
-    let soft_hyphen1 = HorzDiscretionary(None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
+    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
+    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
     let evvblst =
       break_horz_box_list [
         word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;

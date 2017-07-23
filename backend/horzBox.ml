@@ -70,7 +70,7 @@ type horz_outer_atom =
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom
   | HorzOuterBoxAtom  of horz_outer_atom
-  | HorzDiscretionary of horz_box option * horz_box option * horz_box option
+  | HorzDiscretionary of pure_badness * horz_box option * horz_box option * horz_box option
 
 type evaled_horz_box =
   | EvHorzFixedBoxAtom of skip_width * horz_fixed_atom
