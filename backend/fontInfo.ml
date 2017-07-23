@@ -79,31 +79,7 @@ module FontAbbrevHashTable
       | Not_found -> None
 
   end
-(*
-module FontFileNameHashTable
-: sig
-    val add : file_name -> Otfm.decoder -> unit
-    val find_opt : file_name -> Otfm.decoder option
-  end
-= struct
 
-    module Ht = Hashtbl.Make(
-      struct
-        type t = file_name
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
-
-    let file_name_to_decoder_hash_table : Otfm.decoder Ht.t = Ht.create 32
-
-    let add = Ht.add file_name_to_decoder_hash_table
-
-    let find_opt (flnmin : file_name) =
-      try Some(Ht.find file_name_to_decoder_hash_table flnmin) with
-      | Not_found -> None
-
-  end
-*)
 
 let get_tag (abbrev : font_abbrev) =
   match FontAbbrevHashTable.find_opt abbrev with
@@ -118,7 +94,7 @@ let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
         Pdfio.bytes_of_string s85
 
 
-let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) : int =
+let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) () : int =
   let bt85 = to_base85_pdf_bytes dcdr in
   let len = Pdfio.bytes_size bt85 in
   let objstream =
@@ -222,7 +198,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
         | Some(dcdr) ->
             match smplfont.Pdftext.fonttype with
             | Pdftext.Truetype ->
-                let irstream = add_stream_of_decoder pdf dcdr in
+                let irstream = add_stream_of_decoder pdf dcdr () in
                   (* -- add to the PDF the stream in which the font file is embedded -- *)
                 let objdescr =
                   Pdf.Dictionary[
@@ -260,7 +236,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
         match dcdropt with
         | None       -> assert false
         | Some(dcdr) ->
-            let irstream = add_stream_of_decoder pdf dcdr in
+            let irstream = add_stream_of_decoder pdf dcdr () in
               (* -- add to the PDF the stream in which the font file is embedded -- *)
             let cidfontdescr = cidrecord.Pdftext.cid_fontdescriptor in
             let objdescr =

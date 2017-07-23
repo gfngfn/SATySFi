@@ -18,21 +18,14 @@ module SkipLength
     type t = float
 
     let zero = 0.0
-
     let add = ( +. )
-
     let subtr = ( -. )
-
     let mult = ( *. )
-
     let div = ( /. )
-
     let less_than = ( < )
-
     let is_nearly_zero sl = (sl < 0.01)
 
     let of_pdf_point pt = pt
-
     let to_pdf_point sl = sl
 
     let show = string_of_float
@@ -48,12 +41,13 @@ type skip_width  = SkipLength.t
 type skip_height = SkipLength.t
 type skip_depth  = SkipLength.t
 
-type skip_width_info = {
-  naturalWidth:     skip_width;
-  shrinkableWidth:  skip_width;
-  stretchableWidth: skip_width;
-  numberOfFils:     int;
-}
+type skip_width_info =
+  {
+    natural     : skip_width;
+    shrinkable  : skip_width;
+    stretchable : skip_width;
+    fils        : int;
+  }
 
 type pure_badness = int
 

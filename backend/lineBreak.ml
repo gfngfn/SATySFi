@@ -10,18 +10,18 @@ let ( ~@ ) = int_of_float
 
 let widinfo_zero =
   {
-    naturalWidth= SkipLength.zero;
-    shrinkableWidth= SkipLength.zero;
-    stretchableWidth= SkipLength.zero;
-    numberOfFils= 0;
+    natural= SkipLength.zero;
+    shrinkable= SkipLength.zero;
+    stretchable= SkipLength.zero;
+    fils= 0;
   }
 
 let ( +%@ ) wi1 wi2 =
   {
-    naturalWidth= wi1.naturalWidth +% wi2.naturalWidth;
-    shrinkableWidth= wi1.shrinkableWidth +% wi2.shrinkableWidth;
-    stretchableWidth= wi1.stretchableWidth +% wi2.stretchableWidth;
-    numberOfFils= wi1.numberOfFils + wi2.numberOfFils;
+    natural= wi1.natural +% wi2.natural;
+    shrinkable= wi1.shrinkable +% wi2.shrinkable;
+    stretchable= wi1.stretchable +% wi2.stretchable;
+    fils= wi1.fils + wi2.fils;
   }
 
 
@@ -86,17 +86,17 @@ let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_width_info =
   match hfa with
   | FixedString((fntabrv, size), word) ->
       let wid = FontInfo.get_width_of_word fntabrv size word in
-        { naturalWidth= wid; shrinkableWidth= SkipLength.zero; stretchableWidth= SkipLength.zero; numberOfFils= 0; }
+        { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }
           (* temporary; should get height and depth *)
 
 
 let size_of_horz_outer_atom (hoa : horz_outer_atom) : skip_width_info =
   match hoa with
   | OuterEmpty(wid, widshrink, widstretch) ->
-      { naturalWidth= wid; shrinkableWidth= widshrink; stretchableWidth= widstretch; numberOfFils= 0; }
+      { natural= wid; shrinkable= widshrink; stretchable= widstretch; fils= 0; }
 
   | OuterFil ->
-      { naturalWidth= SkipLength.zero; shrinkableWidth= SkipLength.zero; stretchableWidth= SkipLength.zero; numberOfFils= 1; }
+      { natural= SkipLength.zero; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 1; }
 
 
 let convert_box_for_line_breaking = function
@@ -169,11 +169,11 @@ module RemovalSet = MutableSet.Make
 let paragraph_width = SkipLength.of_pdf_point 220.0 (* temporary; should be variable *)
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_width_info) : bool * float * skip_width =
-  let widnatural = widinfo_total.naturalWidth in
+  let widnatural = widinfo_total.natural in
   let widdiff = widrequired -% widnatural in
-  let widstretch = widinfo_total.stretchableWidth in
-  let widshrink = widinfo_total.shrinkableWidth in
-  let nfil = widinfo_total.numberOfFils in
+  let widstretch = widinfo_total.stretchable in
+  let widshrink = widinfo_total.shrinkable in
+  let nfil = widinfo_total.fils in
   let is_short = (widnatural <% widrequired) in
   let (ratio, widperfil) =
     if is_short then
@@ -202,17 +202,17 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
       let pairlst =
         lhblst |> List.map (function
           | LBHorzDiscretionary(_, _, _, _)  -> assert false
-          | LBHorzFixedBoxAtom(widinfo, hfa) -> (EvHorzFixedBoxAtom(widinfo.naturalWidth, hfa), 0)
+          | LBHorzFixedBoxAtom(widinfo, hfa) -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
           | LBHorzOuterBoxAtom(widinfo, hoa) ->
-              let nfil = widinfo.numberOfFils in
+              let nfil = widinfo.fils in
                 if nfil > 0 then
-                  (EvHorzOuterBoxAtom(widinfo.naturalWidth +% widperfil, hoa), 0)
+                  (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
                 else if nfil = 0 then
                   let widdiff =
-                    if is_short then widinfo.stretchableWidth *% ratio
-                                else widinfo.shrinkableWidth *% ratio
+                    if is_short then widinfo.stretchable *% ratio
+                                else widinfo.shrinkable *% ratio
                   in
-                    (EvHorzOuterBoxAtom(widinfo.naturalWidth +% widdiff, hoa), abs (~@ (ratio *. 100.0)))
+                    (EvHorzOuterBoxAtom(widinfo.natural +% widdiff, hoa), abs (~@ (ratio *. 100.0)))
                 else
                   assert false
         )
@@ -232,12 +232,12 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
         | EvHorzOuterBoxAtom(wid, _) -> wid
         ) |> List.fold_left ( +% ) SkipLength.zero
       in
-      let () = print_for_debug ("natural = " ^ (SkipLength.show widinfo_total.naturalWidth) ^ ", " ^
+      let () = print_for_debug ("natural = " ^ (SkipLength.show widinfo_total.natural) ^ ", " ^
                                 (if is_short then
-                                  "stretchable = " ^ (SkipLength.show widinfo_total.stretchableWidth)
+                                  "stretchable = " ^ (SkipLength.show widinfo_total.stretchable)
                                  else
-                                  "shrinkable = " ^ (SkipLength.show widinfo_total.shrinkableWidth)) ^ ", " ^
-                                "nfil = " ^ (string_of_int widinfo_total.numberOfFils) ^ ", " ^
+                                  "shrinkable = " ^ (SkipLength.show widinfo_total.shrinkable)) ^ ", " ^
+                                "nfil = " ^ (string_of_int widinfo_total.fils) ^ ", " ^
                                 "ratio = " ^ (string_of_float ratio) ^ ", " ^
                                 "checksum = " ^ (SkipLength.show checksum)) in
       (* end : for debug *)
