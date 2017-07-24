@@ -26,12 +26,12 @@ let ( +%@ ) wi1 wi2 =
 
 
 type lb_horz_box =
-  | LBHorzFixedBoxAtom  of skip_width_info * horz_fixed_atom
-  | LBHorzOuterBoxAtom  of skip_width_info * horz_outer_atom
+  | LBHorzFixedBoxAtom  of skip_info * horz_fixed_atom
+  | LBHorzOuterBoxAtom  of skip_info * horz_outer_atom
   | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
-let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_width_info =
+let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info =
   match hfa with
   | FixedString((fntabrv, size), word) ->
       let wid = FontInfo.get_width_of_word fntabrv size word in
@@ -39,7 +39,7 @@ let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_width_info =
           (* temporary; should get height and depth *)
 
 
-let size_of_horz_outer_atom (hoa : horz_outer_atom) : skip_width_info =
+let size_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info =
   match hoa with
   | OuterEmpty(wid, widshrink, widstretch) ->
       { natural= wid; shrinkable= widshrink; stretchable= widstretch; fils= 0; }
@@ -75,16 +75,16 @@ module WidthMap
 : sig
     type t
     val empty : t
-    val add_width_all : skip_width_info -> t -> t
-    val add : DiscretionaryID.t -> skip_width_info -> t -> t
-    val iter : (DiscretionaryID.t -> skip_width_info -> bool ref -> unit) -> t -> unit
+    val add_width_all : skip_info -> t -> t
+    val add : DiscretionaryID.t -> skip_info -> t -> t
+    val iter : (DiscretionaryID.t -> skip_info -> bool ref -> unit) -> t -> unit
     val remove : DiscretionaryID.t -> t -> t
   end
 = struct
 
     module DiscretionaryIDMap = Map.Make (DiscretionaryID)
 
-    type t = (skip_width_info * bool ref) DiscretionaryIDMap.t
+    type t = (skip_info * bool ref) DiscretionaryIDMap.t
 
     let empty = DiscretionaryIDMap.empty
 
@@ -92,7 +92,7 @@ module WidthMap
 
     let iter f = DiscretionaryIDMap.iter (fun dscrid (widinfo, bref) -> f dscrid widinfo bref)
 
-    let add_width_all (widinfo : skip_width_info) (wmap : t) : t =
+    let add_width_all (widinfo : skip_info) (wmap : t) : t =
       wmap |> DiscretionaryIDMap.map (fun (distinfo, bref) -> (distinfo +%@ widinfo, bref))
 
     let remove = DiscretionaryIDMap.remove
@@ -117,7 +117,7 @@ module RemovalSet = MutableSet.Make
 
 let paragraph_width = SkipLength.of_pdf_point 220.0 (* temporary; should be variable *)
 
-let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_width_info) : bool * float * skip_width =
+let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bool * float * skip_width =
   let widnatural = widinfo_total.natural in
   let widdiff = widrequired -% widnatural in
   let widstretch = widinfo_total.stretchable in
@@ -218,7 +218,7 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 
 let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
-  let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_width_info) : badness =
+  let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_info) : badness =
     let criterion_short = 10. in
     let criterion_long = -.1. in
     let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
@@ -234,7 +234,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
 
   let found_candidate = ref false in
 
-  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_width_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
+  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
     begin
       LineBreakGraph.add_vertex grph dscridto ;
       found_candidate := false ;

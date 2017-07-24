@@ -15,31 +15,40 @@ let op_Tj str = Pdfops.Op_Tj(str)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
 
+let ( @|> ) = ( |> )
+  (* ----
+      right-associative version;
+      `y @|> x @|> f ` is equivalent to `f x y`
+     ---- *)
+
 
 let write_vert_lines (evvblst : evaled_vert_box list) : unit =
-  let left_margin = SkipLength.of_pdf_point 50. in (* temporary; should be variable *)
-  let top_margin = SkipLength.of_pdf_point (700.) in (* temporary; should be variable *)
+  let left_margin = SkipLength.of_pdf_point 50. in  (* temporary; should be variable *)
+  let top_margin = SkipLength.of_pdf_point 700. in  (* temporary; should be variable *)
+  let leading = SkipLength.of_pdf_point 32. in  (* temporary; should be variable *)
   let (_, opaccend) =
-    evvblst |> List.fold_left (fun ((xpos, ypos), opacc) (EvVertLine(evhblst)) ->
-      let (xposend, opaccend) =
-        evhblst |> List.fold_left (fun (xpos, opacc) evhb ->
-          let (widdiff, ops) =
-            match evhb with
-            | EvHorzFixedBoxAtom(wid, FixedString((fntabrv, size), word)) ->
-                let tag = FontInfo.get_tag fntabrv in
-                  (wid, [
-                    op_Tm_translate (xpos, ypos);
-                    op_Tf tag size;
-                    op_Tj word;
-                  ])
-            | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
-          in
-          let opaccnew = List.rev_append ops opacc in
-            (xpos +% widdiff, opaccnew)
-        ) (xpos, opacc)
+    evvblst @|> ((left_margin, top_margin), []) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
+      match evvb with
+      | EvVertLine(evhblst) ->
+          let (xposend, opaccend) =
+            evhblst @|> (xpos, opacc) @|> List.fold_left (fun (xpos, opacc) evhb ->
+              let (widdiff, ops) =
+                match evhb with
+                | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
+                | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
+                    let tag = FontInfo.get_tag fontabrv in
+                      (wid, [
+                        op_Tm_translate (xpos, ypos);
+                        op_Tf tag size;
+                        op_Tj word;
+                      ])
+              in
+              let opaccnew = List.rev_append ops opacc in
+                (xpos +% widdiff, opaccnew)
+            )
       in
-        ((left_margin, ypos -% SkipLength.of_pdf_point 32. (* temporary; leading *)), opaccend)
-    ) ((left_margin, top_margin), [])
+        ((left_margin, ypos -% leading), opaccend)
+    )
   in
 
   let oplst = op_cm (SkipLength.zero, SkipLength.zero) :: op_BT :: (List.rev (op_ET :: opaccend)) in

@@ -41,7 +41,7 @@ type skip_width  = SkipLength.t
 type skip_height = SkipLength.t
 type skip_depth  = SkipLength.t
 
-type skip_width_info =
+type skip_info =
   {
     natural     : skip_width;
     shrinkable  : skip_width;
@@ -78,3 +78,4 @@ type evaled_horz_box =
 
 type evaled_vert_box =
   | EvVertLine of evaled_horz_box list
+  | EvVertSkip of skip_height * skip_height * skip_height
