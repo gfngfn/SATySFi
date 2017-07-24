@@ -58,6 +58,8 @@ type badness =
 
 type font_abbrev = string
 
+type file_path = string
+
 type font_info = font_abbrev * SkipLength.t
 
 type horz_fixed_atom =

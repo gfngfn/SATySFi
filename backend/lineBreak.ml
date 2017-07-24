@@ -412,10 +412,17 @@ let () =
       ]
     in
     let evvblst = main vblst in  (* temporary *)
-    begin
-      Format.printf "--------@\n" ;
-      List.iter print_evaled_vert_box evvblst ;
-      Format.printf "@\n--------@\n" ;
-      HandlePdf.write_vert_lines evvblst ;
-    end
+    let () =
+      begin
+        Format.printf "--------@\n" ;
+        List.iter print_evaled_vert_box evvblst ;
+        Format.printf "@\n--------@\n" ;
+      end
+    in
+      let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" () in
+      let pdfscheme = HandlePdf.write_page pdfscheme Pdfpaper.a4 evvblst () in
+      let pdfscheme = HandlePdf.write_page pdfscheme Pdfpaper.a4 [] () in
+      begin
+        HandlePdf.write_to_file pdfscheme () ;
+      end
   end
