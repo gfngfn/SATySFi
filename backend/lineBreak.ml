@@ -115,7 +115,7 @@ module RemovalSet = MutableSet.Make
   (DiscretionaryID)
 
 
-let paragraph_width = SkipLength.of_pdf_point 220.0 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 240.0 (* temporary; should be variable *)
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bool * float * skip_width =
   let widnatural = widinfo_total.natural in
@@ -346,7 +346,7 @@ let print_evaled_vert_box (EvVertLine(evhblst)) =
   - `imvbaccO` : (inverted) recent contribution list after picking up a page (to be read next)
   - `vblstO`   : vertical list to be read next
 -- *)
-let main (vblst : vert_box list) : evaled_vert_box list =
+let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
 
   let is_suitable_for_single_page imvbacc =
     true  (* temporary; should be dependent upon accumulated current contribution list *)
@@ -360,24 +360,36 @@ let main (vblst : vert_box list) : evaled_vert_box list =
     )
   in
 
-  let rec pickup_page (imvbacc : intermediate_vert_box list) (vblst : vert_box list) : evaled_vert_box list * intermediate_vert_box list * vert_box list =
+  let rec pickup_page (imvbacc : intermediate_vert_box list) (vblst : vert_box list) : evaled_vert_box list * (intermediate_vert_box list * vert_box list) option =
     match vblst with
     | [] ->
         let imvblst = List.rev imvbacc in
         let evvblst = determine_heights imvblst in
-          (evvblst, [], [])
+          (evvblst, None)
 
     | VertParagraph(hblst) :: tail ->
         let imvblst = break_horz_box_list hblst in
         let imvbaccnew = List.append imvblst imvbacc in
           if is_suitable_for_single_page imvbaccnew then
-            let evvblst = determine_heights imvblst in (evvblst, imvbacc, tail)
+            let evvblst = determine_heights imvblst in (evvblst, Some((imvbacc, tail)))
           else
             pickup_page imvbaccnew tail
   in
-    let (evvblstpage, imvbaccnext, vblstnext) = pickup_page [] vblst in
-      evvblstpage
-        (* temporary; should be iteratively executed until `vblstnext` is empty *)
+
+  let rec iteration (pdfscheme : HandlePdf.t) (imvbacc : intermediate_vert_box list) (vblst : vert_box list) =
+    let (evvblstpage, opt) = pickup_page imvbacc vblst in
+    let pdfschemenext = pdfscheme |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in
+      match opt with
+      | None -> begin HandlePdf.write_to_file pdfschemenext ; end
+      | Some((imvbaccnext, vblstnext)) ->
+        (* begin: for debug *)
+          let () = Format.printf "--------@\n" in
+          let () = List.iter print_evaled_vert_box evvblstpage in
+          let () = Format.printf "@\n--------@\n" in
+        (* end: for debug *)
+          iteration pdfschemenext imvbaccnext vblstnext
+  in
+    iteration pdfscheme [] vblst
 
 
 let penalty_break_space = 100
@@ -409,22 +421,16 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
+        VertParagraph([
+          word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
+          word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;
+          word "sed"; space; word "do"; space; word "eiusmod"; space; word "tempor"; space; word "incididunt"; space;
+          word "ut"; space; word "labore"; space; word "et"; space; word "dolore"; space; word "magna"; space; word "aliqua."; fill;
+        ]);
       ]
     in
-    let evvblst = main vblst in  (* temporary *)
-    let () =
-      begin
-        Format.printf "--------@\n" ;
-        List.iter print_evaled_vert_box evvblst ;
-        Format.printf "@\n--------@\n" ;
-      end
-    in
-      let pdfscheme =
-        HandlePdf.create_empty_pdf "hello2.pdf"
-          |> HandlePdf.write_page Pdfpaper.a4 evvblst
-          |> HandlePdf.write_page Pdfpaper.a4 []
-      in
-      begin
-        HandlePdf.write_to_file pdfscheme ;
-      end
+    let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" in
+    begin
+      main pdfscheme vblst ;
+    end
   end
