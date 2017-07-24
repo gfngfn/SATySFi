@@ -27,13 +27,21 @@ type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
 let left_margin = SkipLength.of_pdf_point 50.  (* temporary; should be variable *)
-let top_margin = SkipLength.of_pdf_point 700.  (* temporary; should be variable *)
+let top_margin = SkipLength.of_pdf_point 70.   (* temporary; should be variable *)
 let leading = SkipLength.of_pdf_point 32.      (* temporary; should be variable *)
 
 
-let write_page ((pdf, pageacc, flnm, fontdict) : t) (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) () : t =
+let get_paper_height (paper : Pdfpaper.t) : skip_height =
+  let dpi = 300. in  (* temporary; should be variable *)
+  let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
+    SkipLength.of_pdf_point pdfpt
+
+
+let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm, fontdict) : t) : t =
+  let xinit = left_margin in
+  let yinit = (get_paper_height paper) -% top_margin in
   let (_, opaccend) =
-    evvblst @|> ((left_margin, top_margin), []) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
+    evvblst @|> ((xinit, yinit), []) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
       match evvb with
       | EvVertLine(evhblst) ->
           let (xposend, opaccend) =
@@ -69,13 +77,13 @@ let write_page ((pdf, pageacc, flnm, fontdict) : t) (paper : Pdfpaper.t) (evvbls
     (pdf, pagenew :: pageacc, flnm, fontdict)
 
 
-let create_empty_pdf (flnm : file_path) () : t =
+let create_empty_pdf (flnm : file_path) : t =
   let pdf = Pdf.empty () in
   let fontdict = FontInfo.get_font_dictionary pdf () in
     (pdf, [], flnm, fontdict)
 
 
-let write_to_file ((pdf, pageacc, flnm, _) : t) () : unit =
+let write_to_file ((pdf, pageacc, flnm, _) : t) : unit =
   let pagelst = List.rev pageacc in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in
   let pdfout = Pdfpage.add_root irpageroot [] pdfsub in

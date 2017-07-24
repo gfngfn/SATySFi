@@ -419,10 +419,12 @@ let () =
         Format.printf "@\n--------@\n" ;
       end
     in
-      let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" () in
-      let pdfscheme = HandlePdf.write_page pdfscheme Pdfpaper.a4 evvblst () in
-      let pdfscheme = HandlePdf.write_page pdfscheme Pdfpaper.a4 [] () in
+      let pdfscheme =
+        HandlePdf.create_empty_pdf "hello2.pdf"
+          |> HandlePdf.write_page Pdfpaper.a4 evvblst
+          |> HandlePdf.write_page Pdfpaper.a4 []
+      in
       begin
-        HandlePdf.write_to_file pdfscheme () ;
+        HandlePdf.write_to_file pdfscheme ;
       end
   end
