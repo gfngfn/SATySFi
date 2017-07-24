@@ -353,6 +353,7 @@ let main (vblst : vert_box list) : evaled_vert_box list =
   in
 
   let determine_heights (imvblst : intermediate_vert_box list) =
+    (* temporary; should determine the height of vertical boxes *)
     imvblst |> List.map (fun imvb ->
       match imvb with
       | ImVertLine(evhblst) -> EvVertLine(evhblst)
@@ -361,7 +362,7 @@ let main (vblst : vert_box list) : evaled_vert_box list =
 
   let rec pickup_page (imvbacc : intermediate_vert_box list) (vblst : vert_box list) : evaled_vert_box list * intermediate_vert_box list * vert_box list =
     match vblst with
-    | []                           ->
+    | [] ->
         let imvblst = List.rev imvbacc in
         let evvblst = determine_heights imvblst in
           (evvblst, [], [])
