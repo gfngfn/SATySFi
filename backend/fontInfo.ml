@@ -46,7 +46,7 @@ let get_decoder (src : file_name) () : Otfm.decoder =
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> Pdftext.font * tag * file_name option -> unit
+    val add : font_abbrev -> Pdftext.font * file_name option -> unit
     val fold : (font_abbrev -> Pdftext.font * tag * Otfm.decoder option -> 'a -> 'a) -> 'a -> 'a
     val find_opt : font_abbrev -> (Pdftext.font * tag * Otfm.decoder option) option
   end
@@ -61,12 +61,21 @@ module FontAbbrevHashTable
 
     let abbrev_to_definition_hash_table : (Pdftext.font * tag * Otfm.decoder option) Ht.t = Ht.create 32
 
-    let add abbrev (font, tag, srcopt) =
+    let current_tag_number = ref 0
+
+    let generate_tag () =
+        begin
+          incr current_tag_number ;
+          "/F" ^ (string_of_int !current_tag_number)
+        end
+
+    let add abbrev (font, srcopt) =
       let dcdropt =
         match srcopt with
         | None      -> None
         | Some(src) -> Some(get_decoder src ())
       in
+      let tag = generate_tag () in
         Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdropt)
 
     let fold f init =
@@ -181,7 +190,7 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
     )
 
 
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () =
+let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () : Pdf.pdfobject =
   match fontdfn with
   | Pdftext.StandardFont(stdfont, _) ->
       Pdf.Dictionary[
@@ -285,10 +294,10 @@ let initialize () =
        Pdftext.fontdescriptor= None;
        Pdftext.fontmetrics= None;
        Pdftext.encoding= Pdftext.StandardEncoding;
-     }), "/F1", Some("./HelveticaBlack.ttf"))
+     }), Some("./HelveticaBlack.ttf"))
     );
     ("TimesIt",
-      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), "/F0", None)
+      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
     );
   ]
 

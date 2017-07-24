@@ -76,6 +76,19 @@ type evaled_horz_box =
   | EvHorzFixedBoxAtom of skip_width * horz_fixed_atom
   | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
 
+type vert_box =
+  | VertParagraph    of horz_box list  (* temporary; should contain more information as arguments *)
+(*
+  | VertOuterBoxAtom of vert_outer_atom
+  | VertFixedBoxAtom of vert_fixed_atom
+*)
+
+type intermediate_vert_box =
+  | ImVertLine            of evaled_horz_box list
+(*
+  | ImVertBreakableSkip   of skip_height * skip_height * skip_height
+  | ImVertUnbreakableSkip of skip_height * skip_height * skip_height
+*)
+
 type evaled_vert_box =
-  | EvVertLine of evaled_horz_box list
-  | EvVertSkip of skip_height * skip_height * skip_height
+  | EvVertLine of evaled_horz_box list  (* temporary; should contain information about height, depth, etc. *)

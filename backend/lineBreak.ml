@@ -119,10 +119,10 @@ let paragraph_width = SkipLength.of_pdf_point 220.0 (* temporary; should be vari
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bool * float * skip_width =
   let widnatural = widinfo_total.natural in
-  let widdiff = widrequired -% widnatural in
   let widstretch = widinfo_total.stretchable in
-  let widshrink = widinfo_total.shrinkable in
-  let nfil = widinfo_total.fils in
+  let widshrink  = widinfo_total.shrinkable in
+  let nfil       = widinfo_total.fils in
+  let widdiff = widrequired -% widnatural in
   let is_short = (widnatural <% widrequired) in
   let (ratio, widperfil) =
     if is_short then
@@ -193,15 +193,15 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
         (evhblst, badns)
 
 
-let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : evaled_vert_box list =
-  let rec aux (acclines : evaled_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
+let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : intermediate_vert_box list =
+  let rec aux (acclines : intermediate_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
     match lhblst with
     | LBHorzDiscretionary(_, dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         if List.mem dscrid path then
           let line         = match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline in
           let acclinefresh = match lhbopt2 with None -> []      | Some(lhb2) -> lhb2 :: [] in
           let (evhblst, _) = determine_widths paragraph_width (List.rev line) in
-            aux (EvVertLine(evhblst) :: acclines) acclinefresh tail
+            aux (ImVertLine(evhblst) :: acclines) acclinefresh tail
         else
           let acclinenew   = match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline) in
             aux acclines acclinenew tail
@@ -211,12 +211,12 @@ let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list)
 
     | [] ->
         let (evhblst, _) = determine_widths paragraph_width (List.rev accline) in
-          List.rev (EvVertLine(evhblst) :: acclines)
+          List.rev (ImVertLine(evhblst) :: acclines)
   in
     aux [] [] lhblst
 
 
-let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
+let break_horz_box_list (hblst : horz_box list) : intermediate_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_info) : badness =
     let criterion_short = 10. in
@@ -320,7 +320,7 @@ let break_horz_box_list (hblst : horz_box list) : evaled_vert_box list =
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
-          [EvVertLine([])] (* temporary *)
+          [ImVertLine([])] (* temporary *)
       | Some(path) ->
           break_into_lines path lhblst
   end
@@ -336,6 +336,47 @@ let print_evaled_vert_box (EvVertLine(evhblst)) =
     ) ;
     Format.printf ")@]@ " ;
   end
+
+
+(* --
+  `let (evvblstO, imvbaccO, vblstO) = pickup_page imvbaccI vblstI`
+  - `vblstI`   : input vertical list
+  - `imvbaccI` : (inverted) recent contribution list before picking up a page
+  - `evvblstO` : vertical list (of evaluated form) for single page
+  - `imvbaccO` : (inverted) recent contribution list after picking up a page (to be read next)
+  - `vblstO`   : vertical list to be read next
+-- *)
+let main (vblst : vert_box list) : evaled_vert_box list =
+
+  let is_suitable_for_single_page imvbacc =
+    true  (* temporary; should be dependent upon accumulated current contribution list *)
+  in
+
+  let determine_heights (imvblst : intermediate_vert_box list) =
+    imvblst |> List.map (fun imvb ->
+      match imvb with
+      | ImVertLine(evhblst) -> EvVertLine(evhblst)
+    )
+  in
+
+  let rec pickup_page (imvbacc : intermediate_vert_box list) (vblst : vert_box list) : evaled_vert_box list * intermediate_vert_box list * vert_box list =
+    match vblst with
+    | []                           ->
+        let imvblst = List.rev imvbacc in
+        let evvblst = determine_heights imvblst in
+          (evvblst, [], [])
+
+    | VertParagraph(hblst) :: tail ->
+        let imvblst = break_horz_box_list hblst in
+        let imvbaccnew = List.append imvblst imvbacc in
+          if is_suitable_for_single_page imvbaccnew then
+            let evvblst = determine_heights imvblst in (evvblst, imvbacc, tail)
+          else
+            pickup_page imvbaccnew tail
+  in
+    let (evvblstpage, imvbaccnext, vblstnext) = pickup_page [] vblst in
+      evvblstpage
+        (* temporary; should be iteratively executed until `vblstnext` is empty *)
 
 
 let penalty_break_space = 100
@@ -354,19 +395,22 @@ let () =
     let fill = HorzOuterBoxAtom(OuterFil) in
     let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
     let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
-    let evvblst =
-      break_horz_box_list [
-        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
-(*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
-        word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
-        word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
-        word "jumps"; space; word "over"; space; word "the"; space; word1 "lazy"; space; word "dog.";
-        space;
-        word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
-        word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
+    let vblst =
+      [
+        VertParagraph([
+          word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
+          word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
+  (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
+          word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
+          word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
+          word "jumps"; space; word "over"; space; word "the"; space; word1 "lazy"; space; word "dog.";
+          space;
+          word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
+          word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
+        ]);
       ]
     in
+    let evvblst = main vblst in  (* temporary *)
     begin
       Format.printf "--------@\n" ;
       List.iter print_evaled_vert_box evvblst ;
