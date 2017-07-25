@@ -1,15 +1,21 @@
 open HorzBox
 
 (* for test *)
-let print_evaled_vert_box (EvVertLine(evhblst)) =
-  begin
-    Format.printf "@[(vert@ " ;
-    evhblst |> List.iter (function
-      | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (SkipLength.show wid)
-      | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (SkipLength.show wid)
-    ) ;
-    Format.printf ")@]@ " ;
-  end
+let print_evaled_vert_box evvb =
+  match evvb with
+  | EvVertLine(_, _, evhblst) ->
+      begin
+        Format.printf "@[(vert@ " ;
+        evhblst |> List.iter (function
+          | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (SkipLength.show wid)
+          | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (SkipLength.show wid)
+        ) ;
+        Format.printf ")@]@ " ;
+      end
+  | EvVertFixedEmpty(vskip) ->
+      begin
+        Format.printf "@[(vskip@ %s)@]@ " (SkipLength.show vskip) ;
+      end
 
 
 let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
@@ -22,7 +28,8 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
     (* temporary; should determine the height of vertical boxes *)
     imvblst |> List.map (fun imvb ->
       match imvb with
-      | ImVertLine(evhblst) -> EvVertLine(evhblst)
+      | ImVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
+      | ImVertFixedEmpty(vskip)       -> EvVertFixedEmpty(vskip)
     )
   in
 
@@ -42,8 +49,8 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
         let evvblst = determine_heights imvblst in
           (evvblst, None)
 
-    | VertParagraph(hblst) :: tail ->
-        let imvblst = LineBreak.main hblst in
+    | VertParagraph(leading, hblst) :: tail ->
+        let imvblst = LineBreak.main leading hblst in
         let imvbaccnew = List.append imvblst imvbacc in
           if is_suitable_for_single_page imvbaccnew then
             let evvblst = determine_heights imvblst in (evvblst, Some((imvbacc, tail)))
@@ -85,7 +92,7 @@ let () =
     let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
     let vblst =
       [
-        VertParagraph([
+        VertParagraph(~% 32., [
           word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
           word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
   (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
@@ -97,7 +104,7 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
-        VertParagraph([
+        VertParagraph(~% 32., [
           word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
           word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;
           word "sed"; space; word "do"; space; word "eiusmod"; space; word "tempor"; space; word "incididunt"; space;

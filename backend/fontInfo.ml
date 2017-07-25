@@ -130,14 +130,34 @@ let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
     | Ok(((_, _, _), Some(gid))) -> gid
 
 
+let get_uchar_raw_contour_list_and_bounding_box (dcdr : Otfm.decoder) (uch : Uchar.t)
+    : ((bool * int * int) list) list * (int * int * int * int) =
+  let gid = get_glyph_id dcdr uch in
+  let gloc =
+    match Otfm.loca dcdr gid with
+    | Error(e)    -> raise (FontFormatBroken(e))
+    | Ok(None)    -> raise (NoGlyph(uch))
+    | Ok(Some(l)) -> l
+  in
+    match Otfm.glyf dcdr gloc with
+    | Error(e)                        -> raise (FontFormatBroken(e))
+    | Ok((`Composite(_), _))          -> raise (NoGlyph(uch))  (* temporary; does not deal with composite glyphs *)
+    | Ok((`Simple(precntrlst), bbox)) -> (precntrlst, bbox)
+
+
+let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int =
+  let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
+    (ymax, ymin)
+
+
 let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let gidkey = get_glyph_id dcdr uch in
   let hmtxres =
-    Otfm.hmtx dcdr (fun accopt gid adv lsb ->
+    None |> Otfm.hmtx dcdr (fun accopt gid adv lsb ->
       match accopt with
       | Some(_) -> accopt
       | None    -> if gid = gidkey then Some((adv, lsb)) else None
-    ) None
+    )
   in
     match hmtxres with
     | Error(e)             -> raise (FontFormatBroken(e))
@@ -145,14 +165,24 @@ let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
     | Ok(Some((adv, lsb))) -> (adv, lsb)
 
 
-let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) =
+let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) : int =
   try
     let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
   with
   | NoGlyph(_) -> 0
 
 
-let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : string) : SkipLength.t =
+let get_uchar_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int * int =
+  let wid = get_uchar_advance_width dcdr uch in
+  let (hgt, dpt) = get_uchar_height_and_depth dcdr uch in
+    (wid, hgt, dpt)
+
+
+let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
+  fontsize *% ((float_of_int rawlen) /. 1000.)
+
+
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : string) : skip_width * skip_height * skip_depth =
   let uchar_list_of_string str =
     let rec aux acc i =
       if i < 0 then List.rev acc else
@@ -160,6 +190,7 @@ let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : st
     in
       aux [] ((String.length str) - 1)
   in
+  let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None               -> raise (InvalidFontAbbrev(abbrev))
 
@@ -171,13 +202,14 @@ let get_width_of_word (abbrev : font_abbrev) (fntsize : SkipLength.t) (word : st
           | None       -> assert false
           | Some(dcdr) -> dcdr
         in
-        let chwidlst = List.map (fun uch -> get_uchar_advance_width dcdr uch) uword in
-        let awtotal = List.fold_left (+) 0 chwidlst in
-          (fntsize *% ((float_of_int awtotal) /. 1000.))
+        let metrlst = List.map (fun uch -> get_uchar_metrics dcdr uch) uword in
+        let (rawwid, rawhgt, rawdpt) = metrlst @|> (0, 0, 0) @|> List.fold_left (fun (w, h, d) (wacc, hacc, dacc) -> (wacc + w, max hacc h, max dacc d)) in
+          (f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
+            (* temporary; should reflect kerning pair information *)
 
     | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
-        let awtotal = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
-          (fntsize *% ((float_of_int awtotal) /. 1000.))
+        let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
+          (f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
 
 
 let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
@@ -315,24 +347,13 @@ type contour = contour_element list
 
 
 let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int * int * int * int) =
-  let gid = get_glyph_id dcdr uch in
-  let gloc =
-    match Otfm.loca dcdr gid with
-    | Error(e)    -> raise (FontFormatBroken(e))
-    | Ok(None)    -> raise (NoGlyph(uch))
-    | Ok(Some(l)) -> l
-  in
-  let (precntrlst, bbox) =
-    match Otfm.glyf dcdr gloc with
-    | Error(e)               -> raise (FontFormatBroken(e))
-    | Ok((`Composite(_), _)) -> raise (NoGlyph(uch)) (* temporary; does not deal with composite glyphs *)
-    | Ok((`Simple(pcl), bb)) -> (pcl, bb)
-  in
+  let (precntrlst, bbox) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
+
   let transform_contour (precntr : (bool * int * int) list) : contour =
     let (xfirst, yfirst) =
       match precntr with
       | (_, x, y) :: _ -> (x, y)
-      | [] -> assert false
+      | []             -> assert false
     in
     let rec aux acc lst =
     match lst with

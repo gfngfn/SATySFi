@@ -7,7 +7,10 @@ module SkipLength
     val subtr : t -> t -> t
     val mult : t -> float -> t
     val div : t -> t -> float
+    val max : t -> t -> t
+    val min : t -> t -> t
     val less_than : t -> t -> bool
+    val leq : t -> t -> bool
     val is_nearly_zero : t -> bool
     val of_pdf_point : float -> t
     val to_pdf_point : t -> float
@@ -22,7 +25,10 @@ module SkipLength
     let subtr = ( -. )
     let mult = ( *. )
     let div = ( /. )
+    let max = max
+    let min = min
     let less_than = ( < )
+    let leq = ( <= )
     let is_nearly_zero sl = (sl < 0.01)
 
     let of_pdf_point pt = pt
@@ -36,6 +42,15 @@ let ( -% ) = SkipLength.subtr
 let ( *% ) = SkipLength.mult
 let ( /% ) = SkipLength.div
 let ( <% ) = SkipLength.less_than
+let ( <=% ) = SkipLength.leq
+
+
+let ( @|> ) = ( |> )
+  (* ----
+      right-associative version;
+      `y @|> x @|> f ` is equivalent to `f x y`
+     ---- *)
+
 
 type skip_width  = SkipLength.t
 type skip_height = SkipLength.t
@@ -79,18 +94,19 @@ type evaled_horz_box =
   | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
 
 type vert_box =
-  | VertParagraph    of horz_box list  (* temporary; should contain more information as arguments *)
+  | VertParagraph    of skip_height * horz_box list  (* temporary; should contain more information as arguments *)
 (*
   | VertOuterBoxAtom of vert_outer_atom
   | VertFixedBoxAtom of vert_fixed_atom
 *)
 
 type intermediate_vert_box =
-  | ImVertLine            of evaled_horz_box list
+  | ImVertLine       of skip_height * skip_depth * evaled_horz_box list
+  | ImVertFixedEmpty of skip_height
 (*
-  | ImVertBreakableSkip   of skip_height * skip_height * skip_height
   | ImVertUnbreakableSkip of skip_height * skip_height * skip_height
 *)
 
 type evaled_vert_box =
-  | EvVertLine of evaled_horz_box list  (* temporary; should contain information about height, depth, etc. *)
+  | EvVertLine       of skip_height * skip_depth * evaled_horz_box list
+  | EvVertFixedEmpty of skip_height

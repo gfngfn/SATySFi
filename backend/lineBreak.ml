@@ -26,32 +26,32 @@ let ( +%@ ) wi1 wi2 =
 
 
 type lb_horz_box =
-  | LBHorzFixedBoxAtom  of skip_info * horz_fixed_atom
-  | LBHorzOuterBoxAtom  of skip_info * horz_outer_atom
+  | LBHorzFixedBoxAtom  of skip_info * skip_height * skip_depth * horz_fixed_atom
+  | LBHorzOuterBoxAtom  of skip_info * skip_height * skip_depth * horz_outer_atom
   | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
-let size_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info =
+let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info * skip_height * skip_depth =
   match hfa with
   | FixedString((fntabrv, size), word) ->
-      let wid = FontInfo.get_width_of_word fntabrv size word in
-        { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }
+      let (wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
+        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
           (* temporary; should get height and depth *)
 
 
-let size_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info =
+let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height * skip_depth =
   match hoa with
   | OuterEmpty(wid, widshrink, widstretch) ->
-      { natural= wid; shrinkable= widshrink; stretchable= widstretch; fils= 0; }
+      ({ natural= wid; shrinkable= widshrink; stretchable= widstretch; fils= 0; }, SkipLength.zero, SkipLength.zero)
 
   | OuterFil ->
-      { natural= SkipLength.zero; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 1; }
+      ({ natural= SkipLength.zero; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 1; }, SkipLength.zero, SkipLength.zero)
 
 
 let convert_box_for_line_breaking = function
   | HorzDiscretionary(_, _, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)         -> let widinfo = size_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hfa)
-  | HorzOuterBoxAtom(hoa)         -> let widinfo = size_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hoa)
+  | HorzFixedBoxAtom(hfa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hgt, dpt, hfa)
+  | HorzOuterBoxAtom(hoa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hgt, dpt, hoa)
 
 
 let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
@@ -61,9 +61,9 @@ let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
 
 
 let get_width_info = function
-  | LBHorzDiscretionary(_, _, _, _, _) -> assert false
-  | LBHorzFixedBoxAtom(widinfo, _)     -> widinfo
-  | LBHorzOuterBoxAtom(widinfo, _)     -> widinfo
+  | LBHorzDiscretionary(_, _, _, _, _)   -> assert false
+  | LBHorzFixedBoxAtom(widinfo, _, _, _) -> widinfo
+  | LBHorzOuterBoxAtom(widinfo, _, _, _) -> widinfo
 
 
 let get_width_info_opt = function
@@ -139,20 +139,20 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
     (is_short, ratio, widperfil)
 
 
-let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * badness =
-  let widinfo_total =
+let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
+  let (widinfo_total, hgt_total, dpt_total) =
     lhblst |> List.map (function
-      | LBHorzFixedBoxAtom(widinfo, _)     -> widinfo
-      | LBHorzOuterBoxAtom(widinfo, _)     -> widinfo
-      | LBHorzDiscretionary(_, _, _, _, _) -> assert false
-    ) |> List.fold_left (+%@) widinfo_zero
+      | LBHorzFixedBoxAtom(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
+      | LBHorzOuterBoxAtom(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
+      | LBHorzDiscretionary(_, _, _, _, _)       -> assert false
+    ) |> List.fold_left (fun (wi, h, d) (wiacc, hacc, dacc) -> (wi +%@ wiacc, SkipLength.max h hacc, SkipLength.max d dacc)) (widinfo_zero, SkipLength.zero, SkipLength.zero)
   in
   let (is_short, ratio, widperfil) = calculate_ratios widrequired widinfo_total in
       let pairlst =
         lhblst |> List.map (function
-          | LBHorzDiscretionary(_, _, _, _, _)  -> assert false
-          | LBHorzFixedBoxAtom(widinfo, hfa)    -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
-          | LBHorzOuterBoxAtom(widinfo, hoa)    ->
+          | LBHorzDiscretionary(_, _, _, _, _)     -> assert false
+          | LBHorzFixedBoxAtom(widinfo, _, _, hfa) -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
+          | LBHorzOuterBoxAtom(widinfo, _, _, hoa) ->
               let nfil = widinfo.fils in
                 if nfil > 0 then
                   (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
@@ -190,33 +190,45 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
                                 "ratio = " ^ (string_of_float ratio) ^ ", " ^
                                 "checksum = " ^ (SkipLength.show checksum)) in
       (* end : for debug *)
-        (evhblst, badns)
+        (evhblst, hgt_total, dpt_total, badns)
 
 
-let break_into_lines (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : intermediate_vert_box list =
-  let rec aux (acclines : intermediate_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
+(* -- distance from the top of the paragraph and its first baseline -- *)
+let first_leading = SkipLength.of_pdf_point 10.  (* temporary; should be variable *)
+
+
+let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : intermediate_vert_box list =
+
+  let calculate_vertical_skip (dptprev : skip_depth) (hgt : skip_height) : SkipLength.t =
+    let leadingsub = leading_required -% dptprev -% hgt in
+      if leadingsub <% SkipLength.zero then SkipLength.zero else leadingsub
+  in
+
+  let rec aux (dptprev : skip_depth) (acclines : intermediate_vert_box list) (accline : lb_horz_box list) (lhblst : lb_horz_box list) =
     match lhblst with
     | LBHorzDiscretionary(_, dscrid, lhbopt0, lhbopt1, lhbopt2) :: tail ->
         if List.mem dscrid path then
           let line         = match lhbopt1 with None -> accline | Some(lhb1) -> lhb1 :: accline in
           let acclinefresh = match lhbopt2 with None -> []      | Some(lhb2) -> lhb2 :: [] in
-          let (evhblst, _) = determine_widths paragraph_width (List.rev line) in
-            aux (ImVertLine(evhblst) :: acclines) acclinefresh tail
+          let (evhblst, hgt, dpt, _) = determine_widths paragraph_width (List.rev line) in
+          let vskip = calculate_vertical_skip dptprev hgt in
+            aux dpt (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedEmpty(vskip) :: acclines) acclinefresh tail
         else
           let acclinenew   = match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline) in
-            aux acclines acclinenew tail
+            aux dptprev acclines acclinenew tail
 
     | hb :: tail ->
-        aux acclines (hb :: accline) tail
+        aux dptprev acclines (hb :: accline) tail
 
     | [] ->
-        let (evhblst, _) = determine_widths paragraph_width (List.rev accline) in
-          List.rev (ImVertLine(evhblst) :: acclines)
+        let (evhblst, hgt, dpt, _) = determine_widths paragraph_width (List.rev accline) in
+        let vskip = calculate_vertical_skip dptprev hgt in
+          List.rev (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedEmpty(vskip) :: acclines)
   in
-    aux [] [] lhblst
+    aux (leading_required -% first_leading) [] [] lhblst
 
 
-let main (hblst : horz_box list) : intermediate_vert_box list =
+let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediate_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_info) : badness =
     let criterion_short = 10. in
@@ -320,7 +332,7 @@ let main (hblst : horz_box list) : intermediate_vert_box list =
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
-          [ImVertLine([])] (* temporary *)
+          [ImVertLine(SkipLength.zero, SkipLength.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines path lhblst
+          break_into_lines leading_required path lhblst
   end

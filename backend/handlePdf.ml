@@ -16,12 +16,6 @@ let op_Tj str = Pdfops.Op_Tj(str)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
 
-let ( @|> ) = ( |> )
-  (* ----
-      right-associative version;
-      `y @|> x @|> f ` is equivalent to `f x y`
-     ---- *)
-
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
@@ -43,7 +37,9 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
   let (_, opaccend) =
     evvblst @|> ((xinit, yinit), []) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
       match evvb with
-      | EvVertLine(evhblst) ->
+      | EvVertFixedEmpty(vskip)       -> ((left_margin, ypos -% vskip), opacc)
+      | EvVertLine(hgt, dpt, evhblst) ->
+          let yposbaseline = ypos -% hgt in
           let (xposend, opaccend) =
             evhblst @|> (xpos, opacc) @|> List.fold_left (fun (xpos, opacc) evhb ->
               let (widdiff, ops) =
@@ -52,7 +48,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                 | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
                     let tag = FontInfo.get_tag fontabrv in
                       (wid, [
-                        op_Tm_translate (xpos, ypos);
+                        op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
                         op_Tj word;
                       ])
@@ -60,8 +56,8 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
               let opaccnew = List.rev_append ops opacc in
                 (xpos +% widdiff, opaccnew)
             )
-      in
-        ((left_margin, ypos -% leading), opaccend)
+          in
+            ((left_margin, yposbaseline -% dpt), opaccend)
     )
   in
 

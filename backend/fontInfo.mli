@@ -10,7 +10,7 @@ exception FailToLoadFontFormatOwingToSystem of string
 
 val initialize : unit -> unit
 
-val get_width_of_word : font_abbrev -> SkipLength.t -> string -> SkipLength.t
+val get_metrics_of_word : font_abbrev -> SkipLength.t -> string -> skip_width * skip_height * skip_depth
 
 val get_tag : font_abbrev -> string
 
