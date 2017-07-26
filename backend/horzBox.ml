@@ -79,6 +79,7 @@ type font_info = font_abbrev * SkipLength.t
 
 type horz_fixed_atom =
   | FixedString of font_info * string
+  | FixedEmpty  of skip_width
 
 type horz_outer_atom =
   | OuterEmpty of skip_width * skip_width * skip_width
@@ -94,15 +95,12 @@ type evaled_horz_box =
   | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
 
 type vert_box =
-  | VertParagraph    of skip_height * horz_box list  (* temporary; should contain more information as arguments *)
-(*
-  | VertOuterBoxAtom of vert_outer_atom
-  | VertFixedBoxAtom of vert_fixed_atom
-*)
+  | VertParagraph      of skip_height * horz_box list  (* temporary; should contain more information as arguments *)
+  | VertFixedBreakable of skip_height
 
 type intermediate_vert_box =
-  | ImVertLine       of skip_height * skip_depth * evaled_horz_box list
-  | ImVertFixedEmpty of skip_height
+  | ImVertLine           of skip_height * skip_depth * evaled_horz_box list
+  | ImVertFixedBreakable of skip_height
 (*
   | ImVertUnbreakableSkip of skip_height * skip_height * skip_height
 *)

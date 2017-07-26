@@ -8,6 +8,7 @@ let print_evaled_vert_box evvb =
         Format.printf "@[(vert@ " ;
         evhblst |> List.iter (function
           | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (SkipLength.show wid)
+          | EvHorzFixedBoxAtom(wid, FixedEmpty(_))       -> Format.printf "@[(fixed-empty@ %s)@]@ " (SkipLength.show wid)
           | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (SkipLength.show wid)
         ) ;
         Format.printf ")@]@ " ;
@@ -20,8 +21,10 @@ let print_evaled_vert_box evvb =
 
 let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
 
-  let is_suitable_for_single_page imvbacc =
-    true  (* temporary; should be dependent upon accumulated current contribution list *)
+  let chop_single_page imvbacc =
+  (* Some((List.rev imvbacc, [])) *)
+    None
+    (* temporary; should be dependent upon accumulated current contribution list *)
   in
 
   let determine_heights (imvblst : intermediate_vert_box list) =
@@ -29,7 +32,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
     imvblst |> List.map (fun imvb ->
       match imvb with
       | ImVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
-      | ImVertFixedEmpty(vskip)       -> EvVertFixedEmpty(vskip)
+      | ImVertFixedBreakable(vskip)   -> EvVertFixedEmpty(vskip)
     )
   in
 
@@ -49,13 +52,26 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
         let evvblst = determine_heights imvblst in
           (evvblst, None)
 
+    | VertFixedBreakable(vskip) :: tail ->
+        let imvbaccnew = ImVertFixedBreakable(vskip) :: imvbacc in
+        begin
+          match chop_single_page imvbaccnew with
+          | None                             -> pickup_page imvbaccnew tail
+          | Some((imvblstpage, imvbaccrest)) ->
+              let evvblstpage = determine_heights imvblstpage in
+                (evvblstpage, Some((imvbaccrest, tail)))
+        end
+
     | VertParagraph(leading, hblst) :: tail ->
         let imvblst = LineBreak.main leading hblst in
-        let imvbaccnew = List.append imvblst imvbacc in
-          if is_suitable_for_single_page imvbaccnew then
-            let evvblst = determine_heights imvblst in (evvblst, Some((imvbacc, tail)))
-          else
-            pickup_page imvbaccnew tail
+        let imvbaccnew = List.rev_append imvblst imvbacc in
+        begin
+          match chop_single_page imvbaccnew with
+          | None                             -> pickup_page imvbaccnew tail
+          | Some((imvblstpage, imvbaccrest)) ->
+              let evvblstpage = determine_heights imvblstpage in
+              (evvblstpage, Some((imvbaccrest, tail)))
+        end
   in
 
   let rec iteration (pdfscheme : HandlePdf.t) (imvbacc : intermediate_vert_box list) (vblst : vert_box list) =
@@ -87,12 +103,14 @@ let () =
     let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
     let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 4.))), None, None) in
+    let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
     let fill = HorzOuterBoxAtom(OuterFil) in
+    let paragraph_skip = ~% 32.0 in
     let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
     let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
     let vblst =
       [
-        VertParagraph(~% 32., [
+        VertParagraph(~% 24., [
           word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
           word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
   (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
@@ -104,7 +122,9 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
-        VertParagraph(~% 32., [
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 24., [
+          indentation;
           word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
           word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;
           word "sed"; space; word "do"; space; word "eiusmod"; space; word "tempor"; space; word "incididunt"; space;

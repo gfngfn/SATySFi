@@ -20,7 +20,7 @@ let op_ET = Pdfops.Op_ET
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
-let left_margin = SkipLength.of_pdf_point 50.  (* temporary; should be variable *)
+let left_margin = SkipLength.of_pdf_point 75.  (* temporary; should be variable *)
 let top_margin = SkipLength.of_pdf_point 70.   (* temporary; should be variable *)
 let leading = SkipLength.of_pdf_point 32.      (* temporary; should be variable *)
 
@@ -45,6 +45,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
               let (widdiff, ops) =
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
+                | EvHorzFixedBoxAtom(wid, FixedEmpty(_)) -> (wid, [])
                 | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
                     let tag = FontInfo.get_tag fontabrv in
                       (wid, [

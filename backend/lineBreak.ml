@@ -36,8 +36,9 @@ let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info * skip_height
   | FixedString((fntabrv, size), word) ->
       let (wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
         ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
-          (* temporary; should get height and depth *)
 
+  | FixedEmpty(wid) ->
+        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, SkipLength.zero, SkipLength.zero)
 
 let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height * skip_depth =
   match hoa with
@@ -115,7 +116,7 @@ module RemovalSet = MutableSet.Make
   (DiscretionaryID)
 
 
-let paragraph_width = SkipLength.of_pdf_point 250.0 (* temporary; should be variable *)
+let paragraph_width = SkipLength.of_pdf_point 450.0 (* temporary; should be variable *)
 
 let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bool * float * skip_width =
   let widnatural = widinfo_total.natural in
@@ -212,7 +213,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           let acclinefresh = match lhbopt2 with None -> []      | Some(lhb2) -> lhb2 :: [] in
           let (evhblst, hgt, dpt, _) = determine_widths paragraph_width (List.rev line) in
           let vskip = calculate_vertical_skip dptprev hgt in
-            aux dpt (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedEmpty(vskip) :: acclines) acclinefresh tail
+            aux dpt (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: acclines) acclinefresh tail
         else
           let acclinenew   = match lhbopt0 with None -> accline | Some(lhb0) -> (lhb0 :: accline) in
             aux dptprev acclines acclinenew tail
@@ -223,7 +224,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
     | [] ->
         let (evhblst, hgt, dpt, _) = determine_widths paragraph_width (List.rev accline) in
         let vskip = calculate_vertical_skip dptprev hgt in
-          List.rev (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedEmpty(vskip) :: acclines)
+          List.rev (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: acclines)
   in
     aux (leading_required -% first_leading) [] [] lhblst
 
