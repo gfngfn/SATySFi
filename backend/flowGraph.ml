@@ -1,7 +1,9 @@
 
 let print_for_debug msg =
+  ()
+(*
   print_endline msg
-
+*)
 
 module Heap = Core.Heap.Removable
 

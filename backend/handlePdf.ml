@@ -21,7 +21,7 @@ type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
 let left_margin = SkipLength.of_pdf_point 75.  (* temporary; should be variable *)
-let top_margin = SkipLength.of_pdf_point 70.   (* temporary; should be variable *)
+let top_margin = SkipLength.of_pdf_point 100.   (* temporary; should be variable *)
 let leading = SkipLength.of_pdf_point 32.      (* temporary; should be variable *)
 
 
