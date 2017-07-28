@@ -1,0 +1,3 @@
+[submodule "external/camlpdf"]
+	path = external/camlpdf
+	url = https://github.com/gfngfn/camlpdf
