@@ -28,5 +28,6 @@ lexer_hand.ml
 _build
 macrodown
 *.ttf
+*.otf
 *.svg
 *.dat

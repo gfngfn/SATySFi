@@ -272,7 +272,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
 
   | Pdftext.CIDKeyedFont(fontname, cidrecord, Pdftext.CMap(_)) -> failwith "CMap; remains to be implemented"
       
-  | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapnm)) ->
+  | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapencnm)) ->
       begin
         match dcdropt with
         | None       -> assert false
@@ -295,6 +295,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
             in
             let irdescr = Pdf.addobj pdf objdescr in
             let cidsysinfo = cidrecord.Pdftext.cid_system_info in
+            let objdescend =
               Pdf.Dictionary[
                 ("/Type", Pdf.Name("/Font"));
                 ("/Subtype", Pdf.Name("/CIDFontType0")); (* temporary; should be variable *)
@@ -305,6 +306,15 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
                   ("/Supplement", Pdf.Integer(cidsysinfo.Pdftext.supplement));
                 ]);
                 ("/FontDescriptor", Pdf.Indirect(irdescr));
+              ]
+            in
+            let irdescend = Pdf.addobj pdf objdescend in
+              Pdf.Dictionary[
+                ("/Type", Pdf.Name("/Font"));
+                ("/Subtype", Pdf.Name("/Type0"));
+                ("/Encoding", Pdf.Name("/" ^ cmapencnm));
+                ("/BaseFont", Pdf.Name("/" ^ fontname));
+                ("/DescendantFonts", Pdf.Array[Pdf.Indirect(irdescend)]);
               ]
       end
 
@@ -318,6 +328,7 @@ let get_font_dictionary (pdf : Pdf.t) () =
 
 
 let initialize () =
+  print_endline "!!began to initialize"; (* for debug *)
   List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
     ("Hlv",
      (Pdftext.SimpleFont({
@@ -326,12 +337,33 @@ let initialize () =
        Pdftext.fontdescriptor= None;
        Pdftext.fontmetrics= None;
        Pdftext.encoding= Pdftext.StandardEncoding;
-     }), Some("./HelveticaBlack.ttf"))
+     }), Some("./testfonts/HelveticaBlack.ttf"))
     );
     ("TimesIt",
-      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
+     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
+    );
+    ("KozMin",
+     (Pdftext.CIDKeyedFont("", {
+       Pdftext.cid_system_info= {
+         Pdftext.registry= "Adobe";
+         Pdftext.ordering= "Japan1";
+         Pdftext.supplement= 6;
+       };
+       Pdftext.cid_basefont= "KozMinPro-Medium";
+       Pdftext.cid_fontdescriptor= {
+         Pdftext.ascent= 1137.;
+         Pdftext.descent= -349.;
+         Pdftext.leading= 1500.; (* temporary *)
+         Pdftext.avgwidth= 1000.;
+         Pdftext.maxwidth= 1000.;
+         Pdftext.fontfile= None;  (* does not use Pdftext.fontfile field *)
+       };
+       Pdftext.cid_widths= []; (* temporary *)
+       Pdftext.cid_default_width= 1000;
+     }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
   ]
+  ; print_endline "!!end initializing" (* for debug *)
 
 
 
