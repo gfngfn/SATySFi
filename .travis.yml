@@ -13,6 +13,7 @@ install:
   - opam install -y ctypes
   - opam install -y otfm
   - opam install -y camlpdf
+  - opam install -y ucorelib
   - eval `opam config env`
 script:
   - make all
