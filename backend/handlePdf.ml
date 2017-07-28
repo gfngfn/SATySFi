@@ -51,7 +51,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                       (wid, [
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj word;
+                        op_Tj (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
                       ])
               in
               let opaccnew = List.rev_append ops opacc in
@@ -77,6 +77,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
 let create_empty_pdf (flnm : file_path) : t =
   let pdf = Pdf.empty () in
   let fontdict = FontInfo.get_font_dictionary pdf () in
+      (* temporary; can add the font dictionary to data when writing a PDF file instead of when creating empty data *)
     (pdf, [], flnm, fontdict)
 
 

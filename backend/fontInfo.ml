@@ -146,9 +146,10 @@ let get_uchar_raw_contour_list_and_bounding_box (dcdr : Otfm.decoder) (uch : Uch
 
 
 let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int =
-  let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
-    (ymax, ymin)
-
+  try  (* temporary; for font formats that do not contain the `loca` table *)
+    let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
+      (ymax, ymin)
+  with FontFormatBroken(_) -> (880, -120)  (* temporary; for font formats that do not contain the `loca` table *)
 
 let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let gidkey = get_glyph_id dcdr uch in
@@ -283,7 +284,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
             let objdescr =
               Pdf.Dictionary[
                 ("/Type", Pdf.Name("/FontDescriptor"));
-                ("/FontName", Pdf.Name(cidrecord.Pdftext.cid_basefont));
+                ("/FontName", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
                 ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
                 ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
                 ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
@@ -299,7 +300,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
               Pdf.Dictionary[
                 ("/Type", Pdf.Name("/Font"));
                 ("/Subtype", Pdf.Name("/CIDFontType0")); (* temporary; should be variable *)
-                ("/BaseFont", Pdf.Name(cidrecord.Pdftext.cid_basefont));
+                ("/BaseFont", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
                 ("/CIDSystemInfo", Pdf.Dictionary[
                   ("/Registry", Pdf.String(cidsysinfo.Pdftext.registry));
                   ("/Ordering", Pdf.String(cidsysinfo.Pdftext.ordering));
@@ -320,15 +321,18 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
 
 
 let get_font_dictionary (pdf : Pdf.t) () =
+  print_endline "!!begin get_font_dictionary" ;  (* for debug *)
+  let ret =  (* for debug *)
   [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
     let obj = make_dictionary pdf abbrev tuple () in
     let (_, tag, _) = tuple in
       (tag, obj) :: acc
   )
+  in let () = print_endline "!!end get_font_dictionary" in ret  (* for debug *)
 
 
 let initialize () =
-  print_endline "!!began to initialize"; (* for debug *)
+  print_endline "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
     ("Hlv",
      (Pdftext.SimpleFont({
@@ -343,7 +347,7 @@ let initialize () =
      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
     );
     ("KozMin",
-     (Pdftext.CIDKeyedFont("", {
+     (Pdftext.CIDKeyedFont("KozMinComposite", {
        Pdftext.cid_system_info= {
          Pdftext.registry= "Adobe";
          Pdftext.ordering= "Japan1";
@@ -353,17 +357,17 @@ let initialize () =
        Pdftext.cid_fontdescriptor= {
          Pdftext.ascent= 1137.;
          Pdftext.descent= -349.;
-         Pdftext.leading= 1500.; (* temporary *)
+         Pdftext.leading= 1500.;  (* temporary *)
          Pdftext.avgwidth= 1000.;
          Pdftext.maxwidth= 1000.;
          Pdftext.fontfile= None;  (* does not use Pdftext.fontfile field *)
        };
-       Pdftext.cid_widths= []; (* temporary *)
+       Pdftext.cid_widths= [];  (* temporary *)
        Pdftext.cid_default_width= 1000;
      }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
   ]
-  ; print_endline "!!end initializing" (* for debug *)
+  ; print_endline "!!end initialize"  (* for debug *)
 
 
 
