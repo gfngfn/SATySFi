@@ -13,6 +13,7 @@ let op_Tm_translate (xpos, ypos) =
 
 let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
 let op_Tj str = Pdfops.Op_Tj(str)
+let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
 
@@ -51,7 +52,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                       (wid, [
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
+                        op_Tj_hex (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
                       ])
               in
               let opaccnew = List.rev_append ops opacc in

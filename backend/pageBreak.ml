@@ -192,7 +192,7 @@ let () =
         ]);
       ]
     in
-    let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" in
+    let pdfscheme = HandlePdf.create_empty_pdf "hello3.pdf" in
     try
       begin
         main pdfscheme vblst ;

@@ -1,1 +1,0 @@
-true : use_menhir, thread, package(core otfm camlpdf ctypes ucorelib)
