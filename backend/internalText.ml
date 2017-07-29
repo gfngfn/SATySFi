@@ -14,7 +14,7 @@ let of_utf_8 (str_utf8 : string) : t =
 
 
 let to_utf16be_hex (intext : t) =
-  let hexify_byte = Printf.sprintf "%X" in
+  let hexify_byte = Printf.sprintf "%02X" in
   let rec hexify_string (acc : string) (i : int) (len : int) (str : string) : string =
     if len <= i then acc else
       let b = Char.code (String.get str i) in

@@ -346,7 +346,7 @@ let initialize () =
     ("TimesIt",
      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
     );
-(*
+
     ("KozMin",
      (Pdftext.CIDKeyedFont("KozMinComposite", {
        Pdftext.cid_system_info= {
@@ -367,7 +367,7 @@ let initialize () =
        Pdftext.cid_default_width= 1000;
      }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
-*)
+
   ]
   ; print_endline "!!end initialize"  (* for debug *)
 

@@ -53,6 +53,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
                         op_Tj_hex (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
+
                       ])
               in
               let opaccnew = List.rev_append ops opacc in
