@@ -1,10 +1,8 @@
 open HorzBox
 
-
+let (~%) = SkipLength.to_pdf_point
 let op_cm (xdiff, ydiff) =
-  Pdfops.Op_cm(Pdftransform.matrix_of_transform
-                 [Pdftransform.Translate
-                     (SkipLength.to_pdf_point xdiff, SkipLength.to_pdf_point ydiff)])
+  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (~% xdiff, ~% ydiff)])
 
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
@@ -16,7 +14,9 @@ let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
-
+let op_m x y = Pdfops.Op_m(~% x, ~% y)
+let op_l x y = Pdfops.Op_l(~% x, ~% y)
+let op_S = Pdfops.Op_S
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
@@ -50,10 +50,17 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                 | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
                     let tag = FontInfo.get_tag fontabrv in
                       (wid, [
+                        op_cm (SkipLength.zero, SkipLength.zero);
+                        op_BT;
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj_hex (InternalText.to_utf16be_hex word);  (* temporary; problematic! *)
-
+                        op_Tj_hex (InternalText.to_utf16be_hex word);
+                        op_ET;
+                        (* begin: for test; underline every word *)
+                        op_m xpos yposbaseline;
+                        op_l (xpos +% wid) yposbaseline;
+                        op_S;
+                        (* end: for test *)
                       ])
               in
               let opaccnew = List.rev_append ops opacc in
@@ -64,7 +71,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
     )
   in
 
-  let oplst = op_cm (SkipLength.zero, SkipLength.zero) :: op_BT :: (List.rev (op_ET :: opaccend)) in
+  let oplst = List.rev opaccend in
 
   let pagenew =
     {(Pdfpage.blankpage paper) with
