@@ -134,11 +134,15 @@ let () =
     let font0 = ("TimesIt", ~% 16.) in
     let font1 = ("Hlv", ~% 16.) in
     let fontL = ("Hlv", ~% 32.) in
+(*
     let fontK = ("KozMin", ~% 16.) in
+*)
     let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
     let wordL s = HorzFixedBoxAtom(FixedString(fontL, s)) in
+(*
     let wordK s = HorzFixedBoxAtom(FixedString(fontK, s)) in
+*)
     let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
     let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
@@ -165,10 +169,12 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
+(*
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           wordK "Kozuka"; space; wordK "Mincho"; fill;
         ]);
+*)
       ] @ repeat 10 [
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
