@@ -52,7 +52,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                       (wid, [
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj_hex (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
+                        op_Tj_hex (InternalText.to_utf16be_hex word);  (* temporary; problematic! *)
 
                       ])
               in
