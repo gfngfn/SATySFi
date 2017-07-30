@@ -1,3 +1,5 @@
+(* -*- coding: utf-8 -*- *)
+
 open HorzBox
 
 (* for test *)
@@ -134,18 +136,22 @@ let () =
     let font0 = ("TimesIt", ~% 16.) in
     let font1 = ("Hlv", ~% 16.) in
     let fontL = ("Hlv", ~% 32.) in
-    let fontK = ("KozMin", ~% 16.) in
-    let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
-    let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
-    let wordL s = HorzFixedBoxAtom(FixedString(fontL, s)) in
-    let wordK s = HorzFixedBoxAtom(FixedString(fontK, s)) in
+
+    let fontK = ("KozMin", ~% 12.) in
+
+    let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
+    let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in
+    let wordL s = HorzFixedBoxAtom(FixedString(fontL, InternalText.of_utf_8 s)) in
+
+    let wordK s = HorzFixedBoxAtom(FixedString(fontK, InternalText.of_utf_8 s)) in
+
     let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
     let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
     let fill = HorzOuterBoxAtom(OuterFil) in
     let paragraph_skip = ~% 32.0 in
-    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
-    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
+    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 "-"))), None) in
+    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 "-"))), None) in
     let rec repeat n lst = if n <= 0 then [] else lst @ (repeat (n - 1) lst) in
     let vblst =
       [
@@ -165,10 +171,16 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
+
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          wordK "Kozuka"; space; wordK "Mincho"; fill;
+          wordK "スペーシング"; space; wordK "の上"; space; wordK "行分割"; wordK "されてるけど，"; space;
+          wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
+          wordK "立派な"; space; wordK "PDF"; space; wordK "ですよ。"; space;
+          wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space; wordK "メトリック情報に関しては"; space; wordK "まだ不完全。";
+          fill;
         ]);
+
       ] @ repeat 10 [
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
@@ -192,7 +204,7 @@ let () =
         ]);
       ]
     in
-    let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" in
+    let pdfscheme = HandlePdf.create_empty_pdf "hello3.pdf" in
     try
       begin
         main pdfscheme vblst ;

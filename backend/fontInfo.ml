@@ -183,7 +183,8 @@ let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : string) : skip_width * skip_height * skip_depth =
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : skip_width * skip_height * skip_depth =
+(*
   let uchar_list_of_string str =
     let rec aux acc i =
       if i < 0 then List.rev acc else
@@ -191,13 +192,14 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
     in
       aux [] ((String.length str) - 1)
   in
+*)
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None               -> raise (InvalidFontAbbrev(abbrev))
 
     | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
     | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
-        let uword = uchar_list_of_string word in
+        let uword = InternalText.to_uchar_list word in
         let dcdr =
           match dcdropt with
           | None       -> assert false
@@ -209,7 +211,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
             (* temporary; should reflect kerning pair information *)
 
     | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
-        let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
+        let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont (InternalText.to_utf8 word) in
           (f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
 
 
@@ -346,6 +348,7 @@ let initialize () =
     ("TimesIt",
      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
     );
+
     ("KozMin",
      (Pdftext.CIDKeyedFont("KozMinComposite", {
        Pdftext.cid_system_info= {
@@ -366,6 +369,7 @@ let initialize () =
        Pdftext.cid_default_width= 1000;
      }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
+
   ]
   ; print_endline "!!end initialize"  (* for debug *)
 

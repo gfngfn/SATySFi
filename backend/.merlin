@@ -1,3 +1,5 @@
-PKG otfm camlpdf core ctypes
+PKG otfm core ctypes ucorelib
 S .
+S external/camlpdf
 B _build
+B _build/external/camlpdf

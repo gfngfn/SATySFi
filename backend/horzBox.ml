@@ -78,7 +78,7 @@ type file_path = string
 type font_info = font_abbrev * SkipLength.t
 
 type horz_fixed_atom =
-  | FixedString of font_info * string
+  | FixedString of font_info * InternalText.t
   | FixedEmpty  of skip_width
 
 type horz_outer_atom =
