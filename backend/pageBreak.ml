@@ -133,11 +133,11 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let font0 = ("TimesIt", ~% 16.) in
-    let font1 = ("Hlv", ~% 16.) in
-    let fontL = ("Hlv", ~% 32.) in
+    let font0 = ("TimesIt", ~% 16., Latin1) in
+    let font1 = ("Hlv", ~% 16., Latin1) in
+    let fontL = ("Hlv", ~% 32., Latin1) in
 
-    let fontK = ("KozMin", ~% 12.) in
+    let fontK = ("KozMin", ~% 12., UTF16BE) in
 
     let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in

@@ -75,7 +75,11 @@ type font_abbrev = string
 
 type file_path = string
 
-type font_info = font_abbrev * SkipLength.t
+type encoding_in_pdf =
+  | Latin1
+  | UTF16BE
+
+type font_info = font_abbrev * SkipLength.t * encoding_in_pdf
 
 type horz_fixed_atom =
   | FixedString of font_info * InternalText.t

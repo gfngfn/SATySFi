@@ -14,9 +14,14 @@ let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
-let op_m x y = Pdfops.Op_m(~% x, ~% y)
-let op_l x y = Pdfops.Op_l(~% x, ~% y)
+let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)
+let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
+let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
 let op_S = Pdfops.Op_S
+let op_q = Pdfops.Op_q
+let op_Q = Pdfops.Op_Q
+let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
+
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
@@ -47,20 +52,29 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
                 | EvHorzFixedBoxAtom(wid, FixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
+                | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size, enc), word)) ->
                     let tag = FontInfo.get_tag fontabrv in
+                    let opword =
+                      match enc with
+                      | Latin1  -> op_Tj (InternalText.to_utf8 word)
+                      | UTF16BE -> op_Tj_hex (InternalText.to_utf16be_hex word)
+                    in
                       (wid, [
+                        (* begin: for test; underline every word *)
+                        op_q;
+                        op_RG (1., 0., 0.);
+                        op_m (xpos, yposbaseline);
+                        op_l (xpos +% wid, yposbaseline);
+                        op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt +% dpt));
+                        op_S;
+                        op_Q;
+                        (* end: for test *)
                         op_cm (SkipLength.zero, SkipLength.zero);
                         op_BT;
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj_hex (InternalText.to_utf16be_hex word);
+                        opword;
                         op_ET;
-                        (* begin: for test; underline every word *)
-                        op_m xpos yposbaseline;
-                        op_l (xpos +% wid) yposbaseline;
-                        op_S;
-                        (* end: for test *)
                       ])
               in
               let opaccnew = List.rev_append ops opacc in

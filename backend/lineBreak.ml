@@ -33,7 +33,7 @@ type lb_horz_box =
 
 let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info * skip_height * skip_depth =
   match hfa with
-  | FixedString((fntabrv, size), word) ->
+  | FixedString((fntabrv, size, _), word) ->
       let (wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
         ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
 
