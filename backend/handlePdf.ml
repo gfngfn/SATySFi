@@ -62,7 +62,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                       (wid, [
                         (* begin: for test; underline every word *)
                         op_q;
-                        op_RG (1., 0., 0.);
+                        op_RG (1.0, 0.5, 0.5);
                         op_m (xpos, yposbaseline);
                         op_l (xpos +% wid, yposbaseline);
                         op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt +% dpt));

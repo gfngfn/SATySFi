@@ -171,13 +171,19 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
-
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          wordK "スペーシング"; space; wordK "の上"; space; wordK "行分割"; wordK "されてるけど，"; space;
+          word "Currently"; space; word "we"; space; word "do"; space; word "NOT"; space; word "deal"; space; word "with"; space;
+          word "kerning"; space; word "pair"; space; word "information."; fill;
+        ]);
+
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 20., [
+          wordK "スペーシング"; space; wordK "の上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
           wordK "立派な"; space; wordK "PDF"; space; wordK "ですよ。"; space;
-          wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space; wordK "メトリック情報に関しては"; space; wordK "まだ不完全。";
+          wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
+          wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "まだ不完全。";
           fill;
         ]);
 
