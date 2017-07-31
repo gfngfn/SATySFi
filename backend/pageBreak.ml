@@ -132,18 +132,18 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let font0 = ("TimesIt", ~% 16., Latin1) in
+    let font0 = ("Arno", ~% 16., Latin1) in
     let font1 = ("Hlv", ~% 16., Latin1) in
     let fontL = ("Hlv", ~% 32., Latin1) in
-
+(*
     let fontK = ("KozMin", ~% 12., UTF16BE) in
-
+*)
     let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in
     let wordL s = HorzFixedBoxAtom(FixedString(fontL, InternalText.of_utf_8 s)) in
-
+(*
     let wordK s = HorzFixedBoxAtom(FixedString(fontK, InternalText.of_utf_8 s)) in
-
+*)
     let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
     let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
@@ -172,10 +172,10 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          word "Currently"; space; word "we"; space; word "do"; space; word "NOT"; space; word "deal"; space; word "with"; space;
-          word "kerning"; space; word "pair"; space; word "information."; fill;
+          word "Now"; space; word "We"; space; word "deal"; space; word "with"; space;
+          word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
         ]);
-
+(*
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [
           wordK "スペーシング"; space; wordK "の上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
@@ -185,7 +185,7 @@ let () =
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "まだ不完全。";
           fill;
         ]);
-
+*)
       ] @ repeat 10 [
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [

@@ -252,7 +252,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
                   | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
                   | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)  (* -- kerning value is negative if two characters are supposed to be closer -- *)
             in
-              (Some(gid), tjsaccnew, waccnew, max hacc h, max dacc d)
+              (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
           )
         in
           (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
@@ -393,10 +393,19 @@ let initialize () =
        Pdftext.encoding= Pdftext.StandardEncoding;
      }), Some("./testfonts/HelveticaBlack.ttf"))
     );
+    ("Arno",
+     (Pdftext.SimpleFont({
+       Pdftext.fonttype= Pdftext.Truetype;
+       Pdftext.basefont= "ArnoPro-Regular";
+       Pdftext.fontdescriptor= None;
+       Pdftext.fontmetrics= None;
+       Pdftext.encoding= Pdftext.StandardEncoding;
+     }), Some("./testfonts/ArnoPro-Regular.otf"))
+    );
     ("TimesIt",
      (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
     );
-
+(*
     ("KozMin",
      (Pdftext.CIDKeyedFont("KozMinComposite", {
        Pdftext.cid_system_info= {
@@ -417,7 +426,7 @@ let initialize () =
        Pdftext.cid_default_width= 1000;
      }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
-
+*)
   ]
   ; print_endline "!!end initialize"  (* for debug *)
 

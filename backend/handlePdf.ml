@@ -30,10 +30,14 @@ let encode_tj_string enc tjs =
   | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
   | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
                                                                  | TJUchar(uch)   -> Pdf.String(InternalText.to_utf8 uch)
-                                                                 | TJKern(rawwid) -> let () = Printf.printf "!!RAWWID(L)= %d\n" rawwid in Pdf.Integer(-rawwid) )))
+                                                                 | TJKern(rawwid) ->
+                                                                     let () = Printf.printf "!!RAWWID(L)= %d\n" rawwid in  (* for debug *)
+                                                                       Pdf.Integer(-rawwid) )))
   | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
                                                                  | TJUchar(uch) -> Pdf.StringHex(InternalText.to_utf16be_hex uch)
-                                                                 | TJKern(rawwid) -> let () = Printf.printf "!!RAWWID(U)= %d\n" rawwid in Pdf.Integer(-rawwid) )))
+                                                                 | TJKern(rawwid) ->
+                                                                     let () = Printf.printf "!!RAWWID(U)= %d\n" rawwid in  (* for debug *)
+                                                                       Pdf.Integer(-rawwid) )))
   
 
 
