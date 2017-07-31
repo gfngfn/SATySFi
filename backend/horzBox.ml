@@ -81,9 +81,21 @@ type encoding_in_pdf =
 
 type font_info = font_abbrev * SkipLength.t * encoding_in_pdf
 
+type kerned_element =
+  | TJUchar of InternalText.t
+  | TJKern  of int  (* -- raw length -- *)
+
+type tj_string =
+  | KernedText of kerned_element list
+  | NoKernText of InternalText.t
+
 type horz_fixed_atom =
   | FixedString of font_info * InternalText.t
   | FixedEmpty  of skip_width
+
+type evaled_horz_fixed_atom =
+  | EvFixedString of font_info * tj_string
+  | EvFixedEmpty  of skip_width
 
 type horz_outer_atom =
   | OuterEmpty of skip_width * skip_width * skip_width
@@ -95,7 +107,7 @@ type horz_box =
   | HorzDiscretionary of pure_badness * horz_box option * horz_box option * horz_box option
 
 type evaled_horz_box =
-  | EvHorzFixedBoxAtom of skip_width * horz_fixed_atom
+  | EvHorzFixedBoxAtom of skip_width * evaled_horz_fixed_atom
   | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
 
 type vert_box =

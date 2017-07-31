@@ -63,7 +63,6 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
   in
 
   let determine_heights (imvblst : intermediate_vert_box list) =
-    (* temporary; should determine the height of vertical boxes *)
     imvblst |> List.map (fun imvb ->
       match imvb with
       | ImVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)

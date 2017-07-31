@@ -44,11 +44,40 @@ let get_decoder (src : file_name) () : Otfm.decoder =
     dcdr
 
 
+module KerningTable
+: sig
+    type t
+    val create : int -> t
+    val add : Otfm.glyph_id -> Otfm.glyph_id -> int -> t -> unit
+    val find_opt : Otfm.glyph_id -> Otfm.glyph_id -> t -> int option
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = Otfm.glyph_id * Otfm.glyph_id
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = int Ht.t
+
+    let create size =
+      Ht.create size
+
+    let add gid1 gid2 wid tbl =
+      begin Ht.add tbl (gid1, gid2) wid ; end
+
+    let find_opt gid1 gid2 tbl =
+      try Some(Ht.find tbl (gid1, gid2)) with
+      | Not_found -> None
+  end
+
+
 module FontAbbrevHashTable
 : sig
     val add : font_abbrev -> Pdftext.font * file_name option -> unit
-    val fold : (font_abbrev -> Pdftext.font * tag * Otfm.decoder option -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (Pdftext.font * tag * Otfm.decoder option) option
+    val fold : (font_abbrev -> Pdftext.font * tag * (Otfm.decoder * KerningTable.t) option -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (Pdftext.font * tag * (Otfm.decoder * KerningTable.t) option) option
   end
 = struct
 
@@ -59,7 +88,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (Pdftext.font * tag * Otfm.decoder option) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (Pdftext.font * tag * (Otfm.decoder * KerningTable.t) option) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 
@@ -70,13 +99,27 @@ module FontAbbrevHashTable
         end
 
     let add abbrev (font, srcopt) =
-      let dcdropt =
+      let pairopt =
         match srcopt with
         | None      -> None
-        | Some(src) -> Some(get_decoder src ())
+        | Some(src) ->
+            let dcdr = get_decoder src () in
+            let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
+            let res =
+              () |> Otfm.kern dcdr (fun () kinfo ->
+                match kinfo with
+                | {Otfm.kern_dir= `H; Otfm.kern_kind= `Kern; Otfm.kern_cross_stream= false} -> (`Fold, ())
+                | _                                                                         -> (`Skip, ())
+              ) (fun () gid1 gid2 wid ->
+                kerntbl |> KerningTable.add gid1 gid2 wid
+              )
+            in
+              match res with
+              | Error(e) -> raise (FontFormatBroken(e))
+              | Ok(())   -> Some((dcdr, kerntbl))
       in
       let tag = generate_tag () in
-        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdropt)
+        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, pairopt)
 
     let fold f init =
       Ht.fold f abbrev_to_definition_hash_table init
@@ -151,6 +194,7 @@ let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int
       (ymax, ymin)
   with FontFormatBroken(_) -> (880, -120)  (* temporary; for font formats that do not contain the `loca` table *)
 
+
 let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let gidkey = get_glyph_id dcdr uch in
   let hmtxres =
@@ -183,36 +227,40 @@ let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : skip_width * skip_height * skip_depth =
-(*
-  let uchar_list_of_string str =
-    let rec aux acc i =
-      if i < 0 then List.rev acc else
-        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
-    in
-      aux [] ((String.length str) - 1)
-  in
-*)
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : tj_string * skip_width * skip_height * skip_depth =
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None               -> raise (InvalidFontAbbrev(abbrev))
 
-    | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
-    | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
+    | Some((Pdftext.CIDKeyedFont(_, _, _), _, pairopt))
+    | Some((Pdftext.SimpleFont(_), _, pairopt)) ->
         let uword = InternalText.to_uchar_list word in
-        let dcdr =
-          match dcdropt with
+        let (dcdr, kerntbl) =
+          match pairopt with
           | None       -> assert false
-          | Some(dcdr) -> dcdr
+          | Some(pair) -> pair
         in
-        let metrlst = List.map (fun uch -> get_uchar_metrics dcdr uch) uword in
-        let (rawwid, rawhgt, rawdpt) = metrlst @|> (0, 0, 0) @|> List.fold_left (fun (w, h, d) (wacc, hacc, dacc) -> (wacc + w, max hacc h, max dacc d)) in
-          (f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
+        let (_, tjsacc, rawwid, rawhgt, rawdpt) =
+          uword @|> (None, [], 0, 0, 0) @|> List.fold_left (fun (gidprevopt, tjsacc, wacc, hacc, dacc) uch ->
+            let (w, h, d) = get_uchar_metrics dcdr uch in
+            let gid = get_glyph_id dcdr uch in
+            let (tjsaccnew, waccnew) =
+              match gidprevopt with
+              | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+              | Some(gidprev) ->
+                  match kerntbl |> KerningTable.find_opt gidprev gid with
+                  | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                  | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)  (* -- kerning value is negative if two characters are supposed to be closer -- *)
+            in
+              (Some(gid), tjsaccnew, waccnew, max hacc h, max dacc d)
+          )
+        in
+          (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
             (* temporary; should reflect kerning pair information *)
 
     | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
         let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont (InternalText.to_utf8 word) in
-          (f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
+          (NoKernText(word), f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
 
 
 let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
@@ -225,7 +273,7 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
     )
 
 
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () : Pdf.pdfobject =
+let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt) () : Pdf.pdfobject =
   match fontdfn with
   | Pdftext.StandardFont(stdfont, _) ->
       Pdf.Dictionary[
@@ -237,9 +285,9 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
   | Pdftext.SimpleFont(smplfont) ->
       let fontname = smplfont.Pdftext.basefont in
       begin
-        match dcdropt with
-        | None       -> assert false
-        | Some(dcdr) ->
+        match pairopt with
+        | None            -> assert false
+        | Some((dcdr, _)) ->
             match smplfont.Pdftext.fonttype with
             | Pdftext.Truetype ->
                 let irstream = add_stream_of_decoder pdf dcdr () in
@@ -277,9 +325,9 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt)
       
   | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapencnm)) ->
       begin
-        match dcdropt with
-        | None       -> assert false
-        | Some(dcdr) ->
+        match pairopt with
+        | None            -> assert false
+        | Some((dcdr, _)) ->
             let irstream = add_stream_of_decoder pdf dcdr () in
               (* -- add to the PDF the stream in which the font file is embedded -- *)
             let cidfontdescr = cidrecord.Pdftext.cid_fontdescriptor in

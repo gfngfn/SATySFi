@@ -40,3 +40,6 @@ let to_uchar_list (intext : t) : Uchar.t list =
 
 let to_utf8 (intext : t) : string = UCoreLib.Text.to_string intext
   
+
+let of_uchar (uch : Uchar.t) : t =
+  UCoreLib.Text.make 1 (UCoreLib.UChar.of_int (Uchar.to_int uch))

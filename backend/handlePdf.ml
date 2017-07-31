@@ -12,6 +12,7 @@ let op_Tm_translate (xpos, ypos) =
 let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
+let op_TJ obj = Pdfops.Op_TJ(obj)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
 let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)
@@ -23,12 +24,25 @@ let op_Q = Pdfops.Op_Q
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
 
 
+let encode_tj_string enc tjs =
+  match (enc, tjs) with
+  | (Latin1, NoKernText(intext))  -> op_Tj (InternalText.to_utf8 intext)
+  | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
+  | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
+                                                                 | TJUchar(uch)   -> Pdf.String(InternalText.to_utf8 uch)
+                                                                 | TJKern(rawwid) -> let () = Printf.printf "!!RAWWID(L)= %d\n" rawwid in Pdf.Integer(-rawwid) )))
+  | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
+                                                                 | TJUchar(uch) -> Pdf.StringHex(InternalText.to_utf16be_hex uch)
+                                                                 | TJKern(rawwid) -> let () = Printf.printf "!!RAWWID(U)= %d\n" rawwid in Pdf.Integer(-rawwid) )))
+  
+
+
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
-let left_margin = SkipLength.of_pdf_point 75.  (* temporary; should be variable *)
+let left_margin = SkipLength.of_pdf_point 75.   (* temporary; should be variable *)
 let top_margin = SkipLength.of_pdf_point 100.   (* temporary; should be variable *)
-let leading = SkipLength.of_pdf_point 32.      (* temporary; should be variable *)
+let leading = SkipLength.of_pdf_point 32.       (* temporary; should be variable *)
 
 
 let get_paper_height (paper : Pdfpaper.t) : skip_height =
@@ -51,14 +65,10 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
               let (widdiff, ops) =
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, FixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size, enc), word)) ->
+                | EvHorzFixedBoxAtom(wid, EvFixedEmpty(_)) -> (wid, [])
+                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size, enc), tjs)) ->
                     let tag = FontInfo.get_tag fontabrv in
-                    let opword =
-                      match enc with
-                      | Latin1  -> op_Tj (InternalText.to_utf8 word)
-                      | UTF16BE -> op_Tj_hex (InternalText.to_utf16be_hex word)
-                    in
+                    let opword = encode_tj_string enc tjs in
                       (wid, [
                         (* begin: for test; underline every word *)
                         op_q;

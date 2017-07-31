@@ -26,19 +26,19 @@ let ( +%@ ) wi1 wi2 =
 
 
 type lb_horz_box =
-  | LBHorzFixedBoxAtom  of skip_info * skip_height * skip_depth * horz_fixed_atom
+  | LBHorzFixedBoxAtom  of skip_info * skip_height * skip_depth * evaled_horz_fixed_atom
   | LBHorzOuterBoxAtom  of skip_info * skip_height * skip_depth * horz_outer_atom
   | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
 
 
-let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info * skip_height * skip_depth =
+let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : evaled_horz_fixed_atom * skip_info * skip_height * skip_depth =
   match hfa with
-  | FixedString((fntabrv, size, _), word) ->
-      let (wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
-        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
+  | FixedString(((fntabrv, size, _) as info), word) ->
+      let (tjstr, wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
+        (EvFixedString(info, tjstr), { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
 
   | FixedEmpty(wid) ->
-        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, SkipLength.zero, SkipLength.zero)
+        (EvFixedEmpty(wid), { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, SkipLength.zero, SkipLength.zero)
 
 let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height * skip_depth =
   match hoa with
@@ -51,7 +51,7 @@ let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height
 
 let convert_box_for_line_breaking = function
   | HorzDiscretionary(_, _, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hgt, dpt, hfa)
+  | HorzFixedBoxAtom(hfa)         -> let (evhfa, widinfo, hgt, dpt) = metrics_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hgt, dpt, evhfa)
   | HorzOuterBoxAtom(hoa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hgt, dpt, hoa)
 
 
@@ -151,9 +151,9 @@ let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : ev
   let (is_short, ratio, widperfil) = calculate_ratios widrequired widinfo_total in
       let pairlst =
         lhblst |> List.map (function
-          | LBHorzDiscretionary(_, _, _, _, _)     -> assert false
-          | LBHorzFixedBoxAtom(widinfo, _, _, hfa) -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
-          | LBHorzOuterBoxAtom(widinfo, _, _, hoa) ->
+          | LBHorzDiscretionary(_, _, _, _, _)       -> assert false
+          | LBHorzFixedBoxAtom(widinfo, _, _, evhfa) -> (EvHorzFixedBoxAtom(widinfo.natural, evhfa), 0)
+          | LBHorzOuterBoxAtom(widinfo, _, _, hoa)   ->
               let nfil = widinfo.fils in
                 if nfil > 0 then
                   (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
