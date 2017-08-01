@@ -101,9 +101,12 @@ type horz_outer_atom =
   | OuterEmpty of skip_width * skip_width * skip_width
   | OuterFil
 
+type horz_outer_block = unit  (* temporary; should specify block information *)
+
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom
   | HorzOuterBoxAtom  of horz_outer_atom
+  | HorzOuterBoxBlock of horz_outer_block * horz_box list
   | HorzDiscretionary of pure_badness * horz_box option * horz_box option * horz_box option
 
 type evaled_horz_box =

@@ -172,7 +172,7 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          word "Now"; space; word "We"; space; word "deal"; space; word "with"; space;
+          word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
           word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
         ]);
 (*

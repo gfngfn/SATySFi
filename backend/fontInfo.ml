@@ -192,7 +192,7 @@ let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int
   try  (* temporary; for font formats that do not contain the `loca` table *)
     let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
       (ymax, ymin)
-  with FontFormatBroken(_) -> (880, -120)  (* temporary; for font formats that do not contain the `loca` table *)
+  with FontFormatBroken(_) -> (500, -100)  (* temporary; for font formats that do not contain the `loca` table *)
 
 
 let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
