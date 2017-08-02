@@ -25,7 +25,8 @@ let report_error (category : string) (lines : line list) =
   in
   begin
     print_string ("! [Error at " ^ category ^ "] ") ;
-    first lines
+    first lines ;
+    exit 1 ;
   end
 
 
