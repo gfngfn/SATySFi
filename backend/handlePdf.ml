@@ -74,6 +74,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                     let tag = FontInfo.get_tag fontabrv in
                     let opword = encode_tj_string enc tjs in
                       (wid, [
+(*
                         (* begin: for test; underline every word *)
                         op_q;
                         op_RG (1.0, 0.5, 0.5);
@@ -83,6 +84,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                         op_S;
                         op_Q;
                         (* end: for test *)
+*)
                         op_cm (SkipLength.zero, SkipLength.zero);
                         op_BT;
                         op_Tm_translate (xpos, yposbaseline);

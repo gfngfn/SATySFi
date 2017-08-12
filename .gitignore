@@ -29,5 +29,7 @@ _build
 macrodown
 *.ttf
 *.otf
+*.afm
+*.t1a
 *.svg
 *.dat

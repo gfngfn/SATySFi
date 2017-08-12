@@ -135,16 +135,17 @@ let () =
     let font0 = ("Arno", ~% 16., Latin1) in
     let font1 = ("Hlv", ~% 16., Latin1) in
     let fontL = ("Hlv", ~% 32., Latin1) in
-(*
+
     let fontK = ("KozMin", ~% 12., UTF16BE) in
-*)
+
     let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
     let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in
     let wordL s = HorzFixedBoxAtom(FixedString(fontL, InternalText.of_utf_8 s)) in
-(*
+
     let wordK s = HorzFixedBoxAtom(FixedString(fontK, InternalText.of_utf_8 s)) in
-*)
-    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
+
+    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 6., ~% 1., ~% 3.))), None, None) in
+    let space1 = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
     let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
     let fill = HorzOuterBoxAtom(OuterFil) in
@@ -159,8 +160,8 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
-          word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
+          word1 "discre"; soft_hyphen; word1 "tionary"; space1; word1 "hyphen"; space1;
+          word1 "discre"; soft_hyphen1; word1 "tionary"; space1; word1 "hyphen"; space1;
   (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
@@ -175,18 +176,18 @@ let () =
           word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
           word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
         ]);
-(*
+
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [
-          wordK "スペーシング"; space; wordK "の上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
+          wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
-          wordK "立派な"; space; wordK "PDF"; space; wordK "ですよ。"; space;
+          wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "まだ不完全。";
           fill;
         ]);
-*)
-      ] @ repeat 10 [
+
+      ] @ repeat 8 [
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           indentation;
