@@ -23,5 +23,5 @@ all:
 	mv *.h _build/
 #	ocamlbuild -use-ocamlfind -use-menhir -tag thread -pkgs "core,ctypes,otfm,ucorelib" -lflags "external/camlpdf/flatestubs.o external/camlpdf/rijndael-alg-fst.o external/camlpdf/stubs-aes.o external/camlpdf/miniz.o external/camlpdf/sha2.o external/camlpdf/stubs-sha2.o" -I external/camlpdf/ pageBreak.native
 #	ocamlbuild -use-ocamlfind -use-menhir -tag thread -pkgs "core,ctypes,otfm,ucorelib" -lflags "flatestubs.o rijndael-alg-fst.o stubs-aes.o miniz.o sha2.o stubs-sha2.o" -no-hygiene -I external/camlpdf/ pageBreak.native
-	ocamlbuild -use-ocamlfind -use-menhir -tag thread -pkgs "core,ctypes,otfm,ucorelib" -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c" -I external/camlpdf/ pageBreak.native
+	ocamlbuild -use-ocamlfind -use-menhir -tag thread -pkgs "core,ctypes,result,uutf,ucorelib" -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c" -I external/camlpdf/ -I external/otfm/ pageBreak.native
 #	ocamlbuild -use-ocamlfind -use-menhir -tag thread -pkgs "core,ctypes,otfm,ucorelib" -no-hygiene -I external/camlpdf/ pageBreak.native

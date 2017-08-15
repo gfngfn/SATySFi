@@ -1,4 +1,4 @@
-open Core.Result
+open Result
 open HorzBox
 
 
