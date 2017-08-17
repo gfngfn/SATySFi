@@ -277,8 +277,8 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt)
   match fontdfn with
   | Pdftext.StandardFont(stdfont, _) ->
       Pdf.Dictionary[
-        ("/Type", Pdf.Name("/Font"));
-        ("/Subtype", Pdf.Name("/Type1"));
+        ("/Type"    , Pdf.Name("/Font"));
+        ("/Subtype" , Pdf.Name("/Type1"));
         ("/BaseFont", Pdf.Name("/" ^ (Pdftext.string_of_standard_font stdfont)));
       ]
 
@@ -294,15 +294,15 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt)
                   (* -- add to the PDF the stream in which the font file is embedded -- *)
                 let objdescr =
                   Pdf.Dictionary[
-                    ("/Type", Pdf.Name("/FontDescriptor"));
-                    ("/FontName", Pdf.Name("/" ^ fontname));
-                    ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
-                    ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
+                    ("/Type"       , Pdf.Name("/FontDescriptor"));
+                    ("/FontName"   , Pdf.Name("/" ^ fontname));
+                    ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
+                    ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
                     ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
-                    ("/Ascent", Pdf.Integer(0)); (* temporary; should be variable *)
-                    ("/Descent", Pdf.Integer(0)); (* temporary; should be variable *)
-                    ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
-                    ("/FontFile2", Pdf.Indirect(irstream));
+                    ("/Ascent"     , Pdf.Integer(0)); (* temporary; should be variable *)
+                    ("/Descent"    , Pdf.Integer(0)); (* temporary; should be variable *)
+                    ("/StemV"      , Pdf.Integer(0));  (* temporary; should be variable *)
+                    ("/FontFile2"  , Pdf.Indirect(irstream));
                   ]
                 in
                 let irdescr = Pdf.addobj pdf objdescr in
@@ -333,14 +333,14 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt)
             let cidfontdescr = cidrecord.Pdftext.cid_fontdescriptor in
             let objdescr =
               Pdf.Dictionary[
-                ("/Type", Pdf.Name("/FontDescriptor"));
-                ("/FontName", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
-                ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
-                ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
+                ("/Type"       , Pdf.Name("/FontDescriptor"));
+                ("/FontName"   , Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
+                ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
+                ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
                 ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
-                ("/Ascent", Pdf.Real(cidfontdescr.Pdftext.ascent));
-                ("/Descent", Pdf.Real(cidfontdescr.Pdftext.descent));
-                ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
+                ("/Ascent"     , Pdf.Real(cidfontdescr.Pdftext.ascent));
+                ("/Descent"    , Pdf.Real(cidfontdescr.Pdftext.descent));
+                ("/StemV"      , Pdf.Real(cidfontdescr.Pdftext.stemv));
                 ("/FontFile2", Pdf.Indirect(irstream));
               ]
             in
@@ -408,22 +408,24 @@ let initialize () =
 
     ("KozMin",
      (Pdftext.CIDKeyedFont("KozMinComposite", {
-       Pdftext.cid_system_info= {
-         Pdftext.registry= "Adobe";
-         Pdftext.ordering= "Japan1";
-         Pdftext.supplement= 6;
+       Pdftext.cid_system_info = {
+         Pdftext.registry   = "Adobe";
+         Pdftext.ordering   = "Japan1";
+         Pdftext.supplement = 6;
        };
-       Pdftext.cid_basefont= "KozMinPro-Medium";
-       Pdftext.cid_fontdescriptor= {
-         Pdftext.ascent= 1137.;
-         Pdftext.descent= -349.;
-         Pdftext.leading= 1500.;  (* temporary *)
-         Pdftext.avgwidth= 1000.;
-         Pdftext.maxwidth= 1000.;
-         Pdftext.fontfile= None;  (* does not use Pdftext.fontfile field *)
+       Pdftext.cid_basefont = "KozMinPro-Medium";
+       Pdftext.cid_fontdescriptor = {
+         Pdftext.italicangle = 0.;
+         Pdftext.ascent      = 1137.;
+         Pdftext.descent     = -349.;
+         Pdftext.leading     = 1500.;  (* temporary *)
+         Pdftext.stemv       = 50.;    (* temporary *)
+         Pdftext.avgwidth    = 1000.;
+         Pdftext.maxwidth    = 1000.;
+         Pdftext.fontfile    = None;  (* does not use Pdftext.fontfile field *)
        };
-       Pdftext.cid_widths= [];  (* temporary *)
-       Pdftext.cid_default_width= 1000;
+       Pdftext.cid_widths        = [];  (* temporary *)
+       Pdftext.cid_default_width = 1000;
      }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
     );
 
