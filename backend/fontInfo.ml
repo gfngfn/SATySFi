@@ -354,7 +354,7 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt)
             let objdescend =
               Pdf.Dictionary[
                 ("/Type", Pdf.Name("/Font"));
-                ("/Subtype", Pdf.Name("/CIDFontType0")); (* temporary; should be variable *)
+                ("/Subtype", Pdf.Name("/CIDFontType2")); (* temporary; should be variable *)
                 ("/BaseFont", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
                 ("/CIDSystemInfo", Pdf.Dictionary[
                   ("/Registry", Pdf.String(cidsysinfo.Pdftext.registry));
