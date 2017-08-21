@@ -1,3 +1,8 @@
+
+(* for test *)
+let print_for_debug msgln = ()
+
+
 open HorzBox
 
 let (~%) = SkipLength.to_pdf_point
@@ -31,12 +36,12 @@ let encode_tj_string enc tjs =
   | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
                                                                  | TJUchar(uch)   -> Pdf.String(InternalText.to_utf8 uch)
                                                                  | TJKern(rawwid) ->
-                                                                     let () = Printf.printf "!!RAWWID(L)= %d\n" rawwid in  (* for debug *)
+                                                                     let () = print_for_debug ("!!RAWWID(L)= " ^ (string_of_int rawwid)) in  (* for debug *)
                                                                        Pdf.Integer(-rawwid) )))
   | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
                                                                  | TJUchar(uch) -> Pdf.StringHex(InternalText.to_utf16be_hex uch)
                                                                  | TJKern(rawwid) ->
-                                                                     let () = Printf.printf "!!RAWWID(U)= %d\n" rawwid in  (* for debug *)
+                                                                     let () = print_for_debug ("!!RAWWID(U)= " ^ (string_of_int rawwid)) in  (* for debug *)
                                                                        Pdf.Integer(-rawwid) )))
   
 

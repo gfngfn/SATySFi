@@ -3,6 +3,8 @@
 open HorzBox
 
 (* for test *)
+let print_for_debug msg = ()
+let ppf_for_debug =  Format.printf
 let print_evaled_vert_box evvb =
   ()
 (*
@@ -40,7 +42,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           let hgttotalnew = hgttotal +% hgt +% dpt in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = Printf.printf "CL %s ===> %s\n" (SkipLength.show hgttotal) (SkipLength.show hgttotalnew) in  (* for debug *)
+            let () = print_for_debug ("CL " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb (head :: (List.append imvbaccbreakable imvbacc)) [] hgttotalnew tail
@@ -49,13 +51,13 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           let hgttotalnew = hgttotal +% vskip in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = Printf.printf "CB %s ===> %s\n" (SkipLength.show hgttotal) (SkipLength.show hgttotalnew) in  (* for debug *)
+            let () = print_for_debug ("CB " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb imvbacc (head :: imvbaccbreakable) hgttotalnew tail
 
       | [] ->
-          let () = Printf.printf "CE %s ===> None\n" (SkipLength.show hgttotal) in  (* for debug *)
+          let () = print_for_debug ("CE " ^ (SkipLength.show hgttotal) ^ " ===> None\n") in  (* for debug *)
             None
     in
     let imvblst = List.rev imvbacc in
@@ -112,9 +114,9 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
     let (evvblstpage, opt) = pickup_page imvbacc vblst in
     let pdfschemenext = pdfscheme |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in
     (* begin: for debug *)
-      let () = Format.printf "--------@\n" in
+      let () = print_for_debug "--------\n" in
       let () = List.iter print_evaled_vert_box evvblstpage in
-      let () = Format.printf "@\n--------@\n" in
+      let () = print_for_debug "\n--------\n" in
     (* end: for debug *)
         match opt with
         | None -> begin HandlePdf.write_to_file pdfschemenext ; end
@@ -160,9 +162,7 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          word1 "discre"; soft_hyphen; word1 "tionary"; space1; word1 "hyphen"; space1;
-          word1 "discre"; soft_hyphen1; word1 "tionary"; space1; word1 "hyphen"; space1;
-  (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
+          word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
@@ -171,11 +171,13 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
+
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
           word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
         ]);
+
 
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [

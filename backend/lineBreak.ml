@@ -1,6 +1,6 @@
 
-let print_for_debug msg =
-  print_endline msg
+let print_for_debug msgln =
+  print_endline msgln
 
 open HorzBox
 

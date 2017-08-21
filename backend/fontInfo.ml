@@ -1,3 +1,8 @@
+
+(* for test *)
+let print_for_debug msgln = ()
+
+
 open Result
 open HorzBox
 
@@ -371,18 +376,18 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, pairopt)
 
 
 let get_font_dictionary (pdf : Pdf.t) () =
-  print_endline "!!begin get_font_dictionary" ;  (* for debug *)
+  print_for_debug "!!begin get_font_dictionary" ;  (* for debug *)
   let ret =  (* for debug *)
   [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
     let obj = make_dictionary pdf abbrev tuple () in
     let (_, tag, _) = tuple in
       (tag, obj) :: acc
   )
-  in let () = print_endline "!!end get_font_dictionary" in ret  (* for debug *)
+  in let () = print_for_debug "!!end get_font_dictionary" in ret  (* for debug *)
 
 
 let initialize () =
-  print_endline "!!begin initialize";  (* for debug *)
+  print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
     ("Hlv",
      (Pdftext.SimpleFont({
@@ -430,7 +435,7 @@ let initialize () =
     );
 
   ]
-  ; print_endline "!!end initialize"  (* for debug *)
+  ; print_for_debug "!!end initialize"  (* for debug *)
 
 
 
