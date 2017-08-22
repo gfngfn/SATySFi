@@ -156,6 +156,7 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) () : int =
   let len = Pdfio.bytes_size bt85 in
   let objstream =
     Pdf.Stream(ref (Pdf.Dictionary[
+(*      ("/Subtype", Pdf.Name("/OpenType")); *)
       ("/Length", Pdf.Integer(len));
       ("/Filter", Pdf.Name("/ASCII85Decode"));], Pdf.Got(bt85)))
   in
