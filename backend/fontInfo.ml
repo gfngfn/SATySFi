@@ -92,6 +92,7 @@ let get_kerning_table dcdr =
 
 
 type font_registration =
+  | Type1Registration        of int * int
   | TrueTypeRegistration     of int * int
   | CIDFontType0Registration of string * FontFormat.cmap
 
@@ -126,11 +127,14 @@ module FontAbbrevHashTable
       let kerntbl = get_kerning_table dcdr in
       let font =
         match fontreg with
+        | Type1Registration(fc, lc) ->
+            let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
+              FontFormat.type1 ty1font
         | TrueTypeRegistration(fc, lc) ->
             let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
               FontFormat.true_type trtyfont
         | CIDFontType0Registration(fontname, cmap) ->
-            let cidsysinfo = FontFormat.adobe_japan_6 in
+            let cidsysinfo = FontFormat.adobe_japan1 in
             let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
               FontFormat.cid_font_type_0 cidty0font fontname cmap
       in
@@ -191,17 +195,10 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdr, _) () : Pdf.pdfobject =
   match fontdfn with
-(*
-  | Pdftext.StandardFont(stdfont, _) ->
-      Pdf.Dictionary[
-        ("/Type"    , Pdf.Name("/Font"));
-        ("/Subtype" , Pdf.Name("/Type1"));
-        ("/BaseFont", Pdf.Name("/" ^ (Pdftext.string_of_standard_font stdfont)));
-      ]
-*)
+  | FontFormat.Type1(ty1font) ->
+      FontFormat.Type1.to_pdf_dictionary pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) ->
       FontFormat.TrueType.to_pdf_dictionary pdf trtyfont dcdr
-
   | FontFormat.Type0(ty0font) ->
       FontFormat.Type0.to_pdf_dictionary pdf ty0font dcdr
 
@@ -221,30 +218,10 @@ let initialize () =
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
     ("Hlv", TrueTypeRegistration(0, 255), "./testfonts/HelveticaBlack.ttf");
-(*
-    ("Arno",
-     (Pdftext.SimpleFont({
-       Pdftext.fonttype= Pdftext.Truetype;
-       Pdftext.basefont= "ArnoPro-Regular";
-       Pdftext.fontdescriptor= None;
-       Pdftext.fontmetrics= None;
-       Pdftext.encoding= Pdftext.StandardEncoding;
-     }), Some("./testfonts/ArnoPro-Regular.otf"))
-    );
-    ("TimesIt",
-     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
-    );
-
+    ("Arno", Type1Registration(0, 255), "./testfonts/ArnoPro-Regular.otf");
     ("KozMin",
-     (Pdftext.CIDKeyedFont("KozMinComposite", {
-       Pdftext.cid_system_info = {
-         Pdftext.registry   = "Adobe";
-         Pdftext.ordering   = "Japan1";
-         Pdftext.supplement = 6;
-       };
-       Pdftext.cid_basefont = "KozMinPro-Medium";
-       Pdftext.cid_fontdescriptor = {
-         Pdftext.italicangle = 0.;
+       CIDFontType0Registration(
+(*
          Pdftext.ascent      = 1137.;
          Pdftext.descent     = -349.;
          Pdftext.leading     = 1500.;  (* temporary *)
@@ -252,12 +229,9 @@ let initialize () =
          Pdftext.avgwidth    = 1000.;
          Pdftext.maxwidth    = 1000.;
          Pdftext.fontfile    = None;  (* does not use Pdftext.fontfile field *)
-       };
-       Pdftext.cid_widths        = [];  (* temporary *)
-       Pdftext.cid_default_width = 1000;
-     }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
-    );
 *)
+      "KozMin-Composite", FontFormat.PredefinedCMap("UniJIS-UTF16-H")), "./testfonts/KozMinPro-Medium.otf")
+
   ]
   ; print_for_debug "!!end initialize"  (* for debug *)
 

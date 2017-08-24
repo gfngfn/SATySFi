@@ -69,9 +69,7 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) (subtypeopt : stri
     | None          -> contents
     | Some(subtype) -> ("/Subtype", Pdf.Name("/" ^ subtype)) :: contents
   in
-  let objstream =
-    Pdf.Stream(ref (Pdf.Dictionary(dict), Pdf.Got(bt85)))
-  in
+  let objstream = Pdf.Stream(ref (Pdf.Dictionary(dict), Pdf.Got(bt85))) in
   let irstream = Pdf.addobj pdf objstream in
     irstream
 
@@ -151,14 +149,14 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
     )
 
 
-let font_descriptor_of_decoder dcdr font_name =
+let font_descriptor_of_decoder dcdr fontname =
   {
-    font_name    = font_name;
-    font_family  = "";  (* temporary *)
-    italic_angle = 0.;  (* temporary *)
-    ascent       = 0.;  (* temporary *)
-    descent      = 0.;  (* temporary *)
-    stemv        = 0.;  (* temporary *)
+    font_name    = fontname;
+    font_family  = "";  (* temporary; should be gotten from decoder *)
+    italic_angle = 0.;  (* temporary; should be gotten from decoder *)
+    ascent       = 0.;  (* temporary; should be gotten from decoder *)
+    descent      = 0.;  (* temporary; should be gotten from decoder *)
+    stemv        = 0.;  (* temporary; should be gotten from decoder *)
     font_data    = ref (Data(dcdr));
     (* temporary; should contain more fields *)
   }
@@ -169,6 +167,12 @@ let get_postscript_name dcdr =
   | Error(e)    -> raise (FontFormatBroken(e))
   | Ok(None)    -> assert false
   | Ok(Some(x)) -> x
+
+
+type embedding =
+  | FontFile
+  | FontFile2
+  | FontFile3 of string
 
 
 module Type1Scheme_
@@ -185,16 +189,6 @@ module Type1Scheme_
         encoding        : encoding;
         to_unicode      : cmap_data option;
       }
-end
-
-module Type1
-= struct
-    include Type1Scheme_
-  end
-
-module TrueType
-= struct
-    include Type1Scheme_
 
 
     let of_decoder dcdr fc lc =
@@ -211,36 +205,57 @@ module TrueType
         }
 
 
-    let to_pdf_dictionary pdf trtyfont dcdr =
-      let font_name  = trtyfont.base_font in
-      let first_char = trtyfont.first_char in
-      let last_char  = trtyfont.last_char in
-      let widths     = trtyfont.widths in
-      let irstream = add_stream_of_decoder pdf dcdr None () in
+    let to_pdf_dictionary_scheme fontsubtype embedding pdf trtyfont dcdr =
+      let (font_file_key, embedsubtypeopt) =
+        match embedding with
+        | FontFile       -> ("/FontFile", None)
+        | FontFile2      -> ("/FontFile2", None)
+        | FontFile3(sub) -> ("/FontFile3", Some(sub))
+      in
+      let fontname  = trtyfont.base_font in
+      let firstchar = trtyfont.first_char in
+      let lastchar  = trtyfont.last_char in
+      let widths    = trtyfont.widths in
+      let fontdescr = trtyfont.font_descriptor in
+      let irstream = add_stream_of_decoder pdf dcdr embedsubtypeopt () in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
         Pdf.Dictionary[
           ("/Type"       , Pdf.Name("/FontDescriptor"));
-          ("/FontName"   , Pdf.Name("/" ^ font_name));
+          ("/FontName"   , Pdf.Name("/" ^ fontname));
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
-          ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
-          ("/Ascent"     , Pdf.Integer(0)); (* temporary; should be variable *)
-          ("/Descent"    , Pdf.Integer(0)); (* temporary; should be variable *)
-          ("/StemV"      , Pdf.Integer(0));  (* temporary; should be variable *)
-          ("/FontFile2"  , Pdf.Indirect(irstream));
+          ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
+          ("/Ascent"     , Pdf.Real(fontdescr.ascent));
+          ("/Descent"    , Pdf.Real(fontdescr.descent));
+          ("/StemV"      , Pdf.Real(fontdescr.stemv));
+          (font_file_key , Pdf.Indirect(irstream));
         ]
       in
       let irdescr = Pdf.addobj pdf objdescr in
         Pdf.Dictionary[
-          ("/Type"     , Pdf.Name("/Font"));
-          ("/Subtype"  , Pdf.Name("/TrueType"));
-          ("/BaseFont" , Pdf.Name("/" ^ font_name));
-          ("/FirstChar", Pdf.Integer(first_char));
-          ("/LastChar" , Pdf.Integer(last_char));
-          ("/Widths"   , Pdf.Array(List.map (fun x -> Pdf.Integer(x)) widths));
+          ("/Type"          , Pdf.Name("/Font"));
+          ("/Subtype"       , Pdf.Name("/" ^ fontsubtype));
+          ("/BaseFont"      , Pdf.Name("/" ^ fontname));
+          ("/FirstChar"     , Pdf.Integer(firstchar));
+          ("/LastChar"      , Pdf.Integer(lastchar));
+          ("/Widths"        , Pdf.Array(List.map (fun x -> Pdf.Integer(x)) widths));
           ("/FontDescriptor", Pdf.Indirect(irdescr));
         ]
+end
+
+module Type1
+= struct
+    include Type1Scheme_
+
+    let to_pdf_dictionary = to_pdf_dictionary_scheme "Type1" (FontFile3("Type1C"))
+  end
+
+module TrueType
+= struct
+    include Type1Scheme_
+
+    let to_pdf_dictionary = to_pdf_dictionary_scheme "TrueType" FontFile
   end
 
 module Type3
@@ -419,13 +434,15 @@ module Type0
   end
 
 type font =
-  | Type0    of Type0.font
   | Type1    of Type1.font
 (*  | Type1C *)
 (*  | MMType1 *)
 (*  | Type3 *)
   | TrueType of TrueType.font
+  | Type0    of Type0.font
 
+
+let type1 ty1font = Type1(ty1font)
 
 let true_type trtyfont = TrueType(trtyfont)
 
@@ -433,9 +450,9 @@ let cid_font_type_0 cidty0font fontname cmap =
   let toucopt = None in  (* temporary *)
     Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
 
-let adobe_japan_6 =
+let adobe_japan1 =
   {
     registry   = "Adobe";
-    ordering   = "Japan";
+    ordering   = "Japan1";
     supplement = 6;
   }
