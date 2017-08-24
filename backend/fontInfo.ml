@@ -186,12 +186,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
           )
         in
           (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
-            (* temporary; should reflect kerning pair information *)
-(*
-    | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
-        let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont (InternalText.to_utf8 word) in
-          (NoKernText(word), f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
-*)
+
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdr, _) () : Pdf.pdfobject =
   match fontdfn with

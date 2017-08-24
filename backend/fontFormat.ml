@@ -38,31 +38,34 @@ type bbox = int * int * int * int
 type matrix = float * float * float * float
 
 type font_stretch =
-  | UltraCondensed | ExtraCondensed | Condensed | SemiCondensed
-  | Normal
-  | SemiExpanded | Expanded | ExtraExpanded | UltraExpanded
+  | UltraCondensedStretch | ExtraCondensedStretch | CondensedStretch | SemiCondensedStetch
+  | NormalStretch
+  | SemiExpandedStretch | ExpandedStretch | ExtraExpandedStretch | UltraExpandedStretch
 
-type font_weight =
-  | FontWeight100
-  | FontWeight200
-  | FontWeight300
-  | FontWeight400  (* -- normal weight -- *)
-  | FontWeight500
-  | FontWeight600
-  | FontWeight700  (* -- bold weight -- *)
-  | FontWeight800
-  | FontWeight900
+
+let font_stretch_of_width_class = function
+  | 0 -> UltraCondensedStretch
+  | 1 -> ExtraCondensedStretch
+  | 3 -> CondensedStretch
+  | 4 -> SemiCondensedStetch
+  | 5 -> NormalStretch
+  | 6 -> SemiExpandedStretch
+  | 7 -> ExpandedStretch
+  | 8 -> ExtraExpandedStretch
+  | 9 -> UltraExpandedStretch
+  | _ -> assert false
+
 
 type font_descriptor = {
     font_name    : string;
     font_family  : string;
     font_stretch : font_stretch option;
-    font_weight  : font_weight option;
+    font_weight  : int option;  (* -- ranges only over {100, 200, ..., 900} -- *)
     flags        : int option;  (* temporary; maybe should be handled as a boolean record *)
     font_bbox    : bbox;
     italic_angle : float;
-    ascent       : float;
-    descent      : float;
+    ascent       : int;
+    descent      : int;
     stemv        : float;
     font_data    : (Otfm.decoder resource) ref;
     (* temporary; should contain more fields *)
@@ -170,20 +173,29 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
 
 
 let font_descriptor_of_decoder dcdr fontname =
-  {
-    font_name    = fontname;
-    font_family  = "";    (* temporary; should be gotten from decoder *)
-    font_stretch = None;  (* temporary; should be gotten from decoder *)
-    font_weight  = None;  (* temporary; should be gotten from decoder *)
-    flags        = None;  (* temporary; should be gotten from decoder *)
-    font_bbox    = (0, 0, 0, 0); (* temporary; should be gotten from decoder *)
-    italic_angle = 0.;    (* temporary; should be gotten from decoder *)
-    ascent       = 0.;    (* temporary; should be gotten from decoder *)
-    descent      = 0.;    (* temporary; should be gotten from decoder *)
-    stemv        = 0.;    (* temporary; should be gotten from decoder *)
-    font_data    = ref (Data(dcdr));
-    (* temporary; should contain more fields *)
-  }
+  let (>>-) x f =
+    match x with
+    | Error(e) -> raise (FontFormatBroken(e))
+    | Ok(v)    -> f v
+  in
+    Otfm.head dcdr >>- fun rcdhead ->
+    Otfm.hhea dcdr >>- fun rcdhhea ->
+    Otfm.os2 dcdr  >>- fun rcdos2 ->
+    {
+      font_name    = fontname; (* -- same as Otfm.postscript_name dcdr -- *)
+      font_family  = "";    (* temporary; should be gotten from decoder *)
+      font_stretch = Some(font_stretch_of_width_class rcdos2.Otfm.os2_us_width_class);
+      font_weight  = Some(rcdos2.Otfm.os2_us_weight_class);
+      flags        = None;  (* temporary; should be gotten from decoder *)
+      font_bbox    = (rcdhead.Otfm.head_xmin, rcdhead.Otfm.head_ymin,
+                      rcdhead.Otfm.head_xmax, rcdhead.Otfm.head_ymax);
+      italic_angle = 0.;    (* temporary; should be gotten from decoder *)
+      ascent       = rcdhhea.Otfm.hhea_ascender;
+      descent      = rcdhhea.Otfm.hhea_descender;
+      stemv        = 0.;    (* temporary; should be gotten from decoder *)
+      font_data    = ref (Data(dcdr));
+      (* temporary; should contain more fields *)
+    }
 
 
 let get_postscript_name dcdr =
@@ -250,8 +262,8 @@ module Type1Scheme_
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
-          ("/Ascent"     , Pdf.Real(fontdescr.ascent));
-          ("/Descent"    , Pdf.Real(fontdescr.descent));
+          ("/Ascent"     , Pdf.Integer(fontdescr.ascent));
+          ("/Descent"    , Pdf.Integer(fontdescr.descent));
           ("/StemV"      , Pdf.Real(fontdescr.stemv));
           (font_file_key , Pdf.Indirect(irstream));
         ]
@@ -386,8 +398,8 @@ module Type0
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);  (* temporary; should be variable *)
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
-          ("/Ascent"     , Pdf.Real(fontdescr.ascent));
-          ("/Descent"    , Pdf.Real(fontdescr.descent));
+          ("/Ascent"     , Pdf.Integer(fontdescr.ascent));
+          ("/Descent"    , Pdf.Integer(fontdescr.descent));
           ("/StemV"      , Pdf.Real(fontdescr.stemv));
           ("/FontFile3"  , Pdf.Indirect(irstream));
         ]
