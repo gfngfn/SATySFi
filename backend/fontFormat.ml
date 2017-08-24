@@ -48,39 +48,6 @@ type font_descriptor = {
     (* temporary; should contain more fields *)
   }
 
-module CIDFontType0
-= struct
-    type font = {
-        system_info     : cid_system_info;
-        base_font       : string;
-        font_descriptor : font_descriptor;
-        dw              : int option;
-        dw2             : (int * int) option;
-        (* temporary; should contain more fields; /W, /W2 *)
-      }
-  end
-
-type cid_to_gid_map =
-  | CIDToGIDIdentity
-  | CIDToGIDStream   of (string resource) ref  (* temporary *)
-
-module CIDFontType2
-= struct
-    type font = {
-        system_info : cid_system_info;
-        base_font   : string;
-        font_descriptor : font_descriptor;
-        dw              : int option;
-        dw2             : (int * int) option;
-        cid_to_gid_map  : cid_to_gid_map;
-        (* temporary; should contain more fields; /W, /W2 *)
-      }
-  end
-
-type cid_font =
-  | CIDFontType0 of CIDFontType0.font
-  | CIDFontType2 of CIDFontType2.font
-
 
 let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
   match Otfm.decoder_src dcdr with
@@ -197,6 +164,13 @@ let font_descriptor_of_decoder dcdr font_name =
   }
 
 
+let get_postscript_name dcdr =
+  match Otfm.postscript_name dcdr with
+  | Error(e)    -> raise (FontFormatBroken(e))
+  | Ok(None)    -> assert false
+  | Ok(Some(x)) -> x
+
+
 module Type1Scheme_
 = struct
     type font = {
@@ -224,12 +198,7 @@ module TrueType
 
 
     let of_decoder dcdr fc lc =
-      let base_font =
-        match Otfm.postscript_name dcdr with
-        | Error(e)    -> raise (FontFormatBroken(e))
-        | Ok(None)    -> assert false
-        | Ok(Some(x)) -> x
-      in
+      let base_font = get_postscript_name dcdr in
         {
           name            = None;
           base_font       = base_font;
@@ -290,6 +259,50 @@ module Type3
   end
 
 
+module CIDFontType0
+= struct
+    type font = {
+        cid_system_info : cid_system_info;
+        base_font       : string;
+        font_descriptor : font_descriptor;
+        dw              : int option;
+        dw2             : (int * int) option;
+        (* temporary; should contain more fields; /W, /W2 *)
+      }
+
+    let of_decoder dcdr cidsysinfo =
+      let base_font = get_postscript_name dcdr in
+        {
+          cid_system_info = cidsysinfo;
+          base_font       = base_font;
+          font_descriptor = font_descriptor_of_decoder dcdr base_font;
+          dw              = None;  (* temporary *)
+          dw2             = None;  (* temporary *)
+        }
+  end
+
+type cid_to_gid_map =
+  | CIDToGIDIdentity
+  | CIDToGIDStream   of (string resource) ref  (* temporary *)
+
+module CIDFontType2
+= struct
+    type font = {
+        cid_system_info : cid_system_info;
+        base_font       : string;
+        font_descriptor : font_descriptor;
+        dw              : int option;
+        dw2             : (int * int) option;
+        cid_to_gid_map  : cid_to_gid_map;
+        (* temporary; should contain more fields; /W, /W2 *)
+      }
+  end
+
+type cid_font =
+  | CIDFontType0 of CIDFontType0.font
+  | CIDFontType2 of CIDFontType2.font
+
+
 let pdfobject_of_cmap pdf cmap =
   match cmap with
   | PredefinedCMap(cmapname) -> Pdf.Name("/" ^ cmapname)
@@ -303,6 +316,15 @@ module Type0
         encoding         : cmap;
         descendant_fonts : cid_font;  (* -- represented as a singleton list in PDF -- *)
         to_unicode       : cmap_data option;
+      }
+
+
+    let of_cid_font cidfont fontname cmap toucopt =
+      {
+        base_font        = fontname;
+        encoding         = cmap;
+        descendant_fonts = cidfont;
+        to_unicode       = toucopt;
       }
 
 
@@ -340,7 +362,7 @@ module Type0
 
 
     let add_cid_type_0 pdf cidty0font =
-      let cidsysinfo = cidty0font.CIDFontType0.system_info in
+      let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
       let irdescr = add_font_descriptor pdf fontdescr base_font in
@@ -359,7 +381,7 @@ module Type0
 
 
     let add_cid_type_2 pdf cidty2font =
-      let cidsysinfo = cidty2font.CIDFontType2.system_info in
+      let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
       let irdescr = add_font_descriptor pdf fontdescr base_font in
@@ -403,3 +425,17 @@ type font =
 (*  | MMType1 *)
 (*  | Type3 *)
   | TrueType of TrueType.font
+
+
+let true_type trtyfont = TrueType(trtyfont)
+
+let cid_font_type_0 cidty0font fontname cmap =
+  let toucopt = None in  (* temporary *)
+    Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
+
+let adobe_japan_6 =
+  {
+    registry   = "Adobe";
+    ordering   = "Japan";
+    supplement = 6;
+  }

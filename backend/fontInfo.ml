@@ -92,7 +92,8 @@ let get_kerning_table dcdr =
 
 
 type font_registration =
-  | TrueTypeRegistration of int * int
+  | TrueTypeRegistration     of int * int
+  | CIDFontType0Registration of string * FontFormat.cmap
 
 
 module FontAbbrevHashTable
@@ -127,7 +128,11 @@ module FontAbbrevHashTable
         match fontreg with
         | TrueTypeRegistration(fc, lc) ->
             let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
-              FontFormat.TrueType(trtyfont)
+              FontFormat.true_type trtyfont
+        | CIDFontType0Registration(fontname, cmap) ->
+            let cidsysinfo = FontFormat.adobe_japan_6 in
+            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
+              FontFormat.cid_font_type_0 cidty0font fontname cmap
       in
       let tag = generate_tag () in
         Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr, kerntbl)
