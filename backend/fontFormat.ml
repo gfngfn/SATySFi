@@ -37,14 +37,34 @@ type bbox = int * int * int * int
 
 type matrix = float * float * float * float
 
+type font_stretch =
+  | UltraCondensed | ExtraCondensed | Condensed | SemiCondensed
+  | Normal
+  | SemiExpanded | Expanded | ExtraExpanded | UltraExpanded
+
+type font_weight =
+  | FontWeight100
+  | FontWeight200
+  | FontWeight300
+  | FontWeight400  (* -- normal weight -- *)
+  | FontWeight500
+  | FontWeight600
+  | FontWeight700  (* -- bold weight -- *)
+  | FontWeight800
+  | FontWeight900
+
 type font_descriptor = {
     font_name    : string;
     font_family  : string;
+    font_stretch : font_stretch option;
+    font_weight  : font_weight option;
+    flags        : int option;  (* temporary; maybe should be handled as a boolean record *)
+    font_bbox    : bbox;
     italic_angle : float;
-    ascent    : float;
-    descent   : float;
-    stemv     : float;
-    font_data : (Otfm.decoder resource) ref;
+    ascent       : float;
+    descent      : float;
+    stemv        : float;
+    font_data    : (Otfm.decoder resource) ref;
     (* temporary; should contain more fields *)
   }
 
@@ -152,11 +172,15 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
 let font_descriptor_of_decoder dcdr fontname =
   {
     font_name    = fontname;
-    font_family  = "";  (* temporary; should be gotten from decoder *)
-    italic_angle = 0.;  (* temporary; should be gotten from decoder *)
-    ascent       = 0.;  (* temporary; should be gotten from decoder *)
-    descent      = 0.;  (* temporary; should be gotten from decoder *)
-    stemv        = 0.;  (* temporary; should be gotten from decoder *)
+    font_family  = "";    (* temporary; should be gotten from decoder *)
+    font_stretch = None;  (* temporary; should be gotten from decoder *)
+    font_weight  = None;  (* temporary; should be gotten from decoder *)
+    flags        = None;  (* temporary; should be gotten from decoder *)
+    font_bbox    = (0, 0, 0, 0); (* temporary; should be gotten from decoder *)
+    italic_angle = 0.;    (* temporary; should be gotten from decoder *)
+    ascent       = 0.;    (* temporary; should be gotten from decoder *)
+    descent      = 0.;    (* temporary; should be gotten from decoder *)
+    stemv        = 0.;    (* temporary; should be gotten from decoder *)
     font_data    = ref (Data(dcdr));
     (* temporary; should contain more fields *)
   }
@@ -255,7 +279,7 @@ module TrueType
 = struct
     include Type1Scheme_
 
-    let to_pdf_dictionary = to_pdf_dictionary_scheme "TrueType" FontFile
+    let to_pdf_dictionary = to_pdf_dictionary_scheme "TrueType" FontFile2
   end
 
 module Type3
@@ -324,6 +348,10 @@ let pdfobject_of_cmap pdf cmap =
   | CMapFile(res)            -> failwith "cmap file for Type 0 fonts; remains to be implemented."
 
 
+let pdfobject_of_bbox (xmin, ymin, xmax, ymax) =
+  Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
+
+
 module Type0
 = struct
     type font = {
@@ -356,7 +384,7 @@ module Type0
           ("/Type"       , Pdf.Name("/FontDescriptor"));
           ("/FontName"   , Pdf.Name("/" ^ base_font));
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
-          ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
+          ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);  (* temporary; should be variable *)
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
           ("/Ascent"     , Pdf.Real(fontdescr.ascent));
           ("/Descent"    , Pdf.Real(fontdescr.descent));
