@@ -218,5 +218,5 @@ let () =
         main pdfscheme vblst ;
       end
     with
-    | FontInfo.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e
+    | FontFormat.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e
   end
