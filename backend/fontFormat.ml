@@ -1,8 +1,40 @@
 
-exception FontFormatBroken of Otfm.error
-exception NoGlyph          of Uchar.t
-
 type file_path = string
+
+exception FailToLoadFontFormatOwingToSize   of file_path
+exception FailToLoadFontFormatOwingToSystem of string
+exception FontFormatBroken                  of Otfm.error
+exception NoGlyph                           of Uchar.t
+
+
+let string_of_file (flnmin : file_path) : string =
+  try
+    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
+    let buf : Buffer.t = Buffer.create bufsize in
+    let byt : bytes = Bytes.create bufsize in
+    let ic : in_channel = open_in_bin flnmin in
+      try
+        begin
+          while true do
+            let c = input ic byt 0 bufsize in
+              if c = 0 then raise Exit else
+                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
+          done ;
+          assert false
+        end
+      with
+      | Exit           -> begin close_in ic ; Buffer.contents buf end
+      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
+      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
+  with
+  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
+
+
+let get_decoder (src : file_path) () : Otfm.decoder =
+  let s = string_of_file src in
+  let dcdr = Otfm.decoder (`String(s)) in
+    dcdr
+
 
 type 'a resource =
   | Data           of 'a
@@ -20,12 +52,11 @@ type encoding =
   | PredefinedEncoding of predefined_encoding
   | CustomEncoding     of predefined_encoding * differences
 
-
-type cmap_data = (string resource) ref  (* temporary;*)
+type cmap_resource = (string resource) ref  (* temporary;*)
 
 type cmap =
   | PredefinedCMap of string
-  | CMapFile       of cmap_data
+  | CMapFile       of cmap_resource
 
 type cid_system_info = {
     registry   : string;
@@ -223,7 +254,7 @@ module Type1Scheme_
         widths          : int list;
         font_descriptor : font_descriptor;
         encoding        : encoding;
-        to_unicode      : cmap_data option;
+        to_unicode      : cmap_resource option;
       }
 
 
@@ -241,7 +272,7 @@ module Type1Scheme_
         }
 
 
-    let to_pdf_dictionary_scheme fontsubtype embedding pdf trtyfont dcdr =
+    let to_pdfdict_scheme fontsubtype embedding pdf trtyfont dcdr =
       let (font_file_key, embedsubtypeopt) =
         match embedding with
         | FontFile       -> ("/FontFile", None)
@@ -284,14 +315,14 @@ module Type1
 = struct
     include Type1Scheme_
 
-    let to_pdf_dictionary = to_pdf_dictionary_scheme "Type1" (FontFile3("Type1C"))
+    let to_pdfdict = to_pdfdict_scheme "Type1" (FontFile3("Type1C"))
   end
 
 module TrueType
 = struct
     include Type1Scheme_
 
-    let to_pdf_dictionary = to_pdf_dictionary_scheme "TrueType" FontFile2
+    let to_pdfdict = to_pdfdict_scheme "TrueType" FontFile2
   end
 
 module Type3
@@ -305,7 +336,7 @@ module Type3
         last_char       : int;
         widths          : int list;
         font_descriptor : font_descriptor;
-        to_unicode      : cmap_data option;
+        to_unicode      : cmap_resource option;
       }
   end
 
@@ -370,7 +401,7 @@ module Type0
         base_font        : string;
         encoding         : cmap;
         descendant_fonts : cid_font;  (* -- represented as a singleton list in PDF -- *)
-        to_unicode       : cmap_data option;
+        to_unicode       : cmap_resource option;
       }
 
 
@@ -408,7 +439,7 @@ module Type0
         irdescr
 
 
-    let pdf_dictionary_of_cid_system_info cidsysinfo =
+    let pdfdict_of_cid_system_info cidsysinfo =
       Pdf.Dictionary[
         ("/Registry", Pdf.String(cidsysinfo.registry));
         ("/Ordering", Pdf.String(cidsysinfo.ordering));
@@ -426,7 +457,7 @@ module Type0
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType0"));
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
-          ("/CIDSystemInfo" , pdf_dictionary_of_cid_system_info cidsysinfo);
+          ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
             (* should add more; /DW, /W, /DW2, /W2 *)
         ]
@@ -445,7 +476,7 @@ module Type0
           ("/Type"          , Pdf.Name("/Font"));
           ("/Subtype"       , Pdf.Name("/CIDFontType2"));
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
-          ("/CIDSystemInfo" , pdf_dictionary_of_cid_system_info cidsysinfo);
+          ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
             (* should add more; /DW, /W, /DW2, /W2, /CIDToGIDMap *)
         ]
@@ -454,7 +485,7 @@ module Type0
         irdescend
 
 
-    let to_pdf_dictionary pdf ty0font dcdr =
+    let to_pdfdict pdf ty0font dcdr =
       let cidfont       = ty0font.descendant_fonts in
       let base_font_ty0 = ty0font.base_font in
       let cmap          = ty0font.encoding in
@@ -487,7 +518,7 @@ let type1 ty1font = Type1(ty1font)
 let true_type trtyfont = TrueType(trtyfont)
 
 let cid_font_type_0 cidty0font fontname cmap =
-  let toucopt = None in  (* temporary *)
+  let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
     Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
 
 let adobe_japan1 =

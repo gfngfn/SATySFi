@@ -1,10 +1,6 @@
 open HorzBox
 
-type file_name = string
-
 exception InvalidFontAbbrev of font_abbrev
-exception FailToLoadFontFormatOwingToSize   of file_name
-exception FailToLoadFontFormatOwingToSystem of string
 
 val initialize : unit -> unit
 

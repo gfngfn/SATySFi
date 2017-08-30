@@ -10,40 +10,9 @@ open HorzBox
 type font_abbrev = string
 type file_name = string
 
-exception InvalidFontAbbrev                 of font_abbrev
-exception FailToLoadFontFormatOwingToSize   of file_name
-exception FailToLoadFontFormatOwingToSystem of string
+exception InvalidFontAbbrev of font_abbrev
 
 type tag = string
-
-
-let string_of_file (flnmin : file_name) : string =
-  try
-    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
-    let buf : Buffer.t = Buffer.create bufsize in
-    let byt : bytes = Bytes.create bufsize in
-    let ic : in_channel = open_in_bin flnmin in
-      try
-        begin
-          while true do
-            let c = input ic byt 0 bufsize in
-              if c = 0 then raise Exit else
-                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
-          done ;
-          assert false
-        end
-      with
-      | Exit           -> begin close_in ic ; Buffer.contents buf end
-      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
-      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
-  with
-  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
-
-
-let get_decoder (src : file_name) () : Otfm.decoder =
-  let s = string_of_file src in
-  let dcdr = Otfm.decoder (`String(s)) in
-    dcdr
 
 
 module KerningTable
@@ -99,7 +68,7 @@ type font_registration =
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> font_registration -> file_name -> unit
+    val add : font_abbrev -> font_registration -> FontFormat.file_path -> unit
     val fold : (font_abbrev -> FontFormat.font * tag * Otfm.decoder * KerningTable.t -> 'a -> 'a) -> 'a -> 'a
     val find_opt : font_abbrev -> (FontFormat.font * tag * Otfm.decoder * KerningTable.t) option
   end
@@ -123,7 +92,7 @@ module FontAbbrevHashTable
         end
 
     let add abbrev fontreg srcfile =
-      let dcdr = get_decoder srcfile () in
+      let dcdr = FontFormat.get_decoder srcfile () in
       let kerntbl = get_kerning_table dcdr in
       let font =
         match fontreg with
@@ -191,11 +160,11 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdr, _) () : Pdf.pdfobject =
   match fontdfn with
   | FontFormat.Type1(ty1font) ->
-      FontFormat.Type1.to_pdf_dictionary pdf ty1font dcdr
+      FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) ->
-      FontFormat.TrueType.to_pdf_dictionary pdf trtyfont dcdr
+      FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
   | FontFormat.Type0(ty0font) ->
-      FontFormat.Type0.to_pdf_dictionary pdf ty0font dcdr
+      FontFormat.Type0.to_pdfdict pdf ty0font dcdr
 
 
 let get_font_dictionary (pdf : Pdf.t) () =
@@ -235,7 +204,7 @@ let initialize () =
 
 (* -- following are operations about handling glyphs -- *)
 
-
+(*
 type contour_element =
   | OnCurve   of int * int
   | Quadratic of int * int * int * int
@@ -316,6 +285,7 @@ let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t
   in
     (String.concat "" lst, newpos)
 
+*)
 
 (* for test *)
 (*
