@@ -3,6 +3,13 @@ type file_path = string
 
 type glyph_id = Otfm.glyph_id
 
+
+let hex_of_glyph_id gid =
+  let b0 = gid / 256 in
+  let b1 = gid mod 256 in
+    Printf.sprintf "%02X%02X" b0 b1
+
+
 type decoder = Otfm.decoder
 
 exception FailToLoadFontFormatOwingToSize   of file_path

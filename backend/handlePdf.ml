@@ -28,12 +28,12 @@ let op_q = Pdfops.Op_q
 let op_Q = Pdfops.Op_Q
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
 
-
+(*
 let encode_tj_string enc tjs =
   match (enc, tjs) with
-  | (Latin1, NoKernText(intext))  -> op_Tj (InternalText.to_utf8 intext)
+  | (Latin1 , NoKernText(intext)) -> op_Tj (InternalText.to_utf8 intext)
   | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
-  | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
+  | (Latin1 , KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
                                                                  | TJChar(tjch)   -> Pdf.String(InternalText.to_utf8 tjch)
                                                                  | TJKern(rawwid) ->
                                                                      let () = print_for_debug ("!!RAWWID(L)= " ^ (string_of_int rawwid)) in  (* for debug *)
@@ -43,7 +43,7 @@ let encode_tj_string enc tjs =
                                                                  | TJKern(rawwid) ->
                                                                      let () = print_for_debug ("!!RAWWID(U)= " ^ (string_of_int rawwid)) in  (* for debug *)
                                                                        Pdf.Integer(-rawwid) )))
-  
+*)
 
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
@@ -75,9 +75,9 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
                 | EvHorzFixedBoxAtom(wid, EvFixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size), tjs)) ->
+                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size), otxt)) ->
                     let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
-                    let opword = encode_tj_string enc tjs in
+                    let opword = op_TJ (OutputText.to_TJ_argument otxt) in
                       (wid, [
 (*
                         (* begin: for test; underline every word *)

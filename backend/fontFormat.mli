@@ -3,6 +3,8 @@ type file_path = string
 
 type glyph_id
 
+val hex_of_glyph_id : glyph_id -> string
+
 type decoder
 
 exception FailToLoadFontFormatOwingToSize   of file_path

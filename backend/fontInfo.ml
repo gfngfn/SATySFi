@@ -122,32 +122,43 @@ let get_glyph_id dcdr (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : FontFormat.gly
       | Some(gid) -> begin gidtbl |> GlyphIDTable.add uch gid ; Some(gid) end
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : tj_string * skip_width * skip_height * skip_depth =
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : OutputText.t * skip_width * skip_height * skip_depth =
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None                                     -> raise (InvalidFontAbbrev(abbrev))
     | Some((_, _, dcdr, gidtbl, kerntbl, enc)) ->
         let uword = InternalText.to_uchar_list word in
-        let (_, tjsacc, rawwid, rawhgt, rawdpt) =
-          uword @|> (None, [], 0, 0, 0) @|> List.fold_left (fun (gidprevopt, tjsacc, wacc, hacc, dacc) uch ->
-            match get_glyph_id dcdr gidtbl uch with
-            | None      -> (None, tjsacc, wacc, hacc, dacc)
-                (* temporary; simply ignores character that is not assigned a glyph in the current font *)
-            | Some(gid) ->
-                let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
-                let (tjsaccnew, waccnew) =
-                  match gidprevopt with
-                  | None          -> (TJChar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
-                  | Some(gidprev) ->
-                      match kerntbl |> FontFormat.KerningTable.find_opt gidprev gid with
-                      | None        -> (TJChar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
-                      | Some(wkern) -> (TJChar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
-                          (* -- kerning value is negative if two characters are supposed to be closer -- *)
-                in
-                  (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
-          )
+        let (_, otxt, rawwid, rawhgt, rawdpt) =
+          let init =
+            match enc with
+            | Latin1                  -> OutputText.empty_literal_style
+            | ( UTF16BE | IdentityH ) -> OutputText.empty_hex_style
+          in
+            uword @|> (None, init, 0, 0, 0) @|> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) uch ->
+              match get_glyph_id dcdr gidtbl uch with
+              | None      -> (None, otxtacc, wacc, hacc, dacc)
+                  (* temporary; simply ignores character that is not assigned a glyph in the current font *)
+              | Some(gid) ->
+                  let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
+                  let append_data (type a) (( @>> ) : OutputText.t -> a -> OutputText.t) (x : a) : OutputText.t * int =
+                    let ( @*> ) = OutputText.append_kern in
+                      match gidprevopt with
+                      | None          -> (otxtacc @>> x, wacc + w)
+                      | Some(gidprev) ->
+                          match kerntbl |> FontFormat.KerningTable.find_opt gidprev gid with
+                          | None        -> (otxtacc @>> x, wacc + w)
+                          | Some(wkern) -> ((otxtacc @*> wkern) @>> x, wacc + w + wkern)
+                              (* -- kerning value is negative if two characters are supposed to be closer -- *)
+                  in
+                  let (tjsaccnew, waccnew) =
+                    match enc with
+                    | ( Latin1 | UTF16BE ) -> append_data OutputText.append_uchar uch
+                    | IdentityH            -> append_data OutputText.append_glyph_id gid
+                  in
+                    (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
+            )
         in
-          (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
+          (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
 
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, _, dcdr, _, _, _) () : Pdf.pdfobject =
