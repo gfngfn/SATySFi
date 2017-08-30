@@ -8,7 +8,6 @@ open HorzBox
 
 
 type font_abbrev = string
-type file_name = string
 
 exception InvalidFontAbbrev of font_abbrev
 
@@ -76,8 +75,8 @@ let get_kerning_table dcdr =
   let res =
     () |> Otfm.kern dcdr (fun () kinfo ->
       match kinfo with
-      | {Otfm.kern_dir= `H; Otfm.kern_kind= `Kern; Otfm.kern_cross_stream= false} -> (`Fold, ())
-      | _                                                                         -> (`Skip, ())
+      | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
+      | _                                                                              -> (`Skip, ())
     ) (fun () gid1 gid2 wid ->
       kerntbl |> KerningTable.add gid1 gid2 wid
     )
@@ -160,12 +159,13 @@ let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_glyph_id dcdr gidtbl uch =
+let get_glyph_id (dcdr : Otfm.decoder) (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : Otfm.glyph_id option =
   match gidtbl |> GlyphIDTable.find_opt uch with
-  | Some(gid) -> gid
+  | Some(gid) -> Some(gid)
   | None      ->
-      let gid = FontFormat.get_glyph_id dcdr uch in
-      begin gidtbl |> GlyphIDTable.add uch gid ; gid end
+      match FontFormat.get_glyph_id dcdr uch with
+      | None      -> None
+      | Some(gid) -> begin gidtbl |> GlyphIDTable.add uch gid ; Some(gid) end
 
 
 let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : tj_string * skip_width * skip_height * skip_depth =
@@ -176,18 +176,21 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
         let uword = InternalText.to_uchar_list word in
         let (_, tjsacc, rawwid, rawhgt, rawdpt) =
           uword @|> (None, [], 0, 0, 0) @|> List.fold_left (fun (gidprevopt, tjsacc, wacc, hacc, dacc) uch ->
-            let (w, h, d) = FontFormat.get_uchar_metrics dcdr uch in
-            let gid = get_glyph_id dcdr gidtbl uch in
-            let (tjsaccnew, waccnew) =
-              match gidprevopt with
-              | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
-              | Some(gidprev) ->
-                  match kerntbl |> KerningTable.find_opt gidprev gid with
-                  | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
-                  | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
-                      (* -- kerning value is negative if two characters are supposed to be closer -- *)
-            in
-              (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
+            match get_glyph_id dcdr gidtbl uch with
+            | None      -> (None, tjsacc, wacc, hacc, dacc)
+                (* temporary; simply ignores character that is not assigned a glyph in the current font *)
+            | Some(gid) ->
+                let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
+                let (tjsaccnew, waccnew) =
+                  match gidprevopt with
+                  | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                  | Some(gidprev) ->
+                      match kerntbl |> KerningTable.find_opt gidprev gid with
+                      | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                      | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
+                          (* -- kerning value is negative if two characters are supposed to be closer -- *)
+                in
+                  (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
           )
         in
           (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)

@@ -4,7 +4,8 @@ type file_path = string
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
-exception NoGlyph                           of Uchar.t
+exception FontFormatBrokenAboutWidthClass
+exception NoGlyphID                         of Otfm.glyph_id
 
 
 let string_of_file (flnmin : file_path) : string =
@@ -84,7 +85,7 @@ let font_stretch_of_width_class = function
   | 7 -> ExpandedStretch
   | 8 -> ExtraExpandedStretch
   | 9 -> UltraExpandedStretch
-  | _ -> assert false
+  | _ -> raise FontFormatBrokenAboutWidthClass
 
 
 type font_descriptor = {
@@ -128,7 +129,7 @@ let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) (subtypeopt : stri
     irstream
 
 
-let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
+let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option =
   let cp = Uchar.to_int uch in
   let cmapres =
     Otfm.cmap dcdr (fun accopt mapkd (u0, u1) gid ->
@@ -139,34 +140,32 @@ let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
   in
     match cmapres with
     | Error(e)                   -> raise (FontFormatBroken(e))
-    | Ok(((_, _, _), None))      -> raise (NoGlyph(uch))
-    | Ok(((_, _, _), Some(gid))) -> gid
+    | Ok(((_, _, _), None))      -> None
+    | Ok(((_, _, _), Some(gid))) -> Some(gid)
 
 
-let get_uchar_raw_contour_list_and_bounding_box (dcdr : Otfm.decoder) (uch : Uchar.t)
+let get_glyph_raw_contour_list_and_bounding_box dcdr (gid : Otfm.glyph_id)
     : ((bool * int * int) list) list * (int * int * int * int) =
-  let gid = get_glyph_id dcdr uch in
   let gloc =
     match Otfm.loca dcdr gid with
     | Error(e)    -> raise (FontFormatBroken(e))
-    | Ok(None)    -> raise (NoGlyph(uch))
+    | Ok(None)    -> raise (NoGlyphID(gid))
     | Ok(Some(l)) -> l
   in
     match Otfm.glyf dcdr gloc with
     | Error(e)                        -> raise (FontFormatBroken(e))
-    | Ok((`Composite(_), _))          -> raise (NoGlyph(uch))  (* temporary; does not deal with composite glyphs *)
+    | Ok((`Composite(_), _))          -> raise (NoGlyphID(gid))  (* temporary; does not deal with composite glyphs *)
     | Ok((`Simple(precntrlst), bbox)) -> (precntrlst, bbox)
 
 
-let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int =
+let get_glyph_height_and_depth dcdr (gid : Otfm.glyph_id) =
   try  (* temporary; for font formats that do not contain the `loca` table *)
-    let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
+    let (_, (_, ymin, _, ymax)) = get_glyph_raw_contour_list_and_bounding_box dcdr gid in
       (ymax, ymin)
   with FontFormatBroken(_) -> (500, -100)  (* temporary; for font formats that do not contain the `loca` table *)
 
 
-let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
-  let gidkey = get_glyph_id dcdr uch in
+let get_uchar_horz_metrics dcdr (gidkey : Otfm.glyph_id) : int * int =
   let hmtxres =
     None |> Otfm.hmtx dcdr (fun accopt gid adv lsb ->
       match accopt with
@@ -180,16 +179,16 @@ let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
     | Ok(Some((adv, lsb))) -> (adv, lsb)
 
 
-let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) : int =
+let get_glyph_advance_width dcdr gid =
   try
-    let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
+    let (adv, _) = get_uchar_horz_metrics dcdr gid in adv
   with
-  | NoGlyph(_) -> 0
+  | NoGlyphID(_) -> 0
 
 
-let get_uchar_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int * int =
-  let wid = get_uchar_advance_width dcdr uch in
-  let (hgt, dpt) = get_uchar_height_and_depth dcdr uch in
+let get_glyph_metrics dcdr gid =
+  let wid = get_glyph_advance_width dcdr gid in
+  let (hgt, dpt) = get_glyph_height_and_depth dcdr gid in
     (wid, hgt, dpt)
 
 
@@ -199,7 +198,9 @@ let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar :
       range (m :: acc) (m + 1) n
   in
     (range [] firstchar lastchar) |> List.map (fun charcode ->
-      get_uchar_advance_width dcdr (Uchar.of_int charcode)
+      get_glyph_id dcdr (Uchar.of_int charcode) |> function
+        | None      -> 0
+        | Some(gid) -> get_glyph_advance_width dcdr gid
     )
 
 

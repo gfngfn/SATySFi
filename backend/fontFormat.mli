@@ -4,7 +4,7 @@ type file_path = string
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
-exception NoGlyph                           of Uchar.t
+exception NoGlyphID                         of Otfm.glyph_id
 
 val get_decoder : file_path -> unit -> Otfm.decoder
 
@@ -62,5 +62,5 @@ val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 
-val get_uchar_metrics : Otfm.decoder -> Uchar.t -> int * int * int
-val get_glyph_id : Otfm.decoder -> Uchar.t -> Otfm.glyph_id
+val get_glyph_metrics : Otfm.decoder -> Otfm.glyph_id -> int * int * int
+val get_glyph_id : Otfm.decoder -> Uchar.t -> Otfm.glyph_id option
