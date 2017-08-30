@@ -185,7 +185,7 @@ let initialize () =
     ("Hlv", TrueTypeRegistration(0, 255, Latin1), "./testfonts/HelveticaBlack.ttf");
     ("Arno", Type1Registration(0, 255, Latin1), "./testfonts/ArnoPro-Regular.otf");
     ("KozMin",
-       CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("UniJIS-UTF16-H"), UTF16BE), "./testfonts/KozMinPro-Medium.otf")
+       CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH), "./testfonts/KozMinPro-Medium.otf")
 
   ]
   ; print_for_debug "!!end initialize"  (* for debug *)
