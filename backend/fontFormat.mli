@@ -1,12 +1,23 @@
 
 type file_path = string
 
+type glyph_id
+
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
-exception NoGlyphID                         of Otfm.glyph_id
+exception NoGlyphID                         of glyph_id
 
 val get_decoder : file_path -> unit -> Otfm.decoder
+
+module KerningTable : sig
+  type t
+  val create : int -> t
+  val add : glyph_id -> glyph_id -> int -> t -> unit
+  val find_opt : glyph_id -> glyph_id -> t -> int option
+end
+
+val get_kerning_table : Otfm.decoder -> KerningTable.t
 
 type 'a resource =
   | Data           of 'a
@@ -62,5 +73,5 @@ val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 
-val get_glyph_metrics : Otfm.decoder -> Otfm.glyph_id -> int * int * int
-val get_glyph_id : Otfm.decoder -> Uchar.t -> Otfm.glyph_id option
+val get_glyph_metrics : Otfm.decoder -> glyph_id -> int * int * int
+val get_glyph_id : Otfm.decoder -> Uchar.t -> glyph_id option

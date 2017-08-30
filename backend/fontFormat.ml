@@ -1,6 +1,8 @@
 
 type file_path = string
 
+type glyph_id = Otfm.glyph_id
+
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
@@ -35,6 +37,51 @@ let get_decoder (src : file_path) () : Otfm.decoder =
   let s = string_of_file src in
   let dcdr = Otfm.decoder (`String(s)) in
     dcdr
+
+
+module KerningTable
+: sig
+    type t
+    val create : int -> t
+    val add : glyph_id -> glyph_id -> int -> t -> unit
+    val find_opt : glyph_id -> glyph_id -> t -> int option
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = Otfm.glyph_id * Otfm.glyph_id
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = int Ht.t
+
+    let create size =
+      Ht.create size
+
+    let add gid1 gid2 wid tbl =
+      begin Ht.add tbl (gid1, gid2) wid ; end
+
+    let find_opt gid1 gid2 tbl =
+      try Some(Ht.find tbl (gid1, gid2)) with
+      | Not_found -> None
+  end
+
+
+let get_kerning_table dcdr =
+  let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
+  let res =
+    () |> Otfm.kern dcdr (fun () kinfo ->
+      match kinfo with
+      | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
+      | _                                                                              -> (`Skip, ())
+    ) (fun () gid1 gid2 wid ->
+      kerntbl |> KerningTable.add gid1 gid2 wid
+    )
+  in
+    match res with
+    | Error(e) -> raise (FontFormatBroken(e))
+    | Ok(())   -> kerntbl
 
 
 type 'a resource =

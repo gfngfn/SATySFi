@@ -13,13 +13,12 @@ exception InvalidFontAbbrev of font_abbrev
 
 type tag = string
 
-
 module GlyphIDTable
 : sig
     type t
     val create : int -> t
-    val add : Uchar.t -> Otfm.glyph_id -> t -> unit
-    val find_opt : Uchar.t -> t -> Otfm.glyph_id option
+    val add : Uchar.t -> FontFormat.glyph_id -> t -> unit
+    val find_opt : Uchar.t -> t -> FontFormat.glyph_id option
   end
 = struct
     module Ht = Hashtbl.Make
@@ -29,7 +28,7 @@ module GlyphIDTable
         let hash = Hashtbl.hash
       end)
 
-    type t = Otfm.glyph_id Ht.t
+    type t = FontFormat.glyph_id Ht.t
 
     let create = Ht.create
 
@@ -41,51 +40,6 @@ module GlyphIDTable
   end
 
 
-module KerningTable
-: sig
-    type t
-    val create : int -> t
-    val add : Otfm.glyph_id -> Otfm.glyph_id -> int -> t -> unit
-    val find_opt : Otfm.glyph_id -> Otfm.glyph_id -> t -> int option
-  end
-= struct
-    module Ht = Hashtbl.Make
-      (struct
-        type t = Otfm.glyph_id * Otfm.glyph_id
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
-
-    type t = int Ht.t
-
-    let create size =
-      Ht.create size
-
-    let add gid1 gid2 wid tbl =
-      begin Ht.add tbl (gid1, gid2) wid ; end
-
-    let find_opt gid1 gid2 tbl =
-      try Some(Ht.find tbl (gid1, gid2)) with
-      | Not_found -> None
-  end
-
-
-let get_kerning_table dcdr =
-  let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
-  let res =
-    () |> Otfm.kern dcdr (fun () kinfo ->
-      match kinfo with
-      | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
-      | _                                                                              -> (`Skip, ())
-    ) (fun () gid1 gid2 wid ->
-      kerntbl |> KerningTable.add gid1 gid2 wid
-    )
-  in
-    match res with
-    | Error(e) -> raise (FontFormat.FontFormatBroken(e))
-    | Ok(())   -> kerntbl
-
-
 type font_registration =
   | Type1Registration        of int * int
   | TrueTypeRegistration     of int * int
@@ -95,8 +49,8 @@ type font_registration =
 module FontAbbrevHashTable
 : sig
     val add : font_abbrev -> font_registration -> FontFormat.file_path -> unit
-    val fold : (font_abbrev -> FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t) option
+    val fold : (font_abbrev -> FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) option
   end
 = struct
 
@@ -107,7 +61,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 
@@ -119,7 +73,7 @@ module FontAbbrevHashTable
 
     let add abbrev fontreg srcfile =
       let dcdr = FontFormat.get_decoder srcfile () in
-      let kerntbl = get_kerning_table dcdr in
+      let kerntbl = FontFormat.get_kerning_table dcdr in
       let font =
         match fontreg with
         | Type1Registration(fc, lc) ->
@@ -159,7 +113,7 @@ let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_glyph_id (dcdr : Otfm.decoder) (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : Otfm.glyph_id option =
+let get_glyph_id dcdr (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : FontFormat.glyph_id option =
   match gidtbl |> GlyphIDTable.find_opt uch with
   | Some(gid) -> Some(gid)
   | None      ->
@@ -185,7 +139,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
                   match gidprevopt with
                   | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
                   | Some(gidprev) ->
-                      match kerntbl |> KerningTable.find_opt gidprev gid with
+                      match kerntbl |> FontFormat.KerningTable.find_opt gidprev gid with
                       | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
                       | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
                           (* -- kerning value is negative if two characters are supposed to be closer -- *)
