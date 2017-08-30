@@ -1,6 +1,6 @@
 
-let print_for_debug msg =
-  print_endline msg
+let print_for_debug msgln =
+  print_endline msgln
 
 open HorzBox
 
@@ -26,19 +26,20 @@ let ( +%@ ) wi1 wi2 =
 
 
 type lb_horz_box =
-  | LBHorzFixedBoxAtom  of skip_info * skip_height * skip_depth * horz_fixed_atom
+  | LBHorzFixedBoxAtom  of skip_info * skip_height * skip_depth * evaled_horz_fixed_atom
   | LBHorzOuterBoxAtom  of skip_info * skip_height * skip_depth * horz_outer_atom
   | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_horz_box option * lb_horz_box option * lb_horz_box option
+  | LBHorzOuterBoxBlock of skip_info * skip_height * skip_depth * unit * lb_horz_box list
 
 
-let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : skip_info * skip_height * skip_depth =
+let metrics_of_horz_fixed_atom (hfa : horz_fixed_atom) : evaled_horz_fixed_atom * skip_info * skip_height * skip_depth =
   match hfa with
-  | FixedString((fntabrv, size), word) ->
-      let (wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
-        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
+  | FixedString(((fntabrv, size, _) as info), word) ->
+      let (tjstr, wid, hgt, dpt) = FontInfo.get_metrics_of_word fntabrv size word in
+        (EvFixedString(info, tjstr), { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, hgt, dpt)
 
   | FixedEmpty(wid) ->
-        ({ natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, SkipLength.zero, SkipLength.zero)
+        (EvFixedEmpty(wid), { natural= wid; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 0; }, SkipLength.zero, SkipLength.zero)
 
 let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height * skip_depth =
   match hoa with
@@ -49,10 +50,22 @@ let metrics_of_horz_outer_atom (hoa : horz_outer_atom) : skip_info * skip_height
       ({ natural= SkipLength.zero; shrinkable= SkipLength.zero; stretchable= SkipLength.zero; fils= 1; }, SkipLength.zero, SkipLength.zero)
 
 
-let convert_box_for_line_breaking = function
+let rec convert_box_for_line_breaking = function
   | HorzDiscretionary(_, _, _, _) -> assert false
-  | HorzFixedBoxAtom(hfa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hgt, dpt, hfa)
+  | HorzFixedBoxAtom(hfa)         -> let (evhfa, widinfo, hgt, dpt) = metrics_of_horz_fixed_atom hfa in LBHorzFixedBoxAtom(widinfo, hgt, dpt, evhfa)
   | HorzOuterBoxAtom(hoa)         -> let (widinfo, hgt, dpt) = metrics_of_horz_outer_atom hoa in LBHorzOuterBoxAtom(widinfo, hgt, dpt, hoa)
+  | HorzOuterBoxBlock((), hlst)   ->
+      let lbhlst = hlst |> List.map convert_box_for_line_breaking in
+      let (widinfo, hgt, dpt) =
+        lbhlst @|> (widinfo_zero, SkipLength.zero, SkipLength.zero) @|> List.fold_left (fun (wiacc, hacc, dacc) lbh ->
+          match lbh with
+          | LBHorzOuterBoxAtom(widinfo, hgt, dpt, _)     -> (widinfo +%@ wiacc, SkipLength.max hgt hacc, SkipLength.min dpt dacc)
+          | LBHorzFixedBoxAtom(widinfo, hgt, dpt, _)     -> (widinfo +%@ wiacc, SkipLength.max hgt hacc, SkipLength.min dpt dacc)
+          | LBHorzDiscretionary(_, _, _, _, _)           -> assert false
+          | LBHorzOuterBoxBlock(widinfo, hgt, dpt, _, _) -> (widinfo +%@ wiacc, SkipLength.max hgt hacc, SkipLength.min dpt dacc)
+        )
+      in
+        LBHorzOuterBoxBlock(widinfo, hgt, dpt, (), lbhlst)
 
 
 let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
@@ -62,9 +75,10 @@ let convert_box_for_line_breaking_opt (hbopt : horz_box option) =
 
 
 let get_width_info = function
-  | LBHorzDiscretionary(_, _, _, _, _)   -> assert false
-  | LBHorzFixedBoxAtom(widinfo, _, _, _) -> widinfo
-  | LBHorzOuterBoxAtom(widinfo, _, _, _) -> widinfo
+  | LBHorzDiscretionary(_, _, _, _, _)       -> assert false
+  | LBHorzFixedBoxAtom(widinfo, _, _, _)     -> widinfo
+  | LBHorzOuterBoxAtom(widinfo, _, _, _)     -> widinfo
+  | LBHorzOuterBoxBlock(widinfo, _, _, _, _) -> widinfo
 
 
 let get_width_info_opt = function
@@ -143,29 +157,31 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
 let determine_widths (widrequired : skip_width) (lhblst : lb_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
   let (widinfo_total, hgt_total, dpt_total) =
     lhblst |> List.map (function
-      | LBHorzFixedBoxAtom(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-      | LBHorzOuterBoxAtom(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-      | LBHorzDiscretionary(_, _, _, _, _)       -> assert false
-    ) |> List.fold_left (fun (wi, h, d) (wiacc, hacc, dacc) -> (wi +%@ wiacc, SkipLength.max h hacc, SkipLength.max d dacc)) (widinfo_zero, SkipLength.zero, SkipLength.zero)
+      | LBHorzFixedBoxAtom(widinfo, hgt, dpt, _)     -> (widinfo, hgt, dpt)
+      | LBHorzOuterBoxAtom(widinfo, hgt, dpt, _)     -> (widinfo, hgt, dpt)
+      | LBHorzDiscretionary(_, _, _, _, _)           -> assert false
+      | LBHorzOuterBoxBlock(widinfo, hgt, dpt, _, _) -> (widinfo, hgt, dpt)
+    ) |> List.fold_left (fun (wi, h, d) (wiacc, hacc, dacc) -> (wi +%@ wiacc, SkipLength.max h hacc, SkipLength.min d dacc)) (widinfo_zero, SkipLength.zero, SkipLength.zero)
   in
   let (is_short, ratio, widperfil) = calculate_ratios widrequired widinfo_total in
+  let main_conversion = function
+    | LBHorzDiscretionary(_, _, _, _, _)       -> assert false
+    | LBHorzFixedBoxAtom(widinfo, _, _, evhfa) -> (EvHorzFixedBoxAtom(widinfo.natural, evhfa), 0)
+    | LBHorzOuterBoxAtom(widinfo, _, _, hoa)   ->
+        let nfil = widinfo.fils in
+          if nfil > 0 then
+            (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
+          else if nfil = 0 then
+            let widdiff =
+              if is_short then widinfo.stretchable *% ratio
+                          else widinfo.shrinkable *% ratio
+            in
+              (EvHorzOuterBoxAtom(widinfo.natural +% widdiff, hoa), abs (~@ (ratio *. 100.0)))
+          else
+            assert false  (* -- nfil cannot be negative -- *)
+  in
       let pairlst =
-        lhblst |> List.map (function
-          | LBHorzDiscretionary(_, _, _, _, _)     -> assert false
-          | LBHorzFixedBoxAtom(widinfo, _, _, hfa) -> (EvHorzFixedBoxAtom(widinfo.natural, hfa), 0)
-          | LBHorzOuterBoxAtom(widinfo, _, _, hoa) ->
-              let nfil = widinfo.fils in
-                if nfil > 0 then
-                  (EvHorzOuterBoxAtom(widinfo.natural +% widperfil, hoa), 0)
-                else if nfil = 0 then
-                  let widdiff =
-                    if is_short then widinfo.stretchable *% ratio
-                                else widinfo.shrinkable *% ratio
-                  in
-                    (EvHorzOuterBoxAtom(widinfo.natural +% widdiff, hoa), abs (~@ (ratio *. 100.0)))
-                else
-                  assert false
-        )
+        lhblst |> List.map main_conversion
       in
       let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
       let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in

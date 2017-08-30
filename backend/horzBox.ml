@@ -75,23 +75,42 @@ type font_abbrev = string
 
 type file_path = string
 
-type font_info = font_abbrev * SkipLength.t
+type encoding_in_pdf =
+  | Latin1
+  | UTF16BE
+
+type font_info = font_abbrev * SkipLength.t * encoding_in_pdf
+
+type kerned_element =
+  | TJUchar of InternalText.t
+  | TJKern  of int  (* -- raw length -- *)
+
+type tj_string =
+  | KernedText of kerned_element list
+  | NoKernText of InternalText.t
 
 type horz_fixed_atom =
-  | FixedString of font_info * string
+  | FixedString of font_info * InternalText.t
   | FixedEmpty  of skip_width
+
+type evaled_horz_fixed_atom =
+  | EvFixedString of font_info * tj_string
+  | EvFixedEmpty  of skip_width
 
 type horz_outer_atom =
   | OuterEmpty of skip_width * skip_width * skip_width
   | OuterFil
 
+type horz_outer_block = unit  (* temporary; should specify block information *)
+
 type horz_box =
   | HorzFixedBoxAtom  of horz_fixed_atom
   | HorzOuterBoxAtom  of horz_outer_atom
+  | HorzOuterBoxBlock of horz_outer_block * horz_box list
   | HorzDiscretionary of pure_badness * horz_box option * horz_box option * horz_box option
 
 type evaled_horz_box =
-  | EvHorzFixedBoxAtom of skip_width * horz_fixed_atom
+  | EvHorzFixedBoxAtom of skip_width * evaled_horz_fixed_atom
   | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
 
 type vert_box =

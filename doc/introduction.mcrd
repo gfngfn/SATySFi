@@ -41,9 +41,9 @@
       という思想のもとに制作された，
       \LaTeX;やHTMLなどのマークアップ言語をラップするための軽量［要出典］マークアップ言語です。
       OCamlで実装しており，ソースコードは
-
+      
       \url-display{http://github.com/gfngfn/Macrodown}
-
+      
       で公開しています。この文書もMacrodownを経由してHTMLソースコードと\LaTeX;ソースコードを出力し，
       \LaTeX;ソースコードの方は\pLaTeX2e;とdvipdfmxで組んでいます。
     }

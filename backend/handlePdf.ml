@@ -1,10 +1,13 @@
+
+(* for test *)
+let print_for_debug msgln = ()
+
+
 open HorzBox
 
-
+let (~%) = SkipLength.to_pdf_point
 let op_cm (xdiff, ydiff) =
-  Pdfops.Op_cm(Pdftransform.matrix_of_transform
-                 [Pdftransform.Translate
-                     (SkipLength.to_pdf_point xdiff, SkipLength.to_pdf_point ydiff)])
+  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (~% xdiff, ~% ydiff)])
 
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
@@ -13,16 +16,42 @@ let op_Tm_translate (xpos, ypos) =
 
 let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
 let op_Tj str = Pdfops.Op_Tj(str)
+let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
+let op_TJ obj = Pdfops.Op_TJ(obj)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
+let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)
+let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
+let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
+let op_S = Pdfops.Op_S
+let op_q = Pdfops.Op_q
+let op_Q = Pdfops.Op_Q
+let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
+
+
+let encode_tj_string enc tjs =
+  match (enc, tjs) with
+  | (Latin1, NoKernText(intext))  -> op_Tj (InternalText.to_utf8 intext)
+  | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
+  | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
+                                                                 | TJUchar(uch)   -> Pdf.String(InternalText.to_utf8 uch)
+                                                                 | TJKern(rawwid) ->
+                                                                     let () = print_for_debug ("!!RAWWID(L)= " ^ (string_of_int rawwid)) in  (* for debug *)
+                                                                       Pdf.Integer(-rawwid) )))
+  | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
+                                                                 | TJUchar(uch) -> Pdf.StringHex(InternalText.to_utf16be_hex uch)
+                                                                 | TJKern(rawwid) ->
+                                                                     let () = print_for_debug ("!!RAWWID(U)= " ^ (string_of_int rawwid)) in  (* for debug *)
+                                                                       Pdf.Integer(-rawwid) )))
+  
 
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
-let left_margin = SkipLength.of_pdf_point 75.  (* temporary; should be variable *)
+let left_margin = SkipLength.of_pdf_point 75.   (* temporary; should be variable *)
 let top_margin = SkipLength.of_pdf_point 100.   (* temporary; should be variable *)
-let leading = SkipLength.of_pdf_point 32.      (* temporary; should be variable *)
+let leading = SkipLength.of_pdf_point 32.       (* temporary; should be variable *)
 
 
 let get_paper_height (paper : Pdfpaper.t) : skip_height =
@@ -45,13 +74,28 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
               let (widdiff, ops) =
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, FixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, FixedString((fontabrv, size), word)) ->
+                | EvHorzFixedBoxAtom(wid, EvFixedEmpty(_)) -> (wid, [])
+                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size, enc), tjs)) ->
                     let tag = FontInfo.get_tag fontabrv in
+                    let opword = encode_tj_string enc tjs in
                       (wid, [
+(*
+                        (* begin: for test; underline every word *)
+                        op_q;
+                        op_RG (1.0, 0.5, 0.5);
+                        op_m (xpos, yposbaseline);
+                        op_l (xpos +% wid, yposbaseline);
+                        op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+                        op_S;
+                        op_Q;
+                        (* end: for test *)
+*)
+                        op_cm (SkipLength.zero, SkipLength.zero);
+                        op_BT;
                         op_Tm_translate (xpos, yposbaseline);
                         op_Tf tag size;
-                        op_Tj (InternalText.to_utf16be_hex (InternalText.of_utf_8 word));  (* temporary; problematic! *)
+                        opword;
+                        op_ET;
                       ])
               in
               let opaccnew = List.rev_append ops opacc in
@@ -62,7 +106,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
     )
   in
 
-  let oplst = op_cm (SkipLength.zero, SkipLength.zero) :: op_BT :: (List.rev (op_ET :: opaccend)) in
+  let oplst = List.rev opaccend in
 
   let pagenew =
     {(Pdfpage.blankpage paper) with

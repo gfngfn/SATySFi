@@ -1,6 +1,10 @@
+(* -*- coding: utf-8 -*- *)
+
 open HorzBox
 
 (* for test *)
+let print_for_debug msg = ()
+let ppf_for_debug =  Format.printf
 let print_evaled_vert_box evvb =
   ()
 (*
@@ -38,7 +42,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           let hgttotalnew = hgttotal +% hgt +% dpt in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = Printf.printf "CL %s ===> %s\n" (SkipLength.show hgttotal) (SkipLength.show hgttotalnew) in  (* for debug *)
+            let () = print_for_debug ("CL " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb (head :: (List.append imvbaccbreakable imvbacc)) [] hgttotalnew tail
@@ -47,13 +51,13 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           let hgttotalnew = hgttotal +% vskip in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = Printf.printf "CB %s ===> %s\n" (SkipLength.show hgttotal) (SkipLength.show hgttotalnew) in  (* for debug *)
+            let () = print_for_debug ("CB " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb imvbacc (head :: imvbaccbreakable) hgttotalnew tail
 
       | [] ->
-          let () = Printf.printf "CE %s ===> None\n" (SkipLength.show hgttotal) in  (* for debug *)
+          let () = print_for_debug ("CE " ^ (SkipLength.show hgttotal) ^ " ===> None\n") in  (* for debug *)
             None
     in
     let imvblst = List.rev imvbacc in
@@ -61,7 +65,6 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
   in
 
   let determine_heights (imvblst : intermediate_vert_box list) =
-    (* temporary; should determine the height of vertical boxes *)
     imvblst |> List.map (fun imvb ->
       match imvb with
       | ImVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
@@ -111,9 +114,9 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
     let (evvblstpage, opt) = pickup_page imvbacc vblst in
     let pdfschemenext = pdfscheme |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in
     (* begin: for debug *)
-      let () = Format.printf "--------@\n" in
+      let () = print_for_debug "--------\n" in
       let () = List.iter print_evaled_vert_box evvblstpage in
-      let () = Format.printf "@\n--------@\n" in
+      let () = print_for_debug "\n--------\n" in
     (* end: for debug *)
         match opt with
         | None -> begin HandlePdf.write_to_file pdfschemenext ; end
@@ -131,21 +134,26 @@ let () =
   let ( ~% ) = SkipLength.of_pdf_point in
   begin
     FontInfo.initialize () ;
-    let font0 = ("TimesIt", ~% 16.) in
-    let font1 = ("Hlv", ~% 16.) in
-    let fontL = ("Hlv", ~% 32.) in
-    let fontK = ("KozMin", ~% 16.) in
-    let word s = HorzFixedBoxAtom(FixedString(font0, s)) in
-    let word1 s = HorzFixedBoxAtom(FixedString(font1, s)) in
-    let wordL s = HorzFixedBoxAtom(FixedString(fontL, s)) in
-    let wordK s = HorzFixedBoxAtom(FixedString(fontK, s)) in
-    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
+    let font0 = ("Arno", ~% 16., Latin1) in
+    let font1 = ("Hlv", ~% 16., Latin1) in
+    let fontL = ("Hlv", ~% 32., Latin1) in
+
+    let fontK = ("KozMin", ~% 12., UTF16BE) in
+
+    let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
+    let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in
+    let wordL s = HorzFixedBoxAtom(FixedString(fontL, InternalText.of_utf_8 s)) in
+
+    let wordK s = HorzFixedBoxAtom(FixedString(fontK, InternalText.of_utf_8 s)) in
+
+    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 6., ~% 1., ~% 3.))), None, None) in
+    let space1 = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
     let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
     let fill = HorzOuterBoxAtom(OuterFil) in
     let paragraph_skip = ~% 32.0 in
-    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, "-"))), None) in
-    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, "-"))), None) in
+    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 "-"))), None) in
+    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 "-"))), None) in
     let rec repeat n lst = if n <= 0 then [] else lst @ (repeat (n - 1) lst) in
     let vblst =
       [
@@ -154,9 +162,7 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          word1 "discre"; soft_hyphen; word1 "tionary"; space; word1 "hyphen"; space;
-          word1 "discre"; soft_hyphen1; word1 "tionary"; space; word1 "hyphen"; space;
-  (*        word1 "5000"; space; word1 "cho-yen"; space; word1 "hoshii!"; space; *)
+          word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "The"; space; word "quick"; space; word "brown"; space; word "fox"; space;
@@ -165,11 +171,25 @@ let () =
           word "My"; space; word "quiz"; space; word "above"; space; word "the"; space; word "kiwi"; space; word "juice"; space;
           word "needs"; space; word "price"; soft_hyphen ; word "less"; space; word "fixing."; fill;
         ]);
+
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
-          wordK "Kozuka"; space; wordK "Mincho"; fill;
+          word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
+          word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
         ]);
-      ] @ repeat 10 [
+
+
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 20., [
+          wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
+          wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
+          wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
+          wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
+          wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "まだ不完全。";
+          fill;
+        ]);
+
+      ] @ repeat 8 [
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           indentation;
@@ -192,11 +212,11 @@ let () =
         ]);
       ]
     in
-    let pdfscheme = HandlePdf.create_empty_pdf "hello2.pdf" in
+    let pdfscheme = HandlePdf.create_empty_pdf "hello4.pdf" in
     try
       begin
         main pdfscheme vblst ;
       end
     with
-    | FontInfo.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e
+    | FontFormat.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e
   end

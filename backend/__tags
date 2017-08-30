@@ -1,0 +1,1 @@
+not <*.c> : use_menhir, thread, package(core otfm ctypes ucorelib)

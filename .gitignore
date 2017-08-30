@@ -1,3 +1,4 @@
+.DS_Store
 \#*
 *~
 *.cmi
@@ -29,5 +30,7 @@ _build
 macrodown
 *.ttf
 *.otf
+*.afm
+*.t1a
 *.svg
 *.dat

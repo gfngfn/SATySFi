@@ -41,11 +41,10 @@ let convert_to_base85_string (x0, x1, x2, x3, x4) =
     let () = print_for_debug ("C " ^ (string_of_int ((x + (Char.code '!'))))) in (* for debug *)
       Char.chr (x + (Char.code '!'))
   in
-  let str = String.make 1 in
   let tup = (single x0, single x1, single x2, single x3, single x4) in
     match tup with
     | ('!', '!', '!', '!', '!') -> "z"
-    | (c0, c1, c2, c3, c4)      -> (str c0) ^ (str c1) ^ (str c2) ^ (str c3) ^ (str c4)
+    | (c0, c1, c2, c3, c4)      -> Printf.sprintf "%c%c%c%c%c" c0 c1 c2 c3 c4
 
 
 let encode (str : string) =

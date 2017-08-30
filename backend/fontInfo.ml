@@ -1,54 +1,102 @@
-open Core.Result
+
+(* for test *)
+let print_for_debug msgln = ()
+
+
+open Result
 open HorzBox
 
 
 type font_abbrev = string
-type file_name = string
 
-
-exception FontFormatBroken                  of Otfm.error
-exception NoGlyph                           of Uchar.t
-exception InvalidFontAbbrev                 of font_abbrev
-exception FailToLoadFontFormatOwingToSize   of file_name
-exception FailToLoadFontFormatOwingToSystem of string
+exception InvalidFontAbbrev of font_abbrev
 
 type tag = string
 
 
-let string_of_file (flnmin : file_name) : string =
-  try
-    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
-    let buf : Buffer.t = Buffer.create bufsize in
-    let byt : bytes = Bytes.create bufsize in
-    let ic : in_channel = open_in_bin flnmin in
-      try
-        begin
-          while true do
-            let c = input ic byt 0 bufsize in
-              if c = 0 then raise Exit else
-                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
-          done ;
-          assert false
-        end
-      with
-      | Exit           -> begin close_in ic ; Buffer.contents buf end
-      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
-      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
-  with
-  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
+module GlyphIDTable
+: sig
+    type t
+    val create : int -> t
+    val add : Uchar.t -> Otfm.glyph_id -> t -> unit
+    val find_opt : Uchar.t -> t -> Otfm.glyph_id option
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = Uchar.t
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = Otfm.glyph_id Ht.t
+
+    let create = Ht.create
+
+    let add uch gid gidtbl = Ht.add gidtbl uch gid
+
+    let find_opt uch gidtbl =
+      try Some(Ht.find gidtbl uch) with
+      | Not_found -> None
+  end
 
 
-let get_decoder (src : file_name) () : Otfm.decoder =
-  let s = string_of_file src in
-  let dcdr = Otfm.decoder (`String(s)) in
-    dcdr
+module KerningTable
+: sig
+    type t
+    val create : int -> t
+    val add : Otfm.glyph_id -> Otfm.glyph_id -> int -> t -> unit
+    val find_opt : Otfm.glyph_id -> Otfm.glyph_id -> t -> int option
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = Otfm.glyph_id * Otfm.glyph_id
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = int Ht.t
+
+    let create size =
+      Ht.create size
+
+    let add gid1 gid2 wid tbl =
+      begin Ht.add tbl (gid1, gid2) wid ; end
+
+    let find_opt gid1 gid2 tbl =
+      try Some(Ht.find tbl (gid1, gid2)) with
+      | Not_found -> None
+  end
+
+
+let get_kerning_table dcdr =
+  let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
+  let res =
+    () |> Otfm.kern dcdr (fun () kinfo ->
+      match kinfo with
+      | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
+      | _                                                                              -> (`Skip, ())
+    ) (fun () gid1 gid2 wid ->
+      kerntbl |> KerningTable.add gid1 gid2 wid
+    )
+  in
+    match res with
+    | Error(e) -> raise (FontFormat.FontFormatBroken(e))
+    | Ok(())   -> kerntbl
+
+
+type font_registration =
+  | Type1Registration        of int * int
+  | TrueTypeRegistration     of int * int
+  | CIDFontType0Registration of string * FontFormat.cmap
 
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> Pdftext.font * file_name option -> unit
-    val fold : (font_abbrev -> Pdftext.font * tag * Otfm.decoder option -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (Pdftext.font * tag * Otfm.decoder option) option
+    val add : font_abbrev -> font_registration -> FontFormat.file_path -> unit
+    val fold : (font_abbrev -> FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t) option
   end
 = struct
 
@@ -59,7 +107,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (Pdftext.font * tag * Otfm.decoder option) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * KerningTable.t) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 
@@ -69,14 +117,25 @@ module FontAbbrevHashTable
           "/F" ^ (string_of_int !current_tag_number)
         end
 
-    let add abbrev (font, srcopt) =
-      let dcdropt =
-        match srcopt with
-        | None      -> None
-        | Some(src) -> Some(get_decoder src ())
+    let add abbrev fontreg srcfile =
+      let dcdr = FontFormat.get_decoder srcfile () in
+      let kerntbl = get_kerning_table dcdr in
+      let font =
+        match fontreg with
+        | Type1Registration(fc, lc) ->
+            let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
+              FontFormat.type1 ty1font
+        | TrueTypeRegistration(fc, lc) ->
+            let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
+              FontFormat.true_type trtyfont
+        | CIDFontType0Registration(fontname, cmap) ->
+            let cidsysinfo = FontFormat.adobe_japan1 in
+            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
+              FontFormat.cid_font_type_0 cidty0font fontname cmap
       in
       let tag = generate_tag () in
-        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdropt)
+      let gidtbl = GlyphIDTable.create 256 in  (* temporary *)
+        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr, gidtbl, kerntbl)
 
     let fold f init =
       Ht.fold f abbrev_to_definition_hash_table init
@@ -92,289 +151,96 @@ module FontAbbrevHashTable
 
 let get_tag (abbrev : font_abbrev) =
   match FontAbbrevHashTable.find_opt abbrev with
-  | None              -> raise (InvalidFontAbbrev(abbrev))
-  | Some((_, tag, _)) -> tag
-
-
-let to_base85_pdf_bytes (dcdr : Otfm.decoder) : Pdfio.bytes =
-  match Otfm.decoder_src dcdr with
-  | `String(s) ->
-      let s85 = Base85.encode s in
-        Pdfio.bytes_of_string s85
-
-
-let add_stream_of_decoder (pdf : Pdf.t) (dcdr : Otfm.decoder) () : int =
-  let bt85 = to_base85_pdf_bytes dcdr in
-  let len = Pdfio.bytes_size bt85 in
-  let objstream =
-    Pdf.Stream(ref (Pdf.Dictionary[
-      ("/Length", Pdf.Integer(len));
-      ("/Filter", Pdf.Name("/ASCII85Decode"));], Pdf.Got(bt85)))
-  in
-  let irstream = Pdf.addobj pdf objstream in
-    irstream
-
-
-let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id =
-  let cp = Uchar.to_int uch in
-  let cmapres =
-    Otfm.cmap dcdr (fun accopt mapkd (u0, u1) gid ->
-      match accopt with
-      | Some(_) -> accopt
-      | None    -> if u0 <= cp && cp <= u1 then Some(gid + (cp - u0)) else None
-    ) None
-  in
-    match cmapres with
-    | Error(e)                   -> raise (FontFormatBroken(e))
-    | Ok(((_, _, _), None))      -> raise (NoGlyph(uch))
-    | Ok(((_, _, _), Some(gid))) -> gid
-
-
-let get_uchar_raw_contour_list_and_bounding_box (dcdr : Otfm.decoder) (uch : Uchar.t)
-    : ((bool * int * int) list) list * (int * int * int * int) =
-  let gid = get_glyph_id dcdr uch in
-  let gloc =
-    match Otfm.loca dcdr gid with
-    | Error(e)    -> raise (FontFormatBroken(e))
-    | Ok(None)    -> raise (NoGlyph(uch))
-    | Ok(Some(l)) -> l
-  in
-    match Otfm.glyf dcdr gloc with
-    | Error(e)                        -> raise (FontFormatBroken(e))
-    | Ok((`Composite(_), _))          -> raise (NoGlyph(uch))  (* temporary; does not deal with composite glyphs *)
-    | Ok((`Simple(precntrlst), bbox)) -> (precntrlst, bbox)
-
-
-let get_uchar_height_and_depth (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int =
-  try  (* temporary; for font formats that do not contain the `loca` table *)
-    let (_, (_, ymin, _, ymax)) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
-      (ymax, ymin)
-  with FontFormatBroken(_) -> (880, -120)  (* temporary; for font formats that do not contain the `loca` table *)
-
-let get_uchar_horz_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) =
-  let gidkey = get_glyph_id dcdr uch in
-  let hmtxres =
-    None |> Otfm.hmtx dcdr (fun accopt gid adv lsb ->
-      match accopt with
-      | Some(_) -> accopt
-      | None    -> if gid = gidkey then Some((adv, lsb)) else None
-    )
-  in
-    match hmtxres with
-    | Error(e)             -> raise (FontFormatBroken(e))
-    | Ok(None)             -> assert false
-    | Ok(Some((adv, lsb))) -> (adv, lsb)
-
-
-let get_uchar_advance_width (dcdr : Otfm.decoder) (uch : Uchar.t) : int =
-  try
-    let (adv, _) = get_uchar_horz_metrics dcdr uch in adv
-  with
-  | NoGlyph(_) -> 0
-
-
-let get_uchar_metrics (dcdr : Otfm.decoder) (uch : Uchar.t) : int * int * int =
-  let wid = get_uchar_advance_width dcdr uch in
-  let (hgt, dpt) = get_uchar_height_and_depth dcdr uch in
-    (wid, hgt, dpt)
+  | None                    -> raise (InvalidFontAbbrev(abbrev))
+  | Some((_, tag, _, _, _)) -> tag
 
 
 let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : string) : skip_width * skip_height * skip_depth =
-  let uchar_list_of_string str =
-    let rec aux acc i =
-      if i < 0 then List.rev acc else
-        aux ((Uchar.of_char (String.get str i)) :: acc) (i - 1)
-    in
-      aux [] ((String.length str) - 1)
-  in
+let get_glyph_id (dcdr : Otfm.decoder) (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : Otfm.glyph_id option =
+  match gidtbl |> GlyphIDTable.find_opt uch with
+  | Some(gid) -> Some(gid)
+  | None      ->
+      match FontFormat.get_glyph_id dcdr uch with
+      | None      -> None
+      | Some(gid) -> begin gidtbl |> GlyphIDTable.add uch gid ; Some(gid) end
+
+
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : tj_string * skip_width * skip_height * skip_depth =
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
-    | None               -> raise (InvalidFontAbbrev(abbrev))
-
-    | Some((Pdftext.CIDKeyedFont(_, _, _), _, dcdropt))
-    | Some((Pdftext.SimpleFont(_), _, dcdropt)) ->
-        let uword = uchar_list_of_string word in
-        let dcdr =
-          match dcdropt with
-          | None       -> assert false
-          | Some(dcdr) -> dcdr
-        in
-        let metrlst = List.map (fun uch -> get_uchar_metrics dcdr uch) uword in
-        let (rawwid, rawhgt, rawdpt) = metrlst @|> (0, 0, 0) @|> List.fold_left (fun (w, h, d) (wacc, hacc, dacc) -> (wacc + w, max hacc h, max dacc d)) in
-          (f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
-            (* temporary; should reflect kerning pair information *)
-
-    | Some((Pdftext.StandardFont(stdfont, enc), _, _)) ->
-        let rawwid = Pdfstandard14.textwidth true Pdftext.StandardEncoding stdfont word in
-          (f_skip rawwid, fontsize *% 0.75, fontsize *% 0.25)  (* temporary; should get height and depth for standard 14 fonts *)
-
-
-let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
-  let rec range acc m n =
-    if m > n then List.rev acc else
-      range (m :: acc) (m + 1) n
-  in
-    (range [] firstchar lastchar) |> List.map (fun charcode ->
-      get_uchar_advance_width dcdr (Uchar.of_int charcode)
-    )
-
-
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdropt) () : Pdf.pdfobject =
-  match fontdfn with
-  | Pdftext.StandardFont(stdfont, _) ->
-      Pdf.Dictionary[
-        ("/Type", Pdf.Name("/Font"));
-        ("/Subtype", Pdf.Name("/Type1"));
-        ("/BaseFont", Pdf.Name("/" ^ (Pdftext.string_of_standard_font stdfont)));
-      ]
-
-  | Pdftext.SimpleFont(smplfont) ->
-      let fontname = smplfont.Pdftext.basefont in
-      begin
-        match dcdropt with
-        | None       -> assert false
-        | Some(dcdr) ->
-            match smplfont.Pdftext.fonttype with
-            | Pdftext.Truetype ->
-                let irstream = add_stream_of_decoder pdf dcdr () in
-                  (* -- add to the PDF the stream in which the font file is embedded -- *)
-                let objdescr =
-                  Pdf.Dictionary[
-                    ("/Type", Pdf.Name("/FontDescriptor"));
-                    ("/FontName", Pdf.Name("/" ^ fontname));
-                    ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
-                    ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
-                    ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
-                    ("/Ascent", Pdf.Integer(0)); (* temporary; should be variable *)
-                    ("/Descent", Pdf.Integer(0)); (* temporary; should be variable *)
-                    ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
-                    ("/FontFile2", Pdf.Indirect(irstream));
-                  ]
+    | None                                -> raise (InvalidFontAbbrev(abbrev))
+    | Some((_, _, dcdr, gidtbl, kerntbl)) ->
+        let uword = InternalText.to_uchar_list word in
+        let (_, tjsacc, rawwid, rawhgt, rawdpt) =
+          uword @|> (None, [], 0, 0, 0) @|> List.fold_left (fun (gidprevopt, tjsacc, wacc, hacc, dacc) uch ->
+            match get_glyph_id dcdr gidtbl uch with
+            | None      -> (None, tjsacc, wacc, hacc, dacc)
+                (* temporary; simply ignores character that is not assigned a glyph in the current font *)
+            | Some(gid) ->
+                let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
+                let (tjsaccnew, waccnew) =
+                  match gidprevopt with
+                  | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                  | Some(gidprev) ->
+                      match kerntbl |> KerningTable.find_opt gidprev gid with
+                      | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                      | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
+                          (* -- kerning value is negative if two characters are supposed to be closer -- *)
                 in
-                let irdescr = Pdf.addobj pdf objdescr in
-                let firstchar = 0 in  (* temporary; should be variable *)
-                let lastchar = 255 in  (* temporary; should be variable *)
-                  Pdf.Dictionary[
-                    ("/Type", Pdf.Name("/Font"));
-                    ("/Subtype", Pdf.Name("/TrueType"));
-                    ("/BaseFont", Pdf.Name("/" ^ smplfont.Pdftext.basefont));
-                    ("/FirstChar", Pdf.Integer(firstchar));
-                    ("/LastChar", Pdf.Integer(lastchar));
-                    ("/Widths", Pdf.Array(List.map (fun x -> Pdf.Integer(x)) (get_truetype_widths_list dcdr firstchar lastchar)));
-                    ("/FontDescriptor", Pdf.Indirect(irdescr));
-                  ]
+                  (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
+          )
+        in
+          (KernedText(List.rev tjsacc), f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
 
-            | _ -> failwith "simple font other than TrueType; remains to be implemented."
-      end
 
-  | Pdftext.CIDKeyedFont(fontname, cidrecord, Pdftext.CMap(_)) -> failwith "CMap; remains to be implemented"
-      
-  | Pdftext.CIDKeyedFont(fontname (* -- name for the composite font -- *), cidrecord, Pdftext.Predefined(cmapencnm)) ->
-      begin
-        match dcdropt with
-        | None       -> assert false
-        | Some(dcdr) ->
-            let irstream = add_stream_of_decoder pdf dcdr () in
-              (* -- add to the PDF the stream in which the font file is embedded -- *)
-            let cidfontdescr = cidrecord.Pdftext.cid_fontdescriptor in
-            let objdescr =
-              Pdf.Dictionary[
-                ("/Type", Pdf.Name("/FontDescriptor"));
-                ("/FontName", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
-                ("/Flags", Pdf.Integer(4));  (* temporary; should be variable *)
-                ("/FontBBox", Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
-                ("/ItalicAngle", Pdf.Integer(0));  (* temporary; should be variable *)
-                ("/Ascent", Pdf.Real(cidfontdescr.Pdftext.ascent));
-                ("/Descent", Pdf.Real(cidfontdescr.Pdftext.descent));
-                ("/StemV", Pdf.Integer(0));  (* temporary; should be variable *)
-                ("/FontFile2", Pdf.Indirect(irstream));
-              ]
-            in
-            let irdescr = Pdf.addobj pdf objdescr in
-            let cidsysinfo = cidrecord.Pdftext.cid_system_info in
-            let objdescend =
-              Pdf.Dictionary[
-                ("/Type", Pdf.Name("/Font"));
-                ("/Subtype", Pdf.Name("/CIDFontType0")); (* temporary; should be variable *)
-                ("/BaseFont", Pdf.Name("/" ^ cidrecord.Pdftext.cid_basefont));
-                ("/CIDSystemInfo", Pdf.Dictionary[
-                  ("/Registry", Pdf.String(cidsysinfo.Pdftext.registry));
-                  ("/Ordering", Pdf.String(cidsysinfo.Pdftext.ordering));
-                  ("/Supplement", Pdf.Integer(cidsysinfo.Pdftext.supplement));
-                ]);
-                ("/FontDescriptor", Pdf.Indirect(irdescr));
-              ]
-            in
-            let irdescend = Pdf.addobj pdf objdescend in
-              Pdf.Dictionary[
-                ("/Type", Pdf.Name("/Font"));
-                ("/Subtype", Pdf.Name("/Type0"));
-                ("/Encoding", Pdf.Name("/" ^ cmapencnm));
-                ("/BaseFont", Pdf.Name("/" ^ fontname));
-                ("/DescendantFonts", Pdf.Array[Pdf.Indirect(irdescend)]);
-              ]
-      end
+let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) (fontdfn, tag, dcdr, _, _) () : Pdf.pdfobject =
+  match fontdfn with
+  | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
+  | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
+  | FontFormat.Type0(ty0font)     -> FontFormat.Type0.to_pdfdict pdf ty0font dcdr
 
 
 let get_font_dictionary (pdf : Pdf.t) () =
-  print_endline "!!begin get_font_dictionary" ;  (* for debug *)
+  print_for_debug "!!begin get_font_dictionary" ;  (* for debug *)
   let ret =  (* for debug *)
   [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
     let obj = make_dictionary pdf abbrev tuple () in
-    let (_, tag, _) = tuple in
+    let (_, tag, _, _, _) = tuple in
       (tag, obj) :: acc
   )
-  in let () = print_endline "!!end get_font_dictionary" in ret  (* for debug *)
+  in let () = print_for_debug "!!end get_font_dictionary" in ret  (* for debug *)
 
 
 let initialize () =
-  print_endline "!!begin initialize";  (* for debug *)
-  List.iter (fun (abbrev, tuple) -> FontAbbrevHashTable.add abbrev tuple) [
-    ("Hlv",
-     (Pdftext.SimpleFont({
-       Pdftext.fonttype= Pdftext.Truetype;
-       Pdftext.basefont= "Helvetica-Black";
-       Pdftext.fontdescriptor= None;
-       Pdftext.fontmetrics= None;
-       Pdftext.encoding= Pdftext.StandardEncoding;
-     }), Some("./testfonts/HelveticaBlack.ttf"))
-    );
-    ("TimesIt",
-     (Pdftext.StandardFont(Pdftext.TimesItalic, Pdftext.StandardEncoding), None)
-    );
+  print_for_debug "!!begin initialize";  (* for debug *)
+  List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
+    ("Hlv", TrueTypeRegistration(0, 255), "./testfonts/HelveticaBlack.ttf");
+    ("Arno", Type1Registration(0, 255), "./testfonts/ArnoPro-Regular.otf");
     ("KozMin",
-     (Pdftext.CIDKeyedFont("KozMinComposite", {
-       Pdftext.cid_system_info= {
-         Pdftext.registry= "Adobe";
-         Pdftext.ordering= "Japan1";
-         Pdftext.supplement= 6;
-       };
-       Pdftext.cid_basefont= "KozMinPro-Medium";
-       Pdftext.cid_fontdescriptor= {
-         Pdftext.ascent= 1137.;
-         Pdftext.descent= -349.;
-         Pdftext.leading= 1500.;  (* temporary *)
-         Pdftext.avgwidth= 1000.;
-         Pdftext.maxwidth= 1000.;
-         Pdftext.fontfile= None;  (* does not use Pdftext.fontfile field *)
-       };
-       Pdftext.cid_widths= [];  (* temporary *)
-       Pdftext.cid_default_width= 1000;
-     }, Pdftext.Predefined("UniJIS-UTF16-H")), Some("./testfonts/KozMinPro-Medium.otf"))
-    );
+       CIDFontType0Registration(
+(*
+         Pdftext.ascent      = 1137.;
+         Pdftext.descent     = -349.;
+         Pdftext.leading     = 1500.;  (* temporary *)
+         Pdftext.stemv       = 50.;    (* temporary *)
+         Pdftext.avgwidth    = 1000.;
+         Pdftext.maxwidth    = 1000.;
+         Pdftext.fontfile    = None;  (* does not use Pdftext.fontfile field *)
+*)
+      "KozMin-Composite", FontFormat.PredefinedCMap("UniJIS-UTF16-H")), "./testfonts/KozMinPro-Medium.otf")
+
   ]
-  ; print_endline "!!end initialize"  (* for debug *)
+  ; print_for_debug "!!end initialize"  (* for debug *)
 
 
 
 
 (* -- following are operations about handling glyphs -- *)
 
-
+(*
 type contour_element =
   | OnCurve   of int * int
   | Quadratic of int * int * int * int
@@ -383,7 +249,7 @@ type contour = contour_element list
 
 
 let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int * int * int * int) =
-  let (precntrlst, bbox) = get_uchar_raw_contour_list_and_bounding_box dcdr uch in
+  let (precntrlst, bbox) = FontFormat.get_uchar_raw_contour_list_and_bounding_box dcdr uch in
 
   let transform_contour (precntr : (bool * int * int) list) : contour =
     let (xfirst, yfirst) =
@@ -406,7 +272,7 @@ let get_contour_list (dcdr : Otfm.decoder) (uch : Uchar.t) : contour list * (int
 
 let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t) =
   let (cntrlst, (xmin, ymin, xmax, ymax)) = get_contour_list dcdr uch in
-  let (adv, lsb) = get_uchar_horz_metrics dcdr uch in
+  let (adv, lsb) = FontFormat.get_uchar_horz_metrics dcdr uch in
   let ( ~$ ) = string_of_int in
   let dpoffset = 50 in
   let display_x x = x in
@@ -455,6 +321,7 @@ let svg_of_uchar ((xcur, ycur) : int * int) (dcdr : Otfm.decoder) (uch : Uchar.t
   in
     (String.concat "" lst, newpos)
 
+*)
 
 (* for test *)
 (*
