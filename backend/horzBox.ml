@@ -81,12 +81,12 @@ type encoding_in_pdf =
 
 type font_info = font_abbrev * SkipLength.t * encoding_in_pdf
 
-type kerned_element =
-  | TJUchar of InternalText.t
-  | TJKern  of int  (* -- raw length -- *)
+type tj_element =
+  | TJChar of InternalText.t
+  | TJKern of int  (* -- raw length -- *)
 
 type tj_string =
-  | KernedText of kerned_element list
+  | KernedText of tj_element list
   | NoKernText of InternalText.t
 
 type horz_fixed_atom =

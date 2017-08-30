@@ -193,7 +193,7 @@ let get_glyph_id (dcdr : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option =
     | Ok(((_, _, _), Some(gid))) -> Some(gid)
 
 
-let get_glyph_raw_contour_list_and_bounding_box dcdr (gid : Otfm.glyph_id)
+let get_glyph_raw_contour_list_and_bounding_box dcdr gid
     : ((bool * int * int) list) list * (int * int * int * int) =
   let gloc =
     match Otfm.loca dcdr gid with
@@ -241,7 +241,7 @@ let get_glyph_metrics dcdr gid =
     (wid, hgt, dpt)
 
 
-let get_truetype_widths_list (dcdr : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
+let get_truetype_widths_list dcdr (firstchar : int) (lastchar : int) : int list =
   let rec range acc m n =
     if m > n then List.rev acc else
       range (m :: acc) (m + 1) n

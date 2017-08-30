@@ -34,12 +34,12 @@ let encode_tj_string enc tjs =
   | (Latin1, NoKernText(intext))  -> op_Tj (InternalText.to_utf8 intext)
   | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
   | (Latin1, KernedText(knstr))   -> op_TJ (Pdf.Array(knstr |> List.map (function
-                                                                 | TJUchar(uch)   -> Pdf.String(InternalText.to_utf8 uch)
+                                                                 | TJChar(tjch)   -> Pdf.String(InternalText.to_utf8 tjch)
                                                                  | TJKern(rawwid) ->
                                                                      let () = print_for_debug ("!!RAWWID(L)= " ^ (string_of_int rawwid)) in  (* for debug *)
                                                                        Pdf.Integer(-rawwid) )))
   | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
-                                                                 | TJUchar(uch) -> Pdf.StringHex(InternalText.to_utf16be_hex uch)
+                                                                 | TJChar(tjch)   -> Pdf.StringHex(InternalText.to_utf16be_hex tjch)
                                                                  | TJKern(rawwid) ->
                                                                      let () = print_for_debug ("!!RAWWID(U)= " ^ (string_of_int rawwid)) in  (* for debug *)
                                                                        Pdf.Integer(-rawwid) )))

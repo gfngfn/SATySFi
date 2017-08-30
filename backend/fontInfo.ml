@@ -54,8 +54,8 @@ module FontAbbrevHashTable
   end
 = struct
 
-    module Ht = Hashtbl.Make(
-      struct
+    module Ht = Hashtbl.Make
+      (struct
         type t = font_abbrev
         let equal = (=)
         let hash = Hashtbl.hash
@@ -137,11 +137,11 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word :
                 let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
                 let (tjsaccnew, waccnew) =
                   match gidprevopt with
-                  | None          -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                  | None          -> (TJChar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
                   | Some(gidprev) ->
                       match kerntbl |> FontFormat.KerningTable.find_opt gidprev gid with
-                      | None        -> (TJUchar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
-                      | Some(wkern) -> (TJUchar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
+                      | None        -> (TJChar(InternalText.of_uchar uch) :: tjsacc, wacc + w)
+                      | Some(wkern) -> (TJChar(InternalText.of_uchar uch) :: TJKern(wkern) :: tjsacc, wacc + w + wkern)
                           (* -- kerning value is negative if two characters are supposed to be closer -- *)
                 in
                   (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
