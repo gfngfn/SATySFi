@@ -75,8 +75,8 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
                 match evhb with
                 | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
                 | EvHorzFixedBoxAtom(wid, EvFixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size, enc), tjs)) ->
-                    let tag = FontInfo.get_tag fontabrv in
+                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size), tjs)) ->
+                    let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
                     let opword = encode_tj_string enc tjs in
                       (wid, [
 (*

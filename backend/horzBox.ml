@@ -79,7 +79,7 @@ type encoding_in_pdf =
   | Latin1
   | UTF16BE
 
-type font_info = font_abbrev * SkipLength.t * encoding_in_pdf
+type font_info = font_abbrev * SkipLength.t
 
 type tj_element =
   | TJChar of InternalText.t
