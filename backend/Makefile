@@ -1,4 +1,4 @@
-OCBFLAGS = ocamlbuild -use-ocamlfind -pkgs "core,otfm,ctypes" -tag thread
+OCBFLAGS = ocamlbuild -use-ocamlfind -pkgs "core,ctypes" -tag thread
 CFLAGS = ocamlc.opt -c
 
 pageBreak.native: pageBreak.ml lineBreak.ml flowGraph.ml horzBox.ml handlePdf.ml fontInfo.ml base85.ml mutableSet.ml
