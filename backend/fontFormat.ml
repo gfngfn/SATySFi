@@ -3,6 +3,8 @@ type file_path = string
 
 type glyph_id = Otfm.glyph_id
 
+type decoder = Otfm.decoder
+
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error

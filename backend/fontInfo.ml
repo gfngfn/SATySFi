@@ -49,8 +49,8 @@ type font_registration =
 module FontAbbrevHashTable
 : sig
     val add : font_abbrev -> font_registration -> FontFormat.file_path -> unit
-    val fold : (font_abbrev -> FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) option
+    val fold : (font_abbrev -> FontFormat.font * tag * FontFormat.decoder * GlyphIDTable.t * FontFormat.KerningTable.t -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> (FontFormat.font * tag * FontFormat.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) option
   end
 = struct
 
@@ -61,7 +61,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : (FontFormat.font * tag * Otfm.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (FontFormat.font * tag * FontFormat.decoder * GlyphIDTable.t * FontFormat.KerningTable.t) Ht.t = Ht.create 32
 
     let current_tag_number = ref 0
 

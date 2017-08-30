@@ -3,12 +3,14 @@ type file_path = string
 
 type glyph_id
 
+type decoder
+
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
 
-val get_decoder : file_path -> unit -> Otfm.decoder
+val get_decoder : file_path -> unit -> decoder
 
 module KerningTable : sig
   type t
@@ -17,7 +19,7 @@ module KerningTable : sig
   val find_opt : glyph_id -> glyph_id -> t -> int option
 end
 
-val get_kerning_table : Otfm.decoder -> KerningTable.t
+val get_kerning_table : decoder -> KerningTable.t
 
 type 'a resource =
   | Data           of 'a
@@ -31,24 +33,24 @@ type cid_system_info
 
 module Type1 : sig
   type font
-  val of_decoder : Otfm.decoder -> int -> int -> font
-  val to_pdfdict : Pdf.t -> font -> Otfm.decoder -> Pdf.pdfobject
+  val of_decoder : decoder -> int -> int -> font
+  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
 
 module TrueType : sig
   type font
-  val of_decoder : Otfm.decoder -> int -> int -> font
-  val to_pdfdict : Pdf.t -> font -> Otfm.decoder -> Pdf.pdfobject
+  val of_decoder : decoder -> int -> int -> font
+  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
 
 module Type0 : sig
   type font
-  val to_pdfdict : Pdf.t -> font -> Otfm.decoder -> Pdf.pdfobject
+  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
 
 module CIDFontType0 : sig
   type font
-  val of_decoder : Otfm.decoder -> cid_system_info -> font
+  val of_decoder : decoder -> cid_system_info -> font
 end
 
 module CIDFontType2 : sig
@@ -73,5 +75,5 @@ val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 
-val get_glyph_metrics : Otfm.decoder -> glyph_id -> int * int * int
-val get_glyph_id : Otfm.decoder -> Uchar.t -> glyph_id option
+val get_glyph_metrics : decoder -> glyph_id -> int * int * int
+val get_glyph_id : decoder -> Uchar.t -> glyph_id option
