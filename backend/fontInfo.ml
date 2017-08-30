@@ -41,9 +41,9 @@ module GlyphIDTable
 
 
 type font_registration =
-  | Type1Registration        of int * int
-  | TrueTypeRegistration     of int * int
-  | CIDFontType0Registration of string * FontFormat.cmap
+  | Type1Registration        of int * int * encoding_in_pdf
+  | TrueTypeRegistration     of int * int * encoding_in_pdf
+  | CIDFontType0Registration of string * FontFormat.cmap * encoding_in_pdf
 
 
 module FontAbbrevHashTable
@@ -76,16 +76,16 @@ module FontAbbrevHashTable
       let kerntbl = FontFormat.get_kerning_table dcdr in
       let (font, enc) =
         match fontreg with
-        | Type1Registration(fc, lc) ->
+        | Type1Registration(fc, lc, enc) ->
             let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
-              (FontFormat.type1 ty1font, Latin1)
-        | TrueTypeRegistration(fc, lc) ->
+              (FontFormat.type1 ty1font, enc)
+        | TrueTypeRegistration(fc, lc, enc) ->
             let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
-              (FontFormat.true_type trtyfont, Latin1)
-        | CIDFontType0Registration(fontname, cmap) ->
+              (FontFormat.true_type trtyfont, enc)
+        | CIDFontType0Registration(fontname, cmap, enc) ->
             let cidsysinfo = FontFormat.adobe_japan1 in
             let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
-              (FontFormat.cid_font_type_0 cidty0font fontname cmap, UTF16BE)
+              (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
       in
       let tag = generate_tag () in
       let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
@@ -182,20 +182,10 @@ let get_font_dictionary (pdf : Pdf.t) () =
 let initialize () =
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
-    ("Hlv", TrueTypeRegistration(0, 255), "./testfonts/HelveticaBlack.ttf");
-    ("Arno", Type1Registration(0, 255), "./testfonts/ArnoPro-Regular.otf");
+    ("Hlv", TrueTypeRegistration(0, 255, Latin1), "./testfonts/HelveticaBlack.ttf");
+    ("Arno", Type1Registration(0, 255, Latin1), "./testfonts/ArnoPro-Regular.otf");
     ("KozMin",
-       CIDFontType0Registration(
-(*
-         Pdftext.ascent      = 1137.;
-         Pdftext.descent     = -349.;
-         Pdftext.leading     = 1500.;  (* temporary *)
-         Pdftext.stemv       = 50.;    (* temporary *)
-         Pdftext.avgwidth    = 1000.;
-         Pdftext.maxwidth    = 1000.;
-         Pdftext.fontfile    = None;  (* does not use Pdftext.fontfile field *)
-*)
-      "KozMin-Composite", FontFormat.PredefinedCMap("UniJIS-UTF16-H")), "./testfonts/KozMinPro-Medium.otf")
+       CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("UniJIS-UTF16-H"), UTF16BE), "./testfonts/KozMinPro-Medium.otf")
 
   ]
   ; print_for_debug "!!end initialize"  (* for debug *)

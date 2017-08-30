@@ -1,6 +1,6 @@
 
 type element =
-  | Data of string (* temporary *)
+  | Data of string
   | Kern of int
 
 type style =
