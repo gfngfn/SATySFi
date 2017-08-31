@@ -83,20 +83,23 @@ type encoding_in_pdf =
 type font_info = font_abbrev * SkipLength.t
 
 type pure_horz_box =
-  | PHOuterEmpty of skip_width * skip_width * skip_width
+  | PHOuterEmpty  of skip_width * skip_width * skip_width
   | PHOuterFil
+  | PHOuterFrame  of horz_box list
   | PHFixedString of font_info * InternalText.t
   | PHFixedEmpty  of skip_width
+(* -- core part of the definition of horizontal boxes -- *)
 
-type horz_box =
+and horz_box =
   | HorzPure          of pure_horz_box
   | HorzDiscretionary of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
 
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
   | EvHorzEmpty
+  | EvHorzFrame  of evaled_horz_box list
 
-type evaled_horz_box =
+and evaled_horz_box =
   | EvHorz of skip_width * evaled_horz_box_main
 
 type vert_box =

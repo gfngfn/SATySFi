@@ -146,6 +146,7 @@ let () =
 
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
+    let framed lst = HorzPure(PHOuterFrame(lst)) in
     let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
     let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
@@ -175,7 +176,7 @@ let () =
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
-          word1 "kerning"; space; word1 "pair"; space; word "information!"; fill;
+          framed [word1 "kerning"; space; word1 "pair";]; space; word "information!"; fill;
         ]);
 
 
@@ -186,6 +187,9 @@ let () =
           wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "まだ不完全。";
+          framed [
+            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; framed[word1 "kiwi"; space1; word1 "juice";];]; space1;
+            word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
 

@@ -60,6 +60,54 @@ let get_paper_height (paper : Pdfpaper.t) : skip_height =
     SkipLength.of_pdf_point pdfpt
 
 
+let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
+    match evhb with
+    | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
+    | EvHorz(wid, EvHorzFrame(evhblst)) ->
+        let (xposnew, opaccsub) =
+          evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
+        in
+        let ops =
+          [
+            op_q;
+            op_RG (0.2, 0.2, 0.2);
+            op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+            op_S;
+            op_Q;
+          ]
+            (* temporary; should be specified as an option for frame decoration *)
+        in
+        let opaccnew = List.rev_append ops opaccsub in
+          (xposnew, opaccnew)
+
+    | EvHorz(wid, EvHorzString((fontabrv, size), otxt)) ->
+        let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
+        let opword = op_TJ (OutputText.to_TJ_argument otxt) in
+        let ops =
+          [
+(*
+            (* begin: for test; encloses every word with a red box *)
+            op_q;
+            op_RG (1.0, 0.5, 0.5);
+            op_m (xpos, yposbaseline);
+            op_l (xpos +% wid, yposbaseline);
+            op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+            op_S;
+            op_Q;
+            (* end: for test *)
+*)
+            op_cm (SkipLength.zero, SkipLength.zero);
+            op_BT;
+            op_Tm_translate (xpos, yposbaseline);
+            op_Tf tag size;
+            opword;
+            op_ET;
+          ]
+        in
+        let opaccnew = List.rev_append ops opacc in
+          (xpos +% wid, opaccnew)
+
+
 let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm, fontdict) : t) : t =
   let xinit = left_margin in
   let yinit = (get_paper_height paper) -% top_margin in
@@ -70,37 +118,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
       | EvVertLine(hgt, dpt, evhblst) ->
           let yposbaseline = ypos -% hgt in
           let (xposend, opaccend) =
-            evhblst @|> (xpos, opacc) @|> List.fold_left (fun (xpos, opacc) evhb ->
-              let (widdiff, ops) =
-                match evhb with
-(*                | EvHorz(wid, _) -> (wid, []) *)
-                | EvHorz(wid, EvHorzEmpty) -> (wid, [])
-                | EvHorz(wid, EvHorzString((fontabrv, size), otxt)) ->
-                    let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
-                    let opword = op_TJ (OutputText.to_TJ_argument otxt) in
-                      (wid, [
-(*
-                        (* begin: for test; underline every word *)
-                        op_q;
-                        op_RG (1.0, 0.5, 0.5);
-                        op_m (xpos, yposbaseline);
-                        op_l (xpos +% wid, yposbaseline);
-                        op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
-                        op_S;
-                        op_Q;
-                        (* end: for test *)
-*)
-                        op_cm (SkipLength.zero, SkipLength.zero);
-                        op_BT;
-                        op_Tm_translate (xpos, yposbaseline);
-                        op_Tf tag size;
-                        opword;
-                        op_ET;
-                      ])
-              in
-              let opaccnew = List.rev_append ops opacc in
-                (xpos +% widdiff, opaccnew)
-            )
+            evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
           in
             ((left_margin, yposbaseline -% dpt), opaccend)
     )
