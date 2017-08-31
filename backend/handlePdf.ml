@@ -63,7 +63,7 @@ let get_paper_height (paper : Pdfpaper.t) : skip_height =
 let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
     match evhb with
     | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
-    | EvHorz(wid, EvHorzFrame(evhblst)) ->
+    | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, evhblst)) ->
         let (xposnew, opaccsub) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
         in
@@ -71,7 +71,7 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
           [
             op_q;
             op_RG (0.2, 0.2, 0.2);
-            op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+            op_re (xpos, yposbaseline +% hgt_frame) (wid, SkipLength.zero -% (hgt_frame -% dpt_frame));
             op_S;
             op_Q;
           ]

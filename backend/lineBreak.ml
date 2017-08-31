@@ -32,6 +32,13 @@ type lb_horz_box =
   | LBHorzPure          of lb_pure_horz_box
   | LBHorzDiscretionary of pure_badness * DiscretionaryID.t * lb_pure_horz_box option * lb_pure_horz_box option * lb_pure_horz_box option
 
+let natural wid =
+  {
+    natural     = wid;
+    shrinkable  = SkipLength.zero;
+    stretchable = SkipLength.zero;
+    fils        = 0;
+  }
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_horz_box list =
   let rec aux acc hblst =
@@ -74,7 +81,7 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_horz_box 
   match phb with
   | PHFixedString(((fontabrv, size) as info), word) ->
       let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word fontabrv size word in
-        Atom({ natural = wid; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 0; }, hgt, dpt, EvHorzString(info, otxt))
+        Atom(natural wid, hgt, dpt, EvHorzString(info, otxt))
 
   | PHFixedEmpty(wid) ->
       Atom({ natural = wid; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 0; }, SkipLength.zero, SkipLength.zero, EvHorzEmpty)
@@ -85,16 +92,25 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_horz_box 
   | PHOuterFil ->
       Atom({ natural = SkipLength.zero; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 1; }, SkipLength.zero, SkipLength.zero, EvHorzEmpty)
 
-  | PHOuterFrame(hblst) ->
+  | PHOuterFrame(paddingL, paddingR, paddingT, paddingB, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_total, hgt, dpt) =
+      let (widinfo_sub, hgt, dpt) =
         lphblst @|> (widinfo_zero, SkipLength.zero, SkipLength.zero) @|> List.fold_left (fun (wiacc, hacc, dacc) lphb ->
           match lphb with
           | ( Atom(wi, h, d, _)
             | Frame(wi, h, d, _) ) -> (wiacc +%@ wi, max hacc h, min dacc d)
         )
       in
-        Frame(widinfo_total, hgt, dpt, lphblst)
+      let widinfo_total =
+        {
+          natural     = widinfo_sub.natural +% paddingL +% paddingR;
+          shrinkable  = widinfo_sub.shrinkable;
+          stretchable = widinfo_sub.stretchable;
+          fils        = widinfo_sub.fils;
+        }
+      in
+      let lphblstnew = List.append (Atom(natural paddingL, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: lphblst) (Atom(natural paddingR, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: []) in
+        Frame(widinfo_total, hgt +% paddingT, dpt -% paddingB, lphblstnew)
 
 and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
   match phbopt with
@@ -201,12 +217,12 @@ let determine_widths (widrequired : skip_width) (lphblst : lb_pure_horz_box list
               (EvHorz(widinfo.natural +% widdiff, evhb), abs (~@ (ratio *. 100.0)))
           else
             assert false  (* -- nfil cannot be negative -- *)
-    | Frame(widinfo, _, _, lphblstsub) ->
+    | Frame(_, hgt_frame, dpt_frame, lphblstsub) ->
         let pairlst = lphblstsub |> List.map main_conversion in
         let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
         let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
         let wid_total = evhblst @|> SkipLength.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-          (EvHorz(wid_total, EvHorzFrame(evhblst)), totalpb)
+          (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), totalpb)
   in
       let pairlst = lphblst |> List.map main_conversion in
       let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in

@@ -85,7 +85,7 @@ type font_info = font_abbrev * SkipLength.t
 type pure_horz_box =
   | PHOuterEmpty  of skip_width * skip_width * skip_width
   | PHOuterFil
-  | PHOuterFrame  of horz_box list
+  | PHOuterFrame  of skip_width * skip_width * skip_width * skip_width * horz_box list
   | PHFixedString of font_info * InternalText.t
   | PHFixedEmpty  of skip_width
 (* -- core part of the definition of horizontal boxes -- *)
@@ -97,7 +97,7 @@ and horz_box =
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
   | EvHorzEmpty
-  | EvHorzFrame  of evaled_horz_box list
+  | EvHorzFrame  of skip_width * skip_width * evaled_horz_box list
 
 and evaled_horz_box =
   | EvHorz of skip_width * evaled_horz_box_main

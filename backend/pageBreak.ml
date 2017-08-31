@@ -146,7 +146,8 @@ let () =
 
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
-    let framed lst = HorzPure(PHOuterFrame(lst)) in
+    let pad = ~% 2. in
+    let framed hblst = HorzPure(PHOuterFrame(pad, pad, pad, pad, hblst)) in
     let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
     let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
