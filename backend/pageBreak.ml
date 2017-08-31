@@ -140,20 +140,20 @@ let () =
 
     let fontK = ("KozMin", ~% 12.) in
 
-    let word s = HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 s)) in
-    let word1 s = HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 s)) in
-    let wordL s = HorzFixedBoxAtom(FixedString(fontL, InternalText.of_utf_8 s)) in
+    let word s = HorzPure(PHFixedString(font0, InternalText.of_utf_8 s)) in
+    let word1 s = HorzPure(PHFixedString(font1, InternalText.of_utf_8 s)) in
+    let wordL s = HorzPure(PHFixedString(fontL, InternalText.of_utf_8 s)) in
 
-    let wordK s = HorzFixedBoxAtom(FixedString(fontK, InternalText.of_utf_8 s)) in
+    let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
-    let space = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 6., ~% 1., ~% 3.))), None, None) in
-    let space1 = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 8., ~% 1., ~% 3.))), None, None) in
-    let spaceL = HorzDiscretionary(penalty_break_space, Some(HorzOuterBoxAtom(OuterEmpty(~% 16., ~% 2., ~% 6.))), None, None) in
-    let indentation = HorzFixedBoxAtom(FixedEmpty(~% 64.)) in
-    let fill = HorzOuterBoxAtom(OuterFil) in
+    let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
+    let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
+    let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
+    let indentation = HorzPure(PHFixedEmpty(~% 64.)) in
+    let fill = HorzPure(PHOuterFil) in
     let paragraph_skip = ~% 32.0 in
-    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font0, InternalText.of_utf_8 "-"))), None) in
-    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(HorzFixedBoxAtom(FixedString(font1, InternalText.of_utf_8 "-"))), None) in
+    let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(PHFixedString(font0, InternalText.of_utf_8 "-")), None) in
+    let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(PHFixedString(font1, InternalText.of_utf_8 "-")), None) in
     let rec repeat n lst = if n <= 0 then [] else lst @ (repeat (n - 1) lst) in
     let vblst =
       [

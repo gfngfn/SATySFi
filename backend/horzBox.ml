@@ -82,29 +82,22 @@ type encoding_in_pdf =
 
 type font_info = font_abbrev * SkipLength.t
 
-type horz_fixed_atom =
-  | FixedString of font_info * InternalText.t
-  | FixedEmpty  of skip_width
-
-type evaled_horz_fixed_atom =
-  | EvFixedString of font_info * OutputText.t
-  | EvFixedEmpty  of skip_width
-
-type horz_outer_atom =
-  | OuterEmpty of skip_width * skip_width * skip_width
-  | OuterFil
-
-type horz_outer_block = unit  (* temporary; should specify block information *)
+type pure_horz_box =
+  | PHOuterEmpty of skip_width * skip_width * skip_width
+  | PHOuterFil
+  | PHFixedString of font_info * InternalText.t
+  | PHFixedEmpty  of skip_width
 
 type horz_box =
-  | HorzFixedBoxAtom  of horz_fixed_atom
-  | HorzOuterBoxAtom  of horz_outer_atom
-  | HorzOuterBoxBlock of horz_outer_block * horz_box list
-  | HorzDiscretionary of pure_badness * horz_box option * horz_box option * horz_box option
+  | HorzPure          of pure_horz_box
+  | HorzDiscretionary of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+
+type evaled_horz_box_main =
+  | EvHorzString of font_info * OutputText.t
+  | EvHorzEmpty
 
 type evaled_horz_box =
-  | EvHorzFixedBoxAtom of skip_width * evaled_horz_fixed_atom
-  | EvHorzOuterBoxAtom of skip_width * horz_outer_atom
+  | EvHorz of skip_width * evaled_horz_box_main
 
 type vert_box =
   | VertParagraph      of skip_height * horz_box list  (* temporary; should contain more information as arguments *)

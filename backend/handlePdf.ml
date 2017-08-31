@@ -73,9 +73,9 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
             evhblst @|> (xpos, opacc) @|> List.fold_left (fun (xpos, opacc) evhb ->
               let (widdiff, ops) =
                 match evhb with
-                | EvHorzOuterBoxAtom(wid, _) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, EvFixedEmpty(_)) -> (wid, [])
-                | EvHorzFixedBoxAtom(wid, EvFixedString((fontabrv, size), otxt)) ->
+(*                | EvHorz(wid, _) -> (wid, []) *)
+                | EvHorz(wid, EvHorzEmpty) -> (wid, [])
+                | EvHorz(wid, EvHorzString((fontabrv, size), otxt)) ->
                     let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
                     let opword = op_TJ (OutputText.to_TJ_argument otxt) in
                       (wid, [
