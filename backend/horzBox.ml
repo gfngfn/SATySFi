@@ -88,6 +88,7 @@ type pure_horz_box =
   | PHOuterFrame  of skip_width * skip_width * skip_width * skip_width * horz_box list
   | PHFixedString of font_info * InternalText.t
   | PHFixedEmpty  of skip_width
+  | PHInnerFrame  of skip_width * skip_width * skip_width * skip_width * horz_box list
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
