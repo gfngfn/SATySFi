@@ -166,6 +166,10 @@ let () =
         ]);
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
+          framed [fill; wordL "Sample"; spaceL; wordL "Text"; fill;];
+        ]);
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 24., [
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
@@ -216,7 +220,7 @@ let () =
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
           fframed (~% 300.) [
-            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed[word1 "kiwi"; space1; word1 "juice";];]; space1;
+            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; fframed (~% 120.) [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
