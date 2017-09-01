@@ -101,8 +101,9 @@ type pure_horz_box =
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
-  | HorzPure          of pure_horz_box
-  | HorzDiscretionary of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+  | HorzPure           of pure_horz_box
+  | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+  | HorzFrameBreakable of paddings * skip_width * skip_width * horz_box list
 
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
