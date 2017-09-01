@@ -82,13 +82,22 @@ type encoding_in_pdf =
 
 type font_info = font_abbrev * SkipLength.t
 
+type paddings =
+  {
+    paddingL : skip_width;
+    paddingR : skip_width;
+    paddingT : skip_width;
+    paddingB : skip_width;
+  }
+
 type pure_horz_box =
   | PHOuterEmpty  of skip_width * skip_width * skip_width
   | PHOuterFil
-  | PHOuterFrame  of skip_width * skip_width * skip_width * skip_width * horz_box list
+  | PHOuterFrame  of paddings * horz_box list
   | PHFixedString of font_info * InternalText.t
   | PHFixedEmpty  of skip_width
-  | PHInnerFrame  of skip_width * skip_width * skip_width * skip_width * horz_box list
+  | PHInnerFrame  of paddings * horz_box list
+  | PHFixedFrame  of paddings * skip_width * horz_box list
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =

@@ -146,9 +146,10 @@ let () =
 
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
-    let pad = ~% 2. in
-    let framed hblst = HorzPure(PHOuterFrame(pad, pad, pad, pad, hblst)) in
-    let iframed hblst = HorzPure(PHInnerFrame(pad, pad, pad, pad, hblst)) in
+    let pads = { paddingL = ~% 2.; paddingR = ~% 2.; paddingT= ~% 2.; paddingB = ~% 2.} in
+    let framed hblst = HorzPure(PHOuterFrame(pads, hblst)) in
+    let iframed hblst = HorzPure(PHInnerFrame(pads, hblst)) in
+    let fframed wid hblst = HorzPure(PHFixedFrame(pads, wid, hblst)) in
     let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
     let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
@@ -202,6 +203,19 @@ let () =
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
           iframed [
+            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed[word1 "kiwi"; space1; word1 "juice";];]; space1;
+            word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
+          fill;
+        ]);
+
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 20., [
+          wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
+          wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
+          wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
+          wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
+          wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
+          fframed (~% 300.) [
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed[word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;

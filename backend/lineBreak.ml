@@ -27,7 +27,7 @@ let ( +%@ ) wi1 wi2 =
 type lb_pure_horz_box =
   | Atom       of skip_info * skip_height * skip_depth * evaled_horz_box_main
   | OuterFrame of skip_info * skip_height * skip_depth * lb_pure_horz_box list
-  | InnerFrame of skip_width * skip_height * skip_depth * lb_pure_horz_box list
+  | FixedFrame of skip_width * skip_height * skip_depth * lb_pure_horz_box list
 
 type lb_horz_box =
   | LBHorzPure          of lb_pure_horz_box
@@ -47,7 +47,7 @@ let get_metrics (lphb : lb_pure_horz_box) =
   match lphb with
   | Atom(widinfo, hgt, dpt, _)       -> (widinfo, hgt, dpt)
   | OuterFrame(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-  | InnerFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
+  | FixedFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
 
 
 let get_total_metrics (lphblst : lb_pure_horz_box list) =
@@ -64,6 +64,23 @@ let get_width_info (lphb : lb_pure_horz_box) =
 let get_width_info_opt = function
   | None      -> widinfo_zero
   | Some(lhb) -> get_width_info lhb
+
+
+let append_horz_padding (lphblst : lb_pure_horz_box list) (widinfo : skip_info) (pads : paddings) =
+  let lphblstnew =
+    List.append
+      (Atom(natural pads.paddingL, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: lphblst)
+      (Atom(natural pads.paddingR, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: [])
+  in
+  let widinfonew =
+    {
+      natural     = widinfo.natural +% pads.paddingL +% pads.paddingR;
+      shrinkable  = widinfo.shrinkable;
+      stretchable = widinfo.stretchable;
+      fils        = widinfo.fils;
+    }
+  in
+    (lphblstnew, widinfonew)
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_horz_box list =
@@ -118,25 +135,24 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_horz_box 
   | PHOuterFil ->
       Atom({ natural = SkipLength.zero; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 1; }, SkipLength.zero, SkipLength.zero, EvHorzEmpty)
 
-  | PHOuterFrame(paddingL, paddingR, paddingT, paddingB, hblst) ->
+  | PHOuterFrame(pads, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let widinfo_total =
-        {
-          natural     = widinfo_sub.natural +% paddingL +% paddingR;
-          shrinkable  = widinfo_sub.shrinkable;
-          stretchable = widinfo_sub.stretchable;
-          fils        = widinfo_sub.fils;
-        }
-      in
-      let lphblstnew = List.append (Atom(natural paddingL, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: lphblst) (Atom(natural paddingR, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: []) in
-        OuterFrame(widinfo_total, hgt +% paddingT, dpt -% paddingB, lphblstnew)
+      let (lphblstnew, widinfo_total) = append_horz_padding lphblst widinfo_sub pads in
+        OuterFrame(widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB, lphblstnew)
 
-  | PHInnerFrame(paddingL, paddingR, paddingT, paddingB, hblst) ->
+  | PHInnerFrame(pads, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_total, hgt, dpt) = get_total_metrics lphblst in
-      let lphblstnew = List.append (Atom(natural paddingL, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: lphblst) (Atom(natural paddingR, SkipLength.zero, SkipLength.zero, EvHorzEmpty) :: []) in
-        InnerFrame(widinfo_total.natural +% paddingL +% paddingR, hgt +% paddingT, dpt -% paddingB, lphblstnew)
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
+      let (lphblstnew, widinfo_total) = append_horz_padding lphblst widinfo_sub pads in
+        FixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, lphblstnew)
+
+  | PHFixedFrame(pads, wid_req, hblst) ->
+      let lphblst = convert_list_for_line_breaking_pure hblst in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
+      let (lphblstnew, _) = append_horz_padding lphblst widinfo_sub pads in
+        FixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, lphblstnew)
+
 
 and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
   match phbopt with
@@ -212,15 +228,15 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
     (is_short, ratio, widperfil)
 
 
-let determine_widths (widrequired : skip_width) (lphblst : lb_pure_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
+let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
   let (widinfo_total, hgt_total, dpt_total) =
     lphblst |> List.map (function
       | Atom(widinfo, hgt, dpt, _)       -> (widinfo, hgt, dpt)
       | OuterFrame(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-      | InnerFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
+      | FixedFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
     ) |> List.fold_left (fun (wi, h, d) (wiacc, hacc, dacc) -> (wi +%@ wiacc, SkipLength.max h hacc, SkipLength.min d dacc)) (widinfo_zero, SkipLength.zero, SkipLength.zero)
   in
-  let (is_short, ratio, widperfil) = calculate_ratios widrequired widinfo_total in
+  let (is_short, ratio, widperfil) = calculate_ratios wid_req widinfo_total in
   let rec main_conversion is_short ratio widperfil lphb =
     match lphb with
     | Atom(widinfo, _, _, evhb) ->
@@ -243,9 +259,12 @@ let determine_widths (widrequired : skip_width) (lphblst : lb_pure_horz_box list
         let wid_total = evhblst @|> SkipLength.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
           (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), totalpb)
 
-    | InnerFrame(wid_frame, hgt_frame, dpt_frame, lphblstsub) ->
+    | FixedFrame(wid_frame, hgt_frame, dpt_frame, lphblstsub) ->
+        let (evhblst, _, _, pb) = determine_widths wid_frame lphblstsub in
+(*
         let pairlst = lphblstsub |> List.map (main_conversion true 0.0 SkipLength.zero) in
         let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
+*)
           (EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), 0)
   in
       let pairlst = lphblst |> List.map (main_conversion is_short ratio widperfil) in
