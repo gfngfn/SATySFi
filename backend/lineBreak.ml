@@ -24,30 +24,22 @@ let ( +%@ ) wi1 wi2 =
     fils= wi1.fils + wi2.fils;
   }
 
-type frame_beginning =
-  | Head
-  | AfterBreak
-
-type frame_kind_main =
+type frame_kind =
   | StandaloneFrame
   | HeadFrame
   | MiddleFrame
   | TailFrame
 
-type frame_kind =
-  | Ready   of frame_beginning
-  | Decided of frame_kind_main
-
 type lb_pure_horz_box =
-  | Atom       of skip_info * skip_height * skip_depth * evaled_horz_box_main
-  | OuterFrame of skip_info * skip_height * skip_depth * lb_pure_horz_box list
-  | FixedFrame of skip_width * skip_height * skip_depth * lb_pure_horz_box list
-  | FrameBroken of (frame_kind ref) * skip_height * skip_depth * lb_pure_horz_box list
+  | Atom        of skip_info * skip_height * skip_depth * evaled_horz_box_main
+  | OuterFrame  of skip_info * skip_height * skip_depth * lb_pure_horz_box list
+  | FixedFrame  of skip_width * skip_height * skip_depth * lb_pure_horz_box list
+  | FrameBroken of skip_info * skip_height * skip_depth * frame_kind * lb_pure_horz_box list
 
 type lb_horz_box =
   | LBHorzPure           of lb_pure_horz_box
   | LBHorzDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_horz_box option * lb_pure_horz_box option * lb_pure_horz_box option
-  | LBHorzFrameBreakable of skip_width * skip_width * lb_horz_box list
+  | LBHorzFrameBreakable of paddings * skip_width * skip_width * lb_horz_box list
 
 let natural wid =
   {
@@ -60,9 +52,10 @@ let natural wid =
 
 let get_metrics (lphb : lb_pure_horz_box) =
   match lphb with
-  | Atom(widinfo, hgt, dpt, _)       -> (widinfo, hgt, dpt)
-  | OuterFrame(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-  | FixedFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
+  | Atom(widinfo, hgt, dpt, _)           -> (widinfo, hgt, dpt)
+  | OuterFrame(widinfo, hgt, dpt, _)     -> (widinfo, hgt, dpt)
+  | FixedFrame(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
+  | FrameBroken(widinfo, hgt, dpt, _, _) -> (widinfo, hgt, dpt)
 
 
 let get_total_metrics (lphblst : lb_pure_horz_box list) =
@@ -123,7 +116,7 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_horz_box lis
     | HorzFrameBreakable(pads, wid1, wid2, hblst) :: tail ->
         let lhblst = convert_list_for_line_breaking hblst in
         let lhblstnew = append_horz_padding lhblst pads in
-          aux (LBHorzFrameBreakable(wid1, wid2, lhblstnew) :: acc) tail
+          aux (LBHorzFrameBreakable(pads, wid1, wid2, lhblstnew) :: acc) tail
 
   in
     aux [] hblst
@@ -264,13 +257,7 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
 
 
 let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
-  let (widinfo_total, hgt_total, dpt_total) =
-    lphblst |> List.map (function
-      | Atom(widinfo, hgt, dpt, _)       -> (widinfo, hgt, dpt)
-      | OuterFrame(widinfo, hgt, dpt, _) -> (widinfo, hgt, dpt)
-      | FixedFrame(wid, hgt, dpt, _)     -> (natural wid, hgt, dpt)
-    ) |> List.fold_left (fun (wi, h, d) (wiacc, hacc, dacc) -> (wi +%@ wiacc, SkipLength.max h hacc, SkipLength.min d dacc)) (widinfo_zero, SkipLength.zero, SkipLength.zero)
-  in
+  let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
   let (is_short, ratio, widperfil) = calculate_ratios wid_req widinfo_total in
   let rec main_conversion is_short ratio widperfil lphb =
     match lphb with
@@ -287,6 +274,7 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list
           else
             assert false  (* -- nfil cannot be negative -- *)
 
+    | FrameBroken(_, hgt_frame, dpt_frame, _, lphblstsub)  (* temporary; currently same as outer frames *)
     | OuterFrame(_, hgt_frame, dpt_frame, lphblstsub) ->
         let pairlst = lphblstsub |> List.map (main_conversion is_short ratio widperfil) in
         let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
@@ -296,11 +284,8 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list
 
     | FixedFrame(wid_frame, hgt_frame, dpt_frame, lphblstsub) ->
         let (evhblst, _, _, pb) = determine_widths wid_frame lphblstsub in
-(*
-        let pairlst = lphblstsub |> List.map (main_conversion true 0.0 SkipLength.zero) in
-        let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
-*)
           (EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), 0)
+
   in
       let pairlst = lphblst |> List.map (main_conversion is_short ratio widperfil) in
       let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
@@ -340,23 +325,58 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
       if leadingsub <% SkipLength.zero then SkipLength.zero else leadingsub
   in
 
-  let rec aux (acclines : (lb_pure_horz_box list) list) (accline : lb_pure_horz_box list) (lhblst : lb_horz_box list) : (lb_pure_horz_box list) list =
+  let append_framed_lines (lines_in_frame : (lb_pure_horz_box list) list) (acclines_before : (lb_pure_horz_box list) list) (accline_before : lb_pure_horz_box list) : (lb_pure_horz_box list) list * lb_pure_horz_box list =
+    let rec aux (first : (lb_pure_horz_box list) option) (last : (lb_pure_horz_box list) option) (acclines : (lb_pure_horz_box list) list) (lines : (lb_pure_horz_box list) list) =
+      match lines with
+      | [] ->
+          begin
+            match last with
+            | Some(accline) -> (acclines, accline)
+            | None          -> (acclines, [])
+          end
+
+      | line :: [] ->  (* -- last line -- *)
+          let (widinfo_total, hgt, dpt) = get_total_metrics line in
+          begin
+            match first with
+            | Some(accline) ->
+                aux None (Some(List.rev (FrameBroken(widinfo_total, hgt, dpt, StandaloneFrame, line) :: accline))) acclines []
+            | None ->
+                aux None (Some(FrameBroken(widinfo_total, hgt, dpt, TailFrame, line) :: [])) acclines []
+          end
+
+      | line :: tail ->
+          let (widinfo_total, hgt, dpt) = get_total_metrics line in
+          begin
+            match first with
+            | Some(accline) ->
+                aux None None ((List.rev (FrameBroken(widinfo_total, hgt, dpt, HeadFrame, line) :: accline)) :: acclines) tail
+            | None ->
+                aux None None ((FrameBroken(widinfo_total, hgt, dpt, MiddleFrame, line) :: []) :: acclines) tail
+          end
+    in
+      aux (Some(accline_before)) None acclines_before lines_in_frame
+  in
+
+  let rec cut (acclines : (lb_pure_horz_box list) list) (accline : lb_pure_horz_box list) (lhblst : lb_horz_box list) : (lb_pure_horz_box list) list =
     match lhblst with
     | LBHorzDiscretionary(_, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
         if List.mem dscrid path then
           let acclinesub   = match lphbopt1 with None -> accline | Some(lphb1) -> lphb1 :: accline in
           let acclinefresh = match lphbopt2 with None -> []      | Some(lphb2) -> lphb2 :: [] in
-            aux ((List.rev acclinesub) :: acclines) acclinefresh tail
+            cut ((List.rev acclinesub) :: acclines) acclinefresh tail
         else
           let acclinenew   = match lphbopt0 with None -> accline | Some(lhb0) -> lhb0 :: accline in
-            aux acclines acclinenew tail
+            cut acclines acclinenew tail
 
     | LBHorzPure(lphb) :: tail ->
-        aux acclines (lphb :: accline) tail
-(*
-    | LBHorzFrameBreakable(wid1, wid2, lphblst) :: tail ->
-        aux acclines (FrameBroken() :: accline) tail
-*)
+        cut acclines (lphb :: accline) tail
+
+    | LBHorzFrameBreakable(pads, wid1, wid2, lhblst) :: tail ->
+        let acclines_in_frame = cut [] [] lhblst in
+        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline in
+          cut acclinesnew acclinenew tail
+
     | [] ->
         (List.rev accline) :: acclines
   in
@@ -371,7 +391,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
     | [] -> List.rev accvlines
   in
 
-  let acclines = aux [] [] lhblst in
+  let acclines = cut [] [] lhblst in
     arrange (leading_required -% first_leading) [] (List.rev acclines)
 
 
@@ -441,10 +461,14 @@ let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediat
         in
           aux wmapnew tail
 
-    | LBHorzPure(phb) :: tail ->
-        let widinfo = get_width_info phb in
+    | LBHorzPure(lphb) :: tail ->
+        let widinfo = get_width_info lphb in
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
           aux wmapnew tail
+
+    | LBHorzFrameBreakable(pads, wid1, wid2, lhblstsub) :: tail ->
+        let wmapsub = aux wmap lhblstsub in
+          aux wmapsub tail
 
     | [] ->
         let dscrid = DiscretionaryID.final in

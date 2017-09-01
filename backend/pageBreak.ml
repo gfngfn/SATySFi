@@ -150,6 +150,7 @@ let () =
     let framed hblst = HorzPure(PHOuterFrame(pads, hblst)) in
     let iframed hblst = HorzPure(PHInnerFrame(pads, hblst)) in
     let fframed wid hblst = HorzPure(PHFixedFrame(pads, wid, hblst)) in
+    let bframed hblst = HorzFrameBreakable(pads, ~% 5., ~% 5., hblst) in
     let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
     let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
@@ -223,6 +224,21 @@ let () =
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; fframed (~% 120.) [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
+        ]);
+
+        VertFixedBreakable(paragraph_skip);
+        VertParagraph(~% 24., [
+          indentation;
+          bframed [
+            word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
+            word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;
+            word "sed"; space; word "do"; space; word "eiusmod"; space; word "tempor"; space; word "incididunt"; space;
+            word "ut"; space; word "labore"; space; word "et"; space; word "dolore"; space; word "magna"; space; word "aliqua.";
+            word "Ut"; space; word "enim"; space; word "ad"; space; word "minim"; space; word "veniam,"; space;
+            word " quis"; space; word "nostrud"; space; word "exercitation"; space; word "ullamco"; space;
+            word "laboris"; space; word "nisi"; space; word "ut"; space; word "aliquip"; space;
+            word "ex"; space; word "ea"; space; word "commodo"; space; word "consequat."; space;
+          ]; fill;
         ]);
 
       ] @ repeat 8 [
