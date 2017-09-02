@@ -147,12 +147,58 @@ let () =
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
     let pads = { paddingL = ~% 2.; paddingR = ~% 2.; paddingT= ~% 2.; paddingB = ~% 2.} in
-    let framed hblst = HorzPure(PHOuterFrame(pads, hblst)) in
-    let iframed hblst = HorzPure(PHInnerFrame(pads, hblst)) in
-    let fframed wid hblst = HorzPure(PHFixedFrame(pads, wid, hblst)) in
-    let bframed hblst = HorzFrameBreakable(pads, ~% 5., ~% 5., hblst) in
+    let decostd =
+      (fun (xpos, yposbaseline) wid hgt dpt ->
+        [
+          HandlePdf.op_RG (0.2, 0.2, 0.2);
+          HandlePdf.op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+          HandlePdf.op_S;
+        ]
+      )
+    in
+    let decoH =
+      (fun (xpos, yposbaseline) wid hgt dpt ->
+        [
+          HandlePdf.op_RG (0.2, 0.2, 0.2);
+          HandlePdf.op_m (xpos +% wid, yposbaseline +% hgt);
+          HandlePdf.op_l (xpos, yposbaseline +% hgt);
+          HandlePdf.op_l (xpos, yposbaseline +% dpt);
+          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
+          HandlePdf.op_S;
+        ]
+      )
+    in
+    let decoM =
+      (fun (xpos, yposbaseline) wid hgt dpt ->
+        [
+          HandlePdf.op_RG (0.2, 0.2, 0.2);
+          HandlePdf.op_m (xpos, yposbaseline +% hgt);
+          HandlePdf.op_l (xpos +% wid, yposbaseline +% hgt);
+          HandlePdf.op_S;
+          HandlePdf.op_m (xpos, yposbaseline +% dpt);
+          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
+          HandlePdf.op_S;
+        ]
+      )
+    in
+    let decoT =
+      (fun (xpos, yposbaseline) wid hgt dpt ->
+        [
+          HandlePdf.op_RG (0.2, 0.2, 0.2);
+          HandlePdf.op_m (xpos, yposbaseline +% hgt);
+          HandlePdf.op_l (xpos +% wid, yposbaseline +% hgt);
+          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
+          HandlePdf.op_l (xpos, yposbaseline +% dpt);
+          HandlePdf.op_S;
+        ]
+      )
+    in
+    let framed hblst = HorzPure(PHOuterFrame(pads, decostd, hblst)) in
+    let iframed hblst = HorzPure(PHInnerFrame(pads, decostd, hblst)) in
+    let fframed wid hblst = HorzPure(PHFixedFrame(pads, wid, decostd, hblst)) in
+    let bframed hblst = HorzFrameBreakable(pads, ~% 5., ~% 5., decostd, decoH, decoM, decoT, hblst) in
     let space = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 6., ~% 1., ~% 3.)), None, None) in
-    let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 8., ~% 1., ~% 3.)), None, None) in
+    let space1 = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 7.5, ~% 1., ~% 3.)), None, None) in
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
     let indentation = HorzPure(PHFixedEmpty(~% 64.)) in
     let fill = HorzPure(PHOuterFil) in
@@ -234,12 +280,12 @@ let () =
             word1 "consectetur"; space1; word1 "adipiscing"; space1; word1 "elit,"; space1;
             word1 "sed"; space1; word1 "do"; space1; word1 "eiusmod"; space1; word1 "tempor"; space1; word1 "incididunt"; space1;
             word1 "ut"; space1; word1 "labore"; space1; word1 "et"; space1; word1 "dolore"; space1; word1 "magna"; space1; word1 "aliqua."; space1;
-(*
+
             word1 "Ut"; space1; word1 "enim"; space1; word1 "ad"; space1; word1 "minim"; space1; word1 "veniam,"; space1;
             word1 "quis"; space1; word1 "nostrud"; space1; word1 "exercitation"; space1; word1 "ullamco"; space1;
             word1 "laboris"; space1; word1 "nisi"; space1; word1 "ut"; space1; word1 "aliquip"; space1;
-            word1 "ex"; space1; word1 "ea"; space1; word1 "commodo"; space1; word1 "consequat."; space1;
-*)
+            word1 "ex"; space1; word1 "ea"; space1; word1 "commodo"; space1; word1 "consequat.";
+
           ]; fill;
         ]);
 

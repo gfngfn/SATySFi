@@ -90,25 +90,27 @@ type paddings =
     paddingB : skip_width;
   }
 
+type decoration = skip_width * skip_height -> skip_width -> skip_height -> skip_depth -> Pdfops.t list
+
 type pure_horz_box =
   | PHOuterEmpty  of skip_width * skip_width * skip_width
   | PHOuterFil
-  | PHOuterFrame  of paddings * horz_box list
+  | PHOuterFrame  of paddings * decoration * horz_box list
   | PHFixedString of font_info * InternalText.t
   | PHFixedEmpty  of skip_width
-  | PHInnerFrame  of paddings * horz_box list
-  | PHFixedFrame  of paddings * skip_width * horz_box list
+  | PHFixedFrame  of paddings * skip_width * decoration * horz_box list
+  | PHInnerFrame  of paddings * decoration * horz_box list
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
-  | HorzFrameBreakable of paddings * skip_width * skip_width * horz_box list
+  | HorzFrameBreakable of paddings * skip_width * skip_width * decoration * decoration * decoration * decoration * horz_box list
 
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
   | EvHorzEmpty
-  | EvHorzFrame  of skip_width * skip_width * evaled_horz_box list
+  | EvHorzFrame  of skip_width * skip_width * decoration * evaled_horz_box list
 
 and evaled_horz_box =
   | EvHorz of skip_width * evaled_horz_box_main

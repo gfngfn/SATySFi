@@ -32,16 +32,16 @@ type frame_kind =
 
 type metrics = skip_info * skip_height * skip_depth
 
-type lb_pure_horz_box =
+type lb_pure_box =
   | Atom        of metrics * evaled_horz_box_main
-  | OuterFrame  of metrics * lb_pure_horz_box list
-  | FixedFrame  of skip_width * skip_height * skip_depth * lb_pure_horz_box list
-  | FrameBroken of metrics * frame_kind * lb_pure_horz_box list
+  | OuterFrame  of metrics * decoration * lb_pure_box list
+  | FixedFrame  of skip_width * skip_height * skip_depth * decoration * lb_pure_box list
 
-type lb_horz_box =
-  | LBHorzPure           of lb_pure_horz_box
-  | LBHorzDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_horz_box option * lb_pure_horz_box option * lb_pure_horz_box option
-  | LBHorzFrameBreakable of paddings * skip_width * skip_width * lb_horz_box list
+type lb_box =
+  | LBPure           of lb_pure_box
+  | LBDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_box option * lb_pure_box option * lb_pure_box option
+  | LBFrameBreakable of paddings * skip_width * skip_width * decoration * decoration * decoration * decoration * lb_box list
+
 
 let natural wid =
   {
@@ -52,22 +52,20 @@ let natural wid =
   }
 
 
-let get_metrics (lphb : lb_pure_horz_box) : metrics =
+let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | Atom(metr, _)                -> metr
-  | OuterFrame(metr, _)          -> metr
-  | FixedFrame(wid, hgt, dpt, _) -> (natural wid, hgt, dpt)
-  | FrameBroken(metr, _, _)      -> metr
+  | Atom(metr, _)                   -> metr
+  | OuterFrame(metr, _, _)          -> metr
+  | FixedFrame(wid, hgt, dpt, _, _) -> (natural wid, hgt, dpt)
 
-
-let get_total_metrics (lphblst : lb_pure_horz_box list) : metrics =
+let get_total_metrics (lphblst : lb_pure_box list) : metrics =
   lphblst @|> (widinfo_zero, SkipLength.zero, SkipLength.zero) @|> List.fold_left (fun (wiacc, hacc, dacc) lphb ->
     let (wi, h, d) = get_metrics lphb in
       (wiacc +%@ wi, max hacc h, min dacc d)
   )
 
 
-let get_width_info (lphb : lb_pure_horz_box) =
+let get_width_info (lphb : lb_pure_box) =
   let (widinfo, _, _) = get_metrics lphb in widinfo
 
 
@@ -76,13 +74,13 @@ let get_width_info_opt = function
   | Some(lhb) -> get_width_info lhb
 
 
-let append_horz_padding (lhblst : lb_horz_box list) (pads : paddings) =
+let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
   List.append
-    (LBHorzPure(Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: lhblst)
-    (LBHorzPure(Atom((natural pads.paddingR, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: [])
+    (LBPure(Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: lhblst)
+    (LBPure(Atom((natural pads.paddingR, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: [])
 
 
-let append_horz_padding_pure (lphblst : lb_pure_horz_box list) (widinfo : skip_info) (pads : paddings) =
+let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : skip_info) (pads : paddings) =
   let lphblstnew =
     List.append
       (Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty) :: lphblst)
@@ -99,7 +97,7 @@ let append_horz_padding_pure (lphblst : lb_pure_horz_box list) (widinfo : skip_i
     (lphblstnew, widinfonew)
 
 
-let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_horz_box list =
+let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_box list =
   let rec aux acc hblst =
     match hblst with
     | [] -> List.rev acc
@@ -109,22 +107,22 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_horz_box lis
         let lphbopt1 = convert_pure_box_for_line_breaking_opt phbopt1 in
         let lphbopt2 = convert_pure_box_for_line_breaking_opt phbopt2 in
         let dscrid = DiscretionaryID.fresh () in
-          aux (LBHorzDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: acc) tail
+          aux (LBDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: acc) tail
 
     | HorzPure(phb) :: tail ->
         let lphb = convert_pure_box_for_line_breaking phb in
-          aux (LBHorzPure(lphb) :: acc) tail
+          aux (LBPure(lphb) :: acc) tail
 
-    | HorzFrameBreakable(pads, wid1, wid2, hblst) :: tail ->
+    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
         let lhblst = convert_list_for_line_breaking hblst in
         let lhblstnew = append_horz_padding lhblst pads in
-          aux (LBHorzFrameBreakable(pads, wid1, wid2, lhblstnew) :: acc) tail
+          aux (LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew) :: acc) tail
 
   in
     aux [] hblst
 
 
-and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_horz_box list =
+and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box list =
   let rec aux acc hblst =
     match hblst with
     | [] -> List.rev acc
@@ -141,16 +139,16 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_horz_b
         let lphb = convert_pure_box_for_line_breaking phb in
           aux (lphb :: acc) tail
 
-    | HorzFrameBreakable(pads, wid1, wid2, hblstsub) :: tail ->
+    | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblstsub) :: tail ->
         let lphblst = convert_list_for_line_breaking_pure hblstsub in
         let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-          aux (OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), lphblst) :: acc) tail
+          aux (OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst) :: acc) tail
   in
     aux [] hblst
 
   
-and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_horz_box =
+and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
   match phb with
   | PHFixedString(((fontabrv, size) as info), word) ->
       let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word fontabrv size word in
@@ -165,23 +163,23 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_horz_box 
   | PHOuterFil ->
       Atom(({ natural = SkipLength.zero; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 1; }, SkipLength.zero, SkipLength.zero), EvHorzEmpty)
 
-  | PHOuterFrame(pads, hblst) ->
+  | PHOuterFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), lphblstnew)
+        OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew)
 
-  | PHInnerFrame(pads, hblst) ->
+  | PHInnerFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        FixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, lphblstnew)
+        FixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
 
-  | PHFixedFrame(pads, wid_req, hblst) ->
+  | PHFixedFrame(pads, wid_req, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
-        FixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, lphblstnew)
+        FixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
 
 
 and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
@@ -258,7 +256,7 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
     (is_short, ratio, widperfil)
 
 
-let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
+let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
   let (is_short, ratio, widperfil) = calculate_ratios wid_req widinfo_total in
   let rec main_conversion is_short ratio widperfil lphb =
@@ -276,17 +274,16 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list
           else
             assert false  (* -- nfil cannot be negative -- *)
 
-    | FrameBroken((_, hgt_frame, dpt_frame), _, lphblstsub)  (* temporary; currently same as outer frames *)
-    | OuterFrame((_, hgt_frame, dpt_frame), lphblstsub) ->
+    | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let pairlst = lphblstsub |> List.map (main_conversion is_short ratio widperfil) in
         let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
         let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
         let wid_total = evhblst @|> SkipLength.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-          (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), totalpb)
+          (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)), totalpb)
 
-    | FixedFrame(wid_frame, hgt_frame, dpt_frame, lphblstsub) ->
+    | FixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
         let (evhblst, _, _, pb) = determine_widths wid_frame lphblstsub in
-          (EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, evhblst)), 0)
+          (EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)), 0)
 
   in
       let pairlst = lphblst |> List.map (main_conversion is_short ratio widperfil) in
@@ -320,15 +317,28 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_horz_box list
 let first_leading = SkipLength.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t list) (lhblst : lb_horz_box list) : intermediate_vert_box list =
+let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : skip_depth) (hgt : skip_height) : SkipLength.t =
     let leadingsub = leading_required -% dptprev -% hgt in
       if leadingsub <% SkipLength.zero then SkipLength.zero else leadingsub
   in
 
-  let append_framed_lines (lines_in_frame : (lb_pure_horz_box list) list) (acclines_before : (lb_pure_horz_box list) list) (accline_before : lb_pure_horz_box list) : (lb_pure_horz_box list) list * lb_pure_horz_box list =
-    let rec aux (first : (lb_pure_horz_box list) option) (last : (lb_pure_horz_box list) option) (acclines : (lb_pure_horz_box list) list) (lines : (lb_pure_horz_box list) list) =
+  let append_framed_lines
+        (lines_in_frame : (lb_pure_box list) list)
+        (acclines_before : (lb_pure_box list) list)
+        (accline_before : lb_pure_box list)
+        (decoS : decoration)
+        (decoH : decoration)
+        (decoM : decoration)
+        (decoT : decoration)
+        : (lb_pure_box list) list * lb_pure_box list =
+    let rec aux
+          (first : (lb_pure_box list) option)
+          (last : (lb_pure_box list) option)
+          (acclines : (lb_pure_box list) list)
+          (lines : (lb_pure_box list) list)
+        =
       match lines with
       | [] ->
           begin
@@ -342,9 +352,9 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           begin
             match first with
             | Some(accline) ->
-                aux None (Some(FrameBroken(metr_total, StandaloneFrame, line) :: accline)) acclines []
+                aux None (Some(OuterFrame(metr_total, decoS, line) :: accline)) acclines []
             | None ->
-                aux None (Some(FrameBroken(metr_total, TailFrame, line) :: [])) acclines []
+                aux None (Some(OuterFrame(metr_total, decoT, line) :: [])) acclines []
           end
 
       | line :: tail ->
@@ -352,17 +362,17 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           begin
             match first with
             | Some(accline) ->
-                aux None None ((List.rev (FrameBroken(metr_total, HeadFrame, line) :: accline)) :: acclines) tail
+                aux None None ((List.rev (OuterFrame(metr_total, decoH, line) :: accline)) :: acclines) tail
             | None ->
-                aux None None ((FrameBroken(metr_total, MiddleFrame, line) :: []) :: acclines) tail
+                aux None None ((OuterFrame(metr_total, decoM, line) :: []) :: acclines) tail
           end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
   in
 
-  let rec cut (acclines : (lb_pure_horz_box list) list) (accline : lb_pure_horz_box list) (lhblst : lb_horz_box list) : (lb_pure_horz_box list) list =
+  let rec cut (acclines : (lb_pure_box list) list) (accline : lb_pure_box list) (lhblst : lb_box list) : (lb_pure_box list) list =
     match lhblst with
-    | LBHorzDiscretionary(_, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
+    | LBDiscretionary(_, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
         if List.mem dscrid path then
           let acclinesub   = match lphbopt1 with None -> accline | Some(lphb1) -> lphb1 :: accline in
           let acclinefresh = match lphbopt2 with None -> []      | Some(lphb2) -> lphb2 :: [] in
@@ -371,19 +381,19 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           let acclinenew   = match lphbopt0 with None -> accline | Some(lhb0) -> lhb0 :: accline in
             cut acclines acclinenew tail
 
-    | LBHorzPure(lphb) :: tail ->
+    | LBPure(lphb) :: tail ->
         cut acclines (lphb :: accline) tail
 
-    | LBHorzFrameBreakable(pads, wid1, wid2, lhblst) :: tail ->
+    | LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblst) :: tail ->
         let acclines_in_frame = cut [] [] lhblst in
-        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline in
+        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline decoS decoH decoM decoT in
           cut acclinesnew acclinenew tail
 
     | [] ->
         (List.rev accline) :: acclines
   in
 
-  let rec arrange (dptprev : skip_depth) (accvlines : intermediate_vert_box list) (lines : (lb_pure_horz_box list) list) =
+  let rec arrange (dptprev : skip_depth) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
           let (evhblst, hgt, dpt, _) = determine_widths paragraph_width line in
@@ -448,9 +458,9 @@ let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediat
     end
   in
 
-  let rec aux (wmap : WidthMap.t) (lhblst : lb_horz_box list) =
+  let rec aux (wmap : WidthMap.t) (lhblst : lb_box list) =
     match lhblst with
-    | LBHorzDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
+    | LBDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
         let widinfo0 = get_width_info_opt lphbopt0 in
         let widinfo1 = get_width_info_opt lphbopt1 in
         let widinfo2 = get_width_info_opt lphbopt2 in
@@ -463,12 +473,12 @@ let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediat
         in
           aux wmapnew tail
 
-    | LBHorzPure(lphb) :: tail ->
+    | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
           aux wmapnew tail
 
-    | LBHorzFrameBreakable(pads, wid1, wid2, lhblstsub) :: tail ->
+    | LBFrameBreakable(pads, wid1, wid2, _, _, _, _, lhblstsub) :: tail ->
         let wmapsub = aux wmap lhblstsub in
           aux wmapsub tail
 

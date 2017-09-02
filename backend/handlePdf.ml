@@ -28,23 +28,6 @@ let op_q = Pdfops.Op_q
 let op_Q = Pdfops.Op_Q
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
 
-(*
-let encode_tj_string enc tjs =
-  match (enc, tjs) with
-  | (Latin1 , NoKernText(intext)) -> op_Tj (InternalText.to_utf8 intext)
-  | (UTF16BE, NoKernText(intext)) -> op_Tj_hex (InternalText.to_utf16be_hex intext)
-  | (Latin1 , KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
-                                                                 | TJChar(tjch)   -> Pdf.String(InternalText.to_utf8 tjch)
-                                                                 | TJKern(rawwid) ->
-                                                                     let () = print_for_debug ("!!RAWWID(L)= " ^ (string_of_int rawwid)) in  (* for debug *)
-                                                                       Pdf.Integer(-rawwid) )))
-  | (UTF16BE, KernedText(knstr))  -> op_TJ (Pdf.Array(knstr |> List.map (function
-                                                                 | TJChar(tjch)   -> Pdf.StringHex(InternalText.to_utf16be_hex tjch)
-                                                                 | TJKern(rawwid) ->
-                                                                     let () = print_for_debug ("!!RAWWID(U)= " ^ (string_of_int rawwid)) in  (* for debug *)
-                                                                       Pdf.Integer(-rawwid) )))
-*)
-
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
@@ -63,19 +46,14 @@ let get_paper_height (paper : Pdfpaper.t) : skip_height =
 let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
     match evhb with
     | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
-    | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, evhblst)) ->
+    | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
         let (xposnew, opaccsub) =
           evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
         in
         let ops =
-          [
-            op_q;
-            op_RG (0.2, 0.2, 0.2);
-            op_re (xpos, yposbaseline +% hgt_frame) (wid, SkipLength.zero -% (hgt_frame -% dpt_frame));
-            op_S;
-            op_Q;
-          ]
-            (* temporary; should be specified as an option for frame decoration *)
+          List.append
+            (op_q :: (deco (xpos, yposbaseline) wid hgt_frame dpt_frame))
+            (op_Q :: [])
         in
         let opaccnew = List.rev_append ops opaccsub in
           (xposnew, opaccnew)
