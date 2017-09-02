@@ -74,6 +74,11 @@ let get_width_info_opt = function
   | Some(lhb) -> get_width_info lhb
 
 
+let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
+  let (widinfo, hgt, dpt) = metr in
+    (widinfo, hgt +% pads.paddingT, dpt -% pads.paddingB)
+
+
 let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
   List.append
     (LBPure(Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: lhblst)
@@ -332,6 +337,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
         (decoH : decoration)
         (decoM : decoration)
         (decoT : decoration)
+        (pads : paddings)
         : (lb_pure_box list) list * lb_pure_box list =
     let rec aux
           (first : (lb_pure_box list) option)
@@ -348,7 +354,8 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           end
 
       | line :: [] ->  (* -- last line -- *)
-          let metr_total = get_total_metrics line in
+          let metr_sub = get_total_metrics line in
+          let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
             | Some(accline) ->
@@ -358,7 +365,8 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
           end
 
       | line :: tail ->
-          let metr_total = get_total_metrics line in
+          let metr_sub = get_total_metrics line in
+          let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
             | Some(accline) ->
@@ -386,7 +394,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
 
     | LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblst) :: tail ->
         let acclines_in_frame = cut [] [] lhblst in
-        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline decoS decoH decoM decoT in
+        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline decoS decoH decoM decoT pads in
           cut acclinesnew acclinenew tail
 
     | [] ->

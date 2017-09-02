@@ -258,7 +258,7 @@ let () =
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
-
+(*
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [
           wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
@@ -271,7 +271,7 @@ let () =
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
-
+*)
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 24., [
           indentation;
@@ -280,8 +280,9 @@ let () =
             word1 "consectetur"; space1; word1 "adipiscing"; space1; word1 "elit,"; space1;
             word1 "sed"; space1; word1 "do"; space1; word1 "eiusmod"; space1; word1 "tempor"; space1; word1 "incididunt"; space1;
             word1 "ut"; space1; word1 "labore"; space1; word1 "et"; space1; word1 "dolore"; space1; word1 "magna"; space1; word1 "aliqua."; space1;
-
-            word1 "Ut"; space1; word1 "enim"; space1; word1 "ad"; space1; word1 "minim"; space1; word1 "veniam,"; space1;
+            bframed [
+              word1 "Ut"; space1; word1 "enim"; space1; word1 "ad"; space1; word1 "minim"; space1; word1 "veniam,";
+            ]; space1;
             word1 "quis"; space1; word1 "nostrud"; space1; word1 "exercitation"; space1; word1 "ullamco"; space1;
             word1 "laboris"; space1; word1 "nisi"; space1; word1 "ut"; space1; word1 "aliquip"; space1;
             word1 "ex"; space1; word1 "ea"; space1; word1 "commodo"; space1; word1 "consequat.";
