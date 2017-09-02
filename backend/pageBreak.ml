@@ -195,7 +195,7 @@ let () =
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
           framed [
-            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; framed[word1 "kiwi"; space1; word1 "juice";];]; space1;
+            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; framed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
@@ -208,7 +208,7 @@ let () =
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
           iframed [
-            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed[word1 "kiwi"; space1; word1 "juice";];]; space1;
+            word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
           fill;
         ]);
@@ -230,14 +230,16 @@ let () =
         VertParagraph(~% 24., [
           indentation;
           bframed [
-            word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
-            word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;
-            word "sed"; space; word "do"; space; word "eiusmod"; space; word "tempor"; space; word "incididunt"; space;
-            word "ut"; space; word "labore"; space; word "et"; space; word "dolore"; space; word "magna"; space; word "aliqua.";
-            word "Ut"; space; word "enim"; space; word "ad"; space; word "minim"; space; word "veniam,"; space;
-            word " quis"; space; word "nostrud"; space; word "exercitation"; space; word "ullamco"; space;
-            word "laboris"; space; word "nisi"; space; word "ut"; space; word "aliquip"; space;
-            word "ex"; space; word "ea"; space; word "commodo"; space; word "consequat."; space;
+            word1 "Lorem"; space1; word1 "ipsum"; space1; word1 "dolor"; space1; word1 "sit"; space1; word1 "amet,"; space1;
+            word1 "consectetur"; space1; word1 "adipiscing"; space1; word1 "elit,"; space1;
+            word1 "sed"; space1; word1 "do"; space1; word1 "eiusmod"; space1; word1 "tempor"; space1; word1 "incididunt"; space1;
+            word1 "ut"; space1; word1 "labore"; space1; word1 "et"; space1; word1 "dolore"; space1; word1 "magna"; space1; word1 "aliqua."; space1;
+(*
+            word1 "Ut"; space1; word1 "enim"; space1; word1 "ad"; space1; word1 "minim"; space1; word1 "veniam,"; space1;
+            word1 "quis"; space1; word1 "nostrud"; space1; word1 "exercitation"; space1; word1 "ullamco"; space1;
+            word1 "laboris"; space1; word1 "nisi"; space1; word1 "ut"; space1; word1 "aliquip"; space1;
+            word1 "ex"; space1; word1 "ea"; space1; word1 "commodo"; space1; word1 "consequat."; space1;
+*)
           ]; fill;
         ]);
 
