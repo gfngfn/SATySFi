@@ -5,29 +5,6 @@ let print_for_debug msgln = ()
 
 open HorzBox
 
-let (~%) = SkipLength.to_pdf_point
-let op_cm (xdiff, ydiff) =
-  Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (~% xdiff, ~% ydiff)])
-
-let op_Tm_translate (xpos, ypos) =
-  Pdfops.Op_Tm(Pdftransform.matrix_of_transform
-                 [Pdftransform.Translate
-                     (SkipLength.to_pdf_point xpos, SkipLength.to_pdf_point ypos)])
-
-let op_Tf tag sl = Pdfops.Op_Tf(tag, SkipLength.to_pdf_point sl)
-let op_Tj str = Pdfops.Op_Tj(str)
-let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
-let op_TJ obj = Pdfops.Op_TJ(obj)
-let op_BT = Pdfops.Op_BT
-let op_ET = Pdfops.Op_ET
-let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)
-let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
-let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
-let op_S = Pdfops.Op_S
-let op_q = Pdfops.Op_q
-let op_Q = Pdfops.Op_Q
-let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
-
 
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
@@ -52,15 +29,15 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
         in
         let ops =
           List.append
-            (op_q :: (deco (xpos, yposbaseline) wid hgt_frame dpt_frame))
-            (op_Q :: [])
+            (Graphics.op_q :: (Graphics.pdfops_of_path_list (deco (xpos, yposbaseline) wid hgt_frame dpt_frame)))
+            (Graphics.op_Q :: [])
         in
         let opaccnew = List.rev_append ops opaccsub in
           (xposnew, opaccnew)
 
     | EvHorz(wid, EvHorzString((fontabrv, size), otxt)) ->
         let (tag, enc) = FontInfo.get_tag_and_encoding fontabrv in
-        let opword = op_TJ (OutputText.to_TJ_argument otxt) in
+        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let ops =
           [
 (*
@@ -74,12 +51,12 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
             op_Q;
             (* end: for test *)
 *)
-            op_cm (SkipLength.zero, SkipLength.zero);
-            op_BT;
-            op_Tm_translate (xpos, yposbaseline);
-            op_Tf tag size;
+            Graphics.op_cm (SkipLength.zero, SkipLength.zero);
+            Graphics.op_BT;
+            Graphics.op_Tm_translate (xpos, yposbaseline);
+            Graphics.op_Tf tag size;
             opword;
-            op_ET;
+            Graphics.op_ET;
           ]
         in
         let opaccnew = List.rev_append ops opacc in

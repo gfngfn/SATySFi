@@ -148,16 +148,29 @@ let () =
 
     let pads = { paddingL = ~% 2.; paddingR = ~% 2.; paddingT= ~% 2.; paddingB = ~% 2.} in
     let decostd =
-      (fun (xpos, yposbaseline) wid hgt dpt ->
+      (fun (xpos, ypos) wid hgt dpt ->
+        [
+          Rectangle((xpos, ypos +% hgt), (wid, SkipLength.zero -% (hgt -% dpt)));
+        ]
+(*
         [
           HandlePdf.op_RG (0.2, 0.2, 0.2);
           HandlePdf.op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
           HandlePdf.op_S;
         ]
+*)
       )
     in
     let decoH =
-      (fun (xpos, yposbaseline) wid hgt dpt ->
+      (fun (xpos, ypos) wid hgt dpt ->
+        [
+          GeneralPath((xpos +% wid, ypos +% hgt), [
+            LineTo(xpos, ypos +% hgt);
+            LineTo(xpos, ypos +% dpt);
+            LineTo(xpos +% wid, ypos +% dpt);
+          ]);
+        ]
+(*
         [
           HandlePdf.op_RG (0.2, 0.2, 0.2);
           HandlePdf.op_m (xpos +% wid, yposbaseline +% hgt);
@@ -166,10 +179,16 @@ let () =
           HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
           HandlePdf.op_S;
         ]
+*)
       )
     in
     let decoM =
-      (fun (xpos, yposbaseline) wid hgt dpt ->
+      (fun (xpos, ypos) wid hgt dpt ->
+        [
+          GeneralPath((xpos, ypos +% hgt), [LineTo(xpos +% wid, ypos +% hgt)]);
+          GeneralPath((xpos, ypos +% dpt), [LineTo(xpos +% wid, ypos +% dpt)]);
+        ]
+(*
         [
           HandlePdf.op_RG (0.2, 0.2, 0.2);
           HandlePdf.op_m (xpos, yposbaseline +% hgt);
@@ -179,10 +198,19 @@ let () =
           HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
           HandlePdf.op_S;
         ]
+*)
       )
     in
     let decoT =
-      (fun (xpos, yposbaseline) wid hgt dpt ->
+      (fun (xpos, ypos) wid hgt dpt ->
+        [
+          GeneralPath((xpos, ypos +% hgt), [
+            LineTo(xpos +% wid, ypos +% hgt);
+            LineTo(xpos +% wid, ypos +% dpt);
+            LineTo(xpos, ypos +% dpt);
+          ]);
+        ]
+(*
         [
           HandlePdf.op_RG (0.2, 0.2, 0.2);
           HandlePdf.op_m (xpos, yposbaseline +% hgt);
@@ -191,6 +219,7 @@ let () =
           HandlePdf.op_l (xpos, yposbaseline +% dpt);
           HandlePdf.op_S;
         ]
+*)
       )
     in
     let framed hblst = HorzPure(PHOuterFrame(pads, decostd, hblst)) in

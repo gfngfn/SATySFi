@@ -90,7 +90,17 @@ type paddings =
     paddingB : skip_width;
   }
 
-type decoration = skip_width * skip_height -> skip_width -> skip_height -> skip_depth -> Pdfops.t list
+type point = SkipLength.t * SkipLength.t
+
+type path_element =
+  | LineTo   of point
+  | BezierTo of point * point * point
+
+type path =
+  | GeneralPath of point * path_element list
+  | Rectangle   of point * point
+
+type decoration = skip_width * skip_height -> skip_width -> skip_height -> skip_depth -> path list
 
 type pure_horz_box =
   | PHOuterEmpty  of skip_width * skip_width * skip_width
