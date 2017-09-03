@@ -9,15 +9,15 @@ open HorzBox
 type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
 
 
-let left_margin = SkipLength.of_pdf_point 75.   (* temporary; should be variable *)
-let top_margin = SkipLength.of_pdf_point 100.   (* temporary; should be variable *)
-let leading = SkipLength.of_pdf_point 32.       (* temporary; should be variable *)
+let left_margin = Length.of_pdf_point 75.   (* temporary; should be variable *)
+let top_margin = Length.of_pdf_point 100.   (* temporary; should be variable *)
+let leading = Length.of_pdf_point 32.       (* temporary; should be variable *)
 
 
-let get_paper_height (paper : Pdfpaper.t) : skip_height =
+let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
-    SkipLength.of_pdf_point pdfpt
+    Length.of_pdf_point pdfpt
 
 
 let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
@@ -46,12 +46,12 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
             op_RG (1.0, 0.5, 0.5);
             op_m (xpos, yposbaseline);
             op_l (xpos +% wid, yposbaseline);
-            op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+            op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
             op_S;
             op_Q;
             (* end: for test *)
 *)
-            Graphics.op_cm (SkipLength.zero, SkipLength.zero);
+            Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_BT;
             Graphics.op_Tm_translate (xpos, yposbaseline);
             Graphics.op_Tf tag size;

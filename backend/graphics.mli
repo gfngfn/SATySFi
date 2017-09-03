@@ -3,7 +3,7 @@ open HorzBox
 
 val op_cm : point -> Pdfops.t
 val op_Tm_translate : point -> Pdfops.t
-val op_Tf : string -> SkipLength.t -> Pdfops.t
+val op_Tf : string -> length -> Pdfops.t
 val op_Tj : string -> Pdfops.t
 val op_Tj_hex : string -> Pdfops.t
 val op_TJ : Pdf.pdfobject -> Pdfops.t

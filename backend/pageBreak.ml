@@ -13,36 +13,36 @@ let print_evaled_vert_box evvb =
       begin
         Format.printf "@[(vert@ " ;
         evhblst |> List.iter (function
-          | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (SkipLength.show wid)
-          | EvHorzFixedBoxAtom(wid, FixedEmpty(_))       -> Format.printf "@[(fixed-empty@ %s)@]@ " (SkipLength.show wid)
-          | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (SkipLength.show wid)
+          | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (Length.show wid)
+          | EvHorzFixedBoxAtom(wid, FixedEmpty(_))       -> Format.printf "@[(fixed-empty@ %s)@]@ " (Length.show wid)
+          | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (Length.show wid)
         ) ;
         Format.printf ")@]@ " ;
       end
   | EvVertFixedEmpty(vskip) ->
       begin
-        Format.printf "@[(vskip@ %s)@]@ " (SkipLength.show vskip) ;
+        Format.printf "@[(vskip@ %s)@]@ " (Length.show vskip) ;
       end
 *)
 
-let page_height = SkipLength.of_pdf_point 650.  (* temporary; should be variable *)
+let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
 
 let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = page_height -% hgttotal in
-      if hgtdiff <% SkipLength.zero then 10000 else
-        int_of_float (hgtdiff /% (SkipLength.of_pdf_point 0.1))
+      if hgtdiff <% Length.zero then 10000 else
+        int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
   let chop_single_page imvbacc =
-    let rec aux (vpbprev : pure_badness) (imvbacc : intermediate_vert_box list) (imvbaccbreakable : intermediate_vert_box list) (hgttotal : SkipLength.t) (imvblst : intermediate_vert_box list) =
+    let rec aux (vpbprev : pure_badness) (imvbacc : intermediate_vert_box list) (imvbaccbreakable : intermediate_vert_box list) (hgttotal : Length.t) (imvblst : intermediate_vert_box list) =
       match imvblst with
       | (ImVertLine(hgt, dpt, _) as head) :: tail ->
           let hgttotalnew = hgttotal +% hgt +% dpt in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = print_for_debug ("CL " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
+            let () = print_for_debug ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb (head :: (List.append imvbaccbreakable imvbacc)) [] hgttotalnew tail
@@ -51,17 +51,17 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           let hgttotalnew = hgttotal +% vskip in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
-            let () = print_for_debug ("CB " ^ (SkipLength.show hgttotal) ^ " ===> " ^ (SkipLength.show hgttotalnew) ^ "\n") in  (* for debug *)
+            let () = print_for_debug ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
               Some((List.rev imvbacc, List.rev imvblst))  (* -- discard breakables -- *)
           else
             aux vpb imvbacc (head :: imvbaccbreakable) hgttotalnew tail
 
       | [] ->
-          let () = print_for_debug ("CE " ^ (SkipLength.show hgttotal) ^ " ===> None\n") in  (* for debug *)
+          let () = print_for_debug ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
             None
     in
     let imvblst = List.rev imvbacc in
-      aux 100000 [] [] SkipLength.zero imvblst
+      aux 100000 [] [] Length.zero imvblst
   in
 
   let determine_heights (imvblst : intermediate_vert_box list) =
@@ -131,7 +131,7 @@ let penalty_soft_hyphen = 1000
 
 
 let () =
-  let ( ~% ) = SkipLength.of_pdf_point in
+  let ( ~% ) = Length.of_pdf_point in
   begin
     FontInfo.initialize () ;
     let font0 = ("Arno", ~% 16.) in
@@ -150,12 +150,12 @@ let () =
     let decostd =
       (fun (xpos, ypos) wid hgt dpt ->
         [
-          Rectangle((xpos, ypos +% hgt), (wid, SkipLength.zero -% (hgt -% dpt)));
+          Rectangle((xpos, ypos +% hgt), (wid, Length.zero -% (hgt -% dpt)));
         ]
 (*
         [
           HandlePdf.op_RG (0.2, 0.2, 0.2);
-          HandlePdf.op_re (xpos, yposbaseline +% hgt) (wid, SkipLength.zero -% (hgt -% dpt));
+          HandlePdf.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
           HandlePdf.op_S;
         ]
 *)

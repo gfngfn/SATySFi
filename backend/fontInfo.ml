@@ -109,7 +109,7 @@ let get_tag_and_encoding (abbrev : font_abbrev) =
   | Some((_, tag, _, _, _, enc)) -> (tag, enc)
 
 
-let raw_length_to_skip_length (fontsize : SkipLength.t) (rawlen : int) =
+let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
@@ -122,7 +122,7 @@ let get_glyph_id dcdr (gidtbl : GlyphIDTable.t) (uch : Uchar.t) : FontFormat.gly
       | Some(gid) -> begin gidtbl |> GlyphIDTable.add uch gid ; Some(gid) end
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : SkipLength.t) (word : InternalText.t) : OutputText.t * skip_width * skip_height * skip_depth =
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : InternalText.t) : OutputText.t * length * length * length =
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None                                     -> raise (InvalidFontAbbrev(abbrev))

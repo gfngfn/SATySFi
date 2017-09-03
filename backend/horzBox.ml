@@ -1,5 +1,5 @@
 
-module SkipLength
+module Length
 : sig
     type t
     val zero : t
@@ -37,12 +37,12 @@ module SkipLength
     let show = string_of_float
   end
 
-let ( +% ) = SkipLength.add
-let ( -% ) = SkipLength.subtr
-let ( *% ) = SkipLength.mult
-let ( /% ) = SkipLength.div
-let ( <% ) = SkipLength.less_than
-let ( <=% ) = SkipLength.leq
+let ( +% ) = Length.add
+let ( -% ) = Length.subtr
+let ( *% ) = Length.mult
+let ( /% ) = Length.div
+let ( <% ) = Length.less_than
+let ( <=% ) = Length.leq
 
 
 let ( @|> ) = ( |> )
@@ -52,15 +52,15 @@ let ( @|> ) = ( |> )
      ---- *)
 
 
-type skip_width  = SkipLength.t
-type skip_height = SkipLength.t
-type skip_depth  = SkipLength.t
+type length = Length.t
 
-type skip_info =
+type point = length * length
+
+type length_info =
   {
-    natural     : skip_width;
-    shrinkable  : skip_width;
-    stretchable : skip_width;
+    natural     : length;
+    shrinkable  : length;
+    stretchable : length;
     fils        : int;
   }
 
@@ -80,17 +80,15 @@ type encoding_in_pdf =
   | UTF16BE
   | IdentityH
 
-type font_info = font_abbrev * SkipLength.t
+type font_info = font_abbrev * Length.t
 
 type paddings =
   {
-    paddingL : skip_width;
-    paddingR : skip_width;
-    paddingT : skip_width;
-    paddingB : skip_width;
+    paddingL : length;
+    paddingR : length;
+    paddingT : length;
+    paddingB : length;
   }
-
-type point = SkipLength.t * SkipLength.t
 
 type path_element =
   | LineTo   of point
@@ -100,42 +98,42 @@ type path =
   | GeneralPath of point * path_element list
   | Rectangle   of point * point
 
-type decoration = skip_width * skip_height -> skip_width -> skip_height -> skip_depth -> path list
+type decoration = point -> length -> length -> length -> path list
 
 type pure_horz_box =
-  | PHOuterEmpty  of skip_width * skip_width * skip_width
+  | PHOuterEmpty  of length * length * length
   | PHOuterFil
   | PHOuterFrame  of paddings * decoration * horz_box list
   | PHFixedString of font_info * InternalText.t
-  | PHFixedEmpty  of skip_width
-  | PHFixedFrame  of paddings * skip_width * decoration * horz_box list
+  | PHFixedEmpty  of length
+  | PHFixedFrame  of paddings * length * decoration * horz_box list
   | PHInnerFrame  of paddings * decoration * horz_box list
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
-  | HorzFrameBreakable of paddings * skip_width * skip_width * decoration * decoration * decoration * decoration * horz_box list
+  | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
   | EvHorzEmpty
-  | EvHorzFrame  of skip_width * skip_width * decoration * evaled_horz_box list
+  | EvHorzFrame  of length * length * decoration * evaled_horz_box list
 
 and evaled_horz_box =
-  | EvHorz of skip_width * evaled_horz_box_main
+  | EvHorz of length * evaled_horz_box_main
 
 type vert_box =
-  | VertParagraph      of skip_height * horz_box list  (* temporary; should contain more information as arguments *)
-  | VertFixedBreakable of skip_height
+  | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
+  | VertFixedBreakable of length
 
 type intermediate_vert_box =
-  | ImVertLine           of skip_height * skip_depth * evaled_horz_box list
-  | ImVertFixedBreakable of skip_height
+  | ImVertLine           of length * length * evaled_horz_box list
+  | ImVertFixedBreakable of length
 (*
-  | ImVertUnbreakableSkip of skip_height * skip_height * skip_height
+  | ImVertUnbreakableSkip of length * length * length
 *)
 
 type evaled_vert_box =
-  | EvVertLine       of skip_height * skip_depth * evaled_horz_box list
-  | EvVertFixedEmpty of skip_height
+  | EvVertLine       of length * length * evaled_horz_box list
+  | EvVertFixedEmpty of length

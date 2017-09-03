@@ -10,9 +10,9 @@ let ( ~@ ) = int_of_float
 
 let widinfo_zero =
   {
-    natural= SkipLength.zero;
-    shrinkable= SkipLength.zero;
-    stretchable= SkipLength.zero;
+    natural= Length.zero;
+    shrinkable= Length.zero;
+    stretchable= Length.zero;
     fils= 0;
   }
 
@@ -30,24 +30,24 @@ type frame_kind =
   | MiddleFrame
   | TailFrame
 
-type metrics = skip_info * skip_height * skip_depth
+type metrics = length_info * length * length
 
 type lb_pure_box =
   | Atom        of metrics * evaled_horz_box_main
   | OuterFrame  of metrics * decoration * lb_pure_box list
-  | FixedFrame  of skip_width * skip_height * skip_depth * decoration * lb_pure_box list
+  | FixedFrame  of length * length * length * decoration * lb_pure_box list
 
 type lb_box =
   | LBPure           of lb_pure_box
   | LBDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_box option * lb_pure_box option * lb_pure_box option
-  | LBFrameBreakable of paddings * skip_width * skip_width * decoration * decoration * decoration * decoration * lb_box list
+  | LBFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * lb_box list
 
 
 let natural wid =
   {
     natural     = wid;
-    shrinkable  = SkipLength.zero;
-    stretchable = SkipLength.zero;
+    shrinkable  = Length.zero;
+    stretchable = Length.zero;
     fils        = 0;
   }
 
@@ -59,7 +59,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | FixedFrame(wid, hgt, dpt, _, _) -> (natural wid, hgt, dpt)
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
-  lphblst @|> (widinfo_zero, SkipLength.zero, SkipLength.zero) @|> List.fold_left (fun (wiacc, hacc, dacc) lphb ->
+  lphblst @|> (widinfo_zero, Length.zero, Length.zero) @|> List.fold_left (fun (wiacc, hacc, dacc) lphb ->
     let (wi, h, d) = get_metrics lphb in
       (wiacc +%@ wi, max hacc h, min dacc d)
   )
@@ -81,15 +81,15 @@ let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
 
 let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
   List.append
-    (LBPure(Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: lhblst)
-    (LBPure(Atom((natural pads.paddingR, SkipLength.zero, SkipLength.zero), EvHorzEmpty)) :: [])
+    (LBPure(Atom((natural pads.paddingL, Length.zero, Length.zero), EvHorzEmpty)) :: lhblst)
+    (LBPure(Atom((natural pads.paddingR, Length.zero, Length.zero), EvHorzEmpty)) :: [])
 
 
-let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : skip_info) (pads : paddings) =
+let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info) (pads : paddings) =
   let lphblstnew =
     List.append
-      (Atom((natural pads.paddingL, SkipLength.zero, SkipLength.zero), EvHorzEmpty) :: lphblst)
-      (Atom((natural pads.paddingR, SkipLength.zero, SkipLength.zero), EvHorzEmpty) :: [])
+      (Atom((natural pads.paddingL, Length.zero, Length.zero), EvHorzEmpty) :: lphblst)
+      (Atom((natural pads.paddingR, Length.zero, Length.zero), EvHorzEmpty) :: [])
   in
   let widinfonew =
     {
@@ -160,13 +160,13 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
         Atom((natural wid, hgt, dpt), EvHorzString(info, otxt))
 
   | PHFixedEmpty(wid) ->
-      Atom((natural wid, SkipLength.zero, SkipLength.zero), EvHorzEmpty)
+      Atom((natural wid, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterEmpty(wid, widshrink, widstretch) ->
-      Atom(({ natural = wid; shrinkable = widshrink; stretchable = widstretch; fils = 0; }, SkipLength.zero, SkipLength.zero), EvHorzEmpty)
+      Atom(({ natural = wid; shrinkable = widshrink; stretchable = widstretch; fils = 0; }, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterFil ->
-      Atom(({ natural = SkipLength.zero; shrinkable = SkipLength.zero; stretchable = SkipLength.zero; fils = 1; }, SkipLength.zero, SkipLength.zero), EvHorzEmpty)
+      Atom(({ natural = Length.zero; shrinkable = Length.zero; stretchable = Length.zero; fils = 1; }, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
@@ -197,16 +197,16 @@ module WidthMap
 : sig
     type t
     val empty : t
-    val add_width_all : skip_info -> t -> t
-    val add : DiscretionaryID.t -> skip_info -> t -> t
-    val iter : (DiscretionaryID.t -> skip_info -> bool ref -> unit) -> t -> unit
+    val add_width_all : length_info -> t -> t
+    val add : DiscretionaryID.t -> length_info -> t -> t
+    val iter : (DiscretionaryID.t -> length_info -> bool ref -> unit) -> t -> unit
     val remove : DiscretionaryID.t -> t -> t
   end
 = struct
 
     module DiscretionaryIDMap = Map.Make (DiscretionaryID)
 
-    type t = (skip_info * bool ref) DiscretionaryIDMap.t
+    type t = (length_info * bool ref) DiscretionaryIDMap.t
 
     let empty = DiscretionaryIDMap.empty
 
@@ -214,7 +214,7 @@ module WidthMap
 
     let iter f = DiscretionaryIDMap.iter (fun dscrid (widinfo, bref) -> f dscrid widinfo bref)
 
-    let add_width_all (widinfo : skip_info) (wmap : t) : t =
+    let add_width_all (widinfo : length_info) (wmap : t) : t =
       wmap |> DiscretionaryIDMap.map (fun (distinfo, bref) -> (distinfo +%@ widinfo, bref))
 
     let remove = DiscretionaryIDMap.remove
@@ -237,9 +237,9 @@ module RemovalSet = MutableSet.Make
   (DiscretionaryID)
 
 
-let paragraph_width = SkipLength.of_pdf_point 450.0 (* temporary; should be variable *)
+let paragraph_width = Length.of_pdf_point 450.0 (* temporary; should be variable *)
 
-let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bool * float * skip_width =
+let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool * float * length =
   let widnatural = widinfo_total.natural in
   let widstretch = widinfo_total.stretchable in
   let widshrink  = widinfo_total.shrinkable in
@@ -251,17 +251,17 @@ let calculate_ratios (widrequired : skip_width) (widinfo_total : skip_info) : bo
       if nfil > 0 then  (* -- when the line contains fils -- *)
         (0., widdiff *% (1. /. (~. nfil)))
       else if nfil = 0 then
-        if SkipLength.is_nearly_zero widstretch then (+.infinity, SkipLength.zero) else
-          (widdiff /% widstretch, SkipLength.zero)
+        if Length.is_nearly_zero widstretch then (+.infinity, Length.zero) else
+          (widdiff /% widstretch, Length.zero)
       else
         assert false
     else
-      if SkipLength.is_nearly_zero widshrink then (-.infinity, SkipLength.zero) else (widdiff /% widshrink, SkipLength.zero)
+      if Length.is_nearly_zero widshrink then (-.infinity, Length.zero) else (widdiff /% widshrink, Length.zero)
   in
     (is_short, ratio, widperfil)
 
 
-let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_box list) : evaled_horz_box list * skip_height * skip_depth * badness =
+let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length * badness =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
   let (is_short, ratio, widperfil) = calculate_ratios wid_req widinfo_total in
   let rec main_conversion is_short ratio widperfil lphb =
@@ -283,7 +283,7 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_box list) : e
         let pairlst = lphblstsub |> List.map (main_conversion is_short ratio widperfil) in
         let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
         let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
-        let wid_total = evhblst @|> SkipLength.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
+        let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
           (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)), totalpb)
 
     | FixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
@@ -304,29 +304,29 @@ let rec determine_widths (wid_req : skip_width) (lphblst : lb_pure_box list) : e
       let checksum =
         evhblst |> List.map (function
           | EvHorz(wid, _) -> wid
-        ) |> List.fold_left ( +% ) SkipLength.zero
+        ) |> List.fold_left ( +% ) Length.zero
       in
-      let () = print_for_debug ("natural = " ^ (SkipLength.show widinfo_total.natural) ^ ", " ^
+      let () = print_for_debug ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
                                 (if is_short then
-                                  "stretchable = " ^ (SkipLength.show widinfo_total.stretchable)
+                                  "stretchable = " ^ (Length.show widinfo_total.stretchable)
                                  else
-                                  "shrinkable = " ^ (SkipLength.show widinfo_total.shrinkable)) ^ ", " ^
+                                  "shrinkable = " ^ (Length.show widinfo_total.shrinkable)) ^ ", " ^
                                 "nfil = " ^ (string_of_int widinfo_total.fils) ^ ", " ^
                                 "ratio = " ^ (string_of_float ratio) ^ ", " ^
-                                "checksum = " ^ (SkipLength.show checksum)) in
+                                "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
         (evhblst, hgt_total, dpt_total, badns)
 
 
 (* -- distance from the top of the paragraph and its first baseline -- *)
-let first_leading = SkipLength.of_pdf_point 10.  (* temporary; should be variable *)
+let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (leading_required : Length.t) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
-  let calculate_vertical_skip (dptprev : skip_depth) (hgt : skip_height) : SkipLength.t =
+  let calculate_vertical_skip (dptprev : length) (hgt : length) : Length.t =
     let leadingsub = leading_required -% dptprev -% hgt in
-      if leadingsub <% SkipLength.zero then SkipLength.zero else leadingsub
+      if leadingsub <% Length.zero then Length.zero else leadingsub
   in
 
   let append_framed_lines
@@ -401,7 +401,7 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
         (List.rev accline) :: acclines
   in
 
-  let rec arrange (dptprev : skip_depth) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprev : length) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
           let (evhblst, hgt, dpt, _) = determine_widths paragraph_width line in
@@ -415,9 +415,9 @@ let break_into_lines (leading_required : SkipLength.t) (path : DiscretionaryID.t
     arrange (leading_required -% first_leading) [] (List.rev acclines)
 
 
-let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediate_vert_box list =
+let main (leading_required : Length.t) (hblst : horz_box list) : intermediate_vert_box list =
 
-  let get_badness_for_line_breaking (widrequired : skip_width) (widinfo_total : skip_info) : badness =
+  let get_badness_for_line_breaking (widrequired : length) (widinfo_total : length_info) : badness =
     let criterion_short = 10. in
     let criterion_long = -.1. in
     let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
@@ -433,7 +433,7 @@ let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediat
 
   let found_candidate = ref false in
 
-  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : skip_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
+  let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : length_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
     begin
       LineBreakGraph.add_vertex grph dscridto ;
       found_candidate := false ;
@@ -504,7 +504,7 @@ let main (leading_required : SkipLength.t) (hblst : horz_box list) : intermediat
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
-          [ImVertLine(SkipLength.zero, SkipLength.zero, [])] (* temporary *)
+          [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
           break_into_lines leading_required path lhblst
   end
