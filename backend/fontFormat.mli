@@ -14,6 +14,13 @@ exception NoGlyphID                         of glyph_id
 
 val get_decoder : file_path -> unit -> decoder
 
+module GlyphMetricsTable : sig
+  type t
+  val create : int -> t
+  val add : glyph_id -> int * int * int -> t -> unit
+  val find_opt : glyph_id -> t -> (int * int * int) option
+end
+
 module KerningTable : sig
   type t
   val create : int -> t
@@ -52,7 +59,7 @@ end
 
 module CIDFontType0 : sig
   type font
-  val of_decoder : decoder -> cid_system_info -> font
+  val of_decoder : decoder -> (glyph_id * int) list -> cid_system_info -> font
 end
 
 module CIDFontType2 : sig
@@ -71,11 +78,12 @@ type font =
   | TrueType of TrueType.font
   | Type0    of Type0.font
 
-val adobe_japan1 : cid_system_info
-
 val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 
 val get_glyph_metrics : decoder -> glyph_id -> int * int * int
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
+
+val adobe_japan1 : cid_system_info
+val adobe_identity : cid_system_info

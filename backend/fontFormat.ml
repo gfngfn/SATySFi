@@ -48,6 +48,37 @@ let get_decoder (src : file_path) () : Otfm.decoder =
     dcdr
 
 
+module GlyphMetricsTable
+: sig
+    type t
+    val create : int -> t
+    val add : glyph_id -> int * int * int -> t -> unit
+    val find_opt : glyph_id -> t -> (int * int * int) option
+    val to_width_list : t -> (glyph_id * int) list
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = glyph_id
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = (int * int * int) Ht.t
+
+    let create = Ht.create
+
+    let add gid (w, h, d) gmtbl = Ht.add gmtbl gid (w, h, d)
+
+    let find_opt gid gmtbl =
+      try Some(Ht.find gmtbl gid) with
+      | Not_found -> None
+
+    let to_width_list gmtbl =
+      Ht.fold (fun gid (w, _, _) acc -> (gid, w) :: acc) gmtbl []
+  end
+
+
 module KerningTable
 : sig
     type t
@@ -221,7 +252,7 @@ let get_glyph_height_and_depth dcdr (gid : Otfm.glyph_id) =
   with FontFormatBroken(_) -> (500, -100)  (* temporary; for font formats that do not contain the `loca` table *)
 
 
-let get_uchar_horz_metrics dcdr (gidkey : Otfm.glyph_id) : int * int =
+let get_glyph_horz_metrics dcdr (gidkey : Otfm.glyph_id) : int * int =
   let hmtxres =
     None |> Otfm.hmtx dcdr (fun accopt gid adv lsb ->
       match accopt with
@@ -237,7 +268,7 @@ let get_uchar_horz_metrics dcdr (gidkey : Otfm.glyph_id) : int * int =
 
 let get_glyph_advance_width dcdr gid =
   try
-    let (adv, _) = get_uchar_horz_metrics dcdr gid in adv
+    let (adv, _) = get_glyph_horz_metrics dcdr gid in adv
   with
   | NoGlyphID(_) -> 0
 
@@ -405,17 +436,19 @@ module CIDFontType0
         base_font       : string;
         font_descriptor : font_descriptor;
         dw              : int option;
+        w               : (glyph_id * int) list;
         dw2             : (int * int) option;
         (* temporary; should contain more fields; /W, /W2 *)
       }
 
-    let of_decoder dcdr cidsysinfo =
+    let of_decoder dcdr widlst cidsysinfo =
       let base_font = get_postscript_name dcdr in
         {
           cid_system_info = cidsysinfo;
           base_font       = base_font;
           font_descriptor = font_descriptor_of_decoder dcdr base_font;
           dw              = None;  (* temporary *)
+          w               = widlst;
           dw2             = None;  (* temporary *)
         }
   end
@@ -504,10 +537,20 @@ module Type0
       ]
 
 
+    let pdfarray_of_width_list widlst =
+      let arr =
+        widlst |> List.fold_left (fun acc (gid, w) ->
+          Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
+        ) []
+      in
+        Pdf.Array(arr)
+
+
     let add_cid_type_0 pdf cidty0font =
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
+      let widlst     = cidty0font.CIDFontType0.w in
       let irdescr = add_font_descriptor pdf fontdescr base_font in
       let objdescend =
         Pdf.Dictionary[
@@ -516,7 +559,8 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-            (* should add more; /DW, /W, /DW2, /W2 *)
+          ("/W"             , pdfarray_of_width_list widlst);
+            (* should add more; /DW, /DW2, /W2 *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
@@ -578,9 +622,6 @@ let cid_font_type_0 cidty0font fontname cmap =
   let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
     Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
 
-let adobe_japan1 =
-  {
-    registry   = "Adobe";
-    ordering   = "Japan1";
-    supplement = 6;
-  }
+let adobe_japan1 = { registry = "Adobe"; ordering = "Japan1"; supplement = 6; }
+let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0; }
+
