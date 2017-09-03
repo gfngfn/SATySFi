@@ -272,8 +272,9 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
             (EvHorz(widinfo.natural +% widperfil, evhb), 0)
           else if nfil = 0 then
             let widdiff =
-              if is_short then widinfo.stretchable *% ratio
-                          else widinfo.shrinkable *% ratio
+              if is_short then
+                widinfo.stretchable *% ratio
+              else Length.max (widinfo.shrinkable *% ratio) (Length.zero -% widinfo.shrinkable)
             in
               (EvHorz(widinfo.natural +% widdiff, evhb), abs (~@ (ratio *. 100.0)))
           else
@@ -322,9 +323,9 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
 let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (leading_required : Length.t) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
-  let calculate_vertical_skip (dptprev : length) (hgt : length) : Length.t =
+  let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let leadingsub = leading_required -% dptprev -% hgt in
       if leadingsub <% Length.zero then Length.zero else leadingsub
   in
@@ -415,7 +416,7 @@ let break_into_lines (leading_required : Length.t) (path : DiscretionaryID.t lis
     arrange (leading_required -% first_leading) [] (List.rev acclines)
 
 
-let main (leading_required : Length.t) (hblst : horz_box list) : intermediate_vert_box list =
+let main (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : length) (widinfo_total : length_info) : badness =
     let criterion_short = 10. in
