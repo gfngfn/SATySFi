@@ -103,7 +103,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
           | Not_found -> assert false
         in
           match !lblref with
-          | Infinite                   -> assert false
+          | Infinite                   -> assert false  (* doubtful; may contain infinite edge *)
           | Finite(_, None)            -> List.rev acc
           | Finite(_, Some(vtxparent)) -> backtrack (vtxparent :: acc) vtxparent
       in
