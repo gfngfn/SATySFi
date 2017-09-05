@@ -56,12 +56,22 @@ type length = Length.t
 
 type point = length * length
 
+type stretchable =
+  | FiniteStretch of length
+  | Fils          of int
+
+let add_stretchable strc1 strc2 =
+  match (strc1, strc2) with
+  | (FiniteStretch(w1), FiniteStretch(w2)) -> FiniteStretch(w1 +% w2)
+  | (Fils(i1), Fils(i2))                   -> Fils(i1 + i2)
+  | (Fils(i1), _)                          -> Fils(i1)
+  | (_, Fils(i2))                          -> Fils(i2)
+  
 type length_info =
   {
     natural     : length;
     shrinkable  : length;
-    stretchable : length;
-    fils        : int;
+    stretchable : stretchable;
   }
 
 type pure_badness = int

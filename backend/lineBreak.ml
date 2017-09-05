@@ -10,25 +10,17 @@ let ( ~@ ) = int_of_float
 
 let widinfo_zero =
   {
-    natural= Length.zero;
-    shrinkable= Length.zero;
-    stretchable= Length.zero;
-    fils= 0;
+    natural     = Length.zero;
+    shrinkable  = Length.zero;
+    stretchable = FiniteStretch(Length.zero);
   }
 
 let ( +%@ ) wi1 wi2 =
   {
-    natural= wi1.natural +% wi2.natural;
-    shrinkable= wi1.shrinkable +% wi2.shrinkable;
-    stretchable= wi1.stretchable +% wi2.stretchable;
-    fils= wi1.fils + wi2.fils;
+    natural     = wi1.natural +% wi2.natural;
+    shrinkable  = wi1.shrinkable +% wi2.shrinkable;
+    stretchable = add_stretchable wi1.stretchable wi2.stretchable;
   }
-
-type frame_kind =
-  | StandaloneFrame
-  | HeadFrame
-  | MiddleFrame
-  | TailFrame
 
 type metrics = length_info * length * length
 
@@ -47,8 +39,7 @@ let natural wid =
   {
     natural     = wid;
     shrinkable  = Length.zero;
-    stretchable = Length.zero;
-    fils        = 0;
+    stretchable = FiniteStretch(Length.zero);
   }
 
 
@@ -96,7 +87,6 @@ let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info
       natural     = widinfo.natural +% pads.paddingL +% pads.paddingR;
       shrinkable  = widinfo.shrinkable;
       stretchable = widinfo.stretchable;
-      fils        = widinfo.fils;
     }
   in
     (lphblstnew, widinfonew)
@@ -163,10 +153,10 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
       Atom((natural wid, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterEmpty(wid, widshrink, widstretch) ->
-      Atom(({ natural = wid; shrinkable = widshrink; stretchable = widstretch; fils = 0; }, Length.zero, Length.zero), EvHorzEmpty)
+      Atom(({ natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterFil ->
-      Atom(({ natural = Length.zero; shrinkable = Length.zero; stretchable = Length.zero; fils = 1; }, Length.zero, Length.zero), EvHorzEmpty)
+      Atom(({ natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, Length.zero, Length.zero), EvHorzEmpty)
 
   | PHOuterFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
@@ -241,20 +231,18 @@ let paragraph_width = Length.of_pdf_point 450.0 (* temporary; should be variable
 
 let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool * float * length =
   let widnatural = widinfo_total.natural in
-  let widstretch = widinfo_total.stretchable in
   let widshrink  = widinfo_total.shrinkable in
-  let nfil       = widinfo_total.fils in
+  let stretch = widinfo_total.stretchable in
   let widdiff = widrequired -% widnatural in
   let is_short = (widnatural <% widrequired) in
   let (ratio, widperfil) =
     if is_short then
-      if nfil > 0 then  (* -- when the line contains fils -- *)
-        (0., widdiff *% (1. /. (~. nfil)))
-      else if nfil = 0 then
-        if Length.is_nearly_zero widstretch then (+.infinity, Length.zero) else
-          (widdiff /% widstretch, Length.zero)
-      else
-        assert false
+      match stretch with
+      | Fils(nfil)  when nfil > 0 -> (0., widdiff *% (1. /. (~. nfil)))
+      | Fils(_)                   -> assert false  (* -- number of fils cannot be negative -- *)
+      | FiniteStretch(widstretch) ->
+          if Length.is_nearly_zero widstretch then (+.infinity, Length.zero) else
+            (widdiff /% widstretch, Length.zero)
     else
       if Length.is_nearly_zero widshrink then (-.infinity, Length.zero) else (widdiff /% widshrink, Length.zero)
   in
@@ -267,18 +255,19 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
   let rec main_conversion is_short ratio widperfil lphb =
     match lphb with
     | Atom((widinfo, _, _), evhb) ->
-        let nfil = widinfo.fils in
-          if nfil > 0 then
-            (EvHorz(widinfo.natural +% widperfil, evhb), 0)
-          else if nfil = 0 then
-            let widdiff =
-              if is_short then
-                widinfo.stretchable *% ratio
-              else Length.max (widinfo.shrinkable *% ratio) (Length.zero -% widinfo.shrinkable)
-            in
-              (EvHorz(widinfo.natural +% widdiff, evhb), abs (~@ (ratio *. 100.0)))
-          else
-            assert false  (* -- nfil cannot be negative -- *)
+        begin
+          match widinfo.stretchable with
+          | Fils(nfil)  when nfil > 0 -> (EvHorz(widinfo.natural +% widperfil, evhb), 0)
+          | Fils(_)                   -> assert false
+          | FiniteStretch(widstretch) ->
+              let widdiff =
+                if is_short then
+                  widstretch *% ratio
+                else
+                  Length.max (widinfo.shrinkable *% ratio) (Length.zero -% widinfo.shrinkable)
+              in
+                (EvHorz(widinfo.natural +% widdiff, evhb), abs (~@ (ratio *. 100.0)))
+        end
 
     | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let pairlst = lphblstsub |> List.map (main_conversion is_short ratio widperfil) in
@@ -309,10 +298,14 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
       in
       let () = print_for_debug ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
                                 (if is_short then
-                                  "stretchable = " ^ (Length.show widinfo_total.stretchable)
+                                    let msg =
+                                      match widinfo_total.stretchable with
+                                      | FiniteStretch(widstretch) -> Length.show widstretch
+                                      | Fils(i)                   -> "infinite * " ^ (string_of_int i)
+                                    in
+                                  "stretchable = " ^ msg
                                  else
                                   "shrinkable = " ^ (Length.show widinfo_total.shrinkable)) ^ ", " ^
-                                "nfil = " ^ (string_of_int widinfo_total.fils) ^ ", " ^
                                 "ratio = " ^ (string_of_float ratio) ^ ", " ^
                                 "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
@@ -334,10 +327,7 @@ let break_into_lines (leading_required : length) (path : DiscretionaryID.t list)
         (lines_in_frame : (lb_pure_box list) list)
         (acclines_before : (lb_pure_box list) list)
         (accline_before : lb_pure_box list)
-        (decoS : decoration)
-        (decoH : decoration)
-        (decoM : decoration)
-        (decoT : decoration)
+        (decoS : decoration) (decoH : decoration) (decoM : decoration) (decoT : decoration)
         (pads : paddings)
         : (lb_pure_box list) list * lb_pure_box list =
     let rec aux
