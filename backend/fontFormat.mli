@@ -21,6 +21,20 @@ module GlyphMetricsTable : sig
   val find_opt : glyph_id -> t -> (int * int * int) option
 end
 
+type ligature_matching =
+  | MatchPrefix
+  | MatchExactly of glyph_id * glyph_id list
+  | NoMatch
+
+module LigatureTable : sig
+  type t
+  val create : int -> t
+  val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
+  val match_prefix : glyph_id list -> t -> ligature_matching
+end
+
+val get_ligature_table : decoder -> LigatureTable.t
+
 module KerningTable : sig
   type t
   val create : int -> t

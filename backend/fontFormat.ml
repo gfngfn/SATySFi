@@ -90,9 +90,7 @@ module LigatureTable
     type t
     val create : int -> t
     val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
-(*
     val match_prefix : glyph_id list -> t -> ligature_matching
-*)
   end
 = struct
     module Ht = Hashtbl.Make
@@ -108,8 +106,52 @@ module LigatureTable
 
     let add gid liginfolst ligtbl = Ht.add ligtbl gid liginfolst
 
-    let match_prefix gidlst t = ()  (* remains *)
+    let rec lookup matchacc liginfolst gidlst =
+      match liginfolst with
+      | []                 -> NoMatch
+      | ([], gidlig) :: _  -> MatchExactly(gidlig, gidlst)
+      | _ ->
+          match gidlst with
+          | []          -> MatchPrefix                
+          | gid :: tail ->
+              begin
+                match liginfolst with
+                | [] -> NoMatch
+                | _  ->
+                let liginfooptlst =
+                  liginfolst |> List.map (fun (gidtail, gidlig) ->
+                    match gidtail with
+                    | []      -> None
+                    | g :: gs -> Some((gs, gidlig))
+                  )
+                in
+                let liginfoacc = liginfooptlst |> Util.list_some in
+                  lookup (gid :: matchacc) (List.rev liginfoacc) tail
+              end
+
+    let match_prefix gidlst ligtbl =
+      match gidlst with
+      | []                -> NoMatch
+      | gidfst :: gidtail ->
+          try
+            let liginfolst = Ht.find ligtbl gidfst in
+            lookup [] liginfolst gidtail
+          with
+          | Not_found -> NoMatch
 end
+
+
+let get_ligature_table dcdr =
+  let ligtbl = LigatureTable.create 32 (* temporary; size of the hash table *) in
+  let res =
+    () |> Otfm.gsub dcdr "latn" (* temporary; should depend on script and language *) None (fun () (gid, liginfolst) ->
+      ligtbl |> LigatureTable.add gid liginfolst
+    )
+  in
+  match res with
+  | Ok(None)     -> ligtbl
+  | Ok(Some(())) -> ligtbl
+  | Error(e)     -> raise (FontFormatBroken(e))
 
 
 module KerningTable

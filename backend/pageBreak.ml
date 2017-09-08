@@ -135,17 +135,17 @@ let () =
   begin
     FontInfo.initialize () ;
     let font0 = ("Arno", ~% 16.) in
-    let font1 = ("Hlv", ~% 16.) in
-    let fontL = ("Hlv", ~% 32.) in
-
+    let font1 = (* ("Hlv", ~% 16.) *) font0 in
+    let fontL = (* ("Hlv", ~% 32.) *) ("Arno", ~% 32.) in
+(*
     let fontK = ("KozMin", ~% 12.) in
-
+*)
     let word s = HorzPure(PHFixedString(font0, InternalText.of_utf_8 s)) in
     let word1 s = HorzPure(PHFixedString(font1, InternalText.of_utf_8 s)) in
     let wordL s = HorzPure(PHFixedString(fontL, InternalText.of_utf_8 s)) in
-
+(*
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
-
+*)
     let pads = { paddingL = ~% 2.; paddingR = ~% 2.; paddingT= ~% 2.; paddingB = ~% 2.} in
     let decostd =
       (fun (xpos, ypos) wid hgt dpt ->
@@ -264,11 +264,13 @@ let () =
 
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [
+(*
           wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
           wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
+*)
           framed [
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; framed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
@@ -277,11 +279,13 @@ let () =
 
         VertFixedBreakable(paragraph_skip);
         VertParagraph(~% 20., [
+(*
           wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
           wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
+*)
           iframed [
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
