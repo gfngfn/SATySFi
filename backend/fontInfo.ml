@@ -186,7 +186,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
           let gidoptlst = uword |> List.map (get_glyph_id dcdr gidtbl) in
           let gidlst = Util.list_some gidoptlst in
           let gidligedlst =
-(*
+
             let rec aux acc gidrest =
               match gidrest with
               | []      -> List.rev acc
@@ -197,8 +197,6 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
                   | FontFormat.MatchExactly(gidlig, gidtail) -> aux (gidlig :: acc) gidtail
             in
               aux [] gidlst
-*) (* contains bugs *)
-            gidlst
           in
           let (_, otxt, rawwid, rawhgt, rawdpt) =
             gidligedlst @|> (None, init, 0, 0, 0) @|> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->

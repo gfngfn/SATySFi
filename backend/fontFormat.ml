@@ -106,28 +106,19 @@ module LigatureTable
 
     let add gid liginfolst ligtbl = Ht.add ligtbl gid liginfolst
 
-    let rec lookup matchacc liginfolst gidlst =
+    let rec prefix lst1 lst2 =
+      match (lst1, lst2) with
+      | ([], _)                                              -> Some(lst2)
+      | (head1 :: tail1, head2 :: tail2)  when head1 = head2 -> prefix tail1 tail2
+      | _                                                    -> None
+
+    let rec lookup liginfolst gidlst =
       match liginfolst with
-      | []                 -> NoMatch
-      | ([], gidlig) :: _  -> MatchExactly(gidlig, gidlst)
-      | _ ->
-          match gidlst with
-          | []          -> MatchPrefix                
-          | gid :: tail ->
-              begin
-                match liginfolst with
-                | [] -> NoMatch
-                | _  ->
-                let liginfooptlst =
-                  liginfolst |> List.map (fun (gidtail, gidlig) ->
-                    match gidtail with
-                    | []      -> None
-                    | g :: gs -> Some((gs, gidlig))
-                  )
-                in
-                let liginfoacc = liginfooptlst |> Util.list_some in
-                  lookup (gid :: matchacc) (List.rev liginfoacc) tail
-              end
+      | []                               -> NoMatch
+      | (gidtail, gidlig) :: liginfotail ->
+          match prefix gidtail gidlst with
+          | None          -> lookup liginfotail gidlst
+          | Some(gidrest) -> MatchExactly(gidlig, gidrest)
 
     let match_prefix gidlst ligtbl =
       match gidlst with
@@ -135,7 +126,7 @@ module LigatureTable
       | gidfst :: gidtail ->
           try
             let liginfolst = Ht.find ligtbl gidfst in
-            lookup [] liginfolst gidtail
+            lookup liginfolst gidtail
           with
           | Not_found -> NoMatch
 end
