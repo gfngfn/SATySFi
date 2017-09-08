@@ -79,6 +79,39 @@ module GlyphMetricsTable
   end
 
 
+type ligature_matching =
+  | MatchPrefix
+  | MatchExactly of glyph_id * glyph_id list
+  | NoMatch
+
+
+module LigatureTable
+: sig
+    type t
+    val create : int -> t
+    val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
+(*
+    val match_prefix : glyph_id list -> t -> ligature_matching
+*)
+  end
+= struct
+    module Ht = Hashtbl.Make
+      (struct
+        type t = glyph_id
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = ((glyph_id list * glyph_id) list) Ht.t
+
+    let create = Ht.create
+
+    let add gid liginfolst ligtbl = Ht.add ligtbl gid liginfolst
+
+    let match_prefix gidlst t = ()  (* remains *)
+end
+
+
 module KerningTable
 : sig
     type t
