@@ -12,37 +12,11 @@ exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
 
-val get_decoder : file_path -> unit -> decoder
-
-module GlyphMetricsTable : sig
-  type t
-  val create : int -> t
-  val add : glyph_id -> int * int * int -> t -> unit
-  val find_opt : glyph_id -> t -> (int * int * int) option
-end
+val get_decoder : file_path -> decoder
 
 type ligature_matching =
-  | MatchPrefix
   | MatchExactly of glyph_id * glyph_id list
   | NoMatch
-
-module LigatureTable : sig
-  type t
-  val create : int -> t
-  val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
-  val match_prefix : glyph_id list -> t -> ligature_matching
-end
-
-val get_ligature_table : decoder -> LigatureTable.t
-
-module KerningTable : sig
-  type t
-  val create : int -> t
-  val add : glyph_id -> glyph_id -> int -> t -> unit
-  val find_opt : glyph_id -> glyph_id -> t -> int option
-end
-
-val get_kerning_table : decoder -> KerningTable.t
 
 type 'a resource =
   | Data           of 'a
@@ -101,3 +75,9 @@ val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
 val adobe_japan1 : cid_system_info
 val adobe_identity : cid_system_info
+
+val get_decoder : file_path -> decoder
+
+val match_ligature : decoder -> glyph_id list -> ligature_matching
+
+val find_kerning : decoder -> glyph_id -> glyph_id -> int option
