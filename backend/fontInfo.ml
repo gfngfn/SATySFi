@@ -264,9 +264,9 @@ let get_font_dictionary (pdf : Pdf.t) () =
 let initialize () =
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
-(*
+
     ("Hlv", TrueTypeRegistration(0, 255, Latin1), "./testfonts/HelveticaBlack.ttf");
-*)
+
     ("Arno", (* Type1Registration(0, 255, Latin1) *) CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
 (*
     ("KozMin",

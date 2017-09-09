@@ -135,14 +135,22 @@ end
 let get_ligature_table dcdr =
   let ligtbl = LigatureTable.create 32 (* temporary; size of the hash table *) in
   let res =
-    () |> Otfm.gsub dcdr "latn" (* temporary; should depend on script and language *) None (fun () (gid, liginfolst) ->
-      ligtbl |> LigatureTable.add gid liginfolst
-    )
+    () |> Otfm.gsub dcdr "latn" None "liga" (* temporary; should depend on script and language *)
+      (fun () (gid, liginfolst) ->
+        ligtbl |> LigatureTable.add gid liginfolst
+      )
   in
   match res with
   | Ok(None)     -> ligtbl
   | Ok(Some(())) -> ligtbl
-  | Error(e)     -> raise (FontFormatBroken(e))
+  | Error(e) ->
+      match e with
+      | `Missing_required_table(tag)  when tag = Otfm.Tag.gsub -> ligtbl
+      | _ ->
+          begin
+            Format.printf "@[%a@]" Otfm.pp_error e ;
+            raise (FontFormatBroken(e))
+          end
 
 
 module KerningTable
