@@ -1,7 +1,13 @@
 
+let print_for_debug msg = print_endline msg  (* for debug *)
+
+
 type file_path = string
 
 type glyph_id = Otfm.glyph_id
+
+
+let gid x = x  (* for debug *)
 
 
 let hex_of_glyph_id gid =
@@ -165,8 +171,7 @@ let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
       )
   in
   match res with
-  | Ok(None)     -> ligtbl
-  | Ok(Some(())) -> ligtbl
+  | Ok(())   -> ligtbl
   | Error(e) ->
       match e with
       | `Missing_required_table(tag)
@@ -205,20 +210,49 @@ module KerningTable
   end
 
 
-let get_kerning_table dcdr =
+let get_kerning_table (d : Otfm.decoder) =
   let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
-  let res =
-    () |> Otfm.kern dcdr (fun () kinfo ->
+  begin
+    () |> Otfm.kern d (fun () kinfo ->
       match kinfo with
       | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
       | _                                                                              -> (`Skip, ())
     ) (fun () gid1 gid2 wid ->
       kerntbl |> KerningTable.add gid1 gid2 wid
     )
-  in
-    match res with
-    | Error(e) -> raise (FontFormatBroken(e))
-    | Ok(())   -> kerntbl
+  end |>
+  (function  (* for debug *)
+    | Ok(())   -> print_for_debug "'kern' exists"   (* for debug *)
+    | Error(e) -> print_for_debug "'kern' missing"  (* for debug *)
+  ) |>  (* for debug *)
+  ignore ;
+      match
+        () |> Otfm.gpos d "latn" None "kern"  (* temporary; script and language system should be variable *)
+          (fun () (gid1, pairposlst) ->
+            pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
+              let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d)" gid1 gid2) in  (* for debug *)
+              (match valrcd1.Otfm.x_advance with  (* for debug *)
+              | None      -> ()  (* for debug *)
+              | Some(xa1) -> if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1));  (* for debug *)
+              match valrcd2.Otfm.x_placement with
+              | None      -> ()
+              | Some(xp2) ->
+                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xp2 = %d" xp2) in  (* for debug *)
+                  kerntbl |> KerningTable.add gid1 gid2 xp2
+            )
+          )
+          (fun _ _ () _ -> ())
+      with
+      | Ok(())   ->
+          let () = print_for_debug "'GPOS' exists" in  (* for debug *)
+          kerntbl
+      | Error(e) ->
+          match e with
+          | `Missing_required_table(t)
+              when t = Otfm.Tag.gpos ->
+                let () = print_for_debug "'GPOS' missing" in  (* for debug *)
+                kerntbl
+          | _                        -> raise (FontFormatBroken(e))
 
 
 type decoder = {
@@ -344,7 +378,12 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
     | None      ->
         match get_glyph_id_main dcdr.main uch with
         | None      -> None
-        | Some(gid) -> begin gidtbl |> GlyphIDTable.add uch gid ; Some(gid) end
+        | Some(gid) ->
+            begin
+              gidtbl |> GlyphIDTable.add uch gid;
+(*              print_for_debug (Printf.sprintf "'%c' -> %d" (Uchar.to_char uch) gid) ;  (* for debug *) *)
+              Some(gid)
+            end
 
 
 let get_glyph_raw_contour_list_and_bounding_box (d : Otfm.decoder) gid
