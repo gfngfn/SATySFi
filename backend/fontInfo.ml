@@ -154,7 +154,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
                     match FontFormat.find_kerning dcdr gidprev gid with
                     | None        -> (otxtacc @>> gid, wacc + w)
                     | Some(wkern) ->
-                        let () = print_for_debug (Printf.sprintf "KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern) in  (* for debug *)
+                        let () = print_for_debug (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern) in  (* for debug *)
                         ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
                         (* -- kerning value is negative if two characters are supposed to be closer -- *)
               in

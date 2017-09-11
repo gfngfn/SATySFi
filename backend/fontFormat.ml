@@ -189,23 +189,34 @@ module KerningTable
     val find_opt : glyph_id -> glyph_id -> t -> int option
   end
 = struct
-    module Ht = Hashtbl.Make
+    module HtSingle = Hashtbl.Make
       (struct
         type t = Otfm.glyph_id * Otfm.glyph_id
         let equal = (=)
         let hash = Hashtbl.hash
       end)
 
-    type t = int Ht.t
+    module HtClass = Hashtbl.Make
+      (struct
+        type t = Otfm.class_value * Otfm.class_value
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    type t = int HtSingle.t * int HtClass.t
 
     let create size =
-      Ht.create size
+      let htS = HtSingle.create size in
+      let htC = HtClass.create size in
+        (htS, htC)
 
-    let add gid1 gid2 wid tbl =
-      begin Ht.add tbl (gid1, gid2) wid ; end
-
-    let find_opt gid1 gid2 tbl =
-      try Some(Ht.find tbl (gid1, gid2)) with
+    let add gid1 gid2 wid (htS, htC) =
+      begin HtSingle.add htS (gid1, gid2) wid ; end
+(*
+    let add_class cls1 cls2 wid 
+*)
+    let find_opt gid1 gid2 (htS, htC) =
+      try Some(HtSingle.find htS (gid1, gid2)) with
       | Not_found -> None
   end
 
@@ -231,14 +242,16 @@ let get_kerning_table (d : Otfm.decoder) =
           (fun () (gid1, pairposlst) ->
             pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
               let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d)" gid1 gid2) in  (* for debug *)
-              (match valrcd1.Otfm.x_advance with  (* for debug *)
+              match valrcd1.Otfm.x_advance with  (* for debug *)
               | None      -> ()  (* for debug *)
-              | Some(xa1) -> if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1));  (* for debug *)
+              | Some(xa1) -> let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1) in  (* for debug *)
+                  kerntbl |> KerningTable.add gid1 gid2 xa1
+(*
               match valrcd2.Otfm.x_placement with
               | None      -> ()
               | Some(xp2) ->
                   let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xp2 = %d" xp2) in  (* for debug *)
-                  kerntbl |> KerningTable.add gid1 gid2 xp2
+*)
             )
           )
           (fun _ _ () _ -> ())
