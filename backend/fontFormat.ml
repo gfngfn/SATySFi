@@ -186,6 +186,7 @@ module KerningTable
     type t
     val create : int -> t
     val add : glyph_id -> glyph_id -> int -> t -> unit
+    val add_by_class : Otfm.class_definition list -> Otfm.class_definition list -> (Otfm.class_value * (Otfm.class_value * Otfm.value_record * Otfm.value_record) list) list -> t -> unit
     val find_opt : glyph_id -> glyph_id -> t -> int option
   end
 = struct
@@ -203,21 +204,56 @@ module KerningTable
         let hash = Hashtbl.hash
       end)
 
-    type t = int HtSingle.t * int HtClass.t
+    type subtable = Otfm.class_definition list * Otfm.class_definition list * int HtClass.t
+
+    type t = int HtSingle.t * (subtable list) ref
 
     let create size =
       let htS = HtSingle.create size in
-      let htC = HtClass.create size in
+      let htC = ref [] in
         (htS, htC)
 
-    let add gid1 gid2 wid (htS, htC) =
-      begin HtSingle.add htS (gid1, gid2) wid ; end
-(*
-    let add_class cls1 cls2 wid 
-*)
-    let find_opt gid1 gid2 (htS, htC) =
+    let add gid1 gid2 wid (htS, _) =
+      begin HtSingle.add htS (gid1, gid2) wid; end
+
+    let add_by_class clsdeflst1 clsdeflst2 lst (_, refC) =
+      let htC = HtClass.create 1024 (* temporary *) in
+      begin
+        lst |> List.iter (fun (cls1, pairposlst) ->
+          pairposlst |> List.iter (fun (cls2, valrcd1, valrcd2) ->
+            match valrcd1.Otfm.x_advance with
+            | None      -> ()
+            | Some(xa1) -> HtClass.add htC (cls1, cls2) xa1
+          )
+        );
+        refC := (clsdeflst1, clsdeflst2, htC) :: !refC;
+      end
+
+    let rec to_class_value gid clsdeflst =
+      let iter = to_class_value gid in
+        match clsdeflst with
+        | []                                        -> None
+        | Otfm.GlyphToClass(g, c) :: tail           -> if g = gid then Some(c) else iter tail
+        | Otfm.GlyphRangeToClass(gs, ge, c) :: tail -> if gs <= gid && gid <= ge then Some(c) else iter tail
+      
+
+    let find_opt gid1 gid2 ((htS, refC) : t) =
+
+      let rec find_for_subtables subtbllst =
+        match subtbllst with
+        | []                        -> None
+        | (cdl1, cdl2, htC) :: tail ->
+            match (to_class_value gid1 cdl1, to_class_value gid2 cdl2) with
+            | (Some(cls1), Some(cls2)) ->
+                begin
+                  try Some(HtClass.find htC (cls1, cls2)) with
+                  | Not_found -> find_for_subtables tail
+                end
+            | _ -> find_for_subtables tail
+      in
+
       try Some(HtSingle.find htS (gid1, gid2)) with
-      | Not_found -> None
+      | Not_found -> find_for_subtables (!refC)
   end
 
 
@@ -242,23 +278,21 @@ let get_kerning_table (d : Otfm.decoder) =
           (fun () (gid1, pairposlst) ->
             pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
               let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d)" gid1 gid2) in  (* for debug *)
-              match valrcd1.Otfm.x_advance with  (* for debug *)
-              | None      -> ()  (* for debug *)
-              | Some(xa1) -> let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1) in  (* for debug *)
-                  kerntbl |> KerningTable.add gid1 gid2 xa1
-(*
-              match valrcd2.Otfm.x_placement with
+              match valrcd1.Otfm.x_advance with
               | None      -> ()
-              | Some(xp2) ->
-                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xp2 = %d" xp2) in  (* for debug *)
-*)
+              | Some(xa1) ->
+                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1) in  (* for debug *)
+                  kerntbl |> KerningTable.add gid1 gid2 xa1
             )
           )
-          (fun _ _ () _ -> ())
+          (fun clsdeflst1 clsdeflst2 () sublst ->
+            kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
+          )
       with
-      | Ok(())   ->
+      | Ok(sublst) ->
           let () = print_for_debug "'GPOS' exists" in  (* for debug *)
-          kerntbl
+            kerntbl
+
       | Error(e) ->
           match e with
           | `Missing_required_table(t)
