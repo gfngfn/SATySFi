@@ -85,7 +85,10 @@ module GlyphMetricsTable
     val create : int -> t
     val add : glyph_id -> int * int * int -> t -> unit
     val find_opt : glyph_id -> t -> (int * int * int) option
+(*
     val to_width_list : t -> (glyph_id * int) list
+*)
+    val fold : (glyph_id -> int * int * int -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
     module Ht = Hashtbl.Make
@@ -105,8 +108,12 @@ module GlyphMetricsTable
       try Some(Ht.find gmtbl gid) with
       | Not_found -> None
 
+    let fold f init gmtbl =
+      Ht.fold f gmtbl init
+(*
     let to_width_list gmtbl =
       Ht.fold (fun gid (w, _, _) acc -> (gid, w) :: acc) gmtbl []
+*)
   end
 
 
@@ -652,7 +659,6 @@ module CIDFontType0
         base_font       : string;
         font_descriptor : font_descriptor;
         dw              : int option;
-        w               : (glyph_id * int) list;
         dw2             : (int * int) option;
         (* temporary; should contain more fields; /W, /W2 *)
       }
@@ -665,7 +671,6 @@ module CIDFontType0
           base_font       = base_font;
           font_descriptor = font_descriptor_of_decoder d base_font;
           dw              = None;  (* temporary *)
-          w               = widlst;
           dw2             = None;  (* temporary *)
         }
   end
@@ -754,20 +759,20 @@ module Type0
       ]
 
 
-    let pdfarray_of_width_list widlst =
+    let pdfarray_of_widths dcdr =
+      let gmtbl = dcdr.glyph_metrics_table in
       let arr =
-        widlst |> List.fold_left (fun acc (gid, w) ->
+        gmtbl |> GlyphMetricsTable.fold (fun gid (w, _, _) acc ->
           Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
         Pdf.Array(arr)
 
 
-    let add_cid_type_0 pdf cidty0font =
+    let add_cid_type_0 pdf cidty0font dcdr =
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
-      let widlst     = cidty0font.CIDFontType0.w in
       let irdescr = add_font_descriptor pdf fontdescr base_font in
       let objdescend =
         Pdf.Dictionary[
@@ -776,7 +781,7 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-          ("/W"             , pdfarray_of_width_list widlst);
+          ("/W"             , pdfarray_of_widths dcdr);
             (* should add more; /DW, /DW2, /W2 *)
         ]
       in
@@ -784,7 +789,7 @@ module Type0
         irdescend
 
 
-    let add_cid_type_2 pdf cidty2font =
+    let add_cid_type_2 pdf cidty2font dcdr =
       let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
@@ -809,8 +814,8 @@ module Type0
       let cmap          = ty0font.encoding in
       let irdescend =
         match cidfont with
-        | CIDFontType0(cidty0font) -> add_cid_type_0 pdf cidty0font
-        | CIDFontType2(cidty2font) -> add_cid_type_2 pdf cidty2font
+        | CIDFontType0(cidty0font) -> add_cid_type_0 pdf cidty0font dcdr
+        | CIDFontType2(cidty2font) -> add_cid_type_2 pdf cidty2font dcdr
       in
         Pdf.Dictionary[
           ("/Type"           , Pdf.Name("/Font"));

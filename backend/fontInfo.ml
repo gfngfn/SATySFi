@@ -179,22 +179,24 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
           (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
 
 
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) () : Pdf.pdfobject =
+let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =
   match fontdfn with
   | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
   | FontFormat.Type0(ty0font)     -> FontFormat.Type0.to_pdfdict pdf ty0font dcdr
 
 
-let get_font_dictionary (pdf : Pdf.t) () =
-  print_for_debug "!!begin get_font_dictionary" ;  (* for debug *)
-  let ret =  (* for debug *)
-  [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
-    let obj = make_dictionary pdf abbrev tuple () in
-    let (_, tag, _, _) = tuple in
-      (tag, obj) :: acc
-  )
-  in let () = print_for_debug "!!end get_font_dictionary" in ret  (* for debug *)
+let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
+  print_for_debug "!!begin get_font_dictionary";  (* for debug *)
+  let keyval =
+    [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
+      let obj = make_dictionary pdf abbrev tuple in
+      let (_, tag, _, _) = tuple in
+        (tag, obj) :: acc
+    )
+  in
+  print_for_debug "!!end get_font_dictionary";  (* for debug *)
+    Pdf.Dictionary(keyval)
 
 
 let initialize () =

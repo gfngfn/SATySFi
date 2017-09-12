@@ -6,7 +6,7 @@ let print_for_debug msgln = ()
 open HorzBox
 
 
-type t = Pdf.t * Pdfpage.t list * file_path * (string * Pdf.pdfobject) list
+type t = Pdf.t * Pdfpage.t list * file_path
 
 
 let left_margin = Length.of_pdf_point 75.   (* temporary; should be variable *)
@@ -63,7 +63,7 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
           (xpos +% wid, opaccnew)
 
 
-let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm, fontdict) : t) : t =
+let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
   let xinit = left_margin in
   let yinit = (get_paper_height paper) -% top_margin in
   let (_, opaccend) =
@@ -83,23 +83,31 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
 
   let pagenew =
     {(Pdfpage.blankpage paper) with
-        Pdfpage.content= [Pdfops.stream_of_ops oplst];
+        Pdfpage.content   = [Pdfops.stream_of_ops oplst];
+(*
         Pdfpage.resources = Pdf.Dictionary[("/Font", Pdf.Dictionary(fontdict))];
+*)
           (* temporary; currently adds same font resources to every page *)
     }
   in
-    (pdf, pagenew :: pageacc, flnm, fontdict)
+    (pdf, pagenew :: pageacc, flnm)
 
 
 let create_empty_pdf (flnm : file_path) : t =
   let pdf = Pdf.empty () in
-  let fontdict = FontInfo.get_font_dictionary pdf () in
-      (* temporary; can add the font dictionary to data when writing a PDF file instead of when creating empty data *)
-    (pdf, [], flnm, fontdict)
+    (pdf, [], flnm)
 
 
-let write_to_file ((pdf, pageacc, flnm, _) : t) : unit =
-  let pagelst = List.rev pageacc in
+let write_to_file ((pdf, pageacc, flnm) : t) : unit =
+  let fontdict = FontInfo.get_font_dictionary pdf in
+  let irfontdict =
+    Pdf.addobj pdf (Pdf.Dictionary[("/Font", fontdict)])
+  in
+  let pagelst =
+    pageacc |> List.rev |> List.map (fun page ->
+      { page with Pdfpage.resources = Pdf.Indirect(irfontdict); }
+    )
+  in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in
   let pdfout = Pdfpage.add_root irpageroot [] pdfsub in
     Pdfwrite.pdf_to_file pdfout flnm

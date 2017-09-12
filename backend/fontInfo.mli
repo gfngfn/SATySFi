@@ -8,4 +8,4 @@ val get_metrics_of_word : font_abbrev -> length -> InternalText.t -> OutputText.
 
 val get_tag_and_encoding : font_abbrev -> string * encoding_in_pdf
 
-val get_font_dictionary : Pdf.t -> unit -> (string * Pdf.pdfobject) list
+val get_font_dictionary : Pdf.t -> Pdf.pdfobject
