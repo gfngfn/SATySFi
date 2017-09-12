@@ -49,11 +49,12 @@ end
 
 module CIDFontType0 : sig
   type font
-  val of_decoder : decoder -> (glyph_id * int) list -> cid_system_info -> font
+  val of_decoder : decoder -> cid_system_info -> font
 end
 
 module CIDFontType2 : sig
   type font
+  val of_decoder : decoder -> cid_system_info -> font
 end
 
 type cid_font =
@@ -71,6 +72,7 @@ type font =
 val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
+val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
 
 val get_glyph_metrics : decoder -> glyph_id -> int * int * int
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option

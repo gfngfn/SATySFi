@@ -37,6 +37,8 @@ type font_registration =
   | TrueTypeRegistration     of int * int * encoding_in_pdf
   | CIDFontType0Registration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2Registration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
 
 
 type font_tuple = FontFormat.font * tag * FontFormat.decoder * encoding_in_pdf
@@ -78,16 +80,11 @@ module FontAbbrevHashTable
             let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
               (FontFormat.true_type trtyfont, enc)
         | CIDFontType0Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let widlst =
-              if embedW then
-                get_latin1_width_list dcdr
-                  (* temporary; should get width list when outputting data
-                     instead of beginning a typesetting job *)
-              else
-                []
-            in
-            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr widlst cidsysinfo in
+            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
               (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
+        | CIDFontType2Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
+            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo in
+              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
       in
       let tag = generate_tag () in
         Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr, enc)
@@ -202,14 +199,14 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize () =
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
-
-    ("Hlv", TrueTypeRegistration(0, 255, Latin1), "./testfonts/HelveticaBlack.ttf");
-
-    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
 (*
+    ("Hlv", CIDFontType2Registration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/HelveticaBlack.ttf");
+*)
+    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
+
     ("KozMin",
        CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), "./testfonts/KozMinPro-Medium.otf")
-*)
+
   ]
   ; print_for_debug "!!end initialize"  (* for debug *)
 

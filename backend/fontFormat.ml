@@ -393,7 +393,7 @@ let to_base85_pdf_bytes (d : Otfm.decoder) : Pdfio.bytes =
         Pdfio.bytes_of_string s85
 
 
-let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string option) () : int =
+let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string option) : int =
   let bt85 = to_base85_pdf_bytes d in
   let len = Pdfio.bytes_size bt85 in
   let contents = [
@@ -595,7 +595,7 @@ module Type1Scheme_
       let lastchar  = trtyfont.last_char in
       let widths    = trtyfont.widths in
       let fontdescr = trtyfont.font_descriptor in
-      let irstream = add_stream_of_decoder pdf d embedsubtypeopt () in
+      let irstream = add_stream_of_decoder pdf d embedsubtypeopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
         Pdf.Dictionary[
@@ -661,14 +661,15 @@ module CIDFontType0
         dw              : int option;
         dw2             : (int * int) option;
         (* temporary; should contain more fields; /W2 *)
-        (* --
-             Doesn't have to contain information about /W entry;
-             the PDF file will be furnished with /W entry when outputted
-             according to the glyph metrics table
-           -- *)
       }
+      (* --
+         Doesn't have to contain information about /W entry;
+         the PDF file will be furnished with /W entry when outputted
+         according to the glyph metrics table
+         -- *)
 
-    let of_decoder dcdr widlst cidsysinfo =
+
+    let of_decoder dcdr cidsysinfo =
       let d = dcdr.main in
       let base_font = get_postscript_name d in
         {
@@ -693,8 +694,26 @@ module CIDFontType2
         dw              : int option;
         dw2             : (int * int) option;
         cid_to_gid_map  : cid_to_gid_map;
-        (* temporary; should contain more fields; /W, /W2 *)
+        (* temporary; should contain more fields; /W2 *)
       }
+      (* --
+         Doesn't have to contain information about /W entry;
+         the PDF file will be furnished with /W entry when outputted
+         according to the glyph metrics table
+         -- *)
+
+
+    let of_decoder dcdr cidsysinfo =
+      let d = dcdr.main in
+      let base_font = get_postscript_name d in
+        {
+          cid_system_info = cidsysinfo;
+          base_font       = base_font;
+          font_descriptor = font_descriptor_of_decoder d base_font;
+          dw              = None;  (* temporary *)
+          dw2             = None;  (* temporary *)
+          cid_to_gid_map  = CIDToGIDIdentity;  (* temporary *)
+        }
   end
 
 type cid_font =
@@ -737,7 +756,7 @@ module Type0
         | Data(d) -> d
         | _       -> assert false
       in
-      let irstream = add_stream_of_decoder pdf dcdr (Some("OpenType")) () in
+      let irstream = add_stream_of_decoder pdf dcdr (Some("OpenType")) in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
         Pdf.Dictionary[
@@ -758,8 +777,8 @@ module Type0
 
     let pdfdict_of_cid_system_info cidsysinfo =
       Pdf.Dictionary[
-        ("/Registry", Pdf.String(cidsysinfo.registry));
-        ("/Ordering", Pdf.String(cidsysinfo.ordering));
+        ("/Registry"  , Pdf.String(cidsysinfo.registry));
+        ("/Ordering"  , Pdf.String(cidsysinfo.ordering));
         ("/Supplement", Pdf.Integer(cidsysinfo.supplement));
       ]
 
@@ -774,6 +793,16 @@ module Type0
         Pdf.Array(arr)
 
 
+    let pdfint_opt = function
+      | None    -> Pdf.Null
+      | Some(x) -> Pdf.Integer(x)
+
+
+    let pdfintpair_opt = function
+      | None         -> Pdf.Null
+      | Some((a, b)) -> Pdf.Array[Pdf.Integer(a); Pdf.Integer(b)]
+
+
     let add_cid_type_0 pdf cidty0font dcdr =
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
@@ -786,8 +815,10 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
+          ("/DW"            , pdfint_opt cidty0font.CIDFontType0.dw);
           ("/W"             , pdfarray_of_widths dcdr);
-            (* should add more; /DW, /DW2, /W2 *)
+          ("/DW2"           , pdfintpair_opt cidty0font.CIDFontType0.dw2);
+          (* temporary; should add more; /W2 *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
@@ -806,7 +837,9 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
+          ("/DW"            , pdfint_opt cidty2font.CIDFontType2.dw);
           ("/W"             , pdfarray_of_widths dcdr);
+          ("/DW2"           , pdfintpair_opt cidty2font.CIDFontType2.dw2);
             (* should add more; /DW, /DW2, /W2, /CIDToGIDMap *)
         ]
       in
@@ -850,6 +883,10 @@ let cid_font_type_0 cidty0font fontname cmap =
   let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
     Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
 
+let cid_font_type_2 cidty2font fontname cmap =
+  let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
+    Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap toucopt)
+
 let adobe_japan1 = { registry = "Adobe"; ordering = "Japan1"; supplement = 6; }
 let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0; }
 
@@ -875,18 +912,19 @@ let get_decoder (srcfile : file_path) : decoder =
       default_descent     = descent;
     }
 
-
+(*
 let match_ligature (dcdr : decoder) (gidlst : glyph_id list) : ligature_matching =
   let ligtbl = dcdr.ligature_table in
     ligtbl |> LigatureTable.match_prefix gidlst
-
+*)
 
 let convert_to_ligatures dcdr gidlst =
+  let ligtbl = dcdr.ligature_table in
   let rec aux acc gidrest =
     match gidrest with
     | []      -> List.rev acc
     | g :: gs ->
-        match match_ligature dcdr gidrest with
+        match ligtbl |> LigatureTable.match_prefix gidrest with
         | NoMatch                       -> aux (g :: acc) gs
         | MatchExactly(gidlig, gidtail) -> aux (gidlig :: acc) gidtail
   in
