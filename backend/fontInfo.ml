@@ -130,18 +130,8 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
           in
           let gidoptlst = uword |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = Util.list_some gidoptlst in
-          let gidligedlst =
+          let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 
-            let rec aux acc gidrest =
-              match gidrest with
-              | []      -> List.rev acc
-              | g :: gs ->
-                  match FontFormat.match_ligature dcdr gidrest with
-                  | FontFormat.NoMatch                       -> aux (g :: acc) gs
-                  | FontFormat.MatchExactly(gidlig, gidtail) -> aux (gidlig :: acc) gidtail
-            in
-              aux [] gidlst
-          in
           let (_, otxt, rawwid, rawhgt, rawdpt) =
             gidligedlst @|> (None, init, 0, 0, 0) @|> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->
               let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
@@ -213,7 +203,7 @@ let initialize () =
 
     ("Hlv", TrueTypeRegistration(0, 255, Latin1), "./testfonts/HelveticaBlack.ttf");
 
-    ("Arno", (* Type1Registration(0, 255, Latin1) *) CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
+    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
 (*
     ("KozMin",
        CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), "./testfonts/KozMinPro-Medium.otf")

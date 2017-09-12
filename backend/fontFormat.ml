@@ -223,6 +223,7 @@ module KerningTable
           pairposlst |> List.iter (fun (cls2, valrcd1, valrcd2) ->
             match valrcd1.Otfm.x_advance with
             | None      -> ()
+            | Some(0)   -> ()
             | Some(xa1) -> HtClass.add htC (cls1, cls2) xa1
           )
         );
@@ -277,11 +278,10 @@ let get_kerning_table (d : Otfm.decoder) =
         () |> Otfm.gpos d "latn" None "kern"  (* temporary; script and language system should be variable *)
           (fun () (gid1, pairposlst) ->
             pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
-              let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d)" gid1 gid2) in  (* for debug *)
               match valrcd1.Otfm.x_advance with
               | None      -> ()
               | Some(xa1) ->
-                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf " xa1 = %d" xa1) in  (* for debug *)
+                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
                   kerntbl |> KerningTable.add gid1 gid2 xa1
             )
           )
@@ -861,6 +861,18 @@ let get_decoder (srcfile : file_path) : decoder =
 let match_ligature (dcdr : decoder) (gidlst : glyph_id list) : ligature_matching =
   let ligtbl = dcdr.ligature_table in
     ligtbl |> LigatureTable.match_prefix gidlst
+
+
+let convert_to_ligatures dcdr gidlst =
+  let rec aux acc gidrest =
+    match gidrest with
+    | []      -> List.rev acc
+    | g :: gs ->
+        match match_ligature dcdr gidrest with
+        | NoMatch                       -> aux (g :: acc) gs
+        | MatchExactly(gidlig, gidtail) -> aux (gidlig :: acc) gidtail
+  in
+    aux [] gidlst
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : int option =

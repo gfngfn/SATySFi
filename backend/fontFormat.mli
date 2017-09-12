@@ -15,11 +15,11 @@ exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
 
 val get_decoder : file_path -> decoder
-
+(*
 type ligature_matching =
   | MatchExactly of glyph_id * glyph_id list
   | NoMatch
-
+*)
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -80,6 +80,6 @@ val adobe_identity : cid_system_info
 
 val get_decoder : file_path -> decoder
 
-val match_ligature : decoder -> glyph_id list -> ligature_matching
+val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> int option
