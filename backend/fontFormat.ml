@@ -315,6 +315,8 @@ type decoder = {
   glyph_metrics_table : GlyphMetricsTable.t;
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
+  default_ascent      : int;
+  default_descent     : int;
 }
 
 type 'a resource =
@@ -440,28 +442,31 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
             end
 
 
-let get_glyph_raw_contour_list_and_bounding_box (d : Otfm.decoder) gid
-    : ((bool * int * int) list) list * (int * int * int * int) =
-  let gloc =
-    match Otfm.loca d gid with
-    | Error(e)    -> raise (FontFormatBroken(e))
-    | Ok(None)    -> raise (NoGlyphID(gid))
-    | Ok(Some(l)) -> l
-  in
-    match Otfm.glyf d gloc with
-    | Error(e)                        -> raise (FontFormatBroken(e))
-    | Ok((`Composite(_), _))          -> raise (NoGlyphID(gid))  (* temporary; does not deal with composite glyphs *)
-    | Ok((`Simple(precntrlst), bbox)) -> (precntrlst, bbox)
+let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) gid
+    : ((((bool * int * int) list) list * (int * int * int * int)) option, Otfm.error) result =
+  let d = dcdr.main in
+  match Otfm.loca d gid with
+  | Error(e)    -> Error(e)
+  | Ok(None)    -> Ok(None)
+  | Ok(Some(gloc)) ->
+      match Otfm.glyf d gloc with
+      | Error(e)                        -> Error(e)
+      | Ok((`Composite(_), _))          -> Ok(None)
+          (* temporary; does not deal with composite glyphs *)
+      | Ok((`Simple(precntrlst), bbox)) -> Ok(Some((precntrlst, bbox)))
 
 
-let get_glyph_height_and_depth d (gid : Otfm.glyph_id) =
-  try  (* temporary; for font formats that do not contain the `loca` table *)
-    let (_, (_, ymin, _, ymax)) = get_glyph_raw_contour_list_and_bounding_box d gid in
-      (ymax, ymin)
-  with FontFormatBroken(_) -> (500, -100)  (* temporary; for font formats that do not contain the `loca` table *)
+let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) =
+  match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
+  | Error(`Missing_required_table(t))
+               when t = Otfm.Tag.loca -> (dcdr.default_ascent, dcdr.default_descent)
+  | Error(e)                          -> raise (FontFormatBroken(e))
+  | Ok(None)                          -> (dcdr.default_ascent, dcdr.default_descent)
+  | Ok(Some((_, (_, ymin, _, ymax)))) -> (ymax, ymin)
 
 
-let get_glyph_horz_metrics (d : Otfm.decoder) (gidkey : Otfm.glyph_id) : int * int =
+let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
+  let d = dcdr.main in
   let hmtxres =
     None |> Otfm.hmtx d (fun accopt gid adv lsb ->
       match accopt with
@@ -471,36 +476,29 @@ let get_glyph_horz_metrics (d : Otfm.decoder) (gidkey : Otfm.glyph_id) : int * i
   in
     match hmtxres with
     | Error(e)             -> raise (FontFormatBroken(e))
-    | Ok(None)             -> assert false
-    | Ok(Some((adv, lsb))) -> (adv, lsb)
+    | Ok(None)             -> 0
+    | Ok(Some((adv, lsb))) -> adv
 
 
-let get_glyph_advance_width d gid =
-  try
-    let (adv, _) = get_glyph_horz_metrics d gid in adv
-  with
-  | NoGlyphID(_) -> 0
-
-
-let get_glyph_metrics_main (d : Otfm.decoder) (gid : glyph_id) =
-  let wid = get_glyph_advance_width d gid in
-  let (hgt, dpt) = get_glyph_height_and_depth d gid in
+let get_glyph_metrics_main (dcdr : decoder) (gid : glyph_id) =
+  let wid = get_glyph_advance_width dcdr gid in
+  let (hgt, dpt) = get_glyph_height_and_depth dcdr gid in
     (wid, hgt, dpt)
 
 
 (* PUBLIC *)
 let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : int * int * int =
-  let d = dcdr.main in
   let gmtbl = dcdr.glyph_metrics_table in
     match gmtbl |> GlyphMetricsTable.find_opt gid with
     | Some(gm) -> gm
     | None     ->
-        let gm = get_glyph_metrics_main d gid in
+        let gm = get_glyph_metrics_main dcdr gid in
           begin gmtbl |> GlyphMetricsTable.add gid gm ; gm end
 
 
 
-let get_truetype_widths_list (d : Otfm.decoder) (firstchar : int) (lastchar : int) : int list =
+let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int) : int list =
+  let d = dcdr.main in
   let rec range acc m n =
     if m > n then List.rev acc else
       range (m :: acc) (m + 1) n
@@ -508,11 +506,11 @@ let get_truetype_widths_list (d : Otfm.decoder) (firstchar : int) (lastchar : in
     (range [] firstchar lastchar) |> List.map (fun charcode ->
       get_glyph_id_main d (Uchar.of_int charcode) |> function
         | None      -> 0
-        | Some(gid) -> get_glyph_advance_width d gid
+        | Some(gid) -> get_glyph_advance_width dcdr gid
     )
 
 
-let font_descriptor_of_decoder d fontname =
+let font_descriptor_of_decoder d font_name =
   let (>>-) x f =
     match x with
     | Error(e) -> raise (FontFormatBroken(e))
@@ -522,7 +520,7 @@ let font_descriptor_of_decoder d fontname =
     Otfm.hhea d >>- fun rcdhhea ->
     Otfm.os2 d  >>- fun rcdos2 ->
     {
-      font_name    = fontname; (* -- same as Otfm.postscript_name dcdr -- *)
+      font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
       font_family  = "";    (* temporary; should be gotten from decoder *)
       font_stretch = Some(font_stretch_of_width_class rcdos2.Otfm.os2_us_width_class);
       font_weight  = Some(rcdos2.Otfm.os2_us_weight_class);
@@ -555,8 +553,10 @@ module Type1Scheme_
 = struct
     type font = {
         name            : string option;
-          (* -- obsolete field; required in PDF 1.0
-                but optional in all other versions -- *)
+          (* --
+               obsolete field; required in PDF 1.0
+               but optional in all other versions
+             -- *)
         base_font       : string;
         first_char      : int;
         last_char       : int;
@@ -575,7 +575,7 @@ module Type1Scheme_
           base_font       = base_font;
           first_char      = fc;
           last_char       = lc;
-          widths          = get_truetype_widths_list d fc lc;
+          widths          = get_truetype_widths_list dcdr fc lc;
           font_descriptor = font_descriptor_of_decoder d base_font;
           encoding        = PredefinedEncoding(StandardEncoding);
           to_unicode      = None;
@@ -660,7 +660,12 @@ module CIDFontType0
         font_descriptor : font_descriptor;
         dw              : int option;
         dw2             : (int * int) option;
-        (* temporary; should contain more fields; /W, /W2 *)
+        (* temporary; should contain more fields; /W2 *)
+        (* --
+             Doesn't have to contain information about /W entry;
+             the PDF file will be furnished with /W entry when outputted
+             according to the glyph metrics table
+           -- *)
       }
 
     let of_decoder dcdr widlst cidsysinfo =
@@ -801,7 +806,8 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-            (* should add more; /DW, /W, /DW2, /W2, /CIDToGIDMap *)
+          ("/W"             , pdfarray_of_widths dcdr);
+            (* should add more; /DW, /DW2, /W2, /CIDToGIDMap *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
@@ -854,12 +860,19 @@ let get_decoder (srcfile : file_path) : decoder =
   let ligtbl = get_ligature_table d in
   let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
   let gmtbl = GlyphMetricsTable.create 256 in (* temporary; initial size of hash tables *)
+  let (ascent, descent) =
+    match Otfm.hhea d with
+    | Ok(rcdhhea) -> (rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
+    | Error(e)    -> raise (FontFormatBroken(e))
+  in
     {
       main                = d;
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
       glyph_id_table      = gidtbl;
       glyph_metrics_table = gmtbl;
+      default_ascent      = ascent;
+      default_descent     = descent;
     }
 
 

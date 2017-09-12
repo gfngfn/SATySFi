@@ -82,12 +82,8 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
   let oplst = List.rev opaccend in
 
   let pagenew =
-    {(Pdfpage.blankpage paper) with
-        Pdfpage.content   = [Pdfops.stream_of_ops oplst];
-(*
-        Pdfpage.resources = Pdf.Dictionary[("/Font", Pdf.Dictionary(fontdict))];
-*)
-          (* temporary; currently adds same font resources to every page *)
+    { (Pdfpage.blankpage paper) with
+        Pdfpage.content = [Pdfops.stream_of_ops oplst];
     }
   in
     (pdf, pagenew :: pageacc, flnm)
