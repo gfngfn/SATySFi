@@ -942,8 +942,8 @@ let get_decoder (srcfile : file_path) : decoder =
       glyph_id_table      = gidtbl;
       glyph_metrics_table = gmtbl;
       units_per_em        = units_per_em;
-      default_ascent      = ascent;
-      default_descent     = descent;
+      default_ascent      = ascent;  (* -- by the unit defined in the font -- *)
+      default_descent     = descent; (* -- by the unit defined in the font -- *)
     }
 
 (*
