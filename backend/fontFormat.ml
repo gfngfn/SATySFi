@@ -323,6 +323,7 @@ type decoder = {
   glyph_metrics_table : GlyphMetricsTable.t;
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
+  units_per_em        : int;
   default_ascent      : int;
   default_descent     : int;
 }
@@ -488,10 +489,14 @@ let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
     | Ok(Some((adv, lsb))) -> adv
 
 
+let per_mille dcdr w =
+  (int_of_float ((float_of_int (w * 1000)) /. (float_of_int dcdr.units_per_em)))
+
+
 let get_glyph_metrics_main (dcdr : decoder) (gid : glyph_id) =
   let wid = get_glyph_advance_width dcdr gid in
   let (hgt, dpt) = get_glyph_height_and_depth dcdr gid in
-    (wid, hgt, dpt)
+    (per_mille dcdr wid, per_mille dcdr hgt, per_mille dcdr dpt)
 
 
 (* PUBLIC *)
@@ -666,7 +671,7 @@ module CIDFontType0
         cid_system_info : cid_system_info;
         base_font       : string;
         font_descriptor : font_descriptor;
-        dw              : int option;
+        dw              : int option;  (* represented by units defined by head.unitsPerEm *)
         dw2             : (int * int) option;
         (* temporary; should contain more fields; /W2 *)
       }
@@ -832,12 +837,26 @@ module Type0
       let irdescend = Pdf.addobj pdf objdescend in
         irdescend
 
-
     let add_cid_type_2 pdf cidty2font dcdr =
       let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
       let irdescr = add_font_descriptor pdf fontdescr base_font in
+      let pdfobject_cid_to_gid_map =
+        match cidty2font.CIDFontType2.cid_to_gid_map with
+        | CIDToGIDIdentity -> Pdf.Name("/Identity")
+        | _                -> failwith "/CIDToGIDMap other than /Identity; remains to be implemented."  (* temporary *)
+      in
+      let dwpmopt =
+        match cidty2font.CIDFontType2.dw with
+        | None     -> None
+        | Some(dw) -> Some(per_mille dcdr dw)
+      in  (* -- per mille -- *)
+      let dw2pmpairopt =
+        match cidty2font.CIDFontType2.dw2 with
+        | None         -> None
+        | Some((a, b)) -> Some((per_mille dcdr a, per_mille dcdr b))
+      in
       let objdescend =
         Pdf.Dictionary[
           ("/Type"          , Pdf.Name("/Font"));
@@ -845,9 +864,10 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-          ("/DW"            , pdfint_opt cidty2font.CIDFontType2.dw);
+          ("/DW"            , pdfint_opt dwpmopt);
           ("/W"             , pdfarray_of_widths dcdr);
-          ("/DW2"           , pdfintpair_opt cidty2font.CIDFontType2.dw2);
+          ("/DW2"           , pdfintpair_opt dw2pmpairopt);
+          ("/CIDToGIDMap"   , pdfobject_cid_to_gid_map)
             (* should add more; /DW, /DW2, /W2, /CIDToGIDMap *)
         ]
       in
@@ -910,12 +930,18 @@ let get_decoder (srcfile : file_path) : decoder =
     | Ok(rcdhhea) -> (rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
     | Error(e)    -> raise_err e
   in
+  let units_per_em =
+    match Otfm.head d with
+    | Ok(rcdhead) -> rcdhead.Otfm.head_units_per_em
+    | Error(e)    -> raise_err e
+  in
     {
       main                = d;
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
       glyph_id_table      = gidtbl;
       glyph_metrics_table = gmtbl;
+      units_per_em        = units_per_em;
       default_ascent      = ascent;
       default_descent     = descent;
     }
