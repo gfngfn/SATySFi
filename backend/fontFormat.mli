@@ -15,11 +15,7 @@ exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
 
 val get_decoder : file_path -> decoder
-(*
-type ligature_matching =
-  | MatchExactly of glyph_id * glyph_id list
-  | NoMatch
-*)
+
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int

@@ -23,6 +23,13 @@ exception FontFormatBrokenAboutWidthClass
 exception NoGlyphID                         of Otfm.glyph_id
 
 
+let raise_err e =
+  begin
+    Format.printf "@[%a@]\n" Otfm.pp_error e;
+    raise (FontFormatBroken(e))
+  end
+
+
 let string_of_file (flnmin : file_path) : string =
   try
     let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
@@ -183,9 +190,7 @@ let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
       match e with
       | `Missing_required_table(tag)
           when tag = Otfm.Tag.gsub -> ligtbl
-      | _ ->
-          let () = Format.printf "@[%a@]" Otfm.pp_error e in  (* for debug *)
-          raise (FontFormatBroken(e))
+      | _                          -> raise_err e
 
 
 module KerningTable
@@ -267,7 +272,7 @@ module KerningTable
 
 let get_kerning_table (d : Otfm.decoder) =
   let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
-  begin
+  let res =
     () |> Otfm.kern d (fun () kinfo ->
       match kinfo with
       | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
@@ -275,8 +280,8 @@ let get_kerning_table (d : Otfm.decoder) =
     ) (fun () gid1 gid2 wid ->
       kerntbl |> KerningTable.add gid1 gid2 wid
     )
-  end |>
-  (function  (* for debug *)
+  in
+  (match res with  (* for debug *)
     | Ok(())   -> print_for_debug "'kern' exists"   (* for debug *)
     | Error(e) -> print_for_debug "'kern' missing"  (* for debug *)
   ) |>  (* for debug *)
@@ -306,7 +311,10 @@ let get_kerning_table (d : Otfm.decoder) =
               when t = Otfm.Tag.gpos ->
                 let () = print_for_debug "'GPOS' missing" in  (* for debug *)
                 kerntbl
-          | _                        -> raise (FontFormatBroken(e))
+          | `Missing_required_feature_tag("kern") ->
+              let () = print_for_debug "Feature 'kern' missing" in  (* for debug *)
+              kerntbl
+          | _                        -> raise_err e
 
 
 type decoder = {
@@ -421,7 +429,7 @@ let get_glyph_id_main (d : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option 
     ) None
   in
     match cmapres with
-    | Error(e)                   -> raise (FontFormatBroken(e))
+    | Error(e)                   -> raise_err e
     | Ok(((_, _, _), None))      -> None
     | Ok(((_, _, _), Some(gid))) -> Some(gid)
 
@@ -460,7 +468,7 @@ let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) =
   match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
   | Error(`Missing_required_table(t))
                when t = Otfm.Tag.loca -> (dcdr.default_ascent, dcdr.default_descent)
-  | Error(e)                          -> raise (FontFormatBroken(e))
+  | Error(e)                          -> raise_err e
   | Ok(None)                          -> (dcdr.default_ascent, dcdr.default_descent)
   | Ok(Some((_, (_, ymin, _, ymax)))) -> (ymax, ymin)
 
@@ -475,7 +483,7 @@ let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
     )
   in
     match hmtxres with
-    | Error(e)             -> raise (FontFormatBroken(e))
+    | Error(e)             -> raise_err e
     | Ok(None)             -> 0
     | Ok(Some((adv, lsb))) -> adv
 
@@ -513,7 +521,7 @@ let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int)
 let font_descriptor_of_decoder d font_name =
   let (>>-) x f =
     match x with
-    | Error(e) -> raise (FontFormatBroken(e))
+    | Error(e) -> raise_err e
     | Ok(v)    -> f v
   in
     Otfm.head d >>- fun rcdhead ->
@@ -538,7 +546,7 @@ let font_descriptor_of_decoder d font_name =
 
 let get_postscript_name dcdr =
   match Otfm.postscript_name dcdr with
-  | Error(e)    -> raise (FontFormatBroken(e))
+  | Error(e)    -> raise_err e
   | Ok(None)    -> assert false  (* temporary *)
   | Ok(Some(x)) -> x
 
@@ -900,7 +908,7 @@ let get_decoder (srcfile : file_path) : decoder =
   let (ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
-    | Error(e)    -> raise (FontFormatBroken(e))
+    | Error(e)    -> raise_err e
   in
     {
       main                = d;

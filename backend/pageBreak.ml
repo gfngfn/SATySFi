@@ -138,7 +138,7 @@ let () =
     let font1 = (* ("Hlv", ~% 16.) *) font0 in
     let fontL = (* ("Hlv", ~% 32.) *) ("Arno", ~% 32.) in
 
-    let fontK = ("KozMin", ~% 12.) in
+    let fontK = (* ("KozMin", ~% 12.) *) ("Osaka", ~% 12.) in
 
     let word s = HorzPure(PHFixedString(font0, InternalText.of_utf_8 s)) in
     let word1 s = HorzPure(PHFixedString(font1, InternalText.of_utf_8 s)) in

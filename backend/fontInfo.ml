@@ -202,11 +202,12 @@ let initialize () =
 (*
     ("Hlv", CIDFontType2Registration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/HelveticaBlack.ttf");
 *)
+    ("Osaka", CIDFontType2Registration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/Osaka.ttf");
     ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
-
+(*
     ("KozMin",
        CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), "./testfonts/KozMinPro-Medium.otf")
-
+*)
   ]
   ; print_for_debug "!!end initialize"  (* for debug *)
 
