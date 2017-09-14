@@ -25,7 +25,7 @@ exception NoGlyphID                         of Otfm.glyph_id
 
 let raise_err e =
   begin
-    Format.printf "@[%a@]\n" Otfm.pp_error e;
+    Format.printf "@[%a@]\n" Otfm.pp_error e;  (* for debug *)
     raise (FontFormatBroken(e))
   end
 
@@ -42,13 +42,13 @@ let string_of_file (flnmin : file_path) : string =
             let c = input ic byt 0 bufsize in
               if c = 0 then raise Exit else
                 Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
-          done ;
+          done;
           assert false
         end
       with
-      | Exit           -> begin close_in ic ; Buffer.contents buf end
-      | Failure(_)     -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
-      | Sys_error(msg) -> begin close_in ic ; raise (FailToLoadFontFormatOwingToSystem(msg)) end
+      | Exit           -> begin close_in ic; Buffer.contents buf end
+      | Failure(_)     -> begin close_in ic; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
+      | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontFormatOwingToSystem(msg)) end
   with
   | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
 
@@ -285,7 +285,7 @@ let get_kerning_table (d : Otfm.decoder) =
     | Ok(())   -> print_for_debug "'kern' exists"   (* for debug *)
     | Error(e) -> print_for_debug "'kern' missing"  (* for debug *)
   ) |>  (* for debug *)
-  ignore ;
+  ignore;
       match
         () |> Otfm.gpos d "latn" None "kern"  (* temporary; script and language system should be variable *)
           (fun () (gid1, pairposlst) ->
@@ -446,7 +446,7 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         | Some(gid) ->
             begin
               gidtbl |> GlyphIDTable.add uch gid;
-(*              print_for_debug (Printf.sprintf "'%c' -> %d" (Uchar.to_char uch) gid) ;  (* for debug *) *)
+(*              print_for_debug (Printf.sprintf "'%c' -> %d" (Uchar.to_char uch) gid);  (* for debug *) *)
               Some(gid)
             end
 
@@ -506,7 +506,7 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : int * int * int =
     | Some(gm) -> gm
     | None     ->
         let gm = get_glyph_metrics_main dcdr gid in
-          begin gmtbl |> GlyphMetricsTable.add gid gm ; gm end
+          begin gmtbl |> GlyphMetricsTable.add gid gm; gm end
 
 
 
@@ -946,11 +946,6 @@ let get_decoder (srcfile : file_path) : decoder =
       default_descent     = descent; (* -- by the unit defined in the font -- *)
     }
 
-(*
-let match_ligature (dcdr : decoder) (gidlst : glyph_id list) : ligature_matching =
-  let ligtbl = dcdr.ligature_table in
-    ligtbl |> LigatureTable.match_prefix gidlst
-*)
 
 let convert_to_ligatures dcdr gidlst =
   let ligtbl = dcdr.ligature_table in
