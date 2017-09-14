@@ -146,8 +146,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                   (Assoc.intersection asc1 asc2, kdunion)
           in
           begin
-            newtvref := Free(FreeID.set_kind newtvid kdunion) ;
             unify_list eqnlst ;
+            newtvref := Free(FreeID.set_kind newtvid kdunion) ;
           end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
@@ -173,8 +173,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
               in
               begin
-                tvref1 := Link(newty2) ;
                 unify_list eqnlst ;
+                tvref1 := Link(newty2) ;
               end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
@@ -194,6 +194,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+  let () = print_for_debug_typecheck ("####UNIFY " ^ (string_of_mono_type_basic ty1) ^ " = " ^ (string_of_mono_type_basic ty2)) in  (* for debug *)
   try
     unify_sub ty1 ty2
   with

@@ -25,7 +25,8 @@ let report_error (category : string) (lines : line list) =
   in
   begin
     print_string ("! [Error at " ^ category ^ "] ") ;
-    first lines
+    first lines ;
+    exit 1 ;
   end
 
 
@@ -282,10 +283,10 @@ let arg_spec_list =
     ("-v", Arg.Unit(fun () -> print_endline "  Macrodown ver 1.00h"), "print version");
   ]
 
-let input_list_ref : (string list) ref = ref []
+let input_acc_ref : (string list) ref = ref []
 
 let handle_anonimous_arg s =
-  input_list_ref := s :: (!input_list_ref)
+  input_acc_ref := s :: (!input_acc_ref)
 
 (*
 let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =
@@ -340,7 +341,9 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
 *)
 
 let () =
-  (* see_argv 1 [] "mcrd.out" *)
+(* 
+  see_argv 1 [] "mcrd.out"
+*)
   begin
     Arg.parse arg_spec_list handle_anonimous_arg "";
     FreeID.initialize ();
@@ -349,9 +352,10 @@ let () =
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
-    let input_list = !input_list_ref in
+    let input_list = List.rev (!input_acc_ref) in
     let output = !output_ref in
     input_list |> List.iter (fun s -> print_endline ("  [input] " ^ s));
     print_endline ("  [output] " ^ output);
     main tyenv env input_list output
   end
+
