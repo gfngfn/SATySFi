@@ -564,6 +564,12 @@ type embedding =
   | FontFile2
   | FontFile3 of string
 
+let font_file_info_of_embedding embedding =
+  match embedding with
+  | FontFile       -> ("/FontFile", None)
+  | FontFile2      -> ("/FontFile2", None)
+  | FontFile3(sub) -> ("/FontFile3", Some(sub))
+
 
 module Type1Scheme_
 = struct
@@ -600,17 +606,12 @@ module Type1Scheme_
 
     let to_pdfdict_scheme fontsubtype embedding pdf trtyfont dcdr =
       let d = dcdr.main in
-      let (font_file_key, embedsubtypeopt) =
-        match embedding with
-        | FontFile       -> ("/FontFile", None)
-        | FontFile2      -> ("/FontFile2", None)
-        | FontFile3(sub) -> ("/FontFile3", Some(sub))
-      in
       let fontname  = trtyfont.base_font in
       let firstchar = trtyfont.first_char in
       let lastchar  = trtyfont.last_char in
       let widths    = trtyfont.widths in
       let fontdescr = trtyfont.font_descriptor in
+      let (font_file_key, embedsubtypeopt) = font_file_info_of_embedding embedding in
       let irstream = add_stream_of_decoder pdf d embedsubtypeopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
@@ -768,18 +769,13 @@ module Type0
       }
 
 
-    let add_font_descriptor pdf fontdescr base_font font_file =
+    let add_font_descriptor pdf fontdescr base_font embedding =
       let dcdr =
         match !(fontdescr.font_data) with
         | Data(d) -> d
         | _       -> assert false
       in
-      let (font_file_key, tagopt) =
-        match font_file with
-        | FontFile       -> ("/FontFile", None)
-        | FontFile2      -> ("/FontFile2", None)
-        | FontFile3(tag) -> ("/FontFile3", Some(tag))
-      in
+      let (font_file_key, tagopt) = font_file_info_of_embedding embedding in
       let irstream = add_stream_of_decoder pdf dcdr tagopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
