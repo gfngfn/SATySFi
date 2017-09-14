@@ -319,6 +319,8 @@ let get_kerning_table (d : Otfm.decoder) =
 
 type decoder = {
   main                : Otfm.decoder;
+  head_record         : Otfm.head;
+  hhea_record         : Otfm.hhea;
   glyph_id_table      : GlyphIDTable.t;
   glyph_metrics_table : GlyphMetricsTable.t;
   kerning_table       : KerningTable.t;
@@ -523,14 +525,15 @@ let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int)
     )
 
 
-let font_descriptor_of_decoder d font_name =
+let font_descriptor_of_decoder (dcdr : decoder) font_name =
+  let d = dcdr.main in
+  let rcdhead = dcdr.head_record in
+  let rcdhhea = dcdr.hhea_record in
   let (>>-) x f =
     match x with
     | Error(e) -> raise_err e
     | Ok(v)    -> f v
   in
-    Otfm.head d >>- fun rcdhead ->
-    Otfm.hhea d >>- fun rcdhhea ->
     Otfm.os2 d  >>- fun rcdos2 ->
     {
       font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
@@ -589,7 +592,7 @@ module Type1Scheme_
           first_char      = fc;
           last_char       = lc;
           widths          = get_truetype_widths_list dcdr fc lc;
-          font_descriptor = font_descriptor_of_decoder d base_font;
+          font_descriptor = font_descriptor_of_decoder dcdr base_font;
           encoding        = PredefinedEncoding(StandardEncoding);
           to_unicode      = None;
         }
@@ -688,7 +691,7 @@ module CIDFontType0
         {
           cid_system_info = cidsysinfo;
           base_font       = base_font;
-          font_descriptor = font_descriptor_of_decoder d base_font;
+          font_descriptor = font_descriptor_of_decoder dcdr base_font;
           dw              = None;  (* temporary *)
           dw2             = None;  (* temporary *)
         }
@@ -701,12 +704,13 @@ type cid_to_gid_map =
 module CIDFontType2
 = struct
     type font = {
-        cid_system_info : cid_system_info;
-        base_font       : string;
-        font_descriptor : font_descriptor;
-        dw              : int option;
-        dw2             : (int * int) option;
-        cid_to_gid_map  : cid_to_gid_map;
+        cid_system_info  : cid_system_info;
+        base_font        : string;
+        font_descriptor  : font_descriptor;
+        dw               : int option;
+        dw2              : (int * int) option;
+        cid_to_gid_map   : cid_to_gid_map;
+        is_pure_truetype : bool;
         (* temporary; should contain more fields; /W2 *)
       }
       (* --
@@ -716,16 +720,17 @@ module CIDFontType2
          -- *)
 
 
-    let of_decoder dcdr cidsysinfo =
+    let of_decoder dcdr cidsysinfo isptt =
       let d = dcdr.main in
       let base_font = get_postscript_name d in
         {
-          cid_system_info = cidsysinfo;
-          base_font       = base_font;
-          font_descriptor = font_descriptor_of_decoder d base_font;
-          dw              = None;  (* temporary *)
-          dw2             = None;  (* temporary *)
-          cid_to_gid_map  = CIDToGIDIdentity;  (* temporary *)
+          cid_system_info  = cidsysinfo;
+          base_font        = base_font;
+          font_descriptor  = font_descriptor_of_decoder dcdr base_font;
+          dw               = None;  (* temporary *)
+          dw2              = None;  (* temporary *)
+          is_pure_truetype = isptt;
+          cid_to_gid_map   = CIDToGIDIdentity;  (* temporary *)
         }
   end
 
@@ -763,13 +768,19 @@ module Type0
       }
 
 
-    let add_font_descriptor pdf fontdescr base_font =
+    let add_font_descriptor pdf fontdescr base_font font_file =
       let dcdr =
         match !(fontdescr.font_data) with
         | Data(d) -> d
         | _       -> assert false
       in
-      let irstream = add_stream_of_decoder pdf dcdr (Some("OpenType")) in
+      let (font_file_key, tagopt) =
+        match font_file with
+        | FontFile       -> ("/FontFile", None)
+        | FontFile2      -> ("/FontFile2", None)
+        | FontFile3(tag) -> ("/FontFile3", Some(tag))
+      in
+      let irstream = add_stream_of_decoder pdf dcdr tagopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
       let objdescr =
         Pdf.Dictionary[
@@ -781,7 +792,7 @@ module Type0
           ("/Ascent"     , Pdf.Integer(fontdescr.ascent));
           ("/Descent"    , Pdf.Integer(fontdescr.descent));
           ("/StemV"      , Pdf.Real(fontdescr.stemv));
-          ("/FontFile3"  , Pdf.Indirect(irstream));
+          (font_file_key , Pdf.Indirect(irstream));
         ]
       in
       let irdescr = Pdf.addobj pdf objdescr in
@@ -820,7 +831,7 @@ module Type0
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
-      let irdescr = add_font_descriptor pdf fontdescr base_font in
+      let irdescr = add_font_descriptor pdf fontdescr base_font (FontFile3("OpenType")) in
       let objdescend =
         Pdf.Dictionary[
           ("/Type"          , Pdf.Name("/Font"));
@@ -841,7 +852,13 @@ module Type0
       let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
-      let irdescr = add_font_descriptor pdf fontdescr base_font in
+      let font_file =
+        if cidty2font.CIDFontType2.is_pure_truetype then
+          FontFile2
+        else
+          FontFile3("OpenType")
+      in
+      let irdescr = add_font_descriptor pdf fontdescr base_font font_file in
       let pdfobject_cid_to_gid_map =
         match cidty2font.CIDFontType2.cid_to_gid_map with
         | CIDToGIDIdentity -> Pdf.Name("/Identity")
@@ -868,7 +885,7 @@ module Type0
           ("/W"             , pdfarray_of_widths dcdr);
           ("/DW2"           , pdfintpair_opt dw2pmpairopt);
           ("/CIDToGIDMap"   , pdfobject_cid_to_gid_map)
-            (* should add more; /DW, /DW2, /W2, /CIDToGIDMap *)
+            (* should add more; /W2 *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
@@ -925,18 +942,20 @@ let get_decoder (srcfile : file_path) : decoder =
   let ligtbl = get_ligature_table d in
   let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
   let gmtbl = GlyphMetricsTable.create 256 in (* temporary; initial size of hash tables *)
-  let (ascent, descent) =
+  let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
-    | Ok(rcdhhea) -> (rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
+    | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
     | Error(e)    -> raise_err e
   in
-  let units_per_em =
+  let (rcdhead, units_per_em) =
     match Otfm.head d with
-    | Ok(rcdhead) -> rcdhead.Otfm.head_units_per_em
+    | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
     | Error(e)    -> raise_err e
   in
     {
       main                = d;
+      head_record         = rcdhead;
+      hhea_record         = rcdhhea;
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
       glyph_id_table      = gidtbl;

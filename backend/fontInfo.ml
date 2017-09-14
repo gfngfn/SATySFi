@@ -33,11 +33,13 @@ let get_latin1_width_list (dcdr : FontFormat.decoder) =
 
 
 type font_registration =
-  | Type1Registration        of int * int * encoding_in_pdf
-  | TrueTypeRegistration     of int * int * encoding_in_pdf
-  | CIDFontType0Registration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
+  | Type1Registration          of int * int * encoding_in_pdf
+  | TrueTypeRegistration       of int * int * encoding_in_pdf
+  | CIDFontType0Registration   of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
-  | CIDFontType2Registration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
+  | CIDFontType2OTRegistration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2TTRegistration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
 
 
@@ -82,8 +84,11 @@ module FontAbbrevHashTable
         | CIDFontType0Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
             let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
               (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
-        | CIDFontType2Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo in
+        | CIDFontType2TTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
+            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
+              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
+        | CIDFontType2OTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
+            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo false in
               (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
       in
       let tag = generate_tag () in
@@ -202,7 +207,7 @@ let initialize () =
 (*
     ("Hlv", CIDFontType2Registration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/HelveticaBlack.ttf");
 *)
-    ("Osaka", CIDFontType2Registration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/Osaka.ttf");
+    ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/Osaka.ttf");
     ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
 (*
     ("KozMin",

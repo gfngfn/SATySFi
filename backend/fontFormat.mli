@@ -50,7 +50,7 @@ end
 
 module CIDFontType2 : sig
   type font
-  val of_decoder : decoder -> cid_system_info -> font
+  val of_decoder : decoder -> cid_system_info -> bool -> font
 end
 
 type cid_font =
