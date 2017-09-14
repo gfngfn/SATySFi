@@ -92,12 +92,10 @@ module GlyphMetricsTable
     val create : int -> t
     val add : glyph_id -> int * int * int -> t -> unit
     val find_opt : glyph_id -> t -> (int * int * int) option
-(*
-    val to_width_list : t -> (glyph_id * int) list
-*)
     val fold : (glyph_id -> int * int * int -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
+
     module Ht = Hashtbl.Make
       (struct
         type t = glyph_id
@@ -117,10 +115,7 @@ module GlyphMetricsTable
 
     let fold f init gmtbl =
       Ht.fold f gmtbl init
-(*
-    let to_width_list gmtbl =
-      Ht.fold (fun gid (w, _, _) acc -> (gid, w) :: acc) gmtbl []
-*)
+
   end
 
 

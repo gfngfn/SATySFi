@@ -39,7 +39,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
     let rec aux (vpbprev : pure_badness) (imvbacc : intermediate_vert_box list) (imvbaccbreakable : intermediate_vert_box list) (hgttotal : Length.t) (imvblst : intermediate_vert_box list) =
       match imvblst with
       | (ImVertLine(hgt, dpt, _) as head) :: tail ->
-          let hgttotalnew = hgttotal +% hgt +% dpt in
+          let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
           let vpb = calculate_badness_of_page_break hgttotalnew in
           if vpb > vpbprev then
             let () = print_for_debug ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
@@ -106,7 +106,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
           | None                             -> pickup_page imvbaccnew tail
           | Some((imvblstpage, imvbaccrest)) ->
               let evvblstpage = determine_heights imvblstpage in
-              (evvblstpage, Some((imvbaccrest, tail)))
+                (evvblstpage, Some((imvbaccrest, tail)))
         end
   in
 
@@ -119,9 +119,8 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
       let () = print_for_debug "\n--------\n" in
     (* end: for debug *)
         match opt with
-        | None -> begin HandlePdf.write_to_file pdfschemenext ; end
-        | Some((imvbaccnext, vblstnext)) ->
-            iteration pdfschemenext imvbaccnext vblstnext
+        | None                           -> begin HandlePdf.write_to_file pdfschemenext; end
+        | Some((imvbaccnext, vblstnext)) -> iteration pdfschemenext imvbaccnext vblstnext
   in
     iteration pdfscheme [] vblst
 
@@ -146,80 +145,64 @@ let () =
 
     let wordK s = HorzPure(PHFixedString(fontK, InternalText.of_utf_8 s)) in
 
-    let pads = { paddingL = ~% 2.; paddingR = ~% 2.; paddingT= ~% 2.; paddingB = ~% 2.} in
+    let margin = ~% 2. in
+    let pads = {
+      paddingL = ~% 2. +% margin;
+      paddingR = ~% 2. +% margin;
+      paddingT = ~% 2. +% margin;
+      paddingB = ~% 2. +% margin;
+    } in
     let decostd =
       (fun (xpos, ypos) wid hgt dpt ->
+        let xposb = xpos +% margin in
+        let hgtb = hgt -% margin in
+        let dptb = dpt +% margin in
+        let widb = wid -% margin *% 2. in
         [
-          Rectangle((xpos, ypos +% hgt), (wid, Length.zero -% (hgt -% dpt)));
+          Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
         ]
-(*
-        [
-          HandlePdf.op_RG (0.2, 0.2, 0.2);
-          HandlePdf.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
-          HandlePdf.op_S;
-        ]
-*)
       )
     in
     let decoH =
       (fun (xpos, ypos) wid hgt dpt ->
+        let xposb = xpos +% margin in
+        let hgtb = hgt -% margin in
+        let dptb = dpt +% margin in
+        let widb = wid -% margin in
         [
-          GeneralPath((xpos +% wid, ypos +% hgt), [
-            LineTo(xpos, ypos +% hgt);
-            LineTo(xpos, ypos +% dpt);
-            LineTo(xpos +% wid, ypos +% dpt);
+          GeneralPath((xposb +% widb, ypos +% hgtb), [
+            LineTo(xposb, ypos +% hgtb);
+            LineTo(xposb, ypos +% dptb);
+            LineTo(xposb +% widb, ypos +% dptb);
           ]);
         ]
-(*
-        [
-          HandlePdf.op_RG (0.2, 0.2, 0.2);
-          HandlePdf.op_m (xpos +% wid, yposbaseline +% hgt);
-          HandlePdf.op_l (xpos, yposbaseline +% hgt);
-          HandlePdf.op_l (xpos, yposbaseline +% dpt);
-          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
-          HandlePdf.op_S;
-        ]
-*)
       )
     in
     let decoM =
       (fun (xpos, ypos) wid hgt dpt ->
+        let xposb = xpos in
+        let hgtb = hgt -% margin in
+        let dptb = dpt +% margin in
+        let widb = wid in
         [
-          GeneralPath((xpos, ypos +% hgt), [LineTo(xpos +% wid, ypos +% hgt)]);
-          GeneralPath((xpos, ypos +% dpt), [LineTo(xpos +% wid, ypos +% dpt)]);
+          GeneralPath((xposb, ypos +% hgtb), [LineTo(xposb +% widb, ypos +% hgtb)]);
+          GeneralPath((xposb, ypos +% dptb), [LineTo(xposb +% widb, ypos +% dptb)]);
         ]
-(*
-        [
-          HandlePdf.op_RG (0.2, 0.2, 0.2);
-          HandlePdf.op_m (xpos, yposbaseline +% hgt);
-          HandlePdf.op_l (xpos +% wid, yposbaseline +% hgt);
-          HandlePdf.op_S;
-          HandlePdf.op_m (xpos, yposbaseline +% dpt);
-          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
-          HandlePdf.op_S;
-        ]
-*)
       )
     in
     let decoT =
       (fun (xpos, ypos) wid hgt dpt ->
+        let xposb = xpos in
+        let hgtb = hgt -% margin in
+        let dptb = dpt +% margin in
+        let widb = wid -% margin in
         [
-          GeneralPath((xpos, ypos +% hgt), [
-            LineTo(xpos +% wid, ypos +% hgt);
-            LineTo(xpos +% wid, ypos +% dpt);
-            LineTo(xpos, ypos +% dpt);
+          GeneralPath((xposb, ypos +% hgtb), [
+            LineTo(xposb +% widb, ypos +% hgtb);
+            LineTo(xposb +% widb, ypos +% dptb);
+            LineTo(xposb, ypos +% dptb);
           ]);
         ]
-(*
-        [
-          HandlePdf.op_RG (0.2, 0.2, 0.2);
-          HandlePdf.op_m (xpos, yposbaseline +% hgt);
-          HandlePdf.op_l (xpos +% wid, yposbaseline +% hgt);
-          HandlePdf.op_l (xpos +% wid, yposbaseline +% dpt);
-          HandlePdf.op_l (xpos, yposbaseline +% dpt);
-          HandlePdf.op_S;
-        ]
-*)
       )
     in
     let framed hblst = HorzPure(PHOuterFrame(pads, decostd, hblst)) in
@@ -231,7 +214,8 @@ let () =
     let spaceL = HorzDiscretionary(penalty_break_space, Some(PHOuterEmpty(~% 16., ~% 2., ~% 6.)), None, None) in
     let indentation = HorzPure(PHFixedEmpty(~% 64.)) in
     let fill = HorzPure(PHOuterFil) in
-    let paragraph_skip = ~% 32.0 in
+    let leading = ~% 24. in
+    let paragraph_skip = ~% 16. in
     let soft_hyphen = HorzDiscretionary(penalty_soft_hyphen, None, Some(PHFixedString(font0, InternalText.of_utf_8 "-")), None) in
     let soft_hyphen1 = HorzDiscretionary(penalty_soft_hyphen, None, Some(PHFixedString(font1, InternalText.of_utf_8 "-")), None) in
     let rec repeat n lst = if n <= 0 then [] else lst @ (repeat (n - 1) lst) in
@@ -245,7 +229,7 @@ let () =
           framed [fill; wordL "Sample"; spaceL; wordL "Text"; fill;];
         ]);
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 24., [
+        VertParagraph(leading, [
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
           word "discre"; soft_hyphen; word "tionary"; space; word "hyphen"; space;
@@ -258,20 +242,22 @@ let () =
         ]);
 
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 24., [
+        VertParagraph(leading, [
           word "Now"; space; word "we"; space; word "deal"; space; word "with"; space;
           framed [word1 "kerning"; space; word1 "pair";]; space; word "information!"; fill;
         ]);
 
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 20., [
-
+        VertParagraph(leading, [
+(*
           wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
           wordK "立派な"; space; wordK "PDF"; space; wordK "です。"; space;
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
-
+          space;
+          word1 "A"; space1;
+*)
           framed [
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; framed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
@@ -279,7 +265,7 @@ let () =
         ]);
 
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 20., [
+        VertParagraph(leading, [
 (*
           wordK "スペーシングの上"; space; wordK "行分割"; space; wordK "されてるけど，"; space;
           wordK "これでも"; space; wordK "和文フォントが"; space; wordK "埋め込まれた"; space;
@@ -287,6 +273,7 @@ let () =
           wordK "←"; space; wordK "しかし"; space; wordK "見ての通り"; space;
           wordK "メトリック情報の"; space; wordK "埋め込みに"; space; wordK "関しては"; space; wordK "不完全。";
 *)
+          word1 "A"; space1;
           iframed [
             word1 "My"; space1; word1 "quiz"; space1; word1 "above"; space1; word1 "the"; space1; iframed [word1 "kiwi"; space1; word1 "juice";];]; space1;
             word1 "needs"; space1; word1 "price"; soft_hyphen1 ; word1 "less"; space1; word1 "fixing.";
@@ -307,7 +294,7 @@ let () =
         ]);
 *)
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 24., [
+        VertParagraph(leading, [
           indentation;
           bframed [
             word1 "Lorem"; space1; word1 "ipsum"; space1; word1 "dolor"; space1; word1 "sit"; space1; word1 "amet,"; space1;
@@ -326,7 +313,7 @@ let () =
 
       ] @ repeat 2 [
         VertFixedBreakable(paragraph_skip);
-        VertParagraph(~% 24., [
+        VertParagraph(leading, [
           indentation;
           word1 "Lorem"; space; word1 "ipsum"; space; word "dolor"; space; word "sit"; space; word "amet,"; space;
           word "consectetur"; space; word "adipiscing"; space; word "elit,"; space;

@@ -320,7 +320,7 @@ let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 let break_into_lines (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
-    let leadingsub = leading_required -% dptprev -% hgt in
+    let leadingsub = leading_required -% (Length.negate dptprev) -% hgt in
       if leadingsub <% Length.zero then Length.zero else leadingsub
   in
 

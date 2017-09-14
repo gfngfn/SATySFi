@@ -42,13 +42,13 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
           [
 (*
             (* begin: for test; encloses every word with a red box *)
-            op_q;
-            op_RG (1.0, 0.5, 0.5);
-            op_m (xpos, yposbaseline);
-            op_l (xpos +% wid, yposbaseline);
-            op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
-            op_S;
-            op_Q;
+            Graphics.op_q;
+            Graphics.op_RG (1.0, 0.5, 0.5);
+            Graphics.op_m (xpos, yposbaseline);
+            Graphics.op_l (xpos +% wid, yposbaseline);
+            Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
+            Graphics.op_S;
+            Graphics.op_Q;
             (* end: for test *)
 *)
             Graphics.op_cm (Length.zero, Length.zero);
@@ -75,7 +75,7 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
           let (xposend, opaccend) =
             evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
           in
-            ((left_margin, yposbaseline -% dpt), opaccend)
+            ((left_margin, yposbaseline +% dpt), opaccend)
     )
   in
 

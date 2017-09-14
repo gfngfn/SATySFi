@@ -9,6 +9,7 @@ module Length
     val div : t -> t -> float
     val max : t -> t -> t
     val min : t -> t -> t
+    val negate : t -> t
     val less_than : t -> t -> bool
     val leq : t -> t -> bool
     val is_nearly_zero : t -> bool
@@ -20,13 +21,14 @@ module Length
 
     type t = float
 
-    let zero = 0.0
+    let zero = 0.
     let add = ( +. )
     let subtr = ( -. )
     let mult = ( *. )
     let div = ( /. )
     let max = max
     let min = min
+    let negate x = 0. -. x
     let less_than = ( < )
     let leq = ( <= )
     let is_nearly_zero sl = (sl < 0.01)
