@@ -274,6 +274,20 @@ let rec main (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string
   )
 
 
+let output_ref : string ref = ref "mcrd.out"
+
+let arg_spec_list =
+  [
+    ("-o", Arg.String(fun s -> output_ref := s), "specify output file");
+    ("-v", Arg.Unit(fun () -> print_endline "  Macrodown ver 1.00h"), "print version");
+  ]
+
+let input_list_ref : (string list) ref = ref []
+
+let handle_anonimous_arg s =
+  input_list_ref := s :: (!input_list_ref)
+
+(*
 let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =
     if num = Array.length Sys.argv then
       begin
@@ -323,6 +337,21 @@ let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : 
             print_endline ("  [input] " ^ Sys.argv.(num)) ;
             see_argv (num + 1) (file_name_in_list @ [Sys.argv.(num)]) file_name_out
           end
+*)
 
-
-let _ = see_argv 1 [] "mcrd.out"
+let () =
+  (* see_argv 1 [] "mcrd.out" *)
+  begin
+    Arg.parse arg_spec_list handle_anonimous_arg "";
+    FreeID.initialize ();
+    BoundID.initialize ();
+    TypeID.initialize ();
+    Typeenv.initialize_id ();
+    EvalVarID.initialize ();
+    let (tyenv, env) = Primitives.make_environments () in
+    let input_list = !input_list_ref in
+    let output = !output_ref in
+    input_list |> List.iter (fun s -> print_endline ("  [input] " ^ s));
+    print_endline ("  [output] " ^ output);
+    main tyenv env input_list output
+  end

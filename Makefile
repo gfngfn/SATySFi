@@ -3,9 +3,7 @@ OCB_FLAGS = -use-ocamlfind -use-menhir -I src/
 TARGET=macrodown
 OCB = ocamlbuild $(OCB_FLAGS)
 
-all: $(TARGET)
-
-$(TARGET):
+all:
 	$(OCB) main.native
 	mv main.native $(TARGET)
 
