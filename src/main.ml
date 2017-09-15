@@ -253,98 +253,86 @@ let error_log_environment suspended =
   | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
 
 
-let rec main (tyenv : Typeenv.t) (env : environment) (file_name_in_list : string list) (file_name_out : string) =
-  error_log_environment (fun () ->
-    match file_name_in_list with
+type input_file_kind =
+  | DocumentFile
+  | HeaderFile
+  | StandaloneFile
+
+
+let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : string) =
+    match input_list with
     | [] ->
         begin
           print_endline " ---- ---- ---- ----" ;
           print_endline "  no output."
         end
-    | file_name_in :: tail  when is_document_file file_name_in ->
+    | (DocumentFile, file_name_in) :: tail ->
           read_document_file tyenv env file_name_in file_name_out
 
-    | file_name_in :: tail  when is_header_file file_name_in ->
+    | (HeaderFile, file_name_in) :: tail ->
           let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
             main newtyenv newenv tail file_name_out
 
-    | file_name_in :: tail  when is_standalone_file file_name_in ->
+    | (StandaloneFile, file_name_in) :: tail ->
           read_standalone_file tyenv env file_name_in file_name_out
 
-    | file_name_in :: _ -> raise (MainError("'" ^ file_name_in ^ "' has illegal filename extension"))
-  )
 
+let output_name_ref : string ref = ref "mcrd.out"
+let input_acc_ref : ((input_file_kind * string) list) ref = ref []
 
-let output_ref : string ref = ref "mcrd.out"
+let arg_output s =
+  begin output_name_ref := s; end
+
+let arg_header s =
+  begin input_acc_ref := (HeaderFile, s) :: !input_acc_ref; end
+  
+let arg_doc s =
+  begin input_acc_ref := (DocumentFile, s) :: !input_acc_ref; end
+  
+let arg_standalone s =
+  begin input_acc_ref := (StandaloneFile, s) :: !input_acc_ref; end
+  
+let arg_version () =
+  begin
+    print_string (
+        "  Macrodown version 1.00 theta\n"
+      ^ "    ____   ____       ________     _____   ______\n"
+      ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
+      ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
+      ^ "     /    \\  \\   \\  \\   \\       /   /   /   /  \\   \\\n"
+      ^ "    /      \\  \\   \\  \\   \\     /   /   /   /    \\   \\\n"
+      ^ "   /   /\\   \\  \\   \\  \\   \\   /   /   /   /      \\   \\\n"
+      ^ "  /   /  \\   \\  \\   \\  \\___\\ /___/   /   /        \\   \\\n"
+      ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
+      ^ "/___/      \\___\\  \\___\\            /_________________/\n"
+    );
+    exit 0;
+  end
 
 let arg_spec_list =
   [
-    ("-o", Arg.String(fun s -> output_ref := s), "specify output file");
-    ("-v", Arg.Unit(fun () -> print_endline "  Macrodown ver 1.00h"), "print version");
+    ("-o"          , Arg.String(arg_output)    , " Specify output file");
+    ("--output"    , Arg.String(arg_output)    , " Specify output file");
+    ("-v"          , Arg.Unit(arg_version)     , " Print version");
+    ("--version"   , Arg.Unit(arg_version)     , " Print version");
+    ("--header"    , Arg.String(arg_header)    , " Specify input file as a header");
+    ("--doc"       , Arg.String(arg_doc)       , " Specify input file as a document file");
+    ("--standalone", Arg.String(arg_standalone), " Specify input file as a standalone file");
   ]
 
-let input_acc_ref : (string list) ref = ref []
-
 let handle_anonimous_arg s =
-  input_acc_ref := s :: (!input_acc_ref)
+  let i =
+    match () with
+    | ()  when is_document_file s   -> (DocumentFile, s)
+    | ()  when is_header_file s     -> (HeaderFile, s)
+    | ()  when is_standalone_file s -> (StandaloneFile, s)
+    | _                             -> raise (MainError("File '" ^ s ^ "' has illegal filename extension; maybe you need to use '--doc', '--standalone', or '--header' option."))
+  in
+  input_acc_ref := i :: (!input_acc_ref)
 
-(*
-let rec see_argv (num : int) (file_name_in_list : string list) (file_name_out : string) =
-    if num = Array.length Sys.argv then
-      begin
-        print_endline ("  [output] " ^ file_name_out) ;
-        print_endline "" ;
-        FreeID.initialize () ;
-        BoundID.initialize () ;
-        TypeID.initialize () ;
-        Typeenv.initialize_id () ;
-        EvalVarID.initialize () ;
-        let (tyenv, env) = Primitives.make_environments () in
-          main tyenv env file_name_in_list file_name_out
-      end
-    else
-      match Sys.argv.(num) with
-      | "-v" ->
-          print_string (
-              "  Macrodown version 1.00z\n"
-            ^ "    ____   ____       ________     _____   ______\n"
-            ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
-            ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
-            ^ "     /    \\  \\   \\  \\   \\       /   /   /   /  \\   \\\n"
-            ^ "    /      \\  \\   \\  \\   \\     /   /   /   /    \\   \\\n"
-            ^ "   /   /\\   \\  \\   \\  \\   \\   /   /   /   /      \\   \\\n"
-            ^ "  /   /  \\   \\  \\   \\  \\___\\ /___/   /   /        \\   \\\n"
-            ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
-            ^ "/___/      \\___\\  \\___\\            /_________________/\n"
-          )
-      | "-o" ->
-          begin
-            try see_argv (num + 2) file_name_in_list (Sys.argv.(num + 1)) with
-            | Invalid_argument(s) -> print_endline ("! missing file name after '-o' option; " ^ s)
-          end
-      | "-t" ->
-          begin
-            show_control_sequence_type := true ;
-            see_argv (num + 1) file_name_in_list file_name_out
-          end
-      | "-f" ->
-          begin
-            show_control_sequence_type := true ;
-            show_function_type         := true ;
-            see_argv (num + 1) file_name_in_list file_name_out
-          end
-      | _    ->
-          begin
-            print_endline ("  [input] " ^ Sys.argv.(num)) ;
-            see_argv (num + 1) (file_name_in_list @ [Sys.argv.(num)]) file_name_out
-          end
-*)
 
 let () =
-(* 
-  see_argv 1 [] "mcrd.out"
-*)
-  begin
+  error_log_environment (fun () ->
     Arg.parse arg_spec_list handle_anonimous_arg "";
     FreeID.initialize ();
     BoundID.initialize ();
@@ -353,9 +341,9 @@ let () =
     EvalVarID.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
     let input_list = List.rev (!input_acc_ref) in
-    let output = !output_ref in
-    input_list |> List.iter (fun s -> print_endline ("  [input] " ^ s));
+    let output = !output_name_ref in
+    input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
     print_endline ("  [output] " ^ output);
     main tyenv env input_list output
-  end
+  )
 
