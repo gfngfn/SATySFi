@@ -11,7 +11,7 @@ exception InternalContradictionError
 
 let print_for_debug_typecheck msg =
 (*
-  print_endline msg ;
+  print_endline msg;
 *)
   ()
 
@@ -65,12 +65,15 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | ( (UnitType, UnitType)
       | (BoolType, BoolType)
       | (IntType, IntType)
-      | (StringType, StringType) ) -> ()
+      | (StringType, StringType)
+      | (InTextType, InTextType)
+      | (BoxRowType, BoxRowType)
+      | (BoxColType, BoxColType) ) -> ()
 
     | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
         begin
-          unify_sub tydom1 tydom2 ;
-          unify_sub tycod1 tycod2 ;
+          unify_sub tydom1 tydom2;
+          unify_sub tycod1 tycod2;
         end
 
     | (ProductType(tylist1), ProductType(tylist2)) ->
@@ -126,8 +129,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           in
           let () =
             begin
-              tvref1 := Free(tvid1l) ;
-              tvref2 := Free(tvid2l) ;
+              tvref1 := Free(tvid1l);
+              tvref2 := Free(tvid2l);
             end
           in
           let (oldtvref, newtvref, newtvid, newty) =
@@ -149,8 +152,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                   (Assoc.intersection asc1 asc2, kdunion)
           in
           begin
-            unify_list eqnlst ;
-            newtvref := Free(FreeID.set_kind newtvid kdunion) ;
+            unify_list eqnlst;
+            newtvref := Free(FreeID.set_kind newtvid kdunion);
           end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
@@ -176,8 +179,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
               in
               begin
-                unify_list eqnlst ;
-                tvref1 := Link(newty2) ;
+                unify_list eqnlst;
+                tvref1 := Link(newty2);
               end
 
       | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
@@ -230,13 +233,13 @@ let rec typecheck
 
   | UTFinishStruct        ->
       begin
-        final_tyenv := tyenv ;
+        final_tyenv := tyenv;
         (FinishStruct, (Range.dummy "finish-struct", UnitType))
       end
 
   | UTFinishHeaderFile    ->
       begin
-        final_tyenv := tyenv ;
+        final_tyenv := tyenv;
         (FinishHeaderFile, (Range.dummy "finish-header-file", UnitType))
       end
 
@@ -281,10 +284,17 @@ let rec typecheck
 
   | UTConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, StringType) in
+      let () = unify ty1 (get_range utast1, InTextType) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let () = unify ty2 (get_range utast2, StringType) in
-        (Concat(e1, e2), (rng, StringType))
+      let () = unify ty2 (get_range utast2, InTextType) in
+        (Concat(e1, e2), (rng, InTextType))
+
+(*
+  | UTEmbeddedCommand(utastcmd, utastlst) ->
+      let (ecmd, tycmd) = typecheck_iter tyenv utastcmd in
+      let etylst = utastlst |> List.map (typecheck_iter tyenv) in
+      ()
+*)
 
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -693,7 +703,7 @@ and make_type_environment_by_let_mutable (lev : FreeID.level) (tyenv : Typeenv.t
 
 let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
-    final_tyenv := tyenv ;
+    final_tyenv := tyenv;
     let (e, ty) = typecheck Quantifiable FreeID.bottom_level tyenv utast in
       (ty, !final_tyenv, e)
   end

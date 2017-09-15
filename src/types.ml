@@ -233,10 +233,11 @@ and untyped_abstract_tree_main =
   | UTBooleanConstant      of bool
   | UTStringConstant       of string
   | UTUnitConstant
-  | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTBreakAndIndent
 (* -- in-text -- *)
   | UTInText               of string
+  | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
+  | UTEmbeddedCommand      of var_name * untyped_abstract_tree list
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
