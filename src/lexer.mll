@@ -22,11 +22,6 @@
   let numdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
   let strdepth_stack : (int Stacklist.t) ref = ref Stacklist.empty
 
-(*
-  let increment rfn = ( rfn := !rfn + 1 )
-
-  let decrement rfn = ( rfn := !rfn - 1 )
-*)
 
   let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
 
@@ -47,7 +42,7 @@
 
   let increment_line lexbuf =
     begin
-      end_of_previousline := (Lexing.lexeme_end lexbuf) ;
+      end_of_previousline := (Lexing.lexeme_end lexbuf);
       line_no := !line_no + 1
     end
 
@@ -59,37 +54,37 @@
           match str.[num] with
           | ( '\n' | '\r' ) -> ( increment_line lexbuf )
           | _               -> ()
-        end ;
+        end;
         increment_line_for_each_break lexbuf str (num + 1)
       end
 
 
   let reset_to_numexpr () =
     begin
-      first_state := STATE_NUMEXPR ;
-      next_state := !first_state ;
-      ignore_space := true ;
-      line_no := 1 ;
+      first_state := STATE_NUMEXPR;
+      next_state := !first_state;
+      ignore_space := true;
+      line_no := 1;
       end_of_previousline := 0;
-      openqtdepth := 0 ;
-      numdepth := 0 ;
-      strdepth := 0 ;
-      numdepth_stack := Stacklist.empty ;
+      openqtdepth := 0;
+      numdepth := 0;
+      strdepth := 0;
+      numdepth_stack := Stacklist.empty;
       strdepth_stack := Stacklist.empty
     end
 
 
   let reset_to_strexpr () =
     begin
-      first_state := STATE_STREXPR ;
-      next_state := !first_state ;
-      ignore_space := true ;
-      line_no := 1 ;
+      first_state := STATE_STREXPR;
+      next_state := !first_state;
+      ignore_space := true;
+      line_no := 1;
       end_of_previousline := 0;
-      openqtdepth := 0 ;
-      numdepth := 0 ;
-      strdepth := 0 ;
-      numdepth_stack := Stacklist.empty ;
+      openqtdepth := 0;
+      numdepth := 0;
+      strdepth := 0;
+      numdepth_stack := Stacklist.empty;
       strdepth_stack := Stacklist.empty
     end
 
@@ -117,56 +112,56 @@ let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*']
 rule numexpr = parse
   | "%" {
-      after_comment_state := STATE_NUMEXPR ;
-      next_state := STATE_COMMENT ;
+      after_comment_state := STATE_NUMEXPR;
+      next_state := STATE_COMMENT;
       IGNORED
     }
   | space { numexpr lexbuf }
   | break {
-      increment_line lexbuf ;
+      increment_line lexbuf;
       numexpr lexbuf
     }
   | ("(" (space | break)* ")") { UNITVALUE(get_pos lexbuf) }
-  | "(" { incr numdepth ; LPAREN(get_pos lexbuf) }
+  | "(" { incr numdepth; LPAREN(get_pos lexbuf) }
   | ")" {
-      decr numdepth ;
+      decr numdepth;
       if Stacklist.is_empty numdepth_stack then
         RPAREN(get_pos lexbuf)
       else
         if !numdepth = Stacklist.top numdepth_stack then
         begin
-          Stacklist.delete_top numdepth_stack ;
-          next_state := STATE_ACTIVE ;
+          Stacklist.delete_top numdepth_stack;
+          next_state := STATE_ACTIVE;
           CLOSENUM(get_pos lexbuf)
         end
         else
           RPAREN(get_pos lexbuf)
     }
-  | "(|" { incr numdepth ; BRECORD(get_pos lexbuf) }
+  | "(|" { incr numdepth; BRECORD(get_pos lexbuf) }
   | "|)" {
-        decr numdepth ;
+        decr numdepth;
         if Stacklist.is_empty numdepth_stack then
           ERECORD(get_pos lexbuf)
         else
           if !numdepth = Stacklist.top numdepth_stack then
           begin
-            Stacklist.delete_top numdepth_stack ;
-            next_state := STATE_ACTIVE ;
+            Stacklist.delete_top numdepth_stack;
+            next_state := STATE_ACTIVE;
             CLOSENUM_AND_ERECORD(get_pos lexbuf)
           end
           else
             ERECORD(get_pos lexbuf)
       }
-  | "[" { incr numdepth ; BLIST(get_pos lexbuf) }
+  | "[" { incr numdepth; BLIST(get_pos lexbuf) }
   | "]" {
-        decr numdepth ;
+        decr numdepth;
         if Stacklist.is_empty numdepth_stack then
           ELIST(get_pos lexbuf)
         else
           if !numdepth = Stacklist.top numdepth_stack then
           begin
-            Stacklist.delete_top numdepth_stack ;
-            next_state := STATE_ACTIVE ;
+            Stacklist.delete_top numdepth_stack;
+            next_state := STATE_ACTIVE;
             CLOSENUM_AND_ELIST(get_pos lexbuf)
           end
           else
@@ -174,16 +169,16 @@ rule numexpr = parse
          }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
-      Stacklist.push strdepth_stack !strdepth ;
-      incr strdepth ;
-      next_state := STATE_STREXPR ;
-      ignore_space := true ;
+      Stacklist.push strdepth_stack !strdepth;
+      incr strdepth;
+      next_state := STATE_STREXPR;
+      ignore_space := true;
       OPENSTR(get_pos lexbuf)
     }
   | "`"+ {
-      openqtdepth := String.length (Lexing.lexeme lexbuf) ;
-      after_literal_state := STATE_NUMEXPR ;
-      next_state := STATE_LITERAL ;
+      openqtdepth := String.length (Lexing.lexeme lexbuf);
+      after_literal_state := STATE_NUMEXPR;
+      next_state := STATE_LITERAL;
       OPENQT(get_pos lexbuf)
     }
   | ("\\" (identifier | constructor)) {
@@ -272,59 +267,59 @@ rule numexpr = parse
 
 and strexpr = parse
   | "%" {
-      after_comment_state := STATE_STREXPR ;
-      ignore_space := true ;
-      next_state := STATE_COMMENT ;
+      after_comment_state := STATE_STREXPR;
+      ignore_space := true;
+      next_state := STATE_COMMENT;
       IGNORED
     }
   | ((break | space)* "{") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      incr strdepth ;
-      ignore_space := true ;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      incr strdepth;
+      ignore_space := true;
       BGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
-      decr strdepth ;
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
+      decr strdepth;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
       if Stacklist.is_empty strdepth_stack then
         begin
-          ignore_space := false ;
+          ignore_space := false;
           EGRP(get_pos lexbuf)
         end
       else
         if !strdepth = Stacklist.top strdepth_stack then
           begin
-            Stacklist.delete_top strdepth_stack ;
-            next_state := STATE_NUMEXPR ;
+            Stacklist.delete_top strdepth_stack;
+            next_state := STATE_NUMEXPR;
             CLOSESTR(get_pos lexbuf)
           end
         else
           begin
-            ignore_space := false ;
+            ignore_space := false;
             EGRP(get_pos lexbuf)
           end
     }
   | ((break | space)* "|") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      ignore_space := true ;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      ignore_space := true;
       SEP(get_pos lexbuf)
     }
   | break {
-      increment_line lexbuf ;
-      if !ignore_space then strexpr lexbuf else begin ignore_space := true ; BREAK(get_pos lexbuf) end
+      increment_line lexbuf;
+      if !ignore_space then strexpr lexbuf else begin ignore_space := true; BREAK(get_pos lexbuf) end
     }
   | space {
-      if !ignore_space then strexpr lexbuf else begin ignore_space := true ; SPACE(get_pos lexbuf) end
+      if !ignore_space then strexpr lexbuf else begin ignore_space := true; SPACE(get_pos lexbuf) end
     }
   | ((break | space)* (item as itemstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      ignore_space := true ;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      ignore_space := true;
       ITEM(get_pos lexbuf, String.length itemstr)
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in
       let rng = get_pos lexbuf in
-        next_state := STATE_ACTIVE ;
+        next_state := STATE_ACTIVE;
         CTRLSEQ(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
@@ -332,13 +327,13 @@ and strexpr = parse
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
       let rng = get_pos lexbuf in
-        next_state := STATE_ACTIVE ;
+        next_state := STATE_ACTIVE;
         CTRLSEQWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
         begin
-          ignore_space := false ;
+          ignore_space := false;
           CHAR(get_pos lexbuf, tok)
         end
     }
@@ -346,15 +341,15 @@ and strexpr = parse
         let tok = Lexing.lexeme lexbuf in
         let vnm = String.sub tok 1 ((String.length tok) - 1) in
           begin
-            next_state := STATE_ACTIVE ;
+            next_state := STATE_ACTIVE;
             VARINSTR(get_pos lexbuf, vnm)
           end
     }
   | ((break | space)* ("`"+ as openqtstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0 ;
-      openqtdepth := String.length openqtstr ;
-      after_literal_state := STATE_STREXPR ;
-      next_state := STATE_LITERAL ;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      openqtdepth := String.length openqtstr;
+      after_literal_state := STATE_STREXPR;
+      next_state := STATE_LITERAL;
       OPENQT(get_pos lexbuf)
     }
   | eof {
@@ -362,7 +357,7 @@ and strexpr = parse
         raise (LexError(error_reporting lexbuf "program input ended while reading a text area"))
     }
   | str+ {
-      ignore_space := false ;
+      ignore_space := false;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
@@ -370,48 +365,48 @@ and strexpr = parse
 
 and active = parse
   | "%" {
-      after_comment_state := STATE_ACTIVE ;
-      next_state := STATE_COMMENT ;
+      after_comment_state := STATE_ACTIVE;
+      next_state := STATE_COMMENT;
       IGNORED
     }
   | space { active lexbuf }
-  | break { increment_line lexbuf ; active lexbuf }
+  | break { increment_line lexbuf; active lexbuf }
   | ("#" identifier) { let tok = Lexing.lexeme lexbuf in IDNAME(get_pos lexbuf, tok) }
   | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
   | "(" {
-      Stacklist.push numdepth_stack !numdepth ;
-      incr numdepth ;
-      next_state := STATE_NUMEXPR ;
+      Stacklist.push numdepth_stack !numdepth;
+      incr numdepth;
+      next_state := STATE_NUMEXPR;
       OPENNUM(get_pos lexbuf)
     }
   | "(|" {
-      Stacklist.push numdepth_stack !numdepth ;
-      incr numdepth ;
-      next_state := STATE_NUMEXPR ;
+      Stacklist.push numdepth_stack !numdepth;
+      incr numdepth;
+      next_state := STATE_NUMEXPR;
       OPENNUM_AND_BRECORD(get_pos lexbuf)
     }
   | "[" {
-      Stacklist.push numdepth_stack !numdepth ;
-      incr numdepth ;
-      next_state := STATE_NUMEXPR ;
+      Stacklist.push numdepth_stack !numdepth;
+      incr numdepth;
+      next_state := STATE_NUMEXPR;
       OPENNUM_AND_BLIST(get_pos lexbuf)
     }
   | "{" {
-      incr strdepth ;
-      next_state := STATE_STREXPR ;
-      ignore_space := true ;
+      incr strdepth;
+      next_state := STATE_STREXPR;
+      ignore_space := true;
       BGRP(get_pos lexbuf)
     }
   | "`"+ {
-      openqtdepth := String.length (Lexing.lexeme lexbuf) ;
-      ignore_space := false ;
-      after_literal_state := STATE_STREXPR ;
-      next_state := STATE_LITERAL ;
+      openqtdepth := String.length (Lexing.lexeme lexbuf);
+      ignore_space := false;
+      after_literal_state := STATE_STREXPR;
+      next_state := STATE_LITERAL;
       OPENQT(get_pos lexbuf)
     }
   | ";" {
-      next_state := STATE_STREXPR ;
-      ignore_space := false ;
+      next_state := STATE_STREXPR;
+      ignore_space := false;
       ENDACTIVE(get_pos lexbuf)
     }
   | eof {
@@ -431,9 +426,9 @@ and literal = parse
         else if len > !openqtdepth then
           raise (LexError(error_reporting lexbuf "literal area was closed with too many '`'s"))
         else
-          begin next_state := !after_literal_state ; CLOSEQT(get_pos lexbuf) end
+          begin next_state := !after_literal_state; CLOSEQT(get_pos lexbuf) end
     }
-  | break { increment_line lexbuf ; CHAR(get_pos lexbuf, "\n") }
+  | break { increment_line lexbuf; CHAR(get_pos lexbuf, "\n") }
   | eof {
       raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
     }
@@ -441,8 +436,8 @@ and literal = parse
 
 and comment = parse
   | break {
-      increment_line lexbuf ;
-      next_state := !after_comment_state ;
+      increment_line lexbuf;
+      next_state := !after_comment_state;
       IGNORED
     }
   | eof { EOI }
