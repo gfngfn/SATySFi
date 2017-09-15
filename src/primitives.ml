@@ -43,15 +43,18 @@ let rec lambda3 astf env =
 
 let make_environments () =
 
-  let i             = (Range.dummy "int"   , IntType           ) in
-  let b             = (Range.dummy "bool"  , BoolType          ) in
-  let s             = (Range.dummy "string", StringType        ) in
-  let (~@) n        = (Range.dummy "tv"    , TypeVariable(n)   ) in
+  let i             = (Range.dummy "int"    , IntType           ) in
+  let b             = (Range.dummy "bool"   , BoolType          ) in
+  let s             = (Range.dummy "string" , StringType        ) in
+  let (~@) n        = (Range.dummy "tv"     , TypeVariable(n)   ) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-  let l cont        = (Range.dummy "list"  , ListType(cont)    ) in
-  let r cont        = (Range.dummy "ref"   , RefType(cont)     ) in
-  let (-->) dom cod = (Range.dummy "func"  , FuncType(dom, cod)) in
+  let l cont        = (Range.dummy "list"   , ListType(cont)    ) in
+  let r cont        = (Range.dummy "ref"    , RefType(cont)     ) in
+  let (-->) dom cod = (Range.dummy "func"   , FuncType(dom, cod)) in
+  let t             = (Range.dummy "in-text", InTextType        ) in
+  let br            = (Range.dummy "box-row", BoxRowType        ) in
+  let bc            = (Range.dummy "box-col", BoxColType        ) in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
@@ -59,7 +62,8 @@ let make_environments () =
     let ptyderef = tv1 -% (~% ((r (~@ tv1)) --> (~@ tv1))) in
     let ptycons  = tv2 -% (~% ((~@ tv2) --> ((l (~@ tv2)) --> (l (~@ tv2))))) in
     let astfdeeper = lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) in
-      [ ( "+"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
+      [
+        ( "+"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
         ( "-"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Minus(v1, v2))                   );
         ( "mod", ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Mod(v1, v2))                     );
         ( "*"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Times(v1, v2))                   );
@@ -85,7 +89,12 @@ let make_environments () =
         ( "break"        , ~% s                        , (fun _ -> BreakAndIndent) );
         ( "soft-break"   , ~% s                        , (fun _ -> SoftBreakAndIndent) );
         ( "space"        , ~% s                        , (fun _ -> StringConstant(" ")) );
-        ( "arabic"       , ~% (i --> s)                , lambda1 (fun vnum -> PrimitiveArabic(vnum)) ;);
+        ( "arabic"       , ~% (i --> s)                , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
+
+        ("form-paragraph", ~% (br --> bc)               , lambda1 (fun vrow -> BackendLineBreaking(vrow)) );
+        ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("fixed-string"  , ~% (t --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
       ]
   in
   let temporary_ast = StringEmpty in
@@ -102,8 +111,6 @@ let make_environments () =
     ) (Typeenv.empty, [])
   in
   let () =
-    locacc |> List.iter (fun (loc, deff) ->
-      loc := deff env
-    )
+    locacc |> List.iter (fun (loc, deff) -> begin loc := deff env; end)
   in
     (add_default_types tyenvmid, env)

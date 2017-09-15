@@ -48,7 +48,10 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
     | ( UnitType
       | BoolType
       | IntType
-      | StringType )               -> false
+      | StringType
+      | InTextType
+      | BoxRowType
+      | BoxColType )               -> false
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -221,6 +224,10 @@ let rec typecheck
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, StringType))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType)  )
   | UTUnitConstant        -> (UnitConstant       , (rng, UnitType)  )
+  | UTInText(itxt)        -> (InText(itxt)       , (rng, InTextType))
+  | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BoxRowType))
+  | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BoxColType))
+
   | UTFinishStruct        ->
       begin
         final_tyenv := tyenv ;
@@ -257,6 +264,20 @@ let rec typecheck
         with
         | Not_found -> raise (UndefinedConstructor(rng, constrnm))
       end
+
+  | UTHorzConcat(utast1, utast2) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let () = unify ty1 (get_range utast1, BoxRowType) in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let () = unify ty2 (get_range utast2, BoxRowType) in
+        (HorzConcat(e1, e2), (rng, BoxRowType))
+
+  | UTVertConcat(utast1, utast2) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let () = unify ty1 (get_range utast1, BoxColType) in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let () = unify ty2 (get_range utast2, BoxColType) in
+        (VertConcat(e1, e2), (rng, BoxColType))
 
   | UTConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in

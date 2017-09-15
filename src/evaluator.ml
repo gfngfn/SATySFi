@@ -27,21 +27,30 @@ let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstrac
 let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find env evid
 
 
+let rec normalize_box_row ast =
+  let iter = normalize_box_row in
+    match ast with
+    | Horz(hblst)            -> hblst
+    | HorzConcat(ast1, ast2) -> List.append (iter ast1) (iter ast2)
+    | _                      -> report_bug_evaluator "normalize_box_row"
+
+
 let rec interpret env ast =
   match ast with
 
 (* ---- basic value ---- *)
 
-  | StringEmpty                           -> StringEmpty
-  | NumericConstant(nc)                   -> NumericConstant(nc)
-  | StringConstant(c)                     -> StringConstant(c)
-  | BooleanConstant(bc)                   -> BooleanConstant(bc)
-  | UnitConstant                          -> UnitConstant
-  | EvaluatedEnvironment(env)             -> EvaluatedEnvironment(env)
-  | FuncWithEnvironment(evid, ast, envf)  -> FuncWithEnvironment(evid, ast, envf)
-  | DeeperIndent(ast)                     -> DeeperIndent(interpret env ast)
-  | BreakAndIndent                        -> BreakAndIndent
-  | SoftBreakAndIndent                    -> SoftBreakAndIndent
+  | StringEmpty                           -> ast
+  | NumericConstant(_)                    -> ast
+  | StringConstant(_)                     -> ast
+  | BooleanConstant(_)                    -> ast
+  | UnitConstant                          -> ast
+  | EvaluatedEnvironment(_)               -> ast
+  | FuncWithEnvironment(_, _, _)          -> ast
+  | BreakAndIndent                        -> ast
+  | SoftBreakAndIndent                    -> ast
+  | InText(_)                             -> ast
+  | DeeperIndent(astsub)                  -> DeeperIndent(interpret env astsub)
   | Concat(astf, astl)                    ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
@@ -52,9 +61,63 @@ let rec interpret env ast =
           | (_, _)           -> Concat(valuef, valuel)
         end
 
+(* ---- values for backend ---- *)
+
+  | Horz(_) -> ast
+
+  | HorzConcat(ast1, ast2) ->
+      let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
+      begin
+        match (value1, value2) with
+        | (Horz([]), _) -> value2
+        | (_, Horz([])) -> value1
+        | (_, _)        -> HorzConcat(value1, value2)
+      end
+
+  | Vert(_) -> ast
+
+  | VertConcat(ast1, ast2) ->
+      let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
+      begin
+        match (value1, value2) with
+        | (Vert([]), _) -> value2
+        | (_, Vert([])) -> value1
+        | (_, _)        -> VertConcat(value1, value2)
+      end
+
+  | BackendLineBreaking(astrow) ->
+      let hblst = normalize_box_row astrow in
+      let paragraph_width = HorzBox.Length.of_pdf_point 300. in  (* temporary *)
+      let imvblst = LineBreak.main paragraph_width hblst in
+      Vert(imvblst)
+
+  | BackendFixedEmpty(astwid) ->  (* temporary; should introduce a type for length *)
+      let rawwid = interpret_int env astwid in
+      let wid = HorzBox.Length.of_pdf_point (float_of_int rawwid) in
+      Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
+
+  | BackendOuterEmpty(astnat, astshrink, aststretch) ->  (* temporary; should introduce a type for length *)
+      let rawnat = interpret_int env astnat in
+      let widnat = HorzBox.Length.of_pdf_point (float_of_int rawnat) in
+      let rawshrink = interpret_int env astshrink in
+      let widshrink = HorzBox.Length.of_pdf_point (float_of_int rawshrink) in
+      let rawstretch = interpret_int env aststretch in
+      let widstretch = HorzBox.Length.of_pdf_point (float_of_int rawstretch) in
+      Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
+
+  | BackendFixedString(astitxt) ->
+      let font_info = ("Arno", HorzBox.Length.of_pdf_point 16.) in  (* temporary; should be variable *)
+      begin
+        match astitxt with
+        | InText(itxt) -> Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 itxt))])
+        | _            -> report_bug_evaluator "BackendFixedString"
+      end
+
 (* ---- list value ---- *)
 
-  | EndOfList              -> EndOfList
+  | EndOfList -> ast
 
   | ListCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
@@ -63,7 +126,7 @@ let rec interpret env ast =
 
 (* ---- tuple value ---- *)
 
-  | EndOfTuple              -> EndOfTuple
+  | EndOfTuple -> ast
 
   | TupleCons(asthd, asttl) ->
       let valuehd = interpret env asthd in

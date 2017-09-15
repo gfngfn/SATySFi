@@ -241,7 +241,7 @@ and untyped_abstract_tree_main =
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* -- vertical box list -- *)
-  | UTVert                 of HorzBox.vert_box list
+  | UTVert                 of HorzBox.intermediate_vert_box list
   | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* -- list value -- *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
@@ -364,11 +364,13 @@ and abstract_tree =
   | Concat                of abstract_tree * abstract_tree
   | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
+(* -- input texts -- *)
+  | InText                of string
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
 (* -- vertical box list -- *)
-  | Vert                  of HorzBox.vert_box list
+  | Vert                  of HorzBox.intermediate_vert_box list
   | VertConcat            of abstract_tree * abstract_tree
 (* -- list value -- *)
   | ListCons              of abstract_tree * abstract_tree
@@ -404,9 +406,9 @@ and abstract_tree =
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
 (* -- class and id option -- *)
   | ApplyClassAndID       of EvalVarID.t * EvalVarID.t * abstract_tree * abstract_tree * abstract_tree
-(* (* -- lightweight itemize -- *)
-  | Itemize               of itemize *)
-(* -- primitive operation -- *)
+(* -- module system -- *)
+  | Module                of abstract_tree * abstract_tree
+(* -- basic primitive operations -- *)
   | Times                 of abstract_tree * abstract_tree
   | Divides               of abstract_tree * abstract_tree
   | Mod                   of abstract_tree * abstract_tree
@@ -423,13 +425,17 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
 (*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
-  | Module                of abstract_tree * abstract_tree
-(* and itemize =
-  | Item                  of abstract_tree * (itemize list) *)
+(* -- backend primitives -- *)
+  | BackendLineBreaking   of abstract_tree
+  | BackendFixedString    of abstract_tree
+  | BackendFixedEmpty     of abstract_tree
+  | BackendOuterEmpty     of abstract_tree * abstract_tree * abstract_tree
+
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
   | PatternMatchConsWhen  of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
   | EndOfPatternMatch
+
 and pattern_tree =
   | PNumericConstant      of int
   | PBooleanConstant      of bool
