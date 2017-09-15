@@ -1,9 +1,16 @@
-BINDIR=$(PREFIX)/bin
-OCB_FLAGS = -use-ocamlfind -use-menhir -I src/
+BACKEND=backend
+MAINSRC=src
+EXTERNAL=backend/external
+OCB_FLAGS = -use-ocamlfind -use-menhir -I $(MAINSRC)/ -I $(BACKEND)/ -I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ -pkgs "core,ctypes,result,uutf,ucorelib" -tag thread -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"
 TARGET=macrodown
 OCB = ocamlbuild $(OCB_FLAGS)
+BINDIR=$(PREFIX)/bin
 
 all:
+	cp $(EXTERNAL)/camlpdf/*.c ./
+	cp $(EXTERNAL)/camlpdf/*.h ./
+	mv *.c _build/
+	mv *.h _build/
 	$(OCB) main.native
 	mv main.native $(TARGET)
 
@@ -18,6 +25,6 @@ clean:
 	$(OCB) -clean
 
 clean-sub:
-	rm -f src/lexer.ml src/parser.mli src/parser.ml src/*.cmi src/*.cmx src/*.o
+	rm -f $(MAINSRC)/lexer.ml $(MAINSRC)/parser.mli $(MAINSRC)/parser.ml $(MAINSRC)/*.cmi $(MAINSRC)/*.cmx $(MAINSRC)/*.o
 
 .PHONY: clean clean-sub

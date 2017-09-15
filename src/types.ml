@@ -171,6 +171,9 @@ and mono_type_main =
   | IntType
   | StringType
   | BoolType
+  | InTextType
+  | BoxRowType
+  | BoxColType
   | FuncType     of mono_type * mono_type
   | ListType     of mono_type
   | RefType      of mono_type
@@ -232,6 +235,14 @@ and untyped_abstract_tree_main =
   | UTUnitConstant
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTBreakAndIndent
+(* -- in-text -- *)
+  | UTInText               of string
+(* -- horizontal box list -- *)
+  | UTHorz                 of HorzBox.horz_box list
+  | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
+(* -- vertical box list -- *)
+  | UTVert                 of HorzBox.vert_box list
+  | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* -- list value -- *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
   | UTEndOfList
@@ -353,6 +364,12 @@ and abstract_tree =
   | Concat                of abstract_tree * abstract_tree
   | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
+(* -- horizontal box list -- *)
+  | Horz                  of HorzBox.horz_box list
+  | HorzConcat            of abstract_tree * abstract_tree
+(* -- vertical box list -- *)
+  | Vert                  of HorzBox.vert_box list
+  | VertConcat            of abstract_tree * abstract_tree
 (* -- list value -- *)
   | ListCons              of abstract_tree * abstract_tree
   | EndOfList
@@ -510,7 +527,10 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | ( UnitType
       | BoolType
       | IntType
-      | StringType ) -> ty
+      | StringType
+      | InTextType
+      | BoxRowType
+      | BoxColType ) -> ty
 
   and instantiate_kind kd =
     match kd with
@@ -553,7 +573,10 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | ( UnitType
       | IntType
       | BoolType
-      | StringType ) -> ty
+      | StringType
+      | InTextType
+      | BoxRowType
+      | BoxColType ) -> ty
 
   and generalize_kind kd =
     match kd with
@@ -600,6 +623,9 @@ let rec string_of_mono_type_basic tystr =
     | IntType                         -> "int" ^ qstn
     | BoolType                        -> "bool" ^ qstn
     | UnitType                        -> "unit" ^ qstn
+    | BoxRowType                      -> "box-row" ^ qstn
+    | BoxColType                      -> "box-col" ^ qstn
+    | InTextType                      -> "in-text" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
