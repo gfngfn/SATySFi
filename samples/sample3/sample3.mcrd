@@ -1,3 +1,4 @@
+% -*- coding: utf-8 -*-
 \document{
   \content-type;
   \if-html{\set-style{style.css}}

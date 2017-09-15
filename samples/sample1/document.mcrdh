@@ -23,6 +23,6 @@ let \section head body = {
 let \p inner = {<p>\deeper{@inner;}</p>}
 
 let \span inner =
-  (if-class-is-valid {<span class="@class;">} else {<span>}) ^ {@inner;</span>}
+  (match class-name with Just(class) -> {<span class="@class;">} | Nothing -> {<span>}) ^ {@inner;</span>}
   %{<span>@inner;</span>}
 

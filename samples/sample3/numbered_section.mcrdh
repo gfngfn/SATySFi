@@ -1,10 +1,11 @@
+% -*- coding: utf-8 -*-
 let-mutable counter-section <- 0
 
 let \section head content =
     counter-section <- !counter-section + 1
   before
-  ( let strcnt = {第} ^(arabic (!counter-section))^ {章} in
-        ( if-id-is-valid new-global-hash id <<- strcnt else () )
+  ( let strcnt = {第} ^(arabic (!counter-section))^ {節} in
+        ( match id-name with Just(id) -> new-global-hash id <<- strcnt | Nothing -> () )
       before
         { <section>\deeper{
             <h1>@strcnt; @head;</h1>\deeper{

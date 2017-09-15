@@ -1,6 +1,6 @@
 all: somedoc.tex somedoc.dvi somedoc.pdf somedoc.html
 somedoc.tex: tojsarticle.mcrdh somedoc_latex.mcrdh somedoc.mcrd
-	macrodown $^ -t -o somedoc.tex
+	macrodown $^ -o somedoc.tex
 somedoc.dvi: somedoc.tex
 	platex $^
 somedoc.pdf: somedoc.dvi
