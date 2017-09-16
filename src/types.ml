@@ -165,8 +165,7 @@ type manual_kind =
   | MUniversalKind
   | MRecordKind    of (field_name, manual_type) Assoc.t
 
-type mono_type = Range.t * mono_type_main
-and mono_type_main =
+type base_type =
   | UnitType
   | IntType
   | StringType
@@ -174,6 +173,11 @@ and mono_type_main =
   | InTextType
   | BoxRowType
   | BoxColType
+
+
+type mono_type = Range.t * mono_type_main
+and mono_type_main =
+  | BaseType     of base_type
   | FuncType     of mono_type * mono_type
   | ListType     of mono_type
   | RefType      of mono_type
@@ -531,13 +535,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
-    | ( UnitType
-      | BoolType
-      | IntType
-      | StringType
-      | InTextType
-      | BoxRowType
-      | BoxColType ) -> ty
+    | BaseType(_)                       -> ty
 
   and instantiate_kind kd =
     match kd with
@@ -577,13 +575,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
-    | ( UnitType
-      | IntType
-      | BoolType
-      | StringType
-      | InTextType
-      | BoxRowType
-      | BoxColType ) -> ty
+    | BaseType(_)                       -> ty
 
   and generalize_kind kd =
     match kd with
@@ -626,13 +618,13 @@ let rec string_of_mono_type_basic tystr =
   let (rng, tymain) = tystr in
   let qstn = if Range.is_dummy rng then "?" else "" in
     match tymain with
-    | StringType                      -> "string" ^ qstn
-    | IntType                         -> "int" ^ qstn
-    | BoolType                        -> "bool" ^ qstn
-    | UnitType                        -> "unit" ^ qstn
-    | BoxRowType                      -> "box-row" ^ qstn
-    | BoxColType                      -> "box-col" ^ qstn
-    | InTextType                      -> "in-text" ^ qstn
+    | BaseType(UnitType)   -> "unit" ^ qstn
+    | BaseType(BoolType)   -> "bool" ^ qstn
+    | BaseType(IntType)    -> "int" ^ qstn
+    | BaseType(StringType) -> "string" ^ qstn
+    | BaseType(InTextType) -> "in-text" ^ qstn
+    | BaseType(BoxRowType) -> "box-row" ^ qstn
+    | BaseType(BoxColType) -> "box-col" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

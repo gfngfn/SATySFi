@@ -2,7 +2,7 @@ open Types
 
 let print_for_debug_variantenv msg =
 (*
-  print_endline msg ;
+  print_endline msg;
 *)
   ()
 
@@ -27,7 +27,7 @@ module ModuleID
     let current_id = ref 0
     let initialize () = ( current_id := 0 )
     let fresh mdlnm =
-      begin incr current_id ; (!current_id, mdlnm) end
+      begin incr current_id; (!current_id, mdlnm) end
     let extract_name (_, mdlnm) = mdlnm
   end
 
@@ -125,13 +125,13 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
       match sigopt with
       | None ->
           begin
-            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> no signature") ; (* for debug *)
+            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> no signature"); (* for debug *)
             try Some(VarMap.find varnm vdmap) with
             | Not_found -> None
           end
       | Some((_, vtmapsig)) ->
           begin
-            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> signature found") ; (* for debug *)
+            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> signature found"); (* for debug *)
             try
               let ptysig = VarMap.find varnm vtmapsig in
               let (_, evid) = VarMap.find varnm vdmap in
@@ -169,7 +169,7 @@ let leave_module ((addr, nmtoid, mtr) : t) : t =
   try
     (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
   with
-  | Failure("tl") -> assert false
+  | Failure(_) -> assert false
 
 
 module MapList
@@ -251,13 +251,13 @@ let find_type_definition_for_outer ((addr, nmtoid, mtr) : t) (tynm : type_name) 
       match sigopt with
       | None ->
           begin
-            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> no signature") ; (* for debug *)
+            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> no signature"); (* for debug *)
             try let (tyid, dfn) = TyNameMap.find tynm tdmap in Some((tyid, dfn)) with
             | Not_found -> None
           end
       | Some((tdmapsig, _)) ->
           begin
-            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> signature found") ; (* for debug *)
+            print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> signature found"); (* for debug *)
             try Some(TyNameMap.find tynm tdmapsig) with
             | Not_found -> None
           end
@@ -301,9 +301,9 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
     | (tyarg :: tyargtail, bid :: bidtail) ->
         let tvref = ref (Link(tyarg)) in
         begin
-          print_for_debug_variantenv ("I-add '#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)) ; (* for debug *)
-          BoundIDHashtbl.add bid_to_type_ht bid tvref ;
-          pre tyargtail bidtail ;
+          print_for_debug_variantenv ("I-add '#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)); (* for debug *)
+          BoundIDHashtbl.add bid_to_type_ht bid tvref;
+          pre tyargtail bidtail;
         end
     | (_, _)                                -> assert false
   in
@@ -333,23 +333,16 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
       | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
       | ListType(tysub)                   -> (rng, ListType(aux tysub))
       | RefType(tysub)                    -> (rng, RefType(aux tysub))
-      | ( UnitType
-        | BoolType
-        | IntType
-        | StringType )                    -> (rng, tymain)
+      | BaseType(_)                       -> (rng, tymain)
   in
   begin
-    pre tyarglist bidlist ;
+    pre tyarglist bidlist;
     aux ty
   end
 
 
 let rec type_argument_length tyargcons = List.length tyargcons
-(*
-  match tyargcons with
-  | UTEndOfTypeArgument                   -> 0
-  | UTTypeArgumentCons(_, _, _, tailcons) -> 1 + (type_argument_length tailcons)
-*)
+
 
 let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
@@ -363,13 +356,13 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MProductType(mntylist)           -> ProductType(List.map iter mntylist)
       | MRecordType(mnasc)               -> RecordType(Assoc.map_value iter mnasc)
 
-      | MTypeName([], "int")             -> IntType
+      | MTypeName([], "int")             -> BaseType(IntType)
       | MTypeName(mntyarglist, "int")    -> error "int" 0 (List.length mntyarglist)
-      | MTypeName([], "string")          -> StringType
+      | MTypeName([], "string")          -> BaseType(StringType)
       | MTypeName(mntyarglist, "string") -> error "string" 0 (List.length mntyarglist)
-      | MTypeName([], "bool")            -> BoolType
+      | MTypeName([], "bool")            -> BaseType(BoolType)
       | MTypeName(mntyarglist, "bool")   -> error "bool" 0 (List.length mntyarglist)
-      | MTypeName([], "unit")            -> UnitType
+      | MTypeName([], "unit")            -> BaseType(UnitType)
       | MTypeName(mntyarglist, "unit")   -> error "unit" 0 (List.length mntyarglist)
 
       | MTypeName(mntyarg :: [], "list") -> ListType(iter mntyarg)
@@ -443,7 +436,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
                         let tvid = FreeID.fresh UniversalKind Quantifiable lev () in
                         let tvref = ref (Free(tvid)) in
                         begin
-                          MapList.add tyargmaplist tyargnm tvref ;
+                          MapList.add tyargmaplist tyargnm tvref;
                           TypeVariable(tvref)
                         end
                   end
@@ -461,7 +454,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
             | Free(tvid) ->
                 let bid = BoundID.fresh (FreeID.get_kind tvid) () in
                 begin
-                  tvref := Bound(bid) ;
+                  tvref := Bound(bid);
                   bid
                 end
             | _ -> assert false
@@ -491,12 +484,12 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) 
        let () = print_for_debug_variantenv ("FMT " ^ tyargnm ^ " :: " ^ (string_of_kind string_of_mono_type_basic kd)) in (* for debug *)
        let tvid = FreeID.fresh kd Quantifiable lev () in
        begin
-         MapList.add tyargmaplist tyargnm (ref (Free(tvid))) ;
+         MapList.add tyargmaplist tyargnm (ref (Free(tvid)));
          aux tailcons
        end
   in
   begin
-    aux tyargcons ;
+    aux tyargcons;
     fix_manual_type_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnty
   end
 
@@ -594,8 +587,8 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
           let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
           begin
-            DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, tyargcons, utvarntcons)) ;
-            iter tailcons ;
+            DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, tyargcons, utvarntcons));
+            iter tailcons;
           end
 
     | UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons) ->
@@ -606,8 +599,8 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
           let tyid = TypeID.fresh tynm in
           begin
-            DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None)) ;
-            iter tailcons ;
+            DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None));
+            iter tailcons;
           end
   in
 
@@ -616,15 +609,15 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
       let iter = add_dependency tynm1 in
         match mtymain with
         | MTypeParam(varnm)           -> ()
-        | MFuncType(mtydom, mtycod)   -> begin iter mtydom ; iter mtycod ; end
+        | MFuncType(mtydom, mtycod)   -> begin iter mtydom; iter mtycod; end
         | MProductType(mtylist)       -> List.iter iter mtylist
         | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
         | MTypeName(mtyarglist, tynm) ->
             if DependencyGraph.mem_vertex tynm dg then
               begin
-                DependencyGraph.add_edge dg tynm1 tynm ;
-                print_for_debug_variantenv ("AddE " ^ tynm1 ^ " ---> " ^ tynm) ; (* for debug *)
-                List.iter iter mtyarglist ;
+                DependencyGraph.add_edge dg tynm1 tynm;
+                print_for_debug_variantenv ("AddE " ^ tynm1 ^ " ---> " ^ tynm); (* for debug *)
+                List.iter iter mtyarglist;
               end
             else
               ()
@@ -635,8 +628,8 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
       | UTMutualVariantCons(_, _, tynm, utvarntcons, tailcons) -> iter tailcons
       | UTMutualSynonymCons(_, _, tynm, mnty, tailcons)        ->
           begin
-            add_dependency tynm mnty ;
-            iter tailcons ;
+            add_dependency tynm mnty;
+            iter tailcons;
           end
 
   in
@@ -690,10 +683,10 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
   in
 
   begin
-    add_each_type_as_vertex mutvarntcons ;
-    add_each_dependency_as_edge mutvarntcons ;
-    check_cyclic_type_definition () ;
-    embody_each_synonym_type_definition () ;
+    add_each_type_as_vertex mutvarntcons;
+    add_each_dependency_as_edge mutvarntcons;
+    check_cyclic_type_definition ();
+    embody_each_synonym_type_definition ();
     let tyenvS = add_each_synonym_type_definition tyenv in
     let tyenvV = add_each_variant_type_definition tyenvS in
       tyenvV
@@ -733,7 +726,7 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           with
           | Not_found ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_ht bid1 bid2 ; true end
+                begin BoundIDHashtbl.add current_ht bid1 bid2; true end
               else
                 false
         end
@@ -746,19 +739,19 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
         in
           if not binc then false else
-            begin tvref := Link(ty1) ; true end
+            begin tvref := Link(ty1); true end
               (* -- valid substitution of bound type variables -- *)
 
     | (_, TypeVariable({contents= Bound(bid2)} as tvref)) ->
         let kd2 = BoundID.get_kind bid2 in
         begin
           match kd2 with
-          | UniversalKind -> begin tvref := Link(ty1) ; true end
+          | UniversalKind -> begin tvref := Link(ty1); true end
           | RecordKind(_) -> false
         end
           (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1) ; true end
+    | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1); true end
 
     | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
                                                                 (* -- both domain and codomain are covariant -- *)
@@ -769,10 +762,7 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2))
     | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2
-    | ( (UnitType, UnitType)
-      | (IntType, IntType)
-      | (BoolType, BoolType)
-      | (StringType, StringType) )                         -> true
+    | (BaseType(bsty1), BaseType(bsty2))                   -> bsty1 = bsty2
     | _                                                    -> false
 
   and is_stronger_kind (kd1 : kind) (kd2 : kind) =

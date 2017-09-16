@@ -45,13 +45,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | VariantType(tylist, _)         -> iter_list tylist
   | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
   | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
-    | ( UnitType
-      | BoolType
-      | IntType
-      | StringType
-      | InTextType
-      | BoxRowType
-      | BoxColType )               -> false
+  | BaseType(_)                    -> false
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -62,13 +56,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
     | (_, SynonymType(_, _, tyreal2)) -> unify_sub ty1 tyreal2
 
-    | ( (UnitType, UnitType)
-      | (BoolType, BoolType)
-      | (IntType, IntType)
-      | (StringType, StringType)
-      | (InTextType, InTextType)
-      | (BoxRowType, BoxRowType)
-      | (BoxColType, BoxColType) ) -> ()
+    | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
     | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
         begin
@@ -221,26 +209,26 @@ let rec typecheck
   let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) t u = typecheck q l t u in
   let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (StringEmpty        , (rng, StringType))
-  | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, StringType))
-  | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, IntType)   )
-  | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, StringType))
-  | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BoolType)  )
-  | UTUnitConstant        -> (UnitConstant       , (rng, UnitType)  )
-  | UTInText(itxt)        -> (InText(itxt)       , (rng, InTextType))
-  | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BoxRowType))
-  | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BoxColType))
+  | UTStringEmpty         -> (StringEmpty        , (rng, BaseType(StringType)))
+  | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, BaseType(StringType)))
+  | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, BaseType(IntType))   )
+  | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
+  | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BaseType(BoolType))  )
+  | UTUnitConstant        -> (UnitConstant       , (rng, BaseType(UnitType))  )
+  | UTInText(itxt)        -> (InText(itxt)       , (rng, BaseType(InTextType)))
+  | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BaseType(BoxRowType)))
+  | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BaseType(BoxColType)))
 
   | UTFinishStruct        ->
       begin
         final_tyenv := tyenv;
-        (FinishStruct, (Range.dummy "finish-struct", UnitType))
+        (FinishStruct, (Range.dummy "finish-struct", BaseType(UnitType)))
       end
 
   | UTFinishHeaderFile    ->
       begin
         final_tyenv := tyenv;
-        (FinishHeaderFile, (Range.dummy "finish-header-file", UnitType))
+        (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(UnitType)))
       end
 
   | UTContentOf(mdlnmlst, varnm) ->
@@ -270,24 +258,24 @@ let rec typecheck
 
   | UTHorzConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, BoxRowType) in
+      let () = unify ty1 (get_range utast1, BaseType(BoxRowType)) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let () = unify ty2 (get_range utast2, BoxRowType) in
-        (HorzConcat(e1, e2), (rng, BoxRowType))
+      let () = unify ty2 (get_range utast2, BaseType(BoxRowType)) in
+        (HorzConcat(e1, e2), (rng, BaseType(BoxRowType)))
 
   | UTVertConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, BoxColType) in
+      let () = unify ty1 (get_range utast1, BaseType(BoxColType)) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let () = unify ty2 (get_range utast2, BoxColType) in
-        (VertConcat(e1, e2), (rng, BoxColType))
+      let () = unify ty2 (get_range utast2, BaseType(BoxColType)) in
+        (VertConcat(e1, e2), (rng, BaseType(BoxColType)))
 
   | UTConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, InTextType) in
+      let () = unify ty1 (get_range utast1, BaseType(InTextType)) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let () = unify ty2 (get_range utast2, InTextType) in
-        (Concat(e1, e2), (rng, InTextType))
+      let () = unify ty2 (get_range utast2, BaseType(InTextType)) in
+        (Concat(e1, e2), (rng, BaseType(InTextType)))
 
 (*
   | UTEmbeddedCommand(utastcmd, utastlst) ->
@@ -332,7 +320,7 @@ let rec typecheck
 
   | UTIfThenElse(utastB, utast1, utast2) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in
-      let () = unify tyB (Range.dummy "if-bool", BoolType) in
+      let () = unify tyB (Range.dummy "if-bool", BaseType(BoolType)) in
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let () = unify ty2 ty1 in
@@ -355,23 +343,23 @@ let rec typecheck
                  actually 'get_range utastnew' is not good
                  since the right side expression has type 't, not 't ref 
               -- *)
-              (Overwrite(evid, eN), (rng, UnitType))
+              (Overwrite(evid, eN), (rng, BaseType(UnitType)))
 
         | _ -> assert false
       end
 
   | UTSequential(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, UnitType) in
+      let () = unify ty1 (get_range utast1, BaseType(UnitType)) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
         (Sequential(e1, e2), ty2)
 
   | UTWhileDo(utastB, utastC) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in
-      let () = unify tyB (get_range utastB, BoolType) in
+      let () = unify tyB (get_range utastB, BaseType(BoolType)) in
       let (eC, tyC) = typecheck_iter tyenv utastC in
-      let () = unify tyC (get_range utastC, UnitType) in
-        (WhileDo(eB, eC), (rng, UnitType))
+      let () = unify tyC (get_range utastC, BaseType(UnitType)) in
+        (WhileDo(eB, eC), (rng, BaseType(UnitType)))
 
   | UTLazyContent(utast1) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -381,31 +369,31 @@ let rec typecheck
 
   | UTDeclareGlobalHash(utastK, utastI) ->
       let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = (unify tyK (get_range utastK, StringType)) in
+      let () = (unify tyK (get_range utastK, BaseType(StringType))) in
       let (eI, tyI) = typecheck_iter tyenv utastI in
-      let () = unify tyI (get_range utastI, StringType) in
-        (DeclareGlobalHash(eK, eI), (rng, UnitType))
+      let () = unify tyI (get_range utastI, BaseType(StringType)) in
+        (DeclareGlobalHash(eK, eI), (rng, BaseType(UnitType)))
 
   | UTOverwriteGlobalHash(utastK, utastN) ->
       let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = unify tyK (get_range utastK, StringType) in
+      let () = unify tyK (get_range utastK, BaseType(StringType)) in
       let (eN, tyN) = typecheck_iter tyenv utastN in
-      let () = unify tyN (get_range utastN, StringType) in
-        (OverwriteGlobalHash(eK, eN), (rng, UnitType))
+      let () = unify tyN (get_range utastN, BaseType(StringType)) in
+        (OverwriteGlobalHash(eK, eN), (rng, BaseType(UnitType)))
 
   | UTReferenceFinal(utast1) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (rng, StringType) in
-        (ReferenceFinal(e1), (rng, StringType))
+      let () = unify ty1 (rng, BaseType(StringType)) in
+        (ReferenceFinal(e1), (rng, BaseType(StringType)))
 
 (* ---- class/id option ---- *)
 
   | UTApplyClassAndID(utastcls, utastid, utast1) ->
       let dr = Range.dummy "ut-apply-class-and-id" in
       let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let (ecls, _) = typecheck_iter tyenv utastcls in
       let (eid, _)  = typecheck_iter tyenv utastid in
       let (e1, ty1) = typecheck_iter tyenvnew utast1 in
@@ -414,9 +402,9 @@ let rec typecheck
   | UTClassAndIDRegion(utast1) ->
       let dr = Range.dummy "ut-class-and-id-region" in
       let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, StringType)], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
+      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let (e1, ty1) = typecheck_iter tyenvnew utast1 in
         (e1, ty1)
 
@@ -511,7 +499,7 @@ and typecheck_record
 
 and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
-  let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", StringType) in
+  let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(StringType)) in
   let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
     (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))))
 
@@ -548,7 +536,7 @@ and typecheck_pattern_match_cons
         let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
         let () = unify typat tyobj in
         let (eB, tyB) = typecheck qtfbl lev tyenvpat utastb in
-        let () = unify tyB (Range.dummy "pattern-match-cons-when", BoolType) in
+        let () = unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
         let (pmctl, tytl) =
@@ -562,14 +550,14 @@ and typecheck_pattern
   let iter = typecheck_pattern qtfbl lev in
   let unify = unify_ tyenv in
     match utpatmain with
-    | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, IntType), tyenv)
-    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BoolType), tyenv)
+    | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, BaseType(IntType)), tyenv)
+    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), tyenv)
     | UTPStringConstant(ut1) ->
         let (e1, ty1) = typecheck qtfbl lev tyenv ut1 in
-        let () = unify (Range.dummy "pattern-string-constant", StringType) ty1 in
-          (PStringConstant(e1), (rng, StringType), tyenv)
+        let () = unify (Range.dummy "pattern-string-constant", BaseType(StringType)) ty1 in
+          (PStringConstant(e1), (rng, BaseType(StringType)), tyenv)
 
-    | UTPUnitConstant        -> (PUnitConstant, (rng, UnitType), tyenv)
+    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), tyenv)
 
     | UTPListCons(utpat1, utpat2) ->
         let (epat1, typat1, tyenv1) = iter tyenv utpat1 in

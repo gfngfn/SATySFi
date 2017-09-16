@@ -112,10 +112,14 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
                 show_type_variable iter s (FreeID.get_kind tvid)
         end
 
-    | StringType -> "string"
-    | IntType    -> "int"
-    | BoolType   -> "bool"
-    | UnitType   -> "unit"
+    | BaseType(UnitType)   -> "unit"
+    | BaseType(BoolType)   -> "bool"
+    | BaseType(IntType)    -> "int"
+    | BaseType(StringType) -> "string"
+
+    | BaseType(InTextType) -> "in-text"
+    | BaseType(BoxRowType) -> "box-row"
+    | BaseType(BoxColType) -> "box-col"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 

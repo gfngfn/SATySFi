@@ -83,7 +83,7 @@ let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             match ty with
-            | (_, StringType) ->
+            | (_, BaseType(StringType)) ->  (* temporary; will be modified to BaseType(BoxColType) *)
                 let evaled = Evaluator.interpret env ast in
                 let content_out = Out.main evaled in
                   begin
@@ -109,7 +109,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             match ty with
-            | (_, StringType) ->
+            | (_, BaseType(StringType)) ->  (* temporary; will be modified to BaseType(BoxColType) *)
                 let evaled = Evaluator.interpret env ast in
                 let content_out = Out.main evaled in
                 if (String.length content_out) = 0 then
