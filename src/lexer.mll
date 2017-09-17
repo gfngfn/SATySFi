@@ -4,8 +4,11 @@
 
   exception LexError of string
 
-  type lexer_state = ProgramState | HorizontalState | ActiveState | CommentState | LiteralState
+  type lexer_state = ProgramState | VerticalState | HorizontalState | ActiveState | CommentState | LiteralState
 
+  type horz_origin = ProgramToHorz | VertToHorz
+
+  type vert_origin = ProgramToVert | HorzToVert
 
   let line_no             : int ref = ref 1
   let end_of_previousline : int ref = ref 0
@@ -19,8 +22,22 @@
   let openqtdepth : int ref = ref 0
   let progdepth : int ref = ref 0
   let horzdepth : int ref = ref 0
+  let vertdepth : int ref = ref 0
   let progdepth_stack : int Stack.t = Stack.create ()
-  let horzdepth_stack : int Stack.t = Stack.create ()
+  let horzdepth_stack : (int * horz_origin) Stack.t = Stack.create ()
+  let vertdepth_stack : (int * vert_origin) Stack.t = Stack.create ()
+
+
+  let back_from_horz origin =
+    match origin with
+    | ProgramToHorz -> ProgramState
+    | VertToHorz    -> VerticalState
+
+
+  let back_from_vert origin =
+    match origin with
+    | ProgramToVert -> ProgramState
+    | HorzToVert    -> HorizontalState
 
 
   let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
@@ -110,6 +127,7 @@ let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*']
+
 rule progexpr = parse
   | "%" {
       after_comment_state := ProgramState;
@@ -121,7 +139,7 @@ rule progexpr = parse
       increment_line lexbuf;
       progexpr lexbuf
     }
-  | ("(" (space | break)* ")") { UNITVALUE(get_pos lexbuf) }
+  | "()" { UNITVALUE(get_pos lexbuf) }
   | "(" { incr progdepth; LPAREN(get_pos lexbuf) }
   | ")" {
       let pos = get_pos lexbuf in
@@ -133,48 +151,56 @@ rule progexpr = parse
         begin
           Stack.pop progdepth_stack |> ignore;
           next_state := ActiveState;
-          CLOSENUM(pos)
+          CLOSEPROG(pos)
         end
         else
           RPAREN(pos)
     }
   | "(|" { incr progdepth; BRECORD(get_pos lexbuf) }
   | "|)" {
+        let pos = get_pos lexbuf in
         decr progdepth;
         if Stack.is_empty progdepth_stack then
-          ERECORD(get_pos lexbuf)
+          ERECORD(pos)
         else
           if !progdepth = Stack.top progdepth_stack then
           begin
             Stack.pop progdepth_stack |> ignore;
             next_state := ActiveState;
-            CLOSENUM_AND_ERECORD(get_pos lexbuf)
+            CLOSEPROG_AND_ERECORD(pos)
           end
           else
-            ERECORD(get_pos lexbuf)
+            ERECORD(pos)
       }
   | "[" { incr progdepth; BLIST(get_pos lexbuf) }
   | "]" {
+        let pos = get_pos lexbuf in
         decr progdepth;
         if Stack.is_empty progdepth_stack then
-          ELIST(get_pos lexbuf)
+          ELIST(pos)
         else
           if !progdepth = Stack.top progdepth_stack then
           begin
             Stack.pop progdepth_stack |> ignore;
             next_state := ActiveState;
-            CLOSENUM_AND_ELIST(get_pos lexbuf)
+            CLOSEPROG_AND_ELIST(pos)
           end
           else
-            ELIST(get_pos lexbuf)
+            ELIST(pos)
          }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
-      horzdepth_stack |> Stack.push !horzdepth;
+      horzdepth_stack |> Stack.push (!horzdepth, ProgramToHorz);
       incr horzdepth;
       next_state := HorizontalState;
       ignore_space := true;
-      OPENSTR(get_pos lexbuf)
+      OPENHORZ(get_pos lexbuf)
+    }
+  | "'<" {
+    vertdepth_stack |> Stack.push (!vertdepth, ProgramToVert);
+    incr vertdepth;
+    next_state := VerticalState;
+    OPENVERT(get_pos lexbuf)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
@@ -183,11 +209,22 @@ rule progexpr = parse
       OPENQT(get_pos lexbuf)
     }
   | ("\\" (identifier | constructor)) {
-        let tok = Lexing.lexeme lexbuf in CTRLSEQ(get_pos lexbuf, tok)
+        let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
       }
   | "#"   { ACCESS(get_pos lexbuf) }
-  | "+"   { PLUS(get_pos lexbuf) }
+  | "->"  { ARROW(get_pos lexbuf) }
+  | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
+  | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
+  | "|"   { BAR(get_pos lexbuf) }
+  | "_"   { WILDCARD(get_pos lexbuf) }
+  | "."   { DOT(get_pos lexbuf) }
+  | ":"   { COLON(get_pos lexbuf) }
+  | ","   { COMMA(get_pos lexbuf) }
+  | "::"  { CONS(get_pos lexbuf) }
   | "-"   { MINUS(get_pos lexbuf) }
+
+(* binary operators; should be extended *)
+  | "+"   { PLUS(get_pos lexbuf) }
   | "*"   { TIMES(get_pos lexbuf) }
   | "/"   { DIVIDES(get_pos lexbuf) }
   | "=="  { EQ(get_pos lexbuf) }
@@ -200,17 +237,8 @@ rule progexpr = parse
   | "&&"  { LAND(get_pos lexbuf) }
   | "||"  { LOR(get_pos lexbuf) }
   | "^"   { CONCAT(get_pos lexbuf) }
-  | "->"  { ARROW(get_pos lexbuf) }
-  | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
-  | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
   | "!"   { REFNOW(get_pos lexbuf) }
   | "!!"  { REFFINAL(get_pos lexbuf) }
-  | "::"  { CONS(get_pos lexbuf) }
-  | ","   { COMMA(get_pos lexbuf) }
-  | "|"   { BAR(get_pos lexbuf) }
-  | "_"   { WILDCARD(get_pos lexbuf) }
-  | "."   { DOT(get_pos lexbuf) }
-  | ":"   { COLON(get_pos lexbuf) }
 
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
@@ -266,6 +294,56 @@ rule progexpr = parse
       }
   | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area"))) }
 
+
+and vertexpr = parse
+  | "%" {
+      after_comment_state := VerticalState;
+      next_state := CommentState;
+      IGNORED
+    }
+  | (break | space)* {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      vertexpr lexbuf
+    }
+  | ("+" (identifier | constructor)) {
+      VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
+    }
+  | ("+" (constructor ".")* (identifier | constructor)) {
+      let tokstrpure = Lexing.lexeme lexbuf in
+      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list tokstr in
+      let rng = get_pos lexbuf in
+        next_state := ActiveState;
+        VERTCMDWITHMOD(rng, mdlnmlst, "+" ^ csnm)
+    }
+  | "<" {
+      incr vertdepth;
+      BVERTGRP(get_pos lexbuf)
+    }
+  | ">" {
+      let pos = get_pos lexbuf in
+      decr vertdepth;
+      if Stack.is_empty vertdepth_stack then
+        EVERTGRP(pos)
+      else
+        let (entering, origin) = Stack.top vertdepth_stack in
+        if !vertdepth = entering then
+          begin
+            Stack.pop vertdepth_stack |> ignore;
+            next_state := back_from_vert origin;
+            CLOSEVERT(pos)
+          end
+        else
+          EVERTGRP(pos)
+    }
+  | "{" {
+      horzdepth_stack |> Stack.push (!horzdepth, VertToHorz);
+      incr horzdepth;
+      next_state := HorizontalState;
+      ignore_space := true;
+      BHORZGRP(get_pos lexbuf)
+    }
+
 and horzexpr = parse
   | "%" {
       after_comment_state := HorizontalState;
@@ -277,7 +355,7 @@ and horzexpr = parse
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
       incr horzdepth;
       ignore_space := true;
-      BGRP(get_pos lexbuf)
+      BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
       decr horzdepth;
@@ -285,20 +363,27 @@ and horzexpr = parse
       if Stack.is_empty horzdepth_stack then
         begin
           ignore_space := false;
-          EGRP(get_pos lexbuf)
+          EHORZGRP(get_pos lexbuf)
         end
       else
-        if !horzdepth = Stack.top horzdepth_stack then
+        let (entering, origin) = Stack.top horzdepth_stack in
+        if !horzdepth = entering then
           begin
             Stack.pop horzdepth_stack |> ignore;
-            next_state := ProgramState;
-            CLOSESTR(get_pos lexbuf)
+            next_state := back_from_horz origin;
+            CLOSEHORZ(get_pos lexbuf)
           end
         else
           begin
             ignore_space := false;
-            EGRP(get_pos lexbuf)
+            EHORZGRP(get_pos lexbuf)
           end
+    }
+  | ((break | space)* "<") {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      incr vertdepth;
+      next_state := VerticalState;
+      BVERTGRP(get_pos lexbuf)
     }
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
@@ -321,7 +406,7 @@ and horzexpr = parse
       let tok = Lexing.lexeme lexbuf in
       let rng = get_pos lexbuf in
         next_state := ActiveState;
-        CTRLSEQ(rng, tok)
+        HORZCMD(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
@@ -329,7 +414,7 @@ and horzexpr = parse
       let (mdlnmlst, csnm) = split_module_list tokstr in
       let rng = get_pos lexbuf in
         next_state := ActiveState;
-        CTRLSEQWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
+        HORZCMDWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
@@ -380,25 +465,25 @@ and active = parse
       progdepth_stack |> Stack.push !progdepth;
       incr progdepth;
       next_state := ProgramState;
-      OPENNUM(get_pos lexbuf)
+      OPENPROG(get_pos lexbuf)
     }
   | "(|" {
       progdepth_stack |> Stack.push !progdepth;
       incr progdepth;
       next_state := ProgramState;
-      OPENNUM_AND_BRECORD(get_pos lexbuf)
+      OPENPROG_AND_BRECORD(get_pos lexbuf)
     }
   | "[" {
       progdepth_stack |> Stack.push !progdepth;
       incr progdepth;
       next_state := ProgramState;
-      OPENNUM_AND_BLIST(get_pos lexbuf)
+      OPENPROG_AND_BLIST(get_pos lexbuf)
     }
   | "{" {
       incr horzdepth;
       next_state := HorizontalState;
       ignore_space := true;
-      BGRP(get_pos lexbuf)
+      BHORZGRP(get_pos lexbuf)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
@@ -451,6 +536,7 @@ and comment = parse
     let output =
       match !next_state with
       | ProgramState    -> progexpr lexbuf
+      | VerticalState   -> vertexpr lexbuf
       | HorizontalState -> horzexpr lexbuf
       | ActiveState     -> active lexbuf
       | CommentState    -> comment lexbuf

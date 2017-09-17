@@ -375,12 +375,14 @@
 
 %token <Range.t * Types.var_name> VAR
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
-%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> CTRLSEQWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
 %token <Range.t * Types.var_name> VARINSTR
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * string> NUMCONST CHAR
-%token <Range.t * Types.ctrlseq_name> CTRLSEQ
+%token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> HORZCMD
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
 %token <Range.t> SPACE BREAK
@@ -393,14 +395,16 @@
 %token <Range.t> IF THEN ELSE
 %token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
 %token <Range.t> LPAREN RPAREN
-%token <Range.t> BGRP EGRP
+%token <Range.t> BVERTGRP EVERTGRP
+%token <Range.t> BHORZGRP EHORZGRP
 %token <Range.t> OPENQT CLOSEQT
-%token <Range.t> OPENSTR CLOSESTR
-%token <Range.t> OPENNUM CLOSENUM
+%token <Range.t> OPENVERT CLOSEVERT
+%token <Range.t> OPENHORZ CLOSEHORZ
+%token <Range.t> OPENPROG CLOSEPROG
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
-%token <Range.t> OPENNUM_AND_BRECORD CLOSENUM_AND_ERECORD OPENNUM_AND_BLIST CLOSENUM_AND_ELIST
+%token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> BEFORE UNITVALUE WHILE DO
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 %token <Range.t * int> ITEM
@@ -508,19 +512,19 @@ nxsig:
   | END                                        { [] }
   | TYPE xpltyvars VAR constrnt nxsig          { let (_, tynm) = $3 in (SigType(kind_type_argument_cons $2 $4, tynm)) :: $5 }
   | VAL VAR COLON txfunc constrnt nxsig        { let (_, varnm) = $2 in (SigValue(varnm, $4, $5)) :: $6 }
-  | VAL CTRLSEQ COLON txfunc constrnt nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4, $5)) :: $6 }
-  | DIRECT CTRLSEQ COLON txfunc constrnt nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4, $5)) :: $6 }
+  | VAL HORZCMD COLON txfunc constrnt nxsig    { let (_, csnm) = $2 in (SigValue(csnm, $4, $5)) :: $6 }
+  | DIRECT HORZCMD COLON txfunc constrnt nxsig { let (_, csnm) = $2 in (SigDirect(csnm, $4, $5)) :: $6 }
 /* ---- for syntax error log -- */
   | TYPE error                 { report_error (Tok $1) "type" }
   | TYPE xpltyvars VAR error   { report_error (TokArg $3) "" }
   | VAL error                  { report_error (Tok $1) "val" }
   | VAL VAR error              { report_error (TokArg $2) "" }
   | VAL VAR COLON error        { report_error (Tok $3) ":" }
-  | VAL CTRLSEQ error          { report_error (TokArg $2) "" }
-  | VAL CTRLSEQ COLON error    { report_error (Tok $3) ":" }
+  | VAL HORZCMD error          { report_error (TokArg $2) "" }
+  | VAL HORZCMD COLON error    { report_error (Tok $3) ":" }
   | DIRECT error               { report_error (Tok $1) "direct" }
-  | DIRECT CTRLSEQ error       { report_error (TokArg $2) "" }
-  | DIRECT CTRLSEQ COLON error { report_error (Tok $3) ":" }
+  | DIRECT HORZCMD error       { report_error (TokArg $2) "" }
+  | DIRECT HORZCMD COLON error { report_error (Tok $3) ":" }
 ;
 constrnt:
   |                                        { [] }
@@ -558,26 +562,26 @@ nxdec: /* -> untyped_mutual_let_cons */
   | VAR COLON txfunc BAR
             argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) end_of_mutual_let }
 
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxdec        { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) $7 }
+  | HORZCMD COLON txfunc DEFEQ nxlet LETAND nxdec        { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) $7 }
 
-  | CTRLSEQ COLON txfunc DEFEQ nxlet                     { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) end_of_mutual_let }
+  | HORZCMD COLON txfunc DEFEQ nxlet                     { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) end_of_mutual_let }
 
-  | CTRLSEQ     argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons None $1 $2 (class_and_id_region $4) $6 }
-  | CTRLSEQ COLON txfunc BAR
+  | HORZCMD     argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons None $1 $2 (class_and_id_region $4) $6 }
+  | HORZCMD COLON txfunc BAR
                 argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) $9 }
 
-  | CTRLSEQ     argvar DEFEQ nxlet                           { make_mutual_let_cons None $1 $2 (class_and_id_region $4) end_of_mutual_let }
-  | CTRLSEQ COLON txfunc BAR
+  | HORZCMD     argvar DEFEQ nxlet                           { make_mutual_let_cons None $1 $2 (class_and_id_region $4) end_of_mutual_let }
+  | HORZCMD COLON txfunc BAR
                 argvar DEFEQ nxlet                           { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) end_of_mutual_let }
 
-  | CTRLSEQ     argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) $8 }
-  | CTRLSEQ BAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) $9 }
-  | CTRLSEQ COLON txfunc BAR
+  | HORZCMD     argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) $8 }
+  | HORZCMD BAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) $9 }
+  | HORZCMD COLON txfunc BAR
                 argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) $11 }
 
-  | CTRLSEQ     argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) end_of_mutual_let }
-  | CTRLSEQ BAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) end_of_mutual_let }
-  | CTRLSEQ COLON txfunc BAR
+  | HORZCMD     argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) end_of_mutual_let }
+  | HORZCMD BAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) end_of_mutual_let }
+  | HORZCMD COLON txfunc BAR
                 argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) end_of_mutual_let }
 /* -- for syntax error log -- */
   | VAR error                                        { report_error (TokArg $1) "" }
@@ -597,10 +601,10 @@ nxdec: /* -> untyped_mutual_let_cons */
   | VAR argvar DEFEQ nxlet BAR error                 { report_error (Tok $5) "|" }
   | VAR argvar DEFEQ nxlet LETAND error              { report_error (Tok $5) "and" }
   | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND error { report_error (Tok $7) "and" }
-  | CTRLSEQ error                                    { report_error (TokArg $1) "" }
-  | CTRLSEQ argvar DEFEQ error                       { report_error (Tok $3) "=" }
-  | CTRLSEQ argvar DEFEQ nxlet BAR error             { report_error (Tok $5) "|" }
-  | CTRLSEQ argvar DEFEQ nxlet LETAND error          { report_error (Tok $5) "and" }
+  | HORZCMD error                                    { report_error (TokArg $1) "" }
+  | HORZCMD argvar DEFEQ error                       { report_error (Tok $3) "=" }
+  | HORZCMD argvar DEFEQ nxlet BAR error             { report_error (Tok $5) "|" }
+  | HORZCMD argvar DEFEQ nxlet LETAND error          { report_error (Tok $5) "and" }
 /* -- -- */
 ;
 nxdecpar:
@@ -628,19 +632,19 @@ nxlazydec:
         let rng = make_range (Untyped $5) (Untyped $5) in
           make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent($5)) end_of_mutual_let
       }
-  | CTRLSEQ DEFEQ nxlet LETAND nxlazydec {
+  | HORZCMD DEFEQ nxlet LETAND nxlazydec {
         let rng = make_range (Untyped $3) (Untyped $3) in
           make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $3)) $5
       }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet LETAND nxlazydec {
+  | HORZCMD COLON txfunc DEFEQ nxlet LETAND nxlazydec {
         let rng = make_range (Untyped $5) (Untyped $5) in
           make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $5)) $7
       }
-  | CTRLSEQ DEFEQ nxlet {
+  | HORZCMD DEFEQ nxlet {
         let rng = make_range (Untyped $3) (Untyped $3) in
           make_mutual_let_cons None $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $3)) end_of_mutual_let
       }
-  | CTRLSEQ COLON txfunc DEFEQ nxlet {
+  | HORZCMD COLON txfunc DEFEQ nxlet {
         let rng = make_range (Untyped $5) (Untyped $5) in
           make_mutual_let_cons (Some $3) $1 end_of_argument_variable (rng, UTLazyContent(class_and_id_region $5)) end_of_mutual_let
       }
@@ -876,7 +880,7 @@ nxbot:
   | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
   | LPAREN nxlet RPAREN             { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN nxlet COMMA tuple RPAREN { make_standard (Tok $1) (Tok $5) (UTTupleCons($2, $4)) }
-  | OPENSTR sxsep CLOSESTR          { make_standard (Tok $1) (Tok $3) (extract_main $2) }
+  | OPENHORZ sxsep CLOSEHORZ        { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | OPENQT sxblock CLOSEQT          { make_standard (Tok $1) (Tok $3) (omit_spaces $2) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
@@ -884,10 +888,10 @@ nxbot:
   | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
 /* -- for syntax error log -- */
-  | BLIST error   { report_error (Tok $1) "[" }
-  | OPENSTR error { report_error (Tok $1) "{ (beginning of text area)" }
-  | LPAREN error  { report_error (Tok $1) "(" }
-  | BRECORD error { report_error (Tok $1) "(|" }
+  | BLIST error    { report_error (Tok $1) "[" }
+  | OPENHORZ error { report_error (Tok $1) "{ (beginning of text area)" }
+  | LPAREN error   { report_error (Tok $1) "(" }
+  | BRECORD error  { report_error (Tok $1) "(|" }
 /* -- -- */
 ;
 /*
@@ -1127,17 +1131,17 @@ sxbot:
   | SPACE { let rng = $1 in (rng, UTStringConstant(" ")) }
   | BREAK { let rng = $1 in (rng, UTBreakAndIndent) }
   | VARINSTR ENDACTIVE { make_standard (TokArg $1) (Tok $2) (UTContentOf([], extract_name $1)) }
-  | CTRLSEQ sxclsnm sxidnm narg sarg {
+  | HORZCMD sxclsnm sxidnm narg sarg {
         let (csrng, csnm) = $1 in
           convert_into_apply (csrng, UTContentOf([], csnm)) $2 $3 (append_argument_list $4 $5)
       }
-  | CTRLSEQWITHMOD sxclsnm sxidnm narg sarg {
+  | HORZCMDWITHMOD sxclsnm sxidnm narg sarg {
         let (csrng, mdlnmlst, csnm) = $1 in
           convert_into_apply (csrng, UTContentOf(mdlnmlst, csnm)) $2 $3 (append_argument_list $4 $5)
       }
 /* -- for syntax error log -- */
   | VARINSTR error { report_error (TokArg $1) "" }
-  | CTRLSEQ error  { report_error (TokArg $1) "" }
+  | HORZCMD error  { report_error (TokArg $1) "" }
 /* -- -- */
 sxclsnm:
   | CLASSNAME { make_standard (TokArg $1) (TokArg $1) (class_name_to_abstract_tree (extract_name $1)) }
@@ -1147,41 +1151,41 @@ sxidnm:
   |           { (Range.dummy "no-id-name1", UTConstructor("Nothing", (Range.dummy "no-id-name2", UTUnitConstant))) }
 ;
 narg: /* -> untyped_argument_cons */
-  | OPENNUM nxlet CLOSENUM narg { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
-  | OPENNUM CLOSENUM narg       { let rng = make_range (Tok $1) (Tok $2) in (rng, UTUnitConstant) :: $3 }
-  | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD narg {
+  | OPENPROG nxlet CLOSEPROG narg { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENPROG CLOSEPROG narg       { let rng = make_range (Tok $1) (Tok $2) in (rng, UTUnitConstant) :: $3 }
+  | OPENPROG_AND_BRECORD nxrecord CLOSEPROG_AND_ERECORD narg {
         let rng = make_range (Tok $1) (Tok $3) in (rng, UTRecord($2)) :: $4
       }
-  | OPENNUM_AND_BLIST nxlist CLOSENUM_AND_ELIST narg {
+  | OPENPROG_AND_BLIST nxlist CLOSEPROG_AND_ELIST narg {
         let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4
       }
   |                             { end_of_argument }
 /* -- for syntax error log -- */
-  | OPENNUM error                { report_error (Tok $1) "( (in active area)" }
-  | OPENNUM nxlet CLOSENUM error { report_error (Tok $3) ") (in active area)" }
-  | OPENNUM_AND_BRECORD error    { report_error (Tok $1) "(| (in active area)" }
-  | OPENNUM_AND_BRECORD nxrecord CLOSENUM_AND_ERECORD error { report_error (Tok $3) "|) (in active area)" }
-  | OPENNUM_AND_BLIST error      { report_error (Tok $1) "[ (in active area)" }
-  | OPENNUM_AND_BLIST nxlist CLOSENUM_AND_ELIST error { report_error (Tok $3) "] (in active area)" }
+  | OPENPROG error                 { report_error (Tok $1) "( (in active area)" }
+  | OPENPROG nxlet CLOSEPROG error { report_error (Tok $3) ") (in active area)" }
+  | OPENPROG_AND_BRECORD error     { report_error (Tok $1) "(| (in active area)" }
+  | OPENPROG_AND_BRECORD nxrecord CLOSEPROG_AND_ERECORD error { report_error (Tok $3) "|) (in active area)" }
+  | OPENPROG_AND_BLIST error       { report_error (Tok $1) "[ (in active area)" }
+  | OPENPROG_AND_BLIST nxlist CLOSEPROG_AND_ELIST error { report_error (Tok $3) "] (in active area)" }
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
-  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
-  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
-  | ENDACTIVE                      { end_of_argument }
+  | BHORZGRP sxsep EHORZGRP sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENQT sxblock CLOSEQT sargsub  { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
+  | ENDACTIVE                       { end_of_argument }
 /* -- for syntax error log --*/
-  | BGRP error            { report_error (Tok $1) "{" }
-  | BGRP sxsep EGRP error { report_error (Tok $3) "}" }
+  | BHORZGRP error                { report_error (Tok $1) "{" }
+  | BHORZGRP sxsep EHORZGRP error { report_error (Tok $3) "}" }
 /* -- -- */
 ;
 sargsub: /* -> Types.argument_cons */
-  | BGRP sxsep EGRP sargsub        { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
-  | OPENQT sxblock CLOSEQT sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
-  |                                { end_of_argument }
+  | BHORZGRP sxsep EHORZGRP sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | OPENQT sxblock CLOSEQT sargsub  { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
+  |                                 { end_of_argument }
 /* -- for syntax error log -- */
-  | BGRP error                   { report_error (Tok $1) "{" }
-  | BGRP sxsep EGRP error        { report_error (Tok $3) "}" }
-  | OPENQT error                 { report_error (Tok $1) "`" }
-  | OPENQT sxblock CLOSEQT error { report_error (Tok $3) "`" }
+  | BHORZGRP error                { report_error (Tok $1) "{" }
+  | BHORZGRP sxsep EHORZGRP error { report_error (Tok $3) "}" }
+  | OPENQT error                  { report_error (Tok $1) "`" }
+  | OPENQT sxblock CLOSEQT error  { report_error (Tok $3) "`" }
 /* -- -- */
 ;
