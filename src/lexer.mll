@@ -43,7 +43,7 @@
   let increment_line lexbuf =
     begin
       end_of_previousline := (Lexing.lexeme_end lexbuf);
-      line_no := !line_no + 1
+      incr line_no;
     end
 
 

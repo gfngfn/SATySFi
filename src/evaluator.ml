@@ -27,12 +27,12 @@ let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstrac
 let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find env evid
 
 
-(* temporary *)
+(* temporary; should be variable *)
 let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
   let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s in
     fullsplitlst |> List.map (function
       | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf_8 s))
-      | Str.Delim(_) -> HorzBox.HorzPure(HorzBox.PHOuterEmpty(ctx.space_natural, ctx.space_shrink, ctx.space_stretch))
+      | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(ctx.space_natural, ctx.space_shrink, ctx.space_stretch)), None, None)
     )
 
 

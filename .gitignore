@@ -26,8 +26,9 @@ parser.mli
 parser.output
 lexer_hand.ml
 *.png
-_build
+_build/
 macrodown
+satysfi
 *.ttf
 *.otf
 *.afm
