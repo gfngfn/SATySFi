@@ -1,7 +1,7 @@
 BACKEND=backend
 MAINSRC=src
 EXTERNAL=backend/external
-OCB_FLAGS = -use-ocamlfind -use-menhir -I $(MAINSRC)/ -I $(BACKEND)/ -I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ -pkgs "core,ctypes,result,uutf,ucorelib" -tag thread -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"
+OCB_FLAGS = -use-ocamlfind -use-menhir -I $(MAINSRC)/ -I $(BACKEND)/ -I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ -pkgs "str,core,ctypes,result,uutf,ucorelib" -tag thread -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"
 TARGET=macrodown
 OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin

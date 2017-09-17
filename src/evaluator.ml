@@ -27,6 +27,15 @@ let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstrac
 let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find env evid
 
 
+(* temporary *)
+let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
+  let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s in
+    fullsplitlst |> List.map (function
+      | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf_8 s))
+      | Str.Delim(_) -> HorzBox.HorzPure(HorzBox.PHOuterEmpty(ctx.space_natural, ctx.space_shrink, ctx.space_stretch))
+    )
+
+
 let rec normalize_box_row ast =
   let iter = normalize_box_row in
     match ast with
@@ -35,7 +44,30 @@ let rec normalize_box_row ast =
     | _                      -> report_bug_evaluator "normalize_box_row"
 
 
-let rec interpret env ast =
+let rec reduce_beta envf evid valuel astdef =
+  let envnew = copy_environment envf in
+    begin
+      add_to_environment envnew evid (ref valuel);
+      interpret envnew astdef
+    end
+
+
+and reduce_beta_list env valuef astarglst =
+  match astarglst with
+  | []                   -> valuef
+  | astarg :: astargtail ->
+      begin
+        match valuef with
+        | FuncWithEnvironment(evid, astdef, envf) ->
+            let valuearg = interpret env astarg in
+            let valuefnew = reduce_beta envf evid valuearg astdef in
+            reduce_beta_list env valuefnew astargtail
+
+        | _ -> report_bug_evaluator "reduce_beta_list"
+      end
+
+
+and interpret env ast =
   match ast with
 
 (* ---- basic value ---- *)
@@ -85,6 +117,21 @@ let rec interpret env ast =
         | (Vert([]), _) -> value2
         | (_, Vert([])) -> value1
         | (_, _)        -> VertConcat(value1, value2)
+      end
+
+  | Context(ctx) -> Context(ctx)  (* temporary; need detailed implementation *)
+
+  | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)      
+
+  | LambdaHorzWithEnvironment(_, _, _) -> ast
+
+  | HorzLex(astctx, ast1) ->
+      let valuectx = interpret env astctx in
+      let value1 = interpret env ast1 in
+      begin
+        match (valuectx, value1) with
+        | (Context(ctx), InputHorz(ihlst)) -> interpret_input_horz env ctx ihlst
+        | _                                -> report_bug_evaluator "HorzLex"
       end
 
   | BackendLineBreaking(astrow) ->
@@ -163,11 +210,8 @@ let rec interpret env ast =
           match fspec with
           | FuncWithEnvironment(evid, astdef, envf) ->
               let valuel = interpret env astl in
-              let envnew = copy_environment envf in
-                begin
-                  add_to_environment envnew evid (ref valuel) ;
-                  interpret envnew astdef
-                end
+              reduce_beta envf evid valuel astdef
+
           | _ -> report_bug_evaluator "Apply: not a function"
         end
 
@@ -427,9 +471,44 @@ let rec interpret env ast =
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)
 
-(*
-  | other -> raise (EvalError("this cannot happen / remains to be implemented: " ^ (string_of_ast other)))
-*)
+
+and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : input_horz_element list) : abstract_tree =
+  let normalize ihlst =
+    ihlst |> List.fold_left (fun acc ih ->
+      match ih with
+      | InputHorzEmbedded(_, _) -> (ih :: acc)
+      | InputHorzText(s2) ->
+          match acc with
+          | InputHorzText(s1) :: acctail -> (InputHorzText(s1 ^ s2) :: acctail)
+          | _                            -> (ih :: acc)
+    ) [] |> List.rev
+  in
+  let ihlstnml = normalize ihlst in
+  let hblstacc =
+    ihlstnml |> List.fold_left (fun lstacc ih ->
+      match ih with
+      | InputHorzEmbedded(astcmd, astarglst) ->
+          let valuecmd = interpret env astcmd in
+          begin
+            match valuecmd with
+            | LambdaHorzWithEnvironment(evid, astdef, envf) ->
+                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
+                let valueret = reduce_beta_list env valuedef astarglst in
+                begin
+                  match valueret with
+                  | Horz(hblst) -> hblst :: lstacc
+                  | _           -> report_bug_evaluator "interpret_input_horz; other than Horz(_)"
+                end
+
+            | _ -> report_bug_evaluator "interpret_input_horz; other than LambdaHorzWithEnvironment(_, _, _)"
+          end
+
+      | InputHorzText(s) -> (lex_horz_text ctx s) :: lstacc
+    ) []
+  in
+  let hblst = hblstacc |> List.rev |> List.concat in
+  Horz(hblst)
+
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =
   let vb = interpret env ast in

@@ -369,6 +369,14 @@ and input_horz_element =
   | InputHorzText     of string
   | InputHorzEmbedded of abstract_tree * abstract_tree list
 
+and input_context = {
+  font_info     : HorzBox.font_info;
+  space_natural : HorzBox.Length.t;
+  space_shrink  : HorzBox.Length.t;
+  space_stretch : HorzBox.Length.t;
+}
+(* temporary *)
+
 and abstract_tree =
 (* -- basic value -- *)
   | StringEmpty
@@ -441,9 +449,12 @@ and abstract_tree =
   | PrimitiveSame         of abstract_tree * abstract_tree
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
-(*  | PrimitiveInclude      of abstract_tree *)
   | PrimitiveArabic       of abstract_tree
 (* -- backend primitives -- *)
+  | LambdaHorz            of EvalVarID.t * abstract_tree
+  | LambdaHorzWithEnvironment of EvalVarID.t * abstract_tree * environment
+  | Context               of input_context
+  | HorzLex               of abstract_tree * abstract_tree
   | BackendLineBreaking   of abstract_tree
   | BackendFixedString    of abstract_tree
   | BackendFixedEmpty     of abstract_tree
