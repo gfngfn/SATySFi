@@ -1192,6 +1192,7 @@ sarg: /* -> Types.untyped_argument_cons */
 ;
 sargsub: /* -> Types.argument_cons */
   | BHORZGRP sxsep EHORZGRP sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
+  | BVERTGRP vxblock EVERTGRP sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, UTInputVert($2)) :: $4 }
   | OPENQT sxblock CLOSEQT sargsub  { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
   |                                 { end_of_argument }
 /* -- for syntax error log -- */
