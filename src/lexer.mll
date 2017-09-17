@@ -6,9 +6,8 @@
 
   type lexer_state = ProgramState | VerticalState | HorizontalState | ActiveState | CommentState | LiteralState
 
-  type horz_origin = ProgramToHorz | VertToHorz
+  type transition = HtoV | HtoA | VtoH | VtoA | PtoH | PtoV | AtoPParen | AtoPRecord | AtoPList | Paren | Record | List | Brace | Angle
 
-  type vert_origin = ProgramToVert | HorzToVert
 
   let line_no             : int ref = ref 1
   let end_of_previousline : int ref = ref 0
@@ -20,24 +19,7 @@
 
   let ignore_space : bool ref = ref true
   let openqtdepth : int ref = ref 0
-  let progdepth : int ref = ref 0
-  let horzdepth : int ref = ref 0
-  let vertdepth : int ref = ref 0
-  let progdepth_stack : int Stack.t = Stack.create ()
-  let horzdepth_stack : (int * horz_origin) Stack.t = Stack.create ()
-  let vertdepth_stack : (int * vert_origin) Stack.t = Stack.create ()
-
-
-  let back_from_horz origin =
-    match origin with
-    | ProgramToHorz -> ProgramState
-    | VertToHorz    -> VerticalState
-
-
-  let back_from_vert origin =
-    match origin with
-    | ProgramToVert -> ProgramState
-    | HorzToVert    -> HorizontalState
+  let stack : transition Stack.t = Stack.create ()
 
 
   let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
@@ -50,11 +32,11 @@
       Range.make (!line_no) pos_from pos_to
 
 
-  let error_reporting lexbuf errmsg =
+  let report_error lexbuf errmsg =
     let column_from = get_start_pos lexbuf in
     let column_to = get_end_pos lexbuf in
-      "at line " ^ (string_of_int !line_no) ^ ", column "
-        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ":\n    " ^ errmsg
+      raise (LexError("at line " ^ (string_of_int !line_no) ^ ", column "
+        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ":\n    " ^ errmsg))
 
 
   let increment_line lexbuf =
@@ -84,12 +66,7 @@
       line_no := 1;
       end_of_previousline := 0;
       openqtdepth := 0;
-      progdepth := 0;
-      horzdepth := 0;
-      vertdepth := 0;
-      progdepth_stack |> Stack.clear;
-      horzdepth_stack |> Stack.clear;
-      vertdepth_stack |> Stack.clear;
+      stack |> Stack.clear;
     end
 
 
@@ -139,67 +116,53 @@ rule progexpr = parse
       progexpr lexbuf
     }
   | "()" { UNITVALUE(get_pos lexbuf) }
-  | "(" { incr progdepth; LPAREN(get_pos lexbuf) }
+  | "(" { Stack.push Paren stack; LPAREN(get_pos lexbuf) }
   | ")" {
       let pos = get_pos lexbuf in
-      decr progdepth;
-      if Stack.is_empty progdepth_stack then
-        RPAREN(pos)
-      else
-        if !progdepth = Stack.top progdepth_stack then
-        begin
-          Stack.pop progdepth_stack |> ignore;
-          next_state := ActiveState;
-          CLOSEPROG(pos)
-        end
-        else
-          RPAREN(pos)
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "too many closing"
+      in
+        match trs with
+        | Paren     -> RPAREN(pos)
+        | AtoPParen -> begin next_state := ActiveState; CLOSEPROG(pos) end
+        | _         -> report_error lexbuf "unbalanced ')'"
     }
-  | "(|" { incr progdepth; BRECORD(get_pos lexbuf) }
+  | "(|" { Stack.push Record stack; BRECORD(get_pos lexbuf) }
   | "|)" {
-        let pos = get_pos lexbuf in
-        decr progdepth;
-        if Stack.is_empty progdepth_stack then
-          ERECORD(pos)
-        else
-          if !progdepth = Stack.top progdepth_stack then
-          begin
-            Stack.pop progdepth_stack |> ignore;
-            next_state := ActiveState;
-            CLOSEPROG_AND_ERECORD(pos)
-          end
-          else
-            ERECORD(pos)
-      }
-  | "[" { incr progdepth; BLIST(get_pos lexbuf) }
+      let pos = get_pos lexbuf in
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "too many closing"
+      in
+        match trs with
+        | Record     -> ERECORD(pos)
+        | AtoPRecord -> begin next_state := ActiveState; CLOSEPROG_AND_ERECORD(pos) end
+        | _          -> report_error lexbuf "unbalanced '|)'"
+    }
+  | "[" { Stack.push List stack; BLIST(get_pos lexbuf) }
   | "]" {
-        let pos = get_pos lexbuf in
-        decr progdepth;
-        if Stack.is_empty progdepth_stack then
-          ELIST(pos)
-        else
-          if !progdepth = Stack.top progdepth_stack then
-          begin
-            Stack.pop progdepth_stack |> ignore;
-            next_state := ActiveState;
-            CLOSEPROG_AND_ELIST(pos)
-          end
-          else
-            ELIST(pos)
-         }
+      let pos = get_pos lexbuf in
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "too many closing"
+      in
+        match trs with
+        | List     -> ELIST(pos)
+        | AtoPList -> begin next_state := ActiveState; CLOSEPROG_AND_ELIST(pos) end
+        | _        -> report_error lexbuf "unbalanced ']'"
+     }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
-      horzdepth_stack |> Stack.push (!horzdepth, ProgramToHorz);
-      incr horzdepth;
+      Stack.push PtoH stack;
       next_state := HorizontalState;
       ignore_space := true;
       OPENHORZ(get_pos lexbuf)
     }
   | "'<" {
-    vertdepth_stack |> Stack.push (!vertdepth, ProgramToVert);
-    incr vertdepth;
-    next_state := VerticalState;
-    OPENVERT(get_pos lexbuf)
+      Stack.push PtoV stack;
+      next_state := VerticalState;
+      OPENVERT(get_pos lexbuf)
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
@@ -208,8 +171,8 @@ rule progexpr = parse
       OPENQT(get_pos lexbuf)
     }
   | ("\\" (identifier | constructor)) {
-        let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
-      }
+      let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
+    }
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
@@ -288,10 +251,10 @@ rule progexpr = parse
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
-        if !first_state = ProgramState then EOI else
-          raise (LexError(error_reporting lexbuf ("text input ended while reading a program area")))
-      }
-  | _ as c { raise (LexError(error_reporting lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area"))) }
+      if !first_state = ProgramState then EOI else
+        report_error lexbuf "text input ended while reading a program area"
+    }
+  | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area") }
 
 
 and vertexpr = parse
@@ -305,39 +268,33 @@ and vertexpr = parse
       vertexpr lexbuf
     }
   | ("+" (identifier | constructor)) {
+      Stack.push VtoA stack;
+      next_state := ActiveState;
       VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
   | ("+" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
-      let rng = get_pos lexbuf in
-        next_state := ActiveState;
-        VERTCMDWITHMOD(rng, mdlnmlst, "+" ^ csnm)
+      Stack.push VtoA stack;
+      next_state := ActiveState;
+      VERTCMDWITHMOD(get_pos lexbuf, mdlnmlst, "+" ^ csnm)
     }
-  | "<" {
-      incr vertdepth;
-      BVERTGRP(get_pos lexbuf)
-    }
+  | "<" { Stack.push Angle stack; BVERTGRP(get_pos lexbuf) }
   | ">" {
       let pos = get_pos lexbuf in
-      decr vertdepth;
-      if Stack.is_empty vertdepth_stack then
-        EVERTGRP(pos)
-      else
-        let (entering, origin) = Stack.top vertdepth_stack in
-        if !vertdepth = entering then
-          begin
-            Stack.pop vertdepth_stack |> ignore;
-            next_state := back_from_vert origin;
-            CLOSEVERT(pos)
-          end
-        else
-          EVERTGRP(pos)
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "too many closing"
+      in
+        match trs with
+        | Angle -> EVERTGRP(pos)
+        | PtoV  -> begin next_state := ProgramState; CLOSEVERT(pos) end
+        | HtoV  -> begin next_state := HorizontalState; ignore_space := false; EVERTGRP(pos) end
+        | _     -> report_error lexbuf "unbalanced '>'"
     }
   | "{" {
-      horzdepth_stack |> Stack.push (!horzdepth, VertToHorz);
-      incr horzdepth;
+      Stack.push VtoH stack;
       next_state := HorizontalState;
       ignore_space := true;
       BHORZGRP(get_pos lexbuf)
@@ -352,35 +309,25 @@ and horzexpr = parse
     }
   | ((break | space)* "{") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
-      incr horzdepth;
+      Stack.push Brace stack;
       ignore_space := true;
       BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
-      decr horzdepth;
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
-      if Stack.is_empty horzdepth_stack then
-        begin
-          ignore_space := false;
-          EHORZGRP(get_pos lexbuf)
-        end
-      else
-        let (entering, origin) = Stack.top horzdepth_stack in
-        if !horzdepth = entering then
-          begin
-            Stack.pop horzdepth_stack |> ignore;
-            next_state := back_from_horz origin;
-            CLOSEHORZ(get_pos lexbuf)
-          end
-        else
-          begin
-            ignore_space := false;
-            EHORZGRP(get_pos lexbuf)
-          end
+      let pos = get_pos lexbuf in
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "too many closing"
+      in
+        match trs with
+        | Brace -> begin ignore_space := false; EHORZGRP(pos) end
+        | VtoH  -> begin next_state := VerticalState; EHORZGRP(pos) end
+        | PtoH  -> begin next_state := ProgramState; CLOSEHORZ(pos) end
+        | _     -> report_error lexbuf "unbalanced '}'"
     }
   | ((break | space)* "<") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
-      incr vertdepth;
+      Stack.push HtoV stack;
       next_state := VerticalState;
       BVERTGRP(get_pos lexbuf)
     }
@@ -391,10 +338,12 @@ and horzexpr = parse
     }
   | break {
       increment_line lexbuf;
-      if !ignore_space then horzexpr lexbuf else begin ignore_space := true; BREAK(get_pos lexbuf) end
+      if !ignore_space then horzexpr lexbuf else
+        begin ignore_space := true; BREAK(get_pos lexbuf) end
     }
   | space {
-      if !ignore_space then horzexpr lexbuf else begin ignore_space := true; SPACE(get_pos lexbuf) end
+      if !ignore_space then horzexpr lexbuf else
+        begin ignore_space := true; SPACE(get_pos lexbuf) end
     }
   | ((break | space)* (item as itemstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
@@ -404,8 +353,9 @@ and horzexpr = parse
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in
       let rng = get_pos lexbuf in
-        next_state := ActiveState;
-        HORZCMD(rng, tok)
+      Stack.push HtoA stack;
+      next_state := ActiveState;
+      HORZCMD(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
@@ -439,14 +389,14 @@ and horzexpr = parse
     }
   | eof {
       if !first_state = HorizontalState then EOI else
-        raise (LexError(error_reporting lexbuf "program input ended while reading a text area"))
+        report_error lexbuf "program input ended while reading a text area"
     }
   | str+ {
       ignore_space := false;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
-  | _ as c { raise (LexError(error_reporting lexbuf "illegal token '" ^ (String.make 1 c) ^ "' in a text area"))}
+  | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a text area") }
 
 and active = parse
   | "%" {
@@ -461,28 +411,42 @@ and active = parse
   | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
 *)
   | "(" {
-      progdepth_stack |> Stack.push !progdepth;
-      incr progdepth;
+      Stack.push AtoPParen stack;
       next_state := ProgramState;
       OPENPROG(get_pos lexbuf)
     }
   | "(|" {
-      progdepth_stack |> Stack.push !progdepth;
-      incr progdepth;
+      Stack.push AtoPRecord stack;
       next_state := ProgramState;
       OPENPROG_AND_BRECORD(get_pos lexbuf)
     }
   | "[" {
-      progdepth_stack |> Stack.push !progdepth;
-      incr progdepth;
+      Stack.push AtoPList stack;
       next_state := ProgramState;
       OPENPROG_AND_BLIST(get_pos lexbuf)
     }
   | "{" {
-      incr horzdepth;
-      next_state := HorizontalState;
-      ignore_space := true;
-      BHORZGRP(get_pos lexbuf)
+      let pos = get_pos lexbuf in
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "BUG; this cannot happen"
+      in
+        match trs with
+        | HtoA ->
+            begin
+              Stack.push Brace stack;
+              next_state := HorizontalState;
+              ignore_space := true;
+              BHORZGRP(pos)
+            end
+        | VtoA ->
+            begin
+              Stack.push VtoH stack;
+              next_state := HorizontalState;
+              ignore_space := true;
+              BHORZGRP(pos)
+            end
+        | _    -> report_error lexbuf "BUG; this cannot happen"
     }
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
@@ -492,16 +456,22 @@ and active = parse
       OPENQT(get_pos lexbuf)
     }
   | ";" {
-      next_state := HorizontalState;
-      ignore_space := false;
-      ENDACTIVE(get_pos lexbuf)
+      let pos = get_pos lexbuf in
+      let trs =
+        try Stack.pop stack with
+        | Stack.Empty -> report_error lexbuf "BUG; this cannot happen"
+      in
+        match trs with
+        | HtoA -> begin next_state := HorizontalState; ignore_space := false; ENDACTIVE(pos) end
+        | VtoA -> begin next_state := VerticalState; ENDACTIVE(pos) end
+        | _    -> report_error lexbuf "BUG; this cannot happen"
     }
   | eof {
-      raise (LexError(error_reporting lexbuf "input ended while reading active area"))
+      report_error lexbuf "input ended while reading active area"
     }
   | _ {
       let tok = Lexing.lexeme lexbuf in
-        raise (LexError(error_reporting lexbuf ("unexpected token '" ^ tok ^ "' in active area")))
+      report_error lexbuf ("unexpected token '" ^ tok ^ "' in active area")
     }
 
 and literal = parse
@@ -511,13 +481,13 @@ and literal = parse
         if len < !openqtdepth then
           CHAR(get_pos lexbuf, tok)
         else if len > !openqtdepth then
-          raise (LexError(error_reporting lexbuf "literal area was closed with too many '`'s"))
+          report_error lexbuf "literal area was closed with too many '`'s"
         else
           begin next_state := !after_literal_state; CLOSEQT(get_pos lexbuf) end
     }
   | break { increment_line lexbuf; CHAR(get_pos lexbuf, "\n") }
   | eof {
-      raise (LexError(error_reporting lexbuf "input ended while reading literal area"))
+      report_error lexbuf "input ended while reading literal area"
     }
   | _ { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
 
@@ -541,6 +511,16 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
     in
+    let () = print_string ((  (* for debug *)
+      match output with
+      | VERTCMD(_, cs) -> "V(" ^ cs ^ ")"
+      | BHORZGRP(_)    -> "{"
+      | EHORZGRP(_)    -> "}"
+      | BVERTGRP(_)    -> "<"
+      | EVERTGRP(_)    -> ">"
+      | CHAR(_, s)     -> "\"" ^ s ^ "\""
+      | _              -> "_"
+    ) ^ " ") in
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

@@ -37,9 +37,9 @@ let is_suffix pfx str =
       (compare pfx (String.sub str (strlen - pfxlen) pfxlen)) = 0
 
 
-let is_document_file   = is_suffix ".mcrd"
-let is_header_file     = is_suffix ".mcrdh"
-let is_standalone_file = is_suffix ".mcrds"
+let is_document_file   = is_suffix ".saty"
+let is_header_file     = is_suffix ".satyh"
+let is_standalone_file = is_suffix ".satys"
 
 
 let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
@@ -277,7 +277,7 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
           read_standalone_file tyenv env file_name_in file_name_out
 
 
-let output_name_ref : string ref = ref "mcrd.out"
+let output_name_ref : string ref = ref "saty.out"
 let input_acc_ref : ((input_file_kind * string) list) ref = ref []
 
 let arg_output s =

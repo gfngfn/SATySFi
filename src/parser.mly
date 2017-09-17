@@ -473,6 +473,9 @@
 main:
   | nxtoplevel  { $1 }
   | sxblock EOI { $1 }
+/*
+  | vxblock EOI { $1 }
+*/
 ;
 nxtoplevel:
 /* ---- toplevel style ---- */
@@ -1189,3 +1192,11 @@ sargsub: /* -> Types.argument_cons */
   | OPENQT sxblock CLOSEQT error  { report_error (Tok $3) "`" }
 /* -- -- */
 ;
+/*
+vxblock:
+  | vxbot vxblock {}
+  | _             {}
+;
+vxbot:
+  | VERTCMD nxarg sxarg {}
+*/
