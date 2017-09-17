@@ -76,9 +76,9 @@
       end
 
 
-  let reset_to_progexpr () =
+  let initialize state =
     begin
-      first_state := ProgramState;
+      first_state := state;
       next_state := !first_state;
       ignore_space := true;
       line_no := 1;
@@ -86,24 +86,23 @@
       openqtdepth := 0;
       progdepth := 0;
       horzdepth := 0;
+      vertdepth := 0;
       progdepth_stack |> Stack.clear;
       horzdepth_stack |> Stack.clear;
+      vertdepth_stack |> Stack.clear;
     end
+
+
+  let reset_to_progexpr () =
+    initialize ProgramState
 
 
   let reset_to_horzexpr () =
-    begin
-      first_state := HorizontalState;
-      next_state := !first_state;
-      ignore_space := true;
-      line_no := 1;
-      end_of_previousline := 0;
-      openqtdepth := 0;
-      progdepth := 0;
-      horzdepth := 0;
-      progdepth_stack |> Stack.clear;
-      horzdepth_stack |> Stack.clear;
-    end
+    initialize HorizontalState
+
+
+  let reset_to_vertexpr () =
+    initialize VerticalState
 
 
   let split_module_list tokstr =

@@ -103,7 +103,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_horzexpr () ;  (* temporary; will be modified to Lexer.reset_to_vertexpr *)
+        Lexer.reset_to_vertexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, ast) = Typechecker.main tyenv utast in
           begin
@@ -295,7 +295,8 @@ let arg_standalone s =
 let arg_version () =
   begin
     print_string (
-        "  Macrodown version 1.00 theta\n"
+        "  SATySFi version 0.00\n"
+      ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
       ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
       ^ "     \\   \\  \\   \\   /   /        /   /   /   /\\   \\\n"
