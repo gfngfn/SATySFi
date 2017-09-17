@@ -48,7 +48,7 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_numexpr () ;
+        Lexer.reset_to_progexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
           begin
@@ -77,7 +77,7 @@ let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_numexpr () ;
+        Lexer.reset_to_progexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, ast) = Typechecker.main tyenv utast in
           begin
@@ -103,7 +103,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_strexpr () ;
+        Lexer.reset_to_horzexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, ast) = Typechecker.main tyenv utast in
           begin
