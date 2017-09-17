@@ -174,18 +174,18 @@ type base_type =
   | BoxRowType
   | BoxColType
 
-
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
-  | BaseType     of base_type
-  | FuncType     of mono_type * mono_type
-  | ListType     of mono_type
-  | RefType      of mono_type
-  | ProductType  of mono_type list
-  | TypeVariable of type_variable_info ref
-  | SynonymType  of (mono_type list) * TypeID.t * mono_type
-  | VariantType  of (mono_type list) * TypeID.t
-  | RecordType   of (field_name, mono_type) Assoc.t
+  | BaseType        of base_type
+  | FuncType        of mono_type * mono_type
+  | ListType        of mono_type
+  | RefType         of mono_type
+  | ProductType     of mono_type list
+  | TypeVariable    of type_variable_info ref
+  | SynonymType     of (mono_type list) * TypeID.t * mono_type
+  | VariantType     of (mono_type list) * TypeID.t
+  | RecordType      of (field_name, mono_type) Assoc.t
+  | HorzCommandType of mono_type list
 
 and poly_type =
   | Poly of mono_type
@@ -229,6 +229,13 @@ and untyped_argument_cons = untyped_abstract_tree list
 
 and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
 
+and untyped_input_horz_element =
+  | UTInputHorzText     of string
+  | UTInputHorzEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+
+and untyped_input_vert_element =
+  | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
@@ -238,10 +245,12 @@ and untyped_abstract_tree_main =
   | UTStringConstant       of string
   | UTUnitConstant
   | UTBreakAndIndent
-(* -- in-text -- *)
-  | UTInText               of string
+(* -- inputs -- *)
+  | UTInputHorz            of untyped_input_horz_element list
+(*
+  | UTInputVert            of untyped_input_vert_element list
+*)
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
-  | UTEmbeddedCommand      of var_name * untyped_abstract_tree list
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -356,6 +365,10 @@ and environment = (EvalVarID.t, location) Hashtbl.t
 
 and location = abstract_tree ref
 
+and input_horz_element =
+  | InputHorzText     of string
+  | InputHorzEmbedded of abstract_tree * abstract_tree list
+
 and abstract_tree =
 (* -- basic value -- *)
   | StringEmpty
@@ -370,7 +383,7 @@ and abstract_tree =
   | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
 (* -- input texts -- *)
-  | InText                of string
+  | InputHorz             of input_horz_element list
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
@@ -536,6 +549,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(_)                       -> ty
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -564,7 +578,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
                   let kdgen = generalize_kind kd in
                   let bid = BoundID.fresh kdgen () in
                   begin
-                    tvref := Bound(bid) ;
+                    tvref := Bound(bid);
                     ty
                   end
         end
@@ -576,6 +590,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(_)                       -> ty
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
 
   and generalize_kind kd =
     match kd with
@@ -672,6 +687,9 @@ let rec string_of_mono_type_basic tystr =
         end
 
     | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
+    | HorzCommandType(tylist)   ->
+        let slist = List.map string_of_mono_type_basic tylist in
+        "(" ^ (String.concat ", " slist) ^ ") horz-command"
 
 
 and string_of_type_argument_list_basic tyarglist =

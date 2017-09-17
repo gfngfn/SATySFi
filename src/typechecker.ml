@@ -7,6 +7,7 @@ exception InclusionError       of Typeenv.t * mono_type * mono_type
 exception ContradictionError   of Typeenv.t * mono_type * mono_type
 exception InternalInclusionError
 exception InternalContradictionError
+exception InvalidArityOfCommand of Range.t * int * int
 
 
 let print_for_debug_typecheck msg =
@@ -46,6 +47,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
   | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
   | BaseType(_)                    -> false
+  | HorzCommandType(tylist)        -> iter_list tylist
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -215,17 +217,20 @@ let rec typecheck
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BaseType(BoolType))  )
   | UTUnitConstant        -> (UnitConstant       , (rng, BaseType(UnitType))  )
-  | UTInText(itxt)        -> (InText(itxt)       , (rng, BaseType(InTextType)))
   | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BaseType(BoxColType)))
 
-  | UTFinishStruct        ->
+  | UTInputHorz(utih) ->
+      let ih = typecheck_input_horz rng qtfbl lev tyenv utih in
+      (InputHorz(ih) , (rng, BaseType(InTextType)))
+
+  | UTFinishStruct ->
       begin
         final_tyenv := tyenv;
         (FinishStruct, (Range.dummy "finish-struct", BaseType(UnitType)))
       end
 
-  | UTFinishHeaderFile    ->
+  | UTFinishHeaderFile ->
       begin
         final_tyenv := tyenv;
         (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(UnitType)))
@@ -476,6 +481,40 @@ let rec typecheck
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(eM, eA), tyA)
+
+
+and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
+  let rec aux acc lst =
+    match lst with
+    | [] -> List.rev acc
+
+    | UTInputHorzEmbedded(utastcmd, utastarglst) :: tail ->
+        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+        begin
+          match tycmdmain with
+
+          | HorzCommandType(tylstreq) ->
+              let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
+              let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
+              let earglst = etylst |> List.map (fun (e, ty) -> e) in
+              let () =
+                try
+                  List.iter2 (unify_ tyenv) tyarglst tylstreq
+                with
+                | Invalid_argument(_) ->
+                    let lenreq  = List.length tylstreq in
+                    let lenreal = List.length tyarglst in
+                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
+              in
+                aux (InputHorzEmbedded(ecmd, earglst) :: acc) tail
+
+          | _ -> failwith "horizontal command of type other than HorzCommandType(_)"
+        end
+
+    | UTInputHorzText(s) :: tail ->
+        aux (InputHorzText(s) :: acc) tail
+  in
+    aux [] utihlst
 
 
 and typecheck_record

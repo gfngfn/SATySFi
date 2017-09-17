@@ -93,7 +93,7 @@ let make_environments () =
 
         ("form-paragraph", ~% (br --> bc)               , lambda1 (fun vrow -> BackendLineBreaking(vrow)) );
         ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("fixed-string"  , ~% (t --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("fixed-string"  , ~% (t --> br)                , lambda1 (fun vwid -> BackendFixedString(vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
       ]
   in

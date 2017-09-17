@@ -49,7 +49,7 @@ let rec interpret env ast =
   | FuncWithEnvironment(_, _, _)          -> ast
   | BreakAndIndent                        -> ast
   | SoftBreakAndIndent                    -> ast
-  | InText(_)                             -> ast
+  | InputHorz(_)                          -> ast
   | DeeperIndent(astsub)                  -> DeeperIndent(interpret env astsub)
   | Concat(astf, astl)                    ->
       let valuef = interpret env astf in
@@ -107,13 +107,15 @@ let rec interpret env ast =
       let widstretch = HorzBox.Length.of_pdf_point (float_of_int rawstretch) in
       Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
 
-  | BackendFixedString(astitxt) ->
+  | BackendFixedString(aststr) ->
       let font_info = ("Arno", HorzBox.Length.of_pdf_point 16.) in  (* temporary; should be variable *)
-      begin
-        match astitxt with
-        | InText(itxt) -> Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 itxt))])
-        | _            -> report_bug_evaluator "BackendFixedString"
-      end
+      let purestr =
+        match aststr with
+        | StringEmpty       -> ""
+        | StringConstant(s) -> s
+        | _                 -> report_bug_evaluator "BackendFixedString"
+      in
+        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
 (* ---- list value ---- *)
 

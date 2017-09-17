@@ -155,6 +155,10 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
 
     | RecordType(asc) -> string_of_record_type iter asc
 
+    | HorzCommandType(tylist) ->
+        let slist = List.map iter tylist in
+        "(" ^ (String.concat ", " slist) ^ ") horz-command"
+
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
   let iter = string_of_mono_type_sub tyenv current_ht in
