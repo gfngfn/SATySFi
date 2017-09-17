@@ -249,9 +249,7 @@ and untyped_abstract_tree_main =
   | UTBreakAndIndent
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
-(*
   | UTInputVert            of untyped_input_vert_element list
-*)
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list

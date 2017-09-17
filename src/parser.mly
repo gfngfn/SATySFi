@@ -473,9 +473,7 @@
 main:
   | nxtoplevel  { $1 }
   | sxblock EOI { $1 }
-/*
-  | vxblock EOI { $1 }
-*/
+  | vxblock EOI { (Range.dummy "main-vxblock", UTInputVert($1)) }
 ;
 nxtoplevel:
 /* ---- toplevel style ---- */
@@ -1154,15 +1152,19 @@ sxidnm:
   |           { (Range.dummy "no-id-name1", UTConstructor("Nothing", (Range.dummy "no-id-name2", UTUnitConstant))) }
 ;
 narg: /* -> untyped_argument_cons */
-  | OPENPROG nxlet CLOSEPROG narg { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
-  | OPENPROG CLOSEPROG narg       { let rng = make_range (Tok $1) (Tok $2) in (rng, UTUnitConstant) :: $3 }
+  | OPENPROG nxlet CLOSEPROG narg {
+        let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4
+      }
+  | OPENPROG CLOSEPROG narg {
+        let rng = make_range (Tok $1) (Tok $2) in (rng, UTUnitConstant) :: $3
+      }
   | OPENPROG_AND_BRECORD nxrecord CLOSEPROG_AND_ERECORD narg {
         let rng = make_range (Tok $1) (Tok $3) in (rng, UTRecord($2)) :: $4
       }
   | OPENPROG_AND_BLIST nxlist CLOSEPROG_AND_ELIST narg {
         let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4
       }
-  |                             { end_of_argument }
+  | { end_of_argument }
 /* -- for syntax error log -- */
   | OPENPROG error                 { report_error (Tok $1) "( (in active area)" }
   | OPENPROG nxlet CLOSEPROG error { report_error (Tok $3) ") (in active area)" }
@@ -1173,9 +1175,16 @@ narg: /* -> untyped_argument_cons */
 /* -- -- */
 ;
 sarg: /* -> Types.untyped_argument_cons */
-  | BHORZGRP sxsep EHORZGRP sargsub { let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4 }
-  | OPENQT sxblock CLOSEQT sargsub  { let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4 }
-  | ENDACTIVE                       { end_of_argument }
+  | BVERTGRP vxblock EVERTGRP sargsub {
+        let rng = make_range (Tok $1) (Tok $3) in (rng, UTInputVert($2)) :: $4
+      }
+  | BHORZGRP sxsep EHORZGRP sargsub {
+        let rng = make_range (Tok $1) (Tok $3) in (rng, extract_main $2) :: $4
+      }
+  | OPENQT sxblock CLOSEQT sargsub  {
+        let rng = make_range (Tok $1) (Tok $3) in (rng, omit_spaces $2) :: $4
+      }
+  | ENDACTIVE { end_of_argument }
 /* -- for syntax error log --*/
   | BHORZGRP error                { report_error (Tok $1) "{" }
   | BHORZGRP sxsep EHORZGRP error { report_error (Tok $3) "}" }
@@ -1192,11 +1201,12 @@ sargsub: /* -> Types.argument_cons */
   | OPENQT sxblock CLOSEQT error  { report_error (Tok $3) "`" }
 /* -- -- */
 ;
-/*
 vxblock:
-  | vxbot vxblock {}
-  | _             {}
+  | vxbot vxblock { $1 :: $2 }
+  |               { [] }
 ;
 vxbot:
-  | VERTCMD nxarg sxarg {}
-*/
+  | VERTCMD narg sarg {
+        let (csrng, csnm) = $1 in
+          UTInputVertEmbedded((csrng, UTContentOf([], csnm)), append_argument_list $2 $3)
+      }
