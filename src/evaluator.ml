@@ -95,6 +95,8 @@ and interpret env ast =
 
 (* ---- values for backend ---- *)
 
+  | FontDesignation(_) -> ast
+
   | Horz(_) -> ast
 
   | HorzConcat(ast1, ast2) ->
@@ -134,6 +136,12 @@ and interpret env ast =
         | _                                -> report_bug_evaluator "HorzLex"
       end
 
+  | BackendFont(astabbrev, astsize) ->
+      let font_abbrev = interpret_string env astabbrev in
+      let font_size_raw = interpret_int env astsize in  (* temporary; should deal with lengths directly *)
+      let font_size = HorzBox.Length.of_pdf_point (float_of_int font_size_raw) in  (* temporary; should deal with lengths directly *)
+      FontDesignation((font_abbrev, font_size))
+
   | BackendLineBreaking(astrow) ->
       let hblst = normalize_box_row astrow in
       let paragraph_width = HorzBox.Length.of_pdf_point 300. in  (* temporary *)
@@ -154,14 +162,14 @@ and interpret env ast =
       let widstretch = HorzBox.Length.of_pdf_point (float_of_int rawstretch) in
       Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
 
-  | BackendFixedString(aststr) ->
-      let font_info = ("Arno", HorzBox.Length.of_pdf_point 16.) in  (* temporary; should be variable *)
-      let purestr =
-        match aststr with
-        | StringEmpty       -> ""
-        | StringConstant(s) -> s
-        | _                 -> report_bug_evaluator "BackendFixedString"
+  | BackendFixedString(astfont, aststr) ->
+      let font_info =
+        match astfont with
+        | FontDesignation(font_info) -> font_info
+        | _ -> report_bug_evaluator "BackendFixedString; not a font value"
+      (* ("Arno", HorzBox.Length.of_pdf_point 16.) *)
       in
+      let purestr = interpret_string env aststr in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
 (* ---- list value ---- *)
@@ -508,6 +516,16 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
   in
   let hblst = hblstacc |> List.rev |> List.concat in
   Horz(hblst)
+
+
+and interpret_string (env : environment) (ast : abstract_tree) : string =
+  let vs = interpret env ast in
+    match vs with
+    | StringEmpty       -> ""
+    | StringConstant(s) -> s
+    | _                 -> report_bug_evaluator ("interpret_string: not a StringEmpty nor a StringConstant; "
+                                                 ^ (Display.string_of_ast ast)
+                                                 ^ " ->* " ^ (Display.string_of_ast vs))
 
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =

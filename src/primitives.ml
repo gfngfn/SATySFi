@@ -49,12 +49,13 @@ let make_environments () =
   let (~@) n        = (Range.dummy "tv"     , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-  let l cont        = (Range.dummy "list"   , ListType(cont)    ) in
-  let r cont        = (Range.dummy "ref"    , RefType(cont)     ) in
-  let (-->) dom cod = (Range.dummy "func"   , FuncType(dom, cod)) in
+  let l cont        = (Range.dummy "list"   , ListType(cont)       ) in
+  let r cont        = (Range.dummy "ref"    , RefType(cont)        ) in
+  let (-->) dom cod = (Range.dummy "func"   , FuncType(dom, cod)   ) in
   let t             = (Range.dummy "in-text", BaseType(InTextType) ) in
   let br            = (Range.dummy "box-row", BaseType(BoxRowType) ) in
   let bc            = (Range.dummy "box-col", BaseType(BoxColType) ) in
+  let ft            = (Range.dummy "font"   , BaseType(FontType)   ) in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
@@ -81,20 +82,21 @@ let make_environments () =
         ( "!"  , ptyderef            , lambda1 (fun v1 -> Reference(v1))                      );
         ( "::" , ptycons             , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
 
-        ( "same"         , ~% (s --> (s --> b))        , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
-        ( "string-sub"   , ~% (s --> (i --> (i --> s))), lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
-        ( "string-length", ~% (s --> i)                , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
-        ( "\\deeper"     , ~% (s --> s)                , astfdeeper );
-        ( "deeper"       , ~% (s --> s)                , astfdeeper );
-        ( "break"        , ~% s                        , (fun _ -> BreakAndIndent) );
-        ( "soft-break"   , ~% s                        , (fun _ -> SoftBreakAndIndent) );
-        ( "space"        , ~% s                        , (fun _ -> StringConstant(" ")) );
-        ( "arabic"       , ~% (i --> s)                , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
+        ( "same"         , ~% (s --> (s --> b))         , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
+        ( "string-sub"   , ~% (s --> (i --> (i --> s))) , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
+        ( "string-length", ~% (s --> i)                 , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
+        ( "\\deeper"     , ~% (s --> s)                 , astfdeeper );
+        ( "deeper"       , ~% (s --> s)                 , astfdeeper );
+        ( "break"        , ~% s                         , (fun _ -> BreakAndIndent) );
+        ( "soft-break"   , ~% s                         , (fun _ -> SoftBreakAndIndent) );
+        ( "space"        , ~% s                         , (fun _ -> StringConstant(" ")) );
+        ( "arabic"       , ~% (i --> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
 
         ("form-paragraph", ~% (br --> bc)               , lambda1 (fun vrow -> BackendLineBreaking(vrow)) );
         ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("fixed-string"  , ~% (t --> br)                , lambda1 (fun vwid -> BackendFixedString(vwid))   );
+        ("fixed-string"  , ~% (ft --> (t --> br))       , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
       ]
   in
   let temporary_ast = StringEmpty in

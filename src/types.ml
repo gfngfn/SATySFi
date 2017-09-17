@@ -173,6 +173,8 @@ type base_type =
   | InTextType
   | BoxRowType
   | BoxColType
+  | FontType
+  | ContextType
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -453,10 +455,12 @@ and abstract_tree =
 (* -- backend primitives -- *)
   | LambdaHorz            of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment of EvalVarID.t * abstract_tree * environment
+  | FontDesignation       of HorzBox.font_info
   | Context               of input_context
   | HorzLex               of abstract_tree * abstract_tree
+  | BackendFont           of abstract_tree * abstract_tree
   | BackendLineBreaking   of abstract_tree
-  | BackendFixedString    of abstract_tree
+  | BackendFixedString    of abstract_tree * abstract_tree
   | BackendFixedEmpty     of abstract_tree
   | BackendOuterEmpty     of abstract_tree * abstract_tree * abstract_tree
 
@@ -644,13 +648,15 @@ let rec string_of_mono_type_basic tystr =
   let (rng, tymain) = tystr in
   let qstn = if Range.is_dummy rng then "?" else "" in
     match tymain with
-    | BaseType(UnitType)   -> "unit" ^ qstn
-    | BaseType(BoolType)   -> "bool" ^ qstn
-    | BaseType(IntType)    -> "int" ^ qstn
-    | BaseType(StringType) -> "string" ^ qstn
-    | BaseType(InTextType) -> "in-text" ^ qstn
-    | BaseType(BoxRowType) -> "box-row" ^ qstn
-    | BaseType(BoxColType) -> "box-col" ^ qstn
+    | BaseType(UnitType)    -> "unit" ^ qstn
+    | BaseType(BoolType)    -> "bool" ^ qstn
+    | BaseType(IntType)     -> "int" ^ qstn
+    | BaseType(StringType)  -> "string" ^ qstn
+    | BaseType(InTextType)  -> "in-text" ^ qstn
+    | BaseType(BoxRowType)  -> "box-row" ^ qstn
+    | BaseType(BoxColType)  -> "box-col" ^ qstn
+    | BaseType(FontType)    -> "font" ^ qstn
+    | BaseType(ContextType) -> "context" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
