@@ -231,11 +231,13 @@ and untyped_argument_cons = untyped_abstract_tree list
 
 and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
 
-and untyped_input_horz_element =
+and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
+and untyped_input_horz_element_main =
   | UTInputHorzText     of string
   | UTInputHorzEmbedded of untyped_abstract_tree * untyped_abstract_tree list
 
-and untyped_input_vert_element =
+and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
+and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
 
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main

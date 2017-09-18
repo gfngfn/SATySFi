@@ -484,11 +484,11 @@ let rec typecheck
 
 
 and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
-  let rec aux acc lst =
+  let rec aux (acc : input_horz_element list) (lst : untyped_input_horz_element list) =
     match lst with
     | [] -> List.rev acc
 
-    | UTInputHorzEmbedded(utastcmd, utastarglst) :: tail ->
+    | (_, UTInputHorzEmbedded(utastcmd, utastarglst)) :: tail ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
         begin
           match tycmdmain with
@@ -511,7 +511,7 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           | _ -> failwith "horizontal command of type other than HorzCommandType(_)"
         end
 
-    | UTInputHorzText(s) :: tail ->
+    | (_, UTInputHorzText(s)) :: tail ->
         aux (InputHorzText(s) :: acc) tail
   in
     aux [] utihlst
