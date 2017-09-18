@@ -81,9 +81,12 @@ and interpret env ast =
   | FuncWithEnvironment(_, _, _)          -> ast
   | BreakAndIndent                        -> ast
   | SoftBreakAndIndent                    -> ast
-  | InputHorz(_)                          -> ast
-  | DeeperIndent(astsub)                  -> DeeperIndent(interpret env astsub)
-  | Concat(astf, astl)                    ->
+  | InputHorz(_)                          -> ast  (* -- lazy evaluation -- *)
+  | InputVert(_)                          -> ast  (* -- lazy evaluation -- *)
+
+  | DeeperIndent(astsub) -> DeeperIndent(interpret env astsub)
+
+  | Concat(astf, astl) ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
         begin
@@ -123,6 +126,10 @@ and interpret env ast =
 
   | Context(ctx) -> Context(ctx)  (* temporary; need detailed implementation *)
 
+  | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
+
+  | LambdaVertWithEnvironment(_, _, _) -> ast
+
   | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)      
 
   | LambdaHorzWithEnvironment(_, _, _) -> ast
@@ -134,6 +141,15 @@ and interpret env ast =
         match (valuectx, value1) with
         | (Context(ctx), InputHorz(ihlst)) -> interpret_input_horz env ctx ihlst
         | _                                -> report_bug_evaluator "HorzLex"
+      end
+
+  | VertLex(astctx, ast1) ->
+      let valuectx = interpret env astctx in
+      let value1 = interpret env ast1 in
+      begin
+        match (valuectx, value1) with
+        | (Context(ctx), InputVert(ivlst)) -> interpret_input_vert env ctx ivlst
+        | _                                -> report_bug_evaluator "VertLex"
       end
 
   | BackendFont(astabbrev, astsize) ->
@@ -478,6 +494,30 @@ and interpret env ast =
   | LogicalNot(astl) ->
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)
+
+
+and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : input_vert_element list) : abstract_tree =
+  let imvblstacc =
+    ivlst |> List.fold_left (fun lstacc iv ->
+      match iv with
+      | InputVertEmbedded(astcmd, astarglst) ->
+          let valuecmd = interpret env astcmd in
+          begin
+            match valuecmd with
+            | LambdaVertWithEnvironment(evid, astdef, envf) ->
+                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
+                let valueret = reduce_beta_list env valuedef astarglst in
+                begin
+                  match valueret with
+                  | Vert(imvblst) -> imvblst :: lstacc
+                  | _             -> report_bug_evaluator "interpret_input_vert; other than Vert(_)"
+                end
+            | _ -> report_bug_evaluator "interpret_input_vert; other than lambdaVertWithEnvironment(_, _, _)"
+          end
+    ) []
+  in
+  let imvblst = imvblstacc |> List.rev |> List.concat in
+    Vert(imvblst)
 
 
 and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : input_horz_element list) : abstract_tree =

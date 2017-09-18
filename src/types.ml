@@ -459,11 +459,14 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveArabic       of abstract_tree
 (* -- backend primitives -- *)
-  | LambdaHorz            of EvalVarID.t * abstract_tree
+  | LambdaHorz                of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment of EvalVarID.t * abstract_tree * environment
+  | LambdaVert                of EvalVarID.t * abstract_tree
+  | LambdaVertWithEnvironment of EvalVarID.t * abstract_tree * environment
   | FontDesignation       of HorzBox.font_info
   | Context               of input_context
   | HorzLex               of abstract_tree * abstract_tree
+  | VertLex               of abstract_tree * abstract_tree
   | BackendFont           of abstract_tree * abstract_tree
   | BackendLineBreaking   of abstract_tree
   | BackendFixedString    of abstract_tree * abstract_tree

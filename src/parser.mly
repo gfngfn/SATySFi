@@ -462,7 +462,7 @@
 %type <Types.untyped_abstract_tree> nxlist
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
-%type <Types.untyped_input_horz_element> sxbot
+%type <Types.untyped_input_horz_element> ihelem
 %type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
 (*
@@ -1100,12 +1100,13 @@ hcmd:
   | tok=HORZCMDWITHMOD { tok }
 ;
 sxblock:
-  | ihlst=list(sxbot) { let rng = make_range_from_list ihlst in (rng, UTInputHorz(ihlst)) }
+  | ihlst=list(ihelem) { let rng = make_range_from_list ihlst in (rng, UTInputHorz(ihlst)) }
 ;
-sxbot:
-  | CHAR  { let (rng, ch) = $1 in (rng, UTInputHorzText(ch)) }
-  | SPACE { let rng = $1 in (rng, UTInputHorzText(" ")) }
-  | BREAK { let rng = $1 in (rng, UTInputHorzText("\n")) }
+ihelem:
+  | ihtextlst=list(ihtext) {
+        let rng = make_range_from_list ihtextlst in
+        let text = String.concat "" (ihtextlst |> List.map (fun (r, t) -> t)) in
+        (rng, UTInputHorzText(text)) }
 (*
   | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
 *)
@@ -1115,7 +1116,12 @@ sxbot:
         let args = List.append nargs sargs in
         let rngargs = make_range_from_list args in
         make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
-      }
+     }
+ihtext:
+  | CHAR  { let (rng, ch) = $1 in (rng, ch) }
+  | SPACE { let rng = $1 in (rng, " ") }
+  | BREAK { let rng = $1 in (rng, "\n") }
+
 (*
 sxclsnm:
   | CLASSNAME { make_standard (Ranged $1) (Ranged $1) (class_name_to_abstract_tree (extract_name $1)) }
