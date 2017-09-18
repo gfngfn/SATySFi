@@ -53,10 +53,12 @@ let make_environments () =
   let r cont        = (Range.dummy "ref"     , RefType(cont)        ) in
   let (-->) dom cod = (Range.dummy "func"    , FuncType(dom, cod)   ) in
 
-  let t             = (Range.dummy "text-row", BaseType(TextRowType)) in
+  let tr            = (Range.dummy "text-row", BaseType(TextRowType)) in
+  let tc            = (Range.dummy "text-col", BaseType(TextColType)) in
   let br            = (Range.dummy "box-row" , BaseType(BoxRowType) ) in
   let bc            = (Range.dummy "box-col" , BaseType(BoxColType) ) in
   let ft            = (Range.dummy "font"    , BaseType(FontType)   ) in
+  let ctx           = (Range.dummy "context" , BaseType(ContextType)) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -96,10 +98,12 @@ let make_environments () =
 
         ("form-paragraph", ~% (br --> bc)               , lambda1 (fun vrow -> BackendLineBreaking(vrow)) );
         ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("fixed-string"  , ~% (ft --> (t --> br))       , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
+        ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
+        ("lex-row"       , ~% (ctx --> (tr --> br))     , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
+        ("lex-col"       , ~% (ctx --> (tc --> bc))     , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
       ]
   in
   let temporary_ast = StringEmpty in

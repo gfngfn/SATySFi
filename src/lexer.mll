@@ -167,6 +167,9 @@ rule progexpr = parse
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
     }
+  | ("+" (identifier | constructor)) {
+      let tok = Lexing.lexeme lexbuf in VERTCMD(get_pos lexbuf, tok)
+    }
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
@@ -517,21 +520,26 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
     in
-(*
+
     let () = print_endline (  (* for debug *)
       match output with
-      | VERTCMD(_, cs) -> "V(" ^ cs ^ ")"
+      | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
+      | HORZCMD(_, cs) -> "HCMD(" ^ cs ^ ")"
       | BHORZGRP(_)    -> "{"
       | EHORZGRP(_)    -> "}"
       | BVERTGRP(_)    -> "<"
       | EVERTGRP(_)    -> ">"
       | CHAR(_, s)     -> "\"" ^ s ^ "\""
-      | SPACE(_)       -> "(space)"
-      | BREAK(_)       -> "(break)"
-      | EOI            -> "(eoi)"
+      | SPACE(_)       -> "SPACE"
+      | BREAK(_)       -> "BREAK"
+      | EOI            -> "EOI"
+      | LETHORZ(_)     -> "LET-ROW"
+      | LETVERT(_)     -> "LET-COL"
+      | VAR(_, v)      -> "VAR(" ^ v ^ ")"
+      | DEFEQ(_)       -> "="
       | _              -> "_"
     ) in
-*)
+
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

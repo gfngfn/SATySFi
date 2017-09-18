@@ -485,6 +485,7 @@ nxtoplevel:
   | top=LET; dec=nxdec; subseq=nxtopsubseq                                   { make_let_expression top dec subseq }
   | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
+  | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
@@ -524,6 +525,15 @@ nxhorzdec:
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
       let curried = curry_lambda_abstract rngcs argvarlst utast in
         (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
+      }
+;
+nxvertdec:
+  | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vcmdtok in
+      let (rngctxvar, ctxvarnm) = ctxvartok in
+      let rng = make_range (Tok rngctxvar) (Ranged utast) in
+      let curried = curry_lambda_abstract rngcs argvarlst utast in
+        (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
 nxdecargpart:
