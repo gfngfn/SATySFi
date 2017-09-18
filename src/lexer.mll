@@ -240,6 +240,8 @@ rule progexpr = parse
           | "end"               -> END(pos)
           | "direct"            -> DIRECT(pos)
           | "constraint"        -> CONSTRAINT(pos)
+          | "let-row"           -> LETHORZ(pos)
+          | "let-col"           -> LETVERT(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
