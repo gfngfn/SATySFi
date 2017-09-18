@@ -365,6 +365,7 @@ let () =
     TypeID.initialize ();
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
+    FontInfo.initialize ();  (* temporary *)
     let (tyenv, env) = Primitives.make_environments () in
     let input_list = List.rev (!input_acc_ref) in
     let output = !output_name_ref in

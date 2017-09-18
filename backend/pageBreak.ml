@@ -346,7 +346,7 @@ let () =
     let pdfscheme = HandlePdf.create_empty_pdf "hello5.pdf" in
     try
       begin
-        main pdfscheme vblst ;
+        main_for_unit_test pdfscheme vblst ;
       end
     with
     | FontFormat.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e

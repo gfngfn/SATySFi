@@ -358,6 +358,20 @@ let rec string_of_ast (ast : abstract_tree) =
   | PrimitiveArabic(m)           -> "(arabic " ^ (string_of_ast m) ^ ")"
   | Record(asc)                  -> "(| ... |)"
   | AccessField(r, f)            -> (string_of_ast r) ^ "#" ^ f
+  | InputHorz(_)                 -> "(input-horz ...)"
+  | InputVert(_)                 -> "(input-vert ...)"
+  | Horz(_)                      -> "(horz ...)"
+  | Vert(_)                      -> "(vert ...)"
+  | HorzConcat(ast1, ast2)       -> "(horz-concat " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
+  | VertConcat(ast1, ast2)       -> "(vert-concat " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
+  | HorzLex(ast1, ast2)          -> "(horz-lex " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
+  | VertLex(ast1, ast2)          -> "(vert-lex " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
+  | LambdaHorz(_, ast1)          -> "(lambda-horz _. " ^ (string_of_ast ast1) ^ ")"
+  | LambdaVert(_, ast1)          -> "(lambda-vert _. " ^ (string_of_ast ast1) ^ ")"
+  | LambdaHorzWithEnvironment(_, ast1, _) -> "(lambda-horz! _. " ^ (string_of_ast ast1) ^ ")"
+  | LambdaVertWithEnvironment(_, ast1, _) -> "(lambda-vert! _. " ^ (string_of_ast ast1) ^ ")"
+  | Context(_)                   -> "(context)"
+  | FontDesignation(_)           -> "(font-designation)"
   | _                            -> "OTHER"
 
 

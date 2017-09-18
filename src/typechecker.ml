@@ -11,9 +11,9 @@ exception InvalidArityOfCommand of Range.t * int * int
 
 
 let print_for_debug_typecheck msg =
-
+(*
   print_endline msg;
-
+*)
   ()
 
 let flatten_type ty =

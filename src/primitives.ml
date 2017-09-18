@@ -43,10 +43,10 @@ let rec lambda3 astf env =
 
 let default_context =
   {
-    font_info     = ("Arno", HorzBox.Length.of_pdf_point 16.);
-    space_natural = HorzBox.Length.of_pdf_point 8.;
-    space_shrink  = HorzBox.Length.of_pdf_point 2.;
-    space_stretch = HorzBox.Length.of_pdf_point 3.;
+    font_info     = ("Arno", HorzBox.Length.of_pdf_point 12.);
+    space_natural = HorzBox.Length.of_pdf_point 4.;
+    space_shrink  = HorzBox.Length.of_pdf_point 1.;
+    space_stretch = HorzBox.Length.of_pdf_point 2.;
   }
 
 
@@ -109,6 +109,7 @@ let make_environments () =
         ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("set-font"      , ~% (ft --> (ctx --> ctx))    , lambda2 (fun vfont vctx -> BackendSetFont(vfont, vctx)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));

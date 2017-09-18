@@ -4,9 +4,9 @@ exception EvalError of string
 
 
 let print_for_debug_evaluator msg =
-
+(*
   print_string msg;
-
+*)
   ()
 
 
@@ -36,12 +36,20 @@ let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
     )
 
 
-let rec normalize_box_row ast =
+let rec normalize_box_row valuerow =
   let iter = normalize_box_row in
-    match ast with
-    | Horz(hblst)            -> hblst
-    | HorzConcat(ast1, ast2) -> List.append (iter ast1) (iter ast2)
-    | _                      -> report_bug_evaluator "normalize_box_row"
+    match valuerow with
+    | Horz(hblst)                -> hblst
+    | HorzConcat(value1, value2) -> List.append (iter value1) (iter value2)
+    | _                          -> report_bug_evaluator ("normalize_box_row; " ^ (Display.string_of_ast valuerow))
+
+
+let rec normalize_box_col valuecol =
+  let iter = normalize_box_col in
+    match valuecol with
+    | Vert(imvblst)              -> imvblst
+    | VertConcat(value1, value2) -> List.append (iter value1) (iter value2)
+    | _                          -> report_bug_evaluator ("normalize_box_col; " ^ (Display.string_of_ast valuecol))
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -81,8 +89,14 @@ and interpret env ast =
   | FuncWithEnvironment(_, _, _)          -> ast
   | BreakAndIndent                        -> ast
   | SoftBreakAndIndent                    -> ast
-  | InputHorz(_)                          -> ast  (* -- lazy evaluation -- *)
-  | InputVert(_)                          -> ast  (* -- lazy evaluation -- *)
+
+  | InputHorz(ihlst)                      -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
+
+  | InputHorzWithEnvironment(_, _)        -> ast
+
+  | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
+
+  | InputVertWithEnvironment(_, _)        -> ast
 
   | DeeperIndent(astsub) -> DeeperIndent(interpret env astsub)
 
@@ -117,12 +131,15 @@ and interpret env ast =
   | VertConcat(ast1, ast2) ->
       let value1 = interpret env ast1 in
       let value2 = interpret env ast2 in
+        Vert(normalize_box_col (VertConcat(value1, value2)))  (* ad hoc *)
+(*
       begin
         match (value1, value2) with
         | (Vert([]), _) -> value2
         | (_, Vert([])) -> value1
         | (_, _)        -> VertConcat(value1, value2)
       end
+*)
 
   | Context(ctx) -> Context(ctx)  (* temporary; need detailed implementation *)
 
@@ -139,8 +156,8 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match (valuectx, value1) with
-        | (Context(ctx), InputHorz(ihlst)) -> interpret_input_horz env ctx ihlst
-        | _                                -> report_bug_evaluator "HorzLex"
+        | (Context(ctx), InputHorzWithEnvironment(ihlst, envi)) -> interpret_input_horz envi ctx ihlst
+        | _                                                     -> report_bug_evaluator "HorzLex"
       end
 
   | VertLex(astctx, ast1) ->
@@ -148,8 +165,8 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match (valuectx, value1) with
-        | (Context(ctx), InputVert(ivlst)) -> interpret_input_vert env ctx ivlst
-        | _                                -> report_bug_evaluator "VertLex"
+        | (Context(ctx), InputVertWithEnvironment(ivlst, envi)) -> interpret_input_vert envi ctx ivlst
+        | _                                                     -> report_bug_evaluator "VertLex"
       end
 
   | BackendFont(astabbrev, astsize) ->
@@ -168,15 +185,16 @@ and interpret env ast =
       end
 
   | BackendLineBreaking(astrow) ->
-      let hblst = normalize_box_row astrow in
+      let valuerow = interpret env astrow in
+      let hblst = normalize_box_row valuerow in
       let paragraph_width = HorzBox.Length.of_pdf_point 300. in  (* temporary *)
       let imvblst = LineBreak.main paragraph_width hblst in
-      Vert(imvblst)
+        Vert(imvblst)
 
   | BackendFixedEmpty(astwid) ->  (* temporary; should introduce a type for length *)
       let rawwid = interpret_int env astwid in
       let wid = HorzBox.Length.of_pdf_point (float_of_int rawwid) in
-      Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
+        Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
 
   | BackendOuterEmpty(astnat, astshrink, aststretch) ->  (* temporary; should introduce a type for length *)
       let rawnat = interpret_int env astnat in
@@ -185,7 +203,7 @@ and interpret env ast =
       let widshrink = HorzBox.Length.of_pdf_point (float_of_int rawshrink) in
       let rawstretch = interpret_int env aststretch in
       let widstretch = HorzBox.Length.of_pdf_point (float_of_int rawstretch) in
-      Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
+        Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
 
   | BackendFixedString(astfont, aststr) ->
       let font_info =

@@ -402,6 +402,8 @@ and abstract_tree =
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
+  | InputHorzWithEnvironment of input_horz_element list * environment
+  | InputVertWithEnvironment of input_vert_element list * environment
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
