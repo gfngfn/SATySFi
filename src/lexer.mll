@@ -184,6 +184,8 @@ rule progexpr = parse
 
 (* binary operators; should be extended *)
   | "+"   { PLUS(get_pos lexbuf) }
+  | "++"  { HORZCONCAT(get_pos lexbuf) }
+  | "+++" { VERTCONCAT(get_pos lexbuf) }
   | "*"   { TIMES(get_pos lexbuf) }
   | "/"   { DIVIDES(get_pos lexbuf) }
   | "=="  { EQ(get_pos lexbuf) }

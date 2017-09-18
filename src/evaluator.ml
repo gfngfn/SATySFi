@@ -158,6 +158,15 @@ and interpret env ast =
       let font_size = HorzBox.Length.of_pdf_point (float_of_int font_size_raw) in  (* temporary; should deal with lengths directly *)
       FontDesignation((font_abbrev, font_size))
 
+  | BackendSetFont(astfont, astctx) ->
+      let valuefont = interpret env astfont in
+      let valuectx = interpret env astctx in
+      begin
+        match (valuefont, valuectx) with
+        | (FontDesignation(font_info), Context(ctx)) -> Context({ ctx with font_info = font_info; })
+        | _                                          -> report_bug_evaluator "BackendSetFont"
+      end
+
   | BackendLineBreaking(astrow) ->
       let hblst = normalize_box_row astrow in
       let paragraph_width = HorzBox.Length.of_pdf_point 300. in  (* temporary *)

@@ -470,6 +470,7 @@ and abstract_tree =
   | HorzLex               of abstract_tree * abstract_tree
   | VertLex               of abstract_tree * abstract_tree
   | BackendFont           of abstract_tree * abstract_tree
+  | BackendSetFont        of abstract_tree * abstract_tree
   | BackendLineBreaking   of abstract_tree
   | BackendFixedString    of abstract_tree * abstract_tree
   | BackendFixedEmpty     of abstract_tree

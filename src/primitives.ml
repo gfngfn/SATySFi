@@ -67,6 +67,14 @@ let make_environments () =
     let ptyderef = tv1 -% (~% ((r (~@ tv1)) --> (~@ tv1))) in
     let ptycons  = tv2 -% (~% ((~@ tv2) --> ((l (~@ tv2)) --> (l (~@ tv2))))) in
     let astfdeeper = lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) in
+    let default_context =
+      {
+        font_info     = ("Arno", HorzBox.Length.of_pdf_point 16.);
+        space_natural = HorzBox.Length.of_pdf_point 8.;
+        space_shrink  = HorzBox.Length.of_pdf_point 2.;
+        space_stretch = HorzBox.Length.of_pdf_point 3.;
+      }
+    in
       [
         ( "+"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
         ( "-"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Minus(v1, v2))                   );
@@ -101,7 +109,10 @@ let make_environments () =
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("set-font"      , ~% (ft --> (ctx --> ctx))    , lambda2 (fun vfont vctx -> BackendSetFont(vfont, vctx)));
+        ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
+        ("+++"           , ~% (bc --> (bc --> bc))      , lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2)));
         ("lex-row"       , ~% (ctx --> (tr --> br))     , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("lex-col"       , ~% (ctx --> (tc --> bc))     , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
       ]

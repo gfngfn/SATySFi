@@ -397,6 +397,7 @@
 %token <Range.t> REFNOW REFFINAL
 %token <Range.t> IF THEN ELSE
 %token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
+%token <Range.t> HORZCONCAT VERTCONCAT
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
@@ -742,7 +743,9 @@ nxconcat:
 /* -- -- */
 ;
 nxlplus:
-  | nxlminus PLUS nxrplus   { binary_operator "+" $1 $2 $3 }
+  | nxlminus PLUS nxrplus       { binary_operator "+" $1 $2 $3 }
+  | nxlminus HORZCONCAT nxrplus { binary_operator "++" $1 $2 $3 }
+  | nxlminus VERTCONCAT nxrplus { binary_operator "+++" $1 $2 $3 }
   | nxlminus                { $1 }
 /* -- for syntax error log -- */
   | nxlminus PLUS error     { report_error (Tok $2) "+" }
@@ -1039,6 +1042,7 @@ binop:
   | LEQ     { "<=" }     | GT      { ">" }      | LT      { "<" }
   | LAND    { "&&" }     | LOR     { "||" }     | LNOT    { "not" }
   | BEFORE  { "before" }
+  | HORZCONCAT { "++" }  | VERTCONCAT { "+++" }
 ;
 sxsep:
   | SEP; utastlst=separated_list(SEP, sxblock); SEP { make_cons utastlst }
