@@ -81,19 +81,23 @@ let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         Lexer.reset_to_progexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let (ty, _, ast) = Typechecker.main tyenv utast in
-          begin
-            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
-            match ty with
-            | (_, BaseType(StringType)) ->  (* temporary; will be modified to BaseType(BoxColType) *)
-                let evaled = Evaluator.interpret env ast in
-                let content_out = Out.main evaled in
-                  begin
-                    Files.file_out_of_string file_name_out content_out ;
-                    print_endline (" ---- ---- ---- ----") ;
-                    print_endline ("  output written on '" ^ file_name_out ^ "'.")
-                  end
-            | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not string"))
-          end
+        let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
+          match ty with
+          | (_, BaseType(TextColType)) ->
+              let astfinal = VertLex(Context(Primitives.default_context), ast) in
+              let valuefinal = Evaluator.interpret env astfinal in
+              begin
+                match valuefinal with
+                | Vert(imvblst) ->
+                    let pdf = HandlePdf.create_empty_pdf file_name_out in
+                    begin
+                      PageBreak.main pdf imvblst;
+                      print_endline (" ---- ---- ---- ----");
+                      print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                    end
+                | _ -> failwith "main; not a Vert(_)"
+              end
+          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not text-col; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
       end
   end
 
@@ -108,6 +112,24 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let () = print_endline (string_of_utast utast) in  (* for debug *)
         let (ty, _, ast) = Typechecker.main tyenv utast in
+        let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
+          match ty with
+          | (_, BaseType(TextColType)) ->
+              let astfinal = VertLex(Context(Primitives.default_context), ast) in
+              let valuefinal = Evaluator.interpret env astfinal in
+              begin
+                match valuefinal with
+                | Vert(imvblst) ->
+                    let pdf = HandlePdf.create_empty_pdf file_name_out in
+                    begin
+                      PageBreak.main pdf imvblst;
+                      print_endline (" ---- ---- ---- ----");
+                      print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                    end
+                | _ -> failwith "main; not a Vert(_)"
+              end
+          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not text-col; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
+(*
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
             match ty with
@@ -127,6 +149,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                   end
             | _ -> raise (MainError("the output of '" ^ file_name_in ^ "' is not string"))
           end
+*)
       end
   end
 

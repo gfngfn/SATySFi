@@ -41,6 +41,15 @@ let rec lambda3 astf env =
       astf (ContentOf(evid1)) (ContentOf(evid2)) (ContentOf(evid3)))), env)
 
 
+let default_context =
+  {
+    font_info     = ("Arno", HorzBox.Length.of_pdf_point 16.);
+    space_natural = HorzBox.Length.of_pdf_point 8.;
+    space_shrink  = HorzBox.Length.of_pdf_point 2.;
+    space_stretch = HorzBox.Length.of_pdf_point 3.;
+  }
+
+
 let make_environments () =
 
   let i             = (Range.dummy "int"     , BaseType(IntType)    ) in
@@ -67,14 +76,6 @@ let make_environments () =
     let ptyderef = tv1 -% (~% ((r (~@ tv1)) --> (~@ tv1))) in
     let ptycons  = tv2 -% (~% ((~@ tv2) --> ((l (~@ tv2)) --> (l (~@ tv2))))) in
     let astfdeeper = lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) in
-    let default_context =
-      {
-        font_info     = ("Arno", HorzBox.Length.of_pdf_point 16.);
-        space_natural = HorzBox.Length.of_pdf_point 8.;
-        space_shrink  = HorzBox.Length.of_pdf_point 2.;
-        space_stretch = HorzBox.Length.of_pdf_point 3.;
-      }
-    in
       [
         ( "+"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
         ( "-"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Minus(v1, v2))                   );

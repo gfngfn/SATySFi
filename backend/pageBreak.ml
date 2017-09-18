@@ -27,7 +27,8 @@ let print_evaled_vert_box evvb =
 
 let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
 
-let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
+
+let main_scheme (pdfscheme : HandlePdf.t) (imvbacc : intermediate_vert_box list) (vblst : vert_box list) =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = page_height -% hgttotal in
@@ -73,7 +74,7 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
   in
 
   (* --
-    `let (evvblstO, imvbaccO, vblstO) = pickup_page imvbaccI vblstI`
+    `let (evvblstO, Some(imvbaccO, vblstO)) = pickup_page imvbaccI vblstI`
     - `vblstI`   : input vertical list
     - `imvbaccI` : (inverted) recent contribution list before picking up a page
     - `evvblstO` : vertical list (of evaluated form) for single page
@@ -122,13 +123,21 @@ let main (pdfscheme : HandlePdf.t) (vblst : vert_box list) =
         | None                           -> begin HandlePdf.write_to_file pdfschemenext; end
         | Some((imvbaccnext, vblstnext)) -> iteration pdfschemenext imvbaccnext vblstnext
   in
-    iteration pdfscheme [] vblst
+    iteration pdfscheme imvbacc vblst
+
+
+let main_for_unit_test (pdfscheme : HandlePdf.t) (vblst : vert_box list) : unit =
+  main_scheme pdfscheme [] vblst
+
+
+let main (pdfscheme : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
+  main_scheme pdfscheme (List.rev imvblst) []
 
 
 let penalty_break_space = 100
 let penalty_soft_hyphen = 1000
 
-
+(*
 let () =
   let ( ~% ) = Length.of_pdf_point in
   begin
@@ -342,3 +351,4 @@ let () =
     with
     | FontFormat.FontFormatBroken(e) -> Otfm.pp_error Format.std_formatter e
   end
+*)

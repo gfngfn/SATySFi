@@ -4,9 +4,9 @@ exception EvalError of string
 
 
 let print_for_debug_evaluator msg =
-(*
-  print_string msg ;
-*)
+
+  print_string msg;
+
   ()
 
 
@@ -218,6 +218,7 @@ and interpret env ast =
 (* -- fundamentals -- *)
 
   | ContentOf(evid) ->
+      let () = print_for_debug_evaluator ("$$ ContentOf " ^ (EvalVarID.show_direct evid) ^ "\n") in  (* for debug *)
       begin
         try
           let content = !(find_in_environment env evid) in
