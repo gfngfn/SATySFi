@@ -463,10 +463,8 @@
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
 %type <Types.untyped_input_horz_element> sxbot
-(*
-%type <Types.untyped_input_vert_element list> vxblock
+%type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
-*)
 (*
 %type <Types.untyped_abstract_tree> sxclsnm
 %type <Types.untyped_abstract_tree> sxidnm
@@ -481,10 +479,8 @@
 
 
 main:
-  | ast=nxtoplevel  { ast }
-(*
-  | vxblock EOI { (Range.dummy "main-vxblock", UTInputVert($1)) }
-*)
+  | utast=nxtoplevel   { utast }
+  | utast=vxblock; EOI { utast }
 ;
 nxtoplevel:
   | LET nxdec nxtopsubseq                                          { make_let_expression $1 $2 $3 }
@@ -1091,7 +1087,7 @@ binop:
   | LAND    { "&&" }     | LOR     { "||" }     | LNOT    { "not" }
   | BEFORE  { "before" }
 ;
-%inline sxsep:
+sxsep:
   | SEP; utastlst=separated_list(SEP, sxblock); SEP { make_cons utastlst }
   | utast=sxblock                                   { utast }
   | itmzlst=nonempty_list(sxitem)                   { make_list_to_itemize itmzlst }
@@ -1101,7 +1097,7 @@ sxitem:
 ;
 hcmd:
   | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
-  | tok=HORZCMDWITHMOD { let (rng, mdlnmlst, csnm) = tok in (rng, mdlnmlst, csnm) }
+  | tok=HORZCMDWITHMOD { tok }
 ;
 sxblock:
   | ihlst=list(sxbot) { let rng = make_range_from_list ihlst in (rng, UTInputHorz(ihlst)) }
@@ -1151,26 +1147,20 @@ sargs:
   | sargs=nonempty_list(sarg) { sargs }
 ;
 sarg: /* -> Types.untyped_argument_cons */
-(*
-  | BVERTGRP vxblock EVERTGRP sargsub {
-        let rng = make_range (Tok $1) (Tok $3) in (rng, UTInputVert($2)) :: $4
-      }
-*)
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
-        make_standard (Tok opn) (Tok cls) (extract_main utast)
-      }
-  | opn=OPENQT; sxblock; cls=CLOSEQT  {
-        make_standard (Tok opn) (Tok cls) (omit_spaces $2)
-      }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENQT; utast=sxblock; cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces utast) }
 ;
-(*
+vcmd:
+  | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
+  | tok=VERTCMDWITHMOD { tok }
+;
 vxblock:
-  | vxbot vxblock { $1 :: $2 }
-  |               { [] }
+  | ivlst=list(vxbot) { (make_range_from_list ivlst, UTInputVert(ivlst)) }
 ;
 vxbot:
-  | VERTCMD narg sarg {
-        let (csrng, csnm) = $1 in
-          UTInputVertEmbedded((csrng, UTContentOf([], csnm)), append_argument_list $2 $3)
+  | vcmd=vcmd; nargs=nargs; sargs=sargs {
+        let (rngcs, mdlnmlst, csnm) = vcmd in
+        let args = List.append nargs sargs in
+          make_standard (Tok rngcs) (RangedList args) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
       }
-*)
