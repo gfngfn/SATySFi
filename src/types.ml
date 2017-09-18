@@ -170,7 +170,8 @@ type base_type =
   | IntType
   | StringType
   | BoolType
-  | InTextType
+  | TextRowType
+  | TextColType
   | BoxRowType
   | BoxColType
   | FontType
@@ -188,6 +189,7 @@ and mono_type_main =
   | VariantType     of (mono_type list) * TypeID.t
   | RecordType      of (field_name, mono_type) Assoc.t
   | HorzCommandType of mono_type list
+  | VertCommandType of mono_type list
 
 and poly_type =
   | Poly of mono_type
@@ -371,6 +373,9 @@ and input_horz_element =
   | InputHorzText     of string
   | InputHorzEmbedded of abstract_tree * abstract_tree list
 
+and input_vert_element =
+  | InputVertEmbedded of abstract_tree * abstract_tree list
+
 and input_context = {
   font_info     : HorzBox.font_info;
   space_natural : HorzBox.Length.t;
@@ -394,6 +399,7 @@ and abstract_tree =
   | EvaluatedEnvironment  of environment
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
+  | InputVert             of input_vert_element list
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
@@ -565,6 +571,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -606,6 +613,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
 
   and generalize_kind kd =
     match kd with
@@ -652,7 +660,8 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(BoolType)    -> "bool" ^ qstn
     | BaseType(IntType)     -> "int" ^ qstn
     | BaseType(StringType)  -> "string" ^ qstn
-    | BaseType(InTextType)  -> "in-text" ^ qstn
+    | BaseType(TextRowType) -> "text-row" ^ qstn
+    | BaseType(TextColType) -> "text-col" ^ qstn
     | BaseType(BoxRowType)  -> "box-row" ^ qstn
     | BaseType(BoxColType)  -> "box-col" ^ qstn
     | BaseType(FontType)    -> "font" ^ qstn

@@ -48,6 +48,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
   | BaseType(_)                    -> false
   | HorzCommandType(tylist)        -> iter_list tylist
+  | VertCommandType(tylist)        -> iter_list tylist
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -66,7 +67,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           unify_sub tycod1 tycod2;
         end
 
-    | (ProductType(tylist1), ProductType(tylist2)) ->
+    | ( (ProductType(tylist1), ProductType(tylist2))
+      | (HorzCommandType(tylist1), HorzCommandType(tylist2))
+      | (VertCommandType(tylist1), VertCommandType(tylist2)) ) ->
         begin
           try
             unify_list (List.combine tylist1 tylist2)
@@ -220,10 +223,14 @@ let rec typecheck
   | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BaseType(BoxColType)))
 
-  | UTInputHorz(utih) ->
-      let ih = typecheck_input_horz rng qtfbl lev tyenv utih in
-      (InputHorz(ih) , (rng, BaseType(InTextType)))
+  | UTInputHorz(utihlst) ->
+      let ihlst = typecheck_input_horz rng qtfbl lev tyenv utihlst in
+      (InputHorz(ihlst), (rng, BaseType(TextRowType)))
 
+  | UTInputVert(utivlst) ->
+      let ivlst = typecheck_input_vert rng qtfbl lev tyenv utivlst in
+      (InputVert(ivlst), (rng, BaseType(TextColType)))
+      
   | UTFinishStruct ->
       begin
         final_tyenv := tyenv;
@@ -277,10 +284,10 @@ let rec typecheck
 
   | UTConcat(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (get_range utast1, BaseType(InTextType)) in
+      let () = unify ty1 (get_range utast1, BaseType(TextRowType)) in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-      let () = unify ty2 (get_range utast2, BaseType(InTextType)) in
-        (Concat(e1, e2), (rng, BaseType(InTextType)))
+      let () = unify ty2 (get_range utast2, BaseType(TextRowType)) in
+        (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
 (*
   | UTEmbeddedCommand(utastcmd, utastlst) ->
@@ -483,6 +490,35 @@ let rec typecheck
         (Module(eM, eA), tyA)
 
 
+and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =
+  let rec aux (acc : input_vert_element list) (lst : untyped_input_vert_element list) =
+    match lst with
+    | [] -> List.rev acc
+    | (_, UTInputVertEmbedded(utastcmd, utastarglst)) :: tail ->
+        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+        begin
+          match tycmdmain with
+
+          | VertCommandType(tylstreq) ->
+              let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
+              let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
+              let earglst = etylst |> List.map (fun (e, ty) -> e) in
+              let () =
+                try List.iter2 (unify_ tyenv) tyarglst tylstreq with
+                | Invalid_argument(_) ->
+                    let lenreq  = List.length tylstreq in
+                    let lenreal = List.length tyarglst in
+                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
+              in
+                aux (InputVertEmbedded(ecmd, earglst) :: acc) tail
+
+          | _ -> failwith "vertical command of type other than VertCommandType(_)"
+        end
+  in
+    aux [] utivlst
+        
+
+
 and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
   let rec aux (acc : input_horz_element list) (lst : untyped_input_horz_element list) =
     match lst with
@@ -498,9 +534,7 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
               let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
               let earglst = etylst |> List.map (fun (e, ty) -> e) in
               let () =
-                try
-                  List.iter2 (unify_ tyenv) tyarglst tylstreq
-                with
+                try List.iter2 (unify_ tyenv) tyarglst tylstreq with
                 | Invalid_argument(_) ->
                     let lenreq  = List.length tylstreq in
                     let lenreal = List.length tyarglst in

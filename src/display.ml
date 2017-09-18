@@ -117,7 +117,8 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(IntType)     -> "int"
     | BaseType(StringType)  -> "string"
 
-    | BaseType(InTextType)  -> "in-text"
+    | BaseType(TextRowType) -> "text-row"
+    | BaseType(TextColType) -> "text-col"
     | BaseType(BoxRowType)  -> "box-row"
     | BaseType(BoxColType)  -> "box-col"
     | BaseType(FontType)    -> "font"
@@ -249,8 +250,21 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
   | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
 (*  | UTDeclareVariantIn() *)
-  | _ -> "OTHER"
+  | UTInputVert(utivlst)           -> "(textV " ^ (String.concat " " (List.map string_of_utiv utivlst)) ^ ")"
+  | UTInputHorz(utihlst)           -> "(textH " ^ (String.concat " " (List.map string_of_utih utihlst)) ^ ")"
+  | _                              -> "OTHER"
 
+and string_of_utiv (_, utivmain) =
+  match utivmain with
+  | UTInputVertEmbedded(utastcmd, utastlst) ->
+      "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
+
+and string_of_utih (_, utihmain) =
+  match utihmain with
+  | UTInputHorzEmbedded(utastcmd, utastlst) ->
+      "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
+  | UTInputHorzText(s) -> "\"" ^ s ^ "\""
+ 
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
     ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"

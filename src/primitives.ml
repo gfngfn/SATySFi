@@ -43,19 +43,21 @@ let rec lambda3 astf env =
 
 let make_environments () =
 
-  let i             = (Range.dummy "int"    , BaseType(IntType)    ) in
-  let b             = (Range.dummy "bool"   , BaseType(BoolType)   ) in
-  let s             = (Range.dummy "string" , BaseType(StringType) ) in
-  let (~@) n        = (Range.dummy "tv"     , TypeVariable(n)      ) in
+  let i             = (Range.dummy "int"     , BaseType(IntType)    ) in
+  let b             = (Range.dummy "bool"    , BaseType(BoolType)   ) in
+  let s             = (Range.dummy "string"  , BaseType(StringType) ) in
+  let (~@) n        = (Range.dummy "tv"      , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-  let l cont        = (Range.dummy "list"   , ListType(cont)       ) in
-  let r cont        = (Range.dummy "ref"    , RefType(cont)        ) in
-  let (-->) dom cod = (Range.dummy "func"   , FuncType(dom, cod)   ) in
-  let t             = (Range.dummy "in-text", BaseType(InTextType) ) in
-  let br            = (Range.dummy "box-row", BaseType(BoxRowType) ) in
-  let bc            = (Range.dummy "box-col", BaseType(BoxColType) ) in
-  let ft            = (Range.dummy "font"   , BaseType(FontType)   ) in
+  let l cont        = (Range.dummy "list"    , ListType(cont)       ) in
+  let r cont        = (Range.dummy "ref"     , RefType(cont)        ) in
+  let (-->) dom cod = (Range.dummy "func"    , FuncType(dom, cod)   ) in
+
+  let t             = (Range.dummy "text-row", BaseType(TextRowType)) in
+  let br            = (Range.dummy "box-row" , BaseType(BoxRowType) ) in
+  let bc            = (Range.dummy "box-col" , BaseType(BoxColType) ) in
+  let ft            = (Range.dummy "font"    , BaseType(FontType)   ) in
+
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
