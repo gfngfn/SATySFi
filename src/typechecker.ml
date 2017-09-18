@@ -16,6 +16,15 @@ let print_for_debug_typecheck msg =
 *)
   ()
 
+let flatten_type ty =
+  let rec aux acc ty =
+    let (rng, tymain) = ty in
+      match tymain with
+      | FuncType(tydom, tycod) -> aux (tydom :: acc) tycod
+      | _                      -> (List.rev acc, ty)
+  in
+    aux [] ty
+
 
 let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   let iter = occurs tvid in
@@ -289,12 +298,23 @@ let rec typecheck
       let () = unify ty2 (get_range utast2, BaseType(TextRowType)) in
         (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
-(*
-  | UTEmbeddedCommand(utastcmd, utastlst) ->
-      let (ecmd, tycmd) = typecheck_iter tyenv utastcmd in
-      let etylst = utastlst |> List.map (typecheck_iter tyenv) in
-      ()
-*)
+  | UTLambdaHorz(varrng, varnmctx, utast1) ->
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
+      let evid = EvalVarID.fresh varnmctx in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
+      let (tyarglst, tyret) = flatten_type ty1 in
+      let () = unify tyret (Range.dummy "lambda-horz-return", BaseType(BoxRowType)) in
+        (LambdaHorz(evid, e1), (rng, HorzCommandType(tyarglst)))
+
+  | UTLambdaVert(varrng, varnmctx, utast1) ->
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
+      let evid = EvalVarID.fresh varnmctx in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
+      let (tyarglst, tyret) = flatten_type ty1 in
+      let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
+        (LambdaVert(evid, e1), (rng, VertCommandType(tyarglst)))
 
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in

@@ -255,6 +255,8 @@ and untyped_abstract_tree_main =
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
+  | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
+  | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -719,6 +721,9 @@ let rec string_of_mono_type_basic tystr =
     | HorzCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") horz-command"
+    | VertCommandType(tylist)   ->
+        let slist = List.map string_of_mono_type_basic tylist in
+        "(" ^ (String.concat ", " slist) ^ ") vert-command"
 
 
 and string_of_type_argument_list_basic tyarglist =
