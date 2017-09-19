@@ -1,4 +1,9 @@
 %{
+
+  let report_bug_parser msg =
+    failwith msg;
+
+
   open Types
 
   type literal_reading_state = Normal | ReadingSpace
@@ -86,7 +91,7 @@
       | UTConcat(utastf, utastl) -> (stringify_literal utastf) ^ (stringify_literal utastl)
       | UTStringConstant(s)      -> s
       | UTStringEmpty            -> ""
-      | _                        -> assert false
+      | _                        -> report_bug_parser ("stringify_literal; " ^ (Display.string_of_utast ltrl))
 
   let rec omit_pre_spaces str =
     let len = String.length str in
@@ -104,17 +109,14 @@
         | _    -> str
 
 
-  let rec omit_spaces (ltrl : untyped_abstract_tree) =
-    let str_ltrl = omit_post_spaces (omit_pre_spaces (stringify_literal ltrl)) in
-      let min_indent = min_indent_space str_ltrl in
-        let str_shaved = shave_indent str_ltrl min_indent in
+  let rec omit_spaces (str_literal_raw : string) =
+    let str_literal = omit_post_spaces (omit_pre_spaces str_literal_raw) in
+      let min_indent = min_indent_space str_literal in
+        let str_shaved = shave_indent str_literal min_indent in
         let len_shaved = String.length str_shaved in
           if len_shaved >= 1 && str_shaved.[len_shaved - 1] = '\n' then
             let str_no_last_break = String.sub str_shaved 0 (len_shaved - 1) in
-              UTConcat(
-                (Range.dummy "omit_spaces1", UTStringConstant(str_no_last_break)),
-                (Range.dummy "omit_spaces2", UTBreakAndIndent)
-              )
+              UTStringConstant(str_no_last_break)
           else
             UTStringConstant(str_shaved)
 
@@ -827,7 +829,7 @@ nxbot:
   | LPAREN nxlet RPAREN             { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN nxlet COMMA tuple RPAREN { make_standard (Tok $1) (Tok $5) (UTTupleCons($2, $4)) }
   | OPENHORZ sxsep CLOSEHORZ        { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | OPENQT sxblock CLOSEQT          { make_standard (Tok $1) (Tok $3) (omit_spaces $2) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf([], $2)) }
@@ -1002,8 +1004,8 @@ patbot: /* -> Types.untyped_pattern_tree */
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
-  | OPENQT sxblock CLOSEQT {
-        let rng = make_range (Tok $1) (Tok $3) in (rng, UTPStringConstant(rng, omit_spaces $2)) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
+        let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
 /* -- for syntax error log -- */
   | LPAREN error             { report_error (Tok $1) "(" }
   | LPAREN patas COMMA error { report_error (Tok $3) "," }
@@ -1019,8 +1021,8 @@ patbotwithoutvar: /* -> Types.untyped_pattern_tree */
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
-  | OPENQT sxblock CLOSEQT {
-        let rng = make_range (Tok $1) (Tok $3) in (rng, UTPStringConstant(rng, omit_spaces $2)) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
+        let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
 /* -- for syntax error log -- */
   | LPAREN error             { report_error (Tok $1) "(" }
   | LPAREN patas COMMA error { report_error (Tok $3) "," }
@@ -1105,6 +1107,10 @@ narg: /* -> untyped_abstract_tree */
         let rng = make_range (Tok opn) (Tok cls) in (rng, extract_main utast)
       }
 ;
+str:
+  | chartok=CHAR { let (rng, c) = chartok in c }
+  | BREAK        { "\n" }
+  | SPACE        { " " }
 sargs:
   | ENDACTIVE                 { [] }
   | sargs=nonempty_list(sarg) { sargs }
@@ -1112,7 +1118,7 @@ sargs:
 sarg: /* -> Types.untyped_argument_cons */
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENQT; utast=sxblock; cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces utast) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
 ;
 vcmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
