@@ -47,6 +47,7 @@ let default_context =
     space_natural = HorzBox.Length.of_pdf_point 4.;
     space_shrink  = HorzBox.Length.of_pdf_point 1.;
     space_stretch = HorzBox.Length.of_pdf_point 2.;
+    leading       = HorzBox.Length.of_pdf_point 18.;
   }
 
 
@@ -105,7 +106,7 @@ let make_environments () =
         ( "space"        , ~% s                         , (fun _ -> StringConstant(" ")) );
         ( "arabic"       , ~% (i --> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
 
-        ("form-paragraph", ~% (br --> bc)               , lambda1 (fun vrow -> BackendLineBreaking(vrow)) );
+        ("form-paragraph", ~% (ctx --> (br --> bc))     , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
         ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );

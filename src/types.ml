@@ -383,6 +383,7 @@ and input_context = {
   space_natural : HorzBox.Length.t;
   space_shrink  : HorzBox.Length.t;
   space_stretch : HorzBox.Length.t;
+  leading       : HorzBox.Length.t;
 }
 (* temporary *)
 
@@ -473,7 +474,7 @@ and abstract_tree =
   | VertLex               of abstract_tree * abstract_tree
   | BackendFont           of abstract_tree * abstract_tree
   | BackendSetFont        of abstract_tree * abstract_tree
-  | BackendLineBreaking   of abstract_tree
+  | BackendLineBreaking   of abstract_tree * abstract_tree
   | BackendFixedString    of abstract_tree * abstract_tree
   | BackendFixedEmpty     of abstract_tree
   | BackendOuterEmpty     of abstract_tree * abstract_tree * abstract_tree

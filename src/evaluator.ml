@@ -152,21 +152,21 @@ and interpret env ast =
   | LambdaHorzWithEnvironment(_, _, _) -> ast
 
   | HorzLex(astctx, ast1) ->
-      let valuectx = interpret env astctx in
+      let ctx = interpret_context env astctx in
       let value1 = interpret env ast1 in
       begin
-        match (valuectx, value1) with
-        | (Context(ctx), InputHorzWithEnvironment(ihlst, envi)) -> interpret_input_horz envi ctx ihlst
-        | _                                                     -> report_bug_evaluator "HorzLex"
+        match value1 with
+        | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi ctx ihlst
+        | _                                     -> report_bug_evaluator "HorzLex"
       end
 
   | VertLex(astctx, ast1) ->
-      let valuectx = interpret env astctx in
+      let ctx = interpret_context env astctx in
       let value1 = interpret env ast1 in
       begin
-        match (valuectx, value1) with
-        | (Context(ctx), InputVertWithEnvironment(ivlst, envi)) -> interpret_input_vert envi ctx ivlst
-        | _                                                     -> report_bug_evaluator "VertLex"
+        match value1 with
+        | InputVertWithEnvironment(ivlst, envi) -> interpret_input_vert envi ctx ivlst
+        | _                                     -> report_bug_evaluator "VertLex"
       end
 
   | BackendFont(astabbrev, astsize) ->
@@ -176,19 +176,15 @@ and interpret env ast =
       FontDesignation((font_abbrev, font_size))
 
   | BackendSetFont(astfont, astctx) ->
-      let valuefont = interpret env astfont in
-      let valuectx = interpret env astctx in
-      begin
-        match (valuefont, valuectx) with
-        | (FontDesignation(font_info), Context(ctx)) -> Context({ ctx with font_info = font_info; })
-        | _                                          -> report_bug_evaluator "BackendSetFont"
-      end
+      let font_info = interpret_font env astfont in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with font_info = font_info; })
 
-  | BackendLineBreaking(astrow) ->
+  | BackendLineBreaking(astctx, astrow) ->
+      let ctx = interpret_context env astctx in
       let valuerow = interpret env astrow in
       let hblst = normalize_box_row valuerow in
-      let paragraph_width = HorzBox.Length.of_pdf_point 300. in  (* temporary *)
-      let imvblst = LineBreak.main paragraph_width hblst in
+      let imvblst = LineBreak.main ctx.leading hblst in
         Vert(imvblst)
 
   | BackendFixedEmpty(astwid) ->  (* temporary; should introduce a type for length *)
@@ -594,6 +590,24 @@ and interpret_string (env : environment) (ast : abstract_tree) : string =
     | _                 -> report_bug_evaluator ("interpret_string: not a StringEmpty nor a StringConstant; "
                                                  ^ (Display.string_of_ast ast)
                                                  ^ " ->* " ^ (Display.string_of_ast vs))
+
+
+and interpret_context (env : environment) (ast : abstract_tree) : input_context =
+  let value = interpret env ast in
+    match value with
+    | Context(ctx) -> ctx
+    | _            -> report_bug_evaluator ("interpret_context: not a Context; "
+                                            ^ (Display.string_of_ast ast)
+                                            ^ " ->* " ^ (Display.string_of_ast value))
+
+
+and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_info =
+  let value = interpret env ast in
+    match value with
+    | FontDesignation(font_info) -> font_info
+    | _                          -> report_bug_evaluator ("interpret_font: not a FontDesignation; "
+                                                          ^ (Display.string_of_ast ast)
+                                                          ^ " ->* " ^ (Display.string_of_ast value))
 
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =
