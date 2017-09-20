@@ -235,7 +235,17 @@ and interpret env ast =
   | BackendOuterFrame(astbr) ->
       let hblst = interpret_horz_boxes env astbr in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(Primitives.default_paddings, Primitives.frame_deco_S, hblst))])
-        (* temporary; paddings and frames should be variable *)
+        (* temporary; paddings and frame decoration should be variable *)
+
+  | BackendOuterFrameBreakable(astbr) ->
+      let hblst = interpret_horz_boxes env astbr in
+        Horz([HorzBox.HorzFrameBreakable(
+          Primitives.default_paddings, HorzBox.Length.zero, HorzBox.Length.zero,
+          Primitives.frame_deco_S, Primitives.frame_deco_H,
+          Primitives.frame_deco_M, Primitives.frame_deco_T,
+          hblst
+        )])
+
 (* ---- list value ---- *)
 
   | EndOfList -> ast

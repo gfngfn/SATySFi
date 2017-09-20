@@ -74,6 +74,48 @@ let frame_deco_S =
     ]
   )
 
+let frame_deco_H =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos +% margin in
+    let hgtb = hgt -% margin in
+    let dptb = dpt +% margin in
+    let widb = wid -% margin in
+    [
+      HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
+        HorzBox.LineTo(xposb, ypos +% hgtb);
+        HorzBox.LineTo(xposb, ypos +% dptb);
+        HorzBox.LineTo(xposb +% widb, ypos +% dptb);
+      ]);
+    ]
+  )
+
+let frame_deco_M =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt -% margin in
+    let dptb = dpt +% margin in
+    let widb = wid in
+    [
+      HorzBox.GeneralPath((xposb, ypos +% hgtb), [HorzBox.LineTo(xposb +% widb, ypos +% hgtb)]);
+      HorzBox.GeneralPath((xposb, ypos +% dptb), [HorzBox.LineTo(xposb +% widb, ypos +% dptb)]);
+    ]
+  )
+
+let frame_deco_T =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt -% margin in
+    let dptb = dpt +% margin in
+    let widb = wid -% margin in
+    [
+      HorzBox.GeneralPath((xposb, ypos +% hgtb), [
+        HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
+        HorzBox.LineTo(xposb +% widb, ypos +% dptb);
+        HorzBox.LineTo(xposb, ypos +% dptb);
+      ]);
+    ]
+  )
+
 let default_paddings =
   {
     HorzBox.paddingL = pdfpt 2. +% margin;
@@ -141,6 +183,7 @@ let make_environments () =
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block", ~% (br --> br)            , lambda1 (fun vbr -> BackendOuterFrame(vbr)));
+        ("outer-frame-inline", ~% (br --> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
 
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
