@@ -1,3 +1,4 @@
+PREFIX=/usr/local
 BACKEND=backend
 MAINSRC=src
 EXTERNAL=backend/external
