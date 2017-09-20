@@ -29,10 +29,14 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 
 (* temporary; should be variable *)
 let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
+  let (_, font_size) = ctx.font_info in 
+  let space_natural =
+      HorzBox.(font_size *% ctx.space_natural)
+  in
   let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s in
     fullsplitlst |> List.map (function
       | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf_8 s))
-      | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(ctx.space_natural, ctx.space_shrink, ctx.space_stretch)), None, None)
+      | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(space_natural, ctx.space_shrink, ctx.space_stretch)), None, None)
     )
 
 
@@ -179,6 +183,11 @@ and interpret env ast =
       let hblst = interpret_horz_boxes env astrow in
       let imvblst = LineBreak.main ctx.paragraph_width ctx.leading hblst in
         Vert(imvblst)
+
+  | PrimitiveSetSpaceRatio(astratio, astctx) ->
+      let ratio = interpret_float env astratio in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with space_natural = ratio })
 
   | PrimitiveSetFont(astfont, astctx) ->
       let font_info = interpret_font env astfont in
@@ -618,6 +627,15 @@ and interpret_int (env : environment) (ast : abstract_tree) : int =
     | other               -> report_bug_evaluator ("interpret_int: not a IntegerConstant; "
                                                    ^ (Display.string_of_ast ast)
                                                    ^ " ->* " ^ (Display.string_of_ast vi))
+
+
+and interpret_float (env : environment) (ast : abstract_tree) : float =
+  let vf = interpret env ast in
+    match vf with
+    | FloatConstant(nc) -> nc
+    | other             -> report_bug_evaluator ("interpret_float: not a FloatConstant; "
+                                                 ^ (Display.string_of_ast ast)
+                                                 ^ " ->* " ^ (Display.string_of_ast vf))
 
 
 and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =

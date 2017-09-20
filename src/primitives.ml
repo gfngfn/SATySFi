@@ -46,7 +46,7 @@ let default_context =
     title           = Horz([]);
     author          = Horz([]);
     font_info       = ("Arno", HorzBox.Length.of_pdf_point 12.);
-    space_natural   = HorzBox.Length.of_pdf_point 4.;
+    space_natural   = 0.33;
     space_shrink    = HorzBox.Length.of_pdf_point 1.;
     space_stretch   = HorzBox.Length.of_pdf_point 2.;
     paragraph_width = HorzBox.Length.of_pdf_point 400.;
@@ -57,6 +57,7 @@ let default_context =
 let make_environments () =
 
   let i             = (Range.dummy "int"     , BaseType(IntType)    ) in
+  let fl            = (Range.dummy "float"   , BaseType(FloatType)  ) in
   let b             = (Range.dummy "bool"    , BaseType(BoolType)   ) in
   let s             = (Range.dummy "string"  , BaseType(StringType) ) in
   let (~@) n        = (Range.dummy "tv"      , TypeVariable(n)      ) in
@@ -109,15 +110,18 @@ let make_environments () =
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+
+        ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
+        ("+++"           , ~% (bc --> (bc --> bc))      , lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2)));
+        ("lex-row"       , ~% (ctx --> (tr --> br))     , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
+        ("lex-col"       , ~% (ctx --> (tc --> bc))     , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
+
+        ("set-space-ratio", ~% (fl --> (ctx --> ctx))   , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
         ("set-font"      , ~% (ft --> (ctx --> ctx))    , lambda2 (fun vfont vctx -> PrimitiveSetFont(vfont, vctx)));
         ("get-font"      , ~% (ctx --> ft)              , lambda1 (fun vctx -> PrimitiveGetFont(vctx)));
         ("set-title"     , ~% (tr --> (ctx --> ctx))    , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
         ("get-title"     , ~% (ctx --> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
-        ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
-        ("+++"           , ~% (bc --> (bc --> bc))      , lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2)));
-        ("lex-row"       , ~% (ctx --> (tr --> br))     , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
-        ("lex-col"       , ~% (ctx --> (tc --> bc))     , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
       ]
   in
   let temporary_ast = StringEmpty in

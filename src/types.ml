@@ -389,7 +389,7 @@ and input_context = {
   title           : abstract_tree;
   author          : abstract_tree;
   font_info       : HorzBox.font_info;
-  space_natural   : HorzBox.Length.t;
+  space_natural   : float;
   space_shrink    : HorzBox.Length.t;
   space_stretch   : HorzBox.Length.t;
   paragraph_width : HorzBox.Length.t;
@@ -489,6 +489,7 @@ and abstract_tree =
   | Context               of input_context
   | HorzLex               of abstract_tree * abstract_tree
   | VertLex               of abstract_tree * abstract_tree
+  | PrimitiveSetSpaceRatio of abstract_tree * abstract_tree
   | PrimitiveSetFont      of abstract_tree * abstract_tree
   | PrimitiveGetFont      of abstract_tree
   | PrimitiveSetTitle     of abstract_tree * abstract_tree
