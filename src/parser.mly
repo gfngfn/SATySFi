@@ -386,8 +386,10 @@
 %token <Range.t * string> NUMCONST CHAR
 %token <Range.t * Types.ctrlseq_name> VERTCMD
 %token <Range.t * Types.ctrlseq_name> HORZCMD
+(*
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
+*)
 %token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN

@@ -295,12 +295,9 @@ and untyped_abstract_tree_main =
 (*
   | UTDeclareGlobalHash    of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwriteGlobalHash  of untyped_abstract_tree * untyped_abstract_tree
+  | UTReferenceFinal       of untyped_abstract_tree
 *)
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
-(*
-  | UTReferenceFinal       of untyped_abstract_tree
-  | UTLazyContent          of untyped_abstract_tree
-*)
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
 (* -- class and id option -- *)
