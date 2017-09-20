@@ -251,6 +251,7 @@ rule progexpr = parse
           | "constraint"        -> CONSTRAINT(pos)
           | "let-row"           -> LETHORZ(pos)
           | "let-col"           -> LETVERT(pos)
+          | "let-col-detailed"  -> LETVERTDETAILED(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

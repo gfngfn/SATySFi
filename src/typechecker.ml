@@ -58,6 +58,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | BaseType(_)                    -> false
   | HorzCommandType(tylist)        -> iter_list tylist
   | VertCommandType(tylist)        -> iter_list tylist
+  | VertDetailedCommandType(tylist) -> iter_list tylist
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -224,9 +225,6 @@ let rec typecheck
   let unify = unify_ tyenv in
   match utastmain with
   | UTStringEmpty         -> (StringEmpty        , (rng, BaseType(StringType)))
-(*
-  | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, BaseType(StringType)))
-*)
   | UTIntegerConstant(nc) -> (IntegerConstant(nc), (rng, BaseType(IntType))   )
   | UTFloatConstant(nc)   -> (FloatConstant(nc)  , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
@@ -242,7 +240,7 @@ let rec typecheck
   | UTInputVert(utivlst) ->
       let ivlst = typecheck_input_vert rng qtfbl lev tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
-      
+
   | UTFinishStruct ->
       begin
         final_tyenv := tyenv;
@@ -318,6 +316,21 @@ let rec typecheck
       let (tyarglst, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
         (LambdaVert(evid, e1), (rng, VertCommandType(tyarglst)))
+
+  | UTLambdaVertDetailed(varrng, varnmctx, utast1) ->
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
+      let evid = EvalVarID.fresh varnmctx in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
+      let (tyarglst, tyret) = flatten_type ty1 in
+      let tyretreq =
+        (Range.dummy "lambda-vert-detailed-return", ProductType([
+          (Range.dummy "lambda-vert-detailed-1", BaseType(ContextType));
+          (Range.dummy "lambda-vert-detailed-2", BaseType(BoxColType));
+        ]))
+      in
+      let () = unify tyret tyretreq in
+        (LambdaVertDetailed(evid, e1), (rng, VertDetailedCommandType(tyarglst)))
 
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -520,7 +533,8 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
         begin
           match tycmdmain with
 
-          | VertCommandType(tylstreq) ->
+          | VertCommandType(tylstreq)
+          | VertDetailedCommandType(tylstreq) ->
               let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
               let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
               let earglst = etylst |> List.map (fun (e, ty) -> e) in

@@ -396,7 +396,7 @@
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT
+%token <Range.t> LETHORZ LETVERT LETVERTDETAILED
 %token <Range.t> REFNOW (* REFFINAL *)
 %token <Range.t> IF THEN ELSE
 %token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
@@ -492,6 +492,7 @@ nxtoplevel:
   | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
+  | top=LETVERTDETAILED; dec=nxvertdetaileddec; subseq=nxtopsubseq           { make_let_expression top dec subseq }
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
@@ -540,6 +541,15 @@ nxvertdec:
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
       let curried = curry_lambda_abstract rngcs argvarlst utast in
         (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      }
+;
+nxvertdetaileddec:
+  | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vcmdtok in
+      let (rngctxvar, ctxvarnm) = ctxvartok in
+      let rng = make_range (Tok rngctxvar) (Ranged utast) in
+      let curried = curry_lambda_abstract rngcs argvarlst utast in
+        (None, csnm, (rng, UTLambdaVertDetailed(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
 nxdecargpart:

@@ -191,6 +191,7 @@ and mono_type_main =
   | RecordType      of (field_name, mono_type) Assoc.t
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
+  | VertDetailedCommandType of mono_type list
 
 and poly_type =
   | Poly of mono_type
@@ -261,6 +262,7 @@ and untyped_abstract_tree_main =
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
+  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -485,6 +487,8 @@ and abstract_tree =
   | LambdaHorzWithEnvironment of EvalVarID.t * abstract_tree * environment
   | LambdaVert                of EvalVarID.t * abstract_tree
   | LambdaVertWithEnvironment of EvalVarID.t * abstract_tree * environment
+  | LambdaVertDetailed        of EvalVarID.t * abstract_tree
+  | LambdaVertDetailedWithEnv of EvalVarID.t * abstract_tree * environment
   | FontDesignation       of HorzBox.font_info
   | Context               of input_context
   | HorzLex               of abstract_tree * abstract_tree
@@ -602,6 +606,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
+    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -644,6 +649,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
+    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))
 
   and generalize_kind kd =
     match kd with
@@ -750,6 +756,9 @@ let rec string_of_mono_type_basic tystr =
     | VertCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-command"
+    | VertDetailedCommandType(tylist)   ->
+        let slist = List.map string_of_mono_type_basic tylist in
+        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
 
 
 and string_of_type_argument_list_basic tyarglist =

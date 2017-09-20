@@ -150,6 +150,10 @@ and interpret env ast =
 
   | LambdaVertWithEnvironment(_, _, _) -> ast
 
+  | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)      
+
+  | LambdaVertDetailedWithEnv(_, _, _) -> ast
+
   | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)      
 
   | LambdaHorzWithEnvironment(_, _, _) -> ast
@@ -522,8 +526,8 @@ and interpret env ast =
 
 
 and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : input_vert_element list) : abstract_tree =
-  let imvblstacc =
-    ivlst |> List.fold_left (fun lstacc iv ->
+  let (ctxfinal, imvblstacc) =
+    ivlst |> List.fold_left (fun (ctx, lstacc) iv ->
       match iv with
       | InputVertEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
@@ -534,12 +538,22 @@ and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : inpu
                 let valueret = reduce_beta_list env valuedef astarglst in
                 begin
                   match valueret with
-                  | Vert(imvblst) -> imvblst :: lstacc
-                  | _             -> report_bug_evaluator "interpret_input_vert; other than Vert(_)"
+                  | Vert(imvblst) -> (ctx, imvblst :: lstacc)
+                  | _             -> report_bug_evaluator "interpret_input_vert; 1"
                 end
-            | _ -> report_bug_evaluator "interpret_input_vert; other than lambdaVertWithEnvironment(_, _, _)"
+
+            | LambdaVertDetailedWithEnv(evid, astdef, envf) ->
+                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
+                let valueret = reduce_beta_list env valuedef astarglst in
+                begin
+                  match valueret with
+                  | TupleCons(Context(ctxnext), TupleCons(Vert(imvblst), EndOfTuple)) -> (ctxnext, imvblst :: lstacc)
+                  | _                                                                 -> report_bug_evaluator "interpret_input_vert; 2"
+                end
+
+            | _ -> report_bug_evaluator "interpret_input_vert; other than LambdaVertWithEnvironment or LambdaVertDetailedWithEnv"
           end
-    ) []
+    ) (ctx, [])
   in
   let imvblst = imvblstacc |> List.rev |> List.concat in
     Vert(imvblst)
