@@ -168,6 +168,7 @@ type manual_kind =
 type base_type =
   | UnitType
   | IntType
+  | FloatType
   | StringType
   | BoolType
   | TextRowType
@@ -246,7 +247,8 @@ and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
   | UTStringEmpty
-  | UTNumericConstant      of int
+  | UTIntegerConstant      of int
+  | UTFloatConstant        of float
   | UTBooleanConstant      of bool
   | UTStringConstant       of string
   | UTUnitConstant
@@ -333,7 +335,7 @@ and untyped_mutual_variant_cons =
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
 and untyped_pattern_tree_main =
-  | UTPNumericConstant     of int
+  | UTPIntegerConstant     of int
   | UTPBooleanConstant     of bool
   | UTPStringConstant      of untyped_abstract_tree
   | UTPUnitConstant
@@ -398,7 +400,8 @@ and input_context = {
 and abstract_tree =
 (* -- basic value -- *)
   | StringEmpty
-  | NumericConstant       of int
+  | IntegerConstant       of int
+  | FloatConstant         of float
   | BooleanConstant       of bool
   | StringConstant        of string
   | UnitConstant
@@ -502,7 +505,7 @@ and pattern_match_cons =
   | EndOfPatternMatch
 
 and pattern_tree =
-  | PNumericConstant      of int
+  | PIntegerConstant      of int
   | PBooleanConstant      of bool
   | PStringConstant       of abstract_tree
   | PUnitConstant
@@ -685,6 +688,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(UnitType)    -> "unit" ^ qstn
     | BaseType(BoolType)    -> "bool" ^ qstn
     | BaseType(IntType)     -> "int" ^ qstn
+    | BaseType(FloatType)   -> "float" ^ qstn
     | BaseType(StringType)  -> "string" ^ qstn
     | BaseType(TextRowType) -> "text-row" ^ qstn
     | BaseType(TextColType) -> "text-col" ^ qstn

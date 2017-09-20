@@ -227,7 +227,8 @@ let rec typecheck
 (*
   | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, BaseType(StringType)))
 *)
-  | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, BaseType(IntType))   )
+  | UTIntegerConstant(nc) -> (IntegerConstant(nc), (rng, BaseType(IntType))   )
+  | UTFloatConstant(nc)   -> (FloatConstant(nc)  , (rng, BaseType(FloatType)) )
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BaseType(BoolType))  )
   | UTUnitConstant        -> (UnitConstant       , (rng, BaseType(UnitType))  )
@@ -643,7 +644,7 @@ and typecheck_pattern
   let iter = typecheck_pattern qtfbl lev in
   let unify = unify_ tyenv in
     match utpatmain with
-    | UTPNumericConstant(nc) -> (PNumericConstant(nc), (rng, BaseType(IntType)), tyenv)
+    | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), tyenv)
     | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), tyenv)
     | UTPStringConstant(ut1) ->
         let (e1, ty1) = typecheck qtfbl lev tyenv ut1 in

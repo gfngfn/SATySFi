@@ -115,6 +115,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(UnitType)    -> "unit"
     | BaseType(BoolType)    -> "bool"
     | BaseType(IntType)     -> "int"
+    | BaseType(FloatType)   -> "float"
     | BaseType(StringType)  -> "string"
 
     | BaseType(TextRowType) -> "text-row"
@@ -233,7 +234,7 @@ let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
 let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   match utastmain with
   | UTStringEmpty                  -> "{}"
-  | UTNumericConstant(nc)          -> string_of_int nc
+  | UTIntegerConstant(nc)          -> string_of_int nc
   | UTBooleanConstant(bc)          -> string_of_bool bc
   | UTStringConstant(sc)           -> "{" ^ sc ^ "}"
   | UTUnitConstant                 -> "()"
@@ -286,7 +287,7 @@ and string_of_pmcons pmcons =
 
 and string_of_utpat (_, pat) =
   match pat with
-  | UTPNumericConstant(nc)  -> string_of_int nc
+  | UTPIntegerConstant(nc)  -> string_of_int nc
   | UTPBooleanConstant(bc)  -> string_of_bool bc
   | UTPStringConstant(ut)   -> string_of_utast ut
   | UTPUnitConstant         -> "()"
@@ -323,7 +324,8 @@ let rec string_of_ast (ast : abstract_tree) =
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
   | StringEmpty                  -> "\"\""
   | StringConstant(sc)           -> "\"" ^ (escape_letters sc) ^ "\""
-  | NumericConstant(nc)          -> string_of_int nc
+  | IntegerConstant(nc)          -> string_of_int nc
+  | FloatConstant(nc)            -> string_of_float nc
   | BooleanConstant(bc)          -> string_of_bool bc
   | IfThenElse(b, t, f)          ->
       "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"

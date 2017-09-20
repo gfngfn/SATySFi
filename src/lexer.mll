@@ -254,7 +254,9 @@ rule progexpr = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit digit*) { NUMCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (digit digit*) { INTCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (digit+ "." digit*) { FLOATCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("." digit+) { FLOATCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | eof {
       if !first_state = ProgramState then EOI else
         report_error lexbuf "text input ended while reading a program area"

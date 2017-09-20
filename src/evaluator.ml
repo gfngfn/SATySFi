@@ -83,7 +83,8 @@ and interpret env ast =
 (* ---- basic value ---- *)
 
   | StringEmpty                           -> ast
-  | NumericConstant(_)                    -> ast
+  | IntegerConstant(_)                    -> ast
+  | FloatConstant(_)                      -> ast
   | StringConstant(_)                     -> ast
   | BooleanConstant(_)                    -> ast
   | UnitConstant                          -> ast
@@ -439,7 +440,7 @@ and interpret env ast =
 
   | PrimitiveStringLength(aststr) ->
       let str = interpret_string env aststr in
-        NumericConstant(String.length str)
+        IntegerConstant(String.length str)
 (*
   | PrimitiveInclude(astfile_name) ->
       ( try
@@ -458,13 +459,13 @@ and interpret env ast =
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        NumericConstant(numl * numr)
+        IntegerConstant(numl * numr)
 
   | Divides(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
         begin
-          try NumericConstant(numl / numr) with
+          try IntegerConstant(numl / numr) with
           | Division_by_zero -> raise (EvalError("division by zero"))
         end
 
@@ -472,19 +473,19 @@ and interpret env ast =
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
         begin
-          try NumericConstant(numl mod numr) with
+          try IntegerConstant(numl mod numr) with
           | Division_by_zero -> raise (EvalError("division by zero"))
         end
 
   | Plus(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        NumericConstant(numl + numr)
+        IntegerConstant(numl + numr)
 
   | Minus(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
-        NumericConstant(numl - numr)
+        IntegerConstant(numl - numr)
 
   | EqualTo(astl, astr) ->
       let numl = interpret_int env astl in
@@ -618,8 +619,8 @@ and interpret_bool (env : environment) (ast : abstract_tree) : bool =
 and interpret_int (env : environment) (ast : abstract_tree) : int =
   let vi = interpret env ast in
     match vi with
-    | NumericConstant(nc) -> nc
-    | other               -> report_bug_evaluator ("interpret_int: not a NumericConstant; "
+    | IntegerConstant(nc) -> nc
+    | other               -> report_bug_evaluator ("interpret_int: not a IntegerConstant; "
                                                    ^ (Display.string_of_ast ast)
                                                    ^ " ->* " ^ (Display.string_of_ast vi))
 
@@ -642,7 +643,7 @@ and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : patter
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : abstract_tree) =
   match (pat, astobj) with
-  | (PNumericConstant(pnc), NumericConstant(nc)) -> pnc = nc
+  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> pnc = nc
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
   | (PStringConstant(ast1), ast2)                ->
       let str1 = interpret_string env ast1 in
