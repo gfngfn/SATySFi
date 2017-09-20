@@ -43,11 +43,14 @@ let rec lambda3 astf env =
 
 let default_context =
   {
-    font_info     = ("Arno", HorzBox.Length.of_pdf_point 12.);
-    space_natural = HorzBox.Length.of_pdf_point 4.;
-    space_shrink  = HorzBox.Length.of_pdf_point 1.;
-    space_stretch = HorzBox.Length.of_pdf_point 2.;
-    leading       = HorzBox.Length.of_pdf_point 18.;
+    title           = Horz([]);
+    author          = Horz([]);
+    font_info       = ("Arno", HorzBox.Length.of_pdf_point 12.);
+    space_natural   = HorzBox.Length.of_pdf_point 4.;
+    space_shrink    = HorzBox.Length.of_pdf_point 1.;
+    space_stretch   = HorzBox.Length.of_pdf_point 2.;
+    paragraph_width = HorzBox.Length.of_pdf_point 400.;
+    leading         = HorzBox.Length.of_pdf_point 18.;
   }
 
 
@@ -112,7 +115,10 @@ let make_environments () =
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
-        ("set-font"      , ~% (ft --> (ctx --> ctx))    , lambda2 (fun vfont vctx -> BackendSetFont(vfont, vctx)));
+        ("set-font"      , ~% (ft --> (ctx --> ctx))    , lambda2 (fun vfont vctx -> PrimitiveSetFont(vfont, vctx)));
+        ("get-font"      , ~% (ctx --> ft)              , lambda1 (fun vctx -> PrimitiveGetFont(vctx)));
+        ("set-title"     , ~% (tr --> (ctx --> ctx))    , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
+        ("get-title"     , ~% (ctx --> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
         ("+++"           , ~% (bc --> (bc --> bc))      , lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2)));

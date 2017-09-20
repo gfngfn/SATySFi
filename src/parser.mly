@@ -761,7 +761,9 @@ nxlminus:
 /* -- -- */
 ;
 nxrplus:
-  | nxrminus PLUS nxrplus   { binary_operator "+" $1 $2 $3 }
+  | nxrminus PLUS nxrplus       { binary_operator "+" $1 $2 $3 }
+  | nxrminus HORZCONCAT nxrplus { binary_operator "++" $1 $2 $3 }
+  | nxrminus VERTCONCAT nxrplus { binary_operator "+++" $1 $2 $3 }
   | nxrminus                { $1 }
 /* -- for syntax error log -- */
   | nxrminus PLUS error     { report_error (Tok $2) "+" }

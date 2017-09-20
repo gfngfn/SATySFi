@@ -66,6 +66,10 @@ let get_width_info_opt = function
   | Some(lhb) -> get_width_info lhb
 
 
+let empty_vert (widinfo : length_info) : metrics =
+  (widinfo, Length.zero, Length.zero)
+
+
 let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
   let (widinfo, hgt, dpt) = metr in
     (widinfo, hgt +% pads.paddingT, dpt -% pads.paddingB)
@@ -73,15 +77,15 @@ let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
 
 let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
   List.append
-    (LBPure(Atom((natural pads.paddingL, Length.zero, Length.zero), EvHorzEmpty)) :: lhblst)
-    (LBPure(Atom((natural pads.paddingR, Length.zero, Length.zero), EvHorzEmpty)) :: [])
+    (LBPure(Atom(empty_vert (natural pads.paddingL), EvHorzEmpty)) :: lhblst)
+    (LBPure(Atom(empty_vert (natural pads.paddingR), EvHorzEmpty)) :: [])
 
 
 let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info) (pads : paddings) =
   let lphblstnew =
     List.append
-      (Atom((natural pads.paddingL, Length.zero, Length.zero), EvHorzEmpty) :: lphblst)
-      (Atom((natural pads.paddingR, Length.zero, Length.zero), EvHorzEmpty) :: [])
+      (Atom(empty_vert (natural pads.paddingL), EvHorzEmpty) :: lphblst)
+      (Atom(empty_vert (natural pads.paddingR), EvHorzEmpty) :: [])
   in
   let widinfonew =
     {
@@ -151,13 +155,13 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
         Atom((natural wid, hgt, dpt), EvHorzString(info, otxt))
 
   | PHFixedEmpty(wid) ->
-      Atom((natural wid, Length.zero, Length.zero), EvHorzEmpty)
+      Atom(empty_vert (natural wid), EvHorzEmpty)
 
   | PHOuterEmpty(wid, widshrink, widstretch) ->
-      Atom(({ natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, Length.zero, Length.zero), EvHorzEmpty)
+      Atom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty)
 
   | PHOuterFil ->
-      Atom(({ natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, Length.zero, Length.zero), EvHorzEmpty)
+      Atom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty)
 
   | PHOuterFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
@@ -227,8 +231,9 @@ module LineBreakGraph = FlowGraph.Make
 module RemovalSet = MutableSet.Make
   (DiscretionaryID)
 
-
+(*
 let paragraph_width = Length.of_pdf_point 450.0 (* temporary; should be variable *)
+*)
 
 let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool * float * length =
   let widnatural = widinfo_total.natural in
@@ -317,7 +322,7 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
 let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (paragraph_width : length) (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let leadingsub = leading_required -% (Length.negate dptprev) -% hgt in
@@ -407,7 +412,7 @@ let break_into_lines (leading_required : length) (path : DiscretionaryID.t list)
     arrange (leading_required -% first_leading) [] (List.rev acclines)
 
 
-let main (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
+let main (paragraph_width : length) (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
 
   let get_badness_for_line_breaking (widrequired : length) (widinfo_total : length_info) : badness =
     let criterion_short = 10. in
@@ -498,5 +503,5 @@ let main (leading_required : length) (hblst : horz_box list) : intermediate_vert
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
           [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines leading_required path lhblst
+          break_into_lines paragraph_width leading_required path lhblst
   end

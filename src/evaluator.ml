@@ -4,9 +4,9 @@ exception EvalError of string
 
 
 let print_for_debug_evaluator msg =
-(*
+
   print_string msg;
-*)
+
   ()
 
 
@@ -36,22 +36,6 @@ let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
     )
 
 
-let rec normalize_box_row valuerow =
-  let iter = normalize_box_row in
-    match valuerow with
-    | Horz(hblst)                -> hblst
-    | HorzConcat(value1, value2) -> List.append (iter value1) (iter value2)
-    | _                          -> report_bug_evaluator ("normalize_box_row; " ^ (Display.string_of_ast valuerow))
-
-
-let rec normalize_box_col valuecol =
-  let iter = normalize_box_col in
-    match valuecol with
-    | Vert(imvblst)              -> imvblst
-    | VertConcat(value1, value2) -> List.append (iter value1) (iter value2)
-    | _                          -> report_bug_evaluator ("normalize_box_col; " ^ (Display.string_of_ast valuecol))
-
-
 let rec reduce_beta envf evid valuel astdef =
   let envnew = copy_environment envf in
     begin
@@ -73,6 +57,24 @@ and reduce_beta_list env valuef astarglst =
 
         | _ -> report_bug_evaluator "reduce_beta_list"
       end
+
+
+and interpret_horz_boxes env astrow =
+  let valuerow = interpret env astrow in
+  let rec aux value =
+    match value with
+    | Horz(hblst)                -> hblst
+    | HorzConcat(value1, value2) -> List.append (aux value1) (aux value2)
+    | _                          -> report_bug_evaluator ("interpret_horz_boxes; " ^ (Display.string_of_ast valuerow))
+  in
+    aux valuerow
+
+and normalize_box_col valuecol =
+  let iter = normalize_box_col in
+    match valuecol with
+    | Vert(imvblst)              -> imvblst
+    | VertConcat(value1, value2) -> List.append (iter value1) (iter value2)
+    | _                          -> report_bug_evaluator ("normalize_box_col; " ^ (Display.string_of_ast valuecol))
 
 
 and interpret env ast =
@@ -173,19 +175,29 @@ and interpret env ast =
       let font_abbrev = interpret_string env astabbrev in
       let font_size_raw = interpret_int env astsize in  (* temporary; should deal with lengths directly *)
       let font_size = HorzBox.Length.of_pdf_point (float_of_int font_size_raw) in  (* temporary; should deal with lengths directly *)
-      FontDesignation((font_abbrev, font_size))
+        FontDesignation((font_abbrev, font_size))
 
-  | BackendSetFont(astfont, astctx) ->
+  | BackendLineBreaking(astctx, astrow) ->
+      let ctx = interpret_context env astctx in
+      let hblst = interpret_horz_boxes env astrow in
+      let imvblst = LineBreak.main ctx.paragraph_width ctx.leading hblst in
+        Vert(imvblst)
+
+  | PrimitiveSetFont(astfont, astctx) ->
       let font_info = interpret_font env astfont in
       let ctx = interpret_context env astctx in
         Context({ ctx with font_info = font_info; })
 
-  | BackendLineBreaking(astctx, astrow) ->
+  | PrimitiveGetFont(astctx) ->
+      let ctx = interpret_context env astctx in FontDesignation(ctx.font_info)
+
+  | PrimitiveSetTitle(asttitle, astctx) ->
+      let valuetitle = interpret env asttitle in
       let ctx = interpret_context env astctx in
-      let valuerow = interpret env astrow in
-      let hblst = normalize_box_row valuerow in
-      let imvblst = LineBreak.main ctx.leading hblst in
-        Vert(imvblst)
+        Context({ ctx with title = valuetitle; })
+
+  | PrimitiveGetTitle(astctx) ->
+      let ctx = interpret_context env astctx in ctx.title
 
   | BackendFixedEmpty(astwid) ->  (* temporary; should introduce a type for length *)
       let rawwid = interpret_int env astwid in

@@ -379,11 +379,14 @@ and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
 and input_context = {
-  font_info     : HorzBox.font_info;
-  space_natural : HorzBox.Length.t;
-  space_shrink  : HorzBox.Length.t;
-  space_stretch : HorzBox.Length.t;
-  leading       : HorzBox.Length.t;
+  title           : abstract_tree;
+  author          : abstract_tree;
+  font_info       : HorzBox.font_info;
+  space_natural   : HorzBox.Length.t;
+  space_shrink    : HorzBox.Length.t;
+  space_stretch   : HorzBox.Length.t;
+  paragraph_width : HorzBox.Length.t;
+  leading         : HorzBox.Length.t;
 }
 (* temporary *)
 
@@ -472,8 +475,11 @@ and abstract_tree =
   | Context               of input_context
   | HorzLex               of abstract_tree * abstract_tree
   | VertLex               of abstract_tree * abstract_tree
+  | PrimitiveSetFont      of abstract_tree * abstract_tree
+  | PrimitiveGetFont      of abstract_tree
+  | PrimitiveSetTitle     of abstract_tree * abstract_tree
+  | PrimitiveGetTitle     of abstract_tree
   | BackendFont           of abstract_tree * abstract_tree
-  | BackendSetFont        of abstract_tree * abstract_tree
   | BackendLineBreaking   of abstract_tree * abstract_tree
   | BackendFixedString    of abstract_tree * abstract_tree
   | BackendFixedEmpty     of abstract_tree
