@@ -90,10 +90,7 @@ and interpret env ast =
   | UnitConstant                          -> ast
   | EvaluatedEnvironment(_)               -> ast
   | FuncWithEnvironment(_, _, _)          -> ast
-(*
-  | BreakAndIndent                        -> ast
-  | SoftBreakAndIndent                    -> ast
-*)
+
   | InputHorz(ihlst)                      -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
 
   | InputHorzWithEnvironment(_, _)        -> ast
@@ -101,17 +98,15 @@ and interpret env ast =
   | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
 
   | InputVertWithEnvironment(_, _)        -> ast
-(*
-  | DeeperIndent(astsub) -> DeeperIndent(interpret env astsub)
-*)
-  | Concat(astf, astl) ->
-      let valuef = interpret env astf in
-      let valuel = interpret env astl in
+
+  | Concat(ast1, ast2) ->
+      let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
         begin
-          match (valuef, valuel) with
-          | (StringEmpty, _) -> valuel
-          | (_, StringEmpty) -> valuef
-          | (_, _)           -> Concat(valuef, valuel)
+          match (value1, value2) with
+          | (StringEmpty, _) -> value2
+          | (_, StringEmpty) -> value1
+          | (_, _)           -> Concat(value1, value2)
         end
 
 (* ---- values for backend ---- *)
