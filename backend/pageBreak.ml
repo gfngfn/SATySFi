@@ -41,9 +41,9 @@ let chop_single_page (imvblst : intermediate_vert_box list) : intermediate_vert_
     | (ImVertLine(hgt, dpt, _) as head) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
-        if vpb > vpbprev then
+        if vpb > vpbprev then  (* -- if getting worse, output the accumulated non-discardable lines 'imvbacc' as a page -- *)
           let () = print_for_debug ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (List.rev imvbacc, Some(imvbtail))  (* -- discard breakables -- *)
+            (List.rev imvbacc, Some(imvblst))
         else
           aux vpb (head :: (List.append imvbaccbreakable imvbacc)) [] hgttotalnew imvbtail
 
