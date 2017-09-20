@@ -607,7 +607,7 @@ and typecheck_record
 
 and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
-  let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(StringType)) in
+  let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType)) in
   let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
     (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))))
 

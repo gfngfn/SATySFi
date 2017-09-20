@@ -11,7 +11,7 @@ let add_default_types tyenvmid =
         (dr, UTEndOfVariant))))),
     UTMutualVariantCons(
       [], Range.dummy "primitives-itemize", "itemize",
-        (dr, UTVariantCons("Item", (dr, MProductType([(dr, MTypeName([], "string")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])),
+        (dr, UTVariantCons("Item", (dr, MProductType([(dr, MTypeName([], "text-row")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])),
         (dr, UTEndOfVariant))),
     UTEndOfMutualVariant))
   in
@@ -185,6 +185,7 @@ let make_environments () =
         ("outer-frame-block", ~% (br --> br)            , lambda1 (fun vbr -> BackendOuterFrame(vbr)));
         ("outer-frame-inline", ~% (br --> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
 
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
         ("+++"           , ~% (bc --> (bc --> bc))      , lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2)));
