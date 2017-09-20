@@ -233,7 +233,6 @@ rule progexpr = parse
           | "do"                -> DO(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
 (*
-          | "let-lazy"          -> LETLAZY(pos)
           | "new-global-hash"   -> NEWGLOBALHASH(pos)
           | "renew-global-hash" -> RENEWGLOBALHASH(pos)
 *)

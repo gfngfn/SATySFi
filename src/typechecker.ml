@@ -396,10 +396,6 @@ let rec typecheck
         (WhileDo(eB, eC), (rng, BaseType(UnitType)))
 
 (*
-  | UTLazyContent(utast1) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-        (LazyContent(e1), ty1)
-
 (* ---- final reference ---- *)
 
   | UTDeclareGlobalHash(utastK, utastI) ->

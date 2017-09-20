@@ -79,9 +79,6 @@ let make_environments () =
   let table : (var_name * poly_type * (environment -> abstract_tree)) list =
     let ptyderef = tv1 -% (~% ((r (~@ tv1)) --> (~@ tv1))) in
     let ptycons  = tv2 -% (~% ((~@ tv2) --> ((l (~@ tv2)) --> (l (~@ tv2))))) in
-(*
-    let astfdeeper = lambda1 (fun vstr -> Concat(DeeperIndent(Concat(SoftBreakAndIndent, vstr)), SoftBreakAndIndent)) in
-*)
       [
         ( "+"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
         ( "-"  , ~% (i --> (i --> i)), lambda2 (fun v1 v2 -> Minus(v1, v2))                   );
@@ -104,13 +101,6 @@ let make_environments () =
         ( "same"         , ~% (s --> (s --> b))         , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s --> (i --> (i --> s))) , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
         ( "string-length", ~% (s --> i)                 , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
-(*
-        ( "\\deeper"     , ~% (s --> s)                 , astfdeeper );
-        ( "deeper"       , ~% (s --> s)                 , astfdeeper );
-        ( "break"        , ~% s                         , (fun _ -> BreakAndIndent) );
-        ( "soft-break"   , ~% s                         , (fun _ -> SoftBreakAndIndent) );
-        ( "space"        , ~% s                         , (fun _ -> StringConstant(" ")) );
-*)
         ( "arabic"       , ~% (i --> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
 
         ("form-paragraph", ~% (ctx --> (br --> bc))     , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );

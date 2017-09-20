@@ -249,12 +249,7 @@ and interpret env ast =
       begin
         try
           let content = !(find_in_environment env evid) in
-(*
-            match content with
-            | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
-            | _                                           -> content
-*)
-          content
+            content
         with
         | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found")
       end
@@ -364,10 +359,6 @@ and interpret env ast =
           | _             -> report_bug_evaluator "Reference"
         end
 (*
-  | LazyContent(ast1) -> LazyContentWithEnvironmentRef(ast1, (ref env))
-
-  | LazyContentWithEnvironmentRef(ast1, envref) -> LazyContentWithEnvironmentRef(ast1, envref)
-
 (* ---- final reference ---- *)
 
   | DeclareGlobalHash(astkey, astdflt) ->
