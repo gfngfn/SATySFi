@@ -228,11 +228,14 @@ and interpret env ast =
         match astfont with
         | FontDesignation(font_info) -> font_info
         | _ -> report_bug_evaluator "BackendFixedString; not a font value"
-      (* ("Arno", HorzBox.Length.of_pdf_point 16.) *)
       in
       let purestr = interpret_string env aststr in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
+  | BackendOuterFrame(astbr) ->
+      let hblst = interpret_horz_boxes env astbr in
+        Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(Primitives.default_paddings, Primitives.frame_deco_S, hblst))])
+        (* temporary; paddings and frames should be variable *)
 (* ---- list value ---- *)
 
   | EndOfList -> ast

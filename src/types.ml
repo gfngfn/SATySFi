@@ -503,6 +503,7 @@ and abstract_tree =
   | BackendFixedString    of abstract_tree * abstract_tree
   | BackendFixedEmpty     of abstract_tree
   | BackendOuterEmpty     of abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrame     of abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons

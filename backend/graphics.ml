@@ -40,7 +40,7 @@ let pdfops_of_elements (elemlst : path_element list) =
 let pdfops_of_path (path : path) : Pdfops.t list =
   match path with
   | GeneralPath(ptfrom, elemlst) -> (op_m ptfrom) :: (pdfops_of_elements elemlst)
-  | Rectangle(pt1, pt2)          -> (op_re pt1 pt2) :: []
+  | Rectangle(pt1, pt2)          -> (op_re pt1 pt2) :: op_S :: []
 
 
 let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =

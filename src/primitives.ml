@@ -41,17 +41,48 @@ let rec lambda3 astf env =
       astf (ContentOf(evid1)) (ContentOf(evid2)) (ContentOf(evid3)))), env)
 
 
+(* -- begin: constants just for experimental use -- *)
+
+let pdfpt = HorzBox.Length.of_pdf_point
+
+let ( +% ) = HorzBox.( +% )
+let ( -% ) = HorzBox.( -% )
+let ( *% ) = HorzBox.( *% )
+
 let default_context =
   {
     title           = Horz([]);
     author          = Horz([]);
     font_info       = ("Arno", HorzBox.Length.of_pdf_point 12.);
     space_natural   = 0.33;
-    space_shrink    = HorzBox.Length.of_pdf_point 1.;
-    space_stretch   = HorzBox.Length.of_pdf_point 2.;
-    paragraph_width = HorzBox.Length.of_pdf_point 400.;
-    leading         = HorzBox.Length.of_pdf_point 18.;
+    space_shrink    = pdfpt 1.;
+    space_stretch   = pdfpt 2.;
+    paragraph_width = pdfpt 400.;
+    leading         = pdfpt 18.;
   }
+
+let margin = pdfpt 2.
+
+let frame_deco_S =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos +% margin in
+    let hgtb = hgt -% margin in
+    let dptb = dpt +% margin in
+    let widb = wid -% margin *% 2. in
+    [
+      HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
+    ]
+  )
+
+let default_paddings =
+  {
+    HorzBox.paddingL = pdfpt 2. +% margin;
+    HorzBox.paddingR = pdfpt 2. +% margin;
+    HorzBox.paddingT = pdfpt 2. +% margin;
+    HorzBox.paddingB = pdfpt 2. +% margin;
+  }
+
+(* -- end: constants just for experimental use -- *)
 
 
 let make_environments () =
@@ -109,6 +140,7 @@ let make_environments () =
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
+        ("outer-frame-block", ~% (br --> br)            , lambda1 (fun vbr -> BackendOuterFrame(vbr)));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
 
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));
