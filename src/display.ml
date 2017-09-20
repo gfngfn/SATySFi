@@ -245,7 +245,9 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTEndOfList                    -> "[]"
   | UTTupleCons(hd, tl)            -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
   | UTEndOfTuple                   -> "$"
+(*
   | UTBreakAndIndent               -> "break"
+*)
   | UTLetIn(umlc, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
   | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
                                         ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
@@ -330,7 +332,9 @@ let rec string_of_ast (ast : abstract_tree) =
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
 *)
   | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
+(*
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
+*)
   | Overwrite(x, n)              -> "(" ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast n) ^ ")"
   | Location(loc)                -> "<mutable>"
   | UnitConstant                 -> "()"
@@ -339,16 +343,22 @@ let rec string_of_ast (ast : abstract_tree) =
   | EndOfList                    -> "[]"
   | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
   | EndOfTuple                   -> "end-of-tuple"
+(*
   | BreakAndIndent               -> "break"
+*)
   | FinishHeaderFile             -> "finish-header-file"
   | EvaluatedEnvironment(_)      -> "evaluated-environment"
+(*
   | DeeperIndent(m)              -> "(deeper " ^ (string_of_ast m) ^ ")"
+*)
   | Constructor(c, m)            -> "(constructor " ^ c ^ " " ^ (string_of_ast m) ^ ")"
   | PatternMatch(_, _)           -> "(match ...)"
   | LetIn(_, m)                  -> "(let ... in " ^ (string_of_ast m) ^ ")"
   | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"
+(*
   | DeclareGlobalHash(m, n)      -> "(declare-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
   | OverwriteGlobalHash(m, n)    -> "(overwrite-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
+*)
   | Module(m, n)                 -> "(module " ^ (string_of_ast m) ^ " end in " ^ (string_of_ast n) ^ ")"
   | Sequential(m, n)             -> "(sequential " ^ (string_of_ast m) ^ " ; " ^ (string_of_ast n) ^ ")"
   | PrimitiveSame(m, n)          -> "(same " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"

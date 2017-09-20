@@ -1,3 +1,4 @@
+(*
 open Types
 
 exception IllegalOut of string
@@ -100,3 +101,4 @@ and out (indent : int) (value : abstract_tree) : string =
                             print_string ("!!!! cannot output\n\n    " ^ (Display.string_of_ast other)) ;
                             assert false
                           end
+*)

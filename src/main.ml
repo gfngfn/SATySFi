@@ -273,7 +273,9 @@ let error_log_environment suspended =
         ] additional)
 
   | Evaluator.EvalError(s)          -> report_error "Evaluator" [ NormalLine(s); ]
+(*
   | Out.IllegalOut(s)               -> report_error "Output" [ NormalLine(s); ]
+*)
   | MainError(s)                    -> report_error "Toplevel" [ NormalLine(s); ]
   | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
 

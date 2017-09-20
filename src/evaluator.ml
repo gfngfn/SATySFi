@@ -4,9 +4,9 @@ exception EvalError of string
 
 
 let print_for_debug_evaluator msg =
-
+(*
   print_string msg;
-
+*)
   ()
 
 
@@ -89,9 +89,10 @@ and interpret env ast =
   | UnitConstant                          -> ast
   | EvaluatedEnvironment(_)               -> ast
   | FuncWithEnvironment(_, _, _)          -> ast
+(*
   | BreakAndIndent                        -> ast
   | SoftBreakAndIndent                    -> ast
-
+*)
   | InputHorz(ihlst)                      -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
 
   | InputHorzWithEnvironment(_, _)        -> ast
@@ -99,9 +100,9 @@ and interpret env ast =
   | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
 
   | InputVertWithEnvironment(_, _)        -> ast
-
+(*
   | DeeperIndent(astsub) -> DeeperIndent(interpret env astsub)
-
+*)
   | Concat(astf, astl) ->
       let valuef = interpret env astf in
       let valuel = interpret env astl in
@@ -248,9 +249,12 @@ and interpret env ast =
       begin
         try
           let content = !(find_in_environment env evid) in
+(*
             match content with
             | LazyContentWithEnvironmentRef(ast1, envref) -> interpret (!envref) ast1
             | _                                           -> content
+*)
+          content
         with
         | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found")
       end
@@ -291,7 +295,7 @@ and interpret env ast =
       end
 
 (* ---- class/id option ---- *)
-
+(*
   | ApplyClassAndID(evidcls, evidid, clsnmast, idnmast, astf) ->
       let () = print_for_debug_evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
       let valuef =  interpret env
@@ -307,7 +311,7 @@ and interpret env ast =
               ), envf)
         | other ->  valuef
       end
-
+*)
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astdflt, astaft) ->
@@ -359,7 +363,7 @@ and interpret env ast =
           | Location(loc) -> !loc
           | _             -> report_bug_evaluator "Reference"
         end
-
+(*
   | LazyContent(ast1) -> LazyContentWithEnvironmentRef(ast1, (ref env))
 
   | LazyContentWithEnvironmentRef(ast1, envref) -> LazyContentWithEnvironmentRef(ast1, envref)
@@ -401,7 +405,7 @@ and interpret env ast =
       end
 
   | ReferenceFinal(astkey) -> ReferenceFinal(interpret env astkey)
-
+*)
 (* ---- others ---- *)
 
   | FinishHeaderFile -> EvaluatedEnvironment(env)
@@ -427,23 +431,15 @@ and interpret env ast =
 (* -- primitive operation -- *)
 
   | PrimitiveSame(ast1, ast2) ->
-      let str1 =
-        try Out.main (interpret env ast1) with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'same':\n    " ^ s))
-      in
-      let str2 =
-        try Out.main (interpret env ast2) with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'same':\n    " ^ s))
-      in
-        BooleanConstant((compare str1 str2) = 0)
+      let str1 = interpret_string env ast1 in
+      let str2 = interpret_string env ast2 in
+        BooleanConstant(String.equal str1 str2)
+
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
-      let str =
-        try Out.main (interpret env aststr) with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'string-sub':\n    " ^ s))
-      in
-        let pos = interpret_int env astpos in
-        let wid = interpret_int env astwid in
+      let str = interpret_string env aststr in
+      let pos = interpret_int env astpos in
+      let wid = interpret_int env astwid in
         let resstr =
           try String.sub str pos wid with
           | Invalid_argument(s) -> raise (EvalError("illegal index for 'string-sub'"))
@@ -451,10 +447,7 @@ and interpret env ast =
           StringConstant(resstr)
 
   | PrimitiveStringLength(aststr) ->
-      let str =
-        try Out.main (interpret env aststr) with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for 'string-length': " ^ s))
-      in
+      let str = interpret_string env aststr in
         NumericConstant(String.length str)
 (*
   | PrimitiveInclude(astfile_name) ->
@@ -661,15 +654,9 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : ab
   | (PNumericConstant(pnc), NumericConstant(nc)) -> pnc = nc
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
   | (PStringConstant(ast1), ast2)                ->
-      let out1 =
-        try Out.main ast1 with
-        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for pattern matching of string: " ^ s))
-      in
-      let out2 =
-        try Out.main ast2 with
-        | Out.IllegalOut(s) -> raise (EvalError("Illegal argument for pattern matching of string: " ^ s))
-      in
-        out1 = out2
+      let str1 = interpret_string env ast1 in
+      let str2 = interpret_string env ast2 in
+        String.equal str1 str2
 
   | (PUnitConstant, UnitConstant)                -> true
   | (PWildCard, _)                               -> true

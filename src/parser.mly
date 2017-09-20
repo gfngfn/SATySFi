@@ -47,10 +47,9 @@
   let rec append_argument_list (arglsta : untyped_argument_cons) (arglstb : untyped_argument_cons) =
     List.append arglsta arglstb
 
-
+(*
   let class_and_id_region (utast : untyped_abstract_tree) =
     (Range.dummy "class_and_id_region", UTClassAndIDRegion(utast))
-
 
   let convert_into_apply (csutast : untyped_abstract_tree) (clsnmutast : untyped_abstract_tree)
                                (idnmutast : untyped_abstract_tree) (argcons : untyped_argument_cons) =
@@ -69,7 +68,7 @@
 
   let id_name_to_abstract_tree (idnm : id_name) =
     UTConstructor("Just", (Range.dummy "id_name_to", UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))))
-
+*)
 
   let rec curry_lambda_abstract (rng : Range.t) (argvarcons : untyped_argument_variable_cons) (utastdef : untyped_abstract_tree) =
     match argvarcons with
@@ -394,9 +393,9 @@
 %token <Range.t> LET DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
-%token <Range.t> LETMUTABLE OVERWRITEEQ LETLAZY
+%token <Range.t> LETMUTABLE OVERWRITEEQ (* LETLAZY *)
 %token <Range.t> LETHORZ LETVERT
-%token <Range.t> REFNOW REFFINAL
+%token <Range.t> REFNOW (* REFFINAL *)
 %token <Range.t> IF THEN ELSE
 %token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
 %token <Range.t> HORZCONCAT VERTCONCAT
@@ -412,7 +411,9 @@
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> BEFORE UNITVALUE WHILE DO
+(*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
+*)
 %token <Range.t * int> ITEM
 %token EOI
 %token IGNORED
@@ -685,22 +686,15 @@ nxlambda:
   | VAR OVERWRITEEQ nxlor {
         let (varrng, varnm) = $1 in
           make_standard (Ranged $1) (Ranged $3) (UTOverwrite(varrng, varnm, $3)) }
+(*
   | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
         make_standard (Tok $1) (Ranged $4) (UTDeclareGlobalHash($2, $4)) }
   | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
         make_standard (Tok $1) (Ranged $4) (UTOverwriteGlobalHash($2, $4)) }
+*)
   | LAMBDA argvar ARROW nxlor {
         let rng = make_range (Tok $1) (Ranged $4) in curry_lambda_abstract rng $2 $4 }
   | nxlor { $1 }
-/* -- for syntax error log -- */
-  | VAR error                                       { report_error (Ranged $1) "" }
-  | NEWGLOBALHASH error                             { report_error (Tok $1) "new-global-hash" }
-  | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH error   { report_error (Tok $3) "<<-" }
-  | RENEWGLOBALHASH error                           { report_error (Tok $1) "renew-global-hash" }
-  | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH error { report_error (Tok $3) "<<-" }
-  | LAMBDA error                                    { report_error (Tok $1) "function" }
-  | LAMBDA argvar ARROW error                       { report_error (Tok $3) "->" }
-/* -- -- */
 ;
 argvar: /* -> argument_variable_cons */
   | argpatlst=list(patbot) { argpatlst }
@@ -813,12 +807,10 @@ nxun:
 nxapp:
   | nxapp nxbot    { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
   | REFNOW nxbot   { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
+(*
   | REFFINAL nxbot { make_standard (Tok $1) (Ranged $2) (UTReferenceFinal($2)) }
+*)
   | nxbot          { $1 }
-/* -- for syntax error log -- */
-  | REFNOW error   { report_error (Tok $1) "!" }
-  | REFFINAL error { report_error (Tok $1) "!!" }
-/* -- -- */
 ;
 nxbot:
   | nxbot ACCESS VAR                { make_standard (Ranged $1) (Ranged $3) (UTAccessField($1, extract_name $3)) }

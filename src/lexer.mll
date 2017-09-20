@@ -173,7 +173,9 @@ rule progexpr = parse
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
+(*
   | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
+*)
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
   | "."   { DOT(get_pos lexbuf) }
@@ -199,8 +201,9 @@ rule progexpr = parse
   | "||"  { LOR(get_pos lexbuf) }
   | "^"   { CONCAT(get_pos lexbuf) }
   | "!"   { REFNOW(get_pos lexbuf) }
+(*
   | "!!"  { REFFINAL(get_pos lexbuf) }
-
+*)
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
   | ((constructor ".")+ identifier) {
@@ -229,9 +232,11 @@ rule progexpr = parse
           | "while"             -> WHILE(pos)
           | "do"                -> DO(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
+(*
           | "let-lazy"          -> LETLAZY(pos)
           | "new-global-hash"   -> NEWGLOBALHASH(pos)
           | "renew-global-hash" -> RENEWGLOBALHASH(pos)
+*)
           | "match"             -> MATCH(pos)
           | "with"              -> WITH(pos)
           | "when"              -> WHEN(pos)

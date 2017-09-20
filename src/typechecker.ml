@@ -224,7 +224,9 @@ let rec typecheck
   let unify = unify_ tyenv in
   match utastmain with
   | UTStringEmpty         -> (StringEmpty        , (rng, BaseType(StringType)))
+(*
   | UTBreakAndIndent      -> (SoftBreakAndIndent , (rng, BaseType(StringType)))
+*)
   | UTNumericConstant(nc) -> (NumericConstant(nc), (rng, BaseType(IntType))   )
   | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
   | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BaseType(BoolType))  )
@@ -393,6 +395,7 @@ let rec typecheck
       let () = unify tyC (get_range utastC, BaseType(UnitType)) in
         (WhileDo(eB, eC), (rng, BaseType(UnitType)))
 
+(*
   | UTLazyContent(utast1) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
         (LazyContent(e1), ty1)
@@ -439,6 +442,7 @@ let rec typecheck
       let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
       let (e1, ty1) = typecheck_iter tyenvnew utast1 in
         (e1, ty1)
+*)
 
 (* ---- lightweight itemize ---- *)
 

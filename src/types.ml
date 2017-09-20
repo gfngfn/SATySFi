@@ -250,7 +250,9 @@ and untyped_abstract_tree_main =
   | UTBooleanConstant      of bool
   | UTStringConstant       of string
   | UTUnitConstant
+(*
   | UTBreakAndIndent
+*)
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -290,16 +292,22 @@ and untyped_abstract_tree_main =
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
+(*
   | UTDeclareGlobalHash    of untyped_abstract_tree * untyped_abstract_tree
   | UTOverwriteGlobalHash  of untyped_abstract_tree * untyped_abstract_tree
+*)
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
+(*
   | UTReferenceFinal       of untyped_abstract_tree
   | UTLazyContent          of untyped_abstract_tree
+*)
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
 (* -- class and id option -- *)
+(*
   | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTClassAndIDRegion     of untyped_abstract_tree
+*)
 
 and constraint_cons = (var_name * manual_kind) list
 
@@ -397,9 +405,11 @@ and abstract_tree =
   | BooleanConstant       of bool
   | StringConstant        of string
   | UnitConstant
+(*
   | DeeperIndent          of abstract_tree
   | BreakAndIndent
   | SoftBreakAndIndent
+*)
   | Concat                of abstract_tree * abstract_tree
   | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | EvaluatedEnvironment  of environment
@@ -441,13 +451,17 @@ and abstract_tree =
   | Overwrite             of EvalVarID.t * abstract_tree
   | Location              of abstract_tree ref
   | Reference             of abstract_tree
+(*
   | DeclareGlobalHash     of abstract_tree * abstract_tree
   | OverwriteGlobalHash   of abstract_tree * abstract_tree
   | ReferenceFinal        of abstract_tree
   | LazyContent           of abstract_tree
   | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
+*)
 (* -- class and id option -- *)
+(*
   | ApplyClassAndID       of EvalVarID.t * EvalVarID.t * abstract_tree * abstract_tree * abstract_tree
+*)
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
 (* -- basic primitive operations -- *)
