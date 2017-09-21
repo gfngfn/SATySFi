@@ -50,7 +50,6 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
       begin
         Lexer.reset_to_progexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let () = print_endline (string_of_utast utast) in  (* for debug *)
         let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
@@ -110,7 +109,6 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
       begin
         Lexer.reset_to_vertexpr () ;
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let () = print_endline (string_of_utast utast) in  (* for debug *)
         let (ty, _, ast) = Typechecker.main tyenv utast in
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with

@@ -105,6 +105,7 @@ let item  = "*"+
 let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
+let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | '?' )
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*']
 
 rule progexpr = parse
@@ -182,25 +183,21 @@ rule progexpr = parse
   | ":"   { COLON(get_pos lexbuf) }
   | ","   { COMMA(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }
-  | "-"   { MINUS(get_pos lexbuf) }
+  | "-"   { EXACT_MINUS(get_pos lexbuf) }
+  | "="   { DEFEQ(get_pos lexbuf) }
+  | "*"   { EXACT_TIMES(get_pos lexbuf) }
 
 (* binary operators; should be extended *)
-  | "+"   { PLUS(get_pos lexbuf) }
-  | "++"  { HORZCONCAT(get_pos lexbuf) }
-  | "+++" { VERTCONCAT(get_pos lexbuf) }
-  | "*"   { TIMES(get_pos lexbuf) }
-  | "/"   { DIVIDES(get_pos lexbuf) }
-  | "=="  { EQ(get_pos lexbuf) }
-  | "="   { DEFEQ(get_pos lexbuf) }
-  | "<>"  { NEQ(get_pos lexbuf) }
-  | "<="  { LEQ(get_pos lexbuf) }
-  | "<"   { LT(get_pos lexbuf) }
-  | ">="  { GEQ(get_pos lexbuf) }
-  | ">"   { GT(get_pos lexbuf) }
-  | "&&"  { LAND(get_pos lexbuf) }
-  | "||"  { LOR(get_pos lexbuf) }
-  | "^"   { CONCAT(get_pos lexbuf) }
-  | "!"   { REFNOW(get_pos lexbuf) }
+  | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("*" opsymbol+) { BINOP_TIMES(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("/" opsymbol*) { BINOP_DIVIDES(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("=" opsymbol*) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("<" opsymbol*) { BINOP_LT(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (">" opsymbol*) { BINOP_GT(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | "!" { REFNOW(get_pos lexbuf) }
 (*
   | "!!"  { REFFINAL(get_pos lexbuf) }
 *)

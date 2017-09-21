@@ -175,9 +175,10 @@
   let extract_name (_, name) = name
 
 
-  let binary_operator (opname : var_name) (utastl : untyped_abstract_tree) (oprng : Range.t) (utastr : untyped_abstract_tree) : untyped_abstract_tree =
-    let rng = make_range (Ranged utastl) (Ranged utastr) in
-      (rng, UTApply((Range.dummy "binary_operator", UTApply((oprng, UTContentOf([], opname)), utastl)), utastr))
+  let binary_operator (utastL : untyped_abstract_tree) (optok : Range.t * var_name) (utastR : untyped_abstract_tree) : untyped_abstract_tree =
+    let (rngop, opnm) = optok in
+    let rng = make_range (Ranged utastL) (Ranged utastR) in
+      (rng, UTApply((Range.dummy "binary_operator", UTApply((rngop, UTContentOf([], opnm)), utastL)), utastR))
 
 
   let make_standard sttknd endknd main =
@@ -400,8 +401,10 @@
 %token <Range.t> LETHORZ LETVERT LETVERTDETAILED
 %token <Range.t> REFNOW (* REFFINAL *)
 %token <Range.t> IF THEN ELSE
-%token <Range.t> TIMES DIVIDES MOD PLUS MINUS EQ NEQ GEQ LEQ GT LT LNOT LAND LOR CONCAT
-%token <Range.t> HORZCONCAT VERTCONCAT
+%token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
+%token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
+%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT (* EQ NEQ GEQ LEQ GT LT LAND LOR CONCAT *)
+(* %token <Range.t> HORZCONCAT VERTCONCAT *)
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
@@ -413,7 +416,7 @@
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
-%token <Range.t> BEFORE UNITVALUE WHILE DO
+%token <Range.t> UNITVALUE WHILE DO
 (*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
@@ -478,7 +481,7 @@
 %type <Types.untyped_abstract_tree> narg
 %type <Types.untyped_abstract_tree> sarg
 %type <Types.untyped_argument_variable_cons> argvar
-%type <string> binop
+%type <Range.t * Types.var_name> binop
 %type <Types.untyped_unkinded_type_argument_cons> xpltyvars
 
 %%
@@ -713,109 +716,62 @@ argvar: /* -> argument_variable_cons */
   | argpatlst=list(patbot) { argpatlst }
 ;
 nxlor:
-  | nxland LOR nxlor    { binary_operator "||" $1 $2 $3 }
-  | nxland              { $1 }
-/* -- for syntax error log -- */
-  | nxland LOR error    { report_error (Tok $2) "||" }
-/* -- -- */
+  | nxland BINOP_BAR nxlor { binary_operator $1 $2 $3 }
+  | nxland                 { $1 }
 ;
 nxland:
-  | nxcomp LAND nxland  { binary_operator "&&" $1 $2 $3 }
-  | nxcomp              { $1 }
-/* -- for syntax error log -- */
-  | nxcomp LAND error   { report_error (Tok $2) "&&" }
-/* -- -- */
+  | nxcomp BINOP_AMP nxland  { binary_operator $1 $2 $3 }
+  | nxcomp                   { $1 }
 ;
 nxcomp:
-  | nxconcat EQ nxcomp  { binary_operator "==" $1 $2 $3 }
-  | nxconcat NEQ nxcomp { binary_operator "<>" $1 $2 $3 }
-  | nxconcat GEQ nxcomp { binary_operator ">=" $1 $2 $3 }
-  | nxconcat LEQ nxcomp { binary_operator "<=" $1 $2 $3 }
-  | nxconcat GT nxcomp  { binary_operator ">" $1 $2 $3 }
-  | nxconcat LT nxcomp  { binary_operator "<" $1 $2 $3 }
-  | nxconcat            { $1 }
-/* -- for syntax error log -- */
-  | nxconcat EQ error   { report_error (Tok $2) "==" }
-  | nxconcat NEQ error  { report_error (Tok $2) "<>" }
-  | nxconcat GEQ error  { report_error (Tok $2) ">=" }
-  | nxconcat LEQ error  { report_error (Tok $2) "<=" }
-  | nxconcat GT error   { report_error (Tok $2) ">" }
-  | nxconcat LT error   { report_error (Tok $2) "<" }
-/* -- -- */
+  | nxconcat BINOP_EQ nxcomp { binary_operator $1 $2 $3 }
+  | nxconcat BINOP_GT nxcomp { binary_operator $1 $2 $3 }
+  | nxconcat BINOP_LT nxcomp { binary_operator $1 $2 $3 }
+  | nxconcat                 { $1 }
 ;
 nxconcat:
-  | nxlplus CONCAT nxconcat { binary_operator "^" $1 $2 $3 }
-  | nxlplus CONS nxconcat   { binary_operator "::" $1 $2 $3 }
-  | nxlplus                 { $1 }
-/* -- for syntax error log -- */
-  | nxlplus CONCAT error    { report_error (Tok $2) "^" }
-/* -- -- */
+  | nxlplus BINOP_HAT nxconcat { binary_operator $1 $2 $3 }
+  | nxlplus CONS nxconcat      { binary_operator $1 ($2, "::") $3 }
+  | nxlplus                    { $1 }
 ;
 nxlplus:
-  | nxlminus PLUS nxrplus       { binary_operator "+" $1 $2 $3 }
-  | nxlminus HORZCONCAT nxrplus { binary_operator "++" $1 $2 $3 }
-  | nxlminus VERTCONCAT nxrplus { binary_operator "+++" $1 $2 $3 }
-  | nxlminus                { $1 }
-/* -- for syntax error log -- */
-  | nxlminus PLUS error     { report_error (Tok $2) "+" }
-/* -- -- */
+  | nxlminus BINOP_PLUS nxrplus { binary_operator $1 $2 $3 }
+  | nxlminus                    { $1 }
 ;
 nxlminus:
-  | nxlplus MINUS nxrtimes  { binary_operator "-" $1 $2 $3 }
-  | nxltimes                { $1 }
-/* -- for syntax error log -- */
-  | nxlplus MINUS error     { report_error (Tok $2) "-" }
-/* -- -- */
+  | nxlplus BINOP_MINUS nxrtimes { binary_operator $1 $2 $3 }
+  | nxlplus EXACT_MINUS nxrtimes { binary_operator $1 ($2, "-") $3 }
+  | nxltimes                     { $1 }
 ;
 nxrplus:
-  | nxrminus PLUS nxrplus       { binary_operator "+" $1 $2 $3 }
-  | nxrminus HORZCONCAT nxrplus { binary_operator "++" $1 $2 $3 }
-  | nxrminus VERTCONCAT nxrplus { binary_operator "+++" $1 $2 $3 }
-  | nxrminus                { $1 }
-/* -- for syntax error log -- */
-  | nxrminus PLUS error     { report_error (Tok $2) "+" }
-/* -- -- */
+  | nxrminus BINOP_PLUS nxrplus { binary_operator $1 $2 $3 }
+  | nxrminus                    { $1 }
 ;
 nxrminus:
-  | nxrplus MINUS nxrtimes  { binary_operator "-" $1 $2 $3 }
-  | nxrtimes                { $1 }
-/* -- for syntax error log -- */
-  | nxrplus MINUS error     { report_error (Tok $2) "-" }
-/* -- -- */
+  | nxrplus BINOP_MINUS nxrtimes  { binary_operator $1 $2 $3 }
+  | nxrtimes                      { $1 }
 ;
 nxltimes:
-  | nxun TIMES nxrtimes     { binary_operator "*" $1 $2 $3 }
-  | nxltimes DIVIDES nxapp  { binary_operator "/" $1 $2 $3 }
-  | nxltimes MOD nxapp      { binary_operator "mod" $1 $2 $3 }
-  | nxun                    { $1 }
-/* -- for syntax error log -- */
-  | nxun TIMES error        { report_error (Tok $2) "*" }
-  | nxltimes DIVIDES error  { report_error (Tok $2) "/" }
-  | nxltimes MOD error      { report_error (Tok $2) "mod" }
-/* -- -- */
+  | nxun BINOP_TIMES nxrtimes    { binary_operator $1 $2 $3 }
+  | nxun EXACT_TIMES nxrtimes    { binary_operator $1 ($2, "*") $3 }
+  | nxltimes BINOP_DIVIDES nxapp { binary_operator $1 $2 $3 }
+  | nxltimes MOD nxapp           { binary_operator $1 ($2, "mod") $3 }
+  | nxun                         { $1 }
 ;
 nxrtimes:
-  | nxapp TIMES nxrtimes   { binary_operator "*" $1 $2 $3 }
-  | nxrtimes DIVIDES nxapp { binary_operator "/" $1 $2 $3 }
-  | nxrtimes MOD nxapp     { binary_operator "mod" $1 $2 $3 }
-  | nxapp                  { $1 }
-/* -- for syntax error log -- */
-  | nxapp TIMES error      { report_error (Tok $2) "*" }
-  | nxrtimes DIVIDES error { report_error (Tok $2) "/" }
-  | nxrtimes MOD error     { report_error (Tok $2) "mod" }
-/* -- -- */
+  | nxapp EXACT_TIMES nxrtimes   { binary_operator $1 ($2, "*") $3 }
+  | nxapp BINOP_TIMES nxrtimes   { binary_operator $1 $2 $3 }
+  | nxrtimes BINOP_DIVIDES nxapp { binary_operator $1 $2 $3 }
+  | nxrtimes MOD nxapp           { binary_operator $1 ($2, "mod") $3 }
+  | nxapp                        { $1 }
 ;
 nxun:
-  | MINUS nxapp       { binary_operator "-" (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) $1 $2 }
+  | EXACT_MINUS nxapp { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) ($1, "-") $2 }
   | LNOT nxapp        { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "not")), $2)) }
   | CONSTRUCTOR nxbot { make_standard (Ranged $1) (Ranged $2) (UTConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR       { make_standard (Ranged $1) (Ranged $1)
                           (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
   | nxapp             { $1 }
-/* -- for syntax error log -- */
-  | MINUS error       { report_error (Tok $1) "-" }
-  | LNOT error        { report_error (Tok $1) "not" }
-/* -- -- */
 ;
 nxapp:
   | nxapp nxbot    { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
@@ -841,7 +797,7 @@ nxbot:
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
   | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
   | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN binop RPAREN             { make_standard (Tok $1) (Tok $3) (UTContentOf([], $2)) }
+  | opn=LPAREN; optok=binop; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
 /* -- for syntax error log -- */
@@ -896,16 +852,13 @@ txfunc: /* -> manual_type */
 /* -- -- */
 ;
 txprod: /* -> manual_type */
-  | txapppre TIMES txprod {
+  | txapppre EXACT_TIMES txprod {
         let rng = make_range (Ranged $1) (Ranged $3) in
           match $3 with
           | (_, MProductType(tylist)) -> (rng, MProductType($1 :: tylist))
           | other                     -> (rng, MProductType([$1; $3]))
       }
   | txapppre { $1 }
-/* -- for syntax error log -- */
-  | txapppre TIMES error { report_error (Tok $2) "*" }
-/* -- -- */
 ;
 txapppre: /* -> manual_type */
   | txapp {
@@ -1047,13 +1000,20 @@ pattuple: /* -> untyped_pattern_tree */
 /* -- -- */
 ;
 binop:
-  | PLUS    { "+" }      | MINUS   { "-" }      | MOD     { "mod" }
-  | TIMES   { "*" }      | DIVIDES { "/" }      | CONCAT  { "^" }
-  | EQ      { "==" }     | NEQ     { "<>" }     | GEQ     { ">=" }
-  | LEQ     { "<=" }     | GT      { ">" }      | LT      { "<" }
-  | LAND    { "&&" }     | LOR     { "||" }     | LNOT    { "not" }
-  | BEFORE  { "before" }
-  | HORZCONCAT { "++" }  | VERTCONCAT { "+++" }
+  | BINOP_TIMES
+  | BINOP_DIVIDES
+  | BINOP_HAT
+  | BINOP_EQ
+  | BINOP_GT
+  | BINOP_LT
+  | BINOP_AMP
+  | BINOP_BAR
+  | BINOP_PLUS
+  | BINOP_MINUS { $1 }
+  | EXACT_MINUS { ($1, "-") }
+  | MOD         { ($1, "mod") }
+  | BEFORE      { ($1, "before") }
+  | LNOT        { ($1, "not") }
 ;
 sxsep:
   | SEP; utastlst=separated_list(SEP, sxblock); SEP { make_cons utastlst }

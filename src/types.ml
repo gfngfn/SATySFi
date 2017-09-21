@@ -483,27 +483,27 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveArabic       of abstract_tree
 (* -- backend primitives -- *)
-  | LambdaHorz                of EvalVarID.t * abstract_tree
-  | LambdaHorzWithEnvironment of EvalVarID.t * abstract_tree * environment
-  | LambdaVert                of EvalVarID.t * abstract_tree
-  | LambdaVertWithEnvironment of EvalVarID.t * abstract_tree * environment
-  | LambdaVertDetailed        of EvalVarID.t * abstract_tree
-  | LambdaVertDetailedWithEnv of EvalVarID.t * abstract_tree * environment
-  | FontDesignation       of HorzBox.font_info
-  | Context               of input_context
-  | HorzLex               of abstract_tree * abstract_tree
-  | VertLex               of abstract_tree * abstract_tree
-  | PrimitiveSetSpaceRatio of abstract_tree * abstract_tree
-  | PrimitiveSetFont      of abstract_tree * abstract_tree
-  | PrimitiveGetFont      of abstract_tree
-  | PrimitiveSetTitle     of abstract_tree * abstract_tree
-  | PrimitiveGetTitle     of abstract_tree
-  | BackendFont           of abstract_tree * abstract_tree
-  | BackendLineBreaking   of abstract_tree * abstract_tree
-  | BackendFixedString    of abstract_tree * abstract_tree
-  | BackendFixedEmpty     of abstract_tree
-  | BackendOuterEmpty     of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrame     of abstract_tree
+  | LambdaHorz                 of EvalVarID.t * abstract_tree
+  | LambdaHorzWithEnvironment  of EvalVarID.t * abstract_tree * environment
+  | LambdaVert                 of EvalVarID.t * abstract_tree
+  | LambdaVertWithEnvironment  of EvalVarID.t * abstract_tree * environment
+  | LambdaVertDetailed         of EvalVarID.t * abstract_tree
+  | LambdaVertDetailedWithEnv  of EvalVarID.t * abstract_tree * environment
+  | FontDesignation            of HorzBox.font_info
+  | Context                    of input_context
+  | HorzLex                    of abstract_tree * abstract_tree
+  | VertLex                    of abstract_tree * abstract_tree
+  | PrimitiveSetSpaceRatio     of abstract_tree * abstract_tree
+  | PrimitiveSetFont           of abstract_tree * abstract_tree
+  | PrimitiveGetFont           of abstract_tree
+  | PrimitiveSetTitle          of abstract_tree * abstract_tree
+  | PrimitiveGetTitle          of abstract_tree
+  | BackendFont                of abstract_tree * abstract_tree
+  | BackendLineBreaking        of abstract_tree * abstract_tree
+  | BackendFixedString         of abstract_tree * abstract_tree
+  | BackendFixedEmpty          of abstract_tree
+  | BackendOuterEmpty          of abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrame          of abstract_tree
   | BackendOuterFrameBreakable of abstract_tree
 
 and pattern_match_cons =
@@ -512,10 +512,10 @@ and pattern_match_cons =
   | EndOfPatternMatch
 
 and pattern_tree =
-  | PIntegerConstant      of int
-  | PBooleanConstant      of bool
-  | PStringConstant       of abstract_tree
   | PUnitConstant
+  | PBooleanConstant      of bool
+  | PIntegerConstant      of int
+  | PStringConstant       of abstract_tree
   | PListCons             of pattern_tree * pattern_tree
   | PEndOfList
   | PTupleCons            of pattern_tree * pattern_tree
@@ -525,12 +525,14 @@ and pattern_tree =
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
 
+(*
 type output_unit =
   | OString             of string
   | OBreakAndIndent
   | OSoftBreakAndIndent
   | ODeepen
   | OShallow
+*)
 
 
 let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
