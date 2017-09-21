@@ -375,6 +375,7 @@ and horzexpr = parse
           CHAR(get_pos lexbuf, tok)
         end
     }
+(*
   | ("@" identifier) {
         let tok = Lexing.lexeme lexbuf in
         let vnm = String.sub tok 1 ((String.length tok) - 1) in
@@ -383,6 +384,7 @@ and horzexpr = parse
             VARINSTR(get_pos lexbuf, vnm)
           end
     }
+*)
   | ((break | space)* ("`"+ as openqtstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
       openqtdepth := String.length openqtstr;
@@ -526,7 +528,7 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
     in
-(*
+
     let () = print_endline (  (* for debug *)
       match output with
       | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
@@ -543,9 +545,14 @@ and comment = parse
       | LETVERT(_)     -> "LET-COL"
       | VAR(_, v)      -> "VAR(" ^ v ^ ")"
       | DEFEQ(_)       -> "="
+      | BAR(_)         -> "|"
+      | LPAREN(_)      -> "("
+      | RPAREN(_)      -> ")"
+      | LET(_)         -> "let"
+      | BINOP_PLUS(_, v) -> "BIN(" ^ v ^ ")"
       | _              -> "_"
     ) in
-*)
+
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

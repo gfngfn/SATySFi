@@ -382,7 +382,9 @@
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
+(*
 %token <Range.t * Types.var_name> VARINSTR
+*)
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * string> INTCONST FLOATCONST CHAR
@@ -414,7 +416,7 @@
 %token <Range.t> OPENPROG CLOSEPROG
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
-%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS CONSTRAINEDBY
+%token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> UNITVALUE WHILE DO
 (*
@@ -424,24 +426,28 @@
 %token EOI
 %token IGNORED
 
+(*
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
 %nonassoc MATCH WITH
 %nonassoc IF THEN ELSE
+(*
 %left OVERWRITEGLOBALHASH
+*)
 %left BEFORE
 %nonassoc WHILE
-%left LOR
-%left LAND
+%left BINOP_BAR
+%left BINOP_AMP
 %nonassoc LNOT
-%left EQ NEQ
-%left GEQ LEQ GT LT
+%left BINOP_EQ
+%left BINOP_GT BINOP_LT
 %right CONS
-%left PLUS
-%left MINUS
-%left TIMES
-%right MOD DIVIDES
+%left BINOP_PLUS
+%left BINOP_MINUS EXACT_MINUS
+%left BINOP_TIMES EXACT_TIMES
+%right MOD BINOP_DIVIDES
 %nonassoc VAR
 %nonassoc LPAREN RPAREN
+*)
 
 %start main
 %type <Types.untyped_abstract_tree> main
@@ -566,13 +572,16 @@ nxdecsub:
   | LETAND; dec=nxdec { dec }
   |                   { [] }
 ;
+%inline defedvar:
+  | vartok=VAR  { vartok }
+  | LPAREN; optok=binop; RPAREN { optok }
+;
 nxdec: /* -> untyped_mutual_let_cons */
-  | vartok=VAR; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxdecsub {
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxdecsub {
         let (mtyopt, argvarlst) = argpart in
           make_mutual_let_cons mtyopt vartok argvarlst utastdef dec
       }
-
-  | vartok=VAR; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; decpar=nxdecpar; dec=nxdecsub {
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; decpar=nxdecpar; dec=nxdecsub {
         let (mtyopt, argvarlst) = argpart in
           make_mutual_let_cons_par mtyopt vartok (UTLetPatternCons(argvarlst, utastdef, decpar)) dec
       }
@@ -584,52 +593,6 @@ nxdec: /* -> untyped_mutual_let_cons */
   | VAR BAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, $5, $7)) end_of_mutual_let }
   | VAR COLON txfunc BAR
             argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) end_of_mutual_let }
-*)
-(*
-  | HORZCMD COLON txfunc DEFEQ nxlet LETAND nxdec        { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) $7 }
-
-  | HORZCMD COLON txfunc DEFEQ nxlet                     { make_mutual_let_cons (Some $3) $1 end_of_argument_variable (class_and_id_region $5) end_of_mutual_let }
-
-  | HORZCMD     argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons None $1 $2 (class_and_id_region $4) $6 }
-  | HORZCMD COLON txfunc BAR
-                argvar DEFEQ nxlet LETAND nxdec              { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) $9 }
-
-  | HORZCMD     argvar DEFEQ nxlet                           { make_mutual_let_cons None $1 $2 (class_and_id_region $4) end_of_mutual_let }
-  | HORZCMD COLON txfunc BAR
-                argvar DEFEQ nxlet                           { make_mutual_let_cons (Some $3) $1 $5 (class_and_id_region $7) end_of_mutual_let }
-
-  | HORZCMD     argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) $8 }
-  | HORZCMD BAR argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) $9 }
-  | HORZCMD COLON txfunc BAR
-                argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) $11 }
-
-  | HORZCMD     argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, class_and_id_region $4, $6)) end_of_mutual_let }
-  | HORZCMD BAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, class_and_id_region $5, $7)) end_of_mutual_let }
-  | HORZCMD COLON txfunc BAR
-                argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, class_and_id_region $7, $9)) end_of_mutual_let }
-/* -- for syntax error log -- */
-  | VAR error                                        { report_error (Ranged $1) "" }
-  | VAR COLON error                                  { report_error (Tok $2) ":" }
-  | VAR COLON txfunc DEFEQ error                     { report_error (Tok $4) "=" }
-  | VAR COLON txfunc BAR
-        error                                        { report_error (Tok $4) "|" }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ error                           { report_error (Tok $6) "=" }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet BAR error                 { report_error (Tok $8) "|" }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet LETAND error              { report_error (Tok $8) "and" }
-  | VAR COLON txfunc BAR
-        argvar DEFEQ nxlet BAR nxdecpar LETAND error { report_error (Tok $10) "and" }
-  | VAR argvar DEFEQ error                           { report_error (Tok $3) "=" }
-  | VAR argvar DEFEQ nxlet BAR error                 { report_error (Tok $5) "|" }
-  | VAR argvar DEFEQ nxlet LETAND error              { report_error (Tok $5) "and" }
-  | VAR argvar DEFEQ nxlet BAR nxdecpar LETAND error { report_error (Tok $7) "and" }
-  | HORZCMD error                                    { report_error (Ranged $1) "" }
-  | HORZCMD argvar DEFEQ error                       { report_error (Tok $3) "=" }
-  | HORZCMD argvar DEFEQ nxlet BAR error             { report_error (Tok $5) "|" }
-  | HORZCMD argvar DEFEQ nxlet LETAND error          { report_error (Tok $5) "and" }
-/* -- -- */
 *)
 ;
 nxdecpar:
