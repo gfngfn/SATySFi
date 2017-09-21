@@ -175,6 +175,8 @@ let make_environments () =
         ( "not", ~% (b --> b)        , lambda1 (fun v1 -> LogicalNot(v1))                     );
         ( "!"  , ptyderef            , lambda1 (fun v1 -> Reference(v1))                      );
         ( "::" , ptycons             , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
+        ( "+." , ~% (fl @-> fl @-> fl), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))              );
+        ( "-." , ~% (fl @-> fl @-> fl), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))             );
 
         ( "same"         , ~% (s --> (s --> b))         , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s --> (i --> (i --> s))) , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );

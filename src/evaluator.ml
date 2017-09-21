@@ -90,17 +90,35 @@ and interpret_point env astpt =
     | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
 
 
+and interpret_point_or_cycle env astpt =
+  let valuept = interpret env astpt in
+    match valuept with
+    | PathCycle -> None
+    | TupleCons(FloatConstant(x), TupleCons(FloatConstant(y), EndOfTuple))
+                -> Some((HorzBox.Length.of_pdf_point x, HorzBox.Length.of_pdf_point y))
+             (* temporary; should be modified to "native" length value *)
+    | _         -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
+
+
 and interpret_path env pathcomplst =
   pathcomplst |> List.map (function
     | PathLineTo(astpt) ->
-        let pt = interpret_point env astpt in
-          HorzBox.LineTo(pt)
+        let pt_or_cycle = interpret_point_or_cycle env astpt in
+        begin
+          match pt_or_cycle with
+          | None     -> HorzBox.LineToOrigin
+          | Some(pt) -> HorzBox.LineTo(pt)
+        end
 
     | PathCubicBezierTo(astpt1, astpt2, astpt) ->
         let pt1 = interpret_point env astpt1 in
         let pt2 = interpret_point env astpt2 in
-        let pt = interpret_point env astpt in
-          HorzBox.CubicBezierTo(pt1, pt2, pt)
+        let pt_or_cycle = interpret_point_or_cycle env astpt in
+        begin
+          match pt_or_cycle with
+          | None     -> HorzBox.CubicBezierToOrigin(pt1, pt2)
+          | Some(pt) -> HorzBox.CubicBezierTo(pt1, pt2, pt)
+        end
   )
 
 
@@ -591,6 +609,16 @@ and interpret env ast =
   | LogicalNot(astl) ->
       let blnl = interpret_bool env astl in
         BooleanConstant(not blnl)
+
+  | FloatPlus(ast1, ast2) ->
+      let flt1 = interpret_float env ast1 in
+      let flt2 = interpret_float env ast2 in
+        FloatConstant(flt1 +. flt2)
+
+  | FloatMinus(ast1, ast2) ->
+      let flt1 = interpret_float env ast1 in
+      let flt2 = interpret_float env ast2 in
+        FloatConstant(flt1 -. flt2)
 
 
 and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : input_vert_element list) : abstract_tree =

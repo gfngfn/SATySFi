@@ -553,7 +553,7 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : untyped_path_component list)
       | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
           let (ept1, typt1) = typecheck qtfbl lev tyenv utastpt1 in
           let () = unify_ tyenv typt1 (Range.dummy "typecheck-path-1", point_type_main) in
-          let (ept2, typt2) = typecheck qtfbl lev tyenv utastpt1 in
+          let (ept2, typt2) = typecheck qtfbl lev tyenv utastpt2 in
           let () = unify_ tyenv typt2 (Range.dummy "typecheck-path-2", point_type_main) in
           let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
           let () = unify_ tyenv typt (Range.dummy "typecheck-path-C", point_type_main) in

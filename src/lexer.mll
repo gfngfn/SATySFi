@@ -159,6 +159,10 @@ rule progexpr = parse
       next_state := VerticalState;
       OPENVERT(get_pos lexbuf)
     }
+  | "<[" { BPATH(get_pos lexbuf) }
+  | "]>" { EPATH(get_pos lexbuf) }
+  | ".." { PATHCURVE(get_pos lexbuf) }
+  | "--" { PATHLINE(get_pos lexbuf) }  (* -- prior to BINOP_MINUS -- *)
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
       after_literal_state := ProgramState;
@@ -189,6 +193,7 @@ rule progexpr = parse
 
 (* binary operators; should be extended *)
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("-" opsymbol+) { BINOP_MINUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("*" opsymbol+) { BINOP_TIMES(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("/" opsymbol*) { BINOP_DIVIDES(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("=" opsymbol*) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -249,6 +254,8 @@ rule progexpr = parse
           | "let-row"           -> LETHORZ(pos)
           | "let-col"           -> LETVERT(pos)
           | "let-col-detailed"  -> LETVERTDETAILED(pos)
+          | "controls"          -> CONTROLS(pos)
+          | "cycle"             -> CYCLE(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

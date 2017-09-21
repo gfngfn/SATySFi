@@ -498,6 +498,8 @@ and abstract_tree =
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
   | PrimitiveArabic       of abstract_tree
+  | FloatPlus             of abstract_tree * abstract_tree
+  | FloatMinus            of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
   | LambdaHorz                 of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment  of EvalVarID.t * abstract_tree * environment

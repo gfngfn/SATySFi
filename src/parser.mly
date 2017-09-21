@@ -414,6 +414,7 @@
 %token <Range.t> OPENVERT CLOSEVERT
 %token <Range.t> OPENHORZ CLOSEHORZ
 %token <Range.t> OPENPROG CLOSEPROG
+%token <Range.t> BPATH EPATH PATHLINE PATHCURVE CONTROLS CYCLE
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
@@ -754,12 +755,18 @@ nxbot:
   | opn=LPAREN; optok=binop; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
-/* -- for syntax error log -- */
-  | BLIST error    { report_error (Tok $1) "[" }
-  | OPENHORZ error { report_error (Tok $1) "{ (beginning of text area)" }
-  | LPAREN error   { report_error (Tok $1) "(" }
-  | BRECORD error  { report_error (Tok $1) "(|" }
-/* -- -- */
+  | opn=BPATH; path=path; cls=EPATH { make_standard (Tok opn) (Tok cls) path }
+;
+path:
+  | ast=nxbot; utpathcomplst=list(pathcomp); { UTPath(ast, utpathcomplst) }
+;
+pathcomp:
+  | PATHLINE; ast=pointto                                                       { UTPathLineTo(ast) }
+  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; ast=pointto { UTPathCubicBezierTo(ast1, ast2, ast) }
+;
+pointto:
+  | rng=CYCLE { (rng, UTPathCycle) }
+  | ast=nxbot { ast }
 ;
 /*
 modulevar:

@@ -103,8 +103,10 @@ type paddings =
   }
 
 type path_element =
-  | LineTo        of point
-  | CubicBezierTo of point * point * point
+  | LineTo              of point
+  | CubicBezierTo       of point * point * point
+  | LineToOrigin
+  | CubicBezierToOrigin of point * point
 
 type path =
   | GeneralPath of point * path_element list
