@@ -103,6 +103,26 @@ and interpret_path env pathcomplst =
           HorzBox.CubicBezierTo(pt1, pt2, pt)
   )
 
+
+and make_frame_deco env valuedeco =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let flt = HorzBox.Length.to_pdf_point in
+    let astpos = TupleCons(FloatConstant(flt xpos), TupleCons(FloatConstant(flt ypos), EndOfTuple)) in
+    let astwid = FloatConstant(flt wid) in
+    let asthgt = FloatConstant(flt hgt) in
+    let astdpt = FloatConstant(flt dpt) in
+    let astret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
+      let rec aux acc ast =
+        match ast with
+        | EndOfList                       -> List.rev acc
+        | ListCons(PathValue(path), tail) -> aux (path :: acc) tail
+        | _                               -> report_bug_evaluator ("make_frame_deco; "
+                                                                   ^ (Display.string_of_ast ast))
+      in
+        aux [] astret
+  )
+
+
 and interpret env ast =
   match ast with
 
@@ -263,10 +283,14 @@ and interpret env ast =
       let purestr = interpret_string env aststr in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
-  | BackendOuterFrame(astbr) ->
+  | BackendOuterFrame(astdeco, astbr) ->
       let hblst = interpret_horz_boxes env astbr in
-        Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(Primitives.default_paddings, Primitives.frame_deco_S, hblst))])
-        (* temporary; paddings and frame decoration should be variable *)
+      let valuedeco = interpret env astdeco in
+        Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
+          Primitives.default_paddings,
+          make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
+          hblst))])
+            (* temporary; paddings should be variable *)
 
   | BackendOuterFrameBreakable(astbr) ->
       let hblst = interpret_horz_boxes env astbr in

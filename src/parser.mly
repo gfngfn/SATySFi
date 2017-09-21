@@ -563,10 +563,10 @@ nxvertdetaileddec:
       }
 ;
 nxdecargpart:
-  | COLON; mty=txfunc                        { (Some(mty), []) }
-  | COLON; mty=txfunc; BAR; argvarlst=argvar (* temporary; should be nonempty *) { (Some(mty), argvarlst) }
-  | BAR; argvarlst=argvar (* temporary; should be nonempty *)     { (None, argvarlst) }
-  | argvarlst=argvar                         { (None, argvarlst) }
+  | COLON; mty=txfunc                                       { (Some(mty), []) }
+  | COLON; mty=txfunc; BAR; argvarlst=nonempty_list(patbot) { (Some(mty), argvarlst) }
+  | BAR; argvarlst=nonempty_list(patbot)                    { (None, argvarlst) }
+  | argvarlst=argvar                                        { (None, argvarlst) }
 ;
 nxdecsub:
   | LETAND; dec=nxdec { dec }
@@ -585,15 +585,6 @@ nxdec: /* -> untyped_mutual_let_cons */
         let (mtyopt, argvarlst) = argpart in
           make_mutual_let_cons_par mtyopt vartok (UTLetPatternCons(argvarlst, utastdef, decpar)) dec
       }
-(*
-  | VAR COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar LETAND nxdec { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) $11 }
-
-  | VAR     argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($2, $4, $6)) end_of_mutual_let }
-  | VAR BAR argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par None $1 (UTLetPatternCons($3, $5, $7)) end_of_mutual_let }
-  | VAR COLON txfunc BAR
-            argvar DEFEQ nxlet BAR nxdecpar              { make_mutual_let_cons_par (Some $3) $1 (UTLetPatternCons($5, $7, $9)) end_of_mutual_let }
-*)
 ;
 nxdecpar:
   | argvar DEFEQ nxlet BAR nxdecpar { UTLetPatternCons($1, $3, $5) }

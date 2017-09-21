@@ -138,7 +138,9 @@ let make_environments () =
   let (~%) ty       = Poly(ty) in
   let l cont        = (Range.dummy "list"    , ListType(cont)       ) in
   let r cont        = (Range.dummy "ref"     , RefType(cont)        ) in
+  let prod tylst    = (Range.dummy "product" , ProductType(tylst)   ) in
   let (-->) dom cod = (Range.dummy "func"    , FuncType(dom, cod)   ) in
+  let (@->) = (-->) in
 
   let tr            = (Range.dummy "text-row", BaseType(TextRowType)) in
   let tc            = (Range.dummy "text-col", BaseType(TextColType)) in
@@ -146,6 +148,8 @@ let make_environments () =
   let bc            = (Range.dummy "box-col" , BaseType(BoxColType) ) in
   let ft            = (Range.dummy "font"    , BaseType(FontType)   ) in
   let ctx           = (Range.dummy "context" , BaseType(ContextType)) in
+  let path          = (Range.dummy "path"    , BaseType(PathType)   ) in
+  let deco          = (prod [fl; fl]) @-> fl @-> fl @-> fl @-> (l path) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -182,7 +186,7 @@ let make_environments () =
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
-        ("outer-frame-block", ~% (br --> br)            , lambda1 (fun vbr -> BackendOuterFrame(vbr)));
+        ("outer-frame-block", ~% (deco --> (br --> br)) , lambda2 (fun vdeco vbr -> BackendOuterFrame(vdeco, vbr)));
         ("outer-frame-inline", ~% (br --> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
         ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
