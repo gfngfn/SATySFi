@@ -16,6 +16,15 @@ let print_for_debug_typecheck msg =
 *)
   ()
 
+
+let point_type_main =
+  (ProductType([
+    (Range.dummy "point-type-1", BaseType(FloatType));
+    (Range.dummy "point-type-2", BaseType(FloatType));
+  ]))
+    (* temporary; should be modified to "native" length types *)
+
+
 let flatten_type ty =
   let rec aux acc ty =
     let (rng, tymain) = ty in
@@ -240,6 +249,14 @@ let rec typecheck
   | UTInputVert(utivlst) ->
       let ivlst = typecheck_input_vert rng qtfbl lev tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
+
+  | UTPath(utastpt0, utpathcomplst) ->
+      let (ept0, typt0) = typecheck_iter tyenv utastpt0 in
+      let () = unify typt0 (Range.dummy "ut-path", point_type_main) in
+      let pathcomplst = typecheck_path qtfbl lev tyenv utpathcomplst in
+      (Path(ept0, pathcomplst), (rng, BaseType(PathType)))
+
+  | UTPathCycle -> (PathCycle, (rng, point_type_main))
 
   | UTFinishStruct ->
       begin
@@ -522,6 +539,28 @@ let rec typecheck
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(eM, eA), tyA)
+
+
+and typecheck_path qtfbl lev tyenv (utpathcomplst : untyped_path_component list) =
+  let pathcompacc =
+    utpathcomplst |> List.fold_left (fun acc utpathcomp ->
+      match utpathcomp with
+      | UTPathLineTo(utastpt) ->
+          let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
+          let () = unify_ tyenv typt (Range.dummy "typecheck-path-L", point_type_main) in
+            PathLineTo(ept) :: acc
+
+      | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
+          let (ept1, typt1) = typecheck qtfbl lev tyenv utastpt1 in
+          let () = unify_ tyenv typt1 (Range.dummy "typecheck-path-1", point_type_main) in
+          let (ept2, typt2) = typecheck qtfbl lev tyenv utastpt1 in
+          let () = unify_ tyenv typt2 (Range.dummy "typecheck-path-2", point_type_main) in
+          let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
+          let () = unify_ tyenv typt (Range.dummy "typecheck-path-C", point_type_main) in
+            PathCubicBezierTo(ept1, ept2, ept) :: acc
+    ) []
+  in
+    List.rev pathcompacc
 
 
 and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =

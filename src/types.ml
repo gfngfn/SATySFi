@@ -177,6 +177,7 @@ type base_type =
   | BoxColType
   | FontType
   | ContextType
+  | PathType
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -244,6 +245,10 @@ and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
 
+and untyped_path_component =
+  | UTPathLineTo        of untyped_abstract_tree
+  | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
@@ -263,6 +268,9 @@ and untyped_abstract_tree_main =
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree
+(* -- graphics -- *)
+  | UTPath                 of untyped_abstract_tree * untyped_path_component list
+  | UTPathCycle
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -399,6 +407,10 @@ and input_context = {
 }
 (* temporary *)
 
+and path_component =
+  | PathLineTo        of abstract_tree
+  | PathCubicBezierTo of abstract_tree * abstract_tree * abstract_tree
+
 and abstract_tree =
 (* -- basic value -- *)
   | StringEmpty
@@ -420,6 +432,10 @@ and abstract_tree =
   | InputVert             of input_vert_element list
   | InputHorzWithEnvironment of input_horz_element list * environment
   | InputVertWithEnvironment of input_vert_element list * environment
+(* -- graphics -- *)
+  | Path                  of abstract_tree * path_component list
+  | PathCycle
+  | PathValue             of HorzBox.path
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
@@ -707,6 +723,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(BoxColType)  -> "box-col" ^ qstn
     | BaseType(FontType)    -> "font" ^ qstn
     | BaseType(ContextType) -> "context" ^ qstn
+    | BaseType(PathType)    -> "path" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

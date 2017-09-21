@@ -29,8 +29,8 @@ let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
 
 let pdfops_of_elements (elemlst : path_element list) =
   elemlst |> List.map (function
-    | LineTo(ptto)               -> op_l ptto
-    | BezierTo(ptc1, ptc2, ptto) -> op_c ptc1 ptc2 ptto
+    | LineTo(ptto)                    -> op_l ptto
+    | CubicBezierTo(ptc1, ptc2, ptto) -> op_c ptc1 ptc2 ptto
   )
 
 

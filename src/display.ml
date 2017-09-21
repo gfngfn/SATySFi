@@ -124,6 +124,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(BoxColType)  -> "box-col"
     | BaseType(FontType)    -> "font"
     | BaseType(ContextType) -> "context"
+    | BaseType(PathType)    -> "path"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 

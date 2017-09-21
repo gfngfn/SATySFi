@@ -81,6 +81,28 @@ and normalize_box_col valuecol =
     | _                          -> report_bug_evaluator ("normalize_box_col; " ^ (Display.string_of_ast valuecol))
 
 
+and interpret_point env astpt =
+  let valuept = interpret env astpt in
+    match valuept with
+    | TupleCons(FloatConstant(x), TupleCons(FloatConstant(y), EndOfTuple))
+        -> (HorzBox.Length.of_pdf_point x, HorzBox.Length.of_pdf_point y)
+             (* temporary; should be modified to "native" length value *)
+    | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
+
+
+and interpret_path env pathcomplst =
+  pathcomplst |> List.map (function
+    | PathLineTo(astpt) ->
+        let pt = interpret_point env astpt in
+          HorzBox.LineTo(pt)
+
+    | PathCubicBezierTo(astpt1, astpt2, astpt) ->
+        let pt1 = interpret_point env astpt1 in
+        let pt2 = interpret_point env astpt2 in
+        let pt = interpret_point env astpt in
+          HorzBox.CubicBezierTo(pt1, pt2, pt)
+  )
+
 and interpret env ast =
   match ast with
 
@@ -114,6 +136,15 @@ and interpret env ast =
         end
 
 (* ---- values for backend ---- *)
+
+  | Path(astpt0, pathcomplst) ->
+      let pt0 = interpret_point env astpt0 in
+      let pathelemlst = interpret_path env pathcomplst in
+        PathValue(HorzBox.GeneralPath(pt0, pathelemlst))
+
+  | PathCycle -> ast
+
+  | PathValue(_) -> ast
 
   | FontDesignation(_) -> ast
 
