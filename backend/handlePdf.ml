@@ -28,9 +28,7 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
           evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
         in
         let ops =
-          List.append
-            (Graphics.op_q :: (Graphics.pdfops_of_path_list (deco (xpos, yposbaseline) wid hgt_frame dpt_frame)))
-            (Graphics.op_Q :: [])
+          deco (xpos, yposbaseline) wid hgt_frame dpt_frame
         in
         let opaccnew = List.rev_append ops opaccsub in
           (xposnew, opaccnew)

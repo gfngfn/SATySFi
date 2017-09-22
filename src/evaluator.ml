@@ -125,12 +125,12 @@ and make_frame_deco env valuedeco =
     let astret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
       let rec aux acc ast =
         match ast with
-        | EndOfList                       -> List.rev acc
-        | ListCons(PathValue(path), tail) -> aux (path :: acc) tail
-        | _                               -> report_bug_evaluator ("make_frame_deco; "
-                                                                   ^ (Display.string_of_ast ast))
+        | EndOfList                             -> List.rev acc
+        | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
+        | _                                     -> report_bug_evaluator ("make_frame_deco; "
+                                                                         ^ (Display.string_of_ast ast))
       in
-        aux [] astret
+        List.concat (aux [] astret)
   )
 
 
@@ -187,6 +187,10 @@ and interpret env ast =
         PathValue(HorzBox.GeneralPath(pt0, pathelemlst, closingopt))
 
   | PathValue(_) -> ast
+
+  | GraphicsContext(_) -> ast
+
+  | GraphicsValue(_) -> ast
 
   | FontDesignation(_) -> ast
 
@@ -548,6 +552,17 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
+  | PrimitiveSetLineWidth(astlen, astgctx) ->
+      let len = interpret_length env astlen in
+      let gctx = interpret_graphics_context env astgctx in
+        GraphicsContext({ gctx with HorzBox.line_width = len })
+
+  | PrimitiveDrawStroke(astgctx, astpath) ->
+      let gctx = interpret_graphics_context env astgctx in
+      let path = interpret_path_value env astpath in
+      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawStroke path in
+        GraphicsValue(pdfops)
+
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
@@ -716,6 +731,15 @@ and interpret_string (env : environment) (ast : abstract_tree) : string =
                                                  ^ " ->* " ^ (Display.string_of_ast vs))
 
 
+and interpret_path_value env ast : HorzBox.path =
+  let value = interpret env ast in
+    match value with
+    | PathValue(path) -> path
+    | _               -> report_bug_evaluator ("interpret_path_value: not a PathValue; "
+                                               ^ (Display.string_of_ast ast)
+                                               ^ " ->* " ^ (Display.string_of_ast value))
+
+
 and interpret_context (env : environment) (ast : abstract_tree) : input_context =
   let value = interpret env ast in
     match value with
@@ -723,6 +747,15 @@ and interpret_context (env : environment) (ast : abstract_tree) : input_context 
     | _            -> report_bug_evaluator ("interpret_context: not a Context; "
                                             ^ (Display.string_of_ast ast)
                                             ^ " ->* " ^ (Display.string_of_ast value))
+
+
+and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzBox.graphics_state =
+  let value = interpret env ast in
+    match value with
+    | GraphicsContext(gctx) -> gctx
+    | _                     -> report_bug_evaluator ("interpret_graphics_context: not a GraphicsContext; "
+                                                     ^ (Display.string_of_ast ast)
+                                                     ^ " ->* " ^ (Display.string_of_ast value))
 
 
 and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_info =

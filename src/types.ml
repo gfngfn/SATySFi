@@ -180,6 +180,8 @@ type base_type =
   | FontType
   | ContextType
   | PathType
+  | GraphicsContextType
+  | GraphicsType
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -440,6 +442,8 @@ and abstract_tree =
 (* -- graphics -- *)
   | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue             of HorzBox.path
+  | GraphicsContext       of HorzBox.graphics_state
+  | GraphicsValue         of Pdfops.t list
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
@@ -524,6 +528,8 @@ and abstract_tree =
   | PrimitiveGetFont           of abstract_tree
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
+  | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
+  | PrimitiveDrawStroke        of abstract_tree * abstract_tree
   | BackendFont                of abstract_tree * abstract_tree
   | BackendLineBreaking        of abstract_tree * abstract_tree
   | BackendFixedString         of abstract_tree * abstract_tree
@@ -735,6 +741,8 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(ContextType) -> "context" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
+    | BaseType(GraphicsContextType) -> "graphics-context" ^ qstn
+    | BaseType(GraphicsType) -> "graphics" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

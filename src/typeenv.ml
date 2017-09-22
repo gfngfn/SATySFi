@@ -154,7 +154,7 @@ let find_for_inner ((addr, nmtoid, mtr) : t) (varnm : var_name) : (poly_type * E
 let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
   let addrnew = List.append addr [mdlid] in
-  let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in
+  let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in  (* doubtful about nmtoid; shouldn't a module name be added when *leaving* the module instead of when entering it? *)
   let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
     (addrnew, nmtoidnew, mtrnew)
 
@@ -167,7 +167,7 @@ let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
 
 let leave_module ((addr, nmtoid, mtr) : t) : t =
   try
-    (List.rev (List.tl (List.rev addr)), nmtoid, mtr)
+    (List.rev (List.tl (List.rev addr)), nmtoid, mtr)  (* doubtful about nmtoid; see enter_new_module *)
   with
   | Failure(_) -> assert false
 

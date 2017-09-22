@@ -21,3 +21,5 @@ val op_Q : Pdfops.t
 val op_S : Pdfops.t
 
 val pdfops_of_path_list : path list -> Pdfops.t list
+
+val pdfops_of_graphics : graphics_state -> graphics_command -> path -> Pdfops.t list

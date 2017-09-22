@@ -138,7 +138,7 @@ type line_cap =
   | RoundCap
   | ProjectingSquareCap
 
-type graphic_state =
+type graphics_state =
   {
     line_width  : length;
     line_dash   : line_dash;
@@ -147,7 +147,7 @@ type graphic_state =
     miter_limit : length;
   }
 
-type graphic_command =
+type graphics_command =
   | DrawStroke
   | DrawFillByNonzero
   | DrawFillByEvenOdd
@@ -156,7 +156,7 @@ type graphic_command =
 
 (* -- internal representation of boxes -- *)
 
-type decoration = point -> length -> length -> length -> path list
+type decoration = point -> length -> length -> length -> Pdfops.t list
 
 type pure_horz_box =
   | PHOuterEmpty  of length * length * length

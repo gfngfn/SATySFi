@@ -126,6 +126,8 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(ContextType) -> "context"
     | BaseType(PathType)    -> "path"
     | BaseType(LengthType)  -> "length"
+    | BaseType(GraphicsContextType) -> "graphics-context"
+    | BaseType(GraphicsType) -> "graphics"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 

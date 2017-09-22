@@ -75,7 +75,7 @@ let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =
   pathlst |> List.map pdfops_of_path |> List.concat
 
 
-let pdfops_of_graphics (gstate : graphic_state) (gcmd : graphic_command) (path : path) : Pdfops.t list =
+let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path : path) : Pdfops.t list =
   let pathops = pdfops_of_path path in
   let stateops =
     [
