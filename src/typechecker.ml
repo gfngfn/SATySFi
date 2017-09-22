@@ -573,15 +573,14 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
     ) []
   in
   let cycleopt =
-    match utcycleopt with
-    | None -> None
+    utcycleopt |> Util.option_map (function
+      | UTPathLineTo(()) -> PathLineTo(())
 
-    | Some(UTPathLineTo(())) -> Some(PathLineTo(()))
-
-    | Some(UTPathCubicBezierTo(utastpt1, utastpt2, ())) ->
-        let ept1 = typecheck_anchor_point utastpt1 in
-        let ept2 = typecheck_anchor_point utastpt2 in
-          Some(PathCubicBezierTo(ept1, ept2, ()))
+      | UTPathCubicBezierTo(utastpt1, utastpt2, ()) ->
+          let ept1 = typecheck_anchor_point utastpt1 in
+          let ept2 = typecheck_anchor_point utastpt2 in
+            PathCubicBezierTo(ept1, ept2, ())
+    )
   in
     (List.rev pathcompacc, cycleopt)
 
