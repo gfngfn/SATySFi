@@ -245,9 +245,9 @@ and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
 
-and untyped_path_component =
-  | UTPathLineTo        of untyped_abstract_tree
-  | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
+and 'a untyped_path_component =
+  | UTPathLineTo        of 'a
+  | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * 'a
 
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
@@ -269,8 +269,7 @@ and untyped_abstract_tree_main =
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree
 (* -- graphics -- *)
-  | UTPath                 of untyped_abstract_tree * untyped_path_component list
-  | UTPathCycle
+  | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
@@ -407,9 +406,9 @@ and input_context = {
 }
 (* temporary *)
 
-and path_component =
-  | PathLineTo        of abstract_tree
-  | PathCubicBezierTo of abstract_tree * abstract_tree * abstract_tree
+and 'a path_component =
+  | PathLineTo        of 'a
+  | PathCubicBezierTo of abstract_tree * abstract_tree * 'a
 
 and abstract_tree =
 (* -- basic value -- *)
@@ -433,8 +432,7 @@ and abstract_tree =
   | InputHorzWithEnvironment of input_horz_element list * environment
   | InputVertWithEnvironment of input_vert_element list * environment
 (* -- graphics -- *)
-  | Path                  of abstract_tree * path_component list
-  | PathCycle
+  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue             of HorzBox.path
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list

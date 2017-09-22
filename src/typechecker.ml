@@ -250,13 +250,11 @@ let rec typecheck
       let ivlst = typecheck_input_vert rng qtfbl lev tyenv utivlst in
       (InputVert(ivlst), (rng, BaseType(TextColType)))
 
-  | UTPath(utastpt0, utpathcomplst) ->
+  | UTPath(utastpt0, utpathcomplst, utcycleopt) ->
       let (ept0, typt0) = typecheck_iter tyenv utastpt0 in
       let () = unify typt0 (Range.dummy "ut-path", point_type_main) in
-      let pathcomplst = typecheck_path qtfbl lev tyenv utpathcomplst in
-      (Path(ept0, pathcomplst), (rng, BaseType(PathType)))
-
-  | UTPathCycle -> (PathCycle, (rng, point_type_main))
+      let (pathcomplst, cycleopt) = typecheck_path qtfbl lev tyenv utpathcomplst utcycleopt in
+      (Path(ept0, pathcomplst, cycleopt), (rng, BaseType(PathType)))
 
   | UTFinishStruct ->
       begin
@@ -541,7 +539,14 @@ let rec typecheck
         (Module(eM, eA), tyA)
 
 
-and typecheck_path qtfbl lev tyenv (utpathcomplst : untyped_path_component list) =
+and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyped_path_component) list) (utcycleopt : (unit untyped_path_component) option) =
+
+  let typecheck_anchor_point utastpt =
+    let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
+    let () = unify_ tyenv typt (Range.dummy "typecheck-path", point_type_main) in
+      ept
+  in
+
   let pathcompacc =
     utpathcomplst |> List.fold_left (fun acc utpathcomp ->
       match utpathcomp with
@@ -551,16 +556,24 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : untyped_path_component list)
             PathLineTo(ept) :: acc
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
-          let (ept1, typt1) = typecheck qtfbl lev tyenv utastpt1 in
-          let () = unify_ tyenv typt1 (Range.dummy "typecheck-path-1", point_type_main) in
-          let (ept2, typt2) = typecheck qtfbl lev tyenv utastpt2 in
-          let () = unify_ tyenv typt2 (Range.dummy "typecheck-path-2", point_type_main) in
-          let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
-          let () = unify_ tyenv typt (Range.dummy "typecheck-path-C", point_type_main) in
+          let ept1 = typecheck_anchor_point utastpt1 in
+          let ept2 = typecheck_anchor_point utastpt2 in
+          let ept = typecheck_anchor_point utastpt in
             PathCubicBezierTo(ept1, ept2, ept) :: acc
     ) []
   in
-    List.rev pathcompacc
+  let cycleopt =
+    match utcycleopt with
+    | None -> None
+
+    | Some(UTPathLineTo(())) -> Some(PathLineTo(()))
+
+    | Some(UTPathCubicBezierTo(utastpt1, utastpt2, ())) ->
+        let ept1 = typecheck_anchor_point utastpt1 in
+        let ept2 = typecheck_anchor_point utastpt2 in
+          Some(PathCubicBezierTo(ept1, ept2, ()))
+  in
+    (List.rev pathcompacc, cycleopt)
 
 
 and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =

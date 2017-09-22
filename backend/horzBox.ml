@@ -102,14 +102,12 @@ type paddings =
     paddingB : length;
   }
 
-type path_element =
-  | LineTo              of point
-  | CubicBezierTo       of point * point * point
-  | LineToOrigin
-  | CubicBezierToOrigin of point * point
+type 'a path_element =
+  | LineTo              of 'a
+  | CubicBezierTo       of point * point * 'a
 
 type path =
-  | GeneralPath of point * path_element list
+  | GeneralPath of point * (point path_element) list * (unit path_element) option
   | Rectangle   of point * point
 
 type decoration = point -> length -> length -> length -> path list

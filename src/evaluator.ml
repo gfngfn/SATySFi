@@ -89,7 +89,7 @@ and interpret_point env astpt =
              (* temporary; should be modified to "native" length value *)
     | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
 
-
+(*
 and interpret_point_or_cycle env astpt =
   let valuept = interpret env astpt in
     match valuept with
@@ -98,28 +98,34 @@ and interpret_point_or_cycle env astpt =
                 -> Some((HorzBox.Length.of_pdf_point x, HorzBox.Length.of_pdf_point y))
              (* temporary; should be modified to "native" length value *)
     | _         -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
+*)
 
+and interpret_path env pathcomplst cycleopt =
+  let pathelemlst =
+    pathcomplst |> List.map (function
+      | PathLineTo(astpt) ->
+          let pt = interpret_point env astpt in
+            HorzBox.LineTo(pt)
 
-and interpret_path env pathcomplst =
-  pathcomplst |> List.map (function
-    | PathLineTo(astpt) ->
-        let pt_or_cycle = interpret_point_or_cycle env astpt in
-        begin
-          match pt_or_cycle with
-          | None     -> HorzBox.LineToOrigin
-          | Some(pt) -> HorzBox.LineTo(pt)
-        end
+      | PathCubicBezierTo(astpt1, astpt2, astpt) ->
+          let pt1 = interpret_point env astpt1 in
+          let pt2 = interpret_point env astpt2 in
+          let pt = interpret_point env astpt in
+            HorzBox.CubicBezierTo(pt1, pt2, pt)
+    )
+  in
+  let closingopt =
+    match cycleopt with
+    | None -> None
 
-    | PathCubicBezierTo(astpt1, astpt2, astpt) ->
+    | Some(PathLineTo(())) -> Some(HorzBox.LineTo(()))
+
+    | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
         let pt1 = interpret_point env astpt1 in
         let pt2 = interpret_point env astpt2 in
-        let pt_or_cycle = interpret_point_or_cycle env astpt in
-        begin
-          match pt_or_cycle with
-          | None     -> HorzBox.CubicBezierToOrigin(pt1, pt2)
-          | Some(pt) -> HorzBox.CubicBezierTo(pt1, pt2, pt)
-        end
-  )
+          Some(HorzBox.CubicBezierTo(pt1, pt2, ()))
+  in
+    (pathelemlst, closingopt)
 
 
 and make_frame_deco env valuedeco =
@@ -175,12 +181,10 @@ and interpret env ast =
 
 (* ---- values for backend ---- *)
 
-  | Path(astpt0, pathcomplst) ->
+  | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
-      let pathelemlst = interpret_path env pathcomplst in
-        PathValue(HorzBox.GeneralPath(pt0, pathelemlst))
-
-  | PathCycle -> ast
+      let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
+        PathValue(HorzBox.GeneralPath(pt0, pathelemlst, closingopt))
 
   | PathValue(_) -> ast
 

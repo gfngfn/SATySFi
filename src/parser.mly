@@ -757,23 +757,21 @@ nxbot:
   | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
   | opn=BPATH; path=path; cls=EPATH { make_standard (Tok opn) (Tok cls) path }
 ;
-path:
-  | ast=nxbot; utpathcomplst=list(pathcomp); { UTPath(ast, utpathcomplst) }
+path: (* untyped_abstract_tree_main *)
+  | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
+;
+pathsub: (* (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option *)
+  | pc=pathcomp; sub=pathsub          { let (tail, utcycleopt) = sub in (pc :: tail, utcycleopt) }
+  | utcycleopt=option(pathcompcycle); { ([], utcycleopt) }
 ;
 pathcomp:
-  | PATHLINE; ast=pointto                                                       { UTPathLineTo(ast) }
-  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; ast=pointto { UTPathCubicBezierTo(ast1, ast2, ast) }
+  | PATHLINE; ast=nxbot                                                       { UTPathLineTo(ast) }
+  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; ast=nxbot { UTPathCubicBezierTo(ast1, ast2, ast) }
 ;
-pointto:
-  | rng=CYCLE { (rng, UTPathCycle) }
-  | ast=nxbot { ast }
+pathcompcycle:
+  | PATHLINE; CYCLE                                                       { UTPathLineTo(()) }
+  | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; CYCLE { UTPathCubicBezierTo(ast1, ast2, ()) }
 ;
-/*
-modulevar:
-  | VAR                       { (get_range $1, [], $1) }
-  | CONSTRUCTOR DOT modulevar { let (_, mdlnmlst, vartok) = $3 in (get_range $1, (extract_name $1) :: mdlnmlst, vartok) }
-;
-*/
 nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT          { (extract_name $1, $3) :: [] }

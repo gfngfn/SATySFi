@@ -28,24 +28,28 @@ let op_Q = Pdfops.Op_Q
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
 
 
-let pdfops_of_elements (ptorigin : point) (elemlst : path_element list) =
+let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
   let opacc =
     elemlst |> List.fold_left (fun acc elem ->
       match elem with
       | LineTo(ptto)                    -> (op_l ptto) :: acc
       | CubicBezierTo(ptc1, ptc2, ptto) -> (op_c ptc1 ptc2 ptto) :: acc
-      | LineToOrigin                    -> op_h :: acc
-      | CubicBezierToOrigin(ptc1, ptc2) -> op_h :: (op_c ptc1 ptc2 ptorigin) :: acc
     ) []
   in
-    List.rev opacc
+  let closingopacc =
+    match closingopt with
+    | None                                -> opacc
+    | Some(LineTo(()))                    -> op_h :: opacc
+    | Some(CubicBezierTo(ptc1, ptc2, ())) -> op_h :: (op_c ptc1 ptc2 ptorigin) :: opacc
+  in
+    List.rev closingopacc
 
 
 let pdfops_of_path (path : path) : Pdfops.t list =
   let pathops =
     match path with
-    | GeneralPath(ptorigin, elemlst) -> (op_m ptorigin) :: (pdfops_of_elements ptorigin elemlst)
-    | Rectangle(pt1, pt2)            -> [op_re pt1 pt2]
+    | GeneralPath(ptorigin, elemlst, closingopt) -> (op_m ptorigin) :: (pdfops_of_elements ptorigin elemlst closingopt)
+    | Rectangle(pt1, pt2)                        -> [op_re pt1 pt2]
   in
     List.append pathops [op_S]
 

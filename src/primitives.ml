@@ -85,7 +85,7 @@ let frame_deco_H =
         HorzBox.LineTo(xposb, ypos +% hgtb);
         HorzBox.LineTo(xposb, ypos +% dptb);
         HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-      ]);
+      ], None);
     ]
   )
 
@@ -96,8 +96,8 @@ let frame_deco_M =
     let dptb = dpt +% margin in
     let widb = wid in
     [
-      HorzBox.GeneralPath((xposb, ypos +% hgtb), [HorzBox.LineTo(xposb +% widb, ypos +% hgtb)]);
-      HorzBox.GeneralPath((xposb, ypos +% dptb), [HorzBox.LineTo(xposb +% widb, ypos +% dptb)]);
+      HorzBox.GeneralPath((xposb, ypos +% hgtb), [HorzBox.LineTo(xposb +% widb, ypos +% hgtb)], None);
+      HorzBox.GeneralPath((xposb, ypos +% dptb), [HorzBox.LineTo(xposb +% widb, ypos +% dptb)], None);
     ]
   )
 
@@ -112,7 +112,7 @@ let frame_deco_T =
         HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
         HorzBox.LineTo(xposb +% widb, ypos +% dptb);
         HorzBox.LineTo(xposb, ypos +% dptb);
-      ]);
+      ], None);
     ]
   )
 
