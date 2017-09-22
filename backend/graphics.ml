@@ -9,9 +9,9 @@ let op_cm (xdiff, ydiff) =
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
                  [Pdftransform.Translate
-                     (Length.to_pdf_point xpos, Length.to_pdf_point ypos)])
+                     (~% xpos, ~% ypos)])
 
-let op_Tf tag sl = Pdfops.Op_Tf(tag, Length.to_pdf_point sl)
+let op_Tf tag sl = Pdfops.Op_Tf(tag, ~% sl)
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_TJ obj = Pdfops.Op_TJ(obj)
@@ -22,10 +22,30 @@ let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
 let op_c (p1, q1) (p2, q2) (x, y) = Pdfops.Op_c(~% p1, ~% q1, ~% p2, ~% q2, ~% x, ~% y)
 let op_h = Pdfops.Op_h
 let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
-let op_S = Pdfops.Op_S
 let op_q = Pdfops.Op_q
 let op_Q = Pdfops.Op_Q
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
+let op_S = Pdfops.Op_S
+let op_f = Pdfops.Op_f
+let op_f' = Pdfops.Op_f'
+let op_B = Pdfops.Op_B
+let op_B' = Pdfops.Op_B'
+let op_M ml = Pdfops.Op_M(~% ml)
+let op_w lw = Pdfops.Op_w(~% lw)
+
+let op_J = function
+  | ButtCap             -> Pdfops.Op_J(0)
+  | RoundCap            -> Pdfops.Op_J(1)
+  | ProjectingSquareCap -> Pdfops.Op_J(2)
+
+let op_j = function
+  | MiterJoin -> Pdfops.Op_j(0)
+  | RoundJoin -> Pdfops.Op_j(1)
+  | BevelJoin -> Pdfops.Op_j(2)
+
+let op_d = function
+  | SolidLine              -> Pdfops.Op_d([], 0.)
+  | DashedLine(d1, d2, d0) -> Pdfops.Op_d([~% d1; ~% d2], ~% d0)
 
 
 let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
@@ -46,13 +66,32 @@ let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) 
 
 
 let pdfops_of_path (path : path) : Pdfops.t list =
-  let pathops =
-    match path with
-    | GeneralPath(ptorigin, elemlst, closingopt) -> (op_m ptorigin) :: (pdfops_of_elements ptorigin elemlst closingopt)
-    | Rectangle(pt1, pt2)                        -> [op_re pt1 pt2]
-  in
-    List.append pathops [op_S]
+  match path with
+  | GeneralPath(ptorigin, elemlst, closingopt) -> (op_m ptorigin) :: (pdfops_of_elements ptorigin elemlst closingopt)
+  | Rectangle(pt1, pt2)                        -> [op_re pt1 pt2]
 
 
 let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =
   pathlst |> List.map pdfops_of_path |> List.concat
+
+
+let pdfops_of_graphics (gstate : graphic_state) (gcmd : graphic_command) (path : path) : Pdfops.t list =
+  let pathops = pdfops_of_path path in
+  let stateops =
+    [
+      op_w gstate.line_width;
+      op_J gstate.line_cap;
+      op_j gstate.line_join;
+      op_d gstate.line_dash;
+      op_M gstate.miter_limit;
+    ]
+  in
+  let drawop =
+    match gcmd with
+    | DrawStroke        -> op_S
+    | DrawFillByNonzero -> op_f
+    | DrawFillByEvenOdd -> op_f'
+    | DrawBothByNonzero -> op_B
+    | DrawBothByEvenOdd -> op_B'
+  in
+    List.concat [[op_q]; stateops; pathops; [drawop; op_Q]]

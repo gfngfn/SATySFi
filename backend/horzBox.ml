@@ -113,6 +113,9 @@ type paddings =
     paddingB : length;
   }
 
+
+(* -- representation about graphics based on PDF 1.7 specification -- *)
+
 type 'a path_element =
   | LineTo              of 'a
   | CubicBezierTo       of point * point * 'a
@@ -120,6 +123,38 @@ type 'a path_element =
 type path =
   | GeneralPath of point * (point path_element) list * (unit path_element) option
   | Rectangle   of point * point
+
+type line_dash =
+  | SolidLine
+  | DashedLine of length * length * length
+
+type line_join =
+  | MiterJoin
+  | RoundJoin
+  | BevelJoin
+
+type line_cap =
+  | ButtCap
+  | RoundCap
+  | ProjectingSquareCap
+
+type graphic_state =
+  {
+    line_width  : length;
+    line_dash   : line_dash;
+    line_join   : line_join;
+    line_cap    : line_cap;
+    miter_limit : length;
+  }
+
+type graphic_command =
+  | DrawStroke
+  | DrawFillByNonzero
+  | DrawFillByEvenOdd
+  | DrawBothByNonzero
+  | DrawBothByEvenOdd
+
+(* -- internal representation of boxes -- *)
 
 type decoration = point -> length -> length -> length -> path list
 
