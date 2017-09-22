@@ -84,21 +84,9 @@ and normalize_box_col valuecol =
 and interpret_point env astpt =
   let valuept = interpret env astpt in
     match valuept with
-    | TupleCons(FloatConstant(x), TupleCons(FloatConstant(y), EndOfTuple))
-        -> (HorzBox.Length.of_pdf_point x, HorzBox.Length.of_pdf_point y)
-             (* temporary; should be modified to "native" length value *)
+    | TupleCons(LengthConstant(lenx), TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
     | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
 
-(*
-and interpret_point_or_cycle env astpt =
-  let valuept = interpret env astpt in
-    match valuept with
-    | PathCycle -> None
-    | TupleCons(FloatConstant(x), TupleCons(FloatConstant(y), EndOfTuple))
-                -> Some((HorzBox.Length.of_pdf_point x, HorzBox.Length.of_pdf_point y))
-             (* temporary; should be modified to "native" length value *)
-    | _         -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
-*)
 
 and interpret_path env pathcomplst cycleopt =
   let pathelemlst =
@@ -130,11 +118,10 @@ and interpret_path env pathcomplst cycleopt =
 
 and make_frame_deco env valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-    let flt = HorzBox.Length.to_pdf_point in
-    let astpos = TupleCons(FloatConstant(flt xpos), TupleCons(FloatConstant(flt ypos), EndOfTuple)) in
-    let astwid = FloatConstant(flt wid) in
-    let asthgt = FloatConstant(flt hgt) in
-    let astdpt = FloatConstant(flt dpt) in
+    let astpos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+    let astwid = LengthConstant(wid) in
+    let asthgt = LengthConstant(hgt) in
+    let astdpt = LengthConstant(dpt) in
     let astret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
       let rec aux acc ast =
         match ast with
@@ -168,6 +155,19 @@ and interpret env ast =
   | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
 
   | InputVertWithEnvironment(_, _)        -> ast
+
+  | LengthDescription(flt, unitnm) ->
+      let len =
+        match unitnm with  (* temporary; ad-hoc handling of unit names *)
+        | "pt"   -> HorzBox.Length.of_pdf_point flt
+        | "cm"   -> HorzBox.Length.of_centimeter flt
+        | "mm"   -> HorzBox.Length.of_millimeter flt
+        | "inch" -> HorzBox.Length.of_inch flt
+        | _      -> report_bug_evaluator "LengthDescription; unknown unit name"
+      in
+        LengthConstant(len)
+
+  | LengthConstant(_) -> ast
 
   | Concat(ast1, ast2) ->
       let value1 = interpret env ast1 in
@@ -251,8 +251,7 @@ and interpret env ast =
 
   | BackendFont(astabbrev, astsize) ->
       let font_abbrev = interpret_string env astabbrev in
-      let font_size_raw = interpret_int env astsize in  (* temporary; should deal with lengths directly *)
-      let font_size = HorzBox.Length.of_pdf_point (float_of_int font_size_raw) in  (* temporary; should deal with lengths directly *)
+      let font_size = interpret_length env astsize in
         FontDesignation((font_abbrev, font_size))
 
   | BackendLineBreaking(astctx, astrow) ->
@@ -282,26 +281,18 @@ and interpret env ast =
   | PrimitiveGetTitle(astctx) ->
       let ctx = interpret_context env astctx in ctx.title
 
-  | BackendFixedEmpty(astwid) ->  (* temporary; should introduce a type for length *)
-      let rawwid = interpret_int env astwid in
-      let wid = HorzBox.Length.of_pdf_point (float_of_int rawwid) in
+  | BackendFixedEmpty(astwid) ->
+      let wid = interpret_length env astwid in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
 
-  | BackendOuterEmpty(astnat, astshrink, aststretch) ->  (* temporary; should introduce a type for length *)
-      let rawnat = interpret_int env astnat in
-      let widnat = HorzBox.Length.of_pdf_point (float_of_int rawnat) in
-      let rawshrink = interpret_int env astshrink in
-      let widshrink = HorzBox.Length.of_pdf_point (float_of_int rawshrink) in
-      let rawstretch = interpret_int env aststretch in
-      let widstretch = HorzBox.Length.of_pdf_point (float_of_int rawstretch) in
+  | BackendOuterEmpty(astnat, astshrink, aststretch) ->
+      let widnat = interpret_length env astnat in
+      let widshrink = interpret_length env astshrink in
+      let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
 
   | BackendFixedString(astfont, aststr) ->
-      let font_info =
-        match astfont with
-        | FontDesignation(font_info) -> font_info
-        | _ -> report_bug_evaluator "BackendFixedString; not a font value"
-      in
+      let font_info = interpret_font env astfont in
       let purestr = interpret_string env aststr in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
@@ -552,7 +543,10 @@ and interpret env ast =
       )
 *)
   | PrimitiveArabic(astnum) ->
-      let num = interpret_int env (interpret env astnum) in StringConstant(string_of_int num)
+      let num = interpret_int env astnum in StringConstant(string_of_int num)
+
+  | PrimitiveFloat(ast1) ->
+      let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
@@ -623,6 +617,21 @@ and interpret env ast =
       let flt1 = interpret_float env ast1 in
       let flt2 = interpret_float env ast2 in
         FloatConstant(flt1 -. flt2)
+
+  | LengthPlus(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let len2 = interpret_length env ast2 in
+        LengthConstant(HorzBox.(len1 +% len2))
+
+  | LengthMinus(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let len2 = interpret_length env ast2 in
+        LengthConstant(HorzBox.(len1 -% len2))
+
+  | LengthTimes(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let flt2 = interpret_float env ast2 in
+        LengthConstant(HorzBox.(len1 *% flt2))
 
 
 and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : input_vert_element list) : abstract_tree =
@@ -738,7 +747,7 @@ and interpret_int (env : environment) (ast : abstract_tree) : int =
   let vi = interpret env ast in
     match vi with
     | IntegerConstant(nc) -> nc
-    | other               -> report_bug_evaluator ("interpret_int: not a IntegerConstant; "
+    | _                   -> report_bug_evaluator ("interpret_int: not a IntegerConstant; "
                                                    ^ (Display.string_of_ast ast)
                                                    ^ " ->* " ^ (Display.string_of_ast vi))
 
@@ -747,9 +756,18 @@ and interpret_float (env : environment) (ast : abstract_tree) : float =
   let vf = interpret env ast in
     match vf with
     | FloatConstant(nc) -> nc
-    | other             -> report_bug_evaluator ("interpret_float: not a FloatConstant; "
+    | _                 -> report_bug_evaluator ("interpret_float: not a FloatConstant; "
                                                  ^ (Display.string_of_ast ast)
                                                  ^ " ->* " ^ (Display.string_of_ast vf))
+
+
+and interpret_length (env : environment) (ast : abstract_tree) : HorzBox.length =
+  let vl = interpret env ast in
+    match vl with
+    | LengthConstant(lc) -> lc
+    | _                  -> report_bug_evaluator ("interpret_float: not a FloatConstant; "
+                                                  ^ (Display.string_of_ast ast)
+                                                  ^ " ->* " ^ (Display.string_of_ast vl))
 
 
 and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =

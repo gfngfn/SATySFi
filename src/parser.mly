@@ -387,14 +387,17 @@
 *)
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
-%token <Range.t * string> INTCONST FLOATCONST CHAR
+%token <Range.t * int> INTCONST
+%token <Range.t * float> FLOATCONST
+%token <Range.t * float * Types.length_unit_name> LENGTHCONST
+%token <Range.t * string> CHAR
+%token <Range.t> SPACE BREAK
 %token <Range.t * Types.ctrlseq_name> VERTCMD
 %token <Range.t * Types.ctrlseq_name> HORZCMD
 (*
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
 *)
-%token <Range.t> SPACE BREAK
 %token <Range.t> LAMBDA ARROW
 %token <Range.t> LET DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
@@ -740,8 +743,9 @@ nxbot:
   | nxbot ACCESS VAR                { make_standard (Ranged $1) (Ranged $3) (UTAccessField($1, extract_name $3)) }
   | VAR                             { let (rng, varnm) = $1 in (rng, UTContentOf([], varnm)) }
   | VARWITHMOD                      { let (rng, mdlnmlst, varnm) = $1 in (rng, UTContentOf(mdlnmlst, varnm)) }
-  | INTCONST                        { make_standard (Ranged $1) (Ranged $1)  (UTIntegerConstant(int_of_string (extract_name $1))) }
-  | FLOATCONST                      { make_standard (Ranged $1) (Ranged $1) (UTFloatConstant(float_of_string (extract_name $1))) }
+  | INTCONST                        { make_standard (Ranged $1) (Ranged $1)  (UTIntegerConstant(extract_main $1)) }
+  | FLOATCONST                      { make_standard (Ranged $1) (Ranged $1) (UTFloatConstant(extract_name $1)) }
+  | LENGTHCONST                     { let (rng, flt, unitnm) = $1 in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
   | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
   | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
   | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
@@ -916,7 +920,7 @@ pattr: /* -> Types.untyped_pattern_tree */
 /* -- -- */
 ;
 patbot: /* -> Types.untyped_pattern_tree */
-  | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(int_of_string (extract_name $1))) }
+  | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
   | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
   | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
@@ -934,7 +938,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | OPENQT error             { report_error (Tok $1) "`" }
 /* -- -- */
 patbotwithoutvar: /* -> Types.untyped_pattern_tree */
-  | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(int_of_string (extract_name $1))) }
+  | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
   | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
   | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }

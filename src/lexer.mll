@@ -259,9 +259,11 @@ rule progexpr = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit digit*) { INTCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit+ "." digit*) { FLOATCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ("." digit+) { FLOATCONST(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | (digit digit*)                                        { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (digit+ "." digit*)                                   { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
+  | ("." digit+)                                          { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
+  | (((digit digit*) as i) (identifier as unitnm))        { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
+  | (((digit+ "." digit*) as flt) (identifier as unitnm)) { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
       if !first_state = ProgramState then EOI else
         report_error lexbuf "text input ended while reading a program area"

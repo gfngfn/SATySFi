@@ -15,6 +15,9 @@ module Length
     val is_nearly_zero : t -> bool
     val of_pdf_point : float -> t
     val to_pdf_point : t -> float
+    val of_centimeter : float -> t
+    val of_millimeter : float -> t
+    val of_inch : float -> t
     val show : t -> string
   end
 = struct
@@ -34,7 +37,15 @@ module Length
     let is_nearly_zero sl = (sl < 0.01)
 
     let of_pdf_point pt = pt
-    let to_pdf_point sl = sl
+    let to_pdf_point len = len
+
+    let convert pdfunit flt =
+      let dpi = 72. in  (* temporary; dpi *)
+        Pdfunits.convert dpi pdfunit Pdfunits.PdfPoint flt      
+
+    let of_centimeter = convert Pdfunits.Centimetre
+    let of_millimeter = convert Pdfunits.Millimetre
+    let of_inch       = convert Pdfunits.Inch
 
     let show = string_of_float
   end

@@ -11,6 +11,7 @@ type module_name        = string
 type sig_var_name       = string
 type field_name         = string
 type type_argument_name = string
+type length_unit_name   = string
 
 
 module TypeID : sig
@@ -167,10 +168,11 @@ type manual_kind =
 
 type base_type =
   | UnitType
+  | BoolType
   | IntType
   | FloatType
+  | LengthType
   | StringType
-  | BoolType
   | TextRowType
   | TextColType
   | BoxRowType
@@ -220,7 +222,7 @@ module BoundID =
     type t = kind BoundID_.t_
   end
 
-
+(*
 type id_name_arg =
   | IDName   of id_name
   | NoIDName
@@ -228,6 +230,7 @@ type id_name_arg =
 type class_name_arg =
   | ClassName   of class_name
   | NoClassName
+*)
 
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons = untyped_pattern_tree list
@@ -252,12 +255,13 @@ and 'a untyped_path_component =
 and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
-  | UTStringEmpty
+  | UTUnitConstant
+  | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
-  | UTBooleanConstant      of bool
+  | UTLengthDescription    of float * length_unit_name
+  | UTStringEmpty
   | UTStringConstant       of string
-  | UTUnitConstant
 (*
   | UTBreakAndIndent
 *)
@@ -399,10 +403,10 @@ and input_context = {
   author          : abstract_tree;
   font_info       : HorzBox.font_info;
   space_natural   : float;
-  space_shrink    : HorzBox.Length.t;
-  space_stretch   : HorzBox.Length.t;
-  paragraph_width : HorzBox.Length.t;
-  leading         : HorzBox.Length.t;
+  space_shrink    : HorzBox.length;
+  space_stretch   : HorzBox.length;
+  paragraph_width : HorzBox.length;
+  leading         : HorzBox.length;
 }
 (* temporary *)
 
@@ -412,12 +416,14 @@ and 'a path_component =
 
 and abstract_tree =
 (* -- basic value -- *)
-  | StringEmpty
+  | UnitConstant
+  | BooleanConstant       of bool
   | IntegerConstant       of int
   | FloatConstant         of float
-  | BooleanConstant       of bool
+  | LengthDescription     of float * length_unit_name
+  | LengthConstant        of HorzBox.length
+  | StringEmpty
   | StringConstant        of string
-  | UnitConstant
 (*
   | DeeperIndent          of abstract_tree
   | BreakAndIndent
@@ -496,8 +502,12 @@ and abstract_tree =
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
   | PrimitiveArabic       of abstract_tree
+  | PrimitiveFloat        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
   | FloatMinus            of abstract_tree * abstract_tree
+  | LengthPlus            of abstract_tree * abstract_tree
+  | LengthMinus           of abstract_tree * abstract_tree
+  | LengthTimes           of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
   | LambdaHorz                 of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment  of EvalVarID.t * abstract_tree * environment
@@ -724,6 +734,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(FontType)    -> "font" ^ qstn
     | BaseType(ContextType) -> "context" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
+    | BaseType(LengthType)  -> "length" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

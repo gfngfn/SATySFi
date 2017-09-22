@@ -1,13 +1,15 @@
 open Types
 open Display
 
-exception UndefinedVariable    of Range.t * var_name
-exception UndefinedConstructor of Range.t * var_name
-exception InclusionError       of Typeenv.t * mono_type * mono_type
-exception ContradictionError   of Typeenv.t * mono_type * mono_type
+exception UndefinedVariable     of Range.t * var_name
+exception UndefinedConstructor  of Range.t * var_name
+exception InclusionError        of Typeenv.t * mono_type * mono_type
+exception ContradictionError    of Typeenv.t * mono_type * mono_type
+exception InvalidArityOfCommand of Range.t * int * int
+exception UnknownUnitOfLength   of Range.t * length_unit_name
+
 exception InternalInclusionError
 exception InternalContradictionError
-exception InvalidArityOfCommand of Range.t * int * int
 
 
 let print_for_debug_typecheck msg =
@@ -19,10 +21,9 @@ let print_for_debug_typecheck msg =
 
 let point_type_main =
   (ProductType([
-    (Range.dummy "point-type-1", BaseType(FloatType));
-    (Range.dummy "point-type-2", BaseType(FloatType));
+    (Range.dummy "point-type-1", BaseType(LengthType));
+    (Range.dummy "point-type-2", BaseType(LengthType));
   ]))
-    (* temporary; should be modified to "native" length types *)
 
 
 let flatten_type ty =
@@ -241,6 +242,15 @@ let rec typecheck
   | UTUnitConstant        -> (UnitConstant       , (rng, BaseType(UnitType))  )
   | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BaseType(BoxRowType)))
   | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BaseType(BoxColType)))
+
+  | UTLengthDescription(flt, unitnm) ->
+      begin
+        match unitnm with  (* temporary; ad-hoc validation *)
+        | ( "pt" | "cm" | "mm" | "inch" ) ->
+            (LengthDescription(flt, unitnm), (rng, BaseType(LengthType)))
+
+        | _ -> raise (UnknownUnitOfLength(rng, unitnm))
+      end
 
   | UTInputHorz(utihlst) ->
       let ihlst = typecheck_input_horz rng qtfbl lev tyenv utihlst in

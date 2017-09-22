@@ -132,6 +132,7 @@ let make_environments () =
   let i             = (Range.dummy "int"     , BaseType(IntType)    ) in
   let fl            = (Range.dummy "float"   , BaseType(FloatType)  ) in
   let b             = (Range.dummy "bool"    , BaseType(BoolType)   ) in
+  let ln            = (Range.dummy "length"  , BaseType(LengthType) ) in
   let s             = (Range.dummy "string"  , BaseType(StringType) ) in
   let (~@) n        = (Range.dummy "tv"      , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in
@@ -149,7 +150,7 @@ let make_environments () =
   let ft            = (Range.dummy "font"    , BaseType(FontType)   ) in
   let ctx           = (Range.dummy "context" , BaseType(ContextType)) in
   let path          = (Range.dummy "path"    , BaseType(PathType)   ) in
-  let deco          = (prod [fl; fl]) @-> fl @-> fl @-> fl @-> (l path) in
+  let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l path) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -177,20 +178,24 @@ let make_environments () =
         ( "::" , ptycons             , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
         ( "+." , ~% (fl @-> fl @-> fl), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))              );
         ( "-." , ~% (fl @-> fl @-> fl), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))             );
+        ( "+'" , ~% (ln @-> ln @-> ln), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))             );
+        ( "-'" , ~% (ln @-> ln @-> ln), lambda2 (fun v1 v2 -> LengthMinus(v1, v2))            );
+        ( "*'" , ~% (ln @-> fl @-> ln), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))            );
 
         ( "same"         , ~% (s --> (s --> b))         , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s --> (i --> (i --> s))) , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
         ( "string-length", ~% (s --> i)                 , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
         ( "arabic"       , ~% (i --> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
+        ( "float"        , ~% (i @-> fl)                , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
         ("form-paragraph", ~% (ctx --> (br --> bc))     , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
-        ("fixed-empty"   , ~% (i --> br)                , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("fixed-empty"   , ~% (ln @-> br)               , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("fixed-string"  , ~% (ft --> (tr --> br))      , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
-        ("outer-empty"   , ~% (i --> (i --> (i --> br))), lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("outer-empty"   , ~% (ln @-> ln @-> ln @-> br) , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block", ~% (deco --> (br --> br)) , lambda2 (fun vdeco vbr -> BackendOuterFrame(vdeco, vbr)));
         ("outer-frame-inline", ~% (br --> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
-        ("font"          , ~% (s --> (i --> ft))        , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("font"          , ~% (s @-> ln @-> ft)         , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
 
         ("++"            , ~% (br --> (br --> br))      , lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2)));

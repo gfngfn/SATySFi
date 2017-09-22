@@ -334,6 +334,9 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
       | ListType(tysub)                   -> (rng, ListType(aux tysub))
       | RefType(tysub)                    -> (rng, RefType(aux tysub))
       | BaseType(_)                       -> (rng, tymain)
+      | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
+      | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
+      | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
   in
   begin
     pre tyarglist bidlist;
