@@ -529,13 +529,14 @@ and abstract_tree =
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
+  | PrimitiveSetLineDash       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawStroke        of abstract_tree * abstract_tree
   | BackendFont                of abstract_tree * abstract_tree
   | BackendLineBreaking        of abstract_tree * abstract_tree
   | BackendFixedString         of abstract_tree * abstract_tree
   | BackendFixedEmpty          of abstract_tree
   | BackendOuterEmpty          of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrame          of abstract_tree * abstract_tree
+  | BackendOuterFrame          of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrameBreakable of abstract_tree
 
 and pattern_match_cons =

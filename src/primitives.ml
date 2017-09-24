@@ -22,23 +22,31 @@ let add_to_environment env varnm rfast =
   Hashtbl.add env varnm rfast
 
 
+let lam evid ast = LambdaAbstract(evid, ast)
+let lamenv env evid ast = FuncWithEnvironment(evid, ast, env)
+let ( !- ) evid = ContentOf(evid)
+
 let rec lambda1 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
-    FuncWithEnvironment(evid1, astf (ContentOf(evid1)), env)
-
+    lamenv env evid1 (astf (!- evid1))
 
 let rec lambda2 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda2-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda2-2)" in
-    FuncWithEnvironment(evid1, LambdaAbstract(evid2, astf (ContentOf(evid1)) (ContentOf(evid2))), env)
-
+    lamenv env evid1 (lam evid2 (astf (!- evid1) (!- evid2)))
 
 let rec lambda3 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda3-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
-    FuncWithEnvironment(evid1, LambdaAbstract(evid2, LambdaAbstract(evid3,
-      astf (ContentOf(evid1)) (ContentOf(evid2)) (ContentOf(evid3)))), env)
+    lamenv env evid1 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
+
+let rec lambda4 astf env =
+  let evid1 = EvalVarID.fresh "(dummy:lambda4-1)" in
+  let evid2 = EvalVarID.fresh "(dummy:lambda4-2)" in
+  let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
+  let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
+    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
 
 
 (* -- begin: constants just for experimental use -- *)
@@ -169,14 +177,16 @@ let make_environments () =
   let path          = (~! "path"    , BaseType(PathType)   ) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
+  let pads          = (prod [ln; ln; ln; ln]) in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
   let table : (var_name * poly_type * (environment -> abstract_tree)) list =
-    let ptyderef = tv1 -% (~% ((r (~@ tv1)) @-> (~@ tv1))) in
-    let ptycons  = tv2 -% (~% ((~@ tv2) @-> (l (~@ tv2)) @-> (l (~@ tv2)))) in
+    let ptyderef  = tv1 -% (~% ((r (~@ tv1)) @-> (~@ tv1))) in
+    let ptycons   = tv2 -% (~% ((~@ tv2) @-> (l (~@ tv2)) @-> (l (~@ tv2)))) in
+    let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
       [
         ( "+"  , ~% (i @-> i @-> i)   , lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
         ( "-"  , ~% (i @-> i @-> i)   , lambda2 (fun v1 v2 -> Minus(v1, v2))                   );
@@ -202,6 +212,7 @@ let make_environments () =
         ( "*'" , ~% (ln @-> fl @-> ln), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
         ( "++" , ~% (br @-> br @-> br), lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2))      );
         ( "+++", ~% (bc @-> bc @-> bc), lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2))      );
+        ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx)));
 
         ( "same"         , ~% (s @-> s @-> b)           , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s @-> i @-> i @-> s)     , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
@@ -214,7 +225,7 @@ let make_environments () =
         ("fixed-string"  , ~% (ft @-> tr @-> br)        , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
         ("outer-empty"   , ~% (ln @-> ln @-> ln @-> br) , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
-        ("outer-frame-block" , ~% (deco @-> br @-> br)  , lambda2 (fun vdeco vbr -> BackendOuterFrame(vdeco, vbr)));
+        ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br), lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("outer-frame-inline", ~% (br @-> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
         ("font"          , ~% (s @-> ln @-> ft)         , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
@@ -231,6 +242,7 @@ let make_environments () =
 
         ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));
         ("set-line-width", ~% (ln @-> gctx @-> gctx)    , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
+        ("set-line-dash" , ~% (ln @-> ln @-> ln  @-> gctx @-> gctx), lambda4 (fun vlen1 vlen2 vlen3 vgctx -> PrimitiveSetLineDash(vlen1, vlen2, vlen3, vgctx)));
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
       ]
   in

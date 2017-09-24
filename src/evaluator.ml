@@ -88,6 +88,19 @@ and interpret_point env astpt =
     | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
 
 
+and interpret_paddings env astpads =
+  let valuepads = interpret env astpads in
+  match valuepads with
+  | TupleCons(LengthConstant(lenL), TupleCons(LengthConstant(lenR), TupleCons(LengthConstant(lenT), TupleCons(LengthConstant(lenB), EndOfTuple)))) ->
+      {
+        HorzBox.paddingL = lenL;
+        HorzBox.paddingR = lenR;
+        HorzBox.paddingT = lenT;
+        HorzBox.paddingB = lenB;
+      }
+  | _ -> report_bug_evaluator ("interpret_paddings; " ^ (Display.string_of_ast valuepads))
+
+
 and interpret_path env pathcomplst cycleopt =
   let pathelemlst =
     pathcomplst |> List.map (function
@@ -300,14 +313,13 @@ and interpret env ast =
       let purestr = interpret_string env aststr in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
 
-  | BackendOuterFrame(astdeco, astbr) ->
+  | BackendOuterFrame(astpads, astdeco, astbr) ->
       let hblst = interpret_horz_boxes env astbr in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
-          Primitives.default_paddings,
+          interpret_paddings env astpads,
           make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
           hblst))])
-            (* temporary; paddings should be variable *)
 
   | BackendOuterFrameBreakable(astbr) ->
       let hblst = interpret_horz_boxes env astbr in
@@ -556,6 +568,13 @@ and interpret env ast =
       let len = interpret_length env astlen in
       let gctx = interpret_graphics_context env astgctx in
         GraphicsContext({ gctx with HorzBox.line_width = len })
+
+  | PrimitiveSetLineDash(astlen1, astlen2, astlen3, astgctx) ->
+      let len1 = interpret_length env astlen1 in
+      let len2 = interpret_length env astlen2 in
+      let len3 = interpret_length env astlen3 in
+      let gctx = interpret_graphics_context env astgctx in
+        GraphicsContext({ gctx with HorzBox.line_dash = HorzBox.DashedLine(len1, len2, len3) })
 
   | PrimitiveDrawStroke(astgctx, astpath) ->
       let gctx = interpret_graphics_context env astgctx in
