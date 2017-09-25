@@ -71,11 +71,13 @@ let default_context =
 
 let default_graphics_context =
   {
-    HorzBox.line_width  = pdfpt 1.;
-    HorzBox.line_dash   = HorzBox.SolidLine;
-    HorzBox.line_cap    = HorzBox.ButtCap;
-    HorzBox.line_join   = HorzBox.MiterJoin;
-    HorzBox.miter_limit = pdfpt 10.;
+    HorzBox.line_width   = pdfpt 1.;
+    HorzBox.line_dash    = HorzBox.SolidLine;
+    HorzBox.line_cap     = HorzBox.ButtCap;
+    HorzBox.line_join    = HorzBox.MiterJoin;
+    HorzBox.miter_limit  = pdfpt 10.;
+    HorzBox.fill_color   = HorzBox.DeviceGray(0.);
+    HorzBox.stroke_color = HorzBox.DeviceGray(0.);
   }
 
 let margin = pdfpt 2.
@@ -177,7 +179,8 @@ let make_environments () =
   let path          = (~! "path"    , BaseType(PathType)   ) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
-  let pads          = (prod [ln; ln; ln; ln]) in
+  let col           = prod [fl; fl; fl] in
+  let pads          = prod [ln; ln; ln; ln] in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
@@ -243,7 +246,10 @@ let make_environments () =
         ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));
         ("set-line-width", ~% (ln @-> gctx @-> gctx)    , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
         ("set-line-dash" , ~% (ln @-> ln @-> ln  @-> gctx @-> gctx), lambda4 (fun vlen1 vlen2 vlen3 vgctx -> PrimitiveSetLineDash(vlen1, vlen2, vlen3, vgctx)));
+        ("set-stroke-color", ~% (col @-> gctx @-> gctx) , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
+        ("set-fill-color", ~% (col @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
+        ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
       ]
   in
   let temporary_ast = StringEmpty in

@@ -138,13 +138,20 @@ type line_cap =
   | RoundCap
   | ProjectingSquareCap
 
+type color =
+  | DeviceGray of float
+  | DeviceRGB  of float * float * float
+  | DeviceCMYK of float * float * float * float
+
 type graphics_state =
   {
-    line_width  : length;
-    line_dash   : line_dash;
-    line_join   : line_join;
-    line_cap    : line_cap;
-    miter_limit : length;
+    line_width   : length;
+    line_dash    : line_dash;
+    line_join    : line_join;
+    line_cap     : line_cap;
+    miter_limit  : length;
+    fill_color   : color;
+    stroke_color : color;
   }
 
 type graphics_command =

@@ -22,9 +22,17 @@ let op_l (x, y) = Pdfops.Op_l(~% x, ~% y)
 let op_c (p1, q1) (p2, q2) (x, y) = Pdfops.Op_c(~% p1, ~% q1, ~% p2, ~% q2, ~% x, ~% y)
 let op_h = Pdfops.Op_h
 let op_re (x, y) (w, h) = Pdfops.Op_re(~% x, ~% y, ~% w, ~% h)
+
 let op_q = Pdfops.Op_q
 let op_Q = Pdfops.Op_Q
+
 let op_RG (r, g, b) = Pdfops.Op_RG(r, g, b)
+let op_rg (r, g, b) = Pdfops.Op_rg(r, g, b)
+let op_K (c, m, y, k) = Pdfops.Op_K(c, m, y, k)
+let op_k (c, m, y, k) = Pdfops.Op_k(c, m, y, k)
+let op_G gray = Pdfops.Op_G(gray)
+let op_g gray = Pdfops.Op_g(gray)
+
 let op_S = Pdfops.Op_S
 let op_f = Pdfops.Op_f
 let op_f' = Pdfops.Op_f'
@@ -76,8 +84,20 @@ let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =
 
 
 let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path : path) : Pdfops.t list =
-  let pathops = pdfops_of_path path in
-  let stateops =
+  let ops_path = pdfops_of_path path in
+  let op_stroke_color =
+    match gstate.stroke_color with
+    | DeviceRGB(r, g, b)     -> op_RG (r, g, b)
+    | DeviceCMYK(c, m, y, k) -> op_K (c, m, y, k)
+    | DeviceGray(gray)       -> op_G gray
+  in
+  let op_fill_color =
+    match gstate.fill_color with
+    | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
+    | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
+    | DeviceGray(gray)       -> op_g gray
+  in
+  let ops_state =
     [
       op_w gstate.line_width;
       op_J gstate.line_cap;
@@ -94,4 +114,4 @@ let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path
     | DrawBothByNonzero -> op_B
     | DrawBothByEvenOdd -> op_B'
   in
-    List.concat [[op_q]; stateops; pathops; [drawop; op_Q]]
+    List.concat [[op_q]; [op_stroke_color]; [op_fill_color]; ops_state; ops_path; [drawop; op_Q]]

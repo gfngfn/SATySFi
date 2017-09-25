@@ -537,7 +537,7 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
     in
-
+(*
     let () = print_endline (  (* for debug *)
       match output with
       | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
@@ -570,7 +570,7 @@ and comment = parse
         | BINOP_MINUS(_, v) ) -> "BIN(" ^ v ^ ")"
       | _              -> "_"
     ) in
-
+*)
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

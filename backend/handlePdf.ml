@@ -24,13 +24,15 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
     match evhb with
     | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
     | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
-        let (xposnew, opaccsub) =
-          evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
-        in
-        let ops =
+        let ops_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
         in
-        let opaccnew = List.rev_append ops opaccsub in
+        let ops_foreground = [] in
+        let opaccinit = List.rev_append ops_background opacc in
+        let (xposnew, opaccsub) =
+          evhblst @|> (xpos, opaccinit) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
+        in
+        let opaccnew = List.rev_append ops_foreground opaccsub in
           (xposnew, opaccnew)
 
     | EvHorz(wid, EvHorzString((fontabrv, size), otxt)) ->

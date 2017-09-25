@@ -582,6 +582,22 @@ and interpret env ast =
       let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawStroke path in
         GraphicsValue(pdfops)
 
+  | PrimitiveDrawFill(astgctx, astpath) ->
+      let gctx = interpret_graphics_context env astgctx in
+      let path = interpret_path_value env astpath in
+      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawFillByEvenOdd path in
+        GraphicsValue(pdfops)
+
+  | PrimitiveSetStrokeColor(astcol, astgctx) ->
+      let color = interpret_color env astcol in
+      let gctx = interpret_graphics_context env astgctx in
+        GraphicsContext({ gctx with HorzBox.stroke_color = color })
+
+  | PrimitiveSetFillColor(astcol, astgctx) ->
+      let color = interpret_color env astcol in
+      let gctx = interpret_graphics_context env astgctx in
+        GraphicsContext({ gctx with HorzBox.fill_color = color })
+
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
@@ -775,6 +791,15 @@ and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzB
     | _                     -> report_bug_evaluator ("interpret_graphics_context: not a GraphicsContext; "
                                                      ^ (Display.string_of_ast ast)
                                                      ^ " ->* " ^ (Display.string_of_ast value))
+
+
+and interpret_color env ast : HorzBox.color =
+  let value = interpret env ast in
+    match value with
+    | TupleCons(FloatConstant(fltR), TupleCons(FloatConstant(fltG), TupleCons(FloatConstant(fltB), EndOfTuple))) ->
+        HorzBox.DeviceRGB(fltR, fltG, fltB)
+    | _ -> report_bug_evaluator ("interpret_color; " ^ (Display.string_of_ast value))
+      (* temporary; colors of other color spaces than DeviceRGB should be able to be specified *)
 
 
 and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_info =
