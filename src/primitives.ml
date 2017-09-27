@@ -1,23 +1,23 @@
 open Types
 
 
-let add_default_types tyenvmid =
+let tyid_option = Typeenv.Raw.fresh_type_id "option"
+let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
+
+
+let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
-  let mutvarntcons =
-    UTMutualVariantCons(
-      [(dr, "%a", MUniversalKind)], Range.dummy "primitives-maybe", "maybe",
-      [
-        (dr, "Nothing", (dr, MTypeName([], "unit")));
-        (dr, "Just", (dr, MTypeParam("%a")));
-      ],
-    UTMutualVariantCons(
-      [], Range.dummy "primitives-itemize", "itemize",
-      [
-        (dr, "Item", (dr, MProductType([(dr, MTypeName([], "text-row")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])));
-      ]
-    , UTEndOfMutualVariant))
-  in
-    Typeenv.add_mutual_cons tyenvmid FreeID.bottom_level mutvarntcons
+  let bid = BoundID.fresh UniversalKind () in
+  let typaram = (dr, TypeVariable(ref (Bound(bid)))) in
+
+  tyenvmid
+  |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
+  |> Typeenv.Raw.add_constructor "None" ([bid], Poly((dr, BaseType(UnitType)))) tyid_option
+  |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
+  |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "Item" ([], Poly(
+       (dr, ProductType([(dr, BaseType(TextRowType)); (dr, ListType((dr, VariantType([], tyid_itemize)))); ]))
+     )) tyid_itemize
 
 
 let add_to_environment env varnm rfast =

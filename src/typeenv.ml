@@ -72,7 +72,9 @@ type var_to_type_map = poly_type VarMap.t
 type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
 
 type type_scheme = BoundID.t list * poly_type
-type type_definition = Data of int | Alias of type_scheme
+type type_definition =
+  | Data  of int
+  | Alias of type_scheme
 
 type typename_to_typedef_map = (TypeID.t * type_definition) TyNameMap.t
 type constructor_to_def_map = (TypeID.t * type_scheme) ConstrMap.t
@@ -263,13 +265,10 @@ let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
   TypeID.extract_name tyid
 
 
-let add_constructor ((addr, nmtoid, mtr) as tyenv : t) (constrnm : constructor_name) (bidlist : BoundID.t list) (pty : poly_type) (tynm : type_name) : t =
+let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) ((addr, nmtoid, mtr) : t) : t =
 
   let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 
-  match find_type_definition_for_inner tyenv tynm with
-  | None            -> failwith "add_constructor"
-  | Some((tyid, _)) ->
   let mtrnew = ModuleTree.update mtr addr (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) in
     (addr, nmtoid, mtrnew)
 
@@ -517,27 +516,28 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     instantiate_type_scheme tyarglist bidlist ptyin
 
 
-let register_type (dg : vertex_label DependencyGraph.t) ((addr, nmtoid, mtr) : t) (tynm : type_name) : t =
+let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) ((addr, nmtoid, mtr) : t) : t =
+  let mtrnew = ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, dfn))) in
+    (addr, nmtoid, mtrnew)
+
+
+let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) (tynm : type_name) : t =
 
   let () = print_for_debug_variantenv ("Register " ^ tynm) in (* for debug *)
 
-  let mtrnew =
     try
       match DependencyGraph.find_vertex dg tynm with
 
       | VariantVertex(_, tyid, tyargcons, _) ->
           let len = type_argument_length tyargcons in
-            ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, Data(len))))
+            register_type tynm tyid (Data(len)) tyenv
 
       | SynonymVertex(_, tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
-          ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, Alias(bidlist, ptyscheme))))
+          register_type tynm tyid (Alias(bidlist, ptyscheme)) tyenv
 
       | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
     with
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
-  in
-    (addr, nmtoid, mtrnew)
-
 
 
 let rec find_constructor (qtfbl : quantifiability) ((addr, nmtoid, mtr) : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
@@ -595,7 +595,7 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
             raise (MultipleTypeDefinition(rng, tynmrng, tynm))
         else
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
-          let tyid = TypeID.fresh tynm in
+          let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
           begin
             DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None));
             iter tailcons;
@@ -657,7 +657,7 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
       match label with
       | VariantVertex(_, _, _, _)                      -> tyenv
       | SynonymVertex(_, _, _, _, {contents= None})    -> assert false
-      | SynonymVertex(_, _, _, _, {contents= Some(_)}) -> register_type dg tyenv tynm
+      | SynonymVertex(_, _, _, _, {contents= Some(_)}) -> register_type_from_vertex dg tyenv tynm
     ) dg tyenvold
   in
 
@@ -667,14 +667,17 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         match utvarntcons with
         | []                                -> acctyenv
         | (rng, constrnm, mnty) :: tailcons ->
-            let (bidlist, pty) = fix_manual_type (DependentMode(dg)) acctyenv lev tyargcons mnty in
-              iter (add_constructor acctyenv constrnm bidlist pty tynm) tailcons
+            let tysch = fix_manual_type (DependentMode(dg)) acctyenv lev tyargcons mnty in
+              match find_type_definition_for_inner acctyenv tynm with
+              | None            -> assert false
+              | Some((tyid, _)) ->
+                  iter (add_constructor constrnm tysch tyid acctyenv) tailcons
     in
       DependencyGraph.fold_vertex (fun tynm label tyenv ->
         match label with
         | SynonymVertex(_, _, _, _, _)                   -> tyenv
         | VariantVertex(_, tyid, tyargcons, utvarntcons) ->
-            let tyenvreg = register_type dg tyenv tynm in
+            let tyenvreg = register_type_from_vertex dg tyenv tynm in
               register_each_constructor tyargcons tynm tyenvreg utvarntcons
       ) dg tyenvold
   in
@@ -865,3 +868,11 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
         let (addr, nmtoid, mtr) = tyenvdir in
         let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigopt)) in
           (addr, nmtoid, mtrnew)
+
+
+module Raw =
+  struct
+    let fresh_type_id = TypeID.fresh
+    let add_constructor = add_constructor
+    let register_type = register_type
+  end

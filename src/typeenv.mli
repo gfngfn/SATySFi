@@ -2,6 +2,12 @@ open Types
 
 type t
 
+type type_scheme = BoundID.t list * poly_type
+
+type type_definition =
+  | Data  of int
+  | Alias of type_scheme
+
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
 exception UndefinedTypeName               of Range.t * type_name
 exception UndefinedTypeArgument           of Range.t * var_name
@@ -34,3 +40,10 @@ val find_type_id : t -> type_name -> TypeID.t option
 val find_type_name : t -> TypeID.t -> type_name
 
 val sigcheck : Range.t -> quantifiability -> FreeID.level -> t -> t -> manual_signature option -> t
+
+module Raw : sig
+  val fresh_type_id : string -> TypeID.t
+  val add_constructor : constructor_name -> type_scheme -> TypeID.t -> t -> t
+  val register_type : type_name -> TypeID.t -> type_definition -> t -> t
+end
+
