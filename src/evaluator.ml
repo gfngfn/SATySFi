@@ -569,12 +569,16 @@ and interpret env ast =
       let gctx = interpret_graphics_context env astgctx in
         GraphicsContext({ gctx with HorzBox.line_width = len })
 
-  | PrimitiveSetLineDash(astlen1, astlen2, astlen3, astgctx) ->
-      let len1 = interpret_length env astlen1 in
-      let len2 = interpret_length env astlen2 in
-      let len3 = interpret_length env astlen3 in
+  | PrimitiveSetLineDash(astlensopt, astgctx) ->
+      let valuelensopt = interpret env astlensopt in
       let gctx = interpret_graphics_context env astgctx in
-        GraphicsContext({ gctx with HorzBox.line_dash = HorzBox.DashedLine(len1, len2, len3) })
+      let line_dash =
+        match valuelensopt with
+        | Constructor("None", UnitConstant) -> HorzBox.SolidLine
+        | Constructor("Some", TupleCons(LengthConstant(len1), TupleCons(LengthConstant(len2), TupleCons(LengthConstant(len3), EndOfTuple)))) -> HorzBox.DashedLine(len1, len2, len3)
+        | _ -> report_bug_evaluator ("PrimitiveSetLineDash; " ^ (Display.string_of_ast valuelensopt))
+      in
+        GraphicsContext({ gctx with HorzBox.line_dash = line_dash })
 
   | PrimitiveDrawStroke(astgctx, astpath) ->
       let gctx = interpret_graphics_context env astgctx in

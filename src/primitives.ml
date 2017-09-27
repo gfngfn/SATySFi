@@ -170,6 +170,7 @@ let make_environments () =
   let l ty          = (~! "list"    , ListType(ty)       ) in
   let r ty          = (~! "ref"     , RefType(ty)        ) in
   let prod tylst    = (~! "product" , ProductType(tylst)   ) in
+  let opt ty        = (~! "option"  , VariantType([ty], tyid_option)) in
   let (@->) dom cod = (~! "func"    , FuncType(dom, cod)   ) in
 
   let tr            = (~! "text-row", BaseType(TextRowType)) in
@@ -247,7 +248,7 @@ let make_environments () =
 
         ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));
         ("set-line-width", ~% (ln @-> gctx @-> gctx)    , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
-        ("set-line-dash" , ~% (ln @-> ln @-> ln  @-> gctx @-> gctx), lambda4 (fun vlen1 vlen2 vlen3 vgctx -> PrimitiveSetLineDash(vlen1, vlen2, vlen3, vgctx)));
+        ("set-line-dash" , ~% (opt (prod [ln; ln; ln])  @-> gctx @-> gctx), lambda2 (fun vlensopt vgctx -> PrimitiveSetLineDash(vlensopt, vgctx)));
         ("set-stroke-color", ~% (col @-> gctx @-> gctx) , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
         ("set-fill-color", ~% (col @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));

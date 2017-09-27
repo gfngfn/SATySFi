@@ -532,7 +532,7 @@ and abstract_tree =
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
-  | PrimitiveSetLineDash       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveSetLineDash       of abstract_tree * abstract_tree
   | PrimitiveSetStrokeColor    of abstract_tree * abstract_tree
   | PrimitiveSetFillColor      of abstract_tree * abstract_tree
   | PrimitiveDrawStroke        of abstract_tree * abstract_tree
