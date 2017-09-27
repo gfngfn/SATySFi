@@ -5,15 +5,17 @@ let add_default_types tyenvmid =
   let dr = Range.dummy "add_default_types" in
   let mutvarntcons =
     UTMutualVariantCons(
-      [(dr, "%a", MUniversalKind)],  Range.dummy "primitives-maybe", "maybe",
-        (dr, UTVariantCons("Nothing", (dr, MTypeName([], "unit")),
-        (dr, UTVariantCons("Just", (dr, MTypeParam("%a")),
-        (dr, UTEndOfVariant))))),
+      [(dr, "%a", MUniversalKind)], Range.dummy "primitives-maybe", "maybe",
+      [
+        (dr, "Nothing", (dr, MTypeName([], "unit")));
+        (dr, "Just", (dr, MTypeParam("%a")));
+      ],
     UTMutualVariantCons(
       [], Range.dummy "primitives-itemize", "itemize",
-        (dr, UTVariantCons("Item", (dr, MProductType([(dr, MTypeName([], "text-row")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])),
-        (dr, UTEndOfVariant))),
-    UTEndOfMutualVariant))
+      [
+        (dr, "Item", (dr, MProductType([(dr, MTypeName([], "text-row")); (dr, MTypeName([(dr, MTypeName([], "itemize"))], "list"))])));
+      ]
+    , UTEndOfMutualVariant))
   in
     Typeenv.add_mutual_cons tyenvmid FreeID.bottom_level mutvarntcons
 

@@ -793,14 +793,10 @@ nxlist:
 /* -- -- */
 ;
 variants: /* -> untyped_variant_cons */
-  | CONSTRUCTOR OF txfunc BAR variants  { make_standard (Ranged $1) (Ranged $5)
-                                            (UTVariantCons(extract_name $1, $3, $5)) }
-  | CONSTRUCTOR OF txfunc               { make_standard (Ranged $1) (Ranged $3)
-                                            (UTVariantCons(extract_name $1, $3, (Range.dummy "end-of-variant1", UTEndOfVariant))) }
-  | CONSTRUCTOR BAR variants            { make_standard (Ranged $1) (Ranged $3)
-                                             (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit")), $3)) }
-  | CONSTRUCTOR { make_standard (Ranged $1) (Ranged $1)
-                    (UTVariantCons(extract_name $1, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit")), (Range.dummy "end-of-variant2", UTEndOfVariant))) }
+  | CONSTRUCTOR OF txfunc BAR variants  { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: $5 }
+  | CONSTRUCTOR OF txfunc               { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: [] }
+  | CONSTRUCTOR BAR variants            { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit"))) :: $3 }
+  | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit"))) :: [] }
 /* -- for syntax error log -- */
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }

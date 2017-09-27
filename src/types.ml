@@ -338,10 +338,13 @@ and manual_signature = manual_signature_content list
 and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
 
-and untyped_variant_cons = Range.t * untyped_variant_cons_main
+and untyped_variant_cons = (Range.t * constructor_name * manual_type) list
+(*
+Range.t * untyped_variant_cons_main
 and untyped_variant_cons_main =
   | UTVariantCons          of constructor_name * manual_type * untyped_variant_cons
   | UTEndOfVariant
+*)
 
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons * Range.t * type_name * untyped_variant_cons * untyped_mutual_variant_cons

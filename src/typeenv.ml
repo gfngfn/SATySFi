@@ -684,10 +684,9 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
   let add_each_variant_type_definition (tyenvold : t) =
     let rec register_each_constructor tyargcons tynm acctyenv utvarntcons =
       let iter = register_each_constructor tyargcons tynm in
-      let (rng, utvcmain) = utvarntcons in
-        match utvcmain with
-        | UTEndOfVariant                          -> acctyenv
-        | UTVariantCons(constrnm, mnty, tailcons) ->
+        match utvarntcons with
+        | []                                -> acctyenv
+        | (rng, constrnm, mnty) :: tailcons ->
             let (bidlist, pty) = fix_manual_type (DependentMode(dg)) acctyenv lev tyargcons mnty in
               iter (add_constructor acctyenv constrnm bidlist pty tynm) tailcons
     in
