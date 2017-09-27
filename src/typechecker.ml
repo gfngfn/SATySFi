@@ -280,27 +280,25 @@ let rec typecheck
 
   | UTContentOf(mdlnmlst, varnm) ->
       begin
-        try
-          let (pty, evid) = Typeenv.find tyenv mdlnmlst varnm in
-          let tyfree = instantiate lev qtfbl pty in
-          let tyres = overwrite_range_of_type tyfree rng in
-          let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
-              (ContentOf(evid), tyres)
-        with
-        | Not_found -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+        match Typeenv.find tyenv mdlnmlst varnm with
+        | None -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+        | Some((pty, evid)) ->
+            let tyfree = instantiate lev qtfbl pty in
+            let tyres = overwrite_range_of_type tyfree rng in
+            let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+                (ContentOf(evid), tyres)
       end
 
   | UTConstructor(constrnm, utast1) ->
       begin
-        try
-          let (tyarglist, tyid, tyc) = Typeenv.find_constructor qtfbl tyenv lev constrnm in
-          let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
-          let (e1, ty1) = typecheck_iter tyenv utast1 in
-          let () = unify ty1 tyc in
-          let tyres = (rng, VariantType(tyarglist, tyid)) in
-            (Constructor(constrnm, e1), tyres)
-        with
-        | Not_found -> raise (UndefinedConstructor(rng, constrnm))
+        match Typeenv.find_constructor qtfbl tyenv lev constrnm with
+        | None -> raise (UndefinedConstructor(rng, constrnm))
+        | Some((tyarglist, tyid, tyc)) ->
+            let () = print_for_debug_typecheck ("#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+            let (e1, ty1) = typecheck_iter tyenv utast1 in
+            let () = unify ty1 tyc in
+            let tyres = (rng, VariantType(tyarglist, tyid)) in
+              (Constructor(constrnm, e1), tyres)
       end
 
   | UTHorzConcat(utast1, utast2) ->
@@ -483,7 +481,11 @@ let rec typecheck
 
   | UTItemize(utitmz) ->
       let eitmz = typecheck_itemize qtfbl lev tyenv utitmz in
-        (eitmz, (rng, VariantType([], Typeenv.find_type_id tyenv "itemize"))) (* temporary *)
+      begin
+        match Typeenv.find_type_id tyenv "itemize" with
+        | None       -> assert false
+        | Some(tvid) -> (eitmz, (rng, VariantType([], tvid))) (* temporary *)
+      end
 
 (* ---- list ---- *)
 
@@ -771,14 +773,13 @@ and typecheck_pattern
 
     | UTPConstructor(constrnm, utpat1) ->
         begin
-          try
-            let (tyarglist, tyid, tyc) = Typeenv.find_constructor qtfbl tyenv lev constrnm in
-            let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
-            let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-            let () = unify tyc typat1 in
-              (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
-          with
-          | Not_found -> raise (UndefinedConstructor(rng, constrnm))
+          match Typeenv.find_constructor qtfbl tyenv lev constrnm with
+          | None -> raise (UndefinedConstructor(rng, constrnm))
+          | Some((tyarglist, tyid, tyc)) ->
+              let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+              let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+              let () = unify tyc typat1 in
+                (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
         end
 
 

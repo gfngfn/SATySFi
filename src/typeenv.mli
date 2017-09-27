@@ -17,7 +17,7 @@ val empty : t
 
 val add : t -> var_name -> (poly_type * EvalVarID.t) -> t
 
-val find : t -> (module_name list) -> var_name -> (poly_type * EvalVarID.t)
+val find : t -> (module_name list) -> var_name -> (poly_type * EvalVarID.t) option
 
 val enter_new_module : t -> module_name -> t
 
@@ -25,11 +25,11 @@ val leave_module : t -> t
 
 val add_mutual_cons : t -> FreeID.level -> untyped_mutual_variant_cons -> t
 
-val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name -> (mono_type list * TypeID.t * mono_type)
+val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
 
 val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraint_cons -> mono_type
 
-val find_type_id : t -> type_name -> TypeID.t
+val find_type_id : t -> type_name -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
 
