@@ -2,7 +2,7 @@ S .
 B ../_build/src
 S ../backend/
 B ../_build/backend/
-S ../backend/camlpdf/
-B ../_build/backend/camlpdf/
-S ../backend/otfm/src/
-B ../_build/backend/otfm/src/
+S ../external/camlpdf/
+B ../_build/externak/camlpdf/
+S ../external/otfm/src/
+B ../_build/external/otfm/src/
