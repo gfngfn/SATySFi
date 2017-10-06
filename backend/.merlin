@@ -1,8 +1,6 @@
 PKG result core ctypes ucorelib
 S .
 B ../_build/backend/
-S ../src/
-B ../_build/src/
 S ../external/otfm/src/
 B ../_build/external/otfm/src/
 S ../external/camlpdf/

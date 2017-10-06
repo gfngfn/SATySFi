@@ -1,8 +1,0 @@
-S .
-B ../_build/src
-S ../backend/
-B ../_build/backend/
-S ../external/camlpdf/
-B ../_build/externak/camlpdf/
-S ../external/otfm/src/
-B ../_build/external/otfm/src/
