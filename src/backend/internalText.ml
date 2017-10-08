@@ -31,15 +31,18 @@ let to_uchar_list (intext : t) : Uchar.t list =
   let len = UCoreLib.Text.length intext in
   let rec aux acc i =
     if len <= i then List.rev acc else
-      let uch_ucore = UCoreLib.Text.get intext i in
-        aux (uch_ucore :: acc) (i + 1)
+      match UCoreLib.Text.get intext i with
+      | None            -> aux acc (i + 1)  (* needs reconsideration; maybe should emit an error *)
+      | Some(uch_ucore) -> aux (uch_ucore :: acc) (i + 1)
   in
   let lst = aux [] 0 in
     List.map (fun uch_ucore -> Uchar.of_int (UCoreLib.UChar.code uch_ucore)) lst
 
 
-let to_utf8 (intext : t) : string = UCoreLib.Text.to_string intext
+let to_utf8 (intext : t) : string = UCoreLib.Text.string_of intext
   
 
 let of_uchar (uch : Uchar.t) : t =
-  UCoreLib.Text.make 1 (UCoreLib.UChar.of_int (Uchar.to_int uch))
+  match UCoreLib.UChar.of_int (Uchar.to_int uch) with
+  | None            -> UCoreLib.Text.empty  (* needs reconsideration; maybe should emit an error *)
+  | Some(uch_ucore) -> UCoreLib.Text.of_uchar uch_ucore
