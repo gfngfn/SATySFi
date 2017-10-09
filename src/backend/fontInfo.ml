@@ -201,15 +201,18 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
     Pdf.Dictionary(keyval)
 
 
-let initialize () =
+let initialize (satysfi_root_dir : string) =
+
+  let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
+
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
 (*
     ("Hlv", CIDFontType2Registration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/HelveticaBlack.ttf");
 *)
-    ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/Osaka.ttf");
-    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Regular.otf");
-    ("ArnoIt", CIDFontType0Registration("ArnoIt-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/ArnoPro-Italic.otf");
+    ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Osaka.ttf");
+    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Regular.otf");
+    ("ArnoIt", CIDFontType0Registration("ArnoIt-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Italic.otf");
 (*
     ("KozMin",
        CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), "./testfonts/KozMinPro-Medium.otf")

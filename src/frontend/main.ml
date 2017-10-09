@@ -299,6 +299,7 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
           read_standalone_file tyenv env file_name_in file_name_out
 
 
+let libdiropt_ref : (string option) ref = ref None
 let output_name_ref : string ref = ref "saty.out"
 let input_acc_ref : ((input_file_kind * string) list) ref = ref []
 
@@ -313,7 +314,11 @@ let arg_doc s =
   
 let arg_standalone s =
   begin input_acc_ref := (StandaloneFile, s) :: !input_acc_ref; end
-  
+
+let arg_libdir s =
+  begin libdiropt_ref := Some(s); end
+
+    
 let arg_version () =
   begin
     print_string (
@@ -334,6 +339,7 @@ let arg_version () =
 
 let arg_spec_list =
   [
+    ("--libdir"    , Arg.String(arg_libdir)    , " Specify SATySFi library directory");
     ("-o"          , Arg.String(arg_output)    , " Specify output file");
     ("--output"    , Arg.String(arg_output)    , " Specify output file");
     ("-v"          , Arg.Unit(arg_version)     , " Print version");
@@ -362,12 +368,16 @@ let () =
     TypeID.initialize ();
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
-    FontInfo.initialize ();  (* temporary *)
-    let (tyenv, env) = Primitives.make_environments () in
-    let input_list = List.rev (!input_acc_ref) in
-    let output = !output_name_ref in
-    input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
-    print_endline ("  [output] " ^ output);
-    main tyenv env input_list output
+    match !libdiropt_ref with
+    | None ->
+        raise (MainError("no designation of SATySFi library directory"))
+    | Some(libdir) ->
+        FontInfo.initialize libdir;  (* temporary *)
+        let (tyenv, env) = Primitives.make_environments () in
+        let input_list = List.rev (!input_acc_ref) in
+        let output = !output_name_ref in
+        input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
+        print_endline ("  [output] " ^ output);
+        main tyenv env input_list output
   )
 

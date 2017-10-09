@@ -2,7 +2,7 @@ open HorzBox
 
 exception InvalidFontAbbrev of font_abbrev
 
-val initialize : unit -> unit
+val initialize : string -> unit
 
 val get_metrics_of_word : font_abbrev -> length -> InternalText.t -> OutputText.t * length * length * length
 
