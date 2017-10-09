@@ -1,0 +1,4 @@
+S .
+B ../../_build/src/chardecoder/
+S ../../external/ucorelib/src/
+B ../../_build/external/ucorelib/src/
