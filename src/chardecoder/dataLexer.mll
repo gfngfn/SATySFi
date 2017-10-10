@@ -17,7 +17,7 @@ rule expr_raw = parse
   | ("#" nonbreak* break)                           { expr_raw lexbuf }
   | ((cp as cpstr) space* ";")                      { CODEPOINT(int_of_hex cpstr) }
   | ((cp as cpstr1) ".." (cp as cpstr2) space* ";") { CODEPOINTRANGE(int_of_hex cpstr1, int_of_hex cpstr2) }
-  | (upper | lower | "_")+                          { IDENTIFIER(Lexing.lexeme lexbuf) }
+  | (upper | lower | "_")+                          { DATA(Lexing.lexeme lexbuf) }
   | eof                                             { EOI }
   | _                                               { failwith ("ScriptLexer: illegal token " ^ (Lexing.lexeme lexbuf)) }
 
@@ -28,7 +28,7 @@ rule expr_raw = parse
     let tok = expr_raw lexbuf in
       print_endline begin
         match tok with
-        | IDENTIFIER(s)            -> "ID(" ^ s ^ ")"
+        | DATA(s)                  -> "DATA(" ^ s ^ ")"
         | CODEPOINT(cp)            -> Printf.sprintf "CP(U+%04X)" cp
         | CODEPOINTRANGE(cp1, cp2) -> Printf.sprintf "CPR(U+%04X..U+%04X)" cp1 cp2
         | EOI                      -> "EOI"

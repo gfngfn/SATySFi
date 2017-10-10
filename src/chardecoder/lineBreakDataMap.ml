@@ -93,14 +93,15 @@ let class_of_string s =
   | _    -> raise InputFileBroken
 
 
-let line_break_map_ref : (string UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
+let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
 
 
 let set_from_file filename =
   let channel = open_in filename in
-  let script_map = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
+  let line_break_list = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
+  let line_break_map = line_break_list |> CharBasis.map_of_list class_of_string in
   begin
-    line_break_map_ref := script_map;
+    line_break_map_ref := line_break_map;
   end
 
 
