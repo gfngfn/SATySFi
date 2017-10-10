@@ -3,7 +3,7 @@ let script_map_ref : (string UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq
 
 let set_from_file filename =
   let channel = open_in filename in
-  let script_map = ScriptParser.main ScriptLexer.expr (Lexing.from_channel channel) in
+  let script_map = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
   begin
     script_map_ref := script_map;
   end

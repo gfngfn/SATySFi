@@ -1,5 +1,5 @@
 {
-  open ScriptParser
+  open DataParser
 
   let int_of_hex s = int_of_string ("0x" ^ s)
 }
