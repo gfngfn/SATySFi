@@ -19,7 +19,7 @@
 
 %}
 
-%token EOI COMMENT DOTS SEMICOLON
+%token EOI DOTS SEMICOLON
 %token<int> CODEPOINT
 %token<string> IDENTIFIER
 %start<string UCoreLib.UMap.t> main
@@ -36,6 +36,6 @@ main:
       }
 ;
 element:
-  | cp=CODEPOINT; SEMICOLON; scr=IDENTIFIER            { (CodePoint(cp), scr) }
-  | cp1=CODEPOINT; DOTS; cp2=CODEPOINT; scr=IDENTIFIER { (CodePointRange(cp1, cp2), scr) }
+  | cp=CODEPOINT; SEMICOLON; scr=IDENTIFIER                       { (CodePoint(cp), scr) }
+  | cp1=CODEPOINT; DOTS; cp2=CODEPOINT; SEMICOLON; scr=IDENTIFIER { (CodePointRange(cp1, cp2), scr) }
 ;
