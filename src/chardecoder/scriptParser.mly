@@ -19,8 +19,9 @@
 
 %}
 
-%token EOI DOTS SEMICOLON
+%token EOI
 %token<int> CODEPOINT
+%token<int * int> CODEPOINTRANGE
 %token<string> IDENTIFIER
 %start<string UCoreLib.UMap.t> main
 
@@ -36,6 +37,6 @@ main:
       }
 ;
 element:
-  | cp=CODEPOINT; SEMICOLON; scr=IDENTIFIER                       { (CodePoint(cp), scr) }
-  | cp1=CODEPOINT; DOTS; cp2=CODEPOINT; SEMICOLON; scr=IDENTIFIER { (CodePointRange(cp1, cp2), scr) }
+  | cp=CODEPOINT; scr=IDENTIFIER         { (CodePoint(cp), scr) }
+  | cprng=CODEPOINTRANGE; scr=IDENTIFIER { let (cp1, cp2) = cprng in (CodePointRange(cp1, cp2), scr) }
 ;
