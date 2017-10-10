@@ -47,50 +47,56 @@ type line_break_class =
   | RI  (* regional indicator *)
   | SA  (* complex context dependent; south east Asian *)
   | XX  (* unknown *)
+(* -- classes -- *)
+  | BreakClass
 
 
 let class_of_string s =
   match s with
-  | "CM" -> CM
-  | "SG" -> SG
-  | "WJ" -> WJ
-  | "ZW" -> ZW
-  | "GL" -> GL
-  | "SP" -> SP
+  | "CM"  -> CM
+  | "SG"  -> SG
+  | "WJ"  -> WJ
+  | "ZW"  -> ZW
+  | "GL"  -> GL
+  | "SP"  -> SP
   | "ZWJ" -> ZWJ
-  | "B2" -> B2
-  | "BA" -> BA
-  | "BB" -> BB
-  | "HY" -> HY
-  | "CB" -> CB
-  | "CL" -> CL
-  | "CP" -> CP
-  | "EX" -> EX
-  | "IN" -> IN
-  | "NS" -> NS
-  | "OP" -> OP
-  | "QU" -> QU  (* maybe not necessary *)
-  | "IS" -> IS
-  | "NU" -> NU
-  | "PO" -> PO
-  | "PR" -> PR
-  | "SY" -> SY
-  | "AI" -> AI
-  | "AL" -> AL
-  | "CJ" -> CJ
-  | "EB" -> EB  (* maybe not necessary *)
-  | "EM" -> EM  (* maybe not necessary *)
-  | "H2" -> H2
-  | "H3" -> H3
-  | "HL" -> HL
-  | "ID" -> ID
-  | "JL" -> JL
-  | "JV" -> JV
-  | "JT" -> JT
-  | "RI" -> RI
-  | "SA" -> SA
-  | "XX" -> XX
-  | _    -> raise InputFileBroken
+  | "B2"  -> B2
+  | "BA"  -> BA
+  | "BB"  -> BB
+  | "HY"  -> HY
+  | "CB"  -> CB
+  | "CL"  -> CL
+  | "CP"  -> CP
+  | "EX"  -> EX
+  | "IN"  -> IN
+  | "NS"  -> NS
+  | "OP"  -> OP
+  | "QU"  -> QU  (* maybe not necessary *)
+  | "IS"  -> IS
+  | "NU"  -> NU
+  | "PO"  -> PO
+  | "PR"  -> PR
+  | "SY"  -> SY
+  | "AI"  -> AI
+  | "AL"  -> AL
+  | "CJ"  -> CJ
+  | "EB"  -> EB  (* maybe not necessary *)
+  | "EM"  -> EM  (* maybe not necessary *)
+  | "H2"  -> H2
+  | "H3"  -> H3
+  | "HL"  -> HL
+  | "ID"  -> ID
+  | "JL"  -> JL
+  | "JV"  -> JV
+  | "JT"  -> JT
+  | "RI"  -> RI
+  | "SA"  -> SA
+  | "XX"  -> XX
+  | "BK"  -> BreakClass
+  | "CR"  -> BreakClass
+  | "LF"  -> BreakClass
+  | "NL"  -> BreakClass
+  | _     -> raise InputFileBroken
 
 
 let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
