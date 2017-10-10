@@ -1,4 +1,4 @@
 
-val set_from_channel : in_channel -> unit
+val set_from_file : string -> unit
 
 val find_opt : Uchar.t -> string option
