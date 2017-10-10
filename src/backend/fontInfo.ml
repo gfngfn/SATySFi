@@ -201,7 +201,31 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
     Pdf.Dictionary(keyval)
 
 
+module ScriptMap
+: sig
+    val set_from_channel : in_channel -> unit
+    val find_opt : Uchar.t -> string option
+  end
+= struct
+  let script_map_ref : (string UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
+
+  let set_from_channel channel =
+    let script_map = ScriptParser.main ScriptLexer.expr (Lexing.from_channel channel) in
+    begin
+      script_map_ref := script_map;
+    end
+
+  let find_opt uch =
+    match UCoreLib.UChar.of_int (Uchar.to_int uch) with
+    | None            -> None
+    | Some(uch_ucore) -> (!script_map_ref) |> UCoreLib.UMap.find_opt uch_ucore
+end
+
+
 let initialize (satysfi_root_dir : string) =
+
+  let script_channel = open_in (Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt") in
+  let () = ScriptMap.set_from_channel script_channel in
 
   let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
 

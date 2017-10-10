@@ -7,3 +7,5 @@ S ../../external/camlpdf/
 B ../../_build/external/camlpdf/
 S ../../external/ucorelib/src/
 B ../../_build/external/ucorelib/src/
+S ../../src/chardecoder/
+B ../../_build/src/chardecoder/

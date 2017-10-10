@@ -1,8 +1,9 @@
 PREFIX=/usr/local
 BACKEND=src/backend
-MAINSRC=src/frontend
+FRONTEND=src/frontend
+CHARDECODER=src/chardecoder
 EXTERNAL=external
-OCB_FLAGS = -use-ocamlfind -use-menhir -I $(MAINSRC)/ -I $(BACKEND)/ -I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ -I $(EXTERNAL)/ucorelib/src/ -pkgs "str,core,ctypes,result,uutf,bitv,batteries" -tag thread -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"
+OCB_FLAGS = -use-ocamlfind -use-menhir -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ -I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ -I $(EXTERNAL)/ucorelib/src/ -pkgs "str,core,ctypes,result,uutf,bitv,batteries" -tag thread -lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"
 TARGET=satysfi
 OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
@@ -26,6 +27,6 @@ clean:
 	$(OCB) -clean
 
 clean-sub:
-	rm -f $(MAINSRC)/lexer.ml $(MAINSRC)/parser.mli $(MAINSRC)/parser.ml $(MAINSRC)/*.cmi $(MAINSRC)/*.cmx $(MAINSRC)/*.o
+	rm -f $(FRONTEND)/lexer.ml $(FRONTEND)/parser.mli $(FRONTEND)/parser.ml $(FRONTEND)/*.cmi $(FRONTEND)/*.cmx $(FRONTEND)/*.o
 
 .PHONY: clean clean-sub
