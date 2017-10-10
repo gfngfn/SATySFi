@@ -204,7 +204,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize (satysfi_root_dir : string) =
 
   print_for_debug "!!ScriptMap";
-  ScriptMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt");
+  ScriptDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt");
 
   let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
 
