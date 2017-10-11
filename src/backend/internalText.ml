@@ -7,7 +7,7 @@ type t = UCoreLib.text
 exception NotEncodableToUTF16BE of t
 
 
-let of_utf_8 (str_utf8 : string) : t =
+let of_utf8 (str_utf8 : string) : t =
   let dcdr_utf8 = ChEnc.create_decoder ChEnc.utf8 in
   let (_, s) = ChEnc.decode dcdr_utf8 str_utf8 in
     s

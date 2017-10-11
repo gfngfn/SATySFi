@@ -28,16 +28,18 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 
 
 (* temporary; should be variable *)
-let lex_horz_text (ctx : input_context) (s : string) : HorzBox.horz_box list =
+let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let (_, font_size) = ctx.font_info in 
-  let space_natural =
-      HorzBox.(font_size *% ctx.space_natural)
-  in
-  let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s in
+  let space_natural = HorzBox.(font_size *% ctx.space_natural) in
+  let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+  let wordwithscript = ScriptDataMap.divide_by_script uchlst in
+
+  let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s_utf8 in
     fullsplitlst |> List.map (function
-      | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf_8 s))
+      | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf8 s))
       | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(space_natural, ctx.space_shrink, ctx.space_stretch)), None, None)
     )
+
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -311,7 +313,7 @@ and interpret env ast =
   | BackendFixedString(astfont, aststr) ->
       let font_info = interpret_font env astfont in
       let purestr = interpret_string env aststr in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf_8 purestr))])
+        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf8 purestr))])
 
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let hblst = interpret_horz_boxes env astbr in

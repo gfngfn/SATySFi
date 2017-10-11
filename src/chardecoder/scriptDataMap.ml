@@ -1,13 +1,5 @@
 
-type script =
-  | Common              (*   --  ; Zyyy; Common *)
-  | Inherited           (*   --  ; Zinh; Inherited *)
-  | Unknown             (*   --  ; Zzzz; Unknown *)
-  | HanIdeographic      (* 'hani'; Hani; Han *)
-  | HiraganaOrKatakana  (* 'kana'; Hrkt; Hiragana_Or_Katakana *)
-  | Latin               (* 'latn'; Latn; Latin *)
-(* temporary; should add more scripts *)
-  | Other
+open CharBasis
 
 
 let read_script = function
@@ -16,6 +8,7 @@ let read_script = function
   | "Hiragana" -> HiraganaOrKatakana
   | "Katakana" -> HiraganaOrKatakana
   | "Latin"    -> Latin
+(* temporary; should add more scripts *)
   | _          -> Other
 
 
@@ -33,5 +26,33 @@ let set_from_file filename =
 
 let find_opt uch =
   match UCoreLib.UChar.of_int (Uchar.to_int uch) with
-  | None            -> None
-  | Some(uch_ucore) -> (!script_map_ref) |> UCoreLib.UMap.find_opt uch_ucore
+  | None            -> Other
+  | Some(uch_ucore) ->
+      match (!script_map_ref) |> UCoreLib.UMap.find_opt uch_ucore with
+      | None         -> Other
+      | Some(script) -> script
+
+
+let divide_by_script uchlst =
+  let rec aux resacc scracc uchlst =
+    match uchlst with
+    | [] ->
+        begin
+          match scracc with
+          | None                       -> List.rev resacc
+          | Some((prevscript, uchacc)) -> List.rev ((prevscript, List.rev uchacc) :: resacc)
+        end
+
+    | uch :: tail ->
+        let script = find_opt uch in
+          match scracc with
+          | None                       -> aux resacc (Some((script, [uch]))) tail
+          | Some((prevscript, uchacc)) ->
+              if script_equal prevscript script then
+                aux resacc (Some((script, uch :: uchacc))) tail
+              else
+                aux ((prevscript, List.rev uchacc) :: resacc) (Some((script, [uch]))) tail
+                
+  in
+    aux [] None uchlst
+

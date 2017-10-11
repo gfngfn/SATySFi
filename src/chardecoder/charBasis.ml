@@ -5,6 +5,19 @@ type code_point_kind =
   | CodePoint      of code_point
   | CodePointRange of code_point * code_point
 
+type script =
+  | Common              (*   --  ; Zyyy; Common *)
+  | Inherited           (*   --  ; Zinh; Inherited *)
+  | Unknown             (*   --  ; Zzzz; Unknown *)
+  | HanIdeographic      (* 'hani'; Hani; Han *)
+  | HiraganaOrKatakana  (* 'kana'; Hrkt; Hiragana_Or_Katakana *)
+  | Latin               (* 'latn'; Latn; Latin *)
+(* temporary; should add more scripts *)
+  | Other
+
+
+let script_equal = (=)
+
 
 let add_to_map cp scr umap =
   match UCoreLib.UChar.of_int cp with

@@ -3,7 +3,7 @@ type t
 
 exception NotEncodableToUTF16BE of t
 
-val of_utf_8 : string -> t
+val of_utf8 : string -> t
 
 val to_utf8 : t -> string
 
