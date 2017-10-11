@@ -33,6 +33,7 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
   let space_natural = HorzBox.(font_size *% ctx.space_natural) in
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   let wordwithscript = ScriptDataMap.divide_by_script uchlst in
+  let wordwithlb = wordwithscript |> List.map (fun (script, uchlst) -> (script, LineBreakDataMap.append_property uchlst)) in
 
   let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s_utf8 in
     fullsplitlst |> List.map (function

@@ -1,54 +1,7 @@
 
+open CharBasis
+
 exception InputFileBroken
-
-
-(* -- line breaking classes [UAX #14 Table 1] -- *)
-type line_break_class =
-(* -- non-tailorable line breaking classes -- *)
-  | CM  (* combining marks *)
-  | SG  (* surrogates *)
-  | WJ  (* word joiner *)
-  | ZW  (* zero width space *)
-  | GL  (* non-breaking; glue *)
-  | SP  (* space *)
-  | ZWJ (* zero width joiner *)
-  | B2  (* break opportunity *)
-  | BA  (* break after *)
-  | BB  (* break before *)
-  | HY  (* hyphen *)
-  | CB  (* contingent break opportunity *)
-(* -- characters prohibiting certain breaks -- *)
-  | CL  (* close punctuation *)
-  | CP  (* close parenthesis *)
-  | EX  (* exclamation *)
-  | IN  (* inseparable *)
-  | NS  (* nonstarter *)
-  | OP  (* open punctuation *)
-  | QU  (* quotation *) (* maybe not necessary *)
-(* -- numeric context -- *)
-  | IS  (* infix numeric separator *)
-  | NU  (* numeric *)
-  | PO  (* postfix numeric *)
-  | PR  (* prefix numeric *)
-  | SY  (* symbols allowing break after *)
-(* -- other characters -- *)
-  | AI  (* ambiguous (alphabetic or ideographic) *)
-  | AL  (* alphabetic *)
-  | CJ  (* conditional Japanese starter *)
-  | EB  (* emoji base *)  (* maybe not necessary *)
-  | EM  (* empji modifier *)  (* maybe not necessary *)
-  | H2  (* Hangul LV syllable *)
-  | H3  (* Hangul LVT syllable *)
-  | HL  (* Hebrew letter *)
-  | ID  (* ideographic *)
-  | JL  (* Hangul L Jamo *)
-  | JV  (* Hangul V Jamo *)
-  | JT  (* Hangul T Jamo *)
-  | RI  (* regional indicator *)
-  | SA  (* complex context dependent; south east Asian *)
-  | XX  (* unknown *)
-(* -- classes -- *)
-  | BreakClass
 
 
 let class_of_string s =
@@ -111,7 +64,30 @@ let set_from_file filename =
   end
 
 
-let find_opt uch =
+let find uch =
   match UCoreLib.UChar.of_int (Uchar.to_int uch) with
-  | None            -> None
-  | Some(uch_ucore) -> (!line_break_map_ref) |> UCoreLib.UMap.find_opt uch_ucore
+  | None            -> AL  (* temporary *)
+  | Some(uch_ucore) ->
+      match (!line_break_map_ref) |> UCoreLib.UMap.find_opt uch_ucore with
+      | None      -> AL  (* temporary *)
+      | Some(lbc) -> lbc
+
+(*
+let insert_break_opportunity lst =
+  let rec aux acc lst =
+    match lst with
+    | []                                          -> List.rev acc
+    | (uch, lbc) :: []                            -> aux2 uch lbc None acc []
+    | (uch, lbc) :: (((_, lbcnext) :: _) as tail) -> aux2 uch lbc (Some(lbcnext)) acc tail
+
+  and aux2 uch lbc lbcnextopt acc tail =
+    match lbc with
+    | AL -> 
+    | BA -> aux (DirectBreak :: Character(uch) :: acc) tail
+    |
+  in
+    aux [] lst
+*)
+
+let append_property uchlst =
+  uchlst |> List.map (fun uch -> (uch, find uch))

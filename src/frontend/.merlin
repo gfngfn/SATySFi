@@ -2,3 +2,5 @@ S .
 B ../../_build/src/frontend/
 S ../../src/backend/
 B ../../_build/src/backend/
+S ../chardecoder/
+B ../../_build/src/chardecoder/
