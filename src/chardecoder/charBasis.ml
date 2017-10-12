@@ -147,3 +147,14 @@ let rec show_lregexp lregexp =
   | LBRENotOf(lbclst)    -> "[^" ^ (String.concat "|" (List.map show_lb_class lbclst)) ^ "]"
   | LBREStar(lregexpsub) -> "(" ^ (show_lregexp lregexpsub) ^ ")*"
   ) |> String.concat " "
+
+
+(* for debug *)
+let show_script = function
+  | Common             -> "Common"
+  | Inherited          -> "Inherited"
+  | Unknown            -> "Unknown"
+  | HanIdeographic     -> "Han"
+  | HiraganaOrKatakana -> "Kana"
+  | Latin              -> "Latin"
+  | Other              -> "Other"

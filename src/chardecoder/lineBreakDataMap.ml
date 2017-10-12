@@ -1,8 +1,14 @@
 
 let print_for_debug msg =
+
+  print_string msg;
+
   ()
 
 let print_endline_for_debug msg =
+
+  print_endline msg;
+
   ()
 
 
@@ -286,6 +292,15 @@ let append_break_opportunity (uchlst : Uchar.t list) =
   in
     aux [] trilstinit
 
+
+(* for debug *)
+let print_trilist trilst =
+  trilst |> List.iter (fun (uch, lbc, alwref) ->
+    let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
+    let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
+    print_for_debug (sc ^ sa)
+  ); print_endline ""
+
 (*
 (* unit test *)
 let () =
@@ -295,10 +310,6 @@ let () =
       "The quick brown fox")
   in
   let trilst = append_break_opportunity uchlst in
-  trilst |> List.iter (fun (uch, lbc, alwref) ->
-    let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
-    let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
-    print_endline_for_debug (sc ^ sa)
-  ); print_endline ""
+  print_trilist trilst
 *)
 

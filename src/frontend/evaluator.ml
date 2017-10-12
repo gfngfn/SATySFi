@@ -44,9 +44,18 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
       | CharBasis.AllowBreak   -> print_string (sc ^ sl ^ "/")
       | CharBasis.PreventBreak -> print_string (sc ^ sl ^ ".")
     ); print_endline "" in
-(* end: for debug *)
+  (* end: for debug *)
+  let scrlst = ScriptDataMap.divide_by_script trilst in
+  (* begin: for debug *)
+  let () =
+    scrlst |> List.iter (fun (script, trilst) ->
+      print_endline (CharBasis.show_script script);
+      LineBreakDataMap.print_trilist trilst
+    )
+  in
+  (* end: for debug *)
+    
 (*
-  let wordwithscript = ScriptDataMap.divide_by_script uchlst in
   let wordwithlb = wordwithscript |> List.map (fun (script, uchlst) -> (script, LineBreakDataMap.append_property uchlst)) in
 *)
 

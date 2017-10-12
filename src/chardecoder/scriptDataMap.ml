@@ -24,7 +24,7 @@ let set_from_file filename =
   end
 
 
-let find_opt uch =
+let find uch =
   match UCoreLib.UChar.of_int (Uchar.to_int uch) with
   | None            -> Other
   | Some(uch_ucore) ->
@@ -33,26 +33,45 @@ let find_opt uch =
       | Some(script) -> script
 
 
-let divide_by_script uchlst =
-  let rec aux resacc scracc uchlst =
-    match uchlst with
+let divide_by_script trilst =
+
+  let rec aux resacc scraccopt trilst =
+    match trilst with
     | [] ->
         begin
-          match scracc with
+          match scraccopt with
           | None                       -> List.rev resacc
           | Some((prevscript, uchacc)) -> List.rev ((prevscript, List.rev uchacc) :: resacc)
         end
 
-    | uch :: tail ->
-        let script = find_opt uch in
-          match scracc with
-          | None                       -> aux resacc (Some((script, [uch]))) tail
-          | Some((prevscript, uchacc)) ->
-              if script_equal prevscript script then
-                aux resacc (Some((script, uch :: uchacc))) tail
-              else
-                aux ((prevscript, List.rev uchacc) :: resacc) (Some((script, [uch]))) tail
-                
+    | ((uch, _, alwref) as trihead) :: tritail ->
+        let script = find uch in
+        begin
+          match !alwref with
+          | AllowBreak ->
+              begin
+                match scraccopt with
+                | None                       -> aux ((script, [trihead]) :: resacc) None tritail
+                | Some((prevscript, triacc)) ->
+                    if script_equal prevscript script then
+                      aux ((prevscript, List.rev (trihead :: triacc)) :: resacc) None tritail
+                    else
+                      aux ((script, [trihead]) :: (prevscript, List.rev triacc) :: resacc) None tritail
+              end
+
+          | PreventBreak ->
+              begin
+                match scraccopt with
+                | None                       -> aux resacc (Some((script, [trihead]))) tritail
+                | Some((prevscript, triacc)) ->
+                    if script_equal prevscript script then
+                      aux resacc (Some((script, trihead :: triacc))) tritail
+                    else
+                      aux ((prevscript, List.rev triacc) :: resacc) (Some((script, [trihead]))) tritail
+              end
+        end
   in
-    aux [] None uchlst
+
+  let scrlst = aux [] None trilst in
+    scrlst
 
