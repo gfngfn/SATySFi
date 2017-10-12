@@ -158,3 +158,10 @@ let show_script = function
   | HiraganaOrKatakana -> "Kana"
   | Latin              -> "Latin"
   | Other              -> "Other"
+
+
+type line_break_element = Uchar.t * line_break_class * break_opportunity ref
+
+type line_break_unit =
+  | PreWord of script * line_break_element list * break_opportunity
+  | Space

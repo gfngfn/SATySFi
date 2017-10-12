@@ -35,28 +35,44 @@ let find uch =
 
 let divide_by_script trilst =
 
+  let preword alw script trilst =
+    PreWord(script, trilst, alw)
+  in
+
   let rec aux resacc scraccopt trilst =
     match trilst with
     | [] ->
         begin
           match scraccopt with
           | None                       -> List.rev resacc
-          | Some((prevscript, uchacc)) -> List.rev ((prevscript, List.rev uchacc) :: resacc)
+          | Some((prevscript, uchacc)) -> List.rev ((preword PreventBreak (* temporary *) prevscript (List.rev uchacc)) :: resacc)
         end
 
-    | ((uch, _, alwref) as trihead) :: tritail ->
+    | ((uch, lbc, alwref) as trihead) :: tritail ->
         let script = find uch in
         begin
           match !alwref with
           | AllowBreak ->
               begin
-                match scraccopt with
-                | None                       -> aux ((script, [trihead]) :: resacc) None tritail
-                | Some((prevscript, triacc)) ->
-                    if script_equal prevscript script then
-                      aux ((prevscript, List.rev (trihead :: triacc)) :: resacc) None tritail
-                    else
-                      aux ((script, [trihead]) :: (prevscript, List.rev triacc) :: resacc) None tritail
+                match lbc with
+                | SP ->
+                    begin
+                      match scraccopt with
+                      | None                       -> aux (Space :: resacc) None tritail
+                      | Some((prevscript, triacc)) ->
+                          aux (Space :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                    end
+
+                | _ ->
+                    begin
+                      match scraccopt with
+                      | None                       -> aux ((preword AllowBreak script [trihead]) :: resacc) None tritail
+                      | Some((prevscript, triacc)) ->
+                          if script_equal prevscript script then
+                            aux ((preword AllowBreak prevscript (List.rev (trihead :: triacc))) :: resacc) None tritail
+                          else
+                            aux ((preword AllowBreak script [trihead]) :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                    end
               end
 
           | PreventBreak ->
@@ -67,11 +83,20 @@ let divide_by_script trilst =
                     if script_equal prevscript script then
                       aux resacc (Some((script, trihead :: triacc))) tritail
                     else
-                      aux ((prevscript, List.rev triacc) :: resacc) (Some((script, [trihead]))) tritail
+                      aux ((preword PreventBreak prevscript (List.rev triacc)) :: resacc) (Some((script, [trihead]))) tritail
               end
         end
   in
 
   let scrlst = aux [] None trilst in
     scrlst
-
+(*
+    scrlst |> List.fold_left (fun (lbuacc, lbulastopt) (script, trilst) ->
+      match script with
+      | Common ->
+          begin
+            match lbulastopt with
+            | None -> 
+      | Inherited -> 
+    ) ([], None)
+*)

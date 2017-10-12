@@ -169,7 +169,7 @@ type pure_horz_box =
   | PHOuterEmpty  of length * length * length
   | PHOuterFil
   | PHOuterFrame  of paddings * decoration * horz_box list
-  | PHFixedString of font_info * InternalText.t
+  | PHFixedString of font_info * Uchar.t list
   | PHFixedEmpty  of length
   | PHFixedFrame  of paddings * length * decoration * horz_box list
   | PHInnerFrame  of paddings * decoration * horz_box list

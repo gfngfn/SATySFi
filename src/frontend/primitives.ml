@@ -61,14 +61,15 @@ let ( *% ) = HorzBox.( *% )
 
 let default_context =
   {
-    title           = Horz([]);
-    author          = Horz([]);
-    font_info       = ("Arno", HorzBox.Length.of_pdf_point 12.);
-    space_natural   = 0.33;
-    space_shrink    = 0.08;
-    space_stretch   = 0.16;
-    paragraph_width = pdfpt 400.;
-    leading         = pdfpt 18.;
+    title            = Horz([]);
+    author           = Horz([]);
+    font_info        = ("Arno", HorzBox.Length.of_pdf_point 12.);
+    space_natural    = 0.33;
+    space_shrink     = 0.08;
+    space_stretch    = 0.16;
+    adjacent_stretch = 0.1;
+    paragraph_width  = pdfpt 400.;
+    leading          = pdfpt 18.;
   }
 
 let default_graphics_context =

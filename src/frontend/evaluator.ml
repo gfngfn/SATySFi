@@ -33,6 +33,7 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
   let space_natural = HorzBox.(font_size *% ctx.space_natural) in
   let space_shrink  = HorzBox.(font_size *% ctx.space_shrink) in
   let space_stretch = HorzBox.(font_size *% ctx.space_stretch) in
+  let adjacent_stretch = HorzBox.(font_size *% ctx.adjacent_stretch) in
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
 (* begin: for debug *)
@@ -48,23 +49,42 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
   let scrlst = ScriptDataMap.divide_by_script trilst in
   (* begin: for debug *)
   let () =
-    scrlst |> List.iter (fun (script, trilst) ->
-      print_endline (CharBasis.show_script script);
-      LineBreakDataMap.print_trilist trilst
+    scrlst |> List.iter (function
+      | CharBasis.PreWord(script, trilst, alw) ->
+          let sa = match alw with CharBasis.AllowBreak -> "(A)" | CharBasis.PreventBreak -> "(P)" in
+          print_endline ((CharBasis.show_script script) ^ sa);
+          LineBreakDataMap.print_trilist trilst
+      | CharBasis.Space ->
+          print_endline "SPACE"
     )
   in
   (* end: for debug *)
+  scrlst |> List.map (function
+    | CharBasis.PreWord(script, trilst, CharBasis.PreventBreak) ->
+        [
+          HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, trilst |> List.map (fun (uch, _, _) -> uch)));
+        ]
+    | CharBasis.PreWord(script, trilst, CharBasis.AllowBreak) ->
+        [
+          HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, trilst |> List.map (fun (uch, _, _) -> uch)));
+          HorzBox.HorzDiscretionary(100 (* temporary *), Some(HorzBox.PHOuterEmpty(HorzBox.Length.zero, HorzBox.Length.zero, adjacent_stretch)), None, None);
+        ]
+    | CharBasis.Space ->
+        [
+          HorzBox.HorzDiscretionary(100 (* temporary *), Some(HorzBox.PHOuterEmpty(space_natural, space_shrink, space_stretch)), None, None);
+        ]
+  ) |> List.concat
     
 (*
   let wordwithlb = wordwithscript |> List.map (fun (script, uchlst) -> (script, LineBreakDataMap.append_property uchlst)) in
 *)
-
+(*
   let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s_utf8 in
     fullsplitlst |> List.map (function
       | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf8 s))
       | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(space_natural, space_shrink, space_stretch)), None, None)
     )
-
+*)
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -338,7 +358,7 @@ and interpret env ast =
   | BackendFixedString(astfont, aststr) ->
       let font_info = interpret_font env astfont in
       let purestr = interpret_string env aststr in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.of_utf8 purestr))])
+        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
 
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let hblst = interpret_horz_boxes env astbr in

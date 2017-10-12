@@ -120,12 +120,11 @@ let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : InternalText.t) : OutputText.t * length * length * length =
+let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
   let f_skip = raw_length_to_skip_length fontsize in
     match FontAbbrevHashTable.find_opt abbrev with
     | None                    -> raise (InvalidFontAbbrev(abbrev))
     | Some((_, _, dcdr, enc)) ->
-        let uword = InternalText.to_uchar_list word in
           let init =
             OutputText.empty_hex_style
 (*
@@ -134,7 +133,7 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (word : Inter
             | ( UTF16BE | IdentityH ) -> OutputText.empty_hex_style
 *)
           in
-          let gidoptlst = uword |> List.map (FontFormat.get_glyph_id dcdr) in
+          let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = Util.list_some gidoptlst in
           let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 

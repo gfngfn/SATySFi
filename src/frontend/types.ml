@@ -404,14 +404,15 @@ and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
 and input_context = {
-  title           : abstract_tree;
-  author          : abstract_tree;
-  font_info       : HorzBox.font_info;
-  space_natural   : float;
-  space_shrink    : float;
-  space_stretch   : float;
-  paragraph_width : HorzBox.length;
-  leading         : HorzBox.length;
+  title            : abstract_tree;
+  author           : abstract_tree;
+  font_info        : HorzBox.font_info;
+  space_natural    : float;
+  space_shrink     : float;
+  space_stretch    : float;
+  adjacent_stretch : float;
+  paragraph_width  : HorzBox.length;
+  leading          : HorzBox.length;
 }
 (* temporary *)
 
