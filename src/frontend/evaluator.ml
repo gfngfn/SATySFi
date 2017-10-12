@@ -36,14 +36,14 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
   let adjacent_stretch = HorzBox.(font_size *% ctx.adjacent_stretch) in
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
-(* begin: for debug *)
+  (* begin: for debug *)
   let () =
     trilst |> List.iter (fun (uch, lbc, alwref) ->
       let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
       let sl = (* match lbc with CharBasis.AL -> "@" | _ -> "^" *) "" in
-      match !alwref with
-      | CharBasis.AllowBreak   -> print_string (sc ^ sl ^ "/")
-      | CharBasis.PreventBreak -> print_string (sc ^ sl ^ ".")
+        match !alwref with
+        | CharBasis.AllowBreak   -> print_string (sc ^ sl ^ "/")
+        | CharBasis.PreventBreak -> print_string (sc ^ sl ^ ".")
     ); print_endline "" in
   (* end: for debug *)
   let scrlst = ScriptDataMap.divide_by_script trilst in

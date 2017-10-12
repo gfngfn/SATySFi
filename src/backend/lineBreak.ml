@@ -228,12 +228,8 @@ module LineBreakGraph = FlowGraph.Make
   end)
 
 
-module RemovalSet = MutableSet.Make
-  (DiscretionaryID)
+module RemovalSet = MutableSet.Make(DiscretionaryID)
 
-(*
-let paragraph_width = Length.of_pdf_point 450.0 (* temporary; should be variable *)
-*)
 
 let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool * float * length =
   let widnatural = widinfo_total.natural in
@@ -418,7 +414,7 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
     let criterion_short = 10. in
     let criterion_long = -.1. in
     let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
-    let pb = abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_short))) in
+    let pb = abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_long))) in
       if      ratio > criterion_short then TooShort
       else if ratio < criterion_long  then TooLong(pb)
       else Badness(pb)
