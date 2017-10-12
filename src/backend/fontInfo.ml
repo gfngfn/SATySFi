@@ -1,6 +1,10 @@
 
 (* for test *)
-let print_for_debug msg = print_endline msg
+let print_for_debug msg =
+(*
+  print_endline msg;
+*)
+  ()
 
 
 open Result

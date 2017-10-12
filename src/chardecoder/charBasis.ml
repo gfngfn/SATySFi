@@ -94,3 +94,56 @@ let map_of_list (type a) (readf : string -> a) (lst : (code_point_kind * string)
     | (CodePointRange(cp1, cp2), data) -> accmap |> add_range_to_map cp1 cp2 (readf data)
   ) (UCoreLib.UMap.empty ~eq:(=))
 
+
+(* for debug *)
+let show_lb_class lbc =
+  match lbc with
+  | CM  -> "CM"
+  | SG  -> "SG"
+  | WJ  -> "WJ"
+  | ZW  -> "ZW"
+  | GL  -> "GL"
+  | SP  -> "SP"
+  | ZWJ -> "ZWJ"
+  | B2  -> "B2"
+  | BA  -> "BA"
+  | BB  -> "BB"
+  | HY  -> "HY"
+  | CB  -> "CB"
+  | CL  -> "CL"
+  | CP  -> "CP"
+  | EX  -> "EX"
+  | IN  -> "IN"
+  | NS  -> "NS"
+  | OP  -> "OP"
+  | QU  -> "QU"  (* maybe not necessary *)
+  | IS  -> "IS"
+  | NU  -> "NU"
+  | PO  -> "PO"
+  | PR  -> "PR"
+  | SY  -> "SY"
+  | AI  -> "AI"
+  | AL  -> "AL"
+  | CJ  -> "CJ"
+  | EB  -> "EB"  (* maybe not necessary *)
+  | EM  -> "EM"  (* maybe not necessary *)
+  | H2  -> "H2"
+  | H3  -> "H3"
+  | HL  -> "HL"
+  | ID  -> "ID"
+  | JL  -> "JL"
+  | JV  -> "JV"
+  | JT  -> "JT"
+  | RI  -> "RI"
+  | SA  -> "SA"
+  | XX  -> "XX"
+  | BreakClass -> "Break"
+
+
+(* for debug *)
+let rec show_lregexp lregexp =
+  lregexp |> List.map (function
+  | LBRESet(lbclst)      -> "[" ^ (String.concat "|" (List.map show_lb_class lbclst)) ^ "]"
+  | LBRENotOf(lbclst)    -> "[^" ^ (String.concat "|" (List.map show_lb_class lbclst)) ^ "]"
+  | LBREStar(lregexpsub) -> "(" ^ (show_lregexp lregexpsub) ^ ")*"
+  ) |> String.concat " "

@@ -2,3 +2,5 @@ S .
 B ../../_build/src/chardecoder/
 S ../../external/ucorelib/src/
 B ../../_build/external/ucorelib/src/
+S ../backend/
+B ../../_build/src/backend/

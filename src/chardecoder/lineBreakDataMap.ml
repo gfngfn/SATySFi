@@ -1,4 +1,11 @@
 
+let print_for_debug msg =
+  ()
+
+let print_endline_for_debug msg =
+  ()
+
+
 open CharBasis
 
 exception InputFileBroken
@@ -66,10 +73,10 @@ let set_from_file filename =
 
 let find uch =
   match UCoreLib.UChar.of_int (Uchar.to_int uch) with
-  | None            -> AL  (* temporary *)
+  | None            -> XX  (* temporary *)
   | Some(uch_ucore) ->
       match (!line_break_map_ref) |> UCoreLib.UMap.find_opt uch_ucore with
-      | None      -> AL  (* temporary *)
+      | None      -> XX  (* temporary *)
       | Some(lbc) -> lbc
 
 (*
@@ -174,11 +181,11 @@ let line_break_rule =
     ]
 
 
-(* -- a naive regexp matching -- *)
+(* -- a naive, greedy regexp matching -- *)
 let match_prefix trilst lregexp =
   let rec cut trilst lregexp =
     match lregexp with
-    | []                      -> Some(trilst)
+    | [] -> Some(trilst)
 
     | LBRESet(lbclst) :: lregexptail ->
         begin
@@ -195,7 +202,8 @@ let match_prefix trilst lregexp =
         end
 
     | LBREStar(lregexpsub) :: lregexptail ->
-        let trilstsub = cut_by_star trilst lregexpsub in cut trilstsub lregexptail
+        let trilstsub = cut_by_star trilst lregexpsub in
+          cut trilstsub lregexptail
 
   and cut_by_star trilst lregexp =
     match cut trilst lregexp with
@@ -218,7 +226,7 @@ let match_postfix trilst lregexp =
     in
       List.rev lregexpsub
   in
-    match_prefix (List.rev trilst) (reverse lregexp)
+    match_prefix trilst (reverse lregexp)
 
 
 let append_break_opportunity (uchlst : Uchar.t list) =
@@ -231,7 +239,9 @@ let append_break_opportunity (uchlst : Uchar.t list) =
         | None ->
             let b1 = match_postfix triacc lregexp1 in
             let b2 = match_prefix trilst lregexp2 in
-              if b1 && b2 then Some(alw) else alwoptacc
+            if b1 && b2 then
+              let () = print_for_debug (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
+              Some(alw) else alwoptacc
       ) None
     in
       match alwopt with
@@ -244,24 +254,51 @@ let append_break_opportunity (uchlst : Uchar.t list) =
     match trilst with
     | [] -> []
 
-    | ((_, _, alwref) as trihead) :: tritail ->
+    | ((uch, lbc, alwref) as trihead) :: tritail ->
         let triaccnew = trihead :: triacc in
         let trilstnew = tritail in
-        match tritail with
-        | [] ->
-            begin
-              alwref := PreventBreak;
-              List.rev triaccnew
-            end
+        begin
+          match tritail with
+          | [] ->
+              begin
+                alwref := PreventBreak;
+                List.rev triaccnew
+              end
 
-        | _ :: _ ->
-            let () =
-              if should_prevent_break triaccnew trilstnew then
-                begin alwref := PreventBreak; end
-              else ()
-            in
-              aux triaccnew trilstnew
+          | _ :: _ ->
+              begin
+                print_for_debug (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
+                print_for_debug (" " ^ (show_lb_class lbc));  (* for debug *)
+                let b = should_prevent_break triaccnew trilstnew in
+                print_endline_for_debug "";  (* for debug *)
+                if b then
+                  begin alwref := PreventBreak; end
+                else ();
+                aux triaccnew trilstnew
+              end
+        end
   in
   let uchlblst = append_property uchlst in
-  let trilstinit = uchlblst |> List.map (fun (uch, lbc) -> (uch, lbc, ref AllowBreak)) in
+  let trilstinit =
+    uchlblst |> List.map (fun (uch, lbc) ->
+      let alwref = ref AllowBreak in (uch, lbc, alwref)
+    )
+  in
     aux [] trilstinit
+
+(*
+(* unit test *)
+let () =
+  set_from_file "./lib-satysfi/dist/unidata/LineBreak.txt";
+  let uchlst =
+    InternalText.to_uchar_list (InternalText.of_utf8
+      "The quick brown fox")
+  in
+  let trilst = append_break_opportunity uchlst in
+  trilst |> List.iter (fun (uch, lbc, alwref) ->
+    let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
+    let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
+    print_endline_for_debug (sc ^ sa)
+  ); print_endline ""
+*)
+

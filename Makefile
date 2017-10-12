@@ -30,3 +30,7 @@ clean-sub:
 	rm -f $(FRONTEND)/lexer.ml $(FRONTEND)/parser.mli $(FRONTEND)/parser.ml $(FRONTEND)/*.cmi $(FRONTEND)/*.cmx $(FRONTEND)/*.o
 
 .PHONY: clean clean-sub
+
+lb:
+	$(OCB) lineBreakDataMap.native
+
