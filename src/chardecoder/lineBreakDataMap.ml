@@ -89,5 +89,178 @@ let insert_break_opportunity lst =
     aux [] lst
 *)
 
-let append_property uchlst =
+let append_property (uchlst : Uchar.t list) =
   uchlst |> List.map (fun uch -> (uch, find uch))
+
+
+let line_break_rule =
+  let set lbclst = LBRESet(lbclst) in
+  let notof lbclst = LBRENotOf(lbclst) in
+  let exact lbc = set [lbc] in
+  let star lbre = LBREStar(lbre) in
+    [
+    (* -- LB7 -- *)
+      ([], PreventBreak, [exact SP]);
+      ([], PreventBreak, [exact ZW]);
+    (* -- LB8 -- *)
+      ([exact ZW; star [exact SP]], AllowBreak, []);
+    (* -- LB8a -- *)
+      ([exact ZWJ], PreventBreak, [set [ID; EB; EM]]);
+    (* -- LB11 -- *)
+      ([], PreventBreak, [exact WJ]);
+      ([exact WJ], PreventBreak, []);
+    (* -- LB12 -- *)
+      ([exact GL], PreventBreak, []);
+    (* -- LB12a -- *)
+      ([notof [SP; BA; HY]], PreventBreak, [exact GL]);
+    (* -- LB13 -- *)
+      ([], PreventBreak, [set [CL; CP; EX; IS; SY]]);
+    (* -- LB14 -- *)
+      ([exact OP; star [exact SP]], PreventBreak, []);
+    (* -- LB15 -- *)
+      ([exact QU; star [exact SP]], PreventBreak, [exact OP]);
+    (* -- LB16 -- *)
+      ([set [CL; CP]; star [exact SP]], PreventBreak, [exact NS]);
+    (* -- LB17 -- *)
+      ([exact B2; star [exact SP]], PreventBreak, [exact B2]);
+    (* -- LB18 -- *)
+      ([exact SP], AllowBreak, []);
+    (* -- LB19 -- *)
+      ([], PreventBreak, [exact QU]);
+      ([exact QU], PreventBreak, []);
+    (* -- LB20 -- *)
+      ([], AllowBreak, [exact CB]);
+      ([exact CB], AllowBreak, []);
+    (* -- LB21 -- *)
+      ([], PreventBreak, [set [BA; HY; NS]]);
+      ([exact BB], PreventBreak, []);
+    (* -- LB21a -- *)
+      ([exact HL; set [HY; BA]], PreventBreak, []);
+    (* -- LB21b -- *)
+      ([exact SY], PreventBreak, [exact HL]);
+    (* -- LB22 -- *)
+      ([set [AL; HL; EX; ID; EB; EM; IN; NU]], PreventBreak, [exact NU]);
+    (* -- LB23 -- *)
+      ([set [AL; HL]], PreventBreak, [exact NU]);
+      ([exact NU], PreventBreak, [set [AL; HL]]);
+    (* -- LB23a -- *)
+      ([exact PR], PreventBreak, [set [ID; EB; EM]]);
+      ([set [ID; EB; EM]], PreventBreak, [exact PO]);
+    (* -- LB24 -- *)
+      ([set [PR; PO]], PreventBreak, [set [AL; HL]]);
+      ([set [AL; HL]], PreventBreak, [set [PR; PO]]);
+    (* -- LB25 -- *)
+      ([set [CL; CP; NU]], PreventBreak, [set [PR; PO]]);
+      ([set [PR; PO]], PreventBreak, [set [OP; NU]]);
+      ([set [HY; IS; NU; SY]], PreventBreak, [exact NU]);
+    (* -- LB26 -- *)
+      ([exact JL], PreventBreak, [set [JL; JV; H2; H3]]);
+      ([set [JV; H2]], PreventBreak, [set [JV; JT]]);
+      ([set [JT; H3]], PreventBreak, [exact JT]);
+    (* -- LB27 -- *)
+      ([set [JL; JV; JT; H2; H3]], PreventBreak, [set [IN; PO]]);
+      ([exact PR], PreventBreak, [set [JL; JV; JT; H2; H3]]);
+    (* -- LB28 --*)
+      ([set [AL; HL]], PreventBreak, [set [AL; HL]]);
+    (* -- LB29 --*)
+      ([exact IS], PreventBreak, [set [AL; HL]]);
+    (* -- LB30 --*)
+      ([set [AL; HL; NU]], PreventBreak, [exact OP]);
+      ([exact CP], PreventBreak, [set [AL; HL; NU]]);
+    (* -- LB30a -- *)  (* temporary; incomplete rule *)
+      ([notof [RI]; star [exact RI; exact RI]; exact RI], PreventBreak, [exact RI]);
+    (* -- LB30b -- *)
+      ([exact EB], PreventBreak, [exact EM]);
+    ]
+
+
+(* -- a naive regexp matching -- *)
+let match_prefix trilst lregexp =
+  let rec cut trilst lregexp =
+    match lregexp with
+    | []                      -> Some(trilst)
+
+    | LBRESet(lbclst) :: lregexptail ->
+        begin
+          match trilst with
+          | []                     -> None
+          | (_, lbc, _) :: tritail -> if List.mem lbc lbclst then cut tritail lregexptail else None
+        end
+
+    | LBRENotOf(lbclst) :: lregexptail ->
+        begin
+          match trilst with
+          | []                     -> None
+          | (_, lbc, _) :: tritail -> if not (List.mem lbc lbclst) then cut tritail lregexptail else None
+        end
+
+    | LBREStar(lregexpsub) :: lregexptail ->
+        let trilstsub = cut_by_star trilst lregexpsub in cut trilstsub lregexptail
+
+  and cut_by_star trilst lregexp =
+    match cut trilst lregexp with
+    | None            -> trilst
+    | Some(trilstsub) -> cut_by_star trilstsub lregexp
+      
+  in
+    match cut trilst lregexp with
+    | None    -> false
+    | Some(_) -> true
+
+
+let match_postfix trilst lregexp =
+  let rec reverse lregexp =
+    let lregexpsub =
+      lregexp |> List.map (function
+        | LBREStar(lregexpiter) -> LBREStar(reverse lregexpiter)
+        | other                 -> other
+      )
+    in
+      List.rev lregexpsub
+  in
+    match_prefix (List.rev trilst) (reverse lregexp)
+
+
+let append_break_opportunity (uchlblst : (Uchar.t * line_break_class) list) =
+
+  let should_prevent_break triacc trilst =
+    let alwopt =
+      line_break_rule |> List.fold_left (fun alwoptacc (lregexp1, alw, lregexp2) ->
+        match alwoptacc with
+        | Some(_) -> alwoptacc
+        | None ->
+            let b1 = match_postfix triacc lregexp1 in
+            let b2 = match_prefix trilst lregexp2 in
+              if b1 && b2 then Some(alw) else alwoptacc
+      ) None
+    in
+      match alwopt with
+      | None               -> false
+      | Some(PreventBreak) -> true
+      | Some(AllowBreak)   -> false
+  in
+
+  let rec aux triacc trilst =
+    match trilst with
+    | [] -> []
+
+    | ((_, _, alwref) as trihead) :: tritail ->
+        let triaccnew = trihead :: triacc in
+        let trilstnew = tritail in
+        match tritail with
+        | [] ->
+            begin
+              alwref := PreventBreak;
+              List.rev triaccnew
+            end
+
+        | _ :: _ ->
+            let () =
+              if should_prevent_break triaccnew trilstnew then
+                begin alwref := PreventBreak; end
+              else ()
+            in
+              aux triaccnew trilstnew
+  in
+  let trilstinit = uchlblst |> List.map (fun (uch, lbc) -> (uch, lbc, ref AllowBreak)) in
+    aux [] trilstinit

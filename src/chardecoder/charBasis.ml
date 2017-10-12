@@ -15,6 +15,9 @@ type script =
 (* temporary; should add more scripts *)
   | Other
 
+type break_opportunity =
+  | AllowBreak
+  | PreventBreak
 
 (* -- line breaking classes [UAX #14 Table 1] -- *)
 type line_break_class =
@@ -64,6 +67,10 @@ type line_break_class =
 (* -- classes -- *)
   | BreakClass
 
+type line_break_regexp =
+  | LBRESet       of line_break_class list   (* [a ... a] *)
+  | LBRENotOf     of line_break_class list   (* [^ a ... a] *)
+  | LBREStar      of line_break_regexp list  (* e* *)
 
 let script_equal = (=)
 
