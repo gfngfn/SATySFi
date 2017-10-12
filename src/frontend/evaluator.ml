@@ -31,14 +31,19 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let (_, font_size) = ctx.font_info in 
   let space_natural = HorzBox.(font_size *% ctx.space_natural) in
+  let space_shrink  = HorzBox.(font_size *% ctx.space_shrink) in
+  let space_stretch = HorzBox.(font_size *% ctx.space_stretch) in
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+  let trilst = LineBreakDataMap.append_break_opportunity uchlst in
+(*
   let wordwithscript = ScriptDataMap.divide_by_script uchlst in
   let wordwithlb = wordwithscript |> List.map (fun (script, uchlst) -> (script, LineBreakDataMap.append_property uchlst)) in
+*)
 
   let fullsplitlst = Str.full_split (Str.regexp "[ \t\r\n]+") s_utf8 in
     fullsplitlst |> List.map (function
       | Str.Text(s)  -> HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, InternalText.of_utf8 s))
-      | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(space_natural, ctx.space_shrink, ctx.space_stretch)), None, None)
+      | Str.Delim(_) -> HorzBox.HorzDiscretionary(100, Some(HorzBox.PHOuterEmpty(space_natural, space_shrink, space_stretch)), None, None)
     )
 
 

@@ -221,7 +221,7 @@ let match_postfix trilst lregexp =
     match_prefix (List.rev trilst) (reverse lregexp)
 
 
-let append_break_opportunity (uchlblst : (Uchar.t * line_break_class) list) =
+let append_break_opportunity (uchlst : Uchar.t list) =
 
   let should_prevent_break triacc trilst =
     let alwopt =
@@ -262,5 +262,6 @@ let append_break_opportunity (uchlblst : (Uchar.t * line_break_class) list) =
             in
               aux triaccnew trilstnew
   in
+  let uchlblst = append_property uchlst in
   let trilstinit = uchlblst |> List.map (fun (uch, lbc) -> (uch, lbc, ref AllowBreak)) in
     aux [] trilstinit

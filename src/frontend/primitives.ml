@@ -65,8 +65,8 @@ let default_context =
     author          = Horz([]);
     font_info       = ("Arno", HorzBox.Length.of_pdf_point 12.);
     space_natural   = 0.33;
-    space_shrink    = pdfpt 1.;
-    space_stretch   = pdfpt 2.;
+    space_shrink    = 0.08;
+    space_stretch   = 0.16;
     paragraph_width = pdfpt 400.;
     leading         = pdfpt 18.;
   }

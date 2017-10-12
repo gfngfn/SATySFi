@@ -408,8 +408,8 @@ and input_context = {
   author          : abstract_tree;
   font_info       : HorzBox.font_info;
   space_natural   : float;
-  space_shrink    : HorzBox.length;
-  space_stretch   : HorzBox.length;
+  space_shrink    : float;
+  space_stretch   : float;
   paragraph_width : HorzBox.length;
   leading         : HorzBox.length;
 }
