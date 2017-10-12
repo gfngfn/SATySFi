@@ -133,7 +133,7 @@ let line_break_rule =
     (* -- LB15 -- *)
       ([exact QU; star [exact SP]], PreventBreak, [exact OP]);
     (* -- LB16 -- *)
-      ([set [CL; CP]; star [exact SP]], PreventBreak, [exact NS]);
+      ([set [CL; CP]; star [exact SP]], PreventBreak, [set [NS; CJ]]);
     (* -- LB17 -- *)
       ([exact B2; star [exact SP]], PreventBreak, [exact B2]);
     (* -- LB18 -- *)
@@ -145,7 +145,7 @@ let line_break_rule =
       ([], AllowBreak, [exact CB]);
       ([exact CB], AllowBreak, []);
     (* -- LB21 -- *)
-      ([], PreventBreak, [set [BA; HY; NS]]);
+      ([], PreventBreak, [set [BA; HY; NS; CJ]]);
       ([exact BB], PreventBreak, []);
     (* -- LB21a -- *)
       ([exact HL; set [HY; BA]], PreventBreak, []);
