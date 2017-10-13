@@ -9,6 +9,9 @@ let print_for_debug_evaluator msg =
 *)
   ()
 
+let print_for_debug_lex_horz msg = ()
+let print_endline_for_debug_lex_horz msg = ()
+
 
 let report_bug_evaluator msg =
   failwith msg
@@ -43,9 +46,9 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
       let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
       let sl = (* match lbc with CharBasis.AL -> "@" | _ -> "^" *) "" in
         match !alwref with
-        | CharBasis.AllowBreak   -> print_string (sc ^ sl ^ "/")
-        | CharBasis.PreventBreak -> print_string (sc ^ sl ^ ".")
-    ); print_endline "" in
+        | CharBasis.AllowBreak   -> print_for_debug_lex_horz (sc ^ sl ^ "/")
+        | CharBasis.PreventBreak -> print_for_debug_lex_horz (sc ^ sl ^ ".")
+    ); print_endline_for_debug_lex_horz "" in
   (* end: for debug *)
 
   let scrlst = ScriptDataMap.divide_by_script trilst in
@@ -55,12 +58,12 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
     scrlst |> List.iter (function
       | CharBasis.PreWord(script, trilst, alw) ->
           let sa = match alw with CharBasis.AllowBreak -> "(A)" | CharBasis.PreventBreak -> "(P)" in
-          print_endline ((CharBasis.show_script script) ^ sa);
+          print_endline_for_debug_lex_horz ((CharBasis.show_script script) ^ sa);
           LineBreakDataMap.print_trilist trilst
       | CharBasis.Space ->
-          print_endline "SPACE"
+          print_endline_for_debug_lex_horz "SPACE"
       | CharBasis.UnbreakableSpace ->
-          print_endline "UNBREAKABLE_SPACE"
+          print_endline_for_debug_lex_horz "UNBREAKABLE_SPACE"
     )
   in
   (* end: for debug *)

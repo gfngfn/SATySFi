@@ -231,94 +231,100 @@ module LineBreakGraph = FlowGraph.Make
 module RemovalSet = MutableSet.Make(DiscretionaryID)
 
 
-let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool * float * length =
+let ratio_stretch_limit = 2.
+let ratio_shrink_limit = -1.
+
+let calculate_ratios (widrequired : length) (widinfo_total : length_info) : ratios * length =
   let widnatural = widinfo_total.natural in
   let widshrink  = widinfo_total.shrinkable in
   let stretch = widinfo_total.stretchable in
   let widdiff = widrequired -% widnatural in
-  let is_short = (widnatural <% widrequired) in
-  let (ratio, widperfil) =
-    if is_short then
+    if widnatural <% widrequired then
+    (* -- if the natural width is shorter than the required one; widdiff is positive -- *)
       match stretch with
-      | Fils(nfil)  when nfil > 0 -> (0., widdiff *% (1. /. (~. nfil)))
-      | Fils(_)                   -> assert false  (* -- number of fils cannot be negative -- *)
+      | Fils(nfil)  when nfil > 0 -> (PermissiblyLong(0.), widdiff *% (1. /. (~. nfil)))
+      | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
       | FiniteStretch(widstretch) ->
           if Length.is_nearly_zero widstretch then
           (* -- if unable to stretch -- *)
-            (1., Length.zero)
+            (TooShort, Length.zero)
           else
-            (widdiff /% widstretch, Length.zero)
+            let ratio_raw = widdiff /% widstretch in
+            if ratio_raw >= ratio_stretch_limit then
+              (TooShort, Length.zero)
+            else
+              (PermissiblyShort(ratio_raw), Length.zero)
     else
+    (* -- if the natural width is longer than the required one; widdiff is nonpositive -- *)
       if Length.is_nearly_zero widshrink then
       (* -- if unable to shrink -- *)
-        (-1., Length.zero)
+        (TooLong, Length.zero)
       else
-        (max (-1.) (widdiff /% widshrink), Length.zero)
-  in
-    (is_short, ratio, widperfil)
+        let ratio_raw = widdiff /% widshrink in
+        if ratio_raw <= ratio_shrink_limit then
+          (TooLong, Length.zero)
+        else
+          (PermissiblyLong(ratio_raw), Length.zero)
 
 
-let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length * badness =
+let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
-  let (is_short, ratio, widperfil) = calculate_ratios wid_req widinfo_total in
-  let rec main_conversion is_short ratio widperfil lphb =
+  let (ratios, widperfil) = calculate_ratios wid_req widinfo_total in
+
+  let rec main_conversion ratios widperfil lphb =
     match lphb with
     | Atom((widinfo, _, _), evhb) ->
         begin
           match widinfo.stretchable with
-          | Fils(nfil)  when nfil > 0 -> (EvHorz(widinfo.natural +% widperfil, evhb), 0)
-          | Fils(_)                   -> assert false
+          | Fils(nfil)  when nfil > 0 -> EvHorz(widinfo.natural +% widperfil, evhb)
+          | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
           | FiniteStretch(widstretch) ->
               let widappend =
-                if is_short then
-                  widstretch *% ratio
-                else
-                  widinfo.shrinkable *% ratio
+                match ratios with
+                | TooLong                      -> Length.negate widinfo.shrinkable
+                | PermissiblyLong(pure_ratio)  -> widinfo.shrinkable *% pure_ratio  (* -- pure_ratio is nonpositive -- *)
+                | PermissiblyShort(pure_ratio) -> widstretch *% pure_ratio          (* -- pure_ratio is positive -- *)
+                | TooShort                     -> widstretch
               in
-                (EvHorz(widinfo.natural +% widappend, evhb), abs (~@ (ratio *. 100.0)))
+                EvHorz(widinfo.natural +% widappend, evhb)
         end
 
     | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
-        let pairlst = lphblstsub |> List.map (main_conversion is_short ratio widperfil) in
-        let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
-        let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
+        let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-          (EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)), totalpb)
+          EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
     | FixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (evhblst, _, _, pb) = determine_widths wid_frame lphblstsub in
-          (EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)), 0)
+        let (evhblst, _, _) = determine_widths wid_frame lphblstsub in
+          EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
   in
-      let pairlst = lphblst |> List.map (main_conversion is_short ratio widperfil) in
-      let evhblst = pairlst |> List.map (fun (evhb, _) -> evhb) in
-      let totalpb = pairlst |> List.fold_left (fun acc (_, pb) -> pb + acc) 0 in
-      let badns =
-        if is_short then
-          if totalpb >= 10000 then TooShort else Badness(totalpb)
-        else
-          if totalpb >= 10000 then TooLong(totalpb) else Badness(totalpb)
-      in
+      let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
       (* begin : for debug *)
       let checksum =
         evhblst |> List.map (function
           | EvHorz(wid, _) -> wid
         ) |> List.fold_left ( +% ) Length.zero
       in
-      let () = print_for_debug ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
-                                (if is_short then
-                                    let msg =
-                                      match widinfo_total.stretchable with
-                                      | FiniteStretch(widstretch) -> Length.show widstretch
-                                      | Fils(i)                   -> "infinite * " ^ (string_of_int i)
-                                    in
-                                  "stretchable = " ^ msg
-                                 else
-                                  "shrinkable = " ^ (Length.show widinfo_total.shrinkable)) ^ ", " ^
-                                "ratio = " ^ (string_of_float ratio) ^ ", " ^
-                                "checksum = " ^ (Length.show checksum)) in
+      let msg_stretch =
+        match widinfo_total.stretchable with
+        | FiniteStretch(widstretch) -> Length.show widstretch
+        | Fils(i)                   -> "infinite * " ^ (string_of_int i)
+      in
+      let msg =
+        match ratios with
+        | TooShort                     -> "stretchable" ^ msg_stretch ^ ", too_short"
+        | PermissiblyShort(pure_ratio) -> "stretchable = " ^ msg_stretch ^ ", R = " ^ (string_of_float pure_ratio)
+        | PermissiblyLong(pure_ratio)  -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", R = " ^ (string_of_float pure_ratio)
+        | TooLong                      -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", too_long"
+      in
+
+      let () = print_for_debug
+        ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
+         msg ^ ", " ^
+         "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
-        (evhblst, hgt_total, dpt_total, badns)
+        (evhblst, hgt_total, dpt_total)
 
 
 (* -- distance from the top of the paragraph and its first baseline -- *)
@@ -404,7 +410,7 @@ let break_into_lines (paragraph_width : length) (leading_required : length) (pat
   let rec arrange (dptprev : length) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
-          let (evhblst, hgt, dpt, _) = determine_widths paragraph_width line in
+          let (evhblst, hgt, dpt) = determine_widths paragraph_width line in
           let vskip = calculate_vertical_skip dptprev hgt in
             arrange dpt (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
 
@@ -417,15 +423,19 @@ let break_into_lines (paragraph_width : length) (leading_required : length) (pat
 
 let main (paragraph_width : length) (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
 
-  let get_badness_for_line_breaking (widrequired : length) (widinfo_total : length_info) : badness =
+  let calculate_badness pure_ratio =
+    (abs (int_of_float (pure_ratio ** 3.))) * 10000
+(*
     let criterion_short = 10. in
     let criterion_long = -.1. in
-    let (is_short, ratio, _) = calculate_ratios widrequired widinfo_total in
     let pb = abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_long))) in
       if      ratio > criterion_short then TooShort
       else if ratio < criterion_long  then TooLong(pb)
       else Badness(pb)
+*)
   in
+
+  let badness_for_too_long = 10000 in
 
   let grph = LineBreakGraph.create () in
 
@@ -439,17 +449,18 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
       found_candidate := false ;
       RemovalSet.clear htomit ;
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
-        let badns = get_badness_for_line_breaking paragraph_width (widinfofrom +%@ widinfobreak) in
-          match badns with
-          | Badness(pb) ->
+        let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
+          match ratios with
+          | ( PermissiblyLong(pure_ratio) | PermissiblyShort(pure_ratio) ) ->
+              let badness = calculate_badness pure_ratio in
               begin
                 found_candidate := true ;
-                LineBreakGraph.add_edge grph dscridfrom dscridto (pb + pnltybreak) ;
+                LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak) ;
               end
 
-          | TooShort    -> ()
+          | TooShort -> ()
 
-          | TooLong(pb) ->
+          | TooLong ->
               if !is_already_too_long then
                 begin
                   RemovalSet.add htomit dscridfrom ;
@@ -458,7 +469,7 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
                 begin
                   is_already_too_long := true ;
                   found_candidate := true ;
-                  LineBreakGraph.add_edge grph dscridfrom dscridto pb ;
+                  LineBreakGraph.add_edge grph dscridfrom dscridto badness_for_too_long ;
                 end
                   
       ) ;

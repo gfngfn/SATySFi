@@ -341,7 +341,7 @@ let print_trilist trilst =
     let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
     let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
     print_for_debug (sc ^ sa)
-  ); print_endline ""
+  ); print_endline_for_debug ""
 
 (*
 (* unit test *)

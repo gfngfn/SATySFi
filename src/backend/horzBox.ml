@@ -89,10 +89,11 @@ type length_info =
 
 type pure_badness = int
 
-type badness =
+type ratios =
   | TooShort
-  | Badness of pure_badness
-  | TooLong of pure_badness
+  | PermissiblyShort of float
+  | PermissiblyLong  of float
+  | TooLong
 
 type font_abbrev = string
 
