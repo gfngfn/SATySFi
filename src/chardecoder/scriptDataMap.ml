@@ -53,12 +53,16 @@ let divide_by_script trilst =
         begin
           match !alwref with
           | AllowBreak ->
+              (* -- if the spotted character allows line break after it -- *)
               begin
                 match lbc with
                 | SP ->
+                    (* -- if the spotted character is a space -- *)
                     begin
                       match scraccopt with
-                      | None                       -> aux (Space :: resacc) None tritail
+                      | None -> 
+                          aux (Space :: resacc) None tritail
+
                       | Some((prevscript, triacc)) ->
                           aux (Space :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
                     end
@@ -66,7 +70,9 @@ let divide_by_script trilst =
                 | _ ->
                     begin
                       match scraccopt with
-                      | None                       -> aux ((preword AllowBreak script [trihead]) :: resacc) None tritail
+                      | None ->
+                          aux ((preword AllowBreak script [trihead]) :: resacc) None tritail
+
                       | Some((prevscript, triacc)) ->
                           if script_equal prevscript script then
                             aux ((preword AllowBreak prevscript (List.rev (trihead :: triacc))) :: resacc) None tritail
@@ -77,13 +83,29 @@ let divide_by_script trilst =
 
           | PreventBreak ->
               begin
-                match scraccopt with
-                | None                       -> aux resacc (Some((script, [trihead]))) tritail
-                | Some((prevscript, triacc)) ->
-                    if script_equal prevscript script then
-                      aux resacc (Some((script, trihead :: triacc))) tritail
-                    else
-                      aux ((preword PreventBreak prevscript (List.rev triacc)) :: resacc) (Some((script, [trihead]))) tritail
+                match lbc with
+                | SP ->
+                    begin
+                      match scraccopt with
+                      | None ->
+                          aux (UnbreakableSpace :: resacc) None tritail
+
+                      | Some((prevscript, triacc)) ->
+                          aux (UnbreakableSpace :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                    end
+
+                | _ ->
+                    begin
+                      match scraccopt with
+                      | None -> 
+                          aux resacc (Some((script, [trihead]))) tritail
+
+                      | Some((prevscript, triacc)) ->
+                          if script_equal prevscript script then
+                            aux resacc (Some((script, trihead :: triacc))) tritail
+                          else
+                            aux ((preword PreventBreak prevscript (List.rev triacc)) :: resacc) (Some((script, [trihead]))) tritail
+                    end
               end
         end
   in

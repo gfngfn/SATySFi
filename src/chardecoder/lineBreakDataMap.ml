@@ -85,27 +85,69 @@ let find uch =
       | None      -> XX  (* temporary *)
       | Some(lbc) -> lbc
 
-(*
-let insert_break_opportunity lst =
-  let rec aux acc lst =
-    match lst with
-    | []                                          -> List.rev acc
-    | (uch, lbc) :: []                            -> aux2 uch lbc None acc []
-    | (uch, lbc) :: (((_, lbcnext) :: _) as tail) -> aux2 uch lbc (Some(lbcnext)) acc tail
 
-  and aux2 uch lbc lbcnextopt acc tail =
-    match lbc with
-    | AL -> 
-    | BA -> aux (DirectBreak :: Character(uch) :: acc) tail
-    |
-  in
-    aux [] lst
-*)
-
+(* -- 
+  append line break class to uchar, and then eliminate every BreakClass character
+  if it is adjacent to a character of a nonspacing script (e.g. han ideographic, kana, etc.)
+-- *)
 let append_property (uchlst : Uchar.t list) =
-  uchlst |> List.map (fun uch -> (uch, find uch))
+
+  let is_in_nonspacing_class (_, lbc) =
+    match lbc with
+    | ( ID | CJ | IN | SA ) -> true
+    | _                     -> false
+  in
+
+  let bispace = (Uchar.of_int 32, SP) in  (* -- space character -- *)
+
+  let rec aux prevopt bilst =
+    match bilst with
+    | [] ->
+        begin
+          match prevopt with
+          | None                           -> []
+          | Some(((_, BreakClass), biacc)) -> List.rev (bispace :: biacc)
+          | Some((biprev, biacc))          -> List.rev (biprev :: biacc)
+        end
+
+    | (_, BreakClass) :: bitail ->
+        begin
+          match prevopt with
+          | None ->
+              aux (Some((bispace, []))) bitail
+                (* -- replaces the forefront BreakClass character with a space -- *)
+          | Some((biprev, biacc)) ->
+              if is_in_nonspacing_class biprev then
+                aux prevopt bitail
+                  (* -- ignores a BreakClass character after a character of a nonspacing class -- *)
+              else
+                aux (Some((bispace, biprev :: biacc))) bitail
+                  (* -- replaces the BreakClass character with a space -- *)
+        end
+
+    | bihead :: bitail ->
+        begin
+          match prevopt with
+          | None ->
+              aux (Some(bihead, [])) bitail
+
+          | Some(((_, BreakClass), biacc)) ->
+              if is_in_nonspacing_class bihead then
+                aux (Some(bihead, biacc)) bitail
+                  (* -- ignores a BreakClass character before a character of a nonspacing class -- *)
+              else
+                aux (Some(bihead, bispace :: biacc)) bitail
+                  (* -- replaces the BreakClass character with a space -- *)
+
+          | Some((biprev, biacc)) -> aux (Some((bihead, biprev :: biacc))) bitail
+        end
+  in
+
+  let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
+    aux None bilst
 
 
+(* -- the rules for inserting line break opportunities based on [UAX#14 Section 6] -- *)
 let line_break_rule =
   let set lbclst = LBRESet(lbclst) in
   let notof lbclst = LBRENotOf(lbclst) in
@@ -187,7 +229,7 @@ let line_break_rule =
     ]
 
 
-(* -- a naive, greedy regexp matching -- *)
+(* -- a naive, greedy regexp matching (it suffices to use greedy one) -- *)
 let match_prefix trilst lregexp =
   let rec cut trilst lregexp =
     match lregexp with

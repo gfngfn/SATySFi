@@ -36,6 +36,7 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
   let adjacent_stretch = HorzBox.(font_size *% ctx.adjacent_stretch) in
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
+
   (* begin: for debug *)
   let () =
     trilst |> List.iter (fun (uch, lbc, alwref) ->
@@ -46,7 +47,9 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
         | CharBasis.PreventBreak -> print_string (sc ^ sl ^ ".")
     ); print_endline "" in
   (* end: for debug *)
+
   let scrlst = ScriptDataMap.divide_by_script trilst in
+
   (* begin: for debug *)
   let () =
     scrlst |> List.iter (function
@@ -56,23 +59,40 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
           LineBreakDataMap.print_trilist trilst
       | CharBasis.Space ->
           print_endline "SPACE"
+      | CharBasis.UnbreakableSpace ->
+          print_endline "UNBREAKABLE_SPACE"
     )
   in
   (* end: for debug *)
+
+  let breakable_space badness natural shrink stretch =
+    HorzBox.HorzDiscretionary(badness, Some(HorzBox.PHOuterEmpty(natural, shrink, stretch)), None, None)
+  in
+
+  let unbreakable_space natural shrink stretch =
+    HorzBox.HorzPure(HorzBox.PHOuterEmpty(natural, shrink, stretch))
+  in
+
+  let fixed_string font_info uchlst =
+    HorzBox.HorzPure(HorzBox.PHFixedString(font_info, uchlst))
+  in
+
   scrlst |> List.map (function
     | CharBasis.PreWord(script, trilst, CharBasis.PreventBreak) ->
-        [
-          HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, trilst |> List.map (fun (uch, _, _) -> uch)));
-        ]
+        [ fixed_string ctx.font_info (trilst |> List.map (fun (uch, _, _) -> uch)); ]
+
     | CharBasis.PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
-          HorzBox.HorzPure(HorzBox.PHFixedString(ctx.font_info, trilst |> List.map (fun (uch, _, _) -> uch)));
-          HorzBox.HorzDiscretionary(100 (* temporary *), Some(HorzBox.PHOuterEmpty(HorzBox.Length.zero, HorzBox.Length.zero, adjacent_stretch)), None, None);
+          fixed_string ctx.font_info (trilst |> List.map (fun (uch, _, _) -> uch));
+          breakable_space 100 (* temporary *) HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
+
     | CharBasis.Space ->
-        [
-          HorzBox.HorzDiscretionary(100 (* temporary *), Some(HorzBox.PHOuterEmpty(space_natural, space_shrink, space_stretch)), None, None);
-        ]
+        [ breakable_space 100 (* temporary *) space_natural space_shrink space_stretch; ]
+
+    | CharBasis.UnbreakableSpace ->
+        [ unbreakable_space space_natural space_shrink space_stretch; ]
+
   ) |> List.concat
     
 (*

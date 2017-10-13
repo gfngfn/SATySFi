@@ -243,10 +243,17 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : bool
       | Fils(nfil)  when nfil > 0 -> (0., widdiff *% (1. /. (~. nfil)))
       | Fils(_)                   -> assert false  (* -- number of fils cannot be negative -- *)
       | FiniteStretch(widstretch) ->
-          if Length.is_nearly_zero widstretch then (+.infinity, Length.zero) else
+          if Length.is_nearly_zero widstretch then
+          (* -- if unable to stretch -- *)
+            (1., Length.zero)
+          else
             (widdiff /% widstretch, Length.zero)
     else
-      if Length.is_nearly_zero widshrink then (-.infinity, Length.zero) else (widdiff /% widshrink, Length.zero)
+      if Length.is_nearly_zero widshrink then
+      (* -- if unable to shrink -- *)
+        (-1., Length.zero)
+      else
+        (max (-1.) (widdiff /% widshrink), Length.zero)
   in
     (is_short, ratio, widperfil)
 
@@ -262,13 +269,13 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
           | Fils(nfil)  when nfil > 0 -> (EvHorz(widinfo.natural +% widperfil, evhb), 0)
           | Fils(_)                   -> assert false
           | FiniteStretch(widstretch) ->
-              let widdiff =
+              let widappend =
                 if is_short then
                   widstretch *% ratio
                 else
-                  Length.max (widinfo.shrinkable *% ratio) (Length.zero -% widinfo.shrinkable)
+                  widinfo.shrinkable *% ratio
               in
-                (EvHorz(widinfo.natural +% widdiff, evhb), abs (~@ (ratio *. 100.0)))
+                (EvHorz(widinfo.natural +% widappend, evhb), abs (~@ (ratio *. 100.0)))
         end
 
     | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
