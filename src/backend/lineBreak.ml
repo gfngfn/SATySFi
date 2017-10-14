@@ -313,7 +313,7 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
       in
       let msg =
         match ratios with
-        | TooShort                     -> "stretchable" ^ msg_stretch ^ ", too_short"
+        | TooShort                     -> "stretchable = " ^ msg_stretch ^ ", too_short"
         | PermissiblyShort(pure_ratio) -> "stretchable = " ^ msg_stretch ^ ", R = " ^ (string_of_float pure_ratio)
         | PermissiblyLong(pure_ratio)  -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", R = " ^ (string_of_float pure_ratio)
         | TooLong                      -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", too_long"
@@ -425,17 +425,9 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
 
   let calculate_badness pure_ratio =
     (abs (int_of_float (pure_ratio ** 3.))) * 10000
-(*
-    let criterion_short = 10. in
-    let criterion_long = -.1. in
-    let pb = abs (~@ (ratio *. 10000. /. (if is_short then criterion_short else criterion_long))) in
-      if      ratio > criterion_short then TooShort
-      else if ratio < criterion_long  then TooLong(pb)
-      else Badness(pb)
-*)
   in
 
-  let badness_for_too_long = 10000 in
+  let badness_for_too_long = 100000 in
 
   let grph = LineBreakGraph.create () in
 
@@ -443,6 +435,10 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
 
   let found_candidate = ref false in
 
+  (* --
+     'update_graph wmap did wi p ()' adds a new break candidate point 'did' to the graph 'grph' as a vertex.
+     'wi' is a width_info from the current position, and 'p' is the penalty for breaking at 'did'.
+  -- *)
   let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : length_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
     begin
       LineBreakGraph.add_vertex grph dscridto ;
