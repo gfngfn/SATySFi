@@ -473,7 +473,7 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
     end
   in
 
-  let rec aux (wmap : WidthMap.t) (lhblst : lb_box list) =
+  let rec aux (iterdepth : int) (wmap : WidthMap.t) (lhblst : lb_box list) =
     match lhblst with
     | LBDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: tail ->
         let widinfo0 = get_width_info_opt lphbopt0 in
@@ -486,28 +486,31 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
           else
             wmapsub |> WidthMap.add_width_all widinfo0
         in
-          aux wmapnew tail
+          aux iterdepth wmapnew tail
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
         let wmapnew = wmap |> WidthMap.add_width_all widinfo in
-          aux wmapnew tail
+          aux iterdepth wmapnew tail
 
     | LBFrameBreakable(pads, wid1, wid2, _, _, _, _, lhblstsub) :: tail ->
-        let wmapsub = aux wmap lhblstsub in
-          aux wmapsub tail
+        let wmapsub = aux (iterdepth + 1) wmap lhblstsub in
+          aux iterdepth wmapsub tail
 
     | [] ->
-        let dscrid = DiscretionaryID.final in
-        let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
-          wmapfinal
+        if iterdepth = 0 then
+          let dscrid = DiscretionaryID.final in
+          let (_, wmapfinal) = update_graph wmap dscrid widinfo_zero 0 () in
+            wmapfinal
+        else
+          wmap
   in
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning widinfo_zero in
   begin
     DiscretionaryID.initialize ();
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
     let lhblst = convert_list_for_line_breaking hblst in
-    let _ (* wmapfinal *) = aux wmapinit lhblst in
+    let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
