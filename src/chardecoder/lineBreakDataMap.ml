@@ -88,7 +88,18 @@ let line_break_class_overriding_list =
     (0x3019, IDCP);  (* RIGHT WHITE TORTOISE SHELL BRACKET: ideographic close punctuation    *)
     (0x301A, IDOP);  (* LEFT WHITE SQUARE BRACKET         : ideographic open punctuation     *)
     (0x301B, IDCP);  (* RIGHT WHITE SQUARE BRACKET        : ideographic close punctuation    *)
+    (0xFF08, IDOP);  (* FULLWIDTH LEFT PARENTHESIS        : ideographic open punctuation     *)
+    (0xFF09, IDCP);  (* FULLWIDTH RIGHT PARENTHESIS       : ideographic close punctuation    *)
+    (0xFF0C, IDNS);  (* FULLWIDTH COMMA                   : ideographic nonstarter           *)
+    (0xFF0E, IDNS);  (* FULLWIDTH FULL STOP               : ideographic nonstarter           *)
+    (0xFF3B, IDOP);  (* FULLWIDTH LEFT SQUARE BRACKET     : ideographic open punctuation     *)
+    (0xFF3D, IDCP);  (* FULLWIDTH RIGHT SQUARE BRACKET    : ideographic close punctuation    *)
+    (0xFF5B, IDOP);  (* FULLWIDTH LEFT CURLY BRACKET      : ideographic open punctuation     *)
+    (0xFF5D, IDCP);  (* FULLWIDTH RIGHT CURLY BRACKET     : ideographic close punctuation    *)
+    (0xFF5F, IDOP);  (* FULLWIDTH LEFT WHITE PARENTHESIS  : ideographic open punctuation     *)
+    (0xFF60, IDCP);  (* FULLWIDTH RIGHT WHITE PARENTHESIS : ideographic close punctuation    *)
   ]
+
 
 let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
 
