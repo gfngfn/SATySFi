@@ -436,22 +436,22 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
   let found_candidate = ref false in
 
   (* --
-     'update_graph wmap did wi p ()' adds a new break candidate point 'did' to the graph 'grph' as a vertex.
+     '(b, wmapsub) = update_graph wmap did wi p ()' adds a new break candidate point 'did' to the graph 'grph' as a vertex, and returns 'b' (whether 'did' is reachable from other candidate(s)) and the updated width map 'wmapsub'.
      'wi' is a width_info from the current position, and 'p' is the penalty for breaking at 'did'.
   -- *)
   let update_graph (wmap : WidthMap.t) (dscridto : DiscretionaryID.t) (widinfobreak : length_info) (pnltybreak : pure_badness) () : bool * WidthMap.t =
     begin
-      LineBreakGraph.add_vertex grph dscridto ;
-      found_candidate := false ;
-      RemovalSet.clear htomit ;
+      LineBreakGraph.add_vertex grph dscridto;
+      found_candidate := false;
+      RemovalSet.clear htomit;
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
         let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
           match ratios with
           | ( PermissiblyLong(pure_ratio) | PermissiblyShort(pure_ratio) ) ->
               let badness = calculate_badness pure_ratio in
               begin
-                found_candidate := true ;
-                LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak) ;
+                found_candidate := true;
+                LineBreakGraph.add_edge grph dscridfrom dscridto (badness + pnltybreak);
               end
 
           | TooShort -> ()
@@ -459,16 +459,16 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
           | TooLong ->
               if !is_already_too_long then
                 begin
-                  RemovalSet.add htomit dscridfrom ;
+                  RemovalSet.add htomit dscridfrom;
                 end
               else
                 begin
-                  is_already_too_long := true ;
-                  found_candidate := true ;
-                  LineBreakGraph.add_edge grph dscridfrom dscridto badness_for_too_long ;
+                  is_already_too_long := true;
+                  found_candidate := true;
+                  LineBreakGraph.add_edge grph dscridfrom dscridto badness_for_too_long;
                 end
                   
-      ) ;
+      );
       (!found_candidate, RemovalSet.fold (fun dscrid wm -> wm |> WidthMap.remove dscrid) htomit wmap)
     end
   in
@@ -504,8 +504,8 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
   in
   let wmapinit = WidthMap.empty |> WidthMap.add DiscretionaryID.beginning widinfo_zero in
   begin
-    DiscretionaryID.initialize () ;
-    LineBreakGraph.add_vertex grph DiscretionaryID.beginning ;
+    DiscretionaryID.initialize ();
+    LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
     let lhblst = convert_list_for_line_breaking hblst in
     let _ (* wmapfinal *) = aux wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
