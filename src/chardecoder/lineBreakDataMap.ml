@@ -58,12 +58,37 @@ let class_of_string s =
   | "RI"  -> RI
   | "SA"  -> SA
   | "XX"  -> XX
-  | "BK"  -> BreakClass
-  | "CR"  -> BreakClass
-  | "LF"  -> BreakClass
-  | "NL"  -> BreakClass
+  | "BK"  -> INBR
+  | "CR"  -> INBR
+  | "LF"  -> INBR
+  | "NL"  -> INBR
   | _     -> raise InputFileBroken
 
+
+let line_break_class_overriding_list =
+  [
+  (* -- U+3000..U+30FF -- *)
+    (0x3001, IDNS);  (* IDEOGRAPHIC COMMA                 : ideographic nonstarter           *)
+    (0x3002, IDNS);  (* IDEOGRAPHIC FULL STOP             : ideographic nonstarter           *)
+    (0x3008, IDOP);  (* LEFT ANGLE BRACKET                : ideographic open punctuation     *)
+    (0x3009, IDCP);  (* RIGHT ANGLE BRACKET               : ideographic close punctuation    *)
+    (0x300A, IDOP);  (* LEFT DOUBLE ANGLE BRACKET         : ideographic open punctuation     *)
+    (0x300B, IDCP);  (* RIGHT DOUBLE ANGLE BRACKET        : ideographic close punctuation    *)
+    (0x300C, IDOP);  (* LEFT CORNER BRACKET               : ideographic open punctuation     *)
+    (0x300D, IDCP);  (* RIGHT CORNER BRACKET              : ideographic close punctuation    *)
+    (0x300E, IDOP);  (* LEFT WHITE CORNER BRACKET         : ideographic open punctuation     *)
+    (0x300F, IDCP);  (* RIGHT WHITE CORNER BRACKET        : ideographic close punctuation    *)
+    (0x3010, IDOP);  (* LEFT BLACK LENTICULAR BRACKET     : ideographic open punctuation     *)
+    (0x3011, IDCP);  (* RIGHT BLACK LENTICULAR BRACKET    : ideographic close punctuation    *)
+    (0x3014, IDOP);  (* LEFT TORTOISE SHELL BRACKET       : ideographic open punctuation     *)
+    (0x3015, IDCP);  (* RIGHT TORTOISE SHELL BRACKET      : ideographic close punctuation    *)
+    (0x3016, IDOP);  (* LEFT WHITE LENTICULAR BRACKET     : ideographic open punctuation     *)
+    (0x3017, IDCP);  (* RIGHT WHITE LENTICULAR BRACKET    : ideographic close punctuation    *)
+    (0x3018, IDOP);  (* LEFT WHITE TORTOISE SHELL BRACKET : ideographic open punctuation     *)
+    (0x3019, IDCP);  (* RIGHT WHITE TORTOISE SHELL BRACKET: ideographic close punctuation    *)
+    (0x301A, IDOP);  (* LEFT WHITE SQUARE BRACKET         : ideographic open punctuation     *)
+    (0x301B, IDCP);  (* RIGHT WHITE SQUARE BRACKET        : ideographic close punctuation    *)
+  ]
 
 let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
 
@@ -71,7 +96,14 @@ let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.
 let set_from_file filename =
   let channel = open_in filename in
   let line_break_list = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
-  let line_break_map = line_break_list |> CharBasis.map_of_list class_of_string in
+  let line_break_map_raw = line_break_list |> CharBasis.map_of_list class_of_string in
+  let line_break_map =
+    List.fold_left (fun mapacc (cp, lbc) ->
+      match UCoreLib.UChar.of_int cp with
+      | None            -> mapacc
+      | Some(uch_ucore) -> mapacc |> UCoreLib.UMap.add uch_ucore lbc
+    ) line_break_map_raw line_break_class_overriding_list
+  in
   begin
     line_break_map_ref := line_break_map;
   end
@@ -87,15 +119,15 @@ let find uch =
 
 
 (* -- 
-  append line break class to uchar, and then eliminate every BreakClass character
+  append line break class to uchar, and then eliminate every INBR character
   if it is adjacent to a character of a nonspacing script (e.g. han ideographic, kana, etc.)
 -- *)
 let append_property (uchlst : Uchar.t list) =
 
   let is_in_nonspacing_class (_, lbc) =
     match lbc with
-    | ( ID | CJ | IN | SA ) -> true
-    | _                     -> false
+    | ( ID | CJ | IN | SA | IDNS | IDOP | IDCP ) -> true
+    | _                                          -> false
   in
 
   let bispace = (Uchar.of_int 32, SP) in  (* -- space character -- *)
@@ -105,24 +137,24 @@ let append_property (uchlst : Uchar.t list) =
     | [] ->
         begin
           match prevopt with
-          | None                           -> []
-          | Some(((_, BreakClass), biacc)) -> List.rev (bispace :: biacc)
-          | Some((biprev, biacc))          -> List.rev (biprev :: biacc)
+          | None                     -> []
+          | Some(((_, INBR), biacc)) -> List.rev (bispace :: biacc)
+          | Some((biprev, biacc))    -> List.rev (biprev :: biacc)
         end
 
-    | (_, BreakClass) :: bitail ->
+    | (_, INBR) :: bitail ->
         begin
           match prevopt with
           | None ->
               aux (Some((bispace, []))) bitail
-                (* -- replaces the forefront BreakClass character with a space -- *)
+                (* -- replaces the forefront INBR character with a space -- *)
           | Some((biprev, biacc)) ->
               if is_in_nonspacing_class biprev then
                 aux prevopt bitail
-                  (* -- ignores a BreakClass character after a character of a nonspacing class -- *)
+                  (* -- ignores a INBR character after a character of a nonspacing class -- *)
               else
                 aux (Some((bispace, biprev :: biacc))) bitail
-                  (* -- replaces the BreakClass character with a space -- *)
+                  (* -- replaces the INBR character with a space -- *)
         end
 
     | bihead :: bitail ->
@@ -131,13 +163,13 @@ let append_property (uchlst : Uchar.t list) =
           | None ->
               aux (Some(bihead, [])) bitail
 
-          | Some(((_, BreakClass), biacc)) ->
+          | Some(((_, INBR), biacc)) ->
               if is_in_nonspacing_class bihead then
                 aux (Some(bihead, biacc)) bitail
-                  (* -- ignores a BreakClass character before a character of a nonspacing class -- *)
+                  (* -- ignores a INBR character before a character of a nonspacing class -- *)
               else
                 aux (Some(bihead, bispace :: biacc)) bitail
-                  (* -- replaces the BreakClass character with a space -- *)
+                  (* -- replaces the INBR character with a space -- *)
 
           | Some((biprev, biacc)) -> aux (Some((bihead, biprev :: biacc))) bitail
         end
@@ -169,9 +201,11 @@ let line_break_rule =
     (* -- LB12a -- *)
       ([notof [SP; BA; HY]], PreventBreak, [exact GL]);
     (* -- LB13 -- *)
-      ([], PreventBreak, [set [CL; CP; EX; IS; SY]]);
+    (* -- Original: ideographic close punctuations -- *)
+      ([], PreventBreak, [set [CL; CP; EX; IS; SY; IDCP]]);
     (* -- LB14 -- *)
-      ([exact OP; star [exact SP]], PreventBreak, []);
+    (* -- Original: ideographic open punctuations -- *)
+      ([set [OP; IDOP]; star [exact SP]], PreventBreak, []);
     (* -- LB15 -- *)
       ([exact QU; star [exact SP]], PreventBreak, [exact OP]);
     (* -- LB16 -- *)

@@ -1,23 +1,32 @@
 open Types
 
 
-let tyid_option = Typeenv.Raw.fresh_type_id "option"
+let tyid_option  = Typeenv.Raw.fresh_type_id "option"
 let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
+let tyid_script  = Typeenv.Raw.fresh_type_id "script"
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
+  let unit_type = (dr, BaseType(UnitType)) in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(ref (Bound(bid)))) in
 
   tyenvmid
   |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
-  |> Typeenv.Raw.add_constructor "None" ([bid], Poly((dr, BaseType(UnitType)))) tyid_option
+  |> Typeenv.Raw.add_constructor "None" ([bid], Poly(unit_type)) tyid_option
   |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
+
   |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(
        (dr, ProductType([(dr, BaseType(TextRowType)); (dr, ListType((dr, VariantType([], tyid_itemize)))); ]))
      )) tyid_itemize
+
+  |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(unit_type)) tyid_script
+  |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(unit_type)) tyid_script
+  |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(unit_type)) tyid_script
+  |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(unit_type)) tyid_script
 
 
 let add_to_environment env varnm rfast =
@@ -67,7 +76,7 @@ let default_context =
     space_natural    = 0.33;
     space_shrink     = 0.08;
     space_stretch    = 0.32; (* 0.16; *)
-    adjacent_stretch = 0.1;
+    adjacent_stretch = 0.05;
     paragraph_width  = pdfpt 400.;
     leading          = pdfpt 18.;
   }
@@ -87,10 +96,10 @@ let margin = pdfpt 2.
 
 let frame_deco_S =
   (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos +% margin in
+    let xposb = xpos in
     let hgtb = hgt -% margin in
     let dptb = dpt +% margin in
-    let widb = wid -% margin *% 2. in
+    let widb = wid in
       Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
         HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
       )
@@ -98,10 +107,10 @@ let frame_deco_S =
 
 let frame_deco_H =
   (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos +% margin in
+    let xposb = xpos in
     let hgtb = hgt -% margin in
     let dptb = dpt +% margin in
-    let widb = wid -% margin in
+    let widb = wid in
       Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
         HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
           HorzBox.LineTo(xposb, ypos +% hgtb);
@@ -134,7 +143,7 @@ let frame_deco_T =
     let xposb = xpos in
     let hgtb = hgt -% margin in
     let dptb = dpt +% margin in
-    let widb = wid -% margin in
+    let widb = wid in
       Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
         HorzBox.GeneralPath((xposb, ypos +% hgtb), [
           HorzBox.LineTo(xposb +% widb, ypos +% hgtb);

@@ -64,8 +64,11 @@ type line_break_class =
   | RI  (* regional indicator *)
   | SA  (* complex context dependent; south east Asian *)
   | XX  (* unknown *)
-(* -- classes -- *)
-  | BreakClass
+(* -- original classes -- *)
+  | INBR (* input break *)
+  | IDNS (* ideographic nonstarter *)
+  | IDOP (* ideographic open punctuation *)
+  | IDCP (* ideographic close punctuation *)
 
 type line_break_regexp =
   | LBRESet       of line_break_class list   (* [a ... a] *)
@@ -137,7 +140,10 @@ let show_lb_class lbc =
   | RI  -> "RI"
   | SA  -> "SA"
   | XX  -> "XX"
-  | BreakClass -> "Break"
+  | INBR -> "INBR!"
+  | IDNS -> "IDNS!"
+  | IDOP -> "IDOP!"
+  | IDCP -> "IDCP!"
 
 
 (* for debug *)
