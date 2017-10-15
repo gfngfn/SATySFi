@@ -172,3 +172,5 @@ type line_break_unit =
   | PreWord of script * line_break_element list * break_opportunity
   | Space
   | UnbreakableSpace
+  | IdeographicOpen  of script * line_break_element
+  | IdeographicClose of script * line_break_element

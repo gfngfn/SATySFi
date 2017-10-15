@@ -64,6 +64,12 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
           print_endline_for_debug_lex_horz "SPACE"
       | CharBasis.UnbreakableSpace ->
           print_endline_for_debug_lex_horz "UNBREAKABLE_SPACE"
+      | CharBasis.IdeographicOpen(script, tri) ->
+          print_endline_for_debug_lex_horz ("IDEOGRAPHIC_OPEN " ^ (CharBasis.show_script script));
+          LineBreakDataMap.print_trilist [tri]
+      | CharBasis.IdeographicClose(script, tri) ->
+          print_endline_for_debug_lex_horz ("IDEOGRAPHIC_CLOSE " ^ (CharBasis.show_script script));
+          LineBreakDataMap.print_trilist [tri]
     )
   in
   (* end: for debug *)
@@ -78,6 +84,14 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
 
   let fixed_string font_info uchlst =
     HorzBox.HorzPure(HorzBox.PHFixedString(font_info, uchlst))
+  in
+
+  let half_kern (_, font_size) =
+    HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(font_size *% -0.5)))
+  in
+
+  let breakable_half badness (_, font_size) stretch_ratio =
+    HorzBox.HorzDiscretionary(badness, Some(HorzBox.PHOuterEmpty(HorzBox.(font_size *% 0.5), HorzBox.Length.zero, HorzBox.(font_size *% stretch_ratio))), None, None)
   in
 
   scrlst |> List.map (function
@@ -95,6 +109,20 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
 
     | CharBasis.UnbreakableSpace ->
         [ unbreakable_space space_natural space_shrink space_stretch; ]
+
+    | CharBasis.IdeographicOpen(script, (uch, _, _)) ->
+        [
+          breakable_half 100 (* temporary *) ctx.font_info ctx.adjacent_stretch;
+          half_kern ctx.font_info;
+          fixed_string ctx.font_info [uch];
+        ]
+
+    | CharBasis.IdeographicClose(script, (uch, _, _)) ->
+        [
+          fixed_string ctx.font_info [uch];
+          half_kern ctx.font_info;
+          breakable_half 100 (* temporary *) ctx.font_info ctx.adjacent_stretch;
+        ]
 
   ) |> List.concat
     

@@ -65,6 +65,7 @@ let class_of_string s =
   | _     -> raise InputFileBroken
 
 
+(* temporary; should depend on the language of the context *)
 let line_break_class_overriding_list =
   [
   (* -- U+3000..U+30FF -- *)
@@ -111,7 +112,7 @@ let set_from_file filename =
   let line_break_map =
     List.fold_left (fun mapacc (cp, lbc) ->
       match UCoreLib.UChar.of_int cp with
-      | None            -> mapacc
+      | None            -> mapacc  (* needs reconsideration; maybe should warn emptyness *)
       | Some(uch_ucore) -> mapacc |> UCoreLib.UMap.add uch_ucore lbc
     ) line_break_map_raw line_break_class_overriding_list
   in
@@ -129,7 +130,7 @@ let find uch =
       | Some(lbc) -> lbc
 
 
-(* -- 
+(* --
   append line break class to uchar, and then eliminate every INBR character
   if it is adjacent to a character of a nonspacing script (e.g. han ideographic, kana, etc.)
 -- *)

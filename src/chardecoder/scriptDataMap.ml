@@ -45,7 +45,7 @@ let divide_by_script trilst =
         begin
           match scraccopt with
           | None                       -> List.rev resacc
-          | Some((prevscript, uchacc)) -> List.rev ((preword PreventBreak (* temporary *) prevscript (List.rev uchacc)) :: resacc)
+          | Some((prevscript, triacc)) -> List.rev ((preword PreventBreak (* temporary; should consider whether there is an embedded command or the end of line after the last character *) prevscript (List.rev triacc)) :: resacc)
         end
 
     | ((uch, lbc, alwref) as trihead) :: tritail ->
@@ -65,6 +65,16 @@ let divide_by_script trilst =
 
                       | Some((prevscript, triacc)) ->
                           aux (Space :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                    end
+
+                | IDCP ->
+                    begin
+                      match scraccopt with
+                      | None ->
+                          aux (IdeographicClose(script, trihead) :: resacc) None tritail
+
+                      | Some((prevscript, triacc)) ->
+                          aux (IdeographicClose(script, trihead) :: (preword PreventBreak prevscript (List.rev triacc) :: resacc)) None tritail
                     end
 
                 | _ ->
@@ -92,6 +102,16 @@ let divide_by_script trilst =
 
                       | Some((prevscript, triacc)) ->
                           aux (UnbreakableSpace :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                    end
+
+                | IDOP ->
+                    begin
+                      match scraccopt with
+                      | None ->
+                          aux (IdeographicOpen(script, trihead) :: resacc) None tritail
+
+                      | Some((prevscript, triacc)) ->
+                          aux (IdeographicOpen(script, trihead) :: (preword AllowBreak (* temporary *) prevscript (List.rev triacc)) :: resacc) None tritail
                     end
 
                 | _ ->
