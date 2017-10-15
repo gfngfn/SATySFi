@@ -22,7 +22,7 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 
 (* temporary; should be variable *)
 let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box list =
-  let (_, font_size) = ctx.font_info in 
+  let (_, font_size) = get_font_info ctx ctx.dominant_script in 
   let space_natural = HorzBox.(font_size *% ctx.space_natural) in
   let space_shrink  = HorzBox.(font_size *% ctx.space_shrink) in
   let space_stretch = HorzBox.(font_size *% ctx.space_stretch) in
@@ -86,11 +86,11 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
 
   scrlst |> List.map (function
     | CharBasis.PreWord(script, trilst, CharBasis.PreventBreak) ->
-        [ fixed_string ctx.font_info (trilst |> List.map (fun (uch, _, _) -> uch)); ]
+        [ fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)); ]
 
     | CharBasis.PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
-          fixed_string ctx.font_info (trilst |> List.map (fun (uch, _, _) -> uch));
+          fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch));
           breakable_space 100 (* temporary *) HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
 
@@ -101,17 +101,19 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
         [ unbreakable_space space_natural space_shrink space_stretch; ]
 
     | CharBasis.IdeographicOpen(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
         [
-          breakable_half 100 (* temporary *) ctx.font_info ctx.adjacent_stretch;
-          half_kern ctx.font_info;
-          fixed_string ctx.font_info [uch];
+          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch;
+          half_kern font_info;
+          fixed_string font_info [uch];
         ]
 
     | CharBasis.IdeographicClose(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
         [
-          fixed_string ctx.font_info [uch];
-          half_kern ctx.font_info;
-          breakable_half 100 (* temporary *) ctx.font_info ctx.adjacent_stretch;
+          fixed_string font_info [uch];
+          half_kern font_info;
+          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch;
         ]
 
   ) |> List.concat
@@ -370,13 +372,23 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context({ ctx with space_natural = ratio })
 
-  | PrimitiveSetFont(astfont, astctx) ->
+  | PrimitiveSetFont(astscript, astfont, astctx) ->
+      let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
       let ctx = interpret_context env astctx in
-        Context({ ctx with font_info = font_info; })
+      let font_scheme_new = ctx.font_scheme |> FontSchemeMap.add script font_info in
+        Context({ ctx with font_scheme = font_scheme_new; })
 
-  | PrimitiveGetFont(astctx) ->
-      let ctx = interpret_context env astctx in FontDesignation(ctx.font_info)
+  | PrimitiveGetFont(astscript, astctx) ->
+      let script = interpret_script env astscript in
+      let ctx = interpret_context env astctx in
+      let font_info = get_font_info ctx script in
+        FontDesignation(font_info)
+
+  | PrimitiveSetDominantScript(astscript, astctx) ->
+      let script = interpret_script env astscript in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with dominant_script = script; })
 
   | PrimitiveSetTitle(asttitle, astctx) ->
       let valuetitle = interpret env asttitle in
@@ -846,6 +858,19 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
   in
   let hblst = hblstacc |> List.rev |> List.concat in
   Horz(hblst)
+
+
+and interpret_script env ast : CharBasis.script =
+  let value = interpret env ast in
+    match value with
+    | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
+    | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
+    | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
+    | Constructor("Other"         , UnitConstant) -> CharBasis.Other
+    | _ ->
+        report_bug_evaluator ("interpret_script: not a script value; "
+                              ^ (Display.string_of_ast ast)
+                              ^ " ->* " ^ (Display.string_of_ast value))
 
 
 and interpret_string (env : environment) (ast : abstract_tree) : string =

@@ -224,6 +224,12 @@ module BoundID =
     type t = kind BoundID_.t_
   end
 
+module FontSchemeMap = Map.Make
+  (struct
+    type t = CharBasis.script
+    let compare = Pervasives.compare
+  end)
+
 (*
 type id_name_arg =
   | IDName   of id_name
@@ -406,7 +412,8 @@ and input_vert_element =
 and input_context = {
   title            : abstract_tree;
   author           : abstract_tree;
-  font_info        : HorzBox.font_info;
+  font_scheme      : HorzBox.font_info FontSchemeMap.t;
+  dominant_script  : CharBasis.script;
   space_natural    : float;
   space_shrink     : float;
   space_stretch    : float;
@@ -528,8 +535,9 @@ and abstract_tree =
   | HorzLex                    of abstract_tree * abstract_tree
   | VertLex                    of abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio     of abstract_tree * abstract_tree
-  | PrimitiveSetFont           of abstract_tree * abstract_tree
-  | PrimitiveGetFont           of abstract_tree
+  | PrimitiveSetFont           of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetFont           of abstract_tree * abstract_tree
+  | PrimitiveSetDominantScript of abstract_tree * abstract_tree
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
@@ -703,10 +711,24 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
+let default_font_info =
+  ("Arno", HorzBox.Length.of_pdf_point 12.)
+
+
+let get_font_info ctx script_raw =
+  let script =
+    match script_raw with
+    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                             -> script_raw
+  in
+    try ctx.font_scheme |> FontSchemeMap.find script with
+    | Not_found -> default_font_info
+
+(*
 (* !!!! ---- global variable ---- !!!! *)
 
 let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
-
+*)
 
 (* -- following are all for debugging -- *)
 

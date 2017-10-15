@@ -68,14 +68,25 @@ let ( +% ) = HorzBox.( +% )
 let ( -% ) = HorzBox.( -% )
 let ( *% ) = HorzBox.( *% )
 
+let default_font_scheme =
+  List.fold_left (fun mapacc (script, font_info) -> mapacc |> FontSchemeMap.add script font_info)
+    FontSchemeMap.empty
+    [
+      (CharBasis.HanIdeographic    , ("KozMin", pdfpt 12.));
+      (CharBasis.HiraganaOrKatakana, ("KozMin", pdfpt 12.));
+      (CharBasis.Latin             , ("Arno"  , pdfpt 12.));
+      (CharBasis.Other             , default_font_info    );
+    ]
+
 let default_context =
   {
     title            = Horz([]);
     author           = Horz([]);
-    font_info        = ("Arno", HorzBox.Length.of_pdf_point 12.);
+    font_scheme      = default_font_scheme;
+    dominant_script  = CharBasis.Other;
     space_natural    = 0.33;
     space_shrink     = 0.08;
-    space_stretch    = 0.32; (* 0.16; *)
+    space_stretch    = 0.16; (* 0.32; *)
     adjacent_stretch = 0.05;
     paragraph_width  = pdfpt 400.;
     leading          = pdfpt 18.;
@@ -190,6 +201,7 @@ let make_environments () =
   let ft            = (~! "font"    , BaseType(FontType)   ) in
   let ctx           = (~! "context" , BaseType(ContextType)) in
   let path          = (~! "path"    , BaseType(PathType)   ) in
+  let scr           = (~! "script"  , VariantType([], tyid_script)) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let col           = prod [fl; fl; fl] in
@@ -250,8 +262,9 @@ let make_environments () =
         ("lex-col"       , ~% (ctx @-> tc @-> bc)       , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
         ("set-space-ratio", ~% (fl @-> ctx @-> ctx)     , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
-        ("set-font"      , ~% (ft @-> ctx @-> ctx)      , lambda2 (fun vfont vctx -> PrimitiveSetFont(vfont, vctx)));
-        ("get-font"      , ~% (ctx @-> ft)              , lambda1 (fun vctx -> PrimitiveGetFont(vctx)));
+        ("set-font"      , ~% (scr @-> ft @-> ctx @-> ctx), lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
+        ("get-font"      , ~% (scr @-> ctx @-> ft)      , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-dominant-script", ~% (scr @-> ctx @-> ctx), lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
         ("set-title"     , ~% (tr @-> ctx @-> ctx)      , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
         ("get-title"     , ~% (ctx @-> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));

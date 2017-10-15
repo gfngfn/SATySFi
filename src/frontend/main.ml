@@ -172,6 +172,12 @@ let error_log_environment suspended =
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
 
+  | Typechecker.UnknownUnitOfLength(rng, unitnm) ->
+      report_error "Typechecker" [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error "Typechecker" [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
