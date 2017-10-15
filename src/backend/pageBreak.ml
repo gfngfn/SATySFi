@@ -3,8 +3,6 @@
 open HorzBox
 
 (* for test *)
-let print_for_debug msg = ()
-let ppf_for_debug =  Format.printf
 let print_evaled_vert_box evvb =
   ()
 (*
@@ -42,7 +40,7 @@ let chop_single_page (imvblst : intermediate_vert_box list) : intermediate_vert_
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
         if vpb > vpbprev then  (* -- if getting worse, output the accumulated non-discardable lines 'imvbacc' as a page -- *)
-          let () = print_for_debug ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
+          let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (List.rev imvbacc, Some(imvblst))
         else
           aux vpb (head :: (List.append imvbaccbreakable imvbacc)) [] hgttotalnew imvbtail
@@ -51,13 +49,13 @@ let chop_single_page (imvblst : intermediate_vert_box list) : intermediate_vert_
         let hgttotalnew = hgttotal +% vskip in
         let vpb = calculate_badness_of_page_break hgttotalnew in
         if vpb > vpbprev then
-          let () = print_for_debug ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
+          let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (List.rev imvbacc, Some(imvbtail))  (* -- discard breakables -- *)
         else
           aux vpb imvbacc (head :: imvbaccbreakable) hgttotalnew imvbtail
 
     | [] ->
-        let () = print_for_debug ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
+        let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
           (List.rev imvbacc, None)
   in
   let vpbinit = 100000 in
@@ -117,9 +115,9 @@ let main_scheme (pdfscheme : HandlePdf.t) (imvbacc : intermediate_vert_box list)
     let (evvblstpage, opt) = pickup_page imvbacc vblst in
     let pdfschemenext = pdfscheme |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in
     (* begin: for debug *)
-      let () = print_for_debug "--------\n" in
+      let () = PrintForDebug.pagebreakE "--------\n" in
       let () = List.iter print_evaled_vert_box evvblstpage in
-      let () = print_for_debug "\n--------\n" in
+      let () = PrintForDebug.pagebreakE "\n--------\n" in
     (* end: for debug *)
         match opt with
         | None                           -> begin HandlePdf.write_to_file pdfschemenext; end
@@ -133,11 +131,11 @@ let main_for_unit_test (pdf : HandlePdf.t) (vblst : vert_box list) : unit =
 *)
 
 let main (pdf : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
-  let () = print_endline ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
+  let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
   let rec aux pdf imvblst =
     let (imvblstpage, restopt) = chop_single_page imvblst in
     let evblstpage = determine_heights imvblstpage in
-    let () = print_endline ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evblstpage))) in  (* for debug *)
+    let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evblstpage))) in  (* for debug *)
     let pdfnew = pdf |> HandlePdf.write_page Pdfpaper.a4 evblstpage in  (* temporary; size of paper should be variable *)
       match restopt with
       | None              -> pdfnew

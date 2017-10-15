@@ -1,4 +1,4 @@
-S .
+S ./
 B ../../_build/src/frontend/
 S ../../src/backend/
 B ../../_build/src/backend/
@@ -6,3 +6,5 @@ S ../chardecoder/
 B ../../_build/src/chardecoder/
 S ../../external/camlpdf/
 B ../../_build/external/camlpdf/
+S ../
+B ../../_build/src/

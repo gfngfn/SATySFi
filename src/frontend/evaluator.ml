@@ -3,16 +3,6 @@ open Types
 exception EvalError of string
 
 
-let print_for_debug_evaluator msg =
-(*
-  print_string msg;
-*)
-  ()
-
-let print_for_debug_lex_horz msg = ()
-let print_endline_for_debug_lex_horz msg = ()
-
-
 let report_bug_evaluator msg =
   failwith msg
 
@@ -46,9 +36,9 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
       let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
       let sl = (* match lbc with CharBasis.AL -> "@" | _ -> "^" *) "" in
         match !alwref with
-        | CharBasis.AllowBreak   -> print_for_debug_lex_horz (sc ^ sl ^ "/")
-        | CharBasis.PreventBreak -> print_for_debug_lex_horz (sc ^ sl ^ ".")
-    ); print_endline_for_debug_lex_horz "" in
+        | CharBasis.AllowBreak   -> PrintForDebug.lexhorz (sc ^ sl ^ "/")
+        | CharBasis.PreventBreak -> PrintForDebug.lexhorz (sc ^ sl ^ ".")
+    ); PrintForDebug.lexhorzE "" in
   (* end: for debug *)
 
   let scrlst = ScriptDataMap.divide_by_script trilst in
@@ -58,17 +48,17 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
     scrlst |> List.iter (function
       | CharBasis.PreWord(script, trilst, alw) ->
           let sa = match alw with CharBasis.AllowBreak -> "(A)" | CharBasis.PreventBreak -> "(P)" in
-          print_endline_for_debug_lex_horz ((CharBasis.show_script script) ^ sa);
+          PrintForDebug.lexhorzE ((CharBasis.show_script script) ^ sa);
           LineBreakDataMap.print_trilist trilst
       | CharBasis.Space ->
-          print_endline_for_debug_lex_horz "SPACE"
+          PrintForDebug.lexhorzE "SPACE"
       | CharBasis.UnbreakableSpace ->
-          print_endline_for_debug_lex_horz "UNBREAKABLE_SPACE"
+          PrintForDebug.lexhorzE "UNBREAKABLE_SPACE"
       | CharBasis.IdeographicOpen(script, tri) ->
-          print_endline_for_debug_lex_horz ("IDEOGRAPHIC_OPEN " ^ (CharBasis.show_script script));
+          PrintForDebug.lexhorzE ("IDEOGRAPHIC_OPEN " ^ (CharBasis.show_script script));
           LineBreakDataMap.print_trilist [tri]
       | CharBasis.IdeographicClose(script, tri) ->
-          print_endline_for_debug_lex_horz ("IDEOGRAPHIC_CLOSE " ^ (CharBasis.show_script script));
+          PrintForDebug.lexhorzE ("IDEOGRAPHIC_CLOSE " ^ (CharBasis.show_script script));
           LineBreakDataMap.print_trilist [tri]
     )
   in
@@ -449,7 +439,7 @@ and interpret env ast =
 (* -- fundamentals -- *)
 
   | ContentOf(evid) ->
-      let () = print_for_debug_evaluator ("$$ ContentOf " ^ (EvalVarID.show_direct evid) ^ "\n") in  (* for debug *)
+      let () = PrintForDebug.eval ("$$ ContentOf " ^ (EvalVarID.show_direct evid) ^ "\n") in  (* for debug *)
       begin
         try
           let content = !(find_in_environment env evid) in
@@ -496,12 +486,12 @@ and interpret env ast =
 (* ---- class/id option ---- *)
 (*
   | ApplyClassAndID(evidcls, evidid, clsnmast, idnmast, astf) ->
-      let () = print_for_debug_evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
+      let () = PrintForDebug.evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
       let valuef =  interpret env
                       (LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
                         LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astf))) in
       begin
-        print_for_debug_evaluator ("%2 " ^ (Display.string_of_ast valuef) ^ "\n") ;   (* for debug *)
+        PrintForDebug.evaluator ("%2 " ^ (Display.string_of_ast valuef) ^ "\n") ;   (* for debug *)
         match valuef with
         | FuncWithEnvironment(varnm, astdef, envf) ->
             FuncWithEnvironment(varnm,
@@ -1001,10 +991,8 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : ab
 
 and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) =
   let lst = add_mutuals_to_environment_sub [] env mutletcons in
-    begin                                                           (* for debug *)
-      print_for_debug_evaluator ("add_mutuals_to_environment\n") ;  (* for debug *)
+  let () = PrintForDebug.evalE ("add_mutuals_to_environment") in  (* for debug *)
       add_zeroary_mutuals lst env
-    end                                                             (* for debug *)
 
 
 and add_mutuals_to_environment_sub (lst : (EvalVarID.t * abstract_tree) list) (env : environment) (mutletcons : mutual_let_cons) =

@@ -1,17 +1,4 @@
 
-let print_for_debug msg =
-
-  print_string msg;
-
-  ()
-
-let print_endline_for_debug msg =
-
-  print_endline msg;
-
-  ()
-
-
 open CharBasis
 
 exception InputFileBroken
@@ -336,7 +323,7 @@ let append_break_opportunity (uchlst : Uchar.t list) =
             let b1 = match_postfix triacc lregexp1 in
             let b2 = match_prefix trilst lregexp2 in
             if b1 && b2 then
-              let () = print_for_debug (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
+              let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
               Some(alw) else alwoptacc
       ) None
     in
@@ -354,19 +341,20 @@ let append_break_opportunity (uchlst : Uchar.t list) =
         let triaccnew = trihead :: triacc in
         let trilstnew = tritail in
         begin
+          PrintForDebug.lbc (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
+          PrintForDebug.lbc (" " ^ (show_lb_class lbc));  (* for debug *)
           match tritail with
           | [] ->
               begin
+                PrintForDebug.lbcE "";  (* for debug *)
                 alwref := PreventBreak;
                 List.rev triaccnew
               end
 
           | _ :: _ ->
               begin
-                print_for_debug (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
-                print_for_debug (" " ^ (show_lb_class lbc));  (* for debug *)
                 let b = should_prevent_break triaccnew trilstnew in
-                print_endline_for_debug "";  (* for debug *)
+                PrintForDebug.lbcE "";  (* for debug *)
                 if b then
                   begin alwref := PreventBreak; end
                 else ();
@@ -388,8 +376,8 @@ let print_trilist trilst =
   trilst |> List.iter (fun (uch, lbc, alwref) ->
     let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
     let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
-    print_for_debug (sc ^ sa)
-  ); print_endline_for_debug ""
+      PrintForDebug.lbc (sc ^ sa)
+  ); PrintForDebug.lbcE ""
 
 (*
 (* unit test *)

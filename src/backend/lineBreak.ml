@@ -1,7 +1,4 @@
 
-let print_for_debug msgln =
-  print_endline msgln
-
 open HorzBox
 
 let ( ~. ) = float_of_int
@@ -300,6 +297,7 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
 
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
+
       (* begin : for debug *)
       let checksum =
         evhblst |> List.map (function
@@ -319,11 +317,12 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
         | TooLong                      -> "shrinkable = " ^ (Length.show widinfo_total.shrinkable) ^ ", too_long"
       in
 
-      let () = print_for_debug
+      let () = PrintForDebug.linebreakE
         ("natural = " ^ (Length.show widinfo_total.natural) ^ ", " ^
          msg ^ ", " ^
          "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
+
         (evhblst, hgt_total, dpt_total)
 
 

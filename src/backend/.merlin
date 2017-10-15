@@ -1,5 +1,5 @@
 PKG result core ctypes bitv bateries
-S .
+S ./
 B ../../_build/src/backend/
 S ../../external/otfm/src/
 B ../../_build/external/otfm/src/
@@ -9,3 +9,5 @@ S ../../external/ucorelib/src/
 B ../../_build/external/ucorelib/src/
 S ../../src/chardecoder/
 B ../../_build/src/chardecoder/
+S ../
+B ../../_build/src/
