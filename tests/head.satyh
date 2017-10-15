@@ -1,0 +1,118 @@
+let-row ctx \emph inner =
+  let ctx-emph =
+    ((ctx |> set-font (Latin) (font `ArnoIt` 12pt))
+          |> set-font (HanIdeographic) (font `Osaka` 10pt))
+          |> set-font (Kana) (font `Osaka` 10pt)
+  in
+    lex-row ctx-emph inner
+
+let-col ctx +document rcd inner =
+  let title = rcd#title in
+  let ctx-doc = (set-font (Latin) (font `Arno` 12pt) (set-title title ctx)) in
+    lex-col ctx-doc inner
+
+let gctx-title-frame =
+  (((default-graphics-context
+    |> set-line-width 5pt)
+    |> set-line-dash (Some(25pt, 3pt, 5pt)))
+    |> set-stroke-color (1., 0., 0.))
+    |> set-fill-color (1., 0.75, 0.75)
+
+let title-frame =
+  let pads = (5pt, 5pt, 10pt, 10pt) in
+  let cx = 12pt in
+  let cy = 8pt in
+  let deco (x, y) wid hgt dpt =
+    let xL = x in
+    let xR = x +' wid in
+    let yT = y +' hgt in
+    let yB = y +' dpt in
+    let path =
+      <[ (xL, yT)
+           -- (xR, yT)
+           .. controls (xR +' cx, yT -' cy) and (xR +' cx, yB +' cy)
+           .. (xR, yB)
+           -- (xL, yB)
+           .. controls (xL -' cx, yB +' cy) and (xL -' cx, yT -' cy)
+           .. cycle ]>
+    in
+      [
+        fill gctx-title-frame path;
+        stroke gctx-title-frame path;
+      ]
+  in
+    outer-frame-block pads deco
+
+let-col ctx +make-title =
+  let title = get-title ctx in
+  let ctx-title = set-font (Latin) (font `Arno` 36pt) ctx in
+  let br-title = lex-row ctx-title title in
+    form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil))
+
+let indent = fixed-empty 24pt
+
+let indent-jp = fixed-empty 10pt
+
+let-col ctx +p inner =
+  let br = lex-row ctx inner in
+    form-paragraph ctx (indent ++ br ++ outer-fil)
+
+let-col ctx +p-jp inner =
+  let ctx-jp =
+    ((ctx |> set-font (HanIdeographic) (font `KozMin` 10pt))
+          |> set-font (Kana) (font `KozMin` 10pt))
+          |> set-dominant-script (HanIdeographic)
+  in
+  let br = lex-row ctx-jp inner in
+    form-paragraph ctx (indent-jp ++ br ++ outer-fil)
+
+let-col ctx +section title inner =
+  let ctx-title = set-font (Latin) (font `Arno` 24pt) ctx in
+  let br-title = lex-row ctx-title title in
+  let bc-title = form-paragraph ctx (br-title ++ (outer-fil)) in
+  let bc-inner = lex-col ctx inner in
+    bc-title +++ bc-inner
+
+let-row ctx \expand-spaces inner =
+  let ctx-inner = set-space-ratio 1.0 ctx in
+    lex-row ctx-inner inner
+
+let-col-detailed ctx +px inner =
+  let br = lex-row ctx inner in
+  let bc = form-paragraph ctx (indent ++ br ++ outer-fil) in
+  let ctx-after = set-font (Latin) (font `ArnoIt` 12pt) ctx in
+    (ctx-after, bc)
+
+let-row ctx \inline-frame inner =
+  let br = lex-row ctx inner in
+    (outer-frame-inline br)
+
+let-col ctx +simple-replacement-test = lex-col ctx
+  '< +p {Replaced text} >
+
+let list-map
+  | f []        = []
+  | f (x :: xs) = (f x) :: list-map f xs
+
+let list-fold-left
+  | f init []        = init
+  | f init (x :: xs) = list-fold-left f (f init x) xs
+
+let (+++>) = list-fold-left (+++)
+
+let item-indent = 16pt
+
+let item : context -> int -> itemize -> box-col
+  | ctx depth (Item(parent, children)) =
+      let br-bullet = (lex-row ctx {\*}) ++ (fixed-empty 8pt) in
+      let br-parent = lex-row ctx parent in
+      let bc-parent =
+        form-paragraph ctx
+          ((fixed-empty (item-indent *' (float depth))) ++ br-bullet ++ br-parent ++ outer-fil)
+      in
+      let bclst-children = list-map (item ctx (depth + 1)) children in
+        bc-parent +++> bclst-children
+
+let-col ctx +listing (Item(_, itmzlst)) =
+  let bclst = list-map (item ctx 1) itmzlst in
+    col-nil +++> bclst

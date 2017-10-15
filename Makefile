@@ -1,4 +1,5 @@
 PREFIX=/usr/local
+PREFIX_LIB=/usr/local
 SRCROOT=src
 BACKEND=src/backend
 FRONTEND=src/frontend
@@ -21,6 +22,9 @@ all:
 install: $(TARGET)
 	mkdir -p $(BINDIR)
 	install $(TARGET) $(BINDIR)
+
+install-lib:
+	ln -s -i `pwd`/lib-satysfi $(PREFIX_LIB)/lib-satysfi
 
 uninstall:
 	rm -rf $(BINDIR)/$(TARGET)
