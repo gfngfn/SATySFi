@@ -70,10 +70,13 @@ type line_break_class =
   | IDOP (* ideographic open punctuation *)
   | IDCP (* ideographic close punctuation *)
 
-type line_break_regexp =
+type line_break_regexp_element =
   | LBRESet       of line_break_class list   (* [a ... a] *)
   | LBRENotOf     of line_break_class list   (* [^ a ... a] *)
-  | LBREStar      of line_break_regexp list  (* e* *)
+  | LBREStar      of line_break_regexp       (* e* *)
+
+and line_break_regexp = line_break_regexp_element list
+
 
 let script_equal = (=)
 

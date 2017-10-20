@@ -131,13 +131,15 @@ let append_property (uchlst : Uchar.t list) =
 
   let bispace = (Uchar.of_int 32, SP) in  (* -- space character -- *)
 
-  let rec aux prevopt bilst =
+  let rec trim_break prevopt bilst =
+    let aux = trim_break in
     match bilst with
     | [] ->
         begin
           match prevopt with
           | None                     -> []
           | Some(((_, INBR), biacc)) -> List.rev (bispace :: biacc)
+                                          (* temporary; should take the adjacent embedded command into consideration *)
           | Some((biprev, biacc))    -> List.rev (biprev :: biacc)
         end
 
@@ -175,7 +177,7 @@ let append_property (uchlst : Uchar.t list) =
   in
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
-    aux None bilst
+    trim_break None bilst
 
 
 (* -- the rules for inserting line break opportunities based on [UAX#14 Section 6] -- *)
@@ -265,7 +267,7 @@ let line_break_rule =
 
 
 (* -- a naive, greedy regexp matching (it suffices to use greedy one) -- *)
-let match_prefix trilst lregexp =
+let match_prefix (getf : 'a -> 'b) (trilst : 'a list) (lregexp : line_break_regexp) =
   let rec cut trilst lregexp =
     match lregexp with
     | [] -> Some(trilst)
@@ -273,15 +275,15 @@ let match_prefix trilst lregexp =
     | LBRESet(lbclst) :: lregexptail ->
         begin
           match trilst with
-          | []                     -> None
-          | (_, lbc, _) :: tritail -> if List.mem lbc lbclst then cut tritail lregexptail else None
+          | []                 -> None
+          | trihead :: tritail -> if List.mem (getf trihead) lbclst then cut tritail lregexptail else None
         end
 
     | LBRENotOf(lbclst) :: lregexptail ->
         begin
           match trilst with
-          | []                     -> None
-          | (_, lbc, _) :: tritail -> if not (List.mem lbc lbclst) then cut tritail lregexptail else None
+          | []                 -> None
+          | trihead :: tritail -> if not (List.mem (getf trihead) lbclst) then cut tritail lregexptail else None
         end
 
     | LBREStar(lregexpsub) :: lregexptail ->
@@ -299,7 +301,7 @@ let match_prefix trilst lregexp =
     | Some(_) -> true
 
 
-let match_postfix trilst lregexp =
+let match_postfix  getf trilst lregexp =
   let rec reverse lregexp =
     let lregexpsub =
       lregexp |> List.map (function
@@ -309,7 +311,7 @@ let match_postfix trilst lregexp =
     in
       List.rev lregexpsub
   in
-    match_prefix trilst (reverse lregexp)
+    match_prefix getf trilst (reverse lregexp)
 
 
 let append_break_opportunity (uchlst : Uchar.t list) =
@@ -320,11 +322,13 @@ let append_break_opportunity (uchlst : Uchar.t list) =
         match alwoptacc with
         | Some(_) -> alwoptacc
         | None ->
-            let b1 = match_postfix triacc lregexp1 in
-            let b2 = match_prefix trilst lregexp2 in
+            let b1 = match_postfix (fun (_, lbc, _) -> lbc) triacc lregexp1 in
+            let b2 = match_prefix (fun (_, lbc, _) -> lbc) trilst lregexp2 in
             if b1 && b2 then
               let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
-              Some(alw) else alwoptacc
+              Some(alw)
+            else
+              alwoptacc
       ) None
     in
       match alwopt with
@@ -347,7 +351,7 @@ let append_break_opportunity (uchlst : Uchar.t list) =
           | [] ->
               begin
                 PrintForDebug.lbcE "";  (* for debug *)
-                alwref := PreventBreak;
+                alwref := PreventBreak;  (* temporary; should take the adjacent embedded command into consideration *)
                 List.rev triaccnew
               end
 
