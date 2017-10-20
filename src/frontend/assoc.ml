@@ -1,6 +1,6 @@
 
 type ('a, 'b) t = ('a * 'b) list
-
+  [@@deriving show]
 
 let empty = []
 

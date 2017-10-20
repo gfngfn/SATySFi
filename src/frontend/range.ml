@@ -1,6 +1,16 @@
 
 type t = Dummy of string | Normal of int * int * int * int
 
+let pp ppf rng =
+  Format.fprintf ppf ""
+(*
+  match rng with
+  | Dummy(msg)                   -> ppf "RangeDummy(%s)" msg
+  | Normal(ln1, pos1, ln2, pos2) -> "Range"
+*)
+
+let show rng = ""
+
 
 let dummy msg = Dummy(msg)
 

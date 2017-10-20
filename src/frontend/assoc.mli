@@ -1,6 +1,6 @@
 
 type ('a, 'b) t
-
+  [@@deriving show]
 
 val empty : ('a, 'b) t
 

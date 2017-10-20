@@ -1,3 +1,4 @@
+PKG ppx_deriving.show
 S ./
 B ../../_build/src/frontend/
 S ../../src/backend/

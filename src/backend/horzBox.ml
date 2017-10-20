@@ -2,6 +2,7 @@
 module Length
 : sig
     type t
+      [@@deriving show]
     val zero : t
     val add : t -> t -> t
     val subtr : t -> t -> t
@@ -23,7 +24,7 @@ module Length
 = struct
 
     type t = float
-
+      [@@deriving show]
     let zero = 0.
     let add = ( +. )
     let subtr = ( -. )
@@ -65,7 +66,7 @@ let ( @|> ) = ( |> )
      ---- *)
 
 
-type length = Length.t
+type length = Length.t  [@@deriving show]
 
 type point = length * length
 
@@ -95,7 +96,7 @@ type ratios =
   | PermissiblyLong  of float
   | TooLong
 
-type font_abbrev = string
+type font_abbrev = string  [@@deriving show]
 
 type file_path = string
 
@@ -105,6 +106,7 @@ type encoding_in_pdf =
   | IdentityH
 
 type font_info = font_abbrev * Length.t
+  [@@deriving show]
 
 type paddings =
   {
@@ -113,7 +115,7 @@ type paddings =
     paddingT : length;
     paddingB : length;
   }
-
+[@@deriving show]
 
 (* -- representation about graphics based on PDF 1.7 specification -- *)
 
@@ -165,7 +167,10 @@ type graphics_command =
 (* -- internal representation of boxes -- *)
 
 type decoration = point -> length -> length -> length -> Pdfops.t list
-
+[@@deriving show]
+(*
+let pp_decoration ppf = Format.fprintf ppf "(decoration)"
+*)
 type pure_horz_box =
   | PHOuterEmpty  of length * length * length
   | PHOuterFil
@@ -180,6 +185,9 @@ and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
+
+let pp_horz_box ppf hb =
+  Format.pp_print_string ppf "(hb)"
 
 type evaled_horz_box_main =
   | EvHorzString of font_info * OutputText.t
@@ -199,6 +207,9 @@ type intermediate_vert_box =
 (*
   | ImVertUnbreakableSkip of length * length * length
 *)
+
+let pp_intermediate_vert_box ppf x imvb =
+  Format.fprintf ppf "(imvb)"
 
 type evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list

@@ -434,14 +434,20 @@
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ
 %nonassoc MATCH WITH
 %nonassoc IF THEN ELSE
+*)
 (*
 %left OVERWRITEGLOBALHASH
 *)
+
 %left BEFORE
+(*
 %nonassoc WHILE
+*)
 %left BINOP_BAR
 %left BINOP_AMP
+(*
 %nonassoc LNOT
+*)
 %left BINOP_EQ
 %left BINOP_GT BINOP_LT
 %right CONS
@@ -449,6 +455,7 @@
 %left BINOP_MINUS EXACT_MINUS
 %left BINOP_TIMES EXACT_TIMES
 %right MOD BINOP_DIVIDES
+(*
 %nonassoc VAR
 %nonassoc LPAREN RPAREN
 *)

@@ -1,8 +1,8 @@
 let-row ctx \emph inner =
   let ctx-emph =
-    ((ctx |> set-font (Latin) (font `ArnoIt` 12pt))
-          |> set-font (HanIdeographic) (font `Osaka` 10pt))
-          |> set-font (Kana) (font `Osaka` 10pt)
+    ctx |> set-font (Latin) (font `ArnoIt` 12pt)
+        |> set-font (HanIdeographic) (font `Osaka` 10pt)
+        |> set-font (Kana) (font `Osaka` 10pt)
   in
     lex-row ctx-emph inner
 

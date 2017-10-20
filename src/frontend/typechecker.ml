@@ -862,6 +862,7 @@ and make_type_environment_by_let_mutable (lev : FreeID.level) (tyenv : Typeenv.t
 let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
     final_tyenv := tyenv;
+    Format.printf "%a" pp_untyped_abstract_tree utast;
     let (e, ty) = typecheck Quantifiable FreeID.bottom_level tyenv utast in
       (ty, !final_tyenv, e)
   end

@@ -2,12 +2,15 @@
 type element =
   | Data of string
   | Kern of int
+  [@@deriving show]
 
 type style =
   | Literal
   | Hex
+  [@@deriving show]
 
 type t = style * element list
+  [@@deriving show]
 
 let empty_literal_style = (Literal, [])
 

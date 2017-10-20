@@ -1,21 +1,22 @@
 
 exception ParseErrorDetail of string
 
-type ctrlseq_name       = string
-type var_name           = string
-type id_name            = string
-type class_name         = string
-type type_name          = string
-type constructor_name   = string
-type module_name        = string
-type sig_var_name       = string
-type field_name         = string
-type type_argument_name = string
-type length_unit_name   = string
+type ctrlseq_name       = string  [@@deriving show]
+type var_name           = string  [@@deriving show]
+type id_name            = string  [@@deriving show]
+type class_name         = string  [@@deriving show]
+type type_name          = string  [@@deriving show]
+type constructor_name   = string  [@@deriving show]
+type module_name        = string  [@@deriving show]
+type sig_var_name       = string  [@@deriving show]
+type field_name         = string  [@@deriving show]
+type type_argument_name = string  [@@deriving show]
+type length_unit_name   = string  [@@deriving show]
 
 
 module TypeID : sig
   type t
+    [@@deriving show]
   val initialize : unit -> unit
   val fresh : type_name -> t
   val extract_name : t -> type_name
@@ -23,6 +24,7 @@ module TypeID : sig
   val show_direct : t -> string
 end = struct
   type t = int * type_name
+    [@@deriving show]
   let current_id = ref 0
   let initialize () = ( current_id := 0 )
   let fresh tynm = begin incr current_id ; (!current_id, tynm) end
@@ -55,11 +57,14 @@ module EvalVarID
 
 
 type quantifiability = Quantifiable | Unquantifiable
+  [@@deriving show]
 
 module FreeID_
 : sig
     type level
+      [@@deriving show]
     type 'a t_
+      [@@deriving show]
     val bottom_level : level
     val succ_level : level -> level
     val less_than : level -> level -> bool
@@ -77,7 +82,9 @@ module FreeID_
   end
 = struct
     type level = int
+      [@@deriving show]
     type 'a t_ = int * 'a * quantifiability * level
+      [@@deriving show]
 
     let bottom_level = 0
 
@@ -125,6 +132,7 @@ module FreeID_
 module BoundID_
 : sig
     type 'a t_
+      [@@deriving show]
     val initialize : unit -> unit
     val fresh : 'a -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
@@ -133,6 +141,7 @@ module BoundID_
   end
 = struct
     type 'a t_ = int * 'a
+      [@@deriving show]
 
     let current_id = ref 0
 
@@ -161,10 +170,12 @@ and manual_type_main =
   | MFuncType    of manual_type * manual_type
   | MProductType of manual_type list
   | MRecordType  of (field_name, manual_type) Assoc.t
+[@@deriving show]
 
 type manual_kind =
   | MUniversalKind
   | MRecordKind    of (field_name, manual_type) Assoc.t
+[@@deriving show]
 
 type base_type =
   | UnitType
@@ -182,6 +193,8 @@ type base_type =
   | PathType
   | GraphicsContextType
   | GraphicsType
+  [@@deriving show]
+
 
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
@@ -209,6 +222,8 @@ and type_variable_info =
   | Free  of kind FreeID_.t_
   | Bound of kind BoundID_.t_
   | Link  of mono_type
+
+[@@deriving show]
 
 
 module FreeID =
@@ -260,16 +275,22 @@ and 'a untyped_path_component =
   | UTPathLineTo        of 'a
   | UTPathCubicBezierTo of untyped_abstract_tree * untyped_abstract_tree * 'a
 
-and untyped_abstract_tree = Range.t * untyped_abstract_tree_main
+and untyped_abstract_tree =
+  Range.t * untyped_abstract_tree_main
+    [@printer (fun fmt (_, utastmain) -> Format.fprintf fmt "%a" pp_untyped_abstract_tree_main utastmain)]
+
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
   | UTUnitConstant
+      [@printer (fun fmt () -> Format.fprintf fmt "()")]
   | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
+      [@printer (fun fmt (fl, lun) -> Format.fprintf fmt "%f%s" fl lun)]
   | UTStringEmpty
   | UTStringConstant       of string
+      [@printer (fun fmt s -> Format.fprintf fmt "\"%s\"" s)]
 (*
   | UTBreakAndIndent
 *)
@@ -299,7 +320,9 @@ and untyped_abstract_tree_main =
   | UTAccessField          of untyped_abstract_tree * field_name
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
+      [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
+      [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
@@ -308,6 +331,7 @@ and untyped_abstract_tree_main =
 (* -- pattern match -- *)
   | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
   | UTConstructor          of constructor_name * untyped_abstract_tree
+      [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
 (* -- declaration of type and module -- *)
   | UTDeclareVariantIn     of untyped_mutual_variant_cons * untyped_abstract_tree
   | UTModule               of Range.t * module_name * manual_signature option * untyped_abstract_tree * untyped_abstract_tree
@@ -384,6 +408,7 @@ and untyped_let_pattern_cons =
 and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
 
 and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
+[@@deriving show { with_path = false }]
 
 (* ---- typed ---- *)
 type argument_variable_cons =
