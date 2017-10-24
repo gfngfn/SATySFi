@@ -1,7 +1,7 @@
 % -*- coding: utf-8 -*-
 +document (|
   title  = {Sample Document};
-  author = {gfn};
+  author = {Takashi SUWA};
 |) <
   +make-title;
   +section {Sample Text} <

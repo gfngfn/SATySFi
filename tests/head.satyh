@@ -8,7 +8,11 @@ let-row ctx \emph inner =
 
 let-col ctx +document rcd inner =
   let title = rcd#title in
-  let ctx-doc = (set-font (Latin) (font `Arno` 12pt) (set-title title ctx)) in
+  let ctx-doc =
+    ctx |> set-font (Latin) (font `Arno` 12pt)
+        |> set-title title
+        |> set-dominant-script (Latin)
+  in
     lex-col ctx-doc inner
 
 let gctx-title-frame =
@@ -45,7 +49,9 @@ let title-frame =
 
 let-col ctx +make-title =
   let title = get-title ctx in
-  let ctx-title = set-font (Latin) (font `Arno` 36pt) ctx in
+  let ctx-title =
+    ctx |> set-font (Latin) (font `Arno` 36pt)
+  in
   let br-title = lex-row ctx-title title in
     form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil))
 
