@@ -681,11 +681,11 @@ argvar: /* -> argument_variable_cons */
   | argpatlst=list(patbot) { argpatlst }
 ;
 nxlor:
-  | nxland BINOP_BAR nxlor { binary_operator $1 $2 $3 }
+  | nxlor BINOP_BAR nxland { binary_operator $1 $2 $3 }
   | nxland                 { $1 }
 ;
 nxland:
-  | nxcomp BINOP_AMP nxland  { binary_operator $1 $2 $3 }
+  | nxland BINOP_AMP nxcomp  { binary_operator $1 $2 $3 }
   | nxcomp                   { $1 }
 ;
 nxcomp:

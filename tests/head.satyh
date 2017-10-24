@@ -12,10 +12,10 @@ let-col ctx +document rcd inner =
     lex-col ctx-doc inner
 
 let gctx-title-frame =
-  (((default-graphics-context
-    |> set-line-width 5pt)
-    |> set-line-dash (Some(25pt, 3pt, 5pt)))
-    |> set-stroke-color (1., 0., 0.))
+  default-graphics-context
+    |> set-line-width 5pt
+    |> set-line-dash (Some(25pt, 3pt, 5pt))
+    |> set-stroke-color (1., 0., 0.)
     |> set-fill-color (1., 0.75, 0.75)
 
 let title-frame =
@@ -59,9 +59,9 @@ let-col ctx +p inner =
 
 let-col ctx +p-jp inner =
   let ctx-jp =
-    ((ctx |> set-font (HanIdeographic) (font `KozMin` 10pt))
-          |> set-font (Kana) (font `KozMin` 10pt))
-          |> set-dominant-script (HanIdeographic)
+    ctx |> set-font (HanIdeographic) (font `KozMin` 10pt)
+        |> set-font (Kana) (font `KozMin` 10pt)
+        |> set-dominant-script (HanIdeographic)
   in
   let br = lex-row ctx-jp inner in
     form-paragraph ctx (indent-jp ++ br ++ outer-fil)
