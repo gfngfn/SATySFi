@@ -78,10 +78,12 @@ let default_font_scheme =
       (CharBasis.Other             , default_font_info    );
     ]
 
+let envinit : environment = Hashtbl.create 128
+
 let default_context =
   {
-    title            = Horz([]);
-    author           = Horz([]);
+    title            = InputHorzWithEnvironment([], envinit);
+    author           = InputHorzWithEnvironment([], envinit);
     font_scheme      = default_font_scheme;
     dominant_script  = CharBasis.Other;
     space_natural    = 0.33;
@@ -279,19 +281,18 @@ let make_environments () =
       ]
   in
   let temporary_ast = StringEmpty in
-  let env : environment = Hashtbl.create 128 in
   let (tyenvfinal, locacc) =
     table |> List.fold_left (fun (tyenv, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh varnm in
       let loc = ref temporary_ast in
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
       begin
-        add_to_environment env evid loc;
+        add_to_environment envinit evid loc;
         (tyenvnew, (loc, deff) :: acc)
       end
     ) (tyenvinit, [])
   in
   let () =
-    locacc |> List.iter (fun (loc, deff) -> begin loc := deff env; end)
+    locacc |> List.iter (fun (loc, deff) -> begin loc := deff envinit; end)
   in
-    (tyenvfinal, env)
+    (tyenvfinal, envinit)

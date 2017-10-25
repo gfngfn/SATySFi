@@ -344,7 +344,7 @@ and interpret env ast =
       begin
         match value1 with
         | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi ctx ihlst
-        | _                                     -> report_bug_evaluator "HorzLex"
+        | _                                     -> report_bug_evaluator ("HorzLex; " ^ (Display.string_of_ast ast1) ^ " ->* " ^ (Display.string_of_ast value1))
       end
 
   | VertLex(astctx, ast1) ->
@@ -451,10 +451,11 @@ and interpret env ast =
 (* -- fundamentals -- *)
 
   | ContentOf(evid) ->
-      let () = PrintForDebug.eval ("$$ ContentOf " ^ (EvalVarID.show_direct evid) ^ "\n") in  (* for debug *)
+      let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
       begin
         try
           let content = !(find_in_environment env evid) in
+          let () = PrintForDebug.evalE ("  -> " ^ (Display.string_of_ast content)) in  (* for debug *)
             content
         with
         | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found")
@@ -470,6 +471,7 @@ and interpret env ast =
   | LambdaAbstract(evid, ast) -> FuncWithEnvironment(evid, ast, env)
 
   | Apply(astf, astl) ->
+      let () = PrintForDebug.evalE ("Apply(" ^ (Display.string_of_ast astf) ^ ", " ^ (Display.string_of_ast astl) ^ ")") in  (* for debug *)
       let fspec = interpret env astf in
         begin
           match fspec with
@@ -525,8 +527,11 @@ and interpret env ast =
         end
 
   | Sequential(ast1, ast2) ->
+      let () = PrintForDebug.evalE ("Sequential(" ^ (Display.string_of_ast ast1) ^ ", " ^ (Display.string_of_ast ast2) ^ ")") in  (* for debug *)
       let value1 = interpret env ast1 in
+      let () = PrintForDebug.evalE ("value1 = " ^ (Display.string_of_ast value1)) in  (* for debug *)
       let value2 = interpret env ast2 in
+      let () = PrintForDebug.evalE ("value2 = " ^ (Display.string_of_ast value2)) in  (* for debug *)
         begin
           match value1 with
           | UnitConstant -> value2

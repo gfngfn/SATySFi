@@ -6,14 +6,19 @@ let-row ctx \emph inner =
   in
     lex-row ctx-emph inner
 
+let-mutable ref-title <- {}
+
 let-col ctx +document rcd inner =
   let title = rcd#title in
   let ctx-doc =
     ctx |> set-font (Latin) (font `Arno` 12pt)
-        |> set-title title
+%        |> set-title title
         |> set-dominant-script (Latin)
   in
-    lex-col ctx-doc inner
+  (
+    (ref-title <- title) before
+    (lex-col ctx-doc inner)
+  )
 
 let gctx-title-frame =
   default-graphics-context
@@ -48,7 +53,8 @@ let title-frame =
     outer-frame-block pads deco
 
 let-col ctx +make-title =
-  let title = get-title ctx in
+%  let title = get-title ctx in
+  let title = !ref-title in
   let ctx-title =
     ctx |> set-font (Latin) (font `Arno` 36pt)
   in
@@ -96,15 +102,22 @@ let-row ctx \inline-frame inner =
 let-col ctx +simple-replacement-test = lex-col ctx
   '< +p {Replaced text} >
 
-let list-map
-  | f []        = []
-  | f (x :: xs) = (f x) :: list-map f xs
+module List
+: sig
+    val map : ('a -> 'b) -> 'a list -> 'b list
+    val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+  end
+= struct
+    let map
+      | f []        = []
+      | f (x :: xs) = (f x) :: map f xs
 
-let list-fold-left
-  | f init []        = init
-  | f init (x :: xs) = list-fold-left f (f init x) xs
+    let fold-left
+      | f init []        = init
+      | f init (x :: xs) = fold-left f (f init x) xs
+  end
 
-let (+++>) = list-fold-left (+++)
+let (+++>) = List.fold-left (+++)
 
 let item-indent = 16pt
 
@@ -116,9 +129,9 @@ let item : context -> int -> itemize -> box-col
         form-paragraph ctx
           ((fixed-empty (item-indent *' (float depth))) ++ br-bullet ++ br-parent ++ outer-fil)
       in
-      let bclst-children = list-map (item ctx (depth + 1)) children in
+      let bclst-children = List.map (item ctx (depth + 1)) children in
         bc-parent +++> bclst-children
 
 let-col ctx +listing (Item(_, itmzlst)) =
-  let bclst = list-map (item ctx 1) itmzlst in
+  let bclst = List.map (item ctx 1) itmzlst in
     col-nil +++> bclst
