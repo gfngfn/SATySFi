@@ -60,7 +60,7 @@ let-col ctx +make-title =
   let ctx-title = ctx |> set-font Latin (font `Arno` 36pt) in
   let ctx-author = ctx |> set-font Latin (font `Arno` 16pt) in
   let br-title = lex-row ctx-title (!ref-title) in
-  let br-author = lex-row ctx-author (!ref-title) in
+  let br-author = lex-row ctx-author (!ref-author) in
   let bc-title = form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil)) in
   let bc-author = form-paragraph ctx-author (outer-fil ++ br-author) in
     bc-title +++ bc-author
