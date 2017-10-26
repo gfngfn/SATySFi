@@ -83,7 +83,7 @@ let-col ctx +p-jp inner =
     form-paragraph ctx (indent-jp ++ br ++ outer-fil)
 
 let-col ctx +section title inner =
-  let ctx-title = set-font (Latin) (font `Arno` 24pt) ctx in
+  let ctx-title = set-font Latin (font `Arno` 24pt) ctx in
   let br-title = lex-row ctx-title title in
   let bc-title = form-paragraph ctx (br-title ++ (outer-fil)) in
   let bc-inner = lex-col ctx inner in
@@ -96,7 +96,7 @@ let-row ctx \expand-spaces inner =
 let-col-detailed ctx +px inner =
   let br = lex-row ctx inner in
   let bc = form-paragraph ctx (indent ++ br ++ outer-fil) in
-  let ctx-after = set-font (Latin) (font `ArnoIt` 12pt) ctx in
+  let ctx-after = set-font Latin (font `ArnoIt` 12pt) ctx in
     (ctx-after, bc)
 
 let-row ctx \inline-frame inner =
