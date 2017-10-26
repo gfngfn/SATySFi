@@ -21,15 +21,18 @@ let get_script_opt lbu =
 (* temporary; should refer to the context for spacing between two scripts *)
 let transition_space ctx lbu1 lbu2 =
   let (_, font_size) = get_font_info ctx ctx.dominant_script in
-  let half_space = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.(font_size *% 0.25 (* temporary *)), HorzBox.(font_size *% 0.25 (* temporary *)))] in
+  let half_space_soft = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.(font_size *% 0.25 (* temporary *)), HorzBox.(font_size *% 0.25 (* temporary *)))] in
+  let half_space_hard = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.Length.zero, HorzBox.(font_size *% 0.25 (* temporary *)))] in
   let full_space = [CustomizedSpace(font_size, HorzBox.(font_size *% 0.5 (* temporary *)), HorzBox.(font_size *% 0.5 (* temporary *)))] in
   match (lbu1, lbu2) with
-  | (PreWord(_, _, _), JLOpen(_, _))       -> half_space
-  | (JLClose(_, _), PreWord(_, _, _))      -> half_space
-  | (JLClose(_, _), JLOpen(_, _))          -> half_space
+  | (PreWord(_, _, _)  , JLOpen(_, _)    ) -> half_space_soft
+  | (JLClose(_, _)     , PreWord(_, _, _)) -> half_space_soft
+  | (JLClose(_, _)     , JLOpen(_, _)    ) -> half_space_soft
   | (JLNonstarter(_, _), PreWord(_, _, _)) -> full_space
-  | (JLComma(_, _), PreWord(_, _, _))      -> half_space
-  | (JLFullStop(_, _), PreWord(_, _, _))   -> half_space
+  | (JLComma(_, _)     , PreWord(_, _, _)) -> half_space_soft
+  | (JLComma(_, _)     , JLOpen(_, _)    ) -> half_space_soft
+  | (JLFullStop(_, _)  , PreWord(_, _, _)) -> half_space_hard
+  | (JLFullStop(_, _)  , JLOpen(_, _)    ) -> half_space_hard
   | _ ->
       let scriptopt1 = get_script_opt lbu1 in
       let scriptopt2 = get_script_opt lbu2 in
