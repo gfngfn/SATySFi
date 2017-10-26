@@ -1,43 +1,66 @@
 
 open Types
+open CharBasis
+
+
+let get_script_opt lbu =
+  match lbu with
+  | Space
+  | UnbreakableSpace
+  | CustomizedSpace(_, _, _) -> None
+
+  | PreWord(script, _, _)
+  | JLOpen(script, _)
+  | JLClose(script, _)
+  | JLMiddle(script, _)
+  | JLNonstarter(script, _)
+  | JLComma(script, _)
+  | JLFullStop(script, _)    -> Some(script)
 
 
 (* temporary; should refer to the context for spacing between two scripts *)
-let transition_space ctx script1 script2 =
+let transition_space ctx lbu1 lbu2 =
   let (_, font_size) = get_font_info ctx ctx.dominant_script in
-  match (script1, script2) with
-  | ( (CharBasis.HanIdeographic, CharBasis.Latin)
-    | (CharBasis.Latin, CharBasis.HanIdeographic)
-    | (CharBasis.HiraganaOrKatakana, CharBasis.Latin)
-    | (CharBasis.Latin, CharBasis.HiraganaOrKatakana) ) ->
-        [CharBasis.CustomizedSpace(HorzBox.(font_size *% 0.24), HorzBox.(font_size *% 0.08), HorzBox.(font_size *% 0.16))]  (* temporary; shold refer to the context for spacing information between two scripts *)
-  | _                                               -> []
+  let half_space = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.(font_size *% 0.25 (* temporary *)), HorzBox.(font_size *% 0.25 (* temporary *)))] in
+  let full_space = [CustomizedSpace(font_size, HorzBox.(font_size *% 0.5 (* temporary *)), HorzBox.(font_size *% 0.5 (* temporary *)))] in
+  match (lbu1, lbu2) with
+  | (PreWord(_, _, _), JLOpen(_, _))       -> half_space
+  | (JLClose(_, _), PreWord(_, _, _))      -> half_space
+  | (JLClose(_, _), JLOpen(_, _))          -> half_space
+  | (JLNonstarter(_, _), PreWord(_, _, _)) -> full_space
+  | (JLComma(_, _), PreWord(_, _, _))      -> half_space
+  | (JLFullStop(_, _), PreWord(_, _, _))   -> half_space
+  | _ ->
+      let scriptopt1 = get_script_opt lbu1 in
+      let scriptopt2 = get_script_opt lbu2 in
+        match (scriptopt1, scriptopt2) with
+        | (Some(script1), Some(script2)) ->
+            begin
+              match (script1, script2) with
+              | ( (HanIdeographic, Latin)
+                | (Latin, HanIdeographic)
+                | (HiraganaOrKatakana, Latin)
+                | (Latin, HiraganaOrKatakana) ) ->
+                    [CustomizedSpace(HorzBox.(font_size *% 0.24), HorzBox.(font_size *% 0.08), HorzBox.(font_size *% 0.16))]  (* temporary; shold refer to the context for spacing information between two scripts *)
+              | _                                               -> []
+            end
+
+        | _ -> []
 
 
-let insert_script_transition_space ctx scrlst =
-  let rec aux acc prevscriptopt lst =
-    match lst with
+let insert_script_transition_space ctx lbulst =
+  let rec aux acc prevlbuopt lbulst =
+    match lbulst with
     | []                 -> List.rev acc
-    | scrhead :: scrtail ->
-        let scriptopt =
-          match scrhead with
-          | CharBasis.PreWord(script, _, _)       -> Some(script)
-          | CharBasis.Space                       -> None
-          | CharBasis.CustomizedSpace(_, _, _)    -> None
-          | CharBasis.UnbreakableSpace            -> None
-          | CharBasis.IdeographicOpen(script, _)  -> Some(script)
-          | CharBasis.IdeographicClose(script, _) -> Some(script)
+    | lbuhead :: lbutail ->
+        let space =
+          match prevlbuopt with
+          | None          -> []
+          | Some(prevlbu) -> transition_space ctx prevlbu lbuhead
         in
-        begin
-          match (prevscriptopt, scriptopt) with
-          | (Some(prevscript), Some(script)) ->
-              let space = transition_space ctx prevscript script in
-                aux (scrhead :: (List.rev_append space acc)) scriptopt scrtail
-
-          | _                                -> aux (scrhead :: acc) scriptopt scrtail
-        end
+          aux (lbuhead :: (List.rev_append space acc)) (Some(lbuhead)) lbutail
   in
-    aux [] None scrlst
+    aux [] None lbulst
 
 
 let to_boxes ctx uchlst =
@@ -65,22 +88,30 @@ let to_boxes ctx uchlst =
   (* begin: for debug *)
   let () =
     scrlstsp |> List.iter (function
-      | CharBasis.PreWord(script, trilst, alw) ->
-          let sa = match alw with CharBasis.AllowBreak -> "(A)" | CharBasis.PreventBreak -> "(P)" in
+      | PreWord(script, trilst, alw) ->
+          let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
           PrintForDebug.lexhorzE ((CharBasis.show_script script) ^ sa);
           LineBreakDataMap.print_trilist trilst
-      | CharBasis.Space ->
+      | Space ->
           PrintForDebug.lexhorzE "SPACE"
-      | CharBasis.CustomizedSpace(_) ->
+      | CustomizedSpace(_) ->
           PrintForDebug.lexhorzE "CUSTOMIZED_SPACE"
-      | CharBasis.UnbreakableSpace ->
+      | UnbreakableSpace ->
           PrintForDebug.lexhorzE "UNBREAKABLE_SPACE"
-      | CharBasis.IdeographicOpen(script, tri) ->
-          PrintForDebug.lexhorzE ("IDEOGRAPHIC_OPEN " ^ (CharBasis.show_script script));
+      | JLOpen(script, tri) ->
+          PrintForDebug.lexhorzE ("JL_OPEN " ^ (CharBasis.show_script script));
           LineBreakDataMap.print_trilist [tri]
-      | CharBasis.IdeographicClose(script, tri) ->
-          PrintForDebug.lexhorzE ("IDEOGRAPHIC_CLOSE " ^ (CharBasis.show_script script));
+      | JLClose(script, tri) ->
+          PrintForDebug.lexhorzE ("JL_CLOSE " ^ (CharBasis.show_script script));
           LineBreakDataMap.print_trilist [tri]
+      | JLMiddle(script, tri) ->
+          PrintForDebug.lexhorzE "JL_MIDDLE"
+      | JLComma(script, tri) ->
+          PrintForDebug.lexhorzE "JL_COMMA"
+      | JLFullStop(script, tri) ->
+          PrintForDebug.lexhorzE "JL_FULL_STOP"
+      | JLNonstarter(script, tri) ->
+          PrintForDebug.lexhorzE "JL_NONSTARTER"
     )
   in
   (* end: for debug *)
@@ -100,45 +131,74 @@ let to_boxes ctx uchlst =
   let half_kern (_, font_size) =
     HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(font_size *% -0.5)))
   in
-
+(*
   let breakable_half badness (_, font_size) stretch_ratio =
     HorzBox.HorzDiscretionary(badness, Some(HorzBox.PHOuterEmpty(HorzBox.(font_size *% 0.5), HorzBox.Length.zero, HorzBox.(font_size *% stretch_ratio))), None, None)
   in
 
+  let breakable_full badness (_, font_size) stretch_ratio =
+    HorzBox.HorzDiscretionary(badness, Some(HorzBox.PHOuterEmpty(font_size, HorzBox.Length.zero, HorzBox.(font_size *% stretch_ratio))), None, None)
+  in    
+*)
   scrlstsp |> List.map (function
-    | CharBasis.PreWord(script, trilst, CharBasis.PreventBreak) ->
+    | PreWord(script, trilst, CharBasis.PreventBreak) ->
         [ fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)); ]
 
-    | CharBasis.PreWord(script, trilst, CharBasis.AllowBreak) ->
+    | PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
           fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch));
           breakable_space 100 (* temporary *) HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
 
-    | CharBasis.Space ->
+    | Space ->
         [ breakable_space 100 (* temporary *) space_natural space_shrink space_stretch; ]
 
-    | CharBasis.CustomizedSpace(wid_natural, wid_shrink, wid_stretch) ->
+    | CustomizedSpace(wid_natural, wid_shrink, wid_stretch) ->
         [ breakable_space 100 (* temporary *) wid_natural wid_shrink wid_stretch; ]
 
-    | CharBasis.UnbreakableSpace ->
+    | UnbreakableSpace ->
         [ unbreakable_space space_natural space_shrink space_stretch; ]
 
-    | CharBasis.IdeographicOpen(script, (uch, _, _)) ->
+    | JLOpen(script, (uch, _, _)) ->
         let font_info = get_font_info ctx script in
         [
-          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch;
+(*          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch; *)
           half_kern font_info;
           fixed_string font_info [uch];
         ]
 
-    | CharBasis.IdeographicClose(script, (uch, _, _)) ->
+    | JLClose(script, (uch, _, _)) ->
         let font_info = get_font_info ctx script in
         [
           fixed_string font_info [uch];
           half_kern font_info;
-          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch;
+(*          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch; *)
         ]
 
+    | JLNonstarter(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
+        [
+          fixed_string font_info [uch];
+(*          breakable_full 100 (* temporary *) font_info ctx.adjacent_stretch; *)
+        ]
+
+    | JLComma(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
+        [
+          fixed_string font_info [uch];
+          half_kern font_info;
+        ]
+
+    | JLFullStop(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
+        [
+          fixed_string font_info [uch];
+          half_kern font_info;
+        ]
+        
+    | JLMiddle(script, (uch, _, _)) ->
+        let font_info = get_font_info ctx script in
+        [ fixed_string font_info [uch]; ]
+        
   ) |> List.concat
 

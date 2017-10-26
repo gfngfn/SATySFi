@@ -65,10 +65,16 @@ type line_break_class =
   | SA  (* complex context dependent; south east Asian *)
   | XX  (* unknown *)
 (* -- original classes -- *)
-  | INBR (* input break *)
-  | IDNS (* ideographic nonstarter *)
-  | IDOP (* ideographic open punctuation *)
-  | IDCP (* ideographic close punctuation *)
+  | INBR  (* input break *)
+  | JLOP  (* JLreq cl-01; fullwidth open punctuation *)
+  | JLCP  (* JLreq cl-02; fullwidth close punctuation *)
+  | JLHY  (* JLreq cl-03; hyphens *)
+  | JLNS  (* JLreq cl-04; kugiri yakumonos (fullwidth nonstarter) *)
+  | JLMD  (* JLreq cl-05; nakatens (fullwidth middle dot, fullwidth semicolon, etc.) *)
+  | JLFS  (* JLreq cl-06; kuten (fullwidth full stops) *)
+  | JLCM  (* JLreq cl-07; touten (fullwidth commas) *)
+  | JLPL  (* JLreq cl-10; prolonged sound mark *)
+  | JLSM  (* JLreq cl-11; small kanas *)
 
 type line_break_regexp_element =
   | LBRESet       of line_break_class list   (* [a ... a] *)
@@ -144,9 +150,15 @@ let show_lb_class lbc =
   | SA  -> "SA"
   | XX  -> "XX"
   | INBR -> "INBR!"
-  | IDNS -> "IDNS!"
-  | IDOP -> "IDOP!"
-  | IDCP -> "IDCP!"
+  | JLOP -> "JLOP!"
+  | JLCP -> "JLCP!"
+  | JLHY -> "JLHY!"
+  | JLNS -> "JLNS!"
+  | JLMD -> "JLMD!"
+  | JLFS -> "JLFS!"
+  | JLCM -> "JLCM!"
+  | JLPL -> "JLPL!"
+  | JLSM -> "JLSM!"
 
 
 (* for debug *)
@@ -176,5 +188,9 @@ type line_break_unit =
   | Space
   | CustomizedSpace  of HorzBox.Length.t * HorzBox.Length.t * HorzBox.Length.t
   | UnbreakableSpace
-  | IdeographicOpen  of script * line_break_element
-  | IdeographicClose of script * line_break_element
+  | JLOpen           of script * line_break_element
+  | JLClose          of script * line_break_element
+  | JLNonstarter     of script * line_break_element
+  | JLMiddle         of script * line_break_element
+  | JLComma          of script * line_break_element
+  | JLFullStop       of script * line_break_element

@@ -50,34 +50,32 @@ let divide_by_script trilst =
 
     | ((uch, lbc, alw) as trihead) :: tritail ->
         let script = find uch in
+        let single_unit lbc =
+          match lbc with
+          | SP   -> Some((Space, UnbreakableSpace))
+          | JLOP -> Some((JLOpen(script, trihead), JLOpen(script, trihead)))
+          | JLCP -> Some((JLClose(script, trihead)), JLClose(script, trihead))
+          | JLCM -> Some((JLComma(script, trihead), JLComma(script, trihead)))
+          | JLFS -> Some((JLFullStop(script, trihead), JLFullStop(script, trihead)))
+          | _    -> None
+        in
         begin
-          match alw with
-          | AllowBreak ->
-              (* -- if the spotted character allows line break after it -- *)
-              begin
-                match lbc with
-                | SP ->
-                    (* -- if the spotted character is a space -- *)
+          match (single_unit lbc, alw) with
+          | (Some((lbunitA, _)), AllowBreak) ->
+              (* --
+                 if the spotted character allows line break after it,
+                 and should be converted to single unit
+              -- *)
                     begin
                       match scraccopt with
                       | None -> 
-                          aux (Space :: resacc) None tritail
+                          aux (lbunitA :: resacc) None tritail
 
                       | Some((prevscript, triacc)) ->
-                          aux (Space :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                          aux (lbunitA :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
                     end
 
-                | IDCP ->
-                    begin
-                      match scraccopt with
-                      | None ->
-                          aux (IdeographicClose(script, trihead) :: resacc) None tritail
-
-                      | Some((prevscript, triacc)) ->
-                          aux (IdeographicClose(script, trihead) :: (preword PreventBreak prevscript (List.rev triacc) :: resacc)) None tritail
-                    end
-
-                | _ ->
+          | (None, AllowBreak) ->
                     begin
                       match scraccopt with
                       | None ->
@@ -89,32 +87,18 @@ let divide_by_script trilst =
                           else
                             aux ((preword AllowBreak script [trihead]) :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
                     end
-              end
 
-          | PreventBreak ->
-              begin
-                match lbc with
-                | SP ->
+          | (Some((_, lbunitP)), PreventBreak) ->
                     begin
                       match scraccopt with
                       | None ->
-                          aux (UnbreakableSpace :: resacc) None tritail
+                          aux (lbunitP :: resacc) None tritail
 
                       | Some((prevscript, triacc)) ->
-                          aux (UnbreakableSpace :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
+                          aux (lbunitP :: (preword PreventBreak prevscript (List.rev triacc)) :: resacc) None tritail
                     end
 
-                | IDOP ->
-                    begin
-                      match scraccopt with
-                      | None ->
-                          aux (IdeographicOpen(script, trihead) :: resacc) None tritail
-
-                      | Some((prevscript, triacc)) ->
-                          aux (IdeographicOpen(script, trihead) :: (preword AllowBreak (* temporary *) prevscript (List.rev triacc)) :: resacc) None tritail
-                    end
-
-                | _ ->
+          | (None, PreventBreak) ->
                     begin
                       match scraccopt with
                       | None -> 
@@ -127,7 +111,6 @@ let divide_by_script trilst =
                             aux ((preword PreventBreak prevscript (List.rev triacc)) :: resacc) (Some((script, [trihead]))) tritail
                     end
               end
-        end
   in
 
   let scrlst = aux [] None trilst in

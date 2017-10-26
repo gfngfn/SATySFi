@@ -56,36 +56,37 @@ let class_of_string s =
 let line_break_class_overriding_list =
   [
   (* -- U+3000..U+30FF -- *)
-    (0x3001, IDNS);  (* IDEOGRAPHIC COMMA                 : ideographic nonstarter           *)
-    (0x3002, IDNS);  (* IDEOGRAPHIC FULL STOP             : ideographic nonstarter           *)
-    (0x3008, IDOP);  (* LEFT ANGLE BRACKET                : ideographic open punctuation     *)
-    (0x3009, IDCP);  (* RIGHT ANGLE BRACKET               : ideographic close punctuation    *)
-    (0x300A, IDOP);  (* LEFT DOUBLE ANGLE BRACKET         : ideographic open punctuation     *)
-    (0x300B, IDCP);  (* RIGHT DOUBLE ANGLE BRACKET        : ideographic close punctuation    *)
-    (0x300C, IDOP);  (* LEFT CORNER BRACKET               : ideographic open punctuation     *)
-    (0x300D, IDCP);  (* RIGHT CORNER BRACKET              : ideographic close punctuation    *)
-    (0x300E, IDOP);  (* LEFT WHITE CORNER BRACKET         : ideographic open punctuation     *)
-    (0x300F, IDCP);  (* RIGHT WHITE CORNER BRACKET        : ideographic close punctuation    *)
-    (0x3010, IDOP);  (* LEFT BLACK LENTICULAR BRACKET     : ideographic open punctuation     *)
-    (0x3011, IDCP);  (* RIGHT BLACK LENTICULAR BRACKET    : ideographic close punctuation    *)
-    (0x3014, IDOP);  (* LEFT TORTOISE SHELL BRACKET       : ideographic open punctuation     *)
-    (0x3015, IDCP);  (* RIGHT TORTOISE SHELL BRACKET      : ideographic close punctuation    *)
-    (0x3016, IDOP);  (* LEFT WHITE LENTICULAR BRACKET     : ideographic open punctuation     *)
-    (0x3017, IDCP);  (* RIGHT WHITE LENTICULAR BRACKET    : ideographic close punctuation    *)
-    (0x3018, IDOP);  (* LEFT WHITE TORTOISE SHELL BRACKET : ideographic open punctuation     *)
-    (0x3019, IDCP);  (* RIGHT WHITE TORTOISE SHELL BRACKET: ideographic close punctuation    *)
-    (0x301A, IDOP);  (* LEFT WHITE SQUARE BRACKET         : ideographic open punctuation     *)
-    (0x301B, IDCP);  (* RIGHT WHITE SQUARE BRACKET        : ideographic close punctuation    *)
-    (0xFF08, IDOP);  (* FULLWIDTH LEFT PARENTHESIS        : ideographic open punctuation     *)
-    (0xFF09, IDCP);  (* FULLWIDTH RIGHT PARENTHESIS       : ideographic close punctuation    *)
-    (0xFF0C, IDNS);  (* FULLWIDTH COMMA                   : ideographic nonstarter           *)
-    (0xFF0E, IDNS);  (* FULLWIDTH FULL STOP               : ideographic nonstarter           *)
-    (0xFF3B, IDOP);  (* FULLWIDTH LEFT SQUARE BRACKET     : ideographic open punctuation     *)
-    (0xFF3D, IDCP);  (* FULLWIDTH RIGHT SQUARE BRACKET    : ideographic close punctuation    *)
-    (0xFF5B, IDOP);  (* FULLWIDTH LEFT CURLY BRACKET      : ideographic open punctuation     *)
-    (0xFF5D, IDCP);  (* FULLWIDTH RIGHT CURLY BRACKET     : ideographic close punctuation    *)
-    (0xFF5F, IDOP);  (* FULLWIDTH LEFT WHITE PARENTHESIS  : ideographic open punctuation     *)
-    (0xFF60, IDCP);  (* FULLWIDTH RIGHT WHITE PARENTHESIS : ideographic close punctuation    *)
+    (0x3001, JLCM);  (* IDEOGRAPHIC COMMA                      *)
+    (0x3002, JLFS);  (* IDEOGRAPHIC FULL STOP                  *)
+    (0x3008, JLOP);  (* LEFT ANGLE BRACKET                     *)
+    (0x3009, JLCP);  (* RIGHT ANGLE BRACKET                    *)
+    (0x300A, JLOP);  (* LEFT DOUBLE ANGLE BRACKET              *)
+    (0x300B, JLCP);  (* RIGHT DOUBLE ANGLE BRACKET             *)
+    (0x300C, JLOP);  (* LEFT CORNER BRACKET                    *)
+    (0x300D, JLCP);  (* RIGHT CORNER BRACKET                   *)
+    (0x300E, JLOP);  (* LEFT WHITE CORNER BRACKET              *)
+    (0x300F, JLCP);  (* RIGHT WHITE CORNER BRACKET             *)
+    (0x3010, JLOP);  (* LEFT BLACK LENTICULAR BRACKET          *)
+    (0x3011, JLCP);  (* RIGHT BLACK LENTICULAR BRACKET         *)
+    (0x3014, JLOP);  (* LEFT TORTOISE SHELL BRACKET            *)
+    (0x3015, JLCP);  (* RIGHT TORTOISE SHELL BRACKET           *)
+    (0x3016, JLOP);  (* LEFT WHITE LENTICULAR BRACKET          *)
+    (0x3017, JLCP);  (* RIGHT WHITE LENTICULAR BRACKET         *)
+    (0x3018, JLOP);  (* LEFT WHITE TORTOISE SHELL BRACKET      *)
+    (0x3019, JLCP);  (* RIGHT WHITE TORTOISE SHELL BRACKET     *)
+    (0x301A, JLOP);  (* LEFT WHITE SQUARE BRACKET              *)
+    (0x301B, JLCP);  (* RIGHT WHITE SQUARE BRACKET             *)
+    (0x30FC, JLPL);  (* KATAKANA-HIRAGARA PROLONGED SOUND MARK *)
+    (0xFF08, JLOP);  (* FULLWIDTH LEFT PARENTHESIS             *)
+    (0xFF09, JLCP);  (* FULLWIDTH RIGHT PARENTHESIS            *)
+    (0xFF0C, JLCM);  (* FULLWIDTH COMMA                        *)
+    (0xFF0E, JLFS);  (* FULLWIDTH FULL STOP                    *)
+    (0xFF3B, JLOP);  (* FULLWIDTH LEFT SQUARE BRACKET          *)
+    (0xFF3D, JLCP);  (* FULLWIDTH RIGHT SQUARE BRACKET         *)
+    (0xFF5B, JLOP);  (* FULLWIDTH LEFT CURLY BRACKET           *)
+    (0xFF5D, JLCP);  (* FULLWIDTH RIGHT CURLY BRACKET          *)
+    (0xFF5F, JLOP);  (* FULLWIDTH LEFT WHITE PARENTHESIS       *)
+    (0xFF60, JLCP);  (* FULLWIDTH RIGHT WHITE PARENTHESIS      *)
   ]
 
 
@@ -126,7 +127,7 @@ let append_property (uchlst : Uchar.t list) =
 
   let is_in_nonspacing_class (_, lbc) =
     match lbc with
-    | ( ID | CJ | IN | SA | IDNS | IDOP | IDCP ) -> true
+    | ( ID | CJ | IN | SA | IDNS | JLOP | JLCP ) -> true
     | _                                          -> false
   in
 
@@ -186,7 +187,8 @@ let notof lbclst = LBRENotOf(lbclst)
 let exact lbc = set [lbc]
 let star lbre = LBREStar(lbre)
 let spaced = set [AL]
-let nonspaced = set [ID; CJ; IN; SA; IDNS; IDOP; IDCP]
+let nonspaced = set [ID; CJ; IN; SA; JLOP; JLCP; JLNS; JLMD; JLFS; JLCM; JLPL; JLSM]
+  (* -- does NOT contain JLHY -- *)
 
 
 let bispace = (Uchar.of_int 32, SP)  (* -- space character -- *)
@@ -223,15 +225,15 @@ let line_break_rule =
       ([notof [SP; BA; HY]], PreventBreak, [exact GL]);
     (* -- LB13 -- *)
     (* -- Original: ideographic close punctuations -- *)
-      ([], PreventBreak, [set [CL; CP; EX; IS; SY; IDCP]]);
+      ([], PreventBreak, [set [CL; CP; EX; IS; SY; JLCP]]);
     (* -- LB14 -- *)
     (* -- Original: ideographic open punctuations -- *)
-      ([set [OP; IDOP]; star [exact SP]], PreventBreak, []);
+      ([set [OP; JLOP]; star [exact SP]], PreventBreak, []);
     (* -- LB15 -- *)
       ([exact QU; star [exact SP]], PreventBreak, [exact OP]);
     (* -- LB16 -- *)
-    (* -- Original: ideographic close punctuations -- *)
-      ([set [CL; CP]; star [exact SP]], PreventBreak, [set [NS; CJ; IDNS]]);
+    (* -- Original: ideographic nonstarters -- *)
+      ([set [CL; CP]; star [exact SP]], PreventBreak, [set [NS; CJ; JLNS; JLPL]]);
     (* -- LB17 -- *)
       ([exact B2; star [exact SP]], PreventBreak, [exact B2]);
     (* -- LB18 -- *)
@@ -243,8 +245,8 @@ let line_break_rule =
       ([], AllowBreak, [exact CB]);
       ([exact CB], AllowBreak, []);
     (* -- LB21 -- *)
-    (* -- Original: ideographic close punctuation -- *)
-      ([], PreventBreak, [set [BA; HY; NS; CJ; IDNS]]);
+    (* -- Original: ideographic nonstarters -- *)
+      ([], PreventBreak, [set [BA; HY; NS; CJ; JLNS; JLPL]]);
       ([exact BB], PreventBreak, []);
     (* -- LB21a -- *)
       ([exact HL; set [HY; BA]], PreventBreak, []);
