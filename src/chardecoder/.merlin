@@ -6,3 +6,5 @@ S ../backend/
 B ../../_build/src/backend/
 S ../
 B ../../_build/src/
+S ../frontend/
+B ../../_build/src/frontend/
