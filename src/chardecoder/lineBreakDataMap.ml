@@ -334,30 +334,39 @@ let match_postfix  getf trilst lregexp =
     match_prefix getf trilst (reverse lregexp)
 
 
-let append_property (uchlst : Uchar.t list) =
+let find_first_match rules proj1 proj2 acc lst =
+  rules |> List.fold_left (fun resopt (lregexp1, rescand, lregexp2) ->
+    match resopt with
+    | Some(_) -> resopt
+    | None ->
+        let b1 = match_postfix proj1 acc lregexp1 in
+        let b2 = match_prefix proj2 lst lregexp2 in
+        if b1 && b2 then
+          let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
+          Some(rescand)
+        else
+          None
+          
+  ) None
+
+
+let proj_bi (_, lbc) = lbc
+let proj_tri (_, lbc, _) = lbc
+
+
+let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list =
 
   let rec normalize biacc bilst =
     match bilst with
     | [] -> List.rev biacc
 
     | bihead :: bitail ->
-        let replopt =
-          normalization_rule |> List.fold_left (fun opt (lregexp1, repl, lregexp2) ->
-            match opt with
-            | Some(_) -> opt
-            | None ->
-                let b1 = match_postfix (fun (_, lbc) -> lbc) (bihead :: biacc) lregexp1 in
-                let b2 = match_prefix (fun (_, lbc) -> lbc) bitail lregexp2 in
-                if b1 && b2 then
-                  let () = PrintForDebug.lbcE (" normalize(" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
-                  Some(repl)
-                else
-                  None
-          ) None
-        in
+        let replopt = find_first_match normalization_rule proj_bi proj_bi (bihead :: biacc) bitail in
           match replopt with
           | None       -> normalize (bihead :: biacc) bitail
-          | Some(repl) -> normalize (List.rev_append repl biacc) bitail
+          | Some(repl) ->
+              let () = PrintForDebug.lbcE "" in  (* for debug *)
+                normalize (List.rev_append repl biacc) bitail
   in
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
@@ -369,20 +378,7 @@ let append_break_opportunity (uchlst : Uchar.t list) =
   let alw_last = PreventBreak in  (* temporary; should take the adjacent embedded command into consideration *)
 
   let should_prevent_break triacc bilst =
-    let alwopt =
-      line_break_rule |> List.fold_left (fun alwoptacc (lregexp1, alw, lregexp2) ->
-        match alwoptacc with
-        | Some(_) -> alwoptacc
-        | None ->
-            let b1 = match_postfix (fun (_, lbc, _) -> lbc) triacc lregexp1 in
-            let b2 = match_prefix (fun (_, lbc) -> lbc) bilst lregexp2 in
-            if b1 && b2 then
-              let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
-              Some(alw)
-            else
-              None
-      ) None
-    in
+    let alwopt = find_first_match line_break_rule proj_tri proj_bi triacc bilst in
       match alwopt with
       | None               -> false
       | Some(PreventBreak) -> true
