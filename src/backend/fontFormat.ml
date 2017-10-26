@@ -413,7 +413,7 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
           begin
             src_offset_ref := src_offset + len;
             Bytes.blit_string s src_offset buf 0 len;
-            Printf.printf "/%d" len;  (* for debug *)
+            (* Printf.printf "/%d" len;  (* for debug *) *)
             len
           end
       in
@@ -423,15 +423,16 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
         let out_offset = !out_offset_ref in
           if len <= 0 then () else
           begin
-            Printf.printf "[%d]" len;  (* for debug *)
+            (* Printf.printf "[%d]" len;  (* for debug *) *)
             out_offset_ref := out_offset + len;
             Bytes.blit bufret 0 bufout out_offset len
           end
       in
       begin
-        Pdfflate.compress write_byte_as_input write_byte_as_output;
-        let bt = Pdfio.bytes_of_string (Bytes.to_string bufout) in
-        Printf.printf "\ninput = %d, output = %d\n" src_len (Pdfio.bytes_size bt);  (* for debug *)
+        Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
+        let out_len = !out_offset_ref in
+        let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
+        Printf.printf "FlateDecode: input = %d, output = %d\n" src_len (Pdfio.bytes_size bt);  (* for debug *)
         ("/FlateDecode", bt)
       end
 
