@@ -121,6 +121,7 @@ let find uch =
   append line break class to uchar, and then eliminate every INBR character
   if it is adjacent to a character of a nonspacing script (e.g. han ideographic, kana, etc.)
 -- *)
+(*
 let append_property (uchlst : Uchar.t list) =
 
   let is_in_nonspacing_class (_, lbc) =
@@ -178,14 +179,33 @@ let append_property (uchlst : Uchar.t list) =
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
     trim_break None bilst
+*)
+
+let set lbclst = LBRESet(lbclst)
+let notof lbclst = LBRENotOf(lbclst)
+let exact lbc = set [lbc]
+let star lbre = LBREStar(lbre)
+let spaced = set [AL]
+let nonspaced = set [ID; CJ; IN; SA; IDNS; IDOP; IDCP]
+
+
+let bispace = (Uchar.of_int 32, SP)  (* -- space character -- *)
+
+
+(* -- the rules for normalizing texts about spaces, break letters, etc. -- *)
+let normalization_rule =
+  [
+  (* -- ignore spaces or break letters *)
+    ([nonspaced; set [SP; INBR]], [], [spaced]);
+    ([spaced; set [SP; INBR]], [], [nonspaced]);
+  (* -- ignore break letters between nonspaced characters -- *)
+    ([nonspaced; exact INBR], [], [nonspaced]);
+    ([exact INBR], [bispace], []);
+  ]
 
 
 (* -- the rules for inserting line break opportunities based on [UAX#14 Section 6] -- *)
 let line_break_rule =
-  let set lbclst = LBRESet(lbclst) in
-  let notof lbclst = LBRENotOf(lbclst) in
-  let exact lbc = set [lbc] in
-  let star lbre = LBREStar(lbre) in
     [
     (* -- LB7 -- *)
       ([], PreventBreak, [exact SP]);
@@ -314,6 +334,36 @@ let match_postfix  getf trilst lregexp =
     match_prefix getf trilst (reverse lregexp)
 
 
+let append_property (uchlst : Uchar.t list) =
+
+  let rec normalize biacc bilst =
+    match bilst with
+    | [] -> List.rev biacc
+
+    | bihead :: bitail ->
+        let replopt =
+          normalization_rule |> List.fold_left (fun opt (lregexp1, repl, lregexp2) ->
+            match opt with
+            | Some(_) -> opt
+            | None ->
+                let b1 = match_postfix (fun (_, lbc) -> lbc) (bihead :: biacc) lregexp1 in
+                let b2 = match_prefix (fun (_, lbc) -> lbc) bitail lregexp2 in
+                if b1 && b2 then
+                  let () = PrintForDebug.lbcE (" normalize(" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
+                  Some(repl)
+                else
+                  None
+          ) None
+        in
+          match replopt with
+          | None       -> normalize (bihead :: biacc) bitail
+          | Some(repl) -> normalize (List.rev_append repl biacc) bitail
+  in
+
+  let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
+    normalize [] bilst
+
+
 let append_break_opportunity (uchlst : Uchar.t list) =
 
   let alw_last = PreventBreak in  (* temporary; should take the adjacent embedded command into consideration *)
@@ -330,7 +380,7 @@ let append_break_opportunity (uchlst : Uchar.t list) =
               let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
               Some(alw)
             else
-              alwoptacc
+              None
       ) None
     in
       match alwopt with
@@ -364,13 +414,6 @@ let append_break_opportunity (uchlst : Uchar.t list) =
         end
   in
   let bilstinit = append_property uchlst in
-(*
-  let trilstinit =
-    uchlblst |> List.map (fun (uch, lbc) ->
-      let alwref = ref AllowBreak in (uch, lbc, alwref)
-    )
-  in
-*)
     aux [] bilstinit
 
 
