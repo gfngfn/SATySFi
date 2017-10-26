@@ -1,5 +1,5 @@
 
-let print_for_debug msg = () (* print_endline msg *)  (* for debug *)
+open Util
 
 
 type file_path = string
@@ -277,8 +277,8 @@ let get_kerning_table (d : Otfm.decoder) =
     )
   in
   (match res with  (* for debug *)
-    | Ok(())   -> print_for_debug "'kern' exists"   (* for debug *)
-    | Error(e) -> print_for_debug "'kern' missing"  (* for debug *)
+    | Ok(())   -> PrintForDebug.kernE "'kern' exists"   (* for debug *)
+    | Error(e) -> PrintForDebug.kernE "'kern' missing"  (* for debug *)
   ) |>  (* for debug *)
   ignore;
       match
@@ -288,7 +288,7 @@ let get_kerning_table (d : Otfm.decoder) =
               match valrcd1.Otfm.x_advance with
               | None      -> ()
               | Some(xa1) ->
-                  let () = if gid1 <= 100 then print_for_debug (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
+                  let () = if gid1 <= 100 then PrintForDebug.kernE (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
                   kerntbl |> KerningTable.add gid1 gid2 xa1
             )
           )
@@ -297,17 +297,17 @@ let get_kerning_table (d : Otfm.decoder) =
           )
       with
       | Ok(sublst) ->
-          let () = print_for_debug "'GPOS' exists" in  (* for debug *)
+          let () = PrintForDebug.kernE "'GPOS' exists" in  (* for debug *)
             kerntbl
 
       | Error(e) ->
           match e with
           | `Missing_required_table(t)
               when t = Otfm.Tag.gpos ->
-                let () = print_for_debug "'GPOS' missing" in  (* for debug *)
+                let () = PrintForDebug.kernE "'GPOS' missing" in  (* for debug *)
                 kerntbl
           | `Missing_required_feature_tag("kern") ->
-              let () = print_for_debug "Feature 'kern' missing" in  (* for debug *)
+              let () = PrintForDebug.kernE "Feature 'kern' missing" in  (* for debug *)
               kerntbl
           | _                        -> raise_err e
 
@@ -411,7 +411,7 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
             if src_len - src_offset < 1024 then src_len - src_offset else 1024
           in
           begin
-            src_offset_ref := src_offset + len;
+            src_offset_ref += len;
             Bytes.blit_string s src_offset buf 0 len;
             (* Printf.printf "/%d" len;  (* for debug *) *)
             len
@@ -427,7 +427,7 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
           if len <= 0 then () else
           begin
             (* Printf.printf "[%d]" len;  (* for debug *) *)
-            out_offset_ref := out_offset + len;
+            out_offset_ref += len;
             Bytes.blit bufret 0 bufout out_offset len
           end
       in
@@ -484,7 +484,6 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         | Some(gid) ->
             begin
               gidtbl |> GlyphIDTable.add uch gid;
-(*              print_for_debug (Printf.sprintf "'%c' -> %d" (Uchar.to_char uch) gid);  (* for debug *) *)
               Some(gid)
             end
 

@@ -1,6 +1,6 @@
 
 type message_category =
-  | LBC | LexHorz | Eval | LineBreak | PageBreak
+  | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern
 
 (* --
   categories of messages printed while debugging;
@@ -31,3 +31,6 @@ let linebreakE msg = printE LineBreak msg
 
 (* -- pageBreak.ml -- *)
 let pagebreakE msg = printE PageBreak msg
+
+(* -- fontFormat.ml -- *)
+let kernE msg = printE Kern msg
