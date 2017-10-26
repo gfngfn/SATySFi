@@ -1,23 +1,26 @@
 let-row ctx \emph inner =
   let ctx-emph =
-    ctx |> set-font (Latin) (font `ArnoIt` 12pt)
-        |> set-font (HanIdeographic) (font `Osaka` 10pt)
-        |> set-font (Kana) (font `Osaka` 10pt)
+    ctx |> set-font Latin (font `ArnoIt` 12pt)
+        |> set-font HanIdeographic (font `Osaka` 10pt)
+        |> set-font Kana (font `Osaka` 10pt)
   in
     lex-row ctx-emph inner
 
 let-mutable ref-title <- {}
+let-mutable ref-author <- {}
 
 let-col ctx +document rcd inner =
   let title = rcd#title in
+  let author = rcd#author in
   let ctx-doc =
-    ctx |> set-font (Latin) (font `Arno` 12pt)
+    ctx |> set-font Latin (font `Arno` 12pt)
 %        |> set-title title
-        |> set-dominant-script (Latin)
+        |> set-dominant-script Latin
   in
   (
-    (ref-title <- title) before
-    (lex-col ctx-doc inner)
+    ref-title <- title before
+    ref-author <- author before
+    lex-col ctx-doc inner
   )
 
 let gctx-title-frame =
@@ -54,12 +57,13 @@ let title-frame =
 
 let-col ctx +make-title =
 %  let title = get-title ctx in
-  let title = !ref-title in
-  let ctx-title =
-    ctx |> set-font (Latin) (font `Arno` 36pt)
-  in
-  let br-title = lex-row ctx-title title in
-    form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil))
+  let ctx-title = ctx |> set-font Latin (font `Arno` 36pt) in
+  let ctx-author = ctx |> set-font Latin (font `Arno` 16pt) in
+  let br-title = lex-row ctx-title (!ref-title) in
+  let br-author = lex-row ctx-author (!ref-title) in
+  let bc-title = form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil)) in
+  let bc-author = form-paragraph ctx-author (outer-fil ++ br-author) in
+    bc-title +++ bc-author
 
 let indent = fixed-empty 24pt
 
@@ -71,9 +75,9 @@ let-col ctx +p inner =
 
 let-col ctx +p-jp inner =
   let ctx-jp =
-    ctx |> set-font (HanIdeographic) (font `KozMin` 10pt)
-        |> set-font (Kana) (font `KozMin` 10pt)
-        |> set-dominant-script (HanIdeographic)
+    ctx |> set-font HanIdeographic (font `KozMin` 10pt)
+        |> set-font Kana (font `KozMin` 10pt)
+        |> set-dominant-script HanIdeographic
   in
   let br = lex-row ctx-jp inner in
     form-paragraph ctx (indent-jp ++ br ++ outer-fil)

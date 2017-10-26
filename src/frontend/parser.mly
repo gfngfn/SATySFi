@@ -740,6 +740,10 @@ nxun:
 ;
 nxapp:
   | nxapp nxbot    { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
+  | nxapp CONSTRUCTOR {
+      let (rng, constrnm) = $2 in
+        make_standard (Ranged $1) (Ranged $2)
+          (UTApply($1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))))) }
   | REFNOW nxbot   { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
 (*
   | REFFINAL nxbot { make_standard (Tok $1) (Ranged $2) (UTReferenceFinal($2)) }
