@@ -418,7 +418,10 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
           end
       in
       let out_offset_ref = ref 0 in
-      let bufout = Bytes.create (1024 * 1024) in
+      let bufout = Bytes.create (2 * src_len) in
+        (* --
+           in the worst case the output size is 1.003 times as large as the input size
+        -- *)
       let write_byte_as_output bufret len =
         let out_offset = !out_offset_ref in
           if len <= 0 then () else
