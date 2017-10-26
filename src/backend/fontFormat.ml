@@ -392,19 +392,56 @@ type font_descriptor = {
   }
 
 
-let to_base85_pdf_bytes (d : Otfm.decoder) : Pdfio.bytes =
+let to_base85_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
   match Otfm.decoder_src d with
   | `String(s) ->
       let s85 = Base85.encode s in
-        Pdfio.bytes_of_string s85
+        ("/ASCII85Decode", Pdfio.bytes_of_string s85)
+
+
+let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
+  match Otfm.decoder_src d with
+  | `String(s) ->
+      let src_offset_ref = ref 0 in
+      let src_len = String.length s in
+      let write_byte_as_input buf =
+        let src_offset = !src_offset_ref in
+        if src_offset >= src_len then 0 else
+          let len =
+            if src_len - src_offset < 1024 then src_len - src_offset else 1024
+          in
+          begin
+            src_offset_ref := src_offset + len;
+            Bytes.blit_string s src_offset buf 0 len;
+            Printf.printf "/%d" len;  (* for debug *)
+            len
+          end
+      in
+      let out_offset_ref = ref 0 in
+      let bufout = Bytes.create (1024 * 1024) in
+      let write_byte_as_output bufret len =
+        let out_offset = !out_offset_ref in
+          if len <= 0 then () else
+          begin
+            Printf.printf "[%d]" len;  (* for debug *)
+            out_offset_ref := out_offset + len;
+            Bytes.blit bufret 0 bufout out_offset len
+          end
+      in
+      begin
+        Pdfflate.compress write_byte_as_input write_byte_as_output;
+        let bt = Pdfio.bytes_of_string (Bytes.to_string bufout) in
+        Printf.printf "\ninput = %d, output = %d\n" src_len (Pdfio.bytes_size bt);  (* for debug *)
+        ("/FlateDecode", bt)
+      end
 
 
 let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string option) : int =
-  let bt85 = to_base85_pdf_bytes d in
-  let len = Pdfio.bytes_size bt85 in
+  let (filter, bt) = (* to_base85_pdf_bytes d *) to_flate_pdf_bytes d in
+  let len = Pdfio.bytes_size bt in
   let contents = [
       ("/Length", Pdf.Integer(len));
-      ("/Filter", Pdf.Name("/ASCII85Decode"));
+      ("/Filter", Pdf.Name(filter));
     ]
   in
   let dict =
@@ -412,7 +449,7 @@ let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string 
     | None          -> contents
     | Some(subtype) -> ("/Subtype", Pdf.Name("/" ^ subtype)) :: contents
   in
-  let objstream = Pdf.Stream(ref (Pdf.Dictionary(dict), Pdf.Got(bt85))) in
+  let objstream = Pdf.Stream(ref (Pdf.Dictionary(dict), Pdf.Got(bt))) in
   let irstream = Pdf.addobj pdf objstream in
     irstream
 
