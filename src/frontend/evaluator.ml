@@ -32,10 +32,10 @@ let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box lis
 
   (* begin: for debug *)
   let () =
-    trilst |> List.iter (fun (uch, lbc, alwref) ->
+    trilst |> List.iter (fun (uch, lbc, alw) ->
       let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
       let sl = (* match lbc with CharBasis.AL -> "@" | _ -> "^" *) "" in
-        match !alwref with
+        match alw with
         | CharBasis.AllowBreak   -> PrintForDebug.lexhorz (sc ^ sl ^ "/")
         | CharBasis.PreventBreak -> PrintForDebug.lexhorz (sc ^ sl ^ ".")
     ); PrintForDebug.lexhorzE "" in

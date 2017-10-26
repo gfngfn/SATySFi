@@ -48,10 +48,10 @@ let divide_by_script trilst =
           | Some((prevscript, triacc)) -> List.rev ((preword PreventBreak (* temporary; should consider whether there is an embedded command or the end of line after the last character *) prevscript (List.rev triacc)) :: resacc)
         end
 
-    | ((uch, lbc, alwref) as trihead) :: tritail ->
+    | ((uch, lbc, alw) as trihead) :: tritail ->
         let script = find uch in
         begin
-          match !alwref with
+          match alw with
           | AllowBreak ->
               (* -- if the spotted character allows line break after it -- *)
               begin

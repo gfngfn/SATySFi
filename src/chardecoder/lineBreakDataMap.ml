@@ -267,7 +267,7 @@ let line_break_rule =
 
 
 (* -- a naive, greedy regexp matching (it suffices to use greedy one) -- *)
-let match_prefix (getf : 'a -> 'b) (trilst : 'a list) (lregexp : line_break_regexp) =
+let match_prefix (type a) (getf : a -> line_break_class) (trilst : a list) (lregexp : line_break_regexp) =
   let rec cut trilst lregexp =
     match lregexp with
     | [] -> Some(trilst)
@@ -316,14 +316,16 @@ let match_postfix  getf trilst lregexp =
 
 let append_break_opportunity (uchlst : Uchar.t list) =
 
-  let should_prevent_break triacc trilst =
+  let alw_last = PreventBreak in  (* temporary; should take the adjacent embedded command into consideration *)
+
+  let should_prevent_break triacc bilst =
     let alwopt =
       line_break_rule |> List.fold_left (fun alwoptacc (lregexp1, alw, lregexp2) ->
         match alwoptacc with
         | Some(_) -> alwoptacc
         | None ->
             let b1 = match_postfix (fun (_, lbc, _) -> lbc) triacc lregexp1 in
-            let b2 = match_prefix (fun (_, lbc, _) -> lbc) trilst lregexp2 in
+            let b2 = match_prefix (fun (_, lbc) -> lbc) bilst lregexp2 in
             if b1 && b2 then
               let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
               Some(alw)
@@ -337,49 +339,46 @@ let append_break_opportunity (uchlst : Uchar.t list) =
       | Some(AllowBreak)   -> false
   in
 
-  let rec aux triacc trilst =
-    match trilst with
+  let rec aux triacc bilst =
+    match bilst with
     | [] -> []
 
-    | ((uch, lbc, alwref) as trihead) :: tritail ->
-        let triaccnew = trihead :: triacc in
-        let trilstnew = tritail in
+    | (uch, lbc) :: bitail ->
         begin
           PrintForDebug.lbc (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
           PrintForDebug.lbc (" " ^ (show_lb_class lbc));  (* for debug *)
-          match tritail with
+          match bitail with
           | [] ->
               begin
                 PrintForDebug.lbcE "";  (* for debug *)
-                alwref := PreventBreak;  (* temporary; should take the adjacent embedded command into consideration *)
-                List.rev triaccnew
+                List.rev ((uch, lbc, alw_last) :: triacc)
               end
 
           | _ :: _ ->
               begin
-                let b = should_prevent_break triaccnew trilstnew in
+                let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: triacc) bitail in
                 PrintForDebug.lbcE "";  (* for debug *)
-                if b then
-                  begin alwref := PreventBreak; end
-                else ();
-                aux triaccnew trilstnew
+                let alw = if b then PreventBreak else AllowBreak in
+                  aux ((uch, lbc, alw) :: triacc) bitail
               end
         end
   in
-  let uchlblst = append_property uchlst in
+  let bilstinit = append_property uchlst in
+(*
   let trilstinit =
     uchlblst |> List.map (fun (uch, lbc) ->
       let alwref = ref AllowBreak in (uch, lbc, alwref)
     )
   in
-    aux [] trilstinit
+*)
+    aux [] bilstinit
 
 
 (* for debug *)
 let print_trilist trilst =
-  trilst |> List.iter (fun (uch, lbc, alwref) ->
+  trilst |> List.iter (fun (uch, lbc, alw) ->
     let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
-    let sa = match !alwref with AllowBreak -> "/" | PreventBreak -> "." in
+    let sa = match alw with AllowBreak -> "/" | PreventBreak -> "." in
       PrintForDebug.lbc (sc ^ sa)
   ); PrintForDebug.lbcE ""
 
