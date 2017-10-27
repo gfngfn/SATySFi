@@ -63,18 +63,47 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
           (xpos +% wid, opaccnew)
 
 
+let ops_test_box rgb (xpos, ypos) wid hgt =
+  [
+    Graphics.op_q;
+    Graphics.op_RG rgb;
+    Graphics.op_re (xpos, ypos) (wid, Length.negate hgt);
+    Graphics.op_S;
+    Graphics.op_Q;
+  ]
+
+
 let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
 
   let rec aux (xinit, yinit) opaccinit evvblst =
     evvblst @|> ((xinit, yinit), opaccinit) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
       match evvb with
-      | EvVertFixedEmpty(vskip)       -> ((left_margin, ypos -% vskip), opacc)
+      | EvVertFixedEmpty(vskip) ->
+(*
+          (* begin: for debug *)
+          let opacc =
+            List.rev_append
+              (ops_test_box (0.5, 1.0, 0.5) (xpos +% (Length.of_pdf_point 50.), ypos) (Length.of_pdf_point 200.) vskip)
+              opacc
+          in
+          (* end: for debug *)
+*)
+          ((left_margin, ypos -% vskip), opacc)
 
       | EvVertLine(hgt, dpt, evhblst) ->
           let yposbaseline = ypos -% hgt in
           let (xposend, opaccend) =
             evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
           in
+(*
+          (* begin: for debug *)
+          let opaccend =
+            List.rev_append (List.append
+              (ops_test_box (1.0, 0.5, 0.5) (xpos, ypos) (Length.of_pdf_point 100.) hgt)
+              (ops_test_box (1.0, 0.5, 0.5) (xpos, ypos -% hgt) (Length.of_pdf_point 100.) (Length.negate dpt)))
+              opaccend in
+          (* end: for debug *)
+*)
             ((left_margin, yposbaseline +% dpt), opaccend)
 
       | EvVertFrame(deco, wid, evvblstsub) ->

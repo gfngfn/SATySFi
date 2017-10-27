@@ -168,6 +168,47 @@ let frame_deco_T =
       )
   )
 
+let frame_deco_VS =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt in
+    let dptb = dpt in
+    let widb = wid in
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+        HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
+      )
+  )
+
+let frame_deco_VH =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt in
+    let dptb = dpt in
+    let widb = wid in
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+        HorzBox.GeneralPath((xposb, ypos +% dptb), [
+          HorzBox.LineTo(xposb, ypos +% hgtb);
+          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
+          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
+        ], None);
+      )
+  )
+
+let frame_deco_VT =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt in
+    let dptb = dpt in
+    let widb = wid in
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
+          HorzBox.LineTo(xposb, ypos +% dptb);
+          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
+          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
+        ], None);
+      )
+  )
+
 let default_paddings =
   {
     HorzBox.paddingL = pdfpt 2. +% margin;

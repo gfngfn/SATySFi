@@ -269,8 +269,8 @@ and interpret env ast =
       let imvblst = normalize_box_col valuevert in
         Vert([
           HorzBox.ImVertTopMargin(true, ctx.paragraph_top);
-          HorzBox.ImVertFrame(Primitives.frame_deco_S, Primitives.frame_deco_H,
-                              Primitives.frame_deco_M, Primitives.frame_deco_T, ctx.paragraph_width, imvblst);
+          HorzBox.ImVertFrame(Primitives.frame_deco_VS, Primitives.frame_deco_VH,
+                              Primitives.frame_deco_M, Primitives.frame_deco_VT, ctx.paragraph_width, imvblst);
           HorzBox.ImVertBottomMargin(true, ctx.paragraph_bottom);
         ])
 
