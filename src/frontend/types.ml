@@ -444,6 +444,8 @@ and input_context = {
   space_stretch    : float;
   adjacent_stretch : float;
   paragraph_width  : HorzBox.length;
+  paragraph_top    : HorzBox.length;
+  paragraph_bottom : HorzBox.length;
   leading          : HorzBox.length;
 }
 (* temporary *)

@@ -1,8 +1,7 @@
 
 module Length
 : sig
-    type t
-      [@@deriving show]
+    type t  [@@deriving show]
     val zero : t
     val add : t -> t -> t
     val subtr : t -> t -> t
@@ -23,8 +22,7 @@ module Length
   end
 = struct
 
-    type t = float
-      [@@deriving show]
+    type t = float  [@@deriving show]
     let zero = 0.
     let add = ( +. )
     let subtr = ( -. )
@@ -105,8 +103,7 @@ type encoding_in_pdf =
   | UTF16BE
   | IdentityH
 
-type font_info = font_abbrev * Length.t
-  [@@deriving show]
+type font_info = font_abbrev * Length.t  [@@deriving show]
 
 type paddings =
   {
@@ -202,8 +199,10 @@ type vert_box =
   | VertFixedBreakable of length
 
 type intermediate_vert_box =
-  | ImVertLine           of length * length * evaled_horz_box list
-  | ImVertFixedBreakable of length
+  | ImVertLine              of length * length * evaled_horz_box list
+  | ImVertFixedBreakable    of length
+  | ImVertTopMargin         of bool * length
+  | ImVertBottomMargin      of bool * length
 (*
   | ImVertUnbreakableSkip of length * length * length
 *)

@@ -260,7 +260,7 @@ and interpret env ast =
   | BackendLineBreaking(astctx, astrow) ->
       let ctx = interpret_context env astctx in
       let hblst = interpret_horz_boxes env astrow in
-      let imvblst = LineBreak.main ctx.paragraph_width ctx.leading hblst in
+      let imvblst = LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx.paragraph_width ctx.leading hblst in
         Vert(imvblst)
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->

@@ -330,7 +330,7 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
 let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (paragraph_width : length) (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let leadingsub = leading_required -% (Length.negate dptprev) -% hgt in
@@ -406,21 +406,28 @@ let break_into_lines (paragraph_width : length) (leading_required : length) (pat
         (List.rev accline) :: acclines
   in
 
-  let rec arrange (dptprev : length) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
-          let (evhblst, hgt, dpt) = determine_widths paragraph_width line in
-          let vskip = calculate_vertical_skip dptprev hgt in
-            arrange dpt (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
+        let (evhblst, hgt, dpt) = determine_widths paragraph_width line in
+        begin
+          match dptprevopt with
+          | None ->
+              arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: []) tail
 
-    | [] -> List.rev accvlines
+          | Some(dptprev) ->
+              let vskip = calculate_vertical_skip dptprev hgt in
+                arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
+        end
+
+    | [] -> ImVertTopMargin(true, margin_top) :: (List.rev (ImVertBottomMargin(true, margin_bottom) :: accvlines))
   in
 
   let acclines = cut [] [] lhblst in
-    arrange (leading_required -% first_leading) [] (List.rev acclines)
+    arrange None [] (List.rev acclines)
 
 
-let main (paragraph_width : length) (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
+let main (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
 
   let calculate_badness pure_ratio =
     (abs (int_of_float (pure_ratio ** 3.))) * 10000
@@ -512,8 +519,8 @@ let main (paragraph_width : length) (leading_required : length) (hblst : horz_bo
     let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
-      | None       -> (* -- when no discretionary point is suitable for line breaking -- *)
+      | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
           [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines paragraph_width leading_required path lhblst
+          break_into_lines margin_top margin_bottom paragraph_width leading_required path lhblst
   end

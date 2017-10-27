@@ -91,6 +91,8 @@ let default_context =
     space_stretch    = 0.16; (* 0.32; *)
     adjacent_stretch = 0.05;
     paragraph_width  = pdfpt 400.;
+    paragraph_top    = pdfpt 18.;
+    paragraph_bottom = pdfpt 18.;
     leading          = pdfpt 18.;
   }
 
