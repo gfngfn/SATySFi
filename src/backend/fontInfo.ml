@@ -215,9 +215,9 @@ let initialize (satysfi_root_dir : string) =
 
   print_for_debug "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
-(*
-    ("Hlv", CIDFontType2Registration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), "./testfonts/HelveticaBlack.ttf");
-*)
+
+    ("Hlv", CIDFontType2TTRegistration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "HelveticaBlack.ttf");
+
 
     ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Osaka.ttf");
 

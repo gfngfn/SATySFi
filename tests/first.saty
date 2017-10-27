@@ -43,6 +43,8 @@
       sunt in culpa
       qui officia deserunt mollit anim id est laborum.
     }
+  >
+  +section {和文の例} <
     +p-jp {
       ようやく和文もわりとまともな様相で組めるようになりました。
       行頭禁則や行末禁則ももちろん対応しています。
