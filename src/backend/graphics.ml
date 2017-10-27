@@ -56,6 +56,12 @@ let op_d = function
   | DashedLine(d1, d2, d0) -> Pdfops.Op_d([~% d1; ~% d2], ~% d0)
 
 
+let pdfop_of_text_color = function
+  | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
+  | DeviceGray(gray)       -> op_g gray
+  | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
+
+
 let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
   let opacc =
     elemlst |> List.fold_left (fun acc elem ->

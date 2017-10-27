@@ -165,14 +165,19 @@ type graphics_command =
 
 type decoration = point -> length -> length -> length -> Pdfops.t list
 [@@deriving show]
-(*
-let pp_decoration ppf = Format.fprintf ppf "(decoration)"
-*)
+
+type horz_string_info =
+  {
+    font_abbrev : font_abbrev;
+    font_size   : length;
+    text_color  : color;
+  }
+
 type pure_horz_box =
   | PHOuterEmpty  of length * length * length
   | PHOuterFil
   | PHOuterFrame  of paddings * decoration * horz_box list
-  | PHFixedString of font_info * Uchar.t list
+  | PHFixedString of horz_string_info * Uchar.t list
   | PHFixedEmpty  of length
   | PHFixedFrame  of paddings * length * decoration * horz_box list
   | PHInnerFrame  of paddings * decoration * horz_box list
@@ -187,7 +192,7 @@ let pp_horz_box ppf hb =
   Format.pp_print_string ppf "(hb)"
 
 type evaled_horz_box_main =
-  | EvHorzString of font_info * OutputText.t
+  | EvHorzString of horz_string_info * OutputText.t
   | EvHorzEmpty
   | EvHorzFrame  of length * length * decoration * evaled_horz_box list
 

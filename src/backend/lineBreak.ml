@@ -147,8 +147,8 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
   
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
   match phb with
-  | PHFixedString(((fontabrv, size) as info), uchlst) ->
-      let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word fontabrv size uchlst in
+  | PHFixedString(info, uchlst) ->
+      let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word info.font_abbrev info.font_size uchlst in
         Atom((natural wid, hgt, dpt), EvHorzString(info, otxt))
 
   | PHFixedEmpty(wid) ->

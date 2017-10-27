@@ -94,6 +94,7 @@ let default_context =
     paragraph_top    = pdfpt 18.;
     paragraph_bottom = pdfpt 18.;
     leading          = pdfpt 18.;
+    text_color       = HorzBox.DeviceGray(0.);
   }
 
 let default_graphics_context =
@@ -249,7 +250,7 @@ let make_environments () =
   let scr           = (~! "script"  , VariantType([], tyid_script)) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
-  let col           = prod [fl; fl; fl] in
+  let clr           = prod [fl; fl; fl] in
   let pads          = prod [ln; ln; ln; ln] in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
 
@@ -295,7 +296,9 @@ let make_environments () =
 
         ("form-paragraph", ~% (ctx @-> br @-> bc)       , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
         ("fixed-empty"   , ~% (ln @-> br)               , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+(*
         ("fixed-string"  , ~% (ft @-> tr @-> br)        , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
+*)
         ("outer-empty"   , ~% (ln @-> ln @-> ln @-> br) , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br), lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
@@ -313,13 +316,14 @@ let make_environments () =
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx), lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
         ("set-title"     , ~% (tr @-> ctx @-> ctx)      , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
         ("get-title"     , ~% (ctx @-> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
+        ("set-text-color", ~% (clr @-> ctx @-> ctx)     , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
 
         ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));
         ("set-line-width", ~% (ln @-> gctx @-> gctx)    , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
         ("set-line-dash" , ~% (opt (prod [ln; ln; ln])  @-> gctx @-> gctx), lambda2 (fun vlensopt vgctx -> PrimitiveSetLineDash(vlensopt, vgctx)));
-        ("set-stroke-color", ~% (col @-> gctx @-> gctx) , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
-        ("set-fill-color", ~% (col @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
+        ("set-stroke-color", ~% (clr @-> gctx @-> gctx) , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
+        ("set-fill-color", ~% (clr @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
         ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
       ]

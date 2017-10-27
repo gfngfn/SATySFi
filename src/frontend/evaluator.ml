@@ -311,6 +311,11 @@ and interpret env ast =
   | PrimitiveGetTitle(astctx) ->
       let ctx = interpret_context env astctx in ctx.title
 
+  | PrimitiveSetTextColor(astcolor, astctx) ->
+      let color = interpret_color env astcolor in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with text_color = color; })
+
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
         Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
@@ -320,12 +325,19 @@ and interpret env ast =
       let widshrink = interpret_length env astshrink in
       let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
-
-  | BackendFixedString(astfont, aststr) ->
-      let font_info = interpret_font env astfont in
+(*
+  | BackendFixedString(astctx, aststr) ->
+      let ctx = interpret_font env astctx in
+      let string_info =
+        {
+          HorzBox.font_abbrev = font_abbrev;
+          HorzBox.font_size   = size;
+          HorzBox.text_color  = HorzBox.DeviceGray(0.0);
+        }
+      in
       let purestr = interpret_string env aststr in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(font_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
-
+        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(string_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
+*)
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let hblst = interpret_horz_boxes env astbr in
       let valuedeco = interpret env astdeco in

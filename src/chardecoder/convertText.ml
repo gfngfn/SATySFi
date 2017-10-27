@@ -127,12 +127,12 @@ let to_boxes ctx uchlst =
     HorzBox.HorzPure(HorzBox.PHOuterEmpty(natural, shrink, stretch))
   in
 
-  let fixed_string font_info uchlst =
-    HorzBox.HorzPure(HorzBox.PHFixedString(font_info, uchlst))
+  let fixed_string info uchlst =
+    HorzBox.HorzPure(HorzBox.PHFixedString(info, uchlst))
   in
 
-  let half_kern (_, font_size) =
-    HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(font_size *% -0.5)))
+  let half_kern info =
+    HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(info.font_size *% -0.5)))
   in
 (*
   let breakable_half badness (_, font_size) stretch_ratio =
@@ -145,11 +145,11 @@ let to_boxes ctx uchlst =
 *)
   scrlstsp |> List.map (function
     | PreWord(script, trilst, CharBasis.PreventBreak) ->
-        [ fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)); ]
+        [ fixed_string (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)); ]
 
     | PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
-          fixed_string (get_font_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch));
+          fixed_string (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch));
           breakable_space 100 (* temporary *) HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
 
@@ -163,45 +163,45 @@ let to_boxes ctx uchlst =
         [ unbreakable_space space_natural space_shrink space_stretch; ]
 
     | JLOpen(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
+        let info = get_string_info ctx script in
         [
 (*          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch; *)
-          half_kern font_info;
-          fixed_string font_info [uch];
+          half_kern info;
+          fixed_string info [uch];
         ]
 
     | JLClose(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
+        let info = get_string_info ctx script in
         [
-          fixed_string font_info [uch];
-          half_kern font_info;
+          fixed_string info [uch];
+          half_kern info;
 (*          breakable_half 100 (* temporary *) font_info ctx.adjacent_stretch; *)
         ]
 
     | JLNonstarter(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
+        let info = get_string_info ctx script in
         [
-          fixed_string font_info [uch];
+          fixed_string info [uch];
 (*          breakable_full 100 (* temporary *) font_info ctx.adjacent_stretch; *)
         ]
 
     | JLComma(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
+        let info = get_string_info ctx script in
         [
-          fixed_string font_info [uch];
-          half_kern font_info;
+          fixed_string info [uch];
+          half_kern info;
         ]
 
     | JLFullStop(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
+        let info = get_string_info ctx script in
         [
-          fixed_string font_info [uch];
-          half_kern font_info;
+          fixed_string info [uch];
+          half_kern info;
         ]
         
     | JLMiddle(script, (uch, _, _)) ->
-        let font_info = get_font_info ctx script in
-        [ fixed_string font_info [uch]; ]
+        let info = get_string_info ctx script in
+        [ fixed_string info [uch]; ]
         
   ) |> List.concat
 

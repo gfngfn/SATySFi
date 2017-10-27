@@ -447,6 +447,7 @@ and input_context = {
   paragraph_top    : HorzBox.length;
   paragraph_bottom : HorzBox.length;
   leading          : HorzBox.length;
+  text_color       : HorzBox.color;
 }
 (* temporary *)
 
@@ -567,6 +568,7 @@ and abstract_tree =
   | PrimitiveSetDominantScript of abstract_tree * abstract_tree
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
+  | PrimitiveSetTextColor      of abstract_tree * abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
   | PrimitiveSetLineDash       of abstract_tree * abstract_tree
   | PrimitiveSetStrokeColor    of abstract_tree * abstract_tree
@@ -575,7 +577,9 @@ and abstract_tree =
   | PrimitiveDrawFill          of abstract_tree * abstract_tree
   | BackendFont                of abstract_tree * abstract_tree
   | BackendLineBreaking        of abstract_tree * abstract_tree
+(*
   | BackendFixedString         of abstract_tree * abstract_tree
+*)
   | BackendFixedEmpty          of abstract_tree
   | BackendOuterEmpty          of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrame          of abstract_tree * abstract_tree * abstract_tree
@@ -752,6 +756,14 @@ let get_font_info ctx script_raw =
     try ctx.font_scheme |> FontSchemeMap.find script with
     | Not_found -> default_font_info
 
+
+let get_string_info ctx script_raw =
+  let (font_abbrev, size) = get_font_info ctx script_raw in
+  {
+    HorzBox.font_abbrev = font_abbrev;
+    HorzBox.font_size   = size;
+    HorzBox.text_color  = ctx.text_color;
+  }
 (*
 (* !!!! ---- global variable ---- !!!! *)
 

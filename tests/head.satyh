@@ -3,6 +3,7 @@ let-row ctx \emph inner =
     ctx |> set-font Latin (font `ArnoIt` 12pt)
         |> set-font HanIdeographic (font `Osaka` 10pt)
         |> set-font Kana (font `Osaka` 10pt)
+        |> set-text-color (0.0, 0.0, 1.0)
   in
     lex-row ctx-emph inner
 
