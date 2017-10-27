@@ -64,20 +64,29 @@ let rec operators_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
 
 
 let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
-  let xinit = left_margin in
-  let yinit = (get_paper_height paper) -% top_margin in
-  let (_, opaccend) =
-    evvblst @|> ((xinit, yinit), []) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
+
+  let rec aux (xinit, yinit) opaccinit evvblst =
+    evvblst @|> ((xinit, yinit), opaccinit) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
       match evvb with
       | EvVertFixedEmpty(vskip)       -> ((left_margin, ypos -% vskip), opacc)
+
       | EvVertLine(hgt, dpt, evhblst) ->
           let yposbaseline = ypos -% hgt in
           let (xposend, opaccend) =
             evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
           in
             ((left_margin, yposbaseline +% dpt), opaccend)
+
+      | EvVertFrame(deco, wid, evvblstsub) ->
+          let ((xpossub, ypossub), opaccsub) = aux (xpos, ypos) opacc evvblstsub in
+          let ops_background = deco (xpos, ypossub) wid (ypos -% ypossub) Length.zero in
+            ((left_margin, ypossub), List.rev_append ops_background opaccsub)
     )
   in
+
+  let xinit = left_margin in
+  let yinit = (get_paper_height paper) -% top_margin in
+  let (_, opaccend) = aux (xinit, yinit) [] evvblst in
 
   let oplst = List.rev opaccend in
 

@@ -28,9 +28,8 @@ type pb_vert_box =
   | PBVertLine             of length * length * evaled_horz_box list
   | PBVertFixedBreakable   of length
   | PBVertFixedUnbreakable of length
-(*
-  | PBVertFrame            of decoration * pb_vert_box list
-*)
+  | PBVertFrame            of bool * decoration * decoration * decoration * decoration * length * pb_vert_box list
+
 
 let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
 
@@ -50,7 +49,7 @@ let chop_single_page (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_ve
         let vpb = calculate_badness_of_page_break hgttotalnew in
         if vpb > vpbprev then  (* -- if getting worse, output the accumulated non-discardable lines 'imvbacc' as a page -- *)
           let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (List.rev evvbacc, Some(pbvblst))
+            (evvbacc, Some(pbvblst), hgttotalnew, vpb)
         else
           aux vpb (EvVertLine(hgt, dpt, evhblst) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalnew imvbtail
 
@@ -59,32 +58,35 @@ let chop_single_page (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_ve
         let vpb = calculate_badness_of_page_break hgttotalnew in
         if vpb > vpbprev then
           let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (List.rev evvbacc, Some(pbvbtail))  (* -- discard breakables -- *)
+            (evvbacc, Some(pbvbtail), hgttotalnew, vpb)  (* -- discard breakables -- *)
         else
           aux vpb evvbacc (EvVertFixedEmpty(vskip) :: evvbaccbreakable) hgttotalnew pbvbtail
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
           aux vpbprev (EvVertFixedEmpty(vskip) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalnew pbvbtail
-(*
-    | (PBVertFrame(deco, pbvblstsub)) :: pbvbtail ->
-        let () = aux vpbprev [] [] hgttotal pbvblstsub in
-*)
+
+    | PBVertFrame(midway, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
+        let (evvbaccsub, restsubopt, hgttotalsub, vpbsub) = aux vpbprev [] [] hgttotal pbvblstsub in
+        begin
+          match restsubopt with
+          | None ->
+              let decosub = if midway then decoT else decoS in
+                aux vpbsub (EvVertFrame(decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalsub pbvbtail
+          | Some(pbvbrestsub) ->
+              let decosub = if midway then decoM else decoH in
+              let pbvbrest = Some(PBVertFrame(true, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
+                (EvVertFrame(decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc), pbvbrest, hgttotalsub, vpbsub)
+        end
+
     | [] ->
         let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
-          (List.rev evvbacc, None)
+          (evvbacc, None, hgttotal, vpbprev)
   in
   let vpbinit = 100000 in
-    aux vpbinit [] [] Length.zero pbvblst
+  let (evvbacc, restopt, _, _) = aux vpbinit [] [] Length.zero pbvblst in
+    (List.rev evvbacc, restopt)
 
-(*
-let determine_heights (pbvblst : pb_vert_box list) =
-  pbvblst |> List.map (function
-    | PBVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
-    | PBVertFixedBreakable(vskip)   -> EvVertFixedEmpty(vskip)
-    | PBVertFixedUnbreakable(vskip) -> EvVertFixedEmpty(vskip)
-  )
-*)
 
 let normalize imvblst =
   let rec aux pbvbacc imvblst =
@@ -118,15 +120,21 @@ let normalize imvblst =
               let pbvb = if breakable2 then PBVertFixedBreakable(mgn2) else PBVertFixedUnbreakable(mgn2) in
               aux (pbvb :: pbvbacc) imvbtail
         end
+
+    | ImVertFrame(decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
+        let pbvblstsub = aux [] imvblstsub in
+          aux (PBVertFrame(false, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbacc) imvbtail
   in
     aux [] imvblst
         
 
 let main (pdf : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
+  let () = List.iter (Format.printf "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
   let rec aux pdf pbvblst =
     let (evvblstpage, restopt) = chop_single_page pbvblst in
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
+    let () = List.iter (Format.printf "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
     let pdfnew = pdf |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in  (* temporary; size of paper should be variable *)
       match restopt with
       | None              -> pdfnew

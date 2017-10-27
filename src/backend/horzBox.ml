@@ -198,18 +198,31 @@ type vert_box =
   | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
   | VertFixedBreakable of length
 
+let rec pp_list pp fmt = function
+| [] -> ()
+| v :: vs ->
+    pp fmt v; if vs <> [] then (Format.printf fmt "; "; pp_list pp fmt vs)
+
 type intermediate_vert_box =
   | ImVertLine              of length * length * evaled_horz_box list
+      [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
   | ImVertFixedBreakable    of length
+      [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
   | ImVertTopMargin         of bool * length
+      [@printer (fun fmt _ -> Format.fprintf fmt "Top")]
   | ImVertBottomMargin      of bool * length
+      [@printer (fun fmt _ -> Format.fprintf fmt "Bottom")]
+  | ImVertFrame             of decoration * decoration * decoration * decoration * length * intermediate_vert_box list
+(*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+[@@deriving show]
 (*
-  | ImVertUnbreakableSkip of length * length * length
-*)
-
 let pp_intermediate_vert_box ppf x imvb =
   Format.fprintf ppf "(imvb)"
-
+*)
 type evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
+      [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
   | EvVertFixedEmpty of length
+      [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
+  | EvVertFrame      of decoration * length * evaled_vert_box list
+[@@deriving show]

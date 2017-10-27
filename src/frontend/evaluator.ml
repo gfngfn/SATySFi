@@ -263,6 +263,17 @@ and interpret env ast =
       let imvblst = LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx.paragraph_width ctx.leading hblst in
         Vert(imvblst)
 
+  | BackendVertFrame(astctx, astvert) ->
+      let ctx = interpret_context env astctx in
+      let valuevert = interpret env astvert in
+      let imvblst = normalize_box_col valuevert in
+        Vert([
+          HorzBox.ImVertTopMargin(true, ctx.paragraph_top);
+          HorzBox.ImVertFrame(Primitives.frame_deco_S, Primitives.frame_deco_H,
+                              Primitives.frame_deco_M, Primitives.frame_deco_T, ctx.paragraph_width, imvblst);
+          HorzBox.ImVertBottomMargin(true, ctx.paragraph_bottom);
+        ])
+
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
       let ctx = interpret_context env astctx in
