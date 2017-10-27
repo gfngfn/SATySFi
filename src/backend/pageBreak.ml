@@ -28,7 +28,7 @@ type pb_vert_box =
   | PBVertLine             of length * length * evaled_horz_box list
   | PBVertFixedBreakable   of length
   | PBVertFixedUnbreakable of length
-  | PBVertFrame            of bool * decoration * decoration * decoration * decoration * length * pb_vert_box list
+  | PBVertFrame            of bool * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
 
 
 let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
@@ -66,17 +66,19 @@ let chop_single_page (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_ve
         let hgttotalnew = hgttotal +% vskip in
           aux vpbprev (EvVertFixedEmpty(vskip) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalnew pbvbtail
 
-    | PBVertFrame(midway, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
-        let (evvbaccsub, restsubopt, hgttotalsub, vpbsub) = aux vpbprev [] [] hgttotal pbvblstsub in
+    | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
+        let hgttotalbefore = hgttotal +% pads.paddingT in
+        let (evvbaccsub, restsubopt, hgttotalsub, vpbsub) = aux vpbprev [] [] hgttotalbefore pbvblstsub in
+        let hgttotalafter = hgttotalsub +% pads.paddingB in
         begin
           match restsubopt with
           | None ->
               let decosub = if midway then decoT else decoS in
-                aux vpbsub (EvVertFrame(decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalsub pbvbtail
+                aux vpbsub (EvVertFrame(pads, decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalafter pbvbtail
           | Some(pbvbrestsub) ->
               let decosub = if midway then decoM else decoH in
-              let pbvbrest = Some(PBVertFrame(true, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
-                (EvVertFrame(decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc), pbvbrest, hgttotalsub, vpbsub)
+              let pbvbrest = Some(PBVertFrame(true, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
+                (EvVertFrame(pads, decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc), pbvbrest, hgttotalafter, vpbsub)
         end
 
     | [] ->
@@ -121,9 +123,9 @@ let normalize imvblst =
               aux (pbvb :: pbvbacc) imvbtail
         end
 
-    | ImVertFrame(decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
+    | ImVertFrame(pads, decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
         let pbvblstsub = aux [] imvblstsub in
-          aux (PBVertFrame(false, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbacc) imvbtail
+          aux (PBVertFrame(false, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbacc) imvbtail
   in
     aux [] imvblst
         

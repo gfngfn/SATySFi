@@ -73,9 +73,9 @@ let-col ctx +p inner =
   let br = lex-row ctx inner in
     form-paragraph ctx (indent ++ br ++ outer-fil)
 
-let-col ctx +p-frame inner =
-  let br = lex-row ctx inner in
-    col-frame ctx (form-paragraph ctx (indent ++ br ++ outer-fil))
+let-col ctx +frame inner =
+    col-frame ctx (function ctx ->
+      lex-col ctx inner)
 
 let-col ctx +p-jp inner =
   let ctx-jp =

@@ -88,11 +88,11 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
           in
           (* end: for debug *)
 *)
-          ((left_margin, ypos -% vskip), opacc)
+          ((xpos, ypos -% vskip), opacc)
 
       | EvVertLine(hgt, dpt, evhblst) ->
           let yposbaseline = ypos -% hgt in
-          let (xposend, opaccend) =
+          let (_, opaccend) =
             evhblst @|> (xpos, opacc) @|> List.fold_left (operators_of_evaled_horz_box yposbaseline hgt dpt)
           in
 (*
@@ -104,12 +104,15 @@ let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, page
               opaccend in
           (* end: for debug *)
 *)
-            ((left_margin, yposbaseline +% dpt), opaccend)
+            ((xpos, yposbaseline +% dpt), opaccend)
 
-      | EvVertFrame(deco, wid, evvblstsub) ->
-          let ((xpossub, ypossub), opaccsub) = aux (xpos, ypos) opacc evvblstsub in
-          let ops_background = deco (xpos, ypossub) wid (ypos -% ypossub) Length.zero in
-            ((left_margin, ypossub), List.rev_append ops_background opaccsub)
+      | EvVertFrame(pads, deco, wid, evvblstsub) ->
+          let xpossubinit = xpos +% pads.paddingL in
+          let ypossubinit = ypos -% pads.paddingT in
+          let ((_, ypossub), opaccsub) = aux (xpossubinit, ypossubinit) opacc evvblstsub in
+          let yposend = ypossub -% pads.paddingB in
+          let ops_background = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
+            ((xpos, yposend), List.rev_append ops_background opaccsub)
     )
   in
 

@@ -302,7 +302,7 @@ let make_environments () =
         ("outer-frame-inline", ~% (br @-> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
         ("font"          , ~% (s @-> ln @-> ft)         , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
-        ("col-frame"     , ~% (ctx @-> bc @-> bc)       , lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
+        ("col-frame"     , ~% (ctx @-> (ctx @-> bc) @-> bc), lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
 
         ("lex-row"       , ~% (ctx @-> tr @-> br)       , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("lex-col"       , ~% (ctx @-> tc @-> bc)       , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));

@@ -212,7 +212,7 @@ type intermediate_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "Top")]
   | ImVertBottomMargin      of bool * length
       [@printer (fun fmt _ -> Format.fprintf fmt "Bottom")]
-  | ImVertFrame             of decoration * decoration * decoration * decoration * length * intermediate_vert_box list
+  | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
 [@@deriving show]
 (*
@@ -224,5 +224,5 @@ type evaled_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
-  | EvVertFrame      of decoration * length * evaled_vert_box list
+  | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
 [@@deriving show]
