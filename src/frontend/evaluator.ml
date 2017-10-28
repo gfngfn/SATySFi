@@ -853,8 +853,19 @@ and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzB
 and interpret_color env ast : HorzBox.color =
   let value = interpret env ast in
     match value with
-    | TupleCons(FloatConstant(fltR), TupleCons(FloatConstant(fltG), TupleCons(FloatConstant(fltB), EndOfTuple))) ->
+    | Constructor("Gray", FloatConstant(gray)) -> HorzBox.DeviceGray(gray)
+
+    | Constructor("RGB", TupleCons(FloatConstant(fltR),
+                           TupleCons(FloatConstant(fltG),
+                             TupleCons(FloatConstant(fltB), EndOfTuple)))) ->
         HorzBox.DeviceRGB(fltR, fltG, fltB)
+
+    | Constructor("CMYK", TupleCons(FloatConstant(fltC),
+                            TupleCons(FloatConstant(fltM),
+                              TupleCons(FloatConstant(fltY),
+                                TupleCons(FloatConstant(fltK), EndOfTuple))))) ->
+        HorzBox.DeviceCMYK(fltC, fltM, fltY, fltK)
+
     | _ -> report_bug_evaluator ("interpret_color; " ^ (Display.string_of_ast value))
       (* temporary; colors of other color spaces than DeviceRGB should be able to be specified *)
 

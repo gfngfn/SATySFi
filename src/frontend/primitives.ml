@@ -3,12 +3,14 @@ open Types
 
 let tyid_option  = Typeenv.Raw.fresh_type_id "option"
 let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
+let tyid_color   = Typeenv.Raw.fresh_type_id "color"
 let tyid_script  = Typeenv.Raw.fresh_type_id "script"
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let unit_type = (dr, BaseType(UnitType)) in
+  let float_type = (dr, BaseType(FloatType)) in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(ref (Bound(bid)))) in
 
@@ -21,6 +23,11 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(
        (dr, ProductType([(dr, BaseType(TextRowType)); (dr, ListType((dr, VariantType([], tyid_itemize)))); ]))
      )) tyid_itemize
+
+  |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "Gray" ([], Poly(float_type)) tyid_color
+  |> Typeenv.Raw.add_constructor "RGB"  ([], Poly((dr, ProductType([float_type; float_type; float_type])))) tyid_color
+  |> Typeenv.Raw.add_constructor "CMYK" ([], Poly((dr, ProductType([float_type; float_type; float_type; float_type])))) tyid_color
 
   |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(unit_type)) tyid_script
@@ -250,7 +257,7 @@ let make_environments () =
   let scr           = (~! "script"  , VariantType([], tyid_script)) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
-  let clr           = prod [fl; fl; fl] in
+  let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pads          = prod [ln; ln; ln; ln] in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
 

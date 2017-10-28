@@ -3,7 +3,7 @@ let-row ctx \emph inner =
     ctx |> set-font Latin (font `ArnoIt` 12pt)
         |> set-font HanIdeographic (font `Osaka` 10pt)
         |> set-font Kana (font `Osaka` 10pt)
-        |> set-text-color (0.0, 0.0, 1.0)
+        |> set-text-color (CMYK(1., 0., 0., 0.)) %(RGB(0., 0., 0.75))
   in
     lex-row ctx-emph inner
 
@@ -28,8 +28,8 @@ let gctx-title-frame =
   default-graphics-context
     |> set-line-width 5pt
     |> set-line-dash (Some(25pt, 3pt, 5pt))
-    |> set-stroke-color (1., 0., 0.)
-    |> set-fill-color (1., 0.75, 0.75)
+    |> set-stroke-color (RGB(1., 0., 0.))
+    |> set-fill-color (RGB(1., 0.75, 0.75))
 
 let title-frame =
   let pads = (5pt, 5pt, 10pt, 10pt) in
