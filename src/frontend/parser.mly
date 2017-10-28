@@ -486,7 +486,6 @@
 %type <Types.untyped_abstract_tree> nxlist
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
-%type <Types.untyped_input_horz_element> ihelem
 %type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
 %type <Types.var_name * Types.manual_kind> constrnt
@@ -998,16 +997,23 @@ hcmd:
   | tok=HORZCMDWITHMOD { tok }
 ;
 sxblock:
-  | ihlst=list(ihelem) { let rng = make_range_from_list ihlst in (rng, UTInputHorz(ihlst)) }
+  | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
 ;
-ihelem:
-  | ihtextlst=list(ihtext) {
-        let rng = make_range_from_list ihtextlst in
-        let text = String.concat "" (ihtextlst |> List.map (fun (r, t) -> t)) in
+ih:
+  | ihtext=ihtext;                    { ihtext :: [] }
+  | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
+  | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
+;
+ihtext:
+  | ihcharlst=list(ihchar) {
+        let rng = make_range_from_list ihcharlst in
+        let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
         (rng, UTInputHorzText(text)) }
 (*
   | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
 *)
+;
+ihcmd:
   | hcmd=hcmd; nargs=nargs; sargs=sargs; {
         let (rngcs, mdlnmlst, csnm) = hcmd in
         let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
@@ -1015,7 +1021,8 @@ ihelem:
         let rngargs = make_range_from_list args in
         make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
      }
-ihtext:
+  | hcmd=hcmd; error { let (rng, _, cs) = hcmd in report_error (Ranged (rng, cs)) "" }
+ihchar:
   | CHAR  { let (rng, ch) = $1 in (rng, ch) }
   | SPACE { let rng = $1 in (rng, " ") }
   | BREAK { let rng = $1 in (rng, "\n") }
@@ -1054,6 +1061,7 @@ sargs:
   | ENDACTIVE                 { [] }
   | sargs=nonempty_list(sarg) { sargs }
 ;
+
 sarg: /* -> Types.untyped_argument_cons */
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { make_standard (Tok opn) (Tok cls) (extract_main utast) }

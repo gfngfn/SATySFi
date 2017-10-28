@@ -537,8 +537,9 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
     in
-(*
-    let () = print_endline (  (* for debug *)
+
+    (* begin: for debug *)
+    let () = PrintForDebug.lexerE (
       match output with
       | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
       | HORZCMD(_, cs) -> "HCMD(" ^ cs ^ ")"
@@ -570,7 +571,8 @@ and comment = parse
         | BINOP_MINUS(_, v) ) -> "BIN(" ^ v ^ ")"
       | _              -> "_"
     ) in
-*)
+    (* end: for debug *)
+
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output
