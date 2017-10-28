@@ -23,12 +23,15 @@ let print_evaled_vert_box evvb =
       end
 *)
 
+type frame_breaking =
+  | Beginning
+  | Midway
 
 type pb_vert_box =
   | PBVertLine             of length * length * evaled_horz_box list
   | PBVertFixedBreakable   of length
   | PBVertFixedUnbreakable of length
-  | PBVertFrame            of bool * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
+  | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
 
 
 let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
@@ -73,11 +76,11 @@ let chop_single_page (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_ve
         begin
           match restsubopt with
           | None ->
-              let decosub = if midway then decoT else decoS in
+              let decosub = match midway with Midway -> decoT | Beginning -> decoS in
                 aux vpbsub (EvVertFrame(pads, decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc)) [] hgttotalafter pbvbtail
           | Some(pbvbrestsub) ->
-              let decosub = if midway then decoM else decoH in
-              let pbvbrest = Some(PBVertFrame(true, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
+              let decosub = match midway with Midway -> decoM | Beginning -> decoH in
+              let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
                 (EvVertFrame(pads, decosub, wid, List.rev evvbaccsub) :: (List.append evvbaccbreakable evvbacc), pbvbrest, hgttotalafter, vpbsub)
         end
 
@@ -125,10 +128,27 @@ let normalize imvblst =
 
     | ImVertFrame(pads, decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
         let pbvblstsub = aux [] imvblstsub in
-          aux (PBVertFrame(false, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbacc) imvbtail
+          aux (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbacc) imvbtail
   in
     aux [] imvblst
-        
+
+
+let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
+  let pbvblst = normalize imvblst in
+  let rec aux pbvblst =
+    pbvblst |> List.map (fun pbvb ->
+      match pbvb with
+      | PBVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
+      | PBVertFixedBreakable(vskip)   -> EvVertFixedEmpty(vskip)
+      | PBVertFixedUnbreakable(vskip) -> EvVertFixedEmpty(vskip)
+
+      | PBVertFrame(_, pads, decoS, _, _, _, wid, pbvblstsub) ->
+          let evvblstsub = aux pbvblstsub in
+            EvVertFrame(pads, decoS, wid, evvblstsub)
+    )
+  in
+    aux pbvblst
+
 
 let main (pdf : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
