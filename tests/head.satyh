@@ -87,14 +87,18 @@ let-col ctx +p-jp inner =
   let br = lex-row ctx-jp inner in
     form-paragraph ctx (indent-jp ++ br ++ outer-fil)
 
+let-mutable num-section <- 0
+
 let-col ctx +section title inner =
   let ctx-title =
-    ctx |> set-font Latin (font `Hlv` 20pt)
+    ctx |> set-font Latin (font `Hlv` 16pt)
         |> set-font HanIdeographic (font `Osaka` 16pt)
         |> set-font Kana (font `Osaka` 16pt)
   in
+  let () = num-section <- !num-section + 1 in
+  let br-num = lex-row ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
   let br-title = lex-row ctx-title title in
-  let bc-title = form-paragraph ctx (br-title ++ (outer-fil)) in
+  let bc-title = form-paragraph ctx (br-num ++ (fixed-empty 10pt) ++ br-title ++ (outer-fil)) in
   let bc-inner = lex-col ctx inner in
     bc-title +++ bc-inner
 

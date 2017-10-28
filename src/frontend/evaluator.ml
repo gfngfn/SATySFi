@@ -173,9 +173,10 @@ and interpret env ast =
       let value2 = interpret env ast2 in
         begin
           match (value1, value2) with
-          | (StringEmpty, _) -> value2
-          | (_, StringEmpty) -> value1
-          | (_, _)           -> Concat(value1, value2)
+          | (StringEmpty, _)                         -> value2
+          | (_, StringEmpty)                         -> value1
+          | (StringConstant(s1), StringConstant(s2)) -> StringConstant(s1 ^ s2)
+          | _                                        -> report_bug_evaluator ("Concat: " ^ (Display.string_of_ast value1) ^ " and " ^ (Display.string_of_ast value2))
         end
 
 (* ---- values for backend ---- *)
@@ -315,6 +316,10 @@ and interpret env ast =
       let color = interpret_color env astcolor in
       let ctx = interpret_context env astctx in
         Context({ ctx with text_color = color; })
+
+  | PrimitiveEmbed(aststr) ->
+      let str = interpret_string env aststr in
+        InputHorzWithEnvironment([InputHorzText(str)], env)
 
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
