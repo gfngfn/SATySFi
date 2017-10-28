@@ -317,6 +317,11 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context({ ctx with text_color = color; })
 
+  | PrimitiveSetLeading(astlen, astctx) ->
+      let len = interpret_length env astlen in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with leading = len; })
+
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
         InputHorzWithEnvironment([InputHorzText(str)], env)

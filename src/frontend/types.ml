@@ -569,6 +569,7 @@ and abstract_tree =
   | PrimitiveSetTitle          of abstract_tree * abstract_tree
   | PrimitiveGetTitle          of abstract_tree
   | PrimitiveSetTextColor      of abstract_tree * abstract_tree
+  | PrimitiveSetLeading        of abstract_tree * abstract_tree
   | PrimitiveEmbed             of abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
   | PrimitiveSetLineDash       of abstract_tree * abstract_tree

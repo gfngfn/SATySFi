@@ -91,7 +91,7 @@ let-mutable num-section <- 0
 
 let-col ctx +section title inner =
   let ctx-title =
-    ctx |> set-font Latin (font `Hlv` 16pt)
+    ctx |> set-font Latin (font `Hlv` 18pt)
         |> set-font HanIdeographic (font `Osaka` 16pt)
         |> set-font Kana (font `Osaka` 16pt)
   in
@@ -152,3 +152,6 @@ let item : context -> int -> itemize -> box-col
 let-col ctx +listing (Item(_, itmzlst)) =
   let bclst = List.map (item ctx 1) itmzlst in
     col-nil +++> bclst
+
+let-col ctx +expand-leading inner =
+  lex-col (ctx |> set-leading 32pt) inner

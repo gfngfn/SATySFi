@@ -317,6 +317,7 @@ let make_environments () =
         ("set-title"     , ~% (tr @-> ctx @-> ctx)      , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
         ("get-title"     , ~% (ctx @-> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("set-text-color", ~% (clr @-> ctx @-> ctx)     , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
+        ("set-leading"   , ~% (ln @-> ctx @-> ctx)      , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("embed"         , ~% (s @-> tr)                , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
 
