@@ -25,6 +25,7 @@ type lb_pure_box =
   | Atom        of metrics * evaled_horz_box_main
   | OuterFrame  of metrics * decoration * lb_pure_box list
   | FixedFrame  of length * length * length * decoration * lb_pure_box list
+  | EmbeddedVert of length * length * length * evaled_vert_box list
 
 type lb_box =
   | LBPure           of lb_pure_box
@@ -45,6 +46,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | Atom(metr, _)                   -> metr
   | OuterFrame(metr, _, _)          -> metr
   | FixedFrame(wid, hgt, dpt, _, _) -> (natural wid, hgt, dpt)
+  | EmbeddedVert(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -178,6 +180,9 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
       let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
         FixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
 
+  | PHEmbeddedVert(wid, hgt, dpt, evvblst) ->
+      EmbeddedVert(wid, hgt, dpt, evvblst)
+
 
 and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
   match phbopt with
@@ -295,6 +300,8 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
         let (evhblst, _, _) = determine_widths wid_frame lphblstsub in
           EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
+    | EmbeddedVert(wid, hgt, dpt, evvblst) ->
+        EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst))
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 

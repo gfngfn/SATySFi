@@ -435,7 +435,7 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
         Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
         let out_len = !out_offset_ref in
         let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
-        Printf.printf "FlateDecode: input = %d, output = %d\n" src_len (Pdfio.bytes_size bt);  (* for debug *)
+        PrintForDebug.fontfmtE (Printf.sprintf "FlateDecode: input = %d, output = %d" src_len (Pdfio.bytes_size bt));  (* for debug *)
         ("/FlateDecode", bt)
       end
 

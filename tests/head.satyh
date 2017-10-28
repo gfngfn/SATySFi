@@ -166,3 +166,6 @@ let-col ctx +listing (Item(_, itmzlst)) =
 
 let-col ctx +expand-leading inner =
   lex-col (ctx |> set-leading 32pt) inner
+
+let-row ctx \parbox-top wid inner =
+  pbox-top ctx wid (function ctx -> lex-col ctx inner)

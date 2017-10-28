@@ -132,6 +132,10 @@
         qui officia deserunt mollit anim id est laborum.
       }
     > >
+    +p {
+      Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      The baseline for a vertical box is set so that the first line of the contents is in the same height as the outer line.
+    }
     +simple-replacement-test;
     +listing {
       * Tokyo

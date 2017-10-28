@@ -587,6 +587,7 @@ and abstract_tree =
   | BackendOuterFrame          of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrameBreakable of abstract_tree
   | BackendVertFrame           of abstract_tree * abstract_tree
+  | BackendEmbeddedVert        of abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons

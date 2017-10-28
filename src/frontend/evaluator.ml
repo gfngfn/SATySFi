@@ -20,7 +20,6 @@ let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstrac
 let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find env evid
 
 
-(* temporary; should be variable *)
 let lex_horz_text (ctx : input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     ConvertText.to_boxes ctx uchlst
@@ -221,7 +220,7 @@ and interpret env ast =
       end
 *)
 
-  | Context(ctx) -> Context(ctx)  (* temporary; need detailed implementation *)
+  | Context(ctx) -> Context(ctx)
 
   | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
 
@@ -267,7 +266,7 @@ and interpret env ast =
   | BackendVertFrame(astctx, astk) ->
       let ctx = interpret_context env astctx in
       let valuek = interpret env astk in
-      let pads = Primitives.default_paddings in
+      let pads = Primitives.default_paddings in  (* teporary; should be variable *)
       let valuectxsub =
         Context({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) })
       in
@@ -279,7 +278,43 @@ and interpret env ast =
                               Primitives.frame_deco_VS, Primitives.frame_deco_VH,
                               Primitives.frame_deco_M, Primitives.frame_deco_VT, ctx.paragraph_width, imvblst);
           HorzBox.ImVertBottomMargin(true, ctx.paragraph_bottom);
-        ])
+        ])  (* temporary; frame decorations should be variable *)
+
+  | BackendEmbeddedVert(astctx, astlen, astk) ->
+      let ctx = interpret_context env astctx in
+      let wid = interpret_length env astlen in
+      let valuek = interpret env astk in
+      let valuectxsub =
+        Context({ ctx with paragraph_width = wid; })
+      in
+      let valuevert = interpret env (Apply(valuek, valuectxsub)) in
+      let imvblst = normalize_box_col valuevert in
+      let evvblst = PageBreak.solidify imvblst in
+
+      let rec find_first_line optinit totalhgtinit evvblst =
+        evvblst |> List.fold_left HorzBox.(fun (opt, totalhgt) evvb ->
+          match (evvb, opt) with
+          | (EvVertLine(hgt, dpt, _), None)          -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
+          | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% hgt +% (Length.negate dpt))
+          | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
+
+          | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+              let totalhgtbefore = totalhgt +% pads.paddingT in
+              let (optsub, totalhgtsub) = find_first_line opt totalhgtbefore evvblstsub in
+              let totalhgtafter = totalhgtsub +% pads.paddingB in
+                (optsub, totalhgtafter)
+
+        ) (optinit, totalhgtinit)
+      in
+      let (hgt, dpt) =
+        match find_first_line None HorzBox.Length.zero evvblst with
+        | (Some(hgt), totalhgt) ->
+            let () = Printf.printf "EmbeddedVert: total = %f\n" (HorzBox.Length.to_pdf_point totalhgt) in  (* for debug *)
+            (hgt, HorzBox.(Length.negate (totalhgt -% hgt)))
+        | (None, totalhgt)      -> (HorzBox.Length.zero, HorzBox.Length.negate totalhgt)
+      in
+      let () = Printf.printf "EmbeddedVert: height = %f, depth = %f\n" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt) in  (* for debug *)
+        Horz(HorzBox.([HorzPure(PHEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
@@ -867,7 +902,6 @@ and interpret_color env ast : HorzBox.color =
         HorzBox.DeviceCMYK(fltC, fltM, fltY, fltK)
 
     | _ -> report_bug_evaluator ("interpret_color; " ^ (Display.string_of_ast value))
-      (* temporary; colors of other color spaces than DeviceRGB should be able to be specified *)
 
 
 and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_info =

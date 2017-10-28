@@ -173,42 +173,37 @@ type horz_string_info =
     text_color  : color;
   }
 
+let pp_horz_string_info fmt info =
+  Format.fprintf fmt "(HSinfo)"
+
 type pure_horz_box =
   | PHOuterEmpty  of length * length * length
   | PHOuterFil
   | PHOuterFrame  of paddings * decoration * horz_box list
   | PHFixedString of horz_string_info * Uchar.t list
+      [@printer (fun fmt _ -> Format.fprintf fmt "FixedString(...)")]
   | PHFixedEmpty  of length
   | PHFixedFrame  of paddings * length * decoration * horz_box list
   | PHInnerFrame  of paddings * decoration * horz_box list
+  | PHEmbeddedVert of length * length * length * evaled_vert_box list
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+      [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
-let pp_horz_box ppf hb =
-  Format.pp_print_string ppf "(hb)"
-
-type evaled_horz_box_main =
+and evaled_horz_box_main =
   | EvHorzString of horz_string_info * OutputText.t
   | EvHorzEmpty
   | EvHorzFrame  of length * length * decoration * evaled_horz_box list
+  | EvHorzEmbeddedVert of length * length * evaled_vert_box list
 
 and evaled_horz_box =
   | EvHorz of length * evaled_horz_box_main
 
-type vert_box =
-  | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
-  | VertFixedBreakable of length
-
-let rec pp_list pp fmt = function
-| [] -> ()
-| v :: vs ->
-    pp fmt v; if vs <> [] then (Format.printf fmt "; "; pp_list pp fmt vs)
-
-type intermediate_vert_box =
+and intermediate_vert_box =
   | ImVertLine              of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
   | ImVertFixedBreakable    of length
@@ -219,15 +214,27 @@ type intermediate_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "Bottom")]
   | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
-[@@deriving show]
-(*
-let pp_intermediate_vert_box ppf x imvb =
-  Format.fprintf ppf "(imvb)"
-*)
-type evaled_vert_box =
+and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
 [@@deriving show]
+
+type vert_box =
+  | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
+  | VertFixedBreakable of length
+
+(*
+let rec pp_list pp fmt = function
+| [] -> ()
+| v :: vs ->
+    pp fmt v; if vs <> [] then (Format.printf fmt "; "; pp_list pp fmt vs)
+
+let pp_intermediate_vert_box ppf x imvb =
+  Format.fprintf ppf "(imvb)"
+
+let pp_horz_box ppf hb =
+  Format.pp_print_string ppf "(hb)"
+*)

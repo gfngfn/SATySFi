@@ -326,6 +326,7 @@ let make_environments () =
         ("set-text-color", ~% (clr @-> ctx @-> ctx)     , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"   , ~% (ln @-> ctx @-> ctx)      , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("embed"         , ~% (s @-> tr)                , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
+        ("pbox-top"      , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
 
         ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));

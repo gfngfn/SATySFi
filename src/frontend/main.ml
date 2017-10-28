@@ -108,8 +108,11 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
     let file_in = open_in file_name_in in
       begin
         Lexer.reset_to_vertexpr () ;
+        let () = PrintForDebug.mainE "END INITIALIZATION" in  (* for debug *)
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
+        let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
         let (ty, _, ast) = Typechecker.main tyenv utast in
+        let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(TextColType)) ->

@@ -134,7 +134,6 @@ let normalize imvblst =
 
 
 let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
-  let pbvblst = normalize imvblst in
   let rec aux pbvblst =
     pbvblst |> List.map (fun pbvb ->
       match pbvb with
@@ -147,16 +146,17 @@ let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
             EvVertFrame(pads, decoS, wid, evvblstsub)
     )
   in
+  let pbvblst = normalize imvblst in
     aux pbvblst
 
 
 let main (pdf : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
-  let () = List.iter (Format.printf "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
+  let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
   let rec aux pdf pbvblst =
     let (evvblstpage, restopt) = chop_single_page pbvblst in
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
-    let () = List.iter (Format.printf "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
+    let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
     let pdfnew = pdf |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in  (* temporary; size of paper should be variable *)
       match restopt with
       | None              -> pdfnew
