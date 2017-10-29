@@ -123,9 +123,50 @@ let-col-detailed ctx +px inner =
   let ctx-after = set-font Latin (font `ArnoIt` 12pt) ctx in
     (ctx-after, bc)
 
+let simple-decoset =
+  let margin-x = 2pt in
+  let margin-y = 2pt in
+  let gctx = default-graphics-context |> set-stroke-color (RGB(1., 0., 0.)) in
+  let decoS (x, y) wid hgt dpt =
+    let xb = x +' margin-x in
+    let widb = wid -' (margin-x *' 2.) in
+    let hgtb = hgt -' margin-y in
+    let dptb = dpt +' margin-y in
+      [ stroke gctx <[ (xb, y +' dptb) -- (xb, y +' hgtb)
+          -- (xb +' widb, y +' hgtb) -- (xb +' widb, y +' dptb) -- cycle ]>; ]
+  in
+  let decoH (x, y) wid hgt dpt =
+    let xb = x +' margin-x in
+    let widb = wid -' margin-x in
+    let hgtb = hgt -' margin-y in
+    let dptb = dpt +' margin-y in
+      [ stroke gctx <[ (xb +' widb, y +' dptb) -- (xb, y +' dptb)
+          -- (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>; ]
+  in
+  let decoT (x, y) wid hgt dpt =
+    let xb = x in
+    let widb = wid -' margin-x in
+    let hgtb = hgt -' margin-y in
+    let dptb = dpt +' margin-y in
+      [ stroke gctx <[ (xb, y +' dptb) -- (xb +' widb, y +' dptb)
+          -- (xb +' widb, y +' hgtb) -- (xb, y +' hgtb) ]>; ]
+  in
+  let decoM (x, y) wid hgt dpt =
+    let xb = x in
+    let widb = wid in
+    let hgtb = hgt -' margin-y in
+    let dptb = dpt +' margin-y in
+      [
+        stroke gctx <[ (xb, y +' dptb) -- (xb +' widb, y +' dptb) ]>;
+        stroke gctx <[ (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>;
+      ]
+  in
+    (decoS, decoH, decoM, decoT)
+
 let-row ctx \inline-frame inner =
+  let pads = (5pt, 5pt, 5pt, 5pt) in
   let br = lex-row ctx inner in
-    (outer-frame-inline br)
+    (outer-frame-inline pads simple-decoset br)
 
 let-col ctx +simple-replacement-test = lex-col ctx
   '< +p {Replaced text} >
@@ -169,3 +210,11 @@ let-col ctx +expand-leading inner =
 
 let-row ctx \parbox-top wid inner =
   pbox-top ctx wid (function ctx -> lex-col ctx inner)
+
+let-col ctx +repeat n inner =
+  let bc = lex-col ctx inner in
+  let repeat acc i =
+    if i >= n then acc else
+      repeat (bc +++ acc) (i + 1)
+  in
+    repeat col-nil 0

@@ -76,14 +76,30 @@ and interpret_point env astpt =
 and interpret_paddings env astpads =
   let valuepads = interpret env astpads in
   match valuepads with
-  | TupleCons(LengthConstant(lenL), TupleCons(LengthConstant(lenR), TupleCons(LengthConstant(lenT), TupleCons(LengthConstant(lenB), EndOfTuple)))) ->
+  | TupleCons(LengthConstant(lenL),
+      TupleCons(LengthConstant(lenR),
+        TupleCons(LengthConstant(lenT),
+          TupleCons(LengthConstant(lenB), EndOfTuple)))) ->
       {
         HorzBox.paddingL = lenL;
         HorzBox.paddingR = lenR;
         HorzBox.paddingT = lenT;
         HorzBox.paddingB = lenB;
       }
+
   | _ -> report_bug_evaluator ("interpret_paddings; " ^ (Display.string_of_ast valuepads))
+
+
+and interpret_decoset env astdecoset =
+  let valuedecoset = interpret env astdecoset in
+  match valuedecoset with
+  | TupleCons(valuedecoS,
+      TupleCons(valuedecoH,
+        TupleCons(valuedecoM,
+          TupleCons(valuedecoT, EndOfTuple)))) ->
+      (valuedecoS, valuedecoH, valuedecoM, valuedecoT)
+
+  | _ -> report_bug_evaluator ("interpret_decoset; " ^ (Display.string_of_ast valuedecoset))
 
 
 and interpret_path env pathcomplst cycleopt =
@@ -276,7 +292,7 @@ and interpret env ast =
           HorzBox.ImVertTopMargin(true, ctx.paragraph_top);
           HorzBox.ImVertFrame(pads,
                               Primitives.frame_deco_VS, Primitives.frame_deco_VH,
-                              Primitives.frame_deco_M, Primitives.frame_deco_VT, ctx.paragraph_width, imvblst);
+                              Primitives.frame_deco_VM, Primitives.frame_deco_VT, ctx.paragraph_width, imvblst);
           HorzBox.ImVertBottomMargin(true, ctx.paragraph_bottom);
         ])  (* temporary; frame decorations should be variable *)
 
@@ -384,19 +400,24 @@ and interpret env ast =
         Horz([HorzBox.HorzPure(HorzBox.PHFixedString(string_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
 *)
   | BackendOuterFrame(astpads, astdeco, astbr) ->
+      let pads = interpret_paddings env astpads in
       let hblst = interpret_horz_boxes env astbr in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
-          interpret_paddings env astpads,
+          pads,
           make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
           hblst))])
 
-  | BackendOuterFrameBreakable(astbr) ->
+  | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
       let hblst = interpret_horz_boxes env astbr in
+      let pads = interpret_paddings env astpads in
+      let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
-          Primitives.default_paddings, HorzBox.Length.zero, HorzBox.Length.zero,
-          Primitives.frame_deco_S, Primitives.frame_deco_H,
-          Primitives.frame_deco_M, Primitives.frame_deco_T,
+          pads, HorzBox.Length.zero, HorzBox.Length.zero,
+          make_frame_deco env valuedecoS,
+          make_frame_deco env valuedecoH,
+          make_frame_deco env valuedecoM,
+          make_frame_deco env valuedecoT,
           hblst
         )])
 

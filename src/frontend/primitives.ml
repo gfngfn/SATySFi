@@ -117,6 +117,7 @@ let default_graphics_context =
 
 let margin = pdfpt 2.
 
+(*
 let frame_deco_S =
   (fun (xpos, ypos) wid hgt dpt ->
     let xposb = xpos in
@@ -165,7 +166,7 @@ let frame_deco_T =
   (fun (xpos, ypos) wid hgt dpt ->
     let xposb = xpos in
     let hgtb = hgt -% margin in
-    let dptb = dpt +% margin in
+p    let dptb = dpt +% margin in
     let widb = wid in
       Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
         HorzBox.GeneralPath((xposb, ypos +% hgtb), [
@@ -175,6 +176,7 @@ let frame_deco_T =
         ], None);
       )
   )
+*)
 
 let frame_deco_VS =
   (fun (xpos, ypos) wid hgt dpt ->
@@ -215,6 +217,27 @@ let frame_deco_VT =
           HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
         ], None);
       )
+  )
+
+let frame_deco_VM =
+  (fun (xpos, ypos) wid hgt dpt ->
+    let xposb = xpos in
+    let hgtb = hgt in
+    let dptb = dpt in
+    let widb = wid in
+    List.append (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
+          HorzBox.LineTo(xposb, ypos +% dptb);
+        ], None);
+      )
+    ) (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+        HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
+          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
+        ], None);
+      )
+    )
   )
 
 let default_paddings =
@@ -260,6 +283,7 @@ let make_environments () =
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pads          = prod [ln; ln; ln; ln] in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
+  let decoset       = prod [deco; deco; deco; deco] in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -309,7 +333,7 @@ let make_environments () =
         ("outer-empty"   , ~% (ln @-> ln @-> ln @-> br) , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br), lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("outer-frame-inline", ~% (br @-> br)           , lambda1 (fun vbr -> BackendOuterFrameBreakable(vbr)));
+        ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br), lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
         ("font"          , ~% (s @-> ln @-> ft)         , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
         ("col-frame"     , ~% (ctx @-> (ctx @-> bc) @-> bc), lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
