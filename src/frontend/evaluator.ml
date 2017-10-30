@@ -373,6 +373,10 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context({ ctx with leading = len; })
 
+  | PrimitiveGetTextWidth(astctx) ->
+      let ctx = interpret_context env astctx in
+        LengthConstant(ctx.paragraph_width)
+
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
         InputHorzWithEnvironment([InputHorzText(str)], env)

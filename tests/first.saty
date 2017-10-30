@@ -112,7 +112,8 @@
       複数の文字体系間の共存（文字体系ごとのフォントの切り替え）は future work です
       （和欧間空白の挿入はひとまず実現したが，まだBASEテーブルによる高さの調整は行なっていない）。
       ←閉じ括弧と句点など行頭行末以外のベタ組みにも対応しました。
-      このほか\emph{和文はゴシック，欧文はItalicになる強調}などが可。
+      このほか\emph{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
+      \underline{行分割できる下線をつけたりすることもできます（途中で行分割可能なインラインボックスを使って実現しています）。}
     }
     +frame < +p {
       \expand-spaces {
@@ -148,8 +149,25 @@
     > >
     +p {
       Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
-      The baseline for a vertical box is set so that the first line of the contents is in the same height as the outer line.
+      The baseline for a vertical box is set
+      so that the first line of the contents is in the same height as the outer line.
+      The inline vertical box system enables us
+      to typeset what is called a description environment in LaTeX:
     }
+    +description [
+      ({Pangram 1}, {
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+      });
+      ({Pangram 2}, {
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+      });
+    ];
     +simple-replacement-test;
     +listing {
       * Tokyo

@@ -117,66 +117,6 @@ let default_graphics_context =
 
 let margin = pdfpt 2.
 
-(*
-let frame_deco_S =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt -% margin in
-    let dptb = dpt +% margin in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
-        HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
-      )
-  )
-
-let frame_deco_H =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt -% margin in
-    let dptb = dpt +% margin in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
-        HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb, ypos +% hgtb);
-          HorzBox.LineTo(xposb, ypos +% dptb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-        ], None);
-      )
-  )
-
-let frame_deco_M =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt -% margin in
-    let dptb = dpt +% margin in
-    let widb = wid in
-    List.append (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [HorzBox.LineTo(xposb +% widb, ypos +% hgtb)], None)
-      )
-    )
-    (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
-        HorzBox.GeneralPath((xposb, ypos +% dptb), [HorzBox.LineTo(xposb +% widb, ypos +% dptb)], None);
-      )
-    )
-  )
-
-let frame_deco_T =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt -% margin in
-p    let dptb = dpt +% margin in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-          HorzBox.LineTo(xposb, ypos +% dptb);
-        ], None);
-      )
-  )
-*)
 
 let frame_deco_VS =
   (fun (xpos, ypos) wid hgt dpt ->
@@ -349,6 +289,7 @@ let make_environments () =
         ("get-title"     , ~% (ctx @-> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("set-text-color", ~% (clr @-> ctx @-> ctx)     , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"   , ~% (ln @-> ctx @-> ctx)      , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
+        ("get-text-width", ~% (ctx @-> ln)              , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
         ("embed"         , ~% (s @-> tr)                , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("pbox-top"      , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
         ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));

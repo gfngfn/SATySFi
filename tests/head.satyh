@@ -218,3 +218,42 @@ let-col ctx +repeat n inner =
       repeat (bc +++ acc) (i + 1)
   in
     repeat col-nil 0
+
+let description ctx pairlst =
+  let indent = 24pt in
+  let bclst =
+    pairlst |> List.map (function pair -> (
+      match pair with
+      | (item, descr) ->
+          let br-item =
+            let ctx-item =
+              ctx |> set-font Latin (font `Hlv` 12pt)
+            in
+              lex-row ctx-item item
+          in
+          let br-descr = lex-row ctx descr in
+          let br-pbox =
+            pbox-top ctx ((get-text-width ctx) -' indent) (function ctx ->
+              form-paragraph ctx ((fixed-empty (0pt -' indent)) ++ br-item ++ (fixed-empty 12pt) ++ br-descr ++ outer-fil)
+            )
+          in
+            form-paragraph ctx ((fixed-empty indent) ++ br-pbox)
+    ))
+  in
+    col-nil +++> bclst
+
+let-col ctx +description pairlst =
+  description ctx pairlst
+
+let decoset-underline =
+  let distance = 4pt in
+  let gctx = default-graphics-context |> set-stroke-color (RGB(0., .5, 0.)) in
+  let deco (x, y) wid _ _ =
+    [ stroke gctx <[ (x, y -' distance) -- (x +' wid, y -' distance) ]>; ]
+  in
+    (deco, deco, deco, deco)
+
+let-row ctx \underline inner =
+  let pads = (0pt, 0pt, 0pt, 0pt) in
+  let br = lex-row ctx inner in
+    outer-frame-inline pads decoset-underline br

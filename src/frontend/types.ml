@@ -26,8 +26,8 @@ end = struct
   type t = int * type_name
     [@@deriving show]
   let current_id = ref 0
-  let initialize () = ( current_id := 0 )
-  let fresh tynm = begin incr current_id ; (!current_id, tynm) end
+  let initialize () = begin current_id := 0; end
+  let fresh tynm = begin incr current_id; (!current_id, tynm) end
   let extract_name (_, tynm) = tynm
   let equal (n1, _) (n2, _) = (n1 = n2)
   let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
@@ -40,8 +40,6 @@ module EvalVarID
     val initialize : unit -> unit
     val fresh : var_name -> t
     val equal : t -> t -> bool
-    val for_class_name : t
-    val for_id_name : t
     val show_direct : t -> string
   end
 = struct
@@ -50,21 +48,17 @@ module EvalVarID
     let initialize () = ( current_id := 0 )
     let fresh varnm = begin incr current_id ; (!current_id, varnm) end
     let equal (i1, _) (i2, _) = (i1 = i2)
-    let for_class_name = (-1, "*class-name*")
-    let for_id_name = (-2, "*id-name*")
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
   end
 
 
 type quantifiability = Quantifiable | Unquantifiable
-  [@@deriving show]
+[@@deriving show]
 
 module FreeID_
 : sig
-    type level
-      [@@deriving show]
-    type 'a t_
-      [@@deriving show]
+    type level  [@@deriving show]
+    type 'a t_  [@@deriving show]
     val bottom_level : level
     val succ_level : level -> level
     val less_than : level -> level -> bool
@@ -82,9 +76,10 @@ module FreeID_
   end
 = struct
     type level = int
-      [@@deriving show]
+    [@@deriving show]
+
     type 'a t_ = int * 'a * quantifiability * level
-      [@@deriving show]
+    [@@deriving show]
 
     let bottom_level = 0
 
@@ -131,8 +126,7 @@ module FreeID_
 
 module BoundID_
 : sig
-    type 'a t_
-      [@@deriving show]
+    type 'a t_  [@@deriving show]
     val initialize : unit -> unit
     val fresh : 'a -> unit -> 'a t_
     val eq : 'a t_ -> 'a t_ -> bool
@@ -141,15 +135,15 @@ module BoundID_
   end
 = struct
     type 'a t_ = int * 'a
-      [@@deriving show]
+    [@@deriving show]
 
     let current_id = ref 0
 
-    let initialize () = ( current_id := 0 )
+    let initialize () = begin current_id := 0; end
 
     let fresh kd () =
       begin
-        incr current_id ;
+        incr current_id;
         (!current_id, kd)
       end
 
@@ -245,16 +239,6 @@ module FontSchemeMap = Map.Make
     let compare = Pervasives.compare
   end)
 
-(*
-type id_name_arg =
-  | IDName   of id_name
-  | NoIDName
-
-type class_name_arg =
-  | ClassName   of class_name
-  | NoClassName
-*)
-
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons = untyped_pattern_tree list
 
@@ -291,9 +275,6 @@ and untyped_abstract_tree_main =
   | UTStringEmpty
   | UTStringConstant       of string
       [@printer (fun fmt s -> Format.fprintf fmt "\"%s\"" s)]
-(*
-  | UTBreakAndIndent
-*)
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
@@ -347,11 +328,6 @@ and untyped_abstract_tree_main =
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
-(* -- class and id option -- *)
-(*
-  | UTApplyClassAndID      of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTClassAndIDRegion     of untyped_abstract_tree
-*)
 
 and constraint_cons = (var_name * manual_kind) list
 
@@ -369,12 +345,6 @@ and untyped_itemize =
   | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
 
 and untyped_variant_cons = (Range.t * constructor_name * manual_type) list
-(*
-Range.t * untyped_variant_cons_main
-and untyped_variant_cons_main =
-  | UTVariantCons          of constructor_name * manual_type * untyped_variant_cons
-  | UTEndOfVariant
-*)
 
 and untyped_mutual_variant_cons =
   | UTMutualVariantCons    of untyped_type_argument_cons * Range.t * type_name * untyped_variant_cons * untyped_mutual_variant_cons
@@ -520,12 +490,6 @@ and abstract_tree =
   | DeclareGlobalHash     of abstract_tree * abstract_tree
   | OverwriteGlobalHash   of abstract_tree * abstract_tree
   | ReferenceFinal        of abstract_tree
-  | LazyContent           of abstract_tree
-  | LazyContentWithEnvironmentRef of abstract_tree * (environment ref)
-*)
-(* -- class and id option -- *)
-(*
-  | ApplyClassAndID       of EvalVarID.t * EvalVarID.t * abstract_tree * abstract_tree * abstract_tree
 *)
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
@@ -570,6 +534,7 @@ and abstract_tree =
   | PrimitiveGetTitle          of abstract_tree
   | PrimitiveSetTextColor      of abstract_tree * abstract_tree
   | PrimitiveSetLeading        of abstract_tree * abstract_tree
+  | PrimitiveGetTextWidth      of abstract_tree
   | PrimitiveEmbed             of abstract_tree
   | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
   | PrimitiveSetLineDash       of abstract_tree * abstract_tree
