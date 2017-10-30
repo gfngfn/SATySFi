@@ -224,6 +224,7 @@ let make_environments () =
   let pads          = prod [ln; ln; ln; ln] in
   let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
   let decoset       = prod [deco; deco; deco; deco] in
+  let igr           = (prod [ln; ln]) @-> (l gr) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -301,6 +302,7 @@ let make_environments () =
         ("set-fill-color", ~% (clr @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
         ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
+        ("inline-graphics", ~% (ln @-> ln @-> ln @-> igr @-> br), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
       ]
   in
   let temporary_ast = StringEmpty in

@@ -130,21 +130,32 @@ and interpret_path env pathcomplst cycleopt =
     (pathelemlst, closingopt)
 
 
+and graphics_of_list valueg =
+  let rec aux acc ast =
+    match ast with
+    | EndOfList                             -> List.rev acc
+    | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
+    | _                                     -> report_bug_evaluator ("make_frame_deco; "
+                                                                     ^ (Display.string_of_ast ast))
+  in
+    List.concat (aux [] valueg)
+
+
 and make_frame_deco env valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-    let astpos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-    let astwid = LengthConstant(wid) in
-    let asthgt = LengthConstant(hgt) in
-    let astdpt = LengthConstant(dpt) in
-    let astret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
-      let rec aux acc ast =
-        match ast with
-        | EndOfList                             -> List.rev acc
-        | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
-        | _                                     -> report_bug_evaluator ("make_frame_deco; "
-                                                                         ^ (Display.string_of_ast ast))
-      in
-        List.concat (aux [] astret)
+    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+    let valuewid = LengthConstant(wid) in
+    let valuehgt = LengthConstant(hgt) in
+    let valuedpt = LengthConstant(dpt) in
+    let valueret = reduce_beta_list env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
+      graphics_of_list valueret
+  )
+
+and make_inline_graphics env valueg =
+  (fun (xpos, ypos) ->
+    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+    let valueret = reduce_beta_list env valueg [valuepos] in
+      graphics_of_list valueret
   )
 
 
@@ -424,6 +435,14 @@ and interpret env ast =
           make_frame_deco env valuedecoT,
           hblst
         )])
+
+  | BackendInlineGraphics(astwid, asthgt, astdpt, astg) ->
+      let wid = interpret_length env astwid in
+      let hgt = interpret_length env asthgt in
+      let dpt = interpret_length env astdpt in
+      let valueg = interpret env astg in
+      let graphics = make_inline_graphics env valueg in
+        Horz([HorzBox.HorzPure(HorzBox.PHInlineGraphics(wid, hgt, dpt, graphics))])
 
 (* ---- list value ---- *)
 

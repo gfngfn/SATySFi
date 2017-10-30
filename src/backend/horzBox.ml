@@ -186,6 +186,7 @@ type pure_horz_box =
   | PHFixedFrame  of paddings * length * decoration * horz_box list
   | PHInnerFrame  of paddings * decoration * horz_box list
   | PHEmbeddedVert of length * length * length * evaled_vert_box list
+  | PHInlineGraphics of length * length * length * (point -> Pdfops.t list)
 (* -- core part of the definition of horizontal boxes -- *)
 
 and horz_box =
@@ -199,6 +200,7 @@ and evaled_horz_box_main =
   | EvHorzEmpty
   | EvHorzFrame  of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert of length * length * evaled_vert_box list
+  | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
 
 and evaled_horz_box =
   | EvHorz of length * evaled_horz_box_main

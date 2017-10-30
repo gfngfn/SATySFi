@@ -26,6 +26,7 @@ type lb_pure_box =
   | OuterFrame  of metrics * decoration * lb_pure_box list
   | FixedFrame  of length * length * length * decoration * lb_pure_box list
   | EmbeddedVert of length * length * length * evaled_vert_box list
+  | InlineGraphics of  length * length * length * (point -> Pdfops.t list)
 
 type lb_box =
   | LBPure           of lb_pure_box
@@ -47,6 +48,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | OuterFrame(metr, _, _)          -> metr
   | FixedFrame(wid, hgt, dpt, _, _) -> (natural wid, hgt, dpt)
   | EmbeddedVert(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
+  | InlineGraphics(wid, hgt, dpt, _) -> (natural wid, hgt, dpt)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -183,6 +185,9 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
   | PHEmbeddedVert(wid, hgt, dpt, evvblst) ->
       EmbeddedVert(wid, hgt, dpt, evvblst)
 
+  | PHInlineGraphics(wid, hgt, dpt, graphics) ->
+      InlineGraphics(wid, hgt, dpt, graphics)
+
 
 and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
   match phbopt with
@@ -302,6 +307,9 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
 
     | EmbeddedVert(wid, hgt, dpt, evvblst) ->
         EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst))
+
+    | InlineGraphics(wid, hgt, dpt, graphics) ->
+        EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics))
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 

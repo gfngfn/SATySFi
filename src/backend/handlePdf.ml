@@ -81,6 +81,11 @@ let rec ops_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
 
+    | EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics)) ->
+        let ops_graphics = graphics (xpos, yposbaseline) in
+        let opaccnew = List.rev_append ops_graphics opacc in
+        (xpos +% wid, opaccnew)
+
 
 and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
   evvblst @|> ((xinit, yinit), opaccinit) @|> List.fold_left (fun ((xpos, ypos), opacc) evvb ->
