@@ -220,16 +220,22 @@ let bullet (x, y) =
 let item : context -> int -> itemize -> box-col
   | ctx depth (Item(parent, children)) =
       let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (fixed-empty 8pt) in
-      let br-parent = lex-row ctx parent in
+      let bullet-width = get-natural-width br-bullet in
+      let parent-indent = item-indent *' (float depth) in
+      let br-parent =
+        pbox-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (function ctx ->
+          form-paragraph ctx ((lex-row ctx parent) ++ outer-fil)
+        )
+      in
       let bc-parent =
         form-paragraph ctx
-          ((fixed-empty (item-indent *' (float depth))) ++ br-bullet ++ br-parent ++ outer-fil)
+          ((fixed-empty parent-indent) ++ br-bullet ++ br-parent)
       in
       let bclst-children = List.map (item ctx (depth + 1)) children in
         bc-parent +++> bclst-children
 
 let-col ctx +listing (Item(_, itmzlst)) =
-  let bclst = List.map (item ctx 1) itmzlst in
+  let bclst = List.map (item ctx 0) itmzlst in
     col-nil +++> bclst
 
 let-col ctx +expand-leading inner =

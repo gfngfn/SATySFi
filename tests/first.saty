@@ -175,12 +175,16 @@
     +simple-replacement-test;
     +listing {
       * Tokyo
-        ** Hongo
-        ** Yayoi
-        ** Asano
-        ** Komaba
+        ** Hongo Campus:
+             the main area of the university.
+        ** Yayoi Campus
+        ** Asano Campus:
+             no person found, only computers left.
+        ** Komaba Campus:
+             having the College of Liberal Arts
+             and a kindergarten pretending to be a college of liberal arts.
       * Chiba
-        ** Kashiwa
+        ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
     +px {
       This paragraph makes all the paragraphs after this one typeset in an Italic font;
