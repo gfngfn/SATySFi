@@ -542,6 +542,7 @@ and abstract_tree =
   | PrimitiveSetFillColor      of abstract_tree * abstract_tree
   | PrimitiveDrawStroke        of abstract_tree * abstract_tree
   | PrimitiveDrawFill          of abstract_tree * abstract_tree
+  | PrimitiveGetNaturalWidth   of abstract_tree
   | BackendFont                of abstract_tree * abstract_tree
   | BackendLineBreaking        of abstract_tree * abstract_tree
 (*

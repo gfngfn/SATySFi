@@ -539,3 +539,12 @@ let main (margin_top : length) (margin_bottom : length) (paragraph_width : lengt
       | Some(path) ->
           break_into_lines margin_top margin_bottom paragraph_width leading_required path lhblst
   end
+
+
+let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * length =
+  let plhblst = convert_list_for_line_breaking_pure hblst in
+    get_total_metrics plhblst
+
+let get_natural_width (hblst : horz_box list) : length =
+  let (widinfo, _, _) = get_metrics_of_horz_box hblst in
+    widinfo.natural

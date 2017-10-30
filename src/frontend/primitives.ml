@@ -303,6 +303,7 @@ let make_environments () =
         ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
         ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
         ("inline-graphics", ~% (ln @-> ln @-> ln @-> igr @-> br), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
+        ("get-natural-width", ~% (br @-> ln)            , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
       ]
   in
   let temporary_ast = StringEmpty in

@@ -444,6 +444,11 @@ and interpret env ast =
       let graphics = make_inline_graphics env valueg in
         Horz([HorzBox.HorzPure(HorzBox.PHInlineGraphics(wid, hgt, dpt, graphics))])
 
+  | PrimitiveGetNaturalWidth(asthorz) ->
+      let hblst = interpret_horz_boxes env asthorz in
+      let wid = LineBreak.get_natural_width hblst in
+        LengthConstant(wid)
+
 (* ---- list value ---- *)
 
   | EndOfList -> ast
