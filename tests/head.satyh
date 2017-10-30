@@ -70,20 +70,28 @@ let indent = fixed-empty 24pt
 
 let indent-jp = fixed-empty 10pt
 
-let-mutable needs-indentation <- true
+let-mutable needs-indentation-ref <- true
 
 let-col ctx +p inner =
+  let needs-indentation =
+    if !needs-indentation-ref then
+      true
+    else
+      let () = needs-indentation-ref <- true in
+        false
+  in
+
   let br = lex-row ctx inner in
   let br-parag =
-    if !needs-indentation then
+    if needs-indentation then
       indent ++ br ++ outer-fil
     else
-      let () = needs-indentation <- true in
-        br ++ outer-fil
+      br ++ outer-fil
   in
     form-paragraph ctx br-parag
 
 let-col ctx +frame inner =
+  let () = needs-indentation-ref <- false in
     col-frame ctx (function ctx ->
       lex-col ctx inner)
 
@@ -93,7 +101,7 @@ let-col ctx +p-jp inner =
         |> set-font Kana (font `KozMin` 10pt)
         |> set-dominant-script HanIdeographic
   in
-  let () = needs-indentation <- true in
+  let () = needs-indentation-ref <- true in
   let br = lex-row ctx-jp inner in
     form-paragraph ctx (indent-jp ++ br ++ outer-fil)
 
@@ -106,7 +114,7 @@ let-col ctx +section title inner =
         |> set-font Kana (font `Osaka` 16pt)
   in
   let () = num-section <- !num-section + 1 in
-  let () = needs-indentation <- false in
+  let () = needs-indentation-ref <- false in
   let br-num = lex-row ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
   let br-title = lex-row ctx-title title in
   let bc-title = form-paragraph ctx (br-num ++ (fixed-empty 10pt) ++ br-title ++ (outer-fil)) in
@@ -190,9 +198,28 @@ let (+++>) = List.fold-left (+++)
 
 let item-indent = 16pt
 
+let bullet (x, y) =
+  let cx = x +' 4pt in
+  let cy = y +' 4pt in
+  let r = 2pt in
+  let t = r *' 0.5 in
+  [
+    fill default-graphics-context <[
+      (cx -' r, cy)
+      .. controls (cx -' r, cy +' t) and (cx -' t, cy +' r) ..
+      (cx, cy +' r)
+      .. controls (cx +' t, cy +' r) and (cx +' r, cy +' t) ..
+      (cx +' r, cy)
+      .. controls (cx +' r, cy -' t) and (cx +' t, cy -' r) ..
+      (cx, cy -' r)
+      .. controls (cx -' t, cy -' r) and (cx -' r, cy -' t) ..
+      cycle
+    ]>;
+  ]
+
 let item : context -> int -> itemize -> box-col
   | ctx depth (Item(parent, children)) =
-      let br-bullet = (lex-row ctx {\*}) ++ (fixed-empty 8pt) in
+      let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (fixed-empty 8pt) in
       let br-parent = lex-row ctx parent in
       let bc-parent =
         form-paragraph ctx
