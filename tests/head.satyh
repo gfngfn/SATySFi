@@ -39,7 +39,7 @@ let title-frame =
     let xL = x in
     let xR = x +' wid in
     let yT = y +' hgt in
-    let yB = y +' dpt in
+    let yB = y -' dpt in
     let path =
       <[ (xL, yT)
            -- (xR, yT)
@@ -131,33 +131,33 @@ let simple-decoset =
     let xb = x +' margin-x in
     let widb = wid -' (margin-x *' 2.) in
     let hgtb = hgt -' margin-y in
-    let dptb = dpt +' margin-y in
-      [ stroke gctx <[ (xb, y +' dptb) -- (xb, y +' hgtb)
-          -- (xb +' widb, y +' hgtb) -- (xb +' widb, y +' dptb) -- cycle ]>; ]
+    let dptb = dpt -' margin-y in
+      [ stroke gctx <[ (xb, y -' dptb) -- (xb, y +' hgtb)
+          -- (xb +' widb, y +' hgtb) -- (xb +' widb, y -' dptb) -- cycle ]>; ]
   in
   let decoH (x, y) wid hgt dpt =
     let xb = x +' margin-x in
     let widb = wid -' margin-x in
     let hgtb = hgt -' margin-y in
-    let dptb = dpt +' margin-y in
-      [ stroke gctx <[ (xb +' widb, y +' dptb) -- (xb, y +' dptb)
+    let dptb = dpt -' margin-y in
+      [ stroke gctx <[ (xb +' widb, y -' dptb) -- (xb, y -' dptb)
           -- (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>; ]
   in
   let decoT (x, y) wid hgt dpt =
     let xb = x in
     let widb = wid -' margin-x in
     let hgtb = hgt -' margin-y in
-    let dptb = dpt +' margin-y in
-      [ stroke gctx <[ (xb, y +' dptb) -- (xb +' widb, y +' dptb)
+    let dptb = dpt -' margin-y in
+      [ stroke gctx <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb)
           -- (xb +' widb, y +' hgtb) -- (xb, y +' hgtb) ]>; ]
   in
   let decoM (x, y) wid hgt dpt =
     let xb = x in
     let widb = wid in
     let hgtb = hgt -' margin-y in
-    let dptb = dpt +' margin-y in
+    let dptb = dpt -' margin-y in
       [
-        stroke gctx <[ (xb, y +' dptb) -- (xb +' widb, y +' dptb) ]>;
+        stroke gctx <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb) ]>;
         stroke gctx <[ (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>;
       ]
   in

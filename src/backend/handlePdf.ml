@@ -35,7 +35,8 @@ let rec ops_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
     | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
     | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
         let ops_background =
-          deco (xpos, yposbaseline) wid hgt_frame dpt_frame
+          deco (xpos, yposbaseline) wid hgt_frame (Length.negate dpt_frame)
+            (* -- depth values are nonnegative -- *)
         in
         let ops_foreground = [] in
         let opaccinit = List.rev_append ops_background opacc in
