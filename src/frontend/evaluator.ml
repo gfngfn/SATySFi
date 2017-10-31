@@ -226,17 +226,31 @@ and interpret env ast =
       let pt0 = interpret_point env astpt0 in
         PrePathValue(PrePath.start pt0)
 
-  | PrePathLineTo(astprepath, astpt1) ->
-      let prepath = interpret_prepath env astprepath in
+  | PrePathLineTo(astpt1, astprepath) ->
       let pt1 = interpret_point env astpt1 in
+      let prepath = interpret_prepath env astprepath in
         PrePathValue(prepath |> PrePath.line_to pt1)
 
-  | PrePathCubicBezierTo(astprepath, astptS, astptT, astpt1) ->
-      let prepath = interpret_prepath env astprepath in
+  | PrePathCubicBezierTo(astptS, astptT, astpt1, astprepath) ->
       let ptS = interpret_point env astptS in
       let ptT = interpret_point env astptT in
       let pt1 = interpret_point env astpt1 in
+      let prepath = interpret_prepath env astprepath in
         PrePathValue(prepath |> PrePath.bezier_to ptS ptT pt1)
+
+  | PrePathTerminate(astprepath) ->
+      let prepath = interpret_prepath env astprepath in
+        PathValue(prepath |> PrePath.terminate)
+
+  | PrePathCloseWithLine(astprepath) ->
+      let prepath = interpret_prepath env astprepath in
+        PathValue(prepath |> PrePath.close_with_line)
+
+  | PrePathCloseWithCubicBezier(astptS, astptT, astprepath) ->
+      let ptS = interpret_point env astptS in
+      let ptT = interpret_point env astptT in
+      let prepath = interpret_prepath env astprepath in
+        PathValue(prepath |> PrePath.close_with_bezier ptS ptT)
 
   | GraphicsContext(_) -> ast
 

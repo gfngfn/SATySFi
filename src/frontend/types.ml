@@ -560,6 +560,9 @@ and abstract_tree =
   | PrePathBeginning           of abstract_tree
   | PrePathLineTo              of abstract_tree * abstract_tree
   | PrePathCubicBezierTo       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrePathTerminate           of abstract_tree
+  | PrePathCloseWithLine       of abstract_tree
+  | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons

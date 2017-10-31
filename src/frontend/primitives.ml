@@ -217,14 +217,16 @@ let make_environments () =
   let ft            = (~! "font"    , BaseType(FontType)   ) in
   let ctx           = (~! "context" , BaseType(ContextType)) in
   let path          = (~! "path"    , BaseType(PathType)   ) in
+  let prp           = (~! "pre-path", BaseType(PrePathType)) in
   let scr           = (~! "script"  , VariantType([], tyid_script)) in
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pads          = prod [ln; ln; ln; ln] in
-  let deco          = (prod [ln; ln]) @-> ln @-> ln @-> ln @-> (l gr) in
+  let pt            = prod [ln; ln] in
+  let deco          = pt @-> ln @-> ln @-> ln @-> (l gr) in
   let decoset       = prod [deco; deco; deco; deco] in
-  let igr           = (prod [ln; ln]) @-> (l gr) in
+  let igr           = pt @-> (l gr) in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -304,6 +306,12 @@ let make_environments () =
         ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
         ("inline-graphics", ~% (ln @-> ln @-> ln @-> igr @-> br), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
         ("get-natural-width", ~% (br @-> ln)            , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
+        ("start-path"    , ~% (pt @-> prp)              , lambda1 (fun vpt -> PrePathBeginning(vpt)));
+        ("line-to"       , ~% (pt @-> prp @-> prp)      , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
+        ("bezier-to"     , ~% (pt @-> pt @-> pt @-> prp @-> prp), lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
+        ("terminate-path", ~% (prp @-> path)            , lambda1 (fun vprp -> PrePathTerminate(vprp)));
+        ("close-with-line", ~% (prp @-> path)           , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
+        ("close-with-bezier", ~% (pt @-> pt @-> prp @-> path), lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)))
       ]
   in
   let temporary_ast = StringEmpty in
