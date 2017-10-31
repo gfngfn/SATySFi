@@ -184,6 +184,7 @@ type base_type =
   | BoxColType
   | FontType
   | ContextType
+  | PrePathType
   | PathType
   | GraphicsContextType
   | GraphicsType
@@ -555,6 +556,10 @@ and abstract_tree =
   | BackendVertFrame           of abstract_tree * abstract_tree
   | BackendEmbeddedVert        of abstract_tree * abstract_tree * abstract_tree
   | BackendInlineGraphics      of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrePathValue               of PrePath.t
+  | PrePathBeginning           of abstract_tree
+  | PrePathLineTo              of abstract_tree * abstract_tree
+  | PrePathCubicBezierTo       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
@@ -779,6 +784,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(BoxColType)  -> "box-col" ^ qstn
     | BaseType(FontType)    -> "font" ^ qstn
     | BaseType(ContextType) -> "context" ^ qstn
+    | BaseType(PrePathType) -> "pre-path" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsContextType) -> "graphics-context" ^ qstn

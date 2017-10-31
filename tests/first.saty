@@ -172,7 +172,6 @@
         My quiz above the kiwi juice needs priceless fixing.
       });
     ];
-    +simple-replacement-test;
     +listing {
       * Tokyo
         ** Hongo Campus:
@@ -186,6 +185,7 @@
       * Chiba
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
+    +simple-replacement-test;
     +px {
       This paragraph makes all the paragraphs after this one typeset in an Italic font;
       it modifies the outer context.

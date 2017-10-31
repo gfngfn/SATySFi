@@ -73,6 +73,12 @@ and interpret_point env astpt =
     | _ -> report_bug_evaluator ("interpret_point; " ^ (Display.string_of_ast valuept))
 
 
+and interpret_prepath env astprepath =
+  let valueprepath = interpret env astprepath in
+    match valueprepath with
+    | PrePathValue(prepath) -> prepath
+    | _ -> report_bug_evaluator ("interpret_prepath; " ^ (Display.string_of_ast valueprepath))
+
 and interpret_paddings env astpads =
   let valuepads = interpret env astpads in
   match valuepads with
@@ -213,6 +219,24 @@ and interpret env ast =
         PathValue(HorzBox.GeneralPath(pt0, pathelemlst, closingopt))
 
   | PathValue(_) -> ast
+
+  | PrePathValue(_) -> ast
+
+  | PrePathBeginning(astpt0) ->
+      let pt0 = interpret_point env astpt0 in
+        PrePathValue(PrePath.start pt0)
+
+  | PrePathLineTo(astprepath, astpt1) ->
+      let prepath = interpret_prepath env astprepath in
+      let pt1 = interpret_point env astpt1 in
+        PrePathValue(prepath |> PrePath.line_to pt1)
+
+  | PrePathCubicBezierTo(astprepath, astptS, astptT, astpt1) ->
+      let prepath = interpret_prepath env astprepath in
+      let ptS = interpret_point env astptS in
+      let ptT = interpret_point env astptT in
+      let pt1 = interpret_point env astpt1 in
+        PrePathValue(prepath |> PrePath.bezier_to ptS ptT pt1)
 
   | GraphicsContext(_) -> ast
 

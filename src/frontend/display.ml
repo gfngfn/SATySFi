@@ -124,6 +124,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(BoxColType)  -> "box-col"
     | BaseType(FontType)    -> "font"
     | BaseType(ContextType) -> "context"
+    | BaseType(PrePathType) -> "pre-path"
     | BaseType(PathType)    -> "path"
     | BaseType(LengthType)  -> "length"
     | BaseType(GraphicsContextType) -> "graphics-context"
