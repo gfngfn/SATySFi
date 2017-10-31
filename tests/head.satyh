@@ -41,13 +41,18 @@ let title-frame =
     let yT = y +' hgt in
     let yB = y -' dpt in
     let path =
-      <[ (xL, yT)
-           -- (xR, yT)
-           .. controls (xR +' cx, yT -' cy) and (xR +' cx, yB +' cy)
-           .. (xR, yB)
-           -- (xL, yB)
-           .. controls (xL -' cx, yB +' cy) and (xL -' cx, yT -' cy)
-           .. cycle ]>
+%      <[ (xL, yT)
+%           -- (xR, yT)
+%           .. controls (xR +' cx, yT -' cy) and (xR +' cx, yB +' cy)
+%           .. (xR, yB)
+%           -- (xL, yB)
+%           .. controls (xL -' cx, yB +' cy) and (xL -' cx, yT -' cy)
+%           .. cycle ]>
+      start-path (xL, yT)
+        |> line-to (xR, yT)
+        |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+        |> line-to (xL, yB)
+        |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
     in
       [
         fill gctx-title-frame path;
