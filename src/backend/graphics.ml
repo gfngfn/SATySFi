@@ -89,8 +89,8 @@ let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =
   pathlst |> List.map pdfops_of_path |> List.concat
 
 
-let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path : path) : Pdfops.t list =
-  let ops_path = pdfops_of_path path in
+let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (pathlst : path list) : Pdfops.t list =
+  let ops_path = pdfops_of_path_list pathlst in
   let op_stroke_color =
     match gstate.stroke_color with
     | DeviceRGB(r, g, b)     -> op_RG (r, g, b)

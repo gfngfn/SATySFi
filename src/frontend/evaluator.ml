@@ -216,10 +216,15 @@ and interpret env ast =
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
-        PathValue(HorzBox.GeneralPath(pt0, pathelemlst, closingopt))
+        PathValue([HorzBox.GeneralPath(pt0, pathelemlst, closingopt)])
 
   | PathValue(_) -> ast
 
+  | PathJoin(astpath1, astpath2) ->
+      let pathlst1 = interpret_path_value env astpath1 in
+      let pathlst2 = interpret_path_value env astpath2 in
+        PathValue(List.append pathlst1 pathlst2)
+      
   | PrePathValue(_) -> ast
 
   | PrePathBeginning(astpt0) ->
@@ -240,17 +245,17 @@ and interpret env ast =
 
   | PrePathTerminate(astprepath) ->
       let prepath = interpret_prepath env astprepath in
-        PathValue(prepath |> PrePath.terminate)
+        PathValue([prepath |> PrePath.terminate])
 
   | PrePathCloseWithLine(astprepath) ->
       let prepath = interpret_prepath env astprepath in
-        PathValue(prepath |> PrePath.close_with_line)
+        PathValue([prepath |> PrePath.close_with_line])
 
   | PrePathCloseWithCubicBezier(astptS, astptT, astprepath) ->
       let ptS = interpret_point env astptS in
       let ptT = interpret_point env astptT in
       let prepath = interpret_prepath env astprepath in
-        PathValue(prepath |> PrePath.close_with_bezier ptS ptT)
+        PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
 
   | GraphicsContext(_) -> ast
 
@@ -744,14 +749,14 @@ and interpret env ast =
 
   | PrimitiveDrawStroke(astgctx, astpath) ->
       let gctx = interpret_graphics_context env astgctx in
-      let path = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawStroke path in
+      let pathlst = interpret_path_value env astpath in
+      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawStroke pathlst in
         GraphicsValue(pdfops)
 
   | PrimitiveDrawFill(astgctx, astpath) ->
       let gctx = interpret_graphics_context env astgctx in
-      let path = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawFillByEvenOdd path in
+      let pathlst = interpret_path_value env astpath in
+      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawFillByEvenOdd pathlst in
         GraphicsValue(pdfops)
 
   | PrimitiveSetStrokeColor(astcol, astgctx) ->
@@ -945,13 +950,13 @@ and interpret_string (env : environment) (ast : abstract_tree) : string =
                                                  ^ " ->* " ^ (Display.string_of_ast vs))
 
 
-and interpret_path_value env ast : HorzBox.path =
+and interpret_path_value env ast : HorzBox.path list =
   let value = interpret env ast in
     match value with
-    | PathValue(path) -> path
-    | _               -> report_bug_evaluator ("interpret_path_value: not a PathValue; "
-                                               ^ (Display.string_of_ast ast)
-                                               ^ " ->* " ^ (Display.string_of_ast value))
+    | PathValue(pathlst) -> pathlst
+    | _                  -> report_bug_evaluator ("interpret_path_value: not a PathValue; "
+                                                  ^ (Display.string_of_ast ast)
+                                                  ^ " ->* " ^ (Display.string_of_ast value))
 
 
 and interpret_context (env : environment) (ast : abstract_tree) : input_context =

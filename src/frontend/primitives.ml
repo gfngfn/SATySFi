@@ -124,9 +124,9 @@ let frame_deco_VS =
     let hgtb = hgt in
     let dptb = dpt in
     let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
         HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
-      )
+      ]
   )
 
 let frame_deco_VH =
@@ -135,13 +135,13 @@ let frame_deco_VH =
     let hgtb = hgt in
     let dptb = dpt in
     let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
         HorzBox.GeneralPath((xposb, ypos +% dptb), [
           HorzBox.LineTo(xposb, ypos +% hgtb);
           HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
           HorzBox.LineTo(xposb +% widb, ypos +% dptb);
         ], None);
-      )
+      ]
   )
 
 let frame_deco_VT =
@@ -150,13 +150,13 @@ let frame_deco_VT =
     let hgtb = hgt in
     let dptb = dpt in
     let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
         HorzBox.GeneralPath((xposb, ypos +% hgtb), [
           HorzBox.LineTo(xposb, ypos +% dptb);
           HorzBox.LineTo(xposb +% widb, ypos +% dptb);
           HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
         ], None);
-      )
+      ]
   )
 
 let frame_deco_VM =
@@ -166,17 +166,17 @@ let frame_deco_VM =
     let dptb = dpt in
     let widb = wid in
     List.append (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
         HorzBox.GeneralPath((xposb, ypos +% hgtb), [
           HorzBox.LineTo(xposb, ypos +% dptb);
         ], None);
-      )
+      ]
     ) (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke (
+      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
         HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
           HorzBox.LineTo(xposb +% widb, ypos +% dptb);
         ], None);
-      )
+      ]
     )
   )
 
@@ -308,7 +308,8 @@ let make_environments () =
         ("bezier-to"               , ~% (pt @-> pt @-> pt @-> prp @-> prp)          , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
         ("terminate-path"          , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathTerminate(vprp)));
         ("close-with-line"         , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
-        ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)))
+        ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
+        ("join-path"               , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathJoin(vpath1, vpath2)));
       ]
   in
   let temporary_ast = StringEmpty in

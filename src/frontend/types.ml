@@ -451,9 +451,23 @@ and abstract_tree =
   | InputVertWithEnvironment of input_vert_element list * environment
 (* -- graphics -- *)
   | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
-  | PathValue             of HorzBox.path
+  | PathValue             of HorzBox.path list
+  | PathJoin              of abstract_tree * abstract_tree
   | GraphicsContext       of HorzBox.graphics_state
   | GraphicsValue         of Pdfops.t list
+  | PrePathValue                of PrePath.t
+  | PrePathBeginning            of abstract_tree
+  | PrePathLineTo               of abstract_tree * abstract_tree
+  | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrePathTerminate            of abstract_tree
+  | PrePathCloseWithLine        of abstract_tree
+  | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveSetLineWidth       of abstract_tree * abstract_tree
+  | PrimitiveSetLineDash        of abstract_tree * abstract_tree
+  | PrimitiveSetStrokeColor     of abstract_tree * abstract_tree
+  | PrimitiveSetFillColor       of abstract_tree * abstract_tree
+  | PrimitiveDrawStroke         of abstract_tree * abstract_tree
+  | PrimitiveDrawFill           of abstract_tree * abstract_tree
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
@@ -537,12 +551,6 @@ and abstract_tree =
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
   | PrimitiveEmbed              of abstract_tree
-  | PrimitiveSetLineWidth       of abstract_tree * abstract_tree
-  | PrimitiveSetLineDash        of abstract_tree * abstract_tree
-  | PrimitiveSetStrokeColor     of abstract_tree * abstract_tree
-  | PrimitiveSetFillColor       of abstract_tree * abstract_tree
-  | PrimitiveDrawStroke         of abstract_tree * abstract_tree
-  | PrimitiveDrawFill           of abstract_tree * abstract_tree
   | PrimitiveGetNaturalWidth    of abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree
@@ -556,13 +564,6 @@ and abstract_tree =
   | BackendVertFrame            of abstract_tree * abstract_tree
   | BackendEmbeddedVert         of abstract_tree * abstract_tree * abstract_tree
   | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrePathValue                of PrePath.t
-  | PrePathBeginning            of abstract_tree
-  | PrePathLineTo               of abstract_tree * abstract_tree
-  | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrePathTerminate            of abstract_tree
-  | PrePathCloseWithLine        of abstract_tree
-  | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
