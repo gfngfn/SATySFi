@@ -292,6 +292,9 @@ let-row ctx \underline inner =
   let br = lex-row ctx inner in
     outer-frame-inline pads decoset-underline br
 
+let donut-path (cx, cy) r1 r2 =
+  join-path (circle (cx, cy) r1) (circle (cx, cy) r2)
+
 let-row ctx \donut =
   let gctx = default-graphics-context |> set-fill-color (RGB(0.8, 0.5, 0.)) in
   let wid = 14pt in
@@ -301,5 +304,19 @@ let-row ctx \donut =
     inline-graphics wid 12pt 0pt (function (x, y) -> (
       let cx = x +' wid *' 0.5 in
       let cy = y +' chgt in
-        [ fill gctx (join-path (circle (cx, cy) r1) (circle (cx, cy) r2)); ]
+        [ fill gctx (donut-path (cx, cy) r1 r2); ]
+    ))
+
+let-row ctx \donuts =
+  let gctx1 = default-graphics-context |> set-fill-color (RGB(0.8, 0.5, 0.)) in
+  let gctx2 = default-graphics-context |> set-fill-color (RGB(0.7, 0.4, 0.)) in
+  let r1 = 6pt in
+  let r2 = 3pt in
+    inline-graphics 18pt 12pt 0pt (function (x, y) -> (
+      let cp1 = (x +' 7pt, y +' 4pt) in
+      let cp2 = (x +' 11pt, y +' 1pt) in
+        [
+          fill gctx2 (donut-path cp2 r1 r2);
+          fill gctx1 (donut-path cp1 r1 r2);
+        ]
     ))
