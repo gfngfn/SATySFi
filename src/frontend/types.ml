@@ -188,7 +188,7 @@ type base_type =
   | PathType
   | GraphicsContextType
   | GraphicsType
-  [@@deriving show]
+[@@deriving show]
 
 
 type mono_type = Range.t * mono_type_main
@@ -517,51 +517,51 @@ and abstract_tree =
   | LengthMinus           of abstract_tree * abstract_tree
   | LengthTimes           of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
-  | LambdaHorz                 of EvalVarID.t * abstract_tree
-  | LambdaHorzWithEnvironment  of EvalVarID.t * abstract_tree * environment
-  | LambdaVert                 of EvalVarID.t * abstract_tree
-  | LambdaVertWithEnvironment  of EvalVarID.t * abstract_tree * environment
-  | LambdaVertDetailed         of EvalVarID.t * abstract_tree
-  | LambdaVertDetailedWithEnv  of EvalVarID.t * abstract_tree * environment
-  | FontDesignation            of HorzBox.font_info
-  | Context                    of input_context
-  | HorzLex                    of abstract_tree * abstract_tree
-  | VertLex                    of abstract_tree * abstract_tree
-  | PrimitiveSetSpaceRatio     of abstract_tree * abstract_tree
-  | PrimitiveSetFont           of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveGetFont           of abstract_tree * abstract_tree
-  | PrimitiveSetDominantScript of abstract_tree * abstract_tree
-  | PrimitiveSetTitle          of abstract_tree * abstract_tree
-  | PrimitiveGetTitle          of abstract_tree
-  | PrimitiveSetTextColor      of abstract_tree * abstract_tree
-  | PrimitiveSetLeading        of abstract_tree * abstract_tree
-  | PrimitiveGetTextWidth      of abstract_tree
-  | PrimitiveEmbed             of abstract_tree
-  | PrimitiveSetLineWidth      of abstract_tree * abstract_tree
-  | PrimitiveSetLineDash       of abstract_tree * abstract_tree
-  | PrimitiveSetStrokeColor    of abstract_tree * abstract_tree
-  | PrimitiveSetFillColor      of abstract_tree * abstract_tree
-  | PrimitiveDrawStroke        of abstract_tree * abstract_tree
-  | PrimitiveDrawFill          of abstract_tree * abstract_tree
-  | PrimitiveGetNaturalWidth   of abstract_tree
-  | BackendFont                of abstract_tree * abstract_tree
-  | BackendLineBreaking        of abstract_tree * abstract_tree
+  | LambdaHorz                  of EvalVarID.t * abstract_tree
+  | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
+  | LambdaVert                  of EvalVarID.t * abstract_tree
+  | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
+  | LambdaVertDetailed          of EvalVarID.t * abstract_tree
+  | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
+  | FontDesignation             of HorzBox.font_info
+  | Context                     of input_context
+  | HorzLex                     of abstract_tree * abstract_tree
+  | VertLex                     of abstract_tree * abstract_tree
+  | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
+  | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetFont            of abstract_tree * abstract_tree
+  | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
+  | PrimitiveSetTitle           of abstract_tree * abstract_tree
+  | PrimitiveGetTitle           of abstract_tree
+  | PrimitiveSetTextColor       of abstract_tree * abstract_tree
+  | PrimitiveSetLeading         of abstract_tree * abstract_tree
+  | PrimitiveGetTextWidth       of abstract_tree
+  | PrimitiveEmbed              of abstract_tree
+  | PrimitiveSetLineWidth       of abstract_tree * abstract_tree
+  | PrimitiveSetLineDash        of abstract_tree * abstract_tree
+  | PrimitiveSetStrokeColor     of abstract_tree * abstract_tree
+  | PrimitiveSetFillColor       of abstract_tree * abstract_tree
+  | PrimitiveDrawStroke         of abstract_tree * abstract_tree
+  | PrimitiveDrawFill           of abstract_tree * abstract_tree
+  | PrimitiveGetNaturalWidth    of abstract_tree
+  | BackendFont                 of abstract_tree * abstract_tree
+  | BackendLineBreaking         of abstract_tree * abstract_tree
 (*
   | BackendFixedString         of abstract_tree * abstract_tree
 *)
-  | BackendFixedEmpty          of abstract_tree
-  | BackendOuterEmpty          of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrame          of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrameBreakable of abstract_tree * abstract_tree * abstract_tree
-  | BackendVertFrame           of abstract_tree * abstract_tree
-  | BackendEmbeddedVert        of abstract_tree * abstract_tree * abstract_tree
-  | BackendInlineGraphics      of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrePathValue               of PrePath.t
-  | PrePathBeginning           of abstract_tree
-  | PrePathLineTo              of abstract_tree * abstract_tree
-  | PrePathCubicBezierTo       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrePathTerminate           of abstract_tree
-  | PrePathCloseWithLine       of abstract_tree
+  | BackendFixedEmpty           of abstract_tree
+  | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
+  | BackendVertFrame            of abstract_tree * abstract_tree
+  | BackendEmbeddedVert         of abstract_tree * abstract_tree * abstract_tree
+  | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrePathValue                of PrePath.t
+  | PrePathBeginning            of abstract_tree
+  | PrePathLineTo               of abstract_tree * abstract_tree
+  | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrePathTerminate            of abstract_tree
+  | PrePathCloseWithLine        of abstract_tree
   | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =

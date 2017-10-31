@@ -268,50 +268,47 @@ let make_environments () =
         ( "arabic"       , ~% (i @-> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (i @-> fl)                , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("form-paragraph", ~% (ctx @-> br @-> bc)       , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
-        ("fixed-empty"   , ~% (ln @-> br)               , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-(*
-        ("fixed-string"  , ~% (ft @-> tr @-> br)        , lambda2 (fun vfont vwid -> BackendFixedString(vfont, vwid))   );
-*)
-        ("outer-empty"   , ~% (ln @-> ln @-> ln @-> br) , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("outer-fil"     , ~% br                        , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
-        ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br), lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br), lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-        ("font"          , ~% (s @-> ln @-> ft)         , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
-        ("col-nil"       , ~% bc                        , (fun _ -> Vert([])));
-        ("col-frame"     , ~% (ctx @-> (ctx @-> bc) @-> bc), lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
+        ("form-paragraph"    , ~% (ctx @-> br @-> bc)                 , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
+        ("fixed-empty"       , ~% (ln @-> br)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("outer-empty"       , ~% (ln @-> ln @-> ln @-> br)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("outer-fil"         , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
+        ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+        ("font"              , ~% (s @-> ln @-> ft)                   , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("col-nil"           , ~% bc                                  , (fun _ -> Vert([])));
+        ("col-frame"         , ~% (ctx @-> (ctx @-> bc) @-> bc)       , lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
+        ("pbox-top"          , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
 
-        ("lex-row"       , ~% (ctx @-> tr @-> br)       , lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
-        ("lex-col"       , ~% (ctx @-> tc @-> bc)       , lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
+        ("lex-row", ~% (ctx @-> tr @-> br), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
+        ("lex-col", ~% (ctx @-> tc @-> bc), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("set-space-ratio", ~% (fl @-> ctx @-> ctx)     , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
-        ("set-font"      , ~% (scr @-> ft @-> ctx @-> ctx), lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
-        ("get-font"      , ~% (scr @-> ctx @-> ft)      , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
-        ("set-dominant-script", ~% (scr @-> ctx @-> ctx), lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
-        ("set-title"     , ~% (tr @-> ctx @-> ctx)      , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
-        ("get-title"     , ~% (ctx @-> tr)              , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
-        ("set-text-color", ~% (clr @-> ctx @-> ctx)     , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
-        ("set-leading"   , ~% (ln @-> ctx @-> ctx)      , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
-        ("get-text-width", ~% (ctx @-> ln)              , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
-        ("embed"         , ~% (s @-> tr)                , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
-        ("pbox-top"      , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
-        ("default-context", ~% ctx                      , (fun _ -> Context(default_context)));
+        ("default-context"    , ~% ctx                                 , (fun _ -> Context(default_context)));
+        ("set-space-ratio"    , ~% (fl @-> ctx @-> ctx)                , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
+        ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
+        ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
+        ("set-title"          , ~% (tr @-> ctx @-> ctx)                , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
+        ("get-title"          , ~% (ctx @-> tr)                        , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
+        ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
+        ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
+        ("get-text-width"     , ~% (ctx @-> ln)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
+        ("embed"              , ~% (s @-> tr)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
+        ("inline-graphics"    , ~% (ln @-> ln @-> ln @-> igr @-> br)   , lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
+        ("get-natural-width"  , ~% (br @-> ln)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
 
-        ("default-graphics-context", ~% gctx            , (fun _ -> GraphicsContext(default_graphics_context)));
-        ("set-line-width", ~% (ln @-> gctx @-> gctx)    , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
-        ("set-line-dash" , ~% (opt (prod [ln; ln; ln])  @-> gctx @-> gctx), lambda2 (fun vlensopt vgctx -> PrimitiveSetLineDash(vlensopt, vgctx)));
-        ("set-stroke-color", ~% (clr @-> gctx @-> gctx) , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
-        ("set-fill-color", ~% (clr @-> gctx @-> gctx)   , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
-        ("stroke"        , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
-        ("fill"          , ~% (gctx @-> path @-> gr)    , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
-        ("inline-graphics", ~% (ln @-> ln @-> ln @-> igr @-> br), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
-        ("get-natural-width", ~% (br @-> ln)            , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
-        ("start-path"    , ~% (pt @-> prp)              , lambda1 (fun vpt -> PrePathBeginning(vpt)));
-        ("line-to"       , ~% (pt @-> prp @-> prp)      , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
-        ("bezier-to"     , ~% (pt @-> pt @-> pt @-> prp @-> prp), lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
-        ("terminate-path", ~% (prp @-> path)            , lambda1 (fun vprp -> PrePathTerminate(vprp)));
-        ("close-with-line", ~% (prp @-> path)           , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
-        ("close-with-bezier", ~% (pt @-> pt @-> prp @-> path), lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)))
+        ("default-graphics-context", ~% gctx                                        , (fun _ -> GraphicsContext(default_graphics_context)));
+        ("set-line-width"          , ~% (ln @-> gctx @-> gctx)                      , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
+        ("set-line-dash"           , ~% (opt (prod [ln; ln; ln])  @-> gctx @-> gctx), lambda2 (fun vlensopt vgctx -> PrimitiveSetLineDash(vlensopt, vgctx)));
+        ("set-stroke-color"        , ~% (clr @-> gctx @-> gctx)                     , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
+        ("set-fill-color"          , ~% (clr @-> gctx @-> gctx)                     , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
+        ("stroke"                  , ~% (gctx @-> path @-> gr)                      , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
+        ("fill"                    , ~% (gctx @-> path @-> gr)                      , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
+        ("start-path"              , ~% (pt @-> prp)                                , lambda1 (fun vpt -> PrePathBeginning(vpt)));
+        ("line-to"                 , ~% (pt @-> prp @-> prp)                        , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
+        ("bezier-to"               , ~% (pt @-> pt @-> pt @-> prp @-> prp)          , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
+        ("terminate-path"          , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathTerminate(vprp)));
+        ("close-with-line"         , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
+        ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)))
       ]
   in
   let temporary_ast = StringEmpty in
