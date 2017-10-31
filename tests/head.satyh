@@ -203,24 +203,20 @@ let (+++>) = List.fold-left (+++)
 
 let item-indent = 16pt
 
+let circle (cx, cy) r =
+  let t = r *' 0.55228 in
+    start-path (cx -' r, cy)
+      |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+      |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+      |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+      |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+
 let bullet (x, y) =
+  let gctx = default-graphics-context in
   let cx = x +' 4pt in
   let cy = y +' 4pt in
   let r = 2pt in
-  let t = r *' 0.5 in
-  [
-    fill default-graphics-context <[
-      (cx -' r, cy)
-      .. controls (cx -' r, cy +' t) and (cx -' t, cy +' r) ..
-      (cx, cy +' r)
-      .. controls (cx +' t, cy +' r) and (cx +' r, cy +' t) ..
-      (cx +' r, cy)
-      .. controls (cx +' r, cy -' t) and (cx +' t, cy -' r) ..
-      (cx, cy -' r)
-      .. controls (cx -' t, cy -' r) and (cx -' r, cy -' t) ..
-      cycle
-    ]>;
-  ]
+    [ fill gctx (circle (cx, cy) r); ]
 
 let item : context -> int -> itemize -> box-col
   | ctx depth (Item(parent, children)) =
@@ -295,3 +291,15 @@ let-row ctx \underline inner =
   let pads = (0pt, 0pt, 0pt, 0pt) in
   let br = lex-row ctx inner in
     outer-frame-inline pads decoset-underline br
+
+let-row ctx \donut =
+  let gctx = default-graphics-context |> set-fill-color (RGB(0.8, 0.5, 0.)) in
+  let wid = 14pt in
+  let chgt = 4pt in
+  let r1 = 6pt in
+  let r2 = 3pt in
+    inline-graphics wid 12pt 0pt (function (x, y) -> (
+      let cx = x +' wid *' 0.5 in
+      let cy = y +' chgt in
+        [ fill gctx (join-path (circle (cx, cy) r1) (circle (cx, cy) r2)); ]
+    ))
