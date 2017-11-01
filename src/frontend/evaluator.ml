@@ -220,7 +220,7 @@ and interpret env ast =
 
   | PathValue(_) -> ast
 
-  | PathJoin(astpath1, astpath2) ->
+  | PathUnite(astpath1, astpath2) ->
       let pathlst1 = interpret_path_value env astpath1 in
       let pathlst2 = interpret_path_value env astpath2 in
         PathValue(List.append pathlst1 pathlst2)

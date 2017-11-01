@@ -454,7 +454,7 @@ and abstract_tree =
 (* -- graphics -- *)
   | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue             of HorzBox.path list
-  | PathJoin              of abstract_tree * abstract_tree
+  | PathUnite             of abstract_tree * abstract_tree
 (*
   | GraphicsContext       of HorzBox.graphics_state
 *)

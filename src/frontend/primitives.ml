@@ -207,7 +207,9 @@ let make_environments () =
   let l ty          = (~! "list"    , ListType(ty)       ) in
   let r ty          = (~! "ref"     , RefType(ty)        ) in
   let prod tylst    = (~! "product" , ProductType(tylst)   ) in
+(*
   let opt ty        = (~! "option"  , VariantType([ty], tyid_option)) in
+*)
   let (@->) dom cod = (~! "func"    , FuncType(dom, cod)   ) in
 
   let tr            = (~! "text-row", BaseType(TextRowType)) in
@@ -312,7 +314,7 @@ let make_environments () =
         ("terminate-path"          , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathTerminate(vprp)));
         ("close-with-line"         , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
-        ("join-path"               , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathJoin(vpath1, vpath2)));
+        ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
       ]
   in
   let temporary_ast = StringEmpty in
