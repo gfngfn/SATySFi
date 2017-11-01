@@ -761,6 +761,20 @@ and interpret env ast =
       let pathlst = interpret_path_value env astpath in
       let pdfops = Graphics.pdfops_of_fill color pathlst in
         GraphicsValue(pdfops)
+
+  | PrimitiveDrawDashedStroke(astwid, astdash, astcolor, astpath) ->
+      let wid = interpret_length env astwid in
+      let (len1, len2, len3) =
+        astdash |> interpret_tuple3 env (fun value ->
+          match value with
+          | LengthConstant(len) -> len
+          | _ -> report_bug_evaluator ("PrimitiveDrawDashedStroke; " ^ (Display.string_of_ast value))
+        )
+      in
+      let color = interpret_color env astcolor in
+      let pathlst = interpret_path_value env astpath in
+      let pdfops = Graphics.pdfops_of_dashed_stroke wid (len1, len2, len3) color pathlst in
+        GraphicsValue(pdfops)
 (*
   | PrimitiveSetStrokeColor(astcol, astgctx) ->
       let color = interpret_color env astcol in
@@ -979,6 +993,17 @@ and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzB
                                                      ^ (Display.string_of_ast ast)
                                                      ^ " ->* " ^ (Display.string_of_ast value))
 *)
+
+and interpret_tuple3 env getf ast =
+  let value = interpret env ast in
+    match value with
+    | TupleCons(v1, TupleCons(v2, TupleCons(v3, EndOfTuple))) ->
+        let c1 = getf v1 in
+        let c2 = getf v2 in
+        let c3 = getf v3 in
+          (c1, c2, c3)
+    | _ -> report_bug_evaluator ("interpret_tuple3; " ^ (Display.string_of_ast value))
+        
 
 and interpret_color env ast : HorzBox.color =
   let value = interpret env ast in

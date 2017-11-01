@@ -57,7 +57,7 @@ let title-frame =
     in
       [
         fill (rgb 1. 0.75 0.75) path;
-        stroke 5pt red path;
+        dashed-stroke 5pt (25pt, 3pt, 5pt) red path;
       ]
   in
     outer-frame-block pads deco

@@ -228,6 +228,7 @@ let make_environments () =
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pads          = prod [ln; ln; ln; ln] in
   let pt            = prod [ln; ln] in
+  let dash          = prod [ln; ln; ln] in
   let deco          = pt @-> ln @-> ln @-> ln @-> (l gr) in
   let decoset       = prod [deco; deco; deco; deco] in
   let igr           = pt @-> (l gr) in
@@ -307,6 +308,7 @@ let make_environments () =
         ("set-fill-color"          , ~% (clr @-> gctx @-> gctx)                     , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
 *)
         ("stroke"                  , ~% (ln @-> clr @-> path @-> gr)                , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
+        ("dashed-stroke"           , ~% (ln @-> dash @-> clr @-> path @-> gr)       , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
         ("fill"                    , ~% (clr @-> path @-> gr)                       , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
         ("start-path"              , ~% (pt @-> prp)                                , lambda1 (fun vpt -> PrePathBeginning(vpt)));
         ("line-to"                 , ~% (pt @-> prp @-> prp)                        , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));

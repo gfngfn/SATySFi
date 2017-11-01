@@ -28,4 +28,7 @@ val pdfops_of_graphics : graphics_state -> graphics_command -> path list -> Pdfo
 
 val pdfops_of_stroke : length -> color -> path list -> Pdfops.t list
 
+val pdfops_of_dashed_stroke : length -> length * length * length -> color -> path list -> Pdfops.t list
+
 val pdfops_of_fill : color -> path list -> Pdfops.t list
+

@@ -473,6 +473,7 @@ and abstract_tree =
   | PrimitiveSetFillColor       of abstract_tree * abstract_tree
 *)
   | PrimitiveDrawStroke         of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveDrawDashedStroke   of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawFill           of abstract_tree * abstract_tree
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
