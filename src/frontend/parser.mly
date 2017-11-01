@@ -681,6 +681,7 @@ argvar: /* -> argument_variable_cons */
 ;
 nxlor:
   | nxlor BINOP_BAR nxland { binary_operator $1 $2 $3 }
+  | nxlor PATHLINE nxland  { binary_operator $1 ($2, "--") $3 }
   | nxland                 { $1 }
 ;
 nxland:
@@ -985,9 +986,13 @@ binop:
   | LNOT        { ($1, "not") }
 ;
 sxsep:
-  | SEP; utastlst=separated_list(SEP, sxblock); SEP { make_cons utastlst }
-  | utast=sxblock                                   { utast }
-  | itmzlst=nonempty_list(sxitem)                   { make_list_to_itemize itmzlst }
+  | SEP; utastlst=sxlist          { make_cons utastlst }
+  | utast=sxblock                 { utast }
+  | itmzlst=nonempty_list(sxitem) { make_list_to_itemize itmzlst }
+;
+sxlist:
+  | utast=sxblock; SEP; utasttail=sxlist { utast :: utasttail }
+  |                                      { [] }
 ;
 sxitem:
   | item=ITEM; utast=sxblock { let (rng, depth) = item in (rng, depth, utast) }
@@ -1000,12 +1005,12 @@ sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
 ;
 ih:
-  | ihtext=ihtext;                    { ihtext :: [] }
+  | ihtext=ihtext                     { ihtext :: [] }
   | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
   | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
 ;
 ihtext:
-  | ihcharlst=list(ihchar) {
+  | ihcharlst=nonempty_list(ihchar) {
         let rng = make_range_from_list ihcharlst in
         let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
         (rng, UTInputHorzText(text)) }
