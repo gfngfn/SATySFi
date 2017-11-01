@@ -79,9 +79,9 @@ let default_font_scheme =
   List.fold_left (fun mapacc (script, font_info) -> mapacc |> FontSchemeMap.add script font_info)
     FontSchemeMap.empty
     [
-      (CharBasis.HanIdeographic    , ("KozMin", 0.92));
-      (CharBasis.HiraganaOrKatakana, ("KozMin", 0.92));
-      (CharBasis.Latin             , ("Arno"  , 1.));
+      (CharBasis.HanIdeographic    , ("KozMin", 0.92, 0.));
+      (CharBasis.HiraganaOrKatakana, ("KozMin", 0.92, 0.));
+      (CharBasis.Latin             , ("Arno"  , 1., 0.));
       (CharBasis.Other             , default_font_with_ratio);
     ]
 
@@ -103,6 +103,7 @@ let default_context =
     paragraph_bottom = pdfpt 18.;
     leading          = pdfpt 18.;
     text_color       = HorzBox.DeviceGray(0.);
+    manual_rising    = pdfpt 0.;
   }
 
 let default_graphics_context =
@@ -280,7 +281,7 @@ let make_environments () =
         ("outer-fil"         , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-        ("font"              , ~% (s @-> fl @-> ft)                   , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("font"              , ~% (s @-> fl @-> fl @-> ft)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
         ("col-nil"           , ~% bc                                  , (fun _ -> Vert([])));
         ("col-frame"         , ~% (ctx @-> (ctx @-> bc) @-> bc)       , lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
         ("pbox-top"          , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
@@ -298,6 +299,7 @@ let make_environments () =
         ("get-title"          , ~% (ctx @-> tr)                        , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
         ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
+        ("set-manual-rising"  , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
         ("get-text-width"     , ~% (ctx @-> ln)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
         ("embed"              , ~% (s @-> tr)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("inline-graphics"    , ~% (ln @-> ln @-> ln @-> igr @-> br)   , lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));

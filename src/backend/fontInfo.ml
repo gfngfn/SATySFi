@@ -120,10 +120,11 @@ let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
-  let f_skip = raw_length_to_skip_length fontsize in
-    match FontAbbrevHashTable.find_opt abbrev with
-    | None                    -> raise (InvalidFontAbbrev(abbrev))
+let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
+  let font_abbrev = hsinfo.font_abbrev in
+  let f_skip = raw_length_to_skip_length hsinfo.font_size in
+    match FontAbbrevHashTable.find_opt font_abbrev with
+    | None                    -> raise (InvalidFontAbbrev(font_abbrev))
     | Some((_, _, dcdr, enc)) ->
           let init =
             OutputText.empty_hex_style
@@ -181,7 +182,11 @@ let get_metrics_of_word (abbrev : font_abbrev) (fontsize : length) (uchlst : Uch
             )
 *)
         in
-          (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt)
+          let wid = f_skip rawwid in
+          let hgtsub = f_skip rawhgt in
+          let dptsub = f_skip rawdpt in
+          let rising = hsinfo.rising in
+            (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =

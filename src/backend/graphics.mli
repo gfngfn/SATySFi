@@ -7,6 +7,7 @@ val op_Tf : string -> length -> Pdfops.t
 val op_Tj : string -> Pdfops.t
 val op_Tj_hex : string -> Pdfops.t
 val op_TJ : Pdf.pdfobject -> Pdfops.t
+val op_Ts : length -> Pdfops.t
 
 val op_BT : Pdfops.t
 val op_ET : Pdfops.t

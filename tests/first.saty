@@ -157,7 +157,7 @@
       The baseline for a vertical box is set
       so that the first line of the contents is in the same height as the outer line.
       The inline vertical box system enables us
-      to typeset what is called a description environment in LaTeX:
+      to typeset what is called a description environment in \latex;:
     }
     +description [
       ({Pangram 1}, {

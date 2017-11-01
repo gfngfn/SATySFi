@@ -322,10 +322,11 @@ and interpret env ast =
         | _                                     -> report_bug_evaluator "VertLex"
       end
 
-  | BackendFont(astabbrev, astratio) ->
+  | BackendFont(astabbrev, astszrat, astrsrat) ->
       let font_abbrev = interpret_string env astabbrev in
-      let font_ratio = interpret_float env astratio in
-        FontDesignation((font_abbrev, font_ratio))
+      let size_ratio = interpret_float env astszrat in
+      let rising_ratio = interpret_float env astrsrat in
+        FontDesignation((font_abbrev, size_ratio, rising_ratio))
 
   | BackendLineBreaking(astctx, astrow) ->
       let ctx = interpret_context env astctx in
@@ -435,6 +436,11 @@ and interpret env ast =
   | PrimitiveGetTextWidth(astctx) ->
       let ctx = interpret_context env astctx in
         LengthConstant(ctx.paragraph_width)
+
+  | PrimitiveSetManualRising(astrising, astctx) ->
+      let ctx = interpret_context env astctx in
+      let rising = interpret_length env astrising in
+        Context({ ctx with manual_rising = rising; })
 
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
@@ -905,11 +911,8 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
-                begin
-                  match valueret with
-                  | Horz(hblst) -> hblst :: lstacc
-                  | _           -> report_bug_evaluator "interpret_input_horz; other than Horz(_)"
-                end
+                let hblst = interpret_horz_boxes env valueret in
+                  hblst :: lstacc
 
             | _ -> report_bug_evaluator "interpret_input_horz; other than LambdaHorzWithEnvironment(_, _, _)"
           end

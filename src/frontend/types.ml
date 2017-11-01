@@ -419,6 +419,7 @@ and input_context = {
   paragraph_bottom : HorzBox.length;
   leading          : HorzBox.length;
   text_color       : HorzBox.color;
+  manual_rising    : HorzBox.length;
 }
 (* temporary *)
 
@@ -547,9 +548,10 @@ and abstract_tree =
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
+  | PrimitiveSetManualRising    of abstract_tree * abstract_tree
   | PrimitiveEmbed              of abstract_tree
   | PrimitiveGetNaturalWidth    of abstract_tree
-  | BackendFont                 of abstract_tree * abstract_tree
+  | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree
 (*
   | BackendFixedString         of abstract_tree * abstract_tree
@@ -720,7 +722,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
 
 
 let default_font_with_ratio =
-  ("Arno", 1.)
+  ("Arno", 1., 0.)
 
 
 let get_font_with_ratio ctx script_raw =
@@ -734,12 +736,13 @@ let get_font_with_ratio ctx script_raw =
 
 
 let get_string_info ctx script_raw =
-  let (font_abbrev, ratio) = get_font_with_ratio ctx script_raw in
-  {
-    HorzBox.font_abbrev = font_abbrev;
-    HorzBox.font_size   = HorzBox.(ctx.font_size *% ratio);
-    HorzBox.text_color  = ctx.text_color;
-  }
+  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+  HorzBox.({
+    font_abbrev = font_abbrev;
+    font_size   = ctx.font_size *% ratio;
+    text_color  = ctx.text_color;
+    rising      = ctx.manual_rising +% ctx.font_size *% rising_ratio;
+  })
 (*
 (* !!!! ---- global variable ---- !!!! *)
 

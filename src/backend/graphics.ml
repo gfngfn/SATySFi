@@ -15,6 +15,7 @@ let op_Tf tag sl = Pdfops.Op_Tf(tag, ~% sl)
 let op_Tj str = Pdfops.Op_Tj(str)
 let op_Tj_hex str = Pdfops.Op_Tj_hex(str)
 let op_TJ obj = Pdfops.Op_TJ(obj)
+let op_Ts len = Pdfops.Op_Ts(~% len)
 let op_BT = Pdfops.Op_BT
 let op_ET = Pdfops.Op_ET
 let op_m (x, y) = Pdfops.Op_m(~% x, ~% y)

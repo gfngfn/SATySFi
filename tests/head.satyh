@@ -13,11 +13,11 @@ let font-size-section = 18pt
 let font-ratio-latin = 1.
 let font-ratio-cjk = 0.88
 
-let font-latin-roman  = font `Arno`   font-ratio-latin
-let font-latin-italic = font `ArnoIt` font-ratio-latin
-let font-latin-sans   = font `Hlv`    font-ratio-latin
-let font-cjk-mincho   = font `KozMin` font-ratio-cjk
-let font-cjk-gothic   = font `Osaka`  font-ratio-cjk
+let font-latin-roman  = font `Arno`   font-ratio-latin 0.
+let font-latin-italic = font `ArnoIt` font-ratio-latin 0.
+let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
+let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
+let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
 let-row ctx \emph inner =
   let ctx-emph =
@@ -328,3 +328,16 @@ let-row ctx \donuts =
           fill (RGB(0.8, 0.5, 0.)) (donut-path cp1 r1 r2);
         ]
     ))
+
+let-row ctx \latex =
+  let ctx-A =
+    ctx |> set-font-size 8pt
+        |> set-manual-rising 2.5pt
+  in
+  let ctx-E =
+    ctx |> set-manual-rising (0pt -' 3pt)
+  in
+    (lex-row ctx {L}) ++ (fixed-empty (0pt -' 2pt))
+    ++ (lex-row ctx-A {A})
+    ++ (lex-row ctx {T}) ++ (fixed-empty (0pt -' 1.5pt))
+    ++ (lex-row ctx-E {E}) ++ (lex-row ctx {X})

@@ -681,7 +681,9 @@ argvar: /* -> argument_variable_cons */
 ;
 nxlor:
   | nxlor BINOP_BAR nxland { binary_operator $1 $2 $3 }
+(*
   | nxlor PATHLINE nxland  { binary_operator $1 ($2, "--") $3 }
+*)
   | nxland                 { $1 }
 ;
 nxland:
@@ -1008,6 +1010,7 @@ ih:
   | ihtext=ihtext                     { ihtext :: [] }
   | ihtext=ihtext; ihcmd=ihcmd; ih=ih { ihtext :: ihcmd :: ih }
   | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
+  |                                   { [] }
 ;
 ihtext:
   | ihcharlst=nonempty_list(ihchar) {
