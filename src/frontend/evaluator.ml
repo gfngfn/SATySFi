@@ -322,10 +322,10 @@ and interpret env ast =
         | _                                     -> report_bug_evaluator "VertLex"
       end
 
-  | BackendFont(astabbrev, astsize) ->
+  | BackendFont(astabbrev, astratio) ->
       let font_abbrev = interpret_string env astabbrev in
-      let font_size = interpret_length env astsize in
-        FontDesignation((font_abbrev, font_size))
+      let font_ratio = interpret_float env astratio in
+        FontDesignation((font_abbrev, font_ratio))
 
   | BackendLineBreaking(astctx, astrow) ->
       let ctx = interpret_context env astctx in
@@ -389,7 +389,12 @@ and interpret env ast =
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
       let ctx = interpret_context env astctx in
-        Context({ ctx with space_natural = ratio })
+        Context({ ctx with space_natural = ratio; })
+
+  | PrimitiveSetFontSize(astsize, astctx) ->
+      let size = interpret_length env astsize in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with font_size = size; })
 
   | PrimitiveSetFont(astscript, astfont, astctx) ->
       let script = interpret_script env astscript in
@@ -401,8 +406,8 @@ and interpret env ast =
   | PrimitiveGetFont(astscript, astctx) ->
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
-      let font_info = get_font_info ctx script in
-        FontDesignation(font_info)
+      let fontwr = get_font_with_ratio ctx script in
+        FontDesignation(fontwr)
 
   | PrimitiveSetDominantScript(astscript, astctx) ->
       let script = interpret_script env astscript in
@@ -996,13 +1001,13 @@ and interpret_color env ast : HorzBox.color =
     | _ -> report_bug_evaluator ("interpret_color; " ^ (Display.string_of_ast value))
 
 
-and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_info =
+and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_with_ratio =
   let value = interpret env ast in
     match value with
-    | FontDesignation(font_info) -> font_info
-    | _                          -> report_bug_evaluator ("interpret_font: not a FontDesignation; "
-                                                          ^ (Display.string_of_ast ast)
-                                                          ^ " ->* " ^ (Display.string_of_ast value))
+    | FontDesignation(fontwr) -> fontwr
+    | _                       -> report_bug_evaluator ("interpret_font: not a FontDesignation; "
+                                                       ^ (Display.string_of_ast ast)
+                                                       ^ " ->* " ^ (Display.string_of_ast value))
 
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =

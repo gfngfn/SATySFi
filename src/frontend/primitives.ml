@@ -79,10 +79,10 @@ let default_font_scheme =
   List.fold_left (fun mapacc (script, font_info) -> mapacc |> FontSchemeMap.add script font_info)
     FontSchemeMap.empty
     [
-      (CharBasis.HanIdeographic    , ("KozMin", pdfpt 12.));
-      (CharBasis.HiraganaOrKatakana, ("KozMin", pdfpt 12.));
-      (CharBasis.Latin             , ("Arno"  , pdfpt 12.));
-      (CharBasis.Other             , default_font_info    );
+      (CharBasis.HanIdeographic    , ("KozMin", 0.92));
+      (CharBasis.HiraganaOrKatakana, ("KozMin", 0.92));
+      (CharBasis.Latin             , ("Arno"  , 1.));
+      (CharBasis.Other             , default_font_with_ratio);
     ]
 
 let envinit : environment = Hashtbl.create 128
@@ -92,6 +92,7 @@ let default_context =
     title            = InputHorzWithEnvironment([], envinit);
     author           = InputHorzWithEnvironment([], envinit);
     font_scheme      = default_font_scheme;
+    font_size        = pdfpt 12.;
     dominant_script  = CharBasis.Other;
     space_natural    = 0.33;
     space_shrink     = 0.08;
@@ -279,7 +280,7 @@ let make_environments () =
         ("outer-fil"         , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
         ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-        ("font"              , ~% (s @-> ln @-> ft)                   , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
+        ("font"              , ~% (s @-> fl @-> ft)                   , lambda2 (fun vabbrv vsize -> BackendFont(vabbrv, vsize)));
         ("col-nil"           , ~% bc                                  , (fun _ -> Vert([])));
         ("col-frame"         , ~% (ctx @-> (ctx @-> bc) @-> bc)       , lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
         ("pbox-top"          , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
@@ -289,6 +290,7 @@ let make_environments () =
 
         ("default-context"    , ~% ctx                                 , (fun _ -> Context(default_context)));
         ("set-space-ratio"    , ~% (fl @-> ctx @-> ctx)                , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
+        ("set-font-size"      , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
         ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));

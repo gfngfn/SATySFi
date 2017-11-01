@@ -407,7 +407,8 @@ and input_vert_element =
 and input_context = {
   title            : abstract_tree;
   author           : abstract_tree;
-  font_scheme      : HorzBox.font_info FontSchemeMap.t;
+  font_size        : HorzBox.length;
+  font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
   dominant_script  : CharBasis.script;
   space_natural    : float;
   space_shrink     : float;
@@ -532,11 +533,12 @@ and abstract_tree =
   | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
-  | FontDesignation             of HorzBox.font_info
+  | FontDesignation             of HorzBox.font_with_ratio
   | Context                     of input_context
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
+  | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
   | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
@@ -717,25 +719,25 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
-let default_font_info =
-  ("Arno", HorzBox.Length.of_pdf_point 12.)
+let default_font_with_ratio =
+  ("Arno", 1.)
 
 
-let get_font_info ctx script_raw =
+let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
     | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
     | _                                                             -> script_raw
   in
     try ctx.font_scheme |> FontSchemeMap.find script with
-    | Not_found -> default_font_info
+    | Not_found -> default_font_with_ratio
 
 
 let get_string_info ctx script_raw =
-  let (font_abbrev, size) = get_font_info ctx script_raw in
+  let (font_abbrev, ratio) = get_font_with_ratio ctx script_raw in
   {
     HorzBox.font_abbrev = font_abbrev;
-    HorzBox.font_size   = size;
+    HorzBox.font_size   = HorzBox.(ctx.font_size *% ratio);
     HorzBox.text_color  = ctx.text_color;
   }
 (*

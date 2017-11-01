@@ -20,10 +20,11 @@ let get_script_opt lbu =
 
 (* temporary; should refer to the context for spacing between two scripts *)
 let transition_space ctx lbu1 lbu2 =
-  let (_, font_size) = get_font_info ctx ctx.dominant_script in
-  let half_space_soft = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.(font_size *% 0.25 (* temporary *)), HorzBox.(font_size *% 0.25 (* temporary *)))] in
-  let half_space_hard = [CustomizedSpace(HorzBox.(font_size *% 0.5), HorzBox.Length.zero, HorzBox.(font_size *% 0.25 (* temporary *)))] in
-  let full_space = [CustomizedSpace(font_size, HorzBox.(font_size *% 0.5 (* temporary *)), HorzBox.(font_size *% 0.5 (* temporary *)))] in
+  let (_, font_ratio) = get_font_with_ratio ctx ctx.dominant_script in
+  let size = HorzBox.(ctx.font_size *% font_ratio) in
+  let half_space_soft = [CustomizedSpace(HorzBox.(size *% 0.5), HorzBox.(size *% 0.25 (* temporary *)), HorzBox.(size *% 0.25 (* temporary *)))] in
+  let half_space_hard = [CustomizedSpace(HorzBox.(size *% 0.5), HorzBox.Length.zero, HorzBox.(size *% 0.25 (* temporary *)))] in
+  let full_space = [CustomizedSpace(size, HorzBox.(size *% 0.5 (* temporary *)), HorzBox.(size *% 0.5 (* temporary *)))] in
   match (lbu1, lbu2) with
   | (PreWord(_, _, _)  , JLOpen(_, _)    ) -> half_space_soft
   | (JLClose(_, _)     , PreWord(_, _, _)) -> half_space_soft
@@ -44,7 +45,7 @@ let transition_space ctx lbu1 lbu2 =
                 | (Latin, HanIdeographic)
                 | (HiraganaOrKatakana, Latin)
                 | (Latin, HiraganaOrKatakana) ) ->
-                    [CustomizedSpace(HorzBox.(font_size *% 0.24), HorzBox.(font_size *% 0.08), HorzBox.(font_size *% 0.16))]  (* temporary; shold refer to the context for spacing information between two scripts *)
+                    [CustomizedSpace(HorzBox.(size *% 0.24), HorzBox.(size *% 0.08), HorzBox.(size *% 0.16))]  (* temporary; shold refer to the context for spacing information between two scripts *)
               | _                                               -> []
             end
 
@@ -67,11 +68,12 @@ let insert_script_transition_space ctx lbulst =
 
 
 let to_boxes ctx uchlst =
-  let (_, font_size) = get_font_info ctx ctx.dominant_script in 
-  let space_natural = HorzBox.(font_size *% ctx.space_natural) in
-  let space_shrink  = HorzBox.(font_size *% ctx.space_shrink) in
-  let space_stretch = HorzBox.(font_size *% ctx.space_stretch) in
-  let adjacent_stretch = HorzBox.(font_size *% ctx.adjacent_stretch) in
+  let (_, font_ratio) = get_font_with_ratio ctx ctx.dominant_script in
+  let size = HorzBox.(ctx.font_size *% font_ratio) in
+  let space_natural = HorzBox.(size *% ctx.space_natural) in
+  let space_shrink  = HorzBox.(size *% ctx.space_shrink) in
+  let space_stretch = HorzBox.(size *% ctx.space_stretch) in
+  let adjacent_stretch = HorzBox.(size *% ctx.adjacent_stretch) in
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
 
   (* begin: for debug *)

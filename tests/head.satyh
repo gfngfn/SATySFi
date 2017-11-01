@@ -5,12 +5,25 @@ let rgb r g b = RGB(r, g, b)
 let black = gray 1.
 let red = rgb 1. 0. 0.
 
+let font-size-normal  = 12pt
+let font-size-title   = 36pt
+let font-size-author  = 16pt
+let font-size-section = 18pt
+
+let font-ratio-latin = 1.
+let font-ratio-cjk = 0.88
+
+let font-latin-roman  = font `Arno`   font-ratio-latin
+let font-latin-italic = font `ArnoIt` font-ratio-latin
+let font-latin-sans   = font `Hlv`    font-ratio-latin
+let font-cjk-mincho   = font `KozMin` font-ratio-cjk
+let font-cjk-gothic   = font `Osaka`  font-ratio-cjk
 
 let-row ctx \emph inner =
   let ctx-emph =
-    ctx |> set-font Latin (font `ArnoIt` 12pt)
-        |> set-font HanIdeographic (font `Osaka` 10pt)
-        |> set-font Kana (font `Osaka` 10pt)
+    ctx |> set-font Latin          font-latin-italic
+        |> set-font HanIdeographic font-cjk-gothic
+        |> set-font Kana           font-cjk-gothic
         |> set-text-color (CMYK(1., 0., 0., 0.)) %(RGB(0., 0., 0.75))
   in
     lex-row ctx-emph inner
@@ -22,8 +35,7 @@ let-col ctx +document rcd inner =
   let title = rcd#title in
   let author = rcd#author in
   let ctx-doc =
-    ctx |> set-font Latin (font `Arno` 12pt)
-%        |> set-title title
+    ctx |> set-font Latin font-latin-roman
         |> set-dominant-script Latin
   in
   (
@@ -31,13 +43,6 @@ let-col ctx +document rcd inner =
     ref-author <- author before
     lex-col ctx-doc inner
   )
-
-%let gctx-title-frame =
-%  default-graphics-context
-%    |> set-line-width 5pt
-%    |> set-line-dash (Some(25pt, 3pt, 5pt))
-%    |> set-stroke-color (RGB(1., 0., 0.))
-%    |> set-fill-color (RGB(1., 0.75, 0.75))
 
 let title-frame =
   let pads = (5pt, 5pt, 10pt, 10pt) in
@@ -64,8 +69,14 @@ let title-frame =
 
 let-col ctx +make-title =
 %  let title = get-title ctx in
-  let ctx-title = ctx |> set-font Latin (font `Arno` 36pt) in
-  let ctx-author = ctx |> set-font Latin (font `Arno` 16pt) in
+  let ctx-title =
+    ctx |> set-font-size font-size-title
+        |> set-font Latin font-latin-roman
+  in
+  let ctx-author =
+    ctx |> set-font-size font-size-author
+        |> set-font Latin font-latin-roman
+  in
   let br-title = lex-row ctx-title (!ref-title) in
   let br-author = lex-row ctx-author (!ref-author) in
   let bc-title = form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil)) in
@@ -103,8 +114,8 @@ let-col ctx +frame inner =
 
 let-col ctx +p-jp inner =
   let ctx-jp =
-    ctx |> set-font HanIdeographic (font `KozMin` 10pt)
-        |> set-font Kana (font `KozMin` 10pt)
+    ctx |> set-font HanIdeographic font-cjk-mincho
+        |> set-font Kana           font-cjk-mincho
         |> set-dominant-script HanIdeographic
   in
   let () = needs-indentation-ref <- true in
@@ -115,9 +126,10 @@ let-mutable num-section <- 0
 
 let-col ctx +section title inner =
   let ctx-title =
-    ctx |> set-font Latin (font `Hlv` 18pt)
-        |> set-font HanIdeographic (font `Osaka` 16pt)
-        |> set-font Kana (font `Osaka` 16pt)
+    ctx |> set-font-size font-size-section
+        |> set-font Latin          font-latin-sans
+        |> set-font HanIdeographic font-cjk-gothic
+        |> set-font Kana           font-cjk-gothic
   in
   let () = num-section <- !num-section + 1 in
   let () = needs-indentation-ref <- false in
@@ -134,7 +146,7 @@ let-row ctx \expand-spaces inner =
 let-col-detailed ctx +px inner =
   let br = lex-row ctx inner in
   let bc = form-paragraph ctx (indent ++ br ++ outer-fil) in
-  let ctx-after = set-font Latin (font `ArnoIt` 12pt) ctx in
+  let ctx-after = set-font Latin font-latin-italic ctx in
     (ctx-after, bc)
 
 let simple-decoset =
@@ -261,7 +273,7 @@ let description ctx pairlst =
       | (item, descr) ->
           let br-item =
             let ctx-item =
-              ctx |> set-font Latin (font `Hlv` 12pt)
+              ctx |> set-font Latin font-latin-sans
             in
               lex-row ctx-item item
           in

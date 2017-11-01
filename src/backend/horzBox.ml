@@ -103,7 +103,9 @@ type encoding_in_pdf =
   | UTF16BE
   | IdentityH
 
-type font_info = font_abbrev * Length.t  [@@deriving show]
+type font_with_size = font_abbrev * Length.t  [@@deriving show]
+
+type font_with_ratio = font_abbrev * float  [@@deriving show]
 
 type paddings =
   {
