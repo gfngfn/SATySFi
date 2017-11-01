@@ -219,7 +219,9 @@ let make_environments () =
   let path          = (~! "path"    , BaseType(PathType)   ) in
   let prp           = (~! "pre-path", BaseType(PrePathType)) in
   let scr           = (~! "script"  , VariantType([], tyid_script)) in
+(*
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
+*)
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pads          = prod [ln; ln; ln; ln] in
@@ -295,14 +297,15 @@ let make_environments () =
         ("embed"              , ~% (s @-> tr)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("inline-graphics"    , ~% (ln @-> ln @-> ln @-> igr @-> br)   , lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
         ("get-natural-width"  , ~% (br @-> ln)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
-
+(*
         ("default-graphics-context", ~% gctx                                        , (fun _ -> GraphicsContext(default_graphics_context)));
         ("set-line-width"          , ~% (ln @-> gctx @-> gctx)                      , lambda2 (fun vlen vgctx -> PrimitiveSetLineWidth(vlen, vgctx)));
         ("set-line-dash"           , ~% (opt (prod [ln; ln; ln])  @-> gctx @-> gctx), lambda2 (fun vlensopt vgctx -> PrimitiveSetLineDash(vlensopt, vgctx)));
         ("set-stroke-color"        , ~% (clr @-> gctx @-> gctx)                     , lambda2 (fun vcolor vgctx -> PrimitiveSetStrokeColor(vcolor, vgctx)));
         ("set-fill-color"          , ~% (clr @-> gctx @-> gctx)                     , lambda2 (fun vcolor vgctx -> PrimitiveSetFillColor(vcolor, vgctx)));
-        ("stroke"                  , ~% (gctx @-> path @-> gr)                      , lambda2 (fun vgctx vpath -> PrimitiveDrawStroke(vgctx, vpath)));
-        ("fill"                    , ~% (gctx @-> path @-> gr)                      , lambda2 (fun vgctx vpath -> PrimitiveDrawFill(vgctx, vpath)));
+*)
+        ("stroke"                  , ~% (ln @-> clr @-> path @-> gr)                , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
+        ("fill"                    , ~% (clr @-> path @-> gr)                       , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
         ("start-path"              , ~% (pt @-> prp)                                , lambda1 (fun vpt -> PrePathBeginning(vpt)));
         ("line-to"                 , ~% (pt @-> prp @-> prp)                        , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
         ("bezier-to"               , ~% (pt @-> pt @-> pt @-> prp @-> prp)          , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));

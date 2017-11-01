@@ -256,9 +256,9 @@ and interpret env ast =
       let ptT = interpret_point env astptT in
       let prepath = interpret_prepath env astprepath in
         PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
-
+(*
   | GraphicsContext(_) -> ast
-
+*)
   | GraphicsValue(_) -> ast
 
   | FontDesignation(_) -> ast
@@ -731,6 +731,7 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
+(*
   | PrimitiveSetLineWidth(astlen, astgctx) ->
       let len = interpret_length env astlen in
       let gctx = interpret_graphics_context env astgctx in
@@ -746,19 +747,21 @@ and interpret env ast =
         | _ -> report_bug_evaluator ("PrimitiveSetLineDash; " ^ (Display.string_of_ast valuelensopt))
       in
         GraphicsContext({ gctx with HorzBox.line_dash = line_dash })
+*)
 
-  | PrimitiveDrawStroke(astgctx, astpath) ->
-      let gctx = interpret_graphics_context env astgctx in
+  | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
+      let wid = interpret_length env astwid in
+      let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawStroke pathlst in
+      let pdfops = Graphics.pdfops_of_stroke wid color pathlst in
         GraphicsValue(pdfops)
 
-  | PrimitiveDrawFill(astgctx, astpath) ->
-      let gctx = interpret_graphics_context env astgctx in
+  | PrimitiveDrawFill(astcolor, astpath) ->
+      let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_graphics gctx HorzBox.DrawFillByEvenOdd pathlst in
+      let pdfops = Graphics.pdfops_of_fill color pathlst in
         GraphicsValue(pdfops)
-
+(*
   | PrimitiveSetStrokeColor(astcol, astgctx) ->
       let color = interpret_color env astcol in
       let gctx = interpret_graphics_context env astgctx in
@@ -768,7 +771,7 @@ and interpret env ast =
       let color = interpret_color env astcol in
       let gctx = interpret_graphics_context env astgctx in
         GraphicsContext({ gctx with HorzBox.fill_color = color })
-
+*)
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in
@@ -967,7 +970,7 @@ and interpret_context (env : environment) (ast : abstract_tree) : input_context 
                                             ^ (Display.string_of_ast ast)
                                             ^ " ->* " ^ (Display.string_of_ast value))
 
-
+(*
 and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzBox.graphics_state =
   let value = interpret env ast in
     match value with
@@ -975,7 +978,7 @@ and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzB
     | _                     -> report_bug_evaluator ("interpret_graphics_context: not a GraphicsContext; "
                                                      ^ (Display.string_of_ast ast)
                                                      ^ " ->* " ^ (Display.string_of_ast value))
-
+*)
 
 and interpret_color env ast : HorzBox.color =
   let value = interpret env ast in

@@ -186,7 +186,9 @@ type base_type =
   | ContextType
   | PrePathType
   | PathType
+(*
   | GraphicsContextType
+*)
   | GraphicsType
 [@@deriving show]
 
@@ -453,7 +455,9 @@ and abstract_tree =
   | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue             of HorzBox.path list
   | PathJoin              of abstract_tree * abstract_tree
+(*
   | GraphicsContext       of HorzBox.graphics_state
+*)
   | GraphicsValue         of Pdfops.t list
   | PrePathValue                of PrePath.t
   | PrePathBeginning            of abstract_tree
@@ -462,11 +466,13 @@ and abstract_tree =
   | PrePathTerminate            of abstract_tree
   | PrePathCloseWithLine        of abstract_tree
   | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
+(*
   | PrimitiveSetLineWidth       of abstract_tree * abstract_tree
   | PrimitiveSetLineDash        of abstract_tree * abstract_tree
   | PrimitiveSetStrokeColor     of abstract_tree * abstract_tree
   | PrimitiveSetFillColor       of abstract_tree * abstract_tree
-  | PrimitiveDrawStroke         of abstract_tree * abstract_tree
+*)
+  | PrimitiveDrawStroke         of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawFill           of abstract_tree * abstract_tree
 (* -- horizontal box list -- *)
   | Horz                  of HorzBox.horz_box list
@@ -791,7 +797,9 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(PrePathType) -> "pre-path" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
+(*
     | BaseType(GraphicsContextType) -> "graphics-context" ^ qstn
+*)
     | BaseType(GraphicsType) -> "graphics" ^ qstn
 
     | VariantType(tyarglist, tyid) ->

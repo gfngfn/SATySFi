@@ -121,3 +121,32 @@ let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path
     | DrawBothByEvenOdd -> op_B'
   in
     List.concat [[op_q]; [op_stroke_color]; [op_fill_color]; ops_state; ops_path; [drawop; op_Q]]
+
+
+let pdfops_of_stroke (line_width : length) (stroke_color : color) (pathlst : path list) : Pdfops.t list =
+  let ops_path = pdfops_of_path_list pathlst in
+  let op_stroke_color =
+    match stroke_color with
+    | DeviceRGB(r, g, b)     -> op_RG (r, g, b)
+    | DeviceCMYK(c, m, y, k) -> op_K (c, m, y, k)
+    | DeviceGray(gray)       -> op_G gray
+  in
+  let ops_state =
+    [
+      op_w line_width;
+    ]
+  in
+  let op_draw = op_S in  (* -- draws only strokes -- *)
+    List.concat [[op_q; op_stroke_color]; ops_state; ops_path; [op_draw; op_Q]]
+
+
+let pdfops_of_fill (fill_color : color) (pathlst : path list) : Pdfops.t list =
+  let ops_path = pdfops_of_path_list pathlst in
+  let op_fill_color =
+    match fill_color with
+    | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
+    | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
+    | DeviceGray(gray)       -> op_g gray
+  in
+  let op_draw = op_f' in  (* -- draws fills by the even-odd rule -- *)
+    List.concat [[op_q; op_fill_color]; ops_path; [op_draw; op_Q]]

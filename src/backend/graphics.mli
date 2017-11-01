@@ -25,3 +25,7 @@ val pdfop_of_text_color : color -> Pdfops.t
 val pdfops_of_path_list : path list -> Pdfops.t list
 
 val pdfops_of_graphics : graphics_state -> graphics_command -> path list -> Pdfops.t list
+
+val pdfops_of_stroke : length -> color -> path list -> Pdfops.t list
+
+val pdfops_of_fill : color -> path list -> Pdfops.t list
