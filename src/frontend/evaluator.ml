@@ -731,24 +731,6 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
-(*
-  | PrimitiveSetLineWidth(astlen, astgctx) ->
-      let len = interpret_length env astlen in
-      let gctx = interpret_graphics_context env astgctx in
-        GraphicsContext({ gctx with HorzBox.line_width = len })
-
-  | PrimitiveSetLineDash(astlensopt, astgctx) ->
-      let valuelensopt = interpret env astlensopt in
-      let gctx = interpret_graphics_context env astgctx in
-      let line_dash =
-        match valuelensopt with
-        | Constructor("None", UnitConstant) -> HorzBox.SolidLine
-        | Constructor("Some", TupleCons(LengthConstant(len1), TupleCons(LengthConstant(len2), TupleCons(LengthConstant(len3), EndOfTuple)))) -> HorzBox.DashedLine(len1, len2, len3)
-        | _ -> report_bug_evaluator ("PrimitiveSetLineDash; " ^ (Display.string_of_ast valuelensopt))
-      in
-        GraphicsContext({ gctx with HorzBox.line_dash = line_dash })
-*)
-
   | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
       let wid = interpret_length env astwid in
       let color = interpret_color env astcolor in
@@ -775,17 +757,7 @@ and interpret env ast =
       let pathlst = interpret_path_value env astpath in
       let pdfops = Graphics.pdfops_of_dashed_stroke wid (len1, len2, len3) color pathlst in
         GraphicsValue(pdfops)
-(*
-  | PrimitiveSetStrokeColor(astcol, astgctx) ->
-      let color = interpret_color env astcol in
-      let gctx = interpret_graphics_context env astgctx in
-        GraphicsContext({ gctx with HorzBox.stroke_color = color })
 
-  | PrimitiveSetFillColor(astcol, astgctx) ->
-      let color = interpret_color env astcol in
-      let gctx = interpret_graphics_context env astgctx in
-        GraphicsContext({ gctx with HorzBox.fill_color = color })
-*)
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in

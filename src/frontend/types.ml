@@ -186,9 +186,6 @@ type base_type =
   | ContextType
   | PrePathType
   | PathType
-(*
-  | GraphicsContextType
-*)
   | GraphicsType
 [@@deriving show]
 
@@ -452,13 +449,10 @@ and abstract_tree =
   | InputHorzWithEnvironment of input_horz_element list * environment
   | InputVertWithEnvironment of input_vert_element list * environment
 (* -- graphics -- *)
-  | Path                  of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
-  | PathValue             of HorzBox.path list
-  | PathUnite             of abstract_tree * abstract_tree
-(*
-  | GraphicsContext       of HorzBox.graphics_state
-*)
-  | GraphicsValue         of Pdfops.t list
+  | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
+  | PathValue                   of HorzBox.path list
+  | PathUnite                   of abstract_tree * abstract_tree
+  | GraphicsValue               of Pdfops.t list
   | PrePathValue                of PrePath.t
   | PrePathBeginning            of abstract_tree
   | PrePathLineTo               of abstract_tree * abstract_tree
@@ -466,12 +460,6 @@ and abstract_tree =
   | PrePathTerminate            of abstract_tree
   | PrePathCloseWithLine        of abstract_tree
   | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
-(*
-  | PrimitiveSetLineWidth       of abstract_tree * abstract_tree
-  | PrimitiveSetLineDash        of abstract_tree * abstract_tree
-  | PrimitiveSetStrokeColor     of abstract_tree * abstract_tree
-  | PrimitiveSetFillColor       of abstract_tree * abstract_tree
-*)
   | PrimitiveDrawStroke         of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawDashedStroke   of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawFill           of abstract_tree * abstract_tree
