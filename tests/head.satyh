@@ -1,3 +1,11 @@
+
+let gray x = Gray(x)
+let rgb r g b = RGB(r, g, b)
+
+let black = gray 1.
+let red = rgb 1. 0. 0.
+
+
 let-row ctx \emph inner =
   let ctx-emph =
     ctx |> set-font Latin (font `ArnoIt` 12pt)
@@ -24,12 +32,12 @@ let-col ctx +document rcd inner =
     lex-col ctx-doc inner
   )
 
-let gctx-title-frame =
-  default-graphics-context
-    |> set-line-width 5pt
-    |> set-line-dash (Some(25pt, 3pt, 5pt))
-    |> set-stroke-color (RGB(1., 0., 0.))
-    |> set-fill-color (RGB(1., 0.75, 0.75))
+%let gctx-title-frame =
+%  default-graphics-context
+%    |> set-line-width 5pt
+%    |> set-line-dash (Some(25pt, 3pt, 5pt))
+%    |> set-stroke-color (RGB(1., 0., 0.))
+%    |> set-fill-color (RGB(1., 0.75, 0.75))
 
 let title-frame =
   let pads = (5pt, 5pt, 10pt, 10pt) in
@@ -41,13 +49,6 @@ let title-frame =
     let yT = y +' hgt in
     let yB = y -' dpt in
     let path =
-%      <[ (xL, yT)
-%           -- (xR, yT)
-%           .. controls (xR +' cx, yT -' cy) and (xR +' cx, yB +' cy)
-%           .. (xR, yB)
-%           -- (xL, yB)
-%           .. controls (xL -' cx, yB +' cy) and (xL -' cx, yT -' cy)
-%           .. cycle ]>
       start-path (xL, yT)
         |> line-to (xR, yT)
         |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
@@ -55,8 +56,8 @@ let title-frame =
         |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
     in
       [
-        fill gctx-title-frame path;
-        stroke gctx-title-frame path;
+        fill (rgb 1. 0.75 0.75) path;
+        stroke 5pt red path;
       ]
   in
     outer-frame-block pads deco
@@ -137,15 +138,15 @@ let-col-detailed ctx +px inner =
     (ctx-after, bc)
 
 let simple-decoset =
+  let frame-stroke = stroke 1pt red in
   let margin-x = 2pt in
   let margin-y = 2pt in
-  let gctx = default-graphics-context |> set-stroke-color (RGB(1., 0., 0.)) in
   let decoS (x, y) wid hgt dpt =
     let xb = x +' margin-x in
     let widb = wid -' (margin-x *' 2.) in
     let hgtb = hgt -' margin-y in
     let dptb = dpt -' margin-y in
-      [ stroke gctx <[ (xb, y -' dptb) -- (xb, y +' hgtb)
+      [ frame-stroke <[ (xb, y -' dptb) -- (xb, y +' hgtb)
           -- (xb +' widb, y +' hgtb) -- (xb +' widb, y -' dptb) -- cycle ]>; ]
   in
   let decoH (x, y) wid hgt dpt =
@@ -153,7 +154,7 @@ let simple-decoset =
     let widb = wid -' margin-x in
     let hgtb = hgt -' margin-y in
     let dptb = dpt -' margin-y in
-      [ stroke gctx <[ (xb +' widb, y -' dptb) -- (xb, y -' dptb)
+      [ frame-stroke <[ (xb +' widb, y -' dptb) -- (xb, y -' dptb)
           -- (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>; ]
   in
   let decoT (x, y) wid hgt dpt =
@@ -161,7 +162,7 @@ let simple-decoset =
     let widb = wid -' margin-x in
     let hgtb = hgt -' margin-y in
     let dptb = dpt -' margin-y in
-      [ stroke gctx <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb)
+      [ frame-stroke <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb)
           -- (xb +' widb, y +' hgtb) -- (xb, y +' hgtb) ]>; ]
   in
   let decoM (x, y) wid hgt dpt =
@@ -170,8 +171,8 @@ let simple-decoset =
     let hgtb = hgt -' margin-y in
     let dptb = dpt -' margin-y in
       [
-        stroke gctx <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb) ]>;
-        stroke gctx <[ (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>;
+        frame-stroke <[ (xb, y -' dptb) -- (xb +' widb, y -' dptb) ]>;
+        frame-stroke <[ (xb, y +' hgtb) -- (xb +' widb, y +' hgtb) ]>;
       ]
   in
     (decoS, decoH, decoM, decoT)
@@ -212,11 +213,10 @@ let circle (cx, cy) r =
       |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
 let bullet (x, y) =
-  let gctx = default-graphics-context in
   let cx = x +' 4pt in
   let cy = y +' 4pt in
   let r = 2pt in
-    [ fill gctx (circle (cx, cy) r); ]
+    [ fill (Gray(0.)) (circle (cx, cy) r); ]
 
 let item : context -> int -> itemize -> box-col
   | ctx depth (Item(parent, children)) =
@@ -281,9 +281,8 @@ let-col ctx +description pairlst =
 
 let decoset-underline =
   let distance = 4pt in
-  let gctx = default-graphics-context |> set-stroke-color (RGB(0., .5, 0.)) in
   let deco (x, y) wid _ _ =
-    [ stroke gctx <[ (x, y -' distance) -- (x +' wid, y -' distance) ]>; ]
+    [ stroke 1pt (RGB(0., 0.5, 0.)) <[ (x, y -' distance) -- (x +' wid, y -' distance) ]>; ]
   in
     (deco, deco, deco, deco)
 
@@ -293,10 +292,9 @@ let-row ctx \underline inner =
     outer-frame-inline pads decoset-underline br
 
 let donut-path (cx, cy) r1 r2 =
-  join-path (circle (cx, cy) r1) (circle (cx, cy) r2)
+  unite-path (circle (cx, cy) r1) (circle (cx, cy) r2)
 
 let-row ctx \donut =
-  let gctx = default-graphics-context |> set-fill-color (RGB(0.8, 0.5, 0.)) in
   let wid = 14pt in
   let chgt = 4pt in
   let r1 = 6pt in
@@ -304,19 +302,17 @@ let-row ctx \donut =
     inline-graphics wid 12pt 0pt (function (x, y) -> (
       let cx = x +' wid *' 0.5 in
       let cy = y +' chgt in
-        [ fill gctx (donut-path (cx, cy) r1 r2); ]
+        [ fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2); ]
     ))
 
 let-row ctx \donuts =
-  let gctx1 = default-graphics-context |> set-fill-color (RGB(0.8, 0.5, 0.)) in
-  let gctx2 = default-graphics-context |> set-fill-color (RGB(0.7, 0.4, 0.)) in
   let r1 = 6pt in
   let r2 = 3pt in
     inline-graphics 18pt 12pt 0pt (function (x, y) -> (
       let cp1 = (x +' 7pt, y +' 4pt) in
       let cp2 = (x +' 11pt, y +' 1pt) in
         [
-          fill gctx2 (donut-path cp2 r1 r2);
-          fill gctx1 (donut-path cp1 r1 r2);
+          fill (RGB(0.7, 0.4, 0.)) (donut-path cp2 r1 r2);
+          fill (RGB(0.8, 0.5, 0.)) (donut-path cp1 r1 r2);
         ]
     ))
