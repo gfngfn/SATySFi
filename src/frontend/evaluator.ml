@@ -334,10 +334,11 @@ and interpret env ast =
       let imvblst = LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx.paragraph_width ctx.leading hblst in
         Vert(imvblst)
 
-  | BackendVertFrame(astctx, astk) ->
+  | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
       let ctx = interpret_context env astctx in
       let valuek = interpret env astk in
-      let pads = Primitives.default_paddings in  (* teporary; should be variable *)
+      let pads = interpret_paddings env astpads in
+      let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
       let valuectxsub =
         Context({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) })
       in
@@ -346,8 +347,11 @@ and interpret env ast =
         Vert([
           HorzBox.ImVertTopMargin(true, ctx.paragraph_top);
           HorzBox.ImVertFrame(pads,
-                              Primitives.frame_deco_VS, Primitives.frame_deco_VH,
-                              Primitives.frame_deco_VM, Primitives.frame_deco_VT, ctx.paragraph_width, imvblst);
+                              make_frame_deco env valuedecoS,
+                              make_frame_deco env valuedecoH,
+                              make_frame_deco env valuedecoM,
+                              make_frame_deco env valuedecoT,
+                              ctx.paragraph_width, imvblst);
           HorzBox.ImVertBottomMargin(true, ctx.paragraph_bottom);
         ])  (* temporary; frame decorations should be variable *)
 

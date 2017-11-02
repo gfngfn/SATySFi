@@ -283,7 +283,7 @@ let make_environments () =
         ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
         ("font"              , ~% (s @-> fl @-> fl @-> ft)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
         ("col-nil"           , ~% bc                                  , (fun _ -> Vert([])));
-        ("col-frame"         , ~% (ctx @-> (ctx @-> bc) @-> bc)       , lambda2 (fun vctx vbc -> BackendVertFrame(vctx, vbc)));
+        ("col-frame"         , ~% (ctx @-> pads @-> decoset @-> (ctx @-> bc) @-> bc), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
         ("pbox-top"          , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
 
         ("lex-row", ~% (ctx @-> tr @-> br), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));

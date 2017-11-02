@@ -107,9 +107,44 @@ let-col ctx +p inner =
   in
     form-paragraph ctx br-parag
 
+let col-simple-decoset =
+  let lw = 1pt in
+  let lcolor = RGB(0., 0., 0.5) in
+  let frame-stroke = stroke lw lcolor in
+  let decoS (x, y) wid hgt dpt =
+    [ start-path (x, y -' dpt)
+        |> line-to (x, y +' hgt)
+        |> line-to (x +' wid, y +' hgt)
+        |> line-to (x +' wid, y -' dpt)
+        |> close-with-line
+        |> frame-stroke ]
+  in
+  let decoH (x, y) wid hgt dpt =
+    [ start-path (x, y -' dpt)
+        |> line-to (x, y +' hgt)
+        |> line-to (x +' wid, y +' hgt)
+        |> line-to (x +' wid, y -' dpt)
+        |> terminate-path
+        |> frame-stroke ]
+  in
+  let decoM (x, y) wid hgt dpt =
+    [ start-path (x, y -' dpt) |> line-to (x, y +' hgt) |> terminate-path |> frame-stroke;
+      start-path (x +' wid, y -' dpt) |> line-to (x +' wid, y +' hgt) |> terminate-path |> frame-stroke; ]
+  in
+  let decoT (x, y) wid hgt dpt =
+    [ start-path (x, y +' hgt)
+        |> line-to (x, y -' dpt)
+        |> line-to (x +' wid, y -' dpt)
+        |> line-to (x +' wid, y +' hgt)
+        |> terminate-path
+        |> frame-stroke ]
+  in
+    (decoS, decoH, decoM, decoT)
+
 let-col ctx +frame inner =
+  let pads = (10pt, 10pt, 5pt, 5pt) in
   let () = needs-indentation-ref <- false in
-    col-frame ctx (function ctx ->
+    col-frame ctx pads col-simple-decoset (function ctx ->
       lex-col ctx inner)
 
 let-col ctx +p-jp inner =
