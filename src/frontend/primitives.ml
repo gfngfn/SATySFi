@@ -309,6 +309,7 @@ let make_environments () =
         ("stroke"                  , ~% (ln @-> clr @-> path @-> gr)                , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
         ("dashed-stroke"           , ~% (ln @-> dash @-> clr @-> path @-> gr)       , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
         ("fill"                    , ~% (clr @-> path @-> gr)                       , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
+        ("draw-text"               , ~% (pt @-> br @-> gr)                          , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
         ("start-path"              , ~% (pt @-> prp)                                , lambda1 (fun vpt -> PrePathBeginning(vpt)));
         ("line-to"                 , ~% (pt @-> prp @-> prp)                        , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
         ("bezier-to"               , ~% (pt @-> pt @-> pt @-> prp @-> prp)          , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));

@@ -63,7 +63,7 @@
             | ( '\n' | '\r' ) -> increment_line lexbuf
             | _               -> ()
           end;
-          increment_line_for_each_break lexbuf str (num + 1)
+          aux (num + 1)
         end
     in
       aux 0
@@ -282,7 +282,7 @@ and vertexpr = parse
       IGNORED
     }
   | (break | space)* {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       vertexpr lexbuf
     }
   | ("+" (identifier | constructor)) {
@@ -330,13 +330,13 @@ and horzexpr = parse
       IGNORED
     }
   | ((break | space)* "{") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       push Brace;
       ignore_space := true;
       BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       let pos = get_pos lexbuf in
       let trs = pop lexbuf "too many closing" in
         match trs with
@@ -346,13 +346,13 @@ and horzexpr = parse
         | _     -> report_error lexbuf "unbalanced '}'"
     }
   | ((break | space)* "<") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       push HtoV;
       next_state := VerticalState;
       BVERTGRP(get_pos lexbuf)
     }
   | ((break | space)* "|") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       ignore_space := true;
       SEP(get_pos lexbuf)
     }
@@ -366,7 +366,7 @@ and horzexpr = parse
         begin ignore_space := true; SPACE(get_pos lexbuf) end
     }
   | ((break | space)* (item as itemstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       ignore_space := true;
       ITEM(get_pos lexbuf, String.length itemstr)
     }
@@ -403,7 +403,7 @@ and horzexpr = parse
     }
 *)
   | ((break | space)* ("`"+ as openqtstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       openqtdepth := String.length openqtstr;
       after_literal_state := HorizontalState;
       next_state := LiteralState;

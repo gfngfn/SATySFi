@@ -118,6 +118,11 @@ type paddings =
 
 (* -- representation about graphics based on PDF 1.7 specification -- *)
 
+type color =
+  | DeviceGray of float
+  | DeviceRGB  of float * float * float
+  | DeviceCMYK of float * float * float * float
+
 type 'a path_element =
   | LineTo              of 'a
   | CubicBezierTo       of point * point * 'a
@@ -140,11 +145,7 @@ type line_cap =
   | RoundCap
   | ProjectingSquareCap
 
-type color =
-  | DeviceGray of float
-  | DeviceRGB  of float * float * float
-  | DeviceCMYK of float * float * float * float
-
+(* will be deprecated *)
 type graphics_state =
   {
     line_width   : length;
@@ -156,6 +157,7 @@ type graphics_state =
     stroke_color : color;
   }
 
+(* will be deprecated *)
 type graphics_command =
   | DrawStroke
   | DrawFillByNonzero
@@ -180,15 +182,15 @@ let pp_horz_string_info fmt info =
   Format.fprintf fmt "(HSinfo)"
 
 type pure_horz_box =
-  | PHOuterEmpty  of length * length * length
+  | PHOuterEmpty     of length * length * length
   | PHOuterFil
-  | PHOuterFrame  of paddings * decoration * horz_box list
-  | PHFixedString of horz_string_info * Uchar.t list
+  | PHOuterFrame     of paddings * decoration * horz_box list
+  | PHFixedString    of horz_string_info * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "FixedString(...)")]
-  | PHFixedEmpty  of length
-  | PHFixedFrame  of paddings * length * decoration * horz_box list
-  | PHInnerFrame  of paddings * decoration * horz_box list
-  | PHEmbeddedVert of length * length * length * evaled_vert_box list
+  | PHFixedEmpty     of length
+  | PHFixedFrame     of paddings * length * decoration * horz_box list
+  | PHInnerFrame     of paddings * decoration * horz_box list
+  | PHEmbeddedVert   of length * length * length * evaled_vert_box list
   | PHInlineGraphics of length * length * length * (point -> Pdfops.t list)
 (* -- core part of the definition of horizontal boxes -- *)
 
@@ -199,10 +201,10 @@ and horz_box =
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 and evaled_horz_box_main =
-  | EvHorzString of horz_string_info * OutputText.t
+  | EvHorzString         of horz_string_info * OutputText.t
   | EvHorzEmpty
-  | EvHorzFrame  of length * length * decoration * evaled_horz_box list
-  | EvHorzEmbeddedVert of length * length * evaled_vert_box list
+  | EvHorzFrame          of length * length * decoration * evaled_horz_box list
+  | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
 
 and evaled_horz_box =

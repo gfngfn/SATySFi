@@ -746,6 +746,14 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
+  | PrimitiveDrawText(astpt, asttext) ->
+      let pt = interpret_point env astpt in
+      let valuetext = interpret env asttext in
+      let hblst = interpret_horz_boxes env valuetext in
+      let evhblst = LineBreak.natural hblst in
+      let pdfops = HandlePdf.pdfops_of_evaled_horz_box pt evhblst in
+        GraphicsValue(pdfops)
+
   | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
       let wid = interpret_length env astwid in
       let color = interpret_color env astcolor in

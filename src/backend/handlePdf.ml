@@ -30,7 +30,7 @@ let get_paper_height (paper : Pdfpaper.t) : length =
     Length.of_pdf_point pdfpt
 
 
-let rec ops_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
+let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
     match evhb with
     | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
     | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
@@ -41,7 +41,7 @@ let rec ops_of_evaled_horz_box yposbaseline hgt dpt (xpos, opacc) evhb =
         let ops_foreground = [] in
         let opaccinit = List.rev_append ops_background opacc in
         let (xposnew, opaccsub) =
-          evhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline hgt dpt)
+          evhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
         let opaccnew = List.rev_append ops_foreground opaccsub in
           (xposnew, opaccnew)
@@ -106,7 +106,7 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
     | EvVertLine(hgt, dpt, evhblst) ->
         let yposbaseline = ypos -% hgt in
         let (_, opaccend) =
-          evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline hgt dpt)
+          evhblst @|> (xpos, opacc) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
 (*
         (* begin: for debug *)
@@ -127,6 +127,11 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
         let ops_background = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
           ((xpos, yposend), List.rev_append ops_background opaccsub)
   )
+
+
+let pdfops_of_evaled_horz_box (xpos, ypos) evhblst =
+  let (_, opacc) = evhblst @|> (xpos, []) @|> List.fold_left (ops_of_evaled_horz_box ypos) in
+    List.rev opacc
 
 
 let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =

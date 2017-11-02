@@ -274,9 +274,13 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
           (PermissiblyLong(ratio_raw), Length.zero)
 
 
-let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length =
+let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
-  let (ratios, widperfil) = calculate_ratios wid_req widinfo_total in
+  let (ratios, widperfil) =
+    match widreqopt with
+    | Some(widreq) -> calculate_ratios widreq widinfo_total
+    | None         -> (PermissiblyShort(0.), Length.zero)
+  in
 
   let rec main_conversion ratios widperfil lphb =
     match lphb with
@@ -302,7 +306,7 @@ let rec determine_widths (wid_req : length) (lphblst : lb_pure_box list) : evale
           EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
     | FixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (evhblst, _, _) = determine_widths wid_frame lphblstsub in
+        let (evhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
           EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
     | EmbeddedVert(wid, hgt, dpt, evvblst) ->
@@ -424,7 +428,7 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
   let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
-        let (evhblst, hgt, dpt) = determine_widths paragraph_width line in
+        let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
         begin
           match dptprevopt with
           | None ->
@@ -548,3 +552,9 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
 let get_natural_width (hblst : horz_box list) : length =
   let (widinfo, _, _) = get_metrics_of_horz_box hblst in
     widinfo.natural
+
+let natural (hblst : horz_box list) : evaled_horz_box list =
+  let plhblst = convert_list_for_line_breaking_pure hblst in
+  let (evhblst, _, _) = determine_widths None plhblst in
+    evhblst
+
