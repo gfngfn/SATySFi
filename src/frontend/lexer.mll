@@ -53,16 +53,20 @@
     end
 
 
-  let rec increment_line_for_each_break lexbuf str num =
-    if num >= String.length str then () else
-      begin
+  let rec increment_line_for_each_break lexbuf str =
+    let len = String.length str in
+    let rec aux num =
+      if num >= len then () else
         begin
-          match str.[num] with
-          | ( '\n' | '\r' ) -> increment_line lexbuf
-          | _               -> ()
-        end;
-        increment_line_for_each_break lexbuf str (num + 1)
-      end
+          begin
+            match String.get str num with
+            | ( '\n' | '\r' ) -> increment_line lexbuf
+            | _               -> ()
+          end;
+          increment_line_for_each_break lexbuf str (num + 1)
+        end
+    in
+      aux 0
 
 
   let initialize state =
@@ -314,6 +318,9 @@ and vertexpr = parse
       if !first_state = VerticalState then EOI else
         report_error lexbuf "unexpected end of input while reading a vertical area"
     }
+  | _ as c {
+      report_error lexbuf ("unexpected character '" ^ (String.make 1 c) ^ "' in a vertical area")
+    }
 
 and horzexpr = parse
   | "%" {
@@ -329,6 +336,7 @@ and horzexpr = parse
       BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
+      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) 0;
       let pos = get_pos lexbuf in
       let trs = pop lexbuf "too many closing" in
         match trs with
@@ -497,7 +505,7 @@ and active = parse
     }
   | _ {
       let tok = Lexing.lexeme lexbuf in
-      report_error lexbuf ("unexpected token '" ^ tok ^ "' in active area")
+      report_error lexbuf ("unexpected token '" ^ tok ^ "' in an active area")
     }
 
 and literal = parse
