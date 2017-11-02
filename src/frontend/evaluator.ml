@@ -397,6 +397,10 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context({ ctx with font_size = size; })
 
+  | PrimitiveGetFontSize(astctx) ->
+      let ctx = interpret_context env astctx in
+        LengthConstant(ctx.font_size)
+
   | PrimitiveSetFont(astscript, astfont, astctx) ->
       let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
