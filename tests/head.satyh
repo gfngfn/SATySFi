@@ -329,15 +329,27 @@ let-row ctx \donuts =
         ]
     ))
 
+
+let kern len = fixed-empty (0pt -' len)
+
 let-row ctx \latex =
-  let ctx-A =
-    ctx |> set-font-size 8pt
-        |> set-manual-rising 2.5pt
+  let size = get-font-size ctx in
+  let f = lex-row ctx in
+  let fA = ctx |> set-font-size (size *' 0.7)
+               |> set-manual-rising (size *' 0.2)
+               |> lex-row
   in
-  let ctx-E =
-    ctx |> set-manual-rising (0pt -' 3pt)
+  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+               |> lex-row
   in
-    (lex-row ctx {L}) ++ (fixed-empty (0pt -' 2pt))
-    ++ (lex-row ctx-A {A})
-    ++ (lex-row ctx {T}) ++ (fixed-empty (0pt -' 1.5pt))
-    ++ (lex-row ctx-E {E}) ++ (lex-row ctx {X})
+    f {L} ++ kern (size *' 0.2) ++ fA {A}
+      ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+
+let-row ctx \satysfi =
+  let size = get-font-size ctx in
+  let f = lex-row ctx in
+  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> lex-row in
+   f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+
+let-row ctx \raw-font-size font-size inner =
+  lex-row (ctx |> set-font-size font-size) inner

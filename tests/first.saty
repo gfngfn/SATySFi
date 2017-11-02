@@ -173,6 +173,10 @@
         My quiz above the kiwi juice needs priceless fixing.
       });
     ];
+    +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
+    +p { \raw-font-size(16pt){\latex; vs. \satysfi;} }
+    +p { \raw-font-size(20pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+    +p { \raw-font-size(24pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
     +listing {
       * Tokyo
         ** Hongo Campus:
