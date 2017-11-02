@@ -2,7 +2,7 @@
 let gray x = Gray(x)
 let rgb r g b = RGB(r, g, b)
 
-let black = gray 1.
+let black = gray 0.
 let red = rgb 1. 0. 0.
 
 let font-size-normal  = 12pt
@@ -353,3 +353,25 @@ let-row ctx \satysfi =
 
 let-row ctx \raw-font-size font-size inner =
   lex-row (ctx |> set-font-size font-size) inner
+
+let-row ctx \sample-diagram =
+  let wid = 100pt in
+  let hgt = 100pt in
+  let dpt = 10pt in
+  inline-graphics wid hgt dpt (function (x, y) -> (
+    let path-frame =
+      start-path (x, y +' hgt)
+        |> line-to (x, y -' dpt)
+        |> line-to (x +' wid, y -' dpt)
+        |> line-to (x +' wid, y +' hgt)
+        |> close-with-line
+    in
+    let br = lex-row ctx {Sample Text} in
+    let wid-text = get-natural-width br in
+      [
+        draw-text (x, y) br;
+        draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br;
+        stroke 2pt red path-frame;
+      ]
+      
+  ))
