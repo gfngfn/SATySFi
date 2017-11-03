@@ -663,7 +663,7 @@ nxbfr:
 /* -- -- */
 ;
 nxlambda:
-  | VAR OVERWRITEEQ nxlor {
+  | VAR OVERWRITEEQ nxlor (* temporary *) {
         let (varrng, varnm) = $1 in
           make_standard (Ranged $1) (Ranged $3) (UTOverwrite(varrng, varnm, $3)) }
 (*

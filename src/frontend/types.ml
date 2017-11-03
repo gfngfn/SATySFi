@@ -784,10 +784,10 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(IntType)     -> "int" ^ qstn
     | BaseType(FloatType)   -> "float" ^ qstn
     | BaseType(StringType)  -> "string" ^ qstn
-    | BaseType(TextRowType) -> "text-row" ^ qstn
-    | BaseType(TextColType) -> "text-col" ^ qstn
-    | BaseType(BoxRowType)  -> "box-row" ^ qstn
-    | BaseType(BoxColType)  -> "box-col" ^ qstn
+    | BaseType(TextRowType) -> "inline-text" ^ qstn
+    | BaseType(TextColType) -> "block-text" ^ qstn
+    | BaseType(BoxRowType)  -> "inline-boxes" ^ qstn
+    | BaseType(BoxColType)  -> "block-boxes" ^ qstn
     | BaseType(FontType)    -> "font" ^ qstn
     | BaseType(ContextType) -> "context" ^ qstn
     | BaseType(PrePathType) -> "pre-path" ^ qstn

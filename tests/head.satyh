@@ -19,19 +19,19 @@ let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
 let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
 let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
-let-row ctx \emph inner =
+let-inline ctx \emph inner =
   let ctx-emph =
     ctx |> set-font Latin          font-latin-italic
         |> set-font HanIdeographic font-cjk-gothic
         |> set-font Kana           font-cjk-gothic
         |> set-text-color (CMYK(1., 0., 0., 0.)) %(RGB(0., 0., 0.75))
   in
-    lex-row ctx-emph inner
+    read-inline ctx-emph inner
 
 let-mutable ref-title <- {}
 let-mutable ref-author <- {}
 
-let-col ctx +document rcd inner =
+let-block ctx +document rcd inner =
   let title = rcd#title in
   let author = rcd#author in
   let ctx-doc =
@@ -41,7 +41,7 @@ let-col ctx +document rcd inner =
   (
     ref-title <- title before
     ref-author <- author before
-    lex-col ctx-doc inner
+    read-block ctx-doc inner
   )
 
 let title-frame =
@@ -65,9 +65,9 @@ let title-frame =
         dashed-stroke 5pt (25pt, 3pt, 5pt) red path;
       ]
   in
-    outer-frame-block pads deco
+    inline-frame-solid pads deco
 
-let-col ctx +make-title =
+let-block ctx +make-title =
 %  let title = get-title ctx in
   let ctx-title =
     ctx |> set-font-size font-size-title
@@ -77,19 +77,19 @@ let-col ctx +make-title =
     ctx |> set-font-size font-size-author
         |> set-font Latin font-latin-roman
   in
-  let br-title = lex-row ctx-title (!ref-title) in
-  let br-author = lex-row ctx-author (!ref-author) in
-  let bc-title = form-paragraph ctx-title (title-frame (outer-fil ++ br-title ++ outer-fil)) in
-  let bc-author = form-paragraph ctx-author (outer-fil ++ br-author) in
+  let br-title = read-inline ctx-title (!ref-title) in
+  let br-author = read-inline ctx-author (!ref-author) in
+  let bc-title = form-paragraph ctx-title (title-frame (inline-fil ++ br-title ++ inline-fil)) in
+  let bc-author = form-paragraph ctx-author (inline-fil ++ br-author) in
     bc-title +++ bc-author
 
-let indent = fixed-empty 24pt
+let indent = inline-skip 24pt
 
-let indent-jp = fixed-empty 10pt
+let indent-jp = inline-skip 10pt
 
 let-mutable needs-indentation-ref <- true
 
-let-col ctx +p inner =
+let-block ctx +p inner =
   let needs-indentation =
     if !needs-indentation-ref then
       true
@@ -98,12 +98,12 @@ let-col ctx +p inner =
         false
   in
 
-  let br = lex-row ctx inner in
+  let br = read-inline ctx inner in
   let br-parag =
     if needs-indentation then
-      indent ++ br ++ outer-fil
+      indent ++ br ++ inline-fil
     else
-      br ++ outer-fil
+      br ++ inline-fil
   in
     form-paragraph ctx br-parag
 
@@ -141,25 +141,25 @@ let col-simple-decoset =
   in
     (decoS, decoH, decoM, decoT)
 
-let-col ctx +frame inner =
+let-block ctx +frame inner =
   let pads = (10pt, 10pt, 5pt, 5pt) in
   let () = needs-indentation-ref <- false in
-    col-frame ctx pads col-simple-decoset (function ctx ->
-      lex-col ctx inner)
+    block-frame-breakable ctx pads col-simple-decoset (fun ctx ->
+      read-block ctx inner)
 
-let-col ctx +p-jp inner =
+let-block ctx +p-jp inner =
   let ctx-jp =
     ctx |> set-font HanIdeographic font-cjk-mincho
         |> set-font Kana           font-cjk-mincho
         |> set-dominant-script HanIdeographic
   in
   let () = needs-indentation-ref <- true in
-  let br = lex-row ctx-jp inner in
-    form-paragraph ctx (indent-jp ++ br ++ outer-fil)
+  let br = read-inline ctx-jp inner in
+    form-paragraph ctx (indent-jp ++ br ++ inline-fil)
 
 let-mutable num-section <- 0
 
-let-col ctx +section title inner =
+let-block ctx +section title inner =
   let ctx-title =
     ctx |> set-font-size font-size-section
         |> set-font Latin          font-latin-sans
@@ -168,19 +168,19 @@ let-col ctx +section title inner =
   in
   let () = num-section <- !num-section + 1 in
   let () = needs-indentation-ref <- false in
-  let br-num = lex-row ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
-  let br-title = lex-row ctx-title title in
-  let bc-title = form-paragraph ctx (br-num ++ (fixed-empty 10pt) ++ br-title ++ (outer-fil)) in
-  let bc-inner = lex-col ctx inner in
+  let br-num = read-inline ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
+  let br-title = read-inline ctx-title title in
+  let bc-title = form-paragraph ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
+  let bc-inner = read-block ctx inner in
     bc-title +++ bc-inner
 
-let-row ctx \expand-spaces inner =
+let-inline ctx \expand-spaces inner =
   let ctx-inner = set-space-ratio 1.0 ctx in
-    lex-row ctx-inner inner
+    read-inline ctx-inner inner
 
-let-col-detailed ctx +px inner =
-  let br = lex-row ctx inner in
-  let bc = form-paragraph ctx (indent ++ br ++ outer-fil) in
+let-block-detailed ctx +px inner =
+  let br = read-inline ctx inner in
+  let bc = form-paragraph ctx (indent ++ br ++ inline-fil) in
   let ctx-after = set-font Latin font-latin-italic ctx in
     (ctx-after, bc)
 
@@ -224,12 +224,12 @@ let simple-decoset =
   in
     (decoS, decoH, decoM, decoT)
 
-let-row ctx \inline-frame inner =
+let-inline ctx \inline-frame inner =
   let pads = (5pt, 5pt, 5pt, 5pt) in
-  let br = lex-row ctx inner in
-    (outer-frame-inline pads simple-decoset br)
+  let br = read-inline ctx inner in
+    (inline-frame-breakable pads simple-decoset br)
 
-let-col ctx +simple-replacement-test = lex-col ctx
+let-block ctx +simple-replacement-test = read-block ctx
   '< +p {Replaced text} >
 
 module List
@@ -267,63 +267,61 @@ let bullet (x, y) =
 
 let item : context -> int -> itemize -> box-col
   | ctx depth (Item(parent, children)) =
-      let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (fixed-empty 8pt) in
+      let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
       let bullet-width = get-natural-width br-bullet in
       let parent-indent = item-indent *' (float depth) in
       let br-parent =
-        pbox-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (function ctx ->
-          form-paragraph ctx ((lex-row ctx parent) ++ outer-fil)
+        embedded-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
+          form-paragraph ctx ((read-inline ctx parent) ++ inline-fil)
         )
       in
       let bc-parent =
         form-paragraph ctx
-          ((fixed-empty parent-indent) ++ br-bullet ++ br-parent)
+          ((inline-skip parent-indent) ++ br-bullet ++ br-parent)
       in
       let bclst-children = List.map (item ctx (depth + 1)) children in
         bc-parent +++> bclst-children
 
-let-col ctx +listing (Item(_, itmzlst)) =
+let-block ctx +listing (Item(_, itmzlst)) =
   let bclst = List.map (item ctx 0) itmzlst in
-    col-nil +++> bclst
+    block-nil +++> bclst
 
-let-col ctx +expand-leading inner =
-  lex-col (ctx |> set-leading 32pt) inner
+let-block ctx +expand-leading inner =
+  read-block (ctx |> set-leading 32pt) inner
 
-let-row ctx \parbox-top wid inner =
-  pbox-top ctx wid (function ctx -> lex-col ctx inner)
+let-inline ctx \parbox-top wid inner =
+  embedded-block-top ctx wid (fun ctx -> read-block ctx inner)
 
-let-col ctx +repeat n inner =
-  let bc = lex-col ctx inner in
+let-block ctx +repeat n inner =
+  let bc = read-block ctx inner in
   let repeat acc i =
     if i >= n then acc else
       repeat (bc +++ acc) (i + 1)
   in
-    repeat col-nil 0
+    repeat block-nil 0
 
 let description ctx pairlst =
   let indent = 24pt in
   let bclst =
-    pairlst |> List.map (function pair -> (
-      match pair with
-      | (item, descr) ->
-          let br-item =
-            let ctx-item =
-              ctx |> set-font Latin font-latin-sans
-            in
-              lex-row ctx-item item
-          in
-          let br-descr = lex-row ctx descr in
-          let br-pbox =
-            pbox-top ctx ((get-text-width ctx) -' indent) (function ctx ->
-              form-paragraph ctx ((fixed-empty (0pt -' indent)) ++ br-item ++ (fixed-empty 12pt) ++ br-descr ++ outer-fil)
-            )
-          in
-            form-paragraph ctx ((fixed-empty indent) ++ br-pbox)
+    pairlst |> List.map (fun (item, descr) -> (
+      let br-item =
+        let ctx-item =
+          ctx |> set-font Latin font-latin-sans
+        in
+          read-inline ctx-item item
+      in
+      let br-descr = read-inline ctx descr in
+      let br-pbox =
+        embedded-block-top ctx ((get-text-width ctx) -' indent) (fun ctx ->
+          form-paragraph ctx ((inline-skip (0pt -' indent)) ++ br-item ++ (inline-skip 12pt) ++ br-descr ++ inline-fil)
+        )
+      in
+        form-paragraph ctx ((inline-skip indent) ++ br-pbox)
     ))
   in
-    col-nil +++> bclst
+    block-nil +++> bclst
 
-let-col ctx +description pairlst =
+let-block ctx +description pairlst =
   description ctx pairlst
 
 let decoset-underline =
@@ -333,29 +331,29 @@ let decoset-underline =
   in
     (deco, deco, deco, deco)
 
-let-row ctx \underline inner =
+let-inline ctx \underline inner =
   let pads = (0pt, 0pt, 0pt, 0pt) in
-  let br = lex-row ctx inner in
-    outer-frame-inline pads decoset-underline br
+  let br = read-inline ctx inner in
+    inline-frame-breakable pads decoset-underline br
 
 let donut-path (cx, cy) r1 r2 =
   unite-path (circle (cx, cy) r1) (circle (cx, cy) r2)
 
-let-row ctx \donut =
+let-inline ctx \donut =
   let wid = 14pt in
   let chgt = 4pt in
   let r1 = 6pt in
   let r2 = 3pt in
-    inline-graphics wid 12pt 0pt (function (x, y) -> (
+    inline-graphics wid 12pt 0pt (fun (x, y) -> (
       let cx = x +' wid *' 0.5 in
       let cy = y +' chgt in
         [ fill (RGB(0.8, 0.5, 0.)) (donut-path (cx, cy) r1 r2); ]
     ))
 
-let-row ctx \donuts =
+let-inline ctx \donuts =
   let r1 = 6pt in
   let r2 = 3pt in
-    inline-graphics 18pt 12pt 0pt (function (x, y) -> (
+    inline-graphics 18pt 12pt 0pt (fun (x, y) -> (
       let cp1 = (x +' 7pt, y +' 4pt) in
       let cp2 = (x +' 11pt, y +' 1pt) in
         [
@@ -365,35 +363,35 @@ let-row ctx \donuts =
     ))
 
 
-let kern len = fixed-empty (0pt -' len)
+let kern len = inline-skip (0pt -' len)
 
-let-row ctx \latex =
+let-inline ctx \latex =
   let size = get-font-size ctx in
-  let f = lex-row ctx in
+  let f = read-inline ctx in
   let fA = ctx |> set-font-size (size *' 0.7)
                |> set-manual-rising (size *' 0.2)
-               |> lex-row
+               |> read-inline
   in
   let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
-               |> lex-row
+               |> read-inline
   in
     f {L} ++ kern (size *' 0.2) ++ fA {A}
       ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
 
-let-row ctx \satysfi =
+let-inline ctx \satysfi =
   let size = get-font-size ctx in
-  let f = lex-row ctx in
-  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> lex-row in
+  let f = read-inline ctx in
+  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
    f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
 
-let-row ctx \raw-font-size font-size inner =
-  lex-row (ctx |> set-font-size font-size) inner
+let-inline ctx \raw-font-size font-size inner =
+  read-inline (ctx |> set-font-size font-size) inner
 
-let-row ctx \sample-diagram =
+let-inline ctx \sample-diagram =
   let wid = 100pt in
   let hgt = 100pt in
   let dpt = 10pt in
-  inline-graphics wid hgt dpt (function (x, y) -> (
+  inline-graphics wid hgt dpt (fun (x, y) -> (
     let path-frame =
       start-path (x, y +' hgt)
         |> line-to (x, y -' dpt)
@@ -401,7 +399,7 @@ let-row ctx \sample-diagram =
         |> line-to (x +' wid, y +' hgt)
         |> close-with-line
     in
-    let br = lex-row ctx {Sample Text} in
+    let br = read-inline ctx {Sample Text} in
     let wid-text = get-natural-width br in
       [
         draw-text (x, y) br;

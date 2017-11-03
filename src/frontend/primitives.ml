@@ -214,15 +214,15 @@ let make_environments () =
 *)
   let (@->) dom cod = (~! "func"    , FuncType(dom, cod)   ) in
 
-  let tr            = (~! "text-row", BaseType(TextRowType)) in
-  let tc            = (~! "text-col", BaseType(TextColType)) in
-  let br            = (~! "box-row" , BaseType(BoxRowType) ) in
-  let bc            = (~! "box-col" , BaseType(BoxColType) ) in
-  let ft            = (~! "font"    , BaseType(FontType)   ) in
-  let ctx           = (~! "context" , BaseType(ContextType)) in
-  let path          = (~! "path"    , BaseType(PathType)   ) in
-  let prp           = (~! "pre-path", BaseType(PrePathType)) in
-  let scr           = (~! "script"  , VariantType([], tyid_script)) in
+  let tr            = (~! "inline-text" , BaseType(TextRowType)) in
+  let tc            = (~! "block-text"  , BaseType(TextColType)) in
+  let br            = (~! "inline-boxes", BaseType(BoxRowType) ) in
+  let bc            = (~! "block-boxes" , BaseType(BoxColType) ) in
+  let ft            = (~! "font"        , BaseType(FontType)   ) in
+  let ctx           = (~! "context"     , BaseType(ContextType)) in
+  let path          = (~! "path"        , BaseType(PathType)   ) in
+  let prp           = (~! "pre-path"    , BaseType(PrePathType)) in
+  let scr           = (~! "script"      , VariantType([], tyid_script)) in
 (*
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
 *)
@@ -269,25 +269,25 @@ let make_environments () =
         ( "+++", ~% (bc @-> bc @-> bc), lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2))      );
         ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx)));
 
-        ( "same"         , ~% (s @-> s @-> b)           , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
+        ( "string-same"  , ~% (s @-> s @-> b)           , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
         ( "string-sub"   , ~% (s @-> i @-> i @-> s)     , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
         ( "string-length", ~% (s @-> i)                 , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
         ( "arabic"       , ~% (i @-> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (i @-> fl)                , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("form-paragraph"    , ~% (ctx @-> br @-> bc)                 , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
-        ("fixed-empty"       , ~% (ln @-> br)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("outer-empty"       , ~% (ln @-> ln @-> ln @-> br)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("outer-fil"         , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
-        ("outer-frame-block" , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("outer-frame-inline", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-        ("font"              , ~% (s @-> fl @-> fl @-> ft)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
-        ("col-nil"           , ~% bc                                  , (fun _ -> Vert([])));
-        ("col-frame"         , ~% (ctx @-> pads @-> decoset @-> (ctx @-> bc) @-> bc), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
-        ("pbox-top"          , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
+        ("form-paragraph"        , ~% (ctx @-> br @-> bc)                 , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
+        ("inline-skip"           , ~% (ln @-> br)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("inline-glue"           , ~% (ln @-> ln @-> ln @-> br)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("inline-fil"            , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
+        ("inline-frame-solid"    , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("inline-frame-breakable", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+        ("font"                  , ~% (s @-> fl @-> fl @-> ft)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
+        ("block-nil"             , ~% bc                                  , (fun _ -> Vert([])));
+        ("block-frame-breakable" , ~% (ctx @-> pads @-> decoset @-> (ctx @-> bc) @-> bc), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
+        ("embedded-block-top"    , ~% (ctx @-> ln @-> (ctx @-> bc) @-> br), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
 
-        ("lex-row", ~% (ctx @-> tr @-> br), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
-        ("lex-col", ~% (ctx @-> tc @-> bc), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
+        ("read-inline", ~% (ctx @-> tr @-> br), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
+        ("read-block" , ~% (ctx @-> tc @-> bc), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
         ("default-context"    , ~% ctx                                 , (fun _ -> Context(default_context)));
         ("set-space-ratio"    , ~% (fl @-> ctx @-> ctx)                , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
