@@ -74,7 +74,7 @@
           qui officia deserunt mollit anim id est laborum.
         }
       >
-      +repeat (5) < +p {
+      +repeat (6) < +p {
         Lorem ipsum dolor sit amet, consectetur adipiscing elit,
         sed do eiusmod tempor incididunt ut labore
         et dolore magna aliqua.
@@ -116,7 +116,55 @@
       \underline{行分割できる下線をつけたりすることもできます（途中で行分割可能なインラインボックスを使って実現しています）。}
       \donut;これはドーナツ。\donuts;こっちは重なったドーナツ。
     }
+    +screen {タイトルつきの枠} <
+      +p-jp {
+        定理環境などに使える枠です。p\latex; のascmacパッケージのscreen環境に近いです。
+      }
+    >
+%    +simple-replacement-test;
+    +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
+    +p { \raw-font-size(16pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+    +p { \raw-font-size(20pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+    +p { \raw-font-size(24pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
   >
+  +section {Inline Vertical Boxes} <
+    +p {
+      Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      The baseline for a vertical box is set
+      so that the first line of the contents is in the same height as the outer line.
+      The inline vertical box system enables us
+      to typeset what is called a description environment in \latex;:
+    }
+    +description [
+      ({Pangram 1}, {
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+      });
+      ({Pangram 2}, {
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+      });
+    ];
+%    +p{
+%      Left \sample-diagram; right
+%    }
+    +listing {
+      * Tokyo
+        ** Hongo Campus:
+             the main area of the university.
+        ** Yayoi Campus
+        ** Asano Campus:
+             no person found, only computers left.
+        ** Komaba Campus:
+             having the College of Liberal Arts
+             and a kindergarten pretending to be a college of liberal arts.
+      * Chiba
+        ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
+    }
   +section {Spaces and Leading} <
     +frame < +p {
       \expand-spaces {
@@ -151,58 +199,15 @@
       }
     > >
   >
-  +section {Inline Vertical Boxes} <
-    +p {
-      Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
-      The baseline for a vertical box is set
-      so that the first line of the contents is in the same height as the outer line.
-      The inline vertical box system enables us
-      to typeset what is called a description environment in \latex;:
-    }
-    +description [
-      ({Pangram 1}, {
-        The quick brown fox jumps over the lazy dog.
-        The quick brown fox jumps over the lazy dog.
-        The quick brown fox jumps over the lazy dog.
-        The quick brown fox jumps over the lazy dog.
-      });
-      ({Pangram 2}, {
-        My quiz above the kiwi juice needs priceless fixing.
-        My quiz above the kiwi juice needs priceless fixing.
-        My quiz above the kiwi juice needs priceless fixing.
-        My quiz above the kiwi juice needs priceless fixing.
-      });
-    ];
-    +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
-    +p { \raw-font-size(16pt){\latex; vs. \satysfi;} }
-    +p { \raw-font-size(20pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
-    +p { \raw-font-size(24pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
-    +p{
-      Left \sample-diagram; right
-    }
-    +listing {
-      * Tokyo
-        ** Hongo Campus:
-             the main area of the university.
-        ** Yayoi Campus
-        ** Asano Campus:
-             no person found, only computers left.
-        ** Komaba Campus:
-             having the College of Liberal Arts
-             and a kindergarten pretending to be a college of liberal arts.
-      * Chiba
-        ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
-    }
-    +simple-replacement-test;
-    +px {
-      This paragraph makes all the paragraphs after this one typeset in an Italic font;
-      it modifies the outer context.
-    }
-    +p {
-      This paragraph is affected by the previous one.
-    }
-    +p {
-      This is, too.
-    }
+%    +px {
+%      This paragraph makes all the paragraphs after this one typeset in an Italic font;
+%      it modifies the outer context.
+%    }
+%    +p {
+%      This paragraph is affected by the previous one.
+%    }
+%    +p {
+%      This is, too.
+%    }
   >
 >

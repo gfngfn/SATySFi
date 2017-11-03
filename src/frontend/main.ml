@@ -123,8 +123,9 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                 | Vert(imvblst) ->
                     let pdf = HandlePdf.create_empty_pdf file_name_out in
                     begin
-                      PageBreak.main pdf imvblst;
                       print_endline (" ---- ---- ---- ----");
+                      print_endline ("  breaking contents into pages ...");
+                      PageBreak.main pdf imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
                 | _ -> failwith "main; not a Vert(_)"

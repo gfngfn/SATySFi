@@ -19,11 +19,14 @@ let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
 let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
 let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
+let set-cjk-font font ctx =
+  ctx |> set-font HanIdeographic font
+      |> set-font Kana           font
+
 let-inline ctx \emph inner =
   let ctx-emph =
-    ctx |> set-font Latin          font-latin-italic
-        |> set-font HanIdeographic font-cjk-gothic
-        |> set-font Kana           font-cjk-gothic
+    ctx |> set-font Latin font-latin-italic
+        |> set-cjk-font font-cjk-gothic
         |> set-text-color (CMYK(1., 0., 0., 0.)) %(RGB(0., 0., 0.75))
   in
     read-inline ctx-emph inner
@@ -149,22 +152,21 @@ let-block ctx +frame inner =
 
 let-block ctx +p-jp inner =
   let ctx-jp =
-    ctx |> set-font HanIdeographic font-cjk-mincho
-        |> set-font Kana           font-cjk-mincho
+    ctx |> set-cjk-font font-cjk-mincho
         |> set-dominant-script HanIdeographic
+        |> set-leading (get-font-size ctx *' 1.7)
   in
   let () = needs-indentation-ref <- true in
   let br = read-inline ctx-jp inner in
-    form-paragraph ctx (indent-jp ++ br ++ inline-fil)
+    form-paragraph ctx-jp (indent-jp ++ br ++ inline-fil)
 
 let-mutable num-section <- 0
 
 let-block ctx +section title inner =
   let ctx-title =
     ctx |> set-font-size font-size-section
-        |> set-font Latin          font-latin-sans
-        |> set-font HanIdeographic font-cjk-gothic
-        |> set-font Kana           font-cjk-gothic
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
   in
   let () = num-section <- !num-section + 1 in
   let () = needs-indentation-ref <- false in
@@ -223,6 +225,35 @@ let simple-decoset =
       ]
   in
     (decoS, decoH, decoM, decoT)
+
+let screen-decoset size ib-heading-raw =
+  let lskip = size *' 0.125 in
+  let ib-heading = inline-skip lskip ++ ib-heading-raw ++ inline-skip lskip in
+  let hwid = get-natural-width ib-heading in
+  let lshift = 10pt in
+  let frame-stroke = stroke 1pt black in
+  let decoS (x, y) wid hgt dpt =
+    let (x1, y1) = (x, y +' hgt)  in
+    let (x2, y2) = (x +' wid, y -' dpt) in
+      [ start-path (x1 +' lshift, y1)
+          |> line-to (x1, y1)
+          |> line-to (x1, y2)
+          |> line-to (x2, y2)
+          |> line-to (x2, y1)
+          |> line-to (x1 +' lshift +' hwid, y1)
+          |> terminate-path |> frame-stroke;
+        draw-text (x1 +' lshift, y1 -' size *' 0.4) ib-heading;
+      ]
+  in
+    (decoS, decoS, decoS, decoS)
+
+let-block ctx +screen heading contents =
+  let ib-heading = read-inline (ctx |> set-cjk-font font-cjk-gothic) heading in
+  let size = get-font-size ctx in
+  let pads = (10pt, 10pt, size *' 0.5 +' 10pt, 10pt) in
+    block-frame-breakable ctx pads (screen-decoset size ib-heading) (fun ctx ->
+      read-block ctx contents
+    )
 
 let-inline ctx \inline-frame inner =
   let pads = (5pt, 5pt, 5pt, 5pt) in

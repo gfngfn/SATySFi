@@ -384,11 +384,11 @@ and interpret env ast =
       let (hgt, dpt) =
         match find_first_line None HorzBox.Length.zero evvblst with
         | (Some(hgt), totalhgt) ->
-            let () = Printf.printf "EmbeddedVert: total = %f\n" (HorzBox.Length.to_pdf_point totalhgt) in  (* for debug *)
+            let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: total = %f" (HorzBox.Length.to_pdf_point totalhgt)) in  (* for debug *)
             (hgt, HorzBox.(Length.negate (totalhgt -% hgt)))
         | (None, totalhgt)      -> (HorzBox.Length.zero, HorzBox.Length.negate totalhgt)
       in
-      let () = Printf.printf "EmbeddedVert: height = %f, depth = %f\n" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt) in  (* for debug *)
+      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->

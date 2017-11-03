@@ -1,6 +1,6 @@
 
 type message_category =
-  | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern | Lexer | Main | FontFormat
+  | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern | Lexer | Main | FontFormat | EmbVert
 
 (* --
   categories of messages printed while debugging;
@@ -39,6 +39,7 @@ let lexhorz msg  = printS LexHorz msg
 let lexhorzE msg = printE LexHorz msg
 let eval msg     = printS Eval msg
 let evalE msg    = printE Eval msg
+let embvertE msg = printE EmbVert msg
 
 (* -- lineBreak.ml -- *)
 let linebreakE msg = printE LineBreak msg

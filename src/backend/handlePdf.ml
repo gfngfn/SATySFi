@@ -156,10 +156,14 @@ let create_empty_pdf (flnm : file_path) : t =
 
 
 let write_to_file ((pdf, pageacc, flnm) : t) : unit =
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  embedding fonts ...");
   let fontdict = FontInfo.get_font_dictionary pdf in
   let irfontdict =
     Pdf.addobj pdf (Pdf.Dictionary[("/Font", fontdict)])
   in
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  writing pages ...");
   let pagelst =
     pageacc |> List.rev |> List.map (fun page ->
       { page with Pdfpage.resources = Pdf.Indirect(irfontdict); }
