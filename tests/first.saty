@@ -149,12 +149,9 @@
         My quiz above the kiwi juice needs priceless fixing.
       });
     ];
-%    +p{
-%      Left \sample-diagram; right
-%    }
     +listing {
       * Tokyo
-        ** Hongo Campus:
+        ** Hongo Campus: \* 本郷
              the main area of the university.
         ** Yayoi Campus
         ** Asano Campus:
@@ -165,6 +162,7 @@
       * Chiba
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
+  >
   +section {Spaces and Leading} <
     +frame < +p {
       \expand-spaces {
@@ -198,16 +196,5 @@
         qui officia deserunt mollit anim id est laborum.
       }
     > >
-  >
-%    +px {
-%      This paragraph makes all the paragraphs after this one typeset in an Italic font;
-%      it modifies the outer context.
-%    }
-%    +p {
-%      This paragraph is affected by the previous one.
-%    }
-%    +p {
-%      This is, too.
-%    }
   >
 >

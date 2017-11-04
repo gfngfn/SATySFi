@@ -1,3 +1,3 @@
 all:
-	satysfi head.satyh first.saty -o first.pdf
+	satysfi head.satyh first.saty -o output.pdf
 

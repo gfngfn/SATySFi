@@ -71,7 +71,6 @@ let title-frame =
     inline-frame-solid pads deco
 
 let-block ctx +make-title =
-%  let title = get-title ctx in
   let ctx-title =
     ctx |> set-font-size font-size-title
         |> set-font Latin font-latin-roman
