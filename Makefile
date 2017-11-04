@@ -12,10 +12,8 @@ BINDIR=$(PREFIX)/bin
 
 all:
 	mkdir -p _build/
-	cp $(EXTERNAL)/camlpdf/*.c ./
-	cp $(EXTERNAL)/camlpdf/*.h ./
-	mv *.c _build/
-	mv *.h _build/
+	cp $(EXTERNAL)/camlpdf/*.c _build/
+	cp $(EXTERNAL)/camlpdf/*.h _build/
 	$(OCB) main.native
 	mv main.native $(TARGET)
 

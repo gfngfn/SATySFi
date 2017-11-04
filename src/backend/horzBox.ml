@@ -57,13 +57,6 @@ let ( <% ) = Length.less_than
 let ( <=% ) = Length.leq
 
 
-let ( @|> ) = ( |> )
-  (* ----
-      right-associative version;
-      `y @|> x @|> f ` is equivalent to `f x y`
-     ---- *)
-
-
 type length = Length.t  [@@deriving show]
 
 type point = length * length

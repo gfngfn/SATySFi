@@ -16,6 +16,12 @@ let option_map f opt =
   | Some(x) -> Some(f x)
 
 
-let (+=) r n =
+let ( += ) r n =
   r := !r + n
 
+
+let ( @|> ) = ( |> )
+  (* ----
+      right-associative version;
+      `y @|> x @|> f ` is equivalent to `f x y`
+     ---- *)

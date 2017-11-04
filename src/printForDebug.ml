@@ -1,6 +1,6 @@
 
 type message_category =
-  | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern | Lexer | Main | FontFormat | EmbVert
+  | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern | Lexer | Main | FontFormat | EmbVert | InitFont
 
 (* --
   categories of messages printed while debugging;
@@ -48,14 +48,13 @@ let linebreakE msg = printE LineBreak msg
 let pagebreakE msg = printE PageBreak msg
 let pagebreakF = formatter PageBreak
 
-(* -- fontFormat.ml -- *)
+(* -- fontInfo.ml / fontFormat.ml -- *)
 let kernE msg = printE Kern msg
+let fontfmtE msg = printE FontFormat msg
+let initfontE msg = printE InitFont msg
 
 (* -- lexer.mll -- *)
 let lexerE msg = printE Lexer msg
 
 (* -- main.ml -- *)
 let mainE msg = printE Main msg
-
-(* -- fontFormat.ml -- *)
-let fontfmtE msg = printE FontFormat msg

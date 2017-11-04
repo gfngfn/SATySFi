@@ -1,12 +1,5 @@
 
-(* for test *)
-let print_for_debug msg =
-(*
-  print_endline msg;
-*)
-  ()
-
-
+open Util
 open Result
 open HorzBox
 
@@ -150,7 +143,7 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
                     match FontFormat.find_kerning dcdr gidprev gid with
                     | None        -> (otxtacc @>> gid, wacc + w)
                     | Some(wkern) ->
-                        let () = print_for_debug (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern) in  (* for debug *)
+                        let () = PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern) in  (* for debug *)
                         ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
                         (* -- kerning value is negative if two characters are supposed to be closer -- *)
               in
@@ -197,7 +190,6 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) 
 
 
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
-  print_for_debug "!!begin get_font_dictionary";  (* for debug *)
   let keyval =
     [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
       let obj = make_dictionary pdf abbrev tuple in
@@ -205,20 +197,19 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
         (tag, obj) :: acc
     )
   in
-  print_for_debug "!!end get_font_dictionary";  (* for debug *)
     Pdf.Dictionary(keyval)
 
 
 let initialize (satysfi_root_dir : string) =
 
-  print_for_debug "!!ScriptDataMap";
+  PrintForDebug.initfontE "!!ScriptDataMap";
   ScriptDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt");
-  print_for_debug "!!LineBreakDataMap";
+  PrintForDebug.initfontE "!!LineBreakDataMap";
   LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
 
   let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
 
-  print_for_debug "!!begin initialize";  (* for debug *)
+  PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
 
     ("Hlv", CIDFontType2TTRegistration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "HelveticaBlack.ttf");
@@ -233,7 +224,7 @@ let initialize (satysfi_root_dir : string) =
        CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf")
 
   ]
-  ; print_for_debug "!!end initialize"  (* for debug *)
+  ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 
 
 

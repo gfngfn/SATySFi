@@ -1,4 +1,5 @@
 
+open Util
 open HorzBox
 
 let ( ~. ) = float_of_int
@@ -22,11 +23,11 @@ let ( +%@ ) wi1 wi2 =
 type metrics = length_info * length * length
 
 type lb_pure_box =
-  | Atom        of metrics * evaled_horz_box_main
-  | OuterFrame  of metrics * decoration * lb_pure_box list
-  | FixedFrame  of length * length * length * decoration * lb_pure_box list
-  | EmbeddedVert of length * length * length * evaled_vert_box list
-  | InlineGraphics of  length * length * length * (point -> Pdfops.t list)
+  | Atom           of metrics * evaled_horz_box_main
+  | OuterFrame     of metrics * decoration * lb_pure_box list
+  | FixedFrame     of length * length * length * decoration * lb_pure_box list
+  | EmbeddedVert   of length * length * length * evaled_vert_box list
+  | InlineGraphics of length * length * length * (point -> Pdfops.t list)
 
 type lb_box =
   | LBPure           of lb_pure_box
