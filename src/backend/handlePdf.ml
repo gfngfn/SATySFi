@@ -5,9 +5,10 @@ open HorzBox
 
 type t = Pdf.t * Pdfpage.t list * file_path
 
-
+(*
 let left_margin = Length.of_pdf_point 75.   (* temporary; should be variable *)
 let top_margin = Length.of_pdf_point 100.   (* temporary; should be variable *)
+*)
 let leading = Length.of_pdf_point 32.       (* temporary; should be variable *)
 
 
@@ -131,10 +132,15 @@ let pdfops_of_evaled_horz_box (xpos, ypos) evhblst =
     List.rev opacc
 
 
-let write_page (paper : Pdfpaper.t) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
+let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
 
-  let xinit = left_margin in
-  let yinit = (get_paper_height paper) -% top_margin in
+  let paper =
+    match pagesch.page_size with
+    | A4Paper                -> Pdfpaper.a4
+    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (HorzBox.Length.to_pdf_point w) (HorzBox.Length.to_pdf_point h)
+  in
+  let xinit = pagesch.left_page_margin in
+  let yinit = (get_paper_height paper) -% pagesch.top_page_margin in
   let (_, opaccend) = ops_of_evaled_vert_box_list (xinit, yinit) [] evvblst in
 
   let oplst = List.rev opaccend in

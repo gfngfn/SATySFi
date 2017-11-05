@@ -405,10 +405,6 @@ and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
 and input_context = {
-(*
-  title            : abstract_tree;
-  author           : abstract_tree;
-*)
   font_size        : HorzBox.length;
   font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
   dominant_script  : CharBasis.script;
@@ -422,6 +418,7 @@ and input_context = {
   leading          : HorzBox.length;
   text_color       : HorzBox.color;
   manual_rising    : HorzBox.length;
+  page_scheme      : HorzBox.page_scheme;
 }
 (* temporary *)
 
@@ -538,8 +535,10 @@ and abstract_tree =
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
   | Context                     of input_context
+  | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
+  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree

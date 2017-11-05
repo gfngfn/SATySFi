@@ -5,12 +5,14 @@ let tyid_option  = Typeenv.Raw.fresh_type_id "option"
 let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
 let tyid_color   = Typeenv.Raw.fresh_type_id "color"
 let tyid_script  = Typeenv.Raw.fresh_type_id "script"
+let tyid_page    = Typeenv.Raw.fresh_type_id "page"
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let unit_type = (dr, BaseType(UnitType)) in
   let float_type = (dr, BaseType(FloatType)) in
+  let length_type = (dr, BaseType(LengthType)) in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(ref (Bound(bid)))) in
 
@@ -34,6 +36,10 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(unit_type)) tyid_script
   |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(unit_type)) tyid_script
   |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(unit_type)) tyid_script
+
+  |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(unit_type)) tyid_page
+  |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly((dr, ProductType([length_type; length_type])))) tyid_page
 
 
 let add_to_environment env varnm rfast =
@@ -87,7 +93,7 @@ let default_font_scheme =
 
 let envinit : environment = Hashtbl.create 128
 
-let default_context =
+let get_initial_context pagesch =
   {
 (*
     title            = InputHorzWithEnvironment([], envinit);
@@ -100,14 +106,15 @@ let default_context =
     space_shrink     = 0.08;
     space_stretch    = 0.16; (* 0.32; *)
     adjacent_stretch = 0.05;
-    paragraph_width  = pdfpt 400.;
+    paragraph_width  = pagesch.HorzBox.area_width;
     paragraph_top    = pdfpt 18.;
     paragraph_bottom = pdfpt 18.;
     leading          = pdfpt 18.;
     text_color       = HorzBox.DeviceGray(0.);
     manual_rising    = pdfpt 0.;
+    page_scheme      = pagesch;
   }
-
+(*
 let default_graphics_context =
   {
     HorzBox.line_width   = pdfpt 1.;
@@ -191,7 +198,7 @@ let default_paddings =
     HorzBox.paddingT = pdfpt 2. +% margin;
     HorzBox.paddingB = pdfpt 2. +% margin;
   }
-
+*)
 (* -- end: constants just for experimental use -- *)
 
 
@@ -230,6 +237,7 @@ let make_environments () =
 *)
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
+  let pg            = (~! "page"    , VariantType([], tyid_page)) in
   let pads          = prod [ln; ln; ln; ln] in
   let pt            = prod [ln; ln] in
   let dash          = prod [ln; ln; ln] in
@@ -291,7 +299,7 @@ let make_environments () =
         ("read-inline", ~% (ctx @-> tr @-> br), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (ctx @-> tc @-> bc), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("default-context"    , ~% ctx                                 , (fun _ -> Context(default_context)));
+        ("get-initial-context", ~% (pg @-> pt @-> ln @-> ln @-> ctx)   , lambda4 (fun vpage vpt vwid vhgt -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt)));
         ("set-space-ratio"    , ~% (fl @-> ctx @-> ctx)                , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
         ("set-font-size"      , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (ctx @-> ln)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));

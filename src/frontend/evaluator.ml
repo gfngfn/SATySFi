@@ -290,7 +290,9 @@ and interpret env ast =
       end
 *)
 
-  | Context(ctx) -> Context(ctx)
+  | Context(_) -> ast
+
+  | UninitializedContext -> ast
 
   | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
 
@@ -314,11 +316,11 @@ and interpret env ast =
       end
 
   | VertLex(astctx, ast1) ->
-      let ctx = interpret_context env astctx in
+      let valuectx = interpret env astctx in
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputVertWithEnvironment(ivlst, envi) -> interpret_input_vert envi ctx ivlst
+        | InputVertWithEnvironment(ivlst, envi) -> interpret_input_vert envi valuectx ivlst
         | _                                     -> report_bug_evaluator "VertLex"
       end
 
@@ -390,6 +392,27 @@ and interpret env ast =
       in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHEmbeddedVert(wid, hgt, dpt, evvblst))]))
+
+  | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt) ->
+      let page = interpret_page env astpage in
+      let (lmargin, tmargin) = interpret_point env astpt in
+      let txtwid = interpret_length env astwid in
+      let txthgt = interpret_length env asthgt in
+(*
+      let txtwid = HorzBox.Length.of_pdf_point 400. in  (* temporary; should be variable *)
+      let txthgt = HorzBox.Length.of_pdf_point 650. in  (* temporary; should be variable *)
+*)
+      let pagesch =
+        HorzBox.({
+          page_size        = page;
+          left_page_margin = lmargin;
+          top_page_margin  = tmargin;
+          area_width       = txtwid;
+          area_height      = txthgt;
+        })
+      in
+      let ctx = Primitives.get_initial_context pagesch in
+        Context(ctx)
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
@@ -871,23 +894,23 @@ and interpret env ast =
         LengthConstant(HorzBox.(len1 *% flt2))
 
 
-and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : input_vert_element list) : abstract_tree =
-  let (ctxfinal, imvblstacc) =
-    ivlst |> List.fold_left (fun (ctx, lstacc) iv ->
+and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
+  let (valuectxfinal, imvblstacc) =
+    ivlst |> List.fold_left (fun (valuectx, lstacc) iv ->
       match iv with
       | InputVertEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
             | LambdaVertWithEnvironment(evid, astdef, envf) ->
-                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
+                let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
                 begin
                   match valueret with
-                  | Vert(imvblst) -> (ctx, imvblst :: lstacc)
+                  | Vert(imvblst) -> (valuectx, imvblst :: lstacc)
                   | _             -> report_bug_evaluator "interpret_input_vert; 1"
                 end
-
+(*
             | LambdaVertDetailedWithEnv(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
@@ -896,10 +919,10 @@ and interpret_input_vert (env : environment) (ctx : input_context) (ivlst : inpu
                   | TupleCons(Context(ctxnext), TupleCons(Vert(imvblst), EndOfTuple)) -> (ctxnext, imvblst :: lstacc)
                   | _                                                                 -> report_bug_evaluator "interpret_input_vert; 2"
                 end
-
+*)
             | _ -> report_bug_evaluator "interpret_input_vert; other than LambdaVertWithEnvironment or LambdaVertDetailedWithEnv"
           end
-    ) (ctx, [])
+    ) (valuectx, [])
   in
   let imvblst = imvblstacc |> List.rev |> List.concat in
     Vert(imvblst)
@@ -975,10 +998,11 @@ and interpret_path_value env ast : HorzBox.path list =
 and interpret_context (env : environment) (ast : abstract_tree) : input_context =
   let value = interpret env ast in
     match value with
-    | Context(ctx) -> ctx
-    | _            -> report_bug_evaluator ("interpret_context: not a Context; "
-                                            ^ (Display.string_of_ast ast)
-                                            ^ " ->* " ^ (Display.string_of_ast value))
+    | Context(ctx)         -> ctx
+    | UninitializedContext -> raise (EvalError("uninitialized context"))
+    | _                    -> report_bug_evaluator ("interpret_context: not a Context; "
+                                                    ^ (Display.string_of_ast ast)
+                                                    ^ " ->* " ^ (Display.string_of_ast value))
 
 (*
 and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzBox.graphics_state =
@@ -1063,6 +1087,17 @@ and interpret_length (env : environment) (ast : abstract_tree) : HorzBox.length 
     | _                  -> report_bug_evaluator ("interpret_float: not a FloatConstant; "
                                                   ^ (Display.string_of_ast ast)
                                                   ^ " ->* " ^ (Display.string_of_ast vl))
+
+and interpret_page env ast : HorzBox.page_size =
+  let vpage = interpret env ast in
+    match vpage with
+    | Constructor("A4Paper", UnitConstant) -> HorzBox.A4Paper
+
+    | Constructor("UserDefinedPaper",
+        TupleCons(LengthConstant(pgwid), TupleCons(LengthConstant(pghgt), EndOfTuple))) ->
+          HorzBox.UserDefinedPaper(pgwid, pghgt)
+
+    | _ -> report_bug_evaluator ("interpret_page; " ^ (Display.string_of_ast vpage))
 
 
 and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =

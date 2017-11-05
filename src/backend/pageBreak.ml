@@ -33,14 +33,14 @@ type pb_vert_box =
   | PBVertFixedUnbreakable of length
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
 
-
+(*
 let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
+*)
 
-
-let chop_single_page (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
+let chop_single_page area_height (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
 
   let calculate_badness_of_page_break hgttotal =
-    let hgtdiff = page_height -% hgttotal in
+    let hgtdiff = area_height -% hgttotal in
       if hgtdiff <% Length.zero then 10000 else
         int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
@@ -150,14 +150,14 @@ let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
     aux pbvblst
 
 
-let main (pdf : HandlePdf.t) (imvblst : intermediate_vert_box list) : unit =
+let main (pdf : HandlePdf.t) (pagesch : page_scheme) (imvblst : intermediate_vert_box list) : unit =
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
   let rec aux pdf pbvblst =
-    let (evvblstpage, restopt) = chop_single_page pbvblst in
+    let (evvblstpage, restopt) = chop_single_page pagesch.area_height pbvblst in
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
     let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
-    let pdfnew = pdf |> HandlePdf.write_page Pdfpaper.a4 evvblstpage in  (* temporary; size of paper should be variable *)
+    let pdfnew = pdf |> HandlePdf.write_page pagesch evvblstpage in  (* temporary; size of paper should be variable *)
       match restopt with
       | None              -> pdfnew
       | Some(imvblstrest) -> aux pdfnew imvblstrest

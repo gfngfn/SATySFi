@@ -70,7 +70,7 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
       end
   end
 
-
+(*n
 let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
@@ -83,7 +83,7 @@ let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(TextColType)) ->
-              let astfinal = VertLex(Context(Primitives.default_context), ast) in
+              let astfinal = VertLex(UninitializedContext, ast) in
               let valuefinal = Evaluator.interpret env astfinal in
               begin
                 match valuefinal with
@@ -99,7 +99,7 @@ let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
           | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not text-col; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
       end
   end
-
+*)
 
 let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
@@ -116,7 +116,17 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(TextColType)) ->
-              let astfinal = VertLex(Context(Primitives.default_context), ast) in
+              let pagesch =
+                HorzBox.({
+                  page_size        = A4Paper;
+                  left_page_margin = Length.of_pdf_point 100.;
+                  top_page_margin  = Length.of_pdf_point 100.;
+                  area_width       = Length.of_pdf_point 400.;
+                  area_height      = Length.of_pdf_point 650.;
+                })
+              in
+              let ctxinit = Primitives.get_initial_context pagesch in
+              let astfinal = VertLex(Context(ctxinit), ast) in
               let valuefinal = Evaluator.interpret env astfinal in
               begin
                 match valuefinal with
@@ -125,7 +135,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                     begin
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-                      PageBreak.main pdf imvblst;
+                      PageBreak.main pdf pagesch imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
                 | _ -> failwith "main; not a Vert(_)"
@@ -288,8 +298,9 @@ let error_log_environment suspended =
 type input_file_kind =
   | DocumentFile
   | HeaderFile
+(*
   | StandaloneFile
-
+*)
 
 let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : string) =
     match input_list with
@@ -304,10 +315,10 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
     | (HeaderFile, file_name_in) :: tail ->
           let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
             main newtyenv newenv tail file_name_out
-
+(*
     | (StandaloneFile, file_name_in) :: tail ->
           read_standalone_file tyenv env file_name_in file_name_out
-
+*)
 
 let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 let output_name_ref : string ref = ref "saty.out"
@@ -321,10 +332,10 @@ let arg_header s =
   
 let arg_doc s =
   begin input_acc_ref := (DocumentFile, s) :: !input_acc_ref; end
-  
+(*
 let arg_standalone s =
   begin input_acc_ref := (StandaloneFile, s) :: !input_acc_ref; end
-
+*)
 let arg_libdir s =
   begin libdir_ref := s; end
 
@@ -356,7 +367,9 @@ let arg_spec_list =
     ("--version"   , Arg.Unit(arg_version)     , " Print version");
     ("--header"    , Arg.String(arg_header)    , " Specify input file as a header");
     ("--doc"       , Arg.String(arg_doc)       , " Specify input file as a document file");
+(*
     ("--standalone", Arg.String(arg_standalone), " Specify input file as a standalone file");
+*)
   ]
 
 let handle_anonimous_arg s =
@@ -364,7 +377,9 @@ let handle_anonimous_arg s =
     match () with
     | ()  when is_document_file s   -> (DocumentFile, s)
     | ()  when is_header_file s     -> (HeaderFile, s)
+(*
     | ()  when is_standalone_file s -> (StandaloneFile, s)
+*)
     | _                             -> raise (MainError("File '" ^ s ^ "' has illegal filename extension; maybe you need to use '--doc', '--standalone', or '--header' option."))
   in
   input_acc_ref := i :: (!input_acc_ref)

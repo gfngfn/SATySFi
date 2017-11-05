@@ -100,6 +100,20 @@ type font_with_size = font_abbrev * Length.t  [@@deriving show]
 
 type font_with_ratio = font_abbrev * float * float  [@@deriving show]
 
+type page_size =
+  | A4Paper
+  | UserDefinedPaper of length * length
+
+type page_scheme =
+  {
+    page_size        : page_size;
+    left_page_margin : length;
+    top_page_margin  : length;
+    area_width       : length;
+    area_height      : length;
+  }
+    
+
 type paddings =
   {
     paddingL : length;
