@@ -405,8 +405,10 @@ and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
 and input_context = {
+(*
   title            : abstract_tree;
   author           : abstract_tree;
+*)
   font_size        : HorzBox.length;
   font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
   dominant_script  : CharBasis.script;
@@ -544,8 +546,10 @@ and abstract_tree =
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
   | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
+(*
   | PrimitiveSetTitle           of abstract_tree * abstract_tree
   | PrimitiveGetTitle           of abstract_tree
+*)
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree

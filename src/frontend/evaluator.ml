@@ -422,7 +422,7 @@ and interpret env ast =
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
         Context({ ctx with dominant_script = script; })
-
+(*
   | PrimitiveSetTitle(asttitle, astctx) ->
       let valuetitle = interpret env asttitle in
       let ctx = interpret_context env astctx in
@@ -430,7 +430,7 @@ and interpret env ast =
 
   | PrimitiveGetTitle(astctx) ->
       let ctx = interpret_context env astctx in ctx.title
-
+*)
   | PrimitiveSetTextColor(astcolor, astctx) ->
       let color = interpret_color env astcolor in
       let ctx = interpret_context env astctx in

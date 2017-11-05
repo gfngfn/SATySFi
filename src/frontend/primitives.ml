@@ -89,8 +89,10 @@ let envinit : environment = Hashtbl.create 128
 
 let default_context =
   {
+(*
     title            = InputHorzWithEnvironment([], envinit);
     author           = InputHorzWithEnvironment([], envinit);
+*)
     font_scheme      = default_font_scheme;
     font_size        = pdfpt 12.;
     dominant_script  = CharBasis.Other;
@@ -296,8 +298,10 @@ let make_environments () =
         ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
         ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
+(*
         ("set-title"          , ~% (tr @-> ctx @-> ctx)                , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
         ("get-title"          , ~% (ctx @-> tr)                        , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
+*)
         ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
