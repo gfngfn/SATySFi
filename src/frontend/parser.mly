@@ -504,8 +504,9 @@
 
 
 main:
-  | utast=nxtoplevel   { utast }
-  | utast=vxblock; EOI { utast }
+  | utast=nxtoplevel    { utast }
+  | utast=vxblock; EOI  { utast }
+  | utast=nxwhl; EOI    { utast }
 ;
 nxtoplevel:
   | top=LET; dec=nxdec; subseq=nxtopsubseq                                   { make_let_expression top dec subseq }

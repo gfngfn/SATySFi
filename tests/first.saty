@@ -1,8 +1,8 @@
 % -*- coding: utf-8 -*-
-+document (|
+document (|
   title  = {Sample Document};
   author = {Takashi SUWA};
-|) <
+|) '<
   +make-title;
   +section {Sample Text} <
     +p {

@@ -47,7 +47,7 @@ and reduce_beta_list env valuef astarglst =
         | _ -> report_bug_evaluator "reduce_beta_list"
       end
 
-
+(*
 and interpret_horz_boxes env astrow =
   let valuerow = interpret env astrow in
   let rec aux value =
@@ -57,14 +57,19 @@ and interpret_horz_boxes env astrow =
     | _                          -> report_bug_evaluator ("interpret_horz_boxes; " ^ (Display.string_of_ast valuerow))
   in
     aux valuerow
+*)
 
-and normalize_box_col valuecol =
-  let iter = normalize_box_col in
-    match valuecol with
-    | Vert(imvblst)              -> imvblst
-    | VertConcat(value1, value2) -> List.append (iter value1) (iter value2)
-    | _                          -> report_bug_evaluator ("normalize_box_col; " ^ (Display.string_of_ast valuecol))
+and interpret_vert env astvert =
+  let valuevert = interpret env astvert in
+    match valuevert with
+    | Vert(imvblst) -> imvblst
+    | _             -> report_bug_evaluator ("interpret_vert; " ^ (Display.string_of_ast valuevert))
 
+and interpret_horz env asthorz =
+  let valuehorz = interpret env asthorz in
+    match valuehorz with
+    | Horz(hblst) -> hblst
+    | _           -> report_bug_evaluator ("interpret_horz; " ^ (Display.string_of_ast valuehorz))
 
 and interpret_point env astpt =
   let valuept = interpret env astpt in
@@ -266,21 +271,25 @@ and interpret env ast =
   | Horz(_) -> ast
 
   | HorzConcat(ast1, ast2) ->
-      let value1 = interpret env ast1 in
-      let value2 = interpret env ast2 in
+      let hblst1 = interpret_horz env ast1 in
+      let hblst2 = interpret_horz env ast2 in
+        Horz(List.append hblst1 hblst2)
+(*
       begin
         match (value1, value2) with
-        | (Horz([]), _) -> value2
+        | (Horz(evhblst1), Horz(evhblst2)) -> Horz(List.append evhblst1 evhblst2)
+        | _ -> report_bug_evaluator ("HorzConcat; " ^ (Display.string_of_ast value1) ^ ", " ^ (Display.string_of_ast value2))
         | (_, Horz([])) -> value1
         | (_, _)        -> HorzConcat(value1, value2)
       end
+*)
 
   | Vert(_) -> ast
 
   | VertConcat(ast1, ast2) ->
-      let value1 = interpret env ast1 in
-      let value2 = interpret env ast2 in
-        Vert(normalize_box_col (VertConcat(value1, value2)))  (* ad hoc *)
+      let imvblst1 = interpret_vert env ast1 in
+      let imvblst2 = interpret_vert env ast2 in
+        Vert(List.append imvblst1 imvblst2)
 (*
       begin
         match (value1, value2) with
@@ -330,11 +339,18 @@ and interpret env ast =
       let rising_ratio = interpret_float env astrsrat in
         FontDesignation((font_abbrev, size_ratio, rising_ratio))
 
-  | BackendLineBreaking(astctx, astrow) ->
+  | BackendLineBreaking(astctx, asthorz) ->
       let ctx = interpret_context env astctx in
-      let hblst = interpret_horz_boxes env astrow in
+      let hblst = interpret_horz env asthorz in
       let imvblst = LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx.paragraph_width ctx.leading hblst in
         Vert(imvblst)
+
+  | BackendPageBreaking(astctx, astvert) ->
+      let ctx = interpret_context env astctx in
+      let imvblst = interpret_vert env astvert in
+        DocumentValue(ctx, imvblst)
+
+  | DocumentValue(_, _) -> ast
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
       let ctx = interpret_context env astctx in
@@ -344,8 +360,7 @@ and interpret env ast =
       let valuectxsub =
         Context({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) })
       in
-      let valuevert = interpret env (Apply(valuek, valuectxsub)) in
-      let imvblst = normalize_box_col valuevert in
+      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
         Vert([
           HorzBox.ImVertTopMargin(true, ctx.paragraph_top);
           HorzBox.ImVertFrame(pads,
@@ -364,8 +379,7 @@ and interpret env ast =
       let valuectxsub =
         Context({ ctx with paragraph_width = wid; })
       in
-      let valuevert = interpret env (Apply(valuek, valuectxsub)) in
-      let imvblst = normalize_box_col valuevert in
+      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
       let evvblst = PageBreak.solidify imvblst in
 
       let rec find_first_line optinit totalhgtinit evvblst =
@@ -501,7 +515,7 @@ and interpret env ast =
 *)
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let pads = interpret_paddings env astpads in
-      let hblst = interpret_horz_boxes env astbr in
+      let hblst = interpret_horz env astbr in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
           pads,
@@ -509,7 +523,7 @@ and interpret env ast =
           hblst))])
 
   | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
-      let hblst = interpret_horz_boxes env astbr in
+      let hblst = interpret_horz env astbr in
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
@@ -530,7 +544,7 @@ and interpret env ast =
         Horz([HorzBox.HorzPure(HorzBox.PHInlineGraphics(wid, hgt, dpt, graphics))])
 
   | PrimitiveGetNaturalWidth(asthorz) ->
-      let hblst = interpret_horz_boxes env asthorz in
+      let hblst = interpret_horz env asthorz in
       let wid = LineBreak.get_natural_width hblst in
         LengthConstant(wid)
 
@@ -776,7 +790,7 @@ and interpret env ast =
   | PrimitiveDrawText(astpt, asttext) ->
       let pt = interpret_point env astpt in
       let valuetext = interpret env asttext in
-      let hblst = interpret_horz_boxes env valuetext in
+      let hblst = interpret_horz env valuetext in
       let evhblst = LineBreak.natural hblst in
       let pdfops = HandlePdf.pdfops_of_evaled_horz_box pt evhblst in
         GraphicsValue(pdfops)
@@ -950,7 +964,7 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
-                let hblst = interpret_horz_boxes env valueret in
+                let hblst = interpret_horz env valueret in
                   hblst :: lstacc
 
             | _ -> report_bug_evaluator "interpret_input_horz; other than LambdaHorzWithEnvironment(_, _, _)"

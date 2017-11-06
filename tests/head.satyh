@@ -34,22 +34,22 @@ let-inline ctx \emph inner =
 let-mutable ref-title <- {}
 let-mutable ref-author <- {}
 
-let-block ctx +document rcd inner =
+let document rcd inner =
   let title = rcd#title in
   let author = rcd#author in
-%  let page = A4Paper in
-%  let pt = (100pt, 100pt) in
-%  let wid = 400pt in
-%  let hgt = 650pt in
+  let page = A4Paper in
+  let pt = (100pt, 100pt) in
+  let wid = 400pt in
+  let hgt = 650pt in
   let ctx-doc =
-    ctx |> set-font Latin font-latin-roman
-        |> set-dominant-script Latin
+    get-initial-context page pt wid hgt
+      |> set-font Latin font-latin-roman
+      |> set-dominant-script Latin
   in
-  (
-    ref-title <- title before
-    ref-author <- author before
-    read-block ctx-doc inner
-  )
+  let () = ref-title <- title in
+  let () = ref-author <- author in
+  let bc = read-block ctx-doc inner in
+    form-document ctx-doc bc
 
 let title-frame =
   let pads = (5pt, 5pt, 10pt, 10pt) in

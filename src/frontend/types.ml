@@ -187,6 +187,7 @@ type base_type =
   | PrePathType
   | PathType
   | GraphicsType
+  | DocumentType
 [@@deriving show]
 
 
@@ -558,6 +559,8 @@ and abstract_tree =
   | PrimitiveDrawText           of abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree
+  | BackendPageBreaking         of abstract_tree * abstract_tree
+  | DocumentValue               of input_context * HorzBox.intermediate_vert_box list
 (*
   | BackendFixedString         of abstract_tree * abstract_tree
 *)
@@ -796,10 +799,8 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(PrePathType) -> "pre-path" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
-(*
-    | BaseType(GraphicsContextType) -> "graphics-context" ^ qstn
-*)
     | BaseType(GraphicsType) -> "graphics" ^ qstn
+    | BaseType(DocumentType) -> "document" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

@@ -122,7 +122,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_vertexpr () ;
+        Lexer.reset_to_progexpr () ;
         let () = PrintForDebug.mainE "END INITIALIZATION" in  (* for debug *)
         let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
         let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
@@ -130,7 +130,8 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
-          | (_, BaseType(TextColType)) ->
+          | (_, BaseType(DocumentType)) ->
+(*
               let pagesch =
                 HorzBox.({
                   page_size        = A4Paper;
@@ -140,17 +141,16 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                   area_height      = Length.of_pdf_point 650.;
                 })  (* temporary *)
               in
-              let ctxinit = Primitives.get_initial_context pagesch in
-              let astfinal = VertLex(Context(ctxinit), ast) in
-              let valuefinal = Evaluator.interpret env astfinal in
+*)
+              let valuedoc = Evaluator.interpret env ast in
               begin
-                match valuefinal with
-                | Vert(imvblst) ->
+                match valuedoc with
+                | DocumentValue(ctxdoc, imvblst) ->
                     let pdf = HandlePdf.create_empty_pdf file_name_out in
                     begin
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-                      PageBreak.main pdf pagesch imvblst;
+                      PageBreak.main pdf ctxdoc.page_scheme imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
                 | _ -> failwith "main; not a Vert(_)"

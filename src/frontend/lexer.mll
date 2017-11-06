@@ -63,10 +63,6 @@
       first_state := state;
       next_state := !first_state;
       ignore_space := true;
-(*
-      line_no := 1;
-      end_of_previousline := 0;
-*)
       openqtdepth := 0;
       stack |> Stack.clear;
     end
@@ -83,7 +79,7 @@
   let split_module_list tokstr =
     let rec aux imax i acclst accstr =
       if i >= imax then (List.rev acclst, accstr) else
-        match tokstr.[i] with
+        match String.get tokstr i with
         | '.' -> aux imax (i + 1) (accstr :: acclst) ""
         | c   -> aux imax (i + 1) acclst (accstr ^ (String.make 1 c))
     in

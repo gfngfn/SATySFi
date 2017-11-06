@@ -232,6 +232,7 @@ let make_environments () =
   let path          = (~! "path"        , BaseType(PathType)   ) in
   let prp           = (~! "pre-path"    , BaseType(PrePathType)) in
   let scr           = (~! "script"      , VariantType([], tyid_script)) in
+  let doc           = (~! "document"    , BaseType(DocumentType)) in
 (*
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
 *)
@@ -285,7 +286,8 @@ let make_environments () =
         ( "arabic"       , ~% (i @-> s)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (i @-> fl)                , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("form-paragraph"        , ~% (ctx @-> br @-> bc)                 , lambda2 (fun vleading vrow -> BackendLineBreaking(vleading, vrow)) );
+        ("form-paragraph"        , ~% (ctx @-> br @-> bc)                 , lambda2 (fun vctx vbr -> BackendLineBreaking(vctx, vbr)) );
+        ("form-document"         , ~% (ctx @-> bc @-> doc)                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
         ("inline-skip"           , ~% (ln @-> br)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (ln @-> ln @-> ln @-> br)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
@@ -306,10 +308,6 @@ let make_environments () =
         ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
         ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
-(*
-        ("set-title"          , ~% (tr @-> ctx @-> ctx)                , lambda2 (fun vtitle vctx -> PrimitiveSetTitle(vtitle, vctx)));
-        ("get-title"          , ~% (ctx @-> tr)                        , lambda1 (fun vctx -> PrimitiveGetTitle(vctx)));
-*)
         ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
