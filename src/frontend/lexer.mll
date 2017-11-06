@@ -2,15 +2,11 @@
   open Types
   open Parser
 
-  exception LexError of string
+  exception LexError of Range.t * string
 
   type lexer_state = ProgramState | VerticalState | HorizontalState | ActiveState | CommentState | LiteralState
 
   type transition = HtoV | HtoA | VtoH | VtoA | PtoH | PtoV | AtoPParen | AtoPRecord | AtoPList | Paren | Record | List | Brace | Angle
-
-
-  let line_no             : int ref = ref 1
-  let end_of_previousline : int ref = ref 0
 
   let next_state  : lexer_state ref = ref ProgramState
   let first_state : lexer_state ref = ref ProgramState
@@ -21,17 +17,17 @@
   let openqtdepth : int ref = ref 0
   let stack : transition Stack.t = Stack.create ()
 
-
-  let get_start_pos lexbuf = (Lexing.lexeme_start lexbuf) - !end_of_previousline
-
-  let get_end_pos lexbuf   = (Lexing.lexeme_end lexbuf) - !end_of_previousline
+  let get_pos lexbuf =
+    let posS = Lexing.lexeme_start_p lexbuf in
+    let posE = Lexing.lexeme_end_p lexbuf in
+    let lnum = posS.Lexing.pos_lnum in
+    let cnumS = posS.Lexing.pos_cnum - posS.Lexing.pos_bol in
+    let cnumE = posE.Lexing.pos_cnum - posE.Lexing.pos_bol in
+      Range.make lnum cnumS cnumE
 
   let report_error lexbuf errmsg =
-    let column_from = get_start_pos lexbuf in
-    let column_to = get_end_pos lexbuf in
-      raise (LexError("at line " ^ (string_of_int !line_no) ^ ", column "
-        ^ (string_of_int column_from) ^ "-" ^ (string_of_int column_to) ^ ":\n    " ^ errmsg))
-
+    let rng = get_pos lexbuf in
+      raise (LexError(rng, errmsg))
 
   let pop lexbuf errmsg =
     try Stack.pop stack with
@@ -40,16 +36,9 @@
   let push trs =
     Stack.push trs stack
 
-  let get_pos lexbuf =
-    let pos_from = get_start_pos lexbuf in
-    let pos_to = get_end_pos lexbuf in
-      Range.make (!line_no) pos_from pos_to
-
-
   let increment_line lexbuf =
     begin
-      end_of_previousline := (Lexing.lexeme_end lexbuf);
-      incr line_no;
+      Lexing.new_line lexbuf;
     end
 
 
@@ -74,8 +63,10 @@
       first_state := state;
       next_state := !first_state;
       ignore_space := true;
+(*
       line_no := 1;
       end_of_previousline := 0;
+*)
       openqtdepth := 0;
       stack |> Stack.clear;
     end

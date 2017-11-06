@@ -5,28 +5,43 @@ exception MainError of string
 
 type line = NormalLine of string | DisplayLine of string
 
+type error_category =
+  | Lexer
+  | Parser
+  | Typechecker
+  | Evaluator
+  | Interface
+  | System
+
+let show_error_category = function
+  | Lexer       -> "Lex Error"
+  | Parser      -> "Syntax Error"
+  | Typechecker -> "Type Error"
+  | Evaluator   -> "Error during Evaluation"
+  | Interface   -> "Error"
+  | System      -> "Error"
 
 let show_control_sequence_type : bool ref = ref false
 let show_function_type         : bool ref = ref false
 
 
-let report_error (category : string) (lines : line list) =
+let report_error (cat : error_category) (lines : line list) =
   let rec aux lst =
     match lst with
     | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s)   ; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s) ; aux tail end
+    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s)  ; aux tail end
+    | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s); aux tail end
   in
   let first lst =
     match lst with
     | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline s ; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("\n      " ^ s) ; aux tail end
+    | NormalLine(s) :: tail  -> begin print_endline s; aux tail end
+    | DisplayLine(s) :: tail -> begin print_endline ("\n      " ^ s); aux tail end
   in
   begin
-    print_string ("! [Error at " ^ category ^ "] ") ;
-    first lines ;
-    exit 1 ;
+    print_string ("! [" ^ (show_error_category cat) ^ "] ");
+    first lines;
+    exit 1;
   end
 
 
@@ -123,7 +138,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                   top_page_margin  = Length.of_pdf_point 100.;
                   area_width       = Length.of_pdf_point 400.;
                   area_height      = Length.of_pdf_point 650.;
-                })
+                })  (* temporary *)
               in
               let ctxinit = Primitives.get_initial_context pagesch in
               let astfinal = VertLex(Context(ctxinit), ast) in
@@ -170,76 +185,81 @@ let error_log_environment suspended =
   try
     suspended ()
   with
-  | Lexer.LexError(s)               -> report_error "Lexer" [ NormalLine(s); ]
-  | Parsing.Parse_error             -> report_error "Parser" [ NormalLine("something is wrong."); ]
-  | ParseErrorDetail(s)             -> report_error "Parser" [ NormalLine(s); ]
+  | Lexer.LexError(rng, s)          ->
+      report_error Lexer [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(s);
+      ]
+
+  | Parsing.Parse_error             -> report_error Parser [ NormalLine("something is wrong."); ]
+  | ParseErrorDetail(s)             -> report_error Parser [ NormalLine(s); ]
 
   | Typechecker.UndefinedVariable(rng, varnm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined variable '" ^ varnm ^ "'.");
       ]
 
   | Typechecker.UndefinedConstructor(rng, constrnm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
 
   | Typechecker.UnknownUnitOfLength(rng, unitnm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
       ]
 
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("'" ^ tynm ^ "' is expected to have " ^ (string_of_int lenexp) ^ " type argument(s),");
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]
 
   | Typeenv.UndefinedTypeName(rng, tynm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type name '" ^ tynm ^ "'");
       ]
 
   | Typeenv.UndefinedTypeArgument(rng, tyargnm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
       ]
 
   | Typeenv.CyclicTypeDefinition(reslist) ->
-      report_error "Typechecker" (
+      report_error Typechecker (
         (NormalLine("cyclic synonym type definition:"))
         :: (List.map (fun (rng, strty) -> DisplayLine(strty ^ " (at " ^ (Range.to_string rng) ^ ")")) reslist)
       )
 
   | Typeenv.MultipleTypeDefinition(rng1, rng2, tynm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("parallel type definition by the same name:");
         DisplayLine(tynm ^ " (at " ^ (Range.to_string rng1) ^ ")");
         DisplayLine(tynm ^ " (at " ^ (Range.to_string rng2) ^ ")");
       ]
 
   | Typeenv.NotProvidingTypeImplementation(rng, tynm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation does not provide type '" ^ tynm ^ "',");
         NormalLine("which is required by the signature.");
       ]
 
   | Typeenv.NotProvidingValueImplementation(rng, varnm) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation does not provide value '" ^ varnm ^ "',");
         NormalLine("which is required by the signature.");
       ]
 
   | Typeenv.NotMatchingInterface(rng, varnm, tyenv1, pty1, tyenv2, pty2) ->
-      report_error "Typechecker" [
+      report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation of value '" ^ varnm ^ "' has type");
         DisplayLine(Display.string_of_poly_type tyenv1 pty1);
@@ -260,7 +280,7 @@ let error_log_environment suspended =
         | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
                                                                       NormalLine("at " ^ strrng2 ^ "."); ])
       in
-        report_error "Typechecker" (List.append [
+        report_error Typechecker (List.append [
           NormalLine(posmsg);
           NormalLine("this expression has type");
           DisplayLine(strtyA ^ ",");
@@ -281,7 +301,7 @@ let error_log_environment suspended =
         | (false, false) -> ("at " ^ strrng1 ^ ":", strty1, strty2, [ NormalLine("This constraint is required by the expression");
                                                                       NormalLine("at " ^ strrng2 ^ "."); ])
       in
-        report_error "Typechecker" (List.append [
+        report_error Typechecker (List.append [
           NormalLine(posmsg);
           NormalLine("this expression has types");
           DisplayLine(strtyA);
@@ -290,9 +310,9 @@ let error_log_environment suspended =
           NormalLine("at the same time, but these are incompatible.");
         ] additional)
 
-  | Evaluator.EvalError(s)          -> report_error "Evaluator" [ NormalLine(s); ]
-  | MainError(s)                    -> report_error "Toplevel" [ NormalLine(s); ]
-  | Sys_error(s)                    -> report_error "System" [ NormalLine(s); ]
+  | Evaluator.EvalError(s)          -> report_error Evaluator [ NormalLine(s); ]
+  | MainError(s)                    -> report_error Interface [ NormalLine(s); ]
+  | Sys_error(s)                    -> report_error System    [ NormalLine(s); ]
 
 
 type input_file_kind =
