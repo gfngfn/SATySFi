@@ -1,4 +1,4 @@
-PKG ppx_deriving.show
+PKG ppx_deriving.show menhirLib
 S ./
 B ../../_build/src/frontend/
 S ../../src/backend/

@@ -623,47 +623,47 @@ nxlet:
   | MATCH nxlet WITH BAR pats  {
         let (lastrng, pmcons) = $5 in make_standard (Tok $1) (Tok lastrng) (UTPatternMatch($2, pmcons)) }
   | nxletsub                   { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | MATCH error                { report_error (Tok $1) "match" }
   | MATCH nxlet WITH error     { report_error (Tok $3) "with" }
   | MATCH nxlet WITH BAR error { report_error (Tok $4) "|" }
-/* -- -- */
+-- -- */
 nxletsub:
   | LET nxdec IN nxlet                        { make_let_expression $1 $2 $4 }
   | LET patbotwithoutvar DEFEQ nxlet IN nxlet { make_standard (Tok $1) (Ranged $6)
                                                   (UTPatternMatch($4, UTPatternMatchCons($2, $6, UTEndOfPatternMatch))) }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN nxlet { make_let_mutable_expression $1 $2 $4 $6 }
   | nxwhl { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | LET error                                 { report_error (Tok $1) "let" }
   | LETMUTABLE error                          { report_error (Tok $1) "let-mutable" }
   | LETMUTABLE VAR error                      { report_error (Ranged $2) "" }
   | LETMUTABLE VAR OVERWRITEEQ error          { report_error (Tok $3) "->" }
   | LETMUTABLE VAR OVERWRITEEQ nxlet IN error { report_error (Tok $5) "in" }
-/* -- -- */
+-- -- */
 ;
 nxwhl:
   | WHILE nxlet DO nxwhl { make_standard (Tok $1) (Ranged $4) (UTWhileDo($2, $4)) }
   | nxif                 { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | WHILE error          { report_error (Tok $1) "while" }
   | WHILE nxlet DO error { report_error (Tok $3) "do" }
-/* -- -- */
+-- -- */
 nxif:
   | IF nxlet THEN nxlet ELSE nxlet       { make_standard (Tok $1) (Ranged $6) (UTIfThenElse($2, $4, $6)) }
   | nxbfr                                { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | IF error                             { report_error (Tok $1) "if" }
   | IF nxlet THEN error                  { report_error (Tok $3) "then" }
   | IF nxlet THEN nxlet ELSE error       { report_error (Tok $5) "else" }
-/* -- -- */
+-- -- */
 ;
 nxbfr:
   | nxlambda BEFORE nxbfr { make_standard (Ranged $1) (Ranged $3) (UTSequential($1, $3)) }
   | nxlambda              { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | nxlambda BEFORE error { report_error (Tok $2) "before" }
-/* -- -- */
+-- -- */
 ;
 nxlambda:
   | VAR OVERWRITEEQ nxlor (* temporary *) {
@@ -796,35 +796,35 @@ nxrecord:
   | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT          { (extract_name $1, $3) :: [] }
   | VAR DEFEQ nxlet LISTPUNCT nxrecord { (extract_name $1, $3) :: $5 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | VAR DEFEQ error { report_error (Ranged $1) ((extract_name $1) ^ " =") }
-/* -- -- */
+-- -- */
 ;
 nxlist:
   | nxlet LISTPUNCT nxlist { make_standard (Ranged $1) (Ranged $3) (UTListCons($1, $3)) }
   | nxlet LISTPUNCT        { make_standard (Ranged $1) (Tok $2) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
   | nxlet                  { make_standard (Ranged $1) (Ranged $1) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | nxlet LISTPUNCT error  { report_error (Tok $2) ";" }
-/* -- -- */
+-- -- */
 ;
 variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: $5 }
   | CONSTRUCTOR OF txfunc               { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: [] }
   | CONSTRUCTOR BAR variants            { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit"))) :: $3 }
   | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit"))) :: [] }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | CONSTRUCTOR OF error            { report_error (Tok $2) "of" }
   | CONSTRUCTOR OF txfunc BAR error { report_error (Tok $4) "|" }
-/* -- -- */
+-- -- */
 ;
 txfunc: /* -> manual_type */
   | txprod ARROW txfunc {
         let rng = make_range (Ranged $1) (Ranged $3) in (rng, MFuncType($1, $3)) }
   | txprod { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | txprod ARROW error { report_error (Tok $2) "->" }
-/* -- -- */
+-- -- */
 ;
 txprod: /* -> manual_type */
   | txapppre EXACT_TIMES txprod {
@@ -872,26 +872,26 @@ txbot: /* -> manual_type */
         let rng = make_range (Tok $1) (Tok $3) in
           (rng, MRecordType(asc))
   }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | CONSTRUCTOR DOT error { report_error (Tok $2) "." }
   | BRECORD error         { report_error (Tok $1) "(|" }
-/* -- -- */
+-- -- */
 ;
 txrecord: /* -> (field_name * manual_type) list */
   | VAR COLON txfunc LISTPUNCT txrecord { let (_, fldnm) = $1 in (fldnm, $3) :: $5 }
   | VAR COLON txfunc LISTPUNCT          { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
   | VAR COLON txfunc                    { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | VAR COLON error                  { let (_, fldnm) = $1 in report_error (Ranged $1) (fldnm ^ " : ") }
   | VAR COLON txfunc LISTPUNCT error { report_error (Tok $4) ";" }
-/* -- -- */
+-- -- */
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Ranged $1) (Ranged $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }
   | nxlet COMMA tuple { make_standard (Ranged $1) (Ranged $3) (UTTupleCons($1, $3)) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | nxlet COMMA error { report_error (Tok $2) "," }
-/* -- -- */
+-- -- */
 ;
 pats: /* -> code_range * untyped_patter_match_cons */
   | patas ARROW nxletsub {
@@ -906,30 +906,30 @@ pats: /* -> code_range * untyped_patter_match_cons */
   | patas WHEN nxletsub ARROW nxletsub BAR pats {
         let (lastrng, pmcons) = $7 in
           (lastrng, UTPatternMatchConsWhen($1, $3, $5, pmcons)) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | patas ARROW error                            { report_error (Tok $2) "->" }
   | patas ARROW nxletsub BAR error               { report_error (Tok $4) "|" }
   | patas WHEN error                             { report_error (Tok $2) "when" }
   | patas WHEN nxletsub ARROW error              { report_error (Tok $4) "->" }
   | patas WHEN nxletsub ARROW nxletsub BAR error { report_error (Tok $6) "|" }
-/* -- -- */
+-- -- */
 ;
 patas:
   | pattr AS VAR       { make_standard (Ranged $1) (Ranged $3) (UTPAsVariable(extract_name $3, $1)) }
   | pattr              { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | pattr AS error   { report_error (Tok $2) "as" }
-/* -- -- */
+-- -- */
 ;
 pattr: /* -> Types.untyped_pattern_tree */
   | patbot CONS pattr  { make_standard (Ranged $1) (Ranged $3) (UTPListCons($1, $3)) }
   | CONSTRUCTOR patbot { make_standard (Ranged $1) (Ranged $2) (UTPConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR        { make_standard (Ranged $1) (Ranged $1) (UTPConstructor(extract_name $1, (Range.dummy "constructor-unit-value", UTPUnitConstant))) }
   | patbot             { $1 }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | patbot CONS error { report_error (Tok $2) "::" }
   | CONSTRUCTOR error { report_error (Ranged $1) "" }
-/* -- -- */
+-- -- */
 ;
 patbot: /* -> Types.untyped_pattern_tree */
   | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
@@ -943,12 +943,13 @@ patbot: /* -> Types.untyped_pattern_tree */
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | LPAREN error             { report_error (Tok $1) "(" }
   | LPAREN patas COMMA error { report_error (Tok $3) "," }
   | BLIST error              { report_error (Tok $1) "[" }
   | OPENQT error             { report_error (Tok $1) "`" }
-/* -- -- */
+-- -- */
+;
 patbotwithoutvar: /* -> Types.untyped_pattern_tree */
   | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
@@ -960,19 +961,19 @@ patbotwithoutvar: /* -> Types.untyped_pattern_tree */
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | LPAREN error             { report_error (Tok $1) "(" }
   | LPAREN patas COMMA error { report_error (Tok $3) "," }
   | BLIST error              { report_error (Tok $1) "[" }
   | OPENQT error             { report_error (Tok $1) "`" }
-/* -- -- */
+-- -- */
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
-/* -- for syntax error log -- */
+/* -- for syntax error log --
   | patas COMMA error    { report_error (Tok $2) "," }
-/* -- -- */
+-- -- */
 ;
 binop:
   | BINOP_TIMES
