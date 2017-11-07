@@ -33,9 +33,6 @@ type pb_vert_box =
   | PBVertFixedUnbreakable of length
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
 
-(*
-let page_height = Length.of_pdf_point 650.  (* temporary; should be variable *)
-*)
 
 let chop_single_page area_height (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
 

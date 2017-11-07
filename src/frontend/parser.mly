@@ -519,19 +519,21 @@ nxtoplevel:
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
 ;
 nxtopsubseq:
-  | utast=nxtoplevel   { utast }
-  | EOI                { end_header }
-  | IN utast=nxlet EOI { utast }
+  | utast=nxtoplevel     { utast }
+  | EOI                  { end_header }
+  | IN; utast=nxlet; EOI { utast }
 ;
 nxsigopt:
-  |                               { None }
-  | COLON SIG list(nxsigelem) END { Some($3) }
+  |                                     { None }
+  | COLON; SIG; sg=list(nxsigelem); END { Some(sg) }
 ;
 nxsigelem:
   | TYPE; tyvarlst=xpltyvars; tytok=VAR; clst=constrnts         { let (_, tynm) = tytok in (SigType(kind_type_argument_cons tyvarlst clst, tynm)) }
   | VAL; vartok=VAR; COLON; mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
   | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = hcmdtok in (SigValue(csnm, mnty, clst)) }
+  | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = vcmdtok in (SigValue(csnm, mnty, clst)) }
   | DIRECT; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts { let (_, csnm) = hcmdtok in (SigDirect(csnm, mnty, clst)) }
+  | DIRECT; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts { let (_, csnm) = vcmdtok in (SigDirect(csnm, mnty, clst)) }
 ;
 constrnts:
   | clst=list(constrnt) { clst }
