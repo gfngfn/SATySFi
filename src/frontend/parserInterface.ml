@@ -9,7 +9,7 @@ let k_success utast =
 
 
 let k_fail chkpt =
-  print_endline "k_fail";  (* for debug *)
+  (* print_endline "k_fail";  (* for debug *) *)
   match chkpt with
   | I.HandlingError(penv) ->
       let (lposS, lposE) = I.positions penv in
@@ -22,6 +22,6 @@ let k_fail chkpt =
 
 
 let process lexbuf =
-  print_endline "parserInterface.process";  (* for debug *)
+  (* print_endline "parserInterface.process";  (* for debug *) *)
   let supplier = I.lexer_lexbuf_to_supplier Lexer.cut_token lexbuf in
     I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
