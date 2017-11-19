@@ -31,6 +31,8 @@ macrodown
 satysfi
 *.ttf
 *.otf
+*.ttc
+*.dfont
 *.afm
 *.t1a
 *.svg

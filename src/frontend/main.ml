@@ -211,6 +211,13 @@ let error_log_environment suspended =
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
 
+  | Typechecker.InvalidArityOfCommand(rng, lenreq, lenreal) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this command expects " ^ (string_of_int lenreq) ^ " argument(s),");
+        NormalLine("but here is applied to " ^ (string_of_int lenreal) ^ " argument(s).");
+      ]
+
   | Typechecker.UnknownUnitOfLength(rng, unitnm) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
