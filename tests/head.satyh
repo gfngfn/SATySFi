@@ -27,7 +27,7 @@ let-inline ctx \emph inner =
   let ctx-emph =
     ctx |> set-font Latin font-latin-italic
         |> set-cjk-font font-cjk-gothic
-        |> set-text-color (CMYK(1., 0., 0., 0.)) %(RGB(0., 0., 0.75))
+        |> set-text-color (CMYK(1., 0., 0., 0.))
   in
     read-inline ctx-emph inner
 
@@ -51,43 +51,61 @@ let document rcd inner =
   let bc = read-block ctx-doc inner in
     form-document ctx-doc bc
 
-let title-frame =
+let title-deco =
   let pads = (5pt, 5pt, 10pt, 10pt) in
-  let cx = 12pt in
-  let cy = 8pt in
   let deco (x, y) wid hgt dpt =
-    let xL = x in
-    let xR = x +' wid in
-    let yT = y +' hgt in
-    let yB = y -' dpt in
-    let path =
-      start-path (xL, yT)
-        |> line-to (xR, yT)
-        |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-        |> line-to (xL, yB)
-        |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+    let path1 =
+      let cx = 14pt in
+      let cy = 8pt in
+      let xL = x in
+      let xR = x +' wid in
+      let yT = y +' hgt in
+      let yB = y -' dpt in
+        start-path (xL, yT)
+          |> line-to (xR, yT)
+          |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+          |> line-to (xL, yB)
+          |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+    in
+    let path2 =
+      let cx = 12pt in
+      let cy = 8pt in
+      let gapx = 3pt in
+      let gapy = 5pt in
+      let xL = x +' gapx in
+      let xR = x +' wid -' gapx in
+      let yT = y +' hgt -' gapy in
+      let yB = y -' dpt +' gapy in
+        start-path (xL, yT)
+          |> line-to (xR, yT)
+          |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+          |> line-to (xL, yB)
+          |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
     in
       [
-        fill (rgb 1. 0.75 0.75) path;
-        dashed-stroke 5pt (25pt, 3pt, 5pt) red path;
+        stroke 3pt black path1;
+        stroke 1pt black path2;
       ]
   in
-    inline-frame-solid pads deco
+    (deco, deco, deco, deco)
 
 let-block ctx +make-title =
-  let ctx-title =
-    ctx |> set-font-size font-size-title
-        |> set-font Latin font-latin-roman
-  in
-  let ctx-author =
-    ctx |> set-font-size font-size-author
-        |> set-font Latin font-latin-roman
-  in
-  let br-title = read-inline ctx-title (!ref-title) in
-  let br-author = read-inline ctx-author (!ref-author) in
-  let bc-title = form-paragraph ctx-title (title-frame (inline-fil ++ br-title ++ inline-fil)) in
-  let bc-author = form-paragraph ctx-author (inline-fil ++ br-author) in
-    bc-title +++ bc-author
+  let pads = (20pt, 20pt, 10pt, 10pt) in
+  block-frame-breakable ctx pads title-deco (fun ctx -> (
+    let ctx-title =
+      ctx |> set-font-size font-size-title
+          |> set-font Latin font-latin-roman
+    in
+    let ctx-author =
+      ctx |> set-font-size font-size-author
+          |> set-font Latin font-latin-roman
+    in
+    let br-title = read-inline ctx-title (!ref-title) in
+    let br-author = read-inline ctx-author (!ref-author) in
+    let bc-title = form-paragraph ctx-title (inline-fil ++ br-title ++ inline-fil) in
+    let bc-author = form-paragraph ctx-author (inline-fil ++ br-author) in
+      bc-title +++ bc-author
+  ))
 
 let indent = inline-skip 24pt
 
@@ -103,7 +121,6 @@ let-block ctx +p inner =
       let () = needs-indentation-ref <- true in
         false
   in
-
   let br = read-inline ctx inner in
   let br-parag =
     if needs-indentation then
@@ -262,9 +279,6 @@ let-inline ctx \inline-frame inner =
   let pads = (5pt, 5pt, 5pt, 5pt) in
   let br = read-inline ctx inner in
     (inline-frame-breakable pads simple-decoset br)
-
-let-block ctx +simple-replacement-test = read-block ctx
-  '< +p {Replaced text} >
 
 module List
 : sig

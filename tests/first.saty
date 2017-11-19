@@ -74,7 +74,7 @@ document (|
           qui officia deserunt mollit anim id est laborum.
         }
       >
-      +repeat (6) < +p {
+      +repeat (1) < +p {
         Lorem ipsum dolor sit amet, consectetur adipiscing elit,
         sed do eiusmod tempor incididunt ut labore
         et dolore magna aliqua.
@@ -113,7 +113,10 @@ document (|
       （和欧間空白の挿入はひとまず実現したが，まだBASEテーブルによる高さの調整は行なっていない）。
       ←閉じ括弧と句点など行頭行末以外のベタ組みにも対応しました。
       このほか\emph{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
-      \underline{行分割できる下線をつけたりすることもできます（途中で行分割可能なインラインボックスを使って実現しています）。}
+      \underline{
+        行分割できる下線をつけたりすることもできます
+        （途中で行分割可能なインラインボックスを使って実現しています）。
+      }
       \donut;これはドーナツ。\donuts;こっちは重なったドーナツ。
     }
     +screen {タイトルつきの枠} <
@@ -121,13 +124,12 @@ document (|
         定理環境などに使える枠です。p\latex; のascmacパッケージのscreen環境に近いです。
       }
     >
-%    +simple-replacement-test;
     +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
     +p { \raw-font-size(16pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
     +p { \raw-font-size(20pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
     +p { \raw-font-size(24pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
   >
-  +section {Inline Vertical Boxes} <
+  +section {Descriptions and Listings} <
     +p {
       Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
       The baseline for a vertical box is set
@@ -151,7 +153,7 @@ document (|
     ];
     +listing {
       * Tokyo
-        ** Hongo Campus: \* 本郷
+        ** Hongo Campus:
              the main area of the university.
         ** Yayoi Campus
         ** Asano Campus:
@@ -163,38 +165,38 @@ document (|
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
   >
-  +section {Spaces and Leading} <
-    +frame < +p {
-      \expand-spaces {
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-        sed do eiusmod tempor incididunt ut labore
-        et dolore magna aliqua.
-        Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi
-        ut aliquip ex ea commodo consequat.
-        Duis aute irure dolor in reprehenderit
-        in voluptate velit esse
-        cillum dolore eu fugiat nulla pariatur.
-        Excepteur sint occaecat cupidatat non proident,
-        sunt in culpa
-        qui officia deserunt mollit anim id est laborum.
-      }
-    } >
-    +frame < +expand-leading <
-      +p {
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-        sed do eiusmod tempor incididunt ut labore
-        et dolore magna aliqua.
-        Ut enim ad minim veniam,
-        quis nostrud exercitation ullamco laboris nisi
-        ut aliquip ex ea commodo consequat.
-        Duis aute irure dolor in reprehenderit
-        in voluptate velit esse
-        cillum dolore eu fugiat nulla pariatur.
-        Excepteur sint occaecat cupidatat non proident,
-        sunt in culpa
-        qui officia deserunt mollit anim id est laborum.
-      }
-    > >
-  >
+%  +section {Spaces and Leading} <
+%    +frame < +p {
+%      \expand-spaces {
+%        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+%        sed do eiusmod tempor incididunt ut labore
+%        et dolore magna aliqua.
+%        Ut enim ad minim veniam,
+%        quis nostrud exercitation ullamco laboris nisi
+%        ut aliquip ex ea commodo consequat.
+%        Duis aute irure dolor in reprehenderit
+%        in voluptate velit esse
+%        cillum dolore eu fugiat nulla pariatur.
+%        Excepteur sint occaecat cupidatat non proident,
+%        sunt in culpa
+%        qui officia deserunt mollit anim id est laborum.
+%      }
+%    } >
+%    +frame < +expand-leading <
+%      +p {
+%        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+%        sed do eiusmod tempor incididunt ut labore
+%        et dolore magna aliqua.
+%        Ut enim ad minim veniam,
+%        quis nostrud exercitation ullamco laboris nisi
+%        ut aliquip ex ea commodo consequat.
+%        Duis aute irure dolor in reprehenderit
+%        in voluptate velit esse
+%        cillum dolore eu fugiat nulla pariatur.
+%        Excepteur sint occaecat cupidatat non proident,
+%        sunt in culpa
+%        qui officia deserunt mollit anim id est laborum.
+%      }
+%    > >
+%  >
 >
