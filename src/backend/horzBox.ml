@@ -240,15 +240,29 @@ type vert_box =
   | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
   | VertFixedBreakable of length
 
-(*
-let rec pp_list pp fmt = function
-| [] -> ()
-| v :: vs ->
-    pp fmt v; if vs <> [] then (Format.printf fmt "; "; pp_list pp fmt vs)
 
-let pp_intermediate_vert_box ppf x imvb =
-  Format.fprintf ppf "(imvb)"
+type math_font_info = unit  (* temporary *)
 
-let pp_horz_box ppf hb =
-  Format.pp_print_string ppf "(hb)"
-*)
+type math_graphics = unit  (* temporary *)
+
+type math_element_main =
+  | MathGlyph        of math_font_info * Uchar.t
+  | MathGraphics     of math_graphics
+  | MathEmbeddedHorz of horz_box list
+
+type math_kind =
+  | MathOrdinary
+  | MathBinary
+  | MathRelation
+  | MathOperator
+  | MathOpen
+  | MathClose
+
+type math_element = math_kind * math_element_main
+
+type math =
+  | MathPure        of math_element list
+  | MathFraction    of math list * math list
+  | MathRadical     of math list
+  | MathSubscript   of math list * math list
+  | MathSuperscript of math list * math list
