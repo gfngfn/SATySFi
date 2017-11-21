@@ -82,15 +82,15 @@ val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> int option
 
-type math_kern =
-  (int * int) list * int
+type math_kern
 
-type math_kern_info = {
-  kernTR : math_kern;
-  kernTL : math_kern;
-  kernBR : math_kern;
-  kernBL : math_kern;
-}
+type math_kern_info =
+  {
+    kernTR : math_kern;
+    kernTL : math_kern;
+    kernBR : math_kern;
+    kernBL : math_kern;
+  }
 
 type math_decoder
 
@@ -99,3 +99,15 @@ val get_math_decoder : file_path -> math_decoder
 val math_base_font : math_decoder -> decoder
 
 val get_math_glyph_info : math_decoder -> Uchar.t -> glyph_id * int * int * int * int option * math_kern_info option
+
+type math_constants =
+  {
+    superscript_bottom_min   : int;
+    superscript_shift_up     : int;
+    script_scale_down        : float;
+    script_script_scale_down : float;
+  }
+
+val get_math_constants : math_decoder -> math_constants
+
+val find_kern_ratio : math_kern -> float -> float

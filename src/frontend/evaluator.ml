@@ -545,7 +545,7 @@ and interpret env ast =
 
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
-      let wid = LineBreak.get_natural_width hblst in
+      let (wid, _, _) = LineBreak.get_natural_metrics hblst in
         LengthConstant(wid)
 
 (* ---- list value ---- *)

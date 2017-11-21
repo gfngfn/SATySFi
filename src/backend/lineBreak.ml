@@ -550,9 +550,9 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
   let plhblst = convert_list_for_line_breaking_pure hblst in
     get_total_metrics plhblst
 
-let get_natural_width (hblst : horz_box list) : length =
-  let (widinfo, _, _) = get_metrics_of_horz_box hblst in
-    widinfo.natural
+let get_natural_metrics (hblst : horz_box list) : length * length * length =
+  let (widinfo, hgt, dpt) = get_metrics_of_horz_box hblst in
+    (widinfo.natural, hgt, dpt)
 
 let natural (hblst : horz_box list) : evaled_horz_box list =
   let plhblst = convert_list_for_line_breaking_pure hblst in

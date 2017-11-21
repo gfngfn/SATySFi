@@ -181,11 +181,16 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
-let get_math_char_info (mathinfo : math_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length option * FontFormat.math_kern_info option =
+let get_math_char_info (mathinfo : math_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathinfo.math_font_size in
   let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in  (* temporary; should be variable according to 'mathinfo' *)
   let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
-    (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, option_map f_skip rawmicopt, rawmkiopt)
+  let mic =
+    match rawmicopt with
+    | None         -> Length.zero
+    | Some(rawmic) -> f_skip rawmic
+  in
+    (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
   
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =

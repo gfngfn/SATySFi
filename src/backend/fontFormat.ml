@@ -1027,20 +1027,22 @@ module MathInfoMap = Map.Make
 
 type math_kern = (int * int) list * int
 
-type math_kern_info = {
-  kernTR : math_kern;
-  kernTL : math_kern;
-  kernBR : math_kern;
-  kernBL : math_kern;
-}
+type math_kern_info =
+  {
+    kernTR : math_kern;
+    kernTL : math_kern;
+    kernBR : math_kern;
+    kernBL : math_kern;
+  }
 
-type math_decoder = {
-  as_normal_font             : decoder;
-  math_constants             : Otfm.math_constants;
-  math_italics_correction    : int MathInfoMap.t;
-  math_top_accent_attachment : int MathInfoMap.t;
-  math_kern_info             : math_kern_info MathInfoMap.t;
-}
+type math_decoder =
+  {
+    as_normal_font             : decoder;
+    math_constants             : Otfm.math_constants;
+    math_italics_correction    : int MathInfoMap.t;
+    math_top_accent_attachment : int MathInfoMap.t;
+    math_kern_info             : math_kern_info MathInfoMap.t;
+  }
 
 
 let math_base_font (md : math_decoder) : decoder =
@@ -1110,3 +1112,45 @@ let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
       let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
       let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
         (gid, wid, hgt, dpt, micopt, mkiopt)
+
+
+type math_constants =
+  {
+    superscript_bottom_min   : int;
+    superscript_shift_up     : int;
+    script_scale_down        : float;
+    script_script_scale_down : float;
+  }
+
+
+let percent n =
+  (float_of_int n) /. 100.
+
+
+let to_design_units ratio =
+  int_of_float (ratio *. 1000.)
+
+
+let to_ratio du =
+  (float_of_int du) /. 1000.
+
+
+let get_math_constants (md : math_decoder) : math_constants =
+  let mc = md.math_constants in
+    {
+      superscript_bottom_min   = get_main_math_value mc.Otfm.superscript_bottom_min;
+      superscript_shift_up     = get_main_math_value mc.Otfm.superscript_shift_up;
+      script_scale_down        = percent mc.Otfm.script_percent_scale_down;
+      script_script_scale_down = percent mc.Otfm.script_script_percent_scale_down;
+    }
+
+
+let find_kern_ratio (mkern : math_kern) (ratio : float) =
+  let du = to_design_units ratio in
+  let (kernlst, kfinal) = mkern in
+  let rec aux prevc kernlst =
+    match kernlst with
+    | []             -> to_ratio kfinal
+    | (c, k) :: tail -> if prevc <= du && du < c then to_ratio k else aux c tail
+  in
+    aux 0 kernlst
