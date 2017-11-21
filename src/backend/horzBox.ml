@@ -89,6 +89,8 @@ type ratios =
 
 type font_abbrev = string  [@@deriving show]
 
+type math_font_abbrev = string  [@@deriving show]
+
 type file_path = string
 
 type encoding_in_pdf =
@@ -185,6 +187,12 @@ type horz_string_info =
     rising      : length;
   }
 
+type math_info =
+  {
+    math_font_abbrev : math_font_abbrev;
+    math_font_size   : length;
+  }
+
 let pp_horz_string_info fmt info =
   Format.fprintf fmt "(HSinfo)"
 
@@ -241,12 +249,10 @@ type vert_box =
   | VertFixedBreakable of length
 
 
-type math_font_info = unit  (* temporary *)
-
 type math_graphics = unit  (* temporary *)
 
 type math_element_main =
-  | MathGlyph        of math_font_info * Uchar.t
+  | MathChar         of math_info * Uchar.t
   | MathGraphics     of math_graphics
   | MathEmbeddedHorz of horz_box list
 

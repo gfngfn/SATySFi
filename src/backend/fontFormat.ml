@@ -328,10 +328,6 @@ type decoder = {
   default_descent     : int;
 }
 
-type math_decoder = {
-  as_normal_font : decoder;
-}
-
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -1020,3 +1016,98 @@ let convert_to_ligatures dcdr gidlst =
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : int option =
   let kerntbl = dcdr.kerning_table in
     kerntbl |> KerningTable.find_opt gidprev gid
+
+
+module MathInfoMap = Map.Make
+  (struct
+    type t = glyph_id
+    let equal = (=)
+    let compare = Pervasives.compare
+  end)
+
+type math_kern =
+  (int * int) list * int
+
+type math_kern_info = {
+  kernTR : math_kern;
+  kernTL : math_kern;
+  kernBR : math_kern;
+  kernBL : math_kern;
+}
+
+type math_decoder = {
+  as_normal_font             : decoder;
+  math_constants             : Otfm.math_constants;
+  math_italics_correction    : int MathInfoMap.t;
+  math_top_accent_attachment : int MathInfoMap.t;
+  math_kern_info             : math_kern_info MathInfoMap.t;
+}
+
+
+let math_base_font (md : math_decoder) : decoder =
+  md.as_normal_font
+
+
+let get_main_math_value ((x, _) : Otfm.math_value_record) = x
+
+
+let convert_kern (mkopt : Otfm.math_kern option) : math_kern =
+  let f = get_main_math_value in
+  let rec aux acc mk =
+    match mk with
+    | ([], kernlast :: [])                       -> (List.rev acc, f kernlast)
+    | (hgthead :: hgttail, kernhead :: kerntail) -> aux ((f hgthead, f kernhead) :: acc) (hgttail, kerntail)
+    | _                                          -> assert false  (* temporary; should report error *)
+  in
+  match mkopt with
+  | None     -> ([], 0)
+  | Some(mk) -> aux [] mk
+
+
+let convert_kern_info (mkir : Otfm.math_kern_info_record) =
+  {
+    kernTR = convert_kern mkir.Otfm.top_right_math_kern;
+    kernTL = convert_kern mkir.Otfm.top_left_math_kern;
+    kernBR = convert_kern mkir.Otfm.bottom_right_math_kern;
+    kernBL = convert_kern mkir.Otfm.bottom_left_math_kern;
+  }
+
+
+let assoc_to_map f gidassoc =
+  gidassoc |> List.fold_left (fun map (gid, mvr) ->
+    map |> MathInfoMap.add gid (f mvr)
+  ) MathInfoMap.empty
+
+
+let get_math_decoder (flnmin : file_path) : math_decoder =
+  let dcdr = get_decoder flnmin in
+  let d = dcdr.main in
+    match Otfm.math d with
+    | Error(oerr) -> raise (FontFormatBroken(oerr))
+    | Ok(mathraw) ->
+        let mictbl =
+          mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
+            |> assoc_to_map get_main_math_value
+        in
+        let mkitbl =
+          mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
+            |> assoc_to_map convert_kern_info
+        in
+          {
+            as_normal_font             = dcdr;
+            math_constants             = mathraw.Otfm.math_constants;
+            math_italics_correction    = mictbl;
+            math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
+            math_kern_info             = mkitbl;
+          }
+
+
+let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
+  let dcdr = md.as_normal_font in
+  match get_glyph_id dcdr uch with
+  | None -> (0, 0, 0, 0, None, None)
+  | Some(gid) ->
+      let (wid, hgt, dpt) = get_glyph_metrics dcdr gid in
+      let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
+      let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
+        (gid, wid, hgt, dpt, micopt, mkiopt)

@@ -4,9 +4,8 @@ open Result
 open HorzBox
 
 
-type font_abbrev = string
-
-exception InvalidFontAbbrev of font_abbrev
+exception InvalidFontAbbrev     of font_abbrev
+exception InvalidMathFontAbbrev of math_font_abbrev
 
 type tag = string
 
@@ -181,6 +180,11 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
           let rising = hsinfo.rising in
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
+
+let get_math_char_info (mfabbrev : math_font_abbrev) (uch : Uchar.t) : FontFormat.glyph_id * int * int * int * int option * FontFormat.math_kern_info option =
+  let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in  (* temporary; should be variable according to 'mfabbrev' *)
+    FontFormat.get_math_glyph_info md uch
+  
 
 let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =
   match fontdfn with

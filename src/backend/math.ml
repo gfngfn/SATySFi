@@ -4,12 +4,14 @@ open HorzBox
 
 let convert_math_element_main (memain : math_element_main) : horz_box list =
   match memain with
-  | MathGlyph(mathfont, uch) -> []  (* temporary *)
   | MathGraphics(g)          -> []  (* temporary *)
   | MathEmbeddedHorz(hblst)  -> hblst
+  | MathChar(mathinfo, uch) ->
+      let (gid, wid, hgt, dpt, micopt, mkiopt) = FontInfo.get_math_char_info mathinfo.math_font_abbrev uch in
+      []
 
 
-let convert_math_element_list (melst : math_element list) : horz_box list =
+let convert_math_element_list (scriptlev : int) (melst : math_element list) : horz_box list =
   let (_, hbacc) =
     melst |> List.fold_left (fun (prevmkopt, hbacc) (mk, memain) ->
       let hblst = convert_math_element_main memain in
@@ -27,7 +29,7 @@ let rec convert (scriptlev : int) (mlst : math list) : horz_box list =
 and convert_single (scriptlev : int) (math : math) : horz_box list =
   match math with
   | MathPure(melst) ->
-      convert_math_element_list melst
+      convert_math_element_list scriptlev melst
 
   | MathFraction(mlstN, mlstD) ->
       let hblstN = convert scriptlev mlstN in
