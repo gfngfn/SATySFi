@@ -156,6 +156,9 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
       let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
         Atom((natural wid, hgt, dpt), EvHorzString(hsinfo, otxt))
 
+  | PHFixedMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
+      Atom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, gid))
+
   | PHFixedEmpty(wid) ->
       Atom(empty_vert (natural wid), EvHorzEmpty)
 

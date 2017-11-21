@@ -38,3 +38,6 @@ clean:
 lb:
 	$(OCB) lineBreakDataMap.native
 
+math:
+	$(OCB) math.native
+

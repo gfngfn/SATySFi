@@ -188,7 +188,7 @@ let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
       match e with
       | `Missing_required_table(tag)
           when tag = Otfm.Tag.gsub -> ligtbl
-      | _                          -> raise_err e
+      | _                          -> (* raise_err e *) ligtbl  (* temporary *)
 
 
 module KerningTable

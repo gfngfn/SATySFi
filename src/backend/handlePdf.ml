@@ -76,6 +76,25 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops opacc in
           (xpos +% wid, opaccnew)
 
+    | EvHorz(wid, EvHorzMathGlyph(mathinfo, gid)) ->
+        let tag = "/Fmath" in  (* temporary *)
+        let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
+        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
+        let ops =
+          [
+            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_q;
+            Graphics.op_BT;
+            Graphics.op_Tm_translate (xpos, yposbaseline);
+            Graphics.op_Tf tag mathinfo.math_font_size;
+            opword;
+            Graphics.op_ET;
+            Graphics.op_Q;
+          ]
+        in
+        let opaccnew = List.rev_append ops opacc in
+        (xpos +% wid, opaccnew)
+
     | EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
