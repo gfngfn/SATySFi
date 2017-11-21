@@ -9,6 +9,8 @@ val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
+type math_decoder
+
 exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error

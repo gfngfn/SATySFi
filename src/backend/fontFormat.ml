@@ -21,6 +21,7 @@ exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
 exception FontFormatBrokenAboutWidthClass
 exception NoGlyphID                         of Otfm.glyph_id
+exception UnsupportedTTC  (* temporary *)
 
 
 let raise_err e =
@@ -55,8 +56,10 @@ let string_of_file (flnmin : file_path) : string =
 
 let get_main_decoder (src : file_path) : Otfm.decoder =
   let s = string_of_file src in
-  let d = Otfm.decoder (`String(s)) in
-    d
+  match Otfm.decoder (`String(s)) with
+  | Ok(Otfm.SingleDecoder(d))        -> d
+  | Ok(Otfm.TrueTypeCollection(ttc)) -> raise UnsupportedTTC  (* temporary *)
+  | Error(oerr)                      -> raise (FontFormatBroken(oerr))
 
 
 module GlyphIDTable
@@ -323,6 +326,10 @@ type decoder = {
   units_per_em        : int;
   default_ascent      : int;
   default_descent     : int;
+}
+
+type math_decoder = {
+  as_normal_font : decoder;
 }
 
 type 'a resource =
