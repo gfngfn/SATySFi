@@ -1025,8 +1025,7 @@ module MathInfoMap = Map.Make
     let compare = Pervasives.compare
   end)
 
-type math_kern =
-  (int * int) list * int
+type math_kern = (int * int) list * int
 
 type math_kern_info = {
   kernTR : math_kern;

@@ -267,7 +267,7 @@ type math_kind =
 type math_element = math_kind * math_element_main
 
 type math =
-  | MathPure        of math_element list
+  | MathPure        of math_element
   | MathFraction    of math list * math list
   | MathRadical     of math list
   | MathSubscript   of math list * math list
