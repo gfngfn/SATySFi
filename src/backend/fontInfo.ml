@@ -254,14 +254,17 @@ let get_math_tag mfabbrev =
 
 let get_math_char_info (mathstrinfo : math_string_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
-  let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in  (* temporary; should be variable according to 'mathinfo' *)
-  let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
-  let mic =
-    match rawmicopt with
-    | None         -> Length.zero
-    | Some(rawmic) -> f_skip rawmic
-  in
-    (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
+  let mfabbrev = mathstrinfo.math_font_abbrev in
+    match MathFontAbbrevHashTable.find_opt mfabbrev with
+    | None                -> raise (InvalidFontAbbrev(mfabbrev))
+    | Some((_, _, md, _)) ->
+        let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
+        let mic =
+          match rawmicopt with
+          | None         -> Length.zero
+          | Some(rawmic) -> f_skip rawmic
+        in
+          (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
   
 
 let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
@@ -311,9 +314,11 @@ let initialize (satysfi_root_dir : string) =
   ];
   List.iter (fun (mfabbrev, fontreg, srcfile) -> MathFontAbbrevHashTable.add mfabbrev fontreg srcfile) [
     ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
-(*
-    ("Asana", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Asana-math.otf");
-*)
+
+    ("Asana", CIDFontType0Registration("Asana-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Asana-math.otf");
+
+    ("lmodern", CIDFontType0Registration("lmodern-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "latinmodern-math.otf");
+
   ]
   ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 

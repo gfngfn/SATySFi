@@ -312,7 +312,7 @@ let get_kerning_table (d : Otfm.decoder) =
           | `Missing_required_feature_tag("kern") ->
               let () = PrintForDebug.kernE "Feature 'kern' missing" in  (* for debug *)
               kerntbl
-          | _                        -> raise_err e
+          | _                        -> (* raise_err e *) kerntbl  (* temporary *)
 
 
 type decoder = {

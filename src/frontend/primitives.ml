@@ -93,7 +93,7 @@ let default_font_scheme =
 
 let default_math_context =
   HorzBox.({
-    math_context_font_abbrev = "euler";
+    math_context_font_abbrev = "lmodern";
     math_context_font_size   = Length.of_pdf_point 12.;
   })
 
