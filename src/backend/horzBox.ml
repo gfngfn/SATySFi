@@ -219,7 +219,7 @@ and horz_box =
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 and evaled_horz_box_main =
-  | EvHorzString         of horz_string_info * OutputText.t
+  | EvHorzString         of horz_string_info * length * length * OutputText.t
   | EvHorzMathGlyph      of math_info * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzEmpty

@@ -44,13 +44,13 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops_foreground opaccsub in
           (xposnew, opaccnew)
 
-    | EvHorz(wid, EvHorzString(hsinfo, otxt)) ->
+    | EvHorz(wid, EvHorzString(hsinfo, hgt, dpt, otxt)) ->
         let (tag, enc) = FontInfo.get_tag_and_encoding hsinfo.font_abbrev in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
         let ops =
           [
-(*
+
             (* begin: for test; encloses every word with a red box *)
             Graphics.op_q;
             Graphics.op_RG (1.0, 0.5, 0.5);
@@ -60,7 +60,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
             Graphics.op_S;
             Graphics.op_Q;
             (* end: for test *)
-*)
+
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
