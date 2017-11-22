@@ -1,0 +1,9 @@
+document (|
+  title  = {Math Test};
+  author = {Takashi SUWA};
+|) '<
+  +make-title;
+  +p {
+    The \math(math-sup (math-glyph `P`) (math-glyph `A`)); quick brown fox.
+  }
+>

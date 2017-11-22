@@ -454,5 +454,7 @@ let-inline ctx \sample-diagram =
         draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br;
         stroke 2pt red path-frame;
       ]
-      
   ))
+
+let-inline ctx \math fml =
+  embed-math fml
