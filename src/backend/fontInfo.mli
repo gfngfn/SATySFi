@@ -10,4 +10,6 @@ val get_math_char_info : math_info -> Uchar.t -> FontFormat.glyph_id * length * 
 
 val get_tag_and_encoding : font_abbrev -> string * encoding_in_pdf
 
+val get_math_tag : math_font_abbrev -> string
+
 val get_font_dictionary : Pdf.t -> Pdf.pdfobject

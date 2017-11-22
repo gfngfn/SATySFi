@@ -91,6 +91,16 @@ let default_font_scheme =
       (CharBasis.Other             , default_font_with_ratio);
     ]
 
+let default_math_info =
+  HorzBox.({
+    math_font_abbrev = "euler";
+    math_font_size   = Length.of_pdf_point 12.;
+  })
+
+let default_math_decoder =
+  FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf"
+
+
 let envinit : environment = Hashtbl.create 128
 
 let get_initial_context pagesch =
@@ -233,6 +243,7 @@ let make_environments () =
   let prp           = (~! "pre-path"    , BaseType(PrePathType)) in
   let scr           = (~! "script"      , VariantType([], tyid_script)) in
   let doc           = (~! "document"    , BaseType(DocumentType)) in
+  let math          = (~! "math"        , BaseType(MathType)   ) in
 (*
   let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
 *)
@@ -327,6 +338,11 @@ let make_environments () =
         ("close-with-line"         , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
+        ("math-glyph"              , ~% (s @-> math)                                , lambda1 (fun vs -> BackendMathGlyph(vs)));
+        ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
+        ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
+        ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
+          (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
       ]
   in
   let temporary_ast = StringEmpty in

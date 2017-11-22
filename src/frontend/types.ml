@@ -188,6 +188,7 @@ type base_type =
   | PathType
   | GraphicsType
   | DocumentType
+  | MathType
 [@@deriving show]
 
 
@@ -528,6 +529,11 @@ and abstract_tree =
   | LengthMinus           of abstract_tree * abstract_tree
   | LengthTimes           of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
+  | MathValue                   of HorzBox.math list
+  | BackendMathGlyph            of abstract_tree
+  | BackendMathConcat           of abstract_tree * abstract_tree
+  | BackendMathSuperscript      of abstract_tree * abstract_tree
+  | BackendEmbeddedMath         of abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -801,6 +807,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsType) -> "graphics" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
+    | BaseType(MathType)     -> "math" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

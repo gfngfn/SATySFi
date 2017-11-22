@@ -218,6 +218,34 @@ and interpret env ast =
 
 (* ---- values for backend ---- *)
 
+  | MathValue(_) -> ast
+
+  | BackendMathConcat(astm1, astm2) ->
+      let mlst1 = interpret_math env astm1 in
+      let mlst2 = interpret_math env astm2 in
+        MathValue(List.append mlst1 mlst2)
+
+  | BackendMathSuperscript(astm1, astm2) ->
+      let mlst1 = interpret_math env astm1 in
+      let mlst2 = interpret_math env astm2 in
+        MathValue([HorzBox.MathSuperscript(mlst1, mlst2)])
+
+  | BackendMathGlyph(aststr) ->
+      let s = interpret_string env aststr in
+      let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+      let mlst =
+        uchlst |> List.map (fun uch ->
+          HorzBox.(MathPure(MathOrdinary, MathChar(Primitives.default_math_info, uch))))
+      in
+        MathValue(mlst)
+
+  | BackendEmbeddedMath(astm) ->
+      let mlst = interpret_math env astm in
+      let lmlst = Math.convert_to_low 0 mlst in
+      let hblst = Math.horz_of_low_math 0 Primitives.default_math_info Primitives.default_math_decoder lmlst in
+        (* temporary *)
+        Horz(hblst)
+
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
@@ -975,6 +1003,13 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
   in
   let hblst = hblstacc |> List.rev |> List.concat in
   Horz(hblst)
+
+
+and interpret_math env ast : HorzBox.math list =
+  let value = interpret env ast in
+    match value with
+    | MathValue(mlst) -> mlst
+    | _               -> report_bug_evaluator ("interpret_math; " ^ (Display.string_of_ast value))
 
 
 and interpret_script env ast : CharBasis.script =

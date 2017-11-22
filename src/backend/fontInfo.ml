@@ -39,6 +39,25 @@ type font_registration =
       (* -- last boolean: true iff it should embed /W information -- *)
 
 
+let get_font_and_encoding dcdr fontreg =
+  match fontreg with
+  | Type1Registration(fc, lc, enc) ->
+      let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
+        (FontFormat.type1 ty1font, enc)
+  | TrueTypeRegistration(fc, lc, enc) ->
+      let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
+        (FontFormat.true_type trtyfont, enc)
+  | CIDFontType0Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
+      let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
+        (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
+  | CIDFontType2TTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
+      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
+        (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
+  | CIDFontType2OTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
+      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo false in
+        (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
+
+
 type font_tuple = FontFormat.font * tag * FontFormat.decoder * encoding_in_pdf
 
 
@@ -59,34 +78,17 @@ module FontAbbrevHashTable
 
     let abbrev_to_definition_hash_table : font_tuple Ht.t = Ht.create 32
 
-    let current_tag_number = ref 0
-
-    let generate_tag () =
+    let generate_tag =
+      let current_tag_number = ref 0 in
+      (fun () ->
         begin
-          incr current_tag_number ;
+          incr current_tag_number;
           "/F" ^ (string_of_int !current_tag_number)
-        end
+        end)
 
     let add abbrev fontreg srcfile =
       let dcdr = FontFormat.get_decoder srcfile in
-      let (font, enc) =
-        match fontreg with
-        | Type1Registration(fc, lc, enc) ->
-            let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
-              (FontFormat.type1 ty1font, enc)
-        | TrueTypeRegistration(fc, lc, enc) ->
-            let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
-              (FontFormat.true_type trtyfont, enc)
-        | CIDFontType0Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
-              (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
-        | CIDFontType2TTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
-              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
-        | CIDFontType2OTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo false in
-              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
-      in
+      let (font, enc) = get_font_and_encoding dcdr fontreg in
       let tag = generate_tag () in
         Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr, enc)
 
@@ -94,9 +96,7 @@ module FontAbbrevHashTable
       Ht.fold f abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
-      try
-        Some(Ht.find abbrev_to_definition_hash_table abbrev)
-      with
+      try Some(Ht.find abbrev_to_definition_hash_table abbrev) with
       | Not_found -> None
 
   end
@@ -110,6 +110,7 @@ let get_tag_and_encoding (abbrev : font_abbrev) =
 
 let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
+    (* temporary; should use UnitsPerEm? *)
 
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
@@ -181,23 +182,68 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
+type math_font_tuple = FontFormat.font * tag * FontFormat.math_decoder * encoding_in_pdf
+
+module MathFontAbbrevHashTable
+: sig
+    val add : math_font_abbrev -> font_registration -> FontFormat.file_path -> unit
+    val fold : (math_font_abbrev -> math_font_tuple -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : math_font_abbrev -> math_font_tuple option
+  end
+= struct
+
+    module Ht = Hashtbl.Make
+      (struct
+        type t = font_abbrev
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    let abbrev_to_definition_hash_table : math_font_tuple Ht.t = Ht.create 32
+
+    let generate_tag =
+      let current_tag_number = ref 0 in
+      (fun () ->
+        begin
+          incr current_tag_number;
+          "/M" ^ (string_of_int !current_tag_number)
+        end)
+
+    let add mfabbrev fontreg srcfile =
+      let md = FontFormat.get_math_decoder srcfile in
+      let (font, enc) = get_font_and_encoding (FontFormat.math_base_font md) fontreg in
+      let tag = generate_tag () in
+        Ht.add abbrev_to_definition_hash_table mfabbrev (font, tag, md, enc)
+
+    let fold f init =
+      Ht.fold f abbrev_to_definition_hash_table init
+
+    let find_opt (mfabbrev : math_font_abbrev) =
+      try Some(Ht.find abbrev_to_definition_hash_table mfabbrev) with
+      | Not_found -> None
+
+  end
+
+
+let get_math_tag mfabbrev =
+  match MathFontAbbrevHashTable.find_opt mfabbrev with
+  | None                 -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some((_, tag, _, _)) -> tag
+
+
 let get_math_char_info (mathinfo : math_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathinfo.math_font_size in
   let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in  (* temporary; should be variable according to 'mathinfo' *)
   let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
   let mic =
     match rawmicopt with
-    | None         ->
-        let () = Format.printf "FontInfo> itcorr = None\n" in  (* for debug *)
-        Length.zero
-    | Some(rawmic) ->
-        let () = Format.printf "FontInfo> itcorr = Some(%d)\n" rawmic in  (* for debug *)
-        f_skip rawmic
+    | None         -> Length.zero
+    | Some(rawmic) -> f_skip rawmic
   in
     (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
   
 
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =
+let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
   match fontdfn with
   | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
@@ -206,9 +252,13 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) 
 
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
-    [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
-      let obj = make_dictionary pdf abbrev tuple in
-      let (_, tag, _, _) = tuple in
+    [] |> FontAbbrevHashTable.fold (fun _ tuple acc ->
+      let (fontdfn, tag, dcdr, _) = tuple in
+      let obj = make_dictionary pdf fontdfn dcdr in
+        (tag, obj) :: acc
+    ) |> MathFontAbbrevHashTable.fold (fun _ mftuple acc ->
+      let (fontdfn, tag, md, _) = mftuple in
+      let obj = make_dictionary pdf fontdfn (FontFormat.math_base_font md) in
         (tag, obj) :: acc
     )
   in
@@ -235,9 +285,11 @@ let initialize (satysfi_root_dir : string) =
     ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Regular.otf");
     ("ArnoIt", CIDFontType0Registration("ArnoIt-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Italic.otf");
 
-    ("KozMin",
-       CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf")
+    ("KozMin", CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf");
 
+  ];
+  List.iter (fun (mfabbrev, fontreg, srcfile) -> MathFontAbbrevHashTable.add mfabbrev fontreg srcfile) [
+    ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
   ]
   ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 

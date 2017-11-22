@@ -77,7 +77,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzMathGlyph(mathinfo, gid)) ->
-        let tag = "/Fmath" in  (* temporary *)
+        let tag = FontInfo.get_math_tag mathinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let ops =

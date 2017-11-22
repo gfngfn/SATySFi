@@ -61,7 +61,13 @@ let make_left_and_right_kern mkopt mic mkiopt : left_kern * right_kern =
           right_math_kind    = mkopt;
         }
 
-    | None -> no_right_kern
+    | None ->
+        {
+          italics_correction = mic;
+          kernTR             = None;
+          kernBR             = None;
+          right_math_kind    = None;
+        }
   in
     (lk, rk)
 
