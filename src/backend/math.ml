@@ -146,8 +146,9 @@ let horz_of_low_math_element (mathinfo : math_info) (lme : low_math_atom) : horz
 
 
 
-let space_between_math_atom (prevmkopt : math_kind option) (mkopt : math_kind option) : horz_box =
-  HorzPure(PHOuterEmpty(Length.zero, Length.zero, Length.zero))
+let space_between_math_atom (prevmkopt : math_kind option) (mkopt : math_kind option) : horz_box option =
+  None
+(*  HorzPure(PHOuterEmpty(Length.zero, Length.zero, Length.zero)) *)
     (* temporary; should decide width of a space based on 'prevmkopt' and 'mk' *)
 
 
@@ -199,21 +200,26 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
     | [] -> List.rev hbacc
 
     | LowMathPure(mk, wid, hgt, dpt, lma, _, _) :: lmmaintail ->
-        let hbspace = space_between_math_atom prevmkopt (Some(mk)) in
-        let hbaccnew = List.rev_append (horz_of_low_math_element mathinfo lma) (hbspace :: hbacc) in
+        let hbspaceopt = space_between_math_atom prevmkopt (Some(mk)) in
+        let hblstpure = horz_of_low_math_element mathinfo lma in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstpure hbacc
+          | Some(hbspace) -> List.rev_append hblstpure (hbspace :: hbacc)
+        in
           aux hbaccnew (Some(mk)) lmmaintail
 
     | LowMathSuperscript(lmB, lmS) :: lmmaintail ->
         let (_, lkB, rkB) = lmB in
         let (_, lkS, _) = lmS in
         let mkopt = lkB.left_math_kind in
-        let hbspace = space_between_math_atom prevmkopt mkopt in
+        let hbspaceopt = space_between_math_atom prevmkopt mkopt in
         let hblstB = horz_of_low_math scriptlev mathinfo md lmB in
         let hblstS = horz_of_low_math (scriptlev + 1) mathinfo md lmS in
         let (_, h_base, d_base) = LineBreak.get_natural_metrics hblstB in
         let (_, h_sup, d_sup) = LineBreak.get_natural_metrics hblstS in
-        let h_supb = superscript_baseline_height fontsize md d_sup in
-        let (l_base, l_sup) = correction_heights h_supb h_base d_sup in
+        let h_supbl = superscript_baseline_height fontsize md d_sup in
+        let (l_base, l_sup) = correction_heights h_supbl h_base d_sup in
         let s_base = get_real_font_size scriptlev fontsize md in
         let s_sup  = get_real_font_size (scriptlev + 1) fontsize md in
         let r_base = l_base /% s_base in
@@ -221,12 +227,17 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
         let r_kernbase = kern_top_right rkB r_base in
         let r_kernsup  = kern_bottom_left lkS r_sup in
         let l_italic   = rkB.italics_correction in
+        let () = Format.printf "<%f, %f, %f>\n" (Length.to_pdf_point l_italic) r_kernbase r_kernsup in  (* for debug *)
         let l_kernbase = Length.min Length.zero (s_base *% r_kernbase) in
         let l_kernsup  = Length.min Length.zero (s_sup *% r_kernsup) in
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
         let hblstsup = List.concat [hblstB; [hbkern]; hblstS  (* temporary; should raise boxes *)] in
-        let hbaccnew = List.rev_append hblstsup (hbspace :: hbacc) in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstsup hbacc
+          | Some(hbspace) -> List.rev_append hblstsup (hbspace :: hbacc)
+        in
           aux hbaccnew mkopt lmmaintail
 
     | LowMathSubscript(lmB, lmS) :: lmmaintail ->
@@ -245,7 +256,8 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
 let () =
   let mathinfo = { math_font_abbrev = "euler"; math_font_size = Length.of_pdf_point 12.; } in
   let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in
-  let mlst = [MathPure(MathOrdinary, MathChar(mathinfo, Uchar.of_char 'a'))] in
+  let mlst = [MathSuperscript([MathPure(MathOrdinary, MathChar(mathinfo, Uchar.of_char 'P'))], [MathPure(MathOrdinary, MathChar(mathinfo, Uchar.of_char 'A'))])] in
   let lm = convert_to_low 0 mlst in
   let hblst = horz_of_low_math 0 mathinfo md lm in
-  List.iter (pp_horz_box Format.std_formatter) hblst
+  List.iter (fun hb -> Format.printf "%a@ " pp_horz_box hb) hblst;
+  print_endline "";

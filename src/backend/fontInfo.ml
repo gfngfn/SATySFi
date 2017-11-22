@@ -187,8 +187,12 @@ let get_math_char_info (mathinfo : math_info) (uch : Uchar.t) : FontFormat.glyph
   let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
   let mic =
     match rawmicopt with
-    | None         -> Length.zero
-    | Some(rawmic) -> f_skip rawmic
+    | None         ->
+        let () = Format.printf "FontInfo> itcorr = None\n" in  (* for debug *)
+        Length.zero
+    | Some(rawmic) ->
+        let () = Format.printf "FontInfo> itcorr = Some(%d)\n" rawmic in  (* for debug *)
+        f_skip rawmic
   in
     (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
   

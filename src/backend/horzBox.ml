@@ -202,9 +202,9 @@ type pure_horz_box =
   | PHOuterFil
   | PHOuterFrame     of paddings * decoration * horz_box list
   | PHFixedString    of horz_string_info * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "FixedString(...)")]
+      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
   | PHFixedMathGlyph of math_info * length * length * length * FontFormat.glyph_id
-      [@printer (fun fmt _ -> Format.fprintf fmt "FixedMathGlyph(...)")]
+      [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
   | PHFixedEmpty     of length
   | PHFixedFrame     of paddings * length * decoration * horz_box list
   | PHInnerFrame     of paddings * decoration * horz_box list
