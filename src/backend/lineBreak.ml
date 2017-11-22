@@ -157,7 +157,7 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
         Atom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
   | PHFixedMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
-      Atom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, gid))
+      Atom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid))
 
   | PHFixedEmpty(wid) ->
       Atom(empty_vert (natural wid), EvHorzEmpty)

@@ -188,7 +188,7 @@ type horz_string_info =
     rising      : length;
   }
 
-type math_info =
+type math_string_info =
   {
     math_font_abbrev : math_font_abbrev;
     math_font_size   : length;
@@ -203,7 +203,7 @@ type pure_horz_box =
   | PHOuterFrame     of paddings * decoration * horz_box list
   | PHFixedString    of horz_string_info * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHFixedMathGlyph of math_info * length * length * length * FontFormat.glyph_id
+  | PHFixedMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
   | PHFixedEmpty     of length
   | PHFixedFrame     of paddings * length * decoration * horz_box list
@@ -220,7 +220,7 @@ and horz_box =
 
 and evaled_horz_box_main =
   | EvHorzString         of horz_string_info * length * length * OutputText.t
-  | EvHorzMathGlyph      of math_info * FontFormat.glyph_id
+  | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
@@ -256,8 +256,14 @@ type vert_box =
 
 type math_graphics = unit  (* temporary *)
 
+type math_context =
+  {
+    math_context_font_abbrev : math_font_abbrev;
+    math_context_font_size   : length;
+  }
+
 type math_element_main =
-  | MathChar         of math_info * Uchar.t
+  | MathChar         of math_context * Uchar.t
   | MathGraphics     of math_graphics
   | MathEmbeddedHorz of horz_box list
 

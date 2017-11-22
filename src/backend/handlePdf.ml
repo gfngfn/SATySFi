@@ -22,6 +22,20 @@ let ops_test_box rgb (xpos, ypos) wid hgt =
   ]
 
 
+let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
+  [
+(* begin: for test; encloses every word with a red box *)
+    Graphics.op_q;
+    Graphics.op_RG (1.0, 0.5, 0.5);
+    Graphics.op_m (xpos, yposbaseline);
+    Graphics.op_l (xpos +% wid, yposbaseline);
+    Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
+    Graphics.op_S;
+    Graphics.op_Q;
+(* end: for test *)
+  ]
+
+
 let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
@@ -49,18 +63,10 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
         let ops =
+
+          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
+
           [
-
-            (* begin: for test; encloses every word with a red box *)
-            Graphics.op_q;
-            Graphics.op_RG (1.0, 0.5, 0.5);
-            Graphics.op_m (xpos, yposbaseline);
-            Graphics.op_l (xpos +% wid, yposbaseline);
-            Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
-            Graphics.op_S;
-            Graphics.op_Q;
-            (* end: for test *)
-
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
@@ -76,11 +82,14 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops opacc in
           (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzMathGlyph(mathinfo, gid)) ->
+    | EvHorz(wid, EvHorzMathGlyph(mathinfo, hgt, dpt, gid)) ->
         let tag = FontInfo.get_math_tag mathinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let ops =
+
+        List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
           [
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;

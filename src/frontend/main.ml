@@ -325,7 +325,9 @@ let error_log_environment suspended =
   | Evaluator.EvalError(s)          -> report_error Evaluator [ NormalLine(s); ]
   | MainError(s)                    -> report_error Interface [ NormalLine(s); ]
   | Sys_error(s)                    -> report_error System    [ NormalLine(s); ]
-
+(*
+  | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
+*)
 
 type input_file_kind =
   | DocumentFile

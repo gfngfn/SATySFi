@@ -225,14 +225,35 @@ module MathFontAbbrevHashTable
   end
 
 
+let get_math_font_size (scriptlev : int) (mathctx : math_context) (md : FontFormat.math_decoder) =
+  let size = mathctx.math_context_font_size in
+  let mc = FontFormat.get_math_constants md in
+  match scriptlev with
+  | 0              -> size
+  | 1              -> size *% mc.FontFormat.script_scale_down
+  | t  when t >= 2 -> size *% mc.FontFormat.script_script_scale_down
+  | _              -> assert false
+
+
+let get_math_string_info (scriptlev : int) (mathctx : math_context) : math_string_info =
+  let mfabbrev = mathctx.math_context_font_abbrev in
+  match MathFontAbbrevHashTable.find_opt mfabbrev with
+  | None                -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some((_, _, md, _)) ->
+      {
+        math_font_abbrev = mfabbrev;
+        math_font_size   = get_math_font_size scriptlev mathctx md;
+      }
+
+
 let get_math_tag mfabbrev =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
   | None                 -> raise (InvalidMathFontAbbrev(mfabbrev))
   | Some((_, tag, _, _)) -> tag
 
 
-let get_math_char_info (mathinfo : math_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
-  let f_skip = raw_length_to_skip_length mathinfo.math_font_size in
+let get_math_char_info (mathstrinfo : math_string_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+  let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
   let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in  (* temporary; should be variable according to 'mathinfo' *)
   let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
   let mic =
@@ -290,6 +311,9 @@ let initialize (satysfi_root_dir : string) =
   ];
   List.iter (fun (mfabbrev, fontreg, srcfile) -> MathFontAbbrevHashTable.add mfabbrev fontreg srcfile) [
     ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
+(*
+    ("Asana", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Asana-math.otf");
+*)
   ]
   ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 

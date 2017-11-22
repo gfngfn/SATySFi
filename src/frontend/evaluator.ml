@@ -235,14 +235,14 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let mlst =
         uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(MathOrdinary, MathChar(Primitives.default_math_info, uch))))
+          HorzBox.(MathPure(MathOrdinary, MathChar(Primitives.default_math_context, uch))))
       in
         MathValue(mlst)
 
   | BackendEmbeddedMath(astm) ->
       let mlst = interpret_math env astm in
       let lmlst = Math.convert_to_low 0 mlst in
-      let hblst = Math.horz_of_low_math 0 Primitives.default_math_info Primitives.default_math_decoder lmlst in
+      let hblst = Math.horz_of_low_math Primitives.default_math_context 0 Primitives.default_math_decoder lmlst in
         (* temporary *)
         Horz(hblst)
 

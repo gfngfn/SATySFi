@@ -3,7 +3,7 @@ open HorzBox
 
 
 type low_math_atom =
-  | LowMathGlyph        of math_info * length * length * length * FontFormat.glyph_id
+  | LowMathGlyph        of math_string_info * length * length * length * FontFormat.glyph_id
   | LowMathGraphics     of math_graphics
   | LowMathEmbeddedHorz of horz_box list
 
@@ -81,11 +81,12 @@ let convert_math_element (scriptlev : int) ((mk, memain) : math_element) : low_m
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern, no_right_kern)
 
-  | MathChar(mathinfo, uch) ->
-      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathinfo uch in
+  | MathChar(mathctx, uch) ->
+      let mathstrinfo = FontInfo.get_math_string_info scriptlev mathctx in
+      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo uch in
         (* temporary; choosing glyph ID should depends on the script level. *)
       let (lk, rk) = make_left_and_right_kern (Some(mk)) mic mkiopt in
-        (mk, wid, hgt, dpt, LowMathGlyph(mathinfo, wid, hgt, dpt, gid), lk, rk)
+        (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 
 let get_right_kern lmmain =
@@ -144,11 +145,16 @@ and convert_to_low_single (scriptlev : int) (math : math) : low_math_main =
         LowMathRadical(lm1)
 
 
-let horz_of_low_math_element (mathinfo : math_info) (lme : low_math_atom) : horz_box list =
+let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
   match lme with
-  | LowMathGlyph(mathinfo, wid, hgt, dpt, gid) -> [HorzPure(PHFixedMathGlyph(mathinfo, wid, hgt, dpt, gid))]
-  | LowMathGraphics(g)                         -> []  (* temporary *)
-  | LowMathEmbeddedHorz(hblst)                 -> hblst
+  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid) ->
+      [HorzPure(PHFixedMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
+
+  | LowMathGraphics(g) ->
+      []  (* temporary *)
+
+  | LowMathEmbeddedHorz(hblst) ->
+      hblst
 
 
 
@@ -177,15 +183,6 @@ let correction_heights h_supb h_base d_sup =
     (l_base, l_sup)
 
 
-let get_real_font_size scriptlev fontsize md =
-  let mc = FontFormat.get_math_constants md in
-  match scriptlev with
-  | 0              -> fontsize
-  | 1              -> fontsize *% mc.FontFormat.script_scale_down
-  | t  when t >= 2 -> fontsize *% mc.FontFormat.script_script_scale_down
-  | _              -> assert false
-
-
 let kern_top_right rk ratio =
   match rk.kernTR with
   | None        -> 0.
@@ -198,8 +195,8 @@ let kern_bottom_left rk ratio =
   | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
 
 
-let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontFormat.math_decoder) (lm : low_math) =
-  let fontsize = mathinfo.math_font_size in
+let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (md : FontFormat.math_decoder) (lm : low_math) =
+  let fontsize = mathctx.math_context_font_size in
   let (lmmainlst, _, _) = lm in
   let rec aux hbacc prevmkopt lmmainlst =
     match lmmainlst with
@@ -207,7 +204,7 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
 
     | LowMathPure(mk, wid, hgt, dpt, lma, _, _) :: lmmaintail ->
         let hbspaceopt = space_between_math_atom prevmkopt (Some(mk)) in
-        let hblstpure = horz_of_low_math_element mathinfo lma in
+        let hblstpure = horz_of_low_math_element lma in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstpure hbacc
@@ -220,20 +217,19 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
         let (_, lkS, _) = lmS in
         let mkopt = lkB.left_math_kind in
         let hbspaceopt = space_between_math_atom prevmkopt mkopt in
-        let hblstB = horz_of_low_math scriptlev mathinfo md lmB in
-        let hblstS = horz_of_low_math (scriptlev + 1) mathinfo md lmS in
+        let hblstB = horz_of_low_math mathctx scriptlev md lmB in
+        let hblstS = horz_of_low_math mathctx (scriptlev + 1) md lmS in
         let (_, h_base, d_base) = LineBreak.get_natural_metrics hblstB in
         let (_, h_sup, d_sup) = LineBreak.get_natural_metrics hblstS in
         let h_supbl = superscript_baseline_height fontsize md d_sup in
         let (l_base, l_sup) = correction_heights h_supbl h_base d_sup in
-        let s_base = get_real_font_size scriptlev fontsize md in
-        let s_sup  = get_real_font_size (scriptlev + 1) fontsize md in
+        let s_base = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+        let s_sup  = (FontInfo.get_math_string_info (scriptlev + 1) mathctx).math_font_size in
         let r_base = l_base /% s_base in
         let r_sup  = l_sup /% s_sup in
         let r_kernbase = kern_top_right rkB r_base in
         let r_kernsup  = kern_bottom_left lkS r_sup in
         let l_italic   = rkB.italics_correction in
-        let () = Format.printf "<%f, %f, %f>\n" (Length.to_pdf_point l_italic) r_kernbase r_kernsup in  (* for debug *)
         let l_kernbase = Length.min Length.zero (s_base *% r_kernbase) in
         let l_kernsup  = Length.min Length.zero (s_sup *% r_kernsup) in
         let kern = l_italic +% l_kernbase +% l_kernsup in
@@ -257,7 +253,7 @@ let rec horz_of_low_math (scriptlev : int) (mathinfo : math_info) (md : FontForm
   in
   aux [] None lmmainlst
 
-
+(*
 (* for tests *)
 let () =
   let mathinfo = { math_font_abbrev = "euler"; math_font_size = Length.of_pdf_point 12.; } in
@@ -267,3 +263,4 @@ let () =
   let hblst = horz_of_low_math 0 mathinfo md lm in
   List.iter (fun hb -> Format.printf "%a@ " pp_horz_box hb) hblst;
   print_endline "";
+*)

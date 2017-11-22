@@ -91,10 +91,10 @@ let default_font_scheme =
       (CharBasis.Other             , default_font_with_ratio);
     ]
 
-let default_math_info =
+let default_math_context =
   HorzBox.({
-    math_font_abbrev = "euler";
-    math_font_size   = Length.of_pdf_point 12.;
+    math_context_font_abbrev = "euler";
+    math_context_font_size   = Length.of_pdf_point 12.;
   })
 
 let default_math_decoder =
