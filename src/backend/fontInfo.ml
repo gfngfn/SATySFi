@@ -252,6 +252,13 @@ let get_math_tag mfabbrev =
   | Some((_, tag, _, _)) -> tag
 
 
+let get_math_constants mathctx =
+  let mfabbrev = mathctx.math_context_font_abbrev in
+    match MathFontAbbrevHashTable.find_opt mfabbrev with
+    | None                -> raise (InvalidMathFontAbbrev(mfabbrev))
+    | Some((_, _, md, _)) -> FontFormat.get_math_constants md
+
+
 let get_math_char_info (mathstrinfo : math_string_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
   let mfabbrev = mathstrinfo.math_font_abbrev in
@@ -313,8 +320,9 @@ let initialize (satysfi_root_dir : string) =
 
   ];
   List.iter (fun (mfabbrev, fontreg, srcfile) -> MathFontAbbrevHashTable.add mfabbrev fontreg srcfile) [
+(*
     ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
-
+*)
     ("Asana", CIDFontType0Registration("Asana-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Asana-math.otf");
 
     ("lmodern", CIDFontType0Registration("lmodern-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "latinmodern-math.otf");

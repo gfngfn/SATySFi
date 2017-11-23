@@ -164,7 +164,9 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
   | PHRising(lenrising, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo, hgt, dpt) = get_total_metrics lphblst in
-      Rising((widinfo, hgt, dpt), lenrising, lphblst)
+      let hgtsub = Length.max Length.zero (hgt +% lenrising) in
+      let dptsub = Length.min Length.zero (dpt +% lenrising) in
+        Rising((widinfo, hgtsub, dptsub), lenrising, lphblst)
 
   | PHFixedEmpty(wid) ->
       Atom(empty_vert (natural wid), EvHorzEmpty)
@@ -311,11 +313,9 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
                 EvHorz(widinfo.natural +% widappend, evhb)
         end
 
-    | Rising((_, hgt, dpt), lenrising, lphblstsub) ->
+    | Rising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
         let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-        let hgtsub = Length.max Length.zero (hgt +% lenrising) in
-        let dptsub = Length.min Length.zero (dpt +% lenrising) in
           EvHorz(wid_total, EvHorzRising(hgtsub, dptsub, lenrising, evhblst))
 
     | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->

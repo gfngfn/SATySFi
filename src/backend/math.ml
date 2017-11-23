@@ -181,8 +181,9 @@ let ratioize n =
 
 
 (* -- calculates the base correction height and the superscript correction height-- *)
-let superscript_baseline_height fontsize md d_sup =
-  let mc = FontFormat.get_math_constants md in
+let superscript_baseline_height (mathctx : math_context) (scriptlev : int) d_sup =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let mc = FontInfo.get_math_constants mathctx in
   let h_supbmin = fontsize *% (ratioize mc.FontFormat.superscript_bottom_min) in
   let h_supstd  = fontsize *% (ratioize mc.FontFormat.superscript_shift_up) in
   let h_supb = Length.max h_supstd (h_supbmin +% d_sup) in
@@ -209,20 +210,9 @@ let kern_bottom_left rk ratio =
 
 let raise_as_superscript h hblst =
   [HorzPure(PHRising(h, hblst))]
-(*
-  hblst |> List.map (fun hb ->
-    match hb with
-    | HorzPure(PHFixedString(hsinfo, uchlst)) -> HorzPure(PHFixedString({ hsinfo with rising = hsinfo.rising +% h; }, uchlst))
-    | HorzPure(PHFixedEmpty(_))               -> hb
-    | HorzPure(PHOuterFil)                    -> hb
-    | HorzPure(PHOuterEmpty(_, _, _))         -> hb
-    | HorzPure(PHInnerFrame)
-  )
-*)
 
 
-let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (md : FontFormat.math_decoder) (lm : low_math) =
-  let fontsize = mathctx.math_context_font_size in
+let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_math) =
   let (lmmainlst, _, _) = lm in
   let rec aux hbacc prevmkopt lmmainlst =
     match lmmainlst with
@@ -243,11 +233,11 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (md : FontFo
         let (_, lkS, _) = lmS in
         let mkopt = lkB.left_math_kind in
         let hbspaceopt = space_between_math_atom prevmkopt mkopt in
-        let hblstB = horz_of_low_math mathctx scriptlev md lmB in
-        let hblstS = horz_of_low_math mathctx (scriptlev + 1) md lmS in
+        let hblstB = horz_of_low_math mathctx scriptlev lmB in
+        let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
         let (_, h_base, d_base) = LineBreak.get_natural_metrics hblstB in
         let (_, h_sup, d_sup) = LineBreak.get_natural_metrics hblstS in
-        let h_supbl = superscript_baseline_height fontsize md d_sup in
+        let h_supbl = superscript_baseline_height mathctx scriptlev d_sup in
         let (l_base, l_sup) = correction_heights h_supbl h_base d_sup in
         let s_base = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
         let s_sup  = (FontInfo.get_math_string_info (scriptlev + 1) mathctx).math_font_size in

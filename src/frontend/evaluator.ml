@@ -242,7 +242,7 @@ and interpret env ast =
   | BackendEmbeddedMath(astm) ->
       let mlst = interpret_math env astm in
       let lmlst = Math.convert_to_low 0 mlst in
-      let hblst = Math.horz_of_low_math Primitives.default_math_context 0 Primitives.default_math_decoder lmlst in
+      let hblst = Math.horz_of_low_math Primitives.default_math_context 0 lmlst in
         (* temporary *)
         Horz(hblst)
 

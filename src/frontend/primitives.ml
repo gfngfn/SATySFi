@@ -97,9 +97,6 @@ let default_math_context =
     math_context_font_size   = Length.of_pdf_point 12.;
   })
 
-let default_math_decoder =
-  FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf"
-
 
 let envinit : environment = Hashtbl.create 128
 

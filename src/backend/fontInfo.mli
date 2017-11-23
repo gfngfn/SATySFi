@@ -14,4 +14,6 @@ val get_math_string_info : int -> math_context -> math_string_info
 
 val get_math_tag : math_font_abbrev -> string
 
+val get_math_constants : math_context -> FontFormat.math_constants
+
 val get_font_dictionary : Pdf.t -> Pdf.pdfobject

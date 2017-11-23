@@ -89,9 +89,9 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let ops =
-
+(*
         List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
-
+*)
           [
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;
@@ -107,13 +107,16 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
-        let opaccnew =
-          evhblst |> List.fold_left (fun opaccx evhb ->
-            let (_, opaccres) = ops_of_evaled_horz_box (yposbaseline +% lenrising) (xpos, opaccx) evhb in
-              opaccres
-          ) opacc
+        let (_, opaccsub) =
+          evhblst |> List.fold_left (ops_of_evaled_horz_box (yposbaseline +% lenrising)) (xpos, opacc)
         in
-        (xpos +% wid, opaccnew)
+        let opaccnew =
+
+          List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
+            opaccsub
+        in
+          (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
