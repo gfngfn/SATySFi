@@ -24,6 +24,7 @@ type metrics = length_info * length * length
 
 type lb_pure_box =
   | Atom           of metrics * evaled_horz_box_main
+  | Rising         of metrics * length * lb_pure_box list
   | OuterFrame     of metrics * decoration * lb_pure_box list
   | FixedFrame     of length * length * length * decoration * lb_pure_box list
   | EmbeddedVert   of length * length * length * evaled_vert_box list
@@ -45,10 +46,11 @@ let natural wid =
 
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | Atom(metr, _)                   -> metr
-  | OuterFrame(metr, _, _)          -> metr
-  | FixedFrame(wid, hgt, dpt, _, _) -> (natural wid, hgt, dpt)
-  | EmbeddedVert(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
+  | Atom(metr, _)                    -> metr
+  | Rising(metr, _, _)               -> metr
+  | OuterFrame(metr, _, _)           -> metr
+  | FixedFrame(wid, hgt, dpt, _, _)  -> (natural wid, hgt, dpt)
+  | EmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
   | InlineGraphics(wid, hgt, dpt, _) -> (natural wid, hgt, dpt)
 
 
@@ -158,6 +160,11 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
 
   | PHFixedMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
       Atom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid))
+
+  | PHRising(lenrising, hblst) ->
+      let lphblst = convert_list_for_line_breaking_pure hblst in
+      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
+      Rising((widinfo, hgt, dpt), lenrising, lphblst)
 
   | PHFixedEmpty(wid) ->
       Atom(empty_vert (natural wid), EvHorzEmpty)
@@ -303,6 +310,13 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
               in
                 EvHorz(widinfo.natural +% widappend, evhb)
         end
+
+    | Rising((_, hgt, dpt), lenrising, lphblstsub) ->
+        let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
+        let hgtsub = Length.max Length.zero (hgt +% lenrising) in
+        let dptsub = Length.min Length.zero (dpt +% lenrising) in
+          EvHorz(wid_total, EvHorzRising(hgtsub, dptsub, lenrising, evhblst))
 
     | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in

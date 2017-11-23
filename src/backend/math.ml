@@ -34,9 +34,21 @@ type low_math_main =
 and low_math = low_math_main list * left_kern * right_kern
 
 
-let no_left_kern = { kernTL = None; kernBL = None; left_math_kind = None; }
+let no_left_kern =
+  {
+    kernTL         = None;
+    kernBL         = None;
+    left_math_kind = None;
+  }
 
-let no_right_kern = { italics_correction = Length.zero; kernTR = None; kernBR = None; right_math_kind = None; }
+
+let no_right_kern =
+  {
+    italics_correction = Length.zero;
+    kernTR             = None;
+    kernBR             = None;
+    right_math_kind    = None;
+  }
 
 
 let make_left_and_right_kern mkopt mic mkiopt : left_kern * right_kern =
@@ -195,6 +207,20 @@ let kern_bottom_left rk ratio =
   | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
 
 
+let raise_as_superscript h hblst =
+  [HorzPure(PHRising(h, hblst))]
+(*
+  hblst |> List.map (fun hb ->
+    match hb with
+    | HorzPure(PHFixedString(hsinfo, uchlst)) -> HorzPure(PHFixedString({ hsinfo with rising = hsinfo.rising +% h; }, uchlst))
+    | HorzPure(PHFixedEmpty(_))               -> hb
+    | HorzPure(PHOuterFil)                    -> hb
+    | HorzPure(PHOuterEmpty(_, _, _))         -> hb
+    | HorzPure(PHInnerFrame)
+  )
+*)
+
+
 let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (md : FontFormat.math_decoder) (lm : low_math) =
   let fontsize = mathctx.math_context_font_size in
   let (lmmainlst, _, _) = lm in
@@ -234,7 +260,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (md : FontFo
         let l_kernsup  = Length.min Length.zero (s_sup *% r_kernsup) in
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
-        let hblstsup = List.concat [hblstB; [hbkern]; hblstS  (* temporary; should raise boxes *)] in
+        let hblstsup = List.concat [hblstB; [hbkern]; raise_as_superscript h_supbl hblstS] in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsup hbacc

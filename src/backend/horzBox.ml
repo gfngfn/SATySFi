@@ -205,6 +205,7 @@ type pure_horz_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
   | PHFixedMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
+  | PHRising         of length * horz_box list
   | PHFixedEmpty     of length
   | PHFixedFrame     of paddings * length * decoration * horz_box list
   | PHInnerFrame     of paddings * decoration * horz_box list
@@ -222,6 +223,7 @@ and evaled_horz_box_main =
   | EvHorzString         of horz_string_info * length * length * OutputText.t
   | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
+  | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list

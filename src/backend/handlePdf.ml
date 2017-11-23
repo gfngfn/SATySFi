@@ -44,7 +44,9 @@ let get_paper_height (paper : Pdfpaper.t) : length =
 
 let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
     match evhb with
-    | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
+    | EvHorz(wid, EvHorzEmpty) ->
+        (xpos +% wid, opacc)
+
     | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
         let ops_background =
           deco (xpos, yposbaseline) wid hgt_frame (Length.negate dpt_frame)
@@ -102,6 +104,15 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           ]
         in
         let opaccnew = List.rev_append ops opacc in
+        (xpos +% wid, opaccnew)
+
+    | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
+        let opaccnew =
+          evhblst |> List.fold_left (fun opaccx evhb ->
+            let (_, opaccres) = ops_of_evaled_horz_box (yposbaseline +% lenrising) (xpos, opaccx) evhb in
+              opaccres
+          ) opacc
+        in
         (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) ->
