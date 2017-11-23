@@ -797,6 +797,14 @@ and interpret env ast =
   | PrimitiveStringLength(aststr) ->
       let str = interpret_string env aststr in
         IntegerConstant(String.length str)
+
+  | PrimitiveStringUnexplode(astil) ->
+      let ilst = interpret_list env (interpret_int env) astil in
+      let s =
+        (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8
+      in
+        StringConstant(s)
+
 (*
   | PrimitiveInclude(astfile_name) ->
       ( try
@@ -1003,6 +1011,17 @@ and interpret_input_horz (env : environment) (ctx : input_context) (ihlst : inpu
   in
   let hblst = hblstacc |> List.rev |> List.concat in
   Horz(hblst)
+
+
+and interpret_list env extractf ast =
+  let rec aux acc value =
+    match value with
+    | ListCons(vhead, vtail) -> aux ((extractf vhead) :: acc) vtail
+    | EndOfList              -> List.rev acc
+    | _                      -> report_bug_evaluator "interpret_list"
+  in
+  let value = interpret env ast in
+    aux [] value
 
 
 and interpret_math env ast : HorzBox.math list =

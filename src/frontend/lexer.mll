@@ -89,9 +89,10 @@
 let space = [' ' '\t']
 let break = ['\n' '\r']
 let digit = ['0'-'9']
+let hex   = (['0'-'9'] | ['A'-'F'])
 let capital = ['A'-'Z']
 let small = ['a'-'z']
-let latin = ( small | capital )
+let latin = (small | capital)
 let item  = "*"+
 let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
@@ -251,6 +252,7 @@ rule progexpr = parse
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit digit*)                                        { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (digit+ "." digit*)                                   { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
   | ("." digit+)                                          { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
   | (((digit digit*) as i) (identifier as unitnm))        { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }

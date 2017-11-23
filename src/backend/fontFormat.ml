@@ -467,7 +467,13 @@ let get_glyph_id_main (d : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option 
     Otfm.cmap d (fun accopt mapkd (u0, u1) gid ->
       match accopt with
       | Some(_) -> accopt
-      | None    -> if u0 <= cp && cp <= u1 then Some(gid + (cp - u0)) else None
+      | None    ->
+          if u0 <= cp && cp <= u1 then
+            match mapkd with
+            | `Glyph_range -> Some(gid + (cp - u0))
+            | `Glyph       -> Some(gid)
+          else
+            None
     ) None
   in
     match cmapres with
@@ -1106,7 +1112,9 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
 let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
-  | None -> (0, 0, 0, 0, None, None)
+  | None ->
+      let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
+        (0, 0, 0, 0, None, None)
   | Some(gid) ->
       let (wid, hgt, dpt) = get_glyph_metrics dcdr gid in
       let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in

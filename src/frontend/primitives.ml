@@ -339,10 +339,11 @@ let make_environments () =
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
         ("math-glyph"              , ~% (s @-> math)                                , lambda1 (fun vs -> BackendMathGlyph(vs)));
+          (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
         ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
-          (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
+        ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
       ]
   in
   let temporary_ast = StringEmpty in
