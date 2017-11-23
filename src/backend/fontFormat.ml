@@ -22,6 +22,7 @@ exception FontFormatBroken                  of Otfm.error
 exception FontFormatBrokenAboutWidthClass
 exception NoGlyphID                         of Otfm.glyph_id
 exception UnsupportedTTC  (* temporary *)
+exception CannotFindUnicodeCmap
 
 
 let raise_err e =
@@ -317,6 +318,7 @@ let get_kerning_table (d : Otfm.decoder) =
 
 type decoder = {
   main                : Otfm.decoder;
+  cmap_subtable       : Otfm.cmap_subtable;
   head_record         : Otfm.head;
   hhea_record         : Otfm.hhea;
   glyph_id_table      : GlyphIDTable.t;
@@ -394,13 +396,13 @@ type font_descriptor = {
     (* temporary; should contain more fields *)
   }
 
-
+(*
 let to_base85_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
   match Otfm.decoder_src d with
   | `String(s) ->
       let s85 = Base85.encode s in
         ("/ASCII85Decode", Pdfio.bytes_of_string s85)
-
+*)
 
 let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
   match Otfm.decoder_src d with
@@ -461,10 +463,10 @@ let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string 
     irstream
 
 
-let get_glyph_id_main (d : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option =
+let get_glyph_id_main (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) : Otfm.glyph_id option =
   let cp = Uchar.to_int uch in
   let cmapres =
-    Otfm.cmap d (fun accopt mapkd (u0, u1) gid ->
+    Otfm.cmap_subtable cmapsubtbl (fun accopt mapkd (u0, u1) gid ->
       match accopt with
       | Some(_) -> accopt
       | None    ->
@@ -477,9 +479,36 @@ let get_glyph_id_main (d : Otfm.decoder) (uch : Uchar.t) : Otfm.glyph_id option 
     ) None
   in
     match cmapres with
-    | Error(e)                   -> raise_err e
-    | Ok(((_, _, _), None))      -> None
-    | Ok(((_, _, _), Some(gid))) -> Some(gid)
+    | Error(e)      -> raise_err e
+    | Ok(None)      -> None
+    | Ok(Some(gid)) -> Some(gid)
+
+
+let cmap_predicate f =
+  List.find_opt (fun subtbl -> f (Otfm.cmap_subtable_ids subtbl))
+
+
+let get_cmap_subtable d =
+  let opt =
+    match Otfm.cmap d with
+    | Error(e)      -> raise (FontFormatBroken(e))
+    | Ok(subtbllst) ->
+        List.fold_left (fun opt idspred ->
+          match opt with
+          | Some(_) -> opt
+          | None    -> subtbllst |> (cmap_predicate idspred)
+        ) None [
+          (fun (pid, _, format) -> pid = 0 && format = 12);
+          (fun (pid, _, format) -> pid = 0 && format = 4);
+          (fun (pid, _, _)      -> pid = 0);
+          (fun (pid, eid, _)    -> pid = 3 && eid = 10);
+          (fun (pid, eid, _)    -> pid = 3 && eid = 1);
+          (fun (pid, _, _)      -> pid = 1);
+        ]
+  in
+    match opt with
+    | None         -> raise CannotFindUnicodeCmap
+    | Some(subtbl) -> subtbl
 
 
 (* PUBLIC *)
@@ -488,7 +517,7 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
     match gidtbl |> GlyphIDTable.find_opt uch with
     | Some(gid) -> Some(gid)
     | None      ->
-        match get_glyph_id_main dcdr.main uch with
+        match get_glyph_id_main dcdr.cmap_subtable uch with
         | None      -> None
         | Some(gid) ->
             begin
@@ -557,13 +586,12 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : int * int * int =
 
 
 let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int) : int list =
-  let d = dcdr.main in
   let rec range acc m n =
     if m > n then List.rev acc else
       range (m :: acc) (m + 1) n
   in
     (range [] firstchar lastchar) |> List.map (fun charcode ->
-      get_glyph_id_main d (Uchar.of_int charcode) |> function
+      get_glyph_id_main dcdr.cmap_subtable (Uchar.of_int charcode) |> function
         | None      -> 0
         | Some(gid) -> get_glyph_advance_width dcdr gid
     )
@@ -978,6 +1006,7 @@ let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0
 
 let get_decoder (srcfile : file_path) : decoder =
   let d = get_main_decoder srcfile in
+  let cmapsubtbl = get_cmap_subtable d in
   let kerntbl = get_kerning_table d in
   let ligtbl = get_ligature_table d in
   let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
@@ -994,6 +1023,7 @@ let get_decoder (srcfile : file_path) : decoder =
   in
     {
       main                = d;
+      cmap_subtable       = cmapsubtbl;
       head_record         = rcdhead;
       hhea_record         = rcdhhea;
       kerning_table       = kerntbl;

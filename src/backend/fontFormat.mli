@@ -13,6 +13,9 @@ exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
+exception UnsupportedTTC  (* temporary *)
+exception CannotFindUnicodeCmap
+
 
 val get_decoder : file_path -> decoder
 
