@@ -4,6 +4,6 @@ document (|
 |) '<
   +make-title;
   +p {
-    The \math(math-sup (math-glyph (string-unexplode [0x1D434])) (math-glyph `A`)); quick brown fox.
+    The \math(math-sup math-d math-Y); quick brown fox.
   }
 >

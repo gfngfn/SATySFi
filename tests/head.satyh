@@ -456,5 +456,15 @@ let-inline ctx \sample-diagram =
       ]
   ))
 
+let math-char cp =
+  math-glyph (string-unexplode [cp])
+
+let math-d = math-char 0x1D451
+let math-A = math-char 0x1D434
+let math-B = math-char 0x1D435
+let math-C = math-char 0x1D436
+let math-Y = math-char 0x1D44C
+let math-Z = math-char 0x1D44D
+
 let-inline ctx \math fml =
   embed-math fml
