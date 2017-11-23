@@ -460,6 +460,10 @@ let math-char cp =
   math-glyph (string-unexplode [cp])
 
 let math-d = math-char 0x1D451
+let math-e = math-char 0x1D452
+let math-n = math-char 0x1D45B
+let math-x = math-char 0x1D465
+let math-2 = math-glyph `2`
 let math-A = math-char 0x1D434
 let math-B = math-char 0x1D435
 let math-C = math-char 0x1D436
