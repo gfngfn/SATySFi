@@ -181,12 +181,13 @@ let ratioize n =
 
 
 (* -- calculates the base correction height and the superscript correction height-- *)
-let superscript_baseline_height (mathctx : math_context) (scriptlev : int) d_sup =
+let superscript_baseline_height (mathctx : math_context) (scriptlev : int) h_base d_sup =
   let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
   let mc = FontInfo.get_math_constants mathctx in
-  let h_supbmin = fontsize *% (ratioize mc.FontFormat.superscript_bottom_min) in
-  let h_supstd  = fontsize *% (ratioize mc.FontFormat.superscript_shift_up) in
-  let h_supb = Length.max h_supstd (h_supbmin +% d_sup) in
+  let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
+  let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
+  let l_supdmax = fontsize *% mc.FontFormat.superscript_baseline_drop_max in
+  let h_supb = Length.max (Length.max h_supstd (h_base -% l_supdmax)) (h_supbmin +% d_sup) in
     h_supb
 
 
@@ -236,8 +237,12 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let hblstB = horz_of_low_math mathctx scriptlev lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
         let (_, h_base, d_base) = LineBreak.get_natural_metrics hblstB in
+          (* temporary; 'h_base' and 'd_base' should be
+             the height and the depth of the BOUNDING BOX of the LAST GLYPH in the base text *)
         let (_, h_sup, d_sup) = LineBreak.get_natural_metrics hblstS in
-        let h_supbl = superscript_baseline_height mathctx scriptlev d_sup in
+          (* temporary; 'h_sup' and 'd_sup' should be
+             the height and the depth of the BOUNDING BOX of the FIRST GLYPH in the superscript text *)
+        let h_supbl = superscript_baseline_height mathctx scriptlev h_base d_sup in
         let (l_base, l_sup) = correction_heights h_supbl h_base d_sup in
         let s_base = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
         let s_sup  = (FontInfo.get_math_string_info (scriptlev + 1) mathctx).math_font_size in

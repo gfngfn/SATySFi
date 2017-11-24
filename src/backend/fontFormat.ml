@@ -1154,10 +1154,11 @@ let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
 
 type math_constants =
   {
-    superscript_bottom_min   : int;
-    superscript_shift_up     : int;
-    script_scale_down        : float;
-    script_script_scale_down : float;
+    superscript_bottom_min        : float;
+    superscript_shift_up          : float;
+    superscript_baseline_drop_max : float;
+    script_scale_down             : float;
+    script_script_scale_down      : float;
   }
 
 
@@ -1167,19 +1168,25 @@ let percent n =
 
 let to_design_units ratio =
   int_of_float (ratio *. 1000.)
+    (* temporary; should use UnitsPerEm *)
 
 
 let to_ratio du =
   (float_of_int du) /. 1000.
+    (* temporary; should use UnitsPerEm *)
+
+
+let get_main_ratio mvr = to_ratio (get_main_math_value mvr)
 
 
 let get_math_constants (md : math_decoder) : math_constants =
   let mc = md.math_constants in
     {
-      superscript_bottom_min   = get_main_math_value mc.Otfm.superscript_bottom_min;
-      superscript_shift_up     = get_main_math_value mc.Otfm.superscript_shift_up;
-      script_scale_down        = percent mc.Otfm.script_percent_scale_down;
-      script_script_scale_down = percent mc.Otfm.script_script_percent_scale_down;
+      superscript_bottom_min        = get_main_ratio mc.Otfm.superscript_bottom_min;
+      superscript_shift_up          = get_main_ratio mc.Otfm.superscript_shift_up;
+      superscript_baseline_drop_max = get_main_ratio mc.Otfm.superscript_baseline_drop_max;
+      script_scale_down             = percent mc.Otfm.script_percent_scale_down;
+      script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
     }
 
 

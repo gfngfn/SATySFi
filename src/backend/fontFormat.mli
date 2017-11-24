@@ -105,10 +105,11 @@ val get_math_glyph_info : math_decoder -> Uchar.t -> glyph_id * int * int * int 
 
 type math_constants =
   {
-    superscript_bottom_min   : int;
-    superscript_shift_up     : int;
-    script_scale_down        : float;
-    script_script_scale_down : float;
+    superscript_bottom_min        : float;
+    superscript_shift_up          : float;
+    superscript_baseline_drop_max : float;
+    script_scale_down             : float;
+    script_script_scale_down      : float;
   }
 
 val get_math_constants : math_decoder -> math_constants
