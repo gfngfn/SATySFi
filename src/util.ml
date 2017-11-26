@@ -16,6 +16,12 @@ let option_map f opt =
   | Some(x) -> Some(f x)
 
 
+let pickup lst predicate e =
+  match lst |> List.filter predicate with
+  | head :: _ -> Ok(head)
+  | []        -> Error(e)
+
+
 let ( += ) r n =
   r := !r + n
 

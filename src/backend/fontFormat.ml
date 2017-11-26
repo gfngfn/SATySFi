@@ -175,13 +175,29 @@ module LigatureTable
 end
 
 
+type error = [ Otfm.error | `Missing_script | `Missing_feature ]
+
+
+let result_bind x f =
+  match x with
+  | Ok(v)    -> f v
+  | Error(e) -> Error(e :> error)
+
+
 let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
   let ligtbl = LigatureTable.create 32 (* temporary; size of the hash table *) in
   let res =
-    () |> Otfm.gsub d "latn" None "liga" (* temporary; should depend on script and language *)
-      (fun () (gid, liginfolst) ->
-        ligtbl |> LigatureTable.add gid liginfolst
-      )
+    let (>>=) = result_bind in
+    Otfm.gsub_script d >>= fun scriptlst ->
+    pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "latn") `Missing_script >>= fun script ->
+      (* temporary; should depend on the script *)
+    Otfm.gsub_langsys script >>= fun (langsys, _) ->
+      (* temporary; should depend on the current language system *)
+    Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
+    pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
+    () |> Otfm.gsub feature (fun () (gid, liginfolst) ->
+      ligtbl |> LigatureTable.add gid liginfolst) >>= fun () ->
+    Ok()
   in
   match res with
   | Ok(())   -> ligtbl
@@ -284,36 +300,42 @@ let get_kerning_table (d : Otfm.decoder) =
     | Ok(())   -> PrintForDebug.kernE "'kern' exists"   (* for debug *)
     | Error(e) -> PrintForDebug.kernE "'kern' missing"  (* for debug *)
   ) |>  (* for debug *)
-  ignore;
-      match
-        () |> Otfm.gpos d "latn" None "kern"  (* temporary; script and language system should be variable *)
-          (fun () (gid1, pairposlst) ->
-            pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
-              match valrcd1.Otfm.x_advance with
-              | None      -> ()
-              | Some(xa1) ->
-                  let () = if gid1 <= 100 then PrintForDebug.kernE (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
-                  kerntbl |> KerningTable.add gid1 gid2 xa1
-            )
-          )
-          (fun clsdeflst1 clsdeflst2 () sublst ->
-            kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
-          )
-      with
-      | Ok(sublst) ->
-          let () = PrintForDebug.kernE "'GPOS' exists" in  (* for debug *)
-            kerntbl
+      ignore;
+  let res =
+    let (>>=) = result_bind in
+    Otfm.gpos_script d >>= fun scriptlst ->
+    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
+      (* temporary; should depend on the script *)
+    Otfm.gpos_langsys script >>= fun (langsys, _) ->
+      (* temporary; should depend on the current language system *)
+    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
+    () |> Otfm.gpos feature (fun () (gid1, pairposlst) ->
+      pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
+        match valrcd1.Otfm.x_advance with
+        | None      -> ()
+        | Some(xa1) ->
+            let () = if gid1 <= 100 then PrintForDebug.kernE (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
+            kerntbl |> KerningTable.add gid1 gid2 xa1
+      )
+    )
+    (fun clsdeflst1 clsdeflst2 () sublst ->
+      kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
+    ) >>= fun () ->
+    Ok()
+  in
+  match res with
+  | Ok(sublst) ->
+      let () = PrintForDebug.kernE "'GPOS' exists" in  (* for debug *)
+        kerntbl
 
-      | Error(e) ->
-          match e with
-          | `Missing_required_table(t)
-              when t = Otfm.Tag.gpos ->
-                let () = PrintForDebug.kernE "'GPOS' missing" in  (* for debug *)
-                kerntbl
-          | `Missing_required_feature_tag("kern") ->
-              let () = PrintForDebug.kernE "Feature 'kern' missing" in  (* for debug *)
-              kerntbl
-          | _                        -> (* raise_err e *) kerntbl  (* temporary *)
+  | Error(e) ->
+      match e with
+      | `Missing_required_table(t)
+          when t = Otfm.Tag.gpos ->
+            let () = PrintForDebug.kernE "'GPOS' missing" in  (* for debug *)
+            kerntbl
+      | _                        -> (* raise_err e *) kerntbl  (* temporary *)
 
 
 type decoder = {
