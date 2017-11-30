@@ -531,7 +531,7 @@ and abstract_tree =
   | LengthTimes           of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
   | MathValue                   of HorzBox.math list
-  | BackendMathGlyph            of abstract_tree
+  | BackendMathGlyph            of abstract_tree * abstract_tree
   | BackendMathConcat           of abstract_tree * abstract_tree
   | BackendMathSuperscript      of abstract_tree * abstract_tree
   | BackendMathSubscript        of abstract_tree * abstract_tree

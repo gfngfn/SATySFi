@@ -6,6 +6,7 @@ let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
 let tyid_color   = Typeenv.Raw.fresh_type_id "color"
 let tyid_script  = Typeenv.Raw.fresh_type_id "script"
 let tyid_page    = Typeenv.Raw.fresh_type_id "page"
+let tyid_mathcls = Typeenv.Raw.fresh_type_id "math-class"
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
@@ -40,6 +41,14 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(unit_type)) tyid_page
   |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly((dr, ProductType([length_type; length_type])))) tyid_page
+
+  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "MathOrd"   ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathBin"   ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathRel"   ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathOpen"  ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathClose" ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathOp"    ([], Poly(unit_type)) tyid_mathcls
 
 
 let add_to_environment env varnm rfast =
@@ -247,6 +256,7 @@ let make_environments () =
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pg            = (~! "page"    , VariantType([], tyid_page)) in
+  let mathcls       = (~! "mathcls" , VariantType([], tyid_mathcls)) in
   let pads          = prod [ln; ln; ln; ln] in
   let pt            = prod [ln; ln] in
   let dash          = prod [ln; ln; ln] in
@@ -335,7 +345,7 @@ let make_environments () =
         ("close-with-line"         , ~% (prp @-> path)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
-        ("math-glyph"              , ~% (s @-> math)                                , lambda1 (fun vs -> BackendMathGlyph(vs)));
+        ("math-glyph"              , ~% (mathcls @-> s @-> math)                    , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
           (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));

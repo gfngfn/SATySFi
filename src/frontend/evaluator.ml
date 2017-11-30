@@ -235,12 +235,13 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathSubscript(mlst1, mlst2)])
 
-  | BackendMathGlyph(aststr) ->
+  | BackendMathGlyph(astmathcls, aststr) ->
+      let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let mlst =
         uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(MathOrdinary, MathChar(Primitives.default_math_context, uch))))
+          HorzBox.(MathPure(mathcls, MathChar(Primitives.default_math_context, uch))))
       in
         MathValue(mlst)
 
@@ -1027,6 +1028,19 @@ and interpret_list env extractf ast =
   in
   let value = interpret env ast in
     aux [] value
+
+
+and interpret_math_class env ast : HorzBox.math_kind =
+  let value = interpret env ast in
+    match value with
+    | Constructor("MathOrd"  , UnitConstant) -> HorzBox.MathOrdinary
+    | Constructor("MathBin"  , UnitConstant) -> HorzBox.MathBinary
+    | Constructor("MathRel"  , UnitConstant) -> HorzBox.MathRelation
+    | Constructor("MathOp"   , UnitConstant) -> HorzBox.MathOperator
+    | Constructor("MathOpen" , UnitConstant) -> HorzBox.MathOpen
+    | Constructor("MathClose", UnitConstant) -> HorzBox.MathClose
+    | _ ->
+        report_bug_evaluator "interpret_math_class"
 
 
 and interpret_math env ast : HorzBox.math list =
