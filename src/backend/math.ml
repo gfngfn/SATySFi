@@ -12,6 +12,8 @@ type left_kern =
     kernTL             : FontFormat.math_kern option;
     kernBL             : FontFormat.math_kern option;
     left_math_kind     : math_kind option;
+    first_height       : length;
+    first_depth        : length;
   }
 
 type right_kern =
@@ -20,6 +22,8 @@ type right_kern =
     kernTR             : FontFormat.math_kern option;
     kernBR             : FontFormat.math_kern option;
     right_math_kind    : math_kind option;
+    last_height        : length;
+    last_depth         : length;
   }
 
 type low_math_element = math_kind * length * length * length * low_math_atom * left_kern * right_kern
@@ -39,6 +43,8 @@ let no_left_kern =
     kernTL         = None;
     kernBL         = None;
     left_math_kind = None;
+    first_height   = Length.zero;
+    first_depth    = Length.zero;
   }
 
 
@@ -48,10 +54,12 @@ let no_right_kern =
     kernTR             = None;
     kernBR             = None;
     right_math_kind    = None;
+    last_height        = Length.zero;
+    last_depth         = Length.zero;
   }
 
 
-let make_left_and_right_kern mkopt mic mkiopt : left_kern * right_kern =
+let make_left_and_right_kern hgt dpt mkopt mic mkiopt : left_kern * right_kern =
   let lk =
     match mkiopt with
     | Some(mki) ->
@@ -59,6 +67,8 @@ let make_left_and_right_kern mkopt mic mkiopt : left_kern * right_kern =
           kernTL         = Some(mki.FontFormat.kernTL);
           kernBL         = Some(mki.FontFormat.kernBL);
           left_math_kind = mkopt;
+          first_height   = hgt;
+          first_depth    = dpt;
         }
 
     | None -> no_left_kern
@@ -66,19 +76,25 @@ let make_left_and_right_kern mkopt mic mkiopt : left_kern * right_kern =
   let rk =
     match mkiopt with
     | Some(mki) ->
+        Format.printf "Math> rk Some\n";
         {
           italics_correction = mic;
           kernTR             = Some(mki.FontFormat.kernTR);
           kernBR             = Some(mki.FontFormat.kernBR);
           right_math_kind    = mkopt;
+          last_height        = hgt;
+          last_depth         = dpt;
         }
 
     | None ->
+        Format.printf "Math> rk None\n";
         {
           italics_correction = mic;
           kernTR             = None;
           kernBR             = None;
           right_math_kind    = None;
+          last_height        = hgt;
+          last_depth         = dpt;
         }
   in
     (lk, rk)
@@ -96,8 +112,7 @@ let convert_math_element (scriptlev : int) ((mk, memain) : math_element) : low_m
   | MathChar(mathctx, uch) ->
       let mathstrinfo = FontInfo.get_math_string_info scriptlev mathctx in
       let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo scriptlev uch in
-        (* temporary; choosing glyph ID should depends on the script level. *)
-      let (lk, rk) = make_left_and_right_kern (Some(mk)) mic mkiopt in
+      let (lk, rk) = make_left_and_right_kern hgt dpt (Some(mk)) mic mkiopt in
         (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 
@@ -180,25 +195,55 @@ let ratioize n =
   (float_of_int n) /. 1000.
 
 
-(* -- calculates the base correction height and the superscript correction height-- *)
 let superscript_baseline_height (mathctx : math_context) (scriptlev : int) h_base d_sup =
   let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
   let mc = FontInfo.get_math_constants mathctx in
   let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
   let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
   let l_supdmax = fontsize *% mc.FontFormat.superscript_baseline_drop_max in
-  let h_supb = Length.max (Length.max h_supstd (h_base -% l_supdmax)) (h_supbmin +% d_sup) in
-    h_supb
+  let cand = [h_supstd; h_base -% l_supdmax; h_supbmin +% d_sup] in
+  let h_supbl = cand |> List.fold_left Length.max Length.zero in
+    h_supbl
 
 
-let correction_heights h_supb h_base d_sup =
-  let l_base = h_supb -% d_sup in
-  let l_sup  = h_base -% h_supb in
+(* -- calculates the base correction height and the superscript correction height-- *)
+let superscript_correction_heights h_supbl h_base d_sup =
+  let l_base = h_supbl -% d_sup in
+  let l_sup = h_base -% h_supbl in
     (l_base, l_sup)
+
+
+let subscript_baseline_depth (mathctx : math_context) (scriptlev : int) d_base h_sub =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let mc = FontInfo.get_math_constants mathctx in
+  let h_subtmax = fontsize *% mc.FontFormat.subscript_top_max in
+  let d_substd  = Length.negate (fontsize *% mc.FontFormat.subscript_shift_down) in
+  let l_subdmin = fontsize *% mc.FontFormat.subscript_baseline_drop_min in
+  let cand = [Length.negate d_substd; (Length.negate d_base) +% l_subdmin; h_sub -% h_subtmax] in
+  let d_subbl = Length.negate (cand |> List.fold_left Length.max Length.zero) in
+    d_subbl
+
+
+let subscript_correction_heights d_subbl d_base h_sub =
+  let l_base = d_base -% d_subbl in
+  let l_sub = h_sub +% d_base in
+    (l_base, l_sub)
 
 
 let kern_top_right rk ratio =
   match rk.kernTR with
+  | None        -> 0.
+  | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
+
+
+let kern_bottom_right rk ratio =
+  match rk.kernBR with
+  | None        -> 0.
+  | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
+
+
+let kern_top_left lk ratio =
+  match lk.kernTL with
   | None        -> 0.
   | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
 
@@ -209,8 +254,8 @@ let kern_bottom_left rk ratio =
   | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
 
 
-let raise_as_superscript h hblst =
-  [HorzPure(PHRising(h, hblst))]
+let raise_as_script r hblst =
+  [HorzPure(PHRising(r, hblst))]
 
 
 let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_math) =
@@ -236,26 +281,25 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let hbspaceopt = space_between_math_atom prevmkopt mkopt in
         let hblstB = horz_of_low_math mathctx scriptlev lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
-        let (_, h_base, d_base) = LineBreak.get_natural_metrics hblstB in
-          (* temporary; 'h_base' and 'd_base' should be
-             the height and the depth of the BOUNDING BOX of the LAST GLYPH in the base text *)
-        let (_, h_sup, d_sup) = LineBreak.get_natural_metrics hblstS in
-          (* temporary; 'h_sup' and 'd_sup' should be
-             the height and the depth of the BOUNDING BOX of the FIRST GLYPH in the superscript text *)
+        let h_base = rkB.last_height in
+        let (_, _, d_sup) = LineBreak.get_natural_metrics hblstS in
         let h_supbl = superscript_baseline_height mathctx scriptlev h_base d_sup in
-        let (l_base, l_sup) = correction_heights h_supbl h_base d_sup in
+        let (l_base, l_sup) = superscript_correction_heights h_supbl h_base d_sup in
         let s_base = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
         let s_sup  = (FontInfo.get_math_string_info (scriptlev + 1) mathctx).math_font_size in
         let r_base = l_base /% s_base in
         let r_sup  = l_sup /% s_sup in
         let r_kernbase = kern_top_right rkB r_base in
         let r_kernsup  = kern_bottom_left lkS r_sup in
+        Format.printf "Math> r_kernbase = %f, " r_kernbase;
+        Format.printf "r_kernsup = %f, " r_kernsup;
         let l_italic   = rkB.italics_correction in
+        Format.printf "l_italic = %f\n" (Length.to_pdf_point l_italic);
         let l_kernbase = Length.min Length.zero (s_base *% r_kernbase) in
         let l_kernsup  = Length.min Length.zero (s_sup *% r_kernsup) in
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
-        let hblstsup = List.concat [hblstB; [hbkern]; raise_as_superscript h_supbl hblstS] in
+        let hblstsup = List.concat [hblstB; [hbkern]; raise_as_script h_supbl hblstS] in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsup hbacc
@@ -264,7 +308,35 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
           aux hbaccnew mkopt lmmaintail
 
     | LowMathSubscript(lmB, lmS) :: lmmaintail ->
-        failwith "unsupported"  (* temporary *)
+        let (_, lkB, rkB) = lmB in
+        let (_, lkS, _) = lmS in
+        let mkopt = lkB.left_math_kind in
+        let hbspaceopt = space_between_math_atom prevmkopt mkopt in
+        let hblstB = horz_of_low_math mathctx scriptlev lmB in
+        let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
+        let d_base = rkB.last_depth in
+        let (_, h_sub, _) = LineBreak.get_natural_metrics hblstS in
+        let d_subbl = subscript_baseline_depth mathctx scriptlev d_base h_sub in
+        let (l_base, l_sub) = subscript_correction_heights d_subbl d_base h_sub in
+        let s_base = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+        let s_sub  = (FontInfo.get_math_string_info (scriptlev + 1) mathctx).math_font_size in
+        let r_base = l_base /% s_base in
+        let r_sub  = l_sub /% s_sub in
+        let r_kernbase = kern_bottom_right rkB r_base in
+        let r_kernsub  = kern_top_left lkS r_sub in
+        Format.printf "Math> r_kernbase = %f, " r_kernbase;
+        Format.printf "r_kernsub = %f\n" r_kernsub;
+        let l_kernbase = Length.min Length.zero (s_base *% r_kernbase) in
+        let l_kernsub  = Length.min Length.zero (s_base *% r_kernsub) in
+        let kern = l_kernbase +% l_kernsub in
+        let hbkern = HorzPure(PHFixedEmpty(kern)) in
+        let hblstsub = List.concat [hblstB; [hbkern]; raise_as_script d_subbl hblstS] in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstsub hbacc
+          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+        in
+          aux hbaccnew mkopt lmmaintail
 
     | LowMathRadical(lm1) :: lmmaintail ->
         failwith "unsupported"  (* temporary *)

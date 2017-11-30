@@ -4,6 +4,16 @@ document (|
 |) '<
   +make-title;
   +p {
-    The \math(math-sup math-f (math-sup math-x (math-sup math-n math-2))); quick brown fox.
+    The
+    \math(math-list [
+      math-sup math-e math-x;
+      math-glyph `+`;
+      math-sup math-f (math-sup math-x (math-sup math-n math-2));
+      math-glyph `+`;
+      math-sub math-a math-2;
+      math-glyph `+`;
+      math-sub math-Y math-f;
+    ]);
+    quick brown fox.
   }
 >

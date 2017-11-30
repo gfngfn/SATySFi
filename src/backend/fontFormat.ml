@@ -1265,6 +1265,9 @@ type math_constants =
     superscript_baseline_drop_max : float;
     script_scale_down             : float;
     script_script_scale_down      : float;
+    subscript_top_max             : float;
+    subscript_shift_down          : float;
+    subscript_baseline_drop_min   : float;
   }
 
 
@@ -1293,6 +1296,9 @@ let get_math_constants (md : math_decoder) : math_constants =
       superscript_baseline_drop_max = get_main_ratio mc.Otfm.superscript_baseline_drop_max;
       script_scale_down             = percent mc.Otfm.script_percent_scale_down;
       script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
+      subscript_top_max             = get_main_ratio mc.Otfm.subscript_top_max;
+      subscript_shift_down          = get_main_ratio mc.Otfm.subscript_shift_down;
+      subscript_baseline_drop_min   = get_main_ratio mc.Otfm.subscript_baseline_drop_min;
     }
 
 

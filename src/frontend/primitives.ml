@@ -338,6 +338,7 @@ let make_environments () =
         ("math-glyph"              , ~% (s @-> math)                                , lambda1 (fun vs -> BackendMathGlyph(vs)));
           (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
+        ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
         ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
         ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));

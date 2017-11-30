@@ -110,6 +110,9 @@ type math_constants =
     superscript_baseline_drop_max : float;
     script_scale_down             : float;
     script_script_scale_down      : float;
+    subscript_top_max             : float;
+    subscript_shift_down          : float;
+    subscript_baseline_drop_min   : float;
   }
 
 val get_math_constants : math_decoder -> math_constants

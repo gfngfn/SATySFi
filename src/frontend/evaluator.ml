@@ -230,6 +230,11 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathSuperscript(mlst1, mlst2)])
 
+  | BackendMathSubscript(astm1, astm2) ->
+      let mlst1 = interpret_math env astm1 in
+      let mlst2 = interpret_math env astm2 in
+        MathValue([HorzBox.MathSubscript(mlst1, mlst2)])
+
   | BackendMathGlyph(aststr) ->
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
