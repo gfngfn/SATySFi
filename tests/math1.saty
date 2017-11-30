@@ -13,6 +13,10 @@ document (|
       math-sub math-a math-2;
       math-glyph `+`;
       math-sub math-Y math-f;
+      math-glyph `+`;
+      math-A;
+      math-B;
+      math-C;
     ]);
     quick brown fox.
   }
