@@ -457,10 +457,10 @@ let-inline ctx \sample-diagram =
   ))
 
 let math-char cp =
-  math-glyph (string-unexplode [cp])
+  math-glyph MathOrd (string-unexplode [cp])
 
 let math-list lst =
-  lst |> List.fold-left math-concat (math-glyph ` `)
+  lst |> List.fold-left math-concat (math-glyph MathOrd ` `)
 
 let math-a = math-char 0x1D44E
 let math-d = math-char 0x1D451
@@ -468,7 +468,7 @@ let math-e = math-char 0x1D452
 let math-f = math-char 0x1D453
 let math-n = math-char 0x1D45B
 let math-x = math-char 0x1D465
-let math-2 = math-glyph `2`
+let math-2 = math-glyph MathOrd `2`
 let math-A = math-char 0x1D434
 let math-B = math-char 0x1D435
 let math-C = math-char 0x1D436
