@@ -4,6 +4,6 @@ document (|
 |) '<
   +make-title;
   +p {
-    The \math(math-sup math-e (math-sup math-x (math-sup math-n math-2))); quick brown fox.
+    The \math(math-sup math-f (math-sup math-x (math-sup math-n math-2))); quick brown fox.
   }
 >

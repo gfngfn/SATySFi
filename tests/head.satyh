@@ -461,6 +461,7 @@ let math-char cp =
 
 let math-d = math-char 0x1D451
 let math-e = math-char 0x1D452
+let math-f = math-char 0x1D453
 let math-n = math-char 0x1D45B
 let math-x = math-char 0x1D465
 let math-2 = math-glyph `2`
