@@ -259,13 +259,14 @@ let get_math_constants mathctx =
     | Some((_, _, md, _)) -> FontFormat.get_math_constants md
 
 
-let get_math_char_info (mathstrinfo : math_string_info) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
   let mfabbrev = mathstrinfo.math_font_abbrev in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
     | None                -> raise (InvalidFontAbbrev(mfabbrev))
     | Some((_, _, md, _)) ->
-        let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md uch in
+        let is_script = scriptlev > 0 in
+        let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md is_script uch in
         let mic =
           match rawmicopt with
           | None         -> Length.zero

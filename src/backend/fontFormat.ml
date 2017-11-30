@@ -195,7 +195,7 @@ let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
       (* temporary; should depend on the current language system *)
     Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
     pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
-    () |> Otfm.gsub feature (fun () (gid, liginfolst) ->
+    () |> Otfm.gsub feature (fun () _ -> ()) (fun () _ -> ()) (fun () (gid, liginfolst) ->
       ligtbl |> LigatureTable.add gid liginfolst) >>= fun () ->
     Ok()
   in
@@ -1109,6 +1109,7 @@ type math_decoder =
     math_kern_info             : math_kern_info MathInfoMap.t;
     math_bbox_table            : bbox MathBBoxTable.t;
     math_charstring_info       : Otfm.charstring_info option;
+    script_style_info          : Otfm.gsub_feature option;
   }
 
 
@@ -1194,6 +1195,19 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
           | Error(_)    -> None
           | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
         in
+        let sstyopt =
+          let ( >>= ) = result_bind in
+          let res =
+            Otfm.gsub_script d >>= fun scriptlst ->
+            pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "math") `Missing_script >>= fun script_math ->
+            Otfm.gsub_langsys script_math >>= fun (langsys, _) ->
+            Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
+            pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "ssty") `Missing_feature
+          in
+          match res with
+          | Ok(feature_ssty) -> Some(feature_ssty)
+          | Error(oerr)      -> None
+        in
           {
             as_normal_font             = dcdr;
             math_constants             = mathraw.Otfm.math_constants;
@@ -1202,19 +1216,42 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
             math_kern_info             = mkimap;
             math_bbox_table            = mbboxtbl;
             math_charstring_info       = csinfo;
+            script_style_info          = sstyopt;
           }
 
 
-let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
+let get_script_style_id (md : math_decoder) (gid : glyph_id) =
+  match md.script_style_info with
+  | None ->
+      Format.printf "FontFormat> no ssty table\n";  (* for debug *)
+      gid
+
+  | Some(feature_ssty) ->
+      let f_single opt (gidfrom, gidto) =
+        match opt with
+        | Some(_) -> opt
+        | None    -> if gidfrom = gid then Some(gidto) else None
+      in
+      let skip opt _ = opt in
+      let res = Otfm.gsub feature_ssty f_single skip skip None in
+      match res with
+      | Error(oerr)       -> gid  (* temporary *)
+      | Ok(None)          -> gid
+      | Ok(Some(gidssty)) -> gidssty
+
+
+let get_math_glyph_info (md : math_decoder) (is_script : bool) (uch : Uchar.t) =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
   | None ->
       let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
         (0, 0, 0, 0, None, None)
-  | Some(gid) ->
+  | Some(gidraw) ->
+      let gid = if is_script then get_script_style_id md gidraw else gidraw in
+      Format.printf "FontFormat> ssty %d ---> %d\n" gidraw gid;  (* for debug *)
       let (wid, _, _) = get_glyph_metrics dcdr gid in
       let (_, _, ymin, ymax) = get_math_bbox md gid in
-      let hgt = ymax in
+      let hgt = max 0 ymax in
       let dpt = min 0 ymin in
       let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
       let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in

@@ -101,7 +101,7 @@ val get_math_decoder : file_path -> math_decoder
 
 val math_base_font : math_decoder -> decoder
 
-val get_math_glyph_info : math_decoder -> Uchar.t -> glyph_id * int * int * int * int option * math_kern_info option
+val get_math_glyph_info : math_decoder -> bool -> Uchar.t -> glyph_id * int * int * int * int option * math_kern_info option
 
 type math_constants =
   {

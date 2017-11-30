@@ -95,7 +95,7 @@ let convert_math_element (scriptlev : int) ((mk, memain) : math_element) : low_m
 
   | MathChar(mathctx, uch) ->
       let mathstrinfo = FontInfo.get_math_string_info scriptlev mathctx in
-      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo uch in
+      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo scriptlev uch in
         (* temporary; choosing glyph ID should depends on the script level. *)
       let (lk, rk) = make_left_and_right_kern (Some(mk)) mic mkiopt in
         (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
