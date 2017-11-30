@@ -1083,6 +1083,13 @@ module MathInfoMap = Map.Make
     let compare = Pervasives.compare
   end)
 
+module MathBBoxTable = Hashtbl.Make
+  (struct
+    type t = glyph_id
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
+
 type math_kern = (int * int) list * int
 
 type math_kern_info =
@@ -1100,8 +1107,37 @@ type math_decoder =
     math_italics_correction    : int MathInfoMap.t;
     math_top_accent_attachment : int MathInfoMap.t;
     math_kern_info             : math_kern_info MathInfoMap.t;
+    math_bbox_table            : bbox MathBBoxTable.t;
+    math_charstring_info       : Otfm.charstring_info option;
   }
 
+
+let get_math_bbox (md : math_decoder) (gid : glyph_id) =
+  let mbboxtbl = md.math_bbox_table in
+  match MathBBoxTable.find_opt mbboxtbl gid with
+  | Some(bbox) -> bbox
+  | None ->
+      begin
+        match md.math_charstring_info with
+        | None ->
+          (* -- if the math font is in TrueType OT -- *)
+            (0, 0, 0, 0)  (* temporary; should access 'glyf' table *)
+
+        | Some(csinfo) ->
+          (* -- if the math font is in CFF OT -- *)
+            begin
+              match Otfm.charstring_absolute csinfo gid with
+              | Error(oerr)       -> raise (FontFormatBroken(oerr))
+              | Ok(None)          -> (0, 0, 0, 0)  (* needs reconsideration; maybe should emit an error *)
+              | Ok(Some(pathlst)) ->
+                  begin
+                    match Otfm.charstring_bbox pathlst with
+                    | None       -> (0, 0, 0, 0)
+                    | Some(bbox) -> bbox
+                  end
+            end
+      end
+        
 
 let math_base_font (md : math_decoder) : decoder =
   md.as_normal_font
@@ -1144,20 +1180,28 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
     match Otfm.math d with
     | Error(oerr) -> raise (FontFormatBroken(oerr))
     | Ok(mathraw) ->
-        let mictbl =
+        let micmap =
           mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
             |> assoc_to_map get_main_math_value
         in
-        let mkitbl =
+        let mkimap =
           mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
             |> assoc_to_map convert_kern_info
+        in
+        let mbboxtbl = MathBBoxTable.create 256 (* temporary *) in
+        let csinfo =
+          match Otfm.cff d with
+          | Error(_)    -> None
+          | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
         in
           {
             as_normal_font             = dcdr;
             math_constants             = mathraw.Otfm.math_constants;
-            math_italics_correction    = mictbl;
+            math_italics_correction    = micmap;
             math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
-            math_kern_info             = mkitbl;
+            math_kern_info             = mkimap;
+            math_bbox_table            = mbboxtbl;
+            math_charstring_info       = csinfo;
           }
 
 
@@ -1168,7 +1212,10 @@ let get_math_glyph_info (md : math_decoder) (uch : Uchar.t) =
       let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
         (0, 0, 0, 0, None, None)
   | Some(gid) ->
-      let (wid, hgt, dpt) = get_glyph_metrics dcdr gid in
+      let (wid, _, _) = get_glyph_metrics dcdr gid in
+      let (_, _, ymin, ymax) = get_math_bbox md gid in
+      let hgt = ymax in
+      let dpt = min 0 ymin in
       let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
       let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
         (gid, wid, hgt, dpt, micopt, mkiopt)
