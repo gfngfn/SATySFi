@@ -12,6 +12,8 @@ document (|
       math-minus;
       math-sup math-e math-x;
       math-plus;
+      math-sup math-e (math-frac math-x math-2);
+      math-plus;
       math-sup math-f (math-sup math-x (math-sup math-n math-2));
       math-minus;
       math-sub math-a math-2;
@@ -31,5 +33,6 @@ document (|
       math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
     ]);
     jumps over the lazy dog.
+    This document was typeset by using \satysfi;.
   }
 >
