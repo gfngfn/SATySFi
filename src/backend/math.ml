@@ -106,6 +106,7 @@ let normalize_math_kind mkprev mknext mkraw =
   | MathOpen
   | MathClose
   | MathOperator
+  | MathInner
   | MathEnd
     -> mkraw
 
@@ -113,14 +114,24 @@ let normalize_math_kind mkprev mknext mkraw =
       begin
         match (mkprev, mknext) with
         | (MathOrdinary, MathOrdinary)
+        | (MathInner   , MathOrdinary)
+        | (MathOrdinary, MathInner   )
+
         | (MathClose   , MathOrdinary)
+        | (MathClose   , MathInner   )
+
         | (MathOrdinary, MathOpen    )
+        | (MathInner   , MathOpen    )
+
+        | (MathClose   , MathOpen    )
           -> MathBinary
 
         | _ -> MathOrdinary
       end
 
   | MathRelation ->
+      mkraw
+(*
       begin
         match (mkprev, mknext) with
         | (MathEnd , _        )
@@ -131,6 +142,44 @@ let normalize_math_kind mkprev mknext mkraw =
 
         | _ -> mkraw
       end
+*)
+
+let space_ord_bin fontsize scriptlev =
+  if scriptlev > 0 then None else
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.25, Length.zero, Length.zero)))  (* temporary; should be variable *)
+
+
+let space_ord_rel fontsize scriptlev =
+  if scriptlev > 0 then None else
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.5, Length.zero, Length.zero)))  (* temporary; should be variable *)
+
+
+let space_ord_inner fontsize scriptlev =
+  if scriptlev > 0 then None else
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
+
+
+let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (mk : math_kind) : horz_box option =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+    match (mkprev, mk) with
+    | (MathOrdinary, MathInner   )
+    | (MathInner   , MathInner   )
+    | (MathInner   , MathOrdinary)
+      -> space_ord_inner fontsize scriptlev
+
+    | (MathBinary  , MathOrdinary)
+    | (MathBinary  , MathInner   )
+    | (MathOrdinary, MathBinary  )
+    | (MathInner   , MathBinary  )
+      -> space_ord_bin fontsize scriptlev
+
+    | (MathRelation, MathOrdinary)
+    | (MathRelation, MathInner   )
+    | (MathOrdinary, MathRelation)
+    | (MathInner   , MathRelation)
+      -> space_ord_rel fontsize scriptlev
+
+    | _ -> None
 
 
 let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : int) ((mkraw, memain) : math_element) : low_math_element =
@@ -155,7 +204,8 @@ let get_right_kern lmmain =
   | LowMathPure(_, _, _, _, _, _, rk) -> rk
   | LowMathSubscript((_, _, rk), _)   -> no_right_kern rk.right_math_kind
   | LowMathSuperscript((_, _, rk), _) -> no_right_kern rk.right_math_kind
-  | _                                 -> no_right_kern MathEnd
+  | LowMathFraction(_, _)             -> no_right_kern MathInner
+  | LowMathRadical(_)                 -> no_right_kern MathInner
 
 
 let get_left_kern lmmain =
@@ -163,7 +213,8 @@ let get_left_kern lmmain =
   | LowMathPure(_, _, _, _, _, lk, _) -> lk
   | LowMathSubscript((_, lk, _), _)   -> lk
   | LowMathSuperscript((_, lk, _), _) -> lk
-  | _                                 -> no_left_kern MathEnd
+  | LowMathFraction(_, _)             -> no_left_kern MathInner
+  | LowMathRadical(_)                 -> no_left_kern MathInner
 
 
 let get_left_math_kind mathopt =
@@ -173,8 +224,8 @@ let get_left_math_kind mathopt =
     | MathSuperscript(mathB :: _, _) -> aux mathB
     | MathSubscript([], _)           -> MathEnd
     | MathSubscript(mathB :: _, _)   -> aux mathB
-    | MathFraction(_, _)             -> MathEnd
-    | MathRadical(_)                 -> MathEnd
+    | MathFraction(_, _)             -> MathInner
+    | MathRadical(_)                 -> MathInner
   in
   match mathopt with
   | None       -> MathEnd
@@ -188,8 +239,8 @@ let get_right_math_kind mathopt =
     | MathSuperscript(mathlst, _) -> aux (List.hd (List.rev mathlst))
     | MathSubscript([], _)        -> MathEnd
     | MathSubscript(mathlst, _)   -> aux (List.hd (List.rev mathlst))
-    | MathFraction(_, _)          -> MathEnd
-    | MathRadical(_)              -> MathEnd
+    | MathFraction(_, _)          -> MathInner
+    | MathRadical(_)              -> MathInner
   in
   match mathopt with
   | None       -> MathEnd
@@ -250,26 +301,6 @@ let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
 
   | LowMathEmbeddedHorz(hblst) ->
       hblst
-
-
-let space_ord_bin fontsize scriptlev =
-  if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.25 (* temporary *), Length.zero, Length.zero)))
-
-
-let space_ord_rel fontsize scriptlev =
-  if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.5 (* temporary *), Length.zero, Length.zero)))
-
-
-let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (mk : math_kind) : horz_box option =
-  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
-    match (mkprev, mk) with
-    | (MathBinary  , MathOrdinary) -> space_ord_bin fontsize scriptlev
-    | (MathRelation, MathOrdinary) -> space_ord_rel fontsize scriptlev
-    | (MathOrdinary, MathBinary  ) -> space_ord_bin fontsize scriptlev
-    | (MathOrdinary, MathRelation) -> space_ord_rel fontsize scriptlev
-    | (_,            _           ) -> None
 
 
 let ratioize n =
@@ -475,8 +506,11 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let back = HorzPure(PHFixedEmpty(Length.negate w_frac)) in
         let bar = horz_fraction_bar mathctx scriptlev w_frac in
         let hblstsub = List.concat [raise_horz h_numerbl hblstNret; [back; bar; back]; raise_horz d_denombl hblstDret] in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev MathInner in
         let hbaccnew =
-          List.rev_append hblstsub hbacc
+          match hbspaceopt with
+          | None          -> List.rev_append hblstsub hbacc
+          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
         in
           aux hbaccnew MathOrdinary lmmaintail
 

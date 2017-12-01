@@ -276,6 +276,7 @@ type math_kind =
   | MathOperator
   | MathOpen
   | MathClose
+  | MathInner
   | MathEnd
 [@@deriving show]
 
