@@ -28,6 +28,7 @@ document (|
     quick brown fox jumps over the lazy dog.
     This document
     \math(math-list [
+      math-paren (math-sup math-F math-n);
       math-paren math-F;
       math-equal;
       math-paren (math-list [

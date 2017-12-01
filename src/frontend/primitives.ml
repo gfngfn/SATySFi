@@ -107,11 +107,12 @@ let default_math_context =
 
 let default_math_left_paren hgt dpt hgtaxis =
   let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
-  let wid = HorzBox.(halflen *% 0.375) in
+  let widparen = HorzBox.(halflen *% 0.375) in
+  let wid = HorzBox.(halflen *% 0.5) in
   let graphics (xpos, ypos) =
     HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
       GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos, ypos +% hgtaxis));
+        LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
         LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
       ], None);
     ])
@@ -122,11 +123,12 @@ let default_math_left_paren hgt dpt hgtaxis =
 
 let default_math_right_paren hgt dpt hgtaxis =
   let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
-  let wid = HorzBox.(halflen *% 0.375) in
+  let widparen = HorzBox.(halflen *% 0.375) in
+  let wid = HorzBox.(halflen *% 0.5) in
   let graphics (xpos, ypos) =
     HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
       GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos +% wid, ypos +% hgtaxis));
+        LineTo((xpos +% widparen, ypos +% hgtaxis));
         LineTo((xpos, ypos +% hgtaxis -% halflen));
       ], None);
     ])

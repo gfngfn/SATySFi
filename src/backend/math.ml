@@ -177,13 +177,25 @@ let space_ord_inner fontsize scriptlev =
     Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
 
 
-let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (mk : math_kind) : horz_box option =
-  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+let get_real_font_size mathctx scriptlev =
+  (FontInfo.get_math_string_info scriptlev mathctx).math_font_size
+
+
+let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (italcorropt : length option) (mk : math_kind) : horz_box option =
+  let fontsize = get_real_font_size mathctx scriptlev in
     match (mkprev, mk) with
     | (MathOrdinary, MathInner   )
     | (MathInner   , MathInner   )
     | (MathInner   , MathOrdinary)
       -> space_ord_inner fontsize scriptlev
+
+    | (MathOrdinary, MathClose   )
+      ->
+        begin
+          match italcorropt with
+          | None           -> None
+          | Some(italcorr) -> Some(HorzPure(PHFixedEmpty(italcorr)))
+        end
 
     | (MathBinary  , MathOrdinary)
     | (MathBinary  , MathInner   )
@@ -273,10 +285,6 @@ let get_right_math_kind mathopt =
   match mathopt with
   | None       -> MathEnd
   | Some(math) -> try aux math with Invalid_argument(_) -> assert false
-
-
-let get_real_font_size mathctx scriptlev =
-  (FontInfo.get_math_string_info scriptlev mathctx).math_font_size
 
 
 let superscript_baseline_height (mathctx : math_context) (scriptlev : int) h_base d_sup =
@@ -486,27 +494,36 @@ let raise_horz r hblst =
   [HorzPure(PHRising(r, hblst))]
 
 
-let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_math) =
+let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mklast : math_kind) (lm : low_math) =
   let (lmmainlst, _, _, _, _) = lm in
-  let rec aux hbacc mkprev lmmainlst =
+  let rec aux hbacc mkprev italcorropt lmmainlst =
     match lmmainlst with
-    | [] -> List.rev hbacc
+    | [] ->
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt mklast in
+        begin
+          match hbspaceopt with
+          | None          -> List.rev hbacc
+          | Some(hbspace) -> List.rev (hbspace :: hbacc)
+              (* --
+                 appends italics correction for the last glyph of inner contents of a parenthesis;
+                 -- *)
+        end
 
-    | LowMathPure(mk, wid, hgt, dpt, lma, _, _) :: lmmaintail ->
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev mk in
+    | LowMathPure(mk, wid, hgt, dpt, lma, _, rk) :: lmmaintail ->
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt mk in
         let hblstpure = horz_of_low_math_element lma in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstpure hbacc
           | Some(hbspace) -> List.rev_append hblstpure (hbspace :: hbacc)
         in
-          aux hbaccnew mk lmmaintail
+          aux hbaccnew mk (Some(rk.italics_correction)) lmmaintail
 
     | LowMathSuperscript(h_supbl, lmB, lmS) :: lmmaintail ->
         let (_, h_base, d_base, lkB, rkB) = lmB in
         let (_, d_base, d_sup, lkS, _) = lmS in
-        let hblstB = horz_of_low_math mathctx scriptlev lmB in
-        let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
+        let hblstB = horz_of_low_math mathctx scriptlev MathEnd lmB in
+        let hblstS = horz_of_low_math mathctx (scriptlev + 1) MathEnd lmS in
 
         let (r_base, r_sup) = superscript_correction mathctx scriptlev h_supbl rkB.last_height d_sup in
         let l_kernbase = kern_top_right mathctx scriptlev rkB r_base in
@@ -520,19 +537,19 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
         let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsup hbacc
           | Some(hbspace) -> List.rev_append hblstsup (hbspace :: hbacc)
         in
-          aux hbaccnew rkB.right_math_kind lmmaintail
+          aux hbaccnew rkB.right_math_kind None lmmaintail
 
     | LowMathSubscript(d_subbl, lmB, lmS) :: lmmaintail ->
         let (_, h_base, d_base, lkB, rkB) = lmB in
         let (_, h_sub, d_sub, lkS, _) = lmS in
-        let hblstB = horz_of_low_math mathctx scriptlev lmB in
-        let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
+        let hblstB = horz_of_low_math mathctx scriptlev MathEnd lmB in
+        let hblstS = horz_of_low_math mathctx (scriptlev + 1) MathEnd lmS in
         let d_base = rkB.last_depth in
         let (_, h_sub, _) = LineBreak.get_natural_metrics hblstS in
         let d_subbl = subscript_baseline_depth mathctx scriptlev d_base h_sub in
@@ -546,17 +563,17 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let kern = l_kernbase +% l_kernsub in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
         let hblstsub = List.concat [hblstB; [hbkern]; raise_horz d_subbl hblstS] in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsub hbacc
           | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
         in
-          aux hbaccnew rkB.right_math_kind lmmaintail
+          aux hbaccnew rkB.right_math_kind None lmmaintail
 
     | LowMathFraction(h_numerbl, d_denombl, lmN, lmD) :: lmmaintail ->
-        let hblstN = horz_of_low_math mathctx scriptlev lmN in
-        let hblstD = horz_of_low_math mathctx scriptlev lmD in
+        let hblstN = horz_of_low_math mathctx scriptlev MathEnd lmN in
+        let hblstD = horz_of_low_math mathctx scriptlev MathEnd lmD in
         let (w_numer, _, _) = LineBreak.get_natural_metrics hblstN in
         let (w_denom, _, _) = LineBreak.get_natural_metrics hblstD in
         let (hblstNret, hblstDret, w_frac) =
@@ -575,30 +592,30 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let back = HorzPure(PHFixedEmpty(Length.negate w_frac)) in
         let bar = horz_fraction_bar mathctx scriptlev w_frac in
         let hblstsub = List.concat [raise_horz h_numerbl hblstNret; [back; bar; back]; raise_horz d_denombl hblstDret] in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev MathInner in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt MathInner in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsub hbacc
           | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
         in
-          aux hbaccnew MathOrdinary lmmaintail
+          aux hbaccnew MathOrdinary None lmmaintail
 
     | LowMathRadical(lm1) :: lmmaintail ->
         failwith "unsupported"  (* temporary *)
 
     | LowMathParen(hblstparenL, hblstparenR, lmE) :: lmmaintail ->
-        let hblstE = horz_of_low_math mathctx scriptlev lmE in
+        let hblstE = horz_of_low_math mathctx scriptlev MathClose lmE in
         let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev MathOpen in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt MathOpen in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsub hbacc
           | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
         in
-          aux hbaccnew MathClose lmmaintail
+          aux hbaccnew MathClose None lmmaintail
 
   in
-  aux [] MathEnd lmmainlst
+  aux [] MathEnd None lmmainlst
 
 
 (*
