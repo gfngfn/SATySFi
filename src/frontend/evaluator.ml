@@ -240,6 +240,12 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathFraction(mlst1, mlst2)])
 
+  | BackendMathParen(astm1) ->
+      let mlst1 = interpret_math env astm1 in
+      let parenL = Primitives.default_math_left_paren in (* temporary; should be variable *)
+      let parenR = Primitives.default_math_right_paren in  (* temporary; should be variable *)
+        MathValue([HorzBox.MathParen(parenL, parenR, mlst1)])
+
   | BackendMathGlyph(astmathcls, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in

@@ -11,8 +11,8 @@ document (|
       math-equal;
       math-minus;
       math-sup math-e math-x;
-      math-plus;
-      math-sup math-e (math-frac math-x math-2);
+%      math-plus;
+%      math-sup math-e (math-frac math-x math-2);
       math-plus;
       math-sup math-f (math-sup math-x (math-sup math-n math-2));
       math-minus;
@@ -25,14 +25,16 @@ document (|
       math-B;
       math-C;
     ]);
-    quick brown fox
+    quick brown fox jumps over the lazy dog.
+    This document
     \math(math-list [
-      math-F;
+      math-paren math-F;
       math-equal;
-      math-G;
-      math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
+      math-paren (math-list [
+        math-G;
+        math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
+      ]);
     ]);
-    jumps over the lazy dog.
-    This document was typeset by using \satysfi;.
+    was typeset by using \satysfi;.
   }
 >

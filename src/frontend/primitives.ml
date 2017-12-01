@@ -86,19 +86,17 @@ let rec lambda4 astf env =
 
 let pdfpt = HorzBox.Length.of_pdf_point
 
-let ( +% ) = HorzBox.( +% )
-let ( -% ) = HorzBox.( -% )
-let ( *% ) = HorzBox.( *% )
 
 let default_font_scheme =
   List.fold_left (fun mapacc (script, font_info) -> mapacc |> FontSchemeMap.add script font_info)
     FontSchemeMap.empty
     [
-      (CharBasis.HanIdeographic    , ("KozMin", 0.92, 0.));
-      (CharBasis.HiraganaOrKatakana, ("KozMin", 0.92, 0.));
+      (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
+      (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
       (CharBasis.Latin             , ("Arno"  , 1., 0.));
       (CharBasis.Other             , default_font_with_ratio);
     ]
+
 
 let default_math_context =
   HorzBox.({
@@ -107,14 +105,41 @@ let default_math_context =
   })
 
 
+let default_math_left_paren hgt dpt hgtaxis =
+  let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
+  let wid = HorzBox.(halflen *% 0.375) in
+  let graphics (xpos, ypos) =
+    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
+      GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
+        LineTo((xpos, ypos +% hgtaxis));
+        LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
+      ], None);
+    ])
+  in
+  let kerninfo = () in  (* temporary *)
+  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgt, dpt, graphics))]), kerninfo)
+
+
+let default_math_right_paren hgt dpt hgtaxis =
+  let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
+  let wid = HorzBox.(halflen *% 0.375) in
+  let graphics (xpos, ypos) =
+    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
+      GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
+        LineTo((xpos +% wid, ypos +% hgtaxis));
+        LineTo((xpos, ypos +% hgtaxis -% halflen));
+      ], None);
+    ])
+  in
+  let kerninfo = () in  (* temporary *)
+  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgt, dpt, graphics))]), kerninfo)
+
+
 let envinit : environment = Hashtbl.create 128
+
 
 let get_initial_context pagesch =
   {
-(*
-    title            = InputHorzWithEnvironment([], envinit);
-    author           = InputHorzWithEnvironment([], envinit);
-*)
     font_scheme      = default_font_scheme;
     font_size        = pdfpt 12.;
     dominant_script  = CharBasis.Other;
@@ -131,17 +156,6 @@ let get_initial_context pagesch =
     page_scheme      = pagesch;
   }
 (*
-let default_graphics_context =
-  {
-    HorzBox.line_width   = pdfpt 1.;
-    HorzBox.line_dash    = HorzBox.SolidLine;
-    HorzBox.line_cap     = HorzBox.ButtCap;
-    HorzBox.line_join    = HorzBox.MiterJoin;
-    HorzBox.miter_limit  = pdfpt 10.;
-    HorzBox.fill_color   = HorzBox.DeviceGray(0.);
-    HorzBox.stroke_color = HorzBox.DeviceGray(0.);
-  }
-
 let margin = pdfpt 2.
 
 
@@ -206,14 +220,6 @@ let frame_deco_VM =
       ]
     )
   )
-
-let default_paddings =
-  {
-    HorzBox.paddingL = pdfpt 2. +% margin;
-    HorzBox.paddingR = pdfpt 2. +% margin;
-    HorzBox.paddingT = pdfpt 2. +% margin;
-    HorzBox.paddingB = pdfpt 2. +% margin;
-  }
 *)
 (* -- end: constants just for experimental use -- *)
 
@@ -250,9 +256,6 @@ let make_environments () =
   let scr           = (~! "script"      , VariantType([], tyid_script)) in
   let doc           = (~! "document"    , BaseType(DocumentType)) in
   let math          = (~! "math"        , BaseType(MathType)   ) in
-(*
-  let gctx          = (~! "graphic-context", BaseType(GraphicsContextType)) in
-*)
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
   let clr           = (~! "color"   , VariantType([], tyid_color)) in
   let pg            = (~! "page"    , VariantType([], tyid_page)) in
@@ -346,10 +349,10 @@ let make_environments () =
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
         ("math-glyph"              , ~% (mathcls @-> s @-> math)                    , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
-          (* temporary; should be able to specify math kinds (e.g. MathOrd, MathRel, etc.) *)
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
         ("math-frac"               , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
+        ("math-paren"              , ~% (math @-> math)                             , lambda1 (fun vm -> BackendMathParen(vm)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
         ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
         ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));

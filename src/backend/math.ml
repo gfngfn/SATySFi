@@ -187,14 +187,18 @@ let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev :
 
     | (MathBinary  , MathOrdinary)
     | (MathBinary  , MathInner   )
+    | (MathBinary  , MathOpen    )
     | (MathOrdinary, MathBinary  )
     | (MathInner   , MathBinary  )
+    | (MathClose   , MathBinary  )
       -> space_ord_bin fontsize scriptlev
 
     | (MathRelation, MathOrdinary)
     | (MathRelation, MathInner   )
+    | (MathRelation, MathOpen    )
     | (MathOrdinary, MathRelation)
     | (MathInner   , MathRelation)
+    | (MathClose   , MathRelation)
       -> space_ord_rel fontsize scriptlev
 
     | _ -> None
@@ -344,7 +348,7 @@ let make_paren mathctx scriptlev paren hgt dpt =
   let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar = fontsize *% mc.FontFormat.axis_height in
-  paren hgt dpt h_bar
+  paren hgt (Length.negate dpt) h_bar
   
 
 let rec convert_to_low (mathctx : math_context) (scriptlev : int) (mlst : math list) : low_math =
@@ -582,14 +586,16 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
     | LowMathRadical(lm1) :: lmmaintail ->
         failwith "unsupported"  (* temporary *)
 
-    | LowMathParen(parenL, parenR, lmE) :: lmmaintail ->
-(*
+    | LowMathParen(hblstparenL, hblstparenR, lmE) :: lmmaintail ->
         let hblstE = horz_of_low_math mathctx scriptlev lmE in
-        let (wE, hE, dE) = LineBreak.get_natural_metrics hblstE in
-        let (kerninfoL, hblstL) = make_paren mathctx scriptlev parenL wE hE dE in
-        let (kerninfoR, hblstR) = make_paren mathctx scriptlev parenR wE hE dE in
-*)
-        failwith "unsupported"  (* temporary *)
+        let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev MathOpen in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstsub hbacc
+          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+        in
+          aux hbaccnew MathClose lmmaintail
 
   in
   aux [] MathEnd lmmainlst

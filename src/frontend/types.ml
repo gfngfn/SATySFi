@@ -536,6 +536,7 @@ and abstract_tree =
   | BackendMathSuperscript      of abstract_tree * abstract_tree
   | BackendMathSubscript        of abstract_tree * abstract_tree
   | BackendMathFraction         of abstract_tree * abstract_tree
+  | BackendMathParen            of abstract_tree  (* temporary *)
   | BackendEmbeddedMath         of abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
@@ -555,10 +556,6 @@ and abstract_tree =
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
   | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
-(*
-  | PrimitiveSetTitle           of abstract_tree * abstract_tree
-  | PrimitiveGetTitle           of abstract_tree
-*)
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
