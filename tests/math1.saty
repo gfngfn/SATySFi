@@ -22,9 +22,14 @@ document (|
       math-plus;
       math-B;
       math-C;
-      math-plus;
+    ]);
+    quick brown fox
+    \math(math-list [
+      math-F;
+      math-equal;
+      math-G;
       math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
     ]);
-    quick brown fox.
+    jumps over the lazy dog.
   }
 >
