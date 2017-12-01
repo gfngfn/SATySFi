@@ -535,6 +535,7 @@ and abstract_tree =
   | BackendMathConcat           of abstract_tree * abstract_tree
   | BackendMathSuperscript      of abstract_tree * abstract_tree
   | BackendMathSubscript        of abstract_tree * abstract_tree
+  | BackendMathFraction         of abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment

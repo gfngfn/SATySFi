@@ -109,17 +109,28 @@ let normalize_math_kind mkprev mknext mkraw =
   | MathEnd
     -> mkraw
 
-  | MathRelation
-  | MathBinary
-    ->
-      match (mkprev, mknext) with
-      | (MathEnd , _        )
-      | (_       , MathEnd  )
-      | (MathOpen, _        )
-      | (_       , MathClose)
-        -> MathOrdinary
+  | MathBinary ->
+      begin
+        match (mkprev, mknext) with
+        | (MathOrdinary, MathOrdinary)
+        | (MathClose   , MathOrdinary)
+        | (MathOrdinary, MathOpen    )
+          -> MathBinary
 
-      | _ -> mkraw
+        | _ -> MathOrdinary
+      end
+
+  | MathRelation ->
+      begin
+        match (mkprev, mknext) with
+        | (MathEnd , _        )
+        | (_       , MathEnd  )
+        | (MathOpen, _        )
+        | (_       , MathClose)
+          -> MathOrdinary
+
+        | _ -> mkraw
+      end
 
 
 let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : int) ((mkraw, memain) : math_element) : low_math_element =
@@ -300,6 +311,41 @@ let subscript_correction_heights d_subbl d_base h_sub =
     (l_base, l_sub)
 
 
+let numerator_baseline_height mathctx scriptlev d_numer =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let mc = FontInfo.get_math_constants mathctx in
+  let h_bar         = fontsize *% mc.FontFormat.axis_height in
+  let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
+  let h_numerstd    = fontsize *% mc.FontFormat.fraction_numer_d_shift_up in
+  let l_numergapmin = fontsize *% mc.FontFormat.fraction_numer_d_gap_min in
+  let h_numerbl = Length.max h_numerstd (h_bar +% t_bar *% 0.5 +% l_numergapmin +% (Length.negate d_numer)) in
+    h_numerbl
+
+
+let denominator_baseline_depth mathctx scriptlev h_denom =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let mc = FontInfo.get_math_constants mathctx in
+  let h_bar         = fontsize *% mc.FontFormat.axis_height in
+  let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
+  let d_denomstd    = Length.negate (fontsize *% mc.FontFormat.fraction_denom_d_shift_down) in
+  let l_denomgapmin = fontsize *% mc.FontFormat.fraction_denom_d_gap_min in
+  let d_denombl = Length.min d_denomstd (h_bar -% t_bar *% 0.5 -% l_denomgapmin -% h_denom) in
+    d_denombl
+
+
+let horz_fraction_bar mathctx scriptlev wid =
+  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let mc = FontInfo.get_math_constants mathctx in
+  let h_bar         = fontsize *% mc.FontFormat.axis_height in
+  let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
+  let h_bart        = h_bar +% t_bar *% 0.5 in
+  let bar_color = DeviceGray(0.) in  (* temporary; should be variable *)
+  let bar_graphics (xpos, ypos) =
+    Graphics.pdfops_of_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))]
+  in
+    HorzPure(PHInlineGraphics(wid, h_bart, Length.zero, bar_graphics))  
+
+
 let kern_top_right rk ratio =
   match rk.kernTR with
   | None        -> 0.
@@ -324,7 +370,7 @@ let kern_bottom_left rk ratio =
   | Some(mkern) -> FontFormat.find_kern_ratio mkern ratio
 
 
-let raise_as_script r hblst =
+let raise_horz r hblst =
   [HorzPure(PHRising(r, hblst))]
 
 
@@ -347,7 +393,6 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
     | LowMathSuperscript(lmB, lmS) :: lmmaintail ->
         let (_, lkB, rkB) = lmB in
         let (_, lkS, _) = lmS in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
         let hblstB = horz_of_low_math mathctx scriptlev lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
         let h_base = rkB.last_height in
@@ -368,7 +413,8 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let l_kernsup  = Length.min Length.zero (s_sup *% r_kernsup) in
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
-        let hblstsup = List.concat [hblstB; [hbkern]; raise_as_script h_supbl hblstS] in
+        let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsup hbacc
@@ -379,7 +425,6 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
     | LowMathSubscript(lmB, lmS) :: lmmaintail ->
         let (_, lkB, rkB) = lmB in
         let (_, lkS, _) = lmS in
-        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
         let hblstB = horz_of_low_math mathctx scriptlev lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) lmS in
         let d_base = rkB.last_depth in
@@ -398,7 +443,8 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         let l_kernsub  = Length.min Length.zero (s_base *% r_kernsub) in
         let kern = l_kernbase +% l_kernsub in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
-        let hblstsub = List.concat [hblstB; [hbkern]; raise_as_script d_subbl hblstS] in
+        let hblstsub = List.concat [hblstB; [hbkern]; raise_horz d_subbl hblstS] in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
           | None          -> List.rev_append hblstsub hbacc
@@ -406,11 +452,37 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (lm : low_ma
         in
           aux hbaccnew rkB.right_math_kind lmmaintail
 
+    | LowMathFraction(lmN, lmD) :: lmmaintail ->
+        let hblstN = horz_of_low_math mathctx scriptlev lmN in
+        let hblstD = horz_of_low_math mathctx scriptlev lmD in
+        let (w_numer, h_numer, d_numer) = LineBreak.get_natural_metrics hblstN in
+        let (w_denom, h_denom, d_denom) = LineBreak.get_natural_metrics hblstD in
+        let h_numerbl = numerator_baseline_height mathctx scriptlev d_numer in
+        let d_denombl = denominator_baseline_depth mathctx scriptlev h_denom in
+        let (hblstNret, hblstDret, w_frac) =
+          if w_numer <% w_denom then
+          (* -- if the numerator is shorter than the denominator -- *)
+            let space = (w_denom -% w_numer) *% 0.5 in
+            let hblst_space = HorzPure(PHFixedEmpty(space)) in
+            let hblstNnew = List.concat [[hblst_space]; hblstN; [hblst_space]] in
+              (hblstNnew, hblstD, w_denom)
+          else
+            let space = (w_numer -% w_denom) *% 0.5 in
+            let hblst_space = HorzPure(PHFixedEmpty(space)) in
+            let hblstDnew = List.concat [[hblst_space]; hblstD; [hblst_space]] in
+              (hblstN, hblstDnew, w_numer)
+        in
+        let back = HorzPure(PHFixedEmpty(Length.negate w_frac)) in
+        let bar = horz_fraction_bar mathctx scriptlev w_frac in
+        let hblstsub = List.concat [raise_horz h_numerbl hblstNret; [back; bar; back]; raise_horz d_denombl hblstDret] in
+        let hbaccnew =
+          List.rev_append hblstsub hbacc
+        in
+          aux hbaccnew MathOrdinary lmmaintail
+
     | LowMathRadical(lm1) :: lmmaintail ->
         failwith "unsupported"  (* temporary *)
 
-    | LowMathFraction(lmN, lmD) :: lmmaintail ->
-        failwith "unsupported"  (* temporary *)
   in
   aux [] MathEnd lmmainlst
 

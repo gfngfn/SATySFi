@@ -7,19 +7,23 @@ document (|
   +p {
     The
     \math(math-list [
-      math-glyph MathBin `−`;
+      math-Z;
+      math-equal;
+      math-minus;
       math-sup math-e math-x;
-      math-glyph MathBin `+`;
+      math-plus;
       math-sup math-f (math-sup math-x (math-sup math-n math-2));
-      math-glyph MathBin `−`;
+      math-minus;
       math-sub math-a math-2;
-      math-glyph MathBin `+`;
+      math-plus;
       math-sub math-Y math-f;
-      math-glyph MathBin `−`;
+      math-minus;
       math-A;
-      math-glyph MathBin `+`;
+      math-plus;
       math-B;
       math-C;
+      math-plus;
+      math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
     ]);
     quick brown fox.
   }

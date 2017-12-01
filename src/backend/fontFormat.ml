@@ -1260,14 +1260,23 @@ let get_math_glyph_info (md : math_decoder) (is_script : bool) (uch : Uchar.t) =
 
 type math_constants =
   {
+  (* -- general -- *)
+    axis_height                   : float;
+  (* -- sub/superscripts -- *)
     superscript_bottom_min        : float;
     superscript_shift_up          : float;
     superscript_baseline_drop_max : float;
-    script_scale_down             : float;
-    script_script_scale_down      : float;
     subscript_top_max             : float;
     subscript_shift_down          : float;
     subscript_baseline_drop_min   : float;
+    script_scale_down             : float;
+    script_script_scale_down      : float;
+  (* -- fractions -- *)
+    fraction_rule_thickness       : float;
+    fraction_numer_d_shift_up     : float;
+    fraction_numer_d_gap_min      : float;
+    fraction_denom_d_shift_down   : float;
+    fraction_denom_d_gap_min      : float;
   }
 
 
@@ -1291,14 +1300,22 @@ let get_main_ratio mvr = to_ratio (get_main_math_value mvr)
 let get_math_constants (md : math_decoder) : math_constants =
   let mc = md.math_constants in
     {
+      axis_height                   = get_main_ratio mc.Otfm.axis_height;
+
       superscript_bottom_min        = get_main_ratio mc.Otfm.superscript_bottom_min;
       superscript_shift_up          = get_main_ratio mc.Otfm.superscript_shift_up;
       superscript_baseline_drop_max = get_main_ratio mc.Otfm.superscript_baseline_drop_max;
-      script_scale_down             = percent mc.Otfm.script_percent_scale_down;
-      script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
       subscript_top_max             = get_main_ratio mc.Otfm.subscript_top_max;
       subscript_shift_down          = get_main_ratio mc.Otfm.subscript_shift_down;
       subscript_baseline_drop_min   = get_main_ratio mc.Otfm.subscript_baseline_drop_min;
+      script_scale_down             = percent mc.Otfm.script_percent_scale_down;
+      script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
+
+      fraction_rule_thickness       = get_main_ratio mc.Otfm.fraction_rule_thickness;
+      fraction_numer_d_shift_up     = get_main_ratio mc.Otfm.fraction_numerator_display_style_shift_up;
+      fraction_numer_d_gap_min      = get_main_ratio mc.Otfm.fraction_num_display_style_gap_min;
+      fraction_denom_d_shift_down   = get_main_ratio mc.Otfm.fraction_denominator_display_style_shift_down;
+      fraction_denom_d_gap_min      = get_main_ratio mc.Otfm.fraction_denom_display_style_gap_min;
     }
 
 
