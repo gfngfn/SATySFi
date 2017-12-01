@@ -313,12 +313,13 @@ let initialize (satysfi_root_dir : string) =
 
 
     ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Osaka.ttf");
+    ("ipaexm", CIDFontType2TTRegistration("ipaexm-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ipaexm.ttf");
 
     ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Regular.otf");
     ("ArnoIt", CIDFontType0Registration("ArnoIt-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Italic.otf");
-
+(*
     ("KozMin", CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf");
-
+*)
   ];
   List.iter (fun (mfabbrev, fontreg, srcfile) -> MathFontAbbrevHashTable.add mfabbrev fontreg srcfile) [
 (*
@@ -328,6 +329,7 @@ let initialize (satysfi_root_dir : string) =
 
     ("lmodern", CIDFontType0Registration("lmodern-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "latinmodern-math.otf");
 
+    ("xits", CIDFontType0Registration("xits-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "xits-math.otf");
   ]
   ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 

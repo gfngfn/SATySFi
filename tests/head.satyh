@@ -16,7 +16,8 @@ let font-ratio-cjk = 0.88
 let font-latin-roman  = font `Arno`   font-ratio-latin 0.
 let font-latin-italic = font `ArnoIt` font-ratio-latin 0.
 let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
-let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
+% let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
+let font-cjk-mincho   = font `ipaexm` font-ratio-cjk   0.
 let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
 let set-cjk-font font ctx =
