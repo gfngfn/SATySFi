@@ -65,9 +65,9 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
         let ops =
-
+(*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
-
+*)
           [
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;

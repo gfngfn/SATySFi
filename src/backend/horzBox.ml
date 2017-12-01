@@ -282,9 +282,15 @@ type math_kind =
 
 type math_element = math_kind * math_element_main
 
+type math_kern_info = unit  (* temporary *)
+
+type paren = length -> length -> length -> horz_box list * math_kern_info
+  (* temporary *)
+
 type math =
   | MathPure        of math_element
   | MathFraction    of math list * math list
   | MathRadical     of math list
   | MathSubscript   of math list * math list
   | MathSuperscript of math list * math list
+  | MathParen       of paren * paren * math list
