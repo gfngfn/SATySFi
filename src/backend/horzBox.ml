@@ -10,6 +10,7 @@ module Length
     val max : t -> t -> t
     val min : t -> t -> t
     val negate : t -> t
+    val abs : t -> t
     val less_than : t -> t -> bool
     val leq : t -> t -> bool
     val is_nearly_zero : t -> bool
@@ -31,6 +32,7 @@ module Length
     let max = max
     let min = min
     let negate x = 0. -. x
+    let abs x = if x < 0. then -.x else x
     let less_than = ( < )
     let leq = ( <= )
     let is_nearly_zero sl = (sl < 0.01)
@@ -282,10 +284,16 @@ type math_kind =
 
 type math_element = math_kind * math_element_main
 
-type math_kern_info = unit  (* temporary *)
+type math_kern_func = length -> length
 
-type paren = length -> length -> length -> horz_box list * math_kern_info
-  (* temporary *)
+type paren = length -> length -> length -> length -> horz_box list * math_kern_func
+  (* --
+     paren:
+       the type for adjustable parentheses.
+       An adjustable parenthesis takes the height and the depth of the inner contents,
+       the axis height and the standard font size,
+       and then returns its inline box representation and the function for kerning.
+     -- *)
 
 type math =
   | MathPure        of math_element

@@ -259,6 +259,32 @@ let get_math_constants mathctx =
     | Some((_, _, md, _)) -> FontFormat.get_math_constants md
 
 
+type math_kern_scheme =
+  | NoMathKern
+  | DiscreteMathKern of FontFormat.math_kern
+  | DenseMathKern    of (length -> length)
+
+
+let no_math_kern = NoMathKern
+
+let make_dense_math_kern kernf = DenseMathKern(kernf)
+
+let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
+
+
+(* --
+   get_math_kern:
+     returns kerning length
+     (negative value stands for being closer to the previous glyph)
+   -- *)
+let get_math_kern (mathctx : math_context) (scriptlev : int) (mkern : math_kern_scheme) (corrhgt : length) : length =
+  let fontsize = (get_math_string_info scriptlev mathctx).math_font_size in
+  match mkern with
+  | NoMathKern              -> Length.zero
+  | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio mkern (corrhgt /% fontsize) in fontsize *% ratiok
+  | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
+
+
 let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
   let mfabbrev = mathstrinfo.math_font_abbrev in

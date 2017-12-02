@@ -105,8 +105,8 @@ let default_math_context =
   })
 
 
-let default_math_left_paren hgt dpt hgtaxis =
-  let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
+let default_math_left_paren hgt dpt hgtaxis fontsize =
+  let halflen = HorzBox.(Length.max (fontsize *% 0.5) (Length.max (hgt -% hgtaxis) (hgtaxis -% dpt))) in
   let widparen = HorzBox.(halflen *% 0.375) in
   let wid = HorzBox.(halflen *% 0.5) in
   let graphics (xpos, ypos) =
@@ -117,12 +117,24 @@ let default_math_left_paren hgt dpt hgtaxis =
       ], None);
     ])
   in
-  let kerninfo = () in  (* temporary *)
-  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgt, dpt, graphics))]), kerninfo)
+  let kerninfo hgt =
+    let widkern = widparen in
+    let r = 0. in
+    let gap = HorzBox.(Length.abs (hgt -% hgtaxis)) in
+    HorzBox.(
+      if halflen *% r <% gap then
+        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
+      else
+        Length.zero
+    )
+  in
+  let hgtparen = HorzBox.(hgtaxis +% halflen) in
+  let dptparen = HorzBox.(hgtaxis -% halflen) in
+  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
-let default_math_right_paren hgt dpt hgtaxis =
-  let halflen = HorzBox.(Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) in
+let default_math_right_paren hgt dpt hgtaxis fontsize =
+  let halflen = HorzBox.(Length.max (fontsize *% 0.5) (Length.max (hgt -% hgtaxis) (hgtaxis -% dpt))) in
   let widparen = HorzBox.(halflen *% 0.375) in
   let wid = HorzBox.(halflen *% 0.5) in
   let graphics (xpos, ypos) =
@@ -133,8 +145,20 @@ let default_math_right_paren hgt dpt hgtaxis =
       ], None);
     ])
   in
-  let kerninfo = () in  (* temporary *)
-  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgt, dpt, graphics))]), kerninfo)
+  let kerninfo hgt =
+    let widkern = widparen in
+    let r = 0. in
+    let gap = HorzBox.(Length.abs (hgt -% hgtaxis)) in
+    HorzBox.(
+      if halflen *% r <% gap then
+        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
+      else
+        Length.zero
+    )
+  in
+  let hgtparen = HorzBox.(hgtaxis +% halflen) in
+  let dptparen = HorzBox.(hgtaxis -% halflen) in
+  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
 let envinit : environment = Hashtbl.create 128
