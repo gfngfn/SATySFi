@@ -89,9 +89,9 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let ops =
-
+(*
         List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
-
+*)
           [
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;
@@ -124,9 +124,9 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
 
     | EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics)) ->
         let ops_graphics =
-
+(*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
-
+*)
           (graphics (xpos, yposbaseline))
         in
         let opaccnew = List.rev_append ops_graphics opacc in

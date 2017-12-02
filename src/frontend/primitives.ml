@@ -106,9 +106,11 @@ let default_math_context =
 
 
 let default_math_left_paren hgt dpt hgtaxis fontsize =
-  let halflen = HorzBox.(Length.max (fontsize *% 0.5) (Length.max (hgt -% hgtaxis) (hgtaxis -% dpt))) in
+  let lenappend = HorzBox.(fontsize *% 0.1) in
+  let minhalflen = HorzBox.(fontsize *% 0.5) in
+  let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
   let widparen = HorzBox.(halflen *% 0.375) in
-  let wid = HorzBox.(halflen *% 0.5) in
+  let wid = HorzBox.(widparen +% fontsize *% 0.1) in
   let graphics (xpos, ypos) =
     HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
       GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
@@ -136,9 +138,11 @@ let default_math_left_paren hgt dpt hgtaxis fontsize =
 
 
 let default_math_right_paren hgt dpt hgtaxis fontsize =
-  let halflen = HorzBox.(Length.max (fontsize *% 0.5) (Length.max (hgt -% hgtaxis) (hgtaxis -% dpt))) in
+  let lenappend = HorzBox.(fontsize *% 0.1) in
+  let minhalflen = HorzBox.(fontsize *% 0.5) in
+  let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
   let widparen = HorzBox.(halflen *% 0.375) in
-  let wid = HorzBox.(halflen *% 0.5) in
+  let wid = HorzBox.(widparen +% fontsize *% 0.1) in
   let graphics (xpos, ypos) =
     HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
       GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
