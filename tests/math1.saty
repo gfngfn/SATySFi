@@ -29,6 +29,7 @@ document (|
     This document
     \math(math-list [
       math-paren (math-sup math-F math-n);
+      math-plus;
       math-paren math-F;
       math-equal;
       math-sup (math-paren (math-list [
@@ -41,6 +42,10 @@ document (|
     \math(math-list [
       math-sub (math-paren (math-frac (math-paren (math-list [math-frac math-A math-B; math-plus; math-C]))
         (math-sup math-D (math-paren (math-list [math-n; math-minus; math-1]))))) math-2
+    ]);,
+    Layered:
+    \math(math-list [
+      math-paren (math-list [math-paren (math-list [math-paren math-A; math-plus; math-B]); math-plus; math-C]);
     ]);
   }
 >
