@@ -31,11 +31,16 @@ document (|
       math-paren (math-sup math-F math-n);
       math-paren math-F;
       math-equal;
-      math-paren (math-list [
+      math-sup (math-paren (math-list [
         math-G;
         math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
-      ]);
+      ])) (math-list [math-n; math-plus; math-1]);
     ]);
     was typeset by using \satysfi;.
+    Big math:
+    \math(math-list [
+      math-sub (math-paren (math-frac (math-paren (math-list [math-frac math-A math-B; math-plus; math-C]))
+        (math-sup math-D (math-paren (math-list [math-n; math-minus; math-1]))))) math-2
+    ]);
   }
 >
