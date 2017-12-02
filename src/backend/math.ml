@@ -339,8 +339,8 @@ let subscript_baseline_depth (mathctx : math_context) (scriptlev : int) d_base h
 
 
 let subscript_correction_heights mathctx scriptlev d_subbl d_base h_sub =
-  let l_base = d_base -% d_subbl in
-  let l_sub = h_sub +% d_base in
+  let l_base = h_sub +% d_base in
+  let l_sub = d_base -% d_subbl in
     (l_base, l_sub)
 
 
@@ -535,12 +535,12 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mklast : ma
           aux hbaccnew mk (Some(rk.italics_correction)) lmmaintail
 
     | LowMathSuperscript(h_supbl, lmB, lmS) :: lmmaintail ->
-        let (_, h_base, d_base, lkB, rkB) = lmB in
-        let (_, d_base, d_sup, lkS, _) = lmS in
+        let (_, _, _, lkB, rkB) = lmB in
+        let (_, _, d_sup, lkS, _) = lmS in
         let hblstB = horz_of_low_math mathctx scriptlev MathEnd lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) MathEnd lmS in
-
-        let (l_base, l_sup) = superscript_correction_heights mathctx scriptlev h_supbl rkB.last_height d_sup in
+        let h_base = rkB.last_height in
+        let (l_base, l_sup) = superscript_correction_heights mathctx scriptlev h_supbl h_base d_sup in
         let l_kernbase = calculate_kern mathctx scriptlev rkB.kernTR l_base in
         let l_kernsup  = calculate_kern mathctx (scriptlev + 1) lkS.kernBL l_sup in
 (*
@@ -561,12 +561,11 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mklast : ma
           aux hbaccnew rkB.right_math_kind None lmmaintail
 
     | LowMathSubscript(d_subbl, lmB, lmS) :: lmmaintail ->
-        let (_, h_base, d_base, lkB, rkB) = lmB in
-        let (_, h_sub, d_sub, lkS, _) = lmS in
+        let (_, _, _, lkB, rkB) = lmB in
+        let (_, h_sub, _, lkS, _) = lmS in
         let hblstB = horz_of_low_math mathctx scriptlev MathEnd lmB in
         let hblstS = horz_of_low_math mathctx (scriptlev + 1) MathEnd lmS in
         let d_base = rkB.last_depth in
-        let (_, h_sub, _) = LineBreak.get_natural_metrics hblstS in
         let d_subbl = subscript_baseline_depth mathctx scriptlev d_base h_sub in
         let (l_base, l_sub) = subscript_correction_heights mathctx scriptlev d_subbl d_base h_sub in
         let l_kernbase = calculate_kern mathctx scriptlev rkB.kernBR l_base in

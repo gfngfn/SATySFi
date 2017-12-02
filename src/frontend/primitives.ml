@@ -117,10 +117,12 @@ let default_math_left_paren hgt dpt hgtaxis fontsize =
       ], None);
     ])
   in
-  let kerninfo hgt =
+  let kerninfo y =
     let widkern = widparen in
     let r = 0. in
-    let gap = HorzBox.(Length.abs (hgt -% hgtaxis)) in
+    let gap = HorzBox.(Length.abs (y -% hgtaxis)) in
+    let topdfpt = HorzBox.Length.to_pdf_point in  (* for debug *)
+    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
     HorzBox.(
       if halflen *% r <% gap then
         widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
@@ -145,10 +147,12 @@ let default_math_right_paren hgt dpt hgtaxis fontsize =
       ], None);
     ])
   in
-  let kerninfo hgt =
+  let kerninfo y =
     let widkern = widparen in
     let r = 0. in
-    let gap = HorzBox.(Length.abs (hgt -% hgtaxis)) in
+    let gap = HorzBox.(Length.abs (y -% hgtaxis)) in
+    let topdfpt = HorzBox.Length.to_pdf_point in  (* for debug *)
+    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
     HorzBox.(
       if halflen *% r <% gap then
         widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
