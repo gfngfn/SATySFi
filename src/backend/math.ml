@@ -149,6 +149,7 @@ let normalize_math_kind mkprev mknext mkraw =
       begin
         match (mkprev, mknext) with
         | (MathOrdinary, MathOrdinary)
+        | (MathInner   , MathInner   )
         | (MathInner   , MathOrdinary)
         | (MathOrdinary, MathInner   )
 
