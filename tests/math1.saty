@@ -48,6 +48,24 @@ document (|
       math-paren (math-list [math-paren (math-list [math-paren math-A; math-plus; math-B]); math-plus; math-C]);
     ]);,
     radical:
-    \math(math-radical None math-2);
+    \math(math-list [
+      math-2;
+      math-sqrt math-5;
+      math-plus;
+      math-frac math-2 (math-sqrt math-5);
+      math-plus;
+      math-frac math-1 (math-sqrt (math-list [math-sup math-x math-2; math-plus; math-1]));
+    ]);,
+    solution:
+    \math(
+      let math-det = math-list [math-sup math-b math-2; math-minus; math-4; math-a; math-c] in
+      math-list [
+        math-x;
+        math-equal;
+        math-frac (math-list [math-minus; math-b; math-plus; math-sqrt math-det]) (math-list [math-2; math-a]);
+      ]
+    );
+    layered radical:
+    \math(math-sqrt (math-sqrt (math-sqrt math-2)));
   }
 >
