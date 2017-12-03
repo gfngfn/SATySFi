@@ -30,6 +30,8 @@ type low_math_pure = math_kind * length * length * length * low_math_atom * left
 
 type low_paren = horz_box list * length * length * FontInfo.math_kern_scheme
 
+type low_radical = horz_box list
+
 type low_math_main =
   | LowMathPure of low_math_pure
 
@@ -52,7 +54,7 @@ type low_math_main =
          (3) numerator contents
          (4) denominator contents
          -- *)
-  | LowMathRadical of length * length * low_math
+  | LowMathRadical of low_radical * length * length * low_math
       (* --
          (1) height of the bar
          (2) thickness of the bar
@@ -399,7 +401,13 @@ let make_paren mathctx scriptlev paren hgt dpt =
   let h_bar = fontsize *% mc.FontFormat.axis_height in
   let (hblst, kernf) = paren hgt (Length.negate dpt) h_bar fontsize in
     (hblst, FontInfo.make_dense_math_kern kernf)
-  
+
+
+let make_radical mathctx scriptlev radical hgt_bar t_bar dpt =
+  let fontsize = get_real_font_size mathctx scriptlev in
+  let hblst = radical hgt_bar t_bar (Length.negate dpt) fontsize in
+    hblst
+
 
 let rec convert_to_low (mathctx : math_context) (scriptlev : int) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
@@ -457,14 +465,15 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_whole = d_base in
         (LowMathSuperscript(h_supbl, lmB, lmS), h_whole, d_whole)
 
-  | MathRadical(mlstC) ->
+  | MathRadical(radical, mlstC) ->
       let lmC = convert_to_low mathctx scriptlev MathEnd MathEnd mlstC in
       let (_, h_cont, d_cont, _, _) = lmC in
       let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx scriptlev h_cont in
+      let hblstrad = make_radical mathctx scriptlev radical h_bar t_bar d_cont in
       let h_rad = h_bar +% t_bar in
       let h_whole = h_rad +% l_extra in
       let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
-        (LowMathRadical(h_bar, t_bar, lmC), h_whole, d_whole)
+        (LowMathRadical(hblstrad, h_bar, t_bar, lmC), h_whole, d_whole)
 
   | MathRadicalWithDegree(mlstD, mlstC) ->
       let lmD = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstD in
@@ -643,7 +652,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
         in
           aux hbaccnew MathOrdinary None lmmaintail
 
-    | LowMathRadical(h_bar, t_bar, lmC) :: lmmaintail ->
+    | LowMathRadical(hblstrad, h_bar, t_bar, lmC) :: lmmaintail ->
         let hblstC = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmC in
         let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
         let hbbar =
@@ -652,7 +661,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
               Graphics.pdfops_of_fill (DeviceGray(0.)) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
         in
         let back = HorzPure(PHFixedEmpty(Length.negate w_cont)) in
-        let hblstsub = hbbar :: back :: hblstC in  (* temporary; should attach the radical sign *)
+        let hblstsub = List.append hblstrad (hbbar :: back :: hblstC) in
         let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt MathInner in
         let hbaccnew =
           match hbspaceopt with

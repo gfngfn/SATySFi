@@ -243,9 +243,10 @@ and interpret env ast =
   | BackendMathRadical(astm1, astm2) ->
       let mlst1opt = interpret_option env (interpret_math env) astm1 in
       let mlst2 = interpret_math env astm2 in
+      let radical = Primitives.default_radical in  (* temporary; should be variable *)
       begin
         match mlst1opt with
-        | None        -> MathValue([HorzBox.MathRadical(mlst2)])
+        | None        -> MathValue([HorzBox.MathRadical(radical, mlst2)])
         | Some(mlst1) -> MathValue([HorzBox.MathRadicalWithDegree(mlst1, mlst2)])
       end
 

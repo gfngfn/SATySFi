@@ -290,9 +290,22 @@ type paren = length -> length -> length -> length -> horz_box list * math_kern_f
   (* --
      paren:
        the type for adjustable parentheses.
-       An adjustable parenthesis takes the height and the depth of the inner contents,
-       the axis height and the standard font size,
+       An adjustable parenthesis takes as arguments
+       (1-2) the height and the depth of the inner contents,
+       (3)   the axis height, and
+       (4)   the font size,
        and then returns its inline box representation and the function for kerning.
+     -- *)
+
+type radical = length -> length -> length -> length -> horz_box list
+  (* --
+     radical:
+       the type for adjustable radicals.
+       An adjustable radical takes as arguments
+       (1-2) the height and the thickness of the bar required by the math font,
+       (3)   the depth of the inner contents, and
+       (4)   the font size,
+       and then returns the inline box representation.
      -- *)
 
 type math =
@@ -301,5 +314,5 @@ type math =
   | MathSuperscript       of math list * math list
   | MathFraction          of math list * math list
   | MathRadicalWithDegree of math list * math list
-  | MathRadical           of math list
+  | MathRadical           of radical * math list
   | MathParen             of paren * paren * math list

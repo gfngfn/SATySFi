@@ -169,6 +169,48 @@ let default_math_right_paren hgt dpt hgtaxis fontsize =
   (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
+let default_radical hgt_bar t_bar dpt fontsize =
+  HorzBox.(begin
+  let wM = fontsize *% 0.02 in
+  let w1 = fontsize *% 0.1 in
+  let w2 = fontsize *% 0.15 in
+  let w3 = fontsize *% 0.4 in
+  let wA = fontsize *% 0.18 in
+  let h1 = fontsize *% 0.3 in
+  let h2 = fontsize *% 0.375 in
+
+  let dpt = dpt +% fontsize *% 0.1 in
+
+  let lR = hgt_bar +% dpt in
+
+  let wid = wM +% w1 +% w2 +% w3 in
+  let a1 = (h2 -% h1) /% w1 in
+  let a2 = h2 /% w2 in
+  let a3 = lR /% w3 in
+  let t1 = t_bar *% (sqrt (1. +. a1 *. a1)) in
+  let t3 = t_bar *% ((sqrt (1. +. a3 *. a3) -. 1.) /. a3) in
+  let hA = h1 +% t1 +% wA *% a1 in
+  let wB = (lR +% t_bar -% hA -% (w1 +% w2 +% w3 -% t3 -% wA) *% a3) *% (-. 1. /. (a2 +. a3)) in
+  let hB = hA -% wB *% a2 in
+
+  let graphics (xpos, ypos) =
+    Graphics.pdfops_of_fill (DeviceGray(0.)) [
+      GeneralPath((xpos +% wid, ypos +% hgt_bar), [
+        LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
+        LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
+        LineTo(xpos +% wM            , ypos -% dpt +% h1);
+        LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
+        LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
+        LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
+        LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
+        LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
+      ], Some(LineTo(())))
+    ]
+  in
+  [HorzPure(PHInlineGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
+  end)
+
+
 let envinit : environment = Hashtbl.create 128
 
 
