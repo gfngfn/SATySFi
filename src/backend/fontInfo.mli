@@ -10,7 +10,7 @@ val get_math_char_info : math_string_info -> int -> Uchar.t -> FontFormat.glyph_
 
 val get_tag_and_encoding : font_abbrev -> string * encoding_in_pdf
 
-val get_math_string_info : int -> math_context -> math_string_info
+val get_math_string_info : math_context -> int -> math_string_info
 
 val get_math_tag : math_font_abbrev -> string
 

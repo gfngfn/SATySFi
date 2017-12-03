@@ -31,8 +31,9 @@ type low_math_pure = math_kind * length * length * length * low_math_atom * left
 type low_paren = horz_box list * length * length * FontInfo.math_kern_scheme
 
 type low_math_main =
-  | LowMathPure        of low_math_pure
-  | LowMathSubscript   of length * low_math * low_math
+  | LowMathPure of low_math_pure
+
+  | LowMathSubscript of length * low_math * low_math
       (* --
          (1) baseline depth of the subscript
          (2) base contents
@@ -44,14 +45,27 @@ type low_math_main =
          (2) base contents
          (3) superscript contents
          -- *)
-  | LowMathFraction    of length * length * low_math * low_math
+  | LowMathFraction of length * length * low_math * low_math
       (* --
          (1) baseline height of the numerator
          (2) baseline depth of the denominator
          (3) numerator contents
          (4) denominator contents
          -- *)
-  | LowMathRadical     of low_math
+  | LowMathRadical of length * length * low_math
+      (* --
+         (1) height of the bar
+         (2) thickness of the bar
+         (3) inner contents
+         -- *)
+  | LowMathRadicalWithDegree of length * length * length * low_math * low_math
+      (* --
+         (1) height of the bar
+         (2) thickness of the bar
+         (3) height of the bottom of the degree
+         (4) degree contents
+         (5) inner contents
+         -- *)
   | LowMathParen       of low_paren * low_paren * low_math
 
 and low_math = low_math_main list * length * length * left_kern * right_kern
@@ -170,7 +184,7 @@ let space_ord_inner fontsize scriptlev =
 
 
 let get_real_font_size mathctx scriptlev =
-  (FontInfo.get_math_string_info scriptlev mathctx).math_font_size
+  (FontInfo.get_math_string_info mathctx scriptlev).math_font_size
 
 
 let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (italcorropt : length option) (mk : math_kind) : horz_box option =
@@ -219,7 +233,7 @@ let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : 
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern mk, no_right_kern mk)
 
   | MathChar(mathctx, uch) ->
-      let mathstrinfo = FontInfo.get_math_string_info scriptlev mathctx in
+      let mathstrinfo = FontInfo.get_math_string_info mathctx scriptlev in
       let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo scriptlev uch in
       let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkiopt in
         (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
@@ -252,6 +266,7 @@ let get_left_kern lmmain =
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
   | LowMathFraction(_, _, _, _)                -> no_left_kern MathInner
   | LowMathRadical(_)                          -> no_left_kern MathInner
+  | LowMathRadicalWithDegree(_, _, _, _, _)    -> no_left_kern MathInner
   | LowMathParen((_, hL, dL, mkernsL), _, _)   -> make_left_paren_kern hL dL mkernsL
 
 
@@ -262,6 +277,7 @@ let get_right_kern lmmain =
   | LowMathSuperscript(_, (_, _, _, _, rk), _) -> no_right_kern rk.right_math_kind
   | LowMathFraction(_, _, _, _)                -> no_right_kern MathInner
   | LowMathRadical(_)                          -> no_right_kern MathInner
+  | LowMathRadicalWithDegree(_, _, _, _, _)    -> no_right_kern MathInner
   | LowMathParen(_, (_, hR, dR, mkernsR), _)   -> make_right_paren_kern hR dR mkernsR
 
 
@@ -273,6 +289,7 @@ let rec get_left_math_kind = function
   | MathSubscript(mathB :: _, _)   -> get_left_math_kind mathB
   | MathFraction(_, _)             -> MathInner
   | MathRadical(_)                 -> MathInner
+  | MathRadicalWithDegree(_, _)    -> MathInner
   | MathParen(_, _, _)             -> MathOpen
 
 
@@ -286,6 +303,7 @@ let rec get_right_math_kind math =
     | MathSubscript(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
     | MathFraction(_, _)          -> MathInner
     | MathRadical(_)              -> MathInner
+    | MathRadicalWithDegree(_, _) -> MathInner
     | MathParen(_, _, _)          -> MathClose
   with
   | Invalid_argument(_) -> assert false
@@ -348,8 +366,35 @@ let denominator_baseline_depth mathctx scriptlev h_denom =
     d_denombl
 
 
+(* --
+   radical_bar_metrics:
+     takes a math context, a script level, and the height of the contents,
+     and then returns the height, the thickness, and the extra ascender of the raducal rule.
+   -- *)
+let radical_bar_metrics mathctx scriptlev h_cont =
+  let fontsize = get_real_font_size mathctx scriptlev in
+  let mc = FontInfo.get_math_constants mathctx in
+  let l_radgap = fontsize *% mc.FontFormat.radical_d_vertical_gap in
+  let t_bar    = fontsize *% mc.FontFormat.radical_rule_thickness in
+  let l_extra  = fontsize *% mc.FontFormat.radical_extra_ascender in
+  let h_bar = h_cont +% l_radgap in
+    (h_bar, t_bar, l_extra)
+
+
+(* --
+   radical_degree_baseline_height:
+     takes a math context, a script level, the height of the radical sign, and the depth of the degree,
+     and then returns the height of the degree baseline.
+   -- *)
+let radical_degree_baseline_height mathctx scriptlev h_rad d_deg =
+  let mc = FontInfo.get_math_constants mathctx in
+  let h_degb = h_rad *% mc.FontFormat.radical_degree_bottom in
+  let h_degbl = h_degb +% d_deg in
+    h_degbl
+ 
+
 let make_paren mathctx scriptlev paren hgt dpt =
-  let fontsize = (FontInfo.get_math_string_info scriptlev mathctx).math_font_size in
+  let fontsize = (FontInfo.get_math_string_info mathctx scriptlev).math_font_size in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar = fontsize *% mc.FontFormat.axis_height in
   let (hblst, kernf) = paren hgt (Length.negate dpt) h_bar fontsize in
@@ -392,9 +437,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_frac = d_denombl +% d_denom in
         (LowMathFraction(h_numerbl, d_denombl, lmN, lmD), h_frac, d_frac)
 
-  | MathSubscript(mlst1, mlst2) ->
-      let lmB = convert_to_low mathctx scriptlev MathEnd MathEnd mlst1 in
-      let lmS = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlst2 in
+  | MathSubscript(mlstB, mlstS) ->
+      let lmB = convert_to_low mathctx scriptlev MathEnd MathEnd mlstB in
+      let lmS = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstS in
       let (_, h_base, d_base, _, rkB) = lmB in
       let (_, h_sub, d_sub, _, _)     = lmS in
       let d_subbl = subscript_baseline_depth mathctx scriptlev rkB.last_depth h_sub in
@@ -402,9 +447,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_whole = Length.min d_base (d_subbl +% d_sub) in
         (LowMathSubscript(d_subbl, lmB, lmS), h_whole, d_whole)
 
-  | MathSuperscript(mlst1, mlst2) ->
-      let lmB = convert_to_low mathctx scriptlev MathEnd MathEnd mlst1 in
-      let lmS = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlst2 in
+  | MathSuperscript(mlstB, mlstS) ->
+      let lmB = convert_to_low mathctx scriptlev MathEnd MathEnd mlstB in
+      let lmS = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstS in
       let (_, h_base, d_base, _, rkB) = lmB in
       let (_, h_sup, d_sup, _, _)     = lmS in
       let h_supbl = superscript_baseline_height mathctx scriptlev h_base d_sup in
@@ -412,25 +457,39 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let d_whole = d_base in
         (LowMathSuperscript(h_supbl, lmB, lmS), h_whole, d_whole)
 
-  | MathRadical(mlst1) ->
-(*
-      let lm1 = convert_to_low mathctx scriptlev mlst1 in
-        LowMathRadical(lm1)
-*)
-      failwith "unsupported; MathRadical"  (* temporary *)
+  | MathRadical(mlstC) ->
+      let lmC = convert_to_low mathctx scriptlev MathEnd MathEnd mlstC in
+      let (_, h_cont, d_cont, _, _) = lmC in
+      let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx scriptlev h_cont in
+      let h_rad = h_bar +% t_bar in
+      let h_whole = h_rad +% l_extra in
+      let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
+        (LowMathRadical(h_bar, t_bar, lmC), h_whole, d_whole)
 
-  | MathParen(parenL, parenR, mlst1) ->
-      let lm1 = convert_to_low mathctx scriptlev MathOpen MathClose mlst1 in
-      let (_, h1, d1, _, _) = lm1 in
-      let (hblstparenL, mkernsL) = make_paren mathctx scriptlev parenL h1 d1 in
-      let (hblstparenR, mkernsR) = make_paren mathctx scriptlev parenR h1 d1 in
+  | MathRadicalWithDegree(mlstD, mlstC) ->
+      let lmD = convert_to_low mathctx (scriptlev + 1) MathEnd MathEnd mlstD in
+      let lmC = convert_to_low mathctx scriptlev MathEnd MathEnd mlstC in
+      let (_, h_cont, d_cont, _, _) = lmC in
+      let (h_bar, t_bar, l_extra) = radical_bar_metrics mathctx scriptlev h_cont in
+      let h_rad = h_bar +% t_bar in
+      let (_, h_deg, d_deg, _, _) = lmD in
+      let h_degbl = radical_degree_baseline_height mathctx scriptlev h_rad d_deg in
+      let h_whole = Length.max (h_rad +% l_extra) (h_degbl +% h_deg) in
+      let d_whole = d_cont in  (* temporary; should consider the depth of the radical sign *)
+        (LowMathRadicalWithDegree(h_bar, t_bar, h_degbl, lmD, lmC), h_whole, d_whole)
+
+  | MathParen(parenL, parenR, mlstC) ->
+      let lmC = convert_to_low mathctx scriptlev MathOpen MathClose mlstC in
+      let (_, hC, dC, _, _) = lmC in
+      let (hblstparenL, mkernsL) = make_paren mathctx scriptlev parenL hC dC in
+      let (hblstparenR, mkernsR) = make_paren mathctx scriptlev parenR hC dC in
       let (_, hL, dL)   = LineBreak.get_natural_metrics hblstparenL in
       let (_, hR, dR) = LineBreak.get_natural_metrics hblstparenR in
-      let h_whole = [hL; hR] |> List.fold_left Length.max h1 in
-      let d_whole = [dL; dR] |> List.fold_left Length.min d1 in
+      let h_whole = [hL; hR] |> List.fold_left Length.max hC in
+      let d_whole = [dL; dR] |> List.fold_left Length.min dC in
       let lpL = (hblstparenL, hL, dL, mkernsL) in
       let lpR = (hblstparenR, hR, dR, mkernsR) in
-        (LowMathParen(lpL, lpR, lm1), h_whole, d_whole)
+        (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
 
 
 let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
@@ -509,7 +568,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
         Format.printf "r_kernsup = %f, " r_kernsup;
 *)
         let l_italic   = rkB.italics_correction in
-        Format.printf "l_italic = %f\n" (Length.to_pdf_point l_italic);
+        Format.printf "Math> l_italic = %f\n" (Length.to_pdf_point l_italic);
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = HorzPure(PHFixedEmpty(kern)) in
         let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
@@ -584,8 +643,26 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
         in
           aux hbaccnew MathOrdinary None lmmaintail
 
-    | LowMathRadical(lm1) :: lmmaintail ->
-        failwith "unsupported"  (* temporary *)
+    | LowMathRadical(h_bar, t_bar, lmC) :: lmmaintail ->
+        let hblstC = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmC in
+        let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
+        let hbbar =
+          HorzPure(PHInlineGraphics(w_cont, h_bar +% t_bar, Length.zero,
+            (fun (xpos, ypos) ->
+              Graphics.pdfops_of_fill (DeviceGray(0.)) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
+        in
+        let back = HorzPure(PHFixedEmpty(Length.negate w_cont)) in
+        let hblstsub = hbbar :: back :: hblstC in  (* temporary; should attach the radical sign *)
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt MathInner in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstsub hbacc
+          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+        in
+          aux hbaccnew MathInner None lmmaintail
+
+    | LowMathRadicalWithDegree(h_bar, t_bar, h_degbl, lmD, lmC) :: lmmaintail ->
+        failwith "unsupported; LowMathRadicalWithDegree"  (* temporary *)
 
     | LowMathParen(lpL, lpR, lmE) :: lmmaintail ->
         let (hblstparenL, _, _, mkernsL) = lpL in

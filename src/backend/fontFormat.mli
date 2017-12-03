@@ -122,6 +122,13 @@ type math_constants =
     fraction_numer_d_gap_min      : float;
     fraction_denom_d_shift_down   : float;
     fraction_denom_d_gap_min      : float;
+  (* -- radicals -- *)
+    radical_extra_ascender        : float;
+    radical_rule_thickness        : float;
+    radical_d_vertical_gap        : float;
+    radical_kern_before_degree    : float;
+    radical_kern_after_degree     : float;
+    radical_degree_bottom         : float;
   }
 
 val get_math_constants : math_decoder -> math_constants

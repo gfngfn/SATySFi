@@ -274,9 +274,7 @@ let make_environments () =
   let l ty          = (~! "list"    , ListType(ty)       ) in
   let r ty          = (~! "ref"     , RefType(ty)        ) in
   let prod tylst    = (~! "product" , ProductType(tylst)   ) in
-(*
   let opt ty        = (~! "option"  , VariantType([ty], tyid_option)) in
-*)
   let (@->) dom cod = (~! "func"    , FuncType(dom, cod)   ) in
 
   let tr            = (~! "inline-text" , BaseType(TextRowType)) in
@@ -386,6 +384,7 @@ let make_environments () =
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
         ("math-frac"               , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
+        ("math-radical"            , ~% (opt math @-> math @-> math)                , lambda2 (fun vm1 vm2 -> BackendMathRadical(vm1, vm2)));
         ("math-paren"              , ~% (math @-> math)                             , lambda1 (fun vm -> BackendMathParen(vm)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
         ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));

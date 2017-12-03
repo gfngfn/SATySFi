@@ -240,6 +240,15 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathFraction(mlst1, mlst2)])
 
+  | BackendMathRadical(astm1, astm2) ->
+      let mlst1opt = interpret_option env (interpret_math env) astm1 in
+      let mlst2 = interpret_math env astm2 in
+      begin
+        match mlst1opt with
+        | None        -> MathValue([HorzBox.MathRadical(mlst2)])
+        | Some(mlst1) -> MathValue([HorzBox.MathRadicalWithDegree(mlst1, mlst2)])
+      end
+
   | BackendMathParen(astm1) ->
       let mlst1 = interpret_math env astm1 in
       let parenL = Primitives.default_math_left_paren in (* temporary; should be variable *)
@@ -1038,6 +1047,14 @@ and interpret_list env extractf ast =
   in
   let value = interpret env ast in
     aux [] value
+
+
+and interpret_option env extractf ast =
+  let value = interpret env ast in
+    match value with
+    | Constructor("None", UnitConstant) -> None
+    | Constructor("Some", valuesub)     -> Some(extractf valuesub)
+    | _                                 -> report_bug_evaluator "interpret_option"
 
 
 and interpret_math_class env ast : HorzBox.math_kind =

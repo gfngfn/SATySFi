@@ -296,9 +296,10 @@ type paren = length -> length -> length -> length -> horz_box list * math_kern_f
      -- *)
 
 type math =
-  | MathPure        of math_element
-  | MathFraction    of math list * math list
-  | MathRadical     of math list
-  | MathSubscript   of math list * math list
-  | MathSuperscript of math list * math list
-  | MathParen       of paren * paren * math list
+  | MathPure              of math_element
+  | MathSubscript         of math list * math list
+  | MathSuperscript       of math list * math list
+  | MathFraction          of math list * math list
+  | MathRadicalWithDegree of math list * math list
+  | MathRadical           of math list
+  | MathParen             of paren * paren * math list

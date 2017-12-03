@@ -225,7 +225,7 @@ module MathFontAbbrevHashTable
   end
 
 
-let get_math_font_size (scriptlev : int) (mathctx : math_context) (md : FontFormat.math_decoder) =
+let get_math_font_size (mathctx : math_context) (scriptlev : int) (md : FontFormat.math_decoder) =
   let size = mathctx.math_context_font_size in
   let mc = FontFormat.get_math_constants md in
   match scriptlev with
@@ -235,14 +235,14 @@ let get_math_font_size (scriptlev : int) (mathctx : math_context) (md : FontForm
   | _              -> assert false
 
 
-let get_math_string_info (scriptlev : int) (mathctx : math_context) : math_string_info =
+let get_math_string_info (mathctx : math_context) (scriptlev : int) : math_string_info =
   let mfabbrev = mathctx.math_context_font_abbrev in
   match MathFontAbbrevHashTable.find_opt mfabbrev with
   | None                -> raise (InvalidMathFontAbbrev(mfabbrev))
   | Some((_, _, md, _)) ->
       {
         math_font_abbrev = mfabbrev;
-        math_font_size   = get_math_font_size scriptlev mathctx md;
+        math_font_size   = get_math_font_size mathctx scriptlev md;
       }
 
 
@@ -278,7 +278,7 @@ let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
      (negative value stands for being closer to the previous glyph)
    -- *)
 let get_math_kern (mathctx : math_context) (scriptlev : int) (mkern : math_kern_scheme) (corrhgt : length) : length =
-  let fontsize = (get_math_string_info scriptlev mathctx).math_font_size in
+  let fontsize = (get_math_string_info mathctx scriptlev).math_font_size in
   match mkern with
   | NoMathKern              -> Length.zero
   | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio mkern (corrhgt /% fontsize) in fontsize *% ratiok
@@ -299,7 +299,7 @@ let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (uch :
           | Some(rawmic) -> f_skip rawmic
         in
           (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
-  
+
 
 let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
   match fontdfn with
