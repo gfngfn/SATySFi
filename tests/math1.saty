@@ -43,9 +43,11 @@ document (|
       math-sub (math-paren (math-frac (math-paren (math-list [math-frac math-A math-B; math-plus; math-C]))
         (math-sup math-D (math-paren (math-list [math-n; math-minus; math-1]))))) math-2
     ]);,
-    Layered:
+    layered:
     \math(math-list [
       math-paren (math-list [math-paren (math-list [math-paren math-A; math-plus; math-B]); math-plus; math-C]);
-    ]);
+    ]);,
+    radical:
+    \math(math-radical None math-2);
   }
 >
