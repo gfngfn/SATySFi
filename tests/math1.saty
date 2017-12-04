@@ -68,6 +68,8 @@ document (|
       ]
     );.
     Layered radical:
-    \math(math-sqrt (math-sqrt (math-sqrt (math-sqrt math-2))));
+    \math(math-sqrt (math-sqrt (math-sqrt (math-sqrt math-2))));.
+    Limits:
+    \math-with-context(fun ctx -> math-list [math-lim ctx (math-list [math-n; math-to; math-infty]); math-n]);
   }
 >

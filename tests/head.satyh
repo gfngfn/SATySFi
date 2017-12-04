@@ -489,11 +489,17 @@ let math-N = math-char 0x1D441
 let math-R = math-char 0x1D445
 let math-Y = math-char 0x1D44C
 let math-Z = math-char 0x1D44D
+let math-infty = math-glyph MathOrd `∞`
+let math-to    = math-glyph MathRel `→`
 let math-minus = math-glyph MathBin `−`
 let math-plus  = math-glyph MathBin `+`
 let math-pm    = math-glyph MathBin `±`
 let math-equal = math-glyph MathRel `=`
 let math-sqrt = math-radical None
+let math-lim ctx m = math-lower (text-in-math MathOp (read-inline ctx {lim})) m
 
 let-inline ctx \math fml =
   embed-math fml
+
+let-inline ctx \math-with-context fmlf =
+  embed-math (fmlf ctx)
