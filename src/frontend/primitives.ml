@@ -431,6 +431,7 @@ let make_environments () =
         ("math-upper"              , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
+        ("text-in-math"            , ~% (mathcls @-> br @-> math)                   , lambda2 (fun vmc vbr -> BackendMathText(vmc, vbr)));
         ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
         ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
       ]

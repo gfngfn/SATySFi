@@ -210,38 +210,41 @@ let get_real_font_size mathctx scriptlev =
 
 
 let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev : math_kind) (italcorropt : length option) (mk : math_kind) : horz_box option =
-  let fontsize = get_real_font_size mathctx scriptlev in
-    match (mkprev, mk) with
-    | (MathOrdinary, MathInner   )
-    | (MathInner   , MathInner   )
-    | (MathInner   , MathOrdinary)
-      -> space_ord_inner fontsize scriptlev
+  if scriptlev > 0 then
+    None
+  else
+    let fontsize = get_real_font_size mathctx scriptlev in
+      match (mkprev, mk) with
+      | (MathOrdinary, MathInner   )
+      | (MathInner   , MathInner   )
+      | (MathInner   , MathOrdinary)
+        -> space_ord_inner fontsize scriptlev
 
-    | (MathOrdinary, MathClose   )
-      ->
-        begin
-          match italcorropt with
-          | None           -> None
-          | Some(italcorr) -> Some(HorzPure(PHFixedEmpty(italcorr)))
-        end
+      | (MathOrdinary, MathClose   )
+        ->
+          begin
+            match italcorropt with
+            | None           -> None
+            | Some(italcorr) -> Some(HorzPure(PHFixedEmpty(italcorr)))
+          end
 
-    | (MathBinary  , MathOrdinary)
-    | (MathBinary  , MathInner   )
-    | (MathBinary  , MathOpen    )
-    | (MathOrdinary, MathBinary  )
-    | (MathInner   , MathBinary  )
-    | (MathClose   , MathBinary  )
-      -> space_ord_bin fontsize scriptlev
+      | (MathBinary  , MathOrdinary)
+      | (MathBinary  , MathInner   )
+      | (MathBinary  , MathOpen    )
+      | (MathOrdinary, MathBinary  )
+      | (MathInner   , MathBinary  )
+      | (MathClose   , MathBinary  )
+        -> space_ord_bin fontsize scriptlev
 
-    | (MathRelation, MathOrdinary)
-    | (MathRelation, MathInner   )
-    | (MathRelation, MathOpen    )
-    | (MathOrdinary, MathRelation)
-    | (MathInner   , MathRelation)
-    | (MathClose   , MathRelation)
-      -> space_ord_rel fontsize scriptlev
+      | (MathRelation, MathOrdinary)
+      | (MathRelation, MathInner   )
+      | (MathRelation, MathOpen    )
+      | (MathOrdinary, MathRelation)
+      | (MathInner   , MathRelation)
+      | (MathClose   , MathRelation)
+        -> space_ord_rel fontsize scriptlev
 
-    | _ -> None
+      | _ -> None
 
 
 let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : int) ((mkraw, memain) : math_element) : low_math_pure =
@@ -404,8 +407,8 @@ let upper_limit_baseline_height mathctx scriptlev h_base d_up =
   let fontsize = get_real_font_size mathctx scriptlev in
   let mc = FontInfo.get_math_constants mathctx in
   let l_upmingap = fontsize *% mc.FontFormat.upper_limit_gap_min in
-  let h_updstd = fontsize *% mc.FontFormat.upper_limit_baseline_rise_min in
-  let h_upbl = Length.max (h_base +% l_upmingap) (h_updstd +% d_up) in
+  let l_upblstd = fontsize *% mc.FontFormat.upper_limit_baseline_rise_min in
+  let h_upbl = Length.max (h_base +% l_upblstd) (h_base +% l_upmingap +% (Length.negate d_up)) in
     h_upbl
 
 
@@ -413,8 +416,8 @@ let lower_limit_baseline_depth mathctx scriptlev d_base h_low =
   let fontsize = get_real_font_size mathctx scriptlev in
   let mc = FontInfo.get_math_constants mathctx in
   let l_lowmingap = fontsize *% mc.FontFormat.lower_limit_gap_min in
-  let d_lowtstd = Length.negate (fontsize *% mc.FontFormat.lower_limit_baseline_drop_min) in
-  let d_lowbl = Length.min (d_base -% l_lowmingap) (d_lowtstd -% h_low) in
+  let l_lowblstd = fontsize *% mc.FontFormat.lower_limit_baseline_drop_min in
+  let d_lowbl = Length.min (d_base -% l_lowblstd) (d_base -% l_lowmingap -% h_low) in
     d_lowbl
 
 
@@ -766,7 +769,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
         let (_, _, _, lkB, rkB) = lmB in
         let hblstB = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmB in
           (* needs reconsideration *)
-        let hblstU = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmU in
+        let hblstU = horz_of_low_math mathctx (scriptlev + 1) MathEnd MathEnd lmU in
         let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
         let (w_up, _, _) = LineBreak.get_natural_metrics hblstU in
         let hblstsub =
@@ -794,7 +797,7 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
         let (_, _, _, lkB, rkB) = lmB in
         let hblstB = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmB in
           (* needs reconsideration *)
-        let hblstL = horz_of_low_math mathctx scriptlev MathEnd MathEnd lmL in
+        let hblstL = horz_of_low_math mathctx (scriptlev + 1) MathEnd MathEnd lmL in
         let (w_base, _, _) = LineBreak.get_natural_metrics hblstB in
         let (w_low, _, _) = LineBreak.get_natural_metrics hblstL in
         let hblstsub =

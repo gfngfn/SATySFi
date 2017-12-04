@@ -276,6 +276,11 @@ and interpret env ast =
       in
         MathValue(mlst)
 
+  | BackendMathText(astmathcls, asthl) ->
+      let mathcls = interpret_math_class env astmathcls in
+      let hblst = interpret_horz env asthl in
+        MathValue([HorzBox.MathPure(mathcls, HorzBox.MathEmbeddedHorz(hblst))])
+
   | BackendEmbeddedMath(astm) ->
       let mlst = interpret_math env astm in
       let mathctx = Primitives.default_math_context in (* temporary; should be variable *)
@@ -293,7 +298,7 @@ and interpret env ast =
       let pathlst1 = interpret_path_value env astpath1 in
       let pathlst2 = interpret_path_value env astpath2 in
         PathValue(List.append pathlst1 pathlst2)
-      
+
   | PrePathValue(_) -> ast
 
   | PrePathBeginning(astpt0) ->
