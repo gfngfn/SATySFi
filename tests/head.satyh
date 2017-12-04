@@ -472,8 +472,10 @@ let math-f = math-char 0x1D453
 let math-m = math-char 0x1D45A
 let math-n = math-char 0x1D45B
 let math-x = math-char 0x1D465
+let math-0 = math-glyph MathOrd `0`
 let math-1 = math-glyph MathOrd `1`
 let math-2 = math-glyph MathOrd `2`
+let math-3 = math-glyph MathOrd `3`
 let math-4 = math-glyph MathOrd `4`
 let math-5 = math-glyph MathOrd `5`
 let math-A = math-char 0x1D434
@@ -489,6 +491,7 @@ let math-Y = math-char 0x1D44C
 let math-Z = math-char 0x1D44D
 let math-minus = math-glyph MathBin `−`
 let math-plus  = math-glyph MathBin `+`
+let math-pm    = math-glyph MathBin `±`
 let math-equal = math-glyph MathRel `=`
 let math-sqrt = math-radical None
 

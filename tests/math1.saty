@@ -1,7 +1,7 @@
 % -*- coding: utf-8 -*-
 document (|
   title  = {Math Test};
-  author = {Takashi SUWA};
+  author = {gfn};
 |) '<
   +make-title;
   +p {
@@ -29,7 +29,6 @@ document (|
     This document
     \math(math-list [
       math-paren (math-sup math-F math-n);
-      math-plus;
       math-paren math-F;
       math-equal;
       math-sup (math-paren (math-list [
@@ -50,22 +49,25 @@ document (|
     radical:
     \math(math-list [
       math-2;
-      math-sqrt math-5;
+      math-sqrt math-3;
       math-plus;
       math-frac math-2 (math-sqrt math-5);
       math-plus;
       math-frac math-1 (math-sqrt (math-list [math-sup math-x math-2; math-plus; math-1]));
     ]);,
-    solution:
+    the solution of the equation
+    \math(math-list [
+      math-a; math-sup math-x math-2; math-plus; math-b; math-x; math-plus; math-c; math-equal; math-0;
+    ]); as to \math(math-x); is
     \math(
       let math-det = math-list [math-sup math-b math-2; math-minus; math-4; math-a; math-c] in
       math-list [
         math-x;
         math-equal;
-        math-frac (math-list [math-minus; math-b; math-plus; math-sqrt math-det]) (math-list [math-2; math-a]);
+        math-frac (math-list [math-minus; math-b; math-pm; math-sqrt math-det]) (math-list [math-2; math-a]);
       ]
-    );
-    layered radical:
-    \math(math-sqrt (math-sqrt (math-sqrt math-2)));
+    );.
+    Layered radical:
+    \math(math-sqrt (math-sqrt (math-sqrt (math-sqrt math-2))));
   }
 >

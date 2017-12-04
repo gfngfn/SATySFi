@@ -316,3 +316,5 @@ type math =
   | MathRadicalWithDegree of math list * math list
   | MathRadical           of radical * math list
   | MathParen             of paren * paren * math list
+  | MathUpperLimit        of math list * math list
+  | MathLowerLimit        of math list * math list

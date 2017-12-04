@@ -1281,9 +1281,11 @@ type math_constants =
     radical_extra_ascender        : float;
     radical_rule_thickness        : float;
     radical_d_vertical_gap        : float;
-    radical_kern_before_degree    : float;
-    radical_kern_after_degree     : float;
-    radical_degree_bottom         : float;
+  (* -- limits -- *)
+    upper_limit_gap_min           : float;
+    upper_limit_baseline_rise_min : float;
+    lower_limit_gap_min           : float;
+    lower_limit_baseline_drop_min : float;
   }
 
 
@@ -1327,9 +1329,11 @@ let get_math_constants (md : math_decoder) : math_constants =
       radical_extra_ascender        = get_main_ratio mc.Otfm.radical_extra_ascender;
       radical_rule_thickness        = get_main_ratio mc.Otfm.radical_rule_thickness;
       radical_d_vertical_gap        = get_main_ratio mc.Otfm.radical_display_style_vertical_gap;
-      radical_kern_before_degree    = get_main_ratio mc.Otfm.radical_kern_before_degree;
-      radical_kern_after_degree     = get_main_ratio mc.Otfm.radical_kern_after_degree;
-      radical_degree_bottom         = percent mc.Otfm.radical_degree_bottom_raise_percent;
+
+      upper_limit_gap_min           = get_main_ratio mc.Otfm.upper_limit_gap_min;
+      upper_limit_baseline_rise_min = get_main_ratio mc.Otfm.upper_limit_baseline_rise_min;
+      lower_limit_gap_min           = get_main_ratio mc.Otfm.lower_limit_gap_min;
+      lower_limit_baseline_drop_min = get_main_ratio mc.Otfm.lower_limit_baseline_drop_min;
     }
 
 

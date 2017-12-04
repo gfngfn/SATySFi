@@ -538,6 +538,8 @@ and abstract_tree =
   | BackendMathFraction         of abstract_tree * abstract_tree
   | BackendMathRadical          of abstract_tree * abstract_tree
   | BackendMathParen            of abstract_tree  (* temporary *)
+  | BackendMathUpperLimit       of abstract_tree * abstract_tree
+  | BackendMathLowerLimit       of abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment

@@ -256,6 +256,16 @@ and interpret env ast =
       let parenR = Primitives.default_math_right_paren in  (* temporary; should be variable *)
         MathValue([HorzBox.MathParen(parenL, parenR, mlst1)])
 
+  | BackendMathUpperLimit(astm1, astm2) ->
+      let mlst1 = interpret_math env astm1 in
+      let mlst2 = interpret_math env astm2 in
+        MathValue([HorzBox.MathUpperLimit(mlst1, mlst2)])
+
+  | BackendMathLowerLimit(astm1, astm2) ->
+      let mlst1 = interpret_math env astm1 in
+      let mlst2 = interpret_math env astm2 in
+        MathValue([HorzBox.MathLowerLimit(mlst1, mlst2)])
+
   | BackendMathGlyph(astmathcls, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in

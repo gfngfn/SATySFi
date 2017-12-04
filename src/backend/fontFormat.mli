@@ -126,9 +126,11 @@ type math_constants =
     radical_extra_ascender        : float;
     radical_rule_thickness        : float;
     radical_d_vertical_gap        : float;
-    radical_kern_before_degree    : float;
-    radical_kern_after_degree     : float;
-    radical_degree_bottom         : float;
+  (* -- limits -- *)
+    upper_limit_gap_min           : float;
+    upper_limit_baseline_rise_min : float;
+    lower_limit_gap_min           : float;
+    lower_limit_baseline_drop_min : float;
   }
 
 val get_math_constants : math_decoder -> math_constants
