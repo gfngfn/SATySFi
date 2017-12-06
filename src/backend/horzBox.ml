@@ -258,8 +258,6 @@ type vert_box =
   | VertFixedBreakable of length
 
 
-type math_graphics = unit  (* temporary *)
-
 type math_context =
   {
     math_context_font_abbrev : math_font_abbrev;
@@ -268,7 +266,6 @@ type math_context =
 
 type math_element_main =
   | MathChar         of math_context * Uchar.t
-  | MathGraphics     of math_graphics
   | MathEmbeddedHorz of horz_box list
 
 type math_kind =

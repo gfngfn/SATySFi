@@ -4,7 +4,6 @@ open HorzBox
 
 type low_math_atom =
   | LowMathGlyph        of math_string_info * length * length * length * FontFormat.glyph_id
-  | LowMathGraphics     of math_graphics
   | LowMathEmbeddedHorz of horz_box list
 
 type left_kern =
@@ -250,9 +249,6 @@ let space_between_math_atom (mathctx : math_context) (scriptlev : int) (mkprev :
 let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : int) ((mkraw, memain) : math_element) : low_math_pure =
   let mk = normalize_math_kind mkprev mknext mkraw in
   match memain with
-  | MathGraphics(g) ->
-      (mk, Length.zero (* temporary *), Length.zero (* temporary *), Length.zero (*temporary *), LowMathGraphics(g), no_left_kern MathEnd, no_right_kern MathEnd (* temporary *))
-
   | MathEmbeddedHorz(hblst) ->
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern mk, no_right_kern mk)
@@ -584,9 +580,6 @@ let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
   match lme with
   | LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid) ->
       [HorzPure(PHFixedMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
-
-  | LowMathGraphics(g) ->
-      []  (* temporary *)
 
   | LowMathEmbeddedHorz(hblst) ->
       hblst
