@@ -1082,12 +1082,13 @@ and interpret_option env extractf ast =
 and interpret_math_class env ast : HorzBox.math_kind =
   let value = interpret env ast in
     match value with
-    | Constructor("MathOrd"  , UnitConstant) -> HorzBox.MathOrdinary
-    | Constructor("MathBin"  , UnitConstant) -> HorzBox.MathBinary
-    | Constructor("MathRel"  , UnitConstant) -> HorzBox.MathRelation
-    | Constructor("MathOp"   , UnitConstant) -> HorzBox.MathOperator
-    | Constructor("MathOpen" , UnitConstant) -> HorzBox.MathOpen
-    | Constructor("MathClose", UnitConstant) -> HorzBox.MathClose
+    | Constructor("MathOrd"   , UnitConstant) -> HorzBox.MathOrdinary
+    | Constructor("MathBin"   , UnitConstant) -> HorzBox.MathBinary
+    | Constructor("MathRel"   , UnitConstant) -> HorzBox.MathRelation
+    | Constructor("MathOp"    , UnitConstant) -> HorzBox.MathOperator
+    | Constructor("MathOpen"  , UnitConstant) -> HorzBox.MathOpen
+    | Constructor("MathClose" , UnitConstant) -> HorzBox.MathClose
+    | Constructor("MathPrefix", UnitConstant) -> HorzBox.MathPrefix
     | _ ->
         report_bug_evaluator "interpret_math_class"
 

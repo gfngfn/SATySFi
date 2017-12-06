@@ -1271,6 +1271,8 @@ type math_constants =
     subscript_baseline_drop_min   : float;
     script_scale_down             : float;
     script_script_scale_down      : float;
+    space_after_script            : float;
+    sub_superscript_gap_min       : float;
   (* -- fractions -- *)
     fraction_rule_thickness       : float;
     fraction_numer_d_shift_up     : float;
@@ -1319,6 +1321,8 @@ let get_math_constants (md : math_decoder) : math_constants =
       subscript_baseline_drop_min   = get_main_ratio mc.Otfm.subscript_baseline_drop_min;
       script_scale_down             = percent mc.Otfm.script_percent_scale_down;
       script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
+      space_after_script            = get_main_ratio mc.Otfm.space_after_script;
+      sub_superscript_gap_min       = get_main_ratio mc.Otfm.sub_superscript_gap_min;
 
       fraction_rule_thickness       = get_main_ratio mc.Otfm.fraction_rule_thickness;
       fraction_numer_d_shift_up     = get_main_ratio mc.Otfm.fraction_numerator_display_style_shift_up;

@@ -116,6 +116,8 @@ type math_constants =
     subscript_baseline_drop_min   : float;
     script_scale_down             : float;
     script_script_scale_down      : float;
+    space_after_script            : float;
+    sub_superscript_gap_min       : float;
   (* -- fractions -- *)
     fraction_rule_thickness       : float;
     fraction_numer_d_shift_up     : float;

@@ -275,6 +275,7 @@ type math_kind =
   | MathOperator
   | MathOpen
   | MathClose
+  | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
   | MathInner
   | MathEnd
 [@@deriving show]
