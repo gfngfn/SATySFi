@@ -496,10 +496,7 @@ let math-plus  = math-glyph MathBin `+`
 let math-pm    = math-glyph MathBin `±`
 let math-equal = math-glyph MathRel `=`
 let math-sqrt = math-radical None
-let math-lim ctx m = math-lower (text-in-math MathOp (read-inline ctx {lim})) m
+let math-lim = math-lower (math-group MathOp MathOp (math-glyph MathOrd `lim`))
 
 let-inline ctx \math fml =
   embed-math fml
-
-let-inline ctx \math-with-context fmlf =
-  embed-math (fmlf ctx)
