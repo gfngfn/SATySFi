@@ -77,6 +77,10 @@ document (|
       math-e;
     ]);,
     fraction superscript:
-    \math(math-sup math-e (math-frac math-x math-2));
+    \math(math-sup math-e (math-frac math-x math-2));,
+    sub-superscript:
+    \math(math-list [math-sup (math-sub math-a (math-list [math-n; math-minus; math-1])) math-2; math-b]);,
+    sub-superscript correction:
+    \math(math-sup (math-sub math-a math-1) (math-frac math-n math-2));
   }
 >
