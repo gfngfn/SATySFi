@@ -285,14 +285,33 @@ let get_math_kern (mathctx : math_context) (scriptlev : int) (mkern : math_kern_
   | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
 
 
-let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (is_in_display : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
   let mfabbrev = mathstrinfo.math_font_abbrev in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
     | None                -> raise (InvalidFontAbbrev(mfabbrev))
     | Some((_, _, md, _)) ->
-        let is_script = scriptlev > 0 in
-        let (gid, rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_info md is_script uch in
+        let gidraw = FontFormat.get_math_glyph_id md uch in
+        let gidsub = if scriptlev > 0 then FontFormat.get_math_script_variant md gidraw else gidraw in
+        let gid =
+          if is_in_display then
+            match FontFormat.get_math_vertical_variants md gidsub with
+            | [] -> gidsub
+
+            | (gidvar, _) :: []
+            | _ :: (gidvar, _) :: _
+              ->
+                Format.printf "FontInfo> variant exists: %d ---> %d\n" (FontFormat.gid gidsub) (FontFormat.gid gidvar);  (* for debug *)
+                gidvar  (* -- somewhat ad-hoc; uses the sole variant as the glyph for display style -- *)
+(*
+            | _ ->
+                Format.printf "FontInfo> more than one variants\n";  (* for debug *)
+                gidsub
+*)
+          else
+            gidsub
+        in
+        let (rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_metrics md gid in
         let mic =
           match rawmicopt with
           | None         -> Length.zero

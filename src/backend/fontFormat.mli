@@ -101,7 +101,15 @@ val get_math_decoder : file_path -> math_decoder
 
 val math_base_font : math_decoder -> decoder
 
-val get_math_glyph_info : math_decoder -> bool -> Uchar.t -> glyph_id * int * int * int * int option * math_kern_info option
+val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
+
+val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
+
+val get_math_glyph_metrics : math_decoder -> glyph_id -> int * int * int * int option * math_kern_info option
+
+val get_math_vertical_variants : math_decoder -> glyph_id -> (glyph_id * float) list
+
+val get_math_horizontal_variants : math_decoder -> glyph_id -> (glyph_id * float) list
 
 type math_constants =
   {

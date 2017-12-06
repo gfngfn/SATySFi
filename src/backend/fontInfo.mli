@@ -6,7 +6,7 @@ val initialize : string -> unit
 
 val get_metrics_of_word : horz_string_info -> Uchar.t list -> OutputText.t * length * length * length
 
-val get_math_char_info : math_string_info -> int -> Uchar.t -> FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option
+val get_math_char_info : math_string_info -> int -> bool -> Uchar.t -> FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option
 
 val get_tag_and_encoding : font_abbrev -> string * encoding_in_pdf
 

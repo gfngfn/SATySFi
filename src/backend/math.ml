@@ -225,6 +225,9 @@ let space_ord_inner fontsize scriptlev =
     Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
 
 
+let space_ord_op = space_ord_inner  (* temporary *)
+
+
 let space_ord_prefix fontsize scriptlev =
   if scriptlev > 0 then None else
     Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
@@ -252,9 +255,11 @@ let space_between_math_kinds (mathctx : math_context) (scriptlev : int) (mkprev 
       | (MathOrdinary, MathInner   )
       | (MathInner   , MathInner   )
       | (MathInner   , MathOrdinary)
+      | (MathPrefix  , MathInner   )
         -> space_ord_inner fontsize scriptlev
 
       | (MathOrdinary, MathClose   )
+      | (MathPrefix  , MathClose   )
         ->
           begin
             match corr with
@@ -266,6 +271,7 @@ let space_between_math_kinds (mathctx : math_context) (scriptlev : int) (mkprev 
       | (MathBinary  , MathOrdinary)
       | (MathBinary  , MathInner   )
       | (MathBinary  , MathOpen    )
+      | (MathBinary  , MathPrefix  )
       | (MathOrdinary, MathBinary  )
       | (MathInner   , MathBinary  )
       | (MathClose   , MathBinary  )
@@ -274,12 +280,21 @@ let space_between_math_kinds (mathctx : math_context) (scriptlev : int) (mkprev 
       | (MathRelation, MathOrdinary)
       | (MathRelation, MathInner   )
       | (MathRelation, MathOpen    )
+      | (MathRelation, MathPrefix  )
       | (MathOrdinary, MathRelation)
       | (MathInner   , MathRelation)
       | (MathClose   , MathRelation)
         -> space_ord_rel fontsize scriptlev
 
+      | (MathOperator, MathOrdinary)
+      | (MathOperator, MathInner   )
+      | (MathOperator, MathPrefix  )
+      | (MathOrdinary, MathOperator)
+      | (MathInner   , MathOperator)
+        -> space_ord_op fontsize scriptlev
+
       | (MathOrdinary, MathPrefix  )
+      | (MathInner   , MathPrefix  )
         -> space_ord_prefix fontsize scriptlev
 
       | (_           , MathEnd     )
@@ -304,7 +319,8 @@ let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : 
 
   | MathChar(mathctx, uch) ->
       let mathstrinfo = FontInfo.get_math_string_info mathctx scriptlev in
-      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo scriptlev uch in
+      let is_in_display = true (* temporary *) in
+      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathstrinfo scriptlev is_in_display uch in
       let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkiopt in
         (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 

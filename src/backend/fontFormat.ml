@@ -1100,12 +1100,16 @@ type math_kern_info =
     kernBL : math_kern;
   }
 
+type math_variant_glyph = glyph_id * int
+
 type math_decoder =
   {
     as_normal_font             : decoder;
     math_constants             : Otfm.math_constants;
     math_italics_correction    : int MathInfoMap.t;
     math_top_accent_attachment : int MathInfoMap.t;
+    math_vertical_variants     : (math_variant_glyph list) MathInfoMap.t;
+    math_horizontal_variants   : (math_variant_glyph list) MathInfoMap.t;
     math_kern_info             : math_kern_info MathInfoMap.t;
     math_bbox_table            : bbox MathBBoxTable.t;
     math_charstring_info       : Otfm.charstring_info option;
@@ -1147,6 +1151,20 @@ let math_base_font (md : math_decoder) : decoder =
 let get_main_math_value ((x, _) : Otfm.math_value_record) = x
 
 
+let percent n =
+  (float_of_int n) /. 100.
+
+
+let to_design_units ratio =
+  int_of_float (ratio *. 1000.)
+    (* temporary; should use UnitsPerEm *)
+
+
+let to_ratio du =
+  (float_of_int du) /. 1000.
+    (* temporary; should use UnitsPerEm *)
+
+
 let convert_kern (mkopt : Otfm.math_kern option) : math_kern =
   let f = get_main_math_value in
   let rec aux acc mk =
@@ -1170,8 +1188,8 @@ let convert_kern_info (mkir : Otfm.math_kern_info_record) =
 
 
 let assoc_to_map f gidassoc =
-  gidassoc |> List.fold_left (fun map (gid, mvr) ->
-    map |> MathInfoMap.add gid (f mvr)
+  gidassoc |> List.fold_left (fun map (gid, data) ->
+    map |> MathInfoMap.add gid (f data)
   ) MathInfoMap.empty
 
 
@@ -1188,6 +1206,14 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
         let mkimap =
           mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
             |> assoc_to_map convert_kern_info
+        in
+        let mvertvarmap =
+          mathraw.Otfm.math_variants.Otfm.vert_glyph_assoc
+            |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
+        in
+        let mhorzvarmap =
+          mathraw.Otfm.math_variants.Otfm.horiz_glyph_assoc
+            |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
         in
         let mbboxtbl = MathBBoxTable.create 256 (* temporary *) in
         let csinfo =
@@ -1213,6 +1239,8 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
             math_constants             = mathraw.Otfm.math_constants;
             math_italics_correction    = micmap;
             math_top_accent_attachment = MathInfoMap.empty;  (* temporary *)
+            math_vertical_variants     = mvertvarmap;
+            math_horizontal_variants   = mhorzvarmap;
             math_kern_info             = mkimap;
             math_bbox_table            = mbboxtbl;
             math_charstring_info       = csinfo;
@@ -1235,27 +1263,52 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) =
       let skip opt _ = opt in
       let res = Otfm.gsub feature_ssty f_single skip skip None in
       match res with
-      | Error(oerr)       -> gid  (* temporary *)
+      | Error(oerr)       -> gid  (* temporary; maybe should emit an error *)
       | Ok(None)          -> gid
       | Ok(Some(gidssty)) -> gidssty
 
 
-let get_math_glyph_info (md : math_decoder) (is_script : bool) (uch : Uchar.t) =
+let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
   | None ->
       let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
-        (0, 0, 0, 0, None, None)
-  | Some(gidraw) ->
-      let gid = if is_script then get_script_style_id md gidraw else gidraw in
-      Format.printf "FontFormat> ssty %d ---> %d\n" gidraw gid;  (* for debug *)
-      let (wid, _, _) = get_glyph_metrics dcdr gid in
-      let (_, _, ymin, ymax) = get_math_bbox md gid in
-      let hgt = max 0 ymax in
-      let dpt = min 0 ymin in
-      let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
-      let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
-        (gid, wid, hgt, dpt, micopt, mkiopt)
+        0
+
+  | Some(gid) -> gid
+
+
+let get_math_script_variant (md : math_decoder) (gidorg : glyph_id) =
+    let gidssty = get_script_style_id md gidorg in
+    Format.printf "FontFormat> ssty %d ---> %d\n" gidorg gidssty;  (* for debug *)
+    gidssty
+
+
+let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) =
+  let dcdr = md.as_normal_font in
+  let (wid, _, _) = get_glyph_metrics dcdr gid in
+  let (_, _, ymin, ymax) = get_math_bbox md gid in
+  let hgt = max 0 ymax in
+  let dpt = min 0 ymin in
+  let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
+  let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
+    (wid, hgt, dpt, micopt, mkiopt)
+
+
+let get_math_variants gidorg map =
+  match map |> MathInfoMap.find_opt gidorg with
+  | None        -> []
+  | Some(assoc) -> assoc |> List.map (fun (gid, du) -> (gid, to_ratio du))
+
+
+let get_math_vertical_variants (md : math_decoder) (gidorg : glyph_id) =
+  let mvertvarmap = md.math_vertical_variants in
+  mvertvarmap |> get_math_variants gidorg
+
+
+let get_math_horizontal_variants (md : math_decoder) (gidorg : glyph_id) =
+  let mhorzvarmap = md.math_horizontal_variants in
+  mhorzvarmap |> get_math_variants gidorg
 
 
 type math_constants =
@@ -1289,20 +1342,6 @@ type math_constants =
     lower_limit_gap_min           : float;
     lower_limit_baseline_drop_min : float;
   }
-
-
-let percent n =
-  (float_of_int n) /. 100.
-
-
-let to_design_units ratio =
-  int_of_float (ratio *. 1000.)
-    (* temporary; should use UnitsPerEm *)
-
-
-let to_ratio du =
-  (float_of_int du) /. 1000.
-    (* temporary; should use UnitsPerEm *)
 
 
 let get_main_ratio mvr = to_ratio (get_main_math_value mvr)
