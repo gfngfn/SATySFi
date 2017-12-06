@@ -361,7 +361,7 @@ let superscript_baseline_height (mathctx : math_context) (scriptlev : int) h_bas
   let h_supbmin = fontsize *% mc.FontFormat.superscript_bottom_min in
   let h_supstd  = fontsize *% mc.FontFormat.superscript_shift_up in
   let l_supdmax = fontsize *% mc.FontFormat.superscript_baseline_drop_max in
-  let cand = [h_supstd; h_base -% l_supdmax; h_supbmin +% d_sup] in
+  let cand = [h_supstd; h_base -% l_supdmax; h_supbmin +% (Length.negate d_sup)] in
   let h_supbl = cand |> List.fold_left Length.max Length.zero in
     h_supbl
 
