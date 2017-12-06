@@ -478,6 +478,8 @@ let math-2 = math-glyph MathOrd `2`
 let math-3 = math-glyph MathOrd `3`
 let math-4 = math-glyph MathOrd `4`
 let math-5 = math-glyph MathOrd `5`
+let math-6 = math-glyph MathOrd `6`
+let math-pi = math-char 0x1D70B
 let math-A = math-char 0x1D434
 let math-B = math-char 0x1D435
 let math-C = math-char 0x1D436
@@ -497,6 +499,9 @@ let math-pm    = math-glyph MathBin `±`
 let math-equal = math-glyph MathRel `=`
 let math-sqrt = math-radical None
 let math-lim = math-lower (math-group MathOp MathOp (math-glyph MathOrd `lim`))
+let math-sum = math-glyph MathOp `∑`
+let math-int = math-glyph MathOp `∫`
+let math-ordd = math-glyph MathPrefix `d`
 
 let-inline ctx \math fml =
   embed-math fml
