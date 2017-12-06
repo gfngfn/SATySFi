@@ -307,6 +307,7 @@ type radical = length -> length -> length -> length -> horz_box list
 
 type math =
   | MathPure              of math_element
+  | MathGroup             of math_kind * math_kind * math list
   | MathSubscript         of math list * math list
   | MathSuperscript       of math list * math list
   | MathFraction          of math list * math list

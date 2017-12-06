@@ -34,6 +34,13 @@ type low_radical = horz_box list
 type low_math_main =
   | LowMathPure of low_math_pure
 
+  | LowMathGroup of math_kind * math_kind * low_math
+      (* --
+         (1) math class for leftward contents
+         (2) math class for rightward contents
+         (3) grouped contents
+         -- *)
+
   | LowMathSubscript of length * low_math * low_math
       (* --
          (1) baseline depth of the subscript
@@ -92,24 +99,24 @@ and low_math = low_math_main list * length * length * left_kern * right_kern
   (* -- lowmath has information about its height and depth -- *)
 
 
-let no_left_kern mk =
+let no_left_kern hgt dpt mk =
   {
     kernTL         = FontInfo.no_math_kern;
     kernBL         = FontInfo.no_math_kern;
     left_math_kind = mk;
-    first_height   = Length.zero;
-    first_depth    = Length.zero;
+    first_height   = hgt;
+    first_depth    = dpt;
   }
 
 
-let no_right_kern mk =
+let no_right_kern hgt dpt mk =
   {
     italics_correction = Length.zero;
     kernTR             = FontInfo.no_math_kern;
     kernBR             = FontInfo.no_math_kern;
     right_math_kind    = mk;
-    last_height        = Length.zero;
-    last_depth         = Length.zero;
+    last_height        = hgt;
+    last_depth         = dpt;
   }
 
 
@@ -125,7 +132,7 @@ let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
           first_depth    = dpt;
         }
 
-    | None -> no_left_kern mk
+    | None -> no_left_kern hgt dpt mk
   in
   let rk =
     match mkiopt with
@@ -251,7 +258,7 @@ let convert_math_element (mkprev : math_kind) (mknext : math_kind) (scriptlev : 
   match memain with
   | MathEmbeddedHorz(hblst) ->
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-        (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern mk, no_right_kern mk)
+        (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathChar(mathctx, uch) ->
       let mathstrinfo = FontInfo.get_math_string_info mathctx scriptlev in
@@ -280,27 +287,31 @@ let make_right_paren_kern hR dR mkernsR =
     last_depth         = dR;
   }
 
-let get_left_kern lmmain =
+let get_left_kern lmmain hgt dpt =
+  let nokernf = no_left_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, lk, _)          -> lk
+  | LowMathGroup(mkL, _, _)                    -> nokernf mkL
   | LowMathSubscript(_, (_, _, _, lk, _), _)   -> lk
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
-  | LowMathFraction(_, _, _, _)                -> no_left_kern MathInner
-  | LowMathRadical(_)                          -> no_left_kern MathInner
-  | LowMathRadicalWithDegree(_, _, _, _, _)    -> no_left_kern MathInner
+  | LowMathFraction(_, _, _, _)                -> nokernf MathInner
+  | LowMathRadical(_)                          -> nokernf MathInner
+  | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
   | LowMathParen((_, hL, dL, mkernsL), _, _)   -> make_left_paren_kern hL dL mkernsL
   | LowMathUpperLimit(_, (_, _, _, lk, _), _)  -> lk
   | LowMathLowerLimit(_, (_, _, _, lk, _), _)  -> lk
 
 
-let get_right_kern lmmain =
+let get_right_kern lmmain hgt dpt =
+  let nokernf = no_right_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, _, rk)          -> rk
-  | LowMathSubscript(_, (_, _, _, _, rk), _)   -> no_right_kern rk.right_math_kind
-  | LowMathSuperscript(_, (_, _, _, _, rk), _) -> no_right_kern rk.right_math_kind
-  | LowMathFraction(_, _, _, _)                -> no_right_kern MathInner
-  | LowMathRadical(_)                          -> no_right_kern MathInner
-  | LowMathRadicalWithDegree(_, _, _, _, _)    -> no_right_kern MathInner
+  | LowMathGroup(_, mkR, _)                    -> nokernf mkR
+  | LowMathSubscript(_, (_, _, _, _, rk), _)   -> nokernf rk.right_math_kind
+  | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
+  | LowMathFraction(_, _, _, _)                -> nokernf MathInner
+  | LowMathRadical(_)                          -> nokernf MathInner
+  | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
   | LowMathParen(_, (_, hR, dR, mkernsR), _)   -> make_right_paren_kern hR dR mkernsR
   | LowMathUpperLimit(_, (_, _, _, _, rk), _)  -> rk
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
@@ -308,6 +319,7 @@ let get_right_kern lmmain =
 
 let rec get_left_math_kind = function
   | MathPure((mk, _))              -> mk
+  | MathGroup(mkL, _, _)           -> mkL
   | MathSuperscript([], _)         -> MathEnd
   | MathSuperscript(mathB :: _, _) -> get_left_math_kind mathB
   | MathSubscript([], _)           -> MathEnd
@@ -326,6 +338,7 @@ let rec get_right_math_kind math =
   try
     match math with
     | MathPure((mk, _))           -> mk
+    | MathGroup(_, mkR, _)        -> mkR
     | MathSuperscript([], _)      -> MathEnd
     | MathSuperscript(mathlst, _) -> get_right_math_kind (List.hd (List.rev mathlst))
     | MathSubscript([], _)        -> MathEnd
@@ -468,16 +481,21 @@ let rec convert_to_low (mathctx : math_context) (scriptlev : int) (mkfirst : mat
       let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathnext in
         (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)
       let (lmmain, hgt, dpt) = convert_to_low_single mkprev mknext mathctx scriptlev math in
-      let rk = get_right_kern lmmain in
-      let lk = get_left_kern lmmain in
+      let rk = get_right_kern lmmain hgt dpt in
+      let lk = get_left_kern lmmain hgt dpt in
       match opt with
       | None                                        -> Some((hgt, dpt, lk, rk, lmmain :: []))
       | Some((hgtprev, dptprev, lkfirst, _, lmacc)) -> Some((Length.max hgt hgtprev, Length.min dpt dptprev, lkfirst, rk, lmmain :: lmacc))
     ) None
   in
   match optres with
-  | None                                         -> ([], Length.zero, Length.zero, no_left_kern MathEnd, no_right_kern MathEnd)
-  | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) -> (List.rev lmmainacc, hgt, dpt, lkfirst, rklast)
+  | None ->
+      let lk = no_left_kern Length.zero Length.zero MathEnd in
+      let rk = no_right_kern Length.zero Length.zero MathEnd in
+        ([], Length.zero, Length.zero, lk, rk)
+  
+  | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) ->
+      (List.rev lmmainacc, hgt, dpt, lkfirst, rklast)
 
 
 and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : math_context) (scriptlev : int) (math : math) : low_math_main * length * length =
@@ -485,6 +503,11 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
   | MathPure(me) ->
       let (mk, wid, hgt, dpt, lme, lk, rk) = convert_math_element mkprev mknext scriptlev me in
         (LowMathPure(mk, wid, hgt, dpt, lme, lk, rk), hgt, dpt)
+
+  | MathGroup(mkL, mkR, mlstC) ->
+      let lmC = convert_to_low mathctx scriptlev MathEnd MathClose mlstC in
+      let (_, h_cont, d_cont, _, _) = lmC in
+        (LowMathGroup(mkL, mkR, lmC), h_cont, d_cont)
 
   | MathFraction(mlstN, mlstD) ->
       let lmN = convert_to_low mathctx scriptlev MathEnd MathEnd mlstN in
@@ -634,6 +657,16 @@ let rec horz_of_low_math (mathctx : math_context) (scriptlev : int) (mkprevfirst
           | Some(hbspace) -> List.rev_append hblstpure (hbspace :: hbacc)
         in
           aux hbaccnew mk (Some(rk.italics_correction)) lmmaintail
+
+    | LowMathGroup(mkL, mkR, lmC) :: lmmaintail ->
+        let hblstC = horz_of_low_math mathctx scriptlev MathEnd MathClose lmC in
+        let hbspaceopt = space_between_math_atom mathctx scriptlev mkprev italcorropt mkL in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblstC hbacc
+          | Some(hbspace) -> List.rev_append hblstC (hbspace :: hbacc)
+        in
+          aux hbaccnew mkR None lmmaintail
 
     | LowMathSuperscript(h_supbl, lmB, lmS) :: lmmaintail ->
         let (_, _, _, lkB, rkB) = lmB in

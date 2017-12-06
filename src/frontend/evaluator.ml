@@ -225,6 +225,12 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue(List.append mlst1 mlst2)
 
+  | BackendMathGroup(astmathcls1, astmathcls2, astm) ->
+      let mathcls1 = interpret_math_class env astmathcls1 in
+      let mathcls2 = interpret_math_class env astmathcls2 in
+      let mlst = interpret_math env astm in
+        MathValue([HorzBox.MathGroup(mathcls1, mathcls2, mlst)])
+
   | BackendMathSuperscript(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in

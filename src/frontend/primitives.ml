@@ -423,6 +423,7 @@ let make_environments () =
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
         ("math-glyph"              , ~% (mathcls @-> s @-> math)                    , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
+        ("math-group"              , ~% (mathcls @-> mathcls @-> math @-> math)     , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
         ("math-frac"               , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
