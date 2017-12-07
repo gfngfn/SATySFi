@@ -100,10 +100,8 @@ let default_font_scheme =
 
 
 let default_math_context =
-  HorzBox.({
-    math_context_font_abbrev = "lmodern";
-    math_context_font_size   = Length.of_pdf_point 12.;
-  })
+  HorzBox.(MathContext.make "lmodern" (Length.of_pdf_point 12.))
+
 
 
 let default_math_left_paren hgt dpt hgtaxis fontsize =

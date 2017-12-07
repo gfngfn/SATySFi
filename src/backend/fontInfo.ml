@@ -225,25 +225,21 @@ module MathFontAbbrevHashTable
   end
 
 
-let get_math_font_size (mathctx : math_context) (scriptlev : int) (md : FontFormat.math_decoder) =
-  let size = mathctx.math_context_font_size in
-  let mc = FontFormat.get_math_constants md in
-  match scriptlev with
-  | 0              -> size
-  | 1              -> size *% mc.FontFormat.script_scale_down
-  | t  when t >= 2 -> size *% mc.FontFormat.script_script_scale_down
-  | _              -> assert false
-
-
-let get_math_string_info (mathctx : math_context) (scriptlev : int) : math_string_info =
-  let mfabbrev = mathctx.math_context_font_abbrev in
+let find_math_decoder_exn mfabbrev =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
   | None                -> raise (InvalidMathFontAbbrev(mfabbrev))
-  | Some((_, _, md, _)) ->
-      {
-        math_font_abbrev = mfabbrev;
-        math_font_size   = get_math_font_size mathctx scriptlev md;
-      }
+  | Some((_, _, md, _)) -> md
+
+
+let actual_math_font_size mathctx =
+  MathContext.actual_font_size mathctx find_math_decoder_exn
+
+
+let get_math_string_info mathctx : math_string_info =
+  {
+    math_font_abbrev = MathContext.math_font_abbrev mathctx;
+    math_font_size   = actual_math_font_size mathctx;
+  }
 
 
 let get_math_tag mfabbrev =
@@ -253,10 +249,9 @@ let get_math_tag mfabbrev =
 
 
 let get_math_constants mathctx =
-  let mfabbrev = mathctx.math_context_font_abbrev in
-    match MathFontAbbrevHashTable.find_opt mfabbrev with
-    | None                -> raise (InvalidMathFontAbbrev(mfabbrev))
-    | Some((_, _, md, _)) -> FontFormat.get_math_constants md
+  let mfabbrev = MathContext.math_font_abbrev mathctx in
+  let md = find_math_decoder_exn mfabbrev in
+    FontFormat.get_math_constants md
 
 
 type math_kern_scheme =
@@ -277,22 +272,27 @@ let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
      returns kerning length
      (negative value stands for being closer to the previous glyph)
    -- *)
-let get_math_kern (mathctx : math_context) (scriptlev : int) (mkern : math_kern_scheme) (corrhgt : length) : length =
-  let fontsize = (get_math_string_info mathctx scriptlev).math_font_size in
+let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
+  let fontsize = actual_math_font_size mathctx in
   match mkern with
   | NoMathKern              -> Length.zero
   | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio mkern (corrhgt /% fontsize) in fontsize *% ratiok
   | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
 
 
-let get_math_char_info (mathstrinfo : math_string_info) (scriptlev : int) (is_in_display : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
-  let f_skip = raw_length_to_skip_length mathstrinfo.math_font_size in
-  let mfabbrev = mathstrinfo.math_font_abbrev in
+let get_math_char_info (mathctx : math_context) (is_in_display : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+  let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
+  let mfabbrev = MathContext.math_font_abbrev mathctx in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
     | None                -> raise (InvalidFontAbbrev(mfabbrev))
     | Some((_, _, md, _)) ->
         let gidraw = FontFormat.get_math_glyph_id md uch in
-        let gidsub = if scriptlev > 0 then FontFormat.get_math_script_variant md gidraw else gidraw in
+        let gidsub =
+          if MathContext.is_in_base_level mathctx then
+            gidraw
+          else
+            FontFormat.get_math_script_variant md gidraw
+        in
         let gid =
           if is_in_display then
             match FontFormat.get_math_vertical_variants md gidsub with

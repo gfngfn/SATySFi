@@ -278,7 +278,7 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let mlst =
         uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(mathcls, MathChar(Primitives.default_math_context, uch))))
+          HorzBox.(MathPure(mathcls, MathChar(uch))))
       in
         MathValue(mlst)
 

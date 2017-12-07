@@ -264,6 +264,9 @@ module MathContext
     val make : math_font_abbrev -> length -> t
     val enter_script : t -> t
     val is_in_base_level : t -> bool
+    val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
+    val base_font_size : t -> length
+    val math_font_abbrev : t -> math_font_abbrev
   end
 = struct
     type level =
@@ -299,17 +302,28 @@ module MathContext
       | BaseLevel -> true
       | _         -> false
 
+    let actual_font_size mctx (mdf : math_font_abbrev -> FontFormat.math_decoder) =
+      let bfsize = mctx.base_font_size in
+      let md = mdf mctx.font_abbrev in
+      let mc = FontFormat.get_math_constants md in
+      match mctx.level with
+      | BaseLevel         -> bfsize
+      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
+      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
+
+    let base_font_size mctx =
+      mctx.base_font_size
+
+    let math_font_abbrev mctx =
+      mctx.font_abbrev
+
   end
 
 
-type math_context =
-  {
-    math_context_font_abbrev : math_font_abbrev;
-    math_context_font_size   : length;
-  }
+type math_context = MathContext.t
 
 type math_element_main =
-  | MathChar         of math_context * Uchar.t
+  | MathChar         of Uchar.t
   | MathEmbeddedHorz of horz_box list
 
 type math_kind =
