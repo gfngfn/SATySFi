@@ -47,12 +47,14 @@ type low_math_main =
          (2) base contents
          (3) subscript contents
          -- *)
+
   | LowMathSuperscript of length * low_math * low_math
       (* --
          (1) baseline height of the superscript
          (2) base contents
          (3) superscript contents
          -- *)
+
   | LowMathSubSuperscript of length * length * low_math * low_math * low_math
       (* --
          (1) baselin height of the superscript
@@ -69,12 +71,14 @@ type low_math_main =
          (3) numerator contents
          (4) denominator contents
          -- *)
+
   | LowMathRadical of low_radical * length * length * low_math
       (* --
          (1) height of the bar
          (2) thickness of the bar
          (3) inner contents
          -- *)
+
   | LowMathRadicalWithDegree of length * length * length * low_math * low_math
       (* --
          (1) height of the bar
@@ -83,6 +87,7 @@ type low_math_main =
          (4) degree contents
          (5) inner contents
          -- *)
+
   | LowMathParen of low_paren * low_paren * low_math
       (* --
          (1) graphical specification of the left parenthesis
@@ -111,6 +116,7 @@ type space_correction =
   | NoSpace
   | ItalicsCorrection of length
   | SpaceAfterScript
+
 
 let no_left_kern hgt dpt mk =
   {
@@ -202,7 +208,7 @@ let normalize_math_kind mkprev mknext mkraw =
           -> MathBinary
 
         | _ ->
-            Format.printf "Math> normalize (%a, %a)\n" pp_math_kind mkprev pp_math_kind mknext;
+            Format.printf "Math> normalize (%a, %a)\n" pp_math_kind mkprev pp_math_kind mknext;  (*for debug *)
             MathOrdinary
       end
 
@@ -212,25 +218,30 @@ let normalize_math_kind mkprev mknext mkraw =
 
 let space_ord_bin fontsize scriptlev =
   if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.25, Length.zero, Length.zero)))  (* temporary; should be variable *)
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.25, Length.zero, Length.zero)))
+      (* temporary; should be variable *)
 
 
 let space_ord_rel fontsize scriptlev =
   if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.375, Length.zero, Length.zero)))  (* temporary; should be variable *)
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.375, Length.zero, Length.zero)))
+      (* temporary; should be variable *)
 
 
 let space_ord_inner fontsize scriptlev =
   if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))
+      (* temporary; should be variable *)
 
 
-let space_ord_op = space_ord_inner  (* temporary *)
+let space_ord_op = space_ord_inner
+  (* temporary *)
 
 
 let space_ord_prefix fontsize scriptlev =
   if scriptlev > 0 then None else
-    Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))  (* temporary; should be variable *)
+    Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))
+      (* temporary; should be variable *)
 
 
 let get_real_font_size mathctx scriptlev =

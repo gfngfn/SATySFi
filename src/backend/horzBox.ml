@@ -258,6 +258,50 @@ type vert_box =
   | VertFixedBreakable of length
 
 
+module MathContext
+: sig
+    type t
+    val make : math_font_abbrev -> length -> t
+    val enter_script : t -> t
+    val is_in_base_level : t -> bool
+  end
+= struct
+    type level =
+      | BaseLevel
+      | ScriptLevel
+      | ScriptScriptLevel
+
+    type t =
+      {
+        font_abbrev    : math_font_abbrev;
+        base_font_size : length;
+        level_int      : int;
+        level          : level;
+      }
+
+    let make mfabbrev basesize =
+      {
+        font_abbrev    = mfabbrev;
+        base_font_size = basesize;
+        level_int      = 0;
+        level          = BaseLevel;
+      }
+
+    let enter_script mctx =
+      let levnew = mctx.level_int + 1 in
+      match mctx.level with
+      | BaseLevel         -> { mctx with level = ScriptLevel;       level_int = levnew; }
+      | ScriptLevel       -> { mctx with level = ScriptScriptLevel; level_int = levnew; }
+      | ScriptScriptLevel -> { mctx with                            level_int = levnew; }
+
+    let is_in_base_level mctx =
+      match mctx.level with
+      | BaseLevel -> true
+      | _         -> false
+
+  end
+
+
 type math_context =
   {
     math_context_font_abbrev : math_font_abbrev;
