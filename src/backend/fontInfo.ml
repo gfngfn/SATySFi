@@ -53,13 +53,13 @@ let get_font dcdr fontreg fontname =
         (FontFormat.cid_font_type_2 cidty2font fontname cmap)
 
 
-type font_tuple = FontFormat.font * tag * FontFormat.decoder
+type font_tuple = (tag option) ref * FontFormat.font * FontFormat.decoder
 
 
 module FontAbbrevHashTable
 : sig
     val add : font_abbrev -> FontFormat.file_path -> unit
-    val fold : (font_abbrev -> font_tuple -> 'a -> 'a) -> 'a -> 'a
+    val fold : (font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) -> 'a -> 'a
     val find_opt : font_abbrev -> font_tuple option
   end
 = struct
@@ -86,23 +86,40 @@ module FontAbbrevHashTable
       | None                  -> raise (NotASingleFont(abbrev, srcpath))
       | Some((dcdr, fontreg)) ->
           let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
-          let tag = generate_tag () in
-            Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr)
+            Ht.add abbrev_to_definition_hash_table abbrev (ref None, font, dcdr)
 
-    let fold f init =
-      Ht.fold f abbrev_to_definition_hash_table init
+    let fold (f : font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) init =
+      Ht.fold (fun abbrev tuple acc ->
+        let (tagoptref, font, dcdr) = tuple in
+        match !tagoptref with
+        | None      -> acc  (* -- ignores unused fonts -- *)
+        | Some(tag) -> f abbrev (tag, font, dcdr) acc
+      ) abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
-      try Some(Ht.find abbrev_to_definition_hash_table abbrev) with
-      | Not_found -> None
+      match Ht.find_opt abbrev_to_definition_hash_table abbrev with
+      | None ->
+          None
 
+      | Some((tagoptref, _, _) as tuple) ->
+          begin
+            match !tagoptref with
+            | None ->
+              (* -- if this is the first access to the font -- *)
+                let tag = generate_tag () in
+                tagoptref := Some(tag);
+                Some(tuple)
+
+            | Some(_) ->
+                Some(tuple)
+          end
   end
 
 
-let get_font_tag (abbrev : font_abbrev) =
+let get_font_tag (abbrev : font_abbrev) : tag option =
   match FontAbbrevHashTable.find_opt abbrev with
-  | None              -> raise (InvalidFontAbbrev(abbrev))
-  | Some((_, tag, _)) -> tag
+  | None                    -> raise (InvalidFontAbbrev(abbrev))
+  | Some((tagoptref, _, _)) -> !tagoptref
 
 
 let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
@@ -302,7 +319,7 @@ let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
     [] |> FontAbbrevHashTable.fold (fun _ tuple acc ->
-      let (fontdfn, tag, dcdr) = tuple in
+      let (tag, fontdfn, dcdr) = tuple in
       let obj = make_dictionary pdf fontdfn dcdr in
         (tag, obj) :: acc
     ) |> MathFontAbbrevHashTable.fold (fun _ mftuple acc ->
