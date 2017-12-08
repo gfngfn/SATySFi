@@ -167,12 +167,12 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
-type math_font_tuple = FontFormat.font * tag * FontFormat.math_decoder
+type math_font_tuple = (tag option) ref * FontFormat.font * FontFormat.math_decoder
 
 module MathFontAbbrevHashTable
 : sig
     val add : math_font_abbrev -> FontFormat.file_path -> unit
-    val fold : (math_font_abbrev -> math_font_tuple -> 'a -> 'a) -> 'a -> 'a
+    val fold : (math_font_abbrev -> tag * FontFormat.font * FontFormat.math_decoder -> 'a -> 'a) -> 'a -> 'a
     val find_opt : math_font_abbrev -> math_font_tuple option
   end
 = struct
@@ -201,16 +201,32 @@ module MathFontAbbrevHashTable
 
       | Some((md, fontreg)) ->
           let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
-          let tag = generate_tag () in
-            Ht.add abbrev_to_definition_hash_table mfabbrev (font, tag, md)
+            Ht.add abbrev_to_definition_hash_table mfabbrev (ref None, font, md)
 
     let fold f init =
-      Ht.fold f abbrev_to_definition_hash_table init
+      Ht.fold (fun mfabbrev (tagoptref, font, md) acc ->
+        match !tagoptref with
+        | None      -> acc  (* -- ignores unused math fonts -- *)
+        | Some(tag) -> f mfabbrev (tag, font, md) acc
+      ) abbrev_to_definition_hash_table init
 
     let find_opt (mfabbrev : math_font_abbrev) =
-      try Some(Ht.find abbrev_to_definition_hash_table mfabbrev) with
-      | Not_found -> None
+      match Ht.find_opt abbrev_to_definition_hash_table mfabbrev with
+      | None ->
+          None
 
+      | Some((tagoptref, _, _) as tuple) ->
+          begin
+            match !tagoptref with
+            | None ->
+              (* -- if this is the first access to the math font -- *)
+                let tag = generate_tag () in
+                tagoptref := Some(tag);
+                Some(tuple)
+
+            | Some(_) ->
+                Some(tuple)
+          end
   end
 
 
@@ -233,8 +249,8 @@ let get_math_string_info mathctx : math_string_info =
 
 let get_math_tag mfabbrev =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
-  | None              -> raise (InvalidMathFontAbbrev(mfabbrev))
-  | Some((_, tag, _)) -> tag
+  | None                    -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some((tagoptref, _, _)) -> !tagoptref
 
 
 let get_math_constants mathctx =
@@ -323,7 +339,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
       let obj = make_dictionary pdf fontdfn dcdr in
         (tag, obj) :: acc
     ) |> MathFontAbbrevHashTable.fold (fun _ mftuple acc ->
-      let (fontdfn, tag, md) = mftuple in
+      let (tag, fontdfn, md) = mftuple in
       let obj = make_dictionary pdf fontdfn (FontFormat.math_base_font md) in
         (tag, obj) :: acc
     )
@@ -342,23 +358,18 @@ let initialize (satysfi_root_dir : string) =
 
   PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
   List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) [
-
     ("Hlv", append_directory "HelveticaBlack.ttf");
-
     ("Osaka", append_directory "Osaka.ttf");
     ("ipaexm", append_directory "ipaexm.ttf");
-
     ("Arno", append_directory "ArnoPro-Regular.otf");
     ("ArnoIt", append_directory "ArnoPro-Italic.otf");
-(*
-    ("KozMin", CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf");
-*)
+    ("KozMin", append_directory "KozMinPro-Regular.otf");
   ];
   List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) [
 (*
     ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
-    ("Asana", CIDFontType0Registration("Asana-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Asana-math.otf");
 *)
+    ("Asana", append_directory "Asana-math.otf");
     ("lmodern", append_directory "latinmodern-math.otf");
 (*
     ("xits", CIDFontType0Registration("xits-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "xits-math.otf");

@@ -64,7 +64,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         begin
           match FontInfo.get_font_tag hsinfo.font_abbrev with
           | None ->
-            (* -- this cannot happen: unactivated font found in the text -- *)
+            (* -- this cannot happen: unactivated font found in the document -- *)
               assert false
 
           | Some(tag) ->
@@ -92,26 +92,33 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         end
 
     | EvHorz(wid, EvHorzMathGlyph(mathinfo, hgt, dpt, gid)) ->
-        let tag = FontInfo.get_math_tag mathinfo.math_font_abbrev in
-        let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
-        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
-        let ops =
+        begin
+          match FontInfo.get_math_tag mathinfo.math_font_abbrev with
+          | None ->
+            (* -- this cannot happen: unactivated math font found in the document -- *)
+              assert false
 
-        List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+          | Some(tag) ->
+              let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
+              let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
+              let ops =
 
-          [
-            Graphics.op_cm (Length.zero, Length.zero);
-            Graphics.op_q;
-            Graphics.op_BT;
-            Graphics.op_Tm_translate (xpos, yposbaseline);
-            Graphics.op_Tf tag mathinfo.math_font_size;
-            opword;
-            Graphics.op_ET;
-            Graphics.op_Q;
-          ]
-        in
-        let opaccnew = List.rev_append ops opacc in
-        (xpos +% wid, opaccnew)
+              List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
+                [
+                  Graphics.op_cm (Length.zero, Length.zero);
+                  Graphics.op_q;
+                  Graphics.op_BT;
+                  Graphics.op_Tm_translate (xpos, yposbaseline);
+                  Graphics.op_Tf tag mathinfo.math_font_size;
+                  opword;
+                  Graphics.op_ET;
+                  Graphics.op_Q;
+                ]
+              in
+              let opaccnew = List.rev_append ops opacc in
+              (xpos +% wid, opaccnew)
+        end
 
     | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
         let (_, opaccsub) =
