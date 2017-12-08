@@ -16,8 +16,21 @@ exception NoGlyphID                         of glyph_id
 exception UnsupportedTTC  (* temporary *)
 exception CannotFindUnicodeCmap
 
+type cid_system_info
 
-val get_decoder : file_path -> decoder
+type font_registration =
+(*
+  | Type1Registration          of int * int * encoding_in_pdf
+  | TrueTypeRegistration       of int * int * encoding_in_pdf
+*)
+  | CIDFontType0Registration   of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2OTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2TTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+
+val get_decoder_single : file_path -> (decoder * font_registration) option
 
 type 'a resource =
   | Data           of 'a
@@ -26,8 +39,6 @@ type 'a resource =
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of (string resource) ref  (* temporary;*)
-
-type cid_system_info
 
 module Type1 : sig
   type font
@@ -79,8 +90,6 @@ val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 val adobe_japan1 : cid_system_info
 val adobe_identity : cid_system_info
 
-val get_decoder : file_path -> decoder
-
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> int option
@@ -97,7 +106,7 @@ type math_kern_info =
 
 type math_decoder
 
-val get_math_decoder : file_path -> math_decoder
+val get_math_decoder : file_path -> (math_decoder * font_registration) option
 
 val math_base_font : math_decoder -> decoder
 

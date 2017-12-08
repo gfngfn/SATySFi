@@ -39,6 +39,27 @@ let pickup lst predicate e =
   | []        -> Error(e)
 
 
+module OptionMonad = struct
+  let ( >>= ) x f =
+    match x with
+    | None as n -> n
+    | Some(v)   -> f v
+
+  let return v = Some(v)
+end
+
+module ResultMonad = struct
+  let ( >>= ) x f =
+    match x with
+    | Ok(v)         -> f v
+    | Error(_) as e -> e
+
+  let return v = Ok(v)
+
+  let err e = Error(e)
+end
+
+
 let ( += ) r n =
   r := !r + n
 
