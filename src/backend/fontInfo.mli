@@ -14,7 +14,7 @@ val get_font_tag : font_abbrev -> tag
 
 val get_math_string_info : math_context -> math_string_info
 
-val get_math_tag : math_font_abbrev -> tag option
+val get_math_tag : math_font_abbrev -> tag
 
 type math_kern_scheme
 
