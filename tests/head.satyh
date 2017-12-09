@@ -46,6 +46,7 @@ let document rcd inner =
     get-initial-context page pt wid hgt
       |> set-font Latin font-latin-roman
       |> set-dominant-script Latin
+      |> set-math-font `lmodern`
   in
   let () = ref-title <- title in
   let () = ref-author <- author in
@@ -504,4 +505,4 @@ let math-int = math-glyph MathOp `∫`
 let math-ordd = math-glyph MathPrefix `d`
 
 let-inline ctx \math fml =
-  embed-math fml
+  embed-math ctx fml
