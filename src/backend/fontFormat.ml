@@ -55,12 +55,78 @@ let string_of_file (flnmin : file_path) : string =
   | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
 
 
-let get_main_decoder (src : file_path) : Otfm.decoder =
+type cid_system_info = {
+    registry   : string;
+    ordering   : string;
+    supplement : int;
+  }
+
+
+let adobe_japan1   = { registry = "Adobe"; ordering = "Japan1"  ; supplement = 6; }
+let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0; }
+
+
+type font_registration =
+(*
+  | Type1Registration          of int * int * encoding_in_pdf
+  | TrueTypeRegistration       of int * int * encoding_in_pdf
+*)
+  | CIDFontType0Registration   of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2OTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2TTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+
+
+let extract_registration d =
+  let open Util.ResultMonad in
+    Otfm.flavour d >>= function
+    | Otfm.CFF ->
+        begin
+          Otfm.cff d >>= fun cffinfo ->
+          begin
+            match cffinfo.Otfm.cid_info with
+            | None ->
+                (* -- if not a CID-keyed font -- *)
+                return adobe_identity
+
+            | Some(cidinfo) ->
+                return {
+                  registry   = cidinfo.Otfm.registry;
+                  ordering   = cidinfo.Otfm.ordering;
+                  supplement = cidinfo.Otfm.supplement;
+                }
+          end >>= fun cidsysinfo ->
+          return (Some((d, CIDFontType0Registration(cidsysinfo, true))))
+        end
+
+    | Otfm.TTF_OT ->
+        return (Some((d, CIDFontType2OTRegistration(adobe_identity, true))))
+
+    | Otfm.TTF_true ->
+        return (Some((d, CIDFontType2TTRegistration(adobe_identity, true))))
+
+
+let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registration) option, Otfm.error) result =
   let s = string_of_file src in
-  match Otfm.decoder (`String(s)) with
-  | Ok(Otfm.SingleDecoder(d))        -> d
-  | Ok(Otfm.TrueTypeCollection(ttc)) -> raise UnsupportedTTC  (* temporary *)
-  | Error(oerr)                      -> raise (FontFormatBroken(oerr))
+  let open Util.ResultMonad in
+    Otfm.decoder (`String(s)) >>= function
+    | Otfm.TrueTypeCollection(_) -> return None
+    | Otfm.SingleDecoder(d)      -> extract_registration d
+
+
+let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_registration) option, Otfm.error) result =
+  let s = string_of_file src in
+  let open Util.ResultMonad in
+    Otfm.decoder (`String(s)) >>= function
+    | Otfm.SingleDecoder(_) ->
+        return None
+
+    | Otfm.TrueTypeCollection(ttc) ->
+        let ttcelem = List.nth ttc i in
+        Otfm.decoder_of_ttc_element ttcelem >>= fun d ->
+        extract_registration d
 
 
 module GlyphIDTable
@@ -373,12 +439,6 @@ type cmap_resource = (string resource) ref  (* temporary;*)
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of cmap_resource
-
-type cid_system_info = {
-    registry   : string;
-    ordering   : string;
-    supplement : int;
-  }
 
 type bbox = int * int * int * int
 
@@ -943,6 +1003,7 @@ module Type0
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
       let font_file =
+      (* probably such conditional branching is not appropriate; should always choose true-branch *)
         if cidty2font.CIDFontType2.is_pure_truetype then
           FontFile2
         else
@@ -1022,12 +1083,8 @@ let cid_font_type_2 cidty2font fontname cmap =
   let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
     Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap toucopt)
 
-let adobe_japan1 = { registry = "Adobe"; ordering = "Japan1"; supplement = 6; }
-let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0; }
 
-
-let get_decoder (srcfile : file_path) : decoder =
-  let d = get_main_decoder srcfile in
+let make_decoder (d : Otfm.decoder) : decoder =
   let cmapsubtbl = get_cmap_subtable d in
   let kerntbl = get_kerning_table d in
   let ligtbl = get_ligature_table d in
@@ -1056,6 +1113,20 @@ let get_decoder (srcfile : file_path) : decoder =
       default_ascent      = ascent;  (* -- by the unit defined in the font -- *)
       default_descent     = descent; (* -- by the unit defined in the font -- *)
     }
+
+
+let get_decoder_single (srcpath : file_path) : (decoder * font_registration) option =
+  match get_main_decoder_single srcpath with
+  | Error(oerr)            -> raise (FontFormatBroken(oerr))
+  | Ok(None)               -> None
+  | Ok(Some((d, fontreg))) -> Some((make_decoder d, fontreg))
+
+
+let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registration) option =
+  match get_main_decoder_ttc srcpath i with
+  | Error(oerr)            -> raise (FontFormatBroken(oerr))
+  | Ok(None)               -> None
+  | Ok(Some((d, fontreg))) -> Some((make_decoder d, fontreg))
 
 
 let convert_to_ligatures dcdr gidlst =
@@ -1193,8 +1264,9 @@ let assoc_to_map f gidassoc =
   ) MathInfoMap.empty
 
 
-let get_math_decoder (flnmin : file_path) : math_decoder =
-  let dcdr = get_decoder flnmin in
+let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) option =
+  let open Util.OptionMonad in
+  (get_decoder_single srcpath) >>= fun (dcdr, fontreg) ->
   let d = dcdr.main in
     match Otfm.math d with
     | Error(oerr) -> raise (FontFormatBroken(oerr))
@@ -1234,6 +1306,7 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
           | Ok(feature_ssty) -> Some(feature_ssty)
           | Error(oerr)      -> None
         in
+        let md =
           {
             as_normal_font             = dcdr;
             math_constants             = mathraw.Otfm.math_constants;
@@ -1246,6 +1319,8 @@ let get_math_decoder (flnmin : file_path) : math_decoder =
             math_charstring_info       = csinfo;
             script_style_info          = sstyopt;
           }
+        in
+        Some((md, fontreg))
 
 
 let get_script_style_id (md : math_decoder) (gid : glyph_id) =

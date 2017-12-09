@@ -7,6 +7,18 @@ val option_map : ('a -> 'b) -> 'a option -> 'b option
 
 val pickup : 'a list -> ('a -> bool) -> 'b -> ('a, 'b) result
 
+module OptionMonad : sig
+  val ( >>= ) : 'a option -> ('a -> 'b option) -> 'b option
+  val return : 'a -> 'a option
+end
+
+module ResultMonad : sig
+  val ( >>= ) : ('a, 'c) result -> ('a -> ('b, 'c) result) -> ('b, 'c) result
+  val return : 'a -> ('a, 'b) result
+  val err : 'b -> ('a, 'b) result
+end
+ 
+
 val ( += ) : int ref -> int -> unit
 
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b

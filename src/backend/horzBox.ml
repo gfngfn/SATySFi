@@ -95,12 +95,12 @@ type font_abbrev = string  [@@deriving show]
 type math_font_abbrev = string  [@@deriving show]
 
 type file_path = string
-
+(*
 type encoding_in_pdf =
   | Latin1
   | UTF16BE
   | IdentityH
-
+*)
 type font_with_size = font_abbrev * Length.t  [@@deriving show]
 
 type font_with_ratio = font_abbrev * float * float  [@@deriving show]

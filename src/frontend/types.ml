@@ -409,6 +409,7 @@ and input_vert_element =
 and input_context = {
   font_size        : HorzBox.length;
   font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
+  math_font        : HorzBox.math_font_abbrev;
   dominant_script  : CharBasis.script;
   space_natural    : float;
   space_shrink     : float;
@@ -542,7 +543,7 @@ and abstract_tree =
   | BackendMathUpperLimit       of abstract_tree * abstract_tree
   | BackendMathLowerLimit       of abstract_tree * abstract_tree
   | BackendMathText             of abstract_tree * abstract_tree
-  | BackendEmbeddedMath         of abstract_tree
+  | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -560,6 +561,7 @@ and abstract_tree =
   | PrimitiveGetFontSize        of abstract_tree
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
+  | PrimitiveSetMathFont        of abstract_tree * abstract_tree
   | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree

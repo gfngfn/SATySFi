@@ -99,11 +99,6 @@ let default_font_scheme =
     ]
 
 
-let default_math_context =
-  HorzBox.(MathContext.make "lmodern" (Length.of_pdf_point 12.))
-
-
-
 let default_math_left_paren hgt dpt hgtaxis fontsize =
   let lenappend = HorzBox.(fontsize *% 0.1) in
   let minhalflen = HorzBox.(fontsize *% 0.5) in
@@ -217,6 +212,7 @@ let get_initial_context pagesch =
   {
     font_scheme      = default_font_scheme;
     font_size        = pdfpt 12.;
+    math_font        = "lmodern";
     dominant_script  = CharBasis.Other;
     space_natural    = 0.33;
     space_shrink     = 0.08;
@@ -401,6 +397,7 @@ let make_environments () =
         ("get-font-size"      , ~% (ctx @-> ln)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
         ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
         ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-math-font"      , ~% (s @-> ctx @-> ctx)                 , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
         ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
@@ -432,7 +429,7 @@ let make_environments () =
         ("math-lower"              , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
         ("text-in-math"            , ~% (mathcls @-> br @-> math)                   , lambda2 (fun vmc vbr -> BackendMathText(vmc, vbr)));
-        ("embed-math"              , ~% (math @-> br)                               , lambda1 (fun vm -> BackendEmbeddedMath(vm)));
+        ("embed-math"              , ~% (ctx @-> math @-> br)                       , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
       ]
   in
