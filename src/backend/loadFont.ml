@@ -33,12 +33,12 @@ let read_assoc dir_dist assoc =
   ) []
 
 
-let main satysfi_root_dir =
+let main satysfi_root_dir filename =
   Format.printf "LoadFont> main\n";  (* for debug *)
   try
-    let srcpath = Filename.concat satysfi_root_dir "dist/hash/fonts.satysfi-hash" in
-    let json = Yojson.Safe.from_file srcpath in
     let dir_dist = Filename.concat satysfi_root_dir "dist/fonts" in
+    let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hash" filename) in
+    let json = Yojson.Safe.from_file srcpath in
     match json with
     | `Assoc(assoc) -> read_assoc dir_dist assoc
     | _             -> raise InvalidFontHashTop

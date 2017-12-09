@@ -354,31 +354,19 @@ let initialize (satysfi_root_dir : string) =
   PrintForDebug.initfontE "!!LineBreakDataMap";
   LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
 
-  let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
-
   PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
-  let font_hash = LoadFont.main satysfi_root_dir in
+
+  let font_hash = LoadFont.main satysfi_root_dir "fonts.satysfi-hash" in
   List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+
+  let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
+  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
 (*
   [
-    ("Hlv", append_directory "HelveticaBlack.ttf");
-    ("Osaka", append_directory "Osaka.ttf");
-    ("ipaexm", append_directory "ipaexm.ttf");
-    ("Arno", append_directory "ArnoPro-Regular.otf");
-    ("ArnoIt", append_directory "ArnoPro-Italic.otf");
-    ("KozMin", append_directory "KozMinPro-Regular.otf");
-  ];
-*)
-  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) [
-(*
-    ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
-*)
     ("Asana", append_directory "Asana-math.otf");
     ("lmodern", append_directory "latinmodern-math.otf");
-(*
-    ("xits", CIDFontType0Registration("xits-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "xits-math.otf");
-*)
   ]
+*)
   ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 
 
