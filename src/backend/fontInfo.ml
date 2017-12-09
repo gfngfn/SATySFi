@@ -53,14 +53,16 @@ let get_font dcdr fontreg fontname =
         (FontFormat.cid_font_type_2 cidty2font fontname cmap)
 
 
-type font_tuple = (tag option) ref * FontFormat.font * FontFormat.decoder
+type font_store =
+  | Unused of file_path
+  | Loaded of tag * FontFormat.font * FontFormat.decoder
 
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> FontFormat.file_path -> unit
+    val add : font_abbrev -> file_path -> unit
     val fold : (font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> font_tuple option
+    val find_opt : font_abbrev -> (tag * FontFormat.font * FontFormat.decoder) option
   end
 = struct
 
@@ -71,7 +73,7 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : font_tuple Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (font_store ref) Ht.t = Ht.create 32
 
     let generate_tag =
       let current_tag_number = ref 0 in
@@ -82,18 +84,13 @@ module FontAbbrevHashTable
         end)
 
     let add abbrev srcpath =
-      match FontFormat.get_decoder_single srcpath with
-      | None                  -> raise (NotASingleFont(abbrev, srcpath))
-      | Some((dcdr, fontreg)) ->
-          let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
-            Ht.add abbrev_to_definition_hash_table abbrev (ref None, font, dcdr)
+      Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
 
     let fold (f : font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) init =
-      Ht.fold (fun abbrev tuple acc ->
-        let (tagoptref, font, dcdr) = tuple in
-        match !tagoptref with
-        | None      -> acc  (* -- ignores unused fonts -- *)
-        | Some(tag) -> f abbrev (tag, font, dcdr) acc
+      Ht.fold (fun abbrev storeref acc ->
+        match !storeref with
+        | Unused(_)               -> acc  (* -- ignores unused fonts -- *)
+        | Loaded(tag, font, dcdr) -> f abbrev (tag, font, dcdr) acc
       ) abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
@@ -101,25 +98,32 @@ module FontAbbrevHashTable
       | None ->
           None
 
-      | Some((tagoptref, _, _) as tuple) ->
+      | Some(storeref) ->
+          let store = !storeref in
           begin
-            match !tagoptref with
-            | None ->
-              (* -- if this is the first access to the font -- *)
-                let tag = generate_tag () in
-                tagoptref := Some(tag);
-                Some(tuple)
+            match store with
+            | Unused(srcpath) ->
+      (* -- if this is the first access to the font -- *)
+                begin
+                  match FontFormat.get_decoder_single srcpath with
+                  | None                  -> raise (NotASingleFont(abbrev, srcpath))
+                  | Some((dcdr, fontreg)) ->
+                      let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
+                      let tag = generate_tag () in
+                      let store = Loaded(tag, font, dcdr) in
+                      storeref := store;
+                      Some((tag, font, dcdr))
+                end
 
-            | Some(_) ->
-                Some(tuple)
+            | Loaded(tag, font, dcdr) -> Some((tag, font, dcdr))
           end
   end
 
 
-let get_font_tag (abbrev : font_abbrev) : tag option =
+let get_font_tag (abbrev : font_abbrev) : tag =
   match FontAbbrevHashTable.find_opt abbrev with
-  | None                    -> raise (InvalidFontAbbrev(abbrev))
-  | Some((tagoptref, _, _)) -> !tagoptref
+  | None              -> raise (InvalidFontAbbrev(abbrev))
+  | Some((tag, _, _)) -> tag
 
 
 let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
@@ -361,13 +365,7 @@ let initialize (satysfi_root_dir : string) =
 
   let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
   List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
-(*
-  [
-    ("Asana", append_directory "Asana-math.otf");
-    ("lmodern", append_directory "latinmodern-math.otf");
-  ]
-*)
-  ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
+  PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 
 
 

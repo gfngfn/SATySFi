@@ -10,7 +10,7 @@ val get_metrics_of_word : horz_string_info -> Uchar.t list -> OutputText.t * len
 
 val get_math_char_info : math_context -> bool -> Uchar.t -> FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option
 
-val get_font_tag : font_abbrev -> tag option
+val get_font_tag : font_abbrev -> tag
 
 val get_math_string_info : math_context -> math_string_info
 
