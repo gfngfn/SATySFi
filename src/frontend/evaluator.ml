@@ -287,9 +287,10 @@ and interpret env ast =
       let hblst = interpret_horz env asthl in
         MathValue([HorzBox.MathPure(mathcls, HorzBox.MathEmbeddedHorz(hblst))])
 
-  | BackendEmbeddedMath(astm) ->
+  | BackendEmbeddedMath(astctx, astm) ->
+      let ctx = interpret_context env astctx in
       let mlst = interpret_math env astm in
-      let mathctx = Primitives.default_math_context in (* temporary; should be variable *)
+      let mathctx = HorzBox.MathContext.make ctx.math_font ctx.font_size in (* temporary; should be variable *)
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 
@@ -523,6 +524,11 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
       let font_scheme_new = ctx.font_scheme |> FontSchemeMap.add script font_info in
         Context({ ctx with font_scheme = font_scheme_new; })
+
+  | PrimitiveSetMathFont(aststr, astctx) ->
+      let mfabbrev = interpret_string env aststr in
+      let ctx = interpret_context env astctx in
+        Context({ ctx with math_font = mfabbrev; })
 
   | PrimitiveGetFont(astscript, astctx) ->
       let script = interpret_script env astscript in
