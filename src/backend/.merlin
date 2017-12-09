@@ -1,4 +1,4 @@
-PKG result core ctypes bitv bateries
+PKG result core ctypes bitv bateries yojson
 S ./
 B ../../_build/src/backend/
 S ../../external/otfm/src/

@@ -357,7 +357,10 @@ let initialize (satysfi_root_dir : string) =
   let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
 
   PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
-  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) [
+  let font_hash = LoadFont.main satysfi_root_dir in
+  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+(*
+  [
     ("Hlv", append_directory "HelveticaBlack.ttf");
     ("Osaka", append_directory "Osaka.ttf");
     ("ipaexm", append_directory "ipaexm.ttf");
@@ -365,6 +368,7 @@ let initialize (satysfi_root_dir : string) =
     ("ArnoIt", append_directory "ArnoPro-Italic.otf");
     ("KozMin", append_directory "KozMinPro-Regular.otf");
   ];
+*)
   List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) [
 (*
     ("euler", CIDFontType0Registration("euler-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "euler.otf");
