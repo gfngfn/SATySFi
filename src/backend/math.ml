@@ -186,6 +186,7 @@ let normalize_math_kind mkprev mknext mkraw =
   | MathClose
   | MathPrefix
   | MathOperator
+  | MathPunct
   | MathInner
   | MathEnd
     -> mkraw
@@ -231,8 +232,9 @@ let space_ord_inner fontsize =
     (* temporary; should be variable *)
 
 
-let space_ord_op = space_ord_inner
-  (* temporary *)
+let space_punct = space_ord_rel  (* temporary *)
+
+let space_ord_op = space_ord_inner  (* temporary *)
 
 
 let space_ord_prefix fontsize =
@@ -273,6 +275,9 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
             | SpaceAfterScript            -> None
             | ItalicsCorrection(italcorr) -> Some(HorzPure(PHFixedEmpty(italcorr)))
           end
+
+      | (MathPunct   , _           )
+        -> space_punct fontsize
 
       | (MathBinary  , MathOrdinary)
       | (MathBinary  , MathInner   )

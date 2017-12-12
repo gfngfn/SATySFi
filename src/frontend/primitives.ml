@@ -46,9 +46,10 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(unit_type)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(unit_type)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(unit_type)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathPunct"  ([], Poly(unit_type)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(unit_type)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(unit_type)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(unit_type)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(unit_type)) tyid_mathcls
 
 

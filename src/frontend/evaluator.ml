@@ -1093,6 +1093,7 @@ and interpret_math_class env ast : HorzBox.math_kind =
     | Constructor("MathBin"   , UnitConstant) -> HorzBox.MathBinary
     | Constructor("MathRel"   , UnitConstant) -> HorzBox.MathRelation
     | Constructor("MathOp"    , UnitConstant) -> HorzBox.MathOperator
+    | Constructor("MathPunct" , UnitConstant) -> HorzBox.MathPunct
     | Constructor("MathOpen"  , UnitConstant) -> HorzBox.MathOpen
     | Constructor("MathClose" , UnitConstant) -> HorzBox.MathClose
     | Constructor("MathPrefix", UnitConstant) -> HorzBox.MathPrefix

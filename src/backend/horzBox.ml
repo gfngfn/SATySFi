@@ -371,6 +371,7 @@ type math_kind =
   | MathBinary
   | MathRelation
   | MathOperator
+  | MathPunct
   | MathOpen
   | MathClose
   | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
