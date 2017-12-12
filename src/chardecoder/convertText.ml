@@ -20,7 +20,7 @@ let get_script_opt lbu =
 
 (* temporary; should refer to the context for spacing between two scripts *)
 let transition_space ctx lbu1 lbu2 =
-  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
+  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.HorzBox.dominant_script in
   let size = HorzBox.(ctx.font_size *% font_ratio) in
   let half_space_soft = [CustomizedSpace(HorzBox.(size *% 0.5), HorzBox.(size *% 0.25 (* temporary *)), HorzBox.(size *% 0.25 (* temporary *)))] in
   let half_space_hard = [CustomizedSpace(HorzBox.(size *% 0.5), HorzBox.Length.zero, HorzBox.(size *% 0.25 (* temporary *)))] in
@@ -68,7 +68,7 @@ let insert_script_transition_space ctx lbulst =
 
 
 let to_boxes ctx uchlst =
-  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
+  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.HorzBox.dominant_script in
   let size = HorzBox.(ctx.font_size *% font_ratio) in
   let space_natural = HorzBox.(size *% ctx.space_natural) in
   let space_shrink  = HorzBox.(size *% ctx.space_shrink) in
@@ -133,8 +133,8 @@ let to_boxes ctx uchlst =
     HorzBox.HorzPure(HorzBox.PHFixedString(info, uchlst))
   in
 
-  let half_kern info =
-    HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(info.font_size *% -0.5)))
+  let half_kern (info : HorzBox.horz_string_info) =
+    HorzBox.HorzPure(HorzBox.PHFixedEmpty(HorzBox.(info.text_font_size *% -0.5)))
   in
 (*
   let breakable_half badness (_, font_size) stretch_ratio =

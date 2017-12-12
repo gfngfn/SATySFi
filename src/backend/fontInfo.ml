@@ -136,7 +136,7 @@ let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
   let font_abbrev = hsinfo.font_abbrev in
-  let f_skip = raw_length_to_skip_length hsinfo.font_size in
+  let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
     match FontAbbrevHashTable.find_opt font_abbrev with
     | None               -> raise (InvalidFontAbbrev(font_abbrev))
     | Some((_, _, dcdr)) ->

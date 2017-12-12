@@ -184,10 +184,10 @@ type decoration = point -> length -> length -> length -> Pdfops.t list
 
 type horz_string_info =
   {
-    font_abbrev : font_abbrev;
-    font_size   : length;
-    text_color  : color;
-    rising      : length;
+    font_abbrev    : font_abbrev;
+    text_font_size : length;
+    text_color     : color;
+    rising         : length;
   }
 
 type math_string_info =
@@ -259,10 +259,38 @@ type vert_box =
   | VertFixedBreakable of length
 
 
+module FontSchemeMap = Map.Make
+  (struct
+    type t = CharBasis.script
+    let compare = Pervasives.compare
+  end)
+
+
+type input_context = {
+  font_size        : length;
+  font_scheme      : font_with_ratio FontSchemeMap.t;
+  math_font        : math_font_abbrev;
+  dominant_script  : CharBasis.script;
+  space_natural    : float;
+  space_shrink     : float;
+  space_stretch    : float;
+  adjacent_stretch : float;
+  paragraph_width  : length;
+  paragraph_top    : length;
+  paragraph_bottom : length;
+  leading          : length;
+  text_color       : color;
+  manual_rising    : length;
+  page_scheme      : page_scheme;
+}
+(* temporary *)
+
+
 module MathContext
 : sig
     type t
-    val make : math_font_abbrev -> length -> color -> t
+    val make : input_context -> t
+    val context_for_text : t -> input_context
     val color : t -> color
     val enter_script : t -> t
     val is_in_base_level : t -> bool
@@ -278,51 +306,56 @@ module MathContext
 
     type t =
       {
-        font_abbrev    : math_font_abbrev;
-        base_font_size : length;
-        color          : color;
-        level_int      : int;
-        level          : level;
+        mc_font_abbrev    : math_font_abbrev;
+        mc_base_font_size : length;
+        mc_color          : color;
+        mc_level_int      : int;
+        mc_level          : level;
+        context_for_text    : input_context;
       }
 
-    let make mfabbrev basesize color =
+    let make (ctx : input_context) =
       {
-        font_abbrev    = mfabbrev;
-        base_font_size = basesize;
-        color          = color;
-        level_int      = 0;
-        level          = BaseLevel;
+        mc_font_abbrev    = ctx.math_font;
+        mc_base_font_size = ctx.font_size;
+        mc_color          = ctx.text_color;
+        mc_level_int      = 0;
+        mc_level          = BaseLevel;
+        context_for_text  = ctx;
       }
 
-    let color mathctx =
-      mathctx.color
+    let context_for_text mctx =
+      mctx.context_for_text
+
+    let color mctx =
+      mctx.mc_color
 
     let enter_script mctx =
-      let levnew = mctx.level_int + 1 in
-      match mctx.level with
-      | BaseLevel         -> { mctx with level = ScriptLevel;       level_int = levnew; }
-      | ScriptLevel       -> { mctx with level = ScriptScriptLevel; level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                            level_int = levnew; }
+      let levnew = mctx.mc_level_int + 1 in
+      match mctx.mc_level with
+      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
+      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
+      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
 
     let is_in_base_level mctx =
-      match mctx.level with
+      match mctx.mc_level with
       | BaseLevel -> true
       | _         -> false
 
     let actual_font_size mctx (mdf : math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.base_font_size in
-      let md = mdf mctx.font_abbrev in
+      let bfsize = mctx.mc_base_font_size in
+      let md = mdf mctx.mc_font_abbrev in
       let mc = FontFormat.get_math_constants md in
-      match mctx.level with
+      match mctx.mc_level with
       | BaseLevel         -> bfsize
       | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
       | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
 
     let base_font_size mctx =
-      mctx.base_font_size
+      mctx.mc_base_font_size
 
     let math_font_abbrev mctx =
-      mctx.font_abbrev
+      mctx.mc_font_abbrev
 
   end
 
@@ -331,7 +364,7 @@ type math_context = MathContext.t
 
 type math_element_main =
   | MathChar         of Uchar.t
-  | MathEmbeddedHorz of horz_box list
+  | MathEmbeddedText of (input_context -> horz_box list)
 
 type math_kind =
   | MathOrdinary

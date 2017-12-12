@@ -89,8 +89,8 @@ let pdfpt = HorzBox.Length.of_pdf_point
 
 
 let default_font_scheme =
-  List.fold_left (fun mapacc (script, font_info) -> mapacc |> FontSchemeMap.add script font_info)
-    FontSchemeMap.empty
+  List.fold_left (fun mapacc (script, font_info) -> mapacc |> HorzBox.FontSchemeMap.add script font_info)
+    HorzBox.FontSchemeMap.empty
     [
       (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
       (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
@@ -209,7 +209,7 @@ let envinit : environment = Hashtbl.create 128
 
 
 let get_initial_context pagesch =
-  {
+  HorzBox.({
     font_scheme      = default_font_scheme;
     font_size        = pdfpt 12.;
     math_font        = "lmodern";
@@ -225,7 +225,7 @@ let get_initial_context pagesch =
     text_color       = HorzBox.DeviceGray(0.);
     manual_rising    = pdfpt 0.;
     page_scheme      = pagesch;
-  }
+  })
 (*
 let margin = pdfpt 2.
 
@@ -428,7 +428,7 @@ let make_environments () =
         ("math-upper"              , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
-        ("text-in-math"            , ~% (mathcls @-> br @-> math)                   , lambda2 (fun vmc vbr -> BackendMathText(vmc, vbr)));
+        ("text-in-math"            , ~% (mathcls @-> (ctx @-> br) @-> math)         , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (ctx @-> math @-> br)                       , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((l i) @-> s)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
       ]

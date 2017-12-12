@@ -235,12 +235,6 @@ module BoundID =
     type t = kind BoundID_.t_
   end
 
-module FontSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
-
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons = untyped_pattern_tree list
 
@@ -406,24 +400,6 @@ and input_horz_element =
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
-and input_context = {
-  font_size        : HorzBox.length;
-  font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
-  math_font        : HorzBox.math_font_abbrev;
-  dominant_script  : CharBasis.script;
-  space_natural    : float;
-  space_shrink     : float;
-  space_stretch    : float;
-  adjacent_stretch : float;
-  paragraph_width  : HorzBox.length;
-  paragraph_top    : HorzBox.length;
-  paragraph_bottom : HorzBox.length;
-  leading          : HorzBox.length;
-  text_color       : HorzBox.color;
-  manual_rising    : HorzBox.length;
-  page_scheme      : HorzBox.page_scheme;
-}
-(* temporary *)
 
 and 'a path_component =
   | PathLineTo        of 'a
@@ -551,7 +527,7 @@ and abstract_tree =
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
-  | Context                     of input_context
+  | Context                     of HorzBox.input_context
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
@@ -573,7 +549,7 @@ and abstract_tree =
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
-  | DocumentValue               of input_context * HorzBox.intermediate_vert_box list
+  | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
 (*
   | BackendFixedString         of abstract_tree * abstract_tree
 *)
@@ -749,20 +725,20 @@ let default_font_with_ratio =
 let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
-    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.HorzBox.dominant_script
     | _                                                             -> script_raw
   in
-    try ctx.font_scheme |> FontSchemeMap.find script with
+    try ctx.HorzBox.font_scheme |> HorzBox.FontSchemeMap.find script with
     | Not_found -> default_font_with_ratio
 
 
 let get_string_info ctx script_raw =
   let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
   HorzBox.({
-    font_abbrev = font_abbrev;
-    font_size   = ctx.font_size *% ratio;
-    text_color  = ctx.text_color;
-    rising      = ctx.manual_rising +% ctx.font_size *% rising_ratio;
+    font_abbrev    = font_abbrev;
+    text_font_size = ctx.font_size *% ratio;
+    text_color     = ctx.text_color;
+    rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
   })
 (*
 (* !!!! ---- global variable ---- !!!! *)

@@ -183,10 +183,10 @@ let show_script = function
 
 type line_break_element = Uchar.t * line_break_class * break_opportunity
 
-type line_break_unit =
+type 'a line_break_unit =
   | PreWord          of script * line_break_element list * break_opportunity
   | Space
-  | CustomizedSpace  of HorzBox.Length.t * HorzBox.Length.t * HorzBox.Length.t
+  | CustomizedSpace  of 'a
   | UnbreakableSpace
   | JLOpen           of script * line_break_element
   | JLClose          of script * line_break_element

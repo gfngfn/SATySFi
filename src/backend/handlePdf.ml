@@ -74,7 +74,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
             opcolor;
             Graphics.op_BT;
             Graphics.op_Tm_translate (xpos, yposbaseline);
-            Graphics.op_Tf tag hsinfo.font_size;
+            Graphics.op_Tf tag hsinfo.text_font_size;
             Graphics.op_Ts hsinfo.rising;
             opword;
             Graphics.op_ET;

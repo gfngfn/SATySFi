@@ -1,6 +1,6 @@
 open Types
 
-val get_initial_context : HorzBox.page_scheme -> input_context
+val get_initial_context : HorzBox.page_scheme -> HorzBox.input_context
 
 val make_environments : unit -> Typeenv.t * environment
 
