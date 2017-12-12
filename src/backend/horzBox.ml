@@ -349,25 +349,27 @@ type math_element = math_kind * math_element_main
 
 type math_kern_func = length -> length
 
-type paren = length -> length -> length -> length -> horz_box list * math_kern_func
+type paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
   (* --
      paren:
        the type for adjustable parentheses.
        An adjustable parenthesis takes as arguments
        (1-2) the height and the depth of the inner contents,
-       (3)   the axis height, and
-       (4)   the font size,
+       (3)   the axis height,
+       (4)   the font size, and
+       (5)   the color for glyphs,
        and then returns its inline box representation and the function for kerning.
      -- *)
 
-type radical = length -> length -> length -> length -> horz_box list
+type radical = length -> length -> length -> length -> color -> horz_box list
   (* --
      radical:
        the type for adjustable radicals.
        An adjustable radical takes as arguments
        (1-2) the height and the thickness of the bar required by the math font,
-       (3)   the depth of the inner contents, and
-       (4)   the font size,
+       (3)   the depth of the inner contents,
+       (4)   the font size, and
+       (5)   the color for glyphs,
        and then returns the inline box representation.
      -- *)
 

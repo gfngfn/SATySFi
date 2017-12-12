@@ -542,13 +542,13 @@ let make_paren mathctx paren hgt dpt =
   let fontsize = FontInfo.actual_math_font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar = fontsize *% mc.FontFormat.axis_height in
-  let (hblst, kernf) = paren hgt (Length.negate dpt) h_bar fontsize in
+  let (hblst, kernf) = paren hgt (Length.negate dpt) h_bar fontsize (MathContext.color mathctx) in
     (hblst, FontInfo.make_dense_math_kern kernf)
 
 
 let make_radical mathctx radical hgt_bar t_bar dpt =
   let fontsize = FontInfo.actual_math_font_size mathctx in
-  let hblst = radical hgt_bar t_bar (Length.negate dpt) fontsize in
+  let hblst = radical hgt_bar t_bar (Length.negate dpt) fontsize (MathContext.color mathctx) in
     hblst
 
 
@@ -897,11 +897,10 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
     | LowMathRadical(hblstrad, h_bar, t_bar, lmC) :: lmmaintail ->
         let hblstC = horz_of_low_math mathctx MathEnd MathEnd lmC in
         let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
-        let barcolor = MathContext.color mathctx in
         let hbbar =
           HorzPure(PHInlineGraphics(w_cont, h_bar +% t_bar, Length.zero,
             (fun (xpos, ypos) ->
-              Graphics.pdfops_of_fill barcolor [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
+              Graphics.pdfops_of_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
         in
         let hbback = HorzPure(PHFixedEmpty(Length.negate w_cont)) in
         let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in

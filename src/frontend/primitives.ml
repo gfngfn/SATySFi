@@ -99,14 +99,14 @@ let default_font_scheme =
     ]
 
 
-let default_math_left_paren hgt dpt hgtaxis fontsize =
+let default_math_left_paren hgt dpt hgtaxis fontsize color =
   let lenappend = HorzBox.(fontsize *% 0.1) in
   let minhalflen = HorzBox.(fontsize *% 0.5) in
   let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
   let widparen = HorzBox.(halflen *% 0.375) in
   let wid = HorzBox.(widparen +% fontsize *% 0.1) in
   let graphics (xpos, ypos) =
-    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
+    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
         LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
@@ -131,14 +131,14 @@ let default_math_left_paren hgt dpt hgtaxis fontsize =
   (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
-let default_math_right_paren hgt dpt hgtaxis fontsize =
+let default_math_right_paren hgt dpt hgtaxis fontsize color =
   let lenappend = HorzBox.(fontsize *% 0.1) in
   let minhalflen = HorzBox.(fontsize *% 0.5) in
   let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
   let widparen = HorzBox.(halflen *% 0.375) in
   let wid = HorzBox.(widparen +% fontsize *% 0.1) in
   let graphics (xpos, ypos) =
-    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) (DeviceGray(0.)) [
+    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% widparen, ypos +% hgtaxis));
         LineTo((xpos, ypos +% hgtaxis -% halflen));
@@ -163,7 +163,7 @@ let default_math_right_paren hgt dpt hgtaxis fontsize =
   (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
-let default_radical hgt_bar t_bar dpt fontsize =
+let default_radical hgt_bar t_bar dpt fontsize color =
   HorzBox.(begin
   let wM = fontsize *% 0.02 in
   let w1 = fontsize *% 0.1 in
@@ -188,7 +188,7 @@ let default_radical hgt_bar t_bar dpt fontsize =
   let hB = hA -% wB *% a2 in
 
   let graphics (xpos, ypos) =
-    Graphics.pdfops_of_fill (DeviceGray(0.)) [
+    Graphics.pdfops_of_fill color [
       GeneralPath((xpos +% wid, ypos +% hgt_bar), [
         LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
         LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
