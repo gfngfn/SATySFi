@@ -18,7 +18,7 @@ document (|
       math-minus;
       math-sub math-a math-2;
       math-plus;
-      math-sub math-Y math-f;
+      math-sup (math-sub math-Y math-f) math-2;
       math-minus;
       math-A;
       math-plus;
@@ -95,6 +95,16 @@ document (|
       math-sqrt (math-list [math-1; math-minus; math-sup math-x math-2]);
       math-ordd;
       math-x;
-    ]);
+    ]);,
+    texts contained in formulae:
+    \math(math-list [
+      math-frac (text-in-math MathOrd (fun ctx -> read-inline ctx {Hoge})) math-2;
+      math-plus;
+      math-sqrt (text-in-math MathOrd (fun ctx -> read-inline ctx {Piyo}));
+    ]);,
+    tuple:
+    \math(math-paren (math-list [
+      math-x; math-comma; math-y; math-comma; math-z;
+    ]));.
   }
 >
