@@ -259,6 +259,7 @@ let get_math_string_info mathctx : math_string_info =
   {
     math_font_abbrev = MathContext.math_font_abbrev mathctx;
     math_font_size   = actual_math_font_size mathctx;
+    math_color       = MathContext.color mathctx;
   }
 
 

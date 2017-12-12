@@ -717,7 +717,7 @@ let horz_fraction_bar mathctx wid =
   let h_bar         = fontsize *% mc.FontFormat.axis_height in
   let t_bar         = fontsize *% mc.FontFormat.fraction_rule_thickness in
   let h_bart        = h_bar +% t_bar *% 0.5 in
-  let bar_color = DeviceGray(0.) in  (* temporary; should be variable *)
+  let bar_color = MathContext.color mathctx in
   let bar_graphics (xpos, ypos) =
     Graphics.pdfops_of_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))]
   in
@@ -897,10 +897,11 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
     | LowMathRadical(hblstrad, h_bar, t_bar, lmC) :: lmmaintail ->
         let hblstC = horz_of_low_math mathctx MathEnd MathEnd lmC in
         let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
+        let barcolor = MathContext.color mathctx in
         let hbbar =
           HorzPure(PHInlineGraphics(w_cont, h_bar +% t_bar, Length.zero,
             (fun (xpos, ypos) ->
-              Graphics.pdfops_of_fill (DeviceGray(0.)) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
+              Graphics.pdfops_of_fill barcolor [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
         in
         let hbback = HorzPure(PHFixedEmpty(Length.negate w_cont)) in
         let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in

@@ -290,7 +290,7 @@ and interpret env ast =
   | BackendEmbeddedMath(astctx, astm) ->
       let ctx = interpret_context env astctx in
       let mlst = interpret_math env astm in
-      let mathctx = HorzBox.MathContext.make ctx.math_font ctx.font_size in (* temporary; should be variable *)
+      let mathctx = HorzBox.MathContext.make ctx.math_font ctx.font_size ctx.text_color in
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 

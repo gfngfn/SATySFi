@@ -194,6 +194,7 @@ type math_string_info =
   {
     math_font_abbrev : math_font_abbrev;
     math_font_size   : length;
+    math_color       : color;
   }
 
 let pp_horz_string_info fmt info =
@@ -261,7 +262,8 @@ type vert_box =
 module MathContext
 : sig
     type t
-    val make : math_font_abbrev -> length -> t
+    val make : math_font_abbrev -> length -> color -> t
+    val color : t -> color
     val enter_script : t -> t
     val is_in_base_level : t -> bool
     val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
@@ -278,17 +280,22 @@ module MathContext
       {
         font_abbrev    : math_font_abbrev;
         base_font_size : length;
+        color          : color;
         level_int      : int;
         level          : level;
       }
 
-    let make mfabbrev basesize =
+    let make mfabbrev basesize color =
       {
         font_abbrev    = mfabbrev;
         base_font_size = basesize;
+        color          = color;
         level_int      = 0;
         level          = BaseLevel;
       }
+
+    let color mathctx =
+      mathctx.color
 
     let enter_script mctx =
       let levnew = mctx.level_int + 1 in
