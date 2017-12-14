@@ -96,7 +96,7 @@ let default_font_scheme =
       (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
       (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
       (CharBasis.Latin             , ("Arno"  , 1., 0.));
-      (CharBasis.Other             , default_font_with_ratio);
+      (CharBasis.Other             , HorzBox.default_font_with_ratio);
     ]
 
 
@@ -226,6 +226,7 @@ let get_initial_context pagesch =
     text_color       = HorzBox.DeviceGray(0.);
     manual_rising    = pdfpt 0.;
     page_scheme      = pagesch;
+    badness_space    = 100;
   })
 (*
 let margin = pdfpt 2.

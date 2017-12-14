@@ -14,6 +14,7 @@ type script =
   | Latin               (* 'latn'; Latn; Latin *)
 (* temporary; should add more scripts *)
   | Other
+[@@deriving show]
 
 type break_opportunity =
   | AllowBreak

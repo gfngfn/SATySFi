@@ -537,7 +537,7 @@ and interpret env ast =
   | PrimitiveGetFont(astscript, astctx) ->
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
-      let fontwr = get_font_with_ratio ctx script in
+      let fontwr = HorzBox.get_font_with_ratio ctx script in
         FontDesignation(fontwr)
 
   | PrimitiveSetDominantScript(astscript, astctx) ->

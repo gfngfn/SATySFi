@@ -206,6 +206,7 @@ type input_context = {
   text_color       : color;
   manual_rising    : length;
   page_scheme      : page_scheme;
+  badness_space    : pure_badness;
 }
 (* temporary *)
 
@@ -216,6 +217,31 @@ type horz_string_info =
     text_color     : color;
     rising         : length;
   }
+
+
+let default_font_with_ratio =
+  ("Arno", 1., 0.)  (* temporary *)
+
+
+let get_font_with_ratio ctx script_raw =
+  let script =
+    match script_raw with
+    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                             -> script_raw
+  in
+    try ctx.font_scheme |> FontSchemeMap.find script with
+    | Not_found -> default_font_with_ratio
+
+
+let get_string_info ctx script_raw =
+  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+    {
+      font_abbrev    = font_abbrev;
+      text_font_size = ctx.font_size *% ratio;
+      text_color     = ctx.text_color;
+      rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
+    }
+
 
 type math_string_info =
   {
@@ -248,12 +274,20 @@ type pure_horz_box =
 
 and horz_box =
   | HorzPure           of pure_horz_box
-  | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+  | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 and evaled_horz_box_main =
-  | EvHorzString         of horz_string_info * length * length * OutputText.t
+  | EvHorzString of CharBasis.script * horz_string_info * length * length * OutputText.t
+      (* --
+         (1) script: used just for inserting spaces between different script
+         (2) string information for writing string to PDF
+         (3) content height
+         (4) content depth
+         (5) content string
+         -- *)
+
   | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list

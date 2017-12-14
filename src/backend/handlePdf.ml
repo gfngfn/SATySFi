@@ -60,7 +60,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops_foreground opaccsub in
           (xposnew, opaccnew)
 
-    | EvHorz(wid, EvHorzString(hsinfo, hgt, dpt, otxt)) ->
+    | EvHorz(wid, EvHorzString(_, hsinfo, hgt, dpt, otxt)) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in

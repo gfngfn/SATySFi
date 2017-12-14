@@ -718,28 +718,6 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
-let default_font_with_ratio =
-  ("Arno", 1., 0.)
-
-
-let get_font_with_ratio ctx script_raw =
-  let script =
-    match script_raw with
-    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.HorzBox.dominant_script
-    | _                                                             -> script_raw
-  in
-    try ctx.HorzBox.font_scheme |> HorzBox.FontSchemeMap.find script with
-    | Not_found -> default_font_with_ratio
-
-
-let get_string_info ctx script_raw =
-  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
-  HorzBox.({
-    font_abbrev    = font_abbrev;
-    text_font_size = ctx.font_size *% ratio;
-    text_color     = ctx.text_color;
-    rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
-  })
 (*
 (* !!!! ---- global variable ---- !!!! *)
 
