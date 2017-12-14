@@ -76,17 +76,17 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   let () =
     scrlstsp |> List.iter (function
       | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-          let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
-          PrintForDebug.lexhorz ("[Alph] " ^ (CharBasis.show_script script) ^ " " ^ sa ^ " ");
+          let sa = match alw with AllowBreak -> "" | PreventBreak -> "*" in
+          PrintForDebug.lexhorz ("[Alph] " ^ (CharBasis.show_script script) ^ sa ^ " ");
           let s = uchlst |> List.map (fun uch -> InternalText.to_utf8 (InternalText.of_uchar uch)) |> String.concat "" in
           PrintForDebug.lexhorzE s
       | Space ->
-          PrintForDebug.lexhorzE "SPACE"
+          PrintForDebug.lexhorzE "[Space]"
       | UnbreakableSpace ->
-          PrintForDebug.lexhorzE "UNBREAKABLE_SPACE"
+          PrintForDebug.lexhorzE "[UnbreakableSpace]"
       | IdeographicChunk(script, lbc, uch, alw) ->
-          let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
-          PrintForDebug.lexhorz ("[Ideo] " ^ (CharBasis.show_script script) ^ " " ^ sa ^ " ");
+          let sa = match alw with AllowBreak -> "" | PreventBreak -> "*" in
+          PrintForDebug.lexhorz ("[Ideo] " ^ (CharBasis.show_script script) ^ sa ^ " ");
           PrintForDebug.lexhorzE (InternalText.to_utf8 (InternalText.of_uchar uch))
     )
   in
@@ -261,17 +261,6 @@ let to_boxes_pure ctx uchlst : lb_pure_box list =
   ) |> List.concat
 *)
 
-let insert_between_scripts size script1 script2 =
-  match (script1, script2) with
-  | (HanIdeographic    , Latin             )
-  | (Latin             , HanIdeographic    )
-  | (HiraganaOrKatakana, Latin             )
-  | (Latin             , HiraganaOrKatakana)
-    ->
-      [LBPure(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))]
-        (* temporary; shold refer to the context for spacing information between two scripts *)
-  | _ -> []
-
 (*
 let insert_auto_space lhblst =
 
@@ -313,9 +302,23 @@ let insert_auto_space lhblst =
 let adjacent_stretch = size *% ctx.adjacent_stretch in  (* temporary *)
 *)
 
+let pure_space_between_scripts size script1 script2 =
+  match (script1, script2) with
+  | (HanIdeographic    , Latin             )
+  | (Latin             , HanIdeographic    )
+  | (HiraganaOrKatakana, Latin             )
+  | (Latin             , HiraganaOrKatakana)
+    ->
+      Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
+        (* temporary; shold refer to the context for spacing information between two scripts *)
+  | _ -> None
+
+
 let space_width_info ctx : length_info =
-  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
-  let size = ctx.font_size *% font_ratio in
+(*
+  let (_, font_ratio, _) = get_font_with_ratio ctx ctx.dominant_script in
+*)
+  let size = ctx.font_size (* *% font_ratio *) in
   let widnatural = size *% ctx.space_natural in
   let widshrink  = size *% ctx.space_shrink in
   let widstretch = size *% ctx.space_stretch in
@@ -342,10 +345,54 @@ let fixed_string (ctx : input_context) (script : script) (uchlst : Uchar.t list)
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 
+let discretionary_if_breakable alw badns lphb =
+  match alw with
+  | AllowBreak ->
+      let dscrid = DiscretionaryID.fresh () in
+      LBDiscretionary(badns, dscrid, [lphb], [], [])
+
+  | PreventBreak ->
+      LBPure(lphb)
+
+
+let adjacent_space ctx =
+  let widstretch = ctx.font_size *% ctx.adjacent_stretch in
+  let widinfo = make_width_info Length.zero Length.zero widstretch in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+let space_between_chunks (ctxprev, scriptprev, lbcprev) alw (ctx, script, lbc) : lb_box list =
+  if not (script_equal scriptprev script) then
+    let size = Length.max ctxprev.font_size ctx.font_size in
+    let badns = ctx.badness_space in
+      match pure_space_between_scripts size scriptprev script with
+      | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
+      | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx)]  (* temporary *)
+  else
+    [discretionary_if_breakable alw ctx.badness_space (adjacent_space ctx)]
+  (* TEMPORARY; SHOULD WRITE MORE *)
+
+(*
+  LBPure(fixed_string ctx script [Uchar.of_int (Char.code 'A')])
+*)
+
+let space_between_chunks_pure (ctxprev, scriptprev, lbcprev) (ctx, script, lbc) : lb_pure_box list =
+  if not (script_equal scriptprev script) then
+    let size = Length.max ctxprev.font_size ctx.font_size in
+      match pure_space_between_scripts size scriptprev script with
+      | Some(lphb) -> [lphb]
+      | None       -> [adjacent_space ctx]  (* temporary *)
+  else
+    [adjacent_space ctx]
+  (* TEMPORARY; SHOULD WRITE MORE *)
+
+
 let chunks_to_boxes (chunklst : line_break_chunk list) =
   let rec aux lhbacc prevopt chunklst =
     match chunklst with
-    | []                 -> List.rev lhbacc
+    | [] ->
+        List.rev lhbacc
+
     | chunk :: chunktail ->
         let (ctx, chunkmain) = chunk in
         let (opt, lhblstmain) =
@@ -357,14 +404,30 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
               (None, [unbreakable_space ctx])
               
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-              (Some((script, lbclast, alw)), [LBPure(fixed_string ctx script uchlst)])
-                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbcfirst' *)
+              let opt = Some(((ctx, script, lbclast), alw)) in
+              let lhblststr = [LBPure(fixed_string ctx script uchlst)] in
+              begin
+                match prevopt with
+                | None ->
+                    (opt, lhblststr)
+
+                | Some((previnfo, alw)) ->
+                    let autospace = space_between_chunks previnfo alw (ctx, script, lbcfirst) in
+                    (opt, List.append autospace lhblststr)
+              end
 
           | IdeographicChunk(script, lbc, uch, alw) ->
-              let dscrid = DiscretionaryID.fresh () in  (* temporary *)
-              let dummy_space = LBDiscretionary(100, dscrid, [], [], []) in
-              (Some((script, lbc, alw)), [LBPure(fixed_string ctx script [uch]); dummy_space])
-                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbc' *)
+              let opt = Some(((ctx, script, lbc), alw)) in
+              let lhblststr = [LBPure(fixed_string ctx script [uch])] in
+              begin
+                match prevopt with
+                | None ->
+                    (opt, lhblststr)
+
+                | Some((previnfo, alw)) ->
+                    let autospace = space_between_chunks previnfo alw (ctx, script, lbc) in
+                    (opt, List.append autospace lhblststr)
+              end
         in
           aux (List.rev_append lhblstmain lhbacc) opt chunktail
   in
@@ -374,7 +437,9 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
 let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
   let rec aux lphbacc prevopt chunklst =
     match chunklst with
-    | []                 -> List.rev lphbacc
+    | [] ->
+        List.rev lphbacc
+
     | chunk :: chunktail ->
         let (ctx, chunkmain) = chunk in
         let (opt, lphblstmain) =
@@ -384,14 +449,30 @@ let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
 
           | UnbreakableSpace ->
               (None, [pure_space ctx])
-              
+
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-              (Some((script, lbclast, alw)), [fixed_string ctx script uchlst])
-                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbcfirst' *)
+              let opt = Some(((ctx, script, lbclast), alw)) in
+              begin
+                match prevopt with
+                | None ->
+                    (opt, [fixed_string ctx script uchlst])
+
+                | Some((previnfo, alw)) ->
+                    let autospace = space_between_chunks_pure previnfo (ctx, script, lbcfirst) in
+                    (opt, List.append autospace [fixed_string ctx script uchlst])
+              end
 
           | IdeographicChunk(script, lbc, uch, alw) ->
-              (Some((script, lbc, alw)), [fixed_string ctx script [uch]])
-                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbc' *)
+              let opt = Some(((ctx, script, lbc), alw)) in
+              begin
+                match prevopt with
+                | None ->
+                    (opt, [fixed_string ctx script [uch]])
+
+                | Some((previnfo, alw)) ->
+                    let autospace = space_between_chunks_pure previnfo (ctx, script, lbc) in
+                    (opt, List.append autospace [fixed_string ctx script [uch]])
+              end
         in
           aux (List.rev_append lphblstmain lphbacc) opt chunktail
   in
