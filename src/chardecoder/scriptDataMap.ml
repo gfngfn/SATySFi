@@ -85,6 +85,7 @@ let divide_by_script (trilst : (Uchar.t * line_break_class * break_opportunity) 
                   aux (chunkideo :: resacc) None tritail
 
             | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
+              (* -- if there accumulate some characters before the spotted character -- *)
                 let chunkideo = ideographic script lbc uch alw in
                 let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
                   aux (chunkideo :: chunkprev :: resacc) None tritail
@@ -114,8 +115,7 @@ let divide_by_script (trilst : (Uchar.t * line_break_class * break_opportunity) 
               begin
                 match scraccopt with
                 | None ->
-                    let chunk = preword script lbc lbc [uch] PreventBreak in
-                      aux (chunk :: resacc) None tritail
+                    aux resacc (Some((lbc, script, lbc, [uch]))) tritail
 
                 | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
                     if script_equal scriptprev script then
