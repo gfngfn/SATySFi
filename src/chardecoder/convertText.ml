@@ -272,7 +272,7 @@ let insert_between_scripts size script1 script2 =
         (* temporary; shold refer to the context for spacing information between two scripts *)
   | _ -> []
 
-
+(*
 let insert_auto_space lhblst =
 
   let rec aux lhbacc scriptprevopt lhblst =
@@ -308,7 +308,7 @@ let insert_auto_space lhblst =
         aux (lhb :: lhbacc) None lhbtail
   in
     aux [] None lhblst
-
+*)
 (*
 let adjacent_stretch = size *% ctx.adjacent_stretch in  (* temporary *)
 *)
@@ -339,7 +339,7 @@ let unbreakable_space ctx : lb_box =
 let fixed_string (ctx : input_context) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(script, hsinfo, hgt, dpt, otxt))
+    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 
 let chunks_to_boxes (chunklst : line_break_chunk list) =

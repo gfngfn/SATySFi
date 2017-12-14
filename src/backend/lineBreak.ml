@@ -103,7 +103,7 @@ let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
 
           | Some(chunkacc) ->
               let lhblst = ConvertText.chunks_to_boxes (List.rev chunkacc) in
-              aux (List.rev_append lhblst lhbacc) None lbeithertail
+              aux (lhb :: (List.rev_append lhblst lhbacc)) None lbeithertail
         end
   in
     aux [] None lbeitherlst
@@ -138,7 +138,7 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
 
           | Some(chunkacc) ->
               let lphblst = ConvertText.chunks_to_boxes_pure (List.rev chunkacc) in
-              aux (List.rev_append lphblst lphbacc) None lbpetail
+              aux (lphb :: (List.rev_append lphblst lphbacc)) None lbpetail
         end
   in
     aux [] None lbpelst

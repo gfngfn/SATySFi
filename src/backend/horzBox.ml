@@ -279,13 +279,12 @@ and horz_box =
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 and evaled_horz_box_main =
-  | EvHorzString of CharBasis.script * horz_string_info * length * length * OutputText.t
+  | EvHorzString of horz_string_info * length * length * OutputText.t
       (* --
-         (1) script: used just for inserting spaces between different script
-         (2) string information for writing string to PDF
-         (3) content height
-         (4) content depth
-         (5) content string
+         (1) string information for writing string to PDF
+         (2) content height
+         (3) content depth
+         (4) content string
          -- *)
 
   | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id

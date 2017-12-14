@@ -45,7 +45,15 @@ module Make (Vertex : VertexType) (Weight : WeightType)
     type vertex = Vertex.t
     type weight = Weight.t
 
-    type label = Infinite | Finite of weight * vertex option
+    type label =
+      | Infinite
+          (* -- stands for being unreachable -- *)
+
+      | Finite of weight * vertex option
+          (* --
+             (1) distance from the source vertex
+             (2) "parent" vertex ('None' if it is the source vertex)
+             --*)
 
     exception UndefinedSourceVertex
     exception UndefinedDestinationVertex
