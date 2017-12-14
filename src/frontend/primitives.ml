@@ -129,7 +129,7 @@ let default_math_left_paren hgt dpt hgtaxis fontsize color =
   in
   let hgtparen = HorzBox.(hgtaxis +% halflen) in
   let dptparen = HorzBox.(hgtaxis -% halflen) in
-  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
+  (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
 let default_math_right_paren hgt dpt hgtaxis fontsize color =
@@ -161,7 +161,7 @@ let default_math_right_paren hgt dpt hgtaxis fontsize color =
   in
   let hgtparen = HorzBox.(hgtaxis +% halflen) in
   let dptparen = HorzBox.(hgtaxis -% halflen) in
-  (HorzBox.([HorzPure(PHInlineGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
+  (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
 
 
 let default_radical hgt_bar t_bar dpt fontsize color =
@@ -202,7 +202,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
       ], Some(LineTo(())))
     ]
   in
-  [HorzPure(PHInlineGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
+  [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
   end)
 
 
@@ -381,7 +381,7 @@ let make_environments () =
         ("form-document"         , ~% (ctx @-> bc @-> doc)                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
         ("inline-skip"           , ~% (ln @-> br)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (ln @-> ln @-> ln @-> br)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("inline-fil"            , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHOuterFil)])));
+        ("inline-fil"            , ~% br                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHSOuterFil)])));
         ("inline-frame-solid"    , ~% (pads @-> deco @-> br @-> br)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("inline-frame-breakable", ~% (pads @-> decoset @-> br @-> br)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
         ("font"                  , ~% (s @-> fl @-> fl @-> ft)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));

@@ -23,12 +23,12 @@ let ( +%@ ) wi1 wi2 =
 type metrics = length_info * length * length
 
 type lb_pure_box =
-  | Atom           of metrics * evaled_horz_box_main
-  | Rising         of metrics * length * lb_pure_box list
-  | OuterFrame     of metrics * decoration * lb_pure_box list
-  | FixedFrame     of length * length * length * decoration * lb_pure_box list
-  | EmbeddedVert   of length * length * length * evaled_vert_box list
-  | InlineGraphics of length * length * length * (point -> Pdfops.t list)
+  | LBAtom          of metrics * evaled_horz_box_main
+  | LBRising        of metrics * length * lb_pure_box list
+  | LBOuterFrame    of metrics * decoration * lb_pure_box list
+  | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
+  | LBEmbeddedVert  of length * length * length * evaled_vert_box list
+  | LBFixedGraphics of length * length * length * (point -> Pdfops.t list)
 
 type lb_box =
   | LBPure           of lb_pure_box
@@ -46,12 +46,12 @@ let natural wid =
 
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | Atom(metr, _)                    -> metr
-  | Rising(metr, _, _)               -> metr
-  | OuterFrame(metr, _, _)           -> metr
-  | FixedFrame(wid, hgt, dpt, _, _)  -> (natural wid, hgt, dpt)
-  | EmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
-  | InlineGraphics(wid, hgt, dpt, _) -> (natural wid, hgt, dpt)
+  | LBAtom(metr, _)                    -> metr
+  | LBRising(metr, _, _)               -> metr
+  | LBOuterFrame(metr, _, _)           -> metr
+  | LBFixedFrame(wid, hgt, dpt, _, _)  -> (natural wid, hgt, dpt)
+  | LBEmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
+  | LBFixedGraphics(wid, hgt, dpt, _) -> (natural wid, hgt, dpt)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -81,15 +81,15 @@ let append_vert_padding (metr : metrics) (pads : paddings) : metrics =
 
 let append_horz_padding (lhblst : lb_box list) (pads : paddings) =
   List.append
-    (LBPure(Atom(empty_vert (natural pads.paddingL), EvHorzEmpty)) :: lhblst)
-    (LBPure(Atom(empty_vert (natural pads.paddingR), EvHorzEmpty)) :: [])
+    (LBPure(LBAtom(empty_vert (natural pads.paddingL), EvHorzEmpty)) :: lhblst)
+    (LBPure(LBAtom(empty_vert (natural pads.paddingR), EvHorzEmpty)) :: [])
 
 
 let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info) (pads : paddings) =
   let lphblstnew =
     List.append
-      (Atom(empty_vert (natural pads.paddingL), EvHorzEmpty) :: lphblst)
-      (Atom(empty_vert (natural pads.paddingR), EvHorzEmpty) :: [])
+      (LBAtom(empty_vert (natural pads.paddingL), EvHorzEmpty) :: lphblst)
+      (LBAtom(empty_vert (natural pads.paddingR), EvHorzEmpty) :: [])
   in
   let widinfonew =
     {
@@ -107,9 +107,9 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_box list =
     | [] -> List.rev acc
 
     | HorzDiscretionary(pnlty, phbopt0, phbopt1, phbopt2) :: tail ->
-        let lphbopt0 = convert_pure_box_for_line_breaking_opt phbopt0 in
-        let lphbopt1 = convert_pure_box_for_line_breaking_opt phbopt1 in
-        let lphbopt2 = convert_pure_box_for_line_breaking_opt phbopt2 in
+        let lphbopt0 = Util.option_map convert_pure_box_for_line_breaking phbopt0 in
+        let lphbopt1 = Util.option_map convert_pure_box_for_line_breaking phbopt1 in
+        let lphbopt2 = Util.option_map convert_pure_box_for_line_breaking phbopt2 in
         let dscrid = DiscretionaryID.fresh () in
           aux (LBDiscretionary(pnlty, dscrid, lphbopt0, lphbopt1, lphbopt2) :: acc) tail
 
@@ -132,7 +132,7 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     | [] -> List.rev acc
 
     | HorzDiscretionary(pnlty, phbopt0, phbopt1, phbopt2) :: tail ->
-        let lphbopt0 = convert_pure_box_for_line_breaking_opt phbopt0 in
+        let lphbopt0 = Util.option_map convert_pure_box_for_line_breaking phbopt0 in
         begin
           match lphbopt0 with
           | None        -> aux acc tail
@@ -147,65 +147,60 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let lphblst = convert_list_for_line_breaking_pure hblstsub in
         let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-          aux (OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst) :: acc) tail
+          aux (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst) :: acc) tail
   in
     aux [] hblst
 
   
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_pure_box =
   match phb with
-  | PHFixedString(hsinfo, uchlst) ->
+  | PHCInnerString(ctx, uchlst) ->
+      (* REMAINS: should convert 'uchlst' to lb_box list *)
       let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
-        Atom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
+        LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
-  | PHFixedMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
-      Atom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid))
+  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
+      LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid))
 
-  | PHRising(lenrising, hblst) ->
+  | PHGRising(lenrising, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo, hgt, dpt) = get_total_metrics lphblst in
       let hgtsub = Length.max Length.zero (hgt +% lenrising) in
       let dptsub = Length.min Length.zero (dpt +% lenrising) in
-        Rising((widinfo, hgtsub, dptsub), lenrising, lphblst)
+        LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst)
 
-  | PHFixedEmpty(wid) ->
-      Atom(empty_vert (natural wid), EvHorzEmpty)
+  | PHSFixedEmpty(wid) ->
+      LBAtom(empty_vert (natural wid), EvHorzEmpty)
 
-  | PHOuterEmpty(wid, widshrink, widstretch) ->
-      Atom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty)
+  | PHSOuterEmpty(wid, widshrink, widstretch) ->
+      LBAtom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty)
 
-  | PHOuterFil ->
-      Atom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty)
+  | PHSOuterFil ->
+      LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty)
 
-  | PHOuterFrame(pads, deco, hblst) ->
+  | PHGOuterFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        OuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew)
+        LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew)
 
-  | PHInnerFrame(pads, deco, hblst) ->
+  | PHGInnerFrame(pads, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        FixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
+        LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
 
-  | PHFixedFrame(pads, wid_req, deco, hblst) ->
+  | PHGFixedFrame(pads, wid_req, deco, hblst) ->
       let lphblst = convert_list_for_line_breaking_pure hblst in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
       let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
-        FixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
+        LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew)
 
-  | PHEmbeddedVert(wid, hgt, dpt, evvblst) ->
-      EmbeddedVert(wid, hgt, dpt, evvblst)
+  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
+      LBEmbeddedVert(wid, hgt, dpt, evvblst)
 
-  | PHInlineGraphics(wid, hgt, dpt, graphics) ->
-      InlineGraphics(wid, hgt, dpt, graphics)
-
-
-and convert_pure_box_for_line_breaking_opt (phbopt : pure_horz_box option) =
-  match phbopt with
-  | None      -> None
-  | Some(phb) -> Some(convert_pure_box_for_line_breaking phb)
+  | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
+      LBFixedGraphics(wid, hgt, dpt, graphics)
 
 
 module WidthMap
@@ -297,7 +292,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
   let rec main_conversion ratios widperfil lphb =
     match lphb with
-    | Atom((widinfo, _, _), evhb) ->
+    | LBAtom((widinfo, _, _), evhb) ->
         begin
           match widinfo.stretchable with
           | Fils(nfil)  when nfil > 0 -> EvHorz(widinfo.natural +% widperfil, evhb)
@@ -313,24 +308,24 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
                 EvHorz(widinfo.natural +% widappend, evhb)
         end
 
-    | Rising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
+    | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
         let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
           EvHorz(wid_total, EvHorzRising(hgtsub, dptsub, lenrising, evhblst))
 
-    | OuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
+    | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
         let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
         let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
           EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
-    | FixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
+    | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
         let (evhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
           EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
 
-    | EmbeddedVert(wid, hgt, dpt, evvblst) ->
+    | LBEmbeddedVert(wid, hgt, dpt, evvblst) ->
         EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst))
 
-    | InlineGraphics(wid, hgt, dpt, graphics) ->
+    | LBFixedGraphics(wid, hgt, dpt, graphics) ->
         EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics))
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
@@ -401,9 +396,9 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
           begin
             match first with
             | Some(accline) ->
-                aux None (Some(OuterFrame(metr_total, decoS, line) :: accline)) acclines []
+                aux None (Some(LBOuterFrame(metr_total, decoS, line) :: accline)) acclines []
             | None ->
-                aux None (Some(OuterFrame(metr_total, decoT, line) :: [])) acclines []
+                aux None (Some(LBOuterFrame(metr_total, decoT, line) :: [])) acclines []
           end
 
       | line :: tail ->
@@ -412,9 +407,9 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
           begin
             match first with
             | Some(accline) ->
-                aux None None ((List.rev (OuterFrame(metr_total, decoH, line) :: accline)) :: acclines) tail
+                aux None None ((List.rev (LBOuterFrame(metr_total, decoH, line) :: accline)) :: acclines) tail
             | None ->
-                aux None None ((OuterFrame(metr_total, decoM, line) :: []) :: acclines) tail
+                aux None None ((LBOuterFrame(metr_total, decoM, line) :: []) :: acclines) tail
           end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame

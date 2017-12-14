@@ -182,6 +182,33 @@ type graphics_command =
 type decoration = point -> length -> length -> length -> Pdfops.t list
 [@@deriving show]
 
+
+module FontSchemeMap = Map.Make
+  (struct
+    type t = CharBasis.script
+    let compare = Pervasives.compare
+  end)
+
+
+type input_context = {
+  font_size        : length;
+  font_scheme      : font_with_ratio FontSchemeMap.t;
+  math_font        : math_font_abbrev;
+  dominant_script  : CharBasis.script;
+  space_natural    : float;
+  space_shrink     : float;
+  space_stretch    : float;
+  adjacent_stretch : float;
+  paragraph_width  : length;
+  paragraph_top    : length;
+  paragraph_bottom : length;
+  leading          : length;
+  text_color       : color;
+  manual_rising    : length;
+  page_scheme      : page_scheme;
+}
+(* temporary *)
+
 type horz_string_info =
   {
     font_abbrev    : font_abbrev;
@@ -200,21 +227,24 @@ type math_string_info =
 let pp_horz_string_info fmt info =
   Format.fprintf fmt "(HSinfo)"
 
+(* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
 type pure_horz_box =
-  | PHOuterEmpty     of length * length * length
-  | PHOuterFil
-  | PHOuterFrame     of paddings * decoration * horz_box list
-  | PHFixedString    of horz_string_info * Uchar.t list
+(* -- spaces inserted before text processing -- *)
+  | PHSOuterEmpty     of length * length * length
+  | PHSOuterFil
+  | PHSFixedEmpty     of length
+(* -- texts -- *)
+  | PHCInnerString    of input_context * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHFixedMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
+  | PHCInnerMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
-  | PHRising         of length * horz_box list
-  | PHFixedEmpty     of length
-  | PHFixedFrame     of paddings * length * decoration * horz_box list
-  | PHInnerFrame     of paddings * decoration * horz_box list
-  | PHEmbeddedVert   of length * length * length * evaled_vert_box list
-  | PHInlineGraphics of length * length * length * (point -> Pdfops.t list)
-(* -- core part of the definition of horizontal boxes -- *)
+(* -- groups -- *)
+  | PHGRising         of length * horz_box list
+  | PHGFixedFrame     of paddings * length * decoration * horz_box list
+  | PHGInnerFrame     of paddings * decoration * horz_box list
+  | PHGOuterFrame     of paddings * decoration * horz_box list
+  | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
+  | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -257,33 +287,6 @@ and evaled_vert_box =
 type vert_box =
   | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
   | VertFixedBreakable of length
-
-
-module FontSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
-
-
-type input_context = {
-  font_size        : length;
-  font_scheme      : font_with_ratio FontSchemeMap.t;
-  math_font        : math_font_abbrev;
-  dominant_script  : CharBasis.script;
-  space_natural    : float;
-  space_shrink     : float;
-  space_stretch    : float;
-  adjacent_stretch : float;
-  paragraph_width  : length;
-  paragraph_top    : length;
-  paragraph_bottom : length;
-  leading          : length;
-  text_color       : color;
-  manual_rising    : length;
-  page_scheme      : page_scheme;
-}
-(* temporary *)
 
 
 module MathContext

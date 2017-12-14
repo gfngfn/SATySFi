@@ -179,6 +179,14 @@ let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
     (lk, rk)
 
 
+let fixed_empty wid =
+  HorzPure(PHSFixedEmpty(wid))
+
+
+let outer_empty wid shrink stretch =
+  HorzPure(PHSOuterEmpty(wid, shrink, stretch))
+
+
 let normalize_math_kind mkprev mknext mkraw =
   match mkraw with
   | MathOrdinary
@@ -218,17 +226,17 @@ let normalize_math_kind mkprev mknext mkraw =
 
 
 let space_ord_bin fontsize =
-  Some(HorzPure(PHOuterEmpty(fontsize *% 0.25, Length.zero, Length.zero)))
+  Some(outer_empty (fontsize *% 0.25) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
 let space_ord_rel fontsize =
-  Some(HorzPure(PHOuterEmpty(fontsize *% 0.375, Length.zero, Length.zero)))
+  Some(outer_empty (fontsize *% 0.375) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
 let space_ord_inner fontsize =
-  Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))
+  Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
@@ -238,7 +246,7 @@ let space_ord_op = space_ord_inner  (* temporary *)
 
 
 let space_ord_prefix fontsize =
-  Some(HorzPure(PHOuterEmpty(fontsize *% 0.125, Length.zero, Length.zero)))
+  Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
@@ -249,7 +257,7 @@ let space_after_script mathctx =
   else
     let mc = FontInfo.get_math_constants mathctx in
     Format.printf "Math> space_after_script = %f\n" mc.FontFormat.space_after_script;  (* for debug *)
-    Some(HorzPure(PHOuterEmpty(fontsize *% mc.FontFormat.space_after_script, Length.zero, Length.zero)))
+    Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
       (* temporary; should have variable stretchability and shrinkability *)
 
 
@@ -273,7 +281,7 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
             match corr with
             | NoSpace                     -> None
             | SpaceAfterScript            -> None
-            | ItalicsCorrection(italcorr) -> Some(HorzPure(PHFixedEmpty(italcorr)))
+            | ItalicsCorrection(italcorr) -> Some(fixed_empty italcorr)
           end
 
       | (MathPunct   , _           )
@@ -707,7 +715,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
 let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
   match lme with
   | LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid) ->
-      [HorzPure(PHFixedMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
+      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
 
   | LowMathEmbeddedHorz(hblst) ->
       hblst
@@ -727,7 +735,7 @@ let horz_fraction_bar mathctx wid =
   let bar_graphics (xpos, ypos) =
     Graphics.pdfops_of_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))]
   in
-    HorzPure(PHInlineGraphics(wid, h_bart, Length.zero, bar_graphics))  
+    HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))  
 
 
 let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) =
@@ -735,7 +743,7 @@ let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : len
 
 
 let raise_horz r hblst =
-  [HorzPure(PHRising(r, hblst))]
+  [HorzPure(PHGRising(r, hblst))]
 
 
 let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mklast : math_kind) (lm : low_math) =
@@ -785,7 +793,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_italic   = rkB.italics_correction in
         Format.printf "Math> l_italic = %f\n" (Length.to_pdf_point l_italic);
         let kern = l_italic +% l_kernbase +% l_kernsup in
-        let hbkern = HorzPure(PHFixedEmpty(kern)) in
+        let hbkern = fixed_empty kern in
         let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
@@ -805,13 +813,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernbase = calculate_kern mathctx rkB.kernBR l_base in
         let l_kernsub  = calculate_kern mathctx lkS.kernTL l_sub in
         let kern = l_kernbase +% l_kernsub in
-        let hbkern = HorzPure(PHFixedEmpty(kern)) in
+        let hbkern = fixed_empty kern in
         let (w_sub, _, _) = LineBreak.get_natural_metrics hblstS in
         let hblstsub =
           let lensub = kern +% w_sub in
           if lensub <% Length.zero then
           (* -- if the leftward shift by the kern is larger than the width of the subscript -- *)
-            let hbsupplement = HorzPure(PHFixedEmpty(Length.negate lensub)) in
+            let hbsupplement = fixed_empty (Length.negate lensub) in
             List.concat [hblstB; [hbkern]; raise_horz d_subbl hblstS; [hbsupplement]]
           else
             List.concat [hblstB; [hbkern]; raise_horz d_subbl hblstS]
@@ -839,19 +847,19 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernsup      = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic       = rkB.italics_correction in
         let kernsup = l_italic +% l_kernbase_sup +% l_kernsup in
-        let hbkernsup = HorzPure(PHFixedEmpty(kernsup)) in
+        let hbkernsup = fixed_empty kernsup in
 
         let (l_base_sub, l_sub) = subscript_correction_heights mathctx d_subbl d_base h_sub in
         let l_kernbase_sub = calculate_kern mathctx rkB.kernBR l_base_sub in
         let l_kernsub      = calculate_kern mathctx lkS.kernTL l_sub in
-        let kernsub = l_kernbase_sub +% l_kernsub in
-        let hbkernsub = HorzPure(PHFixedEmpty(kernsub)) in
+        let kernsub = (l_kernbase_sub +% l_kernsub) in
+        let hbkernsub = fixed_empty kernsub in
 
         let (w_sup, _, _) = LineBreak.get_natural_metrics hblstS in
         let (w_sub, _, _) = LineBreak.get_natural_metrics hblstT in
         let foresup = kernsup +% w_sup in
         let foresub = kernsub +% w_sub in
-        let hbbacksub = HorzPure(PHFixedEmpty(Length.negate foresub)) in
+        let hbbacksub = fixed_empty (Length.negate foresub) in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hblstappended =
           let hblstlst =
@@ -861,7 +869,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
           (* -- if the superscript is wider than the subscript and leftward kern value -- *)
             List.concat hblstlst
           else
-            let hbsupplement = HorzPure(PHFixedEmpty((Length.max Length.zero foresub) -% foresup)) in
+            let hbsupplement = fixed_empty ((Length.max Length.zero foresub) -% foresup) in
             List.concat (List.append hblstlst [[hbsupplement]])
         in
         let hbaccnew =
@@ -880,16 +888,16 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
           if w_numer <% w_denom then
           (* -- if the numerator is narrower than the denominator -- *)
             let space = (w_denom -% w_numer) *% 0.5 in
-            let hblst_space = HorzPure(PHFixedEmpty(space)) in
+            let hblst_space = fixed_empty space in
             let hblstNnew = List.concat [[hblst_space]; hblstN; [hblst_space]] in
               (hblstNnew, hblstD, w_denom)
           else
             let space = (w_numer -% w_denom) *% 0.5 in
-            let hblst_space = HorzPure(PHFixedEmpty(space)) in
+            let hblst_space = fixed_empty space in
             let hblstDnew = List.concat [[hblst_space]; hblstD; [hblst_space]] in
               (hblstN, hblstDnew, w_numer)
         in
-        let hbback = HorzPure(PHFixedEmpty(Length.negate w_frac)) in
+        let hbback = fixed_empty (Length.negate w_frac) in
         let hbbar = horz_fraction_bar mathctx w_frac in
         let hblstsub = List.concat [raise_horz h_numerbl hblstNret; [hbback; hbbar; hbback]; raise_horz d_denombl hblstDret] in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
@@ -904,11 +912,11 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hblstC = horz_of_low_math mathctx MathEnd MathEnd lmC in
         let (w_cont, _, _) = LineBreak.get_natural_metrics hblstC in
         let hbbar =
-          HorzPure(PHInlineGraphics(w_cont, h_bar +% t_bar, Length.zero,
+          HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
             (fun (xpos, ypos) ->
               Graphics.pdfops_of_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
         in
-        let hbback = HorzPure(PHFixedEmpty(Length.negate w_cont)) in
+        let hbback = fixed_empty (Length.negate w_cont) in
         let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
         let hbaccnew =
@@ -945,13 +953,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
           if w_base <% w_up then
           (* -- if the upper script is wider than the base -- *)
             let space = (w_up -% w_base) *% 0.5 in
-            let hbspace = HorzPure(PHFixedEmpty(space)) in
-            let hbback = HorzPure(PHFixedEmpty(Length.negate w_up)) in
+            let hbspace = fixed_empty space in
+            let hbback = fixed_empty (Length.negate w_up) in
               List.concat [raise_horz h_upbl hblstU; [hbback; hbspace]; hblstB; [hbspace]]
           else
             let space = (w_base -% w_up) *% 0.5 in
-            let hbspace = HorzPure(PHFixedEmpty(space)) in
-            let hbback = HorzPure(PHFixedEmpty(Length.negate w_base)) in
+            let hbspace = fixed_empty space in
+            let hbback = fixed_empty (Length.negate w_base) in
               List.concat [[hbspace]; raise_horz h_upbl hblstU; [hbspace; hbback]; hblstB]
         in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
@@ -973,13 +981,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
           if w_base <% w_low then
           (* -- if the lower script is wider than the base -- *)
             let space = (w_low -% w_base) *% 0.5 in
-            let hbspace = HorzPure(PHFixedEmpty(space)) in
-            let hbback = HorzPure(PHFixedEmpty(Length.negate w_low)) in
+            let hbspace = fixed_empty space in
+            let hbback = fixed_empty (Length.negate w_low) in
               List.concat [raise_horz d_lowbl hblstL; [hbback; hbspace]; hblstB; [hbspace]]
           else
             let space = (w_base -% w_low) *% 0.5 in
-            let hbspace = HorzPure(PHFixedEmpty(space)) in
-            let hbback = HorzPure(PHFixedEmpty(Length.negate w_base)) in
+            let hbspace = fixed_empty space in
+            let hbback = fixed_empty (Length.negate w_base) in
               List.concat [[hbspace]; raise_horz d_lowbl hblstL; [hbspace; hbback]; hblstB]
         in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in

@@ -22,7 +22,10 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 
 let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+    HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+(*
     ConvertText.to_boxes ctx uchlst
+*)
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -482,7 +485,7 @@ and interpret env ast =
         | (None, totalhgt)      -> (HorzBox.Length.zero, HorzBox.Length.negate totalhgt)
       in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHEmbeddedVert(wid, hgt, dpt, evvblst))]))
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt) ->
       let page = interpret_page env astpage in
@@ -575,13 +578,13 @@ and interpret env ast =
 
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
+        Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
 
   | BackendOuterEmpty(astnat, astshrink, aststretch) ->
       let widnat = interpret_length env astnat in
       let widshrink = interpret_length env astshrink in
       let widstretch = interpret_length env aststretch in
-        Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
+        Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
 (*
   | BackendFixedString(astctx, aststr) ->
       let ctx = interpret_font env astctx in
@@ -599,7 +602,7 @@ and interpret env ast =
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env astbr in
       let valuedeco = interpret env astdeco in
-        Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
+        Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
           make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
           hblst))])
@@ -623,7 +626,7 @@ and interpret env ast =
       let dpt = interpret_length env astdpt in
       let valueg = interpret env astg in
       let graphics = make_inline_graphics env valueg in
-        Horz([HorzBox.HorzPure(HorzBox.PHInlineGraphics(wid, hgt, dpt, graphics))])
+        Horz([HorzBox.HorzPure(HorzBox.PHGFixedGraphics(wid, hgt, dpt, graphics))])
 
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
