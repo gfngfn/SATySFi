@@ -1,5 +1,6 @@
 
 open HorzBox
+open CharBasis
 
 
 type metrics = length_info * length * length
@@ -48,3 +49,33 @@ let natural wid =
     shrinkable  = Length.zero;
     stretchable = FiniteStretch(Length.zero);
   }
+
+
+type line_break_chunk_main =
+  | AlphabeticChunk  of script * line_break_class * line_break_class * Uchar.t list * break_opportunity
+      (* --
+         (1) script
+         (2) line break class for the previous chunk
+         (3) line break class for the next chunk
+         (4) text contents
+         (5) whether breaking line immediate after the chunk is allowed
+         -- *)
+  | Space
+  | UnbreakableSpace
+  | IdeographicChunk of script * line_break_class * Uchar.t * break_opportunity
+      (* --
+         (1) script
+         (2) line break class
+         (3) character content
+         (4) whether breaking line immediate after the chunk is allowed
+         -- *)
+(*
+  | JLOpen           of script * line_break_element
+  | JLClose          of script * line_break_element
+  | JLNonstarter     of script * line_break_element
+  | JLMiddle         of script * line_break_element
+  | JLComma          of script * line_break_element
+  | JLFullStop       of script * line_break_element
+*)
+
+type line_break_chunk = input_context * line_break_chunk_main

@@ -96,7 +96,7 @@ let default_font_scheme =
       (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
       (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
       (CharBasis.Latin             , ("Arno"  , 1., 0.));
-      (CharBasis.Other             , HorzBox.default_font_with_ratio);
+      (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
     ]
 
 
@@ -214,7 +214,7 @@ let get_initial_context pagesch =
     font_scheme      = default_font_scheme;
     font_size        = pdfpt 12.;
     math_font        = "lmodern";
-    dominant_script  = CharBasis.Other;
+    dominant_script  = CharBasis.OtherScript;
     space_natural    = 0.33;
     space_shrink     = 0.08;
     space_stretch    = 0.16; (* 0.32; *)

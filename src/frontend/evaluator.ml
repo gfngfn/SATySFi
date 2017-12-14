@@ -1117,7 +1117,7 @@ and interpret_script env ast : CharBasis.script =
     | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
     | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
     | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
-    | Constructor("Other"         , UnitConstant) -> CharBasis.Other
+    | Constructor("Other"         , UnitConstant) -> CharBasis.OtherScript
     | _ ->
         report_bug_evaluator ("interpret_script: not a script value; "
                               ^ (Display.string_of_ast ast)

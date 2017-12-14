@@ -3,7 +3,7 @@ open HorzBox
 open CharBasis
 open LineBreakBox
 
-
+(*
 let get_script_opt lbu =
   match lbu with
   | Space
@@ -53,9 +53,9 @@ let insert_adjacent_space (ctx : input_context) (lbulst : ('a line_break_unit) l
           aux (lbuhead :: (List.rev_append space acc)) (Some(lbuhead)) lbutail
   in
     aux [] None lbulst
+*)
 
-
-let to_boxes_scheme ctx uchlst =
+let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
 
   (* begin: for debug *)
@@ -70,50 +70,29 @@ let to_boxes_scheme ctx uchlst =
   (* end: for debug *)
 
   let scrlst = ScriptDataMap.divide_by_script trilst in
-  let scrlstsp = insert_adjacent_space ctx scrlst in
+  let scrlstsp = (* insert_adjacent_space ctx *) scrlst in
 
   (* begin: for debug *)
   let () =
     scrlstsp |> List.iter (function
-      | PreWord(script, trilst, alw) ->
+      | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
           let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
-          PrintForDebug.lexhorzE ((CharBasis.show_script script) ^ sa);
-          LineBreakDataMap.print_trilist trilst
+          PrintForDebug.lexhorzE ("[Alph] " ^ (CharBasis.show_script script) ^ " " ^ sa);
+          let s = uchlst |> List.map (fun uch -> InternalText.to_utf8 (InternalText.of_uchar uch)) |> String.concat "" in
+          PrintForDebug.lexhorzE s
       | Space ->
           PrintForDebug.lexhorzE "SPACE"
-      | CustomizedSpace(_) ->
-          PrintForDebug.lexhorzE "CUSTOMIZED_SPACE"
       | UnbreakableSpace ->
           PrintForDebug.lexhorzE "UNBREAKABLE_SPACE"
-      | JLOpen(script, tri) ->
-          PrintForDebug.lexhorzE ("JL_OPEN " ^ (CharBasis.show_script script));
-          LineBreakDataMap.print_trilist [tri]
-      | JLClose(script, tri) ->
-          PrintForDebug.lexhorzE ("JL_CLOSE " ^ (CharBasis.show_script script));
-          LineBreakDataMap.print_trilist [tri]
-      | JLMiddle(script, tri) ->
-          PrintForDebug.lexhorzE "JL_MIDDLE"
-      | JLComma(script, tri) ->
-          PrintForDebug.lexhorzE "JL_COMMA"
-      | JLFullStop(script, tri) ->
-          PrintForDebug.lexhorzE "JL_FULL_STOP"
-      | JLNonstarter(script, tri) ->
-          PrintForDebug.lexhorzE "JL_NONSTARTER"
+      | IdeographicChunk(script, lbc, uch, alw) ->
+          let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
+          PrintForDebug.lexhorzE ("[Ideo] " ^ (CharBasis.show_script script) ^ " " ^ sa);
+          PrintForDebug.lexhorzE (InternalText.to_utf8 (InternalText.of_uchar uch))
     )
   in
   (* end: for debug *)
 
   scrlstsp
-
-
-let pure_space widnat widshrink widstretch : lb_pure_box =
-  let widinfo = make_width_info widnat widshrink widstretch in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
-
-
-let fixed_string (script : script) (hsinfo : horz_string_info) (uchlst : Uchar.t list) : lb_pure_box =
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
-    LBAtom((natural wid, hgt, dpt), EvHorzString(script, hsinfo, hgt, dpt, otxt))
 
 
 let half_kern (hsinfo : horz_string_info) : lb_pure_box =
@@ -132,45 +111,36 @@ let breakable_full badness (_, fontsize) stretch_ratio =
     LBDiscretionary(badness, dscrid, Some(LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)), None, None)
 *)
 
-let to_boxes ctx uchlst : lb_box list =
-  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
-  let size = ctx.font_size *% font_ratio in
-  let space_natural = size *% ctx.space_natural in
-  let space_shrink  = size *% ctx.space_shrink in
-  let space_stretch = size *% ctx.space_stretch in
-  let adjacent_stretch = size *% ctx.adjacent_stretch in
+let to_chunks ctx uchlst : line_break_chunk list =
+(*
+*)
+  let scrlstsp = to_chunk_main_list ctx uchlst in
 
-  let breakable_space widnat widshrink widstretch : lb_box =
-    let dscrid = DiscretionaryID.fresh () in
-    let widinfo = make_width_info widnat widshrink widstretch in
-    LBDiscretionary(ctx.badness_space, dscrid, [LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)], [], [])
-  in
-
-  let unbreakable_space widnat widshrink widstretch : lb_box =
-    LBPure(pure_space widnat widshrink widstretch)
-  in
-
-  let scrlstsp = to_boxes_scheme ctx uchlst in
-
+  scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
+(*
   scrlstsp |> List.map (function
-    | PreWord(script, trilst, CharBasis.PreventBreak) ->
-        [ LBPure(fixed_string script (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch))); ]
-
+    | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
+        [ LBPure(fixed_string script (get_string_info ctx script) uchlst); ]
+(*
     | PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
           LBPure(fixed_string script (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)));
           breakable_space HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
-
+*)
     | Space ->
         [ breakable_space space_natural space_shrink space_stretch; ]
-
-    | CustomizedSpace(wid_natural, wid_shrink, wid_stretch) ->
-        [ breakable_space wid_natural wid_shrink wid_stretch; ]
 
     | UnbreakableSpace ->
         [ unbreakable_space space_natural space_shrink space_stretch; ]
 
+    | IdeographicChunk(script, lbc, uch, alw) ->
+        [
+          LBPure(fixed_string script (get_string_info ctx script) [uch]);
+          breakable_space HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;  (* temporary *)
+        ]
+
+(*
     | JLOpen(script, (uch, _, _)) ->
         let hsinfo = get_string_info ctx script in
         [
@@ -211,39 +181,42 @@ let to_boxes ctx uchlst : lb_box list =
     | JLMiddle(script, (uch, _, _)) ->
         let hsinfo = get_string_info ctx script in
         [ LBPure(fixed_string script hsinfo [uch]); ]
-        
+*)        
   ) |> List.concat
-
-
+*)
+(*
 let to_boxes_pure ctx uchlst : lb_pure_box list =
   let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
   let size = ctx.font_size *% font_ratio in
   let space_natural = size *% ctx.space_natural in
   let space_shrink  = size *% ctx.space_shrink in
   let space_stretch = size *% ctx.space_stretch in
+(*
   let adjacent_stretch = size *% ctx.adjacent_stretch in
+*)
 
-  let scrlstsp = to_boxes_scheme ctx uchlst in
+  let scrlstsp = to_chunk_main_list ctx uchlst in
 
   scrlstsp |> List.map (function
-    | PreWord(script, trilst, CharBasis.PreventBreak) ->
-        [ fixed_string script (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch)); ]
-
+    | AlphabeticChunk(script, lbcfirst, lbcprev, uchlst, alw) ->
+        [ fixed_string script (get_string_info ctx script) uchlst; ]
+(*
     | PreWord(script, trilst, CharBasis.AllowBreak) ->
         [
           fixed_string script (get_string_info ctx script) (trilst |> List.map (fun (uch, _, _) -> uch));
           pure_space HorzBox.Length.zero HorzBox.Length.zero adjacent_stretch;
         ]
-
+*)
     | Space ->
         [ pure_space space_natural space_shrink space_stretch; ]
-
-    | CustomizedSpace(wid_natural, wid_shrink, wid_stretch) ->
-        [ pure_space wid_natural wid_shrink wid_stretch; ]
 
     | UnbreakableSpace ->
         [ pure_space space_natural space_shrink space_stretch; ]
 
+    | IdeographicChunk(script, lbc, uch, alw) ->
+        [ fixed_string script (get_string_info ctx script) uchlst; ]
+
+(*
     | JLOpen(script, (uch, _, _)) ->
         let hsinfo = get_string_info ctx script in
         [
@@ -284,23 +257,23 @@ let to_boxes_pure ctx uchlst : lb_pure_box list =
     | JLMiddle(script, (uch, _, _)) ->
         let hsinfo = get_string_info ctx script in
         [ fixed_string script hsinfo [uch]; ]
-        
+*)        
   ) |> List.concat
+*)
+
+let insert_between_scripts size script1 script2 =
+  match (script1, script2) with
+  | (HanIdeographic    , Latin             )
+  | (Latin             , HanIdeographic    )
+  | (HiraganaOrKatakana, Latin             )
+  | (Latin             , HiraganaOrKatakana)
+    ->
+      [LBPure(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))]
+        (* temporary; shold refer to the context for spacing information between two scripts *)
+  | _ -> []
 
 
 let insert_auto_space lhblst =
-
-  let insert_between_scripts size script1 script2 =
-    match (script1, script2) with
-    | (HanIdeographic    , Latin             )
-    | (Latin             , HanIdeographic    )
-    | (HiraganaOrKatakana, Latin             )
-    | (Latin             , HiraganaOrKatakana)
-      ->
-        [LBPure(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))]
-          (* temporary; shold refer to the context for spacing information between two scripts *)
-    | _ -> []
-  in
 
   let rec aux lhbacc scriptprevopt lhblst =
     match lhblst with
@@ -335,3 +308,91 @@ let insert_auto_space lhblst =
         aux (lhb :: lhbacc) None lhbtail
   in
     aux [] None lhblst
+
+(*
+let adjacent_stretch = size *% ctx.adjacent_stretch in  (* temporary *)
+*)
+
+let space_width_info ctx : length_info =
+  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
+  let size = ctx.font_size *% font_ratio in
+  let widnatural = size *% ctx.space_natural in
+  let widshrink  = size *% ctx.space_shrink in
+  let widstretch = size *% ctx.space_stretch in
+    make_width_info widnatural widshrink widstretch
+
+
+let pure_space ctx : lb_pure_box =
+  let widinfo = space_width_info ctx in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+let breakable_space ctx : lb_box =
+  let dscrid = DiscretionaryID.fresh () in
+    LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], [], [])
+
+
+let unbreakable_space ctx : lb_box =
+    LBPure(pure_space ctx)
+
+
+let fixed_string (ctx : input_context) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
+  let hsinfo = get_string_info ctx script in
+  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+    LBAtom((natural wid, hgt, dpt), EvHorzString(script, hsinfo, hgt, dpt, otxt))
+
+
+let chunks_to_boxes (chunklst : line_break_chunk list) =
+  let rec aux lhbacc prevopt chunklst =
+    match chunklst with
+    | []                 -> List.rev lhbacc
+    | chunk :: chunktail ->
+        let (ctx, chunkmain) = chunk in
+        let (opt, lhblstmain) =
+          match chunkmain with
+          | Space ->
+              (None, [breakable_space ctx])
+
+          | UnbreakableSpace ->
+              (None, [unbreakable_space ctx])
+              
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
+              (Some((script, lbclast, alw)), [LBPure(fixed_string ctx script uchlst)])
+                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbcfirst' *)
+
+          | IdeographicChunk(script, lbc, uch, alw) ->
+              let dscrid = DiscretionaryID.fresh () in  (* temporary *)
+              let dummy_space = LBDiscretionary(100, dscrid, [], [], []) in
+              (Some((script, lbc, alw)), [LBPure(fixed_string ctx script [uch]); dummy_space])
+                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbc' *)
+        in
+          aux (List.rev_append lhblstmain lhbacc) opt chunktail
+  in
+  aux [] None chunklst
+
+
+let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
+  let rec aux lphbacc prevopt chunklst =
+    match chunklst with
+    | []                 -> List.rev lphbacc
+    | chunk :: chunktail ->
+        let (ctx, chunkmain) = chunk in
+        let (opt, lphblstmain) =
+          match chunkmain with
+          | Space ->
+              (None, [pure_space ctx])
+
+          | UnbreakableSpace ->
+              (None, [pure_space ctx])
+              
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
+              (Some((script, lbclast, alw)), [fixed_string ctx script uchlst])
+                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbcfirst' *)
+
+          | IdeographicChunk(script, lbc, uch, alw) ->
+              (Some((script, lbc, alw)), [fixed_string ctx script [uch]])
+                (* temporary; should insert space before the text according to 'prevopt', 'script', and 'lbc' *)
+        in
+          aux (List.rev_append lphblstmain lphbacc) opt chunktail
+  in
+  aux [] None chunklst
