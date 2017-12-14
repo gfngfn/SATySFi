@@ -114,7 +114,6 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_box list =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
-      (* REMAINS: should convert 'uchlst' to lb_box list *)
       ConvertText.to_boxes ctx uchlst
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
@@ -164,7 +163,6 @@ and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_box list =
 and convert_pure_box_for_line_breaking_pure (phb : pure_horz_box) : lb_pure_box list =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
-      (* REMAINS: should convert 'uchlst' to lb_box list *)
       ConvertText.to_boxes_pure ctx uchlst
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
@@ -556,7 +554,8 @@ let main (margin_top : length) (margin_bottom : length) (paragraph_width : lengt
   begin
     DiscretionaryID.initialize ();
     LineBreakGraph.add_vertex grph DiscretionaryID.beginning;
-    let lhblst = convert_list_for_line_breaking hblst in
+    let lhblstsub = convert_list_for_line_breaking hblst in
+    let lhblst = ConvertText.insert_auto_space lhblstsub in
     let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with

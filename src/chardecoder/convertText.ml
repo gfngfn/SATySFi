@@ -22,7 +22,7 @@ let get_script_opt lbu =
 
 
 (* temporary; should refer to the context for spacing between two scripts *)
-let transition_space ctx lbu1 lbu2 =
+let adjacent_space ctx lbu1 lbu2 =
   let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
   let size = ctx.font_size *% font_ratio in
   let half_space_soft = [CustomizedSpace(size *% 0.5, size *% 0.25 (* temporary *), size *% 0.25 (* temporary *))] in
@@ -37,27 +37,10 @@ let transition_space ctx lbu1 lbu2 =
   | (JLComma(_, _)     , JLOpen(_, _)    ) -> half_space_soft
   | (JLFullStop(_, _)  , PreWord(_, _, _)) -> half_space_hard
   | (JLFullStop(_, _)  , JLOpen(_, _)    ) -> half_space_hard
-  | _ ->
-      let scriptopt1 = get_script_opt lbu1 in
-      let scriptopt2 = get_script_opt lbu2 in
-        match (scriptopt1, scriptopt2) with
-        | (Some(script1), Some(script2)) ->
-            begin
-              match (script1, script2) with
-              | (HanIdeographic    , Latin             )
-              | (Latin             , HanIdeographic    )
-              | (HiraganaOrKatakana, Latin             )
-              | (Latin             , HiraganaOrKatakana)
-                ->
-                  [CustomizedSpace(size *% 0.24, size *% 0.08, size *% 0.16)]
-                    (* temporary; shold refer to the context for spacing information between two scripts *)
-              | _ -> []
-            end
-
-        | _ -> []
+  | _ -> []
 
 
-let insert_script_transition_space ctx lbulst =
+let insert_adjacent_space (ctx : input_context) (lbulst : ('a line_break_unit) list) : ('a line_break_unit) list =
   let rec aux acc prevlbuopt lbulst =
     match lbulst with
     | []                 -> List.rev acc
@@ -65,7 +48,7 @@ let insert_script_transition_space ctx lbulst =
         let space =
           match prevlbuopt with
           | None          -> []
-          | Some(prevlbu) -> transition_space ctx prevlbu lbuhead
+          | Some(prevlbu) -> adjacent_space ctx prevlbu lbuhead
         in
           aux (lbuhead :: (List.rev_append space acc)) (Some(lbuhead)) lbutail
   in
@@ -87,7 +70,7 @@ let to_boxes_scheme ctx uchlst =
   (* end: for debug *)
 
   let scrlst = ScriptDataMap.divide_by_script trilst in
-  let scrlstsp = insert_script_transition_space ctx scrlst in
+  let scrlstsp = insert_adjacent_space ctx scrlst in
 
   (* begin: for debug *)
   let () =
@@ -303,3 +286,52 @@ let to_boxes_pure ctx uchlst : lb_pure_box list =
         [ fixed_string script hsinfo [uch]; ]
         
   ) |> List.concat
+
+
+let insert_auto_space lhblst =
+
+  let insert_between_scripts size script1 script2 =
+    match (script1, script2) with
+    | (HanIdeographic    , Latin             )
+    | (Latin             , HanIdeographic    )
+    | (HiraganaOrKatakana, Latin             )
+    | (Latin             , HiraganaOrKatakana)
+      ->
+        [LBPure(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))]
+          (* temporary; shold refer to the context for spacing information between two scripts *)
+    | _ -> []
+  in
+
+  let rec aux lhbacc scriptprevopt lhblst =
+    match lhblst with
+    | [] ->
+        List.rev lhbacc
+
+    | ((LBPure(LBAtom(metrics, EvHorzString(script, hsinfo, _, _, _))) as lhb)) :: lhbtail ->
+        begin
+          match scriptprevopt with
+          | None ->
+              aux (lhb :: lhbacc) (Some(script)) lhbtail
+
+          | Some(scriptprev) ->
+
+              (* begin: for debug *)
+              let () =
+                match (scriptprev, script) with
+                | (Common, _) | (_, Common) -> ()
+                | _  when scriptprev = script -> ()
+                | _ ->
+                  Format.printf "ConvertText> script1 = %a\n" pp_script scriptprev;
+                  Format.printf "ConvertText> script2 = %a\n" pp_script script
+              in
+              (* end: for debug *)
+
+              let size = hsinfo.text_font_size in
+              let lhblstspace = insert_between_scripts size scriptprev script in
+              aux (lhb :: (List.rev_append lhblstspace lhbacc)) (Some(script)) lhbtail
+        end
+
+    | lhb :: lhbtail ->
+        aux (lhb :: lhbacc) None lhbtail
+  in
+    aux [] None lhblst
