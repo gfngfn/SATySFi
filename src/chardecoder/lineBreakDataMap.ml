@@ -225,7 +225,7 @@ let line_break_rule =
       ([notof [SP; BA; HY]], PreventBreak, [exact GL]);
     (* -- LB13 -- *)
     (* -- Original: ideographic close punctuations -- *)
-      ([], PreventBreak, [set [CL; CP; EX; IS; SY; JLCP]]);
+      ([], PreventBreak, [set [CL; CP; EX; IS; SY; JLCP; JLCM; JLFS]]);
     (* -- LB14 -- *)
     (* -- Original: ideographic open punctuations -- *)
       ([set [OP; JLOP]; star [exact SP]], PreventBreak, []);
