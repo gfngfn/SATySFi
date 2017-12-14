@@ -106,7 +106,7 @@ let divide_by_script (trilst : (Uchar.t * line_break_class * break_opportunity) 
                         let chunk = preword script lbcfirst lbc (List.rev (uch :: uchacc)) AllowBreak in
                           aux (chunk :: resacc) None tritail
                       else
-                        let chunkprev = preword script lbcfirst lbcprev (List.rev uchacc) PreventBreak in
+                        let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
                         let chunk = preword script lbc lbc [uch] AllowBreak in
                           aux (chunk :: chunkprev :: resacc) None tritail
                 end
@@ -121,7 +121,7 @@ let divide_by_script (trilst : (Uchar.t * line_break_class * break_opportunity) 
                     if script_equal scriptprev script then
                       aux resacc (Some((lbcfirst, script, lbc, uch :: uchacc))) tritail
                     else
-                      let chunkprev = preword script lbcfirst lbcprev (List.rev uchacc) PreventBreak in
+                      let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
                         aux (chunkprev :: resacc) (Some((lbc, script, lbc, [uch]))) tritail
               end
           end

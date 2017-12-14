@@ -77,7 +77,7 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
     scrlstsp |> List.iter (function
       | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
           let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
-          PrintForDebug.lexhorzE ("[Alph] " ^ (CharBasis.show_script script) ^ " " ^ sa);
+          PrintForDebug.lexhorz ("[Alph] " ^ (CharBasis.show_script script) ^ " " ^ sa ^ " ");
           let s = uchlst |> List.map (fun uch -> InternalText.to_utf8 (InternalText.of_uchar uch)) |> String.concat "" in
           PrintForDebug.lexhorzE s
       | Space ->
@@ -86,7 +86,7 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
           PrintForDebug.lexhorzE "UNBREAKABLE_SPACE"
       | IdeographicChunk(script, lbc, uch, alw) ->
           let sa = match alw with AllowBreak -> "(A)" | PreventBreak -> "(P)" in
-          PrintForDebug.lexhorzE ("[Ideo] " ^ (CharBasis.show_script script) ^ " " ^ sa);
+          PrintForDebug.lexhorz ("[Ideo] " ^ (CharBasis.show_script script) ^ " " ^ sa ^ " ");
           PrintForDebug.lexhorzE (InternalText.to_utf8 (InternalText.of_uchar uch))
     )
   in
