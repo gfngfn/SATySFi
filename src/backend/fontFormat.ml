@@ -1333,10 +1333,16 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) =
       let f_single opt (gidfrom, gidto) =
         match opt with
         | Some(_) -> opt
-        | None    -> if gidfrom = gid then Some(gidto) else None
+        | None    -> if gidfrom = gid then Some(gidto) else opt
+      in
+      let f_alt opt (gidfrom, gidlst) =
+        match (opt, gidlst) with
+        | (Some(_), _)       -> opt
+        | (None, [])         -> opt
+        | (None, gidto :: _) -> if gidfrom = gid then Some(gidto) else opt
       in
       let skip opt _ = opt in
-      let res = Otfm.gsub feature_ssty f_single skip skip None in
+      let res = Otfm.gsub feature_ssty f_single f_alt skip None in
       match res with
       | Error(oerr)       -> gid  (* temporary; maybe should emit an error *)
       | Ok(None)          -> gid
