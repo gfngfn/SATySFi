@@ -5,6 +5,7 @@ let tyid_option  = Typeenv.Raw.fresh_type_id "option"
 let tyid_itemize = Typeenv.Raw.fresh_type_id "itemize"
 let tyid_color   = Typeenv.Raw.fresh_type_id "color"
 let tyid_script  = Typeenv.Raw.fresh_type_id "script"
+let tyid_language = Typeenv.Raw.fresh_type_id "language"
 let tyid_page    = Typeenv.Raw.fresh_type_id "page"
 let tyid_mathcls = Typeenv.Raw.fresh_type_id "math-class"
 
@@ -33,10 +34,15 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "CMYK" ([], Poly((dr, ProductType([float_type; float_type; float_type; float_type])))) tyid_color
 
   |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(unit_type)) tyid_script
   |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(unit_type)) tyid_script
   |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(unit_type)) tyid_script
+  |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(unit_type)) tyid_script
   |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(unit_type)) tyid_script
+
+  |> Typeenv.Raw.register_type "language" tyid_language (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "English"          ([], Poly(unit_type)) tyid_language
+  |> Typeenv.Raw.add_constructor "Japanese"         ([], Poly(unit_type)) tyid_language
+  |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(unit_type)) tyid_language
 
   |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(unit_type)) tyid_page
@@ -90,8 +96,8 @@ let pdfpt = HorzBox.Length.of_pdf_point
 
 
 let default_font_scheme =
-  List.fold_left (fun mapacc (script, font_info) -> mapacc |> HorzBox.FontSchemeMap.add script font_info)
-    HorzBox.FontSchemeMap.empty
+  List.fold_left (fun mapacc (script, font_info) -> mapacc |> HorzBox.ScriptSchemeMap.add script font_info)
+    HorzBox.ScriptSchemeMap.empty
     [
       (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
       (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
@@ -215,6 +221,7 @@ let get_initial_context pagesch =
     font_size        = pdfpt 12.;
     math_font        = "lmodern";
     dominant_script  = CharBasis.OtherScript;
+    langsys_scheme   = ScriptSchemeMap.empty;
     space_natural    = 0.33;
     space_shrink     = 0.08;
     space_stretch    = 0.16; (* 0.32; *)
@@ -223,6 +230,7 @@ let get_initial_context pagesch =
     paragraph_top    = pdfpt 18.;
     paragraph_bottom = pdfpt 18.;
     leading          = pdfpt 18.;
+    min_gap_of_lines = pdfpt 2.;
     text_color       = HorzBox.DeviceGray(0.);
     manual_rising    = pdfpt 0.;
     page_scheme      = pagesch;
@@ -325,6 +333,7 @@ let make_environments () =
   let path          = (~! "path"        , BaseType(PathType)   ) in
   let prp           = (~! "pre-path"    , BaseType(PrePathType)) in
   let scr           = (~! "script"      , VariantType([], tyid_script)) in
+  let lang          = (~! "language"    , VariantType([], tyid_language)) in
   let doc           = (~! "document"    , BaseType(DocumentType)) in
   let math          = (~! "math"        , BaseType(MathType)   ) in
   let gr            = (~! "graphics", BaseType(GraphicsType)) in
@@ -399,8 +408,11 @@ let make_environments () =
         ("get-font-size"      , ~% (ctx @-> ln)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
         ("set-font"           , ~% (scr @-> ft @-> ctx @-> ctx)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
         ("get-font"           , ~% (scr @-> ctx @-> ft)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-language"       , ~% (scr @-> lang @-> ctx @-> ctx)      , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
+        ("get-language"       , ~% (scr @-> ctx @-> lang)              , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
         ("set-math-font"      , ~% (s @-> ctx @-> ctx)                 , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
         ("set-dominant-script", ~% (scr @-> ctx @-> ctx)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
+        ("get-dominant-script", ~% (ctx @-> scr)                       , lambda1 (fun vctx -> PrimitiveGetDominantScript(vctx)));
         ("set-text-color"     , ~% (clr @-> ctx @-> ctx)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (ln @-> ctx @-> ctx)                , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));

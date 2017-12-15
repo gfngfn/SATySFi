@@ -183,16 +183,16 @@ type decoration = point -> length -> length -> length -> Pdfops.t list
 [@@deriving show]
 
 
-module FontSchemeMap = Map.Make
+module ScriptSchemeMap = Map.Make
   (struct
     type t = CharBasis.script
     let compare = Pervasives.compare
   end)
 
-
 type input_context = {
   font_size        : length;
-  font_scheme      : font_with_ratio FontSchemeMap.t;
+  font_scheme      : font_with_ratio ScriptSchemeMap.t;
+  langsys_scheme   : CharBasis.language_system ScriptSchemeMap.t;
   math_font        : math_font_abbrev;
   dominant_script  : CharBasis.script;
   space_natural    : float;
@@ -203,6 +203,7 @@ type input_context = {
   paragraph_top    : length;
   paragraph_bottom : length;
   leading          : length;
+  min_gap_of_lines : length;
   text_color       : color;
   manual_rising    : length;
   page_scheme      : page_scheme;
@@ -226,11 +227,23 @@ let default_font_with_ratio =
 let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
-    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                             -> script_raw
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
   in
-    try ctx.font_scheme |> FontSchemeMap.find script with
-    | Not_found -> default_font_with_ratio
+    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
+    | None          -> default_font_with_ratio
+    | Some(fontsch) -> fontsch
+
+
+let get_language_system ctx script_raw =
+  let script =
+    match script_raw with
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
+  in
+  match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+  | None          -> CharBasis.NoLanguageSystem
+  | Some(langsys) -> langsys
 
 
 let get_string_info ctx script_raw =

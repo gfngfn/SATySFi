@@ -1,6 +1,6 @@
 open HorzBox
 
-val main : length -> length -> length -> length -> horz_box list -> intermediate_vert_box list
+val main : length -> length -> input_context -> horz_box list -> intermediate_vert_box list
 
 val natural : horz_box list -> evaled_horz_box list
 

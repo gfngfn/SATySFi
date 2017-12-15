@@ -414,11 +414,11 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
-    let leadingsub = leading_required -% (Length.negate dptprev) -% hgt in
-      if leadingsub <% Length.zero then Length.zero else leadingsub
+    let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
+      if vskipraw <% vskip_min then vskip_min else vskipraw
   in
 
   let append_framed_lines
@@ -511,7 +511,11 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
     arrange None [] (List.rev acclines)
 
 
-let main (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (hblst : horz_box list) : intermediate_vert_box list =
+let main (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
+
+  let paragraph_width = ctx.paragraph_width in
+  let leading_required = ctx.leading in
+  let vskip_min = ctx.min_gap_of_lines in
 
   let calculate_badness pure_ratio =
     (abs (int_of_float (pure_ratio ** 3.))) * 10000
@@ -608,7 +612,7 @@ let main (margin_top : length) (margin_bottom : length) (paragraph_width : lengt
       | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
           [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines margin_top margin_bottom paragraph_width leading_required path lhblst
+          break_into_lines margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end
 
 

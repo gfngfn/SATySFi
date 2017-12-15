@@ -15,6 +15,7 @@ type script =
 (* temporary; should add more scripts *)
   | OtherScript
 
+
 (* for debug *)
 let show_script = function
   | Common             -> "Common"
@@ -27,6 +28,13 @@ let show_script = function
 
 (* for debug *)
 let pp_script fmt script = Format.fprintf fmt "%s" (show_script script)
+
+
+type language_system =
+  | Japanese
+  | English
+(* temporary; should add more language systems *)
+  | NoLanguageSystem
 
 
 type break_opportunity =
