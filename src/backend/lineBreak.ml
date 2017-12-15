@@ -144,6 +144,55 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
     aux [] None lbpelst
 
 
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (phb : pure_horz_box) : a =
+  match phb with
+  | PHCInnerString(ctx, uchlst) ->
+      chunkf (ConvertText.to_chunks ctx uchlst)
+
+  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
+      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
+
+  | PHGRising(lenrising, hblst) ->
+      let lphblst = listf hblst in
+      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
+      let hgtsub = Length.max Length.zero (hgt +% lenrising) in
+      let dptsub = Length.min Length.zero (dpt +% lenrising) in
+        puref (LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst))
+
+  | PHSFixedEmpty(wid) ->
+      puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
+
+  | PHSOuterEmpty(wid, widshrink, widstretch) ->
+      puref (LBAtom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty))
+
+  | PHSOuterFil ->
+      puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
+
+  | PHGOuterFrame(pads, deco, hblst) ->
+      let lphblst = listf hblst in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
+      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
+        puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew))
+
+  | PHGInnerFrame(pads, deco, hblst) ->
+      let lphblst = listf hblst in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
+      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
+        puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
+
+  | PHGFixedFrame(pads, wid_req, deco, hblst) ->
+      let lphblst = listf hblst in
+      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
+      let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
+        puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
+
+  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
+      puref (LBEmbeddedVert(wid, hgt, dpt, evvblst))
+
+  | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
+      puref (LBFixedGraphics(wid, hgt, dpt, graphics))
+
+
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
   let rec aux lbeacc hblst =
     match hblst with
@@ -193,105 +242,17 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
   let lbpelst = aux [] hblst in
     normalize_chunks_pure lbpelst
 
-  
+
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_either =
-  let puref x = LB(LBPure(x)) in
-  match phb with
-  | PHCInnerString(ctx, uchlst) ->
-      TextChunks(ConvertText.to_chunks ctx uchlst)
-
-  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
-      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
-
-  | PHGRising(lenrising, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
-      let hgtsub = Length.max Length.zero (hgt +% lenrising) in
-      let dptsub = Length.min Length.zero (dpt +% lenrising) in
-        puref (LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst))
-
-  | PHSFixedEmpty(wid) ->
-      puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
-
-  | PHSOuterEmpty(wid, widshrink, widstretch) ->
-      puref (LBAtom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty))
-
-  | PHSOuterFil ->
-      puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
-
-  | PHGOuterFrame(pads, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew))
-
-  | PHGInnerFrame(pads, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
-
-  | PHGFixedFrame(pads, wid_req, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
-
-  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, evvblst))
-
-  | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
-      puref (LBFixedGraphics(wid, hgt, dpt, graphics))
+  let puref p = LB(LBPure(p)) in
+  let chunkf c = TextChunks(c) in
+    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
 
 
 and convert_pure_box_for_line_breaking_pure (phb : pure_horz_box) : lb_pure_either =
-  let puref x = PLB(x) in
-  match phb with
-  | PHCInnerString(ctx, uchlst) ->
-      PTextChunks(ConvertText.to_chunks ctx uchlst)
-
-  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
-      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
-
-  | PHGRising(lenrising, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo, hgt, dpt) = get_total_metrics lphblst in
-      let hgtsub = Length.max Length.zero (hgt +% lenrising) in
-      let dptsub = Length.min Length.zero (dpt +% lenrising) in
-        puref (LBRising((widinfo, hgtsub, dptsub), lenrising, lphblst))
-
-  | PHSFixedEmpty(wid) ->
-      puref (LBAtom(empty_vert (natural wid), EvHorzEmpty))
-
-  | PHSOuterEmpty(wid, widshrink, widstretch) ->
-      puref (LBAtom(empty_vert { natural = wid; shrinkable = widshrink; stretchable = FiniteStretch(widstretch); }, EvHorzEmpty))
-
-  | PHSOuterFil ->
-      puref (LBAtom(empty_vert { natural = Length.zero; shrinkable = Length.zero; stretchable = Fils(1); }, EvHorzEmpty))
-
-  | PHGOuterFrame(pads, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), deco, lphblstnew))
-
-  | PHGInnerFrame(pads, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(widinfo_total.natural, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
-
-  | PHGFixedFrame(pads, wid_req, deco, hblst) ->
-      let lphblst = convert_list_for_line_breaking_pure hblst in
-      let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
-      let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
-        puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
-
-  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, evvblst))
-
-  | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
-      puref (LBFixedGraphics(wid, hgt, dpt, graphics))
+  let puref p = PLB(p) in
+  let chunkf c = PTextChunks(c) in
+    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
 
 
 module WidthMap
