@@ -45,6 +45,7 @@ let document rcd inner =
   let ctx-doc =
     get-initial-context page pt wid hgt
       |> set-font Latin font-latin-roman
+      |> set-language Latin English
       |> set-dominant-script Latin
       |> set-math-font `lmodern`
   in
@@ -175,6 +176,8 @@ let-block ctx +frame inner =
 let-block ctx +p-jp inner =
   let ctx-jp =
     ctx |> set-cjk-font font-cjk-mincho
+        |> set-language HanIdeographic Japanese
+        |> set-language Kana Japanese
         |> set-dominant-script HanIdeographic
         |> set-leading (get-font-size ctx *' 1.7)
   in
