@@ -7,9 +7,10 @@ type message_category =
   you can change this depending on what you would like to test
 --  *)
 let enabled_list =
-
+  []
+(*
   [ LBC; LineBreak; LexHorz; Lexer; ]
-
+*)
 
 let printS cat msg =
   if List.mem cat enabled_list then print_string msg else ()

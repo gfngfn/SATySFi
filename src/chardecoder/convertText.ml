@@ -19,27 +19,9 @@ let get_script_opt lbu =
   | JLComma(script, _)
   | JLFullStop(script, _)
     -> Some(script)
+*)
 
-
-(* temporary; should refer to the context for spacing between two scripts *)
-let adjacent_space ctx lbu1 lbu2 =
-  let (_, font_ratio, rising_ratio) = get_font_with_ratio ctx ctx.dominant_script in
-  let size = ctx.font_size *% font_ratio in
-  let half_space_soft = [CustomizedSpace(size *% 0.5, size *% 0.25 (* temporary *), size *% 0.25 (* temporary *))] in
-  let half_space_hard = [CustomizedSpace(size *% 0.5, Length.zero, size *% 0.25 (* temporary *))] in
-  let full_space = [CustomizedSpace(size, size *% 0.5 (* temporary *), size *% 0.5 (* temporary *))] in
-  match (lbu1, lbu2) with
-  | (PreWord(_, _, _)  , JLOpen(_, _)    ) -> half_space_soft
-  | (JLClose(_, _)     , PreWord(_, _, _)) -> half_space_soft
-  | (JLClose(_, _)     , JLOpen(_, _)    ) -> half_space_soft
-  | (JLNonstarter(_, _), PreWord(_, _, _)) -> full_space
-  | (JLComma(_, _)     , PreWord(_, _, _)) -> half_space_soft
-  | (JLComma(_, _)     , JLOpen(_, _)    ) -> half_space_soft
-  | (JLFullStop(_, _)  , PreWord(_, _, _)) -> half_space_hard
-  | (JLFullStop(_, _)  , JLOpen(_, _)    ) -> half_space_hard
-  | _ -> []
-
-
+(*
 let insert_adjacent_space (ctx : input_context) (lbulst : ('a line_break_unit) list) : ('a line_break_unit) list =
   let rec aux acc prevlbuopt lbulst =
     match lbulst with
@@ -315,10 +297,8 @@ let pure_space_between_scripts size script1 script2 =
 
 
 let space_width_info ctx : length_info =
-(*
-  let (_, font_ratio, _) = get_font_with_ratio ctx ctx.dominant_script in
-*)
-  let size = ctx.font_size (* *% font_ratio *) in
+  let size = ctx.font_size in
+    (* -- uses font size directly, not multiplied by the ratio of the dominant script -- *)
   let widnatural = size *% ctx.space_natural in
   let widshrink  = size *% ctx.space_shrink in
   let widstretch = size *% ctx.space_stretch in
@@ -330,6 +310,50 @@ let pure_space ctx : lb_pure_box =
     LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
 
 
+let get_corrected_font_size ctx script =
+  let (_, font_ratio, _) = get_font_with_ratio ctx script in
+    ctx.font_size *% font_ratio
+
+
+(* -- 'pure_halfwidth_space_soft': inserts a shrinkable CJK halfwidth space -- *)
+let pure_halfwidth_space_soft fontsize : lb_pure_box =
+  let widinfo = make_width_info (fontsize *% 0.5) (fontsize *% 0.25) (fontsize *% 0.25) in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+(* -- 'pure_halfwidth_space_hard': inserts a non-shrinkable CJK halfwidth space -- *)
+let pure_halfwidth_space_hard fontsize : lb_pure_box =
+  let widinfo = make_width_info (fontsize *% 0.5) Length.zero (fontsize *% 0.25) in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+(* -- 'pure_fullwidth_space': inserts a shrinkable CJK fullwidth space -- *)
+let pure_fullwidth_space fontsize : lb_pure_box =
+  let widinfo = make_width_info fontsize (fontsize *% 0.5) (fontsize *% 0.5) in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+(*  -- 'adjacent_space': inserts glue between directly adjacent CJK characters -- *)
+let adjacent_space ctx1 ctx2 =
+  let fontsize = Length.max ctx1.font_size ctx2.font_size in
+  let ratio = max ctx1.adjacent_stretch ctx2.adjacent_stretch in
+  let widstretch = fontsize *% ratio in
+  let widinfo = make_width_info Length.zero Length.zero widstretch in
+    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+
+
+(*  -- 'halfwidth_kern': inserts a solid backward halfwidth kern for CJK characters -- *)
+let halfwidth_kern ctx script : lb_box =
+  let size = get_corrected_font_size ctx script in
+    LBPure(LBAtom((natural (Length.negate (size *% 0.5)), Length.zero, Length.zero), EvHorzEmpty))
+  
+
+(*  -- 'quarterwidth_kern': inserts a solid backward quaterwidth kern for CJK characters -- *)
+let quarterwidth_kern ctx script : lb_box =
+  let size = get_corrected_font_size ctx script in
+    LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
+  
+
 let breakable_space ctx : lb_box =
   let dscrid = DiscretionaryID.fresh () in
     LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], [], [])
@@ -339,7 +363,8 @@ let unbreakable_space ctx : lb_box =
     LBPure(pure_space ctx)
 
 
-let fixed_string (ctx : input_context) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
+(* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
+let inner_string (ctx : input_context) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
@@ -349,42 +374,108 @@ let discretionary_if_breakable alw badns lphb =
   match alw with
   | AllowBreak ->
       let dscrid = DiscretionaryID.fresh () in
-      LBDiscretionary(badns, dscrid, [lphb], [], [])
+        LBDiscretionary(badns, dscrid, [lphb], [], [])
 
   | PreventBreak ->
       LBPure(lphb)
 
 
-let adjacent_space ctx =
-  let widstretch = ctx.font_size *% ctx.adjacent_stretch in
-  let widinfo = make_width_info Length.zero Length.zero widstretch in
-    LBAtom((widinfo, Length.zero, Length.zero), EvHorzEmpty)
+(* temporary; should refer to the context for spacing between two scripts *)
+let pure_space_between_classes (ctx1, script1, lbc1) (ctx2, script2, lbc2) =
+  let size1 = get_corrected_font_size ctx1 script1 in
+  let size2 = get_corrected_font_size ctx2 script2 in
+  let sizeM = Length.max size1 size2 in
+  let hwhard1 = (pure_halfwidth_space_hard size1) in
+  let hwsoft1 = (pure_halfwidth_space_soft size1) in
+  let hwsoft2 = (pure_halfwidth_space_soft size2) in
+  let hwsoftM = (pure_halfwidth_space_soft sizeM) in
+  let hwhardM = (pure_halfwidth_space_hard sizeM) in
+  match (lbc1, lbc2) with
+  | (JLCP, JLOP) -> Some(hwsoftM)
+  | (JLCM, JLOP) -> Some(hwsoftM)
+  | (JLFS, JLOP) -> Some(hwhardM)
+  | (_   , JLOP) -> Some(hwsoft2)
+  | (JLCP, JLCM) -> None
+  | (JLCP, JLFS) -> None
+  | (JLCP, _   ) -> Some(hwsoft1)
+  | (JLCM, _   ) -> Some(hwsoft1)
+  | (JLFS, _   ) -> Some(hwhard1)
+      (* TEMPORARY; SHOULD WRITE MORE based on JLreq *)
+(*
+  | (JLNonstarter(_, _), PreWord(_, _, _)) -> full_space
+  | (JLComma(_, _)     , PreWord(_, _, _)) -> half_space_soft
+  | (JLFullStop(_, _)  , PreWord(_, _, _)) -> half_space_hard
+*)
+  | _ -> None
 
 
-let space_between_chunks (ctxprev, scriptprev, lbcprev) alw (ctx, script, lbc) : lb_box list =
-  if not (script_equal scriptprev script) then
-    let size = Length.max ctxprev.font_size ctx.font_size in
-    let badns = ctx.badness_space in
-      match pure_space_between_scripts size scriptprev script with
-      | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
-      | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx)]  (* temporary *)
+let space_between_chunks info1 alw info2 : lb_box list =
+  let (ctx1, script1, lbc1) = info1 in
+  let (ctx2, script2, lbc2) = info2 in
+  let badns = max ctx1.badness_space ctx2.badness_space in
+  if not (script_equal script1 script2) then
+    let size = Length.max ctx1.font_size ctx2.font_size in
+      match pure_space_between_scripts size script1 script2 with
+      | Some(lphb) ->
+          [discretionary_if_breakable alw badns lphb]
+
+      | None ->
+        (* -- if there is no space between scripts -- *)
+          begin
+            match pure_space_between_classes info1 info2 with
+            | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2)]
+            | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
+          end
   else
-    [discretionary_if_breakable alw ctx.badness_space (adjacent_space ctx)]
-  (* TEMPORARY; SHOULD WRITE MORE *)
+  (* -- if scripts are the same -- *)
+    match pure_space_between_classes info1 info2 with
+    | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2)]
+    | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
 
 (*
   LBPure(fixed_string ctx script [Uchar.of_int (Char.code 'A')])
 *)
 
-let space_between_chunks_pure (ctxprev, scriptprev, lbcprev) (ctx, script, lbc) : lb_pure_box list =
-  if not (script_equal scriptprev script) then
-    let size = Length.max ctxprev.font_size ctx.font_size in
-      match pure_space_between_scripts size scriptprev script with
-      | Some(lphb) -> [lphb]
-      | None       -> [adjacent_space ctx]  (* temporary *)
+let space_between_chunks_pure info1 info2 : lb_pure_box list =
+  let (ctx1, script1, lbc1) = info1 in
+  let (ctx2, script2, lbc2) = info2 in
+  if not (script_equal script1 script2) then
+    let size = Length.max ctx1.font_size ctx2.font_size in
+      match pure_space_between_scripts size script1 script2 with
+      | Some(lphb) ->
+          [lphb]
+
+      | None ->
+          begin
+            match pure_space_between_classes info1 info2 with
+            | None       -> [adjacent_space ctx1 ctx2]
+            | Some(lphb) -> [lphb]
+          end
   else
-    [adjacent_space ctx]
-  (* TEMPORARY; SHOULD WRITE MORE *)
+  (* -- if scripts are the same -- *)
+    match pure_space_between_classes info1 info2 with
+    | None       -> [adjacent_space ctx1 ctx2]
+    | Some(lphb) -> [lphb]
+
+
+(* -- 'ideographic_single': converts single CJK character, not depending on adjacent characters -- *)
+let ideographic_single ctx script lbc uchlst =
+  let lphbraw = LBPure(inner_string ctx script uchlst) in
+  let hwkern = halfwidth_kern ctx script in
+  let qwkern = quarterwidth_kern ctx script in
+    match lbc with
+    | JLCP  (* -- JLreq cl-02; fullwidth close punctuation -- *)
+    | JLFS  (* -- JLreq cl-06; kuten (fullwidth full stops) -- *)
+    | JLCM  (* -- JLreq cl-07; touten (fullwidth commas) -- *)
+      -> [lphbraw; hwkern]
+
+    | JLOP  (* -- JLreq cl-01; fullwidth open punctuation -- *)
+      -> [hwkern; lphbraw]
+
+    | JLMD  (* -- JLreq cl-05; nakaten (fullwidth middle dot, fullwidth semicolon, etc.) -- *)
+      -> [qwkern; lphbraw; qwkern]
+
+    | _ -> [lphbraw]
 
 
 let chunks_to_boxes (chunklst : line_break_chunk list) =
@@ -405,7 +496,7 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
               
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
               let opt = Some(((ctx, script, lbclast), alw)) in
-              let lhblststr = [LBPure(fixed_string ctx script uchlst)] in
+              let lhblststr = [LBPure(inner_string ctx script uchlst)] in
               begin
                 match prevopt with
                 | None ->
@@ -418,7 +509,7 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
 
           | IdeographicChunk(script, lbc, uch, alw) ->
               let opt = Some(((ctx, script, lbc), alw)) in
-              let lhblststr = [LBPure(fixed_string ctx script [uch])] in
+              let lhblststr = ideographic_single ctx script lbc [uch] in
               begin
                 match prevopt with
                 | None ->
@@ -455,11 +546,11 @@ let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
               begin
                 match prevopt with
                 | None ->
-                    (opt, [fixed_string ctx script uchlst])
+                    (opt, [inner_string ctx script uchlst])
 
                 | Some((previnfo, alw)) ->
                     let autospace = space_between_chunks_pure previnfo (ctx, script, lbcfirst) in
-                    (opt, List.append autospace [fixed_string ctx script uchlst])
+                    (opt, List.append autospace [inner_string ctx script uchlst])
               end
 
           | IdeographicChunk(script, lbc, uch, alw) ->
@@ -467,11 +558,11 @@ let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
               begin
                 match prevopt with
                 | None ->
-                    (opt, [fixed_string ctx script [uch]])
+                    (opt, [inner_string ctx script [uch]])
 
                 | Some((previnfo, alw)) ->
                     let autospace = space_between_chunks_pure previnfo (ctx, script, lbc) in
-                    (opt, List.append autospace [fixed_string ctx script [uch]])
+                    (opt, List.append autospace [inner_string ctx script [uch]])
               end
         in
           aux (List.rev_append lphblstmain lphbacc) opt chunktail
