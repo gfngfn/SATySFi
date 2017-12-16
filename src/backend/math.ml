@@ -139,10 +139,15 @@ let no_right_kern hgt dpt mk =
   }
 
 
-let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
+type math_kern_specification =
+  | MathKernInfo of FontFormat.math_kern_info option
+  | MathKernFunc of math_kern_func * math_kern_func
+
+
+let make_left_and_right_kern hgt dpt mk mic mkspec : left_kern * right_kern =
   let lk =
-    match mkiopt with
-    | Some(mki) ->
+    match mkspec with
+    | MathKernInfo(Some(mki)) ->
         {
           kernTL         = FontInfo.make_discrete_math_kern mki.FontFormat.kernTL;
           kernBL         = FontInfo.make_discrete_math_kern mki.FontFormat.kernBL;
@@ -151,11 +156,22 @@ let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
           first_depth    = dpt;
         }
 
-    | None -> no_left_kern hgt dpt mk
+    | MathKernInfo(None) ->
+        no_left_kern hgt dpt mk
+
+    | MathKernFunc(kernfL, _) ->
+        let kernL = FontInfo.make_dense_math_kern kernfL in
+          {
+            kernTL         = kernL;
+            kernBL         = kernL;
+            left_math_kind = mk;
+            first_height   = hgt;
+            first_depth    = dpt;
+          }
   in
   let rk =
-    match mkiopt with
-    | Some(mki) ->
+    match mkspec with
+    | MathKernInfo(Some(mki)) ->
         Format.printf "Math> rk = Some(...)\n";
         {
           italics_correction = mic;
@@ -166,7 +182,7 @@ let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
           last_depth         = dpt;
         }
 
-    | None ->
+    | MathKernInfo(None) ->
         {
           italics_correction = mic;
           kernTR             = FontInfo.no_math_kern;
@@ -175,6 +191,17 @@ let make_left_and_right_kern hgt dpt mk mic mkiopt : left_kern * right_kern =
           last_height        = hgt;
           last_depth         = dpt;
         }
+
+    | MathKernFunc(_, kernfR) ->
+        let kernR = FontInfo.make_dense_math_kern kernfR in
+          {
+            italics_correction = mic;
+            kernTR             = kernR;
+            kernBR             = kernR;
+            right_math_kind    = mk;
+            last_height        = hgt;
+            last_depth         = dpt;
+          }
   in
     (lk, rk)
 
@@ -341,7 +368,16 @@ let convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext :
       let mathstrinfo = FontInfo.get_math_string_info mathctx in
       let is_in_display = true (* temporary *) in
       let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display uch in
-      let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkiopt in
+      let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
+        (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+
+  | MathCharWithKern(uch, kernfL, kernfR) ->
+      let mathstrinfo = FontInfo.get_math_string_info mathctx in
+      let is_in_display = true (* temporary *) in
+      let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display uch in
+      let fontsize = mathstrinfo.math_font_size in
+      let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
+      let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
         (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 

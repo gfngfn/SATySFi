@@ -165,6 +165,14 @@ and make_frame_deco env valuedeco =
       graphics_of_list valueret
   )
 
+and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
+  (fun fontsize ypos ->
+    let valuefontsize = LengthConstant(fontsize) in
+    let valueypos = LengthConstant(ypos) in
+    let valueret = reduce_beta_list env valuekernf [valuefontsize; valueypos] in
+      interpret_length env valueret
+  )
+
 and make_inline_graphics env valueg =
   (fun (xpos, ypos) ->
     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
@@ -282,6 +290,30 @@ and interpret env ast =
       let mlst =
         uchlst |> List.map (fun uch ->
           HorzBox.(MathPure(mathcls, MathChar(uch))))
+      in
+        MathValue(mlst)
+
+  | BackendMathGlyphWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
+      let mathcls = interpret_math_class env astmathcls in
+      let s = interpret_string env aststr in
+      let valuekernfL = interpret env astkernfL in
+      let valuekernfR = interpret env astkernfR in
+      let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+      let kernfL = make_math_char_kern_func env valuekernfL in
+      let kernfR = make_math_char_kern_func env valuekernfR in
+      let kernf0 _ _ = HorzBox.Length.zero in
+      let mlst =
+        uchlst |> Util.list_fold_adjacent (fun acc uch prevopt nextopt ->
+          let math =
+            match (prevopt, nextopt) with
+            | (None   , None   ) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernfL, kernfR)))
+            | (None   , Some(_)) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernfL, kernf0)))
+            | (Some(_), None   ) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernf0, kernfR)))
+            | (Some(_), Some(_)) -> HorzBox.(MathPure(mathcls, MathChar(uch)))
+          in
+              (* -- provides left/right kern only with the leftmost/rightmost character -- *)
+            math :: acc
+        ) [] |> List.rev
       in
         MathValue(mlst)
 

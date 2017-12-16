@@ -411,8 +411,12 @@ module MathContext
 
 type math_context = MathContext.t
 
+type math_char_kern_func = length -> length -> length
+  (* -- takes the actual font size and the y-position, and returns a kerning value -- *)
+
 type math_element_main =
   | MathChar         of Uchar.t
+  | MathCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
   | MathEmbeddedText of (input_context -> horz_box list)
 
 type math_kind =
@@ -431,10 +435,11 @@ type math_kind =
 type math_element = math_kind * math_element_main
 
 type math_kern_func = length -> length
+  (* -- takes the y-position and then returns a kerning value -- *)
 
 type paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
   (* --
-     paren:
+     'paren':
        the type for adjustable parentheses.
        An adjustable parenthesis takes as arguments
        (1-2) the height and the depth of the inner contents,
@@ -446,7 +451,7 @@ type paren = length -> length -> length -> length -> color -> horz_box list * ma
 
 type radical = length -> length -> length -> length -> color -> horz_box list
   (* --
-     radical:
+     'radical':
        the type for adjustable radicals.
        An adjustable radical takes as arguments
        (1-2) the height and the thickness of the bar required by the math font,

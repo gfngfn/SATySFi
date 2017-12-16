@@ -346,6 +346,7 @@ let make_environments () =
   let deco          = pt @-> ln @-> ln @-> ln @-> (l gr) in
   let decoset       = prod [deco; deco; deco; deco] in
   let igr           = pt @-> (l gr) in
+  let mckf          = ln @-> ln @-> ln in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
@@ -433,6 +434,7 @@ let make_environments () =
         ("close-with-bezier"       , ~% (pt @-> pt @-> prp @-> path)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (path @-> path @-> path)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
         ("math-glyph"              , ~% (mathcls @-> s @-> math)                    , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
+        ("math-glyph-with-kern"    , ~% (mathcls @-> s @-> mckf @-> mckf @-> math)  , lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, vs, vkfL, vkfR)));
         ("math-group"              , ~% (mathcls @-> mathcls @-> math @-> math)     , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
         ("math-sup"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (math @-> math @-> math)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
