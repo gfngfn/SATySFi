@@ -150,7 +150,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                     begin
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-                      PageBreak.main pdf ctxdoc.page_scheme imvblst;
+                      PageBreak.main pdf ctxdoc.HorzBox.page_scheme imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
                 | _ -> failwith "main; not a Vert(_)"

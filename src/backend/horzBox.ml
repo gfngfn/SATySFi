@@ -182,6 +182,35 @@ type graphics_command =
 type decoration = point -> length -> length -> length -> Pdfops.t list
 [@@deriving show]
 
+
+module ScriptSchemeMap = Map.Make
+  (struct
+    type t = CharBasis.script
+    let compare = Pervasives.compare
+  end)
+
+type input_context = {
+  font_size        : length;
+  font_scheme      : font_with_ratio ScriptSchemeMap.t;
+  langsys_scheme   : CharBasis.language_system ScriptSchemeMap.t;
+  math_font        : math_font_abbrev;
+  dominant_script  : CharBasis.script;
+  space_natural    : float;
+  space_shrink     : float;
+  space_stretch    : float;
+  adjacent_stretch : float;
+  paragraph_width  : length;
+  paragraph_top    : length;
+  paragraph_bottom : length;
+  leading          : length;
+  min_gap_of_lines : length;
+  text_color       : color;
+  manual_rising    : length;
+  page_scheme      : page_scheme;
+  badness_space    : pure_badness;
+}
+(* temporary *)
+
 type horz_string_info =
   {
     font_abbrev    : font_abbrev;
@@ -189,6 +218,43 @@ type horz_string_info =
     text_color     : color;
     rising         : length;
   }
+
+
+let default_font_with_ratio =
+  ("Arno", 1., 0.)  (* temporary *)
+
+
+let get_font_with_ratio ctx script_raw =
+  let script =
+    match script_raw with
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
+  in
+    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
+    | None          -> default_font_with_ratio
+    | Some(fontsch) -> fontsch
+
+
+let get_language_system ctx script_raw =
+  let script =
+    match script_raw with
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
+  in
+  match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+  | None          -> CharBasis.NoLanguageSystem
+  | Some(langsys) -> langsys
+
+
+let get_string_info ctx script_raw =
+  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+    {
+      font_abbrev    = font_abbrev;
+      text_font_size = ctx.font_size *% ratio;
+      text_color     = ctx.text_color;
+      rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
+    }
+
 
 type math_string_info =
   {
@@ -200,30 +266,40 @@ type math_string_info =
 let pp_horz_string_info fmt info =
   Format.fprintf fmt "(HSinfo)"
 
+(* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
 type pure_horz_box =
-  | PHOuterEmpty     of length * length * length
-  | PHOuterFil
-  | PHOuterFrame     of paddings * decoration * horz_box list
-  | PHFixedString    of horz_string_info * Uchar.t list
+(* -- spaces inserted before text processing -- *)
+  | PHSOuterEmpty     of length * length * length
+  | PHSOuterFil
+  | PHSFixedEmpty     of length
+(* -- texts -- *)
+  | PHCInnerString    of input_context * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHFixedMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
+  | PHCInnerMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
-  | PHRising         of length * horz_box list
-  | PHFixedEmpty     of length
-  | PHFixedFrame     of paddings * length * decoration * horz_box list
-  | PHInnerFrame     of paddings * decoration * horz_box list
-  | PHEmbeddedVert   of length * length * length * evaled_vert_box list
-  | PHInlineGraphics of length * length * length * (point -> Pdfops.t list)
-(* -- core part of the definition of horizontal boxes -- *)
+(* -- groups -- *)
+  | PHGRising         of length * horz_box list
+  | PHGFixedFrame     of paddings * length * decoration * horz_box list
+  | PHGInnerFrame     of paddings * decoration * horz_box list
+  | PHGOuterFrame     of paddings * decoration * horz_box list
+  | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
+  | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
 
 and horz_box =
   | HorzPure           of pure_horz_box
-  | HorzDiscretionary  of pure_badness * pure_horz_box option * pure_horz_box option * pure_horz_box option
+  | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
 
 and evaled_horz_box_main =
-  | EvHorzString         of horz_string_info * length * length * OutputText.t
+  | EvHorzString of horz_string_info * length * length * OutputText.t
+      (* --
+         (1) string information for writing string to PDF
+         (2) content height
+         (3) content depth
+         (4) content string
+         -- *)
+
   | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
@@ -257,33 +333,6 @@ and evaled_vert_box =
 type vert_box =
   | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
   | VertFixedBreakable of length
-
-
-module FontSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
-
-
-type input_context = {
-  font_size        : length;
-  font_scheme      : font_with_ratio FontSchemeMap.t;
-  math_font        : math_font_abbrev;
-  dominant_script  : CharBasis.script;
-  space_natural    : float;
-  space_shrink     : float;
-  space_stretch    : float;
-  adjacent_stretch : float;
-  paragraph_width  : length;
-  paragraph_top    : length;
-  paragraph_bottom : length;
-  leading          : length;
-  text_color       : color;
-  manual_rising    : length;
-  page_scheme      : page_scheme;
-}
-(* temporary *)
 
 
 module MathContext

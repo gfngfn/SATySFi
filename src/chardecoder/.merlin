@@ -1,3 +1,4 @@
+PKG ppx_deriving.show
 S ./
 B ../../_build/src/chardecoder/
 S ../../external/ucorelib/src/

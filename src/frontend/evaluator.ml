@@ -22,7 +22,10 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find 
 
 let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
+    HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+(*
     ConvertText.to_boxes ctx uchlst
+*)
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -419,7 +422,7 @@ and interpret env ast =
   | BackendLineBreaking(astctx, asthorz) ->
       let ctx = interpret_context env astctx in
       let hblst = interpret_horz env asthorz in
-      let imvblst = HorzBox.(LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx.paragraph_width ctx.leading hblst) in
+      let imvblst = HorzBox.(LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 
   | BackendPageBreaking(astctx, astvert) ->
@@ -482,7 +485,7 @@ and interpret env ast =
         | (None, totalhgt)      -> (HorzBox.Length.zero, HorzBox.Length.negate totalhgt)
       in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHEmbeddedVert(wid, hgt, dpt, evvblst))]))
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt) ->
       let page = interpret_page env astpage in
@@ -523,33 +526,41 @@ and interpret env ast =
       let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
       let ctx = interpret_context env astctx in
-      let font_scheme_new = HorzBox.(ctx.font_scheme |> FontSchemeMap.add script font_info) in
+      let font_scheme_new = HorzBox.(ctx.font_scheme |> ScriptSchemeMap.add script font_info) in
         Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }))
+
+  | PrimitiveGetFont(astscript, astctx) ->
+      let script = interpret_script env astscript in
+      let ctx = interpret_context env astctx in
+      let fontwr = HorzBox.get_font_with_ratio ctx script in
+        FontDesignation(fontwr)
 
   | PrimitiveSetMathFont(aststr, astctx) ->
       let mfabbrev = interpret_string env aststr in
       let ctx = interpret_context env astctx in
         Context(HorzBox.({ ctx with math_font = mfabbrev; }))
 
-  | PrimitiveGetFont(astscript, astctx) ->
-      let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
-      let fontwr = get_font_with_ratio ctx script in
-        FontDesignation(fontwr)
-
   | PrimitiveSetDominantScript(astscript, astctx) ->
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
         Context(HorzBox.({ ctx with dominant_script = script; }))
-(*
-  | PrimitiveSetTitle(asttitle, astctx) ->
-      let valuetitle = interpret env asttitle in
-      let ctx = interpret_context env astctx in
-        Context({ ctx with title = valuetitle; })
 
-  | PrimitiveGetTitle(astctx) ->
-      let ctx = interpret_context env astctx in ctx.title
-*)
+  | PrimitiveGetDominantScript(astctx) ->
+      let ctx = interpret_context env astctx in
+        make_script_value ctx.HorzBox.dominant_script
+
+  | PrimitiveSetLangSys(astscript, astlangsys, astctx) ->
+      let script = interpret_script env astscript in
+      let langsys = interpret_language_system env astlangsys in
+      let ctx = interpret_context env astctx in
+        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> ScriptSchemeMap.add script langsys}))
+
+  | PrimitiveGetLangSys(astscript, astctx) ->
+      let script = interpret_script env astscript in
+      let ctx = interpret_context env astctx in
+      let langsys = HorzBox.get_language_system ctx script in
+        make_language_system_value langsys
+
   | PrimitiveSetTextColor(astcolor, astctx) ->
       let color = interpret_color env astcolor in
       let ctx = interpret_context env astctx in
@@ -575,13 +586,13 @@ and interpret env ast =
 
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedEmpty(wid))])
+        Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
 
   | BackendOuterEmpty(astnat, astshrink, aststretch) ->
       let widnat = interpret_length env astnat in
       let widshrink = interpret_length env astshrink in
       let widstretch = interpret_length env aststretch in
-        Horz([HorzBox.HorzPure(HorzBox.PHOuterEmpty(widnat, widshrink, widstretch))])
+        Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
 (*
   | BackendFixedString(astctx, aststr) ->
       let ctx = interpret_font env astctx in
@@ -599,7 +610,7 @@ and interpret env ast =
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env astbr in
       let valuedeco = interpret env astdeco in
-        Horz([HorzBox.HorzPure(HorzBox.PHOuterFrame(
+        Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
           make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
           hblst))])
@@ -623,7 +634,7 @@ and interpret env ast =
       let dpt = interpret_length env astdpt in
       let valueg = interpret env astg in
       let graphics = make_inline_graphics env valueg in
-        Horz([HorzBox.HorzPure(HorzBox.PHInlineGraphics(wid, hgt, dpt, graphics))])
+        Horz([HorzBox.HorzPure(HorzBox.PHGFixedGraphics(wid, hgt, dpt, graphics))])
 
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
@@ -1114,11 +1125,43 @@ and interpret_script env ast : CharBasis.script =
     | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
     | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
     | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
-    | Constructor("Other"         , UnitConstant) -> CharBasis.Other
+    | Constructor("Other"         , UnitConstant) -> CharBasis.OtherScript
     | _ ->
         report_bug_evaluator ("interpret_script: not a script value; "
                               ^ (Display.string_of_ast ast)
                               ^ " ->* " ^ (Display.string_of_ast value))
+
+
+and make_script_value script =
+  let label =
+    match script with
+    | CharBasis.HanIdeographic     -> "HanIdeographic"
+    | CharBasis.HiraganaOrKatakana -> "Kana"
+    | CharBasis.Latin              -> "Latin"
+    | CharBasis.OtherScript        -> "OtherScript"
+    | _                            -> report_bug_evaluator "make_script_value"
+  in
+    Constructor(label, UnitConstant)
+
+
+and interpret_language_system env ast : CharBasis.language_system =
+  let value = interpret env ast in
+    match value with
+    | Constructor("Japanese"        , UnitConstant) -> CharBasis.Japanese
+    | Constructor("English"         , UnitConstant) -> CharBasis.English
+    | Constructor("NoLanguageSystem", UnitConstant) -> CharBasis.NoLanguageSystem
+    | _ ->
+        report_bug_evaluator "interpret_language_system"
+
+
+and make_language_system_value langsys =
+  let label =
+    match langsys with
+    | CharBasis.Japanese         -> "Japanese"
+    | CharBasis.English          -> "English"
+    | CharBasis.NoLanguageSystem -> "NoLanguageSystem"
+  in
+    Constructor(label, UnitConstant)
 
 
 and interpret_string (env : environment) (ast : abstract_tree) : string =

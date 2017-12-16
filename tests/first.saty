@@ -121,7 +121,7 @@ document (|
     }
     +screen {タイトルつきの枠} <
       +p-jp {
-        定理環境などに使える枠です。p\latex; のascmacパッケージのscreen環境に近いです。
+        定理環境などに使える枠です。p\latex;のascmacパッケージのscreen環境に近いです。
       }
     >
     +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }

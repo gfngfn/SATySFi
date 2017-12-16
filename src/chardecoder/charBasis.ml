@@ -13,7 +13,29 @@ type script =
   | HiraganaOrKatakana  (* 'kana'; Hrkt; Hiragana_Or_Katakana *)
   | Latin               (* 'latn'; Latn; Latin *)
 (* temporary; should add more scripts *)
-  | Other
+  | OtherScript
+
+
+(* for debug *)
+let show_script = function
+  | Common             -> "Common"
+  | Inherited          -> "Inherited"
+  | Unknown            -> "Unknown"
+  | HanIdeographic     -> "Han"
+  | HiraganaOrKatakana -> "Kana"
+  | Latin              -> "Latin"
+  | OtherScript        -> "Other"
+
+(* for debug *)
+let pp_script fmt script = Format.fprintf fmt "%s" (show_script script)
+
+
+type language_system =
+  | Japanese
+  | English
+(* temporary; should add more language systems *)
+  | NoLanguageSystem
+
 
 type break_opportunity =
   | AllowBreak
@@ -75,6 +97,13 @@ type line_break_class =
   | JLCM  (* JLreq cl-07; touten (fullwidth commas) *)
   | JLPL  (* JLreq cl-10; prolonged sound mark *)
   | JLSM  (* JLreq cl-11; small kanas *)
+
+
+let is_ideographic_class = function
+  | CJ | ID | JLOP | JLCP | JLHY | JLNS | JLMD | JLFS | JLCM | JLPL | JLSM
+    -> true
+  | _ -> false
+
 
 type line_break_regexp_element =
   | LBRESet       of line_break_class list   (* [a ... a] *)
@@ -170,27 +199,4 @@ let rec show_lregexp lregexp =
   ) |> String.concat " "
 
 
-(* for debug *)
-let show_script = function
-  | Common             -> "Common"
-  | Inherited          -> "Inherited"
-  | Unknown            -> "Unknown"
-  | HanIdeographic     -> "Han"
-  | HiraganaOrKatakana -> "Kana"
-  | Latin              -> "Latin"
-  | Other              -> "Other"
-
-
 type line_break_element = Uchar.t * line_break_class * break_opportunity
-
-type 'a line_break_unit =
-  | PreWord          of script * line_break_element list * break_opportunity
-  | Space
-  | CustomizedSpace  of 'a
-  | UnbreakableSpace
-  | JLOpen           of script * line_break_element
-  | JLClose          of script * line_break_element
-  | JLNonstarter     of script * line_break_element
-  | JLMiddle         of script * line_break_element
-  | JLComma          of script * line_break_element
-  | JLFullStop       of script * line_break_element
