@@ -107,4 +107,21 @@ document (|
       math-x; math-comma; math-y; math-comma; math-z;
     ]));.
   }
+  +math (
+    let int1 = math-sup (math-sub math-int math-0) math-a in
+    let sqrt2 = math-sqrt (math-list [(math-sup math-a math-2); math-minus; (math-sup math-x math-2)]) in
+    let int2 = math-sup (math-sub math-int math-0) sqrt2 in
+    let sqrt1 = math-sqrt (math-list [(math-sup math-x math-2); math-plus; (math-sup math-r math-2)]) in
+      math-list [
+        math-frac (math-list [
+          int1; math-x; math-ordd; math-x;
+          int2; math-r; sqrt1; math-ordd; math-r;
+        ]) (math-list [
+          int1; math-ordd; math-x;
+          int2; math-r; sqrt1; math-ordd; math-r;
+        ]);
+        math-equal;
+        math-frac (math-list [math-2; math-a]) math-5;
+      ]
+  );
 >

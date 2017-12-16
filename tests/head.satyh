@@ -475,6 +475,7 @@ let math-e = math-char 0x1D452
 let math-f = math-char 0x1D453
 let math-m = math-char 0x1D45A
 let math-n = math-char 0x1D45B
+let math-r = math-char 0x1D45F
 let math-x = math-char 0x1D465
 let math-y = math-char 0x1D466
 let math-z = math-char 0x1D467
@@ -507,7 +508,12 @@ let math-comma = math-glyph MathPunct `,`
 let math-sqrt = math-radical None
 let math-lim = math-lower (math-group MathOp MathOp (math-glyph MathOrd `lim`))
 let math-sum = math-glyph MathOp `∑`
-let math-int = math-glyph MathOp `∫`
+
+let math-int =
+  let kernfL _ _ = 0pt in
+  let kernfR fontsize ypos = fontsize *' 0.45 in
+    math-glyph-with-kern MathOp `∫` kernfL kernfR
+
 let math-ordd = math-glyph MathPrefix `d`
 
 let-inline ctx \math fml =
@@ -515,3 +521,7 @@ let-inline ctx \math fml =
   embed-math ctx-math fml
 
 let-block ctx +ignore _ = block-nil
+
+let-block ctx +math math =
+  let br = embed-math ctx math in
+  form-paragraph ctx (inline-fil ++ br ++ inline-fil)
