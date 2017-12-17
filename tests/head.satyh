@@ -529,6 +529,10 @@ let-block ctx +math math =
   let ib = embed-math ctx math in
     form-paragraph ctx (inline-fil ++ ib ++ inline-fil)
 
+let-inline ctx \stack-top lst =
+  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    line-stack-top iblst
+
 let-inline ctx \stack-bottom lst =
   let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     line-stack-bottom iblst

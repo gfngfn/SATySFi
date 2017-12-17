@@ -170,13 +170,20 @@ document (|
   >
   +section {Stacks} <
     +p {
-      Line stack (bottom):
+      Line stack (top):
+      \stack-top [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];,
+      line stack (bottom):
       \stack-bottom [
         {The};
         {quick brown fox};
         {jumps over};
         {the lazy dog.};
-      ];
+      ];.
     }
   >
 %  +section {Spaces and Leading} <
