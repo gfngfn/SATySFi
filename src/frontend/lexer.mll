@@ -4,9 +4,37 @@
 
   exception LexError of Range.t * string
 
-  type lexer_state = ProgramState | VerticalState | HorizontalState | ActiveState | CommentState | LiteralState
+  type lexer_state =
+    | ProgramState
+    | VerticalState
+    | HorizontalState
+    | ActiveState
+    | CommentState
+    | LiteralState
+    | MathState
 
-  type transition = HtoV | HtoA | VtoH | VtoA | PtoH | PtoV | AtoPParen | AtoPRecord | AtoPList | Paren | Record | List | Brace | Angle
+  type transition =
+    | HtoV        (* -- inline  -> block   (with "<"   ) -- *)
+    | HtoA        (* -- inline  -> active  (with "\cmd") -- *)
+    | VtoH        (* -- block   -> inline  (with "{"   ) -- *)
+    | VtoA        (* -- block   -> active  (with "+cmd") -- *)
+    | PtoH        (* -- program -> inline  (with "{"   ) -- *)
+    | PtoV        (* -- program -> block   (with "'<"  ) -- *)
+    | HtoM        (* -- inline  -> math    (with "${"  ) -- *)
+    | PtoM        (* -- program -> math    (with "${"  ) -- *)
+    | MtoH        (* -- math    -> inline  (with "!{"  ) -- *)
+    | MtoV        (* -- math    -> block   (with "!<"  ) -- *)
+    | MtoPParen   (* -- math    -> program (with "!("  ) -- *)
+    | MtoPRecord  (* -- math    -> program (with "!(|" ) -- *)
+    | MtoPList    (* -- math    -> program (with "!["  ) -- *)
+    | AtoPParen   (* -- active  -> program (with "("   ) -- *)
+    | AtoPRecord  (* -- active  -> program (with "(|"  ) -- *)
+    | AtoPList    (* -- active  -> program (with "["   ) -- *)
+    | Paren       (* -- "("  -- *)
+    | Record      (* -- "(|" -- *)
+    | List        (* -- "["  -- *)
+    | Brace       (* -- "{"  -- *)
+    | Angle       (* -- "<"  -- *)
 
   let next_state  : lexer_state ref = ref ProgramState
   let first_state : lexer_state ref = ref ProgramState
@@ -119,6 +147,7 @@ rule progexpr = parse
         match trs with
         | Paren     -> RPAREN(pos)
         | AtoPParen -> begin next_state := ActiveState; CLOSEPROG(pos) end
+        | MtoPParen -> begin next_state := MathState; CLOSEPROG(pos) end
         | _         -> report_error lexbuf "unbalanced ')'"
     }
   | "(|" { push Record; BRECORD(get_pos lexbuf) }
@@ -128,6 +157,7 @@ rule progexpr = parse
         match trs with
         | Record     -> ERECORD(pos)
         | AtoPRecord -> begin next_state := ActiveState; CLOSEPROG_AND_ERECORD(pos) end
+        | MtoPRecord -> begin next_state := MathState; CLOSEPROG_AND_ERECORD(pos) end
         | _          -> report_error lexbuf "unbalanced '|)'"
     }
   | "[" { push List; BLIST(get_pos lexbuf) }
@@ -137,6 +167,7 @@ rule progexpr = parse
         match trs with
         | List     -> ELIST(pos)
         | AtoPList -> begin next_state := ActiveState; CLOSEPROG_AND_ELIST(pos) end
+        | MtoPList -> begin next_state := MathState; CLOSEPROG_AND_ELIST(pos) end
         | _        -> report_error lexbuf "unbalanced ']'"
      }
   | ";" { LISTPUNCT(get_pos lexbuf) }
@@ -150,6 +181,11 @@ rule progexpr = parse
       push PtoV;
       next_state := VerticalState;
       OPENVERT(get_pos lexbuf)
+    }
+  | "${" {
+      push PtoM;
+      next_state := MathState;
+      OPENMATH(get_pos lexbuf)
     }
   | "<[" { BPATH(get_pos lexbuf) }
   | "]>" { EPATH(get_pos lexbuf) }
@@ -294,6 +330,7 @@ and vertexpr = parse
         match trs with
         | Angle -> EVERTGRP(pos)
         | PtoV  -> begin next_state := ProgramState; CLOSEVERT(pos) end
+        | MtoV  -> begin next_state := MathState; EVERTGRP(pos) end
         | HtoV  -> begin next_state := HorizontalState; ignore_space := false; EVERTGRP(pos) end
         | _     -> report_error lexbuf "unbalanced '>'"
     }
@@ -331,6 +368,7 @@ and horzexpr = parse
         match trs with
         | Brace -> begin ignore_space := false; EHORZGRP(pos) end
         | VtoH  -> begin next_state := VerticalState; EHORZGRP(pos) end
+        | MtoH  -> begin next_state := MathState; EHORZGRP(pos) end
         | PtoH  -> begin next_state := ProgramState; CLOSEHORZ(pos) end
         | _     -> report_error lexbuf "unbalanced '}'"
     }
@@ -400,14 +438,74 @@ and horzexpr = parse
     }
   | eof {
       if !first_state = HorizontalState then EOI else
-        report_error lexbuf "unexpected end of input while reading a horizontal area"
+        report_error lexbuf "unexpected end of input while reading an inline text area"
     }
   | str+ {
       ignore_space := false;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
-  | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a text area") }
+  | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in an inline text area") }
+
+and mathexpr = parse
+  | space { mathexpr lexbuf }
+  | break { increment_line lexbuf; mathexpr lexbuf }
+  | "!{" {
+      push MtoH;
+      next_state := HorizontalState;
+      BHORZGRP(get_pos lexbuf);
+    }
+  | "!<" {
+      push MtoV;
+      next_state := VerticalState;
+      BVERTGRP(get_pos lexbuf)
+    }
+  | "!(" {
+      push MtoPParen;
+      next_state := ProgramState;
+      OPENPROG(get_pos lexbuf)
+    }
+  | "![" {
+      push MtoPList;
+      next_state := ProgramState;
+      OPENPROG_AND_BLIST(get_pos lexbuf)
+    }
+  | "!(|" {
+      push MtoPRecord;
+      next_state := ProgramState;
+      OPENPROG_AND_BRECORD(get_pos lexbuf)
+    }
+  | "{" {
+      push Brace;
+      BMATHGRP(get_pos lexbuf)
+    }
+  | "}" {
+      let pos = get_pos lexbuf in
+      let trs = pop lexbuf "too many closing" in
+        match trs with
+        | Brace -> begin ignore_space := false; EMATHGRP(pos) end
+        | HtoM  -> begin next_state := HorizontalState; CLOSEMATH(pos) end
+        | PtoM  -> begin next_state := ProgramState; CLOSEMATH(pos) end
+        | _     -> report_error lexbuf "unbalanced '}'"
+    }
+  | "^" { SUPERSCRIPT(get_pos lexbuf) }
+  | "_" { SUBSCRIPT(get_pos lexbuf) }
+  | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("\\" (identifier | constructor)) {
+      let tok = Lexing.lexeme lexbuf in
+        MATHCMD(get_pos lexbuf, tok)
+    }
+  | ("\\" (constructor ".")* (identifier | constructor)) {
+      let tokstrpure = Lexing.lexeme lexbuf in
+      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list tokstr in
+        MATHCMDWITHMOD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
+    }
+  | ("\\" symbol) {
+      let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
+        MATHCHAR(get_pos lexbuf, tok)
+    }
+  | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a math area") }
 
 and active = parse
   | "%" {
@@ -533,6 +631,7 @@ and comment = parse
       | ActiveState     -> active lexbuf
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
+      | MathState       -> mathexpr lexbuf
     in
 
     (* begin: for debug *)

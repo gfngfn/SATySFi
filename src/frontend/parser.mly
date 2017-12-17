@@ -379,9 +379,13 @@
 %}
 
 %token <Range.t * Types.var_name> VAR
+%token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
 (*
 %token <Range.t * Types.var_name> VARINSTR
 *)
@@ -392,8 +396,8 @@
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t> SPACE BREAK
-%token <Range.t * Types.ctrlseq_name> VERTCMD
-%token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * string> MATHCHAR
+%token <Range.t> SUBSCRIPT SUPERSCRIPT
 (*
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
@@ -408,15 +412,16 @@
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
-%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT (* EQ NEQ GEQ LEQ GT LT LAND LOR CONCAT *)
-(* %token <Range.t> HORZCONCAT VERTCONCAT *)
+%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
+%token <Range.t> BMATHGRP EMATHGRP
 %token <Range.t> OPENQT CLOSEQT
 %token <Range.t> OPENVERT CLOSEVERT
 %token <Range.t> OPENHORZ CLOSEHORZ
 %token <Range.t> OPENPROG CLOSEPROG
+%token <Range.t> OPENMATH CLOSEMATH
 %token <Range.t> BPATH EPATH PATHLINE PATHCURVE CONTROLS CYCLE
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
@@ -963,12 +968,12 @@ ihcmd:
         let rngargs = make_range_from_list args in
         make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
      }
-  | hcmd=hcmd; error { let (rng, _, cs) = hcmd in report_error (Ranged (rng, cs)) "" }
+;
 ihchar:
   | CHAR  { let (rng, ch) = $1 in (rng, ch) }
   | SPACE { let rng = $1 in (rng, " ") }
   | BREAK { let rng = $1 in (rng, "\n") }
-
+;
 (*
 sxclsnm:
   | CLASSNAME { make_standard (Ranged $1) (Ranged $1) (class_name_to_abstract_tree (extract_name $1)) }
@@ -999,6 +1004,7 @@ str:
   | chartok=CHAR { let (rng, c) = chartok in c }
   | BREAK        { "\n" }
   | SPACE        { " " }
+;
 sargs:
   | ENDACTIVE                 { [] }
   | sargs=nonempty_list(sarg) { sargs }
@@ -1007,7 +1013,7 @@ sargs:
 sarg: /* -> Types.untyped_argument_cons */
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
 ;
 vcmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
@@ -1022,3 +1028,5 @@ vxbot:
         let args = List.append nargs sargs in
           make_standard (Tok rngcs) (RangedList args) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
       }
+;
+
