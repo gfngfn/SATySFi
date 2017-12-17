@@ -565,6 +565,7 @@ and abstract_tree =
   | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedVertBottom   of abstract_tree * abstract_tree * abstract_tree
   | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendLineStackTop         of abstract_tree
   | BackendLineStackBottom      of abstract_tree
 
 and pattern_match_cons =
