@@ -410,7 +410,8 @@ let make_environments () =
         ("form-document"         , ~% (tCTX @-> tBB @-> tDOC)                                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
         ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHSOuterFil)])));
+        ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
+        ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
         ("inline-frame-solid"    , ~% (pads @-> tDECO @-> tIB @-> tIB)                       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("inline-frame-breakable", ~% (pads @-> tDECOSET @-> tIB @-> tIB)                    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
