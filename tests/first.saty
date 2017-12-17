@@ -186,6 +186,9 @@ document (|
       ];.
     }
   >
+  +math (
+    math-deriv (math-list [math-A; math-space; math-deriv (math-list [math-B; math-space; math-C]) math-D]) math-E
+  );
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

@@ -494,6 +494,7 @@ let math-A = math-char 0x1D434
 let math-B = math-char 0x1D435
 let math-C = math-char 0x1D436
 let math-D = math-char 0x1D437
+let math-E = math-char 0x1D438
 let math-F = math-char 0x1D439
 let math-G = math-char 0x1D43A
 let math-M = math-char 0x1D440
@@ -536,3 +537,31 @@ let-inline ctx \stack-top lst =
 let-inline ctx \stack-bottom lst =
   let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     line-stack-bottom iblst
+
+let math-space =
+  text-in-math MathOrd (fun ctx -> inline-skip 30pt)
+
+let length-max len1 len2 =
+  if len1 <' len2 then len2 else len1
+
+let rectangle (x, y) w h =
+  start-path (x, y)
+    |> line-to (x +' w, y)
+    |> line-to (x +' w, y +' h)
+    |> line-to (x, y +' h)
+    |> close-with-line
+
+let math-deriv m1 m2 =
+  text-in-math MathOrd (fun ctx -> (
+    let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
+    let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
+    let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
+    let thickness = 1pt in
+    let gap = 2pt in
+    let bar =
+      inline-graphics w (thickness +' gap) gap (fun (x, y) ->
+        [ fill (Gray(0.)) (rectangle (x, y) w thickness); ]
+      )
+    in
+      line-stack-bottom [ib1; bar; ib2]
+  ))
