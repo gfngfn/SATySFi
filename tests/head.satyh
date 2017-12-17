@@ -345,6 +345,9 @@ let-block ctx +expand-leading inner =
 let-inline ctx \parbox-top wid inner =
   embedded-block-top ctx wid (fun ctx -> read-block ctx inner)
 
+let-inline ctx \parbox-bottom wid inner =
+  embedded-block-bottom ctx wid (fun ctx -> read-block ctx inner)
+
 let-block ctx +repeat n inner =
   let bc = read-block ctx inner in
   let repeat acc i =
