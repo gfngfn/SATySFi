@@ -396,6 +396,7 @@ let make_environments () =
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
         ( "-'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthMinus(v1, v2))             );
         ( "*'" , ~% (tLN @-> tFL @-> tLN), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
+        ( "/'" , ~% (tLN @-> tLN @-> tFL), lambda2 (fun v1 v2 -> LengthDivides(v1, v2))           );
         ( "++" , ~% (tIB @-> tIB @-> tIB), lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2))      );
         ( "+++", ~% (tBB @-> tBB @-> tBB), lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2))      );
         ( "|>" , ptyappinv               , lambda2 (fun vx vf -> Apply(vf, vx)));

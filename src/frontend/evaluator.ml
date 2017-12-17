@@ -1110,6 +1110,11 @@ and interpret env ast =
       let flt2 = interpret_float env ast2 in
         LengthConstant(HorzBox.(len1 *% flt2))
 
+  | LengthDivides(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let len2 = interpret_length env ast2 in
+        FloatConstant(HorzBox.(len1 /% len2))
+
 
 and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
   let (valuectxfinal, imvblstacc) =
