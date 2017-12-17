@@ -416,7 +416,8 @@ let make_environments () =
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> pads @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
-        ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
+        ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
+        ("embedded-block-bottom" , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
 
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));

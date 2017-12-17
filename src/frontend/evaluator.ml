@@ -484,7 +484,7 @@ and interpret env ast =
           ImVertBottomMargin(true, ctx.paragraph_bottom);
         ]))  (* temporary; frame decorations should be variable *)
 
-  | BackendEmbeddedVert(astctx, astlen, astk) ->
+  | BackendEmbeddedVertTop(astctx, astlen, astk) ->
       let ctx = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
@@ -494,8 +494,10 @@ and interpret env ast =
       let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
       let evvblst = PageBreak.solidify imvblst in
 
+      let open HorzBox in
+
       let rec find_first_line optinit totalhgtinit evvblst =
-        evvblst |> List.fold_left HorzBox.(fun (opt, totalhgt) evvb ->
+        evvblst |> List.fold_left (fun (opt, totalhgt) evvb ->
           match (evvb, opt) with
           | (EvVertLine(hgt, dpt, _), None)          -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
           | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% hgt +% (Length.negate dpt))
@@ -510,11 +512,47 @@ and interpret env ast =
         ) (optinit, totalhgtinit)
       in
       let (hgt, dpt) =
-        match find_first_line None HorzBox.Length.zero evvblst with
+        match find_first_line None Length.zero evvblst with
         | (Some(hgt), totalhgt) ->
             let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: total = %f" (HorzBox.Length.to_pdf_point totalhgt)) in  (* for debug *)
-            (hgt, HorzBox.(Length.negate (totalhgt -% hgt)))
-        | (None, totalhgt)      -> (HorzBox.Length.zero, HorzBox.Length.negate totalhgt)
+            (hgt, Length.negate (totalhgt -% hgt))
+        | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
+      in
+      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
+        Horz([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))])
+
+  | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
+      let ctx = interpret_context env astctx in
+      let wid = interpret_length env astlen in
+      let valuek = interpret env astk in
+      let valuectxsub =
+        Context(HorzBox.({ ctx with paragraph_width = wid; }))
+      in
+      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
+      let evvblst = PageBreak.solidify imvblst in
+
+      let open HorzBox in
+
+      let rec find_last_line optinit totalhgtinit evvblst =
+        let evvblstrev = List.rev evvblst in
+          evvblstrev |> List.fold_left (fun (opt, totalhgt) evvblast ->
+              match (evvblast, opt) with
+              | (EvVertLine(hgt, dpt, _), None)          -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
+              | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
+              | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
+              | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+                  let totalhgtbefore = totalhgt +% pads.paddingB in
+                  let (optsub, totalhgtsub) = find_last_line opt totalhgtbefore evvblstsub in
+                  let totalhgtafter = totalhgtsub +% pads.paddingT in
+                    (optsub, totalhgtafter)
+          ) (optinit, totalhgtinit)
+      in
+      let (hgt, dpt) =
+        match find_last_line None Length.zero evvblst with
+        | (Some(dpt), totalhgt) ->
+            let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: total = %f" (HorzBox.Length.to_pdf_point totalhgt)) in  (* for debug *)
+            (totalhgt +% dpt, dpt)
+        | (None, totalhgt)      -> (totalhgt, Length.zero)
       in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
