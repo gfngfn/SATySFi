@@ -626,8 +626,10 @@ let get_natural_metrics (hblst : horz_box list) : length * length * length =
     (widinfo.natural, hgt, dpt)
 
 
-let natural (hblst : horz_box list) : evaled_horz_box list =
+let natural (hblst : horz_box list) : evaled_horz_box list * length * length =
   let lphblst = convert_list_for_line_breaking_pure hblst in
-  let (evhblst, _, _) = determine_widths None lphblst in
-    evhblst
+    determine_widths None lphblst
 
+let fit (hblst : horz_box list) (widreq : length) : evaled_horz_box list * length * length =
+  let lphblst = convert_list_for_line_breaking_pure hblst in
+    determine_widths (Some(widreq)) lphblst

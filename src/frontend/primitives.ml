@@ -418,6 +418,7 @@ let make_environments () =
         ("block-frame-breakable" , ~% (tCTX @-> pads @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
         ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
         ("embedded-block-bottom" , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
+        ("line-stack-bottom"     , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackBottom(vlst)));
 
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
