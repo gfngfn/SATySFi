@@ -736,7 +736,7 @@ and interpret env ast =
       let dpt = interpret_length env astdpt in
       let valueg = interpret env astg in
       let graphics = make_inline_graphics env valueg in
-        Horz([HorzBox.HorzPure(HorzBox.PHGFixedGraphics(wid, hgt, dpt, graphics))])
+        Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
@@ -1114,6 +1114,16 @@ and interpret env ast =
       let len1 = interpret_length env ast1 in
       let len2 = interpret_length env ast2 in
         FloatConstant(HorzBox.(len1 /% len2))
+
+  | LengthLessThan(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let len2 = interpret_length env ast2 in
+        BooleanConstant(HorzBox.(len1 <% len2))
+
+  | LengthGreaterThan(ast1, ast2) ->
+      let len1 = interpret_length env ast1 in
+      let len2 = interpret_length env ast2 in
+        BooleanConstant(HorzBox.(len2 <% len1))
 
 
 and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
