@@ -324,6 +324,8 @@ and untyped_abstract_tree_main =
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
+(* -- math -- *)
+  | UTMath                 of untyped_math
 
 and constraint_cons = (var_name * manual_kind) list
 
@@ -374,6 +376,16 @@ and untyped_let_pattern_cons =
 and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
 
 and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
+
+and untyped_math = Range.t * untyped_math_main
+
+and untyped_math_main =
+  | UTMChar        of string
+  | UTMSuperScript of untyped_math * untyped_math
+  | UTMSubScript   of untyped_math * untyped_math
+  | UTMCommand     of module_name list * ctrlseq_name * untyped_abstract_tree list
+  | UTMList        of untyped_math list
+
 [@@deriving show { with_path = false }]
 
 (* ---- typed ---- *)

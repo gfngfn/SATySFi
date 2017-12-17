@@ -942,6 +942,58 @@ hcmd:
   | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=HORZCMDWITHMOD { tok }
 ;
+mcmd:
+  | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
+  | tok=MATHCMDWITHMOD { tok }
+;
+mathblock:
+  | utm=mathlist { let (rng, _) = utm in (rng, UTMath(utm)) }
+;
+mathlist:
+  | utmlst=list(mathsuper) {
+        let rng =
+          match (utmlst, List.rev utmlst) with
+          | ([], [])                                -> Range.dummy "empty-math"
+          | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
+          | _                                       -> assert false
+        in
+          (rng, UTMList(utmlst))
+      }
+;
+mathsuper:
+  | utm1=mathsub; sup=SUPERSCRIPT; utm2=mathgroup {
+        make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
+      }
+  | utm=mathsub { utm }
+;
+mathsub:
+  | utm1=mathbot; sup=SUBSCRIPT; utm2=mathgroup {
+        make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
+      }
+  | utm=mathbot { utm }
+;
+mathgroup:
+  | opn=BMATHGRP; utm=mathlist; cls=EMATHGRP { utm }
+  | utm=mathbot                              { utm }
+;
+mathbot:
+  | tok=MATHCHAR                    { let (rng, char) = tok in (rng, UTMChar(char)) }
+  | mcmd=mcmd; arglst=list(matharg) {
+        let (rngcmd, mdlnmlst, csnm) = mcmd in
+        let rnglast =
+          match List.rev arglst with
+          | []                -> rngcmd
+          | (rnglast, _) :: _ -> rnglast
+        in
+          make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(mdlnmlst, csnm, arglst))
+      }
+;
+matharg:
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP     { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP   { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | utast=narg                                  { utast }
+;
 sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
 ;
@@ -951,23 +1003,28 @@ ih:
   | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
   |                                   { [] }
 ;
-ihtext:
-  | ihcharlst=nonempty_list(ihchar) {
-        let rng = make_range_from_list ihcharlst in
-        let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
-        (rng, UTInputHorzText(text)) }
-(*
-  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
-*)
-;
 ihcmd:
-  | hcmd=hcmd; nargs=nargs; sargs=sargs; {
+  | hcmd=hcmd; nargs=nargs; sargs=sargs {
         let (rngcs, mdlnmlst, csnm) = hcmd in
         let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
         let args = List.append nargs sargs in
         let rngargs = make_range_from_list args in
-        make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
-     }
+          make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
+      }
+  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
+        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in  (* -- inline command '\\math' is inserted -- *)
+          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbedded(utastcmd, [utast]))
+      }
+(*
+  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
+*)
+;
+ihtext:
+  | ihcharlst=nonempty_list(ihchar) {
+        let rng = make_range_from_list ihcharlst in
+        let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
+        (rng, UTInputHorzText(text))
+      }
 ;
 ihchar:
   | CHAR  { let (rng, ch) = $1 in (rng, ch) }
@@ -987,16 +1044,16 @@ nargs:
   | nargs=list(narg) { nargs }
 ;
 narg: /* -> untyped_abstract_tree */
-  | opn=OPENPROG; utast=nxlet; cls=CLOSEPROG; {
+  | opn=OPENPROG; utast=nxlet; cls=CLOSEPROG {
         let rng = make_range (Tok opn) (Tok cls) in (rng, extract_main utast)
       }
-  | opn=OPENPROG; cls=CLOSEPROG; {
+  | opn=OPENPROG; cls=CLOSEPROG {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTUnitConstant)
       }
-  | opn=OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD; {
+  | opn=OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTRecord(rcd))
       }
-  | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST; {
+  | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
         let rng = make_range (Tok opn) (Tok cls) in (rng, extract_main utast)
       }
 ;
