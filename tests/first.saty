@@ -168,6 +168,17 @@ document (|
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
   >
+  +section {Stacks} <
+    +p {
+      Line stack (bottom):
+      \stack-bottom [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];
+    }
+  >
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

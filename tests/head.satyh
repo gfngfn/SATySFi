@@ -521,10 +521,14 @@ let math-ordd = math-glyph MathPrefix `d`
 
 let-inline ctx \math fml =
   let ctx-math = ctx |> set-text-color (RGB(0., 0., 1.)) in
-  embed-math ctx-math fml
+    embed-math ctx-math fml
 
 let-block ctx +ignore _ = block-nil
 
 let-block ctx +math math =
-  let br = embed-math ctx math in
-  form-paragraph ctx (inline-fil ++ br ++ inline-fil)
+  let ib = embed-math ctx math in
+    form-paragraph ctx (inline-fil ++ ib ++ inline-fil)
+
+let-inline ctx \stack-bottom lst =
+  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    line-stack-bottom iblst
