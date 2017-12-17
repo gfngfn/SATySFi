@@ -195,7 +195,7 @@ let-block ctx +section title inner =
   in
   let () = num-section <- !num-section + 1 in
   let () = needs-indentation-ref <- false in
-  let br-num = read-inline ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
+  let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
   let br-title = read-inline ctx-title title in
   let bc-title = form-paragraph ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
   let bc-inner = read-block ctx inner in

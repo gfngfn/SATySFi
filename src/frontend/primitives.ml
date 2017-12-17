@@ -161,71 +161,69 @@ let default_font_scheme =
 
 
 let default_math_left_paren hgt dpt hgtaxis fontsize color =
-  let lenappend = HorzBox.(fontsize *% 0.1) in
-  let minhalflen = HorzBox.(fontsize *% 0.5) in
-  let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
-  let widparen = HorzBox.(halflen *% 0.375) in
-  let wid = HorzBox.(widparen +% fontsize *% 0.1) in
+  let open HorzBox in
+  let lenappend = fontsize *% 0.1 in
+  let minhalflen = fontsize *% 0.5 in
+  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
+  let widparen = halflen *% 0.375 in
+  let wid = widparen +% fontsize *% 0.1 in
   let graphics (xpos, ypos) =
-    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) color [
+    Graphics.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
         LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
       ], None);
-    ])
+    ]
   in
   let kerninfo y =
     let widkern = widparen in
     let r = 0. in
-    let gap = HorzBox.(Length.abs (y -% hgtaxis)) in
-    let topdfpt = HorzBox.Length.to_pdf_point in  (* for debug *)
+    let gap = Length.abs (y -% hgtaxis) in
+    let topdfpt = Length.to_pdf_point in  (* for debug *)
     let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-    HorzBox.(
       if halflen *% r <% gap then
         widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
       else
         Length.zero
-    )
   in
-  let hgtparen = HorzBox.(hgtaxis +% halflen) in
-  let dptparen = HorzBox.(hgtaxis -% halflen) in
-  (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
+  let hgtparen = hgtaxis +% halflen in
+  let dptparen = hgtaxis -% halflen in
+    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
 
 
 let default_math_right_paren hgt dpt hgtaxis fontsize color =
-  let lenappend = HorzBox.(fontsize *% 0.1) in
-  let minhalflen = HorzBox.(fontsize *% 0.5) in
-  let halflen = HorzBox.(Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend)) in
-  let widparen = HorzBox.(halflen *% 0.375) in
-  let wid = HorzBox.(widparen +% fontsize *% 0.1) in
+  let open HorzBox in
+  let lenappend = fontsize *% 0.1 in
+  let minhalflen = fontsize *% 0.5 in
+  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
+  let widparen = halflen *% 0.375 in
+  let wid = widparen +% fontsize *% 0.1 in
   let graphics (xpos, ypos) =
-    HorzBox.(Graphics.pdfops_of_stroke (pdfpt 0.5) color [
+    Graphics.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% widparen, ypos +% hgtaxis));
         LineTo((xpos, ypos +% hgtaxis -% halflen));
       ], None);
-    ])
+    ]
   in
   let kerninfo y =
     let widkern = widparen in
     let r = 0. in
-    let gap = HorzBox.(Length.abs (y -% hgtaxis)) in
-    let topdfpt = HorzBox.Length.to_pdf_point in  (* for debug *)
+    let gap = Length.abs (y -% hgtaxis) in
+    let topdfpt = Length.to_pdf_point in  (* for debug *)
     let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-    HorzBox.(
       if halflen *% r <% gap then
         widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
       else
         Length.zero
-    )
   in
-  let hgtparen = HorzBox.(hgtaxis +% halflen) in
-  let dptparen = HorzBox.(hgtaxis -% halflen) in
-  (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))]), kerninfo)
+  let hgtparen = hgtaxis +% halflen in
+  let dptparen = hgtaxis -% halflen in
+    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
 
 
 let default_radical hgt_bar t_bar dpt fontsize color =
-  HorzBox.(begin
+  let open HorzBox in
   let wM = fontsize *% 0.02 in
   let w1 = fontsize *% 0.1 in
   let w2 = fontsize *% 0.15 in
@@ -262,8 +260,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
       ], Some(LineTo(())))
     ]
   in
-  [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
-  end)
+    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
 
 
 let envinit : environment = Hashtbl.create 128
@@ -391,9 +388,9 @@ let make_environments () =
         ( "<=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))) );
         ( "&&" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalAnd(v1, v2))              );
         ( "||" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalOr(v1, v2))               );
-        ( "not", ~% (tB @-> tB)         , lambda1 (fun v1 -> LogicalNot(v1))                     );
-        ( "!"  , ptyderef             , lambda1 (fun v1 -> Reference(v1))                      );
-        ( "::" , ptycons              , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
+        ( "not", ~% (tB @-> tB)          , lambda1 (fun v1 -> LogicalNot(v1))                     );
+        ( "!"  , ptyderef                , lambda1 (fun v1 -> Reference(v1))                      );
+        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
@@ -401,73 +398,75 @@ let make_environments () =
         ( "*'" , ~% (tLN @-> tFL @-> tLN), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
         ( "++" , ~% (tIB @-> tIB @-> tIB), lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2))      );
         ( "+++", ~% (tBB @-> tBB @-> tBB), lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2))      );
-        ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx)));
+        ( "|>" , ptyappinv               , lambda2 (fun vx vf -> Apply(vf, vx)));
 
-        ( "string-same"  , ~% (tS @-> tS @-> tB)           , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
-        ( "string-sub"   , ~% (tS @-> tI @-> tI @-> tS)     , lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
-        ( "string-length", ~% (tS @-> tI)                 , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
-        ( "arabic"       , ~% (tI @-> tS)                 , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
-        ( "float"        , ~% (tI @-> tFL)                , lambda1 (fun vi -> PrimitiveFloat(vi)) );
+        ( "string-same"  , ~% (tS @-> tS @-> tB)       , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
+        ( "string-sub"   , ~% (tS @-> tI @-> tI @-> tS), lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
+        ( "string-length", ~% (tS @-> tI)              , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
+        ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
+        ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("form-paragraph"        , ~% (tCTX @-> tIB @-> tBB)                 , lambda2 (fun vctx vbr -> BackendLineBreaking(vctx, vbr)) );
-        ("form-document"         , ~% (tCTX @-> tBB @-> tDOC)                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
-        ("inline-skip"           , ~% (tLN @-> tIB)                         , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)           , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("inline-fil"            , ~% tIB                                  , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHSOuterFil)])));
-        ("inline-frame-solid"    , ~% (pads @-> tDECO @-> tIB @-> tIB)       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("inline-frame-breakable", ~% (pads @-> tDECOSET @-> tIB @-> tIB)    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-        ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)            , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
-        ("block-nil"             , ~% tBB                                  , (fun _ -> Vert([])));
+        ("form-paragraph"        , ~% (tCTX @-> tIB @-> tBB)                                 , lambda2 (fun vctx vbr -> BackendLineBreaking(vctx, vbr)) );
+        ("form-document"         , ~% (tCTX @-> tBB @-> tDOC)                                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
+        ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
+        ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
+        ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz([HorzBox.HorzPure(HorzBox.PHSOuterFil)])));
+        ("inline-frame-solid"    , ~% (pads @-> tDECO @-> tIB @-> tIB)                       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("inline-frame-breakable", ~% (pads @-> tDECOSET @-> tIB @-> tIB)                    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+        ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
+        ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> pads @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
-        ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB), lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
+        ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVert(vctx, vlen, vk)));
 
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCTX)   , lambda4 (fun vpage vpt vwid vhgt -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt)));
-        ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)                , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
-        ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)                , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
+        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCTX), lambda4 (fun vpage vpt vwid vhgt -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt)));
+        ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
+        ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
-        ("set-font"           , ~% (tSCR @-> tFT @-> tCTX @-> tCTX)        , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
-        ("get-font"           , ~% (tSCR @-> tCTX @-> tFT)                , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
-        ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)      , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
-        ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)              , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
-        ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                 , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
-        ("set-dominant-script", ~% (tSCR @-> tCTX @-> tCTX)               , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
+        ("set-font"           , ~% (tSCR @-> tFT @-> tCTX @-> tCTX)      , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
+        ("get-font"           , ~% (tSCR @-> tCTX @-> tFT)               , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)    , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
+        ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)             , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
+        ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
+        ("set-dominant-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
         ("get-dominant-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantScript(vctx)));
-        ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)               , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
-        ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)                , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
-        ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)                , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
+        ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)              , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
+        ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
+        ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
         ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
-        ("embed"              , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
-        ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB)   , lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
+
+        ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
+        ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
         ("get-natural-width"  , ~% (tIB @-> tLN)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
 
-        ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)                , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
-        ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)       , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
-        ("fill"                    , ~% (tCLR @-> tPATH @-> tGR)                       , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
-        ("draw-text"               , ~% (tPT @-> tIB @-> tGR)                          , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
-        ("start-path"              , ~% (tPT @-> tPRP)                                , lambda1 (fun vpt -> PrePathBeginning(vpt)));
-        ("line-to"                 , ~% (tPT @-> tPRP @-> tPRP)                        , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
-        ("bezier-to"               , ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)          , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
-        ("terminate-path"          , ~% (tPRP @-> tPATH)                              , lambda1 (fun vprp -> PrePathTerminate(vprp)));
-        ("close-with-line"         , ~% (tPRP @-> tPATH)                              , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
-        ("close-with-bezier"       , ~% (tPT @-> tPT @-> tPRP @-> tPATH)                , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
-        ("unite-path"              , ~% (tPATH @-> tPATH @-> tPATH)                    , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
-        ("math-glyph"              , ~% (tMATHCLS @-> tS @-> tMATH)                    , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
-        ("math-glyph-with-kern"    , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)  , lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, vs, vkfL, vkfR)));
-        ("math-group"              , ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)     , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
-        ("math-sup"                , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
-        ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
-        ("math-frac"               , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
-        ("math-radical"            , ~% (tOPT tMATH @-> tMATH @-> tMATH)                , lambda2 (fun vm1 vm2 -> BackendMathRadical(vm1, vm2)));
-        ("math-paren"              , ~% (tMATH @-> tMATH)                             , lambda1 (fun vm -> BackendMathParen(vm)));
-        ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
-        ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
-        ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                    , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
-        ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)         , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
-        ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                       , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
-        ("string-unexplode"        , ~% ((tL tI) @-> tS)                               , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
+        ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)             , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
+        ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)   , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
+        ("fill"                    , ~% (tCLR @-> tPATH @-> tGR)                     , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
+        ("draw-text"               , ~% (tPT @-> tIB @-> tGR)                        , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
+        ("start-path"              , ~% (tPT @-> tPRP)                               , lambda1 (fun vpt -> PrePathBeginning(vpt)));
+        ("line-to"                 , ~% (tPT @-> tPRP @-> tPRP)                      , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
+        ("bezier-to"               , ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)      , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
+        ("terminate-path"          , ~% (tPRP @-> tPATH)                             , lambda1 (fun vprp -> PrePathTerminate(vprp)));
+        ("close-with-line"         , ~% (tPRP @-> tPATH)                             , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
+        ("close-with-bezier"       , ~% (tPT @-> tPT @-> tPRP @-> tPATH)             , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
+        ("unite-path"              , ~% (tPATH @-> tPATH @-> tPATH)                  , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
+
+        ("math-glyph"              , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
+        ("math-glyph-with-kern"    , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, vs, vkfL, vkfR)));
+        ("math-group"              , ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)  , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
+        ("math-sup"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
+        ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
+        ("math-frac"               , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
+        ("math-radical"            , ~% (tOPT tMATH @-> tMATH @-> tMATH)             , lambda2 (fun vm1 vm2 -> BackendMathRadical(vm1, vm2)));
+        ("math-paren"              , ~% (tMATH @-> tMATH)                            , lambda1 (fun vm -> BackendMathParen(vm)));
+        ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
+        ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
+        ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
+        ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
+        ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
+        ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
       ]
   in
   let temporary_ast = StringEmpty in
