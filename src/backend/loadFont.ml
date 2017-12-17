@@ -1,9 +1,11 @@
 
-exception InvalidExtendedJSON of string
-exception InvalidFontHashTop
-exception InvalidFontHashElement
-exception MultipleDesignation
-exception InvalidKey
+exception InvalidYOJSON             of string
+exception UnexpectedFontHashTop     of string
+exception UnexpectedFontHashElement of string
+exception MultipleDesignation       of string
+exception UnexpectedYOJSONKey       of string
+exception UnexpectedYOJSONValue     of string * string
+exception MissingRequiredYOJSONKey  of string
 
 
 let read_assoc_single dir_dist assoc =
@@ -14,33 +16,41 @@ let read_assoc_single dir_dist assoc =
           begin
             match opt with
             | None    -> Some(Filename.concat dir_dist data)
-            | Some(_) -> raise MultipleDesignation
+            | Some(_) -> raise (MultipleDesignation("src-dist"))
           end
 
-      | _ -> raise InvalidKey
+      | ("src-dist", jsonerr) ->
+          raise (UnexpectedYOJSONValue("src-dist", Yojson.Safe.to_string jsonerr))
+
+      | (keyerr, _) ->
+          raise (UnexpectedYOJSONKey(keyerr))
     ) None
   in
   match opt with
-  | None       -> raise InvalidKey
+  | None       -> raise (MissingRequiredYOJSONKey("src-dist"))
   | Some(data) -> data
 
 
 let read_assoc dir_dist assoc =
   assoc |> List.fold_left (fun acc (abbrev, json) ->
     match json with
-    | `Variant("Single", Some(`Assoc(assocsingle))) -> (abbrev, read_assoc_single dir_dist assocsingle) :: acc
-    | _                                             -> raise InvalidFontHashElement
+    | `Variant("Single", Some(`Assoc(assocsingle))) ->
+        let data = read_assoc_single dir_dist assocsingle in
+          (abbrev, data) :: acc
+
+    | jsonerr ->
+        raise (UnexpectedFontHashElement(Yojson.Safe.to_string jsonerr))
   ) []
 
 
 let main satysfi_root_dir filename =
-  Format.printf "LoadFont> main\n";  (* for debug *)
+  Format.printf "LoadFont> main %s\n" filename;  (* for debug *)
   try
     let dir_dist = Filename.concat satysfi_root_dir "dist/fonts" in
     let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hash" filename) in
-    let json = Yojson.Safe.from_file srcpath in
+    let json = Yojson.Safe.from_file srcpath in  (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
     match json with
     | `Assoc(assoc) -> read_assoc dir_dist assoc
-    | _             -> raise InvalidFontHashTop
+    | jsonerr       -> raise (UnexpectedFontHashTop(Yojson.Safe.to_string jsonerr))
   with
-  | Yojson.Json_error(msg) -> raise (InvalidExtendedJSON(msg))
+  | Yojson.Json_error(msg) -> raise (InvalidYOJSON(msg))
