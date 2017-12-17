@@ -985,7 +985,8 @@ mathbot:
           | []                -> rngcmd
           | (rnglast, _) :: _ -> rnglast
         in
-          make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(mdlnmlst, csnm, arglst))
+        let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
+          make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
       }
 ;
 matharg:

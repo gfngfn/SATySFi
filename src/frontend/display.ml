@@ -177,6 +177,10 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
         let slist = List.map iter tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
 
+    | MathCommandType(tylist) ->
+        let slist = List.map iter tylist in
+        "(" ^ (String.concat ", " slist) ^ ") math-command"
+
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
   let iter = string_of_mono_type_sub tyenv current_ht in

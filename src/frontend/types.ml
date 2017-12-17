@@ -206,6 +206,7 @@ and mono_type_main =
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
   | VertDetailedCommandType of mono_type list
+  | MathCommandType of mono_type list
 
 and poly_type =
   | Poly of mono_type
@@ -383,7 +384,7 @@ and untyped_math_main =
   | UTMChar        of string
   | UTMSuperScript of untyped_math * untyped_math
   | UTMSubScript   of untyped_math * untyped_math
-  | UTMCommand     of module_name list * ctrlseq_name * untyped_abstract_tree list
+  | UTMCommand     of untyped_abstract_tree * untyped_abstract_tree list
   | UTMList        of untyped_math list
 
 [@@deriving show { with_path = false }]
@@ -527,6 +528,7 @@ and abstract_tree =
   | BackendMathGlyphWithKern    of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendMathGroup            of abstract_tree * abstract_tree * abstract_tree
   | BackendMathConcat           of abstract_tree * abstract_tree
+  | BackendMathList             of abstract_tree list
   | BackendMathSuperscript      of abstract_tree * abstract_tree
   | BackendMathSubscript        of abstract_tree * abstract_tree
   | BackendMathFraction         of abstract_tree * abstract_tree
@@ -688,6 +690,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -731,6 +734,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
 
   and generalize_kind kd =
     match kd with
@@ -847,6 +851,9 @@ let rec string_of_mono_type_basic tystr =
     | VertDetailedCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
+    | MathCommandType(tylist)   ->
+        let slist = List.map string_of_mono_type_basic tylist in
+        "(" ^ (String.concat ", " slist) ^ ") math-command"
 
 
 and string_of_type_argument_list_basic tyarglist =
