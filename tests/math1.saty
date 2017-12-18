@@ -28,10 +28,10 @@ document (|
     quick brown fox jumps over the lazy dog.
     This document
     \math(math-list [
-      math-paren (math-sup math-F math-n);
-      math-paren math-F;
+      math-angle (math-sup math-F math-n);
+      math-angle math-F;
       math-equal;
-      math-sup (math-paren (math-list [
+      math-sup (math-angle (math-list [
         math-G;
         math-frac (math-list [math-M; math-m]) (math-sup math-R math-2);
       ])) (math-list [math-n; math-plus; math-1]);
@@ -39,12 +39,12 @@ document (|
     was typeset by using \satysfi;.
     Big math:
     \math(math-list [
-      math-sub (math-paren (math-frac (math-paren (math-list [math-frac math-A math-B; math-plus; math-C]))
-        (math-sup math-D (math-paren (math-list [math-n; math-minus; math-1]))))) math-2
+      math-sub (math-angle (math-frac (math-angle (math-list [math-frac math-A math-B; math-plus; math-C]))
+        (math-sup math-D (math-angle (math-list [math-n; math-minus; math-1]))))) math-2
     ]);,
     layered:
     \math(math-list [
-      math-paren (math-list [math-paren (math-list [math-paren math-A; math-plus; math-B]); math-plus; math-C]);
+      math-angle (math-list [math-angle (math-list [math-angle math-A; math-plus; math-B]); math-plus; math-C]);
     ]);,
     radical:
     \math(math-list [
@@ -72,7 +72,7 @@ document (|
     limits:
     \math(math-list [
       math-lim (math-list [math-n; math-to; math-infty]);
-      math-sup (math-paren (math-list [math-1; math-plus; math-frac math-1 math-n])) math-n;
+      math-sup (math-angle (math-list [math-1; math-plus; math-frac math-1 math-n])) math-n;
       math-equal;
       math-e;
     ]);,
@@ -103,7 +103,7 @@ document (|
       math-sqrt (text-in-math MathOrd (fun ctx -> read-inline ctx {Piyo}));
     ]);,
     tuple:
-    \math(math-paren (math-list [
+    \math(math-angle (math-list [
       math-x; math-comma; math-y; math-comma; math-z;
     ]));.
   }

@@ -544,6 +544,9 @@ let math-space =
 let length-max len1 len2 =
   if len1 <' len2 then len2 else len1
 
+let length-abs len =
+  if len <' 0pt then 0pt -' len else len
+
 let rectangle (x, y) w h =
   start-path (x, y)
     |> line-to (x +' w, y)
@@ -601,3 +604,56 @@ let-math \npe =
 
 let-math \bi m =
   math-char-class MathBoldItalic m
+
+let angle-left hgt dpt hgtaxis fontsize color =
+  let lenappend = fontsize *' 0.1 in
+  let minhalflen = fontsize *' 0.5 in
+  let halflen = length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend) in
+  let widparen = halflen *' 0.375 in
+  let wid = widparen +' fontsize *' 0.1 in
+  let path (xpos, ypos) =
+    start-path (xpos +' wid, ypos +' hgtaxis +' halflen)
+      |> line-to (xpos +' wid -' widparen, ypos +' hgtaxis)
+      |> line-to (xpos +' wid, ypos +' hgtaxis -' halflen)
+      |> terminate-path
+  in
+  let graphics point = [ stroke 0.5pt color (path point); ] in
+  let kerninfo y =
+    let widkern = widparen in
+    let r = 0. in
+    let gap = length-abs (y -' hgtaxis) in
+      if halflen *' r <' gap then
+        widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+      else
+        0pt
+  in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+let angle-right hgt dpt hgtaxis fontsize color =
+  let lenappend = fontsize *' 0.1 in
+  let minhalflen = fontsize *' 0.5 in
+  let halflen = length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend) in
+  let widparen = halflen *' 0.375 in
+  let wid = widparen +' fontsize *' 0.1 in
+  let path (xpos, ypos) =
+    start-path (xpos, ypos +' hgtaxis +' halflen)
+      |> line-to (xpos +' widparen, ypos +' hgtaxis)
+      |> line-to (xpos, ypos +' hgtaxis -' halflen)
+      |> terminate-path
+  in
+  let graphics point = [ stroke 0.5pt color (path point); ] in
+  let kerninfo y =
+    let widkern = widparen in
+    let r = 0. in
+    let gap = length-abs (y -' hgtaxis) in
+      if halflen *' r <' gap then
+        widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+      else
+        0pt
+  in
+    (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+let math-angle =
+  math-paren angle-left angle-right
