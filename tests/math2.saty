@@ -4,8 +4,16 @@ document (|
   author = {gfn};
 |) '<
   +make-title;
-  +math(${E = m c^2});
-  +p {Einstein and Poincare found that ${E = m c^2} holds.}
-  +math(${Z = -e^x + f^{x^{n^2}}});
-  +math(${F = G \frac{M m}{R^2}});
+  +p-jp{
+    万有引力定数を ${G} として，距離 ${R} だけ離れた質量 ${M_1}，${M_2} の物体間にはたらく重力は
+  }
+  +math(${
+    F = G \frac{M_1 M_2}{R^2}
+  });
+  +p-jp{
+    と表される．
+  }
+  +math(${
+    Z = -e^x + f^{x^{n^2}}
+  });
 >
