@@ -6,4 +6,5 @@ document (|
   +make-title;
   +math(${E = m c^2});
   +p {Einstein and Poincare found that ${E = m c^2} holds.}
+  +math(${Z = -e^x + f^{x^{n^2}}});
 >

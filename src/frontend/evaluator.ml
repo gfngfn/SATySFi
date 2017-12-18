@@ -297,12 +297,13 @@ and interpret env ast =
 
   | MathValue(_) -> ast
 
-  | PrimitiveSetMathVariantToChar(asts, astmccls, astcp, astctx) ->
+  | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, astcp, astctx) ->
       let s = interpret_string env asts in
       let mccls = interpret_math_char_class env astmccls in
+      let mathcls = interpret_math_class env astmathcls in
       let cp = interpret_int env astcp in
       let ctx = interpret_context env astctx in
-      let mvvalue = HorzBox.MathVariantToChar(Uchar.of_int cp) in
+      let mvvalue = HorzBox.MathVariantToChar(Uchar.of_int cp, mathcls) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 

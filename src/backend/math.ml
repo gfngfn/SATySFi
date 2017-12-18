@@ -428,7 +428,7 @@ let rec get_left_math_kind = function
 let rec get_right_math_kind math =
   try
     match math with
-    | MathPure((mk, _))           -> mk
+    | MathPure((mk, _))           -> mk  (* contains bugs *)
     | MathGroup(_, mkR, _)        -> mkR
     | MathSuperscript([], _)      -> MathEnd
     | MathSuperscript(mathlst, _) -> get_right_math_kind (List.hd (List.rev mathlst))
@@ -596,29 +596,33 @@ let convert_math_char_with_kern mathctx uch kernfL kernfR mk =
 
 
 let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) ((mkraw, memain) : math_element) : low_math_pure =
-  let mk = normalize_math_kind mkprev mknext mkraw in
   match memain with
   | MathEmbeddedText(hblstf) ->
       let hblst = hblstf (MathContext.context_for_text mathctx) in
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+      let mk = normalize_math_kind mkprev mknext mkraw in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathVariantChar(s) ->
       begin
         match MathContext.convert_math_variant_char mathctx s with
-        | MathVariantToChar(uch) ->
-            convert_math_char mathctx uch mk
+        | MathVariantToChar(uch, mkrawv) ->
+            let mk = normalize_math_kind mkprev mknext mkrawv in
+              convert_math_char mathctx uch mk
 
-        | MathVariantToCharWithKern(uch, kernfL, kernfR) ->
-            convert_math_char_with_kern mathctx uch kernfL kernfR mk
+        | MathVariantToCharWithKern(uch, mkrawv, kernfL, kernfR) ->
+            let mk = normalize_math_kind mkprev mknext mkrawv in
+              convert_math_char_with_kern mathctx uch kernfL kernfR mk
       end
         
 
   | MathChar(uch) ->
-      convert_math_char mathctx uch mk
+      let mk = normalize_math_kind mkprev mknext mkraw in
+        convert_math_char mathctx uch mk
 
   | MathCharWithKern(uch, kernfL, kernfR) ->
-      convert_math_char_with_kern mathctx uch kernfL kernfR mk
+      let mk = normalize_math_kind mkprev mknext mkraw in
+        convert_math_char_with_kern mathctx uch kernfL kernfR mk
 
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =

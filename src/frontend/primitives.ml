@@ -279,11 +279,23 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     (List.concat [
     (* -- Latin capital letter to its normal italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
+        (ascii_capital_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D434 + i), MathOrdinary)));
     (* -- Latin small letter to its normal italics -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
-      [("h", MathNormal, MathVariantToChar(Uchar.of_int 0x210E))];
+        (ascii_small_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D44E + i), MathOrdinary)));
+      [("h", MathNormal, MathVariantToChar(Uchar.of_int 0x210E, MathOrdinary))];
+    (* -- ascii symbols -- *)
+      [
+        ("=", Char.code '=', MathRelation);
+        ("<", Char.code '<', MathRelation);
+        (">", Char.code '>', MathRelation);
+        (":", Char.code ':', MathRelation);
+        ("+", Char.code '+', MathBinary  );
+        ("-", 0x2212       , MathBinary  );
+        ("|", Char.code '|', MathBinary  );
+        ("/", Char.code '/', MathOrdinary);
+      ] |> List.map (fun (s, cp, mk) ->
+        (s, MathNormal, MathVariantToChar(Uchar.of_int cp, mk)));
     ])
 
 
