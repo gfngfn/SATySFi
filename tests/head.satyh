@@ -565,3 +565,6 @@ let math-deriv m1 m2 =
     in
       line-stack-bottom [ib1; bar; ib2]
   ))
+
+let-math \frac m1 m2 =
+  math-frac m1 m2
