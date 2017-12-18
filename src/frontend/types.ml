@@ -278,7 +278,8 @@ and untyped_abstract_tree_main =
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
-  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree
+  | UTLambdaMath           of untyped_abstract_tree
+  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree  (* will be deprecated *)
 (* -- graphics -- *)
   | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
