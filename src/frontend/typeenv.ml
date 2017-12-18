@@ -96,6 +96,7 @@ exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception UndefinedModuleName             of Range.t * module_name
 
 
 let empty : t =
@@ -125,8 +126,14 @@ let add ((addr, nmtoid, mtr) : t) (varnm : var_name) ((pty, evid) : poly_type * 
 
 
 (* PUBLIC *)
-let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) : (poly_type * EvalVarID.t) option =
-  let addrlast = List.map (fun nm -> ModuleNameMap.find nm nmtoid) mdlnmlst in
+let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
+  let addrlast =
+    mdlnmlst |> List.map (fun nm ->
+      match ModuleNameMap.find_opt nm nmtoid with
+      | None        -> raise (UndefinedModuleName(rng, nm))
+      | Some(mdlid) -> mdlid
+    )
+  in
     ModuleTree.search_backward mtr addr addrlast (fun (vdmap, _, _, sigopt) ->
       match sigopt with
       | None ->

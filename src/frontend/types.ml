@@ -533,8 +533,8 @@ and abstract_tree =
   | BackendMathSuperscript      of abstract_tree * abstract_tree
   | BackendMathSubscript        of abstract_tree * abstract_tree
   | BackendMathFraction         of abstract_tree * abstract_tree
-  | BackendMathRadical          of abstract_tree * abstract_tree
-  | BackendMathParen            of abstract_tree  (* temporary *)
+  | BackendMathRadical          of abstract_tree * abstract_tree  (* temporary *)
+  | BackendMathParen            of abstract_tree * abstract_tree * abstract_tree
   | BackendMathUpperLimit       of abstract_tree * abstract_tree
   | BackendMathLowerLimit       of abstract_tree * abstract_tree
   | BackendMathText             of abstract_tree * abstract_tree

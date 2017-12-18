@@ -237,6 +237,12 @@ let error_log_environment suspended =
         NormalLine("undefined type name '" ^ tynm ^ "'");
       ]
 
+  | Typeenv.UndefinedModuleName(rng, mdlnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined module name '" ^ mdlnm ^ "'");
+      ]
+
   | Typeenv.UndefinedTypeArgument(rng, tyargnm) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

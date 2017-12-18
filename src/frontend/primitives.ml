@@ -64,6 +64,8 @@ let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
 let tIGR_raw = tPT @-> (tL tGR)
 let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
+let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
@@ -176,7 +178,7 @@ let default_font_scheme =
       (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
     ]
 
-
+(*
 let default_math_left_paren hgt dpt hgtaxis fontsize color =
   let open HorzBox in
   let lenappend = fontsize *% 0.1 in
@@ -237,7 +239,7 @@ let default_math_right_paren hgt dpt hgtaxis fontsize color =
   let hgtparen = hgtaxis +% halflen in
   let dptparen = hgtaxis -% halflen in
     ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
-
+*)
 
 let default_radical hgt_bar t_bar dpt fontsize color =
   let open HorzBox in
@@ -529,7 +531,7 @@ let make_environments () =
         ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
         ("math-frac"               , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
         ("math-radical"            , ~% (tOPT tMATH @-> tMATH @-> tMATH)             , lambda2 (fun vm1 vm2 -> BackendMathRadical(vm1, vm2)));
-        ("math-paren"              , ~% (tMATH @-> tMATH)                            , lambda1 (fun vm -> BackendMathParen(vm)));
+        ("math-paren"              , ~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)      , lambda3 (fun vpL vpR vm -> BackendMathParen(vpL, vpR, vm)));
         ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));

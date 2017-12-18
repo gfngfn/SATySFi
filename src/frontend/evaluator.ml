@@ -226,9 +226,36 @@ and make_frame_deco env valuedeco =
     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
     let valuewid = LengthConstant(wid) in
     let valuehgt = LengthConstant(hgt) in
-    let valuedpt = LengthConstant(dpt) in
+    let valuedpt = LengthConstant(HorzBox.Length.negate dpt) in
+      (* -- depth values for users are nonnegative -- *)
     let valueret = reduce_beta_list env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
       graphics_of_list valueret
+  )
+
+and make_paren env valueparenf : HorzBox.paren =
+  (fun hgt dpt hgtaxis fontsize color ->
+    let valuehgt      = LengthConstant(hgt) in
+    let valuedpt      = LengthConstant(HorzBox.Length.negate dpt) in
+      (* -- depth values for users are nonnegative -- *)
+    let valuehgtaxis  = LengthConstant(hgtaxis) in
+    let valuefontsize = LengthConstant(fontsize) in
+    let valuecolor    = make_color_value color in
+    let valueret = reduce_beta_list env valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
+      match valueret with
+      | TupleCons(valuehorz, TupleCons(valuekernf, EndOfTuple)) ->
+          let hblst = interpret_horz env valuehorz in
+          let kernf = make_math_kern_func env valuekernf in
+            (hblst, kernf)
+
+      | _ ->
+          report_bug_evaluator "make_paren"
+  )
+
+and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
+  (fun ypos ->
+    let valueypos = LengthConstant(ypos) in
+    let valueret = reduce_beta_list env valuekernf [valueypos] in
+      interpret_length env valueret
   )
 
 and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
@@ -356,10 +383,12 @@ and interpret env ast =
         | Some(mlst1) -> MathValue([HorzBox.MathRadicalWithDegree(mlst1, mlst2)])
       end
 
-  | BackendMathParen(astm1) ->
+  | BackendMathParen(astparenL, astparenR, astm1) ->
       let mlst1 = interpret_math env astm1 in
-      let parenL = Primitives.default_math_left_paren in (* temporary; should be variable *)
-      let parenR = Primitives.default_math_right_paren in  (* temporary; should be variable *)
+      let valueparenL = interpret env astparenL in
+      let valueparenR = interpret env astparenR in
+      let parenL = make_paren env valueparenL in
+      let parenR = make_paren env valueparenR in
         MathValue([HorzBox.MathParen(parenL, parenR, mlst1)])
 
   | BackendMathUpperLimit(astm1, astm2) ->
@@ -1361,7 +1390,25 @@ and interpret_tuple3 env getf ast =
         let c3 = getf v3 in
           (c1, c2, c3)
     | _ -> report_bug_evaluator ("interpret_tuple3; " ^ (Display.string_of_ast value))
-        
+
+
+and make_color_value color =
+  let open HorzBox in
+    match color with
+    | DeviceGray(gray) ->
+        Constructor("Gray", FloatConstant(gray))
+
+    | DeviceRGB(r, g, b) ->
+        Constructor("RGB", TupleCons(FloatConstant(r),
+                             TupleCons(FloatConstant(g),
+                               TupleCons(FloatConstant(b), EndOfTuple))))
+
+    | DeviceCMYK(c, m, y, k) ->
+        Constructor("CMYK", TupleCons(FloatConstant(c),
+                              TupleCons(FloatConstant(m),
+                                TupleCons(FloatConstant(y),
+                                  TupleCons(FloatConstant(k), EndOfTuple)))))
+
 
 and interpret_color env ast : HorzBox.color =
   let value = interpret env ast in

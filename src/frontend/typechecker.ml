@@ -294,7 +294,7 @@ let rec typecheck
 
   | UTContentOf(mdlnmlst, varnm) ->
       begin
-        match Typeenv.find tyenv mdlnmlst varnm with
+        match Typeenv.find tyenv mdlnmlst varnm rng with
         | None -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
