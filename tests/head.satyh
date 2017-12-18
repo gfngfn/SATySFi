@@ -571,9 +571,19 @@ let-math \derive = math-deriv
 let-math \frac m1 m2 =
   math-frac m1 m2
 
-let-math \Gamma = math-variant-char MathOrd 0x1D6E4
+let-math \Gamma =
+  math-variant-char MathOrd
+    0x1D6E4 % italic
+    0x1D71E % bold italic
+    0x0393  % roman
+    0x1D6AA % bold roman
 
-let-math \tau = math-variant-char MathOrd 0x1D70F
+let-math \tau =
+  math-variant-char MathOrd
+    0x1D70F % italic
+    0x1D749 % bold italic
+    0x1D70F % roman
+    0x1D749 % bold roman
 
 let vdash = math-glyph MathRel `⊢`
 
@@ -588,3 +598,6 @@ let-math \tyjd tyenv tm ty =
 
 let-math \npe =
   math-color (RGB(1., 0., 0.)) (math-char-class MathRoman ${e})
+
+let-math \bi m =
+  math-char-class MathBoldItalic m

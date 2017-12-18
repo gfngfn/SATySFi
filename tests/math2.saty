@@ -18,9 +18,9 @@ document (|
   });
   +p {Typing rule is defined as follows:}
   +math(${
-    \derive{}{
+    \bi{\derive{}{
       \tyjd{\Gamma}{x}{\tau}
-    }
+    }}
     \and-also
     \derive{
       \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
