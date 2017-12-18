@@ -307,10 +307,14 @@ and interpret env ast =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
-  | BackendMathVariantCharDirect(astmathcls, astcp_normal) ->   (* TEMPORARY; should extend more *)
+  | BackendMathVariantCharDirect(astmathcls, astcp1, astcp2, astcp3, astcp4) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
-      let cp_normal = interpret_int env astcp_normal in
-        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, Uchar.of_int cp_normal))]))
+      let cp1 = interpret_int env astcp1 in  (* -- normal -- *)
+      let cp2 = interpret_int env astcp2 in  (* -- bold italic -- *)
+      let cp3 = interpret_int env astcp3 in  (* -- roman -- *)
+      let cp4 = interpret_int env astcp4 in  (* -- bold roman -- *)
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls,
+          Uchar.of_int cp1, Uchar.of_int cp2, Uchar.of_int cp3, Uchar.of_int cp4))]))
 
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
@@ -1257,8 +1261,10 @@ and interpret_math env ast : HorzBox.math list =
 and interpret_math_char_class env ast : HorzBox.math_char_class =
   let value = interpret env ast in
     match value with
-    | Constructor("MathNormal", UnitConstant) -> HorzBox.MathNormal
-    | Constructor("MathRoman" , UnitConstant) -> HorzBox.MathRoman
+    | Constructor("MathItalic"    , UnitConstant) -> HorzBox.MathItalic
+    | Constructor("MathRoman"     , UnitConstant) -> HorzBox.MathRoman
+    | Constructor("MathBoldItalic", UnitConstant) -> HorzBox.MathBoldItalic
+    | Constructor("MathBoldRoman" , UnitConstant) -> HorzBox.MathBoldRoman
     | _ ->
         report_bug_evaluator "interpret_math_char_class"
 

@@ -418,9 +418,9 @@ let get_right_kern lmmain hgt dpt =
 
 
 let get_math_kind_of_math_element mathctx = function
-  | MathElement(mk, _)           -> mk
-  | MathVariantChar(s)           -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
-  | MathVariantCharDirect(mk, _) -> mk
+  | MathElement(mk, _)                    -> mk
+  | MathVariantChar(s)                    -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathVariantCharDirect(mk, _, _, _, _) -> mk
 
 
 let rec get_left_math_kind mathctx = function
@@ -637,8 +637,18 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathVariantToCharWithKern(uch, kernfL, kernfR) -> convert_math_char_with_kern mathctx uch kernfL kernfR mk
       end
 
-  | MathVariantCharDirect(mkraw, uch) ->  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect(mkraw, uch1, uch2, uch3, uch4) ->  (* TEMPORARY; should extend more *)
       let mk = normalize_math_kind mkprev mknext mkraw in
+      let mccls = MathContext.math_char_class mathctx in
+      let uch =
+        let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
+        match mccls with
+        | MathItalic     -> uch1
+        | MathBoldItalic -> uch2
+        | MathRoman      -> uch3
+        | MathBoldRoman  -> uch4
+            (* TEMPORARY; should extend more *)
+      in
         convert_math_char mathctx uch mk
 
   | MathElement(mkraw, MathChar(uch)) ->

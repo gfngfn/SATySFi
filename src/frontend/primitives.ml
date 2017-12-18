@@ -109,8 +109,10 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
 
   |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathNormal" ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"  ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathItalic"     ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathRoman"      ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldItalic" ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldRoman"  ([], Poly(tU)) tyid_mccls
       (* TEMPORARY; should add more *)
 
   |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
@@ -286,19 +288,29 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
   let open Util in
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
     (List.concat [
+
     (* -- Latin capital letter to its normal italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
+        (ascii_capital_of_index i, MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
     (* -- Latin small letter to its normal italics -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
-      [("h", MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int 0x210E))];
+        (ascii_small_of_index i, MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
+      [("h", MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int 0x210E))];
+
+    (* -- Latin capital letter to its bold italics -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D468 + i))));
+    (* -- Latin small letter to its bold italics -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D482 + i))));
+
     (* -- Latin capital letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_capital_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'A' + i))));
     (* -- Latin small letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_small_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'a' + i))));
+
     (* -- invariant ascii symbols -- *)
       [
         ("=", Char.code '=', MathRelation);
@@ -310,7 +322,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("|", Char.code '|', MathBinary  );
         ("/", Char.code '/', MathOrdinary);
       ] |> List.map (fun (s, cp, mk) ->
-        (s, MathNormal, mk, MathVariantToChar(Uchar.of_int cp)));
+        (s, MathItalic, mk, MathVariantToChar(Uchar.of_int cp)));
     ])
 
 
@@ -335,7 +347,7 @@ let get_initial_context pagesch =
     page_scheme      = pagesch;
     badness_space    = 100;
     math_variant_char_map = default_math_variant_char_map;
-    math_char_class  = MathNormal;
+    math_char_class  = MathItalic;
   })
 (*
 let margin = pdfpt 2.
@@ -521,7 +533,7 @@ let make_environments () =
         ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
-        ("math-variant-char"       , ~% (tMATHCLS @-> tI @-> tMATH)                  , lambda2 (fun vmc vcp -> BackendMathVariantCharDirect(vmc, vcp)));
+        ("math-variant-char"       , ~% (tMATHCLS @-> tI @-> tI @-> tI @-> tI @-> tMATH), lambda5 (fun vmc vcp1 vcp2 vcp3 vcp4 -> BackendMathVariantCharDirect(vmc, vcp1, vcp2, vcp3, vcp4)));
             (* TEMPORARY; shold extend more *)
         ("math-color"              , ~% (tCLR @-> tMATH @-> tMATH)                   , lambda2 (fun vcolor vm -> BackendMathColor(vcolor, vm)));
         ("math-char-class"         , ~% (tMCCLS @-> tMATH @-> tMATH)                 , lambda2 (fun vmcc vm -> BackendMathCharClass(vmcc, vm)));

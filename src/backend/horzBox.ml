@@ -229,8 +229,10 @@ type math_kind =
 [@@deriving show]
 
 type math_char_class =
-  | MathNormal
+  | MathItalic
+  | MathBoldItalic
   | MathRoman
+  | MathBoldRoman
 [@@deriving show]
 (* TEMPORARY; should add more *)
 
@@ -344,7 +346,7 @@ and math_element_main =
 and math_element =
   | MathElement           of math_kind * math_element_main
   | MathVariantChar       of string
-  | MathVariantCharDirect of math_kind * Uchar.t  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect of math_kind * Uchar.t * Uchar.t * Uchar.t * Uchar.t  (* TEMPORARY; should extend more *)
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
 
 and math_kern_func = length -> length
@@ -410,6 +412,7 @@ module MathContext
     val color : t -> color
     val set_color : color -> t -> t
     val enter_script : t -> t
+    val math_char_class : t -> math_char_class
     val set_math_char_class : math_char_class -> t -> t
     val is_in_base_level : t -> bool
     val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
@@ -446,9 +449,11 @@ module MathContext
       let mccls = ctx.math_char_class in
         match mcclsmap |> MathVariantCharMap.find_opt (s, mccls) with
         | Some(mvvalue) ->
+            Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
             mvvalue
 
         | None ->
+            Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
             begin
               match InternalText.to_uchar_list (InternalText.of_utf8 s) with
               | []       -> (MathOrdinary, MathVariantToChar(Uchar.of_int 0))  (* needs reconsideration *)
@@ -466,6 +471,9 @@ module MathContext
       let ctx = mctx.context_for_text in
       let ctxnew = { ctx with text_color = color; } in
         { mctx with context_for_text = ctxnew; }
+
+    let math_char_class mctx =
+      mctx.context_for_text.math_char_class
 
     let set_math_char_class mccls mctx =
       let ctx = mctx.context_for_text in

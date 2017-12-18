@@ -205,7 +205,7 @@ and mono_type_main =
   | RecordType      of (field_name, mono_type) Assoc.t
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
-  | VertDetailedCommandType of mono_type list
+  | VertDetailedCommandType of mono_type list  (* will be deprecated *)
   | MathCommandType of mono_type list
 
 and poly_type =
@@ -540,7 +540,7 @@ and abstract_tree =
   | BackendMathText             of abstract_tree * abstract_tree
   | BackendMathColor            of abstract_tree * abstract_tree
   | BackendMathCharClass        of abstract_tree * abstract_tree
-  | BackendMathVariantCharDirect of abstract_tree * abstract_tree
+  | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
