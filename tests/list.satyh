@@ -1,0 +1,15 @@
+
+module List
+: sig
+    val map : ('a -> 'b) -> 'a list -> 'b list
+    val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+  end
+= struct
+    let map
+      | f []        = []
+      | f (x :: xs) = (f x) :: map f xs
+
+    let fold-left
+      | f init []        = init
+      | f init (x :: xs) = fold-left f (f init x) xs
+  end
