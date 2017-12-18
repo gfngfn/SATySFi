@@ -1,4 +1,17 @@
 
+let ascii_capital_of_index i =
+  String.make 1 (Char.chr ((Char.code 'A') + i))
+
+
+let ascii_small_of_index i =
+  String.make 1 (Char.chr ((Char.code 'a') + i))
+
+
+let rec range i j =
+  if i > j then [] else
+    i :: (range (i + 1) j)
+
+
 let list_some lst =
   let accres =
     lst |> List.fold_left (fun acc opt ->

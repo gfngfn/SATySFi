@@ -83,6 +83,7 @@ type length_info =
   }
 
 type pure_badness = int
+[@@deriving show]
 
 type ratios =
   | TooShort
@@ -90,9 +91,11 @@ type ratios =
   | PermissiblyLong  of float
   | TooLong
 
-type font_abbrev = string  [@@deriving show]
+type font_abbrev = string
+[@@deriving show]
 
-type math_font_abbrev = string  [@@deriving show]
+type math_font_abbrev = string
+[@@deriving show]
 
 type file_path = string
 (*
@@ -101,13 +104,16 @@ type encoding_in_pdf =
   | UTF16BE
   | IdentityH
 *)
-type font_with_size = font_abbrev * Length.t  [@@deriving show]
+type font_with_size = font_abbrev * Length.t
+[@@deriving show]
 
-type font_with_ratio = font_abbrev * float * float  [@@deriving show]
+type font_with_ratio = font_abbrev * float * float
+[@@deriving show]
 
 type page_size =
   | A4Paper
   | UserDefinedPaper of length * length
+[@@deriving show]
 
 type page_scheme =
   {
@@ -117,7 +123,7 @@ type page_scheme =
     area_width       : length;
     area_height      : length;
   }
-    
+[@@deriving show]
 
 type paddings =
   {
@@ -134,6 +140,7 @@ type color =
   | DeviceGray of float
   | DeviceRGB  of float * float * float
   | DeviceCMYK of float * float * float * float
+[@@deriving show]
 
 type 'a path_element =
   | LineTo              of 'a
@@ -177,6 +184,24 @@ type graphics_command =
   | DrawBothByNonzero
   | DrawBothByEvenOdd
 
+type horz_string_info =
+  {
+    font_abbrev    : font_abbrev;
+    text_font_size : length;
+    text_color     : color;
+    rising         : length;
+  }
+
+let pp_horz_string_info fmt info =
+  Format.fprintf fmt "(HSinfo)"
+
+type math_string_info =
+  {
+    math_font_abbrev : math_font_abbrev;
+    math_font_size   : length;
+    math_color       : color;
+  }
+
 (* -- internal representation of boxes -- *)
 
 type decoration = point -> length -> length -> length -> Pdfops.t list
@@ -189,10 +214,40 @@ module ScriptSchemeMap = Map.Make
     let compare = Pervasives.compare
   end)
 
+
+type math_kind =
+  | MathOrdinary
+  | MathBinary
+  | MathRelation
+  | MathOperator
+  | MathPunct
+  | MathOpen
+  | MathClose
+  | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
+  | MathInner
+  | MathEnd
+[@@deriving show]
+
+type math_char_class =
+  | MathNormal
+  | MathRoman
+[@@deriving show]
+(* TEMPORARY; should add more *)
+
+
+module MathVariantCharMap = Map.Make
+  (struct
+    type t = string * math_char_class
+    let compare = Pervasives.compare
+  end)
+
+
 type input_context = {
   font_size        : length;
   font_scheme      : font_with_ratio ScriptSchemeMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   langsys_scheme   : CharBasis.language_system ScriptSchemeMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_font        : math_font_abbrev;
   dominant_script  : CharBasis.script;
   space_natural    : float;
@@ -208,66 +263,13 @@ type input_context = {
   manual_rising    : length;
   page_scheme      : page_scheme;
   badness_space    : pure_badness;
+  math_variant_char_map : math_variant_value MathVariantCharMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
+  math_char_class  : math_char_class;
 }
-(* temporary *)
-
-type horz_string_info =
-  {
-    font_abbrev    : font_abbrev;
-    text_font_size : length;
-    text_color     : color;
-    rising         : length;
-  }
-
-
-let default_font_with_ratio =
-  ("Arno", 1., 0.)  (* temporary *)
-
-
-let get_font_with_ratio ctx script_raw =
-  let script =
-    match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
-  in
-    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
-    | None          -> default_font_with_ratio
-    | Some(fontsch) -> fontsch
-
-
-let get_language_system ctx script_raw =
-  let script =
-    match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
-  in
-  match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
-  | None          -> CharBasis.NoLanguageSystem
-  | Some(langsys) -> langsys
-
-
-let get_string_info ctx script_raw =
-  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
-    {
-      font_abbrev    = font_abbrev;
-      text_font_size = ctx.font_size *% ratio;
-      text_color     = ctx.text_color;
-      rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
-    }
-
-
-type math_string_info =
-  {
-    math_font_abbrev : math_font_abbrev;
-    math_font_size   : length;
-    math_color       : color;
-  }
-
-let pp_horz_string_info fmt info =
-  Format.fprintf fmt "(HSinfo)"
 
 (* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
-type pure_horz_box =
+and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
   | PHSOuterFil
@@ -328,18 +330,78 @@ and evaled_vert_box =
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
+
+and math_char_kern_func = length -> length -> length
+  (* -- takes the actual font size and the y-position, and returns a kerning value -- *)
+
+and math_element_main =
+  | MathChar         of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
+  | MathCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
+  | MathVariantChar  of string
+  | MathEmbeddedText of (input_context -> horz_box list)
+
+and math_element = math_kind * math_element_main
+
+and math_kern_func = length -> length
+  (* -- takes the y-position and then returns a kerning value -- *)
+
+and math_variant_value =
+  | MathVariantToChar         of Uchar.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
+  | MathVariantToCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
+      [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
+
+and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
+  (* --
+     'paren':
+       the type for adjustable parentheses.
+       An adjustable parenthesis takes as arguments
+       (1-2) the height and the depth of the inner contents,
+       (3)   the axis height,
+       (4)   the font size, and
+       (5)   the color for glyphs,
+       and then returns its inline box representation and the function for kerning.
+     -- *)
+
+and radical = length -> length -> length -> length -> color -> horz_box list
+  (* --
+     'radical':
+       the type for adjustable radicals.
+       An adjustable radical takes as arguments
+       (1-2) the height and the thickness of the bar required by the math font,
+       (3)   the depth of the inner contents,
+       (4)   the font size, and
+       (5)   the color for glyphs,
+       and then returns the inline box representation.
+     -- *)
+
+and math =
+  | MathPure              of math_element
+  | MathGroup             of math_kind * math_kind * math list
+  | MathSubscript         of math list * math list
+  | MathSuperscript       of math list * math list
+  | MathFraction          of math list * math list
+  | MathRadicalWithDegree of math list * math list
+  | MathRadical           of radical * math list
+  | MathParen             of paren * paren * math list
+  | MathUpperLimit        of math list * math list
+  | MathLowerLimit        of math list * math list
 [@@deriving show]
 
+(*
 type vert_box =
   | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
   | VertFixedBreakable of length
-
+*)
 
 module MathContext
 : sig
     type t
     val make : input_context -> t
     val context_for_text : t -> input_context
+    val convert_math_variant_char : t -> string -> math_variant_value
     val color : t -> color
     val enter_script : t -> t
     val is_in_base_level : t -> bool
@@ -372,6 +434,21 @@ module MathContext
         mc_level          = BaseLevel;
         context_for_text  = ctx;
       }
+
+    let convert_math_variant_char mctx s =
+      let ctx = mctx.context_for_text in
+      let mcclsmap = ctx.math_variant_char_map in
+      let mccls = ctx.math_char_class in
+        match mcclsmap |> MathVariantCharMap.find_opt (s, mccls) with
+        | Some(mvvalue) ->
+            mvvalue
+
+        | None ->
+            begin
+              match InternalText.to_uchar_list (InternalText.of_utf8 s) with
+              | []       -> MathVariantToChar(Uchar.of_int 0)  (* needs reconsideration *)
+              | uch :: _ -> MathVariantToChar(uch)
+            end
 
     let context_for_text mctx =
       mctx.context_for_text
@@ -411,64 +488,38 @@ module MathContext
 
 type math_context = MathContext.t
 
-type math_char_kern_func = length -> length -> length
-  (* -- takes the actual font size and the y-position, and returns a kerning value -- *)
 
-type math_element_main =
-  | MathChar         of Uchar.t
-  | MathCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
-  | MathEmbeddedText of (input_context -> horz_box list)
+let default_font_with_ratio =
+  ("Arno", 1., 0.)  (* TEMPORARY *)
 
-type math_kind =
-  | MathOrdinary
-  | MathBinary
-  | MathRelation
-  | MathOperator
-  | MathPunct
-  | MathOpen
-  | MathClose
-  | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
-  | MathInner
-  | MathEnd
-[@@deriving show]
 
-type math_element = math_kind * math_element_main
+let get_font_with_ratio ctx script_raw =
+  let script =
+    match script_raw with
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
+  in
+    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
+    | None          -> default_font_with_ratio
+    | Some(fontsch) -> fontsch
 
-type math_kern_func = length -> length
-  (* -- takes the y-position and then returns a kerning value -- *)
 
-type paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
-  (* --
-     'paren':
-       the type for adjustable parentheses.
-       An adjustable parenthesis takes as arguments
-       (1-2) the height and the depth of the inner contents,
-       (3)   the axis height,
-       (4)   the font size, and
-       (5)   the color for glyphs,
-       and then returns its inline box representation and the function for kerning.
-     -- *)
+let get_language_system ctx script_raw =
+  let script =
+    match script_raw with
+    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                                              -> script_raw
+  in
+  match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+  | None          -> CharBasis.NoLanguageSystem
+  | Some(langsys) -> langsys
 
-type radical = length -> length -> length -> length -> color -> horz_box list
-  (* --
-     'radical':
-       the type for adjustable radicals.
-       An adjustable radical takes as arguments
-       (1-2) the height and the thickness of the bar required by the math font,
-       (3)   the depth of the inner contents,
-       (4)   the font size, and
-       (5)   the color for glyphs,
-       and then returns the inline box representation.
-     -- *)
 
-type math =
-  | MathPure              of math_element
-  | MathGroup             of math_kind * math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of radical * math list
-  | MathParen             of paren * paren * math list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
+let get_string_info ctx script_raw =
+  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
+    {
+      font_abbrev    = font_abbrev;
+      text_font_size = ctx.font_size *% ratio;
+      text_color     = ctx.text_color;
+      rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
+    }

@@ -297,6 +297,15 @@ and interpret env ast =
 
   | MathValue(_) -> ast
 
+  | PrimitiveSetMathVariantToChar(asts, astmccls, astcp, astctx) ->
+      let s = interpret_string env asts in
+      let mccls = interpret_math_char_class env astmccls in
+      let cp = interpret_int env astcp in
+      let ctx = interpret_context env astctx in
+      let mvvalue = HorzBox.MathVariantToChar(Uchar.of_int cp) in
+      let mcclsmap = ctx.HorzBox.math_variant_char_map in
+        Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
+
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
@@ -1227,6 +1236,15 @@ and interpret_math env ast : HorzBox.math list =
     match value with
     | MathValue(mlst) -> mlst
     | _               -> report_bug_evaluator ("interpret_math; " ^ (Display.string_of_ast value))
+
+
+and interpret_math_char_class env ast : HorzBox.math_char_class =
+  let value = interpret env ast in
+    match value with
+    | Constructor("MathNormal", UnitConstant) -> HorzBox.MathNormal
+    | Constructor("MathRoman" , UnitConstant) -> HorzBox.MathRoman
+    | _ ->
+        report_bug_evaluator "interpret_math_char_class"
 
 
 and interpret_script env ast : CharBasis.script =

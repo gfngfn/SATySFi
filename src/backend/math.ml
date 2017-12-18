@@ -356,31 +356,6 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
           end
 
 
-let convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) ((mkraw, memain) : math_element) : low_math_pure =
-  let mk = normalize_math_kind mkprev mknext mkraw in
-  match memain with
-  | MathEmbeddedText(hblstf) ->
-      let hblst = hblstf (MathContext.context_for_text mathctx) in
-      let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-        (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
-
-  | MathChar(uch) ->
-      let mathstrinfo = FontInfo.get_math_string_info mathctx in
-      let is_in_display = true (* temporary *) in
-      let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display uch in
-      let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
-        (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
-
-  | MathCharWithKern(uch, kernfL, kernfR) ->
-      let mathstrinfo = FontInfo.get_math_string_info mathctx in
-      let is_in_display = true (* temporary *) in
-      let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display uch in
-      let fontsize = mathstrinfo.math_font_size in
-      let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
-      let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
-        (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
-
-
 let make_left_paren_kern hL dL mkernsL =
   {
     kernTL         = mkernsL;
@@ -602,7 +577,51 @@ let make_radical mathctx radical hgt_bar t_bar dpt =
     hblst
 
 
-let rec convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
+let convert_math_char mathctx uch mk =
+  let mathstrinfo = FontInfo.get_math_string_info mathctx in
+  let is_in_display = true (* temporary *) in
+  let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display uch in
+  let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+
+
+let convert_math_char_with_kern mathctx uch kernfL kernfR mk =
+  let mathstrinfo = FontInfo.get_math_string_info mathctx in
+  let is_in_display = true (* temporary *) in
+  let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display uch in
+  let fontsize = mathstrinfo.math_font_size in
+  let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
+  let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+
+
+let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) ((mkraw, memain) : math_element) : low_math_pure =
+  let mk = normalize_math_kind mkprev mknext mkraw in
+  match memain with
+  | MathEmbeddedText(hblstf) ->
+      let hblst = hblstf (MathContext.context_for_text mathctx) in
+      let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+        (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
+
+  | MathVariantChar(s) ->
+      begin
+        match MathContext.convert_math_variant_char mathctx s with
+        | MathVariantToChar(uch) ->
+            convert_math_char mathctx uch mk
+
+        | MathVariantToCharWithKern(uch, kernfL, kernfR) ->
+            convert_math_char_with_kern mathctx uch kernfL kernfR mk
+      end
+        
+
+  | MathChar(uch) ->
+      convert_math_char mathctx uch mk
+
+  | MathCharWithKern(uch, kernfL, kernfR) ->
+      convert_math_char_with_kern mathctx uch kernfL kernfR mk
+
+
+and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
     mlst |> Util.list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
       let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathprev in

@@ -8,6 +8,7 @@ let tyid_script   = Typeenv.Raw.fresh_type_id "script"
 let tyid_language = Typeenv.Raw.fresh_type_id "language"
 let tyid_page     = Typeenv.Raw.fresh_type_id "page"
 let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
+let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
 
 (* -- type IDs for alias types -- *)
 let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
@@ -105,6 +106,11 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
+
+  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "MathNormal" ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathRoman"  ([], Poly(tU)) tyid_mccls
+      (* TEMPORARY; should add more *)
 
   |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
 
@@ -266,6 +272,21 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 let envinit : environment = Hashtbl.create 128
 
 
+let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
+  let open HorzBox in
+  let open Util in
+  List.fold_left (fun map (s, mccls, mvvalue) -> map |> MathVariantCharMap.add (s, mccls) mvvalue) MathVariantCharMap.empty
+    (List.concat [
+    (* -- Latin capital letter to its normal italics -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
+    (* -- Latin small letter to its normal italics -- *)
+      (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
+        (ascii_small_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
+      [("h", MathNormal, MathVariantToChar(Uchar.of_int 0x210E))];
+    ])
+
+
 let get_initial_context pagesch =
   HorzBox.({
     font_scheme      = default_font_scheme;
@@ -286,6 +307,8 @@ let get_initial_context pagesch =
     manual_rising    = pdfpt 0.;
     page_scheme      = pagesch;
     badness_space    = 100;
+    math_variant_char_map = default_math_variant_char_map;
+    math_char_class  = MathNormal;
   })
 (*
 let margin = pdfpt 2.
