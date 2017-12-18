@@ -14,6 +14,18 @@ document (|
     と表される．
   }
   +math(${
-    Z = -e^x + f^{x^{n^2}}
+    Z = -\npe^x + f^{x^{n^2}}
+  });
+  +p {Typing rule is defined as follows:}
+  +math(${
+    \derive{}{
+      \tyjd{\Gamma}{x}{\tau}
+    }
+    \and-also
+    \derive{
+      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
+    }{
+      \tyjd{\Gamma}{M N}{\tau_2}
+    }
   });
 >

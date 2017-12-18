@@ -556,7 +556,7 @@ let math-deriv m1 m2 =
     let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
     let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
     let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
-    let thickness = 1pt in
+    let thickness = 0.5pt in
     let gap = 2pt in
     let bar =
       inline-graphics w (thickness +' gap) gap (fun (x, y) ->
@@ -566,5 +566,25 @@ let math-deriv m1 m2 =
       line-stack-bottom [ib1; bar; ib2]
   ))
 
+let-math \derive = math-deriv
+
 let-math \frac m1 m2 =
   math-frac m1 m2
+
+let-math \Gamma = math-variant-char MathOrd 0x1D6E4
+
+let-math \tau = math-variant-char MathOrd 0x1D70F
+
+let vdash = math-glyph MathRel `⊢`
+
+let colon = math-glyph MathRel `:`
+
+let-math \to = math-to
+
+let-math \and-also = math-space
+
+let-math \tyjd tyenv tm ty =
+  math-list [tyenv; vdash; tm; colon; ty]
+
+let-math \npe =
+  math-color (RGB(1., 0., 0.)) (math-char-class MathRoman ${e})
