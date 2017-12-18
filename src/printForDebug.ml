@@ -7,7 +7,7 @@ type message_category =
   you can change this depending on what you would like to test
 --  *)
 let enabled_list =
-  [ Lexer; ]
+  []
 (*
   [ LBC; LineBreak; LexHorz; Lexer; ]
 *)

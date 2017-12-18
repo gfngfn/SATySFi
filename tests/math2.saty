@@ -4,6 +4,6 @@ document (|
   author = {gfn};
 |) '<
   +make-title;
-  +embed(${E = m c^2});
+  +math(${E = m c^2});
   +p {Einstein and Poincare found that ${E = m c^2} holds.}
 >

@@ -302,6 +302,10 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue(List.append mlst1 mlst2)
 
+  | BackendMathList(astmlst) ->
+      let mlstlst = List.map (interpret_math env) astmlst in  (* doubtful in terms of evaluation strategy *)
+        MathValue(List.concat mlstlst)
+
   | BackendMathGroup(astmathcls1, astmathcls2, astm) ->
       let mathcls1 = interpret_math_class env astmathcls1 in
       let mathcls2 = interpret_math_class env astmathcls2 in
