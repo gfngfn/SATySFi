@@ -129,10 +129,14 @@ let-math \npe =
 let-math \bi m =
   math-char-class MathBoldItalic m
 
-let angle-left hgt dpt hgtaxis fontsize color =
-  let lenappend = fontsize *' 0.1 in
+let half-length hgt dpt hgtaxis fontsize =
   let minhalflen = fontsize *' 0.5 in
-  let halflen = length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend) in
+  let lenappend = fontsize *' 0.1 in
+    length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
+
+
+let angle-left hgt dpt hgtaxis fontsize color =
+  let halflen = half-length hgt dpt hgtaxis fontsize in
   let widparen = halflen *' 0.375 in
   let wid = widparen +' fontsize *' 0.1 in
   let path (xpos, ypos) =
@@ -154,9 +158,7 @@ let angle-left hgt dpt hgtaxis fontsize color =
     (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 let angle-right hgt dpt hgtaxis fontsize color =
-  let lenappend = fontsize *' 0.1 in
-  let minhalflen = fontsize *' 0.5 in
-  let halflen = length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend) in
+  let halflen = half-length hgt dpt hgtaxis fontsize in
   let widparen = halflen *' 0.375 in
   let wid = widparen +' fontsize *' 0.1 in
   let path (xpos, ypos) =
@@ -179,3 +181,81 @@ let angle-right hgt dpt hgtaxis fontsize color =
 
 let math-angle =
   math-paren angle-left angle-right
+
+let paren-left hgt dpt hgtaxis fontsize color =
+  let halflen = half-length hgt dpt hgtaxis fontsize in
+  let w0 = fontsize *' 0.1 in
+  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+  let w2 = halflen *' 0.25 in %temporary
+  let t1 = fontsize *' 0.025 in
+  let t2 = fontsize *' 0.025 in
+
+  let qA = halflen *' 0.35 in
+  let p1 = (w1 +' w2) *' 0.75 in
+  let q1 = halflen *' 0.3 in
+
+  let qB = halflen *' 0.45 in
+  let p2 = w2 *' 0.5 in
+  let q2 = halflen *' 0.2 in
+
+  let path (xpos, ypos) =
+    let ycenter = ypos +' hgtaxis in
+    let x0 = xpos +' w0 in
+    let x1 = x0 +' w1 in
+    let x2 = x1 +' w2 in
+    start-path (x2, ycenter +' halflen)
+      |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+      |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+      |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+      |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+      |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+      |> close-with-line
+  in
+  let graphics point = [ fill color (path point); ] in
+  let kerninfo _ = 0pt in
+    (inline-graphics (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+let paren-right hgt dpt hgtaxis fontsize color =
+  let halflen = half-length hgt dpt hgtaxis fontsize in
+  let w0 = fontsize *' 0.1 in
+  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+  let w2 = halflen *' 0.25 in %temporary
+  let t1 = 0pt -' fontsize *' 0.025 in
+  let t2 = fontsize *' 0.025 in
+
+  let qA = halflen *' 0.35 in
+  let p1 = 0pt -' (w1 +' w2) *' 0.75 in
+  let q1 = halflen *' 0.3 in
+
+  let qB = halflen *' 0.45 in
+  let p2 = 0pt -' w2 *' 0.5 in
+  let q2 = halflen *' 0.2 in
+
+  let path (xpos, ypos) =
+    let ycenter = ypos +' hgtaxis in
+    let x0 = xpos +' w2 +' w1 in
+    let x1 = xpos +' w2 in
+    let x2 = xpos in
+    start-path (x2, ycenter +' halflen)
+      |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+      |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+      |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+      |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+      |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+      |> close-with-line
+  in
+  let graphics point = [ fill color (path point); ] in
+  let widparen = w0 +' w1 +' w2 in
+  let kerninfo y =
+    let widkern = widparen in
+    let r = 0.7 in
+    let gap = length-abs (y -' hgtaxis) in
+      if halflen *' r <' gap then
+        widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+      else
+        0pt
+  in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+let paren =
+  math-paren paren-left paren-right
