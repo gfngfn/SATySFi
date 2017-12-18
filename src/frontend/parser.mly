@@ -978,7 +978,7 @@ mathsuper:
 ;
 mathsub:
   | utm1=mathbot; sup=SUBSCRIPT; utm2=mathgroup {
-        make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
+        make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
       }
   | utm=mathbot { utm }
 ;

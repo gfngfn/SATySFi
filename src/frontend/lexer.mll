@@ -126,7 +126,7 @@ let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | '?' )
-let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*']
+let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*' '$']
 let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | ',' | '?' | '`' )
 
 rule progexpr = parse
