@@ -307,13 +307,18 @@ and interpret env ast =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
+  | BackendMathVariantCharDirect(astmathcls, astcp_normal) ->   (* TEMPORARY; should extend more *)
+      let mathcls = interpret_math_class env astmathcls in
+      let cp_normal = interpret_int env astcp_normal in
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, Uchar.of_int cp_normal))]))
+
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
         MathValue(List.append mlst1 mlst2)
 
   | BackendMathList(astmlst) ->
-      let mlstlst = List.map (interpret_math env) astmlst in  (* doubtful in terms of evaluation strategy *)
+      let mlstlst = List.map (interpret_math env) astmlst in  (* slightly doubtful in terms of evaluation strategy *)
         MathValue(List.concat mlstlst)
 
   | BackendMathGroup(astmathcls1, astmathcls2, astm) ->
@@ -402,6 +407,16 @@ and interpret env ast =
       let valuef = interpret env astf in
       let hblstf ctx = interpret_horz env (Apply(valuef, Context(ctx))) in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
+
+  | BackendMathColor(astcolor, astm) ->
+      let color = interpret_color env astcolor in
+      let mlst = interpret_math env astm in
+        MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
+
+  | BackendMathCharClass(astmccls, astm) ->
+      let mccls = interpret_math_char_class env astmccls in
+      let mlst = interpret_math env astm in
+        MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 
   | BackendEmbeddedMath(astctx, astm) ->
       let ctx = interpret_context env astctx in

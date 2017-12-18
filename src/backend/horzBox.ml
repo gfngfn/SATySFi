@@ -342,8 +342,10 @@ and math_element_main =
   | MathEmbeddedText of (input_context -> horz_box list)
 
 and math_element =
-  | MathElement     of math_kind * math_element_main
-  | MathVariantChar of string
+  | MathElement           of math_kind * math_element_main
+  | MathVariantChar       of string
+  | MathVariantCharDirect of math_kind * Uchar.t  (* TEMPORARY; should extend more *)
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
 
 and math_kern_func = length -> length
   (* -- takes the y-position and then returns a kerning value -- *)
@@ -380,8 +382,13 @@ and radical = length -> length -> length -> length -> color -> horz_box list
        and then returns the inline box representation.
      -- *)
 
+and math_context_change =
+  | MathChangeColor         of color
+  | MathChangeMathCharClass of math_char_class
+
 and math =
   | MathPure              of math_element
+  | MathChangeContext     of math_context_change * math list
   | MathGroup             of math_kind * math_kind * math list
   | MathSubscript         of math list * math list
   | MathSuperscript       of math list * math list
@@ -393,11 +400,6 @@ and math =
   | MathLowerLimit        of math list * math list
 [@@deriving show]
 
-(*
-type vert_box =
-  | VertParagraph      of length * horz_box list  (* temporary; should contain more information as arguments *)
-  | VertFixedBreakable of length
-*)
 
 module MathContext
 : sig
@@ -406,7 +408,9 @@ module MathContext
     val context_for_text : t -> input_context
     val convert_math_variant_char : t -> string -> math_variant_value
     val color : t -> color
+    val set_color : color -> t -> t
     val enter_script : t -> t
+    val set_math_char_class : math_char_class -> t -> t
     val is_in_base_level : t -> bool
     val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
     val base_font_size : t -> length
@@ -422,17 +426,15 @@ module MathContext
       {
         mc_font_abbrev    : math_font_abbrev;
         mc_base_font_size : length;
-        mc_color          : color;
         mc_level_int      : int;
         mc_level          : level;
-        context_for_text    : input_context;
+        context_for_text  : input_context;
       }
 
     let make (ctx : input_context) =
       {
         mc_font_abbrev    = ctx.math_font;
         mc_base_font_size = ctx.font_size;
-        mc_color          = ctx.text_color;
         mc_level_int      = 0;
         mc_level          = BaseLevel;
         context_for_text  = ctx;
@@ -455,9 +457,20 @@ module MathContext
 
     let context_for_text mctx =
       mctx.context_for_text
+        (* temporary; maybe should update font size *)
 
     let color mctx =
-      mctx.mc_color
+      mctx.context_for_text.text_color
+
+    let set_color color mctx =
+      let ctx = mctx.context_for_text in
+      let ctxnew = { ctx with text_color = color; } in
+        { mctx with context_for_text = ctxnew; }
+
+    let set_math_char_class mccls mctx =
+      let ctx = mctx.context_for_text in
+      let ctxnew = { ctx with math_char_class = mccls } in
+        { mctx with context_for_text = ctxnew }
 
     let enter_script mctx =
       let levnew = mctx.mc_level_int + 1 in

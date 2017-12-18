@@ -971,19 +971,19 @@ mathlist:
       }
 ;
 mathsuper:
-  | utm1=mathsub; sup=SUPERSCRIPT; utm2=mathgroup {
+  | utm1=mathsub; SUPERSCRIPT; utm2=mathgroup {
         make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
       }
   | utm=mathsub { utm }
 ;
 mathsub:
-  | utm1=mathbot; sup=SUBSCRIPT; utm2=mathgroup {
+  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup {
         make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
       }
   | utm=mathbot { utm }
 ;
 mathgroup:
-  | opn=BMATHGRP; utm=mathlist; cls=EMATHGRP { utm }
+  | opn=BMATHGRP; utm=mathlist; cls=EMATHGRP { make_standard (Tok opn) (Tok cls) (extract_main utm) }
   | utm=mathbot                              { utm }
 ;
 mathbot:

@@ -34,6 +34,13 @@ type low_radical = horz_box list
 type low_math_main =
   | LowMathPure of low_math_pure
 
+  | LowMathList of math_context_change * low_math * math_kind
+      (* --
+         (1) information for updating math contexts
+         (2) inner contents
+         (3) math class of the next element
+         -- *)
+
   | LowMathGroup of math_kind * math_kind * low_math
       (* --
          (1) math class for leftward contents
@@ -380,6 +387,7 @@ let get_left_kern lmmain hgt dpt =
   let nokernf = no_left_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, lk, _)          -> lk
+  | LowMathList(_, (_, _, _, lk, _), _)        -> lk
   | LowMathGroup(mkL, _, _)                    -> nokernf mkL
   | LowMathSubscript(_, (_, _, _, lk, _), _)   -> lk
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
@@ -396,6 +404,7 @@ let get_right_kern lmmain hgt dpt =
   let nokernf = no_right_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, _, rk)          -> rk
+  | LowMathList(_, (_, _, _, _, rk), _)        -> rk
   | LowMathGroup(_, mkR, _)                    -> nokernf mkR
   | LowMathSubscript(_, (_, _, _, _, rk), _)   -> nokernf rk.right_math_kind
   | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
@@ -408,9 +417,14 @@ let get_right_kern lmmain hgt dpt =
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
 
+let get_math_kind_of_math_element mathctx = function
+  | MathElement(mk, _)           -> mk
+  | MathVariantChar(s)           -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathVariantCharDirect(mk, _) -> mk
+
+
 let rec get_left_math_kind mathctx = function
-  | MathPure(MathElement(mk, _))   -> mk
-  | MathPure(MathVariantChar(s))   -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathPure(me)                   -> get_math_kind_of_math_element mathctx me
   | MathGroup(mkL, _, _)           -> mkL
   | MathSuperscript([], _)         -> MathEnd
   | MathSuperscript(mathB :: _, _) -> get_left_math_kind mathctx mathB
@@ -424,13 +438,14 @@ let rec get_left_math_kind mathctx = function
   | MathLowerLimit([], _)          -> MathEnd
   | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind mathctx mathB
   | MathUpperLimit([], _)          -> MathEnd
+  | MathChangeContext(_, [])       -> MathEnd
+  | MathChangeContext(_, m :: _)   -> get_left_math_kind mathctx m
 
 
 let rec get_right_math_kind mathctx math =
   try
     match math with
-    | MathPure(MathElement(mk, _)) -> mk
-    | MathPure(MathVariantChar(s)) -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+    | MathPure(me)                 -> get_math_kind_of_math_element mathctx me
     | MathGroup(_, mkR, _)         -> mkR
     | MathSuperscript([], _)       -> MathEnd
     | MathSuperscript(mathlst, _)  -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
@@ -444,6 +459,8 @@ let rec get_right_math_kind mathctx math =
     | MathLowerLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
     | MathUpperLimit([], _)        -> MathEnd
     | MathUpperLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathChangeContext(_, [])     -> MathEnd
+    | MathChangeContext(_, mlst)   -> get_right_math_kind mathctx (List.hd (List.rev mlst))
   with
   | Invalid_argument(_) -> assert false
 
@@ -597,6 +614,12 @@ let convert_math_char_with_kern mathctx uch kernfL kernfR mk =
     (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 
+let change_math_context chg mathctx =
+  match chg with
+  | MathChangeColor(color)         -> mathctx |> MathContext.set_color color
+  | MathChangeMathCharClass(mccls) -> mathctx |> MathContext.set_math_char_class mccls
+
+
 let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
   match me with
   | MathElement(mkraw, MathEmbeddedText(hblstf)) ->
@@ -613,6 +636,10 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathVariantToChar(uch)                         -> convert_math_char mathctx uch mk
         | MathVariantToCharWithKern(uch, kernfL, kernfR) -> convert_math_char_with_kern mathctx uch kernfL kernfR mk
       end
+
+  | MathVariantCharDirect(mkraw, uch) ->  (* TEMPORARY; should extend more *)
+      let mk = normalize_math_kind mkprev mknext mkraw in
+        convert_math_char mathctx uch mk
 
   | MathElement(mkraw, MathChar(uch)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
@@ -652,6 +679,12 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
   | MathPure(me) ->
       let (mk, wid, hgt, dpt, lme, lk, rk) = convert_math_element mathctx mkprev mknext me in
         (LowMathPure(mk, wid, hgt, dpt, lme, lk, rk), hgt, dpt)
+
+  | MathChangeContext(chg, mlstI) ->
+      let mathctxnew = mathctx |> change_math_context chg in
+      let lmI = convert_to_low mathctxnew mkprev mknext mlstI in
+      let (_, h_inner, d_inner, _, rk) = lmI in
+        (LowMathList(chg, lmI, mknext), h_inner, d_inner)
 
   | MathGroup(mkL, mkR, mlstC) ->
       let lmC = convert_to_low mathctx MathEnd MathClose mlstC in
@@ -817,6 +850,18 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
                  appends italics correction for the last glyph of inner contents of a parenthesis;
                  -- *)
         end
+
+    | LowMathList(chg, lmI, mknext) :: lmmaintail ->
+        let (_, _, _, lkI, rkI) = lmI in
+        let mathctxnew = mathctx |> change_math_context chg in
+        let hblst = horz_of_low_math mathctxnew mkprevfirst mknext lmI in
+        let hbspaceopt = space_between_math_kinds mathctxnew mkprev corr lkI.left_math_kind in
+        let hbaccnew =
+          match hbspaceopt with
+          | None          -> List.rev_append hblst hbacc
+          | Some(hbspace) -> List.rev_append hblst (hbspace :: hbacc)
+        in
+          aux hbaccnew rkI.right_math_kind (ItalicsCorrection(rkI.italics_correction)) lmmaintail
 
     | LowMathPure(mk, wid, hgt, dpt, lma, _, rk) :: lmmaintail ->
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr mk in

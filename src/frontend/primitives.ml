@@ -49,6 +49,7 @@ let tLANG         = (~! "language", VariantType([], tyid_language))
 let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
 let tPG           = (~! "page"    , VariantType([], tyid_page)    )
 let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
+let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
 
 (* -- predefined alias types -- *)
 let tPT           = tPROD [tLN; tLN]
@@ -148,6 +149,14 @@ let rec lambda4 astf env =
   let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
   let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
     lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
+
+let rec lambda5 astf env =
+  let evid1 = EvalVarID.fresh "(dummy:lambda5-1)" in
+  let evid2 = EvalVarID.fresh "(dummy:lambda5-2)" in
+  let evid3 = EvalVarID.fresh "(dummy:lambda5-3)" in
+  let evid4 = EvalVarID.fresh "(dummy:lambda5-4)" in
+  let evid5 = EvalVarID.fresh "(dummy:lambda5-5)" in
+    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
 
 
 (* -- begin: constants just for experimental use -- *)
@@ -284,7 +293,13 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
         (ascii_small_of_index i, MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
       [("h", MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int 0x210E))];
-    (* -- ascii symbols -- *)
+    (* -- Latin capital letter to its roman -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'A' + i))));
+    (* -- Latin small letter to its roman -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'a' + i))));
+    (* -- invariant ascii symbols -- *)
       [
         ("=", Char.code '=', MathRelation);
         ("<", Char.code '<', MathRelation);
@@ -506,6 +521,11 @@ let make_environments () =
         ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
+        ("math-variant-char"       , ~% (tMATHCLS @-> tI @-> tMATH)                  , lambda2 (fun vmc vcp -> BackendMathVariantCharDirect(vmc, vcp)));
+            (* TEMPORARY; shold extend more *)
+        ("math-color"              , ~% (tCLR @-> tMATH @-> tMATH)                   , lambda2 (fun vcolor vm -> BackendMathColor(vcolor, vm)));
+        ("math-char-class"         , ~% (tMCCLS @-> tMATH @-> tMATH)                 , lambda2 (fun vmcc vm -> BackendMathCharClass(vmcc, vm)));
+        ("set-math-variant-char"   , ~% (tS @-> tMCCLS @-> tMATHCLS @-> tI @-> tCTX @-> tCTX), lambda5 (fun vs vmcc vmc vcp vctx -> PrimitiveSetMathVariantToChar(vs, vmcc, vmc, vcp, vctx)));
         ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
