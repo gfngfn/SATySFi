@@ -14,8 +14,8 @@ type error_category =
   | System
 
 let show_error_category = function
-  | Lexer       -> "Lex Error"
-  | Parser      -> "Syntax Error"
+  | Lexer       -> "Syntax Error at Lexer"
+  | Parser      -> "Syntax Error at Parser"
   | Typechecker -> "Type Error"
   | Evaluator   -> "Error during Evaluation"
   | Interface   -> "Error"

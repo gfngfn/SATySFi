@@ -44,7 +44,9 @@ let read_assoc dir_dist assoc =
 
 
 let main satysfi_root_dir filename =
+(*
   Format.printf "LoadFont> main %s\n" filename;  (* for debug *)
+*)
   try
     let dir_dist = Filename.concat satysfi_root_dir "dist/fonts" in
     let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hash" filename) in

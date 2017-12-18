@@ -744,26 +744,27 @@ nxapp:
   | nxbot          { $1 }
 ;
 nxbot:
-  | nxbot ACCESS VAR                { make_standard (Ranged $1) (Ranged $3) (UTAccessField($1, extract_name $3)) }
-  | VAR                             { let (rng, varnm) = $1 in (rng, UTContentOf([], varnm)) }
-  | VARWITHMOD                      { let (rng, mdlnmlst, varnm) = $1 in (rng, UTContentOf(mdlnmlst, varnm)) }
-  | INTCONST                        { make_standard (Ranged $1) (Ranged $1)  (UTIntegerConstant(extract_main $1)) }
-  | FLOATCONST                      { make_standard (Ranged $1) (Ranged $1) (UTFloatConstant(extract_name $1)) }
-  | LENGTHCONST                     { let (rng, flt, unitnm) = $1 in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
-  | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
-  | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
-  | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
-  | LPAREN nxlet RPAREN             { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN nxlet COMMA tuple RPAREN { make_standard (Tok $1) (Tok $5) (UTTupleCons($2, $4)) }
-  | OPENHORZ sxsep CLOSEHORZ        { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | OPENVERT vxblock CLOSEVERT      { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
-  | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
-  | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | opn=LPAREN; optok=binop; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
-  | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
-  | opn=BPATH; path=path; cls=EPATH { make_standard (Tok opn) (Tok cls) path }
+  | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
+  | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
+  | vwm=VARWITHMOD               { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
+  | ic=INTCONST                  { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
+  | fc=FLOATCONST                { make_standard (Ranged fc) (Ranged fc) (UTFloatConstant(extract_main fc)) }
+  | lc=LENGTHCONST               { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
+  | tok=TRUE                                              { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
+  | tok=FALSE                                             { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
+  | tok=UNITVALUE                                         { make_standard (Tok tok) (Tok tok) UTUnitConstant }
+  | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
+  | opn=OPENHORZ; utast=sxsep; cls=CLOSEHORZ     { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENVERT; utast=vxblock; cls=CLOSEVERT   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
+  | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
+  | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
+  | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
+  | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
+  | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
+  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }

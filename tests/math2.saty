@@ -1,0 +1,9 @@
+% -*- coding: utf-8 -*-
+document (|
+  title  = {Math Test 2};
+  author = {gfn};
+|) '<
+  +make-title;
+  +embed(${E = m c^2});
+  +p {Einstein and Poincare found that ${E = m c^2} holds.}
+>
