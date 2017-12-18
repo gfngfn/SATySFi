@@ -577,7 +577,7 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
   let open HorzBox in
     match utmathmain with
     | UTMChar(s) ->
-        MathValue[MathPure((MathOrdinary, MathVariantChar(s)))]
+        MathValue[MathPure(MathVariantChar(s))]
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in

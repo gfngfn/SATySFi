@@ -303,7 +303,7 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let cp = interpret_int env astcp in
       let ctx = interpret_context env astctx in
-      let mvvalue = HorzBox.MathVariantToChar(Uchar.of_int cp, mathcls) in
+      let mvvalue = (mathcls, HorzBox.MathVariantToChar(Uchar.of_int cp)) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
@@ -369,7 +369,7 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let mlst =
         uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(mathcls, MathChar(uch))))
+          HorzBox.(MathPure(MathElement(mathcls, MathChar(uch)))))
       in
         MathValue(mlst)
 
@@ -386,10 +386,10 @@ and interpret env ast =
         uchlst |> Util.list_fold_adjacent (fun acc uch prevopt nextopt ->
           let math =
             match (prevopt, nextopt) with
-            | (None   , None   ) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernfL, kernfR)))
-            | (None   , Some(_)) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernfL, kernf0)))
-            | (Some(_), None   ) -> HorzBox.(MathPure(mathcls, MathCharWithKern(uch, kernf0, kernfR)))
-            | (Some(_), Some(_)) -> HorzBox.(MathPure(mathcls, MathChar(uch)))
+            | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernfL, kernfR))))
+            | (None   , Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernfL, kernf0))))
+            | (Some(_), None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernf0, kernfR))))
+            | (Some(_), Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathChar(uch))))
           in
               (* -- provides left/right kern only with the leftmost/rightmost character -- *)
             math :: acc
@@ -401,7 +401,7 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
       let hblstf ctx = interpret_horz env (Apply(valuef, Context(ctx))) in
-        MathValue([HorzBox.MathPure(mathcls, HorzBox.MathEmbeddedText(hblstf))])
+        MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
   | BackendEmbeddedMath(astctx, astm) ->
       let ctx = interpret_context env astctx in

@@ -275,15 +275,15 @@ let envinit : environment = Hashtbl.create 128
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
   let open Util in
-  List.fold_left (fun map (s, mccls, mvvalue) -> map |> MathVariantCharMap.add (s, mccls) mvvalue) MathVariantCharMap.empty
+  List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
     (List.concat [
     (* -- Latin capital letter to its normal italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D434 + i), MathOrdinary)));
+        (ascii_capital_of_index i, MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
     (* -- Latin small letter to its normal italics -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathNormal, MathVariantToChar(Uchar.of_int (0x1D44E + i), MathOrdinary)));
-      [("h", MathNormal, MathVariantToChar(Uchar.of_int 0x210E, MathOrdinary))];
+        (ascii_small_of_index i, MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
+      [("h", MathNormal, MathOrdinary, MathVariantToChar(Uchar.of_int 0x210E))];
     (* -- ascii symbols -- *)
       [
         ("=", Char.code '=', MathRelation);
@@ -295,7 +295,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("|", Char.code '|', MathBinary  );
         ("/", Char.code '/', MathOrdinary);
       ] |> List.map (fun (s, cp, mk) ->
-        (s, MathNormal, MathVariantToChar(Uchar.of_int cp, mk)));
+        (s, MathNormal, mk, MathVariantToChar(Uchar.of_int cp)));
     ])
 
 

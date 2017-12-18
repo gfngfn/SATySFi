@@ -339,18 +339,21 @@ and math_element_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
   | MathCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-  | MathVariantChar  of string
   | MathEmbeddedText of (input_context -> horz_box list)
 
-and math_element = math_kind * math_element_main
+and math_element =
+  | MathElement     of math_kind * math_element_main
+  | MathVariantChar of string
 
 and math_kern_func = length -> length
   (* -- takes the y-position and then returns a kerning value -- *)
 
-and math_variant_value =
-  | MathVariantToChar         of Uchar.t * math_kind
+and math_variant_value = math_kind * math_variant_value_main
+
+and math_variant_value_main =
+  | MathVariantToChar         of Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
-  | MathVariantToCharWithKern of Uchar.t * math_kind * math_char_kern_func * math_char_kern_func
+  | MathVariantToCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
 and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
@@ -446,8 +449,8 @@ module MathContext
         | None ->
             begin
               match InternalText.to_uchar_list (InternalText.of_utf8 s) with
-              | []       -> MathVariantToChar(Uchar.of_int 0, MathOrdinary)  (* needs reconsideration *)
-              | uch :: _ -> MathVariantToChar(uch, MathOrdinary)
+              | []       -> (MathOrdinary, MathVariantToChar(Uchar.of_int 0))  (* needs reconsideration *)
+              | uch :: _ -> (MathOrdinary, MathVariantToChar(uch))
             end
 
     let context_for_text mctx =

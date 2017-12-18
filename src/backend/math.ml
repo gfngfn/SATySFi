@@ -408,40 +408,42 @@ let get_right_kern lmmain hgt dpt =
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
 
-let rec get_left_math_kind = function
-  | MathPure((mk, _))              -> mk
+let rec get_left_math_kind mathctx = function
+  | MathPure(MathElement(mk, _))   -> mk
+  | MathPure(MathVariantChar(s))   -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
   | MathGroup(mkL, _, _)           -> mkL
   | MathSuperscript([], _)         -> MathEnd
-  | MathSuperscript(mathB :: _, _) -> get_left_math_kind mathB
+  | MathSuperscript(mathB :: _, _) -> get_left_math_kind mathctx mathB
   | MathSubscript([], _)           -> MathEnd
-  | MathSubscript(mathB :: _, _)   -> get_left_math_kind mathB
+  | MathSubscript(mathB :: _, _)   -> get_left_math_kind mathctx mathB
   | MathFraction(_, _)             -> MathInner
   | MathRadical(_)                 -> MathInner
   | MathRadicalWithDegree(_, _)    -> MathInner
   | MathParen(_, _, _)             -> MathOpen
-  | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind mathB
+  | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind mathctx mathB
   | MathLowerLimit([], _)          -> MathEnd
-  | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind mathB
+  | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind mathctx mathB
   | MathUpperLimit([], _)          -> MathEnd
 
 
-let rec get_right_math_kind math =
+let rec get_right_math_kind mathctx math =
   try
     match math with
-    | MathPure((mk, _))           -> mk  (* contains bugs *)
-    | MathGroup(_, mkR, _)        -> mkR
-    | MathSuperscript([], _)      -> MathEnd
-    | MathSuperscript(mathlst, _) -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathSubscript([], _)        -> MathEnd
-    | MathSubscript(mathlst, _)   -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathFraction(_, _)          -> MathInner
-    | MathRadical(_)              -> MathInner
-    | MathRadicalWithDegree(_, _) -> MathInner
-    | MathParen(_, _, _)          -> MathClose
-    | MathLowerLimit([], _)       -> MathEnd
-    | MathLowerLimit(mathlst, _)  -> get_right_math_kind (List.hd (List.rev mathlst))
-    | MathUpperLimit([], _)       -> MathEnd
-    | MathUpperLimit(mathlst, _)  -> get_right_math_kind (List.hd (List.rev mathlst))
+    | MathPure(MathElement(mk, _)) -> mk
+    | MathPure(MathVariantChar(s)) -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+    | MathGroup(_, mkR, _)         -> mkR
+    | MathSuperscript([], _)       -> MathEnd
+    | MathSuperscript(mathlst, _)  -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathSubscript([], _)         -> MathEnd
+    | MathSubscript(mathlst, _)    -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathFraction(_, _)           -> MathInner
+    | MathRadical(_)               -> MathInner
+    | MathRadicalWithDegree(_, _)  -> MathInner
+    | MathParen(_, _, _)           -> MathClose
+    | MathLowerLimit([], _)        -> MathEnd
+    | MathLowerLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathUpperLimit([], _)        -> MathEnd
+    | MathUpperLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
   with
   | Invalid_argument(_) -> assert false
 
@@ -595,32 +597,28 @@ let convert_math_char_with_kern mathctx uch kernfL kernfR mk =
     (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 
-let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) ((mkraw, memain) : math_element) : low_math_pure =
-  match memain with
-  | MathEmbeddedText(hblstf) ->
+let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
+  match me with
+  | MathElement(mkraw, MathEmbeddedText(hblstf)) ->
       let hblst = hblstf (MathContext.context_for_text mathctx) in
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
       let mk = normalize_math_kind mkprev mknext mkraw in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathVariantChar(s) ->
+      let (mkrawv, mvvaluemain) = MathContext.convert_math_variant_char mathctx s in
+      let mk = normalize_math_kind mkprev mknext mkrawv in
       begin
-        match MathContext.convert_math_variant_char mathctx s with
-        | MathVariantToChar(uch, mkrawv) ->
-            let mk = normalize_math_kind mkprev mknext mkrawv in
-              convert_math_char mathctx uch mk
-
-        | MathVariantToCharWithKern(uch, mkrawv, kernfL, kernfR) ->
-            let mk = normalize_math_kind mkprev mknext mkrawv in
-              convert_math_char_with_kern mathctx uch kernfL kernfR mk
+        match mvvaluemain with
+        | MathVariantToChar(uch)                         -> convert_math_char mathctx uch mk
+        | MathVariantToCharWithKern(uch, kernfL, kernfR) -> convert_math_char_with_kern mathctx uch kernfL kernfR mk
       end
-        
 
-  | MathChar(uch) ->
+  | MathElement(mkraw, MathChar(uch)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
         convert_math_char mathctx uch mk
 
-  | MathCharWithKern(uch, kernfL, kernfR) ->
+  | MathElement(mkraw, MathCharWithKern(uch, kernfL, kernfR)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
         convert_math_char_with_kern mathctx uch kernfL kernfR mk
 
@@ -628,8 +626,8 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
     mlst |> Util.list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
-      let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathprev in
-      let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathnext in
+      let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathctx mathprev in
+      let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathctx mathnext in
         (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)
       let (lmmain, hgt, dpt) = convert_to_low_single mkprev mknext mathctx math in
       let rk = get_right_kern lmmain hgt dpt in
