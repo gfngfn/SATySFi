@@ -45,12 +45,12 @@ let math-equal = math-glyph MathRel `=`
 let math-comma = math-glyph MathPunct `,`
 let math-sqrt = math-radical None
 let math-lim = math-lower (math-group MathOp MathOp (math-glyph MathOrd `lim`))
-let math-sum = math-glyph MathOp `∑`
+let math-sum = math-big-glyph MathOp `∑`
 
 let math-int =
   let kernfL _ _ = 0pt in
   let kernfR fontsize ypos = fontsize *' 0.45 in
-    math-glyph-with-kern MathOp `∫` kernfL kernfR
+    math-big-glyph-with-kern MathOp `∫` kernfL kernfR
 
 let math-ordd = math-glyph MathPrefix `d`
 

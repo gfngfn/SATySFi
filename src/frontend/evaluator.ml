@@ -327,20 +327,22 @@ and interpret env ast =
   | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, astcp, astctx) ->
       let s = interpret_string env asts in
       let mccls = interpret_math_char_class env astmccls in
+      let is_big = false in
       let mathcls = interpret_math_class env astmathcls in
       let cp = interpret_int env astcp in
       let ctx = interpret_context env astctx in
-      let mvvalue = (mathcls, HorzBox.MathVariantToChar(Uchar.of_int cp)) in
+      let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, Uchar.of_int cp)) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
   | BackendMathVariantCharDirect(astmathcls, astcp1, astcp2, astcp3, astcp4) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
-      let cp1 = interpret_int env astcp1 in  (* -- normal -- *)
-      let cp2 = interpret_int env astcp2 in  (* -- bold italic -- *)
-      let cp3 = interpret_int env astcp3 in  (* -- roman -- *)
-      let cp4 = interpret_int env astcp4 in  (* -- bold roman -- *)
-        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls,
+      let is_big = false in
+      let cp1 = interpret_int env astcp1 in  (* -- Italic -- *)
+      let cp2 = interpret_int env astcp2 in  (* -- bold Italic -- *)
+      let cp3 = interpret_int env astcp3 in  (* -- Roman -- *)
+      let cp4 = interpret_int env astcp4 in  (* -- bold Roman -- *)
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big,
           Uchar.of_int cp1, Uchar.of_int cp2, Uchar.of_int cp3, Uchar.of_int cp4))]))
 
   | BackendMathConcat(astm1, astm2) ->
@@ -401,17 +403,17 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathLowerLimit(mlst1, mlst2)])
 
-  | BackendMathGlyph(astmathcls, aststr) ->
+  | BackendMathGlyph(astmathcls, is_big, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let mlst =
         uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(MathElement(mathcls, MathChar(uch)))))
+          HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch)))))
       in
         MathValue(mlst)
 
-  | BackendMathGlyphWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
+  | BackendMathGlyphWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let valuekernfL = interpret env astkernfL in
@@ -424,12 +426,13 @@ and interpret env ast =
         uchlst |> Util.list_fold_adjacent (fun acc uch prevopt nextopt ->
           let math =
             match (prevopt, nextopt) with
-            | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernfL, kernfR))))
-            | (None   , Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernfL, kernf0))))
-            | (Some(_), None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(uch, kernf0, kernfR))))
-            | (Some(_), Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathChar(uch))))
+            | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernfR))))
+            | (None   , Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernf0))))
+            | (Some(_), None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernf0, kernfR))))
+            | (Some(_), Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch))))
           in
               (* -- provides left/right kern only with the leftmost/rightmost character -- *)
+              (* needs reconsideration; maybe more natural if arbitrary number of code points can be handled as one glyph *)
             math :: acc
         ) [] |> List.rev
       in

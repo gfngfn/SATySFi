@@ -418,9 +418,9 @@ let get_right_kern lmmain hgt dpt =
 
 
 let get_math_kind_of_math_element mathctx = function
-  | MathElement(mk, _)                    -> mk
-  | MathVariantChar(s)                    -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
-  | MathVariantCharDirect(mk, _, _, _, _) -> mk
+  | MathElement(mk, _)                       -> mk
+  | MathVariantChar(s)                       -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathVariantCharDirect(mk, _, _, _, _, _) -> mk
 
 
 let rec get_left_math_kind mathctx = function
@@ -596,18 +596,18 @@ let make_radical mathctx radical hgt_bar t_bar dpt =
     hblst
 
 
-let convert_math_char mathctx uch mk =
+let convert_math_char mathctx is_big uch mk =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display uch in
+  let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
     (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
 
 
-let convert_math_char_with_kern mathctx uch kernfL kernfR mk =
+let convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display uch in
+  let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
   let fontsize = mathstrinfo.math_font_size in
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
@@ -633,11 +633,14 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkrawv in
       begin
         match mvvaluemain with
-        | MathVariantToChar(uch)                         -> convert_math_char mathctx uch mk
-        | MathVariantToCharWithKern(uch, kernfL, kernfR) -> convert_math_char_with_kern mathctx uch kernfL kernfR mk
+        | MathVariantToChar(is_big, uch) ->
+            convert_math_char mathctx is_big uch mk
+
+        | MathVariantToCharWithKern(is_big, uch, kernfL, kernfR) ->
+            convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
       end
 
-  | MathVariantCharDirect(mkraw, uch1, uch2, uch3, uch4) ->  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect(mkraw, is_big, uch1, uch2, uch3, uch4) ->  (* TEMPORARY; should extend more *)
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
       let uch =
@@ -649,15 +652,15 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathBoldRoman  -> uch4
             (* TEMPORARY; should extend more *)
       in
-        convert_math_char mathctx uch mk
+        convert_math_char mathctx is_big uch mk
 
-  | MathElement(mkraw, MathChar(uch)) ->
+  | MathElement(mkraw, MathChar(is_big, uch)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char mathctx uch mk
+        convert_math_char mathctx is_big uch mk
 
-  | MathElement(mkraw, MathCharWithKern(uch, kernfL, kernfR)) ->
+  | MathElement(mkraw, MathCharWithKern(is_big, uch, kernfL, kernfR)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char_with_kern mathctx uch kernfL kernfR mk
+        convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
 
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =

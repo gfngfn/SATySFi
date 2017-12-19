@@ -288,30 +288,32 @@ let envinit : environment = Hashtbl.create 128
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
   let open Util in
+  let code_point cp = MathVariantToChar(false, Uchar.of_int cp) in
+
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
     (List.concat [
 
     (* -- Latin capital letter to its normal italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D434 + i))));
+        (ascii_capital_of_index i, MathItalic, MathOrdinary, code_point (0x1D434 + i)));
     (* -- Latin small letter to its normal italics -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D44E + i))));
-      [("h", MathItalic, MathOrdinary, MathVariantToChar(Uchar.of_int 0x210E))];
+        (ascii_small_of_index i, MathItalic, MathOrdinary, code_point (0x1D44E + i)));
+      [("h", MathItalic, MathOrdinary, code_point 0x210E)];
 
     (* -- Latin capital letter to its bold italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D468 + i))));
+        (ascii_capital_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D468 + i)));
     (* -- Latin small letter to its bold italics -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldItalic, MathOrdinary, MathVariantToChar(Uchar.of_int (0x1D482 + i))));
+        (ascii_small_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D482 + i)));
 
     (* -- Latin capital letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'A' + i))));
+        (ascii_capital_of_index i, MathRoman, MathOrdinary, code_point (Char.code 'A' + i)));
     (* -- Latin small letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathRoman, MathOrdinary, MathVariantToChar(Uchar.of_int (Char.code 'a' + i))));
+        (ascii_small_of_index i, MathRoman, MathOrdinary, code_point (Char.code 'a' + i)));
 
     (* -- invariant ascii symbols -- *)
       [
@@ -324,7 +326,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("|", Char.code '|', MathBinary  );
         ("/", Char.code '/', MathOrdinary);
       ] |> List.map (fun (s, cp, mk) ->
-        (s, MathItalic, mk, MathVariantToChar(Uchar.of_int cp)));
+        (s, MathItalic, mk, code_point cp));
     ])
 
 
@@ -524,8 +526,10 @@ let make_environments () =
         ("close-with-bezier"       , ~% (tPT @-> tPT @-> tPRP @-> tPATH)             , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (tPATH @-> tPATH @-> tPATH)                  , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
 
-        ("math-glyph"              , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, vs)));
-        ("math-glyph-with-kern"    , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, vs, vkfL, vkfR)));
+        ("math-glyph"              , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, false, vs)));
+        ("math-big-glyph"          , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathGlyph(vmc, true, vs)));
+        ("math-glyph-with-kern"    , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, false, vs, vkfL, vkfR)));
+        ("math-big-glyph-with-kern", ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathGlyphWithKern(vmc, true, vs, vkfL, vkfR)));
         ("math-group"              , ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)  , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
         ("math-sup"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));

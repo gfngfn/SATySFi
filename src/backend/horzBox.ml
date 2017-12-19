@@ -334,20 +334,42 @@ and evaled_vert_box =
   | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
 
 and math_char_kern_func = length -> length -> length
-  (* -- takes the actual font size and the y-position, and returns a kerning value -- *)
+  (* --
+     takes the actual font size and the y-position,
+     and returns a kerning value (positive for making characters closer)
+     -- *)
 
 and math_element_main =
-  | MathChar         of Uchar.t
+  | MathChar         of bool * Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-  | MathCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
+      (* --
+         (1) whether it is a big operator
+         (2) Unicode code point (currently singular)
+         -- *)
+  | MathCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
+      (* --
+         (1) whether it is a big operator
+         (2) Unicode code point (currently singular)
+         (3) left-hand-side kerning function
+         (4) right-hand-side kerning function
+         --*)
   | MathEmbeddedText of (input_context -> horz_box list)
 
 and math_element =
   | MathElement           of math_kind * math_element_main
   | MathVariantChar       of string
-  | MathVariantCharDirect of math_kind * Uchar.t * Uchar.t * Uchar.t * Uchar.t  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect of math_kind * bool * Uchar.t * Uchar.t * Uchar.t * Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
+      (* --
+         (1) math class
+         (2) whether it is a big operator
+         (3) Unicode code point for Italic
+         (4) Unicode code point for bold Italic
+         (5) Unicode code point for Roman
+         (6) Unicode code point for bold Roman
+         -- *)
+      (* TEMPORARY; should extend more *)
 
 and math_kern_func = length -> length
   (* -- takes the y-position and then returns a kerning value -- *)
@@ -355,9 +377,9 @@ and math_kern_func = length -> length
 and math_variant_value = math_kind * math_variant_value_main
 
 and math_variant_value_main =
-  | MathVariantToChar         of Uchar.t
+  | MathVariantToChar         of bool * Uchar.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
-  | MathVariantToCharWithKern of Uchar.t * math_char_kern_func * math_char_kern_func
+  | MathVariantToCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
 and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
@@ -456,8 +478,8 @@ module MathContext
             Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
             begin
               match InternalText.to_uchar_list (InternalText.of_utf8 s) with
-              | []       -> (MathOrdinary, MathVariantToChar(Uchar.of_int 0))  (* needs reconsideration *)
-              | uch :: _ -> (MathOrdinary, MathVariantToChar(uch))
+              | []       -> (MathOrdinary, MathVariantToChar(false, Uchar.of_int 0))  (* needs reconsideration *)
+              | uch :: _ -> (MathOrdinary, MathVariantToChar(false, uch))
             end
 
     let context_for_text mctx =

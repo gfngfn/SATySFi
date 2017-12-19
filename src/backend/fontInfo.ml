@@ -301,7 +301,7 @@ let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt :
   | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
 
 
-let get_math_char_info (mathctx : math_context) (is_in_display : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
   let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
   let mfabbrev = MathContext.math_font_abbrev mathctx in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
@@ -315,7 +315,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (uch : Uc
             FontFormat.get_math_script_variant md gidraw
         in
         let gid =
-          if is_in_display then
+          if is_in_display && is_big then
             match FontFormat.get_math_vertical_variants md gidsub with
             | [] -> gidsub
 
