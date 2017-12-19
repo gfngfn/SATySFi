@@ -113,11 +113,13 @@ let-math \tau =
     0x1D70F % roman
     0x1D749 % bold roman
 
+let-math \pi = math-pi
+
+let-math \sum = math-sum
+
 let vdash = math-char MathRel `⊢`
 
 let colon = math-char MathRel `:`
-
-let-math \to = math-to
 
 let-math \and-also = math-space
 
@@ -260,3 +262,24 @@ let paren-right hgt dpt hgtaxis fontsize color =
 
 let paren =
   math-paren paren-left paren-right
+
+let-math \paren = paren
+let-math \angle = math-angle
+
+let-math \sqrt = math-sqrt
+
+let-math \pm = math-pm
+let-math \to = math-to
+let-math \infty = math-infty
+
+let-math \lim = (math-group MathOp MathOp (math-char MathOrd `lim`))
+
+let-math \lower = math-lower
+let-math \upper = math-upper
+
+let-math \int = math-int
+
+let-math \ordd = math-ordd
+
+let-math \text it =
+  text-in-math MathOrd (fun ctx -> read-inline ctx it)

@@ -325,6 +325,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("-", 0x2212       , MathBinary  );
         ("|", Char.code '|', MathBinary  );
         ("/", Char.code '/', MathOrdinary);
+        (",", Char.code ',', MathPunct   );
       ] |> List.map (fun (s, cp, mk) ->
         (s, MathItalic, mk, code_point cp));
     ])

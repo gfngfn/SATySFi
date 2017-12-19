@@ -645,6 +645,7 @@ nxletsub:
   | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet {
         make_let_mutable_expression tok var utast1 utast2
       }
+  | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet { make_let_expression tok dec utast }
   | utast=nxwhl { utast }
 ;
 nxwhl:
