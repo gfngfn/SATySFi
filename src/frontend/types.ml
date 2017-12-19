@@ -525,8 +525,8 @@ and abstract_tree =
   | LengthGreaterThan     of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
   | MathValue                   of HorzBox.math list
-  | BackendMathGlyph            of abstract_tree * bool * abstract_tree
-  | BackendMathGlyphWithKern    of abstract_tree * bool * abstract_tree * abstract_tree * abstract_tree
+  | BackendMathChar             of abstract_tree * bool * abstract_tree
+  | BackendMathCharWithKern     of abstract_tree * bool * abstract_tree * abstract_tree * abstract_tree
   | BackendMathGroup            of abstract_tree * abstract_tree * abstract_tree
   | BackendMathConcat           of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list

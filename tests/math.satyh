@@ -1,58 +1,59 @@
-let math-char cp =
-  math-glyph MathOrd (string-unexplode [cp])
+
+let math-ord-char cp =
+  math-char MathOrd (string-unexplode [cp])
 
 let math-list lst =
-  lst |> List.fold-left math-concat (math-glyph MathOrd ` `)
+  lst |> List.fold-left math-concat (math-char MathOrd ` `)
 
-let math-a = math-char 0x1D44E
-let math-b = math-char 0x1D44F
-let math-c = math-char 0x1D450
-let math-d = math-char 0x1D451
-let math-e = math-char 0x1D452
-let math-f = math-char 0x1D453
-let math-m = math-char 0x1D45A
-let math-n = math-char 0x1D45B
-let math-r = math-char 0x1D45F
-let math-x = math-char 0x1D465
-let math-y = math-char 0x1D466
-let math-z = math-char 0x1D467
-let math-0 = math-glyph MathOrd `0`
-let math-1 = math-glyph MathOrd `1`
-let math-2 = math-glyph MathOrd `2`
-let math-3 = math-glyph MathOrd `3`
-let math-4 = math-glyph MathOrd `4`
-let math-5 = math-glyph MathOrd `5`
-let math-6 = math-glyph MathOrd `6`
-let math-pi = math-char 0x1D70B
-let math-A = math-char 0x1D434
-let math-B = math-char 0x1D435
-let math-C = math-char 0x1D436
-let math-D = math-char 0x1D437
-let math-E = math-char 0x1D438
-let math-F = math-char 0x1D439
-let math-G = math-char 0x1D43A
-let math-M = math-char 0x1D440
-let math-N = math-char 0x1D441
-let math-R = math-char 0x1D445
-let math-Y = math-char 0x1D44C
-let math-Z = math-char 0x1D44D
-let math-infty = math-glyph MathOrd `∞`
-let math-to    = math-glyph MathRel `→`
-let math-minus = math-glyph MathBin `−`
-let math-plus  = math-glyph MathBin `+`
-let math-pm    = math-glyph MathBin `±`
-let math-equal = math-glyph MathRel `=`
-let math-comma = math-glyph MathPunct `,`
+let math-a = math-ord-char 0x1D44E
+let math-b = math-ord-char 0x1D44F
+let math-c = math-ord-char 0x1D450
+let math-d = math-ord-char 0x1D451
+let math-e = math-ord-char 0x1D452
+let math-f = math-ord-char 0x1D453
+let math-m = math-ord-char 0x1D45A
+let math-n = math-ord-char 0x1D45B
+let math-r = math-ord-char 0x1D45F
+let math-x = math-ord-char 0x1D465
+let math-y = math-ord-char 0x1D466
+let math-z = math-ord-char 0x1D467
+let math-0 = math-char MathOrd `0`
+let math-1 = math-char MathOrd `1`
+let math-2 = math-char MathOrd `2`
+let math-3 = math-char MathOrd `3`
+let math-4 = math-char MathOrd `4`
+let math-5 = math-char MathOrd `5`
+let math-6 = math-char MathOrd `6`
+let math-pi = math-ord-char 0x1D70B
+let math-A = math-ord-char 0x1D434
+let math-B = math-ord-char 0x1D435
+let math-C = math-ord-char 0x1D436
+let math-D = math-ord-char 0x1D437
+let math-E = math-ord-char 0x1D438
+let math-F = math-ord-char 0x1D439
+let math-G = math-ord-char 0x1D43A
+let math-M = math-ord-char 0x1D440
+let math-N = math-ord-char 0x1D441
+let math-R = math-ord-char 0x1D445
+let math-Y = math-ord-char 0x1D44C
+let math-Z = math-ord-char 0x1D44D
+let math-infty = math-char MathOrd `∞`
+let math-to    = math-char MathRel `→`
+let math-minus = math-char MathBin `−`
+let math-plus  = math-char MathBin `+`
+let math-pm    = math-char MathBin `±`
+let math-equal = math-char MathRel `=`
+let math-comma = math-char MathPunct `,`
 let math-sqrt = math-radical None
-let math-lim = math-lower (math-group MathOp MathOp (math-glyph MathOrd `lim`))
-let math-sum = math-big-glyph MathOp `∑`
+let math-lim = math-lower (math-group MathOp MathOp (math-char MathOrd `lim`))
+let math-sum = math-big-char MathOp `∑`
 
 let math-int =
   let kernfL _ _ = 0pt in
   let kernfR fontsize ypos = fontsize *' 0.45 in
-    math-big-glyph-with-kern MathOp `∫` kernfL kernfR
+    math-big-char-with-kern MathOp `∫` kernfL kernfR
 
-let math-ordd = math-glyph MathPrefix `d`
+let math-ordd = math-char MathPrefix `d`
 
 let-inline ctx \math fml =
   let ctx-math = ctx |> set-text-color (RGB(0., 0., 1.)) in
@@ -112,9 +113,9 @@ let-math \tau =
     0x1D70F % roman
     0x1D749 % bold roman
 
-let vdash = math-glyph MathRel `⊢`
+let vdash = math-char MathRel `⊢`
 
-let colon = math-glyph MathRel `:`
+let colon = math-char MathRel `:`
 
 let-math \to = math-to
 

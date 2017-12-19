@@ -403,7 +403,7 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([HorzBox.MathLowerLimit(mlst1, mlst2)])
 
-  | BackendMathGlyph(astmathcls, is_big, aststr) ->
+  | BackendMathChar(astmathcls, is_big, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
@@ -413,7 +413,7 @@ and interpret env ast =
       in
         MathValue(mlst)
 
-  | BackendMathGlyphWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
+  | BackendMathCharWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let valuekernfL = interpret env astkernfL in
