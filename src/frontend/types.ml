@@ -387,6 +387,7 @@ and untyped_math_main =
   | UTMSubScript   of untyped_math * untyped_math
   | UTMCommand     of untyped_abstract_tree * untyped_abstract_tree list
   | UTMList        of untyped_math list
+  | UTMEmbed       of untyped_abstract_tree
 
 [@@deriving show { with_path = false }]
 

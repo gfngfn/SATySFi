@@ -389,6 +389,8 @@
 (*
 %token <Range.t * Types.var_name> VARINSTR
 *)
+%token <Range.t * Types.var_name> VARINMATH
+%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATHWITHMOD
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
@@ -999,6 +1001,8 @@ mathbot:
         let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
           make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
       }
+  | tok=VARINMATH        { let (rng, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf([], varnm)))) }
+  | tok=VARINMATHWITHMOD { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }

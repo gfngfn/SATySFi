@@ -601,6 +601,7 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
 
     | UTMCommand(utastcmd, utastlst) ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+        begin
           match tycmdmain with
           | MathCommandType(tylstreq) ->
               let etylst = utastlst |> List.map (typecheck qtfbl lev tyenv) in
@@ -616,6 +617,12 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
                 apply_tree_of_list ecmd elstarg
 
           | _ -> failwith "math command of type other than MathCommandType(_)"
+        end
+
+    | UTMEmbed(utast0) ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "math-embedded-var", BaseType(MathType)) in
+          e0
 
 
 and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyped_path_component) list) (utcycleopt : (unit untyped_path_component) option) =

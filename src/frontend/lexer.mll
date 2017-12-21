@@ -457,6 +457,11 @@ and horzexpr = parse
 and mathexpr = parse
   | space { mathexpr lexbuf }
   | break { increment_line lexbuf; mathexpr lexbuf }
+  | "%" {
+      after_comment_state := MathState;
+      next_state := CommentState;
+      IGNORED
+    }
   | "!{" {
       push MtoH;
       next_state := HorizontalState;
@@ -500,14 +505,23 @@ and mathexpr = parse
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("#" (identifier as varnm)) {
+      VARINMATH(get_pos lexbuf, varnm)
+    }
+  | ("#" (constructor ".")* (identifier | constructor)) {
+      let csnmpure = Lexing.lexeme lexbuf in
+      let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list csstr in
+        VARINMATHWITHMOD(get_pos lexbuf, mdlnmlst, csnm)
+    }
   | ("\\" (identifier | constructor)) {
-      let tok = Lexing.lexeme lexbuf in
-        MATHCMD(get_pos lexbuf, tok)
+      let csnm = Lexing.lexeme lexbuf in
+        MATHCMD(get_pos lexbuf, csnm)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
-      let tokstrpure = Lexing.lexeme lexbuf in
-      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
-      let (mdlnmlst, csnm) = split_module_list tokstr in
+      let csnmpure = Lexing.lexeme lexbuf in
+      let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list csstr in
         MATHCMDWITHMOD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
