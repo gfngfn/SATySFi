@@ -5,16 +5,13 @@ document (|
 |) '<
   +make-title;
   +p {
-    The
-      ${Z = -e^x + f^{x^{n^2}} - a_2 + Y_f^2 - A + BC}
-    quick brown fox jumps over the lazy dog.
-
     This document was typeset by using \satysfi;.
-
+  }
+  +p {
     Italics correction and kerning:
       ${\paren{F^n} \paren{F} = \paren{G \frac{M m}{R^2}}^{n + 1}}
 
-    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2}
+    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2},
 
     parentheses: ${\paren{\paren{\paren{A} + B} + C}},
 
@@ -42,11 +39,11 @@ document (|
     tuple: ${\angle{x, y, z}}.
   }
   +math (
-    let-math \int1 = ${\int_0^a} in
-    let-math \int2 = ${\int_0^\sqrt{a^2 - x^2}} in
-    let-math \sqrt2 = ${\sqrt{x^2 + r^2}} in
+    let int1 = ${\int_0^a} in
+    let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+    let sqrt2 = ${\sqrt{x^2 + r^2}} in
       ${
-        \frac{\int1 x \ordd x \int2 r \sqrt2 \ordd r}{\int1 \ordd x \int2 r \sqrt2 \ordd r}
+        \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{#int1 \ordd x #int2 r #sqrt2 \ordd r}
           = \frac{2a}{5}
       }
   );
