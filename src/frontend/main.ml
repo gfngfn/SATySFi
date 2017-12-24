@@ -14,8 +14,8 @@ type error_category =
   | System
 
 let show_error_category = function
-  | Lexer       -> "Lex Error"
-  | Parser      -> "Syntax Error"
+  | Lexer       -> "Syntax Error at Lexer"
+  | Parser      -> "Syntax Error at Parser"
   | Typechecker -> "Type Error"
   | Evaluator   -> "Error during Evaluation"
   | Interface   -> "Error"
@@ -150,7 +150,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                     begin
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-                      PageBreak.main pdf ctxdoc.page_scheme imvblst;
+                      PageBreak.main pdf ctxdoc.HorzBox.page_scheme imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
                 | _ -> failwith "main; not a Vert(_)"
@@ -235,6 +235,12 @@ let error_log_environment suspended =
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type name '" ^ tynm ^ "'");
+      ]
+
+  | Typeenv.UndefinedModuleName(rng, mdlnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("undefined module name '" ^ mdlnm ^ "'");
       ]
 
   | Typeenv.UndefinedTypeArgument(rng, tyargnm) ->
@@ -325,7 +331,9 @@ let error_log_environment suspended =
   | Evaluator.EvalError(s)          -> report_error Evaluator [ NormalLine(s); ]
   | MainError(s)                    -> report_error Interface [ NormalLine(s); ]
   | Sys_error(s)                    -> report_error System    [ NormalLine(s); ]
-
+(*
+  | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
+*)
 
 type input_file_kind =
   | DocumentFile

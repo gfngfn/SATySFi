@@ -16,6 +16,7 @@ exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception UndefinedModuleName             of Range.t * module_name
 
 val initialize_id : unit -> unit
 
@@ -23,7 +24,7 @@ val empty : t
 
 val add : t -> var_name -> (poly_type * EvalVarID.t) -> t
 
-val find : t -> (module_name list) -> var_name -> (poly_type * EvalVarID.t) option
+val find : t -> (module_name list) -> var_name -> Range.t -> (poly_type * EvalVarID.t) option
 
 val enter_new_module : t -> module_name -> t
 

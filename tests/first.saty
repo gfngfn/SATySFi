@@ -121,7 +121,7 @@ document (|
     }
     +screen {タイトルつきの枠} <
       +p-jp {
-        定理環境などに使える枠です。p\latex; のascmacパッケージのscreen環境に近いです。
+        定理環境などに使える枠です。p\latex;のascmacパッケージのscreen環境に近いです。
       }
     >
     +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
@@ -131,9 +131,12 @@ document (|
   >
   +section {Descriptions and Listings} <
     +p {
-      Inline vertical box: \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      Inline vertical box (top): \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
       The baseline for a vertical box is set
-      so that the first line of the contents is in the same height as the outer line.
+      so that the height of the first line of the contents is the same as that of the outer line.
+      Inline vertical box (bottom): \parbox-bottom (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      The baseline for a vertical box is set
+      so that the height of the last line of the contents is the same as that of the outer line.
       The inline vertical box system enables us
       to typeset what is called a description environment in \latex;:
     }
@@ -165,6 +168,27 @@ document (|
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
   >
+  +section {Stacks} <
+    +p {
+      Line stack (top):
+      \stack-top [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];,
+      line stack (bottom):
+      \stack-bottom [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];.
+    }
+  >
+  +math (
+    math-deriv (math-list [math-A; math-space; math-deriv (math-list [math-B; math-space; math-C]) math-D]) math-E
+  );
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

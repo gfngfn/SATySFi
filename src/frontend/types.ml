@@ -188,6 +188,7 @@ type base_type =
   | PathType
   | GraphicsType
   | DocumentType
+  | MathType
 [@@deriving show]
 
 
@@ -204,7 +205,8 @@ and mono_type_main =
   | RecordType      of (field_name, mono_type) Assoc.t
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
-  | VertDetailedCommandType of mono_type list
+  | VertDetailedCommandType of mono_type list  (* will be deprecated *)
+  | MathCommandType of mono_type list
 
 and poly_type =
   | Poly of mono_type
@@ -233,12 +235,6 @@ module BoundID =
     include BoundID_
     type t = kind BoundID_.t_
   end
-
-module FontSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
 
 (* ---- untyped ---- *)
 type untyped_argument_variable_cons = untyped_pattern_tree list
@@ -282,7 +278,8 @@ and untyped_abstract_tree_main =
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
-  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree
+  | UTLambdaMath           of untyped_abstract_tree
+  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree  (* will be deprecated *)
 (* -- graphics -- *)
   | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
@@ -329,6 +326,8 @@ and untyped_abstract_tree_main =
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
+(* -- math -- *)
+  | UTMath                 of untyped_math
 
 and constraint_cons = (var_name * manual_kind) list
 
@@ -379,6 +378,17 @@ and untyped_let_pattern_cons =
 and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
 
 and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
+
+and untyped_math = Range.t * untyped_math_main
+
+and untyped_math_main =
+  | UTMChar        of string
+  | UTMSuperScript of untyped_math * untyped_math
+  | UTMSubScript   of untyped_math * untyped_math
+  | UTMCommand     of untyped_abstract_tree * untyped_abstract_tree list
+  | UTMList        of untyped_math list
+  | UTMEmbed       of untyped_abstract_tree
+
 [@@deriving show { with_path = false }]
 
 (* ---- typed ---- *)
@@ -405,23 +415,6 @@ and input_horz_element =
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
 
-and input_context = {
-  font_size        : HorzBox.length;
-  font_scheme      : HorzBox.font_with_ratio FontSchemeMap.t;
-  dominant_script  : CharBasis.script;
-  space_natural    : float;
-  space_shrink     : float;
-  space_stretch    : float;
-  adjacent_stretch : float;
-  paragraph_width  : HorzBox.length;
-  paragraph_top    : HorzBox.length;
-  paragraph_bottom : HorzBox.length;
-  leading          : HorzBox.length;
-  text_color       : HorzBox.color;
-  manual_rising    : HorzBox.length;
-  page_scheme      : HorzBox.page_scheme;
-}
-(* temporary *)
 
 and 'a path_component =
   | PathLineTo        of 'a
@@ -520,6 +513,7 @@ and abstract_tree =
   | PrimitiveSame         of abstract_tree * abstract_tree
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
+  | PrimitiveStringUnexplode of abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
@@ -527,7 +521,28 @@ and abstract_tree =
   | LengthPlus            of abstract_tree * abstract_tree
   | LengthMinus           of abstract_tree * abstract_tree
   | LengthTimes           of abstract_tree * abstract_tree
+  | LengthDivides         of abstract_tree * abstract_tree
+  | LengthLessThan        of abstract_tree * abstract_tree
+  | LengthGreaterThan     of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
+  | MathValue                   of HorzBox.math list
+  | BackendMathChar             of abstract_tree * bool * abstract_tree
+  | BackendMathCharWithKern     of abstract_tree * bool * abstract_tree * abstract_tree * abstract_tree
+  | BackendMathGroup            of abstract_tree * abstract_tree * abstract_tree
+  | BackendMathConcat           of abstract_tree * abstract_tree
+  | BackendMathList             of abstract_tree list
+  | BackendMathSuperscript      of abstract_tree * abstract_tree
+  | BackendMathSubscript        of abstract_tree * abstract_tree
+  | BackendMathFraction         of abstract_tree * abstract_tree
+  | BackendMathRadical          of abstract_tree * abstract_tree  (* temporary *)
+  | BackendMathParen            of abstract_tree * abstract_tree * abstract_tree
+  | BackendMathUpperLimit       of abstract_tree * abstract_tree
+  | BackendMathLowerLimit       of abstract_tree * abstract_tree
+  | BackendMathText             of abstract_tree * abstract_tree
+  | BackendMathColor            of abstract_tree * abstract_tree
+  | BackendMathCharClass        of abstract_tree * abstract_tree
+  | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
+  | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -535,7 +550,7 @@ and abstract_tree =
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
-  | Context                     of input_context
+  | Context                     of HorzBox.input_context
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
@@ -545,11 +560,11 @@ and abstract_tree =
   | PrimitiveGetFontSize        of abstract_tree
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
+  | PrimitiveSetMathFont        of abstract_tree * abstract_tree
   | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
-(*
-  | PrimitiveSetTitle           of abstract_tree * abstract_tree
-  | PrimitiveGetTitle           of abstract_tree
-*)
+  | PrimitiveGetDominantScript  of abstract_tree
+  | PrimitiveSetLangSys         of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetLangSys         of abstract_tree * abstract_tree
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
@@ -557,10 +572,11 @@ and abstract_tree =
   | PrimitiveEmbed              of abstract_tree
   | PrimitiveGetNaturalWidth    of abstract_tree
   | PrimitiveDrawText           of abstract_tree * abstract_tree
+  | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
-  | DocumentValue               of input_context * HorzBox.intermediate_vert_box list
+  | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
 (*
   | BackendFixedString         of abstract_tree * abstract_tree
 *)
@@ -569,8 +585,11 @@ and abstract_tree =
   | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
   | BackendVertFrame            of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendEmbeddedVert         of abstract_tree * abstract_tree * abstract_tree
+  | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree
+  | BackendEmbeddedVertBottom   of abstract_tree * abstract_tree * abstract_tree
   | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendLineStackTop         of abstract_tree
+  | BackendLineStackBottom      of abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
@@ -677,6 +696,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -720,6 +740,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
 
   and generalize_kind kd =
     match kd with
@@ -729,28 +750,6 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
-let default_font_with_ratio =
-  ("Arno", 1., 0.)
-
-
-let get_font_with_ratio ctx script_raw =
-  let script =
-    match script_raw with
-    | (CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                             -> script_raw
-  in
-    try ctx.font_scheme |> FontSchemeMap.find script with
-    | Not_found -> default_font_with_ratio
-
-
-let get_string_info ctx script_raw =
-  let (font_abbrev, ratio, rising_ratio) = get_font_with_ratio ctx script_raw in
-  HorzBox.({
-    font_abbrev = font_abbrev;
-    font_size   = ctx.font_size *% ratio;
-    text_color  = ctx.text_color;
-    rising      = ctx.manual_rising +% ctx.font_size *% rising_ratio;
-  })
 (*
 (* !!!! ---- global variable ---- !!!! *)
 
@@ -801,6 +800,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsType) -> "graphics" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
+    | BaseType(MathType)     -> "math" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
@@ -857,6 +857,9 @@ let rec string_of_mono_type_basic tystr =
     | VertDetailedCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
+    | MathCommandType(tylist)   ->
+        let slist = List.map string_of_mono_type_basic tylist in
+        "(" ^ (String.concat ", " slist) ^ ") math-command"
 
 
 and string_of_type_argument_list_basic tyarglist =

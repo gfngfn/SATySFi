@@ -22,6 +22,20 @@ let ops_test_box rgb (xpos, ypos) wid hgt =
   ]
 
 
+let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
+  [
+(* begin: for test; encloses every word with a red box *)
+    Graphics.op_q;
+    Graphics.op_RG (1.0, 0.5, 0.5);
+    Graphics.op_m (xpos, yposbaseline);
+    Graphics.op_l (xpos +% wid, yposbaseline);
+    Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
+    Graphics.op_S;
+    Graphics.op_Q;
+(* end: for test *)
+  ]
+
+
 let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
@@ -30,11 +44,13 @@ let get_paper_height (paper : Pdfpaper.t) : length =
 
 let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
     match evhb with
-    | EvHorz(wid, EvHorzEmpty) -> (xpos +% wid, opacc)
+    | EvHorz(wid, EvHorzEmpty) ->
+        (xpos +% wid, opacc)
+
     | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
         let ops_background =
-          deco (xpos, yposbaseline) wid hgt_frame (Length.negate dpt_frame)
-            (* -- depth values are nonnegative -- *)
+          deco (xpos, yposbaseline) wid hgt_frame dpt_frame
+            (* -- depth values are nonpositive -- *)
         in
         let ops_foreground = [] in
         let opaccinit = List.rev_append ops_background opacc in
@@ -44,29 +60,21 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops_foreground opaccsub in
           (xposnew, opaccnew)
 
-    | EvHorz(wid, EvHorzString(hsinfo, otxt)) ->
-        let (tag, enc) = FontInfo.get_tag_and_encoding hsinfo.font_abbrev in
+    | EvHorz(wid, EvHorzString(hsinfo, hgt, dpt, otxt)) ->
+        let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
         let ops =
-          [
 (*
-            (* begin: for test; encloses every word with a red box *)
-            Graphics.op_q;
-            Graphics.op_RG (1.0, 0.5, 0.5);
-            Graphics.op_m (xpos, yposbaseline);
-            Graphics.op_l (xpos +% wid, yposbaseline);
-            Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
-            Graphics.op_S;
-            Graphics.op_Q;
-            (* end: for test *)
+          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
 *)
+          [
             Graphics.op_cm (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
             Graphics.op_BT;
             Graphics.op_Tm_translate (xpos, yposbaseline);
-            Graphics.op_Tf tag hsinfo.font_size;
+            Graphics.op_Tf tag hsinfo.text_font_size;
             Graphics.op_Ts hsinfo.rising;
             opword;
             Graphics.op_ET;
@@ -76,12 +84,53 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = List.rev_append ops opacc in
           (xpos +% wid, opaccnew)
 
+    | EvHorz(wid, EvHorzMathGlyph(msinfo, hgt, dpt, gid)) ->
+        let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
+        let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
+        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
+        let opcolor = Graphics.pdfop_of_text_color msinfo.math_color in
+        let ops =
+(*
+        List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+*)
+          [
+            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_q;
+            opcolor;
+            Graphics.op_BT;
+            Graphics.op_Tm_translate (xpos, yposbaseline);
+            Graphics.op_Tf tag msinfo.math_font_size;
+            opword;
+            Graphics.op_ET;
+            Graphics.op_Q;
+          ]
+        in
+        let opaccnew = List.rev_append ops opacc in
+        (xpos +% wid, opaccnew)
+
+    | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
+        let (_, opaccsub) =
+          evhblst |> List.fold_left (ops_of_evaled_horz_box (yposbaseline +% lenrising)) (xpos, opacc)
+        in
+        let opaccnew =
+(*
+          List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+*)
+            opaccsub
+        in
+          (xpos +% wid, opaccnew)
+
     | EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics)) ->
-        let ops_graphics = graphics (xpos, yposbaseline) in
+        let ops_graphics =
+(*
+          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+*)
+          (graphics (xpos, yposbaseline))
+        in
         let opaccnew = List.rev_append ops_graphics opacc in
         (xpos +% wid, opaccnew)
 

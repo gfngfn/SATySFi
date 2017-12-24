@@ -46,3 +46,7 @@ let of_uchar (uch : Uchar.t) : t =
   match UCoreLib.UChar.of_int (Uchar.to_int uch) with
   | None            -> UCoreLib.Text.empty  (* needs reconsideration; maybe should emit an error *)
   | Some(uch_ucore) -> UCoreLib.Text.of_uchar uch_ucore
+
+
+let of_uchar_list (uchlst : Uchar.t list) : t =
+  uchlst |> List.map of_uchar |> List.fold_left UCoreLib.Text.append UCoreLib.Text.empty

@@ -26,6 +26,17 @@ let point_type_main =
   ]))
 
 
+(* -- 'apply_tree_of_list': converts e0 and [e1; ...; eN] into (e0 e1 ... eN) -- *)
+let apply_tree_of_list astfunc astlst =
+  let rec aux astacc astlst =
+    match astlst with
+    | []                 -> astacc
+    | asthead :: asttail -> aux (Apply(astacc, asthead)) asttail
+  in
+    aux astfunc astlst
+
+
+(* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
 let flatten_type ty =
   let rec aux acc ty =
     let (rng, tymain) = ty in
@@ -69,6 +80,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | HorzCommandType(tylist)        -> iter_list tylist
   | VertCommandType(tylist)        -> iter_list tylist
   | VertDetailedCommandType(tylist) -> iter_list tylist
+  | MathCommandType(tylist)        -> iter_list tylist
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -87,9 +99,11 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           unify_sub tycod1 tycod2;
         end
 
-    | ( (ProductType(tylist1), ProductType(tylist2))
-      | (HorzCommandType(tylist1), HorzCommandType(tylist2))
-      | (VertCommandType(tylist1), VertCommandType(tylist2)) ) ->
+    | (ProductType(tylist1), ProductType(tylist2))
+    | (HorzCommandType(tylist1), HorzCommandType(tylist2))
+    | (VertCommandType(tylist1), VertCommandType(tylist2))
+    | (MathCommandType(tylist1), MathCommandType(tylist2))
+      ->
         begin
           try
             unify_list (List.combine tylist1 tylist2)
@@ -280,7 +294,7 @@ let rec typecheck
 
   | UTContentOf(mdlnmlst, varnm) ->
       begin
-        match Typeenv.find tyenv mdlnmlst varnm with
+        match Typeenv.find tyenv mdlnmlst varnm rng with
         | None -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
@@ -340,7 +354,13 @@ let rec typecheck
       let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
         (LambdaVert(evid, e1), (rng, VertCommandType(tyarglst)))
 
-  | UTLambdaVertDetailed(varrng, varnmctx, utast1) ->
+  | UTLambdaMath(utast1) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (tyarglst, tyret) = flatten_type ty1 in
+      let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
+        (e1, (rng, MathCommandType(tyarglst)))
+
+  | UTLambdaVertDetailed(varrng, varnmctx, utast1) ->  (* will be deprecated *)
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
       let evid = EvalVarID.fresh varnmctx in
@@ -528,6 +548,13 @@ let rec typecheck
       let () = unify beta1 ty1 in
         (AccessField(e1, fldnm), betaF)
 
+(* -- math -- *)
+
+  | UTMath(utmath) ->
+      let tymath = (rng, BaseType(MathType)) in
+      let utast = typecheck_math qtfbl lev tyenv utmath in
+        (utast, tymath)
+
 (* ---- other fundamentals ---- *)
 
   | UTPatternMatch(utastO, utpmcons) ->
@@ -549,6 +576,53 @@ let rec typecheck
       let tyenvouter = Typeenv.leave_module tyenvmid in
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(eM, eA), tyA)
+
+
+and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
+  let iter = typecheck_math qtfbl lev tyenv in
+  let open HorzBox in
+    match utmathmain with
+    | UTMChar(s) ->
+        MathValue[MathPure(MathVariantChar(s))]
+
+    | UTMList(utmathlst) ->
+        let astlst = utmathlst |> List.map iter in
+          BackendMathList(astlst)
+
+    | UTMSubScript(utmathB, utmathS) ->
+        let astB = iter utmathB in
+        let astS = iter utmathS in
+          BackendMathSubscript(astB, astS)
+
+    | UTMSuperScript(utmathB, utmathS) ->
+        let astB = iter utmathB in
+        let astS = iter utmathS in
+          BackendMathSuperscript(astB, astS)
+
+    | UTMCommand(utastcmd, utastlst) ->
+        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+        begin
+          match tycmdmain with
+          | MathCommandType(tylstreq) ->
+              let etylst = utastlst |> List.map (typecheck qtfbl lev tyenv) in
+              let elstarg = etylst |> List.map (fun (e, _) -> e) in
+              let tylstarg = etylst |> List.map (fun (_, ty) -> ty) in
+              let () =
+                try List.iter2 (unify_ tyenv) tylstarg tylstreq with
+                | Invalid_argument(_) ->
+                    let lenreq  = List.length tylstreq in
+                    let lenreal = List.length tylstarg in
+                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
+              in
+                apply_tree_of_list ecmd elstarg
+
+          | _ -> failwith "math command of type other than MathCommandType(_)"
+        end
+
+    | UTMEmbed(utast0) ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "math-embedded-var", BaseType(MathType)) in
+          e0
 
 
 and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyped_path_component) list) (utcycleopt : (unit untyped_path_component) option) =
@@ -599,16 +673,16 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           | VertCommandType(tylstreq)
           | VertDetailedCommandType(tylstreq) ->
               let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
-              let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
-              let earglst = etylst |> List.map (fun (e, ty) -> e) in
+              let tylstarg = etylst |> List.map (fun (e, ty) -> ty) in
+              let elstarg = etylst |> List.map (fun (e, ty) -> e) in
               let () =
-                try List.iter2 (unify_ tyenv) tyarglst tylstreq with
+                try List.iter2 (unify_ tyenv) tylstarg tylstreq with
                 | Invalid_argument(_) ->
                     let lenreq  = List.length tylstreq in
-                    let lenreal = List.length tyarglst in
+                    let lenreal = List.length tylstarg in
                     raise (InvalidArityOfCommand(rng, lenreq, lenreal))
               in
-                aux (InputVertEmbedded(ecmd, earglst) :: acc) tail
+                aux (InputVertEmbedded(ecmd, elstarg) :: acc) tail
 
           | _ -> failwith "vertical command of type other than VertCommandType(_)"
         end

@@ -13,8 +13,24 @@ exception FailToLoadFontFormatOwingToSize   of file_path
 exception FailToLoadFontFormatOwingToSystem of string
 exception FontFormatBroken                  of Otfm.error
 exception NoGlyphID                         of glyph_id
+exception UnsupportedTTC  (* temporary *)
+exception CannotFindUnicodeCmap
 
-val get_decoder : file_path -> decoder
+type cid_system_info
+
+type font_registration =
+(*
+  | Type1Registration          of int * int * encoding_in_pdf
+  | TrueTypeRegistration       of int * int * encoding_in_pdf
+*)
+  | CIDFontType0Registration   of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2OTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+  | CIDFontType2TTRegistration of cid_system_info * bool
+      (* -- last boolean: true iff it should embed /W information -- *)
+
+val get_decoder_single : file_path -> (decoder * font_registration) option
 
 type 'a resource =
   | Data           of 'a
@@ -23,8 +39,6 @@ type 'a resource =
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of (string resource) ref  (* temporary;*)
-
-type cid_system_info
 
 module Type1 : sig
   type font
@@ -76,8 +90,68 @@ val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 val adobe_japan1 : cid_system_info
 val adobe_identity : cid_system_info
 
-val get_decoder : file_path -> decoder
-
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> int option
+
+type math_kern
+
+type math_kern_info =
+  {
+    kernTR : math_kern;
+    kernTL : math_kern;
+    kernBR : math_kern;
+    kernBL : math_kern;
+  }
+
+type math_decoder
+
+val get_math_decoder : file_path -> (math_decoder * font_registration) option
+
+val math_base_font : math_decoder -> decoder
+
+val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
+
+val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
+
+val get_math_glyph_metrics : math_decoder -> glyph_id -> int * int * int * int option * math_kern_info option
+
+val get_math_vertical_variants : math_decoder -> glyph_id -> (glyph_id * float) list
+
+val get_math_horizontal_variants : math_decoder -> glyph_id -> (glyph_id * float) list
+
+type math_constants =
+  {
+  (* -- general -- *)
+    axis_height                   : float;
+  (* -- sub/superscripts -- *)
+    superscript_bottom_min        : float;
+    superscript_shift_up          : float;
+    superscript_baseline_drop_max : float;
+    subscript_top_max             : float;
+    subscript_shift_down          : float;
+    subscript_baseline_drop_min   : float;
+    script_scale_down             : float;
+    script_script_scale_down      : float;
+    space_after_script            : float;
+    sub_superscript_gap_min       : float;
+  (* -- fractions -- *)
+    fraction_rule_thickness       : float;
+    fraction_numer_d_shift_up     : float;
+    fraction_numer_d_gap_min      : float;
+    fraction_denom_d_shift_down   : float;
+    fraction_denom_d_gap_min      : float;
+  (* -- radicals -- *)
+    radical_extra_ascender        : float;
+    radical_rule_thickness        : float;
+    radical_d_vertical_gap        : float;
+  (* -- limits -- *)
+    upper_limit_gap_min           : float;
+    upper_limit_baseline_rise_min : float;
+    lower_limit_gap_min           : float;
+    lower_limit_baseline_drop_min : float;
+  }
+
+val get_math_constants : math_decoder -> math_constants
+
+val find_kern_ratio : math_kern -> float -> float

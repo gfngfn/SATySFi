@@ -16,7 +16,8 @@ let font-ratio-cjk = 0.88
 let font-latin-roman  = font `Arno`   font-ratio-latin 0.
 let font-latin-italic = font `ArnoIt` font-ratio-latin 0.
 let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
-let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
+% let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
+let font-cjk-mincho   = font `ipaexm` font-ratio-cjk   0.
 let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
 let set-cjk-font font ctx =
@@ -44,7 +45,9 @@ let document rcd inner =
   let ctx-doc =
     get-initial-context page pt wid hgt
       |> set-font Latin font-latin-roman
+      |> set-language Latin English
       |> set-dominant-script Latin
+      |> set-math-font `lmodern`
   in
   let () = ref-title <- title in
   let () = ref-author <- author in
@@ -173,6 +176,8 @@ let-block ctx +frame inner =
 let-block ctx +p-jp inner =
   let ctx-jp =
     ctx |> set-cjk-font font-cjk-mincho
+        |> set-language HanIdeographic Japanese
+        |> set-language Kana Japanese
         |> set-dominant-script HanIdeographic
         |> set-leading (get-font-size ctx *' 1.7)
   in
@@ -190,7 +195,7 @@ let-block ctx +section title inner =
   in
   let () = num-section <- !num-section + 1 in
   let () = needs-indentation-ref <- false in
-  let br-num = read-inline ctx-title (embed ((arabic (!num-section)) ^ `.`)) in
+  let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
   let br-title = read-inline ctx-title title in
   let bc-title = form-paragraph ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
   let bc-inner = read-block ctx inner in
@@ -280,21 +285,6 @@ let-inline ctx \inline-frame inner =
   let br = read-inline ctx inner in
     (inline-frame-breakable pads simple-decoset br)
 
-module List
-: sig
-    val map : ('a -> 'b) -> 'a list -> 'b list
-    val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
-  end
-= struct
-    let map
-      | f []        = []
-      | f (x :: xs) = (f x) :: map f xs
-
-    let fold-left
-      | f init []        = init
-      | f init (x :: xs) = fold-left f (f init x) xs
-  end
-
 let (+++>) = List.fold-left (+++)
 
 let item-indent = 16pt
@@ -339,6 +329,9 @@ let-block ctx +expand-leading inner =
 
 let-inline ctx \parbox-top wid inner =
   embedded-block-top ctx wid (fun ctx -> read-block ctx inner)
+
+let-inline ctx \parbox-bottom wid inner =
+  embedded-block-bottom ctx wid (fun ctx -> read-block ctx inner)
 
 let-block ctx +repeat n inner =
   let bc = read-block ctx inner in
@@ -454,5 +447,14 @@ let-inline ctx \sample-diagram =
         draw-text (x +' wid *' 0.5 -' wid-text *' 0.5, y +' 50pt) br;
         stroke 2pt red path-frame;
       ]
-      
   ))
+
+let-block ctx +ignore _ = block-nil
+
+let-inline ctx \stack-top lst =
+  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    line-stack-top iblst
+
+let-inline ctx \stack-bottom lst =
+  let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    line-stack-bottom iblst

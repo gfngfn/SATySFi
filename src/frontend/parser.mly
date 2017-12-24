@@ -379,12 +379,18 @@
 %}
 
 %token <Range.t * Types.var_name> VAR
+%token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> MATHCMD
 %token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
 (*
 %token <Range.t * Types.var_name> VARINSTR
 *)
+%token <Range.t * Types.var_name> VARINMATH
+%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATHWITHMOD
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
@@ -392,8 +398,8 @@
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t> SPACE BREAK
-%token <Range.t * Types.ctrlseq_name> VERTCMD
-%token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * string> MATHCHAR
+%token <Range.t> SUBSCRIPT SUPERSCRIPT
 (*
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
@@ -403,20 +409,21 @@
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETVERTDETAILED
+%token <Range.t> LETHORZ LETVERT LETMATH LETVERTDETAILED
 %token <Range.t> REFNOW (* REFFINAL *)
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
-%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT (* EQ NEQ GEQ LEQ GT LT LAND LOR CONCAT *)
-(* %token <Range.t> HORZCONCAT VERTCONCAT *)
+%token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
+%token <Range.t> BMATHGRP EMATHGRP
 %token <Range.t> OPENQT CLOSEQT
 %token <Range.t> OPENVERT CLOSEVERT
 %token <Range.t> OPENHORZ CLOSEHORZ
 %token <Range.t> OPENPROG CLOSEPROG
+%token <Range.t> OPENMATH CLOSEMATH
 %token <Range.t> BPATH EPATH PATHLINE PATHCURVE CONTROLS CYCLE
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
@@ -513,6 +520,7 @@ nxtoplevel:
   | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
+  | top=LETMATH; dec=nxmathdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERTDETAILED; dec=nxvertdetaileddec; subseq=nxtopsubseq           { make_let_expression top dec subseq }
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
@@ -564,6 +572,14 @@ nxvertdec:
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
       let curried = curry_lambda_abstract rngcs argvarlst utast in
         (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      }
+;
+nxmathdec:
+  | mcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = mcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let curried = curry_lambda_abstract rngcs argvarlst utast in
+        (None, csnm, (rng, UTLambdaMath(curried))) :: []
       }
 ;
 nxvertdetaileddec:
@@ -631,6 +647,7 @@ nxletsub:
   | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet {
         make_let_mutable_expression tok var utast1 utast2
       }
+  | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet { make_let_expression tok dec utast }
   | utast=nxwhl { utast }
 ;
 nxwhl:
@@ -739,26 +756,27 @@ nxapp:
   | nxbot          { $1 }
 ;
 nxbot:
-  | nxbot ACCESS VAR                { make_standard (Ranged $1) (Ranged $3) (UTAccessField($1, extract_name $3)) }
-  | VAR                             { let (rng, varnm) = $1 in (rng, UTContentOf([], varnm)) }
-  | VARWITHMOD                      { let (rng, mdlnmlst, varnm) = $1 in (rng, UTContentOf(mdlnmlst, varnm)) }
-  | INTCONST                        { make_standard (Ranged $1) (Ranged $1)  (UTIntegerConstant(extract_main $1)) }
-  | FLOATCONST                      { make_standard (Ranged $1) (Ranged $1) (UTFloatConstant(extract_name $1)) }
-  | LENGTHCONST                     { let (rng, flt, unitnm) = $1 in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
-  | TRUE                            { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(true)) }
-  | FALSE                           { make_standard (Tok $1) (Tok $1) (UTBooleanConstant(false)) }
-  | UNITVALUE                       { make_standard (Tok $1) (Tok $1) UTUnitConstant }
-  | LPAREN nxlet RPAREN             { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN nxlet COMMA tuple RPAREN { make_standard (Tok $1) (Tok $5) (UTTupleCons($2, $4)) }
-  | OPENHORZ sxsep CLOSEHORZ        { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | OPENVERT vxblock CLOSEVERT      { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
-  | BLIST ELIST                     { make_standard (Tok $1) (Tok $2) UTEndOfList }
-  | BLIST nxlist ELIST              { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | opn=LPAREN; optok=binop; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | BRECORD ERECORD                 { make_standard (Tok $1) (Tok $2) (UTRecord([])) }
-  | BRECORD nxrecord ERECORD        { make_standard (Tok $1) (Tok $3) (UTRecord($2)) }
-  | opn=BPATH; path=path; cls=EPATH { make_standard (Tok opn) (Tok cls) path }
+  | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
+  | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
+  | vwm=VARWITHMOD               { let (rng, mdlnmlst, varnm) = vwm in (rng, UTContentOf(mdlnmlst, varnm)) }
+  | ic=INTCONST                  { make_standard (Ranged ic) (Ranged ic)  (UTIntegerConstant(extract_main ic)) }
+  | fc=FLOATCONST                { make_standard (Ranged fc) (Ranged fc) (UTFloatConstant(extract_main fc)) }
+  | lc=LENGTHCONST               { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
+  | tok=TRUE                                              { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
+  | tok=FALSE                                             { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
+  | tok=UNITVALUE                                         { make_standard (Tok tok) (Tok tok) UTUnitConstant }
+  | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
+  | opn=OPENHORZ; utast=sxsep; cls=CLOSEHORZ     { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENVERT; utast=vxblock; cls=CLOSEVERT   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
+  | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
+  | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
+  | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
+  | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
+  | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
+  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
@@ -937,6 +955,61 @@ hcmd:
   | tok=HORZCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
   | tok=HORZCMDWITHMOD { tok }
 ;
+mcmd:
+  | tok=MATHCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
+  | tok=MATHCMDWITHMOD { tok }
+;
+mathblock:
+  | utm=mathlist { let (rng, _) = utm in (rng, UTMath(utm)) }
+;
+mathlist:
+  | utmlst=list(mathsuper) {
+        let rng =
+          match (utmlst, List.rev utmlst) with
+          | ([], [])                                -> Range.dummy "empty-math"
+          | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
+          | _                                       -> assert false
+        in
+          (rng, UTMList(utmlst))
+      }
+;
+mathsuper:
+  | utm1=mathsub; SUPERSCRIPT; utm2=mathgroup {
+        make_standard (Ranged utm1) (Ranged utm2) (UTMSuperScript(utm1, utm2))
+      }
+  | utm=mathsub { utm }
+;
+mathsub:
+  | utm1=mathbot; SUBSCRIPT; utm2=mathgroup {
+        make_standard (Ranged utm1) (Ranged utm2) (UTMSubScript(utm1, utm2))
+      }
+  | utm=mathbot { utm }
+;
+mathgroup:
+  | opn=BMATHGRP; utm=mathlist; cls=EMATHGRP { make_standard (Tok opn) (Tok cls) (extract_main utm) }
+  | utm=mathbot                              { utm }
+;
+mathbot:
+  | tok=MATHCHAR                    { let (rng, char) = tok in (rng, UTMChar(char)) }
+  | mcmd=mcmd; arglst=list(matharg) {
+        let (rngcmd, mdlnmlst, csnm) = mcmd in
+        let rnglast =
+          match List.rev arglst with
+          | []                -> rngcmd
+          | (rnglast, _) :: _ -> rnglast
+        in
+        let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
+          make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
+      }
+  | tok=VARINMATH        { let (rng, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf([], varnm)))) }
+  | tok=VARINMATHWITHMOD { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
+;
+matharg:
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP     { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP   { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
+  | utast=narg                                  { utast }
+;
 sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }
 ;
@@ -946,29 +1019,34 @@ ih:
   | ihcmd=ihcmd; ih=ih                { ihcmd :: ih }
   |                                   { [] }
 ;
-ihtext:
-  | ihcharlst=nonempty_list(ihchar) {
-        let rng = make_range_from_list ihcharlst in
-        let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
-        (rng, UTInputHorzText(text)) }
-(*
-  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
-*)
-;
 ihcmd:
-  | hcmd=hcmd; nargs=nargs; sargs=sargs; {
+  | hcmd=hcmd; nargs=nargs; sargs=sargs {
         let (rngcs, mdlnmlst, csnm) = hcmd in
         let utastcmd = (rngcs, UTContentOf(mdlnmlst, csnm)) in
         let args = List.append nargs sargs in
         let rngargs = make_range_from_list args in
-        make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
-     }
-  | hcmd=hcmd; error { let (rng, _, cs) = hcmd in report_error (Ranged (rng, cs)) "" }
+          make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
+      }
+  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
+        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in  (* -- inline command '\\math' is inserted -- *)
+          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbedded(utastcmd, [utast]))
+      }
+(*
+  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
+*)
+;
+ihtext:
+  | ihcharlst=nonempty_list(ihchar) {
+        let rng = make_range_from_list ihcharlst in
+        let text = String.concat "" (ihcharlst |> List.map (fun (r, t) -> t)) in
+        (rng, UTInputHorzText(text))
+      }
+;
 ihchar:
   | CHAR  { let (rng, ch) = $1 in (rng, ch) }
   | SPACE { let rng = $1 in (rng, " ") }
   | BREAK { let rng = $1 in (rng, "\n") }
-
+;
 (*
 sxclsnm:
   | CLASSNAME { make_standard (Ranged $1) (Ranged $1) (class_name_to_abstract_tree (extract_name $1)) }
@@ -982,16 +1060,16 @@ nargs:
   | nargs=list(narg) { nargs }
 ;
 narg: /* -> untyped_abstract_tree */
-  | opn=OPENPROG; utast=nxlet; cls=CLOSEPROG; {
+  | opn=OPENPROG; utast=nxlet; cls=CLOSEPROG {
         let rng = make_range (Tok opn) (Tok cls) in (rng, extract_main utast)
       }
-  | opn=OPENPROG; cls=CLOSEPROG; {
+  | opn=OPENPROG; cls=CLOSEPROG {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTUnitConstant)
       }
-  | opn=OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD; {
+  | opn=OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTRecord(rcd))
       }
-  | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST; {
+  | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
         let rng = make_range (Tok opn) (Tok cls) in (rng, extract_main utast)
       }
 ;
@@ -999,6 +1077,7 @@ str:
   | chartok=CHAR { let (rng, c) = chartok in c }
   | BREAK        { "\n" }
   | SPACE        { " " }
+;
 sargs:
   | ENDACTIVE                 { [] }
   | sargs=nonempty_list(sarg) { sargs }
@@ -1007,7 +1086,7 @@ sargs:
 sarg: /* -> Types.untyped_argument_cons */
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
+  | opn=OPENQT; strlst=list(str); cls=CLOSEQT { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
 ;
 vcmd:
   | tok=VERTCMD        { let (rng, csnm) = tok in (rng, [], csnm) }
@@ -1022,3 +1101,5 @@ vxbot:
         let args = List.append nargs sargs in
           make_standard (Tok rngcs) (RangedList args) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
       }
+;
+

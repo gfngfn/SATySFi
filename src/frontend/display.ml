@@ -129,6 +129,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | BaseType(LengthType)  -> "length"
     | BaseType(GraphicsType) -> "graphics"
     | BaseType(DocumentType) -> "document"
+    | BaseType(MathType)     -> "math"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 
@@ -175,6 +176,10 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
+
+    | MathCommandType(tylist) ->
+        let slist = List.map iter tylist in
+        "(" ^ (String.concat ", " slist) ^ ") math-command"
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =

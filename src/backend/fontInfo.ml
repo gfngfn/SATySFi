@@ -4,11 +4,13 @@ open Result
 open HorzBox
 
 
-type font_abbrev = string
-
-exception InvalidFontAbbrev of font_abbrev
+exception InvalidFontAbbrev     of font_abbrev
+exception InvalidMathFontAbbrev of math_font_abbrev
+exception NotASingleFont        of font_abbrev * file_path
+exception NotASingleMathFont    of font_abbrev * file_path
 
 type tag = string
+
 
 let get_latin1_width_list (dcdr : FontFormat.decoder) =
 
@@ -29,25 +31,40 @@ let get_latin1_width_list (dcdr : FontFormat.decoder) =
     widlst
 
 
-type font_registration =
-  | Type1Registration          of int * int * encoding_in_pdf
-  | TrueTypeRegistration       of int * int * encoding_in_pdf
-  | CIDFontType0Registration   of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
-  | CIDFontType2OTRegistration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
-  | CIDFontType2TTRegistration of string * FontFormat.cmap * encoding_in_pdf * FontFormat.cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
+let get_font dcdr fontreg fontname =
+  let cmap = FontFormat.PredefinedCMap("Identity-H") in
+  match fontreg with
+(*
+  | Type1Registration(fc, lc, enc) ->
+      let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
+        (FontFormat.type1 ty1font, enc)
+  | TrueTypeRegistration(fc, lc, enc) ->
+      let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
+        (FontFormat.true_type trtyfont, enc)
+*)
+  | FontFormat.CIDFontType0Registration(cidsysinfo, embedW) ->
+      let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
+        (FontFormat.cid_font_type_0 cidty0font fontname cmap)
+  | FontFormat.CIDFontType2TTRegistration(cidsysinfo, embedW) ->
+      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
+        (FontFormat.cid_font_type_2 cidty2font fontname cmap)
+  | FontFormat.CIDFontType2OTRegistration(cidsysinfo, embedW) ->
+      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
+        (FontFormat.cid_font_type_2 cidty2font fontname cmap)
 
 
-type font_tuple = FontFormat.font * tag * FontFormat.decoder * encoding_in_pdf
+type font_definition = tag * FontFormat.font * FontFormat.decoder
+
+type font_store =
+  | Unused of file_path
+  | Loaded of font_definition
 
 
 module FontAbbrevHashTable
 : sig
-    val add : font_abbrev -> font_registration -> FontFormat.file_path -> unit
-    val fold : (font_abbrev -> font_tuple -> 'a -> 'a) -> 'a -> 'a
-    val find_opt : font_abbrev -> font_tuple option
+    val add : font_abbrev -> file_path -> unit
+    val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : font_abbrev -> font_definition option
   end
 = struct
 
@@ -58,77 +75,77 @@ module FontAbbrevHashTable
         let hash = Hashtbl.hash
       end)
 
-    let abbrev_to_definition_hash_table : font_tuple Ht.t = Ht.create 32
+    let abbrev_to_definition_hash_table : (font_store ref) Ht.t = Ht.create 32
 
-    let current_tag_number = ref 0
-
-    let generate_tag () =
+    let generate_tag =
+      let current_tag_number = ref 0 in
+      (fun () ->
         begin
-          incr current_tag_number ;
+          incr current_tag_number;
           "/F" ^ (string_of_int !current_tag_number)
-        end
+        end)
 
-    let add abbrev fontreg srcfile =
-      let dcdr = FontFormat.get_decoder srcfile in
-      let (font, enc) =
-        match fontreg with
-        | Type1Registration(fc, lc, enc) ->
-            let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
-              (FontFormat.type1 ty1font, enc)
-        | TrueTypeRegistration(fc, lc, enc) ->
-            let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
-              (FontFormat.true_type trtyfont, enc)
-        | CIDFontType0Registration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
-              (FontFormat.cid_font_type_0 cidty0font fontname cmap, enc)
-        | CIDFontType2TTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
-              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
-        | CIDFontType2OTRegistration(fontname, cmap, enc, cidsysinfo, embedW) ->
-            let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo false in
-              (FontFormat.cid_font_type_2 cidty2font fontname cmap, enc)
-      in
-      let tag = generate_tag () in
-        Ht.add abbrev_to_definition_hash_table abbrev (font, tag, dcdr, enc)
+    let add abbrev srcpath =
+      Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
 
-    let fold f init =
-      Ht.fold f abbrev_to_definition_hash_table init
+    let fold (f : font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) init =
+      Ht.fold (fun abbrev storeref acc ->
+        match !storeref with
+        | Unused(_)   -> acc  (* -- ignores unused fonts -- *)
+        | Loaded(dfn) -> f abbrev dfn acc
+      ) abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
-      try
-        Some(Ht.find abbrev_to_definition_hash_table abbrev)
-      with
-      | Not_found -> None
+      match Ht.find_opt abbrev_to_definition_hash_table abbrev with
+      | None ->
+          None
 
+      | Some(storeref) ->
+          let store = !storeref in
+          begin
+            match store with
+            | Unused(srcpath) ->
+      (* -- if this is the first access to the font -- *)
+                begin
+                  match FontFormat.get_decoder_single srcpath with
+                  | None                  -> raise (NotASingleFont(abbrev, srcpath))
+                  | Some((dcdr, fontreg)) ->
+                      let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
+                      let tag = generate_tag () in
+                      let dfn = (tag, font, dcdr) in
+                      let store = Loaded(dfn) in
+                      storeref := store;
+                      Some(dfn)
+                end
+
+            | Loaded(dfn) -> Some(dfn)
+          end
   end
 
 
-let get_tag_and_encoding (abbrev : font_abbrev) =
+let get_font_tag (abbrev : font_abbrev) : tag =
   match FontAbbrevHashTable.find_opt abbrev with
-  | None                   -> raise (InvalidFontAbbrev(abbrev))
-  | Some((_, tag, _, enc)) -> (tag, enc)
+  | None              -> raise (InvalidFontAbbrev(abbrev))
+  | Some((tag, _, _)) -> tag
 
 
 let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
+    (* temporary; should use UnitsPerEm? *)
 
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
   let font_abbrev = hsinfo.font_abbrev in
-  let f_skip = raw_length_to_skip_length hsinfo.font_size in
+  let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
     match FontAbbrevHashTable.find_opt font_abbrev with
-    | None                    -> raise (InvalidFontAbbrev(font_abbrev))
-    | Some((_, _, dcdr, enc)) ->
+    | None               -> raise (InvalidFontAbbrev(font_abbrev))
+    | Some((_, _, dcdr)) ->
           let init =
             OutputText.empty_hex_style
-(*
-            match enc with
-            | Latin1                  -> OutputText.empty_literal_style
-            | ( UTF16BE | IdentityH ) -> OutputText.empty_hex_style
-*)
           in
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = Util.list_some gidoptlst in
+            (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
           let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 
           let (_, otxt, rawwid, rawhgt, rawdpt) =
@@ -143,37 +160,12 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
                     match FontFormat.find_kerning dcdr gidprev gid with
                     | None        -> (otxtacc @>> gid, wacc + w)
                     | Some(wkern) ->
-                        let () = PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern) in  (* for debug *)
+                        PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
                         ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
                         (* -- kerning value is negative if two characters are supposed to be closer -- *)
               in
                 (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
             )
-(*
-            uword @|> (None, init, 0, 0, 0) @|> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) uch ->
-              match get_glyph_id dcdr gidtbl uch with
-              | None      -> (None, otxtacc, wacc, hacc, dacc)
-                  (* temporary; simply ignores character that is not assigned a glyph in the current font *)
-              | Some(gid) ->
-                  let (w, h, d) = get_glyph_metrics dcdr gmtbl gid in
-                  let append_data (type a) (( @>> ) : OutputText.t -> a -> OutputText.t) (x : a) : OutputText.t * int =
-                    let ( @*> ) = OutputText.append_kern in
-                      match gidprevopt with
-                      | None          -> (otxtacc @>> x, wacc + w)
-                      | Some(gidprev) ->
-                          match kerntbl |> FontFormat.KerningTable.find_opt gidprev gid with
-                          | None        -> (otxtacc @>> x, wacc + w)
-                          | Some(wkern) -> ((otxtacc @*> wkern) @>> x, wacc + w + wkern)
-                              (* -- kerning value is negative if two characters are supposed to be closer -- *)
-                  in
-                  let (tjsaccnew, waccnew) =
-                    match enc with
-                    | ( Latin1 | UTF16BE ) -> append_data OutputText.append_uchar uch
-                    | IdentityH            -> append_data OutputText.append_glyph_id gid
-                  in
-                    (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
-            )
-*)
         in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
@@ -182,7 +174,174 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
-let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) : font_tuple) : Pdf.pdfobject =
+type math_font_definition = tag * FontFormat.font * FontFormat.math_decoder
+
+type math_font_store =
+  | UnusedMath of file_path
+  | LoadedMath of math_font_definition
+
+
+module MathFontAbbrevHashTable
+: sig
+    val add : math_font_abbrev -> FontFormat.file_path -> unit
+    val fold : (math_font_abbrev -> math_font_definition -> 'a -> 'a) -> 'a -> 'a
+    val find_opt : math_font_abbrev -> math_font_definition option
+  end
+= struct
+
+    module Ht = Hashtbl.Make
+      (struct
+        type t = font_abbrev
+        let equal = (=)
+        let hash = Hashtbl.hash
+      end)
+
+    let abbrev_to_definition_hash_table : (math_font_store ref) Ht.t = Ht.create 32
+
+    let generate_tag =
+      let current_tag_number = ref 0 in
+      (fun () ->
+        begin
+          incr current_tag_number;
+          "/M" ^ (string_of_int !current_tag_number)
+        end)
+
+    let add mfabbrev srcpath =
+      Ht.add abbrev_to_definition_hash_table mfabbrev (ref (UnusedMath(srcpath)))
+
+    let fold f init =
+      Ht.fold (fun mfabbrev storeref acc ->
+        match !storeref with
+        | UnusedMath(_)     -> acc  (* -- ignores unused math fonts -- *)
+        | LoadedMath(mfdfn) -> f mfabbrev mfdfn acc
+      ) abbrev_to_definition_hash_table init
+
+    let find_opt (mfabbrev : math_font_abbrev) =
+      match Ht.find_opt abbrev_to_definition_hash_table mfabbrev with
+      | None ->
+          None
+
+      | Some(storeref) ->
+          begin
+            match !storeref with
+            | UnusedMath(srcpath) ->
+      (* -- if this is the first access to the math font -- *)
+                begin
+                  match FontFormat.get_math_decoder srcpath with
+                  | None ->
+                      raise (NotASingleMathFont(mfabbrev, srcpath))
+
+                  | Some((md, fontreg)) ->
+                      let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
+                      let tag = generate_tag () in
+                      let mfdfn = (tag, font, md) in
+                      storeref := LoadedMath(mfdfn);
+                      Some(mfdfn)
+                end
+
+            | LoadedMath(mfdfn) ->
+                Some(mfdfn)
+          end
+  end
+
+
+let find_math_decoder_exn mfabbrev =
+  match MathFontAbbrevHashTable.find_opt mfabbrev with
+  | None             -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some((_, _, md)) -> md
+
+
+let actual_math_font_size mathctx =
+  MathContext.actual_font_size mathctx find_math_decoder_exn
+
+
+let get_math_string_info mathctx : math_string_info =
+  {
+    math_font_abbrev = MathContext.math_font_abbrev mathctx;
+    math_font_size   = actual_math_font_size mathctx;
+    math_color       = MathContext.color mathctx;
+  }
+
+
+let get_math_tag mfabbrev =
+  match MathFontAbbrevHashTable.find_opt mfabbrev with
+  | None              -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some((tag, _, _)) -> tag
+
+
+let get_math_constants mathctx =
+  let mfabbrev = MathContext.math_font_abbrev mathctx in
+  let md = find_math_decoder_exn mfabbrev in
+    FontFormat.get_math_constants md
+
+
+type math_kern_scheme =
+  | NoMathKern
+  | DiscreteMathKern of FontFormat.math_kern
+  | DenseMathKern    of (length -> length)
+
+
+let no_math_kern = NoMathKern
+
+let make_dense_math_kern kernf = DenseMathKern(kernf)
+
+let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
+
+
+(* --
+   get_math_kern:
+     returns kerning length
+     (negative value stands for being closer to the previous glyph)
+   -- *)
+let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
+  let fontsize = actual_math_font_size mathctx in
+  match mkern with
+  | NoMathKern              -> Length.zero
+  | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio mkern (corrhgt /% fontsize) in fontsize *% ratiok
+  | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
+
+
+let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
+  let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
+  let mfabbrev = MathContext.math_font_abbrev mathctx in
+    match MathFontAbbrevHashTable.find_opt mfabbrev with
+    | None             -> raise (InvalidFontAbbrev(mfabbrev))
+    | Some((_, _, md)) ->
+        let gidraw = FontFormat.get_math_glyph_id md uch in
+        let gidsub =
+          if MathContext.is_in_base_level mathctx then
+            gidraw
+          else
+            FontFormat.get_math_script_variant md gidraw
+        in
+        let gid =
+          if is_in_display && is_big then
+            match FontFormat.get_math_vertical_variants md gidsub with
+            | [] -> gidsub
+
+            | (gidvar, _) :: []
+            | _ :: (gidvar, _) :: _
+              ->
+                Format.printf "FontInfo> variant exists: %d ---> %d\n" (FontFormat.gid gidsub) (FontFormat.gid gidvar);  (* for debug *)
+                gidvar  (* -- somewhat ad-hoc; uses the sole variant as the glyph for display style -- *)
+(*
+            | _ ->
+                Format.printf "FontInfo> more than one variants\n";  (* for debug *)
+                gidsub
+*)
+          else
+            gidsub
+        in
+        let (rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_metrics md gid in
+        let mic =
+          match rawmicopt with
+          | None         -> Length.zero
+          | Some(rawmic) -> f_skip rawmic
+        in
+          (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
+
+
+let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
   match fontdfn with
   | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
@@ -191,9 +350,13 @@ let make_dictionary (pdf : Pdf.t) (abbrev : font_abbrev) ((fontdfn, _, dcdr, _) 
 
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
-    [] |> FontAbbrevHashTable.fold (fun abbrev tuple acc ->
-      let obj = make_dictionary pdf abbrev tuple in
-      let (_, tag, _, _) = tuple in
+    [] |> FontAbbrevHashTable.fold (fun _ tuple acc ->
+      let (tag, fontdfn, dcdr) = tuple in
+      let obj = make_dictionary pdf fontdfn dcdr in
+        (tag, obj) :: acc
+    ) |> MathFontAbbrevHashTable.fold (fun _ mftuple acc ->
+      let (tag, fontdfn, md) = mftuple in
+      let obj = make_dictionary pdf fontdfn (FontFormat.math_base_font md) in
         (tag, obj) :: acc
     )
   in
@@ -207,24 +370,14 @@ let initialize (satysfi_root_dir : string) =
   PrintForDebug.initfontE "!!LineBreakDataMap";
   LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
 
-  let append_directory s = Filename.concat satysfi_root_dir (Filename.concat "dist/fonts" s) in
-
   PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
-  List.iter (fun (abbrev, fontreg, srcfile) -> FontAbbrevHashTable.add abbrev fontreg srcfile) [
 
-    ("Hlv", CIDFontType2TTRegistration("Hlv-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "HelveticaBlack.ttf");
+  let font_hash = LoadFont.main satysfi_root_dir "fonts.satysfi-hash" in
+  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
 
-
-    ("Osaka", CIDFontType2TTRegistration("Osaka-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "Osaka.ttf");
-
-    ("Arno", CIDFontType0Registration("Arno-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Regular.otf");
-    ("ArnoIt", CIDFontType0Registration("ArnoIt-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_identity, true), append_directory "ArnoPro-Italic.otf");
-
-    ("KozMin",
-       CIDFontType0Registration("KozMin-Composite", FontFormat.PredefinedCMap("Identity-H"), IdentityH, FontFormat.adobe_japan1, true), append_directory "KozMinPro-Regular.otf")
-
-  ]
-  ; PrintForDebug.initfontE "!!end initialize"  (* for debug *)
+  let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
+  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
+  PrintForDebug.initfontE "!!end initialize"  (* for debug *)
 
 
 

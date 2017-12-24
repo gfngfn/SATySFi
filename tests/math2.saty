@@ -1,0 +1,38 @@
+% -*- coding: utf-8 -*-
+document (|
+  title  = {Math Test 2};
+  author = {gfn};
+|) '<
+  +make-title;
+  +p-jp{
+    万有引力定数を ${G} として，距離 ${R} だけ離れた質量 ${M_1}，${M_2} の物体間にはたらく重力は
+  }
+  +math(${
+    F = G \frac{M_1 M_2}{R^2}
+  });
+  +p-jp{
+    と表される．
+  }
+  +math(${
+    Z = -\npe^x + f^{x^{n^2}}
+  });
+  +p {Typing rule is defined as follows:}
+  +math(${
+    \derive{\paren{\app{\Gamma}{x} \synteq \tau}}{
+      \tyjd{\Gamma}{x}{\tau}
+    }
+    \and-also
+    \derive{
+      \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
+    }{
+      \tyjd{\Gamma}{\paren{\tmabstyped{x}{\tau_1}{M}}}{\tau_1 \to \tau_2}
+    }
+  });
+  +math(${
+    \derive{
+      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
+    }{
+      \tyjd{\Gamma}{M N}{\tau_2}
+    }
+  });
+>
