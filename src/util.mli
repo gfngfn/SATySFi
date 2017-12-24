@@ -5,6 +5,10 @@ val ascii_small_of_index : int -> string
 
 val range : int -> int -> int list
 
+val list_make : int -> 'a -> 'a list
+
+val list_fold_left_index : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+
 val list_some : ('a option) list -> 'a list
 
 val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
