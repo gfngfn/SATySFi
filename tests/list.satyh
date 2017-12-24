@@ -3,6 +3,8 @@ module List
 : sig
     val map : ('a -> 'b) -> 'a list -> 'b list
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+    val filter : ('a -> bool) -> 'a list -> 'a list
+    val assoc : ('a * 'b) list -> 'a -> 'b option
   end
 = struct
     let map
@@ -12,4 +14,12 @@ module List
     let fold-left
       | f init []        = init
       | f init (x :: xs) = fold-left f (f init x) xs
+
+    let filter
+      | _ []        = []
+      | p (x :: xs) = if p x then x :: filter p xs else filter p xs
+
+    let assoc
+      | _ _ [] -> None
+      | eq a ((x, y) :: xs) -> if eq a x then Some(y) else assoc eq a xs
   end

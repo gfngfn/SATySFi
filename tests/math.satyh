@@ -49,7 +49,12 @@ let-math \tau =
     0x1D749 % bold roman
 
 let-math \pi =
- math-ord-char 0x1D70B
+  math-ord-char 0x1D70B
+    % temporary
+
+let-math \lambda =
+  math-ord-char 0x1D706
+    % temporary
 
 let-math \Gamma =
   math-variant-char MathOrd
@@ -67,6 +72,10 @@ let-math \sum = math-big-char MathOp `∑`
 let-math \infty = math-char MathOrd `∞`
 let-math \to    = math-char MathRel `→`
 let-math \pm    = math-char MathBin `±`
+let-math \vdash = math-char MathRel `⊢`
+let-math \colon-rel = math-char MathRel `:`
+let-math \equiv = math-char MathRel `≡`
+let-math \mapsto = math-char MathRel `↦`
 
 %let math-lim = math-lower (math-group MathOp MathOp (math-char MathOrd `lim`))
 let-math \lim = (math-group MathOp MathOp (math-char MathOrd `lim`))
@@ -77,6 +86,7 @@ let-math \int =
     math-big-char-with-kern MathOp `∫` kernfL kernfR
 
 let-math \ordd = math-char MathPrefix `d`
+let-math \partial = math-char MathPrefix `∂`
 
 let-math \lower = math-lower
 let-math \upper = math-upper
@@ -125,14 +135,18 @@ let math-deriv m1 m2 =
 
 let-math \derive = math-deriv
 
-let-math \vdash = math-char MathRel `⊢`
-
-let-math \colon-rel = math-char MathRel `:`
-
 let-math \and-also = math-space
 
 let-math \tyjd tyenv tm ty =
   ${#tyenv \vdash #tm \colon-rel #ty}
+
+let-math \synteq = ${\equiv}
+
+let-math \dot-punct =
+  math-char MathPunct `.`
+
+let-math \tmabstyped var ty body =
+  ${\lambda #var \colon-rel #ty \dot-punct #body}
 
 let-math \npe =
   math-color (RGB(1., 0., 0.)) (math-char-class MathRoman ${e})
@@ -269,3 +283,63 @@ let paren-right hgt dpt hgtaxis fontsize color =
 
 let-math \paren =
   math-paren paren-left paren-right
+
+let-math \app m1 m2 = ${#m1 \paren{#m2}}
+
+let bracket-left hgt dpt hgtaxis fontsize color =
+  let halflen = half-length hgt dpt hgtaxis fontsize in
+  let w0 = fontsize *' 0.1 in
+  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+  let w2 = halflen *' 0.3 in
+  let t = fontsize *' 0.05 in
+  let path (xpos, ypos) =
+    let x0 = xpos +' w0 in
+    let x1 = x0 +' w1 in
+    let x2 = x1 +' w2 in
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop +' t)
+        |> line-to (x0, ytop +' t)
+        |> line-to (x0, ybot -' t)
+        |> line-to (x2, ybot -' t)
+        |> line-to (x2, ybot)
+        |> line-to (x1, ybot)
+        |> line-to (x1, ytop)
+        |> line-to (x2, ytop)
+        |> close-with-line
+  in
+  let graphics point = [ fill color (path point); ] in
+  let widparen = w0 +' w1 +' w2 in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+let bracket-right hgt dpt hgtaxis fontsize color =
+  let halflen = half-length hgt dpt hgtaxis fontsize in
+  let w0 = fontsize *' 0.1 in
+  let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+  let w2 = halflen *' 0.3 in
+  let t = fontsize *' 0.05 in
+  let widparen = w0 +' w1 +' w2 in
+  let path (xpos, ypos) =
+    let x0 = xpos +' widparen in
+    let x1 = x0 -' w1 in
+    let x2 = x1 -' w2 in
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop +' t)
+        |> line-to (x0, ytop +' t)
+        |> line-to (x0, ybot -' t)
+        |> line-to (x2, ybot -' t)
+        |> line-to (x2, ybot)
+        |> line-to (x1, ybot)
+        |> line-to (x1, ytop)
+        |> line-to (x2, ytop)
+        |> close-with-line
+  in
+  let graphics point = [ fill color (path point); ] in
+    (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+let-math \sqbracket =
+  math-paren bracket-left bracket-right
+
+let-math \overwrite f x v =
+  ${#f \sqbracket{#x \mapsto #v}}

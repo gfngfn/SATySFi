@@ -318,6 +318,16 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
             | ItalicsCorrection(italcorr) -> Some(fixed_empty italcorr)
           end
 
+      | (MathOrdinary, MathOpen    )
+      | (MathPrefix  , MathOpen    )
+        ->
+          begin
+            match corr with
+            | NoSpace                     -> None
+            | SpaceAfterScript            -> space_after_script mathctx
+            | ItalicsCorrection(italcorr) -> Some(fixed_empty italcorr)
+          end
+
       | (MathPunct   , _           )
         -> space_punct fontsize
 
