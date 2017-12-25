@@ -191,9 +191,9 @@ document (|
   });
   +p {
     A table
-    \tabular(fun cellf multif -> [
-      [cellf {The}; cellf {quick}; multif 2 {brown fox}; EmptyCell];
-      [multif 2 {jumps}; EmptyCell; cellf {over}; cellf {the lazy dog};];
+    \tabular(fun cellf multif empty -> [
+      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
+      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
     ]);
   }
 %  +section {Spaces and Leading} <
