@@ -288,6 +288,7 @@ and pure_horz_box =
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
+  | PHGFixedTabular   of length * length * length * evaled_row list
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -311,6 +312,7 @@ and evaled_horz_box_main =
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
+  | EvHorzInlineTabular  of length * length * evaled_row list
 
 and evaled_horz_box =
   | EvHorz of length * evaled_horz_box_main
@@ -422,7 +424,24 @@ and math =
   | MathParen             of paren * paren * math list
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
+
+and cell =
+  | NormalCell of horz_box list
+  | EmptyCell
+  | MultiCell  of int * int * horz_box list
+
+and row = cell list
+
+and evaled_cell =
+  | EvNormalCell of length * length * evaled_horz_box list
+  | EvEmptyCell  of length
+  | EvMultiCell  of int * int * length * length * length * evaled_horz_box list
+
+and evaled_row = length * evaled_cell list
 [@@deriving show]
+
+type column = cell list
+
 
 
 module MathContext

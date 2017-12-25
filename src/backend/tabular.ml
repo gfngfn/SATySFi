@@ -3,28 +3,12 @@ open HorzBox
 open Util
 
 
-type cell =
-  | NormalCell of horz_box list
-  | EmptyCell
-  | MultiCell  of int * int * horz_box list
-
-type row = cell list
-
 type rest_row = ((int * length) option) list
-
-type column = cell list
 
 type rest_column = ((int * length) option) list
 
-type evaled_cell =
-  | EvNormalCell of length * length * evaled_horz_box list
-  | EvEmptyCell
-  | EvMultiCell  of int * int * length * length * length * evaled_horz_box list
 
-type evaled_row = evaled_cell list
-
-
-let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length * length =
+let determine_row_metrics (natmetrf : horz_box list -> length * length * length) (restprev : rest_row) (row : row) : rest_row * length * length =
   let rec aux restacc hgtmax dptmin rest row =
     match (rest, row) with
     | ([], []) ->
@@ -38,7 +22,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
         begin
           match cell with
           | NormalCell(hblst) ->
-              let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+              let (_, hgt, dpt) = natmetrf hblst in
               let hgtmaxnew = Length.max hgt hgtmax in
               let dptminnew = Length.min dpt dptmin in
               aux (None :: restacc) hgtmaxnew dptminnew rtail ctail
@@ -47,7 +31,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
               aux (None :: restacc) hgtmax dptmin rtail ctail
 
           | MultiCell(numrow, numcol, hblst) ->
-              let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+              let (_, hgt, dpt) = natmetrf hblst in
               let len = hgt +% (Length.negate dpt) in
                 (* needs reconsideration *)
               aux (Some(numcol, len) :: restacc) hgtmax dptmin rtail ctail
@@ -82,7 +66,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
     (rest, hgtmax, dptmin)
 
 
-let determine_column_width (restprev : rest_column) (col : column) : rest_column * length =
+let determine_column_width (natmetrf : horz_box list -> length * length * length) (restprev : rest_column) (col : column) : rest_column * length =
   let rec aux restacc widmax rest col =
     match (rest, col) with
     | ([], []) ->
@@ -96,7 +80,7 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
         begin
           match cell with
           | NormalCell(hblst) ->
-              let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+              let (wid, _, _) = natmetrf hblst in
               let widmaxnew = Length.max wid widmax in
                 aux (None :: restacc) widmaxnew rtail ctail
 
@@ -104,7 +88,7 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
               aux (None :: restacc) widmax rtail ctail
 
           | MultiCell(rownum, colnum, hblst) ->
-              let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+              let (wid, _, _) = natmetrf hblst in
               aux (Some((rownum, wid)) :: restacc) widmax rtail ctail
                 (* temporary; does not take 'colnum' into consideration *)
         end
@@ -208,54 +192,61 @@ let multi_cell_vertical vmetrarr indexR nr =
     aux Length.zero indexR
 
 
-let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : evaled_row list =
+let solidify_tabular (fitf : horz_box list -> length -> evaled_horz_box list * length * length) (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : evaled_row list =
   let vmetrarr = Array.of_list vmetrlst in
   let widarr = Array.of_list widlst in
   htabular |> list_fold_left_index (fun indexR evrowacc row ->
+    let (hgtnmlcell, dptnmlcell) = vmetrarr.(indexR) in
     let evrow =
       row |> list_fold_left_index (fun indexC evcellacc cell ->
         let evcell =
           match cell with
           | EmptyCell ->
-              EvEmptyCell
+              let wid = widarr.(indexC) in
+                EvEmptyCell(wid)
 
           | NormalCell(hblst) ->
               let wid = widarr.(indexC) in
-              let (hgtcell, dptcell) = vmetrarr.(indexR) in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblst wid in
-              EvNormalCell(hgtcell, dptcell, evhblst)
+              let (evhblst, hgt, dpt) = fitf hblst wid in
+                EvNormalCell(hgtnmlcell, dptnmlcell, evhblst)
                 (* temporary; should return information about vertical psitioning *)
 
           | MultiCell(nr, nc, hblst) ->
-              let wid = multi_cell_width widarr indexC nc in
+              let widsingle = widarr.(indexC) in
+              let widmulti = multi_cell_width widarr indexC nc in
               let vlencell = multi_cell_vertical vmetrarr indexC nc in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblst wid in
+              let (evhblst, hgt, dpt) = fitf hblst widmulti in
               let vlencontent = hgt +% (Length.negate dpt) in
               let lenspace = (vlencell -% vlencontent) *% 0.5 in
               let hgtcell = hgt +% lenspace in
               let dptcell = dpt -% lenspace in
-              EvMultiCell(nr, nc, wid, hgtcell, dptcell, evhblst)
+                EvMultiCell(nr, nc, widsingle, hgtcell, dptcell, evhblst)
         in
         evcell :: evcellacc
       ) [] |> List.rev
     in
-      evrow :: evrowacc
+    let vlen = hgtnmlcell +% (Length.negate dptnmlcell) in
+      (vlen, evrow) :: evrowacc
   ) []
 
 
-let main (tabular : row list) =
+let main (fitf : horz_box list -> length -> evaled_horz_box list * length * length) (natmetrf : horz_box list -> length * length * length) (tabular : row list) =
   let (nrows, htabular) = normalize_tabular tabular in
   let (ncols, vtabular) = transpose_tabular tabular in
   let (_, vmetrlst) =
     htabular |> List.fold_left (fun (restprev, acc) row ->
-      let (rest, hgt, dpt) = determine_row_metrics restprev row in
-      (rest, (hgt, dpt) :: acc)
+      let (rest, hgt, dpt) = determine_row_metrics natmetrf restprev row in
+        (rest, (hgt, dpt) :: acc)
     ) (list_make nrows None, [])
   in
   let (_, widlst) =
     vtabular |> List.fold_left (fun (restprev, acc) col ->
-      let (rest, wid) = determine_column_width restprev col in
+      let (rest, wid) = determine_column_width natmetrf restprev col in
       (rest, wid :: acc)
     ) (Util.list_make ncols None, [])
   in
-  solidify_tabular vmetrlst widlst htabular
+  let widtotal = List.fold_left (+%) Length.zero widlst in
+  let hgttotal = List.fold_left (fun len (hgt, dpt) -> len +% hgt +% (Length.negate dpt)) Length.zero vmetrlst in
+  let dpttotal = Length.zero in
+  let evtabular = solidify_tabular fitf vmetrlst widlst htabular in
+    (evtabular, widtotal, hgttotal, dpttotal)

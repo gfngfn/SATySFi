@@ -132,7 +132,45 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           (graphics (xpos, yposbaseline))
         in
         let opaccnew = List.rev_append ops_graphics opacc in
-        (xpos +% wid, opaccnew)
+          (xpos +% wid, opaccnew)
+
+    | EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular)) ->
+        let ops_tabular =
+          ops_of_evaled_tabular (xpos, yposbaseline +% hgt) evtabular
+        in
+        let opaccnew = List.rev_append ops_tabular opacc in
+          (xpos +% wid, opaccnew)
+
+
+and ops_of_evaled_tabular point evtabular =
+  let (opaccnew, _) =
+    evtabular |> List.fold_left (fun (opacc, (xpos, ypos)) (vlen, evcelllst) ->
+      let (opaccnew, _) =
+        evcelllst |> List.fold_left (fun (opacc, (xpos, ypos)) evcell ->
+          match evcell with
+          | EvEmptyCell(wid) ->
+              (opacc, (xpos +% wid, ypos))
+
+          | EvNormalCell(hgt, _, evhblst) ->
+              let yposbaseline = ypos -% hgt in
+              let (xposnew, opaccnew) =
+                  evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
+              in
+                (opaccnew, (xposnew, ypos))
+
+          | EvMultiCell(_, _, widsingle, hgt, _, evhblst) ->
+              let yposbaseline = ypos -% hgt in
+              let (_, opaccnew) =
+                  evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
+              in
+                (opaccnew, (xpos +% widsingle, ypos))
+
+        ) (opacc, (xpos, ypos))
+      in
+        (opaccnew, (xpos, ypos +% vlen))
+    ) ([], point)
+  in
+    opaccnew
 
 
 and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
