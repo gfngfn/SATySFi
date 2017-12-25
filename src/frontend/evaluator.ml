@@ -461,6 +461,12 @@ and interpret env ast =
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 
+  | BackendTabular(asttabular) ->
+      let interpret_row : abstract_tree -> HorzBox.cell list = interpret_list interpret env (interpret_cell env) in
+      let tabular : HorzBox.row list = interpret_list interpret env interpret_row asttabular in
+      let (evtabular, wid, hgt, dpt) = Tabular.main LineBreak.fit LineBreak.get_natural_metrics tabular in
+        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
+
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
@@ -1266,6 +1272,18 @@ and interpret_option env extractf ast =
     | Constructor("None", UnitConstant) -> None
     | Constructor("Some", valuesub)     -> Some(extractf valuesub)
     | _                                 -> report_bug_evaluator "interpret_option"
+
+
+and interpret_cell env ast : HorzBox.cell =
+  let value = interpret env ast in
+    match value with
+    | Constructor("NormalCell", Horz(hblst)) -> HorzBox.NormalCell(hblst)
+    | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
+    | Constructor("MultiCell", TupleCons(IntegerConstant(nr),
+                                 TupleCons(IntegerConstant(nc),
+                                   TupleCons(Horz(hblst), EndOfTuple))))
+      -> HorzBox.MultiCell(nr, nc, hblst)
+    | _ -> report_bug_evaluator "interpret_cell"
 
 
 and interpret_math_class env ast : HorzBox.math_kind =
