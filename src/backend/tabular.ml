@@ -98,10 +98,18 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
           | EmptyCell ->
               aux (None :: restacc) widmax rtail ctail
 
-          | MultiCell(rownum, colnum, hblst) ->
+          | MultiCell(numrow, numcol, hblst) ->
               let (wid, _, _) = LineBreak.get_natural_metrics hblst in
-              aux (Some((rownum, wid)) :: restacc) widmax rtail ctail
-                (* temporary; does not take 'colnum' into consideration *)
+              let widmaxnew =
+                if numcol < 1 then
+                  assert false
+                else if numcol = 1 then
+                  Length.max widmax wid
+                else
+                  widmax
+              in
+              aux (Some((numcol, wid)) :: restacc) widmaxnew rtail ctail
+                (* temporary; does not take 'numcol' into consideration *)
         end
 
     | ((Some((numcol, widrest)) as rsome) :: rtail, cell :: ctail) ->
