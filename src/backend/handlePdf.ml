@@ -170,7 +170,7 @@ and ops_of_evaled_tabular point evtabular =
         (opaccnew, (xpos, ypos +% vlen))
     ) ([], point)
   in
-    opaccnew
+    List.rev opaccnew
 
 
 and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =

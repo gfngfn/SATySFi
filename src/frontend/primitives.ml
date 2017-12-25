@@ -9,6 +9,7 @@ let tyid_language = Typeenv.Raw.fresh_type_id "language"
 let tyid_page     = Typeenv.Raw.fresh_type_id "page"
 let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
 let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
+let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
 
 (* -- type IDs for alias types -- *)
 let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
@@ -50,6 +51,7 @@ let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
 let tPG           = (~! "page"    , VariantType([], tyid_page)    )
 let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
 let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
+let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
 
 (* -- predefined alias types -- *)
 let tPT           = tPROD [tLN; tLN]
@@ -116,6 +118,11 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathBoldItalic" ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathBoldRoman"  ([], Poly(tU)) tyid_mccls
       (* TEMPORARY; should add more *)
+
+  |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tIB))                 tyid_cell
+  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                  tyid_cell
+  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tIB])) tyid_cell
 
   |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
 
@@ -548,6 +555,7 @@ let make_environments () =
         ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
+        ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
       ]
   in
   let temporary_ast = StringEmpty in
