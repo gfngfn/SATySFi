@@ -117,7 +117,7 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
     restacc |> List.map (function
       | None                -> None
       | Some((rownum, wid)) -> Some((rownum - 1, wid -% widmax))
-    ) |> List.rev
+    )
   in
     (rest, widmax)
 
@@ -208,7 +208,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
           | NormalCell(hblst) ->
               let wid = widarr.(indexC) in
               let (evhblst, hgt, dpt) = LineBreak.fit hblst wid in
-                EvNormalCell(hgtnmlcell, dptnmlcell, evhblst)
+                EvNormalCell(wid, hgtnmlcell, dptnmlcell, evhblst)
                 (* temporary; should return information about vertical psitioning *)
 
           | MultiCell(nr, nc, hblst) ->
@@ -227,24 +227,30 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
     in
     let vlen = hgtnmlcell +% (Length.negate dptnmlcell) in
       (vlen, evrow) :: evrowacc
-  ) []
+  ) [] |> List.rev
 
 
 let main (tabular : row list) =
+
   let (nrows, htabular) = normalize_tabular tabular in
   let (ncols, vtabular) = transpose_tabular tabular in
-  let (_, vmetrlst) =
-    htabular |> List.fold_left (fun (restprev, acc) row ->
+
+  let (_, vmetracc) =
+    htabular |> List.fold_left (fun (restprev, vmetracc) row ->
       let (rest, hgt, dpt) = determine_row_metrics restprev row in
-        (rest, (hgt, dpt) :: acc)
+        (rest, (hgt, dpt) :: vmetracc)
     ) (list_make nrows None, [])
   in
-  let (_, widlst) =
-    vtabular |> List.fold_left (fun (restprev, acc) col ->
+  let vmetrlst = List.rev vmetracc in
+
+  let (_, widacc) =
+    vtabular |> List.fold_left (fun (restprev, widacc) col ->
       let (rest, wid) = determine_column_width restprev col in
-      (rest, wid :: acc)
+      (rest, wid :: widacc)
     ) (Util.list_make ncols None, [])
   in
+  let widlst = List.rev widacc in
+
   let widtotal = List.fold_left (+%) Length.zero widlst in
   let hgttotal = List.fold_left (fun len (hgt, dpt) -> len +% hgt +% (Length.negate dpt)) Length.zero vmetrlst in
   let dpttotal = Length.zero in

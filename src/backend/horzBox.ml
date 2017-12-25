@@ -433,7 +433,7 @@ and cell =
 and row = cell list
 
 and evaled_cell =
-  | EvNormalCell of length * length * evaled_horz_box list
+  | EvNormalCell of length * length * length * evaled_horz_box list
   | EvEmptyCell  of length
   | EvMultiCell  of int * int * length * length * length * evaled_horz_box list
 
