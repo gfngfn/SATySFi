@@ -186,9 +186,16 @@ document (|
       ];.
     }
   >
-  +math (
-    math-deriv (math-list [math-A; math-space; math-deriv (math-list [math-B; math-space; math-C]) math-D]) math-E
-  );
+  +math (${
+    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+  });
+  +p {
+    A table
+    \tabular(fun cellf multif -> [
+      List.map cellf [{The}; {quick brown fox};];
+      List.map cellf [{jumps over}; {the lazy dog};];
+    ]);
+  }
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

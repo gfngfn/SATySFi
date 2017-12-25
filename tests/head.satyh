@@ -458,3 +458,8 @@ let-inline ctx \stack-top lst =
 let-inline ctx \stack-bottom lst =
   let iblst = lst |> List.map (fun it -> inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     line-stack-bottom iblst
+
+let-inline ctx \tabular lstf =
+  let cellf it = NormalCell(inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+  let multif nr it = MultiCell(nr, 1, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+    tabular (lstf cellf multif)
