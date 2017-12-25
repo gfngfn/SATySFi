@@ -157,14 +157,23 @@ and ops_of_evaled_tabular point evtabular =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
               in
               let opaccnew =
-                List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt) opaccsub
+
+                List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
+                  opaccsub
               in
                 (opaccnew, (xpos +% wid, ypos))
 
-          | EvMultiCell(_, _, widsingle, hgt, _, evhblst) ->
+          | EvMultiCell(_, _, widsingle, widcell, hgt, dpt, evhblst) ->
               let yposbaseline = ypos -% hgt in
-              let (_, opaccnew) =
+              let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
+              in
+              let opaccnew =
+
+                List.rev_append (ops_test_frame (xpos, yposbaseline) widcell hgt dpt)
+
+                  opaccsub
               in
                 (opaccnew, (xpos +% widsingle, ypos))
 
