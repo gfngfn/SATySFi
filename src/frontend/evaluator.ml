@@ -464,7 +464,7 @@ and interpret env ast =
   | BackendTabular(asttabular) ->
       let interpret_row : abstract_tree -> HorzBox.cell list = interpret_list interpret env (interpret_cell env) in
       let tabular : HorzBox.row list = interpret_list interpret env interpret_row asttabular in
-      let (evtabular, wid, hgt, dpt) = Tabular.main LineBreak.fit LineBreak.get_natural_metrics tabular in
+      let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
         Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
 
   | Path(astpt0, pathcomplst, cycleopt) ->
