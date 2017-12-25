@@ -192,8 +192,8 @@ document (|
   +p {
     A table
     \tabular(fun cellf multif -> [
-      List.map cellf [{The}; {quick brown fox};];
-      List.map cellf [{jumps over}; {the lazy dog};];
+      [cellf {The}; cellf {quick}; multif 2 {brown fox}; EmptyCell];
+      [multif 2 {jumps}; EmptyCell; cellf {over}; cellf {the lazy dog};];
     ]);
   }
 %  +section {Spaces and Leading} <

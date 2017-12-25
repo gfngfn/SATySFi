@@ -461,5 +461,5 @@ let-inline ctx \stack-bottom lst =
 
 let-inline ctx \tabular lstf =
   let cellf it = NormalCell(inline-fil ++ (read-inline ctx it) ++ inline-fil) in
-  let multif nr it = MultiCell(nr, 1, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+  let multif nc it = MultiCell(1, nc, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
     tabular (lstf cellf multif)
