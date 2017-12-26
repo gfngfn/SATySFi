@@ -40,7 +40,7 @@ let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
 type general_id = FreeID of FreeID.t | BoundID of BoundID.t
 
 
-module GeneralidHashtbl_ = Hashtbl.Make(
+module GeneralIDHashTable_ = Hashtbl.Make(
   struct
     type t = general_id
 
@@ -54,14 +54,14 @@ module GeneralidHashtbl_ = Hashtbl.Make(
   end)
 
 
-module GeneralidHashtbl
+module GeneralIDHashTable
 : sig
     include Hashtbl.S
     val initialize : unit -> unit
     val intern_number : int t -> general_id -> int
   end
 = struct
-    include GeneralidHashtbl_
+    include GeneralIDHashTable_
 
     let current_number = ref 0
 
@@ -73,7 +73,7 @@ module GeneralidHashtbl
     let new_number () =
       let res = !current_number in
       begin
-        incr current_number ;
+        incr current_number;
         res
       end
 
@@ -84,14 +84,14 @@ module GeneralidHashtbl
       | Not_found ->
           let num = new_number () in
           begin
-            add current_ht gid num ;
+            add current_ht gid num;
             num
           end
 
   end
 
 
-let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidHashtbl.t) ((_, tymain) : mono_type) =
+let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : mono_type) =
   let iter = string_of_mono_type_sub tyenv current_ht in
   let iter_args = string_of_type_argument_list tyenv current_ht in
   let iter_list = string_of_mono_type_list tyenv current_ht in
@@ -102,12 +102,12 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
           match !tvref with
           | Link(tyl)  -> assert false  (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' -- *)
           | Bound(bid) ->
-              let num = GeneralidHashtbl.intern_number current_ht (BoundID(bid)) in
+              let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
               let s = "'#" ^ (variable_name_of_number num) in
                 show_type_variable iter s (BoundID.get_kind bid)
 
           | Free(tvid) ->
-              let num = GeneralidHashtbl.intern_number current_ht (FreeID(tvid)) in
+              let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
               let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
                 show_type_variable iter s (FreeID.get_kind tvid)
         end
@@ -167,19 +167,19 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralidH
 
     | HorzCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") horz-command"
+        "(" ^ (String.concat ", " slist) ^ ") inline-cmd"
 
     | VertCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") vert-command"
+        "(" ^ (String.concat ", " slist) ^ ") block-cmd"
 
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
+        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"  (* will be deprecated *)
 
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") math-command"
+        "(" ^ (String.concat ", " slist) ^ ") math-cmd"
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
@@ -248,8 +248,8 @@ let rec normalize_mono_type ty =
 
 let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
   begin
-    GeneralidHashtbl.initialize () ;
-    let current_ht = GeneralidHashtbl.create 32 in
+    GeneralIDHashTable.initialize ();
+    let current_ht = GeneralIDHashTable.create 32 in
     let tyn = normalize_mono_type ty in
       string_of_mono_type_sub tyenv current_ht tyn
   end
@@ -257,16 +257,19 @@ let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
 
 let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   begin
-    GeneralidHashtbl.initialize () ;
-    let current_ht = GeneralidHashtbl.create 32 in
-    let strty1 = string_of_mono_type_sub tyenv current_ht ty1 in
-    let strty2 = string_of_mono_type_sub tyenv current_ht ty2 in
+    GeneralIDHashTable.initialize ();
+    let current_ht = GeneralIDHashTable.create 32 in
+    let tyn1 = normalize_mono_type ty1 in
+    let tyn2 = normalize_mono_type ty2 in
+    let strty1 = string_of_mono_type_sub tyenv current_ht tyn1 in
+    let strty2 = string_of_mono_type_sub tyenv current_ht tyn2 in
       (strty1, strty2)
   end
 
 
 let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
-  string_of_mono_type tyenv ty (* temporary *)
+  let tyn = normalize_mono_type ty in
+  string_of_mono_type tyenv tyn (* temporary *)
 
 
 (* -- following are all for debug -- *)
