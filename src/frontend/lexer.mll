@@ -286,6 +286,9 @@ rule progexpr = parse
           | "let-block-detailed" -> LETVERTDETAILED(pos)  (* wil be deprecated *)
           | "controls"          -> CONTROLS(pos)
           | "cycle"             -> CYCLE(pos)
+          | "inline-cmd"        -> HORZCMDTYPE(pos)
+          | "block-cmd"         -> VERTCMDTYPE(pos)
+          | "math-cmd"          -> MATHCMDTYPE(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

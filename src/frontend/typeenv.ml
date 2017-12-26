@@ -351,6 +351,10 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MProductType(mntylist)           -> ProductType(List.map iter mntylist)
       | MRecordType(mnasc)               -> RecordType(Assoc.map_value iter mnasc)
 
+      | MHorzCommandType(mntylist)       -> HorzCommandType(List.map iter mntylist)
+      | MVertCommandType(mntylist)       -> VertCommandType(List.map iter mntylist)
+      | MMathCommandType(mntylist)       -> MathCommandType(List.map iter mntylist)
+
       | MTypeName([], "unit")            -> BaseType(UnitType)
       | MTypeName(mntyarglist, "unit")   -> error "unit" 0 (List.length mntyarglist)
       | MTypeName([], "bool")            -> BaseType(BoolType)
@@ -618,6 +622,9 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         | MFuncType(mtydom, mtycod)   -> begin iter mtydom; iter mtycod; end
         | MProductType(mtylist)       -> List.iter iter mtylist
         | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
+        | MHorzCommandType(mtylist)   -> List.iter iter mtylist
+        | MVertCommandType(mtylist)   -> List.iter iter mtylist
+        | MMathCommandType(mtylist)   -> List.iter iter mtylist
         | MTypeName(mtyarglist, tynm) ->
             if DependencyGraph.mem_vertex tynm dg then
               begin

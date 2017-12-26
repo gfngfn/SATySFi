@@ -159,11 +159,14 @@ module BoundID_
 
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
-  | MTypeName    of (manual_type list) * type_name
-  | MTypeParam   of var_name
-  | MFuncType    of manual_type * manual_type
-  | MProductType of manual_type list
-  | MRecordType  of (field_name, manual_type) Assoc.t
+  | MTypeName        of (manual_type list) * type_name
+  | MTypeParam       of var_name
+  | MFuncType        of manual_type * manual_type
+  | MProductType     of manual_type list
+  | MRecordType      of (field_name, manual_type) Assoc.t
+  | MHorzCommandType of manual_type list
+  | MVertCommandType of manual_type list
+  | MMathCommandType of manual_type list
 [@@deriving show]
 
 type manual_kind =
@@ -915,3 +918,6 @@ let rec string_of_manual_type (_, mtymain) =
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
+  | MHorzCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") inline-cmd"
+  | MVertCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") block-cmd"
+  | MMathCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") math-cmd"
