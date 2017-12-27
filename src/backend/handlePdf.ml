@@ -260,15 +260,22 @@ let create_empty_pdf (flnm : file_path) : t =
 let write_to_file ((pdf, pageacc, flnm) : t) : unit =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  embedding fonts ...");
-  let fontdict = FontInfo.get_font_dictionary pdf in
-  let irfontdict =
-    Pdf.addobj pdf (Pdf.Dictionary[("/Font", fontdict)])
+  let pdfdict_font = FontInfo.get_font_dictionary pdf in
+  let pdfarr_procset =
+    Pdf.Array(List.map (fun s -> Pdf.Name(s))
+                ["/PDF"; "/Text"; "/ImageC"; "ImageB"; "ImageI";])
+  in
+  let ir_resources =
+    Pdf.addobj pdf (Pdf.Dictionary[
+      ("/Font"   , pdfdict_font);
+      ("/ProcSet", pdfarr_procset);
+    ])
   in
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...");
   let pagelst =
     pageacc |> List.rev |> List.map (fun page ->
-      { page with Pdfpage.resources = Pdf.Indirect(irfontdict); }
+      { page with Pdfpage.resources = Pdf.Indirect(ir_resources); }
     )
   in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in
