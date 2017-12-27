@@ -27,6 +27,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBEmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
   | LBFixedGraphics(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
+  | LBFixedImage(wid, hgt, _)          -> (natural wid, hgt, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -195,6 +196,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
 
   | PHGFixedTabular(wid, hgt, dpt, evtabular) ->
       puref (LBFixedTabular(wid, hgt, dpt, evtabular))
+
+  | PHGFixedImage(wid, hgt, imgkey) ->
+        puref (LBFixedImage(wid, hgt, imgkey))
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
@@ -386,6 +390,9 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
     | LBFixedTabular(wid, hgt, dpt, evtabular) ->
         EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular))
+
+    | LBFixedImage(wid, hgt, imgkey) ->
+        EvHorz(wid, EvHorzInlineImage(hgt, imgkey))
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 

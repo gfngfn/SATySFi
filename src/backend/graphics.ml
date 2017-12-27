@@ -8,8 +8,11 @@ let op_cm (xdiff, ydiff) =
 
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
-                 [Pdftransform.Translate
-                     (~% xpos, ~% ypos)])
+                 [Pdftransform.Translate(~% xpos, ~% ypos)])
+
+let op_Tm_scale xratio yratio =
+  Pdfops.Op_Tm(Pdftransform.matrix_of_transform
+                 [Pdftransform.Scale((0., 0.), xratio, yratio)])
 
 let op_Tf tag sl = Pdfops.Op_Tf(tag, ~% sl)
 let op_Tj str = Pdfops.Op_Tj(str)
@@ -41,6 +44,10 @@ let op_B = Pdfops.Op_B
 let op_B' = Pdfops.Op_B'
 let op_M ml = Pdfops.Op_M(~% ml)
 let op_w lw = Pdfops.Op_w(~% lw)
+
+(*
+let op_Do name = Pdfops.op_Do
+*)
 
 let op_J = function
   | ButtCap             -> Pdfops.Op_J(0)

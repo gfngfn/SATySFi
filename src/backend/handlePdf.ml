@@ -142,6 +142,25 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           (xpos +% wid, opaccnew)
 
 
+    | EvHorz(wid, EvHorzInlineImage(hgt, imgkey)) ->
+        let tag = ImageInfo.get_tag imgkey in
+        let (xmin, ymin, xmax, ymax) = ImageInfo.get_bounding_box imgkey in
+        let xratio = wid /% (Length.of_pdf_point (xmax -. xmin)) in
+        let yratio = hgt /% (Length.of_pdf_point (ymax -. ymin)) in
+        let ops_image =
+          [
+            Graphics.op_q;
+            Graphics.op_Tm_scale xratio yratio;
+(*
+            Graphics.op_Do tag;
+*)
+            Graphics.op_Q;
+          ]
+        in
+        let opaccnew = List.rev_append ops_image opacc in
+          (xpos +% wid, opaccnew)
+
+
 and ops_of_evaled_tabular point evtabular =
   let (opaccnew, _) =
     evtabular |> List.fold_left (fun (opacc, (xpos, ypos)) (vlen, evcelllst) ->

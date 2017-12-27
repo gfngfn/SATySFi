@@ -83,3 +83,7 @@ let get_xobject_dictionary () : Pdf.pdfobject =
 
 let get_bounding_box key =
   let (_, _, bbox) = ImageHashTable.find key in bbox
+
+
+let get_tag key =
+  let (tag, _, _) = ImageHashTable.find key in tag
