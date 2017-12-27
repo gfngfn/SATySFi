@@ -21,6 +21,7 @@ val op_re : point -> point -> Pdfops.t
 val op_q : Pdfops.t
 val op_Q : Pdfops.t
 val op_S : Pdfops.t
+val op_Do : string -> Pdfops.t
 
 val pdfop_of_text_color : color -> Pdfops.t
 

@@ -151,9 +151,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           [
             Graphics.op_q;
             Graphics.op_Tm_scale xratio yratio;
-(*
             Graphics.op_Do tag;
-*)
             Graphics.op_Q;
           ]
         in

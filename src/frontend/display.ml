@@ -128,6 +128,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(PathType)    -> "path"
     | BaseType(LengthType)  -> "length"
     | BaseType(GraphicsType) -> "graphics"
+    | BaseType(ImageType)    -> "image"
     | BaseType(DocumentType) -> "document"
     | BaseType(MathType)     -> "math"
 

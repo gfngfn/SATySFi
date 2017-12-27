@@ -45,9 +45,7 @@ let op_B' = Pdfops.Op_B'
 let op_M ml = Pdfops.Op_M(~% ml)
 let op_w lw = Pdfops.Op_w(~% lw)
 
-(*
-let op_Do name = Pdfops.op_Do
-*)
+let op_Do name = Pdfops.Op_Do(name)
 
 let op_J = function
   | ButtCap             -> Pdfops.Op_J(0)

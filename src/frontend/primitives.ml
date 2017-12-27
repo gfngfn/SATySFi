@@ -10,6 +10,7 @@ let tyid_page     = Typeenv.Raw.fresh_type_id "page"
 let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
 let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
 let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
+let tyid_image    = Typeenv.Raw.fresh_type_id "image"
 
 (* -- type IDs for alias types -- *)
 let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
@@ -37,6 +38,7 @@ let tPRP          = (~! "pre-path", BaseType(PrePathType) )
 let tDOC          = (~! "document", BaseType(DocumentType))
 let tMATH         = (~! "math"    , BaseType(MathType)    )
 let tGR           = (~! "graphics", BaseType(GraphicsType))
+let tIMG          = (~! "image"   , BaseType(ImageType)   )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
@@ -556,6 +558,8 @@ let make_environments () =
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
         ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
+        ("register-pdf-image"      , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));
+        ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
       ]
   in
   let temporary_ast = StringEmpty in

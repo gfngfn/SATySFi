@@ -190,6 +190,7 @@ type base_type =
   | PrePathType
   | PathType
   | GraphicsType
+  | ImageType
   | DocumentType
   | MathType
 [@@deriving show]
@@ -807,6 +808,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsType) -> "graphics" ^ qstn
+    | BaseType(ImageType)    -> "image" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
 
