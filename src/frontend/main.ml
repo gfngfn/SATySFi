@@ -435,6 +435,7 @@ let () =
     EvalVarID.initialize ();
     let libdir = !libdir_ref in
     FontInfo.initialize libdir;  (* temporary *)
+    ImageInfo.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
     let input_list = List.rev (!input_acc_ref) in
     let output = !output_name_ref in
