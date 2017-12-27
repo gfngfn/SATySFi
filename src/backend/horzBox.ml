@@ -289,6 +289,8 @@ and pure_horz_box =
   | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
   | PHGFixedTabular   of length * length * length * evaled_row list
+  | PHGFixedImage     of length * length * ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -313,6 +315,8 @@ and evaled_horz_box_main =
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
   | EvHorzInlineTabular  of length * length * evaled_row list
+  | EvHorzInlineImage    of length * ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
 
 and evaled_horz_box =
   | EvHorz of length * evaled_horz_box_main
@@ -438,7 +442,7 @@ and evaled_cell =
   | EvMultiCell  of int * int * length * length * length * length * evaled_horz_box list
 
 and evaled_row = length * evaled_cell list
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type column = cell list
 

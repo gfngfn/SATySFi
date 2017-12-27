@@ -547,6 +547,10 @@ and abstract_tree =
   | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | BackendTabular              of abstract_tree
+  | BackendRegisterPdfImage     of abstract_tree * abstract_tree
+  | BackendUseImageByWidth      of abstract_tree * abstract_tree
+  | ImageKey                    of ImageInfo.key
+      [@printer (fun fmt _ -> "<image-key>")]
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree

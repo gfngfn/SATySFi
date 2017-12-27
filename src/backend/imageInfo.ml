@@ -1,25 +1,29 @@
 
-open HorzBox
-
-exception CannotLoadPdf of file_path * int
+type file_path = string
 
 type tag = string
 
 type xobject = Pdf.pdfobject
+
+type bbox = float * float * float * float
+
+type value = tag * xobject * bbox
+
+exception CannotLoadPdf of file_path * int
 
 module ImageHashTable
 : sig
     type key
     val initialize : unit -> unit
     val add_pdf : file_path -> int -> key
-    val find : key -> tag * xobject
-    val fold : (key -> tag * xobject -> 'a -> 'a) -> 'a -> 'a
+    val find : key -> value
+    val fold : (key -> value -> 'a -> 'a) -> 'a -> 'a
   end
 = struct
 
     type key = int
 
-    let main_hash_table : (key, tag * xobject) Hashtbl.t = Hashtbl.create 32
+    let main_hash_table : (key, value) Hashtbl.t = Hashtbl.create 32
 
     let current_id_ref : int ref = ref 0
 
@@ -39,32 +43,43 @@ module ImageHashTable
     let add_pdf (srcpath : file_path) (pageno : int) =
       let pdf = Pdfread.pdf_of_file None None srcpath in
       match LoadPdf.make_xobject pdf pageno with
-      | None       -> raise (CannotLoadPdf(srcpath, pageno))
-      | Some(xobj) ->
+      | None               -> raise (CannotLoadPdf(srcpath, pageno))
+      | Some((bbox, xobj)) ->
           let (key, tag) = generate_tag () in
           begin
-            Hashtbl.add main_hash_table key (tag, xobj);
+            Hashtbl.add main_hash_table key (tag, xobj, bbox);
             key
           end
 
-    let find (key : key) : tag * xobject =
+    let find (key : key) : value =
       match Hashtbl.find_opt main_hash_table key with
       | None        -> assert false
       | Some(value) -> value
 
-    let fold (type a) (f : key -> tag * xobject -> a -> a) (init : a) : a =
+    let fold (type a) (f : key -> value -> a -> a) (init : a) : a =
       Hashtbl.fold f main_hash_table init
   end
+
+
+type key = ImageHashTable.key
 
 
 let initialize () =
   ImageHashTable.initialize ()
 
 
+let add_pdf srcpath pageno =
+  ImageHashTable.add_pdf srcpath pageno
+
+
 let get_xobject_dictionary () : Pdf.pdfobject =
   let keyval =
-    [] |> ImageHashTable.fold (fun _ (tag, xobj) acc ->
+    [] |> ImageHashTable.fold (fun _ (tag, xobj, _) acc ->
       (tag, xobj) :: acc
     ) |> List.rev
   in
     Pdf.Dictionary(keyval)
+
+
+let get_bounding_box key =
+  let (_, _, bbox) = ImageHashTable.find key in bbox

@@ -467,6 +467,30 @@ and interpret env ast =
       let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
         Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
 
+  | BackendRegisterPdfImage(aststr, astpageno) ->
+      let str = interpret_string env aststr in
+      let pageno = interpret_int env astpageno in
+      let imgkey = ImageInfo.add_pdf str pageno in
+      ImageKey(imgkey)
+
+  | ImageKey(_) -> ast
+
+  | BackendUseImageByWidth(astimg, astwid) ->
+      let valueimg = interpret env astimg in
+      let wid = interpret_length env astwid in
+      begin
+        match valueimg with
+        | ImageKey(imgkey) ->
+            let (xmin, ymin, xmax, ymax) = ImageInfo.get_bounding_box imgkey in
+            let hgt =
+              let open HorzBox in
+                wid *% ((ymax -. ymin) /. (xmax -. xmin))
+            in
+              Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+
+        | _ -> report_bug_evaluator "BackendUseImage"
+      end
+
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
