@@ -282,7 +282,7 @@ let write_to_file ((pdf, pageacc, flnm) : t) : unit =
     Pdf.Array(List.map (fun s -> Pdf.Name(s))
                 ["/PDF"; "/Text"; "/ImageC"; "ImageB"; "ImageI";])
   in
-  let pdfdict_xobject = ImageInfo.get_xobject_dictionary () in
+  let pdfdict_xobject = ImageInfo.get_xobject_dictionary pdf in
   let ir_resources =
     Pdf.addobj pdf (Pdf.Dictionary[
       ("/Font"   , pdfdict_font);

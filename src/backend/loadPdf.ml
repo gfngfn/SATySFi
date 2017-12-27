@@ -4,50 +4,64 @@ type bbox = float * float * float * float
 exception PdfBroken
 
 
-let collect_direct_objects (pdf : Pdf.t) (pdfdict : Pdf.pdfobject) : Pdf.pdfobject =
-  match pdfdict with
-  | Pdf.Dictionary(keyval) -> 
-      let keyvalnew =
-        keyval |> List.map (fun pair ->
-          let (key, value) = pair in
-            match value with
-            | Pdf.Indirect(ir) ->
-                begin
-                  try
-                    let direct = Pdf.lookup_obj pdf ir in
-                      (key, direct)
-                  with
-                  | Not_found -> raise PdfBroken
-                end
-
-            | _ -> pair
-        )
-      in
-        Pdf.Dictionary(keyvalnew)
-
-  | _ -> raise PdfBroken
+module IRSet = MutableSet.Make
+  (struct
+    type t = int
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
 
 
-let xobject_of_page (pdf : Pdf.t) (page : Pdfpage.t) : bbox * Pdf.pdfobject =
-  let content = page.Pdfpage.content in
-  let pdfdict_resources = collect_direct_objects pdf page.Pdfpage.resources in
-  let (bbox, pdfarr_rect) =
-    let mediabox = page.Pdfpage.mediabox in
-    match mediabox with
-    | Pdf.Array[pdfxmin; pdfymin; pdfxmax; pdfymax] ->
+let rec collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.pdfobject) : Pdf.pdfobject =
+
+  let irset = IRSet.create 32 in
+
+  let rec aux pdfobj =
+    match pdfobj with
+    | Pdf.Dictionary(keyval) -> 
+        let keyvalnew =
+          keyval |> List.map (fun (key, pdfobjsub) -> (key, aux pdfobjsub))
+        in
+          Pdf.Dictionary(keyvalnew)
+
+    | Pdf.Indirect(ir) ->
         begin
+          IRSet.add irset ir;
           try
-            let xmin = Pdf.getnum pdfxmin in
-            let ymin = Pdf.getnum pdfymin in
-            let xmax = Pdf.getnum pdfxmax in
-            let ymax = Pdf.getnum pdfymax in
-              ((xmin, ymin, xmax, ymax), mediabox)
+            let pdfobjdirect = aux (Pdf.lookup_obj pdfext ir) in
+            let irnew = Pdf.addobj pdfmain pdfobjdirect in
+              Pdf.Indirect(irnew)
           with
-          | Pdf.PDFError(_) -> raise PdfBroken
+          | Not_found -> raise PdfBroken
         end
 
-    | _ -> raise PdfBroken
+    | Pdf.Array(lst) ->
+        Pdf.Array(lst |> List.map aux)
+
+    | Pdf.Stream({contents = (pdfdict, stream)} as streamref) ->
+        begin
+          match pdfdict with
+          | Pdf.Dictionary(keyval) ->
+              let keyvalnew =
+                keyval |> List.map (fun (key, pdfobjsub) -> (key, aux pdfobjsub))
+              in
+              begin
+                streamref := (Pdf.Dictionary(keyvalnew), stream);
+                pdfobj
+              end
+
+          | _ -> raise PdfBroken
+        end
+
+    | _ -> pdfobj
   in
+    aux pdfobj
+
+
+let xobject_of_page (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : Pdf.pdfobject =
+  let content = pageext.Pdfpage.content in
+  let pdfdict_resources = collect_direct_objects pdfmain pdfext pageext.Pdfpage.resources in
+  let pdfarr_rect = pageext.Pdfpage.mediabox in
     (* -- uses only /MediaBox entry -- *)
   let entriesadded =
     [
@@ -58,7 +72,7 @@ let xobject_of_page (pdf : Pdf.t) (page : Pdfpage.t) : bbox * Pdf.pdfobject =
       ("/Resources", pdfdict_resources);
     ]
   in
-  let ops : Pdfops.t list = Pdfops.parse_operators pdf pdfdict_resources content in
+  let ops : Pdfops.t list = Pdfops.parse_operators pdfext pdfdict_resources content in
   let retobj : Pdf.pdfobject = Pdfops.stream_of_ops ops in
       (* -- 'Pdfops.stream_of_ops ops' returns a stream
             with a dictionary containing only a /Length entry -- *)
@@ -66,18 +80,39 @@ let xobject_of_page (pdf : Pdf.t) (page : Pdfpage.t) : bbox * Pdf.pdfobject =
     | Pdf.Stream({contents = (Pdf.Dictionary(entrieslen), stream)} as streamref) ->
         begin
           streamref := (Pdf.Dictionary(List.append entriesadded entrieslen), stream);
-          (bbox, retobj)
+          let ir = Pdf.addobj pdfmain retobj in
+          Pdf.Indirect(ir)
         end
 
     | _ -> assert false
 
 
-let make_xobject (pdf : Pdf.t) (pageno : int) : (bbox * Pdf.pdfobject) option =
-  let pagelst = Pdfpage.pages_of_pagetree pdf in
+let make_xobject (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : Pdf.pdfobject =
+  let pdfstream = xobject_of_page pdfmain pdfext pageext in
+  pdfstream
+
+
+let get_page (pdfext : Pdf.t) (pageno : int) : (bbox * Pdfpage.t) option =
+  let pagelst = Pdfpage.pages_of_pagetree pdfext in
     match List.nth_opt pagelst pageno with
     | None ->
         None
 
     | Some(page) ->
-        let (bbox, pdfstream) = xobject_of_page pdf page in
-        Some((bbox, pdfstream))
+        let bbox =
+          match page.Pdfpage.mediabox with
+          | Pdf.Array[pdfxmin; pdfymin; pdfxmax; pdfymax] ->
+              begin
+                try
+                  let xmin = Pdf.getnum pdfxmin in
+                  let ymin = Pdf.getnum pdfymin in
+                  let xmax = Pdf.getnum pdfxmax in
+                  let ymax = Pdf.getnum pdfymax in
+                    (xmin, ymin, xmax, ymax)
+                with
+                | Pdf.PDFError(_) -> raise PdfBroken
+              end
+
+          | _ -> raise PdfBroken
+        in
+          Some((bbox, page))

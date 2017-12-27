@@ -13,6 +13,6 @@ val add_pdf : file_path -> int -> key
 
 val get_bounding_box : key -> bbox
 
-val get_xobject_dictionary : unit -> Pdf.pdfobject
+val get_xobject_dictionary : Pdf.t -> Pdf.pdfobject
 
 val get_tag : key -> string

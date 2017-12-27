@@ -7,7 +7,7 @@ type xobject = Pdf.pdfobject
 
 type bbox = float * float * float * float
 
-type value = tag * xobject * bbox
+type value = tag * Pdf.t * Pdfpage.t * bbox
 
 exception CannotLoadPdf of file_path * int
 
@@ -41,13 +41,13 @@ module ImageHashTable
       end
 
     let add_pdf (srcpath : file_path) (pageno : int) =
-      let pdf = Pdfread.pdf_of_file None None srcpath in
-      match LoadPdf.make_xobject pdf pageno with
+      let pdfext = Pdfread.pdf_of_file None None srcpath in
+      match LoadPdf.get_page pdfext (pageno - 1) with
       | None               -> raise (CannotLoadPdf(srcpath, pageno))
-      | Some((bbox, xobj)) ->
+      | Some((bbox, page)) ->
           let (key, tag) = generate_tag () in
           begin
-            Hashtbl.add main_hash_table key (tag, xobj, bbox);
+            Hashtbl.add main_hash_table key (tag, pdfext, page, bbox);
             key
           end
 
@@ -72,18 +72,19 @@ let add_pdf srcpath pageno =
   ImageHashTable.add_pdf srcpath pageno
 
 
-let get_xobject_dictionary () : Pdf.pdfobject =
+let get_xobject_dictionary pdfmain : Pdf.pdfobject =
   let keyval =
-    [] |> ImageHashTable.fold (fun _ (tag, xobj, _) acc ->
-      (tag, xobj) :: acc
+    [] |> ImageHashTable.fold (fun _ (tag, pdfext, page, _) acc ->
+      let xobj = LoadPdf.make_xobject pdfmain pdfext page in
+        (tag, xobj) :: acc
     ) |> List.rev
   in
     Pdf.Dictionary(keyval)
 
 
 let get_bounding_box key =
-  let (_, _, bbox) = ImageHashTable.find key in bbox
+  let (_, _, _, bbox) = ImageHashTable.find key in bbox
 
 
 let get_tag key =
-  let (tag, _, _) = ImageHashTable.find key in tag
+  let (tag, _, _, _) = ImageHashTable.find key in tag
