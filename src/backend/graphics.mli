@@ -1,9 +1,9 @@
 
 open HorzBox
 
-val op_cm : point -> Pdfops.t
+val op_cm_translate : point -> Pdfops.t
+val op_cm_scale : float -> float -> point -> Pdfops.t
 val op_Tm_translate : point -> Pdfops.t
-val op_Tm_scale : float -> float -> Pdfops.t
 val op_Tf : string -> length -> Pdfops.t
 val op_Tj : string -> Pdfops.t
 val op_Tj_hex : string -> Pdfops.t

@@ -69,7 +69,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
 *)
           [
-            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
             Graphics.op_BT;
@@ -94,7 +94,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
           [
-            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
             Graphics.op_BT;
@@ -150,12 +150,17 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let ops_image =
           [
             Graphics.op_q;
-            Graphics.op_Tm_scale xratio yratio;
+            Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
             Graphics.op_Do tag;
             Graphics.op_Q;
           ]
+
+            @ (ops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+
         in
-        let opaccnew = List.rev_append ops_image opacc in
+        let opaccnew =
+          List.rev_append ops_image opacc
+        in
           (xpos +% wid, opaccnew)
 
 
