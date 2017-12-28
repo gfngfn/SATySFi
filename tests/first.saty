@@ -200,6 +200,10 @@ document (|
     PDF import
     \import-pdf(`imported.pdf`)(1)(5cm);
   }
+  +p {
+    JPEG import
+    \import-image(`naruse1.jpg`)(5cm);
+  }
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

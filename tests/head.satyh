@@ -468,3 +468,7 @@ let-inline ctx \tabular lstf =
 let-inline ctx \import-pdf filepath pageno wid =
   let img = register-pdf-image filepath pageno in
     use-image-by-width img wid
+
+let-inline ctx \import-image filepath wid =
+  let img = register-image filepath in
+    use-image-by-width img wid
