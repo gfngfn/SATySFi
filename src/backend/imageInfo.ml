@@ -9,7 +9,7 @@ type bbox = float * float * float * float
 
 type value_main =
   | PDFImage   of Pdf.t * Pdfpage.t
-  | OtherImage of Images.format * file_path
+  | OtherImage of Images.format * Images.colormodel * int * int * file_path
 
 type value = tag * bbox * value_main
 
@@ -65,20 +65,34 @@ module ImageHashTable
         | Images.Wrong_file_type -> raise (CannotLoadImage(srcpath))
       in
       let infolst = imgheader.Images.header_infos in
-      let rawwid = imgheader.Images.header_width in
-      let rawhgt = imgheader.Images.header_height in
+      let widdots = imgheader.Images.header_width in
+      let hgtdots = imgheader.Images.header_height in
       let dpi =
         match Images.dpi infolst with
         | Some(dpi) -> dpi
         | None      -> 72.  (* -- default dots per inch -- *)
       in
+      let colormodel =
+        match
+          infolst |> List.fold_left (fun opt info ->
+            match opt with
+            | Some(_) -> opt
+            | None ->
+                match info with
+                | Images.Info_ColorModel(colormodel) -> Some(colormodel)
+                | _                                  -> opt
+          ) None
+        with
+        | None             -> raise (CannotLoadImage(srcpath))
+        | Some(colormodel) -> colormodel
+      in
       let pdf_points_of_inches inch = 72. *. inch in
-      let wid = pdf_points_of_inches ((float_of_int rawwid) /. dpi) in
-      let hgt = pdf_points_of_inches ((float_of_int rawhgt) /. dpi) in
+      let wid = pdf_points_of_inches ((float_of_int widdots) /. dpi) in
+      let hgt = pdf_points_of_inches ((float_of_int hgtdots) /. dpi) in
       let bbox = (0., 0., wid, hgt) in
       let (key, tag) = generate_tag () in
       begin
-        Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, srcpath));
+        Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colormodel, widdots, hgtdots, srcpath));
         key
       end
 
@@ -111,8 +125,15 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
           let irxobj = LoadPdf.make_xobject pdfmain pdfext page in
             (tag, irxobj) :: acc
 
-      | OtherImage(imgfmt, srcpath) ->
-          acc  (* temporary *)
+      | OtherImage(imgfmt, colormodel, widdots, hgtdots, srcpath) ->
+          begin
+            match imgfmt with
+            | Images.Jpeg ->
+                let irxobj = LoadJpeg.make_xobject pdfmain colormodel widdots hgtdots srcpath in
+                (tag, irxobj) :: acc
+
+            | _ -> acc  (* temporary *)
+          end
     ) |> List.rev
   in
     Pdf.Dictionary(keyval)
