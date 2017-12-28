@@ -5,13 +5,8 @@ open HorzBox
 
 type t = Pdf.t * Pdfpage.t list * file_path
 
-(*
-let left_margin = Length.of_pdf_point 75.   (* temporary; should be variable *)
-let top_margin = Length.of_pdf_point 100.   (* temporary; should be variable *)
-*)
-let leading = Length.of_pdf_point 32.       (* temporary; should be variable *)
 
-
+(* -- 'ops_test_box': output bounding box of vertical elements for debugging -- *)
 let ops_test_box rgb (xpos, ypos) wid hgt =
   [
     Graphics.op_q;
@@ -22,9 +17,9 @@ let ops_test_box rgb (xpos, ypos) wid hgt =
   ]
 
 
+(* -- 'ops_test_frame': output bounding box of horizontal elements for debugging -- *)
 let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
   [
-(* begin: for test; encloses every word with a red box *)
     Graphics.op_q;
     Graphics.op_RG (1.0, 0.5, 0.5);
     Graphics.op_m (xpos, yposbaseline);
@@ -32,7 +27,6 @@ let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
     Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
     Graphics.op_S;
     Graphics.op_Q;
-(* end: for test *)
   ]
 
 
@@ -248,6 +242,7 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
   )
 
 
+(* -- PUBLIC -- *)
 let pdfops_of_evaled_horz_box (xpos, ypos) evhblst =
   let (_, opacc) = evhblst @|> (xpos, []) @|> List.fold_left (ops_of_evaled_horz_box ypos) in
     List.rev opacc
@@ -266,9 +261,13 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
 
   let oplst = List.rev opaccend in
 
+  let pdfobjstream = Pdfops.stream_of_ops oplst in
+
+  Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate pdfobjstream;
+
   let pagenew =
     { (Pdfpage.blankpage paper) with
-        Pdfpage.content = [Pdfops.stream_of_ops oplst];
+        Pdfpage.content = [pdfobjstream];
     }
   in
     (pdf, pagenew :: pageacc, flnm)
