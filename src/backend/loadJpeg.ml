@@ -4,7 +4,6 @@ open MyUtil
 
 type file_path = string
 
-exception UnsupportedColorModel of Images.colormodel
 (*
 exception TooLargeImage         of file_path
 exception CannotLoadImage       of file_path * string
@@ -32,19 +31,15 @@ let string_of_file (srcpath : file_path) =
     | Sys_error(errmsg) -> close_in ic; raise (CannotLoadImage(srcpath, errmsg))
 *)
 
-let make_xobject (pdfmain : Pdf.t) (colormodel : Images.colormodel) (widdots : int) (hgtdots : int) (srcpath : file_path) =
+let make_xobject (pdfmain : Pdf.t) (colorspace : Pdf.pdfobject) (widdots : int) (hgtdots : int) (srcpath : file_path) =
 (*
   let s = string_of_file srcpath in
 *)
   let ic = open_in_bin srcpath in
     (* -- may emit 'Sys_error(_)' -- *)
-  let stream = Pdf.Got(Pdfio.bytes_of_input_channel ic) in
-  let colorspace =
-    match colormodel with
-    | Images.Gray  -> Pdf.Name("/DeviceGray")
-    | Images.RGB   -> Pdf.Name("/DeviceRGB")
-    | _            -> raise (UnsupportedColorModel(colormodel))
-  in
+  let iobytes = Pdfio.bytes_of_input_channel ic in
+  let len = Pdfio.bytes_size iobytes in
+  let stream = Pdf.Got(iobytes) in
   let pdfdict =
     Pdf.Dictionary[
       ("/Type"            , Pdf.Name("/XObject"));
@@ -52,8 +47,10 @@ let make_xobject (pdfmain : Pdf.t) (colormodel : Images.colormodel) (widdots : i
       ("/Width"           , Pdf.Integer(widdots));
       ("/Height"          , Pdf.Integer(hgtdots));
       ("/ColorSpace"      , colorspace);
+      ("/Filter"          , Pdf.Name("/DCTDecode"));
+      ("/Length"          , Pdf.Integer(len));
       ("/BitsPerComponent", Pdf.Integer(8));
-        (* -- bits per component is 8 for /DCDDecode -- *)
+        (* -- bits per component is 8 for /DCTDecode -- *)
     ]
   in
   let ir = Pdf.addobj pdfmain (Pdf.Stream(ref (pdfdict, stream))) in

@@ -559,6 +559,7 @@ let make_environments () =
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
         ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
         ("register-pdf-image"      , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));
+        ("register-image"          , ~% (tS @-> tIMG)                                , lambda1 (fun vs -> BackendRegisterOtherImage(vs)));
         ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
       ]
   in

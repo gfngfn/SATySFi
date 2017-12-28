@@ -9,18 +9,20 @@ type bbox = float * float * float * float
 
 type value_main =
   | PDFImage   of Pdf.t * Pdfpage.t
-  | OtherImage of Images.format * Images.colormodel * int * int * file_path
+  | OtherImage of Images.format * Pdf.pdfobject * int * int * file_path
 
 type value = tag * bbox * value_main
 
-exception CannotLoadPdf   of file_path * int
-exception CannotLoadImage of file_path
+exception CannotLoadPdf          of file_path * int
+exception ImageOfWrongFileType   of file_path
+exception UnsupportedColorModel  of Images.colormodel
 
 module ImageHashTable
 : sig
     type key
     val initialize : unit -> unit
     val add_pdf : file_path -> int -> key
+    val add_image : file_path -> key
     val find : key -> value
     val fold : (key -> value -> 'a -> 'a) -> 'a -> 'a
   end
@@ -62,11 +64,12 @@ module ImageHashTable
     let add_image (srcpath : file_path) =
       let (imgfmt, imgheader) =
         try Images.file_format srcpath with
-        | Images.Wrong_file_type -> raise (CannotLoadImage(srcpath))
+        | Images.Wrong_file_type -> raise (ImageOfWrongFileType(srcpath))
       in
       let infolst = imgheader.Images.header_infos in
       let widdots = imgheader.Images.header_width in
       let hgtdots = imgheader.Images.header_height in
+      Format.printf "ImageInfo> length of info = %d width = %d, height = %d\n" (List.length infolst) widdots hgtdots;
       let dpi =
         match Images.dpi infolst with
         | Some(dpi) -> dpi
@@ -83,8 +86,14 @@ module ImageHashTable
                 | _                                  -> opt
           ) None
         with
-        | None             -> raise (CannotLoadImage(srcpath))
+        | None             -> Images.RGB  (* doubtful *)
         | Some(colormodel) -> colormodel
+      in
+      let colorspace =
+        match colormodel with
+        | Images.Gray  -> Pdf.Name("/DeviceGray")
+        | Images.RGB   -> Pdf.Name("/DeviceRGB")
+        | _            -> raise (UnsupportedColorModel(colormodel))
       in
       let pdf_points_of_inches inch = 72. *. inch in
       let wid = pdf_points_of_inches ((float_of_int widdots) /. dpi) in
@@ -92,7 +101,7 @@ module ImageHashTable
       let bbox = (0., 0., wid, hgt) in
       let (key, tag) = generate_tag () in
       begin
-        Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colormodel, widdots, hgtdots, srcpath));
+        Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colorspace, widdots, hgtdots, srcpath));
         key
       end
 
@@ -110,12 +119,23 @@ type key = ImageHashTable.key
 
 
 let initialize () =
+  Images.add_methods Images.Jpeg
+    Images.({
+      check_header  = Jpeg.check_header;
+      load          = Some(Jpeg.load);
+      save          = Some(Jpeg.save);
+      load_sequence = None;
+      save_sequence = None;
+    });
   ImageHashTable.initialize ()
 
 
 let add_pdf srcpath pageno =
   ImageHashTable.add_pdf srcpath pageno
 
+
+let add_image srcpath =
+  ImageHashTable.add_image srcpath
 
 let get_xobject_dictionary pdfmain : Pdf.pdfobject =
   let keyval =
@@ -125,11 +145,11 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
           let irxobj = LoadPdf.make_xobject pdfmain pdfext page in
             (tag, irxobj) :: acc
 
-      | OtherImage(imgfmt, colormodel, widdots, hgtdots, srcpath) ->
+      | OtherImage(imgfmt, colorspace, widdots, hgtdots, srcpath) ->
           begin
             match imgfmt with
             | Images.Jpeg ->
-                let irxobj = LoadJpeg.make_xobject pdfmain colormodel widdots hgtdots srcpath in
+                let irxobj = LoadJpeg.make_xobject pdfmain colorspace widdots hgtdots srcpath in
                 (tag, irxobj) :: acc
 
             | _ -> acc  (* temporary *)
@@ -145,3 +165,10 @@ let get_bounding_box key =
 
 let get_tag key =
   let (tag, _, _) = ImageHashTable.find key in tag
+
+
+let get_color_space key =
+  let (_, _, valuemain) = ImageHashTable.find key in
+  match valuemain with
+  | PDFImage(_, _)                     -> None
+  | OtherImage(_, colorspace, _, _, _) -> Some(colorspace)

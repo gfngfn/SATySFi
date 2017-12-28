@@ -262,9 +262,9 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
   let oplst = List.rev opaccend in
 
   let pdfobjstream = Pdfops.stream_of_ops oplst in
-
+(*
   Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate pdfobjstream;
-
+*)
   let pagenew =
     { (Pdfpage.blankpage paper) with
         Pdfpage.content = [pdfobjstream];

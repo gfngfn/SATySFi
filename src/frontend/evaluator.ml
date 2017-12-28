@@ -470,10 +470,15 @@ and interpret env ast =
         Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
 
   | BackendRegisterPdfImage(aststr, astpageno) ->
-      let str = interpret_string env aststr in
+      let srcpath = interpret_string env aststr in
       let pageno = interpret_int env astpageno in
-      let imgkey = ImageInfo.add_pdf str pageno in
-      ImageKey(imgkey)
+      let imgkey = ImageInfo.add_pdf srcpath pageno in
+        ImageKey(imgkey)
+
+  | BackendRegisterOtherImage(aststr) ->
+      let srcpath = interpret_string env aststr in
+      let imgkey = ImageInfo.add_image srcpath in
+        ImageKey(imgkey)
 
   | ImageKey(_) -> ast
 
