@@ -464,3 +464,7 @@ let-inline ctx \tabular lstf =
   let multif nr nc it = MultiCell(nr, nc, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
   let empty = EmptyCell in
     tabular (lstf cellf multif empty)
+
+let-inline ctx \import-pdf filepath pageno wid =
+  let img = register-pdf-image filepath pageno in
+    use-image-by-width img wid

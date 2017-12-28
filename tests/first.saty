@@ -196,6 +196,10 @@ document (|
       [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
     ]);
   }
+  +p {
+    PDF import
+    \import-pdf(`imported.pdf`)(1)(5cm);
+  }
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {
