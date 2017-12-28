@@ -1,3 +1,5 @@
+
+open MyUtil
 open Types
 
 exception EvalError of string
@@ -423,7 +425,7 @@ and interpret env ast =
       let kernfR = make_math_char_kern_func env valuekernfR in
       let kernf0 _ _ = HorzBox.Length.zero in
       let mlst =
-        uchlst |> Util.list_fold_adjacent (fun acc uch prevopt nextopt ->
+        uchlst |> list_fold_adjacent (fun acc uch prevopt nextopt ->
           let math =
             match (prevopt, nextopt) with
             | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernfR))))

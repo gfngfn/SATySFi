@@ -1,4 +1,5 @@
 
+open MyUtil
 open HorzBox
 
 
@@ -675,7 +676,7 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
-    mlst |> Util.list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
+    mlst |> list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
       let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathctx mathprev in
       let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathctx mathnext in
         (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)

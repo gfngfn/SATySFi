@@ -1,3 +1,4 @@
+open MyUtil
 open Types
 
 (* -- type IDs for predefined data types -- *)
@@ -296,7 +297,6 @@ let envinit : environment = Hashtbl.create 128
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
-  let open Util in
   let code_point cp = MathVariantToChar(false, Uchar.of_int cp) in
 
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty

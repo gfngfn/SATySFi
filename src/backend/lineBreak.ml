@@ -1,5 +1,5 @@
 
-open Util
+open MyUtil
 open HorzBox
 open LineBreakBox
 

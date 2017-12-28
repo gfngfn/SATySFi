@@ -1,3 +1,5 @@
+
+open MyUtil
 open Types
 open Display
 
@@ -649,7 +651,7 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
     ) []
   in
   let cycleopt =
-    utcycleopt |> Util.option_map (function
+    utcycleopt |> option_map (function
       | UTPathLineTo(()) -> PathLineTo(())
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, ()) ->

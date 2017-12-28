@@ -8,11 +8,13 @@ type xobject = Pdf.pdfobject
 type bbox = float * float * float * float
 
 type value_main =
-  | PdfImage of Pdf.t * Pdfpage.t
+  | PDFImage   of Pdf.t * Pdfpage.t
+  | OtherImage of Images.format * file_path
 
 type value = tag * bbox * value_main
 
-exception CannotLoadPdf of file_path * int
+exception CannotLoadPdf   of file_path * int
+exception CannotLoadImage of file_path
 
 module ImageHashTable
 : sig
@@ -44,15 +46,41 @@ module ImageHashTable
       end
 
     let add_pdf (srcpath : file_path) (pageno : int) =
-      let pdfext = Pdfread.pdf_of_file None None srcpath in
-      match LoadPdf.get_page pdfext (pageno - 1) with
-      | None               -> raise (CannotLoadPdf(srcpath, pageno))
-      | Some((bbox, page)) ->
-          let (key, tag) = generate_tag () in
-          begin
-            Hashtbl.add main_hash_table key (tag, bbox, PdfImage(pdfext, page));
-            key
-          end
+      let pdfext =
+        try Pdfread.pdf_of_file None None srcpath with
+        | Pdf.PDFError(_) -> raise (CannotLoadPdf(srcpath, pageno))
+      in
+        match LoadPdf.get_page pdfext (pageno - 1) with
+        | None               -> raise (CannotLoadPdf(srcpath, pageno))
+        | Some((bbox, page)) ->
+            let (key, tag) = generate_tag () in
+            begin
+              Hashtbl.add main_hash_table key (tag, bbox, PDFImage(pdfext, page));
+              key
+            end
+
+    let add_image (srcpath : file_path) =
+      let (imgfmt, imgheader) =
+        try Images.file_format srcpath with
+        | Images.Wrong_file_type -> raise (CannotLoadImage(srcpath))
+      in
+      let infolst = imgheader.Images.header_infos in
+      let rawwid = imgheader.Images.header_width in
+      let rawhgt = imgheader.Images.header_height in
+      let dpi =
+        match Images.dpi infolst with
+        | Some(dpi) -> dpi
+        | None      -> 72.  (* -- default dots per inch -- *)
+      in
+      let pdf_points_of_inches inch = 72. *. inch in
+      let wid = pdf_points_of_inches ((float_of_int rawwid) /. dpi) in
+      let hgt = pdf_points_of_inches ((float_of_int rawhgt) /. dpi) in
+      let bbox = (0., 0., wid, hgt) in
+      let (key, tag) = generate_tag () in
+      begin
+        Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, srcpath));
+        key
+      end
 
     let find (key : key) : value =
       match Hashtbl.find_opt main_hash_table key with
@@ -79,9 +107,12 @@ let get_xobject_dictionary pdfmain : Pdf.pdfobject =
   let keyval =
     [] |> ImageHashTable.fold (fun _ (tag, bbox, imgvalue) acc ->
       match imgvalue with
-      | PdfImage(pdfext, page) ->
-          let xobj = LoadPdf.make_xobject pdfmain pdfext page in
-            (tag, xobj) :: acc
+      | PDFImage(pdfext, page) ->
+          let irxobj = LoadPdf.make_xobject pdfmain pdfext page in
+            (tag, irxobj) :: acc
+
+      | OtherImage(imgfmt, srcpath) ->
+          acc  (* temporary *)
     ) |> List.rev
   in
     Pdf.Dictionary(keyval)
