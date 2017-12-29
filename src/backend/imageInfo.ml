@@ -50,11 +50,18 @@ let get_height_from_width key wid =
 
 
 let get_ratio key wid hgt =
-  let (_,bbox, _) = ImageHashTable.find key in
-  let (xmin, ymin, xmax, ymax) = bbox in
-  let xratio = wid /% (Length.of_pdf_point (xmax -. xmin)) in
-  let yratio = hgt /% (Length.of_pdf_point (ymax -. ymin)) in
-    (xratio, yratio)
+  let (_,bbox, valuemain) = ImageHashTable.find key in
+    match valuemain with
+    | ImageHashTable.PDFImage(_, _) ->
+        let (xmin, ymin, xmax, ymax) = bbox in
+        let xratio = wid /% (Length.of_pdf_point (xmax -. xmin)) in
+        let yratio = hgt /% (Length.of_pdf_point (ymax -. ymin)) in
+          (xratio, yratio)
+
+    | ImageHashTable.OtherImage(_, _, _, _, _) ->
+        let xratio = Length.to_pdf_point wid in
+        let yratio = Length.to_pdf_point hgt in
+          (xratio, yratio)
 
 
 let get_tag key =

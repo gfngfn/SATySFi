@@ -146,7 +146,6 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
 
           [
             Graphics.op_q;
-            Graphics.pdfop_of_text_color (DeviceRGB(0., 0., 0.));  (* temporary *)
             Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
             Graphics.op_Do tag;
             Graphics.op_Q;
