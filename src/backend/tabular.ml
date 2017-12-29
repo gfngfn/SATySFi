@@ -1,5 +1,6 @@
 
 open MyUtil
+open LengthInterface
 open HorzBox
 
 

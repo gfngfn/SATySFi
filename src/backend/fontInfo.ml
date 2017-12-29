@@ -1,6 +1,6 @@
 
 open MyUtil
-open Result
+open LengthInterface
 open HorzBox
 
 

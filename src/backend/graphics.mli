@@ -1,4 +1,5 @@
 
+open LengthInterface
 open HorzBox
 
 val op_cm_translate : point -> Pdfops.t

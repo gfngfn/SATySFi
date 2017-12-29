@@ -1,4 +1,7 @@
 
+open LengthInterface
+
+
 exception ParseErrorDetail of string
 
 type ctrlseq_name       = string  [@@deriving show]
@@ -431,7 +434,7 @@ and abstract_tree =
   | IntegerConstant       of int
   | FloatConstant         of float
   | LengthDescription     of float * length_unit_name
-  | LengthConstant        of HorzBox.length
+  | LengthConstant        of length
   | StringEmpty
   | StringConstant        of string
 (*

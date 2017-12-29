@@ -1,4 +1,6 @@
+
 open MyUtil
+open LengthInterface
 open Types
 
 (* -- type IDs for predefined data types -- *)
@@ -175,7 +177,7 @@ let rec lambda5 astf env =
 
 (* -- begin: constants just for experimental use -- *)
 
-let pdfpt = HorzBox.Length.of_pdf_point
+let pdfpt = Length.of_pdf_point
 
 
 let default_font_scheme =

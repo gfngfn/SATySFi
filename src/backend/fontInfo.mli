@@ -1,3 +1,5 @@
+
+open LengthInterface
 open HorzBox
 
 exception InvalidFontAbbrev of font_abbrev

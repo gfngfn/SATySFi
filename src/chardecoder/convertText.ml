@@ -1,4 +1,5 @@
 
+open LengthInterface
 open HorzBox
 open CharBasis
 open LineBreakBox

@@ -1,5 +1,6 @@
 
 open MyUtil
+open LengthInterface
 open HorzBox
 
 
@@ -138,19 +139,18 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
 
     | EvHorz(wid, EvHorzInlineImage(hgt, imgkey)) ->
         let tag = ImageInfo.get_tag imgkey in
-        let (xmin, ymin, xmax, ymax) = ImageInfo.get_bounding_box imgkey in
-        let xratio = wid /% (Length.of_pdf_point (xmax -. xmin)) in
-        let yratio = hgt /% (Length.of_pdf_point (ymax -. ymin)) in
+        let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
+
+            List.append (ops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+
           [
             Graphics.op_q;
+            Graphics.pdfop_of_text_color (DeviceRGB(0., 0., 0.));  (* temporary *)
             Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
             Graphics.op_Do tag;
             Graphics.op_Q;
           ]
-
-            @ (ops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
-
         in
         let opaccnew =
           List.rev_append ops_image opacc
@@ -253,7 +253,7 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
   let paper =
     match pagesch.page_size with
     | A4Paper                -> Pdfpaper.a4
-    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (HorzBox.Length.to_pdf_point w) (HorzBox.Length.to_pdf_point h)
+    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
   in
   let xinit = pagesch.left_page_margin in
   let yinit = (get_paper_height paper) -% pagesch.top_page_margin in
