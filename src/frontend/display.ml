@@ -221,32 +221,6 @@ and string_of_mono_type_list tyenv current_ht tylist =
         end
 
 
-let rec normalize_mono_type ty =
-  let iter = normalize_mono_type in
-  let (rng, tymain) = ty in
-    match tymain with
-    | TypeVariable(tvinforef) ->
-        begin
-          match !tvinforef with
-          | Bound(_)     -> ty
-          | Free(_)      -> ty
-          | Link(tylink) -> iter tylink
-        end
-
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | BaseType(_)                       -> ty
-    | ListType(tycont)                  -> (rng, ListType(iter tycont))
-    | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
-    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))  (* will be deprecated *)
-
-
 let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
   begin
     GeneralIDHashTable.initialize ();

@@ -723,9 +723,12 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
 
 (* -- 'reflects pty1 pty2' returns whether 'pty2' is more general than 'pty1' -- *)
 let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
-
+(*
   let current_ht : BoundID.t BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
     (* -- hash table mapping bound IDs in 'pty2' to bound IDs in 'pty1' -- *)
+*)
+  let current_bid_to_ty : (mono_type * type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+    (* -- hash table mapping bound IDs in 'pty2' to types -- *)
 
   let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
@@ -736,20 +739,23 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (TypeVariable({contents= Link(tysub1)}), _)          -> aux tysub1 ty2
     | (_, TypeVariable({contents= Link(tysub2)}))          -> aux ty1 tysub2
 
-    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)})) ->
+    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)} as tyref2)) ->
         begin
-          match BoundIDHashtbl.find_opt current_ht bid2 with
-          | Some(bidcounterpart) ->
-              BoundID.eq bid1 bidcounterpart
+          match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
+          | Some(((_, TypeVariable({contents= Bound(bid1old)})), _)) ->
+              BoundID.eq bid1 bid1old
+
+          | Some(_) ->
+              false
 
           | None ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_ht bid2 bid1; true end
+                begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tyref2); true end
               else
                 false
         end
 
-    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref)) ->
+    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref2)) ->
         let kd2 = BoundID.get_kind bid2 in
         let binc =
           match kd2 with
@@ -757,31 +763,52 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
         in
           if not binc then false else
-            begin tvref := Link(ty1); true end
+            begin
+              match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
+              | None              -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
+              | Some((ty1old, _)) -> aux ty1 ty1old
+            end
               (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Bound(bid2)} as tvref)) ->
+    | (_, TypeVariable({contents= Bound(bid2)} as tvref2)) ->
         let kd2 = BoundID.get_kind bid2 in
         begin
           match kd2 with
-          | UniversalKind -> begin tvref := Link(ty1); true end
+          | UniversalKind -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
           | RecordKind(_) -> false
         end
           (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1); true end
+    | (_, TypeVariable({contents= Free(_)} as tvref)) ->
+        begin tvref := Link(ty1); true end
 
-    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
-                                                                (* -- both domain and codomain are covariant -- *)
+    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2)) ->
+        (aux tyd1 tyd2) && (aux tyc1 tyc2)
+          (* -- both domain and codomain are covariant -- *)
 
-    | (ProductType(tyl1), ProductType(tyl2))               -> begin try aux_list (List.combine tyl1 tyl2) with Invalid_argument(_) -> false end
-    | (RecordType(tyasc1), RecordType(tyasc2))             -> (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
+    | (HorzCommandType(tyl1), HorzCommandType(tyl2))
+    | (VertCommandType(tyl1), VertCommandType(tyl2))
+    | (MathCommandType(tyl1), MathCommandType(tyl2))
+    | (ProductType(tyl1), ProductType(tyl2))
+      ->
+        begin
+          try aux_list (List.combine tyl1 tyl2) with
+          | Invalid_argument(_) -> false
+        end
 
-    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> begin try (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2)) with Invalid_argument(_) -> false end
-    | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2
-    | (BaseType(bsty1), BaseType(bsty2))                   -> bsty1 = bsty2
-    | _                                                    -> false
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) ->
+        begin
+          try (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2)) with
+          | Invalid_argument(_) -> false
+        end
+
+    | (ListType(tysub1), ListType(tysub2)) -> aux tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))   -> aux tysub1 tysub2
+    | (BaseType(bsty1), BaseType(bsty2))   -> bsty1 = bsty2
+    | _                                    -> false
 
 
   and is_stronger_kind (kd1 : kind) (kd2 : kind) =
@@ -799,7 +826,15 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           | Not_found -> false
         end
   in
-    aux ty1 ty2
+  let b = aux ty1 ty2 in
+  begin
+    if b then
+        current_bid_to_ty |> BoundIDHashtbl.iter (fun bid (ty, tyref) ->
+          tyref := Link(ty)
+        )
+    else ()
+  end;
+  b
 
 
 let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
@@ -838,7 +873,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
             match find_for_inner tyenv varnm with
             | None              -> raise (NotProvidingValueImplementation(rng, varnm))
             | Some((ptyimp, _)) ->
-                if reflects ptysigI ptyimp then
+                let b = reflects ptysigI ptyimp in
+                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
+                if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                     iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
                 else
