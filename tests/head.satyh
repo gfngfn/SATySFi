@@ -303,7 +303,7 @@ let bullet (x, y) =
   let r = 2pt in
     [ fill (Gray(0.)) (circle (cx, cy) r); ]
 
-let item : context -> int -> itemize -> box-col
+let item : context -> int -> itemize -> block-boxes
   | ctx depth (Item(parent, children)) =
       let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
       let bullet-width = get-natural-width br-bullet in
@@ -465,10 +465,15 @@ let-inline ctx \tabular lstf =
   let empty = EmptyCell in
     tabular (lstf cellf multif empty)
 
-let-inline ctx \import-pdf filepath pageno wid =
-  let img = register-pdf-image filepath pageno in
-    use-image-by-width img wid
+module Img : sig
+  direct \import-pdf : [string; int; length] inline-cmd
+  direct \import-image : [string; length] inline-cmd
+end = struct
+  let-inline ctx \import-pdf filepath pageno wid =
+    let img = register-pdf-image filepath pageno in
+      use-image-by-width img wid
 
-let-inline ctx \import-image filepath wid =
-  let img = register-image filepath in
-    use-image-by-width img wid
+  let-inline ctx \import-image filepath wid =
+    let img = register-image filepath in
+      use-image-by-width img wid
+end
