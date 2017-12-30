@@ -103,11 +103,11 @@ let-block ctx +make-title =
       ctx |> set-font-size font-size-author
           |> set-font Latin font-latin-roman
     in
-    let br-title = read-inline ctx-title (!ref-title) in
-    let br-author = read-inline ctx-author (!ref-author) in
-    let bc-title = form-paragraph ctx-title (inline-fil ++ br-title ++ inline-fil) in
-    let bc-author = form-paragraph ctx-author (inline-fil ++ br-author) in
-      bc-title +++ bc-author
+    let ib-title = read-inline ctx-title (!ref-title) in
+    let ib-author = read-inline ctx-author (!ref-author) in
+    let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
+    let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+      bb-title +++ bb-author
   ))
 
 let indent = inline-skip 24pt

@@ -1,0 +1,16 @@
+module Color : sig
+
+  val gray : float -> color
+  val rgb : float -> float -> float -> color
+  val black : color
+  val red : color
+
+end = struct
+
+  let gray x = Gray(x)
+  let rgb r g b = RGB(r, g, b)
+
+  let black = gray 0.
+  let red = rgb 1. 0. 0.
+
+end
