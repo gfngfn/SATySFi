@@ -554,6 +554,9 @@ nxstruct:
   | END                                                            { (end_struct $1) }
   | LET nxdec nxstruct                                             { make_let_expression $1 $2 $3 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
+  | LETHORZ nxhorzdec nxstruct                                     { make_let_expression $1 $2 $3 }
+  | LETVERT nxvertdec nxstruct                                     { make_let_expression $1 $2 $3 }
+  | LETMATH nxmathdec nxstruct                                     { make_let_expression $1 $2 $3 }
   | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
   | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
 ;
@@ -884,7 +887,7 @@ txbot: /* -> Range.t * type_name */
       }
 ;
 txlist:
-  | mnty=txfunc; SEP; tail=txlist { mnty :: tail }
+  | mnty=txfunc; LISTPUNCT; tail=txlist { mnty :: tail }
   | mnty=txfunc                   { mnty :: [] }
   |                               { [] }
 ;

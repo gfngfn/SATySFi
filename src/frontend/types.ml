@@ -199,6 +199,33 @@ type base_type =
 [@@deriving show]
 
 
+let base_type_hash_table =
+  let ht = Hashtbl.create 32 in
+  begin
+    List.iter (fun (s, bt) -> Hashtbl.add ht s bt) [
+      ("unit"        , UnitType    );
+      ("bool"        , BoolType    );
+      ("int"         , IntType     );
+      ("float"       , FloatType   );
+      ("length"      , LengthType  );
+      ("string"      , StringType  );
+      ("inline-text" , TextRowType );
+      ("block-text"  , TextColType );
+      ("inline-boxes", BoxRowType  );
+      ("block-boxes" , BoxColType  );
+      ("font"        , FontType    );
+      ("context"     , ContextType );
+      ("pre-path"    , PrePathType );
+      ("path"        , PathType    );
+      ("graphics"    , GraphicsType);
+      ("image"       , ImageType   );
+      ("document"    , DocumentType);
+      ("math"        , MathType    );
+    ];
+    ht
+  end
+
+
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
   | BaseType        of base_type

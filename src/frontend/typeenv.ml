@@ -356,29 +356,15 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MVertCommandType(mntylist)       -> VertCommandType(List.map iter mntylist)
       | MMathCommandType(mntylist)       -> MathCommandType(List.map iter mntylist)
 
-      | MTypeName([], "unit")            -> BaseType(UnitType)
-      | MTypeName(mntyarglist, "unit")   -> error "unit" 0 (List.length mntyarglist)
-      | MTypeName([], "bool")            -> BaseType(BoolType)
-      | MTypeName(mntyarglist, "bool")   -> error "bool" 0 (List.length mntyarglist)
-      | MTypeName([], "int")             -> BaseType(IntType)
-      | MTypeName(mntyarglist, "int")    -> error "int" 0 (List.length mntyarglist)
-      | MTypeName([], "float")           -> BaseType(FloatType)
-      | MTypeName(mntyarglist, "float")  -> error "float" 0 (List.length mntyarglist)
-      | MTypeName([], "string")          -> BaseType(StringType)
-      | MTypeName(mntyarglist, "string") -> error "string" 0 (List.length mntyarglist)
+      | MTypeName([], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+          begin
+            match Hashtbl.find_opt base_type_hash_table tynm with
+            | None     -> assert false
+            | Some(bt) -> BaseType(bt)
+          end
 
-      | MTypeName([], "font")              -> BaseType(FontType)
-      | MTypeName(mntyarglist, "font")     -> error "font" 0 (List.length mntyarglist)
-      | MTypeName([], "context")           -> BaseType(ContextType)
-      | MTypeName(mntyarglist, "context")  -> error "context" 0 (List.length mntyarglist)
-      | MTypeName([], "text-row")          -> BaseType(TextRowType)
-      | MTypeName(mntyarglist, "text-row") -> error "text-row" 0 (List.length mntyarglist)
-      | MTypeName([], "text-col")          -> BaseType(TextColType)
-      | MTypeName(mntyarglist, "text-col") -> error "text-col" 0 (List.length mntyarglist)
-      | MTypeName([], "box-row")           -> BaseType(BoxRowType)
-      | MTypeName(mntyarglist, "box-row")  -> error "box-row" 0 (List.length mntyarglist)
-      | MTypeName([], "box-col")           -> BaseType(BoxColType)
-      | MTypeName(mntyarglist, "box-col")  -> error "box-col" 0 (List.length mntyarglist)
+      | MTypeName(mntyarglist, tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+          error tynm 0 (List.length mntyarglist)
 
       | MTypeName(mntyarg :: [], "list") -> ListType(iter mntyarg)
       | MTypeName(mntyarglist, "list")   -> error "list" 1 (List.length mntyarglist)
