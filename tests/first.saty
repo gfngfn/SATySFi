@@ -197,11 +197,9 @@ document (|
     ]);
   }
   +p {
-    PDF import
+    PDF import:
     \import-pdf(`imported.pdf`)(1)(5cm);
-  }
-  +p {
-    JPEG import
+    JPEG import:
     \import-image(`naruse1.jpg`)(5cm);
   }
 %  +section {Spaces and Leading} <
