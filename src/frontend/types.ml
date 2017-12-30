@@ -1,4 +1,7 @@
 
+open LengthInterface
+
+
 exception ParseErrorDetail of string
 
 type ctrlseq_name       = string  [@@deriving show]
@@ -159,11 +162,14 @@ module BoundID_
 
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
-  | MTypeName    of (manual_type list) * type_name
-  | MTypeParam   of var_name
-  | MFuncType    of manual_type * manual_type
-  | MProductType of manual_type list
-  | MRecordType  of (field_name, manual_type) Assoc.t
+  | MTypeName        of (manual_type list) * type_name
+  | MTypeParam       of var_name
+  | MFuncType        of manual_type * manual_type
+  | MProductType     of manual_type list
+  | MRecordType      of (field_name, manual_type) Assoc.t
+  | MHorzCommandType of manual_type list
+  | MVertCommandType of manual_type list
+  | MMathCommandType of manual_type list
 [@@deriving show]
 
 type manual_kind =
@@ -187,6 +193,7 @@ type base_type =
   | PrePathType
   | PathType
   | GraphicsType
+  | ImageType
   | DocumentType
   | MathType
 [@@deriving show]
@@ -427,7 +434,7 @@ and abstract_tree =
   | IntegerConstant       of int
   | FloatConstant         of float
   | LengthDescription     of float * length_unit_name
-  | LengthConstant        of HorzBox.length
+  | LengthConstant        of length
   | StringEmpty
   | StringConstant        of string
 (*
@@ -543,6 +550,12 @@ and abstract_tree =
   | BackendMathCharClass        of abstract_tree * abstract_tree
   | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
+  | BackendTabular              of abstract_tree
+  | BackendRegisterPdfImage     of abstract_tree * abstract_tree
+  | BackendRegisterOtherImage   of abstract_tree
+  | BackendUseImageByWidth      of abstract_tree * abstract_tree
+  | ImageKey                    of ImageInfo.key
+      [@printer (fun fmt _ -> "<image-key>")]
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -799,6 +812,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsType) -> "graphics" ^ qstn
+    | BaseType(ImageType)    -> "image" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
 
@@ -914,3 +928,6 @@ let rec string_of_manual_type (_, mtymain) =
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
+  | MHorzCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") inline-cmd"
+  | MVertCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") block-cmd"
+  | MMathCommandType(mtylst)  -> "(" ^ (String.concat ", " (List.map iter mtylst)) ^ ") math-cmd"

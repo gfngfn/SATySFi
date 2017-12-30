@@ -1,3 +1,6 @@
+
+open MyUtil
+open LengthInterface
 open Types
 
 exception EvalError of string
@@ -226,7 +229,7 @@ and make_frame_deco env valuedeco =
     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
     let valuewid = LengthConstant(wid) in
     let valuehgt = LengthConstant(hgt) in
-    let valuedpt = LengthConstant(HorzBox.Length.negate dpt) in
+    let valuedpt = LengthConstant(Length.negate dpt) in
       (* -- depth values for users are nonnegative -- *)
     let valueret = reduce_beta_list env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
       graphics_of_list valueret
@@ -235,7 +238,7 @@ and make_frame_deco env valuedeco =
 and make_paren env valueparenf : HorzBox.paren =
   (fun hgt dpt hgtaxis fontsize color ->
     let valuehgt      = LengthConstant(hgt) in
-    let valuedpt      = LengthConstant(HorzBox.Length.negate dpt) in
+    let valuedpt      = LengthConstant(Length.negate dpt) in
       (* -- depth values for users are nonnegative -- *)
     let valuehgtaxis  = LengthConstant(hgtaxis) in
     let valuefontsize = LengthConstant(fontsize) in
@@ -299,10 +302,10 @@ and interpret env ast =
   | LengthDescription(flt, unitnm) ->
       let len =
         match unitnm with  (* temporary; ad-hoc handling of unit names *)
-        | "pt"   -> HorzBox.Length.of_pdf_point flt
-        | "cm"   -> HorzBox.Length.of_centimeter flt
-        | "mm"   -> HorzBox.Length.of_millimeter flt
-        | "inch" -> HorzBox.Length.of_inch flt
+        | "pt"   -> Length.of_pdf_point flt
+        | "cm"   -> Length.of_centimeter flt
+        | "mm"   -> Length.of_millimeter flt
+        | "inch" -> Length.of_inch flt
         | _      -> report_bug_evaluator "LengthDescription; unknown unit name"
       in
         LengthConstant(len)
@@ -421,9 +424,9 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let kernfL = make_math_char_kern_func env valuekernfL in
       let kernfR = make_math_char_kern_func env valuekernfR in
-      let kernf0 _ _ = HorzBox.Length.zero in
+      let kernf0 _ _ = Length.zero in
       let mlst =
-        uchlst |> Util.list_fold_adjacent (fun acc uch prevopt nextopt ->
+        uchlst |> list_fold_adjacent (fun acc uch prevopt nextopt ->
           let math =
             match (prevopt, nextopt) with
             | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernfR))))
@@ -460,6 +463,37 @@ and interpret env ast =
       let mathctx = HorzBox.MathContext.make ctx in
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
+
+  | BackendTabular(asttabular) ->
+      let interpret_row : abstract_tree -> HorzBox.cell list = interpret_list interpret env (interpret_cell env) in
+      let tabular : HorzBox.row list = interpret_list interpret env interpret_row asttabular in
+      let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
+        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
+
+  | BackendRegisterPdfImage(aststr, astpageno) ->
+      let srcpath = interpret_string env aststr in
+      let pageno = interpret_int env astpageno in
+      let imgkey = ImageInfo.add_pdf srcpath pageno in
+        ImageKey(imgkey)
+
+  | BackendRegisterOtherImage(aststr) ->
+      let srcpath = interpret_string env aststr in
+      let imgkey = ImageInfo.add_image srcpath in
+        ImageKey(imgkey)
+
+  | ImageKey(_) -> ast
+
+  | BackendUseImageByWidth(astimg, astwid) ->
+      let valueimg = interpret env astimg in
+      let wid = interpret_length env astwid in
+      begin
+        match valueimg with
+        | ImageKey(imgkey) ->
+            let hgt = ImageInfo.get_height_from_width imgkey wid in
+              Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+
+        | _ -> report_bug_evaluator "BackendUseImage"
+      end
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
@@ -626,7 +660,7 @@ and interpret env ast =
       let evvblst = PageBreak.solidify imvblst in
 
       let (hgt, dpt) = adjust_to_first_line evvblst in
-      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
+      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
@@ -639,7 +673,7 @@ and interpret env ast =
       let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
       let evvblst = PageBreak.solidify imvblst in
       let (hgt, dpt) = adjust_to_last_line evvblst in
-      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (HorzBox.Length.to_pdf_point hgt) (HorzBox.Length.to_pdf_point dpt)) in  (* for debug *)
+      let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | BackendLineStackTop(astlst) ->
@@ -660,8 +694,8 @@ and interpret env ast =
       let txtwid = interpret_length env astwid in
       let txthgt = interpret_length env asthgt in
 (*
-      let txtwid = HorzBox.Length.of_pdf_point 400. in  (* temporary; should be variable *)
-      let txthgt = HorzBox.Length.of_pdf_point 650. in  (* temporary; should be variable *)
+      let txtwid = Length.of_pdf_point 400. in  (* temporary; should be variable *)
+      let txthgt = Length.of_pdf_point 650. in  (* temporary; should be variable *)
 *)
       let pagesch =
         HorzBox.({
@@ -787,7 +821,7 @@ and interpret env ast =
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
-          pads, HorzBox.Length.zero, HorzBox.Length.zero,
+          pads, Length.zero, Length.zero,
           make_frame_deco env valuedecoS,
           make_frame_deco env valuedecoH,
           make_frame_deco env valuedecoM,
@@ -1268,6 +1302,18 @@ and interpret_option env extractf ast =
     | _                                 -> report_bug_evaluator "interpret_option"
 
 
+and interpret_cell env ast : HorzBox.cell =
+  let value = interpret env ast in
+    match value with
+    | Constructor("NormalCell", Horz(hblst)) -> HorzBox.NormalCell(hblst)
+    | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
+    | Constructor("MultiCell", TupleCons(IntegerConstant(nr),
+                                 TupleCons(IntegerConstant(nc),
+                                   TupleCons(Horz(hblst), EndOfTuple))))
+      -> HorzBox.MultiCell(nr, nc, hblst)
+    | _ -> report_bug_evaluator "interpret_cell"
+
+
 and interpret_math_class env ast : HorzBox.math_kind =
   let value = interpret env ast in
     match value with
@@ -1468,7 +1514,7 @@ and interpret_float (env : environment) (ast : abstract_tree) : float =
                                                  ^ " ->* " ^ (Display.string_of_ast vf))
 
 
-and interpret_length (env : environment) (ast : abstract_tree) : HorzBox.length =
+and interpret_length (env : environment) (ast : abstract_tree) : length =
   let vl = interpret env ast in
     match vl with
     | LengthConstant(lc) -> lc

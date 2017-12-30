@@ -186,9 +186,22 @@ document (|
       ];.
     }
   >
-  +math (
-    math-deriv (math-list [math-A; math-space; math-deriv (math-list [math-B; math-space; math-C]) math-D]) math-E
-  );
+  +math (${
+    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+  });
+  +p {
+    A table
+    \tabular(fun cellf multif empty -> [
+      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
+      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
+    ]);
+  }
+  +p {
+    PDF import:
+    \import-pdf(`imported.pdf`)(1)(5cm);
+    JPEG import:
+    \import-image(`naruse1.jpg`)(5cm);
+  }
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

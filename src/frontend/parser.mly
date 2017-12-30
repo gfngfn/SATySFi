@@ -430,6 +430,7 @@
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> UNITVALUE WHILE DO
+%token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
 (*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
@@ -810,9 +811,10 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit"))) :: [] }
 ;
 txfunc: /* -> manual_type */
-  | txprod ARROW txfunc {
-        let rng = make_range (Ranged $1) (Ranged $3) in (rng, MFuncType($1, $3)) }
-  | txprod { $1 }
+  | mntydom=txprod; ARROW; mntycod=txfunc {
+        let rng = make_range (Ranged mntydom) (Ranged mntycod) in (rng, MFuncType(mntydom, mntycod))
+      }
+  | mnty=txprod { mnty }
 ;
 txprod: /* -> manual_type */
   | txapppre EXACT_TIMES txprod {
@@ -824,47 +826,72 @@ txprod: /* -> manual_type */
   | txapppre { $1 }
 ;
 txapppre: /* -> manual_type */
-  | txapp {
-          match $1 with
-          | (lst, (rng, MTypeName([], tynm))) -> (rng, MTypeName(lst, tynm))
-          | ([], mnty)                        -> mnty
-          | _                                 -> assert false
+  | tyapp=txapp {
+        let (rng, lst, tynm) = tyapp in
+          (rng, MTypeName(lst, tynm))
       }
-  | LPAREN txfunc RPAREN { $2 }
-  | TYPEVAR {
-        let (rng, tyargnm) = $1 in (rng, MTypeParam(tyargnm))
+  | opn=BLIST; mntylst=txlist; ELIST; last=HORZCMDTYPE {
+        let rng = make_range (Tok opn) (Tok last) in
+          (rng, MHorzCommandType(mntylst))
       }
-;
-txapp: /* manual_type list * manual_type */
-  | txbot txapp                { let (lst, mnty) = $2 in ($1 :: lst, mnty) }
-  | LPAREN txfunc RPAREN txapp { let (lst, mnty) = $4 in ($2 :: lst, mnty) }
-  | TYPEVAR txapp              {
-        let (rng, tyargnm) = $1 in
-        let (lst, mnty) = $2 in
-          ((rng, MTypeParam(tyargnm)) :: lst, mnty)
+  | opn=BLIST; mntylst=txlist; ELIST; last=VERTCMDTYPE {
+        let rng = make_range (Tok opn) (Tok last) in
+          (rng, MVertCommandType(mntylst))
       }
-  | txbot                      { ([], $1) }
-;
-txbot: /* -> manual_type */
-  | VAR {
-        let (rng, tynm) = $1 in (rng, MTypeName([], tynm))
+  | opn=BLIST; mntylst=txlist; ELIST; last=MATHCMDTYPE {
+        let rng = make_range (Tok opn) (Tok last) in
+          (rng, MMathCommandType(mntylst))
       }
-  | CONSTRUCTOR DOT VAR {
-        let (rng1, mdlnm) = $1 in
-        let (rng2, tynm)  = $3 in
-        let rng = make_range (Tok rng1) (Tok rng2) in
-          (rng, MTypeName([], mdlnm ^ "." ^ tynm))
-      }
-  | BRECORD txrecord ERECORD {
-        let asc = Assoc.of_list $2 in
-        let rng = make_range (Tok $1) (Tok $3) in
+  | LPAREN; mnty=txfunc; RPAREN { mnty }
+  | opn=BRECORD; lst=txrecord; cls=ERECORD {
+        let asc = Assoc.of_list lst in
+        let rng = make_range (Tok opn) (Tok cls) in
           (rng, MRecordType(asc))
-  }
+      }
+  | tyvar=TYPEVAR {
+        let (rng, tyargnm) = tyvar in (rng, MTypeParam(tyargnm))
+      }
+;
+txapp: /* Range.t * manual_type list * type_name */
+  | tybot=txbot; tyapp=txapp {
+        let (rng1, tynm) = tybot in
+        let mnty = (rng1, MTypeName([], tynm)) in
+        let (rng2, lst, tynm) = tyapp in
+        let rng = make_range (Ranged mnty) (Tok rng2) in
+          (rng, mnty :: lst, tynm)
+      }
+  | LPAREN; mnty=txfunc; RPAREN; tyapp=txapp {
+        let (rng2, lst, tynm) = tyapp in
+        let rng = make_range (Ranged mnty) (Tok rng2) in
+          (rng, mnty :: lst, tynm)
+      }
+  | tyvar=TYPEVAR; tyapp=txapp {
+        let (rngtyarg, tyargnm) = tyvar in
+        let (rng2, lst, tynm) = tyapp in
+        let rng = make_range (Tok rngtyarg) (Tok rng2) in
+          (rng, (rngtyarg, MTypeParam(tyargnm)) :: lst, tynm)
+      }
+  | tybot=txbot { let (rng, tynm) = tybot in (rng, [], tynm) }
+;
+txbot: /* -> Range.t * type_name */
+  | tytok=VAR { tytok }
+  | mdltok=CONSTRUCTOR; DOT; tytok=VAR {
+      (* temporary; currently only one module name can be appended *)
+        let (rng1, mdlnm) = mdltok in
+        let (rng2, tynm)  = tytok in
+        let rng = make_range (Tok rng1) (Tok rng2) in
+          (rng, mdlnm ^ "." ^ tynm)
+      }
+;
+txlist:
+  | mnty=txfunc; SEP; tail=txlist { mnty :: tail }
+  | mnty=txfunc                   { mnty :: [] }
+  |                               { [] }
 ;
 txrecord: /* -> (field_name * manual_type) list */
-  | VAR COLON txfunc LISTPUNCT txrecord { let (_, fldnm) = $1 in (fldnm, $3) :: $5 }
-  | VAR COLON txfunc LISTPUNCT          { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
-  | VAR COLON txfunc                    { let (_, fldnm) = $1 in (fldnm, $3) :: [] }
+  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
+  | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
+  | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
 ;
 tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Ranged $1) (Ranged $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }

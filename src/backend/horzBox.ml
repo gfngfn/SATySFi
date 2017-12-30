@@ -1,72 +1,11 @@
 
-module Length
-: sig
-    type t  [@@deriving show]
-    val zero : t
-    val add : t -> t -> t
-    val subtr : t -> t -> t
-    val mult : t -> float -> t
-    val div : t -> t -> float
-    val max : t -> t -> t
-    val min : t -> t -> t
-    val negate : t -> t
-    val abs : t -> t
-    val less_than : t -> t -> bool
-    val leq : t -> t -> bool
-    val is_nearly_zero : t -> bool
-    val of_pdf_point : float -> t
-    val to_pdf_point : t -> float
-    val of_centimeter : float -> t
-    val of_millimeter : float -> t
-    val of_inch : float -> t
-    val show : t -> string
-  end
-= struct
+open LengthInterface
 
-    type t = float  [@@deriving show]
-    let zero = 0.
-    let add = ( +. )
-    let subtr = ( -. )
-    let mult = ( *. )
-    let div = ( /. )
-    let max = max
-    let min = min
-    let negate x = 0. -. x
-    let abs x = if x < 0. then -.x else x
-    let less_than = ( < )
-    let leq = ( <= )
-    let is_nearly_zero sl = (sl < 0.01)
-
-    let of_pdf_point pt = pt
-    let to_pdf_point len = len
-
-    let convert pdfunit flt =
-      let dpi = 72. in  (* temporary; dpi *)
-        Pdfunits.convert dpi pdfunit Pdfunits.PdfPoint flt      
-
-    let of_centimeter = convert Pdfunits.Centimetre
-    let of_millimeter = convert Pdfunits.Millimetre
-    let of_inch       = convert Pdfunits.Inch
-
-    let show = string_of_float
-  end
-
-let ( +% ) = Length.add
-let ( -% ) = Length.subtr
-let ( *% ) = Length.mult
-let ( *%! ) l n = l *% (float_of_int n)
-let ( /% ) = Length.div
-let ( <% ) = Length.less_than
-let ( <=% ) = Length.leq
-
-
-type length = Length.t  [@@deriving show]
-
-type point = length * length
 
 type stretchable =
   | FiniteStretch of length
   | Fils          of int
+
 
 let add_stretchable strc1 strc2 =
   match (strc1, strc2) with
@@ -74,6 +13,7 @@ let add_stretchable strc1 strc2 =
   | (Fils(i1), Fils(i2))                   -> Fils(i1 + i2)
   | (Fils(i1), _)                          -> Fils(i1)
   | (_, Fils(i2))                          -> Fils(i2)
+
   
 type length_info =
   {
@@ -288,6 +228,9 @@ and pure_horz_box =
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
+  | PHGFixedTabular   of length * length * length * evaled_row list
+  | PHGFixedImage     of length * length * ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -311,6 +254,9 @@ and evaled_horz_box_main =
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
+  | EvHorzInlineTabular  of length * length * evaled_row list
+  | EvHorzInlineImage    of length * ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
 
 and evaled_horz_box =
   | EvHorz of length * evaled_horz_box_main
@@ -422,7 +368,24 @@ and math =
   | MathParen             of paren * paren * math list
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
-[@@deriving show]
+
+and cell =
+  | NormalCell of horz_box list
+  | EmptyCell
+  | MultiCell  of int * int * horz_box list
+
+and row = cell list
+
+and evaled_cell =
+  | EvNormalCell of length * length * length * evaled_horz_box list
+  | EvEmptyCell  of length
+  | EvMultiCell  of int * int * length * length * length * length * evaled_horz_box list
+
+and evaled_row = length * evaled_cell list
+[@@deriving show { with_path = false }]
+
+type column = cell list
+
 
 
 module MathContext

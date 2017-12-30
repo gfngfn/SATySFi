@@ -1,7 +1,9 @@
 
+open LengthInterface
 open HorzBox
 
-val op_cm : point -> Pdfops.t
+val op_cm_translate : point -> Pdfops.t
+val op_cm_scale : float -> float -> point -> Pdfops.t
 val op_Tm_translate : point -> Pdfops.t
 val op_Tf : string -> length -> Pdfops.t
 val op_Tj : string -> Pdfops.t
@@ -20,6 +22,7 @@ val op_re : point -> point -> Pdfops.t
 val op_q : Pdfops.t
 val op_Q : Pdfops.t
 val op_S : Pdfops.t
+val op_Do : string -> Pdfops.t
 
 val pdfop_of_text_color : color -> Pdfops.t
 

@@ -1,17 +1,13 @@
 
-open Util
+open MyUtil
+open LengthInterface
 open HorzBox
 
 
 type t = Pdf.t * Pdfpage.t list * file_path
 
-(*
-let left_margin = Length.of_pdf_point 75.   (* temporary; should be variable *)
-let top_margin = Length.of_pdf_point 100.   (* temporary; should be variable *)
-*)
-let leading = Length.of_pdf_point 32.       (* temporary; should be variable *)
 
-
+(* -- 'ops_test_box': output bounding box of vertical elements for debugging -- *)
 let ops_test_box rgb (xpos, ypos) wid hgt =
   [
     Graphics.op_q;
@@ -22,9 +18,9 @@ let ops_test_box rgb (xpos, ypos) wid hgt =
   ]
 
 
+(* -- 'ops_test_frame': output bounding box of horizontal elements for debugging -- *)
 let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
   [
-(* begin: for test; encloses every word with a red box *)
     Graphics.op_q;
     Graphics.op_RG (1.0, 0.5, 0.5);
     Graphics.op_m (xpos, yposbaseline);
@@ -32,7 +28,6 @@ let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
     Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
     Graphics.op_S;
     Graphics.op_Q;
-(* end: for test *)
   ]
 
 
@@ -69,7 +64,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
 *)
           [
-            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
             Graphics.op_BT;
@@ -94,7 +89,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
           [
-            Graphics.op_cm (Length.zero, Length.zero);
+            Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
             opcolor;
             Graphics.op_BT;
@@ -132,7 +127,77 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           (graphics (xpos, yposbaseline))
         in
         let opaccnew = List.rev_append ops_graphics opacc in
-        (xpos +% wid, opaccnew)
+          (xpos +% wid, opaccnew)
+
+    | EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular)) ->
+        let ops_tabular =
+          ops_of_evaled_tabular (xpos, yposbaseline +% hgt) evtabular
+        in
+        let opaccnew = List.rev_append ops_tabular opacc in
+          (xpos +% wid, opaccnew)
+
+
+    | EvHorz(wid, EvHorzInlineImage(hgt, imgkey)) ->
+        let tag = ImageInfo.get_tag imgkey in
+        let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
+        let ops_image =
+
+            List.append (ops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+
+          [
+            Graphics.op_q;
+            Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
+            Graphics.op_Do tag;
+            Graphics.op_Q;
+          ]
+        in
+        let opaccnew =
+          List.rev_append ops_image opacc
+        in
+          (xpos +% wid, opaccnew)
+
+
+and ops_of_evaled_tabular point evtabular =
+  let (opaccnew, _) =
+    evtabular |> List.fold_left (fun (opacc, (xpos, ypos)) (vlen, evcelllst) ->
+      let (opaccnew, _) =
+        evcelllst |> List.fold_left (fun (opacc, (xpos, ypos)) evcell ->
+          match evcell with
+          | EvEmptyCell(wid) ->
+              (opacc, (xpos +% wid, ypos))
+
+          | EvNormalCell(wid, hgt, dpt, evhblst) ->
+              let yposbaseline = ypos -% hgt in
+              let (_, opaccsub) =
+                  evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
+              in
+              let opaccnew =
+
+                List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
+                  opaccsub
+              in
+                (opaccnew, (xpos +% wid, ypos))
+
+          | EvMultiCell(_, _, widsingle, widcell, hgt, dpt, evhblst) ->
+              let yposbaseline = ypos -% hgt in
+              let (_, opaccsub) =
+                  evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
+              in
+              let opaccnew =
+
+                List.rev_append (ops_test_frame (xpos, yposbaseline) widcell hgt dpt)
+
+                  opaccsub
+              in
+                (opaccnew, (xpos +% widsingle, ypos))
+
+        ) (opacc, (xpos, ypos))
+      in
+        (opaccnew, (xpos, ypos -% vlen))
+    ) ([], point)
+  in
+    List.rev opaccnew
 
 
 and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
@@ -176,6 +241,7 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
   )
 
 
+(* -- PUBLIC -- *)
 let pdfops_of_evaled_horz_box (xpos, ypos) evhblst =
   let (_, opacc) = evhblst @|> (xpos, []) @|> List.fold_left (ops_of_evaled_horz_box ypos) in
     List.rev opacc
@@ -186,7 +252,7 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
   let paper =
     match pagesch.page_size with
     | A4Paper                -> Pdfpaper.a4
-    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (HorzBox.Length.to_pdf_point w) (HorzBox.Length.to_pdf_point h)
+    | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
   in
   let xinit = pagesch.left_page_margin in
   let yinit = (get_paper_height paper) -% pagesch.top_page_margin in
@@ -194,9 +260,13 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
 
   let oplst = List.rev opaccend in
 
+  let pdfobjstream = Pdfops.stream_of_ops oplst in
+(*
+  Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate pdfobjstream;
+*)
   let pagenew =
     { (Pdfpage.blankpage paper) with
-        Pdfpage.content = [Pdfops.stream_of_ops oplst];
+        Pdfpage.content = [pdfobjstream];
     }
   in
     (pdf, pagenew :: pageacc, flnm)
@@ -210,15 +280,24 @@ let create_empty_pdf (flnm : file_path) : t =
 let write_to_file ((pdf, pageacc, flnm) : t) : unit =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  embedding fonts ...");
-  let fontdict = FontInfo.get_font_dictionary pdf in
-  let irfontdict =
-    Pdf.addobj pdf (Pdf.Dictionary[("/Font", fontdict)])
+  let pdfdict_font = FontInfo.get_font_dictionary pdf in
+  let pdfarr_procset =
+    Pdf.Array(List.map (fun s -> Pdf.Name(s))
+                ["/PDF"; "/Text"; "/ImageC"; "ImageB"; "ImageI";])
+  in
+  let pdfdict_xobject = ImageInfo.get_xobject_dictionary pdf in
+  let ir_resources =
+    Pdf.addobj pdf (Pdf.Dictionary[
+      ("/Font"   , pdfdict_font);
+      ("/XObject", pdfdict_xobject);
+      ("/ProcSet", pdfarr_procset);
+    ])
   in
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...");
   let pagelst =
     pageacc |> List.rev |> List.map (fun page ->
-      { page with Pdfpage.resources = Pdf.Indirect(irfontdict); }
+      { page with Pdfpage.resources = Pdf.Indirect(ir_resources); }
     )
   in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in

@@ -1,15 +1,24 @@
 
+open LengthInterface
 open HorzBox
 
 
 let (~%) = Length.to_pdf_point
-let op_cm (xdiff, ydiff) =
+let op_cm_translate (xdiff, ydiff) =
   Pdfops.Op_cm(Pdftransform.matrix_of_transform [Pdftransform.Translate (~% xdiff, ~% ydiff)])
+
+let op_cm_scale xratio yratio (xdiff, ydiff) =
+  let matr =
+    let open Pdftransform in
+      { a = xratio;    b = 0.;
+        c = 0.;        d = yratio;
+        e = ~% xdiff;  f = ~% ydiff; }
+  in
+    Pdfops.Op_cm(matr)
 
 let op_Tm_translate (xpos, ypos) =
   Pdfops.Op_Tm(Pdftransform.matrix_of_transform
-                 [Pdftransform.Translate
-                     (~% xpos, ~% ypos)])
+                 [Pdftransform.Translate(~% xpos, ~% ypos)])
 
 let op_Tf tag sl = Pdfops.Op_Tf(tag, ~% sl)
 let op_Tj str = Pdfops.Op_Tj(str)
@@ -41,6 +50,8 @@ let op_B = Pdfops.Op_B
 let op_B' = Pdfops.Op_B'
 let op_M ml = Pdfops.Op_M(~% ml)
 let op_w lw = Pdfops.Op_w(~% lw)
+
+let op_Do name = Pdfops.Op_Do(name)
 
 let op_J = function
   | ButtCap             -> Pdfops.Op_J(0)

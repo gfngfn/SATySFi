@@ -1,3 +1,6 @@
+
+open MyUtil
+open LengthInterface
 open Types
 
 (* -- type IDs for predefined data types -- *)
@@ -9,6 +12,8 @@ let tyid_language = Typeenv.Raw.fresh_type_id "language"
 let tyid_page     = Typeenv.Raw.fresh_type_id "page"
 let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
 let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
+let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
+let tyid_image    = Typeenv.Raw.fresh_type_id "image"
 
 (* -- type IDs for alias types -- *)
 let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
@@ -36,6 +41,7 @@ let tPRP          = (~! "pre-path", BaseType(PrePathType) )
 let tDOC          = (~! "document", BaseType(DocumentType))
 let tMATH         = (~! "math"    , BaseType(MathType)    )
 let tGR           = (~! "graphics", BaseType(GraphicsType))
+let tIMG          = (~! "image"   , BaseType(ImageType)   )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
@@ -50,6 +56,7 @@ let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
 let tPG           = (~! "page"    , VariantType([], tyid_page)    )
 let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
 let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
+let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
 
 (* -- predefined alias types -- *)
 let tPT           = tPROD [tLN; tLN]
@@ -117,6 +124,11 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathBoldRoman"  ([], Poly(tU)) tyid_mccls
       (* TEMPORARY; should add more *)
 
+  |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tIB))                 tyid_cell
+  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                  tyid_cell
+  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tIB])) tyid_cell
+
   |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
 
   |> Typeenv.Raw.register_type "deco-set" tyid_decoset (Typeenv.Alias(([], Poly(tDECOSET_raw))))
@@ -165,7 +177,7 @@ let rec lambda5 astf env =
 
 (* -- begin: constants just for experimental use -- *)
 
-let pdfpt = HorzBox.Length.of_pdf_point
+let pdfpt = Length.of_pdf_point
 
 
 let default_font_scheme =
@@ -287,7 +299,6 @@ let envinit : environment = Hashtbl.create 128
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
-  let open Util in
   let code_point cp = MathVariantToChar(false, Uchar.of_int cp) in
 
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
@@ -548,6 +559,10 @@ let make_environments () =
         ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
+        ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
+        ("register-pdf-image"      , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));
+        ("register-image"          , ~% (tS @-> tIMG)                                , lambda1 (fun vs -> BackendRegisterOtherImage(vs)));
+        ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
       ]
   in
   let temporary_ast = StringEmpty in

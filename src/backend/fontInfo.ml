@@ -1,6 +1,6 @@
 
-open Util
-open Result
+open MyUtil
+open LengthInterface
 open HorzBox
 
 
@@ -21,7 +21,7 @@ let get_latin1_width_list (dcdr : FontFormat.decoder) =
 
   let ucharlst = (range [] 0 255) |> List.map Uchar.of_int in
   let gidoptlst = ucharlst |> List.map (FontFormat.get_glyph_id dcdr) in
-  let gidlst = gidoptlst |> Util.list_some in
+  let gidlst = gidoptlst |> list_some in
   let widlst =
     gidlst |> List.map (fun gid ->
       let (w, _, _) = FontFormat.get_glyph_metrics dcdr gid in
@@ -144,7 +144,7 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             OutputText.empty_hex_style
           in
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
-          let gidlst = Util.list_some gidoptlst in
+          let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
           let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 

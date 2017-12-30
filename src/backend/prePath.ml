@@ -1,4 +1,5 @@
 
+open LengthInterface
 open HorzBox
 
 (* -- pair of the beginning point and the list of reversed path elements -- *)

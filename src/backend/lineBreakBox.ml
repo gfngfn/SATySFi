@@ -1,4 +1,5 @@
 
+open LengthInterface
 open HorzBox
 open CharBasis
 
@@ -12,6 +13,8 @@ type lb_pure_box =
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
   | LBEmbeddedVert  of length * length * length * evaled_vert_box list
   | LBFixedGraphics of length * length * length * (point -> Pdfops.t list)
+  | LBFixedTabular  of length * length * length * evaled_row list
+  | LBFixedImage    of length * length * ImageInfo.key
 
 type lb_box =
   | LBPure           of lb_pure_box

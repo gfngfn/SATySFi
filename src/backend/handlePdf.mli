@@ -1,3 +1,5 @@
+
+open LengthInterface
 open HorzBox
 
 type t
