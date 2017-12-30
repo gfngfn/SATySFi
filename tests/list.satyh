@@ -4,7 +4,7 @@ module List
     val map : ('a -> 'b) -> 'a list -> 'b list
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val filter : ('a -> bool) -> 'a list -> 'a list
-%    val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
+    val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
   end
 = struct
     let map
@@ -19,7 +19,7 @@ module List
       | _ []        = []
       | p (x :: xs) = if p x then x :: filter p xs else filter p xs
 
-%    let assoc
-%      | _ _ []              = None
-%      | eq a ((x, y) :: xs) = if eq a x then Some(y) else assoc eq a xs
+    let assoc
+      | _ _ []              = None
+      | eq a ((x, y) :: xs) = if eq a x then Some(y) else assoc eq a xs
   end

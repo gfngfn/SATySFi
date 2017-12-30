@@ -1,3 +1,4 @@
+
 open Types
 
 let print_for_debug_variantenv msg =
@@ -720,9 +721,11 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
+(* -- 'reflects pty1 pty2' returns whether 'pty2' is more general than 'pty1' -- *)
 let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
   let current_ht : BoundID.t BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+    (* -- hash table mapping bound IDs in 'pty2' to bound IDs in 'pty1' -- *)
 
   let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
@@ -735,13 +738,13 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
     | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)})) ->
         begin
-          try
-            let bidcounterpart = BoundIDHashtbl.find current_ht bid1 in
-              BoundID.eq bid2 bidcounterpart
-          with
-          | Not_found ->
+          match BoundIDHashtbl.find_opt current_ht bid2 with
+          | Some(bidcounterpart) ->
+              BoundID.eq bid1 bidcounterpart
+
+          | None ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_ht bid1 bid2; true end
+                begin BoundIDHashtbl.add current_ht bid2 bid1; true end
               else
                 false
         end
@@ -771,14 +774,15 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
                                                                 (* -- both domain and codomain are covariant -- *)
 
-    | (ProductType(tyl1), ProductType(tyl2))               -> aux_list (List.combine tyl1 tyl2)
+    | (ProductType(tyl1), ProductType(tyl2))               -> begin try aux_list (List.combine tyl1 tyl2) with Invalid_argument(_) -> false end
     | (RecordType(tyasc1), RecordType(tyasc2))             -> (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
 
-    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2))
+    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> begin try (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2)) with Invalid_argument(_) -> false end
     | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
     | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2
     | (BaseType(bsty1), BaseType(bsty2))                   -> bsty1 = bsty2
     | _                                                    -> false
+
 
   and is_stronger_kind (kd1 : kind) (kd2 : kind) =
     match (kd1, kd2) with
