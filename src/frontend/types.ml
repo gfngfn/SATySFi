@@ -168,7 +168,8 @@ and manual_type_main =
   | MTypeParam       of var_name
   | MFuncType        of manual_type * manual_type
   | MProductType     of manual_type list
-  | MRecordType      of (field_name, manual_type) Assoc.t
+  | MRecordType      of manual_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
   | MHorzCommandType of manual_type list
   | MVertCommandType of manual_type list
   | MMathCommandType of manual_type list
@@ -176,7 +177,8 @@ and manual_type_main =
 
 type manual_kind =
   | MUniversalKind
-  | MRecordKind    of (field_name, manual_type) Assoc.t
+  | MRecordKind    of manual_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordKind(...)")]
 [@@deriving show]
 
 type base_type =
@@ -238,7 +240,8 @@ and mono_type_main =
   | TypeVariable    of type_variable_info ref
   | SynonymType     of (mono_type list) * TypeID.t * mono_type
   | VariantType     of (mono_type list) * TypeID.t
-  | RecordType      of (field_name, mono_type) Assoc.t
+  | RecordType      of mono_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
   | VertDetailedCommandType of mono_type list  (* will be deprecated *)
@@ -249,13 +252,13 @@ and poly_type =
 
 and kind =
   | UniversalKind
-  | RecordKind of (field_name, mono_type) Assoc.t
+  | RecordKind of mono_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "RecordKind(...)")]
 
 and type_variable_info =
   | Free  of kind FreeID_.t_
   | Bound of kind BoundID_.t_
   | Link  of mono_type
-
 [@@deriving show]
 
 
@@ -518,7 +521,8 @@ and abstract_tree =
   | TupleCons             of abstract_tree * abstract_tree
   | EndOfTuple
 (* -- record value -- *)
-  | Record                of (field_name, abstract_tree) Assoc.t
+  | Record                of abstract_tree Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
@@ -841,7 +845,7 @@ let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
 
 (* -- following are all for debugging -- *)
 
-let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "

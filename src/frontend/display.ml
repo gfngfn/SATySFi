@@ -1,7 +1,7 @@
 open Types
 
 
-let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
