@@ -592,7 +592,7 @@ and abstract_tree =
   | BackendMathText             of abstract_tree * abstract_tree
   | BackendMathColor            of abstract_tree * abstract_tree
   | BackendMathCharClass        of abstract_tree * abstract_tree
-  | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
+  | BackendMathVariantCharDirect of abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | BackendTabular              of abstract_tree
   | BackendRegisterPdfImage     of abstract_tree * abstract_tree

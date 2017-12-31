@@ -43,10 +43,12 @@ let math-list lst =
 
 let-math \tau =
   math-variant-char MathOrd
-    0x1D70F % italic
-    0x1D749 % bold italic
-    0x1D70F % roman
-    0x1D749 % bold roman
+    (|
+      italic      = 0x1D70F;
+      bold-italic = 0x1D749;
+      roman       = 0x1D70F;
+      bold-roman  = 0x1D749;
+    |)
 
 let-math \pi =
   math-ord-char 0x1D70B
@@ -58,10 +60,12 @@ let-math \lambda =
 
 let-math \Gamma =
   math-variant-char MathOrd
-    0x1D6E4 % italic
-    0x1D71E % bold italic
-    0x0393  % roman
-    0x1D6AA % bold roman
+    (|
+      italic      = 0x1D6E4;
+      bold-italic = 0x1D71E;
+      roman       = 0x0393;
+      bold-roman  = 0x1D6AA;
+    |)
 
 let-math \frac = math-frac
 

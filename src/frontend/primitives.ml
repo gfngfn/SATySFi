@@ -20,7 +20,6 @@ let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
 let tyid_decoset  = Typeenv.Raw.fresh_type_id "deco-set"
 let tyid_igraf    = Typeenv.Raw.fresh_type_id "inline-graphics"
 
-
 let ( ~! ) = Range.dummy
 
 (* -- base types and base type constructors -- *)
@@ -72,6 +71,15 @@ let tIGR_raw = tPT @-> (tL tGR)
 let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
+
+let tMCSTY =
+  let asc =
+    Assoc.of_list (List.map (fun k -> (k, tI)) [
+      "italic"; "bold-italic";
+      "roman" ; "bold-roman";
+    ])  (* temporary *)
+  in
+    (~! "math-char-style", RecordType(asc))
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
@@ -551,7 +559,7 @@ let make_environments () =
         ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
         ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
         ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
-        ("math-variant-char"       , ~% (tMATHCLS @-> tI @-> tI @-> tI @-> tI @-> tMATH), lambda5 (fun vmc vcp1 vcp2 vcp3 vcp4 -> BackendMathVariantCharDirect(vmc, vcp1, vcp2, vcp3, vcp4)));
+        ("math-variant-char"       , ~% (tMATHCLS @-> tMCSTY @-> tMATH)              , lambda2 (fun vmc vrcd -> BackendMathVariantCharDirect(vmc, vrcd)));
             (* TEMPORARY; shold extend more *)
         ("math-color"              , ~% (tCLR @-> tMATH @-> tMATH)                   , lambda2 (fun vcolor vm -> BackendMathColor(vcolor, vm)));
         ("math-char-class"         , ~% (tMCCLS @-> tMATH @-> tMATH)                 , lambda2 (fun vmcc vm -> BackendMathCharClass(vmcc, vm)));

@@ -342,15 +342,35 @@ and interpret env ast =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
-  | BackendMathVariantCharDirect(astmathcls, astcp1, astcp2, astcp3, astcp4) ->   (* TEMPORARY; should extend more *)
+  | BackendMathVariantCharDirect(astmathcls, astrcd) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
       let is_big = false in
-      let cp1 = interpret_int env astcp1 in  (* -- Italic -- *)
-      let cp2 = interpret_int env astcp2 in  (* -- bold Italic -- *)
-      let cp3 = interpret_int env astcp3 in  (* -- Roman -- *)
-      let cp4 = interpret_int env astcp4 in  (* -- bold Roman -- *)
+      let rcd =
+        let valuercd = interpret env astrcd in
+        match valuercd with
+        | Record(rcd) -> rcd
+        | _           -> report_bug_evaluator "BackendMathVariantCharDirect: not a record"
+      in
+      let (vcpI, vcpBI, vcpR, vcpBR) =
+        match
+          ( Assoc.find_opt rcd "italic",
+            Assoc.find_opt rcd "bold-italic",
+            Assoc.find_opt rcd "roman",
+            Assoc.find_opt rcd "bold-roman" )
+        with
+        | ( Some(vcpI),
+            Some(vcpBI),
+            Some(vcpR),
+            Some(vcpBR) ) -> (vcpI, vcpBI, vcpR, vcpBR)
+
+        | _ -> report_bug_evaluator "BackendMathVariantCharDirect: missing some field"
+      in
+      let cpI  = interpret_int env vcpI in  (* -- Italic -- *)
+      let cpBI = interpret_int env vcpBI in  (* -- bold Italic -- *)
+      let cpR  = interpret_int env vcpR in  (* -- Roman -- *)
+      let cpBR = interpret_int env vcpBR in  (* -- bold Roman -- *)
         MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big,
-          Uchar.of_int cp1, Uchar.of_int cp2, Uchar.of_int cp3, Uchar.of_int cp4))]))
+          Uchar.of_int cpI, Uchar.of_int cpBI, Uchar.of_int cpR, Uchar.of_int cpBR))]))
 
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
