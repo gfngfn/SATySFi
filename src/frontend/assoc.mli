@@ -7,7 +7,7 @@ val empty : 'v t
 
 val add : 'v t -> key -> 'v -> 'v t
 
-val find : 'v t -> key -> 'v
+val find_opt : 'v t -> key -> 'v option
 
 val to_list : 'v t -> (key * 'v) list
 
@@ -28,6 +28,8 @@ val mem : key -> 'v t -> bool
 val domain_included : 'v t -> 'w t -> bool
 
 val domain_same : 'v t -> 'w t -> bool
+
+val intersection : 'v t -> 'v t -> ('v * 'v) list
 
 val combine_value : 'v t -> 'w t -> ('v * 'w) list
 

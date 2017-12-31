@@ -909,8 +909,14 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | Record(asc1) -> Assoc.find asc1 fldnm
-        | _            -> report_bug_evaluator "AccessField: not a Record"
+        | Record(asc1) ->
+            begin
+              match Assoc.find_opt asc1 fldnm with
+              | None    -> report_bug_evaluator "AccessField: field not found"
+              | Some(v) -> v
+            end
+
+        | _ -> report_bug_evaluator "AccessField: not a Record"
       end
 
 (* ---- class/id option ---- *)

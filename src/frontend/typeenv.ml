@@ -803,13 +803,11 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (UniversalKind, _)                       -> false
     | (RecordKind(tyasc1), RecordKind(tyasc2)) ->
         begin
-          try
-            tyasc2 |> Assoc.fold (fun b k ty2 ->
-              let ty1 = Assoc.find tyasc1 k in
-                b && (aux ty1 ty2)
-            ) true
-          with
-          | Not_found -> false
+          tyasc2 |> Assoc.fold (fun b k ty2 ->
+            match Assoc.find_opt tyasc1 k with
+            | Some(ty1) -> b && (aux ty1 ty2)
+            | None      -> false
+          ) true
         end
   in
   let b = aux ty1 ty2 in

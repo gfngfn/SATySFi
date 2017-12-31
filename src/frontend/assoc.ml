@@ -13,8 +13,8 @@ let rec add amap key value =
   amap |> AssocMap.add key value
 
 
-let rec find amap key =
-  amap |> AssocMap.find key
+let find_opt amap key =
+  amap |> AssocMap.find_opt key
 
 
 let to_list amap =
@@ -61,7 +61,7 @@ let domain_same amap1 amap2 =
   (domain_included amap1 amap2) && (domain_included amap2 amap1)
 
 
-let combine_value amap1 amap2 =
+let intersection amap1 amap2 =
   AssocMap.fold (fun k v acc ->
     match AssocMap.find_opt k amap2 with
     | None -> acc
@@ -69,7 +69,7 @@ let combine_value amap1 amap2 =
   ) amap1 [] |> List.rev
 
 
-let intersection amap1 amap2 =
+let combine_value amap1 amap2 =
   AssocMap.fold (fun k v acc ->
     match AssocMap.find_opt k amap2 with
     | None -> acc
