@@ -120,9 +120,13 @@ document (|
       \donut;これはドーナツ。\donuts;こっちは重なったドーナツ。
     }
     +screen {タイトルつきの枠} <
-      +p-jp {
-        定理環境などに使える枠です。p\latex;のascmacパッケージのscreen環境に近いです。
-      }
+      +p-jp (
+      let platex =
+        let p = {p} in
+          {#p;\latex;} in
+      {
+        定理環境などに使える枠です。#platex;のascmacパッケージのscreen環境に近いです。
+      });
     >
     +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
     +p { \raw-font-size(16pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }

@@ -168,19 +168,19 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
 
     | HorzCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") inline-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] inline-cmd"
 
     | VertCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") block-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"  (* will be deprecated *)
+        "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
 
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") math-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] math-cmd"
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
@@ -290,6 +290,8 @@ and string_of_utih (_, utihmain) =
   | UTInputHorzEmbedded(utastcmd, utastlst) ->
       "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
   | UTInputHorzText(s) -> "\"" ^ s ^ "\""
+  | UTInputHorzContent(utast0) ->
+      "(embC " ^ (string_of_utast utast0) ^ ")"
  
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)

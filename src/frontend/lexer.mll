@@ -126,7 +126,7 @@ let identifier = (small (digit | latin | "-")*)
 let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | '?' )
-let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*' '$']
+let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '%' '|' '*' '$' '#' ';']
 let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | ',' | '?' | '`' )
 
 rule progexpr = parse
@@ -315,6 +315,19 @@ and vertexpr = parse
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       vertexpr lexbuf
     }
+  | ("#" (identifier as varnm)) {
+      push VtoA;
+      next_state := ActiveState;
+      VARINVERT(get_pos lexbuf, [], varnm)
+    }
+  | ("#" (constructor ".")* (identifier | constructor)) {
+      let csnmpure = Lexing.lexeme lexbuf in
+      let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list csstr in
+        push VtoA;
+        next_state := ActiveState;
+        VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
+    }
   | ("+" (identifier | constructor)) {
       push VtoA;
       next_state := ActiveState;
@@ -401,6 +414,19 @@ and horzexpr = parse
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       ignore_space := true;
       ITEM(get_pos lexbuf, String.length itemstr)
+    }
+  | ("#" (identifier as varnm)) {
+      push HtoA;
+      next_state := ActiveState;
+      VARINHORZ(get_pos lexbuf, [], varnm)
+    }
+  | ("#" (constructor ".")* (identifier | constructor)) {
+      let csnmpure = Lexing.lexeme lexbuf in
+      let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list csstr in
+        push HtoA;
+        next_state := ActiveState;
+        VARINHORZ(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in
@@ -509,13 +535,13 @@ and mathexpr = parse
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("#" (identifier as varnm)) {
-      VARINMATH(get_pos lexbuf, varnm)
+      VARINMATH(get_pos lexbuf, [], varnm)
     }
   | ("#" (constructor ".")* (identifier | constructor)) {
       let csnmpure = Lexing.lexeme lexbuf in
       let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list csstr in
-        VARINMATHWITHMOD(get_pos lexbuf, mdlnmlst, csnm)
+        VARINMATH(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("\\" (identifier | constructor)) {
       let csnm = Lexing.lexeme lexbuf in

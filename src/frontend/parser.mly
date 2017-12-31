@@ -386,11 +386,9 @@
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
-(*
-%token <Range.t * Types.var_name> VARINSTR
-*)
-%token <Range.t * Types.var_name> VARINMATH
-%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATHWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINHORZ
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINVERT
+%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
@@ -1031,8 +1029,7 @@ mathbot:
         let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
           make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
       }
-  | tok=VARINMATH        { let (rng, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf([], varnm)))) }
-  | tok=VARINMATHWITHMOD { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
+  | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
@@ -1058,12 +1055,15 @@ ihcmd:
           make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
       }
   | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
-        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in  (* -- inline command '\\math' is inserted -- *)
+        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in
+            (* -- inline command '\\math' is inserted -- *)
           make_standard (Tok opn) (Tok cls) (UTInputHorzEmbedded(utastcmd, [utast]))
       }
-(*
-  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
-*)
+  | vartok=VARINHORZ; cls=ENDACTIVE {
+        let (rng, mdlnmlst, varnm) = vartok in
+        let utast = make_standard (Tok rng) (Tok cls) (UTContentOf(mdlnmlst, varnm)) in
+          make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
+      }
 ;
 ihtext:
   | ihcharlst=nonempty_list(ihchar) {

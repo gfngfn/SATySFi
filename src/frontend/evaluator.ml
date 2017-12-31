@@ -5,6 +5,10 @@ open Types
 
 exception EvalError of string
 
+type eval_input_horz_element =
+  | EvInputHorzText     of string
+  | EvInputHorzEmbedded of abstract_tree * abstract_tree list
+
 
 let report_bug_evaluator msg =
   failwith msg
@@ -1260,21 +1264,51 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
 
 
 and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihlst : input_horz_element list) : abstract_tree =
-  let normalize ihlst =
-    ihlst |> List.fold_left (fun acc ih ->
+  let rec eval_content env ihlst =
+    ihlst |> List.fold_left (fun evihacc ih ->
       match ih with
-      | InputHorzEmbedded(_, _) -> (ih :: acc)
-      | InputHorzText(s2) ->
-          match acc with
-          | InputHorzText(s1) :: acctail -> (InputHorzText(s1 ^ s2) :: acctail)
-          | _                            -> (ih :: acc)
+      | InputHorzText(s) ->
+          EvInputHorzText(s) :: evihacc
+
+      | InputHorzEmbedded(astcmd, astlst) ->
+          EvInputHorzEmbedded(astcmd, astlst) :: evihacc
+
+      | InputHorzContent(ast0) ->
+          let value0 = interpret env ast0 in
+          begin
+            match value0 with
+            | InputHorzWithEnvironment(ihlstsub, envsub) ->
+                let evihlst = eval_content envsub ihlstsub in
+                  List.rev_append evihlst evihacc
+
+            | _ ->
+                Format.printf "eval_content; %a --->* %a" pp_abstract_tree ast0 pp_abstract_tree value0;
+                assert false
+          end
+    ) [] |> List.rev
+
+  in
+  let normalize evihlst =
+    evihlst |> List.fold_left (fun acc evih ->
+      match evih with
+      | EvInputHorzEmbedded(_, _) ->
+          (evih :: acc)
+
+      | EvInputHorzText(s2) ->
+          begin
+            match acc with
+            | EvInputHorzText(s1) :: acctail -> (EvInputHorzText(s1 ^ s2) :: acctail)
+            | _                              -> (evih :: acc)
+          end
+          
     ) [] |> List.rev
   in
-  let ihlstnml = normalize ihlst in
+  let evihlst = eval_content env ihlst in
+  let evihlstnml = normalize evihlst in
   let hblstacc =
-    ihlstnml |> List.fold_left (fun lstacc ih ->
+    evihlstnml |> List.fold_left (fun lstacc ih ->
       match ih with
-      | InputHorzEmbedded(astcmd, astarglst) ->
+      | EvInputHorzEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
@@ -1287,7 +1321,9 @@ and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihls
             | _ -> report_bug_evaluator "interpret_input_horz; other than LambdaHorzWithEnvironment(_, _, _)"
           end
 
-      | InputHorzText(s) -> (lex_horz_text ctx s) :: lstacc
+      | EvInputHorzText(s) ->
+          (lex_horz_text ctx s) :: lstacc
+
     ) []
   in
   let hblst = hblstacc |> List.rev |> List.concat in

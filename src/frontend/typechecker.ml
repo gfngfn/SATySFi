@@ -719,6 +719,11 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           | _ -> failwith "horizontal command of type other than HorzCommandType(_)"
         end
 
+    | (_, UTInputHorzContent(utast0)) :: tail ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType)) in
+          aux (InputHorzContent(e0) :: acc) tail
+
     | (_, UTInputHorzText(s)) :: tail ->
         aux (InputHorzText(s) :: acc) tail
   in

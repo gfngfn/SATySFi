@@ -44,6 +44,7 @@ module EvalVarID
     val fresh : var_name -> t
     val equal : t -> t -> bool
     val show_direct : t -> string
+    val pp : Format.formatter -> t -> unit
   end
 = struct
     type t = int * string
@@ -52,6 +53,7 @@ module EvalVarID
     let fresh varnm = begin incr current_id ; (!current_id, varnm) end
     let equal (i1, _) (i2, _) = (i1 = i2)
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
+    let pp fmt evid = Format.fprintf fmt "%s" (show_direct evid)
   end
 
 
@@ -281,6 +283,7 @@ and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
   | UTInputHorzText     of string
   | UTInputHorzEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputHorzContent  of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
@@ -439,12 +442,14 @@ and mutual_let_cons =
   | EndOfMutualLet
 
 and environment = (EvalVarID.t, location) Hashtbl.t
+  [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
 and location = abstract_tree ref
 
 and input_horz_element =
   | InputHorzText     of string
   | InputHorzEmbedded of abstract_tree * abstract_tree list
+  | InputHorzContent  of abstract_tree
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
@@ -480,9 +485,12 @@ and abstract_tree =
 (* -- graphics -- *)
   | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue                   of HorzBox.path list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
   | PathUnite                   of abstract_tree * abstract_tree
   | GraphicsValue               of Pdfops.t list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | PrePathBeginning            of abstract_tree
   | PrePathLineTo               of abstract_tree * abstract_tree
   | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
@@ -582,7 +590,7 @@ and abstract_tree =
   | BackendRegisterOtherImage   of abstract_tree
   | BackendUseImageByWidth      of abstract_tree * abstract_tree
   | ImageKey                    of ImageInfo.key
-      [@printer (fun fmt _ -> "<image-key>")]
+      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -649,7 +657,7 @@ and pattern_tree =
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
-
+[@@deriving show { with_path = false; }]
 (*
 type output_unit =
   | OString             of string
