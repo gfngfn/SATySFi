@@ -366,6 +366,9 @@ and untyped_abstract_tree_main =
   | UTItemize              of untyped_itemize
 (* -- math -- *)
   | UTMath                 of untyped_math
+(* -- for lightweight command definition -- *)
+  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
+  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 
 and constraint_cons = (var_name * manual_kind) list
 

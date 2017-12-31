@@ -24,7 +24,7 @@ document (|
     +p {
       My quiz above the kiwi juice
       needs \emph{priceless} fixing.
-      The \emph{quick brown fox} jumps over the lazy dog.
+      The \emph2{quick brown fox} jumps over the lazy dog.
       ¿But aren't Kafka's Schloß and Æsop's Œuvres often
       naïve vis-à-vis the dæmonic phœnix's official rôle
       in fluffy soufflés?
@@ -102,7 +102,7 @@ document (|
       複数の文字体系間の共存（文字体系ごとのフォントの切り替え）は future work です
       （和欧間空白の挿入はひとまず実現したが，まだBASEテーブルによる高さの調整は行なっていない）。
       ←閉じ括弧と句点など行頭行末以外のベタ組みにも対応しました。
-      このほか\emph{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
+      このほか\emph2{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
       \underline{
         行分割できる下線をつけたりすることもできます
         （途中で行分割可能なインラインボックスを使って実現しています）。

@@ -32,6 +32,8 @@ let-inline ctx \emph inner =
   in
     read-inline ctx-emph inner
 
+let-inline \emph2 inner = {\emph{#inner;}}
+
 let-mutable ref-title <- {}
 let-mutable ref-author <- {}
 

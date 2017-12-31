@@ -579,6 +579,21 @@ let rec typecheck
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(eM, eA), tyA)
 
+(* ---- for lightweight command definition ---- *)
+  | UTLexHorz(utastctx, utasth) ->
+      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
+      let (eh, tyh) = typecheck_iter tyenv utasth in
+      let () = unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(ContextType)) in
+      let () = unify tyh (Range.dummy "ut-lex-horz-2", BaseType(TextRowType)) in
+        (HorzLex(ectx, eh), (rng, BaseType(BoxRowType)))
+
+  | UTLexVert(utastctx, utastv) ->
+      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
+      let (ev, tyv) = typecheck_iter tyenv utastv in
+      let () = unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(ContextType)) in
+      let () = unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType)) in
+        (HorzLex(ectx, ev), (rng, BaseType(BoxColType)))
+
 
 and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math qtfbl lev tyenv in

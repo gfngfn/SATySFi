@@ -566,6 +566,16 @@ nxhorzdec:
       let curried = curry_lambda_abstract rngcs argvarlst utast in
         (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
       }
+  | hcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = hcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
+      let curried = curry_lambda_abstract rngcs argvarlst utastread in
+        (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
+      }
 ;
 nxvertdec:
   | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
@@ -573,6 +583,16 @@ nxvertdec:
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
       let curried = curry_lambda_abstract rngcs argvarlst utast in
+        (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      }
+  | vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
+      let curried = curry_lambda_abstract rngcs argvarlst utastread in
         (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
