@@ -1230,8 +1230,8 @@ and interpret env ast =
 
 
 and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
-  let (valuectxfinal, imvblstacc) =
-    ivlst |> List.fold_left (fun (valuectx, lstacc) iv ->
+  let rec aux env ivlst =
+    ivlst |> List.fold_left (fun imvbacc iv ->
       match iv with
       | InputVertEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
@@ -1242,24 +1242,27 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
                 let valueret = reduce_beta_list env valuedef astarglst in
                 begin
                   match valueret with
-                  | Vert(imvblst) -> (valuectx, imvblst :: lstacc)
+                  | Vert(imvblst) -> List.rev_append imvblst imvbacc
                   | _             -> report_bug_evaluator "interpret_input_vert; 1"
                 end
-(*
-            | LambdaVertDetailedWithEnv(evid, astdef, envf) ->
-                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
-                let valueret = reduce_beta_list env valuedef astarglst in
-                begin
-                  match valueret with
-                  | TupleCons(Context(ctxnext), TupleCons(Vert(imvblst), EndOfTuple)) -> (ctxnext, imvblst :: lstacc)
-                  | _                                                                 -> report_bug_evaluator "interpret_input_vert; 2"
-                end
-*)
+
             | _ -> report_bug_evaluator "interpret_input_vert; other than LambdaVertWithEnvironment or LambdaVertDetailedWithEnv"
           end
-    ) (valuectx, [])
+
+      | InputVertContent(ast0) ->
+          let value0 = interpret env ast0 in
+          begin
+            match value0 with
+            | InputVertWithEnvironment(ivlstsub, envsub) ->
+                let imvblst = aux envsub ivlstsub |> List.rev in
+                  List.rev_append imvblst imvbacc
+
+            | _ -> report_bug_evaluator "interpret_input_vert"
+          end
+
+    ) []
   in
-  let imvblst = imvblstacc |> List.rev |> List.concat in
+  let imvblst = aux env ivlst |> List.rev in
     Vert(imvblst)
 
 

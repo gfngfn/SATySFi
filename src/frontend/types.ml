@@ -288,6 +288,7 @@ and untyped_input_horz_element_main =
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputVertContent  of untyped_abstract_tree
 
 and 'a untyped_path_component =
   | UTPathLineTo        of 'a
@@ -453,6 +454,7 @@ and input_horz_element =
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
+  | InputVertContent  of abstract_tree
 
 
 and 'a path_component =

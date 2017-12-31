@@ -284,6 +284,8 @@ and string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
       "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
+  | UTInputVertContent(utast0) ->
+      "(embVC " ^ (string_of_utast utast0) ^ ")"
 
 and string_of_utih (_, utihmain) =
   match utihmain with
@@ -291,7 +293,7 @@ and string_of_utih (_, utihmain) =
       "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
   | UTInputHorzText(s) -> "\"" ^ s ^ "\""
   | UTInputHorzContent(utast0) ->
-      "(embC " ^ (string_of_utast utast0) ^ ")"
+      "(embVC " ^ (string_of_utast utast0) ^ ")"
  
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)

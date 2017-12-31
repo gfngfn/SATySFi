@@ -1061,7 +1061,7 @@ ihcmd:
       }
   | vartok=VARINHORZ; cls=ENDACTIVE {
         let (rng, mdlnmlst, varnm) = vartok in
-        let utast = make_standard (Tok rng) (Tok cls) (UTContentOf(mdlnmlst, varnm)) in
+        let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
           make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
       }
 ;
@@ -1130,6 +1130,10 @@ vxbot:
         let (rngcs, mdlnmlst, csnm) = vcmd in
         let args = List.append nargs sargs in
           make_standard (Tok rngcs) (RangedList args) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
+      }
+  | vartok=VARINVERT; cls=ENDACTIVE {
+        let (rng, mdlnmlst, varnm) = vartok in
+          make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
       }
 ;
 

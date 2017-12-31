@@ -666,7 +666,9 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
 and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =
   let rec aux (acc : input_vert_element list) (lst : untyped_input_vert_element list) =
     match lst with
-    | [] -> List.rev acc
+    | [] ->
+        List.rev acc
+
     | (_, UTInputVertEmbedded(utastcmd, utastarglst)) :: tail ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
         begin
@@ -688,6 +690,11 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
 
           | _ -> failwith "vertical command of type other than VertCommandType(_)"
         end
+
+    | (_, UTInputVertContent(utast0)) :: tail ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType)) in
+          aux (InputVertContent(e0) :: acc) tail
   in
     aux [] utivlst
         
