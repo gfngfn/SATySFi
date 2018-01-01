@@ -1,13 +1,14 @@
 
+open MyUtil
+
 module type S =
   sig
     type key
     type 'a t
-    exception StageNotFound of key list
     val empty : 'a -> 'a t
     val to_string : (key -> string) -> ('a -> string) -> 'a t -> string
     val find_stage : 'a t -> key list -> 'a
-    val update : 'a t -> key list -> ('a -> 'a) -> 'a t
+    val update : 'a t -> key list -> ('a -> 'a) -> ('a t) option
     val add_stage : 'a t -> key list -> key -> 'a -> 'a t
     val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
   end
@@ -20,12 +21,14 @@ module Make (Key : Map.OrderedType) =
 
     type key = Key.t
 
-    type 'a t = Stage of 'a * ('a t) InternalMap.t
+    type 'a t =
+      | Stage of 'a * ('a t) InternalMap.t
 
     exception StageNotFound of key list
 
 
-    let empty (vroot : 'a) = Stage(vroot, InternalMap.empty)
+    let empty (vroot : 'a) =
+      Stage(vroot, InternalMap.empty)
 
 
     let rec to_string (strk : key -> string) (strf : 'a -> string) (Stage(x, imap) : 'a t) =
@@ -39,18 +42,19 @@ module Make (Key : Map.OrderedType) =
           let hshtr = InternalMap.find k imap in find_stage hshtr tail
 
 
-    let rec update (hshtr : 'a t) (addr : key list) (f : 'a -> 'a) =
+    let update (hshtr : 'a t) (addr : key list) (f : 'a -> 'a) =
+      let open OptionMonad in
       let rec aux (Stage(x, imap) : 'a t) (addr : key list) =
         match addr with
-        | []        -> Stage(f x, imap)
+        | [] ->
+            return (Stage(f x, imap))
+
         | k :: tail ->
-            let hshtrnext = InternalMap.find k imap in
-              Stage(x, InternalMap.add k (update hshtrnext tail f) imap)
+            InternalMap.find_opt k imap >>= fun hshtrnext ->
+            aux hshtrnext tail >>= fun y ->
+            return (Stage(x, InternalMap.add k y imap))
       in
-        try (* -- for InternalMap.find -- *)
-          aux hshtr addr
-        with
-        | Not_found -> raise (StageNotFound(addr))
+        aux hshtr addr
 
 
     let rec add_stage (hshtr : 'a t) (addr : key list) (knew : key) (vnew : 'a) =
