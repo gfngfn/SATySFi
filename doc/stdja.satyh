@@ -1,5 +1,5 @@
 
-let black = Color.black
+%let black = Color.black
 
 module StdJa : sig
 
@@ -85,8 +85,8 @@ end = struct
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
         [
-          stroke 3pt black path1;
-          stroke 1pt black path2;
+          stroke 3pt Color.black path1;
+          stroke 1pt Color.black path2;
         ]
     in
       (deco, deco, deco, deco)
@@ -112,7 +112,7 @@ end = struct
             |> terminate-path
         in
         inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk black (path pt); ]
+          [ stroke thk Color.black (path pt); ]
         ))
       in
       let ib-author = read-inline ctx-author (!ref-author) in

@@ -3,9 +3,9 @@ open MyUtil
 open Types
 
 let print_for_debug_variantenv msg =
-(*
+
   print_endline msg;
-*)
+
   ()
 
 
@@ -155,14 +155,15 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
       | Some(mdlid) -> mdlid
     )
   in
+  let addrstr = String.concat "" (List.map (fun m -> ModuleID.extract_name m ^ ".") addrlast) in  (* for debug *)
     ModuleTree.search_backward mtr addrlst addrlast (fun (vdmap, _, _, sigopt) ->
       match sigopt with
       | None ->
-          print_for_debug_variantenv ("FVD " ^ varnm ^ " -> no signature"); (* for debug *)
+          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> no signature"); (* for debug *)
           VarMap.find_opt varnm vdmap
 
       | Some((_, vtmapsig)) ->
-          print_for_debug_variantenv ("FVD " ^ varnm ^ " -> signature found"); (* for debug *)
+          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> signature found"); (* for debug *)
           VarMap.find_opt varnm vtmapsig >>= fun ptysig ->
           VarMap.find_opt varnm vdmap >>= fun (_, evid) ->
           return (ptysig, evid)
@@ -933,30 +934,25 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
     | Some(msig) ->
         let sigoptini = Some((TyNameMap.empty, VarMap.empty)) in
-        let (tyenvforsigIini, tyenvforsigOini) : t * t =
-          match Alist.chop_last tyenv.current_address with
-          | None -> assert false
-          | Some((addr_outer, mdlid)) ->
+        match
+          let open OptionMonad in
+          Alist.chop_last tyenv.current_address >>= fun (addr_outer, mdlid) ->
           let addrlstprev = Alist.to_list tyenvprev.current_address in
           let mtrprev = tyenvprev.main_tree in
-          let mtrprevInew =
-            match ModuleTree.add_stage mtrprev addrlstprev mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) with
-            | None -> assert false
-            | Some(mtrprevInew) -> mtrprevInew
-          in
-          let mtrprevOnew =
-            match ModuleTree.add_stage mtrprev addrlstprev mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) with
-            | None -> assert false
-            | Some(mtrprevOnew) -> mtrprevOnew
-          in
-            ({ tyenv with main_tree = mtrprevInew; }, { tyenv with main_tree = mtrprevOnew; })
-        in
-        let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
-        let addrlst = Alist.to_list tyenvdir.current_address in
-        let mtr = tyenvdir.main_tree in
-          match ModuleTree.update mtr addrlst (update_so (fun _ -> sigopt)) with
-          | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
-          | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
+          ModuleTree.add_stage mtrprev addrlstprev mdlid
+            (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) >>= fun mtrprevInew ->
+          ModuleTree.add_stage mtrprev addrlstprev mdlid
+            (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) >>= fun mtrprevOnew ->
+          return ({ tyenv with main_tree = mtrprevInew; }, { tyenv with main_tree = mtrprevOnew; })
+        with
+        | None -> assert false
+        | Some((tyenvforsigIini, tyenvforsigOini)) ->
+            let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
+            let addrlst = Alist.to_list tyenvdir.current_address in
+            let mtr = tyenvdir.main_tree in
+              match ModuleTree.update mtr addrlst (update_so (fun _ -> sigopt)) with
+              | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+              | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
 
 
 module Raw =

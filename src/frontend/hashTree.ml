@@ -84,7 +84,7 @@ module Make (Key : Map.OrderedType) =
     (* -- 'search_backward hshtr addr addrlast findf' lookups stages
           from the address 'd_1/.../d_n/addrlast', 'd_1/.../d_(n-1)/addrlast' down to 'addrlast'.
           Returns 'None' if every candidate stage does NOT exist or answers 'None' for 'findf'. -- *)
-    let rec search_backward (Stage(x, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) : 'b option =
+    let rec search_backward (Stage(_, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) : 'b option =
       let open OptionMonad in
       match addr with
       | [] ->
@@ -96,8 +96,12 @@ module Make (Key : Map.OrderedType) =
           let res = search_backward hshtrnext tail addrlast findf in
           begin
             match res with
-            | None    -> findf x
-            | Some(_) -> res
+            | Some(_) ->
+                res
+
+            | None ->
+                find_stage hshtr addrlast >>= fun xsub ->
+                findf xsub
           end
 
   end
