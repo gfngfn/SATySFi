@@ -7,9 +7,9 @@ module type S =
     type 'a t
     val empty : 'a -> 'a t
     val to_string : (key -> string) -> ('a -> string) -> 'a t -> string
-    val find_stage : 'a t -> key list -> 'a
+    val find_stage : 'a t -> key list -> 'a option
     val update : 'a t -> key list -> ('a -> 'a) -> ('a t) option
-    val add_stage : 'a t -> key list -> key -> 'a -> 'a t
+    val add_stage : 'a t -> key list -> key -> 'a -> ('a t) option
     val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
   end
 
@@ -24,8 +24,6 @@ module Make (Key : Map.OrderedType) =
     type 'a t =
       | Stage of 'a * ('a t) InternalMap.t
 
-    exception StageNotFound of key list
-
 
     let empty (vroot : 'a) =
       Stage(vroot, InternalMap.empty)
@@ -36,10 +34,14 @@ module Make (Key : Map.OrderedType) =
 
 
     let rec find_stage (Stage(x, imap) : 'a t) (addr : key list) =
+      let open OptionMonad in
       match addr with
-      | []        -> x
+      | [] ->
+          return x
+
       | k :: tail ->
-          let hshtr = InternalMap.find k imap in find_stage hshtr tail
+          InternalMap.find_opt k imap >>= fun hshtr ->
+          find_stage hshtr tail
 
 
     let update (hshtr : 'a t) (addr : key list) (f : 'a -> 'a) =
@@ -51,41 +53,37 @@ module Make (Key : Map.OrderedType) =
 
         | k :: tail ->
             InternalMap.find_opt k imap >>= fun hshtrnext ->
-            aux hshtrnext tail >>= fun y ->
-            return (Stage(x, InternalMap.add k y imap))
+            aux hshtrnext tail >>= fun res ->
+            return (Stage(x, InternalMap.add k res imap))
       in
         aux hshtr addr
 
 
-    let rec add_stage (hshtr : 'a t) (addr : key list) (knew : key) (vnew : 'a) =
+    let add_stage (hshtr : 'a t) (addr : key list) (knew : key) (vnew : 'a) =
+      let open OptionMonad in
       let rec aux (Stage(x, imap) : 'a t) (addr : key list) =
         match addr with
-        | []        -> Stage(x, InternalMap.add knew (Stage(vnew, InternalMap.empty)) imap)
+        | [] ->
+            return (Stage(x, InternalMap.add knew (Stage(vnew, InternalMap.empty)) imap))
+
         | k :: tail ->
-            let hshtrnext = InternalMap.find k imap in
-            let res = aux hshtrnext tail in
+            InternalMap.find_opt k imap >>= fun hshtrnext ->
+            aux hshtrnext tail >>= fun res ->
             let imapnew = InternalMap.add k res imap in
-              Stage(x, imapnew)
+            return (Stage(x, imapnew))
       in
-        try (* -- for InternalMap.find -- *)
-          aux hshtr addr
-        with
-        | Not_found -> raise (StageNotFound(addr))
+        aux hshtr addr
 
 
     let rec search_backward (Stage(x, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) =
+      let open OptionMonad in
       match addr with
-      | []        ->
-          begin
-            try (* -- for find_stage -- *)
-              let xsub = find_stage hshtr addrlast in
-                findf xsub
-            with
-            | Not_found -> None
-          end
+      | [] ->
+          find_stage hshtr addrlast >>= fun xsub ->
+          findf xsub
 
       | k :: tail ->
-          let hshtrnext = InternalMap.find k imap in
+          InternalMap.find_opt k imap >>= fun hshtrnext ->
           let res = search_backward hshtrnext tail addrlast findf in
           begin
             match res with

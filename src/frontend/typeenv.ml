@@ -1,4 +1,5 @@
 
+open MyUtil
 open Types
 
 let print_for_debug_variantenv msg =
@@ -159,16 +160,18 @@ let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_na
 
 
 let find_for_inner ((addr, nmtoid, mtr) : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
-  let (vdmap, _, _, _) = ModuleTree.find_stage mtr (Alist.to_list addr) in
-    VarMap.find_opt varnm vdmap
+  let open OptionMonad in
+  ModuleTree.find_stage mtr (Alist.to_list addr) >>= fun (vdmap, _, _, _) ->
+  VarMap.find_opt varnm vdmap
 
 
 let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
   let addrnew = Alist.extend addr mdlid in
   let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in  (* doubtful about nmtoid; shouldn't a module name be added when *leaving* the module instead of when entering it? *)
-  let mtrnew = ModuleTree.add_stage mtr (Alist.to_list addr) mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
-    (addrnew, nmtoidnew, mtrnew)
+    match ModuleTree.add_stage mtr (Alist.to_list addr) mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) with
+    | None         -> assert false
+    | Some(mtrnew) -> (addrnew, nmtoidnew, mtrnew)
 
 (*
 let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
@@ -903,11 +906,19 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
     | None       -> tyenv
     | Some(msig) ->
         let sigoptini = Some((TyNameMap.empty, VarMap.empty)) in
-        let (tyenvforsigIini, tyenvforsigOini) =
+        let (tyenvforsigIini, tyenvforsigOini) : t * t =
           let (addr, nmtoid, _) = tyenv in
           let (addrprev, _, mtrprev) = tyenvprev in
-          let mtrprevInew = ModuleTree.add_stage mtrprev (Alist.to_list addrprev) (List.hd (List.rev (Alist.to_list addr))) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
-          let mtrprevOnew = ModuleTree.add_stage mtrprev (Alist.to_list addrprev) (List.hd (List.rev (Alist.to_list addr))) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) in
+          let mtrprevInew =
+            match ModuleTree.add_stage mtrprev (Alist.to_list addrprev) (List.hd (List.rev (Alist.to_list addr))) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) with
+            | None -> assert false
+            | Some(mtrprevInew) -> mtrprevInew
+          in
+          let mtrprevOnew =
+            match ModuleTree.add_stage mtrprev (Alist.to_list addrprev) (List.hd (List.rev (Alist.to_list addr))) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) with
+            | None -> assert false
+            | Some(mtrprevOnew) -> mtrprevOnew
+          in
             ((addr, nmtoid, mtrprevInew), (addr, nmtoid, mtrprevOnew))
         in
         let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
