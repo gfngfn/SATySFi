@@ -25,15 +25,17 @@ module Make (Key : Map.OrderedType) =
       | Stage of 'a * ('a t) InternalMap.t
 
 
-    let empty (vroot : 'a) =
+    let empty (vroot : 'a) : 'a t =
       Stage(vroot, InternalMap.empty)
 
 
-    let rec to_string (strk : key -> string) (strf : 'a -> string) (Stage(x, imap) : 'a t) =
+    let rec to_string (strk : key -> string) (strf : 'a -> string) (Stage(x, imap) : 'a t) : string =
       (strf x) ^ ", { " ^ (InternalMap.fold (fun k hshtr s -> (strk k) ^ ": " ^ (to_string strk strf hshtr) ^ " " ^ s) imap "") ^ "}"
 
 
-    let rec find_stage (Stage(x, imap) : 'a t) (addr : key list) =
+    (* -- 'find_stage hshtr addr' returns the stage at 'addr/' if it exists,
+          and returns 'None' otherwise. -- *)
+    let rec find_stage (Stage(x, imap) : 'a t) (addr : key list) : 'a option =
       let open OptionMonad in
       match addr with
       | [] ->
@@ -44,7 +46,9 @@ module Make (Key : Map.OrderedType) =
           find_stage hshtr tail
 
 
-    let update (hshtr : 'a t) (addr : key list) (f : 'a -> 'a) =
+    (* -- 'update hshtr addr f' returns the hash tree that updates 'hshtr' by 'f' as to the stage at 'addr'.
+          Returns 'None' if 'hshtr' does NOT have a stage at 'addr/'. -- *)
+    let update (hshtr : 'a t) (addr : key list) (f : 'a -> 'a) : ('a t) option =
       let open OptionMonad in
       let rec aux (Stage(x, imap) : 'a t) (addr : key list) =
         match addr with
@@ -59,7 +63,9 @@ module Make (Key : Map.OrderedType) =
         aux hshtr addr
 
 
-    let add_stage (hshtr : 'a t) (addr : key list) (knew : key) (vnew : 'a) =
+    (* -- 'add_stage hshtr addr knew vnew' returns the hash tree to which 'vnew' is inserted at the address 'addr/knew/' .
+          Returns 'None' if 'hshtr' does NOT have a stage at the address 'addr'. -- *)
+    let add_stage (hshtr : 'a t) (addr : key list) (knew : key) (vnew : 'a) : ('a t) option =
       let open OptionMonad in
       let rec aux (Stage(x, imap) : 'a t) (addr : key list) =
         match addr with
@@ -75,7 +81,10 @@ module Make (Key : Map.OrderedType) =
         aux hshtr addr
 
 
-    let rec search_backward (Stage(x, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) =
+    (* -- 'search_backward hshtr addr addrlast findf' lookups stages
+          from the address 'd_1/.../d_n/addrlast', 'd_1/.../d_(n-1)/addrlast' down to 'addrlast'.
+          Returns 'None' if every candidate stage does NOT exist or answers 'None' for 'findf'. -- *)
+    let rec search_backward (Stage(x, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (findf : 'a -> 'b option) : 'b option =
       let open OptionMonad in
       match addr with
       | [] ->
