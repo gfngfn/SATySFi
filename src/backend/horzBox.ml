@@ -176,6 +176,17 @@ type math_char_class =
 [@@deriving show]
 (* TEMPORARY; should add more *)
 
+type math_variant_style =
+  {
+    math_italic      : Uchar.t;
+    math_bold_italic : Uchar.t;
+    math_roman       : Uchar.t;
+    math_bold_roman  : Uchar.t;
+  }
+
+let pp_math_variant_style =
+  (fun fmt _ -> Format.fprintf fmt "<math-variant-style>")
+
 
 module MathVariantCharMap = Map.Make
   (struct
@@ -305,7 +316,7 @@ and math_element_main =
 and math_element =
   | MathElement           of math_kind * math_element_main
   | MathVariantChar       of string
-  | MathVariantCharDirect of math_kind * bool * Uchar.t * Uchar.t * Uchar.t * Uchar.t
+  | MathVariantCharDirect of math_kind * bool * math_variant_style
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
       (* --
          (1) math class

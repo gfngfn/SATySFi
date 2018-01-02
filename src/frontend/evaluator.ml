@@ -369,8 +369,15 @@ and interpret env ast =
       let cpBI = interpret_int env vcpBI in  (* -- bold Italic -- *)
       let cpR  = interpret_int env vcpR in  (* -- Roman -- *)
       let cpBR = interpret_int env vcpBR in  (* -- bold Roman -- *)
-        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big,
-          Uchar.of_int cpI, Uchar.of_int cpBI, Uchar.of_int cpR, Uchar.of_int cpBR))]))
+      let mvsty =
+        HorzBox.({
+          math_italic      = Uchar.of_int cpI;
+          math_bold_italic = Uchar.of_int cpBI;
+          math_roman       = Uchar.of_int cpR;
+          math_bold_roman  = Uchar.of_int cpBR;
+        })
+      in
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
