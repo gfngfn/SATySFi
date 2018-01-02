@@ -658,10 +658,15 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let uch =
         let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
         match mccls with
-        | MathItalic     -> mvsty.math_italic
-        | MathBoldItalic -> mvsty.math_bold_italic
-        | MathRoman      -> mvsty.math_roman
-        | MathBoldRoman  -> mvsty.math_bold_roman
+        | MathItalic       -> mvsty.math_italic
+        | MathBoldItalic   -> mvsty.math_bold_italic
+        | MathRoman        -> mvsty.math_roman
+        | MathBoldRoman    -> mvsty.math_bold_roman
+        | MathScript       -> mvsty.math_script
+        | MathBoldScript   -> mvsty.math_bold_script
+        | MathFraktur      -> mvsty.math_fraktur
+        | MathBoldFraktur  -> mvsty.math_bold_fraktur
+        | MathDoubleStruck -> mvsty.math_double_struck
             (* TEMPORARY; should extend more *)
       in
         convert_math_char mathctx is_big uch mk

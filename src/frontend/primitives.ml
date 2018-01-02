@@ -75,8 +75,15 @@ let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 let tMCSTY =
   let asc =
     Assoc.of_list (List.map (fun k -> (k, tI)) [
-      "italic"; "bold-italic";
-      "roman" ; "bold-roman";
+      "italic";
+      "bold-italic";
+      "roman";
+      "bold-roman";
+      "script";
+      "bold-script";
+      "fraktur";
+      "bold-fraktur";
+      "double-struck";
     ])  (* temporary *)
   in
     (~! "math-char-style", RecordType(asc))
@@ -126,11 +133,15 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
 
   |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathItalic"     ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"      ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldItalic" ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldRoman"  ([], Poly(tU)) tyid_mccls
-      (* TEMPORARY; should add more *)
+  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
 
   |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tIB))                 tyid_cell
@@ -312,18 +323,18 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
     (List.concat [
 
-    (* -- Latin capital letter to its normal italics -- *)
+    (* -- Latin capital letter to its normal italic -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_capital_of_index i, MathItalic, MathOrdinary, code_point (0x1D434 + i)));
-    (* -- Latin small letter to its normal italics -- *)
+    (* -- Latin small letter to its normal italic -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
         (ascii_small_of_index i, MathItalic, MathOrdinary, code_point (0x1D44E + i)));
       [("h", MathItalic, MathOrdinary, code_point 0x210E)];
 
-    (* -- Latin capital letter to its bold italics -- *)
+    (* -- Latin capital letter to its bold italic -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_capital_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D468 + i)));
-    (* -- Latin small letter to its bold italics -- *)
+    (* -- Latin small letter to its bold italic -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_small_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D482 + i)));
 
@@ -333,6 +344,79 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     (* -- Latin small letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
         (ascii_small_of_index i, MathRoman, MathOrdinary, code_point (Char.code 'a' + i)));
+
+    (* -- Latin capital letter to its bold romain -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldRoman, MathOrdinary, code_point (0x1D400 + i)));
+    (* -- Latin small letter to its bold roman -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldRoman, MathOrdinary, code_point (0x1D41A + i)));
+
+    (* -- Latin capital letter to its script -- *)
+      [[0]; [2; 3]; [6]; [9; 10]; range 13 16; range 18 25] |> List.concat |> List.map (fun i ->
+        (ascii_capital_of_index i, MathScript, MathOrdinary, code_point (0x1D49C + i)));
+      [
+        ("B", MathScript, MathOrdinary, code_point 0x212C);
+        ("E", MathScript, MathOrdinary, code_point 0x2130);
+        ("F", MathScript, MathOrdinary, code_point 0x2131);
+        ("H", MathScript, MathOrdinary, code_point 0x210B);
+        ("I", MathScript, MathOrdinary, code_point 0x2110);
+        ("L", MathScript, MathOrdinary, code_point 0x2112);
+        ("M", MathScript, MathOrdinary, code_point 0x2133);
+        ("R", MathScript, MathOrdinary, code_point 0x211B);
+      ];
+    (* -- Latin small letter to its script -- *)
+      [range 0 3; [5]; range 7 13; range 15 25] |> List.concat |> List.map (fun i ->
+        (ascii_small_of_index i, MathScript, MathOrdinary, code_point (0x1D4B6 + i)));
+      [
+        ("e", MathScript, MathOrdinary, code_point 0x212F);
+        ("g", MathScript, MathOrdinary, code_point 0x210A);
+        ("o", MathScript, MathOrdinary, code_point 0x2134);
+      ];
+
+    (* -- Latin capital letter to its bold script -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldScript, MathOrdinary, code_point (0x1D4D0 + i)));
+    (* -- Latin small letter to its bold script -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldScript, MathOrdinary, code_point (0x1D4EA + i)));
+
+    (* -- Latin capital letter to its Fraktur -- *)
+      [[0; 1]; range 3 6; range 9 16; range 18 24] |> List.concat |> List.map (fun i ->
+        (ascii_capital_of_index i, MathFraktur, MathOrdinary, code_point (0x1D504 + i)));
+      [
+        ("C", MathFraktur, MathOrdinary, code_point 0x212D);
+        ("H", MathFraktur, MathOrdinary, code_point 0x210C);
+        ("I", MathFraktur, MathOrdinary, code_point 0x2111);
+        ("R", MathFraktur, MathOrdinary, code_point 0x211C);
+        ("Z", MathFraktur, MathOrdinary, code_point 0x2128);
+      ];
+    (* -- Latin small letter to its Fraktur -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathFraktur, MathOrdinary, code_point (0x1D51E + i)));
+
+    (* -- Latin capital letter to its bold Fraktur -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_capital_of_index i, MathBoldFraktur, MathOrdinary, code_point (0x1D56C + i)));
+    (* -- Latin small letter to its bold Fraktur -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathBoldFraktur, MathOrdinary, code_point (0x1D586 + i)));
+
+    (* -- Latin capital letter to its double struck -- *)
+      [[0; 1]; range 3 6; range 8 12; [14]; range 18 24] |> List.concat |> List.map (fun i ->
+        (ascii_capital_of_index i, MathDoubleStruck, MathOrdinary, code_point (0x1D538 + i)));
+      [
+        ("C", MathDoubleStruck, MathOrdinary, code_point 0x2102);
+        ("H", MathDoubleStruck, MathOrdinary, code_point 0x210D);
+        ("N", MathDoubleStruck, MathOrdinary, code_point 0x2115);
+        ("P", MathDoubleStruck, MathOrdinary, code_point 0x2119);
+        ("Q", MathDoubleStruck, MathOrdinary, code_point 0x211A);
+        ("R", MathDoubleStruck, MathOrdinary, code_point 0x211D);
+        ("Z", MathDoubleStruck, MathOrdinary, code_point 0x2124);
+      ];
+    (* -- Latin small letter to its double struck -- *)
+      (range 0 25) |> List.map (fun i ->
+        (ascii_small_of_index i, MathDoubleStruck, MathOrdinary, code_point (0x1D552 + i)));
 
     (* -- invariant ascii symbols -- *)
       [
@@ -346,7 +430,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("/", Char.code '/', MathOrdinary);
         (",", Char.code ',', MathPunct   );
       ] |> List.map (fun (s, cp, mk) ->
-        (s, MathItalic, mk, code_point cp));
+        (s, MathItalic, mk, code_point cp)); (* temporary *)
     ])
 
 

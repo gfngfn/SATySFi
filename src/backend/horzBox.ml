@@ -173,15 +173,25 @@ type math_char_class =
   | MathBoldItalic
   | MathRoman
   | MathBoldRoman
+  | MathScript
+  | MathBoldScript
+  | MathFraktur
+  | MathBoldFraktur
+  | MathDoubleStruck
 [@@deriving show]
 (* TEMPORARY; should add more *)
 
 type math_variant_style =
   {
-    math_italic      : Uchar.t;
-    math_bold_italic : Uchar.t;
-    math_roman       : Uchar.t;
-    math_bold_roman  : Uchar.t;
+    math_italic        : Uchar.t;
+    math_bold_italic   : Uchar.t;
+    math_roman         : Uchar.t;
+    math_bold_roman    : Uchar.t;
+    math_script        : Uchar.t;
+    math_bold_script   : Uchar.t;
+    math_fraktur       : Uchar.t;
+    math_bold_fraktur  : Uchar.t;
+    math_double_struck : Uchar.t;
   }
 
 let pp_math_variant_style =
