@@ -351,26 +351,53 @@ and interpret env ast =
         | Record(rcd) -> rcd
         | _           -> report_bug_evaluator "BackendMathVariantCharDirect: not a record"
       in
-      let (vcpI, vcpBI, vcpR, vcpBR) =
+      begin
         match
           ( Assoc.find_opt rcd "italic",
             Assoc.find_opt rcd "bold-italic",
             Assoc.find_opt rcd "roman",
-            Assoc.find_opt rcd "bold-roman" )
+            Assoc.find_opt rcd "bold-roman",
+            Assoc.find_opt rcd "script",
+            Assoc.find_opt rcd "bold-script",
+            Assoc.find_opt rcd "fraktur",
+            Assoc.find_opt rcd "bold-fraktur",
+            Assoc.find_opt rcd "double-struck" )
         with
         | ( Some(vcpI),
             Some(vcpBI),
             Some(vcpR),
-            Some(vcpBR) ) -> (vcpI, vcpBI, vcpR, vcpBR)
+            Some(vcpBR),
+            Some(vcpS),
+            Some(vcpBS),
+            Some(vcpF),
+            Some(vcpBF),
+            Some(vcpDS) ) ->
+              let cpI  = interpret_int env vcpI  in
+              let cpBI = interpret_int env vcpBI in
+              let cpR  = interpret_int env vcpR  in
+              let cpBR = interpret_int env vcpBR in
+              let cpS  = interpret_int env vcpS  in
+              let cpBS = interpret_int env vcpBS in
+              let cpF  = interpret_int env vcpF  in
+              let cpBF = interpret_int env vcpBF in
+              let cpDS = interpret_int env vcpDS in
+              let mvsty =
+                HorzBox.({
+                  math_italic        = Uchar.of_int cpI ;
+                  math_bold_italic   = Uchar.of_int cpBI;
+                  math_roman         = Uchar.of_int cpR ;
+                  math_bold_roman    = Uchar.of_int cpBR;
+                  math_script        = Uchar.of_int cpS ;
+                  math_bold_script   = Uchar.of_int cpBS;
+                  math_fraktur       = Uchar.of_int cpF ;
+                  math_bold_fraktur  = Uchar.of_int cpBF;
+                  math_double_struck = Uchar.of_int cpDS;
+                })
+              in
+                MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 
         | _ -> report_bug_evaluator "BackendMathVariantCharDirect: missing some field"
-      in
-      let cpI  = interpret_int env vcpI in  (* -- Italic -- *)
-      let cpBI = interpret_int env vcpBI in  (* -- bold Italic -- *)
-      let cpR  = interpret_int env vcpR in  (* -- Roman -- *)
-      let cpBR = interpret_int env vcpBR in  (* -- bold Roman -- *)
-        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big,
-          Uchar.of_int cpI, Uchar.of_int cpBI, Uchar.of_int cpR, Uchar.of_int cpBR))]))
+      end
 
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
@@ -1404,10 +1431,15 @@ and interpret_math env ast : HorzBox.math list =
 and interpret_math_char_class env ast : HorzBox.math_char_class =
   let value = interpret env ast in
     match value with
-    | Constructor("MathItalic"    , UnitConstant) -> HorzBox.MathItalic
-    | Constructor("MathRoman"     , UnitConstant) -> HorzBox.MathRoman
-    | Constructor("MathBoldItalic", UnitConstant) -> HorzBox.MathBoldItalic
-    | Constructor("MathBoldRoman" , UnitConstant) -> HorzBox.MathBoldRoman
+    | Constructor("MathItalic"      , UnitConstant) -> HorzBox.MathItalic
+    | Constructor("MathBoldItalic"  , UnitConstant) -> HorzBox.MathBoldItalic
+    | Constructor("MathRoman"       , UnitConstant) -> HorzBox.MathRoman
+    | Constructor("MathBoldRoman"   , UnitConstant) -> HorzBox.MathBoldRoman
+    | Constructor("MathScript"      , UnitConstant) -> HorzBox.MathScript
+    | Constructor("MathBoldScript"  , UnitConstant) -> HorzBox.MathBoldScript
+    | Constructor("MathFraktur"     , UnitConstant) -> HorzBox.MathFraktur
+    | Constructor("MathBoldFraktur" , UnitConstant) -> HorzBox.MathBoldFraktur
+    | Constructor("MathDoubleStruck", UnitConstant) -> HorzBox.MathDoubleStruck
     | _ ->
         report_bug_evaluator "interpret_math_char_class"
 
