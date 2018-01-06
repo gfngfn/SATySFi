@@ -8,6 +8,9 @@ let base-type name =
 
 let tI = base-type {int}
 let tB = base-type {bool}
+let tF = base-type {float}
+let tL = base-type {length}
+let tS = base-type {string}
 
 
 let command-scheme ctx ib-name ty inner =
@@ -16,7 +19,6 @@ let command-scheme ctx ib-name ty inner =
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
     form-paragraph ctx (ib-name ++ ib-colon ++ m-ty ++ quad ++ ib-inner ++ inline-fil)
-
 
 
 let name-context ctx =
@@ -48,4 +50,30 @@ let-block ctx +commands namelst ty inner =
     command-scheme ctx ib-name ty inner
 
 
-let-inline \subject-to-change = {\emph{今後仕様変更の可能性あり．}}
+let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり〕}}
+
+let-inline \discouraged = {\emph{〔使用非推奨〕}}
+
+
+
+let-inline ctx \code inner =
+  let pads-code = (2pt, 2pt, 2pt, 2pt) in
+  let decoset-code =
+    let decoS (x, y) wid hgt dpt =
+      [ fill (Color.gray 0.9) (rectangle (x, y -' dpt) (x +' wid, y +' hgt)) ]
+    in
+      (decoS, decoS, decoS, decoS)
+  in
+    inline-frame-breakable pads-code decoset-code
+      (read-inline (ctx |> set-dominant-script Latin) inner)
+
+let-inline ctx \synt inner =
+  let ctx-name = name-context ctx in
+    read-inline ctx-name inner
+
+let-inline ctx \meta inner =
+  let ctx-meta =
+    ctx |> set-text-color Color.orange
+        |> set-font Latin StdJa.font-latin-italic
+  in
+    read-inline ctx-meta inner

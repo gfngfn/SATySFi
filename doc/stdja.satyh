@@ -4,10 +4,10 @@ module StdJa : sig
   val document : 'a -> block-text -> document
     constraint 'a :: (| title : inline-text; author : inline-text; |)
 
+  val font-latin-italic : font
   direct +make-title : [] block-cmd
-
+  direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
-
   direct \emph : [inline-text] inline-cmd
 
 end = struct
@@ -129,6 +129,27 @@ end = struct
   let-mutable needs-indentation-ref <- true
 
   let-mutable num-section <- 0
+
+
+  let quad-indent ctx =
+    inline-skip (get-font-size ctx)
+
+
+  let-block ctx +p inner =
+    let needs-indentation =
+      if !needs-indentation-ref then true else
+        let () = needs-indentation-ref <- true in
+          false
+    in
+    let ib-inner = read-inline ctx inner in
+    let br-parag =
+      if needs-indentation then
+        (quad-indent ctx) ++ ib-inner ++ inline-fil
+      else
+        ib-inner ++ inline-fil
+    in
+      form-paragraph ctx br-parag
+
 
   let-block ctx +section title inner =
     let ctx-title =
