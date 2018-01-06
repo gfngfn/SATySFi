@@ -11,6 +11,14 @@ let tB = base-type {bool}
 let tF = base-type {float}
 let tL = base-type {length}
 let tS = base-type {string}
+let tIT = base-type {inline-text}
+let tIB = base-type {inline-boxes}
+let tBT = base-type {block-text}
+let tBB = base-type {block-boxes}
+let tPADS = base-type {paddings}
+let tDECO = base-type {deco}
+let tDECOSET = base-type {decoset}
+let tCTX = base-type {context}
 
 
 let command-scheme ctx ib-name ty inner =
@@ -55,7 +63,6 @@ let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり�
 let-inline \discouraged = {\emph{〔使用非推奨〕}}
 
 
-
 let-inline ctx \code inner =
   let pads-code = (2pt, 2pt, 2pt, 2pt) in
   let decoset-code =
@@ -67,13 +74,15 @@ let-inline ctx \code inner =
     inline-frame-breakable pads-code decoset-code
       (read-inline (ctx |> set-dominant-script Latin) inner)
 
+
 let-inline ctx \synt inner =
   let ctx-name = name-context ctx in
     read-inline ctx-name inner
 
-let-inline ctx \meta inner =
+
+let-inline ctx \meta m =
   let ctx-meta =
     ctx |> set-text-color Color.orange
         |> set-font Latin StdJa.font-latin-italic
   in
-    read-inline ctx-meta inner
+    embed-math ctx-meta m

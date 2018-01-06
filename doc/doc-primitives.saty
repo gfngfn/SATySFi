@@ -4,6 +4,9 @@ StdJa.document (|
   author = {Takashi SUWA};
 |) '<
    +make-title;
+   +p {
+     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
+   }
    +section({基本演算})(
      let t-int-arith = tI --> (tI --> tI) in
      let t-int-comp  = tI --> (tI --> tB) in
@@ -41,11 +44,14 @@ StdJa.document (|
      +commands [`<'`; `>'`] (tL --> (tL --> tB)) {
        長さの比較．
      }
+     +command (`float`) (tI --> tF) {
+       整数を浮動小数点数に変換する．
+     }
    >);
    +section {文字列演算} <
      +p {
        文字列操作のための簡単なプリミティヴがいくつか用意されているが，
-       現状これらは開発初期の名残といった様相であり，使用は推奨しない．
+       現状これらのうちの多くは開発初期の名残といった様相であり，積極的な使用を推奨しない．
        Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
        直接UTF-8バイト列を扱うなど，低級感が否めない．
      }
@@ -54,12 +60,52 @@ StdJa.document (|
        \subject-to-change;\discouraged;
      }
      +command (`string-sub`) (tS --> (tI --> (tI --> tS))) {
-       \code{\synt{string-sub} \meta{s} \meta{i} \meta{l}}で
-       文字列\code{\meta{s}}の第\code{\meta{i}}番目の文字を先頭とする
-       長さ\code{\meta{l}}の部分文字列を取り出す．
+       \code{\synt{string-sub} \meta(${s}); \meta(${i}); \meta(${l});}で
+       文字列\code{\meta(${s});}の第\code{\meta(${i});}番目の文字を先頭とする
+       長さ\code{\meta(${l});}の部分文字列を取り出す．
        最初の文字は0番目，また長さはUTF-8表現でのバイト長であって
        Unicodeコードポイントの個数ではないことに注意．
-       \discouraged;
+       \subject-to-change;\discouraged;
+     }
+     +command (`string-length`) (tS --> tI) {
+       受け取った文字列のUTF-8表現のバイト長を返す．
+       \subject-to-change;\discouraged;
+     }
+     +command (`arabic`) (tI --> tS) {
+       受け取った整数の十進文字列を返す．
+     }
+   >
+   +section {インライン方向に関する処理} <
+     +command (`embed-string`) (tS --> tIT) {
+       文字列をインラインテキストに変換する．
+     }
+     +command (`inline-skip`) (tL --> tIB) {
+       \code{\synt{inline-skip} \meta(${l});}で
+       長さ\code{\meta(${l});}の（伸縮しない）インライン方向の空白を返す．
+     }
+     +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
+       \code{\synt{inline-glue} \meta(${l_0}); \meta(${l_1}); \meta(${l_2});}で
+       自然長\code{\meta(${l_0});}，
+       縮小基準長\code{\meta(${l_1});}，
+       伸長基準長\code{\meta(${l_2});}
+       のインライン方向の空白を返す．
+     }
+     +command (`inline-fil`) (tIB) {
+       自然長0，罰則なしで任意有限長に伸長できるインライン方向の空白．
+     }
+     +command (`inline-nil`) (tIB) {
+       長さ0のインライン方向の空白．
+     }
+     +command (`inline-frame-solid`) (tPADS --> (tDECO --> (tIB --> tIB))) {
+       \code{\synt{inline-frame-solid} \meta(${p}); \meta(${d}); \meta(${t});}で
+       パディング指定\code{\meta(${p});}，装飾指定\code{\meta(${d});}，
+       内容\code{\meta(${t});}の行分割不可能なフレームを返す．
+     }
+     +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
+       \code{\synt{inline-frame-breakable} \meta(${p}); \meta(${ds}); \meta(${t});}で
+     }
+     +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
+       \code{\synt{read-inline} \meta(${ctx}); \meta(${t});}
      }
    >
 >
