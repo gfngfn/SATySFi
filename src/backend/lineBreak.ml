@@ -429,7 +429,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
 
 
-let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
@@ -519,14 +519,14 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
                 arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
         end
 
-    | [] -> ImVertTopMargin(true, margin_top) :: (List.rev (ImVertBottomMargin(true, margin_bottom) :: accvlines))
+    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (List.rev (ImVertBottomMargin(is_breakable_bottom, margin_bottom) :: accvlines))
   in
 
   let acclines = cut [] [] lhblst in
     arrange None [] (List.rev acclines)
 
 
-let main (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
+let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -627,7 +627,7 @@ let main (margin_top : length) (margin_bottom : length) (ctx : input_context) (h
       | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
           [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
+          break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end
 
 

@@ -678,7 +678,9 @@ and interpret env ast =
   | BackendLineBreaking(astctx, asthorz) ->
       let ctx = interpret_context env astctx in
       let hblst = interpret_horz env asthorz in
-      let imvblst = HorzBox.(LineBreak.main ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
+      let is_breakable_top = true in  (* temporary *)
+      let is_breakable_bottom = true in  (* temporary *)
+      let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 
   | BackendPageBreaking(astctx, astvert) ->
