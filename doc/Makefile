@@ -1,3 +1,3 @@
 all:
-	satysfi color.satyh stdja.satyh doc-primitives.saty -o primitives.pdf
+	satysfi pervasives.satyh color.satyh stdja.satyh doc-primitives.saty -o primitives.pdf
 

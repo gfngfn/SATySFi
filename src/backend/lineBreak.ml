@@ -425,10 +425,6 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         (evhblst, hgt_total, dpt_total)
 
 
-(* -- distance from the top of the paragraph and its first baseline -- *)
-let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
-
-
 let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =

@@ -631,7 +631,7 @@ and abstract_tree =
   | PrimitiveDrawText           of abstract_tree * abstract_tree
   | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
-  | BackendLineBreaking         of abstract_tree * abstract_tree
+  | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
   | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
 (*

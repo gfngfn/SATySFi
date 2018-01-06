@@ -1,4 +1,6 @@
 
+let form-paragraph = line-break true true
+
 let gray x = Gray(x)
 let rgb r g b = RGB(r, g, b)
 
@@ -199,7 +201,7 @@ let-block ctx +section title inner =
   let () = needs-indentation-ref <- false in
   let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
   let br-title = read-inline ctx-title title in
-  let bc-title = form-paragraph ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
+  let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
   let bc-inner = read-block ctx inner in
     bc-title +++ bc-inner
 

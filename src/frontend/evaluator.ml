@@ -675,11 +675,11 @@ and interpret env ast =
       let rising_ratio = interpret_float env astrsrat in
         FontDesignation((font_abbrev, size_ratio, rising_ratio))
 
-  | BackendLineBreaking(astctx, asthorz) ->
+  | BackendLineBreaking(astb1, astb2, astctx, asthorz) ->
+      let is_breakable_top = interpret_bool env astb1 in
+      let is_breakable_bottom = interpret_bool env astb2 in
       let ctx = interpret_context env astctx in
       let hblst = interpret_horz env asthorz in
-      let is_breakable_top = true in  (* temporary *)
-      let is_breakable_bottom = true in  (* temporary *)
       let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 

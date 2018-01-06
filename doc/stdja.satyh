@@ -1,6 +1,4 @@
 
-%let black = Color.black
-
 module StdJa : sig
 
   val document : 'a -> block-text -> document
