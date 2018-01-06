@@ -1,0 +1,51 @@
+
+let ( --> ) m1 m2 =
+  ${\paren{#m1 \to #m2}}
+
+let base-type name =
+  text-in-math MathOrd (fun ctx -> read-inline ctx name)
+
+
+let tI = base-type {int}
+let tB = base-type {bool}
+
+
+let command-scheme ctx ib-name ty inner =
+  let ib-colon = read-inline ctx {\ :\ } in
+  let quad = inline-skip (ctx |> get-font-size) in
+  let ib-inner = read-inline ctx inner in
+  let m-ty = embed-math ctx ty in
+    form-paragraph ctx (ib-name ++ ib-colon ++ m-ty ++ quad ++ ib-inner ++ inline-fil)
+
+
+
+let name-context ctx =
+  ctx |> set-dominant-script Latin
+      |> set-font Latin (font `lmmono` 1. 0.)
+      |> set-text-color Color.red
+
+
+let-block ctx +command name ty inner =
+  let ctx-name = name-context ctx in
+  let ib-name = read-inline ctx-name (embed-string name) in
+    command-scheme ctx ib-name ty inner
+
+
+let-block ctx +commands namelst ty inner =
+  let ctx-name = name-context ctx in
+  let ib-comma = read-inline ctx {,\ } in
+  let-mutable flag <- true in
+  let ib-name =
+    namelst |> List.fold-left (fun acc name -> (
+      let ib-name = read-inline ctx-name (embed-string name) in
+      if !flag then
+        let () = flag <- false in
+        acc ++ ib-name
+      else
+        acc ++ ib-comma ++ ib-name
+    )) inline-nil
+  in
+    command-scheme ctx ib-name ty inner
+
+
+let-inline \subject-to-change = {\emph{今後仕様変更の可能性あり．}}

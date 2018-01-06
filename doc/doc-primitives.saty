@@ -4,4 +4,19 @@ StdJa.document (|
   author = {Takashi SUWA};
 |) '<
    +make-title;
+   +section({基本演算})(
+     let t-int-arith = tI --> tI --> tI in
+     let t-int-comp  = tI --> tI --> tB in
+   '<
+     +commands [`+`; `-`; `*`] (t-int-arith) {
+       整数の加算・減算・乗算．
+     }
+     +command (`/`) (t-int-arith) {
+       整数の除算．現在の仕様では，第2引数に ${0} を与えて評価した場合は実行時エラーとなり処理を中止する．
+       \subject-to-change;
+     }
+     +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
+       整数の比較演算．
+     }
+   >);
 >

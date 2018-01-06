@@ -6,7 +6,9 @@ module StdJa : sig
 
   direct +make-title : [] block-cmd
 
-  direct \SATySFi : [] inline-cmd
+  direct +section : [inline-text; block-text] block-cmd
+
+  direct \emph : [inline-text] inline-cmd
 
 end = struct
 
@@ -21,7 +23,6 @@ end = struct
   let font-latin-roman  = font `Arno`   font-ratio-latin 0.
   let font-latin-italic = font `ArnoIt` font-ratio-latin 0.
   let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
-  % let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
   let font-cjk-mincho   = font `ipaexm` font-ratio-cjk   0.
   let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
 
@@ -41,9 +42,13 @@ end = struct
     let hgt = 650pt in
     let ctx-doc =
       get-initial-context page pt wid hgt
-        |> set-font Latin font-latin-roman
+        |> set-dominant-script Kana
+        |> set-language Kana Japanese
+        |> set-language HanIdeographic Japanese
         |> set-language Latin English
-        |> set-dominant-script Latin
+        |> set-font Kana           font-cjk-mincho
+        |> set-font HanIdeographic font-cjk-mincho
+        |> set-font Latin          font-latin-roman
         |> set-math-font `lmodern`
     in
     let () = ref-title <- title in
@@ -120,12 +125,32 @@ end = struct
         bb-title +++ bb-line +++ bb-author
     ))
 
-  let kern len = inline-skip (0pt -' len)
 
-  let-inline ctx \SATySFi =
-    let size = get-font-size ctx in
-    let f = read-inline ctx in
-    let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
-     f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+  let-mutable needs-indentation-ref <- true
+
+  let-mutable num-section <- 0
+
+  let-block ctx +section title inner =
+    let ctx-title =
+      ctx |> set-font-size font-size-section
+          |> set-font Latin font-latin-sans
+          |> set-cjk-font font-cjk-gothic
+    in
+    let () = num-section <- !num-section + 1 in
+    let () = needs-indentation-ref <- false in
+    let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
+    let br-title = read-inline ctx-title title in
+    let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
+    let bc-inner = read-block ctx inner in
+      bc-title +++ bc-inner
+
+
+  let-inline ctx \emph inner =
+    let ctx-emph =
+      ctx |> set-font Latin font-latin-italic
+          |> set-cjk-font font-cjk-gothic
+          |> set-text-color (CMYK(1., 0., 0., 0.))
+    in
+      read-inline ctx-emph inner
 
 end
