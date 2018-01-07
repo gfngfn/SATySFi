@@ -53,7 +53,7 @@ type font_with_ratio = font_abbrev * float * float
 type page_size =
   | A4Paper
   | UserDefinedPaper of length * length
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type page_scheme =
   {
@@ -63,7 +63,7 @@ type page_scheme =
     area_width       : length;
     area_height      : length;
   }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type paddings =
   {
@@ -72,7 +72,7 @@ type paddings =
     paddingT : length;
     paddingB : length;
   }
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 (* -- representation about graphics based on PDF 1.7 specification -- *)
 
@@ -80,7 +80,7 @@ type color =
   | DeviceGray of float
   | DeviceRGB  of float * float * float
   | DeviceCMYK of float * float * float * float
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type 'a path_element =
   | LineTo              of 'a
@@ -166,7 +166,7 @@ type math_kind =
   | MathPrefix    (* -- mainly for differantial operator 'd', '\partial', etc. -- *)
   | MathInner
   | MathEnd
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type math_char_class =
   | MathItalic
@@ -178,7 +178,7 @@ type math_char_class =
   | MathFraktur
   | MathBoldFraktur
   | MathDoubleStruck
-[@@deriving show]
+[@@deriving show { with_path = false }]
 (* TEMPORARY; should add more *)
 
 type math_variant_style =
@@ -288,9 +288,9 @@ and intermediate_vert_box =
   | ImVertFixedBreakable    of length
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
   | ImVertTopMargin         of bool * length
-      [@printer (fun fmt _ -> Format.fprintf fmt "Top")]
+      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Top%s" (if b then "" else "*"))]
   | ImVertBottomMargin      of bool * length
-      [@printer (fun fmt _ -> Format.fprintf fmt "Bottom")]
+      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
   | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
 and evaled_vert_box =
