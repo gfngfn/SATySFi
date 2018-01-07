@@ -4,39 +4,6 @@ open HorzBox
 open CharBasis
 open LineBreakBox
 
-(*
-let get_script_opt lbu =
-  match lbu with
-  | Space
-  | UnbreakableSpace
-  | CustomizedSpace(_, _, _)
-    -> None
-
-  | PreWord(script, _, _)
-  | JLOpen(script, _)
-  | JLClose(script, _)
-  | JLMiddle(script, _)
-  | JLNonstarter(script, _)
-  | JLComma(script, _)
-  | JLFullStop(script, _)
-    -> Some(script)
-*)
-
-(*
-let insert_adjacent_space (ctx : input_context) (lbulst : ('a line_break_unit) list) : ('a line_break_unit) list =
-  let rec aux acc prevlbuopt lbulst =
-    match lbulst with
-    | []                 -> List.rev acc
-    | lbuhead :: lbutail ->
-        let space =
-          match prevlbuopt with
-          | None          -> []
-          | Some(prevlbu) -> adjacent_space ctx prevlbu lbuhead
-        in
-          aux (lbuhead :: (List.rev_append space acc)) (Some(lbuhead)) lbutail
-  in
-    aux [] None lbulst
-*)
 
 let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
@@ -53,11 +20,10 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   (* end: for debug *)
 
   let scrlst = ScriptDataMap.divide_by_script trilst in
-  let scrlstsp = (* insert_adjacent_space ctx *) scrlst in
 
   (* begin: for debug *)
   let () =
-    scrlstsp |> List.iter (function
+    scrlst |> List.iter (function
       | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
           let sa = match alw with AllowBreak -> "" | PreventBreak -> "*" in
           PrintForDebug.lexhorz ("[Alph] " ^ (CharBasis.show_script script) ^ sa ^ " ");
@@ -75,7 +41,7 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   in
   (* end: for debug *)
 
-  scrlstsp
+  scrlst
 
 
 let half_kern (hsinfo : horz_string_info) : lb_pure_box =
@@ -283,7 +249,7 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
   let rec aux lhbacc prevopt chunklst =
     match chunklst with
     | [] ->
-        List.rev lhbacc
+        Alist.to_list lhbacc
 
     | chunk :: chunktail ->
         let (ctx, chunkmain) = chunk in
@@ -321,9 +287,9 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
                     (opt, List.append autospace lhblststr)
               end
         in
-          aux (List.rev_append lhblstmain lhbacc) opt chunktail
+          aux (Alist.append lhbacc lhblstmain) opt chunktail
   in
-  aux [] None chunklst
+  aux Alist.empty None chunklst
 
 
 let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =

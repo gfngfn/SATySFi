@@ -72,13 +72,5 @@ type line_break_chunk_main =
          (3) character content
          (4) whether breaking line immediate after the chunk is allowed
          -- *)
-(*
-  | JLOpen           of script * line_break_element
-  | JLClose          of script * line_break_element
-  | JLNonstarter     of script * line_break_element
-  | JLMiddle         of script * line_break_element
-  | JLComma          of script * line_break_element
-  | JLFullStop       of script * line_break_element
-*)
 
 type line_break_chunk = input_context * line_break_chunk_main

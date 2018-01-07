@@ -6,13 +6,15 @@ open LineBreakBox
 
 
 type lb_either =
-  | TextChunks of line_break_chunk list
-  | LB         of lb_box
+  | TextChunks  of line_break_chunk list
+  | LB          of lb_box
+  | ScriptGuard of CharBasis.script * lb_box list
 
 
 type lb_pure_either =
-  | PTextChunks of line_break_chunk list
-  | PLB         of lb_pure_box
+  | PTextChunks  of line_break_chunk list
+  | PLB          of lb_pure_box
+  | PScriptGuard of CharBasis.script * lb_pure_box list
 
 
 let ( ~. ) = float_of_int
@@ -84,32 +86,44 @@ let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
         begin
           match chunkaccopt with
           | None ->
-              List.rev lhbacc
+              Alist.to_list lhbacc
 
           | Some(chunkacc) ->
-              let lhblst = ConvertText.chunks_to_boxes (List.rev chunkacc) in
-              List.rev (List.rev_append lhblst lhbacc)
+              let lhblst = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
+              Alist.to_list (Alist.append lhbacc lhblst)
         end
 
     | TextChunks(chunklst) :: lbeithertail ->
         begin
           match chunkaccopt with
-          | None           -> aux lhbacc (Some(List.rev chunklst)) lbeithertail
-          | Some(chunkacc) -> aux lhbacc (Some(List.rev_append chunklst chunkacc)) lbeithertail
+          | None           -> aux lhbacc (Some(Alist.of_list chunklst)) lbeithertail
+          | Some(chunkacc) -> aux lhbacc (Some(Alist.append chunkacc chunklst)) lbeithertail
+        end
+
+    | ScriptGuard(script, lhblstG) :: lbeithertail ->
+        begin
+          match chunkaccopt with
+          | None ->
+              aux (Alist.append lhbacc lhblstG) None lbeithertail
+
+          | Some(chunkacc) ->
+              let lhblstC = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
+                (* TEMPORARY; should use 'script' as script guard *)
+              aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) None lbeithertail
         end
 
     | LB(lhb) :: lbeithertail ->
         begin
           match chunkaccopt with
           | None ->
-              aux (lhb :: lhbacc) None lbeithertail
+              aux (Alist.extend lhbacc lhb) None lbeithertail
 
           | Some(chunkacc) ->
-              let lhblst = ConvertText.chunks_to_boxes (List.rev chunkacc) in
-              aux (lhb :: (List.rev_append lhblst lhbacc)) None lbeithertail
+              let lhblst = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
+              aux (Alist.extend (Alist.append lhbacc lhblst) lhb) None lbeithertail
         end
   in
-    aux [] None lbeitherlst
+    aux Alist.empty None lbeitherlst
 
 
 let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
@@ -119,41 +133,55 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
         begin
           match chunkaccopt with
           | None ->
-              List.rev lphbacc
+              Alist.to_list lphbacc
 
           | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (List.rev chunkacc) in
-              List.rev (List.rev_append lphblst lphbacc)
+              let lphblst = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+              Alist.to_list (Alist.append lphbacc lphblst)
         end
 
     | PTextChunks(chunklst) :: lbpetail ->
         begin
           match chunkaccopt with
-          | None           -> aux lphbacc (Some(List.rev chunklst)) lbpetail
-          | Some(chunkacc) -> aux lphbacc (Some(List.rev_append chunklst chunkacc)) lbpetail
+          | None           -> aux lphbacc (Some(Alist.of_list chunklst)) lbpetail
+          | Some(chunkacc) -> aux lphbacc (Some(Alist.append chunkacc chunklst)) lbpetail
         end
 
     | PLB(lphb) :: lbpetail ->
         begin
           match chunkaccopt with
           | None ->
-              aux (lphb :: lphbacc) None lbpetail
+              aux (Alist.extend lphbacc lphb) None lbpetail
 
           | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (List.rev chunkacc) in
-              aux (lphb :: (List.rev_append lphblst lphbacc)) None lbpetail
+              let lphblst = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+              aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
+        end
+
+    | PScriptGuard(script, lphblstG) :: lbpetail  ->
+        begin
+          match chunkaccopt with
+          | None ->
+              aux (Alist.append lphbacc lphblstG) None lbpetail
+
+          | Some(chunkacc) ->
+              let lphblstC = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+              aux (Alist.append (Alist.append lphbacc lphblstC) lphblstG) None lbpetail
         end
   in
-    aux [] None lbpelst
+    aux Alist.empty None lbpelst
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (phb : pure_horz_box) : a =
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (guardf : CharBasis.script -> horz_box list -> a) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
       chunkf (ConvertText.to_chunks ctx uchlst)
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
+
+  | PHCScriptGhost(script, hblst) ->
+        guardf script hblst
 
   | PHGRising(lenrising, hblst) ->
       let lphblst = listf hblst in
@@ -255,13 +283,22 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
   let chunkf c = TextChunks(c) in
-    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
+  let guardf script hblst =
+    let lbeitherlst = convert_list_for_line_breaking hblst in
+    let lhblst = normalize_chunks lbeitherlst in
+      ScriptGuard(script, lhblst)
+  in
+    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf guardf phb
 
 
 and convert_pure_box_for_line_breaking_pure (phb : pure_horz_box) : lb_pure_either =
   let puref p = PLB(p) in
   let chunkf c = PTextChunks(c) in
-    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
+  let guardf script hblst =
+    let lphblst = convert_list_for_line_breaking_pure hblst in
+      PScriptGuard(script, lphblst)
+  in
+    convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf guardf phb
 
 
 module WidthMap
