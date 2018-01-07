@@ -8,7 +8,6 @@ type code_point_kind =
 type script =
   | Common              (*   --  ; Zyyy; Common *)
   | Inherited           (*   --  ; Zinh; Inherited *)
-  | Unknown             (*   --  ; Zzzz; Unknown *)
   | HanIdeographic      (* 'hani'; Hani; Han *)
   | HiraganaOrKatakana  (* 'kana'; Hrkt; Hiragana_Or_Katakana *)
   | Latin               (* 'latn'; Latn; Latin *)
@@ -20,7 +19,6 @@ type script =
 let show_script = function
   | Common             -> "Common"
   | Inherited          -> "Inherited"
-  | Unknown            -> "Unknown"
   | HanIdeographic     -> "Han"
   | HiraganaOrKatakana -> "Kana"
   | Latin              -> "Latin"

@@ -252,9 +252,6 @@ and pure_horz_box =
   | PHGFixedTabular   of length * length * length * evaled_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
-(*
-  | PHCScriptGhost    of CharBasis.script * horz_box list
-*)
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -530,8 +527,8 @@ let default_font_with_ratio =
 let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
+    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                          -> script_raw
   in
     match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
     | None          -> default_font_with_ratio
@@ -541,8 +538,8 @@ let get_font_with_ratio ctx script_raw =
 let get_language_system ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
+    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                          -> script_raw
   in
   match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
   | None          -> CharBasis.NoLanguageSystem

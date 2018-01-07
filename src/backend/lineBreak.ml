@@ -81,33 +81,36 @@ let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info
 
 let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
 
-  let rec aux lhbacc (chunkaccopt : (line_break_chunk Alist.t) option) lbeitherlst =
+  let rec aux lhbacc (optprev : (CharBasis.script * line_break_chunk Alist.t) option) lbeitherlst =
     match lbeitherlst with
     | [] ->
         begin
-          match chunkaccopt with
+          match optprev with
           | None ->
               Alist.to_list lhbacc
 
-          | Some(chunkacc) ->
+          | Some((scriptB, chunkacc)) ->
               let lhblst = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
               Alist.to_list (Alist.append lhbacc lhblst)
         end
 
     | TextChunks(chunklst) :: lbeithertail ->
         begin
-          match chunkaccopt with
-          | None           -> aux lhbacc (Some(Alist.of_list chunklst)) lbeithertail
-          | Some(chunkacc) -> aux lhbacc (Some(Alist.append chunkacc chunklst)) lbeithertail
+          match optprev with
+          | None ->
+              aux lhbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbeithertail
+
+          | Some((scriptB, chunkacc)) ->
+              aux lhbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbeithertail
         end
 
     | ScriptGuard(script, lhblstG) :: lbeithertail ->
         begin
-          match chunkaccopt with
+          match optprev with
           | None ->
               aux (Alist.append lhbacc lhblstG) None lbeithertail
 
-          | Some(chunkacc) ->
+          | Some((scriptB, chunkacc)) ->
               let lhblstC = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
                 (* TEMPORARY; should use 'script' as script guard *)
               aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) None lbeithertail
@@ -115,11 +118,11 @@ let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
 
     | LB(lhb) :: lbeithertail ->
         begin
-          match chunkaccopt with
+          match optprev with
           | None ->
               aux (Alist.extend lhbacc lhb) None lbeithertail
 
-          | Some(chunkacc) ->
+          | Some((scriptB, chunkacc)) ->
               let lhblst = ConvertText.chunks_to_boxes (Alist.to_list chunkacc) in
               aux (Alist.extend (Alist.append lhbacc lhblst) lhb) None lbeithertail
         end
