@@ -1,8 +1,9 @@
 {
-  "Hlv": <Single: {"src-dist": "HelveticaBlack.ttf"}>,
-  "Osaka": <Single: {"src-dist": "Osaka.ttf"}>,
+  "Hlv"   : <Single: {"src-dist": "HelveticaBlack.ttf"}>,
+  "Osaka" : <Single: {"src-dist": "Osaka.ttf"}>,
   "KozMin": <Single: {"src-dist": "KozMinPro-Regular.otf"}>,
   "ipaexm": <Single: {"src-dist": "ipaexm.ttf"}>,
-  "Arno": <Single: {"src-dist": "ArnoPro-Regular.otf"}>,
-  "ArnoIt": <Single: {"src-dist": "ArnoPro-Italic.otf"}>
+  "Arno"  : <Single: {"src-dist": "ArnoPro-Regular.otf"}>,
+  "ArnoIt": <Single: {"src-dist": "ArnoPro-Italic.otf"}>,
+  "lmmono": <Single: {"src-dist": "lmmono10-regular.otf"}>
 }

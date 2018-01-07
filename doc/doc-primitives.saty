@@ -4,4 +4,122 @@ StdJa.document (|
   author = {Takashi SUWA};
 |) '<
    +make-title;
+   +p {
+     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
+   }
+   +section({基本演算})(
+     let t-int-arith = tI --> (tI --> tI) in
+     let t-int-comp  = tI --> (tI --> tB) in
+     let t-bool-op = tB --> (tB --> tB) in
+   '<
+     +commands [`+`; `-`; `*`] (t-int-arith) {
+       整数の加算・減算・乗算．
+     }
+     +commands [`/`; `mod`] (t-int-arith) {
+       整数の除算と剰余．現在の仕様では，第2引数に ${0} を与えて評価した場合の結果は未定義．
+       現在の実装では実行時エラーとなり処理を中止する．
+       \subject-to-change;
+     }
+     +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
+       整数の比較演算．
+     }
+     +commands [`&&`; `||`] (t-bool-op) {
+       真偽値の連言・選言．
+     }
+     +commands [`not`] (tB --> tB) {
+       論理否定．
+     }
+     +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
+       浮動小数点数の加算・減算．IEEE754に従う．
+     }
+     +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
+       長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
+     }
+     +commands [`*'`] (tL --> (tF --> tL)) {
+       長さのスカラー演算．
+     }
+     +commands [`/'`] (tL --> (tL --> tF)) {
+       長さの割合．
+     }
+     +commands [`<'`; `>'`] (tL --> (tL --> tB)) {
+       長さの比較．
+     }
+     +command (`float`) (tI --> tF) {
+       整数を浮動小数点数に変換する．
+     }
+   >);
+   +section {文字列演算} <
+     +p {
+       文字列操作のための簡単なプリミティヴがいくつか用意されているが，
+       現状これらのうちの多くは開発初期の名残といった様相であり，積極的な使用を推奨しない．
+       Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
+       直接UTF-8バイト列を扱うなど，低級感が否めない．
+     }
+     +command (`string-same`) (tS --> (tS --> tB)) {
+       文字列がUTF-8のバイト列として等価かの判定．
+       \subject-to-change;\discouraged;
+     }
+     +command (`string-sub`) (tS --> (tI --> (tI --> tS))) {
+       \code{\synt{string-sub} \meta(${s}); \meta(${i}); \meta(${l});}で
+       文字列\code{\meta(${s});}の第\code{\meta(${i});}番目の文字を先頭とする
+       長さ\code{\meta(${l});}の部分文字列を取り出す．
+       最初の文字は0番目，また長さはUTF-8表現でのバイト長であって
+       Unicodeコードポイントの個数ではないことに注意．
+       \subject-to-change;\discouraged;
+     }
+     +command (`string-length`) (tS --> tI) {
+       受け取った文字列のUTF-8表現のバイト長を返す．
+       \subject-to-change;\discouraged;
+     }
+     +command (`arabic`) (tI --> tS) {
+       受け取った整数の十進文字列を返す．
+     }
+   >
+   +section {インライン方向に関する処理} <
+     +command (`embed-string`) (tS --> tIT) {
+       文字列をインラインテキストに変換する．
+     }
+     +command (`inline-skip`) (tL --> tIB) {
+       \code{\synt{inline-skip} \meta(${l});}で
+       長さ\code{\meta(${l});}の（伸縮しない）インライン方向の空白を返す．
+     }
+     +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
+       \code{\synt{inline-glue} \meta(${l_0}); \meta(${l_1}); \meta(${l_2});}で
+       自然長\code{\meta(${l_0});}，
+       縮小基準長\code{\meta(${l_1});}，
+       伸長基準長\code{\meta(${l_2});}
+       のインライン方向の空白を返す．
+     }
+     +command (`inline-fil`) (tIB) {
+       自然長0，罰則なしで任意有限長に伸長できるインライン方向の空白．
+     }
+     +command (`inline-nil`) (tIB) {
+       長さ0のインライン方向の空白．
+     }
+     +command (`inline-frame-solid`) (tPADS --> (tDECO --> (tIB --> tIB))) {
+       \code{\synt{inline-frame-solid} \meta(${p}); \meta(${d}); \meta(${ib});}で
+       パディング指定\code{\meta(${p});}，装飾指定\code{\meta(${d});}，
+       内容\code{\meta(${ib});}の途中で行分割不可能なフレームを返す．
+     }
+     +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
+       \code{\synt{inline-frame-breakable} \meta(${p}); \meta(${ds}); \meta(${ib});}で
+       パディング指定\code{\meta(${p});}，装飾4つ組指定\code{\meta(${ds});}，
+       内容\code{\meta(${ib});}の途中で行分割可能なフレームを返す．
+     }
+     +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
+       \code{\synt{read-inline} \meta(${ctx}); \meta(${it});}で
+       文脈\code{\meta(${ctx});}を用いて
+       インラインテキスト\code{\meta(${it});}を変換したインラインボックス列を返す．
+     }
+     +commands [`embedded-block-top`; `embedded-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
+       \code{\synt{embedded-block-top} \meta(${ctx}); \meta(${l}); \meta(${k});}
+       で文脈\code{\meta(${ctx});}をテキスト幅に関して\code{\meta(${l});}に変更して
+       継続\code{\meta(${k});}に渡し，
+       その結果のブロックボックス列をインラインボックス列内に埋め込む．
+       高さと深さは中身の最初の行のベースラインが外のベースラインと一致するように決められる．
+       \code{\synt{embedded-block-bottom}}は
+       最後の行のベースラインが外のベースラインと一致することを除いて
+       \code{\synt{embedded-block-top}}と同様．
+     }
+   >
 >

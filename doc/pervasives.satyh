@@ -1,2 +1,21 @@
 
 let form-paragraph = line-break true true
+
+
+let kern len = inline-skip (0pt -' len)
+
+
+let-inline ctx \SATySFi =
+  let size = get-font-size ctx in
+  let f = read-inline ctx in
+  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
+   f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+
+
+let rectangle (x1, y1) (x2, y2) =
+  start-path (x1, y1)
+    |> line-to (x1, y2)
+    |> line-to (x2, y2)
+    |> line-to (x2, y1)
+    |> close-with-line
+
