@@ -44,7 +44,6 @@ let chop_single_page area_height (pbvblst : pb_vert_box list) : evaled_vert_box 
   in
 
   let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box list) (evvbaccbreakable : evaled_vert_box list) (hgttotal : length) (pbvblst : pb_vert_box list) =
-    Format.printf "%B@ " bprev;
     match pbvblst with
     | PBVertLine(hgt, dpt, evhblst) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
