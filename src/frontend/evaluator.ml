@@ -898,6 +898,11 @@ and interpret env ast =
       let graphics = make_inline_graphics env valueg in
         Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
+  | BackendScriptGuard(astscript, asth) ->
+      let script = interpret_script env astscript in
+      let hblst = interpret_horz env asth in
+        Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
+
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
       let (wid, _, _) = LineBreak.get_natural_metrics hblst in
