@@ -289,7 +289,7 @@ let chunks_to_boxes (chunklst : line_break_chunk list) =
         in
           aux (Alist.append lhbacc lhblstmain) opt chunktail
   in
-  aux Alist.empty None chunklst
+    aux Alist.empty None chunklst
 
 
 let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =

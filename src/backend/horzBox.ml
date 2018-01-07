@@ -252,13 +252,16 @@ and pure_horz_box =
   | PHGFixedTabular   of length * length * length * evaled_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
+(*
   | PHCScriptGhost    of CharBasis.script * horz_box list
+*)
 
 and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
+  | HorzScriptGuard    of CharBasis.script * horz_box list
 
 and evaled_horz_box_main =
   | EvHorzString of horz_string_info * length * length * OutputText.t
