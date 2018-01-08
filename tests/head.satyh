@@ -453,6 +453,9 @@ let-inline ctx \sample-diagram =
       ]
   ))
 
+let-inline ctx \new-line =
+  inline-fil ++ (discretionary (-10000) inline-nil inline-nil inline-nil)
+
 let-block ctx +ignore _ = block-nil
 
 let-inline ctx \stack-top lst =

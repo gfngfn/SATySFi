@@ -656,6 +656,7 @@ let make_environments () =
         ("register-image"          , ~% (tS @-> tIMG)                                , lambda1 (fun vs -> BackendRegisterOtherImage(vs)));
         ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
         ("script-guard"            , ~% (tSCR @-> tIB @-> tIB)                       , lambda2 (fun vscr vh -> BackendScriptGuard(vscr, vh)));
+        ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
       ]
   in
   let temporary_ast = StringEmpty in

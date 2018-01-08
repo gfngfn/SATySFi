@@ -258,6 +258,9 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
           match optprev with
           | AccInitial ->
               []
+                (* temporary; it may be better to insert spaces
+                   using 'script_before' and 'script_after',
+                   but we do not have any input context for it *)
 
           | AccNone ->
               Alist.to_list lhbacc

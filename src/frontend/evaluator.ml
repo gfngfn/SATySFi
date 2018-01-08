@@ -903,6 +903,13 @@ and interpret env ast =
       let hblst = interpret_horz env asth in
         Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
 
+  | BackendDiscretionary(astpb, asth0, asth1, asth2) ->
+      let pb = interpret_int env astpb in
+      let hblst0 = interpret_horz env asth0 in
+      let hblst1 = interpret_horz env asth1 in
+      let hblst2 = interpret_horz env asth2 in
+        Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
       let (wid, _, _) = LineBreak.get_natural_metrics hblst in
