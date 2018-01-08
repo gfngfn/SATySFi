@@ -258,6 +258,7 @@ and horz_box =
   | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
+  | HorzScriptGuard    of CharBasis.script * horz_box list
 
 and evaled_horz_box_main =
   | EvHorzString of horz_string_info * length * length * OutputText.t
@@ -526,8 +527,8 @@ let default_font_with_ratio =
 let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
+    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                          -> script_raw
   in
     match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
     | None          -> default_font_with_ratio
@@ -537,8 +538,8 @@ let get_font_with_ratio ctx script_raw =
 let get_language_system ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Unknown | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                                              -> script_raw
+    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
+    | _                                          -> script_raw
   in
   match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
   | None          -> CharBasis.NoLanguageSystem

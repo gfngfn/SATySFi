@@ -71,8 +71,11 @@ let-inline ctx \code inner =
     in
       (decoS, decoS, decoS, decoS)
   in
+  let ib-frame =
     inline-frame-breakable pads-code decoset-code
       (read-inline (ctx |> set-dominant-script Latin) inner)
+  in
+    script-guard Latin ib-frame
 
 
 let-inline ctx \synt inner =
