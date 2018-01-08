@@ -249,9 +249,9 @@ let ideographic_single ctx script lbc uchlst =
 
 
 type chunk_accumulator =
+  | AccInitial
   | AccNone
   | AccSome    of (input_context * script * line_break_class) * break_opportunity
-  | AccInitial of script
 
 
 let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) (script_after : script) =
@@ -260,7 +260,7 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
     | [] ->
         begin
           match optprev with
-          | AccInitial(_) ->
+          | AccInitial ->
               []
 
           | AccNone ->
@@ -282,15 +282,16 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
-              
+
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
               let opt = AccSome(((ctx, script, lbclast), alw)) in
               let lhblststr = [LBPure(inner_string ctx script uchlst)] in
               begin
                 match optprev with
-                | AccInitial(scriptinit) ->
-                    let infoinit = (ctx, scriptinit, XX) in
-                    let autospace = space_between_chunks infoinit alw (ctx, script, lbcfirst) in
+                | AccInitial ->
+                    Format.printf "ConvertText> AccInitial %a, %a\n" pp_script script_before pp_script script;
+                    let info_before = (ctx, script_before, XX) in
+                    let autospace = space_between_chunks info_before alw (ctx, script, lbcfirst) in
                     (opt, List.append autospace lhblststr)
 
                 | AccNone ->
@@ -309,9 +310,10 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
                 | AccNone ->
                     (opt, lhblststr)
 
-                | AccInitial(scriptinit) ->
-                    let infoinit = (ctx, scriptinit, XX) in
-                    let autospace = space_between_chunks infoinit alw (ctx, script, lbc) in
+                | AccInitial ->
+                    Format.printf "ConvertText> AccInitial %a, %a\n" pp_script script_before pp_script script;
+                    let info_before = (ctx, script_before, XX) in
+                    let autospace = space_between_chunks info_before alw (ctx, script, lbc) in
                     (opt, List.append autospace lhblststr)
 
                 | AccSome((infoprev, alw)) ->
@@ -321,7 +323,7 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
         in
         aux (Alist.append lhbacc lhblstmain) opt chunktail
   in
-  aux Alist.empty (AccInitial(script_before)) chunklst
+  aux Alist.empty AccInitial chunklst
 
 
 let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =

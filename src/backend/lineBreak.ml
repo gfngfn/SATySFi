@@ -90,7 +90,8 @@ let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
               Alist.to_list lhbacc
 
           | Some((scriptB, chunkacc)) ->
-              let lhblst = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) CharBasis.OtherScript in
+              let scriptA = CharBasis.OtherScript in
+              let lhblst = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) scriptA in
               Alist.to_list (Alist.append lhbacc lhblst)
         end
 
@@ -104,15 +105,17 @@ let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
               aux lhbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbeithertail
         end
 
-    | ScriptGuard(scriptA, lhblstG) :: lbeithertail ->
+    | ScriptGuard(scriptG, lhblstG) :: lbeithertail ->
+        let optnext = Some(scriptG, Alist.empty) in
         begin
           match optprev with
           | None ->
-              aux (Alist.append lhbacc lhblstG) None lbeithertail
+              aux (Alist.append lhbacc lhblstG) optnext lbeithertail
 
           | Some((scriptB, chunkacc)) ->
+              let scriptA = scriptG in
               let lhblstC = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) scriptA in
-              aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) None lbeithertail
+              aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) optnext lbeithertail
         end
 
     | LB(lhb) :: lbeithertail ->
