@@ -185,17 +185,14 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
     aux Alist.empty None lbpelst
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (* (guardf : CharBasis.script -> horz_box list -> a) *) (phb : pure_horz_box) : a =
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
       chunkf (ConvertText.to_chunks ctx uchlst)
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
-(*
-  | PHCScriptGhost(script, hblst) ->
-        guardf script hblst
-*)
+
   | PHGRising(lenrising, hblst) ->
       let lphblst = listf hblst in
       let (widinfo, hgt, dpt) = get_total_metrics lphblst in
@@ -304,25 +301,12 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
 and convert_pure_box_for_line_breaking (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
   let chunkf c = TextChunks(c) in
-(*
-  let guardf script hblst =
-    let lbeitherlst = convert_list_for_line_breaking hblst in
-    let lhblst = normalize_chunks lbeitherlst in
-      ScriptGuard(script, lhblst)
-  in
-*)
     convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
 
 
 and convert_pure_box_for_line_breaking_pure (phb : pure_horz_box) : lb_pure_either =
   let puref p = PLB(p) in
   let chunkf c = PTextChunks(c) in
-(*
-  let guardf script hblst =
-    let lphblst = convert_list_for_line_breaking_pure hblst in
-      PScriptGuard(script, lphblst)
-  in
-*)
     convert_pure_box_for_line_breaking_scheme convert_list_for_line_breaking_pure puref chunkf phb
 
 

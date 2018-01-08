@@ -10,6 +10,7 @@ type chunk_info = input_context * script * line_break_class
 
 let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
+  let scrlst = ScriptDataMap.divide_by_script trilst in
 
   (* begin: for debug *)
   let () =
@@ -20,11 +21,6 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
         | CharBasis.AllowBreak   -> PrintForDebug.lexhorz (sc ^ sl ^ "/")
         | CharBasis.PreventBreak -> PrintForDebug.lexhorz (sc ^ sl ^ ".")
     ); PrintForDebug.lexhorzE "" in
-  (* end: for debug *)
-
-  let scrlst = ScriptDataMap.divide_by_script trilst in
-
-  (* begin: for debug *)
   let () =
     scrlst |> List.iter (function
       | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
@@ -289,7 +285,6 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
               begin
                 match optprev with
                 | AccInitial ->
-                    Format.printf "ConvertText> AccInitial %a, %a\n" pp_script script_before pp_script script;
                     let info_before = (ctx, script_before, XX) in
                     let autospace = space_between_chunks info_before alw (ctx, script, lbcfirst) in
                     (opt, List.append autospace lhblststr)
@@ -311,7 +306,6 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
                     (opt, lhblststr)
 
                 | AccInitial ->
-                    Format.printf "ConvertText> AccInitial %a, %a\n" pp_script script_before pp_script script;
                     let info_before = (ctx, script_before, XX) in
                     let autospace = space_between_chunks info_before alw (ctx, script, lbc) in
                     (opt, List.append autospace lhblststr)
