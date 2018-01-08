@@ -142,16 +142,20 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
           | None ->
               Alist.to_list lphbacc
 
-          | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lphblst = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
               Alist.to_list (Alist.append lphbacc lphblst)
         end
 
     | PTextChunks(chunklst) :: lbpetail ->
         begin
           match chunkaccopt with
-          | None           -> aux lphbacc (Some(Alist.of_list chunklst)) lbpetail
-          | Some(chunkacc) -> aux lphbacc (Some(Alist.append chunkacc chunklst)) lbpetail
+          | None ->
+              aux lphbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbpetail
+
+          | Some((scriptB, chunkacc)) ->
+              aux lphbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbpetail
         end
 
     | PLB(lphb) :: lbpetail ->
@@ -160,19 +164,21 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
           | None ->
               aux (Alist.extend lphbacc lphb) None lbpetail
 
-          | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lphblst = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
         end
 
-    | PScriptGuard(script, lphblstG) :: lbpetail  ->
+    | PScriptGuard(scriptG, lphblstG) :: lbpetail  ->
         begin
           match chunkaccopt with
           | None ->
               aux (Alist.append lphbacc lphblstG) None lbpetail
 
-          | Some(chunkacc) ->
-              let lphblstC = ConvertText.chunks_to_boxes_pure (Alist.to_list chunkacc) in
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = scriptG in
+              let lphblstC = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.append (Alist.append lphbacc lphblstC) lphblstG) None lbpetail
         end
   in

@@ -326,46 +326,71 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
   aux Alist.empty AccInitial chunklst
 
 
-let chunks_to_boxes_pure (chunklst : line_break_chunk list) : lb_pure_box list =
+let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk list) (script_after : script) : lb_pure_box list =
   let rec aux lphbacc optprev chunklst =
     match chunklst with
     | [] ->
-        List.rev lphbacc
+        begin
+          match optprev with
+          | AccInitial ->
+              []
+
+          | AccNone ->
+              Alist.to_list lphbacc
+
+          | AccSome(infoprev, alw) ->
+              let (ctx, _, _) = infoprev in
+              let info_after = (ctx, script_after, XX) in
+              let autospace = space_between_chunks_pure infoprev info_after in
+              Alist.to_list (Alist.append lphbacc autospace)
+        end
 
     | chunk :: chunktail ->
         let (ctx, chunkmain) = chunk in
         let (opt, lphblstmain) =
           match chunkmain with
           | Space ->
-              (None, [pure_space ctx])
+              (AccNone, [pure_space ctx])
 
           | UnbreakableSpace ->
-              (None, [pure_space ctx])
+              (AccNone, [pure_space ctx])
 
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-              let opt = Some(((ctx, script, lbclast), alw)) in
+              let opt = AccSome(((ctx, script, lbclast), alw)) in
+              let lphblstmain = [inner_string ctx script uchlst] in
               begin
                 match optprev with
-                | None ->
-                    (opt, [inner_string ctx script uchlst])
+                | AccInitial ->
+                    let info_before = (ctx, script_before, XX) in
+                    let autospace = space_between_chunks_pure info_before (ctx, script, lbcfirst) in
+                    (opt, List.append autospace lphblstmain)
 
-                | Some((infoprev, alw)) ->
+                | AccNone ->
+                    (opt, lphblstmain)
+
+                | AccSome((infoprev, alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbcfirst) in
-                    (opt, List.append autospace [inner_string ctx script uchlst])
+                    (opt, List.append autospace lphblstmain)
               end
 
           | IdeographicChunk(script, lbc, uch, alw) ->
-              let opt = Some(((ctx, script, lbc), alw)) in
+              let opt = AccSome(((ctx, script, lbc), alw)) in
+              let lphblstmain = [inner_string ctx script [uch]] in
               begin
                 match optprev with
-                | None ->
-                    (opt, [inner_string ctx script [uch]])
+                | AccInitial ->
+                    let info_before = (ctx, script_before, XX) in
+                    let autospace = space_between_chunks_pure info_before (ctx, script, lbc) in
+                    (opt, List.append autospace lphblstmain)
 
-                | Some((infoprev, alw)) ->
+                | AccNone ->
+                    (opt, lphblstmain)
+
+                | AccSome((infoprev, alw)) ->
                     let autospace = space_between_chunks_pure infoprev (ctx, script, lbc) in
-                    (opt, List.append autospace [inner_string ctx script [uch]])
+                    (opt, List.append autospace lphblstmain)
               end
         in
-          aux (List.rev_append lphblstmain lphbacc) opt chunktail
+          aux (Alist.append lphbacc lphblstmain) opt chunktail
   in
-  aux [] None chunklst
+  aux Alist.empty AccInitial chunklst
