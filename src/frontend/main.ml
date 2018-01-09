@@ -224,6 +224,18 @@ let error_log_environment suspended =
         NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
       ]
 
+  | Typechecker.HorzCommandInMath(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("an inline command is used as a math command.");
+      ]
+
+  | Typechecker.MathCommandInHorz(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("a math command is used as an inline command.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

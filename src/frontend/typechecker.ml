@@ -9,6 +9,8 @@ exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type
 exception InvalidArityOfCommand of Range.t * int * int
 exception UnknownUnitOfLength   of Range.t * length_unit_name
+exception HorzCommandInMath     of Range.t
+exception MathCommandInHorz     of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -633,7 +635,11 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
               in
                 apply_tree_of_list ecmd elstarg
 
-          | _ -> failwith "math command of type other than MathCommandType(_)"
+          | HorzCommandType(_) ->
+              let (rngcmd, _) = utastcmd in
+              raise (HorzCommandInMath(rngcmd))
+
+          | _ -> assert false
         end
 
     | UTMEmbed(utast0) ->
@@ -703,7 +709,7 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
               in
                 aux (InputVertEmbedded(ecmd, elstarg) :: acc) tail
 
-          | _ -> failwith "vertical command of type other than VertCommandType(_)"
+          | _ -> assert false
         end
 
     | (_, UTInputVertContent(utast0)) :: tail ->
@@ -738,7 +744,11 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
               in
                 aux (InputHorzEmbedded(ecmd, earglst) :: acc) tail
 
-          | _ -> failwith "horizontal command of type other than HorzCommandType(_)"
+          | MathCommandType(_) ->
+              let (rngcmd, _) = utastcmd in
+              raise (MathCommandInHorz(rngcmd))
+
+          | _ -> assert false
         end
 
     | (_, UTInputHorzContent(utast0)) :: tail ->
