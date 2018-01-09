@@ -206,27 +206,28 @@ module MathVariantCharMap = Map.Make
 
 
 type input_context = {
-  font_size        : length;
-  font_scheme      : font_with_ratio ScriptSchemeMap.t;
+  font_size              : length;
+  font_scheme            : font_with_ratio ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  langsys_scheme   : CharBasis.language_system ScriptSchemeMap.t;
+  langsys_scheme         : CharBasis.language_system ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  math_font        : math_font_abbrev;
-  dominant_script  : CharBasis.script;
-  space_natural    : float;
-  space_shrink     : float;
-  space_stretch    : float;
-  adjacent_stretch : float;
-  paragraph_width  : length;
-  paragraph_top    : length;
-  paragraph_bottom : length;
-  leading          : length;
-  min_gap_of_lines : length;
-  text_color       : color;
-  manual_rising    : length;
-  page_scheme      : page_scheme;
-  badness_space    : pure_badness;
-  math_variant_char_map : math_variant_value MathVariantCharMap.t;
+  math_font              : math_font_abbrev;
+  dominant_wide_script   : CharBasis.script;
+  dominant_narrow_script : CharBasis.script;
+  space_natural          : float;
+  space_shrink           : float;
+  space_stretch          : float;
+  adjacent_stretch       : float;
+  paragraph_width        : length;
+  paragraph_top          : length;
+  paragraph_bottom       : length;
+  leading                : length;
+  min_gap_of_lines       : length;
+  text_color             : color;
+  manual_rising          : length;
+  page_scheme            : page_scheme;
+  badness_space          : pure_badness;
+  math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_char_class  : math_char_class;
 }
@@ -524,26 +525,30 @@ let default_font_with_ratio =
   ("Arno", 1., 0.)  (* TEMPORARY *)
 
 
+let normalize_script ctx script_raw =
+  match script_raw with
+  | CharBasis.CommonNarrow
+  | CharBasis.Inherited
+      -> ctx.dominant_narrow_script
+
+  | CharBasis.CommonWide
+      -> ctx.dominant_wide_script
+
+  | _ -> script_raw
+
+
 let get_font_with_ratio ctx script_raw =
-  let script =
-    match script_raw with
-    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                          -> script_raw
-  in
+  let script = normalize_script ctx script_raw in
     match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
     | None          -> default_font_with_ratio
     | Some(fontsch) -> fontsch
 
 
 let get_language_system ctx script_raw =
-  let script =
-    match script_raw with
-    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                          -> script_raw
-  in
-  match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
-  | None          -> CharBasis.NoLanguageSystem
-  | Some(langsys) -> langsys
+  let script = normalize_script ctx script_raw in
+    match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+    | None          -> CharBasis.NoLanguageSystem
+    | Some(langsys) -> langsys
 
 
 let get_string_info ctx script_raw =

@@ -12,10 +12,9 @@ let-inline ctx \SATySFi =
    f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
 
 
-let rectangle (x1, y1) (x2, y2) =
-  start-path (x1, y1)
-    |> line-to (x1, y2)
-    |> line-to (x2, y2)
-    |> line-to (x2, y1)
-    |> close-with-line
+let length-max len1 len2 =
+  if len1 <' len2 then len2 else len1
 
+
+let length-min len1 len2 =
+  if len1 <' len2 then len1 else len2

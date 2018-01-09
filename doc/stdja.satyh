@@ -42,9 +42,10 @@ end = struct
     let hgt = 650pt in
     let ctx-doc =
       get-initial-context page pt wid hgt
-        |> set-dominant-script Kana
+        |> set-dominant-wide-script Kana
         |> set-language Kana Japanese
         |> set-language HanIdeographic Japanese
+        |> set-dominant-narrow-script Latin
         |> set-language Latin English
         |> set-font Kana           font-cjk-mincho
         |> set-font HanIdeographic font-cjk-mincho

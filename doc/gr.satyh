@@ -1,0 +1,32 @@
+
+module Gr : sig
+
+  val rectangle : length * length -> length * length -> path
+  val rectangle-round : length -> length * length -> length * length -> path
+
+end = struct
+
+  let rectangle (x1, y1) (x2, y2) =
+    start-path (x1, y1)
+      |> line-to (x1, y2)
+      |> line-to (x2, y2)
+      |> line-to (x2, y1)
+      |> close-with-line
+
+  let rectangle-round r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = length-min xA xB in
+    let x2 = length-max xA xB in
+    let y1 = length-min yA yB in
+    let y2 = length-max yA yB in
+      start-path                                 (x1, y1 +' r)
+        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+        |> line-to                               (x2 -' r, y1)
+        |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+        |> line-to                               (x2, y2 -' r)
+        |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+        |> line-to                               (x1 +' r, y2)
+        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+        |> close-with-line
+
+end

@@ -30,7 +30,7 @@ let command-scheme ctx ib-name ty inner =
 
 
 let name-context ctx =
-  ctx |> set-dominant-script Latin
+  ctx |> set-dominant-narrow-script Latin
       |> set-font Latin (font `lmmono` 1. 0.)
       |> set-text-color Color.red
 
@@ -67,13 +67,13 @@ let-inline ctx \code inner =
   let pads-code = (2pt, 2pt, 2pt, 2pt) in
   let decoset-code =
     let decoS (x, y) wid hgt dpt =
-      [ fill (Color.gray 0.9) (rectangle (x, y -' dpt) (x +' wid, y +' hgt)) ]
+      [ fill (Color.gray 0.9) (Gr.rectangle-round 2pt (x, y -' dpt) (x +' wid, y +' hgt)) ]
     in
       (decoS, decoS, decoS, decoS)
   in
   let ib-frame =
     inline-frame-breakable pads-code decoset-code
-      (read-inline (ctx |> set-dominant-script Latin) inner)
+      (read-inline (ctx |> set-dominant-narrow-script Latin) inner)
   in
     script-guard Latin ib-frame
 

@@ -802,14 +802,23 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context(HorzBox.({ ctx with math_font = mfabbrev; }))
 
-  | PrimitiveSetDominantScript(astscript, astctx) ->
+  | PrimitiveSetDominantWideScript(astscript, astctx) ->
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with dominant_script = script; }))
+        Context(HorzBox.({ ctx with dominant_wide_script = script; }))
 
-  | PrimitiveGetDominantScript(astctx) ->
+  | PrimitiveGetDominantWideScript(astctx) ->
       let ctx = interpret_context env astctx in
-        make_script_value ctx.HorzBox.dominant_script
+        make_script_value ctx.HorzBox.dominant_wide_script
+
+  | PrimitiveSetDominantNarrowScript(astscript, astctx) ->
+      let script = interpret_script env astscript in
+      let ctx = interpret_context env astctx in
+        Context(HorzBox.({ ctx with dominant_narrow_script = script; }))
+
+  | PrimitiveGetDominantNarrowScript(astctx) ->
+      let ctx = interpret_context env astctx in
+        make_script_value ctx.HorzBox.dominant_narrow_script
 
   | PrimitiveSetLangSys(astscript, astlangsys, astctx) ->
       let script = interpret_script env astscript in

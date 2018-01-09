@@ -50,7 +50,7 @@ let document rcd inner =
     get-initial-context page pt wid hgt
       |> set-font Latin font-latin-roman
       |> set-language Latin English
-      |> set-dominant-script Latin
+      |> set-dominant-narrow-script Latin
       |> set-math-font `lmodern`
   in
   let () = ref-title <- title in
@@ -182,7 +182,7 @@ let-block ctx +p-jp inner =
     ctx |> set-cjk-font font-cjk-mincho
         |> set-language HanIdeographic Japanese
         |> set-language Kana Japanese
-        |> set-dominant-script HanIdeographic
+        |> set-dominant-wide-script HanIdeographic
         |> set-leading (get-font-size ctx *' 1.7)
   in
   let () = needs-indentation-ref <- true in
