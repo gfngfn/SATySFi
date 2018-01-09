@@ -9,6 +9,8 @@ val append : 'a t -> 'a list -> 'a t
 
 val to_list : 'a t -> 'a list
 
+val to_list_rev : 'a t -> 'a list
+
 val of_list : 'a list -> 'a t
 
 val chop_last : 'a t -> ('a t * 'a) option

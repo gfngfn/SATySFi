@@ -10,6 +10,8 @@ let append eacc lst = List.rev_append lst eacc
 
 let to_list eacc = List.rev eacc
 
+let to_list_rev eacc = eacc
+
 let of_list eacc = List.rev eacc
 
 let chop_last eacc =
