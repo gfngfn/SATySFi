@@ -65,22 +65,17 @@ let-inline \discouraged = {\emph{〔使用非推奨〕}}
 
 let-inline ctx \code inner =
   let pads-code = (2pt, 2pt, 2pt, 2pt) in
-  let decoset-code =
-    let decoS (x, y) wid hgt dpt =
-      [ fill (Color.gray 0.9) (Gr.rectangle-round 2pt (x, y -' dpt) (x +' wid, y +' hgt)) ]
-    in
-      (decoS, decoS, decoS, decoS)
-  in
+  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
   let ib-frame =
     inline-frame-breakable pads-code decoset-code
-      (read-inline (ctx |> set-dominant-narrow-script Latin) inner)
+      (read-inline (name-context ctx) inner)
   in
     script-guard Latin ib-frame
 
 
-let-inline ctx \synt inner =
-  let ctx-name = name-context ctx in
-    read-inline ctx-name inner
+%let-inline ctx \synt inner =
+%  let ctx-name = name-context ctx in
+%    read-inline ctx-name inner
 
 
 let-inline ctx \meta m =

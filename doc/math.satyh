@@ -7,6 +7,25 @@ module Math : sig
 
 end = struct
 
+  let-inline ctx \math fml =
+      embed-math ctx fml
+
+  let-math \frac = math-frac
+
+  let-math \sqrt = math-radical None
+
+  let-math \lower = math-lower
+
+  let-math \upper = math-upper
+
+  let-math \text it =
+    text-in-math MathOrd (fun ctx -> read-inline ctx it)
+
+  let-block ctx +math math =
+    let ib = embed-math ctx math in
+      line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
   let math-ord-char cp =
     math-char MathOrd (string-unexplode [cp])
 
@@ -15,9 +34,7 @@ end = struct
     lst |> List.fold-left math-concat (math-char MathOrd ` `)
 
 
-  let-math \tau =
-    let cp = 0x1D70F in
-    let cpb = 0x1D749 in
+  let greek-lowercase cp cpb =
       math-variant-char MathOrd (|
         italic        = cp;
         bold-italic   = cpb;
@@ -30,22 +47,13 @@ end = struct
         double-struck = cp;
       |)
 
-  let-math \pi =
-    math-ord-char 0x1D70B
-      % temporary
 
-  let-math \lambda =
-    math-ord-char 0x1D706
-      % temporary
-
-  let-math \Gamma =
-    let cp = 0x1D6E4 in
-    let cpb = 0x1D71E in
+  let greek-uppercase cp cpb cpr cprb =
       math-variant-char MathOrd (|
         italic        = cp;
         bold-italic   = cpb;
-        roman         = 0x0393;
-        bold-roman    = 0x1D6AA;
+        roman         = cpr;
+        bold-roman    = cprb;
         script        = cp;
         bold-script   = cpb;
         fraktur       = cp;
@@ -53,11 +61,13 @@ end = struct
         double-struck = cp;
       |)
 
-  let-math \frac = math-frac
 
-  let-math \sqrt = math-radical None
+  let-math \lambda = greek-lowercase 0x1D706 0x1D740
+  let-math \pi     = greek-lowercase 0x1D70B 0x1D745
+  let-math \tau    = greek-lowercase 0x1D70F 0x1D749
 
-  let-math \sum = math-big-char MathOp `∑`
+  let-math \Gamma = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
+
 
   let-math \infty = math-char MathOrd `∞`
   let-math \to    = math-char MathRel `→`
@@ -70,36 +80,19 @@ end = struct
   %let math-lim = math-lower (math-group MathOp MathOp (math-char MathOrd `lim`))
   let-math \lim = (math-group MathOp MathOp (math-char MathOrd `lim`))
 
+  let-math \sum = math-big-char MathOp `∑`
+
   let-math \int =
     let kernfL _ _ = 0pt in
     let kernfR fontsize ypos = fontsize *' 0.45 in
       math-big-char-with-kern MathOp `∫` kernfL kernfR
 
   let-math \ordd = math-char MathPrefix `d`
+
   let-math \partial = math-char MathPrefix `∂`
-
-  let-math \lower = math-lower
-  let-math \upper = math-upper
-
-  let-math \text it =
-    text-in-math MathOrd (fun ctx -> read-inline ctx it)
-
-  let-inline ctx \math fml =
-    let ctx-math = ctx |> set-text-color (RGB(0., 0., 1.)) in
-      embed-math ctx-math fml
-
-  let-block ctx +math math =
-    let ib = embed-math ctx math in
-      form-paragraph ctx (inline-fil ++ ib ++ inline-fil)
 
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
-
-  let length-max len1 len2 =
-    if len1 <' len2 then len2 else len1
-
-  let length-abs len =
-    if len <' 0pt then 0pt -' len else len
 
   let rectangle (x, y) w h =
     start-path (x, y)
