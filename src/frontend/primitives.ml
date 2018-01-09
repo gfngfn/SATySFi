@@ -436,26 +436,27 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
 
 let get_initial_context pagesch =
   HorzBox.({
-    font_scheme      = default_font_scheme;
-    font_size        = pdfpt 12.;
-    math_font        = "lmodern";
-    dominant_script  = CharBasis.OtherScript;
-    langsys_scheme   = ScriptSchemeMap.empty;
-    space_natural    = 0.33;
-    space_shrink     = 0.08;
-    space_stretch    = 0.16; (* 0.32; *)
-    adjacent_stretch = 0.025;
-    paragraph_width  = pagesch.HorzBox.area_width;
-    paragraph_top    = pdfpt 18.;
-    paragraph_bottom = pdfpt 18.;
-    leading          = pdfpt 18.;
-    min_gap_of_lines = pdfpt 2.;
-    text_color       = HorzBox.DeviceGray(0.);
-    manual_rising    = pdfpt 0.;
-    page_scheme      = pagesch;
-    badness_space    = 100;
-    math_variant_char_map = default_math_variant_char_map;
-    math_char_class  = MathItalic;
+    font_scheme            = default_font_scheme;
+    font_size              = pdfpt 12.;
+    math_font              = "lmodern";
+    dominant_wide_script   = CharBasis.OtherScript;
+    dominant_narrow_script = CharBasis.OtherScript;
+    langsys_scheme         = ScriptSchemeMap.empty;
+    space_natural          = 0.33;
+    space_shrink           = 0.08;
+    space_stretch          = 0.16; (* 0.32; *)
+    adjacent_stretch       = 0.025;
+    paragraph_width        = pagesch.HorzBox.area_width;
+    paragraph_top          = pdfpt 18.;
+    paragraph_bottom       = pdfpt 18.;
+    leading                = pdfpt 18.;
+    min_gap_of_lines       = pdfpt 2.;
+    text_color             = HorzBox.DeviceGray(0.);
+    manual_rising          = pdfpt 0.;
+    page_scheme            = pagesch;
+    badness_space          = 100;
+    math_variant_char_map  = default_math_variant_char_map;
+    math_char_class        = MathItalic;
   })
 (*
 let margin = pdfpt 2.
@@ -607,8 +608,10 @@ let make_environments () =
         ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)    , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
         ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)             , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
         ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
-        ("set-dominant-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantScript(vscript, vctx)));
-        ("get-dominant-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantScript(vctx)));
+        ("set-dominant-wide-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantWideScript(vscript, vctx)));
+        ("get-dominant-wide-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantWideScript(vctx)));
+        ("set-dominant-narrow-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantNarrowScript(vscript, vctx)));
+        ("get-dominant-narrow-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantNarrowScript(vctx)));
         ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)              , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
