@@ -3,23 +3,66 @@ open CharBasis
 open LineBreakBox
 
 
-let read_script = function
-  | "Common"   -> Common
+let read_east_asian_width _ data =
+  match data with
+  | "H"  -> EAWHalfWidth
+  | "F"  -> EAWFullWidth
+  | "Na" -> EAWNarrow
+  | "W"  -> EAWWide
+  | "A"  -> EAWAmbiguous
+  | "N"  -> EAWNeutral
+  | _    -> assert false
+
+
+let read_script eaw_map cp data =
+  match data with
   | "Han"      -> HanIdeographic
   | "Hiragana" -> HiraganaOrKatakana
   | "Katakana" -> HiraganaOrKatakana
   | "Latin"    -> Latin
 (* temporary; should add more scripts *)
-  | _          -> OtherScript
+
+  | "Common" ->
+      begin
+        match UCoreLib.UChar.of_int cp with
+        | None ->
+            CommonNarrow  (* temporary; maybe should emit an error *)
+
+        | Some(uch_ucore) ->
+            begin
+              match eaw_map |> UCoreLib.UMap.find_opt uch_ucore with
+              | None
+              | Some(EAWNarrow)
+              | Some(EAWHalfWidth)
+              | Some(EAWAmbiguous)
+              | Some(EAWNeutral)
+                  -> CommonNarrow
+
+              | Some(EAWFullWidth)
+              | Some(EAWWide)
+                  -> CommonWide
+            end
+      end
+
+  | _ -> OtherScript
 
 
 let script_map_ref : (script UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
 
 
-let set_from_file filename =
-  let channel = open_in filename in
-  let script_list = DataParser.main DataLexer.expr (Lexing.from_channel channel) in
-  let script_map = script_list |> CharBasis.map_of_list read_script in
+let set_from_file filename_S filename_EAW =
+  let eaw_map =
+    let channel_EAW = open_in filename_EAW in
+    let eaw_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_EAW) in
+    close_in channel_EAW;
+    eaw_list |> CharBasis.map_of_list read_east_asian_width
+  in
+  let script_map =
+    let channel_S = open_in filename_S in
+    let script_list = DataParser.main DataLexer.expr (Lexing.from_channel channel_S) in
+    close_in channel_S;
+    script_list |> CharBasis.map_of_list (read_script eaw_map)
+  in
   begin
     script_map_ref := script_map;
   end

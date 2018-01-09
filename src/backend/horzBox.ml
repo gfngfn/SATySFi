@@ -527,8 +527,12 @@ let default_font_with_ratio =
 let get_font_with_ratio ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                          -> script_raw
+    | CharBasis.CommonNarrow
+    | CharBasis.CommonWide
+    | CharBasis.Inherited
+        -> ctx.dominant_script
+
+    | _ -> script_raw
   in
     match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
     | None          -> default_font_with_ratio
@@ -538,8 +542,12 @@ let get_font_with_ratio ctx script_raw =
 let get_language_system ctx script_raw =
   let script =
     match script_raw with
-    | ( CharBasis.Common | CharBasis.Inherited ) -> ctx.dominant_script
-    | _                                          -> script_raw
+    | CharBasis.CommonNarrow
+    | CharBasis.CommonWide
+    | CharBasis.Inherited
+        -> ctx.dominant_script
+
+    | _ -> script_raw
   in
   match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
   | None          -> CharBasis.NoLanguageSystem

@@ -6,7 +6,8 @@ type code_point_kind =
   | CodePointRange of code_point * code_point
 
 type script =
-  | Common              (*   --  ; Zyyy; Common *)
+  | CommonNarrow        (*   --  ; Zyyy; Common *)
+  | CommonWide          (*   --  ; Zyyy; Common *)
   | Inherited           (*   --  ; Zinh; Inherited *)
   | HanIdeographic      (* 'hani'; Hani; Han *)
   | HiraganaOrKatakana  (* 'kana'; Hrkt; Hiragana_Or_Katakana *)
@@ -14,10 +15,19 @@ type script =
 (* temporary; should add more scripts *)
   | OtherScript
 
+type east_asian_width =
+  | EAWHalfWidth
+  | EAWFullWidth
+  | EAWWide
+  | EAWNarrow
+  | EAWAmbiguous
+  | EAWNeutral
+
 
 (* for debug *)
 let show_script = function
-  | Common             -> "Common"
+  | CommonNarrow       -> "Common (narrow)"
+  | CommonWide         -> "Common (wide)"
   | Inherited          -> "Inherited"
   | HanIdeographic     -> "Han"
   | HiraganaOrKatakana -> "Kana"
@@ -126,11 +136,12 @@ let add_range_to_map cp1 cp2 scr umap =
   | _                                    -> umap  (* needs reconsideration; maybe should canse an error *)
 
 
-let map_of_list (type a) (readf : string -> a) (lst : (code_point_kind * string) list) =
+let map_of_list (type a) (readf : int -> string -> a) (lst : (code_point_kind * string) list) =
   lst |> List.fold_left (fun accmap elem ->
     match elem with
-    | (CodePoint(cp), data)            -> accmap |> add_to_map cp (readf data)
-    | (CodePointRange(cp1, cp2), data) -> accmap |> add_range_to_map cp1 cp2 (readf data)
+    | (CodePoint(cp), data)            -> accmap |> add_to_map cp (readf cp data)
+    | (CodePointRange(cp1, cp2), data) -> accmap |> add_range_to_map cp1 cp2 (readf cp1 data)
+        (* -- needs reconsideration: 'readf' receives the first code point of the range -- *)
   ) (UCoreLib.UMap.empty ~eq:(=))
 
 

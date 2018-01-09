@@ -4,7 +4,7 @@ open CharBasis
 exception InputFileBroken
 
 
-let class_of_string s =
+let class_of_string _ s =
   match s with
   | "CM"  -> CM
   | "SG"  -> SG

@@ -366,7 +366,9 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize (satysfi_root_dir : string) =
 
   PrintForDebug.initfontE "!!ScriptDataMap";
-  ScriptDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt");
+  let filename_S   = Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt" in
+  let filename_EAW = Filename.concat satysfi_root_dir "dist/unidata/EastAsianWidth.txt" in
+  ScriptDataMap.set_from_file filename_S filename_EAW;
   PrintForDebug.initfontE "!!LineBreakDataMap";
   LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
 
