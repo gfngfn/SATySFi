@@ -402,7 +402,7 @@
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
 *)
-%token <Range.t> LAMBDA ARROW
+%token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LET DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
@@ -775,7 +775,10 @@ nxapp:
 (*
   | REFFINAL nxbot { make_standard (Tok $1) (Ranged $2) (UTReferenceFinal($2)) }
 *)
-  | nxbot          { $1 }
+  | pre=COMMAND; hcmd=hcmd {
+      let (rng, mdlnmlst, csnm) = hcmd in
+        make_standard (Tok pre) (Tok rng) (UTFrozenCommand(mdlnmlst, csnm)) }
+  | nxbot { $1 }
 ;
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
@@ -1075,9 +1078,11 @@ ihcmd:
           make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
       }
   | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
+(*
         let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in
             (* -- inline command '\\math' is inserted -- *)
-          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbedded(utastcmd, [utast]))
+*)
+          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
       }
   | vartok=VARINHORZ; cls=ENDACTIVE {
         let (rng, mdlnmlst, varnm) = vartok in

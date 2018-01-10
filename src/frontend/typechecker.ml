@@ -299,12 +299,26 @@ let rec typecheck
   | UTContentOf(mdlnmlst, varnm) ->
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
-        | None -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+        | None ->
+            raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
             let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
                 (ContentOf(evid), tyres)
+      end
+
+  | UTFrozenCommand(mdlnmlst, csnm) ->
+      begin
+        match Typeenv.find tyenv mdlnmlst csnm rng with
+        | None ->
+            raise (UndefinedVariable(rng, append_module_names mdlnmlst csnm))
+
+        | Some((pty, evid)) ->
+            let tyfree = instantiate lev qtfbl pty in
+            let tyres = overwrite_range_of_type tyfree rng in
+              (FrozenCommand(evid), tyres)
       end
 
   | UTConstructor(constrnm, utast1) ->
@@ -722,9 +736,9 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
 
 
 and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
-  let rec aux (acc : input_horz_element list) (lst : untyped_input_horz_element list) =
+  let rec aux (acc : input_horz_element Alist.t) (lst : untyped_input_horz_element list) =
     match lst with
-    | [] -> List.rev acc
+    | [] -> Alist.to_list acc
 
     | (_, UTInputHorzEmbedded(utastcmd, utastarglst)) :: tail ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
@@ -742,7 +756,7 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
                     let lenreal = List.length tyarglst in
                     raise (InvalidArityOfCommand(rng, lenreq, lenreal))
               in
-                aux (InputHorzEmbedded(ecmd, earglst) :: acc) tail
+                aux (Alist.extend acc (InputHorzEmbedded(ecmd, earglst))) tail
 
           | MathCommandType(_) ->
               let (rngcmd, _) = utastcmd in
@@ -751,15 +765,20 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           | _ -> assert false
         end
 
+    | (_, UTInputHorzEmbeddedMath(utastmath)) :: tail ->
+        let (emath, tymath) = typecheck qtfbl lev tyenv utastmath in
+        let () = unify_ tyenv tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathType)) in
+          aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
+
     | (_, UTInputHorzContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
         let () = unify_ tyenv ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType)) in
-          aux (InputHorzContent(e0) :: acc) tail
+          aux (Alist.extend acc (InputHorzContent(e0))) tail
 
     | (_, UTInputHorzText(s)) :: tail ->
-        aux (InputHorzText(s) :: acc) tail
+        aux (Alist.extend acc (InputHorzText(s))) tail
   in
-    aux [] utihlst
+    aux Alist.empty utihlst
 
 
 and typecheck_record

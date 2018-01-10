@@ -1360,6 +1360,9 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
 
 
 and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst : input_horz_element list) : abstract_tree =
+
+  let (evidcmd, ctx) = interpret_context env valuectx in
+
   let rec eval_content env ihlst =
     ihlst |> List.fold_left (fun evihacc ih ->
       match ih with
@@ -1368,6 +1371,10 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
 
       | InputHorzEmbedded(astcmd, astlst) ->
           EvInputHorzEmbedded(astcmd, astlst) :: evihacc
+
+      | InputHorzEmbeddedMath(astmath) ->
+          EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
+            (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
       | InputHorzContent(ast0) ->
           let value0 = interpret env ast0 in
@@ -1382,8 +1389,8 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
                 assert false
           end
     ) [] |> List.rev
-
   in
+
   let normalize evihlst =
     evihlst |> List.fold_left (fun acc evih ->
       match evih with
@@ -1418,7 +1425,6 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
           end
 
       | EvInputHorzText(s) ->
-          let (_, ctx) = interpret_context env valuectx in
           (lex_horz_text ctx s) :: lstacc
 
     ) []
