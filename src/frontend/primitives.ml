@@ -436,7 +436,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     ])
 
 
-let get_initial_context pagesch =
+let get_initial_context pagesch evidcmd =
   let open HorzBox in
     {
       font_scheme            = default_font_scheme;
@@ -460,6 +460,7 @@ let get_initial_context pagesch =
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
+      inline_math_command    = evidcmd;
     }
 (*
 let margin = pdfpt 2.

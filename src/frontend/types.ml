@@ -610,7 +610,7 @@ and abstract_tree =
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
-  | Context                     of EvalVarID.t * HorzBox.input_context
+  | Context                     of HorzBox.input_context
   | FrozenCommand               of EvalVarID.t
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
