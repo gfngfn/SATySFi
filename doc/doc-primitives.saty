@@ -51,9 +51,15 @@ StdJa.document (|
   +section {文字列演算} <
     +p {
       文字列操作のための簡単なプリミティヴがいくつか用意されているが，
-      現状これらのうちの多くは開発初期の名残といった様相であり，積極的な使用を推奨しない．
+      現状これらのうちの一部は開発初期の名残といった様相であり，積極的な使用を推奨しない．
       Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
-      直接UTF-8バイト列を扱うなど，低級感が否めない．
+      直接UTF-8バイト列を扱うなど，低級な処理として形式化されているためである．
+    }
+    +command (`^`) (tS --> (tS --> tS)) {
+      文字列の結合．
+    }
+    +command (`arabic`) (tI --> tS) {
+      受け取った整数の十進文字列を返す．
     }
     +command (`string-same`) (tS --> (tS --> tB)) {
       文字列がUTF-8のバイト列として等価かの判定．
@@ -70,9 +76,6 @@ StdJa.document (|
     +command (`string-length`) (tS --> tI) {
       受け取った文字列のUTF-8表現のバイト長を返す．
       \subject-to-change;\discouraged;
-    }
-    +command (`arabic`) (tI --> tS) {
-      受け取った整数の十進文字列を返す．
     }
   >
   +section {インライン方向に関する処理} <
@@ -102,10 +105,27 @@ StdJa.document (|
     +command (`inline-nil`) (tIB) {
       長さ0のインライン方向の空白．
       より正確に言えばこれは空白ではなく，任意のインラインボックス列\code{${ib}}に対して
-      \code{${ib} ++ inline-fil}が\code{${ib}}と全く同様に振舞うようになっている．
+      \code{${ib} ++ inline-nil}が\code{${ib}}と全く同様に振舞うようになっている．
     }
     +command (`embed-string`) (tS --> tIT) {
       文字列をインラインテキストに変換する．
+    }
+    +command (`discretionary`) (tI --> (tIB --> (tIB --> (tIB --> tIB)))) {
+      \code{line-break}による行分割の候補位置をつくる．
+      \code{discretionary ${p} ${ib_0} ${ib_1} ${ib_2}}で
+      「行分割されなかったときは\code{${ib_0}}を出力し，
+      行分割されたときは分割位置の直前に\code{${ib_1}}を挿入し直後に\code{${ib_2}}を挿入する」
+      という効果をもつインラインボックス列を返す．
+      なお，この位置で行分割することになるか否かにかかわらず，
+      各\code{${ib_i}}内にあるすべての行分割候補位置は行分割しない箇所として扱われる．
+      \code{${p}}はペナルティ値であり，“どの程度行分割してほしくないか”の指標である．
+      \code{10000}以上で「最悪」，すなわち「本当に行分割することが避けられない場合を除いてなんとしてもここで行分割しないでほしい」
+      ことを指し，\code{0}で「行分割の抑制も促進もしない」を指す．
+      \code{0}未満は「行分割しないよりも行分割する方が望ましい」ことを意味し，よりその位置での行分割が促進される．
+    }
+    +command (`script-guard`) (tSCR --> (tIB --> tIB)) {
+      \code{script-guard ${script} ${ib}}で，インラインボックス列\code{${ib}}を
+      文字体系\code{${script}}の単語として扱う．これは和欧間空白など異なる文字体系間のスペースの挿入の有無に影響を与える．
     }
     +command (`get-natural-width`) (tIB --> tL) {
       インラインボックス列を受け取り，その自然な幅を返す．
@@ -136,6 +156,9 @@ StdJa.document (|
       \code{embedded-block-top}と同様．
     }
     +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
+      複数のインラインボックス列をブロック方向に積む．全体の幅は最も長い行の幅となる．
+      \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
+      \code{line-stack-bottom}は最後の行に合わせて決められる．
     }
   >
   +section {ブロック方向に関する処理} <
@@ -152,6 +175,16 @@ StdJa.document (|
       \code{false}のときは許さない．
       \code{${b_2}}も同様に段落の直後で改ページを許すかの指定である．
       \subject-to-change;
+    }
+    +command (`form-document`) (tCTX --> (tBB --> tDOC)) {
+      与えられたインラインボックス列を適切にページ分割して文書に整形する．
+    }
+    +command (`+++`) (tBB --> (tBB --> tBB)) {
+      2つのブロックボックス列を結合して返す．
+    }
+    +command (`block-nil`) (tBB) {
+      高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
+      \code{${bb}}と\code{${bb} ++ block-nil}が全く等価に振舞うようになっている．
     }
   >
 >

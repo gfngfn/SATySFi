@@ -20,6 +20,8 @@ let tDECO = type-name {deco}
 let tDECOSET = type-name {deco-set}
 let tCTX = type-name {context}
 let tIGR = type-name {inline-graphics}
+let tDOC = type-name {document}
+let tSCR = type-name {script}
 let tLIST m =
   let token = type-name {list} in
     ${\paren{#m}\math-skip!(4pt)#token}
@@ -27,13 +29,16 @@ let tLIST m =
 
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
-  let quad = discretionary 1000 (inline-skip (ctx |> get-font-size)) inline-nil inline-nil in
+  let font-size = get-font-size ctx in
+  let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
+  let quad = discretionary 1000 quad-glue inline-nil inline-nil in
   let margin = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
+    line-break true false ctx (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+  +++
     block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
-      form-paragraph ctx ((inline-skip (0pt -' margin)) ++ ib-name ++ ib-colon ++ m-ty
-        ++ quad ++ ib-inner ++ inline-fil)
+      form-paragraph ctx (ib-inner ++ inline-fil)
     ))
 
 
