@@ -323,7 +323,7 @@ and math_element_main =
          (3) left-hand-side kerning function
          (4) right-hand-side kerning function
          --*)
-  | MathEmbeddedText of (input_context -> horz_box list)
+  | MathEmbeddedText of (EvalVarID.t * input_context -> horz_box list)
 
 and math_element =
   | MathElement           of math_kind * math_element_main
@@ -414,8 +414,8 @@ type column = cell list
 module MathContext
 : sig
     type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
+    val make : EvalVarID.t * input_context -> t
+    val context_for_text : t -> EvalVarID.t * input_context
     val convert_math_variant_char : t -> string -> math_variant_value
     val color : t -> color
     val set_color : color -> t -> t
@@ -439,15 +439,17 @@ module MathContext
         mc_base_font_size : length;
         mc_level_int      : int;
         mc_level          : level;
+        command_id        : EvalVarID.t;
         context_for_text  : input_context;
       }
 
-    let make (ctx : input_context) =
+    let make (evid, ctx) =
       {
         mc_font_abbrev    = ctx.math_font;
         mc_base_font_size = ctx.font_size;
         mc_level_int      = 0;
         mc_level          = BaseLevel;
+        command_id        = evid;
         context_for_text  = ctx;
       }
 
@@ -469,7 +471,7 @@ module MathContext
             end
 
     let context_for_text mctx =
-      mctx.context_for_text
+      (mctx.command_id, mctx.context_for_text)
         (* temporary; maybe should update font size *)
 
     let color mctx =

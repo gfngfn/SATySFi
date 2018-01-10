@@ -36,7 +36,7 @@ end = struct
   let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
 end
 
-
+(*
 module EvalVarID
 : sig
     type t
@@ -55,7 +55,7 @@ module EvalVarID
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
     let pp fmt evid = Format.fprintf fmt "%s" (show_direct evid)
   end
-
+*)
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
@@ -607,11 +607,12 @@ and abstract_tree =
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
-  | Context                     of HorzBox.input_context
+  | Context                     of EvalVarID.t * HorzBox.input_context
+  | FrozenCommand               of EvalVarID.t
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
-  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree
