@@ -19,9 +19,10 @@ let tPADS = type-name {paddings}
 let tDECO = type-name {deco}
 let tDECOSET = type-name {deco-set}
 let tCTX = type-name {context}
+let tIGR = type-name {inline-graphics}
 let tLIST m =
   let token = type-name {list} in
-    ${\paren{#m}\text!{\ }#token}
+    ${\paren{#m}\math-skip!(4pt)#token}
 
 
 let command-scheme ctx ib-name ty inner =
@@ -70,19 +71,22 @@ let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり�
 let-inline \discouraged = {\emph{〔使用非推奨〕}}
 
 
-let-inline ctx \code inner =
-  let pads-code = (2pt, 2pt, 2pt, 2pt) in
-  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
-  let ib-frame =
-    inline-frame-breakable pads-code decoset-code
-      (read-inline (name-context ctx) inner)
-  in
-    script-guard Latin ib-frame
-
-
 let-inline ctx \meta m =
   let ctx-meta =
     ctx |> set-text-color Color.orange
         |> set-font Latin StdJa.font-latin-italic
   in
     embed-math ctx-meta m
+
+
+let-inline ctx \code inner =
+  let pads-code = (2pt, 2pt, 2pt, 2pt) in
+  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+  let ctx-code =
+    name-context ctx |> set-math-command (command \meta)
+  in
+  let ib-frame =
+    inline-frame-breakable pads-code decoset-code
+      (read-inline ctx-code inner)
+  in
+    script-guard Latin ib-frame
