@@ -350,6 +350,15 @@ and interpret env ast =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(astcmd, HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
+  | PrimitiveSetMathCommand(astcmd, astctx) ->
+      let valuecmd = interpret env astcmd in
+      let (_, ctx) = interpret_context env astctx in
+      begin
+        match valuecmd with
+        | FrozenCommand(evidcmd) -> Context(evidcmd, ctx)
+        | _                      -> report_bug_evaluator "PrimitiveSetMathCommand" astcmd valuecmd
+      end
+
   | BackendMathVariantCharDirect(astmathcls, astrcd) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
       let is_big = false in  (* temporary *)
