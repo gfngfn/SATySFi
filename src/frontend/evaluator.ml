@@ -355,7 +355,7 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
       begin
         match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(ctx)
+        | FrozenCommand(evidcmd) -> Context(HorzBox.({ ctx with inline_math_command = evidcmd; }))
         | _                      -> report_bug_evaluator "PrimitiveSetMathCommand" astcmd valuecmd
       end
 
@@ -1370,7 +1370,6 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
 and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst : input_horz_element list) : abstract_tree =
 
   let ctx = interpret_context env valuectx in
-  let evidcmd = ctx.HorzBox.inline_math_command in
 
   let rec eval_content env ihlst =
     ihlst |> List.fold_left (fun evihacc ih ->
@@ -1382,8 +1381,9 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
           EvInputHorzEmbedded(astcmd, astlst) :: evihacc
 
       | InputHorzEmbeddedMath(astmath) ->
-          EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
-            (* -- inserts (the EvalVarID of) the math command of the input context -- *)
+          let evidcmd = ctx.HorzBox.inline_math_command in
+            EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
+              (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
       | InputHorzContent(ast0) ->
           let value0 = interpret env ast0 in
