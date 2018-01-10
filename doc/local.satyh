@@ -2,23 +2,26 @@
 let ( --> ) m1 m2 =
   ${\paren{#m1 \to #m2}}
 
-let base-type name =
+let type-name name =
   text-in-math MathOrd (fun ctx -> read-inline ctx name)
 
 
-let tI = base-type {int}
-let tB = base-type {bool}
-let tF = base-type {float}
-let tL = base-type {length}
-let tS = base-type {string}
-let tIT = base-type {inline-text}
-let tIB = base-type {inline-boxes}
-let tBT = base-type {block-text}
-let tBB = base-type {block-boxes}
-let tPADS = base-type {paddings}
-let tDECO = base-type {deco}
-let tDECOSET = base-type {decoset}
-let tCTX = base-type {context}
+let tI = type-name {int}
+let tB = type-name {bool}
+let tF = type-name {float}
+let tL = type-name {length}
+let tS = type-name {string}
+let tIT = type-name {inline-text}
+let tIB = type-name {inline-boxes}
+let tBT = type-name {block-text}
+let tBB = type-name {block-boxes}
+let tPADS = type-name {paddings}
+let tDECO = type-name {deco}
+let tDECOSET = type-name {deco-set}
+let tCTX = type-name {context}
+let tLIST m =
+  let token = type-name {list} in
+    ${\paren{#m}\text!{\ }#token}
 
 
 let command-scheme ctx ib-name ty inner =
@@ -71,11 +74,6 @@ let-inline ctx \code inner =
       (read-inline (name-context ctx) inner)
   in
     script-guard Latin ib-frame
-
-
-%let-inline ctx \synt inner =
-%  let ctx-name = name-context ctx in
-%    read-inline ctx-name inner
 
 
 let-inline ctx \meta m =

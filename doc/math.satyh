@@ -2,6 +2,7 @@
 module Math : sig
 
   direct \math : [math] inline-cmd
+  direct \text : [inline-text] math-cmd
   direct \to : [] math-cmd
   direct \paren : [math] math-cmd
 
