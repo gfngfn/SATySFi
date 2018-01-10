@@ -480,15 +480,15 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
 
   let append_framed_lines
         (lines_in_frame : (lb_pure_box list) list)
-        (acclines_before : (lb_pure_box list) list)
-        (accline_before : lb_pure_box list)
+        (acclines_before : (lb_pure_box list) Alist.t)
+        (accline_before : lb_pure_box Alist.t)
         (decoS : decoration) (decoH : decoration) (decoM : decoration) (decoT : decoration)
         (pads : paddings)
-        : (lb_pure_box list) list * lb_pure_box list =
+        : (lb_pure_box list) Alist.t * lb_pure_box Alist.t =
     let rec aux
-          (first : (lb_pure_box list) option)
-          (last : (lb_pure_box list) option)
-          (acclines : (lb_pure_box list) list)
+          (first : (lb_pure_box Alist.t) option)
+          (last : (lb_pure_box Alist.t) option)
+          (acclines : (lb_pure_box list) Alist.t)
           (lines : (lb_pure_box list) list)
         =
       match lines with
@@ -496,7 +496,7 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
           begin
             match last with
             | Some(accline) -> (acclines, accline)
-            | None          -> (acclines, [])
+            | None          -> (acclines, Alist.empty)
           end
 
       | line :: [] ->  (* -- last line -- *)
@@ -505,9 +505,9 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
           begin
             match first with
             | Some(accline) ->
-                aux None (Some(LBOuterFrame(metr_total, decoS, line) :: accline)) acclines []
+                aux None (Some(Alist.extend accline (LBOuterFrame(metr_total, decoS, line)))) acclines []
             | None ->
-                aux None (Some(LBOuterFrame(metr_total, decoT, line) :: [])) acclines []
+                aux None (Some(Alist.extend Alist.empty (LBOuterFrame(metr_total, decoT, line)))) acclines []
           end
 
       | line :: tail ->
@@ -516,56 +516,58 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
           begin
             match first with
             | Some(accline) ->
-                aux None None ((List.rev (LBOuterFrame(metr_total, decoH, line) :: accline)) :: acclines) tail
+                aux None None (Alist.extend acclines (Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, line))))) tail
             | None ->
-                aux None None ((LBOuterFrame(metr_total, decoM, line) :: []) :: acclines) tail
+                aux None None (Alist.extend acclines (LBOuterFrame(metr_total, decoM, line) :: [])) tail
           end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
   in
 
-  let rec cut (acclines : (lb_pure_box list) list) (accline : lb_pure_box list) (lhblst : lb_box list) : (lb_pure_box list) list =
+  let rec cut (acclines : (lb_pure_box list) Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : (lb_pure_box list) Alist.t =
     match lhblst with
     | LBDiscretionary(_, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
         if List.mem dscrid path then
-          let acclinesub   = List.rev_append lphblst1 accline in
-          let acclinefresh = List.rev lphblst2 in
-            cut ((List.rev acclinesub) :: acclines) acclinefresh tail
+          let acclinesub = Alist.append accline lphblst1 in
+          let acclinefresh = Alist.of_list lphblst2 in
+            cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
         else
-          let acclinenew   = List.rev_append lphblst0 accline in
+          let acclinenew = Alist.append accline lphblst0 in
             cut acclines acclinenew tail
 
     | LBPure(lphb) :: tail ->
-        cut acclines (lphb :: accline) tail
+        cut acclines (Alist.extend accline lphb) tail
 
     | LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblst) :: tail ->
-        let acclines_in_frame = cut [] [] lhblst in
-        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline decoS decoH decoM decoT pads in
+        let acclines_in_frame = cut Alist.empty Alist.empty lhblst in
+        let (acclinesnew, acclinenew) =
+          append_framed_lines (Alist.to_list acclines_in_frame) acclines accline decoS decoH decoM decoT pads
+        in
           cut acclinesnew acclinenew tail
 
     | [] ->
-        (List.rev accline) :: acclines
+        Alist.extend acclines (Alist.to_list accline)
   in
 
-  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box Alist.t) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
         begin
           match dptprevopt with
           | None ->
-              arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: []) tail
+              arrange (Some(dpt)) (Alist.extend Alist.empty (ImVertLine(hgt, dpt, evhblst))) tail
 
           | Some(dptprev) ->
               let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
+                arrange (Some(dpt)) (Alist.append accvlines [ImVertFixedBreakable(vskip); ImVertLine(hgt, dpt, evhblst)]) tail 
         end
 
-    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (List.rev (ImVertBottomMargin(is_breakable_bottom, margin_bottom) :: accvlines))
+    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (ImVertBottomMargin(is_breakable_bottom, margin_bottom))))
   in
 
-  let acclines = cut [] [] lhblst in
-    arrange None [] (List.rev acclines)
+  let acclines = cut Alist.empty Alist.empty lhblst in
+    arrange None Alist.empty (Alist.to_list acclines)
 
 
 let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =

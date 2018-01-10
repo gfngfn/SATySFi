@@ -132,7 +132,7 @@ StdJa.document (|
     +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
     }
   >
-  +section {プロック方向に関する処理} <
+  +section {ブロック方向に関する処理} <
     +command (`read-block`) (tCTX --> (tBT --> tBB)) {
       \code{read-block \meta(${ctx}); \meta(${bt});}で
       文脈\code{\meta(${ctx});}に従ってブロックテキスト\code{\meta(${bt});}を

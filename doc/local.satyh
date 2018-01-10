@@ -26,10 +26,14 @@ let tLIST m =
 
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
-  let quad = inline-skip (ctx |> get-font-size) in
+  let quad = discretionary 1000 (inline-skip (ctx |> get-font-size)) inline-nil inline-nil in
+  let margin = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
-    form-paragraph ctx (ib-name ++ ib-colon ++ m-ty ++ quad ++ ib-inner ++ inline-fil)
+    block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
+      form-paragraph ctx ((inline-skip (0pt -' margin)) ++ ib-name ++ ib-colon ++ m-ty
+        ++ quad ++ ib-inner ++ inline-fil)
+    ))
 
 
 let name-context ctx =

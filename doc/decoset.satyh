@@ -1,8 +1,14 @@
 module DecoSet : sig
 
+  val empty : deco-set
   val rectangle-round-fill : length -> length -> color -> deco-set
 
 end = struct
+
+  let empty =
+    let deco _ _ _ _ = [] in
+      (deco, deco, deco, deco)
+
 
   let rectangle-round-fill r extra color =
     let decoS (x, y) wid hgt dpt =

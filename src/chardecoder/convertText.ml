@@ -250,7 +250,7 @@ type chunk_accumulator =
   | AccSome    of (input_context * script * line_break_class) * break_opportunity
 
 
-let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) (script_after : script) =
+let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) (script_after : script) : lb_box list =
   let rec aux lhbacc optprev chunklst =
     match chunklst with
     | [] ->
@@ -282,14 +282,14 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
 
-          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-              let opt = AccSome(((ctx, script, lbclast), alw)) in
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alwnext) ->
+              let opt = AccSome(((ctx, script, lbclast), alwnext)) in
               let lhblststr = [LBPure(inner_string ctx script uchlst)] in
               begin
                 match optprev with
                 | AccInitial ->
                     let info_before = (ctx, script_before, XX) in
-                    let autospace = space_between_chunks info_before alw (ctx, script, lbcfirst) in
+                    let autospace = space_between_chunks info_before PreventBreak (ctx, script, lbcfirst) in
                     (opt, List.append autospace lhblststr)
 
                 | AccNone ->
@@ -300,8 +300,8 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
                     (opt, List.append autospace lhblststr)
               end
 
-          | IdeographicChunk(script, lbc, uch, alw) ->
-              let opt = AccSome((ctx, script, lbc), alw) in
+          | IdeographicChunk(script, lbc, uch, alwnext) ->
+              let opt = AccSome((ctx, script, lbc), alwnext) in
               let lhblststr = ideographic_single ctx script lbc [uch] in
               begin
                 match optprev with
@@ -310,7 +310,7 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
 
                 | AccInitial ->
                     let info_before = (ctx, script_before, XX) in
-                    let autospace = space_between_chunks info_before alw (ctx, script, lbc) in
+                    let autospace = space_between_chunks info_before PreventBreak (ctx, script, lbc) in
                     (opt, List.append autospace lhblststr)
 
                 | AccSome((infoprev, alw)) ->
