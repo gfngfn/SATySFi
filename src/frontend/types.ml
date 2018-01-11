@@ -430,7 +430,7 @@ and mutual_let_cons =
   | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 
-and environment = (EvalVarID.t, location) Hashtbl.t
+and environment = (EvalVarID.t, location) Hashtbl.t * (StoreID.t, abstract_tree) Hashtbl.t
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
 and location = abstract_tree ref
@@ -523,8 +523,8 @@ and abstract_tree =
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | Location              of abstract_tree ref
-  | Reference             of abstract_tree
+  | Location              of StoreID.t
+  | Dereference           of abstract_tree
 (*
   | DeclareGlobalHash     of abstract_tree * abstract_tree
   | OverwriteGlobalHash   of abstract_tree * abstract_tree
@@ -825,16 +825,36 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
-let copy_environment (env : environment) =
-  Hashtbl.copy env
+let copy_environment (env : environment) : environment =
+  let (valenv, stenv) = env in
+    (Hashtbl.copy valenv, stenv)
 
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstract_tree ref) =
-  Hashtbl.add env evid rfast
+  let (valenv, _) = env in
+  Hashtbl.add valenv evid rfast
 
 
 let find_in_environment (env : environment) (evid : EvalVarID.t) =
-  Hashtbl.find env evid
+  let (valenv, _) = env in
+  Hashtbl.find valenv evid
+
+
+let register_location (env : environment) (ast : abstract_tree) : StoreID.t =
+  let (_, stenv) = env in
+  let stid = StoreID.fresh () in
+  Hashtbl.add stenv stid ast;
+  stid
+
+
+let update_location (env :environment) (stid : StoreID.t) (ast : abstract_tree) =
+  let (_, stenv) = env in
+  Hashtbl.add stenv stid ast
+
+
+let find_location_value (env : environment) (stid : StoreID.t) =
+  let (_, stenv) = env in
+  Hashtbl.find_opt stenv stid
 
 
 (*

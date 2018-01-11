@@ -1045,10 +1045,10 @@ and interpret env ast =
 
   | LetMutableIn(evid, astdflt, astaft) ->
       let valueini = interpret env astdflt in
-      let loc = ref valueini in
+      let stid = register_location env valueini in
       let envnew = copy_environment env in
         begin
-          add_to_environment envnew evid (ref (Location(loc))) ;
+          add_to_environment envnew evid (ref (Location(stid))) ;
           interpret envnew astaft
         end
 
@@ -1072,10 +1072,10 @@ and interpret env ast =
           let rfvalue = find_in_environment env evid in
           let value = !rfvalue in
             match value with
-            | Location(loc) ->
-                let newvalue = interpret env astnew in
+            | Location(stid) ->
+                let valuenew = interpret env astnew in
                   begin
-                    loc := newvalue;
+                    update_location env stid valuenew;
                     UnitConstant
                   end
             | _ -> report_bug_evaluator "Overwrite: value is not a Location" value value
@@ -1089,12 +1089,19 @@ and interpret env ast =
       else
         UnitConstant
 
-  | Reference(astcont) ->
+  | Dereference(astcont) ->
       let valuecont = interpret env astcont in
         begin
           match valuecont with
-          | Location(loc) -> !loc
-          | _             -> report_bug_evaluator "Reference" astcont valuecont
+          | Location(stid) ->
+              begin
+                match find_location_value env stid with
+                | Some(value) -> value
+                | None        -> report_bug_evaluator "Dereference; not found" astcont valuecont
+              end
+
+          | _ ->
+              report_bug_evaluator "Dereference" astcont valuecont
         end
 (*
 (* ---- final reference ---- *)

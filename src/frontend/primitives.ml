@@ -165,10 +165,6 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let add_to_environment env varnm rfast =
-  Hashtbl.add env varnm rfast
-
-
 let lam evid ast = LambdaAbstract(evid, ast)
 let lamenv env evid ast = FuncWithEnvironment(evid, ast, env)
 let ( !- ) evid = ContentOf(evid)
@@ -323,7 +319,8 @@ let default_radical hgt_bar t_bar dpt fontsize color =
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
 
 
-let envinit : environment = Hashtbl.create 128
+let envinit : environment =
+  (Hashtbl.create 128, Hashtbl.create 128)
 
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
@@ -571,7 +568,7 @@ let make_environments () =
         ( "&&" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalAnd(v1, v2))              );
         ( "||" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalOr(v1, v2))               );
         ( "not", ~% (tB @-> tB)          , lambda1 (fun v1 -> LogicalNot(v1))                     );
-        ( "!"  , ptyderef                , lambda1 (fun v1 -> Reference(v1))                      );
+        ( "!"  , ptyderef                , lambda1 (fun v1 -> Dereference(v1))                    );
         ( "::" , ptycons                 , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
@@ -684,11 +681,11 @@ let make_environments () =
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
       begin
         add_to_environment envinit evid loc;
-        (tyenvnew, (loc, deff) :: acc)
+        (tyenvnew, Alist.extend acc (loc, deff))
       end
-    ) (tyenvinit, [])
+    ) (tyenvinit, Alist.empty)
   in
   let () =
-    locacc |> List.iter (fun (loc, deff) -> begin loc := deff envinit; end)
+    locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> begin loc := deff envinit; end)
   in
     (tyenvfinal, envinit)

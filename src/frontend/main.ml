@@ -102,6 +102,7 @@ let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
   begin
+    StoreID.initialize ();
     FontInfo.initialize (!libdir_ref);
     ImageInfo.initialize ();
   end

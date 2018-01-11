@@ -261,7 +261,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
   | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
   | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
-  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")" 
+  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")"
   | UTEndOfList                    -> "[]"
   | UTTupleCons(hd, tl)            -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
   | UTEndOfTuple                   -> "$"
@@ -296,7 +296,7 @@ and string_of_utih (_, utihmain) =
       "(embHC " ^ (string_of_utast utast0) ^ ")"
   | UTInputHorzEmbeddedMath(utastmath) ->
       "(embHM " ^ (string_of_utast utastmath) ^ ")"
- 
+
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
     ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"
@@ -358,7 +358,7 @@ let rec string_of_ast (ast : abstract_tree) =
   | ApplyClassAndID(c, i, m)     ->
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
 *)
-  | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
+  | Dereference(a)               -> "(!" ^ (string_of_ast a) ^ ")"
 (*
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
 *)
@@ -410,5 +410,3 @@ let rec string_of_ast (ast : abstract_tree) =
   | Context(_)                   -> "(context)"
   | FontDesignation(_)           -> "(font-designation)"
   | _                            -> "OTHER"
-
-
