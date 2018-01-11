@@ -14,7 +14,7 @@ let add_stretchable strc1 strc2 =
   | (Fils(i1), _)                          -> Fils(i1)
   | (_, Fils(i2))                          -> Fils(i2)
 
-  
+
 type length_info =
   {
     natural     : length;
