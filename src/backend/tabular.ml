@@ -26,10 +26,10 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
               let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
               let hgtmaxnew = Length.max hgt hgtmax in
               let dptminnew = Length.min dpt dptmin in
-              aux (None :: restacc) hgtmaxnew dptminnew rtail ctail
+              aux (Alist.extend restacc None) hgtmaxnew dptminnew rtail ctail
 
           | EmptyCell ->
-              aux (None :: restacc) hgtmax dptmin rtail ctail
+              aux (Alist.extend restacc None) hgtmax dptmin rtail ctail
 
           | MultiCell(numrow, numcol, hblst) ->
               let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
@@ -43,7 +43,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
                 else
                   Some(numrow, len)
               in
-              aux (restelem :: restacc) hgtmax dptmin rtail ctail
+              aux (Alist.extend restacc restelem) hgtmax dptmin rtail ctail
         end
 
     | ((Some((numrow, len)) as rsome) :: rtail, cell :: ctail) ->
@@ -52,7 +52,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
           | NormalCell(_)
           | MultiCell(_, _, _)
             -> assert false  (* temporary; maybe should just warn users *)
-              
+
           | EmptyCell ->
               let (hgtmaxnew, dptminnew) =
                 if numrow < 1 then
@@ -62,16 +62,16 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
                 else
                   (hgtmax, dptmin)
               in
-              aux (rsome :: restacc) hgtmaxnew dptminnew rtail ctail
+              aux (Alist.extend restacc rsome) hgtmaxnew dptminnew rtail ctail
         end
   in
-  let (restacc, hgtmax, dptmin) = aux [] Length.zero Length.zero restprev row in
+  let (restacc, hgtmax, dptmin) = aux Alist.empty Length.zero Length.zero restprev row in
   let rest =
-    restacc |> List.map (function
+    restacc |> Alist.to_list |> List.map (function
       | None                -> None
       | Some((1, _))        -> None
       | Some((numrow, len)) -> Some((numrow - 1, len -% hgtmax -% (Length.negate dptmin)))
-    ) |> List.rev
+    )
   in
     (rest, hgtmax, dptmin)
 
@@ -94,10 +94,10 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
           | NormalCell(hblst) ->
               let (wid, _, _) = LineBreak.get_natural_metrics hblst in
               let widmaxnew = Length.max wid widmax in
-                aux (None :: restacc) widmaxnew rtail ctail
+                aux (Alist.extend restacc None) widmaxnew rtail ctail
 
           | EmptyCell ->
-              aux (None :: restacc) widmax rtail ctail
+              aux (Alist.extend restacc None) widmax rtail ctail
 
           | MultiCell(numrow, numcol, hblst) ->
               let (wid, _, _) = LineBreak.get_natural_metrics hblst in
@@ -109,7 +109,7 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
                 else
                   widmax
               in
-              aux (Some((numcol, wid)) :: restacc) widmaxnew rtail ctail
+              aux (Alist.extend restacc (Some((numcol, wid)))) widmaxnew rtail ctail
                 (* temporary; does not take 'numcol' into consideration *)
         end
 
@@ -129,16 +129,16 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
                 else
                   widmax
               in
-              aux (rsome :: restacc) widmaxnew rtail ctail
+              aux (Alist.extend restacc rsome) widmaxnew rtail ctail
         end
   in
-  let (restacc, widmax) = aux [] Length.zero restprev col in
+  let (restacc, widmax) = aux Alist.empty Length.zero restprev col in
   let rest =
-    restacc |> List.map (function
+    restacc |> Alist.to_list |> List.map (function
       | None                -> None
       | Some((1, _))        -> None
       | Some((numcol, wid)) -> Some((numcol - 1, wid -% widmax))
-    ) |> List.rev
+    )
   in
     (rest, widmax)
 
@@ -177,10 +177,10 @@ let chop_column (tabular : row list) : (column * row list) option =
 let transpose_tabular (tabular : row list) : int * column list =
   let rec aux nrows colacc tabular =
     match chop_column tabular with
-    | None                    -> (nrows, List.rev colacc)
-    | Some((col, tabularsub)) -> aux (max nrows (List.length col)) (col :: colacc) tabularsub
+    | None                    -> (nrows, Alist.to_list colacc)
+    | Some((col, tabularsub)) -> aux (max nrows (List.length col)) (Alist.extend colacc col) tabularsub
   in
-    aux 0 [] tabular
+    aux 0 Alist.empty tabular
 
 
 let normalize_tabular (tabular : row list) : int * row list =
@@ -190,8 +190,8 @@ let normalize_tabular (tabular : row list) : int * row list =
   let htabular =
     tabular |> List.fold_left (fun acc row ->
       let empties = list_make (ncols - (List.length row)) EmptyCell in
-        (List.append row empties) :: acc
-    ) [] |> List.rev
+        Alist.extend acc (List.append row empties)
+    ) Alist.empty |> Alist.to_list
   in
     (ncols, htabular)
 
@@ -265,12 +265,12 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
               let dptcell = dpt -% lenspace in
                 EvMultiCell(nr, nc, widsingle, widmulti, hgtcell, dptcell, evhblst)
         in
-        evcell :: evcellacc
-      ) [] |> List.rev
+          Alist.extend evcellacc evcell
+      ) Alist.empty |> Alist.to_list
     in
     let vlen = hgtnmlcell +% (Length.negate dptnmlcell) in
-      (vlen, evrow) :: evrowacc
-  ) [] |> List.rev
+      Alist.extend evrowacc (vlen, evrow)
+  ) Alist.empty |> Alist.to_list
 
 
 let main (tabular : row list) =
@@ -284,19 +284,19 @@ let main (tabular : row list) =
     htabular |> List.fold_left (fun (restprev, vmetracc) row ->
       Format.printf "Tabular> L(row) = ncols = %d\n" (List.length row);
       let (rest, hgt, dpt) = determine_row_metrics restprev row in
-        (rest, (hgt, dpt) :: vmetracc)
-    ) (list_make ncols None, [])
+        (rest, Alist.extend vmetracc (hgt, dpt))
+    ) (list_make ncols None, Alist.empty)
   in
-  let vmetrlst = List.rev vmetracc in
+  let vmetrlst = Alist.to_list vmetracc in
 
   let (_, widacc) =
     vtabular |> List.fold_left (fun (restprev, widacc) col ->
       Format.printf "Tabular> L(col) = nrows = %d\n" (List.length col);
       let (rest, wid) = determine_column_width restprev col in
-      (rest, wid :: widacc)
-    ) (list_make nrows None, [])
+      (rest, Alist.extend widacc wid)
+    ) (list_make nrows None, Alist.empty)
   in
-  let widlst = List.rev widacc in
+  let widlst = Alist.to_list widacc in
 
   let widtotal = List.fold_left (+%) Length.zero widlst in
   let hgttotal = List.fold_left (fun len (hgt, dpt) -> len +% hgt +% (Length.negate dpt)) Length.zero vmetrlst in
