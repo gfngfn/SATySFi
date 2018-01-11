@@ -973,12 +973,14 @@ and interpret env ast =
   | ContentOf(evid) ->
       let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
       begin
-        try
-          let content = !(find_in_environment env evid) in
-          let () = PrintForDebug.evalE ("  -> " ^ (Display.string_of_ast content)) in  (* for debug *)
-            content
-        with
-        | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+          let value = !rfvalue in
+          let () = PrintForDebug.evalE ("  -> " ^ (Display.string_of_ast value)) in  (* for debug *)
+            value
+
+        | None ->
+            report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
       end
 
   | LetIn(mutletcons, astrest) ->
@@ -1068,19 +1070,22 @@ and interpret env ast =
 
   | Overwrite(evid, astnew) ->
       begin
-        try
-          let rfvalue = find_in_environment env evid in
-          let value = !rfvalue in
-            match value with
-            | Location(stid) ->
-                let valuenew = interpret env astnew in
-                  begin
-                    update_location env stid valuenew;
-                    UnitConstant
-                  end
-            | _ -> report_bug_evaluator "Overwrite: value is not a Location" value value
-        with
-        | Not_found -> report_bug_evaluator ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+            let value = !rfvalue in
+            begin
+              match value with
+              | Location(stid) ->
+                  let valuenew = interpret env astnew in
+                    begin
+                      update_location env stid valuenew;
+                      UnitConstant
+                    end
+              | _ -> report_bug_evaluator "Overwrite: value is not a Location" value value
+            end
+
+        | None ->
+            report_bug_evaluator ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
       end
 
   | WhileDo(astb, astc) ->

@@ -837,7 +837,7 @@ let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstrac
 
 let find_in_environment (env : environment) (evid : EvalVarID.t) =
   let (valenv, _) = env in
-  Hashtbl.find valenv evid
+  Hashtbl.find_opt valenv evid
 
 
 let register_location (env : environment) (ast : abstract_tree) : StoreID.t =
