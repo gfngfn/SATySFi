@@ -52,7 +52,7 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
           let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (evvbacc, Some(pbvblst), hgttotalnew, vpb)
         else
-          aux true vpb (Alist.extend (Alist.append evvbacc (Alist.to_list evvbaccdiscardable)) (EvVertLine(hgt, dpt, evhblst))) Alist.empty hgttotalnew imvbtail
+          aux true vpb (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst))) Alist.empty hgttotalnew imvbtail
 
     | PBVertFixedBreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
@@ -65,7 +65,7 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
-          aux false vpbprev (Alist.extend (Alist.append evvbacc (Alist.to_list evvbaccdiscardable)) (EvVertFixedEmpty(vskip))) Alist.empty hgttotalnew pbvbtail
+          aux false vpbprev (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip))) Alist.empty hgttotalnew pbvbtail
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotalbefore = hgttotal +% pads.paddingT in
@@ -81,7 +81,7 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
                 | Midway    -> decoT
                 | Beginning -> decoS
               in
-                aux true vpbsub (Alist.extend (Alist.append evvbacc (Alist.to_list evvbaccdiscardable)) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub))) Alist.empty hgttotalafter pbvbtail
+                aux true vpbsub (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub))) Alist.empty hgttotalafter pbvbtail
 
           | Some(pbvbrestsub) ->
               let decosub =
@@ -90,7 +90,7 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
                 | Beginning -> decoH
               in
               let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
-                (Alist.extend (Alist.append evvbacc (Alist.to_list evvbaccdiscardable)) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub)), pbvbrest, hgttotalafter, vpbsub)
+                (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub)), pbvbrest, hgttotalafter, vpbsub)
         end
 
     | [] ->
