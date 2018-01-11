@@ -190,17 +190,25 @@ let main (pdf : HandlePdf.t) (pagesch : page_scheme) (imvblst : intermediate_ver
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
 
-  let rec aux pdf pbvblst =
+  let rec aux pageacc pbvblst =
     let (evvblstpage, restopt) = chop_single_page pagesch.area_height pbvblst in
+    let pageaccnew = Alist.extend pageacc evvblstpage in
+
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
     let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
-    let pdfnew = pdf |> HandlePdf.write_page pagesch evvblstpage in  (* temporary; size of paper should be variable *)
+
       match restopt with
-      | None              -> pdfnew
-      | Some(imvblstrest) -> aux pdfnew imvblstrest
+      | None              -> Alist.to_list pageaccnew
+      | Some(imvblstrest) -> aux pageaccnew imvblstrest
   in
   let pbvblst = normalize imvblst in
-  let pdfret = aux pdf pbvblst in
+  let pagelst = aux Alist.empty pbvblst in
+  let pdfret =
+    List.fold_left (fun pdf evvblstpage ->
+      pdf |> HandlePdf.write_page pagesch evvblstpage
+    ) pdf pagelst
+  in
+  (* temporary; size of paper should be variable *)
   begin
     HandlePdf.write_to_file pdfret;
   end
