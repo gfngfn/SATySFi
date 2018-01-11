@@ -1,7 +1,12 @@
 
 val initialize : unit -> unit
 
-val needs_another_trial : unit -> bool
+type answer =
+  | NeedsAnotherTrial
+  | CanTerminate
+  | CountMax
+
+val needs_another_trial : unit -> answer
 
 val register : string -> string -> unit
 

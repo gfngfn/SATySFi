@@ -25,14 +25,24 @@ let initialize () =
   end
 
 
+type answer =
+  | NeedsAnotherTrial
+  | CanTerminate
+  | CountMax
+
+
 let needs_another_trial () =
   if !changed then
+    if !count >= !count_max then
+      CountMax
+    else
     begin
       changed := false;
-      true
+      incr count;
+      NeedsAnotherTrial
     end
   else
-    false
+    CanTerminate
 
 
 let register (key : string) (value : string) =
