@@ -60,6 +60,7 @@ let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
 (* -- predefined alias types -- *)
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
+let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
 let tDECO = (~! "deco", SynonymType([], tyid_deco, tDECO_raw))
@@ -153,7 +154,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
 
   |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tIB))                 tyid_cell
+  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))  tyid_cell
   |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                  tyid_cell
   |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tIB])) tyid_cell
 
@@ -545,7 +546,6 @@ let make_environments () =
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
 
-  let pads          = tPROD [tLN; tLN; tLN; tLN] in
   let mckf          = tLN @-> tLN @-> tLN in
 
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
@@ -597,11 +597,11 @@ let make_environments () =
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
         ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
-        ("inline-frame-solid"    , ~% (pads @-> tDECO @-> tIB @-> tIB)                       , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("inline-frame-breakable", ~% (pads @-> tDECOSET @-> tIB @-> tIB)                    , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+        ("inline-frame-solid"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
-        ("block-frame-breakable" , ~% (tCTX @-> pads @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
+        ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
         ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
         ("embedded-block-bottom" , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
         ("line-stack-top"        , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackTop(vlst)));

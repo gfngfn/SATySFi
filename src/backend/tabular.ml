@@ -22,10 +22,10 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
     | (None :: rtail, cell :: ctail) ->
         begin
           match cell with
-          | NormalCell(hblst) ->
+          | NormalCell(pads, hblst) ->
               let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-              let hgtmaxnew = Length.max hgt hgtmax in
-              let dptminnew = Length.min dpt dptmin in
+              let hgtmaxnew = Length.max (hgt +% pads.paddingT) hgtmax in
+              let dptminnew = Length.min (dpt -% pads.paddingB) dptmin in
               aux (Alist.extend restacc None) hgtmaxnew dptminnew rtail ctail
 
           | EmptyCell ->
@@ -91,9 +91,9 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
     | (None :: rtail, cell :: ctail) ->
         begin
           match cell with
-          | NormalCell(hblst) ->
+          | NormalCell(pads, hblst) ->
               let (wid, _, _) = LineBreak.get_natural_metrics hblst in
-              let widmaxnew = Length.max wid widmax in
+              let widmaxnew = Length.max (pads.paddingL +% wid +% pads.paddingR) widmax in
                 aux (Alist.extend restacc None) widmaxnew rtail ctail
 
           | EmptyCell ->
@@ -247,9 +247,16 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
               let wid = access widarr indexC in
                 EvEmptyCell(wid)
 
-          | NormalCell(hblst) ->
+          | NormalCell(pads, hblst) ->
               let wid = access widarr indexC in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblst wid in
+              let hblstwithpads =
+                List.concat [
+                  [HorzPure(PHSFixedEmpty(pads.paddingL))];
+                  hblst;
+                  [HorzPure(PHSFixedEmpty(pads.paddingR))];
+                ]
+              in
+              let (evhblst, hgt, dpt) = LineBreak.fit hblstwithpads wid in
                 EvNormalCell(wid, hgtnmlcell, dptnmlcell, evhblst)
                 (* temporary; should return information about vertical psitioning *)
 
