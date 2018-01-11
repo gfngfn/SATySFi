@@ -47,7 +47,7 @@ let document rcd inner =
   let wid = 400pt in
   let hgt = 650pt in
   let ctx-doc =
-    get-initial-context page pt wid hgt
+    get-initial-context page pt wid hgt (command \math)
       |> set-font Latin font-latin-roman
       |> set-language Latin English
       |> set-dominant-narrow-script Latin

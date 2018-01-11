@@ -116,7 +116,7 @@ let-inline ctx \math fml =
 
 let-block ctx +math math =
   let ib = embed-math ctx math in
-    form-paragraph ctx (inline-fil ++ ib ++ inline-fil)
+    line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 let math-space =
   text-in-math MathOrd (fun ctx -> inline-skip 30pt)
@@ -362,4 +362,3 @@ let-math \overwrite f x v =
 
 let-math \math-style sty m =
   math-char-class sty m
-
