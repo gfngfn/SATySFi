@@ -329,7 +329,7 @@ module KerningTable
         | []                                        -> None
         | Otfm.GlyphToClass(g, c) :: tail           -> if g = gid then Some(c) else iter tail
         | Otfm.GlyphRangeToClass(gs, ge, c) :: tail -> if gs <= gid && gid <= ge then Some(c) else iter tail
-      
+
 
     let find_opt gid1 gid2 ((htS, refC) : t) =
 
@@ -1213,7 +1213,7 @@ let get_math_bbox (md : math_decoder) (gid : glyph_id) =
                   end
             end
       end
-        
+
 
 let math_base_font (md : math_decoder) : decoder =
   md.as_normal_font
@@ -1326,7 +1326,9 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
 let get_script_style_id (md : math_decoder) (gid : glyph_id) =
   match md.script_style_info with
   | None ->
+(*
       Format.printf "FontFormat> no ssty table\n";  (* for debug *)
+*)
       gid
 
   | Some(feature_ssty) ->
@@ -1353,15 +1355,19 @@ let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
   | None ->
+(*
       let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
-        0
+*)
+      0
 
   | Some(gid) -> gid
 
 
 let get_math_script_variant (md : math_decoder) (gidorg : glyph_id) =
-    let gidssty = get_script_style_id md gidorg in
+  let gidssty = get_script_style_id md gidorg in
+(*
     Format.printf "FontFormat> ssty %d ---> %d\n" gidorg gidssty;  (* for debug *)
+*)
     gidssty
 
 

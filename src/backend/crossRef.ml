@@ -48,7 +48,11 @@ let needs_another_trial () =
 let register (key : string) (value : string) =
   match CrossRefHashTable.find_opt main_hash_table key with
   | None ->
-      CrossRefHashTable.add main_hash_table key value
+      begin
+        changed := true;
+        CrossRefHashTable.add main_hash_table key value
+      end
+
 
   | Some(value_old) ->
       if String.equal value value_old then () else

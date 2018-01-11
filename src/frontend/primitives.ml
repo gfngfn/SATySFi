@@ -672,6 +672,8 @@ let make_environments () =
         ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
         ("script-guard"            , ~% (tSCR @-> tIB @-> tIB)                       , lambda2 (fun vscr vh -> BackendScriptGuard(vscr, vh)));
         ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
+        ("register-cross-reference", ~% (tS @-> tS @-> tU)                           , lambda2 (fun vk vv -> BackendRegisterCrossReference(vk, vv)));
+        ("get-cross-reference"     , ~% (tS @-> (tOPT tS))                           , lambda1 (fun vk -> BackendGetCrossReference(vk)));
       ]
   in
   let temporary_ast = StringEmpty in

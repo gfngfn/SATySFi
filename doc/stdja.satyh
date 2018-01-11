@@ -5,12 +5,24 @@ module StdJa : sig
     constraint 'a :: (| title : inline-text; author : inline-text; |)
 
   val font-latin-italic : font
+  direct \ref : [string] inline-cmd
   direct +make-title : [] block-cmd
   direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
+  direct +section-ref : [string; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
 
 end = struct
+
+  let-inline ctx \ref key =
+    let opt = get-cross-reference key in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
 
   let font-size-normal  = 12pt
   let font-size-title   = 32pt
@@ -152,7 +164,7 @@ end = struct
       form-paragraph ctx br-parag
 
 
-  let-block ctx +section title inner =
+  let section-scheme ctx crefopt title inner =
     let ctx-title =
       ctx |> set-font-size font-size-section
           |> set-font Latin font-latin-sans
@@ -160,11 +172,25 @@ end = struct
     in
     let () = num-section <- !num-section + 1 in
     let () = needs-indentation-ref <- false in
-    let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
+    let s-num = arabic (!num-section) in
+    let () =
+      match crefopt with
+      | None        -> ()
+      | Some(label) -> register-cross-reference label s-num
+    in
+    let br-num = read-inline ctx-title (embed-string (s-num ^ `.`)) in
     let br-title = read-inline ctx-title title in
     let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
     let bc-inner = read-block ctx inner in
       bc-title +++ bc-inner
+
+
+  let-block ctx +section title inner =
+    section-scheme ctx None title inner
+
+
+  let-block ctx +section-ref label title inner =
+    section-scheme ctx (Some(label)) title inner
 
 
   let-inline ctx \emph inner =

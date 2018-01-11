@@ -465,11 +465,15 @@ module MathContext
       let mccls = ctx.math_char_class in
         match mcclsmap |> MathVariantCharMap.find_opt (s, mccls) with
         | Some(mvvalue) ->
+(*
             Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
+*)
             mvvalue
 
         | None ->
+(*
             Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
+*)
             begin
               match InternalText.to_uchar_list (InternalText.of_utf8 s) with
               | []       -> (MathOrdinary, MathVariantToChar(false, Uchar.of_int 0))  (* needs reconsideration *)

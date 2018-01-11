@@ -62,6 +62,7 @@ type font_store =
 
 module FontAbbrevHashTable
 : sig
+    val initialize : unit -> unit
     val add : font_abbrev -> file_path -> unit
     val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
     val find_opt : font_abbrev -> font_definition option
@@ -77,13 +78,19 @@ module FontAbbrevHashTable
 
     let abbrev_to_definition_hash_table : (font_store ref) Ht.t = Ht.create 32
 
-    let generate_tag =
-      let current_tag_number = ref 0 in
-      (fun () ->
-        begin
-          incr current_tag_number;
-          "/F" ^ (string_of_int !current_tag_number)
-        end)
+    let current_tag_number = ref 0
+
+    let initialize () =
+      begin
+        Ht.clear abbrev_to_definition_hash_table;
+        current_tag_number := 0;
+      end
+
+    let generate_tag () =
+      begin
+        incr current_tag_number;
+        "/F" ^ (string_of_int !current_tag_number)
+      end
 
     let add abbrev srcpath =
       Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
@@ -183,6 +190,7 @@ type math_font_store =
 
 module MathFontAbbrevHashTable
 : sig
+    val initialize : unit -> unit
     val add : math_font_abbrev -> FontFormat.file_path -> unit
     val fold : (math_font_abbrev -> math_font_definition -> 'a -> 'a) -> 'a -> 'a
     val find_opt : math_font_abbrev -> math_font_definition option
@@ -198,13 +206,19 @@ module MathFontAbbrevHashTable
 
     let abbrev_to_definition_hash_table : (math_font_store ref) Ht.t = Ht.create 32
 
-    let generate_tag =
-      let current_tag_number = ref 0 in
-      (fun () ->
-        begin
-          incr current_tag_number;
-          "/M" ^ (string_of_int !current_tag_number)
-        end)
+    let current_tag_number = ref 0
+
+    let initialize () =
+      begin
+        Ht.clear abbrev_to_definition_hash_table;
+        current_tag_number := 0;
+      end
+
+    let generate_tag () =
+      begin
+        incr current_tag_number;
+        "/M" ^ (string_of_int !current_tag_number)
+      end
 
     let add mfabbrev srcpath =
       Ht.add abbrev_to_definition_hash_table mfabbrev (ref (UnusedMath(srcpath)))
@@ -365,23 +379,30 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 
 let initialize (satysfi_root_dir : string) =
 
-  PrintForDebug.initfontE "!!ScriptDataMap";
-  let filename_S   = Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt" in
-  let filename_EAW = Filename.concat satysfi_root_dir "dist/unidata/EastAsianWidth.txt" in
-  ScriptDataMap.set_from_file filename_S filename_EAW;
-  PrintForDebug.initfontE "!!LineBreakDataMap";
-  LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
+  begin
+    FontAbbrevHashTable.initialize ();
+    MathFontAbbrevHashTable.initialize ();
 
-  PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
+    PrintForDebug.initfontE "!!ScriptDataMap";
 
-  let font_hash = LoadFont.main satysfi_root_dir "fonts.satysfi-hash" in
-  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+    let filename_S   = Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt" in
+    let filename_EAW = Filename.concat satysfi_root_dir "dist/unidata/EastAsianWidth.txt" in
+    ScriptDataMap.set_from_file filename_S filename_EAW;
 
-  let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
-  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
-  PrintForDebug.initfontE "!!end initialize"  (* for debug *)
+    PrintForDebug.initfontE "!!LineBreakDataMap";
 
+    LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
 
+    PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
+
+    let font_hash = LoadFont.main satysfi_root_dir "fonts.satysfi-hash" in
+    List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+
+    let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
+    List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
+
+    PrintForDebug.initfontE "!!end initialize"  (* for debug *)
+  end
 
 
 (* -- following are operations about handling glyphs -- *)

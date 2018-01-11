@@ -6,6 +6,7 @@ StdJa.document (|
   +make-title;
   +p {
     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
+    特に根幹となるのは第\ref(`sec:inline`);節である．
   }
   +section({基本演算})(
     let t-int-arith = tI --> (tI --> tI) in
@@ -83,7 +84,7 @@ StdJa.document (|
       \subject-to-change;\discouraged;
     }
   >
-  +section {インライン方向に関する処理} <
+  +section-ref(`sec:inline`) {インライン方向に関する処理} <
     +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
       \code{read-inline ${ctx} ${it}}で
       文脈\code{${ctx}}を用いて

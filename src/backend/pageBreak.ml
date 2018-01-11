@@ -115,11 +115,11 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
 
 
 let normalize imvblst =
-
+(*
   Format.printf "PageBreak> [";
   imvblst |> List.iter (fun imvb -> Format.printf "%a;@ " pp_intermediate_vert_box imvb);
   Format.printf "]@,";
-
+*)
   let rec aux pbvbacc imvblst =
     match imvblst with
     | []

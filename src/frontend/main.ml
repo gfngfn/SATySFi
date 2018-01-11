@@ -129,7 +129,7 @@ let output_pdf file_name_out pagesch pagelst =
   HandlePdf.write_to_file pdfret
 
 
-let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
+let read_document_file (tyenv : Typeenv.t) envinit file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
     print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
@@ -144,10 +144,10 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(DocumentType)) ->
-              let envinit = copy_environment env in
               let rec aux () =
                 reset ();
-                let valuedoc = Evaluator.interpret envinit ast in
+                let env = copy_environment envinit in
+                let valuedoc = Evaluator.interpret env ast in
                 begin
                   match valuedoc with
                   | DocumentValue(ctxdoc, imvblst) ->
@@ -162,16 +162,20 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                             aux ()
 
                         | CrossRef.CountMax ->
-                            print_endline ("  some cross references were not solved.");
-                            print_endline (" ---- ---- ---- ----");
-                            output_pdf file_name_out pagesch pagelst;
-                            print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                            begin
+                              print_endline ("  some cross references were not solved.");
+                              output_pdf file_name_out pagesch pagelst;
+                              print_endline (" ---- ---- ---- ----");
+                              print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                            end
 
                         | CrossRef.CanTerminate ->
-                            print_endline ("  all cross references were solved.");
-                            print_endline (" ---- ---- ---- ----");
-                            output_pdf file_name_out pagesch pagelst;
-                            print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                            begin
+                              print_endline ("  all cross references were solved.");
+                              output_pdf file_name_out pagesch pagelst;
+                              print_endline (" ---- ---- ---- ----");
+                              print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                            end
                       end
 
                   | _ -> failwith "main; not a DocumentValue(...)"
