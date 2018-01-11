@@ -48,24 +48,27 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
     | PBVertLine(hgt, dpt, evhblst) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
-        if bprev && (vpb >= vpbprev) then  (* -- if getting worse, output the accumulated non-discardable lines 'imvbacc' as a page -- *)
+        if bprev && (vpb >= vpbprev) then  (* -- if getting worse, output the accumulated non-discardable lines 'evvbacc' as a page -- *)
           let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (evvbacc, Some(pbvblst), hgttotalnew, vpb)
+          (evvbacc, Some(pbvblst), hgttotalnew, vpb)
         else
-          aux true vpb (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst))) Alist.empty hgttotalnew imvbtail
+          let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
+          aux true vpb evvbaccnew Alist.empty hgttotalnew imvbtail
 
     | PBVertFixedBreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
         let vpb = calculate_badness_of_page_break hgttotalnew in
         if vpb >= vpbprev then
           let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (evvbacc, Some(pbvbtail), hgttotalnew, vpb)  (* -- discard breakables -- *)
+          (evvbacc, Some(pbvbtail), hgttotalnew, vpb)
         else
-          aux true vpb evvbacc (Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip))) hgttotalnew pbvbtail
+          let evvbaccnew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
+          aux true vpb evvbacc evvbaccnew hgttotalnew pbvbtail
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
-          aux false vpbprev (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip))) Alist.empty hgttotalnew pbvbtail
+        let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip)) in
+        aux false vpbprev evvbaccnew Alist.empty hgttotalnew pbvbtail
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotalbefore = hgttotal +% pads.paddingT in
@@ -81,7 +84,8 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
                 | Midway    -> decoT
                 | Beginning -> decoS
               in
-                aux true vpbsub (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub))) Alist.empty hgttotalafter pbvbtail
+              let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub)) in
+              aux true vpbsub evvbaccnew Alist.empty hgttotalafter pbvbtail
 
           | Some(pbvbrestsub) ->
               let decosub =
@@ -90,12 +94,13 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
                 | Beginning -> decoH
               in
               let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
-                (Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub)), pbvbrest, hgttotalafter, vpbsub)
+              let evvbaccret = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFrame(pads, decosub, wid, Alist.to_list evvbaccsub)) in
+                (evvbaccret, pbvbrest, hgttotalafter, vpbsub)
         end
 
     | [] ->
         let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
-          (evvbacc, None, hgttotal, vpbprev)
+        (evvbacc, None, hgttotal, vpbprev)
   in
   let vpbinit = 100000 in
   let (evvbacc, restopt, _, _) = aux false vpbinit Alist.empty Alist.empty Length.zero pbvblst in
