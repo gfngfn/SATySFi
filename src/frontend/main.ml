@@ -153,30 +153,11 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                       PageBreak.main pdf ctxdoc.HorzBox.page_scheme imvblst;
                       print_endline ("  output written on '" ^ file_name_out ^ "'.");
                     end
-                | _ -> failwith "main; not a Vert(_)"
+
+                | _ -> failwith "main; not a DocumentValue(...)"
               end
-          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not text-col; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
-(*
-          begin
-            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
-            match ty with
-            | (_, BaseType(StringType)) ->  (* temporary; will be modified to BaseType(BoxColType) *)
-                let evaled = Evaluator.interpret env ast in
-                let content_out = Out.main evaled in
-                if (String.length content_out) = 0 then
-                  begin
-                    print_endline " ---- ---- ---- ----" ;
-                    print_endline "  no output."
-                  end
-                else
-                  begin
-                    Files.file_out_of_string file_name_out content_out ;
-                    print_endline " ---- ---- ---- ----" ;
-                    print_endline ("  output written on '" ^ file_name_out ^ "'.")
-                  end
-            | _ -> raise (MainError("the output of '" ^ file_name_in ^ "' is not string"))
-          end
-*)
+
+          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not of type 'document'; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
       end
   end
 
@@ -374,24 +355,21 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
 
 let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 let output_name_ref : string ref = ref "saty.out"
-let input_acc_ref : ((input_file_kind * string) list) ref = ref []
+let input_acc_ref : ((input_file_kind * string) Alist.t) ref = ref Alist.empty
 
 let arg_output s =
   begin output_name_ref := s; end
 
 let arg_header s =
-  begin input_acc_ref := (HeaderFile, s) :: !input_acc_ref; end
-  
+  begin input_acc_ref := Alist.extend (!input_acc_ref) (HeaderFile, s); end
+
 let arg_doc s =
-  begin input_acc_ref := (DocumentFile, s) :: !input_acc_ref; end
-(*
-let arg_standalone s =
-  begin input_acc_ref := (StandaloneFile, s) :: !input_acc_ref; end
-*)
+  begin input_acc_ref := Alist.extend (!input_acc_ref) (DocumentFile, s); end
+
 let arg_libdir s =
   begin libdir_ref := s; end
 
-    
+
 let arg_version () =
   begin
     print_string (
@@ -419,9 +397,6 @@ let arg_spec_list =
     ("--version"   , Arg.Unit(arg_version)     , " Print version");
     ("--header"    , Arg.String(arg_header)    , " Specify input file as a header");
     ("--doc"       , Arg.String(arg_doc)       , " Specify input file as a document file");
-(*
-    ("--standalone", Arg.String(arg_standalone), " Specify input file as a standalone file");
-*)
   ]
 
 let handle_anonimous_arg s =
@@ -429,12 +404,9 @@ let handle_anonimous_arg s =
     match () with
     | ()  when is_document_file s   -> (DocumentFile, s)
     | ()  when is_header_file s     -> (HeaderFile, s)
-(*
-    | ()  when is_standalone_file s -> (StandaloneFile, s)
-*)
     | _                             -> raise (MainError("File '" ^ s ^ "' has illegal filename extension; maybe you need to use '--doc', '--standalone', or '--header' option."))
   in
-  input_acc_ref := i :: (!input_acc_ref)
+  input_acc_ref := Alist.extend (!input_acc_ref) i
 
 
 let () =
@@ -448,8 +420,9 @@ let () =
     let libdir = !libdir_ref in
     FontInfo.initialize libdir;  (* temporary *)
     ImageInfo.initialize ();
+    CrossRef.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
-    let input_list = List.rev (!input_acc_ref) in
+    let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
     input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
     print_endline ("  [output] " ^ output);
