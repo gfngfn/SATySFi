@@ -4,43 +4,33 @@ document (|
   author = {Takashi SUWA};
 |) '<
   +make-title;
-  +section {Sample Text} <
+  +section ({Sample Text}) (
+    let p-sample = '<
+      +p {
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore
+        et dolore magna aliqua.
+        Ut enim ad minim veniam,
+        quis nostrud exercitation ullamco laboris nisi
+        ut aliquip ex ea commodo consequat.
+        Duis aute irure dolor in reprehenderit
+        in voluptate velit esse
+        cillum dolore eu fugiat nulla pariatur.
+        Excepteur sint occaecat cupidatat non proident,
+        sunt in culpa
+        qui officia deserunt mollit anim id est laborum.
+      }
+    > in '<
     +p {
       My quiz above the kiwi juice
       needs \emph{priceless} fixing.
-      The \emph{quick brown fox} jumps over the lazy dog.
+      The \emph2{quick brown fox} jumps over the lazy dog.
       ¿But aren't Kafka's Schloß and Æsop's Œuvres often
       naïve vis-à-vis the dæmonic phœnix's official rôle
       in fluffy soufflés?
     }
-    +p {
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-      sed do eiusmod tempor incididunt ut labore
-      et dolore magna aliqua.
-      Ut enim ad minim veniam,
-      quis nostrud exercitation ullamco laboris nisi
-      ut aliquip ex ea commodo consequat.
-      Duis aute irure dolor in reprehenderit
-      in voluptate velit esse
-      cillum dolore eu fugiat nulla pariatur.
-      Excepteur sint occaecat cupidatat non proident,
-      sunt in culpa
-      qui officia deserunt mollit anim id est laborum.
-    }
-    +p {
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-      sed do eiusmod tempor incididunt ut labore
-      et dolore magna aliqua.
-      Ut enim ad minim veniam,
-      quis nostrud exercitation ullamco laboris nisi
-      ut aliquip ex ea commodo consequat.
-      Duis aute irure dolor in reprehenderit
-      in voluptate velit esse
-      cillum dolore eu fugiat nulla pariatur.
-      Excepteur sint occaecat cupidatat non proident,
-      sunt in culpa
-      qui officia deserunt mollit anim id est laborum.
-    }
+    #p-sample;
+    #p-sample;
     +frame <
       +p {
         Lorem ipsum dolor sit amet, consectetur adipiscing elit,
@@ -103,7 +93,7 @@ document (|
       sunt in culpa
       qui officia deserunt mollit anim id est laborum.
     }
-  >
+  >);
   +section {和文の例} <
     +p-jp {
       ようやく和文もわりとまともな様相で組めるようになりました。
@@ -112,7 +102,7 @@ document (|
       複数の文字体系間の共存（文字体系ごとのフォントの切り替え）は future work です
       （和欧間空白の挿入はひとまず実現したが，まだBASEテーブルによる高さの調整は行なっていない）。
       ←閉じ括弧と句点など行頭行末以外のベタ組みにも対応しました。
-      このほか\emph{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
+      このほか\emph2{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
       \underline{
         行分割できる下線をつけたりすることもできます
         （途中で行分割可能なインラインボックスを使って実現しています）。
@@ -120,9 +110,13 @@ document (|
       \donut;これはドーナツ。\donuts;こっちは重なったドーナツ。
     }
     +screen {タイトルつきの枠} <
-      +p-jp {
-        定理環境などに使える枠です。p\latex;のascmacパッケージのscreen環境に近いです。
-      }
+      +p-jp (
+      let platex =
+        let p = {p} in
+          {#p;\latex;} in
+      {
+        定理環境などに使える枠です。#platex;のascmacパッケージのscreen環境に近いです。
+      });
     >
     +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
     +p { \raw-font-size(16pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
@@ -168,24 +162,30 @@ document (|
         ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
     }
   >
-  +section {Stacks} <
-    +p {
+  +section ({Stacks}) (
+    let top = {
       Line stack (top):
       \stack-top [
         {The};
         {quick brown fox};
         {jumps over};
         {the lazy dog.};
-      ];,
+      ];
+    } in
+    let bottom = {
       line stack (bottom):
       \stack-bottom [
         {The};
         {quick brown fox};
         {jumps over};
         {the lazy dog.};
-      ];.
+      ];
+    } in
+    '<
+    +p {
+      #top;, #bottom;.
     }
-  >
+  >);
   +math (${
     \derive{A \and-also \derive{B \and-also C}{D}}{E}
   });
@@ -196,6 +196,25 @@ document (|
       [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
     ]);
   }
+  +p {
+    PDF import:
+    \import-pdf(`imported.pdf`)(1)(5cm);
+    JPEG import:
+    \import-image(`naruse1.jpg`)(5cm);
+  }
+  +p {
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+      sed do eiusmod tempor incididunt ut labore
+      et dolore magna aliqua.\new-line;%
+      Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi
+      ut aliquip ex ea commodo consequat.\new-line;%
+      Duis aute irure dolor in reprehenderit
+      in voluptate velit esse
+      cillum dolore eu fugiat nulla pariatur.
+      Excepteur sint occaecat cupidatat non proident,
+      sunt in culpa
+      qui officia deserunt mollit anim id est laborum.  }
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {

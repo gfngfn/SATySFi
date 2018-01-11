@@ -1,3 +1,5 @@
+
+open MyUtil
 open Types
 open Display
 
@@ -7,6 +9,8 @@ exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type
 exception InvalidArityOfCommand of Range.t * int * int
 exception UnknownUnitOfLength   of Range.t * length_unit_name
+exception HorzCommandInMath     of Range.t
+exception MathCommandInHorz     of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -295,12 +299,26 @@ let rec typecheck
   | UTContentOf(mdlnmlst, varnm) ->
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
-        | None -> raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+        | None ->
+            raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
             let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
                 (ContentOf(evid), tyres)
+      end
+
+  | UTFrozenCommand(mdlnmlst, csnm) ->
+      begin
+        match Typeenv.find tyenv mdlnmlst csnm rng with
+        | None ->
+            raise (UndefinedVariable(rng, append_module_names mdlnmlst csnm))
+
+        | Some((pty, evid)) ->
+            let tyfree = instantiate lev qtfbl pty in
+            let tyres = overwrite_range_of_type tyfree rng in
+              (FrozenCommand(evid), tyres)
       end
 
   | UTConstructor(constrnm, utast1) ->
@@ -577,6 +595,21 @@ let rec typecheck
       let (eA, tyA) = typecheck_iter tyenvouter utastA in
         (Module(eM, eA), tyA)
 
+(* ---- for lightweight command definition ---- *)
+  | UTLexHorz(utastctx, utasth) ->
+      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
+      let (eh, tyh) = typecheck_iter tyenv utasth in
+      let () = unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(ContextType)) in
+      let () = unify tyh (Range.dummy "ut-lex-horz-2", BaseType(TextRowType)) in
+        (HorzLex(ectx, eh), (rng, BaseType(BoxRowType)))
+
+  | UTLexVert(utastctx, utastv) ->
+      let (ectx, tyctx) = typecheck_iter tyenv utastctx in
+      let (ev, tyv) = typecheck_iter tyenv utastv in
+      let () = unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(ContextType)) in
+      let () = unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType)) in
+        (HorzLex(ectx, ev), (rng, BaseType(BoxColType)))
+
 
 and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
   let iter = typecheck_math qtfbl lev tyenv in
@@ -616,7 +649,11 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
               in
                 apply_tree_of_list ecmd elstarg
 
-          | _ -> failwith "math command of type other than MathCommandType(_)"
+          | HorzCommandType(_) ->
+              let (rngcmd, _) = utastcmd in
+              raise (HorzCommandInMath(rngcmd))
+
+          | _ -> assert false
         end
 
     | UTMEmbed(utast0) ->
@@ -649,7 +686,7 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
     ) []
   in
   let cycleopt =
-    utcycleopt |> Util.option_map (function
+    utcycleopt |> option_map (function
       | UTPathLineTo(()) -> PathLineTo(())
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, ()) ->
@@ -664,7 +701,9 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
 and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =
   let rec aux (acc : input_vert_element list) (lst : untyped_input_vert_element list) =
     match lst with
-    | [] -> List.rev acc
+    | [] ->
+        List.rev acc
+
     | (_, UTInputVertEmbedded(utastcmd, utastarglst)) :: tail ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
         begin
@@ -684,17 +723,22 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
               in
                 aux (InputVertEmbedded(ecmd, elstarg) :: acc) tail
 
-          | _ -> failwith "vertical command of type other than VertCommandType(_)"
+          | _ -> assert false
         end
+
+    | (_, UTInputVertContent(utast0)) :: tail ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType)) in
+          aux (InputVertContent(e0) :: acc) tail
   in
     aux [] utivlst
         
 
 
 and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
-  let rec aux (acc : input_horz_element list) (lst : untyped_input_horz_element list) =
+  let rec aux (acc : input_horz_element Alist.t) (lst : untyped_input_horz_element list) =
     match lst with
-    | [] -> List.rev acc
+    | [] -> Alist.to_list acc
 
     | (_, UTInputHorzEmbedded(utastcmd, utastarglst)) :: tail ->
         let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
@@ -712,15 +756,29 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
                     let lenreal = List.length tyarglst in
                     raise (InvalidArityOfCommand(rng, lenreq, lenreal))
               in
-                aux (InputHorzEmbedded(ecmd, earglst) :: acc) tail
+                aux (Alist.extend acc (InputHorzEmbedded(ecmd, earglst))) tail
 
-          | _ -> failwith "horizontal command of type other than HorzCommandType(_)"
+          | MathCommandType(_) ->
+              let (rngcmd, _) = utastcmd in
+              raise (MathCommandInHorz(rngcmd))
+
+          | _ -> assert false
         end
 
+    | (_, UTInputHorzEmbeddedMath(utastmath)) :: tail ->
+        let (emath, tymath) = typecheck qtfbl lev tyenv utastmath in
+        let () = unify_ tyenv tymath (Range.dummy "ut-input-horz-embedded-math", BaseType(MathType)) in
+          aux (Alist.extend acc (InputHorzEmbeddedMath(emath))) tail
+
+    | (_, UTInputHorzContent(utast0)) :: tail ->
+        let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
+        let () = unify_ tyenv ty0 (Range.dummy "ut-input-horz-content", BaseType(TextRowType)) in
+          aux (Alist.extend acc (InputHorzContent(e0))) tail
+
     | (_, UTInputHorzText(s)) :: tail ->
-        aux (InputHorzText(s) :: acc) tail
+        aux (Alist.extend acc (InputHorzText(s))) tail
   in
-    aux [] utihlst
+    aux Alist.empty utihlst
 
 
 and typecheck_record

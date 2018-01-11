@@ -1,3 +1,5 @@
+
+open MyUtil
 open Types
 
 let print_for_debug_variantenv msg =
@@ -7,16 +9,12 @@ let print_for_debug_variantenv msg =
   ()
 
 
-let opt findf key s =
-  try Some(findf key s) with
-  | Not_found -> None
-
-
-module VarMap = Map.Make(
-  struct
+module VarMap = Map.Make
+  (struct
     type t = var_name
     let compare = String.compare
   end)
+
 
 module ModuleID
 : sig
@@ -37,55 +35,67 @@ module ModuleID
   end
 
 
-let initialize_id () = ModuleID.initialize ()
+let initialize_id () =
+  ModuleID.initialize ()
 
 
 module ModuleTree = HashTree.Make(ModuleID)
 
-module ModuleNameMap = Map.Make(
-  struct
+module ModuleNameMap = Map.Make
+  (struct
     type t = module_name
     let compare = String.compare
   end)
 
-module ConstrMap = Map.Make(
-  struct
+module ConstrMap = Map.Make
+  (struct
     type t = constructor_name
     let compare = String.compare
   end)
 
-module TyNameMap = Map.Make(
-  struct
+module TyNameMap = Map.Make
+  (struct
     type t = type_name
     let compare = String.compare
   end)
 
-module SigVarMap = Map.Make(
-  struct
+module SigVarMap = Map.Make
+  (struct
     type t = sig_var_name
     let compare = String.compare
   end)
 
+
 type name_to_id_map = ModuleID.t ModuleNameMap.t
 
 type var_to_type_map = poly_type VarMap.t
+
 type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
 
 type type_scheme = BoundID.t list * poly_type
+
 type type_definition =
   | Data  of int
   | Alias of type_scheme
 
 type typename_to_typedef_map = (TypeID.t * type_definition) TyNameMap.t
+
 type constructor_to_def_map = (TypeID.t * type_scheme) ConstrMap.t
 
 type signature = typename_to_typedef_map * var_to_type_map
 
 type sigvar_to_sig_map = signature SigVarMap.t
 
-type current_address = ModuleID.t list
+type current_address = ModuleID.t Alist.t
+
 type single_stage = var_to_vardef_map * typename_to_typedef_map * constructor_to_def_map * signature option (* * sigvar_to_sig_map *)
-type t = current_address * name_to_id_map * (single_stage ModuleTree.t)
+
+type t =
+  {
+    current_address : current_address;
+    name_to_id_map  : name_to_id_map;
+    main_tree       : single_stage ModuleTree.t;
+  }
 
 
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
@@ -97,10 +107,14 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name
-
+exception UndefinedModuleNameList         of module_name list
 
 let empty : t =
-  ([], ModuleNameMap.empty, ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None))
+  {
+    current_address = Alist.empty;
+    name_to_id_map  = ModuleNameMap.empty;
+    main_tree       = ModuleTree.empty (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None);
+  }
 
 
 let update_vt (vdf : var_to_vardef_map -> var_to_vardef_map) ((vdmap, tdmap, cdmap, sigopt) : single_stage) : single_stage =
@@ -120,51 +134,58 @@ let update_so (sof : signature option -> signature option) ((vdmap, tdmap, cdmap
 
 
 (* PUBLIC *)
-let add ((addr, nmtoid, mtr) : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
-  let mtrnew = ModuleTree.update mtr addr (update_vt (VarMap.add varnm (pty, evid))) in
-    (addr, nmtoid, mtrnew)
+let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
+  | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+  | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 (* PUBLIC *)
-let find ((addr, nmtoid, mtr) : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
+let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
+  let open OptionMonad in
+  let nmtoid = tyenv.name_to_id_map in
+  let mtr = tyenv.main_tree in
+  let addrlst = Alist.to_list tyenv.current_address in
   let addrlast =
     mdlnmlst |> List.map (fun nm ->
-      match ModuleNameMap.find_opt nm nmtoid with
+      match nmtoid |> ModuleNameMap.find_opt nm with
       | None        -> raise (UndefinedModuleName(rng, nm))
       | Some(mdlid) -> mdlid
     )
   in
-    ModuleTree.search_backward mtr addr addrlast (fun (vdmap, _, _, sigopt) ->
+  let addrstr = String.concat "" (List.map (fun m -> ModuleID.extract_name m ^ ".") addrlast) in  (* for debug *)
+    ModuleTree.search_backward mtr addrlst addrlast (fun (vdmap, _, _, sigopt) ->
       match sigopt with
       | None ->
-          begin
-            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> no signature"); (* for debug *)
-            opt VarMap.find varnm vdmap
-          end
+          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> no signature"); (* for debug *)
+          VarMap.find_opt varnm vdmap
+
       | Some((_, vtmapsig)) ->
-          begin
-            print_for_debug_variantenv ("FVD " ^ varnm ^ " -> signature found"); (* for debug *)
-            try
-              let ptysig = VarMap.find varnm vtmapsig in
-              let (_, evid) = VarMap.find varnm vdmap in
-                Some((ptysig, evid))
-            with
-            | Not_found -> None
-          end
+          print_for_debug_variantenv ("FVD " ^ addrstr ^ varnm ^ " -> signature found"); (* for debug *)
+          VarMap.find_opt varnm vtmapsig >>= fun ptysig ->
+          VarMap.find_opt varnm vdmap >>= fun (_, evid) ->
+          return (ptysig, evid)
     )
 
 
-let find_for_inner ((addr, nmtoid, mtr) : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
-  let (vdmap, _, _, _) = ModuleTree.find_stage mtr addr in
-    opt VarMap.find varnm vdmap
+let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
+  let open OptionMonad in
+  let mtr = tyenv.main_tree in
+  let addrlst = Alist.to_list tyenv.current_address in
+  ModuleTree.find_stage mtr addrlst >>= fun (vdmap, _, _, _) ->
+  VarMap.find_opt varnm vdmap
 
 
-let enter_new_module ((addr, nmtoid, mtr) : t) (mdlnm : module_name) : t =
+let enter_new_module (tyenv : t) (mdlnm : module_name) : t =
   let mdlid = ModuleID.fresh mdlnm in
-  let addrnew = List.append addr [mdlid] in
-  let nmtoidnew = ModuleNameMap.add mdlnm mdlid nmtoid in  (* doubtful about nmtoid; shouldn't a module name be added when *leaving* the module instead of when entering it? *)
-  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
-    (addrnew, nmtoidnew, mtrnew)
+  let mtr = tyenv.main_tree in
+  let addr = tyenv.current_address in
+  let addrnew = Alist.extend addr mdlid in
+    match ModuleTree.add_stage mtr (Alist.to_list addr) mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) with
+    | None         -> assert false
+    | Some(mtrnew) -> { tyenv with current_address = addrnew; main_tree = mtrnew; }
 
 (*
 let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
@@ -173,11 +194,13 @@ let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
     (addrnew, nmtoid, mtrnew)
 *)
 
-let leave_module ((addr, nmtoid, mtr) : t) : t =
-  try
-    (List.rev (List.tl (List.rev addr)), nmtoid, mtr)  (* doubtful about nmtoid; see enter_new_module *)
-  with
-  | Failure(_) -> assert false
+let leave_module (tyenv : t) : t =
+  match Alist.chop_last tyenv.current_address with
+  | None                      -> assert false
+  | Some((addr_outer, mdlid)) ->
+      let mdlnm = ModuleID.extract_name mdlid in
+      let nmtoidnew = ModuleNameMap.add mdlnm mdlid tyenv.name_to_id_map in
+        { tyenv with current_address = addr_outer; name_to_id_map = nmtoidnew; }
 
 
 module MapList
@@ -185,7 +208,7 @@ module MapList
     type ('a, 'b) t
     val create : unit -> ('a, 'b) t
     val add : ('a, 'b) t -> 'a -> 'b -> unit
-    val find : ('a, 'b) t -> 'a -> 'b option
+    val find_opt : ('a, 'b) t -> 'a -> 'b option
     val to_list : ('a, 'b) t -> ('a * 'b) list
   end
 = struct
@@ -193,11 +216,11 @@ module MapList
 
     let create () = ref []
 
-    let add mapl k v = ( mapl := (k, v) :: !mapl )
+    let add mapl k v = begin mapl := (k, v) :: !mapl; end
 
-    let find mapl k = opt List.assoc k (!mapl)
+    let find_opt mapl k = List.assoc_opt k (!mapl)
 
-    let to_list = (!)
+    let to_list = ( ! )
 
   end
 
@@ -211,8 +234,8 @@ type type_argument_mode =
       -- *)
 
 
-module DependencyGraph = DirectedGraph.Make(
-  struct
+module DependencyGraph = DirectedGraph.Make
+  (struct
     type t = type_name
     let compare = compare
     let show s = s (* for debug *)
@@ -235,36 +258,43 @@ type dependency_mode =
   | DependentMode of vertex_label DependencyGraph.t
 
 
-let add_type_definition ((addr, nmtoid, mtr) : t) (tynm : type_name) ((tyid, dfn) : TypeID.t * type_definition) : t =
-  let mtrnew = ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, dfn))) in
-    (addr, nmtoid, mtrnew)
+let add_type_definition (tyenv : t) (tynm : type_name) ((tyid, dfn) : TypeID.t * type_definition) : t =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
+    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let find_type_definition_for_inner ((addr, nmtoid, mtr) : t) (tynm : type_name) : (TypeID.t * type_definition) option =
-  ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, _) ->
-    opt TyNameMap.find tynm tdmap
-  )
+let find_type_definition_for_inner (tyenv : t) (tynm : type_name) : (TypeID.t * type_definition) option =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    ModuleTree.search_backward mtr addrlst [] (fun (_, tdmap, _, _) ->
+      TyNameMap.find_opt tynm tdmap
+    )
 
 
-let find_type_definition_for_outer ((addr, nmtoid, mtr) : t) (tynm : type_name) : (TypeID.t * type_definition) option =
-  let straddr = String.concat "." (List.map ModuleID.extract_name addr) in (* for debug *)
-    ModuleTree.search_backward mtr addr [] (fun (_, tdmap, _, sigopt) ->
+let find_type_definition_for_outer (tyenv : t) (tynm : type_name) : (TypeID.t * type_definition) option =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+  let straddr = String.concat "." (addrlst |> List.map ModuleID.extract_name) in (* for debug *)
+    ModuleTree.search_backward mtr addrlst [] (fun (_, tdmap, _, sigopt) ->
       match sigopt with
       | None ->
           let () = print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> no signature") in (* for debug *)
-          opt TyNameMap.find tynm tdmap
+          TyNameMap.find_opt tynm tdmap
 
       | Some((tdmapsig, _)) ->
           let () = print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> signature found") in (* for debug *)
-          opt TyNameMap.find tynm tdmapsig
+          TyNameMap.find_opt tynm tdmapsig
     )
 
 
 (* PUBLIC *)
 let find_type_id (tyenv : t) (tynm : type_name) : TypeID.t option =
-  match find_type_definition_for_outer tyenv tynm with
-  | None            -> None
-  | Some((tyid, _)) -> Some(tyid)
+  let open OptionMonad in
+  find_type_definition_for_outer tyenv tynm >>= fun (tyid, _) ->
+  return tyid
 
 
 (* PUBLIC *)
@@ -272,12 +302,15 @@ let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
   TypeID.extract_name tyid
 
 
-let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) ((addr, nmtoid, mtr) : t) : t =
+let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
 
   let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
 
-  let mtrnew = ModuleTree.update mtr addr (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) in
-    (addr, nmtoid, mtrnew)
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
+    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t list) (Poly(ty) : poly_type) =
@@ -355,29 +388,15 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MVertCommandType(mntylist)       -> VertCommandType(List.map iter mntylist)
       | MMathCommandType(mntylist)       -> MathCommandType(List.map iter mntylist)
 
-      | MTypeName([], "unit")            -> BaseType(UnitType)
-      | MTypeName(mntyarglist, "unit")   -> error "unit" 0 (List.length mntyarglist)
-      | MTypeName([], "bool")            -> BaseType(BoolType)
-      | MTypeName(mntyarglist, "bool")   -> error "bool" 0 (List.length mntyarglist)
-      | MTypeName([], "int")             -> BaseType(IntType)
-      | MTypeName(mntyarglist, "int")    -> error "int" 0 (List.length mntyarglist)
-      | MTypeName([], "float")           -> BaseType(FloatType)
-      | MTypeName(mntyarglist, "float")  -> error "float" 0 (List.length mntyarglist)
-      | MTypeName([], "string")          -> BaseType(StringType)
-      | MTypeName(mntyarglist, "string") -> error "string" 0 (List.length mntyarglist)
+      | MTypeName([], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+          begin
+            match Hashtbl.find_opt base_type_hash_table tynm with
+            | None     -> assert false
+            | Some(bt) -> BaseType(bt)
+          end
 
-      | MTypeName([], "font")              -> BaseType(FontType)
-      | MTypeName(mntyarglist, "font")     -> error "font" 0 (List.length mntyarglist)
-      | MTypeName([], "context")           -> BaseType(ContextType)
-      | MTypeName(mntyarglist, "context")  -> error "context" 0 (List.length mntyarglist)
-      | MTypeName([], "text-row")          -> BaseType(TextRowType)
-      | MTypeName(mntyarglist, "text-row") -> error "text-row" 0 (List.length mntyarglist)
-      | MTypeName([], "text-col")          -> BaseType(TextColType)
-      | MTypeName(mntyarglist, "text-col") -> error "text-col" 0 (List.length mntyarglist)
-      | MTypeName([], "box-row")           -> BaseType(BoxRowType)
-      | MTypeName(mntyarglist, "box-row")  -> error "box-row" 0 (List.length mntyarglist)
-      | MTypeName([], "box-col")           -> BaseType(BoxColType)
-      | MTypeName(mntyarglist, "box-col")  -> error "box-col" 0 (List.length mntyarglist)
+      | MTypeName(mntyarglist, tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+          error tynm 0 (List.length mntyarglist)
 
       | MTypeName(mntyarg :: [], "list") -> ListType(iter mntyarg)
       | MTypeName(mntyarglist, "list")   -> error "list" 1 (List.length mntyarglist)
@@ -433,14 +452,14 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
               match tyargmode with
               | StrictMode(tyargmaplist) ->
                   begin
-                    match MapList.find tyargmaplist tyargnm with
+                    match MapList.find_opt tyargmaplist tyargnm with
                     | None        -> raise (UndefinedTypeArgument(rng, tyargnm))
                     | Some(tvref) -> TypeVariable(tvref)
                   end
 
               | FreeMode(tyargmaplist) ->
                   begin
-                    match MapList.find tyargmaplist tyargnm with
+                    match MapList.find_opt tyargmaplist tyargnm with
                     | Some(tvref) -> TypeVariable(tvref)
                     | None ->
                         let tvid = FreeID.fresh UniversalKind Quantifiable lev () in
@@ -528,9 +547,12 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     instantiate_type_scheme tyarglist bidlist ptyin
 
 
-let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) ((addr, nmtoid, mtr) : t) : t =
-  let mtrnew = ModuleTree.update mtr addr (update_td (TyNameMap.add tynm (tyid, dfn))) in
-    (addr, nmtoid, mtrnew)
+let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) (tyenv : t) : t =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
+    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) (tynm : type_name) : t =
@@ -552,32 +574,28 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
 
-let rec find_constructor (qtfbl : quantifiability) ((addr, nmtoid, mtr) : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
-  let defopt =
-    ModuleTree.search_backward mtr addr [] (fun (_, _, cdmap, _) ->
-      opt ConstrMap.find constrnm cdmap
-    )
-  in
-    match defopt with
-    | None                         -> None
-    | Some((tyid, (bidlist, pty))) ->
-        let tyarglist =
-          bidlist |> List.map (fun bid ->
-            let tvid = FreeID.fresh (BoundID.get_kind bid) qtfbl lev () in
-              (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
-          )
-        in
-        let ty = instantiate_type_scheme tyarglist bidlist pty in
-          Some((tyarglist, tyid, ty))
+let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+  let open OptionMonad in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) -> ConstrMap.find_opt constrnm cdmap) >>= fun dfn ->
+    let (tyid, (bidlist, pty)) = dfn in
+    let tyarglist =
+      bidlist |> List.map (fun bid ->
+        let tvid = FreeID.fresh (BoundID.get_kind bid) qtfbl lev () in
+          (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
+      )
+    in
+    let ty = instantiate_type_scheme tyarglist bidlist pty in
+    return (tyarglist, tyid, ty)
 
 
+let get_moduled_var_name (tyenv : t) (varnm : var_name) =
+  varnm |> (tyenv.current_address |> Alist.map ModuleID.extract_name |> Alist.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
 
-let get_moduled_var_name ((addr, nmtoid, mtr) : t) (varnm : var_name) =
-  varnm |> ((List.map ModuleID.extract_name addr) |> List.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
 
-
-let get_moduled_type_name ((addr, nmtoid, mtr) : t) (tynm : type_name) =
-  tynm |> ((List.map ModuleID.extract_name addr) |> List.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
+let get_moduled_type_name (tyenv : t) (tynm : type_name) =
+  tynm |> (tyenv.current_address |> Alist.map ModuleID.extract_name |> Alist.fold_right (fun s mdlnm -> s ^ "." ^ mdlnm))
 
 
 (* PUBLIC *)
@@ -720,9 +738,14 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
+(* -- 'reflects pty1 pty2' returns whether 'pty2' is more general than 'pty1' -- *)
 let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
-
+(*
   let current_ht : BoundID.t BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+    (* -- hash table mapping bound IDs in 'pty2' to bound IDs in 'pty1' -- *)
+*)
+  let current_bid_to_ty : (mono_type * type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+    (* -- hash table mapping bound IDs in 'pty2' to types -- *)
 
   let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
@@ -733,20 +756,23 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (TypeVariable({contents= Link(tysub1)}), _)          -> aux tysub1 ty2
     | (_, TypeVariable({contents= Link(tysub2)}))          -> aux ty1 tysub2
 
-    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)})) ->
+    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)} as tyref2)) ->
         begin
-          try
-            let bidcounterpart = BoundIDHashtbl.find current_ht bid1 in
-              BoundID.eq bid2 bidcounterpart
-          with
-          | Not_found ->
+          match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
+          | Some(((_, TypeVariable({contents= Bound(bid1old)})), _)) ->
+              BoundID.eq bid1 bid1old
+
+          | Some(_) ->
+              false
+
+          | None ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_ht bid1 bid2; true end
+                begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tyref2); true end
               else
                 false
         end
 
-    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref)) ->
+    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref2)) ->
         let kd2 = BoundID.get_kind bid2 in
         let binc =
           match kd2 with
@@ -754,31 +780,53 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
         in
           if not binc then false else
-            begin tvref := Link(ty1); true end
+            begin
+              match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
+              | None              -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
+              | Some((ty1old, _)) -> aux ty1 ty1old
+            end
               (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Bound(bid2)} as tvref)) ->
+    | (_, TypeVariable({contents= Bound(bid2)} as tvref2)) ->
         let kd2 = BoundID.get_kind bid2 in
         begin
           match kd2 with
-          | UniversalKind -> begin tvref := Link(ty1); true end
+          | UniversalKind -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
           | RecordKind(_) -> false
         end
           (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Free(_)} as tvref))      -> begin tvref := Link(ty1); true end
+    | (_, TypeVariable({contents= Free(_)} as tvref)) ->
+        begin tvref := Link(ty1); true end
 
-    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2))         -> (aux tyd1 tyd2) && (aux tyc1 tyc2)
-                                                                (* -- both domain and codomain are covariant -- *)
+    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2)) ->
+        (aux tyd1 tyd2) && (aux tyc1 tyc2)
+          (* -- both domain and codomain are covariant -- *)
 
-    | (ProductType(tyl1), ProductType(tyl2))               -> aux_list (List.combine tyl1 tyl2)
-    | (RecordType(tyasc1), RecordType(tyasc2))             -> (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
+    | (HorzCommandType(tyl1), HorzCommandType(tyl2))
+    | (VertCommandType(tyl1), VertCommandType(tyl2))
+    | (MathCommandType(tyl1), MathCommandType(tyl2))
+    | (ProductType(tyl1), ProductType(tyl2))
+      ->
+        begin
+          try aux_list (List.combine tyl1 tyl2) with
+          | Invalid_argument(_) -> false
+        end
 
-    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) -> (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2))
-    | (ListType(tysub1), ListType(tysub2))                 -> aux tysub1 tysub2
-    | (RefType(tysub1), RefType(tysub2))                   -> aux tysub1 tysub2
-    | (BaseType(bsty1), BaseType(bsty2))                   -> bsty1 = bsty2
-    | _                                                    -> false
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) ->
+        begin
+          try (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2)) with
+          | Invalid_argument(_) -> false
+        end
+
+    | (ListType(tysub1), ListType(tysub2)) -> aux tysub1 tysub2
+    | (RefType(tysub1), RefType(tysub2))   -> aux tysub1 tysub2
+    | (BaseType(bsty1), BaseType(bsty2))   -> bsty1 = bsty2
+    | _                                    -> false
+
 
   and is_stronger_kind (kd1 : kind) (kd2 : kind) =
     match (kd1, kd2) with
@@ -786,16 +834,22 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (UniversalKind, _)                       -> false
     | (RecordKind(tyasc1), RecordKind(tyasc2)) ->
         begin
-          try
-            tyasc2 |> Assoc.fold (fun b (k, ty2) ->
-              let ty1 = Assoc.find tyasc1 k in
-                b && (aux ty1 ty2)
-            ) true
-          with
-          | Not_found -> false
+          tyasc2 |> Assoc.fold (fun b k ty2 ->
+            match Assoc.find_opt tyasc1 k with
+            | Some(ty1) -> b && (aux ty1 ty2)
+            | None      -> false
+          ) true
         end
   in
-    aux ty1 ty2
+  let b = aux ty1 ty2 in
+  begin
+    if b then
+        current_bid_to_ty |> BoundIDHashtbl.iter (fun bid (ty, tyref) ->
+          tyref := Link(ty)
+        )
+    else ()
+  end;
+  b
 
 
 let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
@@ -816,9 +870,12 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
                 let tyidout = TypeID.fresh (get_moduled_type_name tyenv tynm) in
                 let sigoptaccnew = add_type_to_signature sigoptacc tynm tyidout len in
                 let tyenvforsigOnew =
-                  let (addr, nmtoid, mtr) = add_type_definition tyenvforsigO tynm (tyid, dfn) in
-                  let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigoptaccnew)) in
-                    (addr, nmtoid, mtrnew)
+                  let tyenvsub = add_type_definition tyenvforsigO tynm (tyid, dfn) in
+                  let addrlst = Alist.to_list tyenvsub.current_address in
+                  let mtr = tyenvsub.main_tree in
+                  match ModuleTree.update mtr addrlst (update_so (fun _ -> sigoptaccnew)) with
+                  | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+                  | Some(mtrnew) -> { tyenvsub with main_tree = mtrnew; }
                 in
                   iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
           end
@@ -834,7 +891,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
             match find_for_inner tyenv varnm with
             | None              -> raise (NotProvidingValueImplementation(rng, varnm))
             | Some((ptyimp, _)) ->
-                if reflects ptysigI ptyimp then
+                let b = reflects ptysigI ptyimp in
+                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
+                if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                     iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
                 else
@@ -858,9 +917,10 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
                 if reflects ptysigI ptyimp then
                   let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
                   let tyenvaccnew =
-                    let (addr, nmtoid, mtr) = tyenvacc in
-                    let mtrnew = ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) in
-                      (addr, nmtoid, mtrnew)
+                    let mtr = tyenvacc.main_tree in
+                    match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) with
+                    | None         -> assert false
+                    | Some(mtrnew) -> { tyenvacc with main_tree = mtrnew; }
                   in
                     iter tyenvaccnew tyenvforsigI tyenvforsigO tail sigoptaccnew
                 else
@@ -869,20 +929,30 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
   in
 
     match msigopt with
-    | None       -> tyenv
+    | None ->
+        tyenv
+
     | Some(msig) ->
         let sigoptini = Some((TyNameMap.empty, VarMap.empty)) in
-        let (tyenvforsigIini, tyenvforsigOini) =
-          let (addr, nmtoid, _) = tyenv in
-          let (addrprev, _, mtrprev) = tyenvprev in
-          let mtrprevInew = ModuleTree.add_stage mtrprev addrprev (List.hd (List.rev addr)) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
-          let mtrprevOnew = ModuleTree.add_stage mtrprev addrprev (List.hd (List.rev addr)) (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) in
-            ((addr, nmtoid, mtrprevInew), (addr, nmtoid, mtrprevOnew))
-        in
-        let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
-        let (addr, nmtoid, mtr) = tyenvdir in
-        let mtrnew = ModuleTree.update mtr addr (update_so (fun _ -> sigopt)) in
-          (addr, nmtoid, mtrnew)
+        match
+          let open OptionMonad in
+          Alist.chop_last tyenv.current_address >>= fun (addr_outer, mdlid) ->
+          let addrlstprev = Alist.to_list tyenvprev.current_address in
+          let mtrprev = tyenvprev.main_tree in
+          ModuleTree.add_stage mtrprev addrlstprev mdlid
+            (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) >>= fun mtrprevInew ->
+          ModuleTree.add_stage mtrprev addrlstprev mdlid
+            (VarMap.empty, TyNameMap.empty, ConstrMap.empty, sigoptini) >>= fun mtrprevOnew ->
+          return ({ tyenv with main_tree = mtrprevInew; }, { tyenv with main_tree = mtrprevOnew; })
+        with
+        | None -> assert false
+        | Some((tyenvforsigIini, tyenvforsigOini)) ->
+            let (sigopt, tyenvdir) = read_manual_signature tyenv tyenvforsigIini tyenvforsigOini msig sigoptini in
+            let addrlst = Alist.to_list tyenvdir.current_address in
+            let mtr = tyenvdir.main_tree in
+              match ModuleTree.update mtr addrlst (update_so (fun _ -> sigopt)) with
+              | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+              | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
 
 
 module Raw =

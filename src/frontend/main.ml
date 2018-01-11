@@ -224,6 +224,18 @@ let error_log_environment suspended =
         NormalLine("undefined unit of length '" ^ unitnm ^ "'.");
       ]
 
+  | Typechecker.HorzCommandInMath(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("an inline command is used as a math command.");
+      ]
+
+  | Typechecker.MathCommandInHorz(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("a math command is used as an inline command.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -435,6 +447,7 @@ let () =
     EvalVarID.initialize ();
     let libdir = !libdir_ref in
     FontInfo.initialize libdir;  (* temporary *)
+    ImageInfo.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
     let input_list = List.rev (!input_acc_ref) in
     let output = !output_name_ref in

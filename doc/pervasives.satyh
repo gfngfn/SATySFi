@@ -1,0 +1,28 @@
+
+let form-paragraph = line-break true true
+
+
+let kern len = inline-skip (0pt -' len)
+
+
+let-inline ctx \SATySFi =
+  let size = get-font-size ctx in
+  let f = read-inline ctx in
+  let fd = ctx |> set-manual-rising (0pt -' (size *' 0.25)) |> read-inline in
+  let ib =
+    f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
+  in
+    script-guard Latin ib
+
+
+let length-max len1 len2 =
+  if len1 <' len2 then len2 else len1
+
+
+let length-min len1 len2 =
+  if len1 <' len2 then len1 else len2
+
+
+let length-abs len =
+  if len <' 0pt then 0pt -' len else len
+

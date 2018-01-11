@@ -1,4 +1,6 @@
 
+open MyUtil
+open LengthInterface
 open HorzBox
 
 
@@ -428,9 +430,9 @@ let get_right_kern lmmain hgt dpt =
 
 
 let get_math_kind_of_math_element mathctx = function
-  | MathElement(mk, _)                       -> mk
-  | MathVariantChar(s)                       -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
-  | MathVariantCharDirect(mk, _, _, _, _, _) -> mk
+  | MathElement(mk, _)              -> mk
+  | MathVariantChar(s)              -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathVariantCharDirect(mk, _, _) -> mk
 
 
 let rec get_left_math_kind mathctx = function
@@ -650,16 +652,21 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
             convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
       end
 
-  | MathVariantCharDirect(mkraw, is_big, uch1, uch2, uch3, uch4) ->  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect(mkraw, is_big, mvsty) ->  (* TEMPORARY; should extend more *)
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
       let uch =
         let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
         match mccls with
-        | MathItalic     -> uch1
-        | MathBoldItalic -> uch2
-        | MathRoman      -> uch3
-        | MathBoldRoman  -> uch4
+        | MathItalic       -> mvsty.math_italic
+        | MathBoldItalic   -> mvsty.math_bold_italic
+        | MathRoman        -> mvsty.math_roman
+        | MathBoldRoman    -> mvsty.math_bold_roman
+        | MathScript       -> mvsty.math_script
+        | MathBoldScript   -> mvsty.math_bold_script
+        | MathFraktur      -> mvsty.math_fraktur
+        | MathBoldFraktur  -> mvsty.math_bold_fraktur
+        | MathDoubleStruck -> mvsty.math_double_struck
             (* TEMPORARY; should extend more *)
       in
         convert_math_char mathctx is_big uch mk
@@ -675,7 +682,7 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
-    mlst |> Util.list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
+    mlst |> list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
       let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathctx mathprev in
       let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathctx mathnext in
         (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)

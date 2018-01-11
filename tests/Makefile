@@ -1,4 +1,4 @@
-DEPS=list.satyh head.satyh math.satyh
+DEPS=list.satyh math.satyh head.satyh
 
 all:
 	satysfi $(DEPS) first.saty -o output.pdf
@@ -8,4 +8,3 @@ math1:
 
 math2:
 	satysfi $(DEPS) math2.saty -o output-math2.pdf
-

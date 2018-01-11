@@ -19,7 +19,7 @@ rule expr_raw = parse
   | ("#" nonbreak* break)                           { expr_raw lexbuf }
   | ((cp as cpstr) space* ";")                      { CODEPOINT(int_of_hex cpstr) }
   | ((cp as cpstr1) ".." (cp as cpstr2) space* ";") { CODEPOINTRANGE(int_of_hex cpstr1, int_of_hex cpstr2) }
-  | (alph (alph | digit | "_")+)                    { DATA(Lexing.lexeme lexbuf) }
+  | (alph (alph | digit | "_")*)                    { DATA(Lexing.lexeme lexbuf) }
   | eof                                             { EOI }
   | _                                               { failwith ("DataLexer: illegal token " ^ (Lexing.lexeme lexbuf)) }
 

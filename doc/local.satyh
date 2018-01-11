@@ -1,0 +1,111 @@
+
+let ( --> ) m1 m2 =
+  ${\paren{#m1 \to #m2}}
+
+let type-name name =
+  text-in-math MathOrd (fun ctx -> read-inline ctx name)
+
+
+let tI = type-name {int}
+let tB = type-name {bool}
+let tF = type-name {float}
+let tL = type-name {length}
+let tS = type-name {string}
+let tIT = type-name {inline-text}
+let tIB = type-name {inline-boxes}
+let tBT = type-name {block-text}
+let tBB = type-name {block-boxes}
+let tPADS = type-name {paddings}
+let tDECO = type-name {deco}
+let tDECOSET = type-name {deco-set}
+let tCTX = type-name {context}
+let tIGR = type-name {inline-graphics}
+let tDOC = type-name {document}
+let tSCR = type-name {script}
+let tIMG = type-name {image}
+let tPT = type-name {point}
+let tPRP = type-name {pre-path}
+let tPATH = type-name {path}
+let tGR = type-name {graphics}
+let tCLR = type-name {color}
+let tFONT = type-name {font}
+let tLANG = type-name {language}
+let tMATHCLS = type-name {math-class}
+let tMATH = type-name {math}
+let tMKERNF = type-name {math-kern-func}
+let tMCSTY = type-name {math-char-style}
+let tPAREN = type-name {paren}
+let tMCCLS = type-name {math-char-class}
+let tLIST m =
+  let token = type-name {list} in
+    ${\paren{#m}\math-skip!(4pt)#token}
+
+
+let command-scheme ctx ib-name ty inner =
+  let ib-colon = read-inline ctx {\ :\ } in
+  let font-size = get-font-size ctx in
+  let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
+  let quad = discretionary 1000 quad-glue inline-nil inline-nil in
+  let margin = (ctx |> get-font-size) *' 2. in
+  let ib-inner = read-inline ctx inner in
+  let m-ty = embed-math ctx ty in
+    line-break true false ctx (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+  +++
+    block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
+      form-paragraph ctx (ib-inner ++ inline-fil)
+    ))
+
+
+let name-context ctx =
+  ctx |> set-dominant-narrow-script Latin
+      |> set-font Latin (font `lmmono` 1. 0.)
+      |> set-text-color Color.red
+
+
+let-block ctx +command name ty inner =
+  let ctx-name = name-context ctx in
+  let ib-name = read-inline ctx-name (embed-string name) in
+    command-scheme ctx ib-name ty inner
+
+
+let-block ctx +commands namelst ty inner =
+  let ctx-name = name-context ctx in
+  let ib-comma = read-inline ctx {,\ } in
+  let-mutable flag <- true in
+  let ib-name =
+    namelst |> List.fold-left (fun acc name -> (
+      let ib-name = read-inline ctx-name (embed-string name) in
+      if !flag then
+        let () = flag <- false in
+        acc ++ ib-name
+      else
+        acc ++ ib-comma ++ ib-name
+    )) inline-nil
+  in
+    command-scheme ctx ib-name ty inner
+
+
+let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり〕}}
+
+let-inline \discouraged = {\emph{〔使用非推奨〕}}
+
+
+let-inline ctx \meta m =
+  let ctx-meta =
+    ctx |> set-text-color Color.orange
+        |> set-font Latin StdJa.font-latin-italic
+  in
+    embed-math ctx-meta m
+
+
+let-inline ctx \code inner =
+  let pads-code = (2pt, 2pt, 2pt, 2pt) in
+  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+  let ctx-code =
+    name-context ctx |> set-math-command (command \meta)
+  in
+  let ib-frame =
+    inline-frame-breakable pads-code decoset-code
+      (read-inline ctx-code inner)
+  in
+    script-guard Latin ib-frame

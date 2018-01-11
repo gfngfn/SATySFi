@@ -1,35 +1,38 @@
 
-type ('a, 'b) t
-  [@@deriving show]
+type 'a t
 
-val empty : ('a, 'b) t
+type key = string
 
-val add : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> 'a -> 'b -> ('a, 'b) t
+val empty : 'v t
 
-val find : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> 'a -> 'b
+val add : 'v t -> key -> 'v -> 'v t
 
-val to_list : ('a, 'b) t -> ('a * 'b) list
+val find_opt : 'v t -> key -> 'v option
 
-val of_list : ?eq:('a -> 'a -> bool) -> ('a * 'b) list -> ('a, 'b) t
+val to_list : 'v t -> (key * 'v) list
 
-val map_value : ('b -> 'c) -> ('a, 'b) t -> ('a, 'c) t
+val of_list : (key * 'v) list -> 'v t
 
-val iter_value : ('b -> unit) -> ('a, 'b) t -> unit
+val map_value : ('v -> 'w) -> 'v t -> 'w t
 
-val fold_value : ('c -> 'b -> 'c) -> 'c -> ('a, 'b) t -> 'c
+val iter_value : ('v -> unit) -> 'v t -> unit
 
-val to_value_list : ('a, 'b) t -> 'b list
+val fold_value : ('a -> 'v -> 'a) -> 'a -> 'v t -> 'a
 
-val fold : ('c -> ('a * 'b) -> 'c) -> 'c -> ('a, 'b) t -> 'c
+val to_value_list : 'v t -> 'v list
 
-val mem : ?eq:('a -> 'a -> bool) -> 'a -> ('a, 'b) t -> bool
+val fold : ('a -> key -> 'v -> 'a) -> 'a -> 'v t -> 'a
 
-val domain_included : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+val mem : key -> 'v t -> bool
 
-val domain_same : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> bool
+val domain_included : 'v t -> 'w t -> bool
 
-val combine_value : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'c) t -> ('b * 'c) list
+val domain_same : 'v t -> 'w t -> bool
 
-val intersection : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t -> ('b * 'b) list
+val intersection : 'v t -> 'v t -> ('v * 'v) list
 
-val union : ?eq:('a -> 'a -> bool) -> ('a, 'b) t -> ('a, 'b) t -> ('a, 'b) t
+val combine_value : 'v t -> 'w t -> ('v * 'w) list
+
+val intersection : 'v t -> 'v t -> ('v * 'v) list
+
+val union : 'v t -> 'v t -> 'v t

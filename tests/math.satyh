@@ -42,11 +42,19 @@ let math-list lst =
 %let math-comma = math-char MathPunct `,`
 
 let-math \tau =
-  math-variant-char MathOrd
-    0x1D70F % italic
-    0x1D749 % bold italic
-    0x1D70F % roman
-    0x1D749 % bold roman
+  let cp = 0x1D70F in
+  let cpb = 0x1D749 in
+    math-variant-char MathOrd (|
+      italic        = cp;
+      bold-italic   = cpb;
+      roman         = cp;
+      bold-roman    = cpb;
+      script        = cp;
+      bold-script   = cpb;
+      fraktur       = cp;
+      bold-fraktur  = cpb;
+      double-struck = cp;
+    |)
 
 let-math \pi =
   math-ord-char 0x1D70B
@@ -57,11 +65,19 @@ let-math \lambda =
     % temporary
 
 let-math \Gamma =
-  math-variant-char MathOrd
-    0x1D6E4 % italic
-    0x1D71E % bold italic
-    0x0393  % roman
-    0x1D6AA % bold roman
+  let cp = 0x1D6E4 in
+  let cpb = 0x1D71E in
+    math-variant-char MathOrd (|
+      italic        = cp;
+      bold-italic   = cpb;
+      roman         = 0x0393;
+      bold-roman    = 0x1D6AA;
+      script        = cp;
+      bold-script   = cpb;
+      fraktur       = cp;
+      bold-fraktur  = cpb;
+      double-struck = cp;
+    |)
 
 let-math \frac = math-frac
 
@@ -100,7 +116,7 @@ let-inline ctx \math fml =
 
 let-block ctx +math math =
   let ib = embed-math ctx math in
-    form-paragraph ctx (inline-fil ++ ib ++ inline-fil)
+    line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 let math-space =
   text-in-math MathOrd (fun ctx -> inline-skip 30pt)
@@ -343,3 +359,6 @@ let-math \sqbracket =
 
 let-math \overwrite f x v =
   ${#f \sqbracket{#x \mapsto #v}}
+
+let-math \math-style sty m =
+  math-char-class sty m

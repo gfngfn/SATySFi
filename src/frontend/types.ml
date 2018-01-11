@@ -1,4 +1,7 @@
 
+open LengthInterface
+
+
 exception ParseErrorDetail of string
 
 type ctrlseq_name       = string  [@@deriving show]
@@ -33,7 +36,7 @@ end = struct
   let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
 end
 
-
+(*
 module EvalVarID
 : sig
     type t
@@ -41,6 +44,7 @@ module EvalVarID
     val fresh : var_name -> t
     val equal : t -> t -> bool
     val show_direct : t -> string
+    val pp : Format.formatter -> t -> unit
   end
 = struct
     type t = int * string
@@ -49,8 +53,9 @@ module EvalVarID
     let fresh varnm = begin incr current_id ; (!current_id, varnm) end
     let equal (i1, _) (i2, _) = (i1 = i2)
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
+    let pp fmt evid = Format.fprintf fmt "%s" (show_direct evid)
   end
-
+*)
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
@@ -163,7 +168,8 @@ and manual_type_main =
   | MTypeParam       of var_name
   | MFuncType        of manual_type * manual_type
   | MProductType     of manual_type list
-  | MRecordType      of (field_name, manual_type) Assoc.t
+  | MRecordType      of manual_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
   | MHorzCommandType of manual_type list
   | MVertCommandType of manual_type list
   | MMathCommandType of manual_type list
@@ -171,7 +177,8 @@ and manual_type_main =
 
 type manual_kind =
   | MUniversalKind
-  | MRecordKind    of (field_name, manual_type) Assoc.t
+  | MRecordKind    of manual_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "MRecordKind(...)")]
 [@@deriving show]
 
 type base_type =
@@ -190,9 +197,37 @@ type base_type =
   | PrePathType
   | PathType
   | GraphicsType
+  | ImageType
   | DocumentType
   | MathType
 [@@deriving show]
+
+
+let base_type_hash_table =
+  let ht = Hashtbl.create 32 in
+  begin
+    List.iter (fun (s, bt) -> Hashtbl.add ht s bt) [
+      ("unit"        , UnitType    );
+      ("bool"        , BoolType    );
+      ("int"         , IntType     );
+      ("float"       , FloatType   );
+      ("length"      , LengthType  );
+      ("string"      , StringType  );
+      ("inline-text" , TextRowType );
+      ("block-text"  , TextColType );
+      ("inline-boxes", BoxRowType  );
+      ("block-boxes" , BoxColType  );
+      ("font"        , FontType    );
+      ("context"     , ContextType );
+      ("pre-path"    , PrePathType );
+      ("path"        , PathType    );
+      ("graphics"    , GraphicsType);
+      ("image"       , ImageType   );
+      ("document"    , DocumentType);
+      ("math"        , MathType    );
+    ];
+    ht
+  end
 
 
 type mono_type = Range.t * mono_type_main
@@ -205,7 +240,8 @@ and mono_type_main =
   | TypeVariable    of type_variable_info ref
   | SynonymType     of (mono_type list) * TypeID.t * mono_type
   | VariantType     of (mono_type list) * TypeID.t
-  | RecordType      of (field_name, mono_type) Assoc.t
+  | RecordType      of mono_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
   | VertDetailedCommandType of mono_type list  (* will be deprecated *)
@@ -216,13 +252,13 @@ and poly_type =
 
 and kind =
   | UniversalKind
-  | RecordKind of (field_name, mono_type) Assoc.t
+  | RecordKind of mono_type Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "RecordKind(...)")]
 
 and type_variable_info =
   | Free  of kind FreeID_.t_
   | Bound of kind BoundID_.t_
   | Link  of mono_type
-
 [@@deriving show]
 
 
@@ -248,12 +284,15 @@ and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
-  | UTInputHorzText     of string
-  | UTInputHorzEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputHorzText         of string
+  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputHorzContent      of untyped_abstract_tree
+  | UTInputHorzEmbeddedMath of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputVertContent  of untyped_abstract_tree
 
 and 'a untyped_path_component =
   | UTPathLineTo        of 'a
@@ -303,6 +342,7 @@ and untyped_abstract_tree_main =
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
       [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
+  | UTFrozenCommand        of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
@@ -331,6 +371,9 @@ and untyped_abstract_tree_main =
   | UTItemize              of untyped_itemize
 (* -- math -- *)
   | UTMath                 of untyped_math
+(* -- for lightweight command definition -- *)
+  | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
+  | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 
 and constraint_cons = (var_name * manual_kind) list
 
@@ -408,15 +451,19 @@ and mutual_let_cons =
   | EndOfMutualLet
 
 and environment = (EvalVarID.t, location) Hashtbl.t
+  [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
 and location = abstract_tree ref
 
 and input_horz_element =
   | InputHorzText     of string
   | InputHorzEmbedded of abstract_tree * abstract_tree list
+  | InputHorzContent  of abstract_tree
+  | InputHorzEmbeddedMath of abstract_tree
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
+  | InputVertContent  of abstract_tree
 
 
 and 'a path_component =
@@ -430,7 +477,7 @@ and abstract_tree =
   | IntegerConstant       of int
   | FloatConstant         of float
   | LengthDescription     of float * length_unit_name
-  | LengthConstant        of HorzBox.length
+  | LengthConstant        of length
   | StringEmpty
   | StringConstant        of string
 (*
@@ -449,9 +496,12 @@ and abstract_tree =
 (* -- graphics -- *)
   | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
   | PathValue                   of HorzBox.path list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
   | PathUnite                   of abstract_tree * abstract_tree
   | GraphicsValue               of Pdfops.t list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
   | PrePathBeginning            of abstract_tree
   | PrePathLineTo               of abstract_tree * abstract_tree
   | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
@@ -474,7 +524,8 @@ and abstract_tree =
   | TupleCons             of abstract_tree * abstract_tree
   | EndOfTuple
 (* -- record value -- *)
-  | Record                of (field_name, abstract_tree) Assoc.t
+  | Record                of abstract_tree Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
@@ -544,9 +595,14 @@ and abstract_tree =
   | BackendMathText             of abstract_tree * abstract_tree
   | BackendMathColor            of abstract_tree * abstract_tree
   | BackendMathCharClass        of abstract_tree * abstract_tree
-  | BackendMathVariantCharDirect of abstract_tree * abstract_tree *  abstract_tree * abstract_tree * abstract_tree
+  | BackendMathVariantCharDirect of abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
   | BackendTabular              of abstract_tree
+  | BackendRegisterPdfImage     of abstract_tree * abstract_tree
+  | BackendRegisterOtherImage   of abstract_tree
+  | BackendUseImageByWidth      of abstract_tree * abstract_tree
+  | ImageKey                    of ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
@@ -555,18 +611,21 @@ and abstract_tree =
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
   | Context                     of HorzBox.input_context
+  | FrozenCommand               of EvalVarID.t
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
-  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetFont            of abstract_tree * abstract_tree
   | PrimitiveSetMathFont        of abstract_tree * abstract_tree
-  | PrimitiveSetDominantScript  of abstract_tree * abstract_tree
-  | PrimitiveGetDominantScript  of abstract_tree
+  | PrimitiveSetDominantWideScript of abstract_tree * abstract_tree
+  | PrimitiveGetDominantWideScript of abstract_tree
+  | PrimitiveSetDominantNarrowScript of abstract_tree * abstract_tree
+  | PrimitiveGetDominantNarrowScript of abstract_tree
   | PrimitiveSetLangSys         of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetLangSys         of abstract_tree * abstract_tree
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
@@ -577,8 +636,9 @@ and abstract_tree =
   | PrimitiveGetNaturalWidth    of abstract_tree
   | PrimitiveDrawText           of abstract_tree * abstract_tree
   | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveSetMathCommand     of abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
-  | BackendLineBreaking         of abstract_tree * abstract_tree
+  | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
   | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
 (*
@@ -594,6 +654,8 @@ and abstract_tree =
   | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendLineStackTop         of abstract_tree
   | BackendLineStackBottom      of abstract_tree
+  | BackendScriptGuard          of abstract_tree * abstract_tree
+  | BackendDiscretionary        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
@@ -613,7 +675,7 @@ and pattern_tree =
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
-
+[@@deriving show { with_path = false; }]
 (*
 type output_unit =
   | OString             of string
@@ -661,6 +723,36 @@ module BoundIDHashtbl = Hashtbl.Make(
     let equal = BoundID.eq
     let hash = Hashtbl.hash
   end)
+
+
+(* -- 'normalize_mono_type': eliminates 'Link(_)' -- *)
+let rec normalize_mono_type ty =
+  let iter = normalize_mono_type in
+  let (rng, tymain) = ty in
+    match tymain with
+    | TypeVariable(tvinforef) ->
+        begin
+          match !tvinforef with
+          | Bound(_)     -> ty
+          | Free(_)      -> ty
+          | Link(tylink) -> iter tylink
+        end
+
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | BaseType(_)                       -> ty
+    | ListType(tycont)                  -> (rng, ListType(iter tycont))
+    | RefType(tycont)                   -> (rng, RefType(iter tycont))
+    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
+    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))  (* will be deprecated *)
+
+
+let normalize_poly_type (Poly(ty)) = Poly(normalize_mono_type ty)
 
 
 let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
@@ -762,7 +854,7 @@ let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
 
 (* -- following are all for debugging -- *)
 
-let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -803,6 +895,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(PathType)    -> "path" ^ qstn
     | BaseType(LengthType)  -> "length" ^ qstn
     | BaseType(GraphicsType) -> "graphics" ^ qstn
+    | BaseType(ImageType)    -> "image" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
 

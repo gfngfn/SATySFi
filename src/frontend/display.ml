@@ -1,7 +1,7 @@
 open Types
 
 
-let string_of_record_type (f : mono_type -> string) (asc : (field_name, mono_type) Assoc.t) =
+let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -128,6 +128,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(PathType)    -> "path"
     | BaseType(LengthType)  -> "length"
     | BaseType(GraphicsType) -> "graphics"
+    | BaseType(ImageType)    -> "image"
     | BaseType(DocumentType) -> "document"
     | BaseType(MathType)     -> "math"
 
@@ -167,19 +168,19 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
 
     | HorzCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") inline-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] inline-cmd"
 
     | VertCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") block-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"  (* will be deprecated *)
+        "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
 
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
-        "(" ^ (String.concat ", " slist) ^ ") math-cmd"
+        "[" ^ (String.concat "; " slist) ^ "] math-cmd"
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
@@ -218,32 +219,6 @@ and string_of_mono_type_list tyenv current_ht tylist =
           | [] -> ""
           | _  -> " * " ^ strtail
         end
-
-
-let rec normalize_mono_type ty =
-  let iter = normalize_mono_type in
-  let (rng, tymain) = ty in
-    match tymain with
-    | TypeVariable(tvinforef) ->
-        begin
-          match !tvinforef with
-          | Bound(_)     -> ty
-          | Free(_)      -> ty
-          | Link(tylink) -> iter tylink
-        end
-
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | BaseType(_)                       -> ty
-    | ListType(tycont)                  -> (rng, ListType(iter tycont))
-    | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
-    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))  (* will be deprecated *)
 
 
 let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
@@ -309,12 +284,18 @@ and string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
       "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
+  | UTInputVertContent(utast0) ->
+      "(embVC " ^ (string_of_utast utast0) ^ ")"
 
 and string_of_utih (_, utihmain) =
   match utihmain with
   | UTInputHorzEmbedded(utastcmd, utastlst) ->
       "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
   | UTInputHorzText(s) -> "\"" ^ s ^ "\""
+  | UTInputHorzContent(utast0) ->
+      "(embHC " ^ (string_of_utast utast0) ^ ")"
+  | UTInputHorzEmbeddedMath(utastmath) ->
+      "(embHM " ^ (string_of_utast utastmath) ^ ")"
  
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)

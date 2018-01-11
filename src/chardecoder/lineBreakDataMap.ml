@@ -4,7 +4,7 @@ open CharBasis
 exception InputFileBroken
 
 
-let class_of_string s =
+let class_of_string _ s =
   match s with
   | "CM"  -> CM
   | "SG"  -> SG
@@ -360,24 +360,25 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
 
   let rec normalize biacc bilst =
     match bilst with
-    | [] -> List.rev biacc
+    | [] -> Alist.to_list biacc
 
     | bihead :: bitail ->
-        let replopt = find_first_match normalization_rule proj_bi proj_bi (bihead :: biacc) bitail in
+        let replopt = find_first_match normalization_rule proj_bi proj_bi (bihead :: (Alist.to_list_rev biacc)) bitail in
           match replopt with
-          | None       -> normalize (bihead :: biacc) bitail
+          | None       -> normalize (Alist.extend biacc bihead) bitail
           | Some(repl) ->
               let () = PrintForDebug.lbcE "" in  (* for debug *)
-                normalize (List.rev_append repl biacc) bitail
+                normalize (Alist.append biacc repl) bitail
   in
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
-    normalize [] bilst
+    normalize Alist.empty bilst
 
 
 let append_break_opportunity (uchlst : Uchar.t list) =
 
-  let alw_last = PreventBreak in  (* temporary; should take the adjacent embedded command into consideration *)
+  let alw_last = PreventBreak in
+    (* temporary; should take the adjacent embedded command into consideration *)
 
   let should_prevent_break triacc bilst =
     let alwopt = find_first_match line_break_rule proj_tri proj_bi triacc bilst in
@@ -399,20 +400,20 @@ let append_break_opportunity (uchlst : Uchar.t list) =
           | [] ->
               begin
                 PrintForDebug.lbcE "";  (* for debug *)
-                List.rev ((uch, lbc, alw_last) :: triacc)
+                Alist.to_list (Alist.extend triacc (uch, lbc, alw_last))
               end
 
           | _ :: _ ->
               begin
-                let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: triacc) bitail in
+                let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
                 PrintForDebug.lbcE "";  (* for debug *)
                 let alw = if b then PreventBreak else AllowBreak in
-                  aux ((uch, lbc, alw) :: triacc) bitail
+                  aux (Alist.extend triacc (uch, lbc, alw)) bitail
               end
         end
   in
   let bilstinit = append_property uchlst in
-    aux [] bilstinit
+    aux Alist.empty bilstinit
 
 
 (* for debug *)

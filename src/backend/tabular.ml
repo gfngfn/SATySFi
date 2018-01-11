@@ -1,6 +1,7 @@
 
+open MyUtil
+open LengthInterface
 open HorzBox
-open Util
 
 
 type rest_row = ((int * length) option) list
@@ -293,7 +294,7 @@ let main (tabular : row list) =
       Format.printf "Tabular> L(col) = nrows = %d\n" (List.length col);
       let (rest, wid) = determine_column_width restprev col in
       (rest, wid :: widacc)
-    ) (Util.list_make nrows None, [])
+    ) (list_make nrows None, [])
   in
   let widlst = List.rev widacc in
 

@@ -1,4 +1,6 @@
 
+let form-paragraph = line-break true true
+
 let gray x = Gray(x)
 let rgb r g b = RGB(r, g, b)
 
@@ -32,6 +34,8 @@ let-inline ctx \emph inner =
   in
     read-inline ctx-emph inner
 
+let-inline \emph2 inner = {\emph{#inner;}}
+
 let-mutable ref-title <- {}
 let-mutable ref-author <- {}
 
@@ -43,10 +47,10 @@ let document rcd inner =
   let wid = 400pt in
   let hgt = 650pt in
   let ctx-doc =
-    get-initial-context page pt wid hgt
+    get-initial-context page pt wid hgt (command \math)
       |> set-font Latin font-latin-roman
       |> set-language Latin English
-      |> set-dominant-script Latin
+      |> set-dominant-narrow-script Latin
       |> set-math-font `lmodern`
   in
   let () = ref-title <- title in
@@ -103,11 +107,11 @@ let-block ctx +make-title =
       ctx |> set-font-size font-size-author
           |> set-font Latin font-latin-roman
     in
-    let br-title = read-inline ctx-title (!ref-title) in
-    let br-author = read-inline ctx-author (!ref-author) in
-    let bc-title = form-paragraph ctx-title (inline-fil ++ br-title ++ inline-fil) in
-    let bc-author = form-paragraph ctx-author (inline-fil ++ br-author) in
-      bc-title +++ bc-author
+    let ib-title = read-inline ctx-title (!ref-title) in
+    let ib-author = read-inline ctx-author (!ref-author) in
+    let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
+    let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+      bb-title +++ bb-author
   ))
 
 let indent = inline-skip 24pt
@@ -178,7 +182,7 @@ let-block ctx +p-jp inner =
     ctx |> set-cjk-font font-cjk-mincho
         |> set-language HanIdeographic Japanese
         |> set-language Kana Japanese
-        |> set-dominant-script HanIdeographic
+        |> set-dominant-wide-script HanIdeographic
         |> set-leading (get-font-size ctx *' 1.7)
   in
   let () = needs-indentation-ref <- true in
@@ -197,7 +201,7 @@ let-block ctx +section title inner =
   let () = needs-indentation-ref <- false in
   let br-num = read-inline ctx-title (embed-string ((arabic (!num-section)) ^ `.`)) in
   let br-title = read-inline ctx-title title in
-  let bc-title = form-paragraph ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
+  let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
   let bc-inner = read-block ctx inner in
     bc-title +++ bc-inner
 
@@ -303,7 +307,7 @@ let bullet (x, y) =
   let r = 2pt in
     [ fill (Gray(0.)) (circle (cx, cy) r); ]
 
-let item : context -> int -> itemize -> box-col
+let item : context -> int -> itemize -> block-boxes
   | ctx depth (Item(parent, children)) =
       let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
       let bullet-width = get-natural-width br-bullet in
@@ -449,6 +453,9 @@ let-inline ctx \sample-diagram =
       ]
   ))
 
+let-inline ctx \new-line =
+  inline-fil ++ (discretionary (-10000) inline-nil inline-nil inline-nil)
+
 let-block ctx +ignore _ = block-nil
 
 let-inline ctx \stack-top lst =
@@ -464,3 +471,16 @@ let-inline ctx \tabular lstf =
   let multif nr nc it = MultiCell(nr, nc, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
   let empty = EmptyCell in
     tabular (lstf cellf multif empty)
+
+module Img : sig
+  direct \import-pdf : [string; int; length] inline-cmd
+  direct \import-image : [string; length] inline-cmd
+end = struct
+  let-inline ctx \import-pdf filepath pageno wid =
+    let img = register-pdf-image filepath pageno in
+      use-image-by-width img wid
+
+  let-inline ctx \import-image filepath wid =
+    let img = register-image filepath in
+      use-image-by-width img wid
+end

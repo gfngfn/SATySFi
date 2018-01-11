@@ -47,4 +47,13 @@ document (|
           = \frac{2a}{5}
       }
   );
+  +p (
+    let test = ${ABCMNOPQRXYZabc} in
+    {
+      Script:        ${\math-style!(MathScript      ){#test}},
+      bold script:   ${\math-style!(MathBoldScript  ){#test}},
+      Fraktur:       ${\math-style!(MathFraktur     ){#test}},
+      bold Fraktur:  ${\math-style!(MathBoldFraktur ){#test}},
+      double struck: ${\math-style!(MathDoubleStruck){#test}}.
+    });
 >

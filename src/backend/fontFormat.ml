@@ -1,5 +1,5 @@
 
-open Util
+open MyUtil
 
 
 type file_path = string
@@ -80,7 +80,7 @@ type font_registration =
 
 
 let extract_registration d =
-  let open Util.ResultMonad in
+  let open ResultMonad in
     Otfm.flavour d >>= function
     | Otfm.CFF ->
         begin
@@ -110,7 +110,7 @@ let extract_registration d =
 
 let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registration) option, Otfm.error) result =
   let s = string_of_file src in
-  let open Util.ResultMonad in
+  let open ResultMonad in
     Otfm.decoder (`String(s)) >>= function
     | Otfm.TrueTypeCollection(_) -> return None
     | Otfm.SingleDecoder(d)      -> extract_registration d
@@ -118,7 +118,7 @@ let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registrati
 
 let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_registration) option, Otfm.error) result =
   let s = string_of_file src in
-  let open Util.ResultMonad in
+  let open ResultMonad in
     Otfm.decoder (`String(s)) >>= function
     | Otfm.SingleDecoder(_) ->
         return None
@@ -1265,7 +1265,7 @@ let assoc_to_map f gidassoc =
 
 
 let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) option =
-  let open Util.OptionMonad in
+  let open OptionMonad in
   (get_decoder_single srcpath) >>= fun (dcdr, fontreg) ->
   let d = dcdr.main in
     match Otfm.math d with

@@ -1,6 +1,8 @@
+
+open LengthInterface
 open HorzBox
 
-val main : length -> length -> input_context -> horz_box list -> intermediate_vert_box list
+val main : bool -> bool -> length -> length -> input_context -> horz_box list -> intermediate_vert_box list
 
 val natural : horz_box list -> evaled_horz_box list * length * length
 

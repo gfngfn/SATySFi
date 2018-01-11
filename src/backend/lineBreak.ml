@@ -1,17 +1,20 @@
 
-open Util
+open MyUtil
+open LengthInterface
 open HorzBox
 open LineBreakBox
 
 
 type lb_either =
-  | TextChunks of line_break_chunk list
-  | LB         of lb_box
+  | TextChunks  of line_break_chunk list
+  | LB          of lb_box
+  | ScriptGuard of CharBasis.script * lb_box list
 
 
 type lb_pure_either =
-  | PTextChunks of line_break_chunk list
-  | PLB         of lb_pure_box
+  | PTextChunks  of line_break_chunk list
+  | PLB          of lb_pure_box
+  | PScriptGuard of CharBasis.script * lb_pure_box list
 
 
 let ( ~. ) = float_of_int
@@ -27,6 +30,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBEmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
   | LBFixedGraphics(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
+  | LBFixedImage(wid, hgt, _)          -> (natural wid, hgt, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -76,38 +80,57 @@ let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info
 
 
 let normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
-  let rec aux lhbacc chunkaccopt lbeitherlst =
+
+  let rec aux lhbacc (optprev : (CharBasis.script * line_break_chunk Alist.t) option) lbeitherlst =
     match lbeitherlst with
     | [] ->
         begin
-          match chunkaccopt with
+          match optprev with
           | None ->
-              List.rev lhbacc
+              Alist.to_list lhbacc
 
-          | Some(chunkacc) ->
-              let lhblst = ConvertText.chunks_to_boxes (List.rev chunkacc) in
-              List.rev (List.rev_append lhblst lhbacc)
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lhblst = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) scriptA in
+              Alist.to_list (Alist.append lhbacc lhblst)
         end
 
     | TextChunks(chunklst) :: lbeithertail ->
         begin
-          match chunkaccopt with
-          | None           -> aux lhbacc (Some(List.rev chunklst)) lbeithertail
-          | Some(chunkacc) -> aux lhbacc (Some(List.rev_append chunklst chunkacc)) lbeithertail
+          match optprev with
+          | None ->
+              aux lhbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbeithertail
+
+          | Some((scriptB, chunkacc)) ->
+              aux lhbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbeithertail
+        end
+
+    | ScriptGuard(scriptG, lhblstG) :: lbeithertail ->
+        let optnext = Some(scriptG, Alist.empty) in
+        begin
+          match optprev with
+          | None ->
+              aux (Alist.append lhbacc lhblstG) optnext lbeithertail
+
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = scriptG in
+              let lhblstC = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) scriptA in
+              aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) optnext lbeithertail
         end
 
     | LB(lhb) :: lbeithertail ->
         begin
-          match chunkaccopt with
+          match optprev with
           | None ->
-              aux (lhb :: lhbacc) None lbeithertail
+              aux (Alist.extend lhbacc lhb) None lbeithertail
 
-          | Some(chunkacc) ->
-              let lhblst = ConvertText.chunks_to_boxes (List.rev chunkacc) in
-              aux (lhb :: (List.rev_append lhblst lhbacc)) None lbeithertail
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lhblst = ConvertText.chunks_to_boxes scriptB (Alist.to_list chunkacc) scriptA in
+              aux (Alist.extend (Alist.append lhbacc lhblst) lhb) None lbeithertail
         end
   in
-    aux [] None lbeitherlst
+    aux Alist.empty None lbeitherlst
 
 
 let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
@@ -117,32 +140,49 @@ let normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
         begin
           match chunkaccopt with
           | None ->
-              List.rev lphbacc
+              Alist.to_list lphbacc
 
-          | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (List.rev chunkacc) in
-              List.rev (List.rev_append lphblst lphbacc)
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lphblst = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
+              Alist.to_list (Alist.append lphbacc lphblst)
         end
 
     | PTextChunks(chunklst) :: lbpetail ->
         begin
           match chunkaccopt with
-          | None           -> aux lphbacc (Some(List.rev chunklst)) lbpetail
-          | Some(chunkacc) -> aux lphbacc (Some(List.rev_append chunklst chunkacc)) lbpetail
+          | None ->
+              aux lphbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbpetail
+
+          | Some((scriptB, chunkacc)) ->
+              aux lphbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbpetail
         end
 
     | PLB(lphb) :: lbpetail ->
         begin
           match chunkaccopt with
           | None ->
-              aux (lphb :: lphbacc) None lbpetail
+              aux (Alist.extend lphbacc lphb) None lbpetail
 
-          | Some(chunkacc) ->
-              let lphblst = ConvertText.chunks_to_boxes_pure (List.rev chunkacc) in
-              aux (lphb :: (List.rev_append lphblst lphbacc)) None lbpetail
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = CharBasis.OtherScript in
+              let lphblst = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
+              aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
+        end
+
+    | PScriptGuard(scriptG, lphblstG) :: lbpetail  ->
+        begin
+          match chunkaccopt with
+          | None ->
+              aux (Alist.append lphbacc lphblstG) None lbpetail
+
+          | Some((scriptB, chunkacc)) ->
+              let scriptA = scriptG in
+              let lphblstC = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
+              aux (Alist.append (Alist.append lphbacc lphblstC) lphblstG) None lbpetail
         end
   in
-    aux [] None lbpelst
+    aux Alist.empty None lbpelst
 
 
 let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (phb : pure_horz_box) : a =
@@ -196,6 +236,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGFixedTabular(wid, hgt, dpt, evtabular) ->
       puref (LBFixedTabular(wid, hgt, dpt, evtabular))
 
+  | PHGFixedImage(wid, hgt, imgkey) ->
+        puref (LBFixedImage(wid, hgt, imgkey))
+
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
   let rec aux lbeacc hblst =
@@ -220,6 +263,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lhblstnew = append_horz_padding lhblst pads in
           aux (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)) :: lbeacc) tail
 
+    | HorzScriptGuard(script, hblstG) :: tail ->
+        let lbelstG = convert_list_for_line_breaking hblstG in
+        let lhblstG = normalize_chunks lbelstG in
+          aux (ScriptGuard(script, lhblstG) :: lbeacc) tail
   in
     aux [] hblst
 
@@ -242,6 +289,10 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
           aux (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)) :: lbpeacc) tail
+
+    | HorzScriptGuard(script, hblstG) :: tail ->
+        let lphblstG = convert_list_for_line_breaking_pure hblstG in
+          aux (PScriptGuard(script, lphblstG) :: lbpeacc) tail
   in
   let lbpelst = aux [] hblst in
     normalize_chunks_pure lbpelst
@@ -386,6 +437,9 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
     | LBFixedTabular(wid, hgt, dpt, evtabular) ->
         EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular))
+
+    | LBFixedImage(wid, hgt, imgkey) ->
+        EvHorz(wid, EvHorzInlineImage(hgt, imgkey))
   in
       let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 
@@ -417,11 +471,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         (evhblst, hgt_total, dpt_total)
 
 
-(* -- distance from the top of the paragraph and its first baseline -- *)
-let first_leading = Length.of_pdf_point 10.  (* temporary; should be variable *)
-
-
-let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
@@ -430,15 +480,15 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
 
   let append_framed_lines
         (lines_in_frame : (lb_pure_box list) list)
-        (acclines_before : (lb_pure_box list) list)
-        (accline_before : lb_pure_box list)
+        (acclines_before : (lb_pure_box list) Alist.t)
+        (accline_before : lb_pure_box Alist.t)
         (decoS : decoration) (decoH : decoration) (decoM : decoration) (decoT : decoration)
         (pads : paddings)
-        : (lb_pure_box list) list * lb_pure_box list =
+        : (lb_pure_box list) Alist.t * lb_pure_box Alist.t =
     let rec aux
-          (first : (lb_pure_box list) option)
-          (last : (lb_pure_box list) option)
-          (acclines : (lb_pure_box list) list)
+          (first : (lb_pure_box Alist.t) option)
+          (last : (lb_pure_box Alist.t) option)
+          (acclines : (lb_pure_box list) Alist.t)
           (lines : (lb_pure_box list) list)
         =
       match lines with
@@ -446,7 +496,7 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
           begin
             match last with
             | Some(accline) -> (acclines, accline)
-            | None          -> (acclines, [])
+            | None          -> (acclines, Alist.empty)
           end
 
       | line :: [] ->  (* -- last line -- *)
@@ -455,9 +505,9 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
           begin
             match first with
             | Some(accline) ->
-                aux None (Some(LBOuterFrame(metr_total, decoS, line) :: accline)) acclines []
+                aux None (Some(Alist.extend accline (LBOuterFrame(metr_total, decoS, line)))) acclines []
             | None ->
-                aux None (Some(LBOuterFrame(metr_total, decoT, line) :: [])) acclines []
+                aux None (Some(Alist.extend Alist.empty (LBOuterFrame(metr_total, decoT, line)))) acclines []
           end
 
       | line :: tail ->
@@ -466,59 +516,61 @@ let break_into_lines (margin_top : length) (margin_bottom : length) (paragraph_w
           begin
             match first with
             | Some(accline) ->
-                aux None None ((List.rev (LBOuterFrame(metr_total, decoH, line) :: accline)) :: acclines) tail
+                aux None None (Alist.extend acclines (Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, line))))) tail
             | None ->
-                aux None None ((LBOuterFrame(metr_total, decoM, line) :: []) :: acclines) tail
+                aux None None (Alist.extend acclines (LBOuterFrame(metr_total, decoM, line) :: [])) tail
           end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
   in
 
-  let rec cut (acclines : (lb_pure_box list) list) (accline : lb_pure_box list) (lhblst : lb_box list) : (lb_pure_box list) list =
+  let rec cut (acclines : (lb_pure_box list) Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : (lb_pure_box list) Alist.t =
     match lhblst with
     | LBDiscretionary(_, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
         if List.mem dscrid path then
-          let acclinesub   = List.rev_append lphblst1 accline in
-          let acclinefresh = List.rev lphblst2 in
-            cut ((List.rev acclinesub) :: acclines) acclinefresh tail
+          let acclinesub = Alist.append accline lphblst1 in
+          let acclinefresh = Alist.of_list lphblst2 in
+            cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
         else
-          let acclinenew   = List.rev_append lphblst0 accline in
+          let acclinenew = Alist.append accline lphblst0 in
             cut acclines acclinenew tail
 
     | LBPure(lphb) :: tail ->
-        cut acclines (lphb :: accline) tail
+        cut acclines (Alist.extend accline lphb) tail
 
     | LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblst) :: tail ->
-        let acclines_in_frame = cut [] [] lhblst in
-        let (acclinesnew, acclinenew) = append_framed_lines (List.rev acclines_in_frame) acclines accline decoS decoH decoM decoT pads in
+        let acclines_in_frame = cut Alist.empty Alist.empty lhblst in
+        let (acclinesnew, acclinenew) =
+          append_framed_lines (Alist.to_list acclines_in_frame) acclines accline decoS decoH decoM decoT pads
+        in
           cut acclinesnew acclinenew tail
 
     | [] ->
-        (List.rev accline) :: acclines
+        Alist.extend acclines (Alist.to_list accline)
   in
 
-  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box list) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box Alist.t) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
         begin
           match dptprevopt with
           | None ->
-              arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: []) tail
+              arrange (Some(dpt)) (Alist.extend Alist.empty (ImVertLine(hgt, dpt, evhblst))) tail
 
           | Some(dptprev) ->
               let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt)) (ImVertLine(hgt, dpt, evhblst) :: ImVertFixedBreakable(vskip) :: accvlines) tail 
+                arrange (Some(dpt)) (Alist.append accvlines [ImVertFixedBreakable(vskip); ImVertLine(hgt, dpt, evhblst)]) tail 
         end
 
-    | [] -> ImVertTopMargin(true, margin_top) :: (List.rev (ImVertBottomMargin(true, margin_bottom) :: accvlines))
+    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (ImVertBottomMargin(is_breakable_bottom, margin_bottom))))
   in
 
-  let acclines = cut [] [] lhblst in
-    arrange None [] (List.rev acclines)
+  let acclines = cut Alist.empty Alist.empty lhblst in
+    arrange None Alist.empty (Alist.to_list acclines)
 
 
-let main (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
+let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -619,7 +671,7 @@ let main (margin_top : length) (margin_bottom : length) (ctx : input_context) (h
       | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
           [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
-          break_into_lines margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
+          break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end
 
 

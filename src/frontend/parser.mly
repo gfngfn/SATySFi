@@ -386,11 +386,9 @@
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
 %token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
-(*
-%token <Range.t * Types.var_name> VARINSTR
-*)
-%token <Range.t * Types.var_name> VARINMATH
-%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATHWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINHORZ
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINVERT
+%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
 %token <Range.t * Types.var_name> TYPEVAR
 %token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
@@ -404,7 +402,7 @@
 %token <Range.t * Types.id_name>      IDNAME
 %token <Range.t * Types.class_name>   CLASSNAME
 *)
-%token <Range.t> LAMBDA ARROW
+%token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LET DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
@@ -554,6 +552,9 @@ nxstruct:
   | END                                                            { (end_struct $1) }
   | LET nxdec nxstruct                                             { make_let_expression $1 $2 $3 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
+  | LETHORZ nxhorzdec nxstruct                                     { make_let_expression $1 $2 $3 }
+  | LETVERT nxvertdec nxstruct                                     { make_let_expression $1 $2 $3 }
+  | LETMATH nxmathdec nxstruct                                     { make_let_expression $1 $2 $3 }
   | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
   | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
 ;
@@ -565,6 +566,16 @@ nxhorzdec:
       let curried = curry_lambda_abstract rngcs argvarlst utast in
         (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
       }
+  | hcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = hcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
+      let curried = curry_lambda_abstract rngcs argvarlst utastread in
+        (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
+      }
 ;
 nxvertdec:
   | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
@@ -572,6 +583,16 @@ nxvertdec:
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
       let curried = curry_lambda_abstract rngcs argvarlst utast in
+        (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      }
+  | vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
+      let (rngcs, csnm) = vcmdtok in
+      let rng = make_range (Tok rngcs) (Ranged utast) in
+      let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
+      let ctxvarnm = "%context" in
+      let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
+      let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
+      let curried = curry_lambda_abstract rngcs argvarlst utastread in
         (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
@@ -754,7 +775,10 @@ nxapp:
 (*
   | REFFINAL nxbot { make_standard (Tok $1) (Ranged $2) (UTReferenceFinal($2)) }
 *)
-  | nxbot          { $1 }
+  | pre=COMMAND; hcmd=hcmd {
+      let (rng, mdlnmlst, csnm) = hcmd in
+        make_standard (Tok pre) (Tok rng) (UTFrozenCommand(mdlnmlst, csnm)) }
+  | nxbot { $1 }
 ;
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
@@ -884,7 +908,7 @@ txbot: /* -> Range.t * type_name */
       }
 ;
 txlist:
-  | mnty=txfunc; SEP; tail=txlist { mnty :: tail }
+  | mnty=txfunc; LISTPUNCT; tail=txlist { mnty :: tail }
   | mnty=txfunc                   { mnty :: [] }
   |                               { [] }
 ;
@@ -1028,8 +1052,7 @@ mathbot:
         let utastcmd = (rngcmd, UTContentOf(mdlnmlst, csnm)) in
           make_standard (Tok rngcmd) (Tok rnglast) (UTMCommand(utastcmd, arglst))
       }
-  | tok=VARINMATH        { let (rng, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf([], varnm)))) }
-  | tok=VARINMATHWITHMOD { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
+  | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in make_standard (Tok opn) (Tok cls) utastmain }
@@ -1055,12 +1078,17 @@ ihcmd:
           make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
       }
   | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
-        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in  (* -- inline command '\\math' is inserted -- *)
-          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbedded(utastcmd, [utast]))
-      }
 (*
-  | VARINSTR ENDACTIVE { make_standard (Ranged $1) (Tok $2) (UTContentOf([], extract_name $1)) }
+        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in
+            (* -- inline command '\\math' is inserted -- *)
 *)
+          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
+      }
+  | vartok=VARINHORZ; cls=ENDACTIVE {
+        let (rng, mdlnmlst, varnm) = vartok in
+        let utast = (rng, UTContentOf(mdlnmlst, varnm)) in
+          make_standard (Tok rng) (Tok cls) (UTInputHorzContent(utast))
+      }
 ;
 ihtext:
   | ihcharlst=nonempty_list(ihchar) {
@@ -1127,6 +1155,10 @@ vxbot:
         let (rngcs, mdlnmlst, csnm) = vcmd in
         let args = List.append nargs sargs in
           make_standard (Tok rngcs) (RangedList args) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
+      }
+  | vartok=VARINVERT; cls=ENDACTIVE {
+        let (rng, mdlnmlst, varnm) = vartok in
+          make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
       }
 ;
 

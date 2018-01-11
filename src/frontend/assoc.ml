@@ -1,85 +1,81 @@
 
-type ('a, 'b) t = ('a * 'b) list
-  [@@deriving show]
+module AssocMap = Map.Make(String)
 
-let empty = []
+type key = AssocMap.key
 
-
-let rec add ?eq:(eq = (=)) asc key value =
-  match asc with
-  | []                            -> (key, value) :: []
-  | (k, v) :: tail  when eq k key -> (key, value) :: tail
-  | (k, v) :: tail                -> (k, v) :: (add ~eq:eq tail key value)
+type 'a t = 'a AssocMap.t
 
 
-let rec find ?eq:(eq = (=)) asc key =
-  match asc with
-  | []             -> raise Not_found
-  | (k, v) :: tail -> if eq k key then v else find tail key
+let empty = AssocMap.empty
 
 
-let to_list asc = asc
+let rec add amap key value =
+  amap |> AssocMap.add key value
 
 
-let of_list ?eq:(eq = (=)) lst =
-  List.fold_right (fun (k, v) a -> add ~eq:eq a k v) empty lst
+let find_opt amap key =
+  amap |> AssocMap.find_opt key
 
 
-let map_value f asc =
-  List.map (fun (k, v) -> (k, f v)) asc
+let to_list amap =
+  AssocMap.fold (fun k v acc ->
+    (k, v) :: acc
+  ) amap [] |> List.rev
 
 
-let iter_value f asc =
-  List.iter (fun (_, v) -> f v) asc
+let of_list lst =
+  List.fold_left (fun imap (k, v) -> imap |> AssocMap.add k v) empty lst
 
 
-let fold_value f init asc =
-  List.fold_left (fun x (_, v) -> f x v) init asc
+let map_value f amap =
+  AssocMap.map f amap
 
 
-let to_value_list asc = List.map (fun (k, v) -> v) asc
+let iter_value f amap =
+  AssocMap.iter (fun _ v -> f v) amap
 
 
-let rec fold f init asc =
-  List.fold_left f init asc
+let fold_value f init amap =
+  AssocMap.fold (fun _ v acc -> f acc v) amap init
 
 
-let rec mem ?eq:(eq = (=)) key asc =
-  match asc with
-  | []                         -> false
-  | (k, _) :: _  when eq k key -> true
-  | _ :: tail                  -> mem ~eq:eq key tail
+let to_value_list amap =
+  AssocMap.fold (fun _ v acc ->
+    v :: acc
+  ) amap [] |> List.rev
 
 
-let domain_included ?eq:(eq = (=)) asc1 asc2 =
-  List.fold_left (fun b (k, _) -> b && (mem ~eq:eq k asc2)) true asc1
+let fold f init amap =
+  AssocMap.fold (fun k v acc -> f acc k v) amap init
 
 
-let domain_same ?eq:(eq = (=)) asc1 asc2 =
-  (domain_included ~eq:eq asc1 asc2) && (domain_included ~eq:eq asc2 asc1)
+let rec mem key amap =
+  AssocMap.mem key amap
 
 
-let combine_value ?eq:(eq = (=)) asc1 asc2 =
-  let rec aux asc1 acclst =
-    match asc1 with
-    | []             -> List.rev acclst
-    | (k, v) :: tail -> aux tail ((v, find ~eq:eq asc2 k) :: acclst)
-  in
-    aux asc1 []
+let domain_included amap1 amap2 =
+  AssocMap.fold (fun k _ b -> b && (mem k amap2)) amap1 true
 
-let intersection ?eq:(eq = (=)) asc1 asc2 =
-  let rec aux asc1 acclst =
-    match asc1 with
-    | []             -> List.rev acclst
-    | (k, v) :: tail -> if mem ~eq:eq k asc2 then aux tail ((v, find ~eq:eq asc2 k) :: acclst)
-                                             else aux tail acclst
-  in
-    aux asc1 []
 
-let union ?eq:(eq = (=)) asc1 asc2 =
-  let rec aux asc1 accasc =
-    match asc1 with
-    | []             -> List.rev accasc
-    | (k, v) :: tail -> if mem ~eq:eq k accasc then aux tail accasc else aux tail ((k, v) :: accasc)
-  in
-    aux asc1 asc2
+let domain_same amap1 amap2 =
+  (domain_included amap1 amap2) && (domain_included amap2 amap1)
+
+
+let intersection amap1 amap2 =
+  AssocMap.fold (fun k v acc ->
+    match AssocMap.find_opt k amap2 with
+    | None -> acc
+    | Some(w) -> (v, w) :: acc
+  ) amap1 [] |> List.rev
+
+
+let combine_value amap1 amap2 =
+  AssocMap.fold (fun k v acc ->
+    match AssocMap.find_opt k amap2 with
+    | None -> acc
+    | Some(w) -> (v, w) :: acc
+  ) amap1 [] |> List.rev
+
+
+let union amap1 amap2 =
+  AssocMap.union (fun k v1 v2 -> Some(v2)) amap1 amap2
