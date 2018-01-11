@@ -72,6 +72,8 @@ let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
+let tCMD = (~! "cmd", HorzCommandType([tMATH]))
+
 let tMCSTY =
   let asc =
     Assoc.of_list (List.map (fun k -> (k, tI)) [
@@ -434,30 +436,32 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     ])
 
 
-let get_initial_context pagesch =
-  HorzBox.({
-    font_scheme            = default_font_scheme;
-    font_size              = pdfpt 12.;
-    math_font              = "lmodern";
-    dominant_wide_script   = CharBasis.OtherScript;
-    dominant_narrow_script = CharBasis.OtherScript;
-    langsys_scheme         = ScriptSchemeMap.empty;
-    space_natural          = 0.33;
-    space_shrink           = 0.08;
-    space_stretch          = 0.16; (* 0.32; *)
-    adjacent_stretch       = 0.025;
-    paragraph_width        = pagesch.HorzBox.area_width;
-    paragraph_top          = pdfpt 18.;
-    paragraph_bottom       = pdfpt 18.;
-    leading                = pdfpt 18.;
-    min_gap_of_lines       = pdfpt 2.;
-    text_color             = HorzBox.DeviceGray(0.);
-    manual_rising          = pdfpt 0.;
-    page_scheme            = pagesch;
-    badness_space          = 100;
-    math_variant_char_map  = default_math_variant_char_map;
-    math_char_class        = MathItalic;
-  })
+let get_initial_context pagesch evidcmd =
+  let open HorzBox in
+    {
+      font_scheme            = default_font_scheme;
+      font_size              = pdfpt 12.;
+      math_font              = "lmodern";
+      dominant_wide_script   = CharBasis.OtherScript;
+      dominant_narrow_script = CharBasis.OtherScript;
+      langsys_scheme         = ScriptSchemeMap.empty;
+      space_natural          = 0.33;
+      space_shrink           = 0.08;
+      space_stretch          = 0.16; (* 0.32; *)
+      adjacent_stretch       = 0.025;
+      paragraph_width        = pagesch.area_width;
+      paragraph_top          = pdfpt 18.;
+      paragraph_bottom       = pdfpt 18.;
+      leading                = pdfpt 18.;
+      min_gap_of_lines       = pdfpt 2.;
+      text_color             = DeviceGray(0.);
+      manual_rising          = pdfpt 0.;
+      page_scheme            = pagesch;
+      badness_space          = 100;
+      math_variant_char_map  = default_math_variant_char_map;
+      math_char_class        = MathItalic;
+      inline_math_command    = evidcmd;
+    }
 (*
 let margin = pdfpt 2.
 
@@ -599,7 +603,7 @@ let make_environments () =
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCTX), lambda4 (fun vpage vpt vwid vhgt -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt)));
+        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCMD @-> tCTX), lambda5 (fun vpage vpt vwid vhgt vcmd -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt, vcmd)));
         ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
         ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
@@ -651,6 +655,7 @@ let make_environments () =
         ("math-color"              , ~% (tCLR @-> tMATH @-> tMATH)                   , lambda2 (fun vcolor vm -> BackendMathColor(vcolor, vm)));
         ("math-char-class"         , ~% (tMCCLS @-> tMATH @-> tMATH)                 , lambda2 (fun vmcc vm -> BackendMathCharClass(vmcc, vm)));
         ("set-math-variant-char"   , ~% (tS @-> tMCCLS @-> tMATHCLS @-> tI @-> tCTX @-> tCTX), lambda5 (fun vs vmcc vmc vcp vctx -> PrimitiveSetMathVariantToChar(vs, vmcc, vmc, vcp, vctx)));
+        ("set-math-command"        , ~% (tCMD @-> tCTX @-> tCTX)                     , lambda2 (fun vcmd vctx -> PrimitiveSetMathCommand(vcmd, vctx)));
         ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));

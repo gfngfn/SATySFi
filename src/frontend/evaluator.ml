@@ -350,6 +350,15 @@ and interpret env ast =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
+  | PrimitiveSetMathCommand(astcmd, astctx) ->
+      let valuecmd = interpret env astcmd in
+      let ctx = interpret_context env astctx in
+      begin
+        match valuecmd with
+        | FrozenCommand(evidcmd) -> Context(HorzBox.({ ctx with inline_math_command = evidcmd; }))
+        | _                      -> report_bug_evaluator "PrimitiveSetMathCommand" astcmd valuecmd
+      end
+
   | BackendMathVariantCharDirect(astmathcls, astrcd) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
       let is_big = false in  (* temporary *)
@@ -503,7 +512,9 @@ and interpret env ast =
   | BackendMathText(astmathcls, astf) ->
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
-      let hblstf ctx = interpret_horz env (Apply(valuef, Context(ctx))) in
+      let hblstf ctx =
+          interpret_horz env (Apply(valuef, Context(ctx)))
+      in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
   | BackendMathColor(astcolor, astm) ->
@@ -652,11 +663,11 @@ and interpret env ast =
   | LambdaHorzWithEnvironment(_, _, _) -> ast
 
   | HorzLex(astctx, ast1) ->
-      let ctx = interpret_context env astctx in
+      let valuectx = interpret env astctx in
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi ctx ihlst
+        | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi valuectx ihlst
         | _                                     -> report_bug_evaluator "HorzLex" ast1 value1
       end
 
@@ -749,7 +760,7 @@ and interpret env ast =
       let (hgt, dpt) = adjust_to_last_line evvblst in
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
-  | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt) ->
+  | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt, astcmd) ->
       let page = interpret_page env astpage in
       let (lmargin, tmargin) = interpret_point env astpt in
       let txtwid = interpret_length env astwid in
@@ -767,8 +778,14 @@ and interpret env ast =
           area_height      = txthgt;
         })
       in
-      let ctx = Primitives.get_initial_context pagesch in
-        Context(ctx)
+      let valuecmd = interpret env astcmd in
+      begin
+        match valuecmd with
+        | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context pagesch evidcmd)
+        | _ -> report_bug_evaluator "PrimitiveGetInitialContext" astcmd valuecmd
+      end
+
+  | FrozenCommand(_) -> ast
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
@@ -1350,7 +1367,10 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
     Vert(imvblst)
 
 
-and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihlst : input_horz_element list) : abstract_tree =
+and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst : input_horz_element list) : abstract_tree =
+
+  let ctx = interpret_context env valuectx in
+
   let rec eval_content env ihlst =
     ihlst |> List.fold_left (fun evihacc ih ->
       match ih with
@@ -1359,6 +1379,11 @@ and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihls
 
       | InputHorzEmbedded(astcmd, astlst) ->
           EvInputHorzEmbedded(astcmd, astlst) :: evihacc
+
+      | InputHorzEmbeddedMath(astmath) ->
+          let evidcmd = ctx.HorzBox.inline_math_command in
+            EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
+              (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
       | InputHorzContent(ast0) ->
           let value0 = interpret env ast0 in
@@ -1373,8 +1398,8 @@ and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihls
                 assert false
           end
     ) [] |> List.rev
-
   in
+
   let normalize evihlst =
     evihlst |> List.fold_left (fun acc evih ->
       match evih with
@@ -1400,7 +1425,7 @@ and interpret_input_horz (env : environment) (ctx : HorzBox.input_context) (ihls
           begin
             match valuecmd with
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
-                let valuedef = reduce_beta envf evid (Context(ctx)) astdef in
+                let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
                 let hblst = interpret_horz env valueret in
                   hblst :: lstacc

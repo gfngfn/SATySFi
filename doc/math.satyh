@@ -5,6 +5,11 @@ module Math : sig
   direct \text : [inline-text] math-cmd
   direct \to : [] math-cmd
   direct \paren : [math] math-cmd
+  direct \frac : [math; math] math-cmd
+  direct \sqrt : [math] math-cmd
+  direct \lower : [math; math] math-cmd
+  direct \upper : [math; math] math-cmd
+  direct \math-skip : [length] math-cmd
 
 end = struct
 
@@ -21,6 +26,10 @@ end = struct
 
   let-math \text it =
     text-in-math MathOrd (fun ctx -> read-inline ctx it)
+
+  let-math \math-skip len =
+    text-in-math MathOrd (fun ctx -> inline-skip len)
+
 
   let-block ctx +math math =
     let ib = embed-math ctx math in

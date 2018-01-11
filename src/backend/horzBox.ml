@@ -14,7 +14,7 @@ let add_stretchable strc1 strc2 =
   | (Fils(i1), _)                          -> Fils(i1)
   | (_, Fils(i2))                          -> Fils(i2)
 
-  
+
 type length_info =
   {
     natural     : length;
@@ -229,7 +229,8 @@ type input_context = {
   badness_space          : pure_badness;
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  math_char_class  : math_char_class;
+  math_char_class        : math_char_class;
+  inline_math_command    : EvalVarID.t;
 }
 
 (* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
@@ -442,7 +443,7 @@ module MathContext
         context_for_text  : input_context;
       }
 
-    let make (ctx : input_context) =
+    let make ctx =
       {
         mc_font_abbrev    = ctx.math_font;
         mc_base_font_size = ctx.font_size;

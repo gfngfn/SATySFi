@@ -19,20 +19,40 @@ let tPADS = type-name {paddings}
 let tDECO = type-name {deco}
 let tDECOSET = type-name {deco-set}
 let tCTX = type-name {context}
+let tIGR = type-name {inline-graphics}
+let tDOC = type-name {document}
+let tSCR = type-name {script}
+let tIMG = type-name {image}
+let tPT = type-name {point}
+let tPRP = type-name {pre-path}
+let tPATH = type-name {path}
+let tGR = type-name {graphics}
+let tCLR = type-name {color}
+let tFONT = type-name {font}
+let tLANG = type-name {language}
+let tMATHCLS = type-name {math-class}
+let tMATH = type-name {math}
+let tMKERNF = type-name {math-kern-func}
+let tMCSTY = type-name {math-char-style}
+let tPAREN = type-name {paren}
+let tMCCLS = type-name {math-char-class}
 let tLIST m =
   let token = type-name {list} in
-    ${\paren{#m}\text!{\ }#token}
+    ${\paren{#m}\math-skip!(4pt)#token}
 
 
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
-  let quad = discretionary 1000 (inline-skip (ctx |> get-font-size)) inline-nil inline-nil in
+  let font-size = get-font-size ctx in
+  let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
+  let quad = discretionary 1000 quad-glue inline-nil inline-nil in
   let margin = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
+    line-break true false ctx (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+  +++
     block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
-      form-paragraph ctx ((inline-skip (0pt -' margin)) ++ ib-name ++ ib-colon ++ m-ty
-        ++ quad ++ ib-inner ++ inline-fil)
+      form-paragraph ctx (ib-inner ++ inline-fil)
     ))
 
 
@@ -70,19 +90,22 @@ let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり�
 let-inline \discouraged = {\emph{〔使用非推奨〕}}
 
 
-let-inline ctx \code inner =
-  let pads-code = (2pt, 2pt, 2pt, 2pt) in
-  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
-  let ib-frame =
-    inline-frame-breakable pads-code decoset-code
-      (read-inline (name-context ctx) inner)
-  in
-    script-guard Latin ib-frame
-
-
 let-inline ctx \meta m =
   let ctx-meta =
     ctx |> set-text-color Color.orange
         |> set-font Latin StdJa.font-latin-italic
   in
     embed-math ctx-meta m
+
+
+let-inline ctx \code inner =
+  let pads-code = (2pt, 2pt, 2pt, 2pt) in
+  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+  let ctx-code =
+    name-context ctx |> set-math-command (command \meta)
+  in
+  let ib-frame =
+    inline-frame-breakable pads-code decoset-code
+      (read-inline ctx-code inner)
+  in
+    script-guard Latin ib-frame

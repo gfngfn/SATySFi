@@ -47,12 +47,12 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
         in
-        let ops_foreground = [] in
-        let opaccinit = List.rev_append ops_background opacc in
+        let ops_foreground = [] in  (* temporary *)
+        let opaccinit = Alist.append opacc ops_background in
         let (xposnew, opaccsub) =
           evhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
-        let opaccnew = List.rev_append ops_foreground opaccsub in
+        let opaccnew = Alist.append opaccsub ops_foreground in
           (xposnew, opaccnew)
 
     | EvHorz(wid, EvHorzString(hsinfo, hgt, dpt, otxt)) ->
@@ -76,7 +76,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
             Graphics.op_Q;
           ]
         in
-        let opaccnew = List.rev_append ops opacc in
+        let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzMathGlyph(msinfo, hgt, dpt, gid)) ->
@@ -100,7 +100,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
             Graphics.op_Q;
           ]
         in
-        let opaccnew = List.rev_append ops opacc in
+        let opaccnew = Alist.append opacc ops in
         (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
@@ -126,14 +126,14 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
 *)
           (graphics (xpos, yposbaseline))
         in
-        let opaccnew = List.rev_append ops_graphics opacc in
+        let opaccnew = Alist.append opacc ops_graphics in
           (xpos +% wid, opaccnew)
 
     | EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular)) ->
         let ops_tabular =
           ops_of_evaled_tabular (xpos, yposbaseline +% hgt) evtabular
         in
-        let opaccnew = List.rev_append ops_tabular opacc in
+        let opaccnew = Alist.append opacc ops_tabular in
           (xpos +% wid, opaccnew)
 
 
@@ -152,7 +152,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           ]
         in
         let opaccnew =
-          List.rev_append ops_image opacc
+          Alist.append opacc ops_image
         in
           (xpos +% wid, opaccnew)
 
@@ -173,7 +173,7 @@ and ops_of_evaled_tabular point evtabular =
               in
               let opaccnew =
 
-                List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+                (ops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
 
                   opaccsub
               in
@@ -186,7 +186,7 @@ and ops_of_evaled_tabular point evtabular =
               in
               let opaccnew =
 
-                List.rev_append (ops_test_frame (xpos, yposbaseline) widcell hgt dpt)
+                (ops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
 
                   opaccsub
               in
@@ -195,9 +195,9 @@ and ops_of_evaled_tabular point evtabular =
         ) (opacc, (xpos, ypos))
       in
         (opaccnew, (xpos, ypos -% vlen))
-    ) ([], point)
+    ) (Alist.empty, point)
   in
-    List.rev opaccnew
+    Alist.to_list opaccnew
 
 
 and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
@@ -237,14 +237,14 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
         let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list (xpossubinit, ypossubinit) opacc evvblstsub in
         let yposend = ypossub -% pads.paddingB in
         let ops_background = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
-          ((xpos, yposend), List.rev_append ops_background opaccsub)
+          ((xpos, yposend), Alist.append opaccsub ops_background)
   )
 
 
 (* -- PUBLIC -- *)
 let pdfops_of_evaled_horz_box (xpos, ypos) evhblst =
-  let (_, opacc) = evhblst @|> (xpos, []) @|> List.fold_left (ops_of_evaled_horz_box ypos) in
-    List.rev opacc
+  let (_, opacc) = evhblst @|> (xpos, Alist.empty) @|> List.fold_left (ops_of_evaled_horz_box ypos) in
+    Alist.to_list opacc
 
 
 let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, pageacc, flnm) : t) : t =
@@ -256,9 +256,9 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
   in
   let xinit = pagesch.left_page_margin in
   let yinit = (get_paper_height paper) -% pagesch.top_page_margin in
-  let (_, opaccend) = ops_of_evaled_vert_box_list (xinit, yinit) [] evvblst in
+  let (_, opaccend) = ops_of_evaled_vert_box_list (xinit, yinit) Alist.empty evvblst in
 
-  let oplst = List.rev opaccend in
+  let oplst = Alist.to_list opaccend in
 
   let pdfobjstream = Pdfops.stream_of_ops oplst in
 (*

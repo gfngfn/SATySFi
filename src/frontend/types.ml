@@ -36,7 +36,7 @@ end = struct
   let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
 end
 
-
+(*
 module EvalVarID
 : sig
     type t
@@ -55,7 +55,7 @@ module EvalVarID
     let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
     let pp fmt evid = Format.fprintf fmt "%s" (show_direct evid)
   end
-
+*)
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
@@ -284,9 +284,10 @@ and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
-  | UTInputHorzText     of string
-  | UTInputHorzEmbedded of untyped_abstract_tree * untyped_abstract_tree list
-  | UTInputHorzContent  of untyped_abstract_tree
+  | UTInputHorzText         of string
+  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputHorzContent      of untyped_abstract_tree
+  | UTInputHorzEmbeddedMath of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
@@ -341,6 +342,7 @@ and untyped_abstract_tree_main =
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
       [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
+  | UTFrozenCommand        of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
@@ -457,6 +459,7 @@ and input_horz_element =
   | InputHorzText     of string
   | InputHorzEmbedded of abstract_tree * abstract_tree list
   | InputHorzContent  of abstract_tree
+  | InputHorzEmbeddedMath of abstract_tree
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
@@ -608,10 +611,11 @@ and abstract_tree =
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
   | FontDesignation             of HorzBox.font_with_ratio
   | Context                     of HorzBox.input_context
+  | FrozenCommand               of EvalVarID.t
   | UninitializedContext
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
-  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree
@@ -632,6 +636,7 @@ and abstract_tree =
   | PrimitiveGetNaturalWidth    of abstract_tree
   | PrimitiveDrawText           of abstract_tree * abstract_tree
   | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveSetMathCommand     of abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree

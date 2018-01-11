@@ -293,7 +293,9 @@ and string_of_utih (_, utihmain) =
       "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
   | UTInputHorzText(s) -> "\"" ^ s ^ "\""
   | UTInputHorzContent(utast0) ->
-      "(embVC " ^ (string_of_utast utast0) ^ ")"
+      "(embHC " ^ (string_of_utast utast0) ^ ")"
+  | UTInputHorzEmbeddedMath(utastmath) ->
+      "(embHM " ^ (string_of_utast utastmath) ^ ")"
  
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)

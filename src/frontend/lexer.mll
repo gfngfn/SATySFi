@@ -289,6 +289,7 @@ rule progexpr = parse
           | "inline-cmd"        -> HORZCMDTYPE(pos)
           | "block-cmd"         -> VERTCMDTYPE(pos)
           | "math-cmd"          -> MATHCMDTYPE(pos)
+          | "command"           -> COMMAND(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }

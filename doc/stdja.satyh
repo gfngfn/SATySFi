@@ -41,7 +41,7 @@ end = struct
     let wid = 440pt in
     let hgt = 650pt in
     let ctx-doc =
-      get-initial-context page pt wid hgt
+      get-initial-context page pt wid hgt (command \math)
         |> set-dominant-wide-script Kana
         |> set-language Kana Japanese
         |> set-language HanIdeographic Japanese
