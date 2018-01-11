@@ -825,6 +825,18 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     Poly(iter ty)
 
 
+let copy_environment (env : environment) =
+  Hashtbl.copy env
+
+
+let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstract_tree ref) =
+  Hashtbl.add env evid rfast
+
+
+let find_in_environment (env : environment) (evid : EvalVarID.t) =
+  Hashtbl.find env evid
+
+
 (*
 (* !!!! ---- global variable ---- !!!! *)
 

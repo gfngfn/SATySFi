@@ -96,6 +96,39 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
   end
 
 
+let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
+
+
+(* -- initialization that should be performed before every cross-reference-solving loop -- *)
+let reset () =
+  begin
+    FontInfo.initialize (!libdir_ref);
+    ImageInfo.initialize ();
+  end
+
+
+(* -- initialization that should be performed before typechecking -- *)
+let initialize () =
+  begin
+    FreeID.initialize ();
+    BoundID.initialize ();
+    TypeID.initialize ();
+    Typeenv.initialize_id ();
+    EvalVarID.initialize ();
+    CrossRef.initialize ();
+  end
+
+
+let output_pdf file_name_out pagesch pagelst =
+  let pdf = HandlePdf.create_empty_pdf file_name_out in
+  let pdfret =
+    List.fold_left (fun pdf evvblstpage ->
+      pdf |> HandlePdf.write_page pagesch evvblstpage
+    ) pdf pagelst
+  in
+  HandlePdf.write_to_file pdfret
+
+
 let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----") ;
@@ -111,25 +144,40 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(DocumentType)) ->
-              let valuedoc = Evaluator.interpret env ast in
-              begin
-                match valuedoc with
-                | DocumentValue(ctxdoc, imvblst) ->
-                    let pdf = HandlePdf.create_empty_pdf file_name_out in
-                    let pagesch = ctxdoc.HorzBox.page_scheme in
-                    print_endline (" ---- ---- ---- ----");
-                    print_endline ("  breaking contents into pages ...");
-                    let pagelst = PageBreak.main pagesch imvblst in
-                    let pdfret =
-                      List.fold_left (fun pdf evvblstpage ->
-                        pdf |> HandlePdf.write_page pagesch evvblstpage
-                      ) pdf pagelst
-                    in
-                    HandlePdf.write_to_file pdfret;
-                    print_endline ("  output written on '" ^ file_name_out ^ "'.");
+              let envinit = copy_environment env in
+              let rec aux () =
+                reset ();
+                let valuedoc = Evaluator.interpret envinit ast in
+                begin
+                  match valuedoc with
+                  | DocumentValue(ctxdoc, imvblst) ->
+                      print_endline (" ---- ---- ---- ----");
+                      print_endline ("  breaking contents into pages ...");
+                      let pagesch = ctxdoc.HorzBox.page_scheme in
+                      let pagelst = PageBreak.main pagesch imvblst in
+                      begin
+                        match CrossRef.needs_another_trial () with
+                        | CrossRef.NeedsAnotherTrial ->
+                            print_endline ("  needs another trial for solving cross references...");
+                            aux ()
 
-                | _ -> failwith "main; not a DocumentValue(...)"
-              end
+                        | CrossRef.CountMax ->
+                            print_endline ("  some cross references were not solved.");
+                            print_endline (" ---- ---- ---- ----");
+                            output_pdf file_name_out pagesch pagelst;
+                            print_endline ("  output written on '" ^ file_name_out ^ "'.");
+
+                        | CrossRef.CanTerminate ->
+                            print_endline ("  all cross references were solved.");
+                            print_endline (" ---- ---- ---- ----");
+                            output_pdf file_name_out pagesch pagelst;
+                            print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                      end
+
+                  | _ -> failwith "main; not a DocumentValue(...)"
+                end
+              in
+                aux ()
 
           | _  -> raise (NotADocumentFile(file_name_in, tyenv, ty))
       end
@@ -340,9 +388,9 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
             main newtyenv newenv tail file_name_out
 
 
-let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 let output_name_ref : string ref = ref "saty.out"
 let input_acc_ref : ((input_file_kind * string) Alist.t) ref = ref Alist.empty
+
 
 let arg_output s =
   begin output_name_ref := s; end
@@ -389,9 +437,9 @@ let arg_spec_list =
 let handle_anonimous_arg s =
   let i =
     match () with
-    | ()  when is_document_file s   -> (DocumentFile, s)
-    | ()  when is_header_file s     -> (HeaderFile, s)
-    | _                             -> raise (IllegalExtension(s))
+    | ()  when is_document_file s -> (DocumentFile, s)
+    | ()  when is_header_file s   -> (HeaderFile, s)
+    | _                           -> raise (IllegalExtension(s))
   in
   input_acc_ref := Alist.extend (!input_acc_ref) i
 
@@ -399,15 +447,7 @@ let handle_anonimous_arg s =
 let () =
   error_log_environment (fun () ->
     Arg.parse arg_spec_list handle_anonimous_arg "";
-    FreeID.initialize ();
-    BoundID.initialize ();
-    TypeID.initialize ();
-    Typeenv.initialize_id ();
-    EvalVarID.initialize ();
-    let libdir = !libdir_ref in
-    FontInfo.initialize libdir;
-    ImageInfo.initialize ();
-    CrossRef.initialize ();
+    initialize ();
     let (tyenv, env) = Primitives.make_environments () in
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
