@@ -154,9 +154,9 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
 
   |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))  tyid_cell
-  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                  tyid_cell
-  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tIB])) tyid_cell
+  |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
+  |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                         tyid_cell
+  |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tPADS; tIB])) tyid_cell
 
   |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
 

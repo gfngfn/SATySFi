@@ -31,9 +31,9 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
           | EmptyCell ->
               aux (Alist.extend restacc None) hgtmax dptmin rtail ctail
 
-          | MultiCell(numrow, numcol, hblst) ->
+          | MultiCell(numrow, numcol, pads, hblst) ->
               let (_, hgt, dpt) = LineBreak.get_natural_metrics hblst in
-              let len = hgt +% (Length.negate dpt) in
+              let len = (hgt +% pads.paddingT) +% ((Length.negate dpt) +% pads.paddingB) in
                 (* needs reconsideration *)
               let restelem =
                 if numrow < 1 then
@@ -50,7 +50,7 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
         begin
           match cell with
           | NormalCell(_)
-          | MultiCell(_, _, _)
+          | MultiCell(_, _, _, _)
             -> assert false  (* temporary; maybe should just warn users *)
 
           | EmptyCell ->
@@ -99,8 +99,9 @@ let determine_column_width (restprev : rest_column) (col : column) : rest_column
           | EmptyCell ->
               aux (Alist.extend restacc None) widmax rtail ctail
 
-          | MultiCell(numrow, numcol, hblst) ->
-              let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+          | MultiCell(numrow, numcol, pads, hblst) ->
+              let (widraw, _, _) = LineBreak.get_natural_metrics hblst in
+              let wid = pads.paddingL +% widraw +% pads.paddingR in
               let widmaxnew =
                 if numcol < 1 then
                   assert false
@@ -260,12 +261,19 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                 EvNormalCell(wid, hgtnmlcell, dptnmlcell, evhblst)
                 (* temporary; should return information about vertical psitioning *)
 
-          | MultiCell(nr, nc, hblst) ->
+          | MultiCell(nr, nc, pads, hblst) ->
               let widsingle = access widarr indexC in
               Format.printf "Tabular> indexC = %d, nc = %d\n" indexC nc;
               let widmulti = multi_cell_width widarr indexC nc in
               let vlencell = multi_cell_vertical vmetrarr indexR nr in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblst widmulti in
+              let hblstwithpads =
+                List.concat [
+                  [HorzPure(PHSFixedEmpty(pads.paddingL))];
+                  hblst;
+                  [HorzPure(PHSFixedEmpty(pads.paddingR))];
+                ]
+              in
+              let (evhblst, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
               let vlencontent = hgt +% (Length.negate dpt) in
               let lenspace = (vlencell -% vlencontent) *% 0.5 in
               let hgtcell = hgt +% lenspace in

@@ -469,7 +469,7 @@ let-inline ctx \stack-bottom lst =
 let-inline ctx \tabular lstf =
   let pads = (5pt, 5pt, 2pt, 2pt) in
   let cellf it = NormalCell(pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
-  let multif nr nc it = MultiCell(nr, nc, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
+  let multif nr nc it = MultiCell(nr, nc, pads, inline-fil ++ (read-inline ctx it) ++ inline-fil) in
   let empty = EmptyCell in
     tabular (lstf cellf multif empty)
 

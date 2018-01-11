@@ -1462,8 +1462,10 @@ and interpret_cell env ast : HorzBox.cell =
 
     | Constructor("MultiCell", TupleCons(IntegerConstant(nr),
                                  TupleCons(IntegerConstant(nc),
-                                   TupleCons(Horz(hblst), EndOfTuple)))) ->
-        HorzBox.MultiCell(nr, nc, hblst)
+                                   TupleCons(valuepads,
+                                     TupleCons(Horz(hblst), EndOfTuple))))) ->
+        let pads = interpret_paddings env valuepads in
+          HorzBox.MultiCell(nr, nc, pads, hblst)
 
     | _ -> report_bug_evaluator "interpret_cell" ast value
 
