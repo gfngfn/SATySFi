@@ -185,7 +185,7 @@ let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
     aux pbvblst
 
 
-let main (pdf : HandlePdf.t) (pagesch : page_scheme) (imvblst : intermediate_vert_box list) : unit =
+let main (pagesch : page_scheme) (imvblst : intermediate_vert_box list) =
 
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
@@ -203,15 +203,7 @@ let main (pdf : HandlePdf.t) (pagesch : page_scheme) (imvblst : intermediate_ver
   in
   let pbvblst = normalize imvblst in
   let pagelst = aux Alist.empty pbvblst in
-  let pdfret =
-    List.fold_left (fun pdf evvblstpage ->
-      pdf |> HandlePdf.write_page pagesch evvblstpage
-    ) pdf pagelst
-  in
-  (* temporary; size of paper should be variable *)
-  begin
-    HandlePdf.write_to_file pdfret;
-  end
+    pagelst
 
 (*
 let penalty_break_space = 100

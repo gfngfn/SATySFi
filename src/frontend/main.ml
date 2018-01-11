@@ -74,7 +74,7 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
         let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
           begin
-            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) ;
+            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty));
             let evaled = Evaluator.interpret env ast in
               match evaled with
               | EvaluatedEnvironment(newenv) ->
@@ -116,12 +116,17 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                 match valuedoc with
                 | DocumentValue(ctxdoc, imvblst) ->
                     let pdf = HandlePdf.create_empty_pdf file_name_out in
-                    begin
-                      print_endline (" ---- ---- ---- ----");
-                      print_endline ("  breaking contents into pages ...");
-                      PageBreak.main pdf ctxdoc.HorzBox.page_scheme imvblst;
-                      print_endline ("  output written on '" ^ file_name_out ^ "'.");
-                    end
+                    let pagesch = ctxdoc.HorzBox.page_scheme in
+                    print_endline (" ---- ---- ---- ----");
+                    print_endline ("  breaking contents into pages ...");
+                    let pagelst = PageBreak.main pagesch imvblst in
+                    let pdfret =
+                      List.fold_left (fun pdf evvblstpage ->
+                        pdf |> HandlePdf.write_page pagesch evvblstpage
+                      ) pdf pagelst
+                    in
+                    HandlePdf.write_to_file pdfret;
+                    print_endline ("  output written on '" ^ file_name_out ^ "'.");
 
                 | _ -> failwith "main; not a DocumentValue(...)"
               end
