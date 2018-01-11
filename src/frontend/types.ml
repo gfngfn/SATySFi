@@ -36,29 +36,10 @@ end = struct
   let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
 end
 
-(*
-module EvalVarID
-: sig
-    type t
-    val initialize : unit -> unit
-    val fresh : var_name -> t
-    val equal : t -> t -> bool
-    val show_direct : t -> string
-    val pp : Format.formatter -> t -> unit
-  end
-= struct
-    type t = int * string
-    let current_id = ref 0
-    let initialize () = ( current_id := 0 )
-    let fresh varnm = begin incr current_id ; (!current_id, varnm) end
-    let equal (i1, _) (i2, _) = (i1 = i2)
-    let show_direct (i, varnm) = "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
-    let pp fmt evid = Format.fprintf fmt "%s" (show_direct evid)
-  end
-*)
 
 type quantifiability = Quantifiable | Unquantifiable
 [@@deriving show]
+
 
 module FreeID_
 : sig
@@ -159,7 +140,6 @@ module BoundID_
     let show_direct f (i, kd) = "[" ^ (string_of_int i) ^ "::" ^ (f kd) ^ "]"
 
   end
-
 
 
 type manual_type = Range.t * manual_type_main
@@ -641,9 +621,6 @@ and abstract_tree =
   | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
   | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
-(*
-  | BackendFixedString         of abstract_tree * abstract_tree
-*)
   | BackendFixedEmpty           of abstract_tree
   | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
@@ -656,6 +633,8 @@ and abstract_tree =
   | BackendLineStackBottom      of abstract_tree
   | BackendScriptGuard          of abstract_tree * abstract_tree
   | BackendDiscretionary        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendRegisterCrossReference of abstract_tree * abstract_tree
+  | BackendGetCrossReference      of abstract_tree
 
 and pattern_match_cons =
   | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons

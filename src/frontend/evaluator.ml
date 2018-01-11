@@ -936,6 +936,22 @@ and interpret env ast =
       let hblst2 = interpret_horz env asth2 in
         Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 
+  | BackendRegisterCrossReference(astk, astv) ->
+      let k = interpret_string env astk in
+      let v = interpret_string env astv in
+      begin
+        CrossRef.register k v;
+        UnitConstant
+      end
+
+  | BackendGetCrossReference(astk) ->
+      let k = interpret_string env astk in
+      begin
+        match CrossRef.get k with
+        | None    -> Constructor("None", UnitConstant)
+        | Some(v) -> Constructor("Some", StringConstant(v))
+      end
+
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
       let (wid, _, _) = LineBreak.get_natural_metrics hblst in
