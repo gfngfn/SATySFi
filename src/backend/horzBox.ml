@@ -51,7 +51,14 @@ type font_with_ratio = font_abbrev * float * float
 [@@deriving show]
 
 type page_size =
+  | A0Paper
+  | A1Paper
+  | A2Paper
+  | A3Paper
   | A4Paper
+  | A5Paper
+  | USLetter
+  | USLegal
   | UserDefinedPaper of length * length
 [@@deriving show { with_path = false }]
 

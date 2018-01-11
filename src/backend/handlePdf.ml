@@ -251,7 +251,14 @@ let write_page (pagesch : page_scheme) (evvblst : evaled_vert_box list) ((pdf, p
 
   let paper =
     match pagesch.page_size with
+    | A0Paper                -> Pdfpaper.a0
+    | A1Paper                -> Pdfpaper.a1
+    | A2Paper                -> Pdfpaper.a2
+    | A3Paper                -> Pdfpaper.a3
     | A4Paper                -> Pdfpaper.a4
+    | A5Paper                -> Pdfpaper.a5
+    | USLetter               -> Pdfpaper.usletter
+    | USLegal                -> Pdfpaper.uslegal
     | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
   in
   let xinit = pagesch.left_page_margin in

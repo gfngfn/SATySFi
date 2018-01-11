@@ -654,11 +654,11 @@ and interpret env ast =
 
   | LambdaVertWithEnvironment(_, _, _) -> ast
 
-  | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)      
+  | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)
 
   | LambdaVertDetailedWithEnv(_, _, _) -> ast
 
-  | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)      
+  | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
 
   | LambdaHorzWithEnvironment(_, _, _) -> ast
 
@@ -1412,7 +1412,7 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
             | EvInputHorzText(s1) :: acctail -> (EvInputHorzText(s1 ^ s2) :: acctail)
             | _                              -> (evih :: acc)
           end
-          
+
     ) [] |> List.rev
   in
   let evihlst = eval_content env ihlst in
@@ -1661,7 +1661,14 @@ and interpret_length (env : environment) (ast : abstract_tree) : length =
 and interpret_page env ast : HorzBox.page_size =
   let value = interpret env ast in
     match value with
-    | Constructor("A4Paper", UnitConstant) -> HorzBox.A4Paper
+    | Constructor("A0Paper" , UnitConstant) -> HorzBox.A0Paper
+    | Constructor("A1Paper" , UnitConstant) -> HorzBox.A1Paper
+    | Constructor("A2Paper" , UnitConstant) -> HorzBox.A2Paper
+    | Constructor("A3Paper" , UnitConstant) -> HorzBox.A3Paper
+    | Constructor("A4Paper" , UnitConstant) -> HorzBox.A4Paper
+    | Constructor("A5Paper" , UnitConstant) -> HorzBox.A5Paper
+    | Constructor("USLetter", UnitConstant) -> HorzBox.USLetter
+    | Constructor("USLegal" , UnitConstant) -> HorzBox.USLegal
 
     | Constructor("UserDefinedPaper",
         TupleCons(LengthConstant(pgwid), TupleCons(LengthConstant(pghgt), EndOfTuple))) ->

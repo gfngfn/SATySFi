@@ -121,7 +121,14 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(tU)) tyid_language
 
   |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "A0Paper"          ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "A1Paper"          ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "A2Paper"          ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "A3Paper"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "A4Paper"          ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "A5Paper"          ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "USLetter"         ([], Poly(tU)) tyid_page
+  |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
 
   |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
