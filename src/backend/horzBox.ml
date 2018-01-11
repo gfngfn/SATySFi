@@ -401,9 +401,9 @@ and math =
   | MathLowerLimit        of math list * math list
 
 and cell =
-  | NormalCell of horz_box list
+  | NormalCell of paddings * horz_box list
   | EmptyCell
-  | MultiCell  of int * int * horz_box list
+  | MultiCell  of int * int * paddings * horz_box list
 
 and row = cell list
 
