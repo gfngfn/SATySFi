@@ -265,7 +265,6 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
               let widsingle = access widarr indexC in
               Format.printf "Tabular> indexC = %d, nc = %d\n" indexC nc;
               let widmulti = multi_cell_width widarr indexC nc in
-              let vlencell = multi_cell_vertical vmetrarr indexR nr in
               let hblstwithpads =
                 List.concat [
                   [HorzPure(PHSFixedEmpty(pads.paddingL))];
@@ -274,10 +273,17 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                 ]
               in
               let (evhblst, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
-              let vlencontent = hgt +% (Length.negate dpt) in
-              let lenspace = (vlencell -% vlencontent) *% 0.5 in
-              let hgtcell = hgt +% lenspace in
-              let dptcell = dpt -% lenspace in
+              let (hgtcell, dptcell) =
+                if nr < 1 then
+                  assert false
+                else if nr = 1 then
+                  access vmetrarr indexR
+                else
+                  let vlencell = multi_cell_vertical vmetrarr indexR nr in
+                  let vlencontent = hgt +% (Length.negate dpt) in
+                  let lenspace = (vlencell -% vlencontent) *% 0.5 in
+                    (hgt +% lenspace, dpt -% lenspace)
+              in
                 EvMultiCell(nr, nc, widsingle, widmulti, hgtcell, dptcell, evhblst)
         in
           Alist.extend evcellacc evcell
