@@ -4,8 +4,11 @@ type t = int
 
 let current_id = ref 0
 
+(*
+let min_id_in_document = ref 0
+*)
 
-let header_id_max = ref 0
+let equal = (=)
 
 
 let initialize () =
@@ -19,13 +22,22 @@ let fresh () =
     stid
   end
 
-
+(*
 let set () =
-  header_id_max := !current_id
+  min_id_in_document := !current_id
 
 
 let reset () =
-  current_id := !header_id_max
+  current_id := !min_id_in_document
+
+
+let should_be_omitted stid =
+  stid >= !min_id_in_document
+*)
+
+
+let show_direct stid =
+  "<SID:" ^ (string_of_int stid) ^ ">"
 
 
 let pp fmt _ = Format.fprintf fmt "<store-id>"

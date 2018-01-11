@@ -102,7 +102,9 @@ let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
   begin
+(*
     StoreID.reset ();
+*)
     FontInfo.initialize (!libdir_ref);
     ImageInfo.initialize ();
   end
@@ -146,10 +148,12 @@ let read_document_file (tyenv : Typeenv.t) envinit file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(DocumentType)) ->
+(*
               StoreID.set ();
+*)
               let rec aux () =
                 reset ();
-                let env = copy_environment envinit in
+                let env = replicate_environment envinit in
                 let valuedoc = Evaluator.interpret env ast in
                 begin
                   match valuedoc with

@@ -320,7 +320,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 
 
 let envinit : environment =
-  (Hashtbl.create 128, Hashtbl.create 128)
+  (Hashtbl.create 128, StoreIDHashTable.create 128)
 
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =

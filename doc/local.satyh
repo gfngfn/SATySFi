@@ -68,10 +68,13 @@ let-block ctx +command name ty inner =
     command-scheme ctx ib-name ty inner
 
 
+let-mutable flag <- true
+
+
 let-block ctx +commands namelst ty inner =
   let ctx-name = name-context ctx in
   let ib-comma = read-inline ctx {,\ } in
-  let-mutable flag <- true in
+  let () = flag <- true in
   let ib-name =
     namelst |> List.fold-left (fun acc name -> (
       let ib-name = read-inline ctx-name (embed-string name) in
