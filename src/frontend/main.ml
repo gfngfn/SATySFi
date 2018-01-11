@@ -1,9 +1,15 @@
 open Types
 open Display
 
-exception MainError of string
 
-type line = NormalLine of string | DisplayLine of string
+exception IllegalExtension of string
+exception NotAHeaderFile   of string * Typeenv.t * mono_type
+exception NotADocumentFile of string * Typeenv.t * mono_type
+
+
+type line =
+  | NormalLine  of string
+  | DisplayLine of string
 
 type error_category =
   | Lexer
@@ -20,6 +26,7 @@ let show_error_category = function
   | Evaluator   -> "Error during Evaluation"
   | Interface   -> "Error"
   | System      -> "Error"
+
 
 let show_control_sequence_type : bool ref = ref false
 let show_function_type         : bool ref = ref false
@@ -72,49 +79,22 @@ let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
               match evaled with
               | EvaluatedEnvironment(newenv) ->
                   begin
-                    ( if !show_control_sequence_type then
+                    begin
+                      if !show_control_sequence_type then
                         if !show_function_type then
                           (* print_endline (Typeenv.string_of_type_environment newtyenv "Environment") *) ()
                         else
                           (* print_endline (Typeenv.string_of_control_sequence_type newtyenv) *) ()
-                      else () ) ;
+                      else ()
+                    end;
                     (newtyenv, newenv)
                   end
-              | _ -> raise (MainError("'" ^ file_name_in ^ "' is not a header file"))
+
+              | _ -> raise (NotAHeaderFile(file_name_in, newtyenv, ty))
           end
       end
   end
 
-(*n
-let read_standalone_file (tyenv : Typeenv.t) env file_name_in file_name_out =
-  begin
-    print_endline (" ---- ---- ---- ----") ;
-    print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
-    let file_in = open_in file_name_in in
-      begin
-        Lexer.reset_to_progexpr () ;
-        let utast = Parser.main Lexer.cut_token (Lexing.from_channel file_in) in
-        let (ty, _, ast) = Typechecker.main tyenv utast in
-        let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
-          match ty with
-          | (_, BaseType(TextColType)) ->
-              let astfinal = VertLex(UninitializedContext, ast) in
-              let valuefinal = Evaluator.interpret env astfinal in
-              begin
-                match valuefinal with
-                | Vert(imvblst) ->
-                    let pdf = HandlePdf.create_empty_pdf file_name_out in
-                    begin
-                      PageBreak.main pdf imvblst;
-                      print_endline (" ---- ---- ---- ----");
-                      print_endline ("  output written on '" ^ file_name_out ^ "'.");
-                    end
-                | _ -> failwith "main; not a Vert(_)"
-              end
-          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not text-col; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
-      end
-  end
-*)
 
 let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
   begin
@@ -131,17 +111,6 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
           match ty with
           | (_, BaseType(DocumentType)) ->
-(*
-              let pagesch =
-                HorzBox.({
-                  page_size        = A4Paper;
-                  left_page_margin = Length.of_pdf_point 100.;
-                  top_page_margin  = Length.of_pdf_point 100.;
-                  area_width       = Length.of_pdf_point 400.;
-                  area_height      = Length.of_pdf_point 650.;
-                })  (* temporary *)
-              in
-*)
               let valuedoc = Evaluator.interpret env ast in
               begin
                 match valuedoc with
@@ -157,7 +126,7 @@ let read_document_file (tyenv : Typeenv.t) env file_name_in file_name_out =
                 | _ -> failwith "main; not a DocumentValue(...)"
               end
 
-          | _  -> raise (MainError("the output of '" ^ file_name_in ^ "' is not of type 'document'; it's " ^ (string_of_mono_type tyenv ty) ^ "."))
+          | _  -> raise (NotADocumentFile(file_name_in, tyenv, ty))
       end
   end
 
@@ -166,6 +135,24 @@ let error_log_environment suspended =
   try
     suspended ()
   with
+  | IllegalExtension(s) ->
+      report_error Interface [
+        NormalLine("File '" ^ s ^ "' has illegal filename extension;");
+        NormalLine("maybe you need to use '--doc', or '--header' option.");
+      ]
+
+  | NotAHeaderFile(file_name_in, tyenv, ty) ->
+      report_error Typechecker [
+        NormalLine("File '" ^ file_name_in ^ "' is not a header file; it is of type");
+        DisplayLine(string_of_mono_type tyenv ty);
+      ]
+
+  | NotADocumentFile(file_name_in, tyenv, ty) ->
+      report_error Typechecker [
+        NormalLine("File '" ^ file_name_in ^ "' is not a document file; it is of type");
+        DisplayLine(string_of_mono_type tyenv ty);
+      ]
+
   | Lexer.LexError(rng, s) ->
       report_error Lexer [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -321,9 +308,9 @@ let error_log_environment suspended =
           NormalLine("at the same time, but these are incompatible.");
         ] additional)
 
-  | Evaluator.EvalError(s)          -> report_error Evaluator [ NormalLine(s); ]
-  | MainError(s)                    -> report_error Interface [ NormalLine(s); ]
-  | Sys_error(s)                    -> report_error System    [ NormalLine(s); ]
+  | Evaluator.EvalError(s) -> report_error Evaluator [ NormalLine(s); ]
+
+  | Sys_error(s) -> report_error System    [ NormalLine(s); ]
 (*
   | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
 *)
@@ -331,9 +318,7 @@ let error_log_environment suspended =
 type input_file_kind =
   | DocumentFile
   | HeaderFile
-(*
-  | StandaloneFile
-*)
+
 
 let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : string) =
     match input_list with
@@ -348,10 +333,7 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
     | (HeaderFile, file_name_in) :: tail ->
           let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
             main newtyenv newenv tail file_name_out
-(*
-    | (StandaloneFile, file_name_in) :: tail ->
-          read_standalone_file tyenv env file_name_in file_name_out
-*)
+
 
 let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
 let output_name_ref : string ref = ref "saty.out"
@@ -404,7 +386,7 @@ let handle_anonimous_arg s =
     match () with
     | ()  when is_document_file s   -> (DocumentFile, s)
     | ()  when is_header_file s     -> (HeaderFile, s)
-    | _                             -> raise (MainError("File '" ^ s ^ "' has illegal filename extension; maybe you need to use '--doc', '--standalone', or '--header' option."))
+    | _                             -> raise (IllegalExtension(s))
   in
   input_acc_ref := Alist.extend (!input_acc_ref) i
 
@@ -418,7 +400,7 @@ let () =
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
     let libdir = !libdir_ref in
-    FontInfo.initialize libdir;  (* temporary *)
+    FontInfo.initialize libdir;
     ImageInfo.initialize ();
     CrossRef.initialize ();
     let (tyenv, env) = Primitives.make_environments () in
