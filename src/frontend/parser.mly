@@ -18,7 +18,7 @@
     | ([], [])                                -> Range.dummy "empty-input-horz"
     | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
     | _                                       -> assert false
-    
+
 
   let make_range sttx endx =
     let extract x =
@@ -96,7 +96,7 @@
     let len = String.length str in
       if len = 0 then "" else
         match String.sub str 0 1 with
-        | " " -> omit_pre_spaces (String.sub str 1 (len - 1)) 
+        | " " -> omit_pre_spaces (String.sub str 1 (len - 1))
         | _   -> str
 
   let rec omit_post_spaces str =
@@ -520,7 +520,9 @@ nxtoplevel:
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETMATH; dec=nxmathdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
+(*
   | top=LETVERTDETAILED; dec=nxvertdetaileddec; subseq=nxtopsubseq           { make_let_expression top dec subseq }
+*)
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
@@ -604,6 +606,7 @@ nxmathdec:
         (None, csnm, (rng, UTLambdaMath(curried))) :: []
       }
 ;
+(*
 nxvertdetaileddec:
   | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
       let (rngcs, csnm) = vcmdtok in
@@ -613,6 +616,7 @@ nxvertdetaileddec:
         (None, csnm, (rng, UTLambdaVertDetailed(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
+*)
 nxdecargpart:
   | COLON; mty=txfunc                                       { (Some(mty), []) }
   | COLON; mty=txfunc; BAR; argvarlst=nonempty_list(patbot) { (Some(mty), argvarlst) }
@@ -1161,4 +1165,3 @@ vxbot:
           make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
       }
 ;
-

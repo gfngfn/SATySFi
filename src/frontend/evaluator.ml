@@ -12,7 +12,19 @@ type eval_input_horz_element =
 
 let report_bug_evaluator msg ast value =
   Format.printf "[Bug]@ %s:" msg;
-  Format.printf "%a@ --->*@ %a" pp_abstract_tree ast pp_abstract_tree value;
+  Format.printf "%a@ --->*@ %a" pp_abstract_tree ast pp_syntactic_value value;
+  failwith ("bug: " ^ msg)
+
+
+let report_bug_evaluator_ast msg ast =
+  Format.printf "[Bug]@ %s:" msg;
+  Format.printf "%a" pp_abstract_tree ast;
+  failwith ("bug: " ^ msg)
+
+
+let report_bug_evaluator_value msg value =
+  Format.printf "[Bug]@ %s:" msg;
+  Format.printf "%a" pp_syntactic_value value;
   failwith ("bug: " ^ msg)
 
 
@@ -85,15 +97,27 @@ let adjust_to_last_line evvblst =
       | (None, totalhgt)      -> (totalhgt, Length.zero)
 
 
-let interpret_list interpretf (env : environment) extractf (ast : abstract_tree) =
+let get_list getf value =
   let rec aux acc value =
     match value with
-    | ListCons(vhead, vtail) -> aux ((extractf vhead) :: acc) vtail
-    | EndOfList              -> List.rev acc
-    | _                      -> report_bug_evaluator "interpret_list" ast value
+    | ListCons(vhead, vtail) -> aux (Alist.extend acc (getf vhead)) vtail
+    | EndOfList              -> Alist.to_list acc
+    | _                      -> report_bug_evaluator_value "get_list" value
   in
+    aux Alist.empty value
+
+
+let interpret_list interpretf (env : environment) getf (ast : abstract_tree) =
   let value = interpretf env ast in
-    aux [] value
+    get_list getf value
+
+
+let interpret_option interpretf (env : environment) (getf : syntactic_value -> 'a) (ast : abstract_tree) : 'a option =
+  let value = interpretf env ast in
+    match value with
+    | Constructor("None", UnitConstant) -> None
+    | Constructor("Some", valuesub)     -> Some(getf valuesub)
+    | _                                 -> report_bug_evaluator "interpret_option" ast value
 
 
 let rec reduce_beta envf evid valuel astdef =
@@ -112,20 +136,9 @@ and reduce_beta_list env valuef astarglst =
             let valuefnew = reduce_beta envf evid valuearg astdef in
             reduce_beta_list env valuefnew astargtail
 
-        | _ -> report_bug_evaluator "reduce_beta_list" valuef valuef
+        | _ -> report_bug_evaluator_value "reduce_beta_list" valuef
       end
 
-(*
-and interpret_horz_boxes env astrow =
-  let valuerow = interpret env astrow in
-  let rec aux value =
-    match value with
-    | Horz(hblst)                -> hblst
-    | HorzConcat(value1, value2) -> List.append (aux value1) (aux value2)
-    | _                          -> report_bug_evaluator ("interpret_horz_boxes; " ^ (Display.string_of_ast valuerow))
-  in
-    aux valuerow
-*)
 
 and interpret_vert env ast =
   let value = interpret env ast in
@@ -136,9 +149,13 @@ and interpret_vert env ast =
 
 and interpret_horz env ast =
   let value = interpret env ast in
-    match value with
-    | Horz(hblst) -> hblst
-    | _           -> report_bug_evaluator "interpret_horz" ast value
+    get_horz value
+
+
+and get_horz value =
+  match value with
+  | Horz(hblst) -> hblst
+  | _           -> report_bug_evaluator_value "get_horz" value
 
 
 and interpret_point env ast =
@@ -146,6 +163,7 @@ and interpret_point env ast =
     match value with
     | TupleCons(LengthConstant(lenx),
         TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
+
     | _ -> report_bug_evaluator "interpret_point" ast value
 
 
@@ -158,6 +176,10 @@ and interpret_prepath env ast =
 
 and interpret_paddings env ast =
   let value = interpret env ast in
+    get_paddings value
+
+
+and get_paddings value =
   match value with
   | TupleCons(LengthConstant(lenL),
       TupleCons(LengthConstant(lenR),
@@ -170,7 +192,7 @@ and interpret_paddings env ast =
         HorzBox.paddingB = lenB;
       }
 
-  | _ -> report_bug_evaluator "interpret_paddings" ast value
+  | _ -> report_bug_evaluator_value "interpret_paddings" value
 
 
 and interpret_decoset env ast =
@@ -218,63 +240,63 @@ and graphics_of_list value =
     match value with
     | EndOfList                             -> List.rev acc
     | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
-    | _                                     -> report_bug_evaluator "make_frame_deco" value value
+    | _                                     -> report_bug_evaluator_value "make_frame_deco" value
   in
     List.concat (aux [] value)
 
 
 and make_frame_deco env valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-    let valuewid = LengthConstant(wid) in
-    let valuehgt = LengthConstant(hgt) in
-    let valuedpt = LengthConstant(Length.negate dpt) in
+    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
+    let astwid = Value(LengthConstant(wid)) in
+    let asthgt = Value(LengthConstant(hgt)) in
+    let astdpt = Value(LengthConstant(Length.negate dpt)) in
       (* -- depth values for users are nonnegative -- *)
-    let valueret = reduce_beta_list env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
+    let valueret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
       graphics_of_list valueret
   )
 
 
 and make_paren env valueparenf : HorzBox.paren =
   (fun hgt dpt hgtaxis fontsize color ->
-    let valuehgt      = LengthConstant(hgt) in
-    let valuedpt      = LengthConstant(Length.negate dpt) in
+    let asthgt      = Value(LengthConstant(hgt)) in
+    let astdpt      = Value(LengthConstant(Length.negate dpt)) in
       (* -- depth values for users are nonnegative -- *)
-    let valuehgtaxis  = LengthConstant(hgtaxis) in
-    let valuefontsize = LengthConstant(fontsize) in
-    let valuecolor    = make_color_value color in
-    let valueret = reduce_beta_list env valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
+    let asthgtaxis  = Value(LengthConstant(hgtaxis)) in
+    let astfontsize = Value(LengthConstant(fontsize)) in
+    let astcolor    = Value(make_color_value color) in
+    let valueret = reduce_beta_list env valueparenf [asthgt; astdpt; asthgtaxis; astfontsize; astcolor] in
       match valueret with
       | TupleCons(valuehorz, TupleCons(valuekernf, EndOfTuple)) ->
-          let hblst = interpret_horz env valuehorz in
+          let hblst = interpret_horz env (Value(valuehorz)) in
           let kernf = make_math_kern_func env valuekernf in
             (hblst, kernf)
 
       | _ ->
-          report_bug_evaluator "make_paren" valueret valueret
+          report_bug_evaluator_value "make_paren" valueret
   )
 
 
 and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
   (fun ypos ->
-    let valueypos = LengthConstant(ypos) in
-    let valueret = reduce_beta_list env valuekernf [valueypos] in
-      interpret_length env valueret
+    let astypos = Value(LengthConstant(ypos)) in
+    let valueret = reduce_beta_list env valuekernf [astypos] in
+      get_length valueret
   )
 
 
 and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
-    let valuefontsize = LengthConstant(fontsize) in
-    let valueypos = LengthConstant(ypos) in
-    let valueret = reduce_beta_list env valuekernf [valuefontsize; valueypos] in
-      interpret_length env valueret
+    let astfontsize = Value(LengthConstant(fontsize)) in
+    let astypos     = Value(LengthConstant(ypos)) in
+    let valueret = reduce_beta_list env valuekernf [astfontsize; astypos] in
+      get_length valueret
   )
 
 and make_inline_graphics env valueg =
   (fun (xpos, ypos) ->
-    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-    let valueret = reduce_beta_list env valueg [valuepos] in
+    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
+    let valueret = reduce_beta_list env valueg [astpos] in
       graphics_of_list valueret
   )
 
@@ -284,6 +306,9 @@ and interpret env ast =
 
 (* ---- basic value ---- *)
 
+  | Value(v) -> v
+
+(*
   | StringEmpty                           -> ast
   | IntegerConstant(_)                    -> ast
   | FloatConstant(_)                      -> ast
@@ -292,14 +317,35 @@ and interpret env ast =
   | UnitConstant                          -> ast
   | EvaluatedEnvironment(_)               -> ast
   | FuncWithEnvironment(_, _, _)          -> ast
-
-  | InputHorz(ihlst)                      -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
-
   | InputHorzWithEnvironment(_, _)        -> ast
-
-  | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
-
   | InputVertWithEnvironment(_, _)        -> ast
+  | LengthConstant(_) -> ast
+  | MathValue(_) -> ast
+  | ImageKey(_) -> ast
+  | PathValue(_) -> ast
+  | PrePathValue(_) -> ast
+  | GraphicsValue(_) -> ast
+  | FontDesignation(_) -> ast
+  | Horz(_) -> ast
+  | Vert(_) -> ast
+  | Context(_) -> ast
+  | UninitializedContext -> ast
+  | LambdaVertWithEnvironment(_, _, _) -> ast
+  | LambdaHorzWithEnvironment(_, _, _) -> ast
+  | DocumentValue(_, _) -> ast
+  | FrozenCommand(_) -> ast
+  | EndOfList -> ast
+  | EndOfTuple -> ast
+  | Location(loc) -> Location(loc)
+*)
+
+  | FinishHeaderFile -> EvaluatedEnvironment(env)
+
+  | FinishStruct -> EvaluatedEnvironment(env)
+
+  | InputHorz(ihlst) -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
+
+  | InputVert(ivlst) -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
 
   | LengthDescription(flt, unitnm) ->
       let len =
@@ -308,11 +354,9 @@ and interpret env ast =
         | "cm"   -> Length.of_centimeter flt
         | "mm"   -> Length.of_millimeter flt
         | "inch" -> Length.of_inch flt
-        | _      -> report_bug_evaluator "LengthDescription; unknown unit name" ast ast
+        | _      -> report_bug_evaluator_ast "LengthDescription; unknown unit name" ast
       in
         LengthConstant(len)
-
-  | LengthConstant(_) -> ast
 
   | Concat(ast1, ast2) ->
       let value1 = interpret env ast1 in
@@ -326,8 +370,6 @@ and interpret env ast =
         end
 
 (* ---- values for backend ---- *)
-
-  | MathValue(_) -> ast
 
   | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, astcp, astctx) ->
       let s = interpret_string env asts in
@@ -355,8 +397,8 @@ and interpret env ast =
       let valuercd = interpret env astrcd in
       let rcd =
         match valuercd with
-        | Record(rcd) -> rcd
-        | _           -> report_bug_evaluator "BackendMathVariantCharDirect: not a record" astrcd valuercd
+        | RecordValue(rcd) -> rcd
+        | _                -> report_bug_evaluator "BackendMathVariantCharDirect: not a record" astrcd valuercd
       in
       begin
         match
@@ -379,15 +421,15 @@ and interpret env ast =
             Some(vcpF),
             Some(vcpBF),
             Some(vcpDS) ) ->
-              let cpI  = interpret_int env vcpI  in
-              let cpBI = interpret_int env vcpBI in
-              let cpR  = interpret_int env vcpR  in
-              let cpBR = interpret_int env vcpBR in
-              let cpS  = interpret_int env vcpS  in
-              let cpBS = interpret_int env vcpBS in
-              let cpF  = interpret_int env vcpF  in
-              let cpBF = interpret_int env vcpBF in
-              let cpDS = interpret_int env vcpDS in
+              let cpI  = get_int vcpI  in
+              let cpBI = get_int vcpBI in
+              let cpR  = get_int vcpR  in
+              let cpBR = get_int vcpBR in
+              let cpS  = get_int vcpS  in
+              let cpBS = get_int vcpBS in
+              let cpF  = get_int vcpF  in
+              let cpBF = get_int vcpBF in
+              let cpDS = get_int vcpDS in
               let mvsty =
                 HorzBox.({
                   math_italic        = Uchar.of_int cpI ;
@@ -437,7 +479,7 @@ and interpret env ast =
         MathValue([HorzBox.MathFraction(mlst1, mlst2)])
 
   | BackendMathRadical(astm1, astm2) ->
-      let mlst1opt = interpret_option env (interpret_math env) astm1 in
+      let mlst1opt = interpret_option interpret env get_math astm1 in
       let mlst2 = interpret_math env astm2 in
       let radical = Primitives.default_radical in  (* temporary; should be variable *)
       begin
@@ -503,7 +545,7 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
       let hblstf ctx =
-          interpret_horz env (Apply(valuef, Context(ctx)))
+          interpret_horz env (Apply(Value(valuef), Value(Context(ctx))))
       in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
@@ -525,8 +567,8 @@ and interpret env ast =
         Horz(hblst)
 
   | BackendTabular(asttabular) ->
-      let interpret_row : abstract_tree -> HorzBox.cell list = interpret_list interpret env (interpret_cell env) in
-      let tabular : HorzBox.row list = interpret_list interpret env interpret_row asttabular in
+      let get_row : syntactic_value -> HorzBox.cell list = get_list get_cell in
+      let tabular : HorzBox.row list = interpret_list interpret env get_row asttabular in
       let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
         Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
 
@@ -540,8 +582,6 @@ and interpret env ast =
       let srcpath = interpret_string env aststr in
       let imgkey = ImageInfo.add_image srcpath in
         ImageKey(imgkey)
-
-  | ImageKey(_) -> ast
 
   | BackendUseImageByWidth(astimg, astwid) ->
       let valueimg = interpret env astimg in
@@ -560,14 +600,10 @@ and interpret env ast =
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
         PathValue([HorzBox.GeneralPath(pt0, pathelemlst, closingopt)])
 
-  | PathValue(_) -> ast
-
   | PathUnite(astpath1, astpath2) ->
       let pathlst1 = interpret_path_value env astpath1 in
       let pathlst2 = interpret_path_value env astpath2 in
         PathValue(List.append pathlst1 pathlst2)
-
-  | PrePathValue(_) -> ast
 
   | PrePathBeginning(astpt0) ->
       let pt0 = interpret_point env astpt0 in
@@ -598,59 +634,25 @@ and interpret env ast =
       let ptT = interpret_point env astptT in
       let prepath = interpret_prepath env astprepath in
         PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
-(*
-  | GraphicsContext(_) -> ast
-*)
-  | GraphicsValue(_) -> ast
-
-  | FontDesignation(_) -> ast
-
-  | Horz(_) -> ast
 
   | HorzConcat(ast1, ast2) ->
       let hblst1 = interpret_horz env ast1 in
       let hblst2 = interpret_horz env ast2 in
         Horz(List.append hblst1 hblst2)
-(*
-      begin
-        match (value1, value2) with
-        | (Horz(evhblst1), Horz(evhblst2)) -> Horz(List.append evhblst1 evhblst2)
-        | _ -> report_bug_evaluator ("HorzConcat; " ^ (Display.string_of_ast value1) ^ ", " ^ (Display.string_of_ast value2))
-        | (_, Horz([])) -> value1
-        | (_, _)        -> HorzConcat(value1, value2)
-      end
-*)
-
-  | Vert(_) -> ast
 
   | VertConcat(ast1, ast2) ->
       let imvblst1 = interpret_vert env ast1 in
       let imvblst2 = interpret_vert env ast2 in
         Vert(List.append imvblst1 imvblst2)
-(*
-      begin
-        match (value1, value2) with
-        | (Vert([]), _) -> value2
-        | (_, Vert([])) -> value1
-        | (_, _)        -> VertConcat(value1, value2)
-      end
-*)
-
-  | Context(_) -> ast
-
-  | UninitializedContext -> ast
 
   | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
 
-  | LambdaVertWithEnvironment(_, _, _) -> ast
-
+(*
   | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)
 
   | LambdaVertDetailedWithEnv(_, _, _) -> ast
-
+*)
   | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
-
-  | LambdaHorzWithEnvironment(_, _, _) -> ast
 
   | HorzLex(astctx, ast1) ->
       let valuectx = interpret env astctx in
@@ -689,8 +691,6 @@ and interpret env ast =
       let imvblst = interpret_vert env astvert in
         DocumentValue(ctx, imvblst)
 
-  | DocumentValue(_, _) -> ast
-
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
       let ctx = interpret_context env astctx in
       let valuek = interpret env astk in
@@ -699,7 +699,7 @@ and interpret env ast =
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }))
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
+      let imvblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
         Vert(HorzBox.([
           ImVertTopMargin(true, ctx.paragraph_top);
           ImVertFrame(pads,
@@ -718,7 +718,7 @@ and interpret env ast =
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = wid; }))
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
+      let imvblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let evvblst = PageBreak.solidify imvblst in
 
       let (hgt, dpt) = adjust_to_first_line evvblst in
@@ -732,20 +732,20 @@ and interpret env ast =
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = wid; }))
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
+      let imvblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let evvblst = PageBreak.solidify imvblst in
       let (hgt, dpt) = adjust_to_last_line evvblst in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | BackendLineStackTop(astlst) ->
-      let hblstlst = interpret_list interpret env (interpret_horz env) astlst in
+      let hblstlst = interpret_list interpret env get_horz astlst in
       let (wid, evvblst) = make_line_stack hblstlst in
       let (hgt, dpt) = adjust_to_first_line evvblst in
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
 
   | BackendLineStackBottom(astlst) ->
-      let hblstlst = interpret_list interpret env (interpret_horz env) astlst in
+      let hblstlst = interpret_list interpret env get_horz astlst in
       let (wid, evvblst) = make_line_stack hblstlst in
       let (hgt, dpt) = adjust_to_last_line evvblst in
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
@@ -774,8 +774,6 @@ and interpret env ast =
         | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context pagesch evidcmd)
         | _ -> report_bug_evaluator "PrimitiveGetInitialContext" astcmd valuecmd
       end
-
-  | FrozenCommand(_) -> ast
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
@@ -949,21 +947,18 @@ and interpret env ast =
 
 (* ---- list value ---- *)
 
-  | EndOfList -> ast
+  | PrimitiveTupleCons(asthd, asttl) ->
+      let valuehd = interpret env asthd in
+      let valuetl = interpret env asttl in
+        TupleCons(valuehd, valuetl)
 
-  | ListCons(asthd, asttl) ->
+  | PrimitiveListCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         ListCons(valuehd, valuetl)
 
 (* ---- tuple value ---- *)
 
-  | EndOfTuple -> ast
-
-  | TupleCons(asthd, asttl) ->
-      let valuehd = interpret env asthd in
-      let valuetl = interpret env asttl in
-        TupleCons(valuehd, valuetl)
 
 (* -- fundamentals -- *)
 
@@ -973,11 +968,11 @@ and interpret env ast =
         match find_in_environment env evid with
         | Some(rfvalue) ->
           let value = !rfvalue in
-          let () = PrintForDebug.evalE ("  -> " ^ (Display.string_of_ast value)) in  (* for debug *)
+          let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
             value
 
         | None ->
-            report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast ast
+            report_bug_evaluator_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
       end
 
   | LetIn(mutletcons, astrest) ->
@@ -1003,13 +998,13 @@ and interpret env ast =
 
 (* ---- record ---- *)
 
-  | Record(asc) -> Record(Assoc.map_value (interpret env) asc)
+  | Record(asc) -> RecordValue(Assoc.map_value (interpret env) asc)
 
   | AccessField(ast1, fldnm) ->
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | Record(asc1) ->
+        | RecordValue(asc1) ->
             begin
               match Assoc.find_opt asc1 fldnm with
               | None    -> report_bug_evaluator ("AccessField: field '" ^ fldnm ^ "' not found") ast1 value1
@@ -1047,18 +1042,16 @@ and interpret env ast =
         interpret envnew astaft
 
   | Sequential(ast1, ast2) ->
-      let () = PrintForDebug.evalE ("Sequential(" ^ (Display.string_of_ast ast1) ^ ", " ^ (Display.string_of_ast ast2) ^ ")") in  (* for debug *)
+      let () = PrintForDebug.evalE ("Sequential(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
       let value1 = interpret env ast1 in
-      let () = PrintForDebug.evalE ("value1 = " ^ (Display.string_of_ast value1)) in  (* for debug *)
+      let () = PrintForDebug.evalE ("value1 = " ^ (show_syntactic_value value1)) in  (* for debug *)
       let value2 = interpret env ast2 in
-      let () = PrintForDebug.evalE ("value2 = " ^ (Display.string_of_ast value2)) in  (* for debug *)
+      let () = PrintForDebug.evalE ("value2 = " ^ (show_syntactic_value value2)) in  (* for debug *)
         begin
           match value1 with
           | UnitConstant -> value2
           | _            -> report_bug_evaluator "Sequential: first operand value is not a UnitConstant" ast1 value1
         end
-
-  | Location(loc) -> Location(loc)
 
   | Overwrite(evid, astnew) ->
       begin
@@ -1073,11 +1066,11 @@ and interpret env ast =
                       update_location env stid valuenew;
                       UnitConstant
                     end
-              | _ -> report_bug_evaluator "Overwrite: value is not a Location" value value
+              | _ -> report_bug_evaluator_value "Overwrite: value is not a Location" value
             end
 
         | None ->
-            report_bug_evaluator ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+            report_bug_evaluator_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
       end
 
   | WhileDo(astb, astc) ->
@@ -1141,14 +1134,11 @@ and interpret env ast =
 *)
 (* ---- others ---- *)
 
-  | FinishHeaderFile -> EvaluatedEnvironment(env)
-
-  | FinishStruct     -> EvaluatedEnvironment(env)
-
   | PatternMatch(astobj, pmcons) ->
-      let valueobj = interpret env astobj in select_pattern env valueobj pmcons
+      let valueobj = interpret env astobj in
+        select_pattern env valueobj pmcons
 
-  | Constructor(constrnm, astcont) ->
+  | NonValueConstructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
         Constructor(constrnm, valuecont)
 
@@ -1183,7 +1173,7 @@ and interpret env ast =
         IntegerConstant(String.length str)
 
   | PrimitiveStringUnexplode(astil) ->
-      let ilst = interpret_list interpret env (interpret_int env) astil in
+      let ilst = interpret_list interpret env get_int astil in
       let s =
         (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8
       in
@@ -1209,8 +1199,7 @@ and interpret env ast =
 
   | PrimitiveDrawText(astpt, asttext) ->
       let pt = interpret_point env astpt in
-      let valuetext = interpret env asttext in
-      let hblst = interpret_horz env valuetext in
+      let hblst = interpret_horz env asttext in
       let (evhblst, _, _) = LineBreak.natural hblst in
       let pdfops = HandlePdf.pdfops_of_evaled_horz_box pt evhblst in
         GraphicsValue(pdfops)
@@ -1343,7 +1332,7 @@ and interpret env ast =
         BooleanConstant(HorzBox.(len2 <% len1))
 
 
-and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
+and interpret_input_vert env (valuectx : syntactic_value) (ivlst : input_vert_element list) : syntactic_value =
   let rec aux env ivlst =
     ivlst |> List.fold_left (fun imvbacc iv ->
       match iv with
@@ -1357,7 +1346,7 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
                 begin
                   match valueret with
                   | Vert(imvblst) -> List.rev_append imvblst imvbacc
-                  | _             -> report_bug_evaluator "interpret_input_vert" valueret valueret
+                  | _             -> report_bug_evaluator_value "interpret_input_vert" valueret
                 end
 
             | _ -> report_bug_evaluator "interpret_input_vert: other than LambdaVertWithEnvironment" astcmd valuecmd
@@ -1380,9 +1369,9 @@ and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstra
     Vert(imvblst)
 
 
-and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst : input_horz_element list) : abstract_tree =
+and interpret_input_horz (env : environment) (valuectx : syntactic_value) (ihlst : input_horz_element list) : syntactic_value =
 
-  let ctx = interpret_context env valuectx in
+  let ctx = get_context valuectx in
 
   let rec eval_content env ihlst =
     ihlst |> List.fold_left (fun evihacc ih ->
@@ -1407,7 +1396,7 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
                   List.rev_append evihlst evihacc
 
             | _ ->
-                Format.printf "eval_content; %a --->* %a" pp_abstract_tree ast0 pp_abstract_tree value0;
+                Format.printf "eval_content; %a --->* %a" pp_abstract_tree ast0 pp_syntactic_value value0;
                 assert false
           end
     ) [] |> List.rev
@@ -1440,7 +1429,7 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
-                let hblst = interpret_horz env valueret in
+                let hblst = get_horz valueret in
                   hblst :: lstacc
 
             | _ -> report_bug_evaluator "interpret_input_horz: other than LambdaHorzWithEnvironment(_, _, _)" astcmd valuecmd
@@ -1455,20 +1444,16 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
   Horz(hblst)
 
 
-and interpret_option env extractf ast =
-  let value = interpret env ast in
-    match value with
-    | Constructor("None", UnitConstant) -> None
-    | Constructor("Some", valuesub)     -> Some(extractf valuesub)
-    | _                                 -> report_bug_evaluator "interpret_option" ast value
-
-
 and interpret_cell env ast : HorzBox.cell =
   let value = interpret env ast in
+    get_cell value
+
+
+and get_cell value : HorzBox.cell =
     match value with
     | Constructor("NormalCell", TupleCons(valuepads,
                                   TupleCons(Horz(hblst), EndOfTuple))) ->
-        let pads = interpret_paddings env valuepads in
+        let pads = get_paddings valuepads in
           HorzBox.NormalCell(pads, hblst)
 
     | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
@@ -1477,10 +1462,10 @@ and interpret_cell env ast : HorzBox.cell =
                                  TupleCons(IntegerConstant(nc),
                                    TupleCons(valuepads,
                                      TupleCons(Horz(hblst), EndOfTuple))))) ->
-        let pads = interpret_paddings env valuepads in
+        let pads = get_paddings valuepads in
           HorzBox.MultiCell(nr, nc, pads, hblst)
 
-    | _ -> report_bug_evaluator "interpret_cell" ast value
+    | _ -> report_bug_evaluator_value "get_cell" value
 
 
 and interpret_math_class env ast : HorzBox.math_kind =
@@ -1500,9 +1485,13 @@ and interpret_math_class env ast : HorzBox.math_kind =
 
 and interpret_math env ast : HorzBox.math list =
   let value = interpret env ast in
+    get_math value
+
+
+and get_math value : HorzBox.math list =
     match value with
     | MathValue(mlst) -> mlst
-    | _               -> report_bug_evaluator "interpret_math" ast value
+    | _               -> report_bug_evaluator_value "get_math" value
 
 
 and interpret_math_char_class env ast : HorzBox.math_char_class =
@@ -1539,7 +1528,7 @@ and make_script_value script =
     | CharBasis.HiraganaOrKatakana -> "Kana"
     | CharBasis.Latin              -> "Latin"
     | CharBasis.OtherScript        -> "OtherScript"
-    | _                            -> report_bug_evaluator "make_script_value" UnitConstant UnitConstant
+    | _                            -> report_bug_evaluator_value "make_script_value" UnitConstant
   in
     Constructor(label, UnitConstant)
 
@@ -1566,10 +1555,14 @@ and make_language_system_value langsys =
 
 and interpret_string (env : environment) (ast : abstract_tree) : string =
   let value = interpret env ast in
+    get_string value
+
+
+and get_string (value : syntactic_value) : string =
     match value with
     | StringEmpty       -> ""
     | StringConstant(s) -> s
-    | _                 -> report_bug_evaluator "interpret_string" ast value
+    | _                 -> report_bug_evaluator_value "get_string" value
 
 
 and interpret_path_value env ast : HorzBox.path list =
@@ -1581,20 +1574,15 @@ and interpret_path_value env ast : HorzBox.path list =
 
 and interpret_context (env : environment) (ast : abstract_tree) : HorzBox.input_context =
   let value = interpret env ast in
+    get_context value
+
+
+and get_context (value : syntactic_value) : HorzBox.input_context =
     match value with
     | Context(ctx)         -> ctx
     | UninitializedContext -> raise (EvalError("uninitialized context"))
-    | _                    -> report_bug_evaluator "interpret_context" ast value
+    | _                    -> report_bug_evaluator_value "get_context" value
 
-(*
-and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzBox.graphics_state =
-  let value = interpret env ast in
-    match value with
-    | GraphicsContext(gctx) -> gctx
-    | _                     -> report_bug_evaluator ("interpret_graphics_context: not a GraphicsContext; "
-                                                     ^ (Display.string_of_ast ast)
-                                                     ^ " ->* " ^ (Display.string_of_ast value))
-*)
 
 and interpret_tuple3 env getf ast =
   let value = interpret env ast in
@@ -1660,9 +1648,13 @@ and interpret_bool (env : environment) (ast : abstract_tree) : bool =
 
 and interpret_int (env : environment) (ast : abstract_tree) : int =
   let value = interpret env ast in
-    match value with
-    | IntegerConstant(nc) -> nc
-    | _                   -> report_bug_evaluator "interpret_int" ast value
+    get_int value
+
+
+and get_int (value : syntactic_value) : int =
+  match value with
+  | IntegerConstant(nc) -> nc
+  | _                   -> report_bug_evaluator_value "get_int" value
 
 
 and interpret_float (env : environment) (ast : abstract_tree) : float =
@@ -1674,9 +1666,13 @@ and interpret_float (env : environment) (ast : abstract_tree) : float =
 
 and interpret_length (env : environment) (ast : abstract_tree) : length =
   let value = interpret env ast in
+    get_length value
+
+
+and get_length (value : syntactic_value) : length =
     match value with
     | LengthConstant(lc) -> lc
-    | _                  -> report_bug_evaluator "interpret_float" ast value
+    | _                  -> report_bug_evaluator_value "get_float" value
 
 
 and interpret_page env ast : HorzBox.page_size =
@@ -1698,36 +1694,36 @@ and interpret_page env ast : HorzBox.page_size =
     | _ -> report_bug_evaluator "interpret_page" ast value
 
 
-and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =
+and select_pattern (env : environment) (valueobj : syntactic_value) (pmcons : pattern_match_cons) =
   match pmcons with
   | EndOfPatternMatch -> raise (EvalError("no matches"))
 
   | PatternMatchCons(pat, astto, tailcons) ->
-      let (b, envnew) = check_pattern_matching env pat astobj in
-        if b then interpret envnew astto else select_pattern env astobj tailcons
+      let (b, envnew) = check_pattern_matching env pat valueobj in
+        if b then interpret envnew astto else select_pattern env valueobj tailcons
 
   | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
-      let (b, envnew) = check_pattern_matching env pat astobj in
+      let (b, envnew) = check_pattern_matching env pat valueobj in
       let bb = interpret_bool env astb in
-        if b && bb then interpret envnew astto else select_pattern env astobj tailcons
+        if b && bb then interpret envnew astto else select_pattern env valueobj tailcons
 
 
-and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : abstract_tree) =
+and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =
   let return b = (b, env) in
-  match (pat, astobj) with
+  match (pat, valueobj) with
   | (PIntegerConstant(pnc), IntegerConstant(nc)) -> return (pnc = nc)
   | (PBooleanConstant(pbc), BooleanConstant(bc)) -> return (pbc = bc)
 
-  | (PStringConstant(ast1), ast2) ->
+  | (PStringConstant(ast1), value2) ->
       let str1 = interpret_string env ast1 in
-      let str2 = interpret_string env ast2 in
+      let str2 = get_string value2 in
         return (String.equal str1 str2)
 
   | (PUnitConstant, UnitConstant) -> return true
   | (PWildCard, _)                -> return true
 
   | (PVariable(evid), _) ->
-      let envnew = add_to_environment env evid (ref astobj) in
+      let envnew = add_to_environment env evid (ref valueobj) in
         (true, envnew)
 
   | (PAsVariable(evid, psub), sub) ->

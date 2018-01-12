@@ -545,7 +545,7 @@ let make_environments () =
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
-  let table : (var_name * poly_type * (environment -> abstract_tree)) list =
+  let table : (var_name * poly_type * (environment -> syntactic_value)) list =
     let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
     let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
     let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
@@ -566,7 +566,7 @@ let make_environments () =
         ( "||" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalOr(v1, v2))               );
         ( "not", ~% (tB @-> tB)          , lambda1 (fun v1 -> LogicalNot(v1))                     );
         ( "!"  , ptyderef                , lambda1 (fun v1 -> Dereference(v1))                    );
-        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
+        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))       );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );

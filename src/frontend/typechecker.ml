@@ -83,7 +83,9 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | BaseType(_)                    -> false
   | HorzCommandType(tylist)        -> iter_list tylist
   | VertCommandType(tylist)        -> iter_list tylist
+(*
   | VertDetailedCommandType(tylist) -> iter_list tylist
+*)
   | MathCommandType(tylist)        -> iter_list tylist
 
 
@@ -252,14 +254,14 @@ let rec typecheck
   let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) t u = typecheck q l t u in
   let unify = unify_ tyenv in
   match utastmain with
-  | UTStringEmpty         -> (StringEmpty        , (rng, BaseType(StringType)))
-  | UTIntegerConstant(nc) -> (IntegerConstant(nc), (rng, BaseType(IntType))   )
-  | UTFloatConstant(nc)   -> (FloatConstant(nc)  , (rng, BaseType(FloatType)) )
-  | UTStringConstant(sc)  -> (StringConstant(sc) , (rng, BaseType(StringType)))
-  | UTBooleanConstant(bc) -> (BooleanConstant(bc), (rng, BaseType(BoolType))  )
-  | UTUnitConstant        -> (UnitConstant       , (rng, BaseType(UnitType))  )
-  | UTHorz(hblst)         -> (Horz(hblst)        , (rng, BaseType(BoxRowType)))
-  | UTVert(imvblst)       -> (Vert(imvblst)      , (rng, BaseType(BoxColType)))
+  | UTStringEmpty         -> (Value(StringEmpty)        , (rng, BaseType(StringType)))
+  | UTIntegerConstant(nc) -> (Value(IntegerConstant(nc)), (rng, BaseType(IntType))   )
+  | UTFloatConstant(nc)   -> (Value(FloatConstant(nc))  , (rng, BaseType(FloatType)) )
+  | UTStringConstant(sc)  -> (Value(StringConstant(sc)) , (rng, BaseType(StringType)))
+  | UTBooleanConstant(bc) -> (Value(BooleanConstant(bc)), (rng, BaseType(BoolType))  )
+  | UTUnitConstant        -> (Value(UnitConstant)       , (rng, BaseType(UnitType))  )
+  | UTHorz(hblst)         -> (Value(Horz(hblst))        , (rng, BaseType(BoxRowType)))
+  | UTVert(imvblst)       -> (Value(Vert(imvblst))      , (rng, BaseType(BoxColType)))
 
   | UTLengthDescription(flt, unitnm) ->
       begin
@@ -318,7 +320,7 @@ let rec typecheck
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
-              (FrozenCommand(evid), tyres)
+              (Value(FrozenCommand(evid)), tyres)
       end
 
   | UTConstructor(constrnm, utast1) ->
@@ -330,7 +332,7 @@ let rec typecheck
             let (e1, ty1) = typecheck_iter tyenv utast1 in
             let () = unify ty1 tyc in
             let tyres = (rng, VariantType(tyarglist, tyid)) in
-              (Constructor(constrnm, e1), tyres)
+              (NonValueConstructor(constrnm, e1), tyres)
       end
 
   | UTHorzConcat(utast1, utast2) ->
@@ -377,7 +379,7 @@ let rec typecheck
       let (tyarglst, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (e1, (rng, MathCommandType(tyarglst)))
-
+(*
   | UTLambdaVertDetailed(varrng, varnmctx, utast1) ->  (* will be deprecated *)
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
@@ -392,7 +394,7 @@ let rec typecheck
       in
       let () = unify tyret tyretreq in
         (LambdaVertDetailed(evid, e1), (rng, VertDetailedCommandType(tyarglst)))
-
+*)
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
@@ -532,12 +534,12 @@ let rec typecheck
       let (eT, tyT) = typecheck_iter tyenv utastT in
       let () = unify tyT (Range.dummy "list-cons", ListType(tyH)) in
       let tyres = (rng, ListType(tyH)) in
-        (ListCons(eH, eT), tyres)
+        (PrimitiveListCons(eH, eT), tyres)
 
   | UTEndOfList ->
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-        (EndOfList, (rng, ListType(beta)))
+        (Value(EndOfList), (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
 
@@ -549,9 +551,10 @@ let rec typecheck
         | (_, ProductType(tylist)) -> (rng, ProductType(tyH :: tylist))
         | _                        -> assert false
       in
-        (TupleCons(eH, eT), tyres)
+        (PrimitiveTupleCons(eH, eT), tyres)
 
-  | UTEndOfTuple -> (EndOfTuple, (rng, ProductType([])))
+  | UTEndOfTuple ->
+      (Value(EndOfTuple), (rng, ProductType([])))
 
 (* ---- records ---- *)
 
@@ -616,7 +619,7 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
   let open HorzBox in
     match utmathmain with
     | UTMChar(s) ->
-        MathValue[MathPure(MathVariantChar(s))]
+        Value(MathValue[MathPure(MathVariantChar(s))])
 
     | UTMList(utmathlst) ->
         let astlst = utmathlst |> List.map iter in
@@ -710,7 +713,8 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           match tycmdmain with
 
           | VertCommandType(tylstreq)
-          | VertDetailedCommandType(tylstreq) ->
+          (* | VertDetailedCommandType(tylstreq) *)
+            ->
               let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
               let tylstarg = etylst |> List.map (fun (e, ty) -> ty) in
               let elstarg = etylst |> List.map (fun (e, ty) -> e) in
@@ -804,18 +808,18 @@ and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Ty
   let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
   let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType)) in
   let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
-    (Constructor("Item", TupleCons(e1, TupleCons(elst, EndOfTuple))))
+    (NonValueConstructor("Item", PrimitiveTupleCons(e1, PrimitiveTupleCons(elst, Value(EndOfTuple)))))
 
 
 and typecheck_itemize_list
     (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
-  | []                  -> EndOfList
+  | []                  -> Value(EndOfList)
   | hditmz :: tlitmzlst ->
       let ehd = typecheck_itemize qtfbl lev tyenv hditmz in
       let etl = typecheck_itemize_list qtfbl lev tyenv tlitmzlst in
-        ListCons(ehd, etl)
+        PrimitiveListCons(ehd, etl)
 
 
 and typecheck_pattern_match_cons

@@ -174,9 +174,11 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
+(*
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
+*)
 
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
@@ -340,6 +342,9 @@ let escape_letters str =
     aux str (String.length str)
 
 
+let string_of_ast (ast : abstract_tree) = show_abstract_tree ast
+
+(*
 let rec string_of_ast (ast : abstract_tree) =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
@@ -410,3 +415,4 @@ let rec string_of_ast (ast : abstract_tree) =
   | Context(_)                   -> "(context)"
   | FontDesignation(_)           -> "(font-designation)"
   | _                            -> "OTHER"
+*)

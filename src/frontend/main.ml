@@ -71,8 +71,8 @@ let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (f
         let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty));
-            let evaled = Evaluator.interpret env ast in
-              match evaled with
+            let value = Evaluator.interpret env ast in
+              match value with
               | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
               | _                            -> raise (NotAHeaderFile(file_name_in, tyenvnew, ty))
           end

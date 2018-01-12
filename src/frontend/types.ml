@@ -230,7 +230,9 @@ and mono_type_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
+(*
   | VertDetailedCommandType of mono_type list  (* will be deprecated *)
+*)
   | MathCommandType of mono_type list
 
 and poly_type =
@@ -307,7 +309,9 @@ and untyped_abstract_tree_main =
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
+(*
   | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree  (* will be deprecated *)
+*)
 (* -- graphics -- *)
   | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
@@ -436,10 +440,10 @@ and mutual_let_cons =
   | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 
-and environment = location EvalVarIDMap.t * abstract_tree StoreIDHashTable.t
+and environment = location EvalVarIDMap.t * syntactic_value StoreIDHashTable.t
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
-and location = abstract_tree ref
+and location = syntactic_value ref
 
 and input_horz_element =
   | InputHorzText     of string
@@ -456,38 +460,69 @@ and 'a path_component =
   | PathLineTo        of 'a
   | PathCubicBezierTo of abstract_tree * abstract_tree * 'a
 
-and abstract_tree =
-(* -- basic value -- *)
+and syntactic_value =
   | UnitConstant
   | BooleanConstant       of bool
   | IntegerConstant       of int
   | FloatConstant         of float
-  | LengthDescription     of float * length_unit_name
   | LengthConstant        of length
   | StringEmpty
   | StringConstant        of string
-(*
-  | DeeperIndent          of abstract_tree
-  | BreakAndIndent
-  | SoftBreakAndIndent
-*)
-  | Concat                of abstract_tree * abstract_tree
+
+  | Constructor           of constructor_name * syntactic_value
+
   | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
+
   | EvaluatedEnvironment  of environment
-(* -- input texts -- *)
-  | InputHorz             of input_horz_element list
-  | InputVert             of input_vert_element list
+
+  | ListCons              of syntactic_value * syntactic_value
+  | EndOfList
+
+  | TupleCons             of syntactic_value * syntactic_value
+  | EndOfTuple
+
+  | RecordValue           of syntactic_value Assoc.t
+      [@printer (fun fmt _ -> Format.fprintf fmt "<record-value>")]
+
+  | Location              of StoreID.t
+
   | InputHorzWithEnvironment of input_horz_element list * environment
   | InputVertWithEnvironment of input_vert_element list * environment
-(* -- graphics -- *)
-  | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
-  | PathValue                   of HorzBox.path list
+
+  | Horz                  of HorzBox.horz_box list
+  | Vert                  of HorzBox.intermediate_vert_box list
+
+  | PathValue             of HorzBox.path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | PathUnite                   of abstract_tree * abstract_tree
   | GraphicsValue               of Pdfops.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
+
+  | MathValue                   of HorzBox.math list
+  | ImageKey                    of ImageInfo.key
+      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+  | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
+  | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
+  | FontDesignation             of HorzBox.font_with_ratio
+  | Context                     of HorzBox.input_context
+  | FrozenCommand               of EvalVarID.t
+  | UninitializedContext
+  | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
+
+
+and abstract_tree =
+  | Value                 of syntactic_value
+  | FinishHeaderFile
+  | FinishStruct
+  | LengthDescription     of float * length_unit_name
+  | Concat                of abstract_tree * abstract_tree
+(* -- input texts -- *)
+  | InputHorz             of input_horz_element list
+  | InputVert             of input_vert_element list
+(* -- graphics -- *)
+  | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
+  | PathUnite                   of abstract_tree * abstract_tree
   | PrePathBeginning            of abstract_tree
   | PrePathLineTo               of abstract_tree * abstract_tree
   | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
@@ -498,17 +533,13 @@ and abstract_tree =
   | PrimitiveDrawDashedStroke   of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveDrawFill           of abstract_tree * abstract_tree
 (* -- horizontal box list -- *)
-  | Horz                  of HorzBox.horz_box list
   | HorzConcat            of abstract_tree * abstract_tree
 (* -- vertical box list -- *)
-  | Vert                  of HorzBox.intermediate_vert_box list
   | VertConcat            of abstract_tree * abstract_tree
 (* -- list value -- *)
-  | ListCons              of abstract_tree * abstract_tree
-  | EndOfList
+  | PrimitiveListCons     of abstract_tree * abstract_tree
 (* -- tuple value -- *)
-  | TupleCons             of abstract_tree * abstract_tree
-  | EndOfTuple
+  | PrimitiveTupleCons    of abstract_tree * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
@@ -519,23 +550,15 @@ and abstract_tree =
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract        of EvalVarID.t * abstract_tree
   | Apply                 of abstract_tree * abstract_tree
-  | FinishHeaderFile
-  | FinishStruct
 (* -- pattern match -- *)
   | PatternMatch          of abstract_tree * pattern_match_cons
-  | Constructor           of constructor_name * abstract_tree
+  | NonValueConstructor   of constructor_name * abstract_tree
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | Location              of StoreID.t
   | Dereference           of abstract_tree
-(*
-  | DeclareGlobalHash     of abstract_tree * abstract_tree
-  | OverwriteGlobalHash   of abstract_tree * abstract_tree
-  | ReferenceFinal        of abstract_tree
-*)
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
 (* -- basic primitive operations -- *)
@@ -565,7 +588,6 @@ and abstract_tree =
   | LengthLessThan        of abstract_tree * abstract_tree
   | LengthGreaterThan     of abstract_tree * abstract_tree
 (* -- backend primitives -- *)
-  | MathValue                   of HorzBox.math list
   | BackendMathChar             of abstract_tree * bool * abstract_tree
   | BackendMathCharWithKern     of abstract_tree * bool * abstract_tree * abstract_tree * abstract_tree
   | BackendMathGroup            of abstract_tree * abstract_tree * abstract_tree
@@ -587,18 +609,14 @@ and abstract_tree =
   | BackendRegisterPdfImage     of abstract_tree * abstract_tree
   | BackendRegisterOtherImage   of abstract_tree
   | BackendUseImageByWidth      of abstract_tree * abstract_tree
-  | ImageKey                    of ImageInfo.key
-      [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+
   | LambdaHorz                  of EvalVarID.t * abstract_tree
-  | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVert                  of EvalVarID.t * abstract_tree
-  | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
+(*
   | LambdaVertDetailed          of EvalVarID.t * abstract_tree
   | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
-  | FontDesignation             of HorzBox.font_with_ratio
-  | Context                     of HorzBox.input_context
-  | FrozenCommand               of EvalVarID.t
-  | UninitializedContext
+*)
+
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
   | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
@@ -626,7 +644,6 @@ and abstract_tree =
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree
-  | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
   | BackendFixedEmpty           of abstract_tree
   | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
@@ -734,8 +751,9 @@ let rec normalize_mono_type ty =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
+(*
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))  (* will be deprecated *)
-
+*)
 
 let normalize_poly_type (Poly(ty)) = Poly(normalize_mono_type ty)
 
@@ -776,7 +794,9 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
+(*
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
+*)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
@@ -820,7 +840,9 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
+(*
     | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))
+*)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
 
   and generalize_kind kd =
@@ -845,7 +867,7 @@ let replicate_store (env : environment) : environment =
 *)
   Format.printf "Types> ==== REPLICATE ====\n";
   StoreIDHashTable.iter (fun stid value ->
-    Format.printf "| %s %a\n" (StoreID.show_direct stid) pp_abstract_tree value) stenv;
+    Format.printf "| %s %a\n" (StoreID.show_direct stid) pp_syntactic_value value) stenv;
   Format.printf "Types> ==== END REPLICATE ====\n";
 
   Format.printf "Types> ==== VALENV ====\n";
@@ -856,34 +878,34 @@ let replicate_store (env : environment) : environment =
     (valenv, stenvnew)
 
 
-let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstract_tree ref) =
+let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) =
   let (valenv, stenv) = env in
     (*  Format.printf "Types> add %s \n" (EvalVarID.show_direct evid); *)
     (valenv |> EvalVarIDMap.add evid rfast, stenv)
 
 
-let find_in_environment (env : environment) (evid : EvalVarID.t) : (abstract_tree ref) option =
+let find_in_environment (env : environment) (evid : EvalVarID.t) : location option =
   let (valenv, _) = env in
     valenv |> EvalVarIDMap.find_opt evid
 
 
-let register_location (env : environment) (ast : abstract_tree) : StoreID.t =
+let register_location (env : environment) (value : syntactic_value) : StoreID.t =
   let (_, stenv) = env in
   let stid = StoreID.fresh () in
-  StoreIDHashTable.add stenv stid ast;
-  Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_abstract_tree ast;  (* for debug *)
+  StoreIDHashTable.add stenv stid value;
+  Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_syntactic_value value;  (* for debug *)
   stid
 
 
-let update_location (env :environment) (stid : StoreID.t) (ast : abstract_tree) : unit =
+let update_location (env :environment) (stid : StoreID.t) (value : syntactic_value) : unit =
   let (valenv, stenv) = env in
   if StoreIDHashTable.mem stenv stid then
-    StoreIDHashTable.replace stenv stid ast
+    StoreIDHashTable.replace stenv stid value
   else
     assert false
 
 
-let find_location_value (env : environment) (stid : StoreID.t) : abstract_tree option =
+let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
   let (_, stenv) = env in
   StoreIDHashTable.find_opt stenv stid
 
@@ -993,9 +1015,11 @@ let rec string_of_mono_type_basic tystr =
     | VertCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-command"
+(*
     | VertDetailedCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
+*)
     | MathCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "(" ^ (String.concat ", " slist) ^ ") math-command"
