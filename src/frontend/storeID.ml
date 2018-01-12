@@ -11,6 +11,12 @@ let min_id_in_document = ref 0
 let equal = (=)
 
 
+let compare = Pervasives.compare
+
+
+let hash = Hashtbl.hash
+
+
 let initialize () =
   current_id := 0
 

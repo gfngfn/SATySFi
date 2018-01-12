@@ -142,12 +142,10 @@ module BoundID_
   end
 
 
-module StoreIDHashTable = Hashtbl.Make
-  (struct
-    type t = StoreID.t
-    let equal = StoreID.equal
-    let hash = Hashtbl.hash
-  end)
+module StoreIDHashTable = Hashtbl.Make(StoreID)
+
+
+module EvalVarIDMap = Map.Make(EvalVarID)
 
 
 type manual_type = Range.t * manual_type_main
@@ -438,7 +436,7 @@ and mutual_let_cons =
   | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 
-and environment = (EvalVarID.t, location) Hashtbl.t * abstract_tree StoreIDHashTable.t
+and environment = location EvalVarIDMap.t * abstract_tree StoreIDHashTable.t
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
 and location = abstract_tree ref
@@ -832,55 +830,60 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
   in
     Poly(iter ty)
 
-
+(*
 let copy_environment (env : environment) : environment =
   let (valenv, stenv) = env in
     (Hashtbl.copy valenv, stenv)
+*)
 
-
-let replicate_environment (env : environment) : environment =
+let replicate_store (env : environment) : environment =
   let (valenv, stenv) = env in
-  let valenvnew = Hashtbl.copy valenv in
   let stenvnew = StoreIDHashTable.copy stenv in
 (*
   let stenvnew = StoreIDHashTable.create 32 in
   StoreIDHashTable.iter (fun stid value -> StoreIDHashTable.add stenvnew stid value) stenv;
 *)
-  Format.printf "==== REPLICATE ====\n";
+  Format.printf "Types> ==== REPLICATE ====\n";
   StoreIDHashTable.iter (fun stid value ->
     Format.printf "| %s %a\n" (StoreID.show_direct stid) pp_abstract_tree value) stenv;
-  Format.printf "\n==== ====\n";
+  Format.printf "Types> ==== END REPLICATE ====\n";
 
-    (valenvnew, stenvnew)
+  Format.printf "Types> ==== VALENV ====\n";
+  EvalVarIDMap.iter (fun evid loc ->
+    Format.printf "| %s\n" (EvalVarID.show_direct evid)) valenv;
+  Format.printf "Types> ==== END VALENV ====\n";
+
+    (valenv, stenvnew)
 
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstract_tree ref) =
-  let (valenv, _) = env in
-  Hashtbl.add valenv evid rfast
+  let (valenv, stenv) = env in
+    (*  Format.printf "Types> add %s \n" (EvalVarID.show_direct evid); *)
+    (valenv |> EvalVarIDMap.add evid rfast, stenv)
 
 
-let find_in_environment (env : environment) (evid : EvalVarID.t) =
+let find_in_environment (env : environment) (evid : EvalVarID.t) : (abstract_tree ref) option =
   let (valenv, _) = env in
-  Hashtbl.find_opt valenv evid
+    valenv |> EvalVarIDMap.find_opt evid
 
 
 let register_location (env : environment) (ast : abstract_tree) : StoreID.t =
   let (_, stenv) = env in
   let stid = StoreID.fresh () in
-  Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_abstract_tree ast;  (* for debug *)
   StoreIDHashTable.add stenv stid ast;
+  Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_abstract_tree ast;  (* for debug *)
   stid
 
 
-let update_location (env :environment) (stid : StoreID.t) (ast : abstract_tree) =
-  let (_, stenv) = env in
+let update_location (env :environment) (stid : StoreID.t) (ast : abstract_tree) : unit =
+  let (valenv, stenv) = env in
   if StoreIDHashTable.mem stenv stid then
     StoreIDHashTable.replace stenv stid ast
   else
     assert false
 
 
-let find_location_value (env : environment) (stid : StoreID.t) =
+let find_location_value (env : environment) (stid : StoreID.t) : abstract_tree option =
   let (_, stenv) = env in
   StoreIDHashTable.find_opt stenv stid
 

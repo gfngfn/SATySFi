@@ -28,15 +28,11 @@ let show_error_category = function
   | System      -> "Error"
 
 
-let show_control_sequence_type : bool ref = ref false
-let show_function_type         : bool ref = ref false
-
-
 let report_error (cat : error_category) (lines : line list) =
   let rec aux lst =
     match lst with
     | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s)  ; aux tail end
+    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s) ; aux tail end
     | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s); aux tail end
   in
   let first lst =
@@ -64,33 +60,21 @@ let is_header_file     = is_suffix ".satyh"
 let is_standalone_file = is_suffix ".satys"
 
 
-let make_environment_from_header_file (tyenv : Typeenv.t) env file_name_in =
+let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (file_name_in : string) : Typeenv.t * environment =
   begin
-    print_endline (" ---- ---- ---- ----") ;
-    print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
+    print_endline (" ---- ---- ---- ----");
+    print_endline ("  reading '" ^ file_name_in ^ "' ...");
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_progexpr () ;
+        Lexer.reset_to_progexpr ();
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
-        let (ty, newtyenv, ast) = Typechecker.main tyenv utast in
+        let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
           begin
             print_endline ("  type check: " ^ (string_of_mono_type tyenv ty));
             let evaled = Evaluator.interpret env ast in
               match evaled with
-              | EvaluatedEnvironment(newenv) ->
-                  begin
-                    begin
-                      if !show_control_sequence_type then
-                        if !show_function_type then
-                          (* print_endline (Typeenv.string_of_type_environment newtyenv "Environment") *) ()
-                        else
-                          (* print_endline (Typeenv.string_of_control_sequence_type newtyenv) *) ()
-                      else ()
-                    end;
-                    (newtyenv, newenv)
-                  end
-
-              | _ -> raise (NotAHeaderFile(file_name_in, newtyenv, ty))
+              | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
+              | _                            -> raise (NotAHeaderFile(file_name_in, tyenvnew, ty))
           end
       end
   end
@@ -133,13 +117,13 @@ let output_pdf file_name_out pagesch pagelst =
   HandlePdf.write_to_file pdfret
 
 
-let read_document_file (tyenv : Typeenv.t) envinit file_name_in file_name_out =
+let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in file_name_out =
   begin
-    print_endline (" ---- ---- ---- ----") ;
-    print_endline ("  reading '" ^ file_name_in ^ "' ...") ;
+    print_endline (" ---- ---- ---- ----");
+    print_endline ("  reading '" ^ file_name_in ^ "' ...");
     let file_in = open_in file_name_in in
       begin
-        Lexer.reset_to_progexpr () ;
+        Lexer.reset_to_progexpr ();
         let () = PrintForDebug.mainE "END INITIALIZATION" in  (* for debug *)
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
         let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
@@ -153,7 +137,7 @@ let read_document_file (tyenv : Typeenv.t) envinit file_name_in file_name_out =
 *)
               let rec aux () =
                 reset ();
-                let env = replicate_environment envinit in
+                let env = replicate_store envinit in
                 let valuedoc = Evaluator.interpret env ast in
                 begin
                   match valuedoc with
@@ -388,15 +372,16 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
     match input_list with
     | [] ->
         begin
-          print_endline " ---- ---- ---- ----" ;
-          print_endline "  no output."
+          print_endline " ---- ---- ---- ----";
+          print_endline "  no output.";
         end
+
     | (DocumentFile, file_name_in) :: tail ->
-          read_document_file tyenv env file_name_in file_name_out
+        read_document_file tyenv env file_name_in file_name_out
 
     | (HeaderFile, file_name_in) :: tail ->
-          let (newtyenv, newenv) = make_environment_from_header_file tyenv env file_name_in in
-            main newtyenv newenv tail file_name_out
+        let (tyenvnew, envnew) = make_environment_from_header_file tyenv env file_name_in in
+        main tyenvnew envnew tail file_name_out
 
 
 let output_name_ref : string ref = ref "saty.out"
@@ -460,6 +445,16 @@ let () =
     Arg.parse arg_spec_list handle_anonimous_arg "";
     initialize ();
     let (tyenv, env) = Primitives.make_environments () in
+
+    (* begin: for debug *)
+    Format.printf "Main> ==== ====\n";
+    let () =
+      let (valenv, _) = env in
+      EvalVarIDMap.iter (fun evid _ -> Format.printf "Main> %s\n" (EvalVarID.show_direct evid)) valenv
+    in
+    Format.printf "Main> ==== ====\n";
+    (* end: for debug *)
+
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
     input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));

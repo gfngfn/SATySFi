@@ -319,10 +319,6 @@ let default_radical hgt_bar t_bar dpt fontsize color =
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
 
 
-let envinit : environment =
-  (Hashtbl.create 128, StoreIDHashTable.create 128)
-
-
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
   let code_point cp = MathVariantToChar(false, Uchar.of_int cp) in
@@ -538,6 +534,7 @@ let frame_deco_VM =
 
 let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
+  let envinit : environment = (EvalVarIDMap.empty, StoreIDHashTable.create 128) in
 
   let (~@) n        = (~! "tv"      , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in
@@ -674,18 +671,16 @@ let make_environments () =
       ]
   in
   let temporary_ast = StringEmpty in
-  let (tyenvfinal, locacc) =
-    table |> List.fold_left (fun (tyenv, acc) (varnm, pty, deff) ->
+  let (tyenvfinal, envfinal, locacc) =
+    table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh varnm in
       let loc = ref temporary_ast in
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
-      begin
-        add_to_environment envinit evid loc;
-        (tyenvnew, Alist.extend acc (loc, deff))
-      end
-    ) (tyenvinit, Alist.empty)
+      let envnew = add_to_environment env evid loc in
+        (tyenvnew, envnew, Alist.extend acc (loc, deff))
+    ) (tyenvinit, envinit, Alist.empty)
   in
   let () =
-    locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> begin loc := deff envinit; end)
+    locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> begin loc := deff envfinal; end)
   in
-    (tyenvfinal, envinit)
+    (tyenvfinal, envfinal)

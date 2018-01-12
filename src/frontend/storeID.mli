@@ -5,6 +5,10 @@ val initialize : unit -> unit
 
 val equal : t -> t -> bool
 
+val compare : t -> t -> int
+
+val hash : t -> int
+
 val fresh : unit -> t
 (*
 val set : unit -> unit

@@ -97,11 +97,8 @@ let interpret_list interpretf (env : environment) extractf (ast : abstract_tree)
 
 
 let rec reduce_beta envf evid valuel astdef =
-  let envnew = copy_environment envf in
-    begin
-      add_to_environment envnew evid (ref valuel);
-      interpret envnew astdef
-    end
+  let envnew = add_to_environment envf evid (ref valuel) in
+    interpret envnew astdef
 
 
 and reduce_beta_list env valuef astarglst =
@@ -984,11 +981,8 @@ and interpret env ast =
       end
 
   | LetIn(mutletcons, astrest) ->
-      let envfunc = copy_environment env in
-        begin
-          add_mutuals_to_environment envfunc mutletcons;
-          interpret envfunc astrest
-        end
+      let envnew = add_mutuals_to_environment env mutletcons in
+        interpret envnew astrest
 
   | LambdaAbstract(evid, ast) -> FuncWithEnvironment(evid, ast, env)
 
@@ -1049,11 +1043,8 @@ and interpret env ast =
       let () = Format.printf "%s\n" ("Evaluator> LetMutableIn; " ^ (EvalVarID.show_direct evid) ^ " <- " ^ (Display.string_of_ast astini)) in  (* for debug *)
       let valueini = interpret env astini in
       let stid = register_location env valueini in
-      let envnew = copy_environment env in
-        begin
-          add_to_environment envnew evid (ref (Location(stid)));
-          interpret envnew astaft
-        end
+      let envnew = add_to_environment env evid (ref (Location(stid))) in
+        interpret envnew astaft
 
   | Sequential(ast1, ast2) ->
       let () = PrintForDebug.evalE ("Sequential(" ^ (Display.string_of_ast ast1) ^ ", " ^ (Display.string_of_ast ast2) ^ ")") in  (* for debug *)
@@ -1166,7 +1157,7 @@ and interpret env ast =
       begin
         match value with
         | EvaluatedEnvironment(envfinal) -> interpret envfinal astaft
-        | _                              -> report_bug_evaluator "module did evaluate not to EvaluatedEnvironment" astmdl value
+        | _                              -> report_bug_evaluator "Module" astmdl value
       end
 
 (* -- primitive operation -- *)
@@ -1712,96 +1703,109 @@ and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : patter
   | EndOfPatternMatch -> raise (EvalError("no matches"))
 
   | PatternMatchCons(pat, astto, tailcons) ->
-      let envnew = copy_environment env in
-      let b = check_pattern_matching envnew pat astobj in
+      let (b, envnew) = check_pattern_matching env pat astobj in
         if b then interpret envnew astto else select_pattern env astobj tailcons
 
   | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
-      let envnew = copy_environment env in
-      let b = check_pattern_matching envnew pat astobj in
-      let bb = interpret_bool envnew astb in
+      let (b, envnew) = check_pattern_matching env pat astobj in
+      let bb = interpret_bool env astb in
         if b && bb then interpret envnew astto else select_pattern env astobj tailcons
 
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : abstract_tree) =
+  let return b = (b, env) in
   match (pat, astobj) with
-  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> pnc = nc
-  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
-  | (PStringConstant(ast1), ast2)                ->
+  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> return (pnc = nc)
+  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> return (pbc = bc)
+
+  | (PStringConstant(ast1), ast2) ->
       let str1 = interpret_string env ast1 in
       let str2 = interpret_string env ast2 in
-        String.equal str1 str2
+        return (String.equal str1 str2)
 
-  | (PUnitConstant, UnitConstant)                -> true
-  | (PWildCard, _)                               -> true
-  | (PVariable(evid), _)                         ->
-      begin
-        add_to_environment env evid (ref astobj) ; true
-      end
-  | (PAsVariable(evid, psub), sub)              ->
-      begin
-        add_to_environment env evid (ref sub) ; check_pattern_matching env psub sub
-      end
+  | (PUnitConstant, UnitConstant) -> return true
+  | (PWildCard, _)                -> return true
 
-  | (PEndOfList, EndOfList)                      -> true
-  | (PListCons(phd, ptl), ListCons(hd, tl))      ->
-      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PVariable(evid), _) ->
+      let envnew = add_to_environment env evid (ref astobj) in
+        (true, envnew)
 
-  | (PEndOfTuple, EndOfTuple)                    -> true
-  | (PTupleCons(phd, ptl), TupleCons(hd, tl))    ->
-      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PAsVariable(evid, psub), sub) ->
+      let envnew = add_to_environment env evid (ref sub) in
+        check_pattern_matching envnew psub sub
+
+  | (PEndOfList, EndOfList) -> return true
+
+  | (PListCons(phd, ptl), ListCons(hd, tl)) ->
+      let (bhd, envhd) = check_pattern_matching env phd hd in
+      let (btl, envtl) = check_pattern_matching envhd ptl tl in
+      if bhd && btl then
+        (true, envtl)
+      else
+        return false
+
+  | (PEndOfTuple, EndOfTuple) -> return true
+
+  | (PTupleCons(phd, ptl), TupleCons(hd, tl)) ->
+      let (bhd, envhd) = check_pattern_matching env phd hd in
+      let (btl, envtl) = check_pattern_matching env ptl tl in
+      if bhd && btl then
+        (true, envtl)
+      else
+        return false
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
-      when cnm1 = cnm2                           -> check_pattern_matching env psub sub
+      when cnm1 = cnm2 -> check_pattern_matching env psub sub
 
-  | _                                            -> false
-
-
-and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) =
-  let lst = add_mutuals_to_environment_sub [] env mutletcons in
-  let () = PrintForDebug.evalE ("add_mutuals_to_environment") in  (* for debug *)
-      add_zeroary_mutuals lst env
+  | _ -> return false
 
 
-and add_mutuals_to_environment_sub (lst : (EvalVarID.t * abstract_tree) list) (env : environment) (mutletcons : mutual_let_cons) =
+and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) : environment =
+  let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env mutletcons in
+    add_zeroary_mutuals lstzero envnew
+
+
+and add_mutuals_to_environment_sub (acc : (EvalVarID.t * abstract_tree) Alist.t) (env : environment) (mutletcons : mutual_let_cons) : (EvalVarID.t * abstract_tree) list * environment =
   match mutletcons with
-  | EndOfMutualLet                         -> lst
+  | EndOfMutualLet ->
+      (Alist.to_list acc, env)
+
   | MutualLetCons(evid, astcont, tailcons) ->
       begin
         try
           let valuecont = interpret env astcont in
-            begin
-              add_to_environment env evid (ref valuecont) ;
-              add_mutuals_to_environment_sub lst env tailcons
-            end
+          let envnew = add_to_environment env evid (ref valuecont) in
+            add_mutuals_to_environment_sub acc envnew tailcons
         with
-        | EvalError(_) -> add_mutuals_to_environment_sub ((evid, astcont) :: lst) env tailcons
+        | EvalError(_) ->
+            add_mutuals_to_environment_sub (Alist.extend acc (evid, astcont)) env tailcons
             (* 0-ary definition dependent of ``sibling'' functions *)
       end
 
 
-and add_zeroary_mutuals (lst : (EvalVarID.t * abstract_tree) list) (env : environment) =
-  let newlst = add_zeroary_mutuals_sub lst env [] in
-    if List.length newlst = 0 then
-      ()
-    else if (List.length newlst) = (List.length lst) then
-      let msg = lst |> List.fold_left (fun s (evid, _) -> s ^ (EvalVarID.show_direct evid) ^ " ") "" in
+and add_zeroary_mutuals (lstzero : (EvalVarID.t * abstract_tree) list) (env : environment) : environment =
+  let (lstzeronew, envnew) = add_zeroary_mutuals_sub lstzero env Alist.empty in
+    if List.length lstzeronew = 0 then
+      envnew
+    else if (List.length lstzeronew) = (List.length lstzero) then
+      let msg = lstzero |> List.fold_left (fun s (evid, _) -> s ^ (EvalVarID.show_direct evid) ^ " ") "" in
       raise (EvalError("meaningless 0-ary mutual recursion; " ^ msg))
     else
-      add_zeroary_mutuals newlst env
+      add_zeroary_mutuals lstzeronew envnew
 
 
-and add_zeroary_mutuals_sub (lst : (EvalVarID.t * abstract_tree) list) (env : environment) (acc : (EvalVarID.t * abstract_tree) list) =
-  match lst with
-  | []                      -> acc
+and add_zeroary_mutuals_sub (lstzero : (EvalVarID.t * abstract_tree) list) (env : environment) (acc : (EvalVarID.t * abstract_tree) Alist.t) : (EvalVarID.t * abstract_tree) list * environment =
+  match lstzero with
+  | [] ->
+      (Alist.to_list acc, env)
+
   | (evid, astcont) :: tail ->
       begin
         try
           let valuecont = interpret env astcont in
-            begin
-              add_to_environment env evid (ref valuecont) ;
-              add_zeroary_mutuals_sub tail env acc
-            end
+          let envnew = add_to_environment env evid (ref valuecont) in
+            add_zeroary_mutuals_sub tail envnew acc
         with
-        | EvalError(_) -> add_zeroary_mutuals_sub tail env ((evid, astcont) :: acc)
+        | EvalError(_) ->
+            add_zeroary_mutuals_sub tail env (Alist.extend acc (evid, astcont))
       end
