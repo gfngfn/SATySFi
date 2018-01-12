@@ -165,8 +165,8 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let lam evid ast = LambdaAbstract(evid, ast)
-let lamenv env evid ast = FuncWithEnvironment(evid, ast, env)
+let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
+let lamenv env evid ast = FuncWithEnvironment([PatternBranch(PVariable(evid), ast)], env)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let rec lambda1 astf env =

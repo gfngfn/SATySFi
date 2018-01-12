@@ -424,10 +424,10 @@ let rec typecheck
         let tycod = ty1 in
           (LambdaAbstract(evid, e1), (rng, FuncType(tydom, tycod)))
 
-  | UTLetIn(utmutletcons, utast2) ->
-      let (tyenvnew, _, mutletcons) = make_type_environment_by_let qtfbl lev tyenv utmutletcons in
+  | UTLetRecIn(utrecbinds, utast2) ->
+      let (tyenvnew, _, recbinds) = make_type_environment_by_let qtfbl lev tyenv utrecbinds in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
-        (LetIn(mutletcons, e2), ty2)
+        (LetRecIn(recbinds, e2), ty2)
 
   | UTIfThenElse(utastB, utast1, utast2) ->
       let (eB, tyB) = typecheck_iter tyenv utastB in

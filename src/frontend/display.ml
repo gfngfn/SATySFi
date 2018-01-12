@@ -270,7 +270,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
 (*
   | UTBreakAndIndent               -> "break"
 *)
-  | UTLetIn(umlc, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
+  | UTLetRecIn(_, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
   | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
                                         ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
   | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"

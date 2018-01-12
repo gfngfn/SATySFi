@@ -127,14 +127,16 @@ let rec reduce_beta envf evid valuel astdef =
 
 and reduce_beta_list env valuef astarglst =
   match astarglst with
-  | []                   -> valuef
+  | [] ->
+      valuef
+
   | astarg :: astargtail ->
       begin
         match valuef with
-        | FuncWithEnvironment(evid, astdef, envf) ->
+        | FuncWithEnvironment(patbrs, envf) ->
             let valuearg = interpret env astarg in
-            let valuefnew = reduce_beta envf evid valuearg astdef in
-            reduce_beta_list env valuefnew astargtail
+            let valuefnew = select_pattern envf valuearg patbrs in
+              reduce_beta_list env valuefnew astargtail
 
         | _ -> report_bug_evaluator_value "reduce_beta_list" valuef
       end
@@ -975,30 +977,32 @@ and interpret env ast =
             report_bug_evaluator_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
       end
 
-  | LetIn(mutletcons, astrest) ->
-      let envnew = add_mutuals_to_environment env mutletcons in
+  | LetRecIn(recbinds, astrest) ->
+      let envnew = add_letrec_bindings_to_environment env recbinds in
         interpret envnew astrest
 
-  | LambdaAbstract(evid, ast) -> FuncWithEnvironment(evid, ast, env)
+  | Function(patbrs) -> FuncWithEnvironment(patbrs, env)
 
-  | Apply(astf, astl) ->
-      let () = PrintForDebug.evalE ("Apply(" ^ (Display.string_of_ast astf) ^ ", " ^ (Display.string_of_ast astl) ^ ")") in  (* for debug *)
-      let valuef = interpret env astf in
-        begin
-          match valuef with
-          | FuncWithEnvironment(evid, astdef, envf) ->
-              let valuel = interpret env astl in
-              reduce_beta envf evid valuel astdef
+  | Apply(ast1, ast2) ->
+      let () = PrintForDebug.evalE ("Apply(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | FuncWithEnvironment(patbrs, env1) ->
+            let value2 = interpret env ast2 in
+              select_pattern env1 value2 patbrs
 
-          | _ -> report_bug_evaluator "Apply: not a function" astf valuef
-        end
+        | _ -> report_bug_evaluator "Apply: not a function" ast1 value1
+      end
 
-  | IfThenElse(astb, astf, astl) ->
-      if interpret_bool env astb then interpret env astf else interpret env astl
+  | IfThenElse(astb, ast1, ast2) ->
+      let b = interpret_bool env astb in
+        if b then interpret env ast1 else interpret env ast2
 
 (* ---- record ---- *)
 
-  | Record(asc) -> RecordValue(Assoc.map_value (interpret env) asc)
+  | Record(asc) ->
+      RecordValue(Assoc.map_value (interpret env) asc)
 
   | AccessField(ast1, fldnm) ->
       let value1 = interpret env ast1 in
@@ -1134,9 +1138,9 @@ and interpret env ast =
 *)
 (* ---- others ---- *)
 
-  | PatternMatch(astobj, pmcons) ->
+  | PatternMatch(astobj, patbrs) ->
       let valueobj = interpret env astobj in
-        select_pattern env valueobj pmcons
+        select_pattern env valueobj patbrs
 
   | NonValueConstructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
@@ -1694,18 +1698,18 @@ and interpret_page env ast : HorzBox.page_size =
     | _ -> report_bug_evaluator "interpret_page" ast value
 
 
-and select_pattern (env : environment) (valueobj : syntactic_value) (pmcons : pattern_match_cons) =
-  match pmcons with
-  | EndOfPatternMatch -> raise (EvalError("no matches"))
+and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
+  match patbrs with
+  | [] -> raise (EvalError("no matches"))
 
-  | PatternMatchCons(pat, astto, tailcons) ->
+  | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
-        if b then interpret envnew astto else select_pattern env valueobj tailcons
+        if b then interpret envnew astto else select_pattern env valueobj tail
 
-  | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
+  | PatternBranchWhen(pat, astcond, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
-      let bb = interpret_bool env astb in
-        if b && bb then interpret envnew astto else select_pattern env valueobj tailcons
+      let cond = interpret_bool env astcond in
+        if b && cond then interpret envnew astto else select_pattern env valueobj tail
 
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =
@@ -1756,8 +1760,20 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
   | _ -> return false
 
 
-and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) : environment =
-  let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env mutletcons in
+and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
+  let trilst =
+    recbinds |> List.map (function LetRecBinding(evid, patbrs) ->
+      let loc = ref StringEmpty in
+      (evid, loc, patbrs)
+    )
+  in
+  let envnew =
+    trilst |> List.fold_left (fun env (evid, loc, _) -> add_to_environment env evid loc) env
+  in
+  trilst |> List.iter (fun (_, loc, patbrs) -> loc := FuncWithEnvironment(patbrs, envnew));
+  envnew
+(*
+  let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env recbinds in
   let envzero = add_zeroary_mutuals lstzero envnew in
   fix_dependency envzero mutletcons;
   envzero
@@ -1830,3 +1846,4 @@ and fix_dependency envzero mutletcons =
             in
             fix_dependency envzero tailcons
       end
+*)

@@ -268,7 +268,8 @@ type untyped_argument_variable_cons = untyped_pattern_tree list
 
 and untyped_argument_cons = untyped_abstract_tree list
 
-and untyped_mutual_let_cons = (manual_type option * var_name * untyped_abstract_tree) list
+and untyped_letrec_binding =
+  UTLetRecBinding of manual_type option * var_name * untyped_abstract_tree
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
@@ -335,7 +336,8 @@ and untyped_abstract_tree_main =
   | UTFrozenCommand        of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
-  | UTLetIn                of untyped_mutual_let_cons * untyped_abstract_tree
+  | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
+  | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
   | UTFinishHeaderFile
@@ -427,6 +429,8 @@ and untyped_math_main =
 
 [@@deriving show { with_path = false }]
 
+type let_binding = manual_type option * (Range.t * var_name) * untyped_abstract_tree
+
 (* ---- typed ---- *)
 type argument_variable_cons =
   | ArgumentVariableCons  of var_name * argument_variable_cons
@@ -436,10 +440,12 @@ type argument_cons =
   | ArgumentCons          of abstract_tree * argument_cons
   | EndOfArgument
 
-and mutual_let_cons =
+and letrec_binding =
+  | LetRecBinding of EvalVarID.t * pattern_branch list
+(*
   | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
-
+*)
 and environment = location EvalVarIDMap.t * syntactic_value StoreIDHashTable.t
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
@@ -471,7 +477,7 @@ and syntactic_value =
 
   | Constructor           of constructor_name * syntactic_value
 
-  | FuncWithEnvironment   of EvalVarID.t * abstract_tree * environment
+  | FuncWithEnvironment   of pattern_branch list * environment
 
   | EvaluatedEnvironment  of environment
 
@@ -545,13 +551,13 @@ and abstract_tree =
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
-  | LetIn                 of mutual_let_cons * abstract_tree
+  | LetRecIn              of letrec_binding list * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | LambdaAbstract        of EvalVarID.t * abstract_tree
+  | Function              of pattern_branch list
   | Apply                 of abstract_tree * abstract_tree
 (* -- pattern match -- *)
-  | PatternMatch          of abstract_tree * pattern_match_cons
+  | PatternMatch          of abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
@@ -659,10 +665,9 @@ and abstract_tree =
   | BackendRegisterCrossReference of abstract_tree * abstract_tree
   | BackendGetCrossReference      of abstract_tree
 
-and pattern_match_cons =
-  | PatternMatchCons      of pattern_tree * abstract_tree * pattern_match_cons
-  | PatternMatchConsWhen  of pattern_tree * abstract_tree * abstract_tree * pattern_match_cons
-  | EndOfPatternMatch
+and pattern_branch =
+  | PatternBranch      of pattern_tree * abstract_tree
+  | PatternBranchWhen  of pattern_tree * abstract_tree * abstract_tree
 
 and pattern_tree =
   | PUnitConstant
