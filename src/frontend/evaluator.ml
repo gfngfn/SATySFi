@@ -1762,7 +1762,9 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : ab
 
 and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) : environment =
   let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env mutletcons in
-    add_zeroary_mutuals lstzero envnew
+  let envzero = add_zeroary_mutuals lstzero envnew in
+  fix_dependency envzero mutletcons;
+  envzero
 
 
 and add_mutuals_to_environment_sub (acc : (EvalVarID.t * abstract_tree) Alist.t) (env : environment) (mutletcons : mutual_let_cons) : (EvalVarID.t * abstract_tree) list * environment =
@@ -1808,4 +1810,27 @@ and add_zeroary_mutuals_sub (lstzero : (EvalVarID.t * abstract_tree) list) (env 
         with
         | EvalError(_) ->
             add_zeroary_mutuals_sub tail env (Alist.extend acc (evid, astcont))
+      end
+
+
+and fix_dependency envzero mutletcons =
+  match mutletcons with
+  | EndOfMutualLet -> ()
+
+  | MutualLetCons(evid, _, tailcons) ->
+      begin
+        match find_in_environment envzero evid with
+        | None -> assert false
+        | Some(loc) ->
+            let value = !loc in
+            let () =
+              match value with
+              | FuncWithEnvironment(evidx, astbody, _)       -> loc := (FuncWithEnvironment(evidx, astbody, envzero))
+              | InputHorzWithEnvironment(ihlst, _)           -> loc := (InputHorzWithEnvironment(ihlst, envzero))
+              | InputVertWithEnvironment(ivlst, _)           -> loc := (InputVertWithEnvironment(ivlst, envzero))
+              | LambdaHorzWithEnvironment(evidx, astbody, _) -> loc := (LambdaHorzWithEnvironment(evidx, astbody, envzero))
+              | LambdaVertWithEnvironment(evidx, astbody, _) -> loc := (LambdaVertWithEnvironment(evidx, astbody, envzero))
+              | _                                            -> ()
+            in
+            fix_dependency envzero tailcons
       end
