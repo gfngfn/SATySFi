@@ -344,7 +344,7 @@ let rec string_of_ast (ast : abstract_tree) =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ (EvalVarID.show_direct x) ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(x)                 -> EvalVarID.show_direct x
+  | ContentOf(rng, x)            -> EvalVarID.show_direct x
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
   | StringEmpty                  -> "\"\""

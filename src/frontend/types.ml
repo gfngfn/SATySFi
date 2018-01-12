@@ -515,7 +515,7 @@ and abstract_tree =
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetIn                 of mutual_let_cons * abstract_tree
-  | ContentOf             of EvalVarID.t
+  | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | LambdaAbstract        of EvalVarID.t * abstract_tree
   | Apply                 of abstract_tree * abstract_tree

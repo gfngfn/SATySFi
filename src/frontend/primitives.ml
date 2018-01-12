@@ -167,7 +167,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
 let lam evid ast = LambdaAbstract(evid, ast)
 let lamenv env evid ast = FuncWithEnvironment(evid, ast, env)
-let ( !- ) evid = ContentOf(evid)
+let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let rec lambda1 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in

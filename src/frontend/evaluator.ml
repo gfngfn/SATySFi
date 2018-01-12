@@ -967,7 +967,7 @@ and interpret env ast =
 
 (* -- fundamentals -- *)
 
-  | ContentOf(evid) ->
+  | ContentOf(rng, evid) ->
       let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
       begin
         match find_in_environment env evid with
@@ -977,7 +977,7 @@ and interpret env ast =
             value
 
         | None ->
-            report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+            report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast ast
       end
 
   | LetIn(mutletcons, astrest) ->
@@ -1395,7 +1395,7 @@ and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst :
 
       | InputHorzEmbeddedMath(astmath) ->
           let evidcmd = ctx.HorzBox.inline_math_command in
-            EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
+            EvInputHorzEmbedded(ContentOf(Range.dummy "interpret_input_horz", evidcmd), [astmath]) :: evihacc
               (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
       | InputHorzContent(ast0) ->

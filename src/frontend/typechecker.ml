@@ -306,7 +306,7 @@ let rec typecheck
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
             let () = print_for_debug_typecheck ("#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ " (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
-                (ContentOf(evid), tyres)
+                (ContentOf(rng, evid), tyres)
       end
 
   | UTFrozenCommand(mdlnmlst, csnm) ->
@@ -445,12 +445,12 @@ let rec typecheck
   | UTOverwrite(varrng, varnm, utastN) ->
       begin
         match typecheck_iter tyenv (varrng, UTContentOf([], varnm)) with
-        | (ContentOf(evid), tyvar) ->
+        | (ContentOf(_, evid), tyvar) ->
             let (eN, tyN) = typecheck_iter tyenv utastN in
             let () = unify tyvar (get_range utastN, RefType(tyN)) in
               (* --
                  actually 'get_range utastnew' is not good
-                 since the right side expression has type 't, not 't ref 
+                 since the right side expression has type 't, not 't ref
               -- *)
               (Overwrite(evid, eN), (rng, BaseType(UnitType)))
 
@@ -732,7 +732,7 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           aux (InputVertContent(e0) :: acc) tail
   in
     aux [] utivlst
-        
+
 
 
 and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
