@@ -142,9 +142,11 @@ let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in 
               StoreID.set ();
 *)
               let rec aux () =
+                print_endline ("  begin to evaluate the document ...");
                 reset ();
                 let env = replicate_store envinit in
                 let valuedoc = Evaluator.interpret env ast in
+                print_endline ("  evaluation done.");
                 begin
                   match valuedoc with
                   | DocumentValue(ctxdoc, imvblst) ->
@@ -154,9 +156,9 @@ let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in 
                       let pagelst = PageBreak.main pagesch imvblst in
                       begin
                         match CrossRef.needs_another_trial () with
-                        | CrossRef.NeedsAnotherTrial ->
+                        | CrossRef.NeedsAnotherTrial (* ->
                             print_endline ("  needs another trial for solving cross references...");
-                            aux ()
+                            aux () *)
 
                         | CrossRef.CountMax ->
                             begin

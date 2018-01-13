@@ -869,6 +869,7 @@ let replicate_store (env : environment) : environment =
   let stenvnew = StoreIDHashTable.create 32 in
   StoreIDHashTable.iter (fun stid value -> StoreIDHashTable.add stenvnew stid value) stenv;
 *)
+(*
   Format.printf "Types> ==== REPLICATE ====\n";
   StoreIDHashTable.iter (fun stid value ->
     Format.printf "| %s %a\n" (StoreID.show_direct stid) pp_syntactic_value value) stenv;
@@ -878,7 +879,7 @@ let replicate_store (env : environment) : environment =
   EvalVarIDMap.iter (fun evid loc ->
     Format.printf "| %s\n" (EvalVarID.show_direct evid)) valenv;
   Format.printf "Types> ==== END VALENV ====\n";
-
+*)
     (valenv, stenvnew)
 
 
