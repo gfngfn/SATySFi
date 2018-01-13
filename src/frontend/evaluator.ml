@@ -1711,10 +1711,8 @@ and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pa
   | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
         if b then
-          let () = Printf.printf "Evaluator> enter\n" in  (* for debug *)
           interpret envnew astto
         else
-          let () = Printf.printf "Evaluator> does NOT enter\n" in  (* for debug *)
           select_pattern env valueobj tail
 
   | PatternBranchWhen(pat, astcond, astto) :: tail ->
@@ -1742,7 +1740,6 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
   | (PVariable(evid), _) ->
       let envnew = add_to_environment env evid (ref valueobj) in
-      Printf.printf "Evaluator> p-add %s\n" (EvalVarID.show_direct evid);  (* for debug *)
         (true, envnew)
 
   | (PAsVariable(evid, psub), sub) ->
@@ -1763,7 +1760,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
   | (PTupleCons(phd, ptl), TupleCons(hd, tl)) ->
       let (bhd, envhd) = check_pattern_matching env phd hd in
-      let (btl, envtl) = check_pattern_matching env ptl tl in
+      let (btl, envtl) = check_pattern_matching envhd ptl tl in
       if bhd && btl then
         (true, envtl)
       else
@@ -1788,18 +1785,21 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   trilst |> List.iter (fun (evid, loc, patbrs) ->
+(*
     Format.printf "Evaluator> letrec %s\n" (EvalVarID.show_direct evid);  (* for debug *)
+*)
     loc := FuncWithEnvironment(patbrs, envnew)
   );
 
   (* begin: for debug *)
+(*
   let () =
     let (valenv, _) = envnew in
     valenv |> EvalVarIDMap.iter (fun evid loc ->
       Format.printf "| %s =\n" (EvalVarID.show_direct evid);
-      Format.printf "| %a\n" pp_syntactic_value (!loc);
     );
   in
+*)
   (* end: for debug *)
 
   envnew
