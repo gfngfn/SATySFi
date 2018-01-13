@@ -209,11 +209,11 @@ let-inline ctx \expand-spaces inner =
   let ctx-inner = set-space-ratio 1.0 ctx in
     read-inline ctx-inner inner
 
-let-block-detailed ctx +px inner =
-  let br = read-inline ctx inner in
-  let bc = form-paragraph ctx (indent ++ br ++ inline-fil) in
-  let ctx-after = set-font Latin font-latin-italic ctx in
-    (ctx-after, bc)
+%let-block-detailed ctx +px inner =
+%  let br = read-inline ctx inner in
+%  let bc = form-paragraph ctx (indent ++ br ++ inline-fil) in
+%  let ctx-after = set-font Latin font-latin-italic ctx in
+%    (ctx-after, bc)
 
 let simple-decoset =
   let frame-stroke = stroke 1pt red in
@@ -307,7 +307,7 @@ let bullet (x, y) =
   let r = 2pt in
     [ fill (Gray(0.)) (circle (cx, cy) r); ]
 
-let item : context -> int -> itemize -> block-boxes
+let-rec item : context -> int -> itemize -> block-boxes
   | ctx depth (Item(parent, children)) =
       let br-bullet = (inline-graphics 8pt 8pt 0pt bullet) ++ (inline-skip 8pt) in
       let bullet-width = get-natural-width br-bullet in
@@ -339,7 +339,7 @@ let-inline ctx \parbox-bottom wid inner =
 
 let-block ctx +repeat n inner =
   let bc = read-block ctx inner in
-  let repeat acc i =
+  let-rec repeat acc i =
     if i >= n then acc else
       repeat (bc +++ acc) (i + 1)
   in
