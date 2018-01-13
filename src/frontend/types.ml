@@ -427,7 +427,7 @@ and untyped_math_main =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type let_binding = manual_type option * (Range.t * var_name) * untyped_abstract_tree
+type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_pattern_tree list * untyped_abstract_tree
 
 (* ---- typed ---- *)
 type argument_variable_cons =
@@ -550,6 +550,7 @@ and abstract_tree =
   | AccessField           of abstract_tree * field_name
 (* -- fundamental -- *)
   | LetRecIn              of letrec_binding list * abstract_tree
+  | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
   | Function              of pattern_branch list

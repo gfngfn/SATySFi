@@ -977,11 +977,16 @@ and interpret env ast =
             report_bug_evaluator_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
       end
 
-  | LetRecIn(recbinds, astrest) ->
+  | LetRecIn(recbinds, ast2) ->
       let envnew = add_letrec_bindings_to_environment env recbinds in
-        interpret envnew astrest
+        interpret envnew ast2
 
-  | Function(patbrs) -> FuncWithEnvironment(patbrs, env)
+  | LetNonRecIn(pat, ast1, ast2) ->
+      let value1 = interpret env ast1 in
+        select_pattern env value1 [PatternBranch(pat, ast2)]
+
+  | Function(patbrs) ->
+      FuncWithEnvironment(patbrs, env)
 
   | Apply(ast1, ast2) ->
       let () = PrintForDebug.evalE ("Apply(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)

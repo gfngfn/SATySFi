@@ -440,11 +440,18 @@ let rec typecheck
       let (patbrs, tyP) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
         (PatternMatch(eO, patbrs), tyP)
 
-  | UTLetNonRecIn(mntyopt, pat, utast1, utast2) ->
+  | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
+      let (pat, tyP, tyenvnew) = typecheck_pattern qtfbl (FreeID.succ_level lev) tyenv utpat in
+      let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenv utast1 in
+      let () = unify ty1 tyP in
+      let (e2, ty2) = typecheck_iter tyenvnew utast2 in
+        (LetNonRecIn(pat, e1, e2), ty2)
+(*
       failwith "let nonrec"
+*)
 
   | UTLetRecIn(utrecbinds, utast2) ->
-      let (tyenvnew, _, recbinds) = make_type_environment_by_let qtfbl lev tyenv utrecbinds in
+      let (tyenvnew, _, recbinds) = make_type_environment_by_letrec qtfbl lev tyenv utrecbinds in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
         (LetRecIn(recbinds, e2), ty2)
 
@@ -862,18 +869,18 @@ and typecheck_pattern_branch_list
 
 and typecheck_pattern
     (qtfbl : quantifiability) (lev : FreeID.level)
-    (tyenv : Typeenv.t) (rng, utpatmain) =
+    (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * Typeenv.t =
   let iter = typecheck_pattern qtfbl lev in
   let unify = unify_ tyenv in
     match utpatmain with
     | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), tyenv)
     | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), tyenv)
+    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), tyenv)
+
     | UTPStringConstant(ut1) ->
         let (e1, ty1) = typecheck qtfbl lev tyenv ut1 in
         let () = unify (Range.dummy "pattern-string-constant", BaseType(StringType)) ty1 in
           (PStringConstant(e1), (rng, BaseType(StringType)), tyenv)
-
-    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), tyenv)
 
     | UTPListCons(utpat1, utpat2) ->
         let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
@@ -928,7 +935,7 @@ and typecheck_pattern
         end
 
 
-and make_type_environment_by_let
+and make_type_environment_by_letrec
     (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
 
