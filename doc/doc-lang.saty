@@ -1,0 +1,21 @@
+% -*- coding: utf-8 -*-
+StdJa.document (|
+  title = {\SATySFi;言語仕様};
+  author = {Takashi SUWA};
+|) '<
+  +make-title;
+  +section {構文} <
+    +p {
+      ${
+        \BNF{\patp}![
+          ${\varx};
+          ${\wildcard};
+          ${\cstc};
+          ${\patas{\patp}{\varx}};
+          ${\constrapp{\constrC}{\patp}};
+          ${\tuple![${\patp}; ${\ldots}; ${\patp}]}
+        ]
+      }
+    }
+  >
+>

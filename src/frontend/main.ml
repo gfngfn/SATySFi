@@ -503,7 +503,7 @@ let () =
     Arg.parse arg_spec_list handle_anonimous_arg "";
     initialize ();
     let (tyenv, env) = Primitives.make_environments () in
-
+(*
     (* begin: for debug *)
     Format.printf "Main> ==== ====\n";
     let () =
@@ -512,7 +512,7 @@ let () =
     in
     Format.printf "Main> ==== ====\n";
     (* end: for debug *)
-
+*)
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
     input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
