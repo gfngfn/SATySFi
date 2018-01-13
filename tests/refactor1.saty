@@ -1,0 +1,14 @@
+%let-rec fold-left
+%  | f i []        = i
+%  | f i (x :: xs) = fold-left f (f i x) xs
+%
+%let _ = fold-left (+) 0 [3; 1; 4; 1; 5; 9; 2]
+
+let-rec f | 0 y = y
+          | t _ = t + 2
+
+let s = arabic (f 0 42)
+
+let-inline ctx \math = embed-math ctx
+let ctx = get-initial-context A4Paper (20pt, 20pt) 400pt 600pt (command \math)
+in form-document ctx (line-break true true ctx ((read-inline ctx (embed-string s)) ++ inline-fil))

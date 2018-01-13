@@ -134,6 +134,7 @@ and reduce_beta_list env valuef astarglst =
       begin
         match valuef with
         | FuncWithEnvironment(patbrs, envf) ->
+          (* -- left-to-right evaluation -- *)
             let valuearg = interpret env astarg in
             let valuefnew = select_pattern envf valuearg patbrs in
               reduce_beta_list env valuefnew astargtail
@@ -1709,12 +1710,20 @@ and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pa
 
   | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
-        if b then interpret envnew astto else select_pattern env valueobj tail
+        if b then
+          let () = Printf.printf "Evaluator> enter\n" in  (* for debug *)
+          interpret envnew astto
+        else
+          let () = Printf.printf "Evaluator> does NOT enter\n" in  (* for debug *)
+          select_pattern env valueobj tail
 
   | PatternBranchWhen(pat, astcond, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
-      let cond = interpret_bool env astcond in
-        if b && cond then interpret envnew astto else select_pattern env valueobj tail
+      let cond = interpret_bool envnew astcond in
+        if b && cond then
+          interpret envnew astto
+        else
+          select_pattern env valueobj tail
 
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =
@@ -1733,6 +1742,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
   | (PVariable(evid), _) ->
       let envnew = add_to_environment env evid (ref valueobj) in
+      Printf.printf "Evaluator> p-add %s\n" (EvalVarID.show_direct evid);  (* for debug *)
         (true, envnew)
 
   | (PAsVariable(evid, psub), sub) ->
@@ -1773,9 +1783,25 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   let envnew =
-    trilst |> List.fold_left (fun env (evid, loc, _) -> add_to_environment env evid loc) env
+    trilst @|> env @|> List.fold_left (fun envacc (evid, loc, _) ->
+      add_to_environment envacc evid loc
+    )
   in
-  trilst |> List.iter (fun (_, loc, patbrs) -> loc := FuncWithEnvironment(patbrs, envnew));
+  trilst |> List.iter (fun (evid, loc, patbrs) ->
+    Format.printf "Evaluator> letrec %s\n" (EvalVarID.show_direct evid);  (* for debug *)
+    loc := FuncWithEnvironment(patbrs, envnew)
+  );
+
+  (* begin: for debug *)
+  let () =
+    let (valenv, _) = envnew in
+    valenv |> EvalVarIDMap.iter (fun evid loc ->
+      Format.printf "| %s =\n" (EvalVarID.show_direct evid);
+      Format.printf "| %a\n" pp_syntactic_value (!loc);
+    );
+  in
+  (* end: for debug *)
+
   envnew
 (*
   let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env recbinds in
