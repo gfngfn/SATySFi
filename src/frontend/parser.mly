@@ -455,7 +455,7 @@
 %token <Range.t * Types.class_name>   CLASSNAME
 *)
 %token <Range.t> LAMBDA ARROW COMMAND
-%token <Range.t> LET DEFEQ LETAND IN
+%token <Range.t> LETREC LETNONREC DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
@@ -522,7 +522,7 @@
 %type <Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
-%type <Types.untyped_letrec_binding list> nxdec
+%type <Types.untyped_letrec_binding list> nxrecdec
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxwhl
 %type <Types.untyped_abstract_tree> nxif
@@ -567,7 +567,7 @@ main:
   | utast=nxwhl; EOI    { utast }
 ;
 nxtoplevel:
-  | top=LET; dec=nxdec; subseq=nxtopsubseq                                   { make_letrec_expression top dec subseq }
+  | top=LETREC; dec=nxrecdec; subseq=nxtopsubseq                             { make_letrec_expression top dec subseq }
   | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
@@ -604,7 +604,7 @@ constrnt:
 ;
 nxstruct:
   | END                                                            { (end_struct $1) }
-  | LET nxdec nxstruct                                             { make_letrec_expression $1 $2 $3 }
+  | LETREC nxrecdec nxstruct                                       { make_letrec_expression $1 $2 $3 }
   | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
   | LETHORZ nxhorzdec nxstruct                                     { make_let_expression $1 $2 $3 }
   | LETVERT nxvertdec nxstruct                                     { make_let_expression $1 $2 $3 }
@@ -675,27 +675,27 @@ nxdecargpart:
   | BAR; argvarlst=nonempty_list(patbot)                    { (None, argvarlst) }
   | argvarlst=argvar                                        { (None, argvarlst) }
 ;
-nxdecsub:
-  | LETAND; dec=nxdec { dec }
-  |                   { [] }
-;
 %inline defedvar:
   | vartok=VAR  { vartok }
   | LPAREN; optok=binop; RPAREN { optok }
 ;
-nxdec:
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxdecsub {
+nxrecdecsub:
+  | LETAND; dec=nxrecdec { dec }
+  |                      { [] }
+;
+nxrecdec:
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxrecdecsub {
         let (mntyopt, argvarlst) = argpart in
           make_letrec_binding mntyopt vartok argvarlst utastdef dec
       }
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxdecpar; dec=nxdecsub {
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
         let (mntyopt, argvarlst) = argpart in
           make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argvarlst, utastdef) :: tail) dec
       }
 ;
-nxdecpar:
-  | patlst=argvar; DEFEQ; utast=nxlet; BAR; tail=nxdecpar { UTLetRecPatternBranch(patlst, utast) :: tail }
-  | patlst=argvar; DEFEQ; utast=nxlet                     { UTLetRecPatternBranch(patlst, utast) :: [] }
+nxrecdecpar:
+  | patlst=argvar; DEFEQ; utast=nxlet; BAR; tail=nxrecdecpar { UTLetRecPatternBranch(patlst, utast) :: tail }
+  | patlst=argvar; DEFEQ; utast=nxlet                        { UTLetRecPatternBranch(patlst, utast) :: [] }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
   | xpltyvars VAR DEFEQ variants constrnts LETAND nxvariantdec     { make_mutual_variant_cons $1 $2 $4 $5 $7 }
@@ -718,7 +718,7 @@ nxlet:
   | nxletsub { $1 }
 ;
 nxletsub:
-  | tok=LET; dec=nxdec; IN; utast=nxlet { make_letrec_expression tok dec utast }
+  | tok=LETREC; dec=nxrecdec; IN; utast=nxlet { make_letrec_expression tok dec utast }
 (*
   | tok=LET; pat=patbotwithoutvar; DEFEQ; utast1=nxlet; IN; utast2=nxlet {
         make_standard (Tok tok) (Ranged utast2) (UTPatternMatch(utast1, UTPatternMatchCons(pat, utast2, UTEndOfPatternMatch)))
