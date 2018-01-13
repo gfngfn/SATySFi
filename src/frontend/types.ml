@@ -444,7 +444,7 @@ and letrec_binding =
   | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
   | EndOfMutualLet
 *)
-and environment = location EvalVarIDMap.t * syntactic_value StoreIDHashTable.t
+and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
 and location = syntactic_value ref
@@ -862,6 +862,7 @@ let copy_environment (env : environment) : environment =
     (Hashtbl.copy valenv, stenv)
 *)
 
+(*
 let replicate_store (env : environment) : environment =
   let (valenv, stenv) = env in
   let stenvnew = StoreIDHashTable.copy stenv in
@@ -881,12 +882,12 @@ let replicate_store (env : environment) : environment =
   Format.printf "Types> ==== END VALENV ====\n";
 *)
     (valenv, stenvnew)
-
+*)
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) =
-  let (valenv, stenv) = env in
+  let (valenv, stenvref) = env in
     (*  Format.printf "Types> add %s \n" (EvalVarID.show_direct evid); *)
-    (valenv |> EvalVarIDMap.add evid rfast, stenv)
+    (valenv |> EvalVarIDMap.add evid rfast, stenvref)
 
 
 let find_in_environment (env : environment) (evid : EvalVarID.t) : location option =
@@ -895,15 +896,16 @@ let find_in_environment (env : environment) (evid : EvalVarID.t) : location opti
 
 
 let register_location (env : environment) (value : syntactic_value) : StoreID.t =
-  let (_, stenv) = env in
+  let (_, stenvref) = env in
   let stid = StoreID.fresh () in
-  StoreIDHashTable.add stenv stid value;
+  StoreIDHashTable.add (!stenvref) stid value;
   Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_syntactic_value value;  (* for debug *)
   stid
 
 
 let update_location (env :environment) (stid : StoreID.t) (value : syntactic_value) : unit =
-  let (valenv, stenv) = env in
+  let (_, stenvref) = env in
+  let stenv = !stenvref in
   if StoreIDHashTable.mem stenv stid then
     StoreIDHashTable.replace stenv stid value
   else
@@ -911,8 +913,8 @@ let update_location (env :environment) (stid : StoreID.t) (value : syntactic_val
 
 
 let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value option =
-  let (_, stenv) = env in
-  StoreIDHashTable.find_opt stenv stid
+  let (_, stenvref) = env in
+  StoreIDHashTable.find_opt (!stenvref) stid
 
 
 (*

@@ -534,7 +534,7 @@ let frame_deco_VM =
 
 let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
-  let envinit : environment = (EvalVarIDMap.empty, StoreIDHashTable.create 128) in
+  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
   let (~@) n        = (~! "tv"      , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in

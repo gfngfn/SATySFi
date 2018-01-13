@@ -11,7 +11,7 @@ let changed = ref false
 
 let count = ref 0
 
-let count_max = ref 8
+let count_max = ref 4
   (* temporary *)
 
 let main_hash_table = CrossRefHashTable.create 32

@@ -117,7 +117,42 @@ let output_pdf file_name_out pagesch pagelst =
   HandlePdf.write_to_file pdfret
 
 
-let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in file_name_out =
+let ordinal i =
+  let suffix =
+    match i mod 10 with
+    | 1 -> "st"
+    | 2 -> "nd"
+    | 3 -> "rd"
+    | _ -> "th"
+  in
+  (string_of_int i) ^ suffix
+
+
+module StoreIDMap = Map.Make(StoreID)
+
+
+type frozen_environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref * syntactic_value StoreIDMap.t
+
+
+let freeze_environment (env : environment) : frozen_environment =
+  let open MyUtil in
+  let (valenv, stenvref) = env in
+  let stmap =
+    StoreIDMap.empty @|> (!stenvref) @|> StoreIDHashTable.fold (fun stid value stmap ->
+      stmap |> StoreIDMap.add stid value
+    )
+  in
+  (valenv, stenvref, stmap)
+
+
+let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : environment =
+  let stenv = StoreIDHashTable.create 128 in
+  stmap |> StoreIDMap.iter (fun stid value -> StoreIDHashTable.add stenv stid value);
+  stenvref := stenv;
+  (valenv, ref stenv)
+
+
+let read_document_file (tyenv : Typeenv.t) (env : environment) file_name_in file_name_out =
   begin
     print_endline (" ---- ---- ---- ----");
     print_endline ("  reading '" ^ file_name_in ^ "' ...");
@@ -136,15 +171,16 @@ let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in 
 *)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
+        let env_freezed = freeze_environment env in
           match ty with
           | (_, BaseType(DocumentType)) ->
 (*
               StoreID.set ();
 *)
-              let rec aux () =
-                print_endline ("  begin to evaluate the document ...");
+              let rec aux i =
+                print_endline ("  begin to evaluate the document (" ^ (ordinal i) ^ " trial) ...");
                 reset ();
-                let env = replicate_store envinit in
+                let env = unfreeze_environment env_freezed in
                 let valuedoc = Evaluator.interpret env ast in
                 print_endline ("  evaluation done.");
                 begin
@@ -156,9 +192,9 @@ let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in 
                       let pagelst = PageBreak.main pagesch imvblst in
                       begin
                         match CrossRef.needs_another_trial () with
-                        | CrossRef.NeedsAnotherTrial (* ->
+                        | CrossRef.NeedsAnotherTrial ->
                             print_endline ("  needs another trial for solving cross references...");
-                            aux () *)
+                            aux (i + 1)
 
                         | CrossRef.CountMax ->
                             begin
@@ -180,7 +216,7 @@ let read_document_file (tyenv : Typeenv.t) (envinit : environment) file_name_in 
                   | _ -> failwith "main; not a DocumentValue(...)"
                 end
               in
-                aux ()
+                aux 1
 
           | _  -> raise (NotADocumentFile(file_name_in, tyenv, ty))
       end
