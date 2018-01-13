@@ -11,6 +11,7 @@ exception InvalidArityOfCommand of Range.t * int * int
 exception UnknownUnitOfLength   of Range.t * length_unit_name
 exception HorzCommandInMath     of Range.t
 exception MathCommandInHorz     of Range.t
+exception BreaksValueRestriction of Range.t
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -415,7 +416,14 @@ let rec typecheck
                 (Apply(e1, e2), beta)
       end
 
-  | UTLambdaAbstract(varrng, varnm, utast1) ->
+  | UTFunction(utpatbrs) ->
+      let tvidO = FreeID.fresh UniversalKind qtfbl lev () in
+      let betaO = (Range.dummy "UTFunction:dom", TypeVariable(ref (Free(tvidO)))) in
+      let tvidR = FreeID.fresh UniversalKind qtfbl lev () in
+      let betaR = (Range.dummy "UTFunction:cod", TypeVariable(ref (Free(tvidR)))) in
+      let (patbrs, tyR) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs betaO betaR in
+        (Function(patbrs), (rng, FuncType(betaO, tyR)))
+(*
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
       let evid = EvalVarID.fresh varnm in
@@ -423,6 +431,17 @@ let rec typecheck
         let tydom = beta in
         let tycod = ty1 in
           (LambdaAbstract(evid, e1), (rng, FuncType(tydom, tycod)))
+*)
+
+  | UTPatternMatch(utastO, utpatbrs) ->
+      let (eO, tyO) = typecheck_iter tyenv utastO in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
+      let (patbrs, tyP) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
+        (PatternMatch(eO, patbrs), tyP)
+
+  | UTLetNonRecIn(mntyopt, pat, utast1, utast2) ->
+      failwith "let nonrec"
 
   | UTLetRecIn(utrecbinds, utast2) ->
       let (tyenvnew, _, recbinds) = make_type_environment_by_let qtfbl lev tyenv utrecbinds in
@@ -577,14 +596,6 @@ let rec typecheck
         (utast, tymath)
 
 (* ---- other fundamentals ---- *)
-
-  | UTPatternMatch(utastO, utpmcons) ->
-      let (eO, tyO) = typecheck_iter tyenv utastO in
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
-      let (pmcons, tyP) =
-            typecheck_pattern_match_cons qtfbl lev tyenv utpmcons tyO beta in
-        (PatternMatch(eO, pmcons), tyP)
 
   | UTDeclareVariantIn(mutvarntcons, utastA) ->
       let tyenvnew = Typeenv.add_mutual_cons tyenv lev mutvarntcons in
@@ -822,33 +833,31 @@ and typecheck_itemize_list
         PrimitiveListCons(ehd, etl)
 
 
-and typecheck_pattern_match_cons
+and typecheck_pattern_branch_list
     (qtfbl : quantifiability) (lev : FreeID.level)
-    (tyenv : Typeenv.t) (utpmcons : untyped_pattern_match_cons) (tyobj : mono_type) (tyres : mono_type) =
-  let iter = typecheck_pattern_match_cons qtfbl lev in
+    (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) =
+  let iter = typecheck_pattern_branch_list qtfbl lev in
   let unify = unify_ tyenv in
-    match utpmcons with
-    | UTEndOfPatternMatch -> (EndOfPatternMatch, tyres)
+    match utpatbrs with
+    | [] -> ([], tyres)
 
-    | UTPatternMatchCons(utpat, utast1, tailcons) ->
+    | UTPatternBranch(utpat, utast1) :: tail ->
         let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
         let () = unify typat tyobj in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
-        let (pmctl, tytl) =
-              iter tyenv tailcons tyobj tyres in
-          (PatternMatchCons(epat, e1, pmctl), tytl)
+        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
+          (PatternBranch(epat, e1) :: patbrtail, tytail)
 
-    | UTPatternMatchConsWhen(utpat, utastb, utast1, tailcons) ->
+    | UTPatternBranchWhen(utpat, utastB, utast1) :: tail ->
         let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
         let () = unify typat tyobj in
-        let (eB, tyB) = typecheck qtfbl lev tyenvpat utastb in
+        let (eB, tyB) = typecheck qtfbl lev tyenvpat utastB in
         let () = unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
-        let (pmctl, tytl) =
-              iter tyenv tailcons tyobj tyres in
-          (PatternMatchConsWhen(epat, eB, e1, pmctl), tytl)
+        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
+          (PatternBranchWhen(epat, eB, e1) :: patbrtail, tytail)
 
 
 and typecheck_pattern
@@ -921,13 +930,15 @@ and typecheck_pattern
 
 and make_type_environment_by_let
     (qtfbl : quantifiability) (lev : FreeID.level)
-    (tyenv : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) =
+    (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
 
-  let rec add_mutual_variables (acctyenv : Typeenv.t) (mutletcons : untyped_mutual_let_cons) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
+  let rec add_mutual_variables (acctyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
     let iter = add_mutual_variables in
-      match mutletcons with
-      | []                             -> (acctyenv, [])
-      | (_, varnm, astdef) :: tailcons ->
+      match utrecbinds with
+      | [] ->
+          (acctyenv, [])
+
+      | UTLetRecBinding(_, varnm, astdef) :: tailcons ->
           let tvid = FreeID.fresh UniversalKind qtfbl (FreeID.succ_level lev) () in
           let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
           let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
@@ -938,31 +949,41 @@ and make_type_environment_by_let
 
   let rec typecheck_mutual_contents
       (lev : FreeID.level)
-      (tyenvforrec : Typeenv.t) (utmutletcons : untyped_mutual_let_cons) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
+      (tyenvforrec : Typeenv.t) (utrecbinds : untyped_letrec_binding list) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
       (acctvtylstout : (var_name * mono_type * EvalVarID.t) list)
   =
     let iter = typecheck_mutual_contents lev in
     let unify = unify_ tyenv in
-    match (utmutletcons, tvtylst) with
-    | ([], []) -> (tyenvforrec, EndOfMutualLet, List.rev acctvtylstout)
+    match (utrecbinds, tvtylst) with
+    | ([], []) -> (tyenvforrec, [], List.rev acctvtylstout)
 
-    | ((mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
+    | (UTLetRecBinding(mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
         let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenvforrec utast1 in
         begin
           match mntyopt with
           | None ->
               let () = unify ty1 beta in
-                let (tyenvfinal, mutletcons_tail, tvtylstoutfinal) = iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout) in
-                  (tyenvfinal, MutualLetCons(evid, e1, mutletcons_tail), tvtylstoutfinal)
+              let (tyenvfinal, recbindtail, tvtylstoutfinal) =
+                iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout)
+              in
+              begin
+                match e1 with
+                | Function(patbrs1) -> (tyenvfinal, LetRecBinding(evid, patbrs1) :: recbindtail, tvtylstoutfinal)
+                | _                 -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
+              end
 
           | Some(mnty) ->
               let tyin = Typeenv.fix_manual_type_free qtfbl tyenv lev mnty [] in
               let () = unify ty1 beta in
               let () = unify tyin beta in
-                let (tyenvfinal, mutletconstail, tvtylstoutfinal) =
-                      iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout) in
-                    (tyenvfinal, MutualLetCons(evid, e1, mutletconstail), tvtylstoutfinal)
-
+              let (tyenvfinal, recbindtail, tvtylstoutfinal) =
+                iter tyenvforrec tailcons tvtytail ((varnm, beta, evid) :: acctvtylstout)
+              in
+              begin
+                match e1 with
+                | Function(patbrs1) -> (tyenvfinal, LetRecBinding(evid, patbrs1) :: recbindtail, tvtylstoutfinal)
+                | _                 -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
+              end
         end
 
     | _ -> assert false
@@ -980,9 +1001,9 @@ and make_type_environment_by_let
             make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid)) tyenv_before_let tvtytail tvtylst_forall_new
   in
 
-  let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utmutletcons in
+  let (tyenvforrec, tvtylstforrec) = add_mutual_variables tyenv utrecbinds in
   let (tyenv_new, mutletcons, tvtylstout) =
-        typecheck_mutual_contents lev tyenvforrec utmutletcons tvtylstforrec [] in
+        typecheck_mutual_contents lev tyenvforrec utrecbinds tvtylstforrec [] in
   let (tyenv_forall, tvtylst_forall) = make_forall_type_mutual tyenv_new tyenv tvtylstout [] in
     (tyenv_forall, tvtylst_forall, mutletcons)
 

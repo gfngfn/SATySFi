@@ -3,6 +3,8 @@ open LengthInterface
 
 
 exception ParseErrorDetail of string
+exception IllegalArgumentLength of Range.t * int * int
+
 
 type ctrlseq_name       = string  [@@deriving show]
 type var_name           = string  [@@deriving show]
@@ -264,9 +266,7 @@ module BoundID =
   end
 
 (* ---- untyped ---- *)
-type untyped_argument_variable_cons = untyped_pattern_tree list
-
-and untyped_argument_cons = untyped_abstract_tree list
+type untyped_argument_cons = untyped_abstract_tree list
 
 and untyped_letrec_binding =
   UTLetRecBinding of manual_type option * var_name * untyped_abstract_tree
@@ -339,11 +339,11 @@ and untyped_abstract_tree_main =
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
   | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTLambdaAbstract       of Range.t * var_name * untyped_abstract_tree
+  | UTFunction             of untyped_pattern_branch list (* Range.t * var_name * untyped_abstract_tree *)
   | UTFinishHeaderFile
   | UTFinishStruct
 (* -- pattern match -- *)
-  | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_match_cons
+  | UTPatternMatch         of untyped_abstract_tree * untyped_pattern_branch list
   | UTConstructor          of constructor_name * untyped_abstract_tree
       [@printer (fun fmt (cn, u) -> Format.fprintf fmt "%s(%a)" cn pp_untyped_abstract_tree u)]
 (* -- declaration of type and module -- *)
@@ -404,14 +404,9 @@ and untyped_pattern_tree_main =
   | UTPAsVariable          of var_name * untyped_pattern_tree
   | UTPConstructor         of constructor_name * untyped_pattern_tree
 
-and untyped_pattern_match_cons =
-  | UTPatternMatchCons     of untyped_pattern_tree * untyped_abstract_tree * untyped_pattern_match_cons
-  | UTPatternMatchConsWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree * untyped_pattern_match_cons
-  | UTEndOfPatternMatch
-
-and untyped_let_pattern_cons =
-  | UTLetPatternCons of untyped_argument_variable_cons * untyped_abstract_tree * untyped_let_pattern_cons
-  | UTEndOfLetPattern
+and untyped_pattern_branch =
+  | UTPatternBranch     of untyped_pattern_tree * untyped_abstract_tree
+  | UTPatternBranchWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
 
 and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
 
@@ -428,6 +423,9 @@ and untyped_math_main =
   | UTMEmbed       of untyped_abstract_tree
 
 [@@deriving show { with_path = false }]
+
+type untyped_letrec_pattern_branch =
+  | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
 type let_binding = manual_type option * (Range.t * var_name) * untyped_abstract_tree
 

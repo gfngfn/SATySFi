@@ -210,6 +210,13 @@ let error_log_environment suspended =
   | Parsing.Parse_error             -> report_error Parser [ NormalLine("something is wrong."); ]
   | ParseErrorDetail(s)             -> report_error Parser [ NormalLine(s); ]
 
+  | IllegalArgumentLength(rng, len, lenexp) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this declaration has" ^ (string_of_int len) ^ " argument pattern(s),");
+        NormalLine("but is expected to have " ^ (string_of_int lenexp) ^ ".");
+      ]
+
   | ParserInterface.Error(rng) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -250,6 +257,13 @@ let error_log_environment suspended =
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("a math command is used as an inline command.");
+      ]
+
+  | Typechecker.BreaksValueRestriction(rng) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this expression breaks the value restriction;");
+        NormalLine("it should be a syntactic function.");
       ]
 
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->

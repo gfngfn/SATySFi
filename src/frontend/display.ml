@@ -250,8 +250,9 @@ let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
 
 
 (* -- following are all for debug -- *)
+let string_of_utast utast = show_untyped_abstract_tree utast
 
-
+(*
 let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   match utastmain with
   | UTStringEmpty                  -> "{}"
@@ -273,7 +274,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTLetRecIn(_, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
   | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
                                         ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
-  | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"
+  | UTFunction(_)                  -> "(function ...)"
   | UTFinishHeaderFile             -> "finish"
   | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
   | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
@@ -281,8 +282,9 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTInputVert(utivlst)           -> "(textV " ^ (String.concat " " (List.map string_of_utiv utivlst)) ^ ")"
   | UTInputHorz(utihlst)           -> "(textH " ^ (String.concat " " (List.map string_of_utih utihlst)) ^ ")"
   | _                              -> "OTHER"
+*)
 
-and string_of_utiv (_, utivmain) =
+let rec string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
       "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
@@ -305,10 +307,10 @@ and string_of_itemize dp (UTItem(utast, itmzlst)) =
 
 and string_of_pmcons pmcons =
   match pmcons with
-  | UTEndOfPatternMatch -> ""
-  | UTPatternMatchCons(pat, ut, tail)
+  | [] -> ""
+  | UTPatternBranch(pat, ut) :: tail
       -> " | " ^ (string_of_utpat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
-  | UTPatternMatchConsWhen(pat, utb, ut, tail)
+  | UTPatternBranchWhen(pat, utb, ut) :: tail
       -> " | " ^ (string_of_utpat pat) ^ " when " ^ (string_of_utast utb)
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 

@@ -283,7 +283,9 @@ rule progexpr = parse
           | "let-inline"        -> LETHORZ(pos)
           | "let-block"         -> LETVERT(pos)
           | "let-math"          -> LETMATH(pos)
+(*
           | "let-block-detailed" -> LETVERTDETAILED(pos)  (* wil be deprecated *)
+*)
           | "controls"          -> CONTROLS(pos)
           | "cycle"             -> CYCLE(pos)
           | "inline-cmd"        -> HORZCMDTYPE(pos)
