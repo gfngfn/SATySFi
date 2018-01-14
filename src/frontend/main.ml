@@ -182,6 +182,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
               StoreID.set ();
 *)
               let rec aux i =
+                print_endline (" ---- ---- ---- ----");
                 print_endline ("  begin to evaluate the document (" ^ (ordinal i) ^ " trial) ...");
                 reset ();
                 let env = unfreeze_environment env_freezed in
@@ -257,13 +258,64 @@ let error_log_environment suspended =
 
   | CrossRef.DumpFileOtherThanAssoc(dumpfile) ->
       report_error Interface [
-        NormalLine("the content of the dump file '" ^ dumpfile ^ "' is NOT a dictionary.");
+        NormalLine("in the dump file '" ^ dumpfile ^ "':");
+        NormalLine("the content is NOT a dictionary.");
       ]
 
   | CrossRef.DumpFileValueOtherThanString(dumpfile, key, jsonstr) ->
       report_error Interface [
-        NormalLine("the value corresponding to the key '" ^ key ^ "' in the dump file '" ^ dumpfile ^ "' is NOT a string;");
+        NormalLine("in the dump file '" ^ dumpfile ^ "':");
+        NormalLine("the value associated with the key '" ^ key ^ "' is NOT a string;");
         DisplayLine(jsonstr);
+      ]
+
+  | LoadFont.InvalidYOJSON(srcpath, msg) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the content is NOT a valid YOJSON format;");
+        DisplayLine(msg);
+      ]
+
+  | LoadFont.FontHashOtherThanDictionary(srcpath) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the content is NOT a dictionary.");
+      ]
+
+  | LoadFont.FontHashElementOtherThanVariant(srcpath, abbrev, jsonstr) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with the font name '" ^ abbrev ^ "' is NOT a YOJSON variant;");
+        DisplayLine(jsonstr);
+      ]
+
+  | LoadFont.MultipleDesignation(srcpath, abbrev, key) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
+                     ^ "has multiple designations for '" ^ key ^ "'.");
+      ]
+
+  | LoadFont.UnexpectedYOJSONKey(srcpath, abbrev, key) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
+                     ^ "has an unexpected designation key '" ^ key ^ "'.");
+      ]
+
+  | LoadFont.UnexpectedYOJSONValue(srcpath, abbrev, key, jsonstr) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
+                     ^ "has an unexpected designation value for '" ^ key ^ "';");
+        DisplayLine(jsonstr);
+      ]
+
+  | LoadFont.MissingRequiredYOJSONKey(srcpath, abbrev, key) ->
+      report_error Interface [
+        NormalLine("in the font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
+                     ^ "does NOT have the required designation key '" ^ key ^ "'.");
       ]
 
   | Lexer.LexError(rng, s) ->
@@ -437,7 +489,7 @@ let error_log_environment suspended =
 
   | Evaluator.EvalError(s) -> report_error Evaluator [ NormalLine(s); ]
 
-  | Sys_error(s) -> report_error System    [ NormalLine(s); ]
+  | Sys_error(s) -> report_error System [ NormalLine(s); ]
 (*
   | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
 *)
@@ -524,15 +576,18 @@ let () =
     Arg.parse arg_spec_list handle_anonimous_arg "";
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
+(*
     input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
-    print_endline ("  [output] " ^ output);
+*)
+    print_endline (" ---- ---- ---- ----");
+    print_endline ("  target file: '" ^ output ^ "'");
     let dumpfile = (Filename.remove_extension output) ^ ".satysfi-aux" in
     let dump_file_exists = initialize dumpfile in
     begin
     if dump_file_exists then
-      print_endline ("  [dump] " ^ dumpfile ^ " (already exists)")
+      print_endline ("  dump file: '" ^ dumpfile ^ "' (already exists)")
     else
-      print_endline ("  [dump] " ^ dumpfile ^ " (will be created)")
+      print_endline ("  dump file: '" ^ dumpfile ^ "' (will be created)")
     end;
     let (tyenv, env) = Primitives.make_environments () in
 (*

@@ -4,8 +4,8 @@ type dir_path = string
 type font_abbrev = string
 
 exception InvalidYOJSON                   of file_path * string
-exception FontHashOtherThanDictionary     of file_path * string
-exception FontHashElementOtherThanVariant of file_path * string
+exception FontHashOtherThanDictionary     of file_path
+exception FontHashElementOtherThanVariant of file_path * font_abbrev * string
 exception MultipleDesignation             of file_path * font_abbrev * string
 exception UnexpectedYOJSONKey             of file_path * font_abbrev * string
 exception UnexpectedYOJSONValue           of file_path * font_abbrev * string * string
@@ -43,7 +43,7 @@ let read_assoc (srcpath : file_path) (dir_dist : dir_path) assoc =
           Alist.extend acc (abbrev, data)
 
     | json_other ->
-        raise (FontHashElementOtherThanVariant(srcpath, Yojson.Safe.to_string json_other))
+        raise (FontHashElementOtherThanVariant(srcpath, abbrev, Yojson.Safe.to_string json_other))
   ) Alist.empty |> Alist.to_list
 
 
@@ -58,6 +58,6 @@ let main (satysfi_root_dir : dir_path) (filename : file_path) =
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
         match json with
         | `Assoc(assoc) -> read_assoc srcpath dir_dist assoc
-        | json_other    -> raise (FontHashOtherThanDictionary(srcpath, Yojson.Safe.to_string json_other))
+        | json_other    -> raise (FontHashOtherThanDictionary(srcpath))
     with
     | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))
