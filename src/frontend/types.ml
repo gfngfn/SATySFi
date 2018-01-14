@@ -496,9 +496,9 @@ and syntactic_value =
   | Horz                  of HorzBox.horz_box list
   | Vert                  of HorzBox.vert_box list
 
-  | PathValue             of HorzBox.path list
+  | PathValue             of GraphicData.path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of Pdfops.t list
+  | GraphicsValue               of Graphics.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | GraphicsTextValue           of point * HorzBox.intermediate_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics-text>")]

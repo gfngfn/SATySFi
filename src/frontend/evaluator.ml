@@ -219,37 +219,37 @@ and interpret_path env pathcomplst cycleopt =
     pathcomplst |> List.map (function
       | PathLineTo(astpt) ->
           let pt = interpret_point env astpt in
-            HorzBox.LineTo(pt)
+            GraphicData.LineTo(pt)
 
       | PathCubicBezierTo(astpt1, astpt2, astpt) ->
           let pt1 = interpret_point env astpt1 in
           let pt2 = interpret_point env astpt2 in
           let pt = interpret_point env astpt in
-            HorzBox.CubicBezierTo(pt1, pt2, pt)
+            GraphicData.CubicBezierTo(pt1, pt2, pt)
     )
   in
   let closingopt =
     match cycleopt with
     | None -> None
 
-    | Some(PathLineTo(())) -> Some(HorzBox.LineTo(()))
+    | Some(PathLineTo(())) -> Some(GraphicData.LineTo(()))
 
     | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
         let pt1 = interpret_point env astpt1 in
         let pt2 = interpret_point env astpt2 in
-          Some(HorzBox.CubicBezierTo(pt1, pt2, ()))
+          Some(GraphicData.CubicBezierTo(pt1, pt2, ()))
   in
     (pathelemlst, closingopt)
 
 
-and graphics_of_list value =
-  let rec aux acc value =
+and graphics_of_list value : Graphics.t =
+  let rec aux gracc value =
     match value with
-    | EndOfList                             -> List.rev acc
-    | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
+    | EndOfList                             -> gracc
+    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
     | _                                     -> report_bug_evaluator_value "make_frame_deco" value
   in
-    List.concat (aux [] value)
+    aux Graphics.empty value
 
 
 and make_frame_deco env valuedeco =
@@ -605,7 +605,7 @@ and interpret env ast =
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
-        PathValue([HorzBox.GeneralPath(pt0, pathelemlst, closingopt)])
+        PathValue([GraphicData.GeneralPath(pt0, pathelemlst, closingopt)])
 
   | PathUnite(astpath1, astpath2) ->
       let pathlst1 = interpret_path_value env astpath1 in
@@ -1227,14 +1227,14 @@ and interpret env ast =
       let wid = interpret_length env astwid in
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_stroke wid color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_stroke wid color pathlst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawFill(astcolor, astpath) ->
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_fill color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_fill color pathlst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawDashedStroke(astwid, astdash, astcolor, astpath) ->
       let wid = interpret_length env astwid in
@@ -1247,8 +1247,8 @@ and interpret env ast =
       in
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_dashed_stroke wid (len1, len2, len3) color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_dashed_stroke wid (len1, len2, len3) color pathlst in
+        GraphicsValue(grelem)
 
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
@@ -1584,7 +1584,7 @@ and get_string (value : syntactic_value) : string =
     | _                 -> report_bug_evaluator_value "get_string" value
 
 
-and interpret_path_value env ast : HorzBox.path list =
+and interpret_path_value env ast : GraphicData.path list =
   let value = interpret env ast in
     match value with
     | PathValue(pathlst) -> pathlst
@@ -1615,7 +1615,7 @@ and interpret_tuple3 env getf ast =
 
 
 and make_color_value color =
-  let open HorzBox in
+  let open GraphicData in
     match color with
     | DeviceGray(gray) ->
         Constructor("Gray", FloatConstant(gray))
@@ -1632,21 +1632,22 @@ and make_color_value color =
                                   TupleCons(FloatConstant(k), EndOfTuple)))))
 
 
-and interpret_color env ast : HorzBox.color =
+and interpret_color env ast : GraphicData.color =
   let value = interpret env ast in
+  let open GraphicData in
     match value with
-    | Constructor("Gray", FloatConstant(gray)) -> HorzBox.DeviceGray(gray)
+    | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
 
     | Constructor("RGB", TupleCons(FloatConstant(fltR),
                            TupleCons(FloatConstant(fltG),
                              TupleCons(FloatConstant(fltB), EndOfTuple)))) ->
-        HorzBox.DeviceRGB(fltR, fltG, fltB)
+        DeviceRGB(fltR, fltG, fltB)
 
     | Constructor("CMYK", TupleCons(FloatConstant(fltC),
                             TupleCons(FloatConstant(fltM),
                               TupleCons(FloatConstant(fltY),
                                 TupleCons(FloatConstant(fltK), EndOfTuple))))) ->
-        HorzBox.DeviceCMYK(fltC, fltM, fltY, fltK)
+        DeviceCMYK(fltC, fltM, fltY, fltK)
 
     | _ -> report_bug_evaluator "interpret_color" ast value
 

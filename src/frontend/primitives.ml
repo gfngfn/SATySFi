@@ -303,18 +303,22 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let hB = hA -% wB *% a2 in
 
   let graphics (xpos, ypos) =
-    Graphics.pdfops_of_fill color [
-      GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-        LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
-        LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
-        LineTo(xpos +% wM            , ypos -% dpt +% h1);
-        LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
-        LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
-        LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
-        LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
-        LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
-      ], Some(LineTo(())))
-    ]
+    let grelem =
+      let open GraphicData in
+      Graphics.make_fill color [
+        GeneralPath((xpos +% wid, ypos +% hgt_bar), [
+          LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
+          LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
+          LineTo(xpos +% wM            , ypos -% dpt +% h1);
+          LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
+          LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
+          LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
+          LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
+          LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
+        ], Some(LineTo(())))
+      ]
+    in
+      Graphics.singleton grelem
   in
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
 
@@ -455,7 +459,7 @@ let get_initial_context pagesch evidcmd =
       paragraph_bottom       = pdfpt 18.;
       leading                = pdfpt 18.;
       min_gap_of_lines       = pdfpt 2.;
-      text_color             = DeviceGray(0.);
+      text_color             = GraphicData.DeviceGray(0.);
       manual_rising          = pdfpt 0.;
       page_scheme            = pagesch;
       badness_space          = 100;

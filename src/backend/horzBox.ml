@@ -1,5 +1,6 @@
 
 open LengthInterface
+open GraphicData
 
 
 type stretchable =
@@ -81,22 +82,7 @@ type paddings =
   }
 [@@deriving show { with_path = false }]
 
-(* -- representation about graphics based on PDF 1.7 specification -- *)
-
-type color =
-  | DeviceGray of float
-  | DeviceRGB  of float * float * float
-  | DeviceCMYK of float * float * float * float
-[@@deriving show { with_path = false }]
-
-type 'a path_element =
-  | LineTo              of 'a
-  | CubicBezierTo       of point * point * 'a
-
-type path =
-  | GeneralPath of point * (point path_element) list * (unit path_element) option
-  | Rectangle   of point * point
-
+(*
 type line_dash =
   | SolidLine
   | DashedLine of length * length * length
@@ -130,6 +116,7 @@ type graphics_command =
   | DrawFillByEvenOdd
   | DrawBothByNonzero
   | DrawBothByEvenOdd
+*)
 
 type horz_string_info =
   {
@@ -151,7 +138,7 @@ type math_string_info =
 
 (* -- internal representation of boxes -- *)
 
-type decoration = point -> length -> length -> length -> Pdfops.t list
+type decoration = point -> length -> length -> length -> Graphics.t
 [@@deriving show]
 
 
@@ -262,7 +249,7 @@ and pure_horz_box =
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
+  | PHGFixedGraphics  of length * length * length * (point -> Graphics.t)
   | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
@@ -305,7 +292,7 @@ and evaled_horz_box_main =
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
+  | EvHorzInlineGraphics of length * length * (point -> Graphics.t)
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]

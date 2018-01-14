@@ -1,6 +1,7 @@
 
 open MyUtil
 open LengthInterface
+open GraphicData
 open HorzBox
 
 
@@ -699,7 +700,7 @@ and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math
       let lk = no_left_kern Length.zero Length.zero MathEnd in
       let rk = no_right_kern Length.zero Length.zero MathEnd in
         ([], Length.zero, Length.zero, lk, rk)
-  
+
   | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) ->
       (List.rev lmmainacc, hgt, dpt, lkfirst, rklast)
 
@@ -853,9 +854,9 @@ let horz_fraction_bar mathctx wid =
   let h_bart        = h_bar +% t_bar *% 0.5 in
   let bar_color = MathContext.color mathctx in
   let bar_graphics (xpos, ypos) =
-    Graphics.pdfops_of_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))]
+    Graphics.singleton (Graphics.make_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))])
   in
-    HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))  
+    HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
 
 let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) =
@@ -1046,7 +1047,10 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbbar =
           HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
             (fun (xpos, ypos) ->
-              Graphics.pdfops_of_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
+              let grelem =
+                Graphics.make_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))]
+              in
+                Graphics.singleton grelem)))
         in
         let hbback = fixed_empty (Length.negate w_cont) in
         let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in

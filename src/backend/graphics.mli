@@ -1,7 +1,8 @@
 
 open LengthInterface
-open HorzBox
+open GraphicData
 
+(*
 val op_cm_translate : point -> Pdfops.t
 val op_cm_scale : float -> float -> point -> Pdfops.t
 val op_Tm_translate : point -> Pdfops.t
@@ -23,16 +24,45 @@ val op_q : Pdfops.t
 val op_Q : Pdfops.t
 val op_S : Pdfops.t
 val op_Do : string -> Pdfops.t
+*)
 
+type dash = length * length * length
+
+type element
+
+type t
+
+val empty : t
+
+val extend : t -> element -> t
+
+val singleton : element -> t
+
+val make_fill : color -> path list -> element
+
+val make_stroke : length -> color -> path list -> element
+
+val make_dashed_stroke : length -> dash -> color -> path list -> element
+
+val pdfops_of_text : point -> length -> string -> length -> color -> OutputText.style * OutputText.element list -> Pdfops.t list
+
+val pdfops_of_image : point -> float -> float -> string -> Pdfops.t list
+
+val pdfops_test_box : color -> point -> length -> length -> Pdfops.t list
+
+val pdfops_test_frame : point -> length -> length -> length -> Pdfops.t list
+
+val to_pdfops : t -> Pdfops.t list
+(*
 val pdfop_of_text_color : color -> Pdfops.t
 
 val pdfops_of_path_list : path list -> Pdfops.t list
-
+(*
 val pdfops_of_graphics : graphics_state -> graphics_command -> path list -> Pdfops.t list
-
-val pdfops_of_stroke : length -> color -> path list -> Pdfops.t list
+*)
+va<l pdfops_of_stroke : length -> color -> path list -> Pdfops.t list
 
 val pdfops_of_dashed_stroke : length -> length * length * length -> color -> path list -> Pdfops.t list
 
 val pdfops_of_fill : color -> path list -> Pdfops.t list
-
+*)

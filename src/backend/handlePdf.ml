@@ -7,30 +7,6 @@ open HorzBox
 type t = Pdf.t * Pdfpage.t list * file_path
 
 
-(* -- 'ops_test_box': output bounding box of vertical elements for debugging -- *)
-let ops_test_box rgb (xpos, ypos) wid hgt =
-  [
-    Graphics.op_q;
-    Graphics.op_RG rgb;
-    Graphics.op_re (xpos, ypos) (wid, Length.negate hgt);
-    Graphics.op_S;
-    Graphics.op_Q;
-  ]
-
-
-(* -- 'ops_test_frame': output bounding box of horizontal elements for debugging -- *)
-let ops_test_frame (xpos, yposbaseline) wid hgt dpt =
-  [
-    Graphics.op_q;
-    Graphics.op_RG (1.0, 0.5, 0.5);
-    Graphics.op_m (xpos, yposbaseline);
-    Graphics.op_l (xpos +% wid, yposbaseline);
-    Graphics.op_re (xpos, yposbaseline +% hgt) (wid, Length.zero -% (hgt -% dpt));
-    Graphics.op_S;
-    Graphics.op_Q;
-  ]
-
-
 let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
@@ -44,12 +20,12 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
         (xpos +% wid, opacc)
 
     | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
-        let ops_background =
+        let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
         in
         let ops_foreground = [] in  (* temporary *)
-        let opaccinit = Alist.append opacc ops_background in
+        let opaccinit = Alist.append opacc (Graphics.to_pdfops gr_background) in
         let (xposnew, opaccsub) =
           imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
@@ -58,12 +34,16 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
 
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
+(*
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
+*)
         let ops =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
 *)
+            (Graphics.pdfops_of_text (xpos, yposbaseline) hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt)
+(*
           [
             Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
@@ -76,6 +56,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
             Graphics.op_ET;
             Graphics.op_Q;
           ]
+*)
         in
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
@@ -83,12 +64,16 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
     | EvHorzMathGlyph(msinfo, hgt, dpt, gid) ->
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
+(*
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color msinfo.math_color in
+*)
         let ops =
 (*
         List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
+          (Graphics.pdfops_of_text (xpos, yposbaseline) Length.zero tag msinfo.math_font_size msinfo.math_color otxt)
+(*
           [
             Graphics.op_cm_translate (Length.zero, Length.zero);
             Graphics.op_q;
@@ -100,6 +85,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
             Graphics.op_ET;
             Graphics.op_Q;
           ]
+*)
         in
         let opaccnew = Alist.append opacc ops in
         (xpos +% wid, opaccnew)
@@ -121,13 +107,13 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineGraphics(hgt, dpt, graphics) ->
-        let ops_graphics =
+        let gr =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
           (graphics (xpos, yposbaseline))
         in
-        let opaccnew = Alist.append opacc ops_graphics in
+        let opaccnew = Alist.append opacc (Graphics.to_pdfops gr) in
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineTabular(hgt, dpt, evtabular) ->
@@ -143,14 +129,17 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
         let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
 
-            List.append (ops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
 
+              (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
+(*
           [
             Graphics.op_q;
             Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
             Graphics.op_Do tag;
             Graphics.op_Q;
           ]
+*)
         in
         let opaccnew =
           Alist.append opacc ops_image
@@ -178,7 +167,7 @@ and ops_of_evaled_tabular point evtabular =
               in
               let opaccnew =
 
-                (ops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
+                (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
 
                   opaccsub
               in
@@ -191,7 +180,7 @@ and ops_of_evaled_tabular point evtabular =
               in
               let opaccnew =
 
-                (ops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
+                (Graphics.pdfops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
 
                   opaccsub
               in
@@ -241,8 +230,8 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
         let ypossubinit = ypos -% pads.paddingT in
         let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list (xpossubinit, ypossubinit) opacc evvblstsub in
         let yposend = ypossub -% pads.paddingB in
-        let ops_background = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
-          ((xpos, yposend), Alist.append opaccsub ops_background)
+        let gr = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
+          ((xpos, yposend), Alist.append opaccsub (Graphics.to_pdfops gr))
   )
 
 
