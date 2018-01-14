@@ -39,7 +39,7 @@ let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let make_line_stack hblstlst =
+let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
   let open HorzBox in
   let wid =
     hblstlst |> List.fold_left (fun widacc hblst ->
@@ -48,53 +48,67 @@ let make_line_stack hblstlst =
     ) Length.zero
   in
   let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let evvblst =
-    trilst |> List.fold_left (fun evvbacc (evhblst, hgt, dpt) ->
-      EvVertLine(hgt, dpt, evhblst) :: evvbacc
-    ) [] |> List.rev
+  let imvblst =
+    trilst |> List.fold_left (fun imvbacc (imhblst, hgt, dpt) ->
+      Alist.extend imvbacc (ImVertLine(hgt, dpt, imhblst))
+    ) Alist.empty |> Alist.to_list
   in
-    (wid, evvblst)
+    (wid, imvblst)
 
 
-let adjust_to_first_line evvblst =
+let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
   let open HorzBox in
-  let rec aux optinit totalhgtinit evvblst =
-    evvblst |> List.fold_left (fun (opt, totalhgt) evvb ->
-      match (evvb, opt) with
-      | (EvVertLine(hgt, dpt, _), None)          -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
-      | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+  let rec aux optinit totalhgtinit imvblst =
+    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
+      match (imvb, opt) with
+      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertFixedBreakable(vskip), _) -> (opt, totalhgt +% vskip)
+
+      | (ImVertFrame(pads, _, _, _, _, _, imvblstsub), _) ->
           let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
+          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
           let totalhgtafter = totalhgtsub +% pads.paddingB in
             (optsub, totalhgtafter)
+
+      | (ImVertTopMargin(_, _), _)
+      | (ImVertBottomMargin(_, _), _)
+           -> assert false  (* -- solidified 'intermediate_vert_box list' value does NOT contain margins -- *)
+
     ) (optinit, totalhgtinit)
   in
-    match aux None Length.zero evvblst with
-    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
-    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
+  let imvblst_solid = PageBreak.solidify imvblst in
+    match aux None Length.zero imvblst_solid with
+    | (Some(hgt), totalhgt) -> (imvblst_solid, hgt, Length.negate (totalhgt -% hgt))
+    | (None, totalhgt)      -> (imvblst_solid, Length.zero, Length.negate totalhgt)
 
 
-let adjust_to_last_line evvblst =
+let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
     let open HorzBox in
     let rec aux optinit totalhgtinit evvblst =
       let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) evvblast ->
-            match (evvblast, opt) with
-            | (EvVertLine(hgt, dpt, _), None)          -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
-            | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
+            match (imvblast, opt) with
+            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
+            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
+            | (ImVertFixedBreakable(vskip), _) -> (opt, totalhgt +% vskip)
+
+            | (ImVertFrame(pads, _, _, _, _, _, evvblstsub), _) ->
                 let totalhgtbefore = totalhgt +% pads.paddingB in
                 let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
                 let totalhgtafter = totalhgtsub +% pads.paddingT in
                   (optsub, totalhgtafter)
+
+            | (ImVertTopMargin(_, _), _)
+            | (ImVertBottomMargin(_, _), _)
+                -> assert false  (* -- solidified 'intermediate_vert_box list' value does NOT contain margins -- *)
+
         ) (optinit, totalhgtinit)
     in
-      match aux None Length.zero evvblst with
-      | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
-      | (None, totalhgt)      -> (totalhgt, Length.zero)
+    let imvblst_solid = PageBreak.solidify imvblst in
+      match aux None Length.zero imvblst_solid with
+      | (Some(dpt), totalhgt) -> (imvblst_solid, totalhgt +% dpt, dpt)
+      | (None, totalhgt)      -> (imvblst_solid, totalhgt, Length.zero)
 
 
 let get_list getf value =
@@ -572,8 +586,8 @@ and interpret env ast =
   | BackendTabular(asttabular) ->
       let get_row : syntactic_value -> HorzBox.cell list = get_list get_cell in
       let tabular : HorzBox.row list = interpret_list interpret env get_row asttabular in
-      let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
-        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
+      let (imtabular, wid, hgt, dpt) = Tabular.main tabular in
+        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular))]))
 
   | BackendRegisterPdfImage(aststr, astpageno) ->
       let srcpath = interpret_string env aststr in
@@ -722,11 +736,9 @@ and interpret env ast =
         Context(HorzBox.({ ctx with paragraph_width = wid; }))
       in
       let imvblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
-      let evvblst = PageBreak.solidify imvblst in
-
-      let (hgt, dpt) = adjust_to_first_line evvblst in
+      let (imvblst_solid, hgt, dpt) = adjust_to_first_line imvblst in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst_solid))]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
       let ctx = interpret_context env astctx in
@@ -737,21 +749,21 @@ and interpret env ast =
       in
       let imvblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let evvblst = PageBreak.solidify imvblst in
-      let (hgt, dpt) = adjust_to_last_line evvblst in
+      let (imvblst_solid, hgt, dpt) = adjust_to_last_line evvblst in
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst_solid))]))
 
   | BackendLineStackTop(astlst) ->
       let hblstlst = interpret_list interpret env get_horz astlst in
-      let (wid, evvblst) = make_line_stack hblstlst in
-      let (hgt, dpt) = adjust_to_first_line evvblst in
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+      let (wid, imvblst) = make_line_stack hblstlst in
+      let (imvblst_solid, hgt, dpt) = adjust_to_first_line imvblst in
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst_solid))]))
 
   | BackendLineStackBottom(astlst) ->
       let hblstlst = interpret_list interpret env get_horz astlst in
-      let (wid, evvblst) = make_line_stack hblstlst in
-      let (hgt, dpt) = adjust_to_last_line evvblst in
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+      let (wid, imvblst) = make_line_stack hblstlst in
+      let (imvblst_solid, hgt, dpt) = adjust_to_last_line imvblst in
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst_solid))]))
 
   | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt, astcmd) ->
       let page = interpret_page env astpage in

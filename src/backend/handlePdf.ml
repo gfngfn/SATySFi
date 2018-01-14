@@ -37,12 +37,13 @@ let get_paper_height (paper : Pdfpaper.t) : length =
     Length.of_pdf_point pdfpt
 
 
-let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
-    match evhb with
-    | EvHorz(wid, EvHorzEmpty) ->
+let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
+  let (wid, evhbmain) = evhb in
+    match evhbmain with
+    | EvHorzEmpty ->
         (xpos +% wid, opacc)
 
-    | EvHorz(wid, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst)) ->
+    | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
         let ops_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
@@ -50,12 +51,12 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let ops_foreground = [] in  (* temporary *)
         let opaccinit = Alist.append opacc ops_background in
         let (xposnew, opaccsub) =
-          evhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
+          imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
         let opaccnew = Alist.append opaccsub ops_foreground in
           (xposnew, opaccnew)
 
-    | EvHorz(wid, EvHorzString(hsinfo, hgt, dpt, otxt)) ->
+    | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
         let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
@@ -79,7 +80,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzMathGlyph(msinfo, hgt, dpt, gid)) ->
+    | EvHorzMathGlyph(msinfo, hgt, dpt, gid) ->
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
@@ -103,7 +104,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = Alist.append opacc ops in
         (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzRising(hgt, dpt, lenrising, evhblst)) ->
+    | EvHorzRising(hgt, dpt, lenrising, evhblst) ->
         let (_, opaccsub) =
           evhblst |> List.fold_left (ops_of_evaled_horz_box (yposbaseline +% lenrising)) (xpos, opacc)
         in
@@ -115,11 +116,11 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         in
           (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst)) ->
+    | EvHorzEmbeddedVert(hgt, dpt, evvblst) ->
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics)) ->
+    | EvHorzInlineGraphics(hgt, dpt, graphics) ->
         let ops_graphics =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
@@ -129,7 +130,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         let opaccnew = Alist.append opacc ops_graphics in
           (xpos +% wid, opaccnew)
 
-    | EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular)) ->
+    | EvHorzInlineTabular(hgt, dpt, evtabular) ->
         let ops_tabular =
           ops_of_evaled_tabular (xpos, yposbaseline +% hgt) evtabular
         in
@@ -137,7 +138,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
           (xpos +% wid, opaccnew)
 
 
-    | EvHorz(wid, EvHorzInlineImage(hgt, imgkey)) ->
+    | EvHorzInlineImage(hgt, imgkey) ->
         let tag = ImageInfo.get_tag imgkey in
         let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
@@ -156,6 +157,17 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) evhb =
         in
           (xpos +% wid, opaccnew)
 
+    | EvHorzHookPageBreak(pageno, hookf) ->
+        let pbinfo =
+          {
+            current_page_number = pageno;
+            current_x_position  = xpos;
+            current_y_position  = yposbaseline;
+          }
+        in
+        hookf pbinfo;
+        (xpos +% wid, opacc)
+
 
 and ops_of_evaled_tabular point evtabular =
   let (opaccnew, _) =
@@ -166,7 +178,7 @@ and ops_of_evaled_tabular point evtabular =
           | EvEmptyCell(wid) ->
               (opacc, (xpos +% wid, ypos))
 
-          | EvNormalCell(wid, hgt, dpt, evhblst) ->
+          | EvNormalCell((wid, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)
@@ -179,7 +191,7 @@ and ops_of_evaled_tabular point evtabular =
               in
                 (opaccnew, (xpos +% wid, ypos))
 
-          | EvMultiCell(_, _, widsingle, widcell, hgt, dpt, evhblst) ->
+          | EvMultiCell((_, _, widsingle, widcell, hgt, dpt), evhblst) ->
               let yposbaseline = ypos -% hgt in
               let (_, opaccsub) =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, opacc)

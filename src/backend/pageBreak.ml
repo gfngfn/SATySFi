@@ -29,13 +29,13 @@ type frame_breaking =
   | Midway
 
 type pb_vert_box =
-  | PBVertLine             of length * length * evaled_horz_box list
+  | PBVertLine             of length * length * intermediate_horz_box list
   | PBVertFixedBreakable   of length
   | PBVertFixedUnbreakable of length
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
 
 
-let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
+let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -43,9 +43,32 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
         int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
+  let rec embed_page_info (pageno : int) (imhblst : intermediate_horz_box list) : evaled_horz_box list =
+    let iter = embed_page_info pageno in
+      imhblst |> List.map (function
+        | ImHorz(evhb)                                    -> evhb
+        | ImHorzRising(wid, hgt, dpt, lenrising, imhblst) -> (wid, EvHorzRising(hgt, dpt, lenrising, iter imhblst))
+        | ImHorzFrame(wid, hgt, dpt, deco, imhblst)       -> (wid, EvHorzFrame(hgt, dpt, deco, iter imhblst))
+        | ImHorzInlineTabular(wid, hgt, dpt, imtabular)   -> (wid, EvHorzInlineTabular(hgt, dpt, embed_page_info_to_tabular pageno imtabular))
+        | ImHorzHookPageBreak(hookf) -> (Length.zero, EvHorzHookPageBreak(pageno, hookf))
+      )
+
+  and embed_page_info_to_tabular (pageno : int) (imtabular : intermediate_row list) : evaled_row list =
+    imtabular |> List.map (fun (widtotal, imcelllst) ->
+      let evcelllst =
+        imcelllst |> List.map (function
+          | ImEmptyCell(len)            -> EvEmptyCell(len)
+          | ImNormalCell(info, imhblst) -> EvNormalCell(info, embed_page_info pageno imhblst)
+          | ImMultiCell(info, imhblst)  -> EvMultiCell(info, embed_page_info pageno imhblst)
+        )
+      in
+        (widtotal, evcelllst)
+    )
+  in
+
   let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) =
     match pbvblst with
-    | PBVertLine(hgt, dpt, evhblst) :: imvbtail ->
+    | PBVertLine(hgt, dpt, imhblst) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
@@ -53,6 +76,7 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
             let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (evvbacc, Some(pbvblst), hgttotalnew, vpb)
           else
+            let evhblst = embed_page_info pageno imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
               aux true vpb evvbaccnew Alist.empty hgttotalnew imvbtail
 
@@ -127,8 +151,8 @@ let normalize imvblst =
     | ImVertBottomMargin(_, _) :: []
         -> Alist.to_list pbvbacc
 
-    | ImVertLine(hgt, dpt, evhblst) :: imvbtail ->
-        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, evhblst))) imvbtail
+    | ImVertLine(hgt, dpt, imhblst) :: imvbtail ->
+        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, imhblst))) imvbtail
 
     | ImVertFixedBreakable(vskip) :: imvbtail ->
         aux (Alist.extend pbvbacc (PBVertFixedBreakable(vskip))) imvbtail
@@ -169,17 +193,17 @@ let normalize imvblst =
     aux Alist.empty imvblst
 
 
-let solidify (imvblst : intermediate_vert_box list) : evaled_vert_box list =
+let solidify (imvblst : intermediate_vert_box list) : intermediate_vert_box list =
   let rec aux pbvblst =
     pbvblst |> List.map (fun pbvb ->
       match pbvb with
-      | PBVertLine(hgt, dpt, evhblst) -> EvVertLine(hgt, dpt, evhblst)
-      | PBVertFixedBreakable(vskip)   -> EvVertFixedEmpty(vskip)
-      | PBVertFixedUnbreakable(vskip) -> EvVertFixedEmpty(vskip)
+      | PBVertLine(hgt, dpt, evhblst) -> ImVertLine(hgt, dpt, evhblst)
+      | PBVertFixedBreakable(vskip)   -> ImVertFixedBreakable(vskip)
+      | PBVertFixedUnbreakable(vskip) -> ImVertFixedBreakable(vskip)
 
-      | PBVertFrame(_, pads, decoS, _, _, _, wid, pbvblstsub) ->
-          let evvblstsub = aux pbvblstsub in
-            EvVertFrame(pads, decoS, wid, evvblstsub)
+      | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
+          let imvblstsub = aux pbvblstsub in
+            ImVertFrame(pads, decoS, decoH, decoM, decoT, wid, imvblstsub)
     )
   in
   let pbvblst = normalize imvblst in
@@ -191,8 +215,8 @@ let main (pagesch : page_scheme) (imvblst : intermediate_vert_box list) =
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length imvblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_intermediate_vert_box) imvblst in  (* for debug *)
 
-  let rec aux pageacc pbvblst =
-    let (evvblstpage, restopt) = chop_single_page pagesch.area_height pbvblst in
+  let rec aux pageno pageacc pbvblst =
+    let (evvblstpage, restopt) = chop_single_page pageno pagesch.area_height pbvblst in
     let pageaccnew = Alist.extend pageacc evvblstpage in
 
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
@@ -200,10 +224,10 @@ let main (pagesch : page_scheme) (imvblst : intermediate_vert_box list) =
 
       match restopt with
       | None              -> Alist.to_list pageaccnew
-      | Some(imvblstrest) -> aux pageaccnew imvblstrest
+      | Some(imvblstrest) -> aux (pageno + 1) pageaccnew imvblstrest
   in
   let pbvblst = normalize imvblst in
-  let pagelst = aux Alist.empty pbvblst in
+  let pagelst = aux 1 Alist.empty pbvblst in
     pagelst
 
 (*

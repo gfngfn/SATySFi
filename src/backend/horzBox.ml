@@ -212,8 +212,10 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-type page_info = {
+type page_break_info = {
   current_page_number : int;
+  current_x_position  : length;
+  current_y_position  : length;
 }
 
 type input_context = {
@@ -262,7 +264,7 @@ and pure_horz_box =
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
-  | PHGFixedTabular   of length * length * length * evaled_row list
+  | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
 
@@ -292,12 +294,28 @@ and evaled_horz_box_main =
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
+  | EvHorzHookPageBreak  of int * (page_break_info -> unit)
+      (* --
+         (1) page number determined during the page breaking
+         (2) hook function invoked during the construction of PDF data
+         -- *)
 
 and evaled_horz_box =
-  | EvHorz of length * evaled_horz_box_main
+  length * evaled_horz_box_main
+      (* --
+         (1) width
+         (2) contents
+         -- *)
+
+and intermediate_horz_box =
+  | ImHorz               of evaled_horz_box
+  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
+  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
+  | ImHorzInlineTabular  of length * length * length * intermediate_row list
+  | ImHorzHookPageBreak  of (page_break_info -> unit)
 
 and intermediate_vert_box =
-  | ImVertLine              of length * length * evaled_horz_box list
+  | ImVertLine              of length * length * intermediate_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
   | ImVertFixedBreakable    of length
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
@@ -412,10 +430,17 @@ and cell =
 
 and row = cell list
 
+and intermediate_cell =
+  | ImNormalCell of (length * length * length) * intermediate_horz_box list
+  | ImEmptyCell  of length
+  | ImMultiCell  of (int * int * length * length * length * length) * intermediate_horz_box list
+
+and intermediate_row = length * intermediate_cell list
+
 and evaled_cell =
-  | EvNormalCell of length * length * length * evaled_horz_box list
+  | EvNormalCell of (length * length * length) * evaled_horz_box list
   | EvEmptyCell  of length
-  | EvMultiCell  of int * int * length * length * length * length * evaled_horz_box list
+  | EvMultiCell  of (int * int * length * length * length * length) * evaled_horz_box list
 
 and evaled_row = length * evaled_cell list
 [@@deriving show { with_path = false }]
