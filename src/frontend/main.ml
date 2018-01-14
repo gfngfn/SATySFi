@@ -111,13 +111,14 @@ let initialize (dumpfile : file_path) : bool =
   end
 
 
-let output_pdf file_name_out pagesch pagelst =
+let make_pdf file_name_out pagesch pagelst =
   let pdf = HandlePdf.create_empty_pdf file_name_out in
-  let pdfret =
-    List.fold_left (fun pdf evvblstpage ->
+    pagelst |> List.fold_left (fun pdf evvblstpage ->
       pdf |> HandlePdf.write_page pagesch evvblstpage
-    ) pdf pagelst
-  in
+    ) pdf
+
+
+let output_pdf pdfret =
   HandlePdf.write_to_file pdfret
 
 
@@ -195,6 +196,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                       print_endline ("  breaking contents into pages ...");
                       let pagesch = ctxdoc.HorzBox.page_scheme in
                       let pagelst = PageBreak.main pagesch imvblst in
+                      let pdf = make_pdf file_name_out pagesch pagelst in
                       begin
                         match CrossRef.needs_another_trial dumpfile with
                         | CrossRef.NeedsAnotherTrial ->
@@ -204,7 +206,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                         | CrossRef.CountMax ->
                             begin
                               print_endline ("  some cross references were not solved.");
-                              output_pdf file_name_out pagesch pagelst;
+                              output_pdf pdf;
                               print_endline (" ---- ---- ---- ----");
                               print_endline ("  output written on '" ^ file_name_out ^ "'.");
                             end
@@ -212,7 +214,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                         | CrossRef.CanTerminate ->
                             begin
                               print_endline ("  all cross references were solved.");
-                              output_pdf file_name_out pagesch pagelst;
+                              output_pdf pdf;
                               print_endline (" ---- ---- ---- ----");
                               print_endline ("  output written on '" ^ file_name_out ^ "'.");
                             end

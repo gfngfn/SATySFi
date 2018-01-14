@@ -63,8 +63,8 @@ let chop_single_page (area_height : length) (pbvblst : pb_vert_box list) : evale
             let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (evvbacc, Some(pbvbtail), hgttotalnew, vpb)
           else
-            let evvbaccnew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
-              aux true vpb evvbacc evvbaccnew hgttotalnew pbvbtail
+            let evvbaccdiscardablenew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
+              aux true vpb evvbacc evvbaccdiscardablenew hgttotalnew pbvbtail
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
@@ -164,6 +164,7 @@ let normalize imvblst =
     | ImVertFrame(pads, decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
         let pbvblstsub = aux Alist.empty imvblstsub in
           aux (Alist.extend pbvbacc (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub))) imvbtail
+
   in
     aux Alist.empty imvblst
 

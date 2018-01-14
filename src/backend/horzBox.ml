@@ -212,6 +212,10 @@ module MathVariantCharMap = Map.Make
   end)
 
 
+type page_info = {
+  current_page_number : int;
+}
+
 type input_context = {
   font_size              : length;
   font_scheme            : font_with_ratio ScriptSchemeMap.t;
@@ -303,6 +307,7 @@ and intermediate_vert_box =
       [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
   | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+
 and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
