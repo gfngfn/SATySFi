@@ -404,12 +404,13 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
   let get_intermediate_total_width imhblst =
     imhblst |> List.fold_left (fun wacc imhb ->
       match imhb with
-      | ImHorz(w, _)                    -> wacc +% w
-      | ImHorzRising(w, _, _, _, _)     -> wacc +% w
-      | ImHorzFrame(w, _, _, _, _)      -> wacc +% w
-      | ImHorzInlineTabular(w, _, _, _) -> wacc +% w
-      | ImHorzEmbeddedVert(w, _, _, _)  -> wacc +% w
-      | ImHorzHookPageBreak(_)          -> wacc
+      | ImHorz(w, _)                     -> wacc +% w
+      | ImHorzRising(w, _, _, _, _)      -> wacc +% w
+      | ImHorzFrame(w, _, _, _, _)       -> wacc +% w
+      | ImHorzInlineTabular(w, _, _, _)  -> wacc +% w
+      | ImHorzInlineGraphics(w, _, _, _) -> wacc +% w
+      | ImHorzEmbeddedVert(w, _, _, _)   -> wacc +% w
+      | ImHorzHookPageBreak(_)           -> wacc
     ) Length.zero
   in
 
@@ -449,7 +450,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
 
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
-        ImHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics))
+        ImHorzInlineGraphics(wid, hgt, dpt, graphics)
 
     | LBFixedTabular(wid, hgt, dpt, imtabular) ->
         ImHorzInlineTabular(wid, hgt, dpt, imtabular)

@@ -138,10 +138,6 @@ type math_string_info =
 
 (* -- internal representation of boxes -- *)
 
-type decoration = point -> length -> length -> length -> Graphics.t
-[@@deriving show]
-
-
 module ScriptSchemeMap = Map.Make
   (struct
     type t = CharBasis.script
@@ -233,6 +229,9 @@ type input_context = {
 }
 
 (* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
+
+and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
+
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
@@ -249,7 +248,7 @@ and pure_horz_box =
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> Graphics.t)
+  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
   | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
@@ -268,6 +267,7 @@ and intermediate_horz_box =
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
+  | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
 
 and evaled_horz_box =
@@ -290,9 +290,9 @@ and evaled_horz_box_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
-  | EvHorzFrame          of length * length * decoration * evaled_horz_box list
+  | EvHorzFrame          of length * length * page_break_info * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * (point -> Graphics.t)
+  | EvHorzInlineGraphics of length * length * page_break_info * (point -> (intermediate_horz_box list) Graphics.t)
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
@@ -324,7 +324,7 @@ and evaled_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
-  | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
+  | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
 
 and math_char_kern_func = length -> length -> length
   (* --

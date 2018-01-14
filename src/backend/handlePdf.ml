@@ -19,16 +19,16 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
     | EvHorzEmpty ->
         (xpos +% wid, opacc)
 
-    | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
+    | EvHorzFrame(hgt_frame, dpt_frame, pbinfo, deco, imhblst) ->
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
         in
-        let ops_foreground = [] in  (* temporary *)
-        let opaccinit = Alist.append opacc (Graphics.to_pdfops gr_background) in
+        let opaccinit = Alist.append opacc (Graphics.to_pdfops gr_background (pdfops_of_intermediate_horz_box_list pbinfo)) in
         let (xposnew, opaccsub) =
           imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box yposbaseline)
         in
+        let ops_foreground = [] in  (* temporary *)
         let opaccnew = Alist.append opaccsub ops_foreground in
           (xposnew, opaccnew)
 
@@ -71,14 +71,14 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
 
-    | EvHorzInlineGraphics(hgt, dpt, graphics) ->
+    | EvHorzInlineGraphics(hgt, dpt, pbinfo, graphics) ->
         let gr =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
           (graphics (xpos, yposbaseline))
         in
-        let opaccnew = Alist.append opacc (Graphics.to_pdfops gr) in
+        let opaccnew = Alist.append opacc (Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)) in
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineTabular(hgt, dpt, evtabular) ->
@@ -182,14 +182,22 @@ and ops_of_evaled_vert_box_list (xinit, yinit) opaccinit evvblst =
 *)
           ((xpos, yposbaseline +% dpt), opaccend)
 
-    | EvVertFrame(pads, deco, wid, evvblstsub) ->
+    | EvVertFrame(pads, pbinfo, deco, wid, evvblstsub) ->
         let xpossubinit = xpos +% pads.paddingL in
         let ypossubinit = ypos -% pads.paddingT in
         let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list (xpossubinit, ypossubinit) opacc evvblstsub in
         let yposend = ypossub -% pads.paddingB in
         let gr = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
-          ((xpos, yposend), Alist.append opaccsub (Graphics.to_pdfops gr))
+          ((xpos, yposend), Alist.append opaccsub (Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)))
   )
+
+
+and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, yposbaseline) : point) (imhblst : intermediate_horz_box list) : Pdfops.t list =
+  let evhblst = PageBreak.embed_page_info pbinfo imhblst in
+  let (_, opacc) =
+      evhblst |> List.fold_left (ops_of_evaled_horz_box yposbaseline) (xpos, Alist.empty)
+  in
+    Alist.to_list opacc
 
 
 (* -- PUBLIC -- *)

@@ -28,21 +28,23 @@ val op_Do : string -> Pdfops.t
 
 type dash = length * length * length
 
-type element
+type 'a element
 
-type t
+type 'a t
 
-val empty : t
+val empty : 'a t
 
-val extend : t -> element -> t
+val extend : 'a t -> 'a element -> 'a t
 
-val singleton : element -> t
+val singleton : 'a element -> 'a t
 
-val make_fill : color -> path list -> element
+val make_fill : color -> path list -> 'a element
 
-val make_stroke : length -> color -> path list -> element
+val make_stroke : length -> color -> path list -> 'a element
 
-val make_dashed_stroke : length -> dash -> color -> path list -> element
+val make_dashed_stroke : length -> dash -> color -> path list -> 'a element
+
+val make_text : point -> 'a -> 'a element
 
 val pdfops_of_text : point -> length -> string -> length -> color -> OutputText.style * OutputText.element list -> Pdfops.t list
 
@@ -52,7 +54,7 @@ val pdfops_test_box : color -> point -> length -> length -> Pdfops.t list
 
 val pdfops_test_frame : point -> length -> length -> length -> Pdfops.t list
 
-val to_pdfops : t -> Pdfops.t list
+val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list
 (*
 val pdfop_of_text_color : color -> Pdfops.t
 

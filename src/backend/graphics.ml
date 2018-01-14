@@ -77,13 +77,14 @@ let pdfop_of_text_color = function
 
 type dash = length * length * length
 
-type element =
+type 'a element =
   | Fill         of color * path list
   | Stroke       of length * color * path list
   | DashedStroke of length * dash * color * path list
+  | HorzText     of point * 'a
 
 
-type t = element Alist.t
+type 'a t = ('a element) Alist.t
 
 
 let empty = Alist.empty
@@ -95,16 +96,20 @@ let extend = Alist.extend
 let singleton elem = Alist.extend Alist.empty elem
 
 
-let make_fill (color : color) (pathlst : path list) : element =
+let make_fill (color : color) (pathlst : path list) : 'a element =
   Fill(color, pathlst)
 
 
-let make_stroke (thickness : length) (color : color) (pathlst : path list) : element =
+let make_stroke (thickness : length) (color : color) (pathlst : path list) : 'a element =
   Stroke(thickness, color, pathlst)
 
 
-let make_dashed_stroke (thickness : length) (dash : dash) (color : color) (pathlst : path list) : element =
+let make_dashed_stroke (thickness : length) (dash : dash) (color : color) (pathlst : path list) : 'a element =
   DashedStroke(thickness, dash, color, pathlst)
+
+
+let make_text (pt : point) textvalue =
+  HorzText(pt, textvalue)
 
 
 let pdfops_of_elements (ptorigin : point) (elemlst : (point path_element) list) (closingopt : (unit path_element) option) =
@@ -233,12 +238,13 @@ let pdfops_of_image (pt : point) xratio yratio tag =
   ]
 
 
-let to_pdfops (gr : t) : Pdfops.t list =
+let to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
   let grelemlst = Alist.to_list gr in
     grelemlst |> List.map (function
       | Fill(color, pathlst)                    -> pdfops_of_fill color pathlst
       | Stroke(thk, color, pathlst)             -> pdfops_of_stroke thk color pathlst
       | DashedStroke(thk, dash, color, pathlst) -> pdfops_of_dashed_stroke thk dash color pathlst
+      | HorzText(pt, textvalue)                 -> f pt textvalue
     ) |> List.concat
 
 

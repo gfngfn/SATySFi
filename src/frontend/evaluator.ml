@@ -242,7 +242,7 @@ and interpret_path env pathcomplst cycleopt =
     (pathelemlst, closingopt)
 
 
-and graphics_of_list value : Graphics.t =
+and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
   let rec aux gracc value =
     match value with
     | EndOfList                             -> gracc
@@ -1221,7 +1221,8 @@ and interpret env ast =
       let pt = interpret_point env astpt in
       let hblst = interpret_horz env asttext in
       let (imhblst, _, _) = LineBreak.natural hblst in
-        GraphicsTextValue(pt, imhblst)
+      let grelem = Graphics.make_text pt imhblst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
       let wid = interpret_length env astwid in
