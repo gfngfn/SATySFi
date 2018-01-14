@@ -239,14 +239,31 @@ let error_log_environment suspended =
 
   | NotAHeaderFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
-        NormalLine("File '" ^ file_name_in ^ "' is not a header file; it is of type");
+        NormalLine("file '" ^ file_name_in ^ "' is not a header file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
       ]
 
   | NotADocumentFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
-        NormalLine("File '" ^ file_name_in ^ "' is not a document file; it is of type");
+        NormalLine("file '" ^ file_name_in ^ "' is not a document file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
+      ]
+
+  | CrossRef.InvalidYOJSON(dumpfile, msg) ->
+      report_error Interface [
+        NormalLine("dump file '" ^ dumpfile ^ "' is NOT a valid YOJSON file:");
+        DisplayLine(msg);
+      ]
+
+  | CrossRef.DumpFileOtherThanAssoc(dumpfile) ->
+      report_error Interface [
+        NormalLine("the content of the dump file '" ^ dumpfile ^ "' is NOT a dictionary.");
+      ]
+
+  | CrossRef.DumpFileValueOtherThanString(dumpfile, key, jsonstr) ->
+      report_error Interface [
+        NormalLine("the value corresponding to the key '" ^ key ^ "' in the dump file '" ^ dumpfile ^ "' is NOT a string;");
+        DisplayLine(jsonstr);
       ]
 
   | Lexer.LexError(rng, s) ->
