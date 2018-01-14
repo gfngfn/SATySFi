@@ -91,6 +91,14 @@ let tMCSTY =
   in
     (~! "math-char-style", RecordType(asc))
 
+let tPBINFO =
+  let asc =
+    Assoc.of_list [
+      ("page-number", tI);
+    ]
+  in
+    (~! "page-break-info", RecordType(asc))
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
@@ -672,6 +680,7 @@ let make_environments () =
         ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
         ("register-cross-reference", ~% (tS @-> tS @-> tU)                           , lambda2 (fun vk vv -> BackendRegisterCrossReference(vk, vv)));
         ("get-cross-reference"     , ~% (tS @-> (tOPT tS))                           , lambda1 (fun vk -> BackendGetCrossReference(vk)));
+        ("hook-page-break"         , ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)           , lambda1 (fun vhook -> BackendHookPageBreak(vhook)));
       ]
   in
   let temporary_ast = StringEmpty in

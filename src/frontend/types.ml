@@ -500,13 +500,8 @@ and syntactic_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
   | GraphicsValue               of (HorzBox.intermediate_horz_box list) Graphics.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
-(*
-  | GraphicsTextValue           of point * HorzBox.intermediate_horz_box list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics-text>")]
-*)
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
-
   | MathValue                   of HorzBox.math list
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
@@ -517,7 +512,6 @@ and syntactic_value =
   | FrozenCommand               of EvalVarID.t
   | UninitializedContext
   | DocumentValue               of HorzBox.input_context * HorzBox.vert_box list
-
 
 and abstract_tree =
   | Value                 of syntactic_value
@@ -618,6 +612,7 @@ and abstract_tree =
   | BackendRegisterPdfImage     of abstract_tree * abstract_tree
   | BackendRegisterOtherImage   of abstract_tree
   | BackendUseImageByWidth      of abstract_tree * abstract_tree
+  | BackendHookPageBreak        of abstract_tree
 
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaVert                  of EvalVarID.t * abstract_tree

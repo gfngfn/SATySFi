@@ -6,6 +6,7 @@ module StdJa : sig
 
   val font-latin-italic : font
   direct \ref : [string] inline-cmd
+  direct \ref-page : [string] inline-cmd
   direct +make-title : [] block-cmd
   direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
@@ -15,7 +16,17 @@ module StdJa : sig
 end = struct
 
   let-inline ctx \ref key =
-    let opt = get-cross-reference key in
+    let opt = get-cross-reference (key ^ `:num`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
+
+  let-inline ctx \ref-page key =
+    let opt = get-cross-reference (key ^ `:page`) in
     let it =
       match opt with
       | None    -> {?}
@@ -173,12 +184,16 @@ end = struct
     let () = num-section <- !num-section + 1 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
-    let () =
+    let br-num =
       match crefopt with
-      | None        -> ()
-      | Some(label) -> register-cross-reference label s-num
+      | None ->
+          read-inline ctx-title (embed-string (s-num ^ `.`))
+
+      | Some(label) ->
+          let () = register-cross-reference (label ^ `:num`) s-num in
+            read-inline ctx-title (embed-string (s-num ^ `.`))
+              ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
-    let br-num = read-inline ctx-title (embed-string (s-num ^ `.`)) in
     let br-title = read-inline ctx-title title in
     let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
     let bc-inner = read-block ctx inner in

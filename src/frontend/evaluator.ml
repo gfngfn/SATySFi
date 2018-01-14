@@ -252,6 +252,22 @@ and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
     aux Graphics.empty value
 
 
+and make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
+  (fun pbinfo (xpos, yposbaseline) ->
+    let astpt = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple))) in
+    let asc =
+      Assoc.of_list [
+        ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
+      ]
+    in
+    let ast = Apply(Apply(Value(valuehook), Value(RecordValue(asc))), astpt) in
+    let valueret = interpret env ast in
+      match valueret with
+      | UnitConstant -> ()
+      | _            -> report_bug_evaluator "make_hook" ast valueret
+  )
+
+
 and make_frame_deco env valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
     let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
@@ -601,6 +617,11 @@ and interpret env ast =
 
         | _ -> report_bug_evaluator "BackendUseImage" astimg valueimg
       end
+
+  | BackendHookPageBreak(asthook) ->
+      let valuehook = interpret env asthook in
+      let hookf : HorzBox.page_break_info -> point -> unit = make_hook env valuehook in
+        Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in

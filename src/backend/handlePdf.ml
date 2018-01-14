@@ -88,19 +88,16 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
         let opaccnew = Alist.append opacc ops_tabular in
           (xpos +% wid, opaccnew)
 
-
     | EvHorzInlineImage(hgt, imgkey) ->
         let tag = ImageInfo.get_tag imgkey in
         let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
 
-            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+          List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
 
-            (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
+          (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
         in
-        let opaccnew =
-          Alist.append opacc ops_image
-        in
+        let opaccnew = Alist.append opacc ops_image in
           (xpos +% wid, opaccnew)
 
     | EvHorzHookPageBreak(pbinfo, hookf) ->

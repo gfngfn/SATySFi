@@ -6,7 +6,7 @@ StdJa.document (|
   +make-title;
   +p {
     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
-    特に根幹となるのは第\ref(`sec:inline`);節である．
+    特に根幹となるのは第\ref(`sec:inline`);節（\ref-page(`sec:inline`);ページ）である．
   }
   +section({基本演算})(
     let t-int-arith = tI --> (tI --> tI) in
