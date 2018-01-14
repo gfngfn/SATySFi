@@ -1047,7 +1047,9 @@ and interpret env ast =
   | LetMutableIn(evid, astini, astaft) ->
       let valueini = interpret env astini in
       let stid = register_location env valueini in
+(*
       Format.printf "Evaluator> LetMutableIn; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valueini);  (* for debug *)
+*)
       let envnew = add_to_environment env evid (ref (Location(stid))) in
         interpret envnew astaft
 
@@ -1072,7 +1074,9 @@ and interpret env ast =
               match value with
               | Location(stid) ->
                   let valuenew = interpret env astnew in
+(*
                   Format.printf "Evaluator> Overwrite; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valuenew);  (* for debug *)
+*)
                     begin
                       update_location env stid valuenew;
                       UnitConstant

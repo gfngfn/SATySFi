@@ -2,9 +2,12 @@ open Types
 open Display
 
 
-exception IllegalExtension of string
-exception NotAHeaderFile   of string * Typeenv.t * mono_type
-exception NotADocumentFile of string * Typeenv.t * mono_type
+type file_path = string
+
+
+exception IllegalExtension of file_path
+exception NotAHeaderFile   of file_path * Typeenv.t * mono_type
+exception NotADocumentFile of file_path * Typeenv.t * mono_type
 
 
 type line =
@@ -60,7 +63,7 @@ let is_header_file     = is_suffix ".satyh"
 let is_standalone_file = is_suffix ".satys"
 
 
-let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (file_name_in : string) : Typeenv.t * environment =
+let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) : Typeenv.t * environment =
   begin
     print_endline (" ---- ---- ---- ----");
     print_endline ("  reading '" ^ file_name_in ^ "' ...");
@@ -80,7 +83,7 @@ let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (f
   end
 
 
-let libdir_ref : string ref = ref "/usr/local/lib-satysfi"
+let libdir_ref : file_path ref = ref "/usr/local/lib-satysfi"
 
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
@@ -95,7 +98,7 @@ let reset () =
 
 
 (* -- initialization that should be performed before typechecking -- *)
-let initialize () =
+let initialize (dumpfile : file_path) : bool =
   begin
     FreeID.initialize ();
     BoundID.initialize ();
@@ -103,7 +106,8 @@ let initialize () =
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
     StoreID.initialize ();
-    CrossRef.initialize ();
+    let dump_file_exists = CrossRef.initialize dumpfile in
+    dump_file_exists
   end
 
 
@@ -152,7 +156,7 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   (valenv, ref stenv)
 
 
-let read_document_file (tyenv : Typeenv.t) (env : environment) file_name_in file_name_out =
+let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (file_name_out : file_path) (dumpfile : file_path) =
   begin
     print_endline (" ---- ---- ---- ----");
     print_endline ("  reading '" ^ file_name_in ^ "' ...");
@@ -191,7 +195,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) file_name_in file
                       let pagesch = ctxdoc.HorzBox.page_scheme in
                       let pagelst = PageBreak.main pagesch imvblst in
                       begin
-                        match CrossRef.needs_another_trial () with
+                        match CrossRef.needs_another_trial dumpfile with
                         | CrossRef.NeedsAnotherTrial ->
                             print_endline ("  needs another trial for solving cross references...");
                             aux (i + 1)
@@ -426,7 +430,7 @@ type input_file_kind =
   | HeaderFile
 
 
-let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : string) =
+let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : file_path) (dump_file_name : file_path) =
     match input_list with
     | [] ->
         begin
@@ -435,14 +439,14 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
         end
 
     | (DocumentFile, file_name_in) :: tail ->
-        read_document_file tyenv env file_name_in file_name_out
+        read_document_file tyenv env file_name_in file_name_out dump_file_name
 
     | (HeaderFile, file_name_in) :: tail ->
         let (tyenvnew, envnew) = make_environment_from_header_file tyenv env file_name_in in
-        main tyenvnew envnew tail file_name_out
+        main tyenvnew envnew tail file_name_out dump_file_name
 
 
-let output_name_ref : string ref = ref "saty.out"
+let output_name_ref : file_path ref = ref "a.pdf"
 let input_acc_ref : ((input_file_kind * string) Alist.t) ref = ref Alist.empty
 
 
@@ -501,7 +505,18 @@ let handle_anonimous_arg s =
 let () =
   error_log_environment (fun () ->
     Arg.parse arg_spec_list handle_anonimous_arg "";
-    initialize ();
+    let input_list = Alist.to_list (!input_acc_ref) in
+    let output = !output_name_ref in
+    input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
+    print_endline ("  [output] " ^ output);
+    let dumpfile = (Filename.remove_extension output) ^ ".satysfi-aux" in
+    let dump_file_exists = initialize dumpfile in
+    begin
+    if dump_file_exists then
+      print_endline ("  [dump] " ^ dumpfile ^ " (already exists)")
+    else
+      print_endline ("  [dump] " ^ dumpfile ^ " (will be created)")
+    end;
     let (tyenv, env) = Primitives.make_environments () in
 (*
     (* begin: for debug *)
@@ -513,9 +528,5 @@ let () =
     Format.printf "Main> ==== ====\n";
     (* end: for debug *)
 *)
-    let input_list = Alist.to_list (!input_acc_ref) in
-    let output = !output_name_ref in
-    input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
-    print_endline ("  [output] " ^ output);
-    main tyenv env input_list output
+    main tyenv env input_list output dumpfile
   )

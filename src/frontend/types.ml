@@ -899,7 +899,9 @@ let register_location (env : environment) (value : syntactic_value) : StoreID.t 
   let (_, stenvref) = env in
   let stid = StoreID.fresh () in
   StoreIDHashTable.add (!stenvref) stid value;
+(*
   Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_syntactic_value value;  (* for debug *)
+*)
   stid
 
 

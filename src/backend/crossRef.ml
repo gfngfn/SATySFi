@@ -1,4 +1,11 @@
 
+type file_path = string
+
+exception InvalidYOJSON                of file_path * string
+exception DumpFileOtherThanAssoc       of file_path
+exception DumpFileValueOtherThanString of file_path * string * string
+
+
 module CrossRefHashTable = Hashtbl.Make
   (struct
     type t = string
@@ -18,10 +25,47 @@ let main_hash_table = CrossRefHashTable.create 32
   (* temporary; initial size *)
 
 
-let initialize () =
+let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) : unit =
+  assoc |> List.iter (fun (key, vjson) ->
+    match vjson with
+    | `String(value) -> CrossRefHashTable.add main_hash_table key value
+    | json_other     -> raise (DumpFileValueOtherThanString(srcpath, key, Yojson.Safe.to_string json_other))
+  )
+
+
+let read_dump_file (srcpath : file_path) : unit =
+  try
+    let json = Yojson.Safe.from_file srcpath in  (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
+      match json with
+      | `Assoc(assoc) -> read_assoc srcpath assoc
+      | json_other    -> raise (DumpFileOtherThanAssoc(srcpath))
+  with
+  | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))
+
+
+let write_dump_file (outpath : file_path) : unit =
+  let open MyUtil in
+  let assoc =
+    Alist.empty @|> main_hash_table @|> CrossRefHashTable.fold (fun key value acc ->
+      Alist.extend acc (key, `String(value))
+    ) |> Alist.to_list
+  in
+  let json = `Assoc(assoc) in
+  Yojson.Safe.to_file outpath json
+
+
+let initialize (srcpath : file_path) : bool =
   begin
     count := 1;
     CrossRefHashTable.clear main_hash_table;
+    let dump_file_exists = Sys.file_exists srcpath in
+    begin
+      if dump_file_exists then
+        read_dump_file srcpath
+      else
+        ()
+    end;
+    dump_file_exists
   end
 
 
@@ -31,18 +75,24 @@ type answer =
   | CountMax
 
 
-let needs_another_trial () =
+let needs_another_trial (outpath : file_path) : answer =
   if !changed then
     if !count >= !count_max then
-      CountMax
+      begin
+        write_dump_file outpath;
+        CountMax
+      end
     else
-    begin
-      changed := false;
-      incr count;
-      NeedsAnotherTrial
-    end
+      begin
+        changed := false;
+        incr count;
+        NeedsAnotherTrial
+      end
   else
-    CanTerminate
+    begin
+      write_dump_file outpath;
+      CanTerminate
+    end
 
 
 let register (key : string) (value : string) =
