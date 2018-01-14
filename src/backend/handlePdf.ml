@@ -34,29 +34,11 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
 
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
-(*
-        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
-        let opcolor = Graphics.pdfop_of_text_color hsinfo.text_color in
-*)
         let ops =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
 *)
-            (Graphics.pdfops_of_text (xpos, yposbaseline) hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt)
-(*
-          [
-            Graphics.op_cm_translate (Length.zero, Length.zero);
-            Graphics.op_q;
-            opcolor;
-            Graphics.op_BT;
-            Graphics.op_Tm_translate (xpos, yposbaseline);
-            Graphics.op_Tf tag hsinfo.text_font_size;
-            Graphics.op_Ts hsinfo.rising;
-            opword;
-            Graphics.op_ET;
-            Graphics.op_Q;
-          ]
-*)
+          (Graphics.pdfops_of_text (xpos, yposbaseline) hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt)
         in
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
@@ -64,28 +46,11 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
     | EvHorzMathGlyph(msinfo, hgt, dpt, gid) ->
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
-(*
-        let opword = Graphics.op_TJ (OutputText.to_TJ_argument otxt) in
-        let opcolor = Graphics.pdfop_of_text_color msinfo.math_color in
-*)
         let ops =
 (*
-        List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
           (Graphics.pdfops_of_text (xpos, yposbaseline) Length.zero tag msinfo.math_font_size msinfo.math_color otxt)
-(*
-          [
-            Graphics.op_cm_translate (Length.zero, Length.zero);
-            Graphics.op_q;
-            opcolor;
-            Graphics.op_BT;
-            Graphics.op_Tm_translate (xpos, yposbaseline);
-            Graphics.op_Tf tag msinfo.math_font_size;
-            opword;
-            Graphics.op_ET;
-            Graphics.op_Q;
-          ]
-*)
         in
         let opaccnew = Alist.append opacc ops in
         (xpos +% wid, opaccnew)
@@ -98,7 +63,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
 (*
           List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
 *)
-            opaccsub
+          opaccsub
         in
           (xpos +% wid, opaccnew)
 
@@ -131,15 +96,7 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
 
             List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
 
-              (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
-(*
-          [
-            Graphics.op_q;
-            Graphics.op_cm_scale xratio yratio (xpos, yposbaseline);
-            Graphics.op_Do tag;
-            Graphics.op_Q;
-          ]
-*)
+            (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
         in
         let opaccnew =
           Alist.append opacc ops_image
