@@ -11,7 +11,7 @@ type lb_pure_box =
   | LBRising        of metrics * length * lb_pure_box list
   | LBOuterFrame    of metrics * decoration * lb_pure_box list
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
-  | LBEmbeddedVert  of length * length * length * evaled_vert_box list
+  | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
   | LBFixedGraphics of length * length * length * (point -> Pdfops.t list)
   | LBFixedTabular  of length * length * length * intermediate_row list
   | LBFixedImage    of length * length * ImageInfo.key

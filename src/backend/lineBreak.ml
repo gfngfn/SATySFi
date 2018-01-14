@@ -228,8 +228,8 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
         puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
 
-  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, evvblst))
+  | PHGEmbeddedVert(wid, hgt, dpt, imvblst) ->
+      puref (LBEmbeddedVert(wid, hgt, dpt, imvblst))
 
   | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
@@ -405,6 +405,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       | ImHorzRising(w, _, _, _, _)     -> wacc +% w
       | ImHorzFrame(w, _, _, _, _)      -> wacc +% w
       | ImHorzInlineTabular(w, _, _, _) -> wacc +% w
+      | ImHorzEmbeddedVert(w, _, _, _)  -> wacc +% w
       | ImHorzHookPageBreak(_)          -> wacc
     ) Length.zero
   in
@@ -441,8 +442,8 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         let (imhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
           ImHorzFrame(wid_frame, hgt_frame, dpt_frame, deco, imhblst)
 
-    | LBEmbeddedVert(wid, hgt, dpt, evvblst) ->
-        ImHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst))
+    | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
+        ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
 
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
         ImHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics))
@@ -482,7 +483,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         (imhblst, hgt_total, dpt_total)
 
 
-let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
@@ -560,28 +561,28 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
         Alist.extend acclines (Alist.to_list accline)
   in
 
-  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box Alist.t) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprevopt : length option) (accvlines : vert_box Alist.t) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
         begin
           match dptprevopt with
           | None ->
-              arrange (Some(dpt)) (Alist.extend Alist.empty (ImVertLine(hgt, dpt, evhblst))) tail
+              arrange (Some(dpt)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
 
           | Some(dptprev) ->
               let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt)) (Alist.append accvlines [ImVertFixedBreakable(vskip); ImVertLine(hgt, dpt, evhblst)]) tail
+                arrange (Some(dpt)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
         end
 
-    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (ImVertBottomMargin(is_breakable_bottom, margin_bottom))))
+    | [] -> VertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (VertBottomMargin(is_breakable_bottom, margin_bottom))))
   in
 
   let acclines = cut Alist.empty Alist.empty lhblst in
     arrange None Alist.empty (Alist.to_list acclines)
 
 
-let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
+let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -680,7 +681,7 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
       | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
-          [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
+          [VertLine(Length.zero, Length.zero, [])] (* temporary *)
       | Some(path) ->
           break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end

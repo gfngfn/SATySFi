@@ -319,7 +319,7 @@ and untyped_abstract_tree_main =
   | UTHorz                 of HorzBox.horz_box list
   | UTHorzConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* -- vertical box list -- *)
-  | UTVert                 of HorzBox.intermediate_vert_box list
+  | UTVert                 of HorzBox.vert_box list
   | UTVertConcat           of untyped_abstract_tree * untyped_abstract_tree
 (* -- list value -- *)
   | UTListCons             of untyped_abstract_tree * untyped_abstract_tree
@@ -494,12 +494,14 @@ and syntactic_value =
   | InputVertWithEnvironment of input_vert_element list * environment
 
   | Horz                  of HorzBox.horz_box list
-  | Vert                  of HorzBox.intermediate_vert_box list
+  | Vert                  of HorzBox.vert_box list
 
   | PathValue             of HorzBox.path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
   | GraphicsValue               of Pdfops.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
+  | GraphicsTextValue           of point * HorzBox.intermediate_horz_box list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<graphics-text>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
 
@@ -512,7 +514,7 @@ and syntactic_value =
   | Context                     of HorzBox.input_context
   | FrozenCommand               of EvalVarID.t
   | UninitializedContext
-  | DocumentValue               of HorzBox.input_context * HorzBox.intermediate_vert_box list
+  | DocumentValue               of HorzBox.input_context * HorzBox.vert_box list
 
 
 and abstract_tree =

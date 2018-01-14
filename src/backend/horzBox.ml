@@ -262,7 +262,7 @@ and pure_horz_box =
   | PHGFixedFrame     of paddings * length * decoration * horz_box list
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
-  | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
+  | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
   | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
@@ -312,19 +312,25 @@ and intermediate_horz_box =
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list
+  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzHookPageBreak  of (page_break_info -> unit)
 
-and intermediate_vert_box =
-  | ImVertLine              of length * length * intermediate_horz_box list
+and vert_box =
+  | VertLine              of length * length * intermediate_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
-  | ImVertFixedBreakable    of length
+  | VertFixedBreakable    of length
       [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
-  | ImVertTopMargin         of bool * length
+  | VertTopMargin         of bool * length
       [@printer (fun fmt (b, _) -> Format.fprintf fmt "Top%s" (if b then "" else "*"))]
-  | ImVertBottomMargin      of bool * length
+  | VertBottomMargin      of bool * length
       [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
-  | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
+  | VertFrame             of paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+
+and intermediate_vert_box =
+  | ImVertLine       of length * length * intermediate_horz_box list
+  | ImVertFixedEmpty of length
+  | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
 
 and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
