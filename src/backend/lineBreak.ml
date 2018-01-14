@@ -238,64 +238,67 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       puref (LBFixedTabular(wid, hgt, dpt, imtabular))
 
   | PHGFixedImage(wid, hgt, imgkey) ->
-        puref (LBFixedImage(wid, hgt, imgkey))
+      puref (LBFixedImage(wid, hgt, imgkey))
+
+  | PHGHookPageBreak(hookf) ->
+      puref(LBHookPageBreak(hookf))
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
   let rec aux lbeacc hblst =
     match hblst with
     | [] ->
-        List.rev lbeacc
+        Alist.to_list lbeacc
 
     | HorzDiscretionary(pnlty, hblst0, hblst1, hblst2) :: tail ->
         let lphblst0 = convert_list_for_line_breaking_pure hblst0 in
         let lphblst1 = convert_list_for_line_breaking_pure hblst1 in
         let lphblst2 = convert_list_for_line_breaking_pure hblst2 in
         let dscrid = DiscretionaryID.fresh () in
-          aux (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)) :: lbeacc) tail
+          aux (Alist.extend lbeacc (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)))) tail
 
     | HorzPure(phb) :: tail ->
         let lbe = convert_pure_box_for_line_breaking phb in
-          aux (lbe :: lbeacc) tail
+          aux (Alist.extend lbeacc lbe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
         let lbelst = convert_list_for_line_breaking hblst in
         let lhblst = normalize_chunks lbelst in
         let lhblstnew = append_horz_padding lhblst pads in
-          aux (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)) :: lbeacc) tail
+          aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)))) tail
 
     | HorzScriptGuard(script, hblstG) :: tail ->
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
-          aux (ScriptGuard(script, lhblstG) :: lbeacc) tail
+          aux (Alist.extend lbeacc (ScriptGuard(script, lhblstG))) tail
   in
-    aux [] hblst
+    aux Alist.empty hblst
 
 
 and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box list =
   let rec aux lbpeacc hblst =
     match hblst with
-    | [] -> List.rev lbpeacc
+    | [] -> Alist.to_list lbpeacc
 
     | HorzDiscretionary(pnlty, hblst0, _, _) :: tail ->
-        let lphblst0 = aux [] hblst0 in
-          aux (List.rev_append lphblst0 lbpeacc) tail
+        let lphblst0 = aux Alist.empty hblst0 in
+          aux (Alist.append lbpeacc lphblst0) tail
 
     | HorzPure(phb) :: tail ->
         let lbpe = convert_pure_box_for_line_breaking_pure phb in
-          aux (lbpe :: lbpeacc) tail
+          aux (Alist.extend lbpeacc lbpe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblstsub) :: tail ->
         let lphblst = convert_list_for_line_breaking_pure hblstsub in
         let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-          aux (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)) :: lbpeacc) tail
+          aux (Alist.extend lbpeacc (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)))) tail
 
     | HorzScriptGuard(script, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
-          aux (PScriptGuard(script, lphblstG) :: lbpeacc) tail
+          aux (Alist.extend lbpeacc (PScriptGuard(script, lphblstG))) tail
   in
-  let lbpelst = aux [] hblst in
+  let lbpelst = aux Alist.empty hblst in
     normalize_chunks_pure lbpelst
 
 

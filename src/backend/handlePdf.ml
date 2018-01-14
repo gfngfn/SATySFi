@@ -157,15 +157,8 @@ let rec ops_of_evaled_horz_box yposbaseline (xpos, opacc) (evhb : evaled_horz_bo
         in
           (xpos +% wid, opaccnew)
 
-    | EvHorzHookPageBreak(pageno, hookf) ->
-        let pbinfo =
-          {
-            current_page_number = pageno;
-            current_x_position  = xpos;
-            current_y_position  = yposbaseline;
-          }
-        in
-        hookf pbinfo;
+    | EvHorzHookPageBreak(pbinfo, hookf) ->
+        hookf pbinfo (xpos, yposbaseline);  (* -- invokes the hook function -- *)
         (xpos +% wid, opacc)
 
 

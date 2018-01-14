@@ -214,9 +214,8 @@ module MathVariantCharMap = Map.Make
 
 type page_break_info = {
   current_page_number : int;
-  current_x_position  : length;
-  current_y_position  : length;
 }
+[@@deriving show {with_path = false }]
 
 type input_context = {
   font_size              : length;
@@ -267,6 +266,7 @@ and pure_horz_box =
   | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
+  | PHGHookPageBreak  of (page_break_info -> point -> unit)
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -274,6 +274,21 @@ and horz_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * horz_box list
+
+and intermediate_horz_box =
+  | ImHorz               of evaled_horz_box
+  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
+  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
+  | ImHorzInlineTabular  of length * length * length * intermediate_row list
+  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
+  | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
+
+and evaled_horz_box =
+  length * evaled_horz_box_main
+      (* --
+         (1) width
+         (2) contents
+         -- *)
 
 and evaled_horz_box_main =
   | EvHorzString of horz_string_info * length * length * OutputText.t
@@ -294,26 +309,11 @@ and evaled_horz_box_main =
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
-  | EvHorzHookPageBreak  of int * (page_break_info -> unit)
+  | EvHorzHookPageBreak  of page_break_info * (page_break_info -> point -> unit)
       (* --
          (1) page number determined during the page breaking
          (2) hook function invoked during the construction of PDF data
          -- *)
-
-and evaled_horz_box =
-  length * evaled_horz_box_main
-      (* --
-         (1) width
-         (2) contents
-         -- *)
-
-and intermediate_horz_box =
-  | ImHorz               of evaled_horz_box
-  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
-  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
-  | ImHorzInlineTabular  of length * length * length * intermediate_row list
-  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | ImHorzHookPageBreak  of (page_break_info -> unit)
 
 and vert_box =
   | VertLine              of length * length * intermediate_horz_box list

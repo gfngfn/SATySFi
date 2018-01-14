@@ -15,7 +15,7 @@ type lb_pure_box =
   | LBFixedGraphics of length * length * length * (point -> Pdfops.t list)
   | LBFixedTabular  of length * length * length * intermediate_row list
   | LBFixedImage    of length * length * ImageInfo.key
-  | LBHookPageBreak of (page_break_info -> unit)
+  | LBHookPageBreak of (page_break_info -> point -> unit)
 
 type lb_box =
   | LBPure           of lb_pure_box

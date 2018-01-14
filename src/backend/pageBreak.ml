@@ -43,34 +43,34 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
         int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
-  let rec embed_page_info (pageno : int) (imhblst : intermediate_horz_box list) : evaled_horz_box list =
-    let iter = embed_page_info pageno in
+  let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_box list) : evaled_horz_box list =
+    let iter = embed_page_info pbinfo in
       imhblst |> List.map (function
         | ImHorz(evhb)                                    -> evhb
         | ImHorzRising(wid, hgt, dpt, lenrising, imhblst) -> (wid, EvHorzRising(hgt, dpt, lenrising, iter imhblst))
         | ImHorzFrame(wid, hgt, dpt, deco, imhblst)       -> (wid, EvHorzFrame(hgt, dpt, deco, iter imhblst))
-        | ImHorzInlineTabular(wid, hgt, dpt, imtabular)   -> (wid, EvHorzInlineTabular(hgt, dpt, embed_page_info_to_tabular pageno imtabular))
-        | ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)      -> (wid, EvHorzEmbeddedVert(hgt, dpt, embed_page_info_vert pageno imvblst))
-        | ImHorzHookPageBreak(hookf) -> (Length.zero, EvHorzHookPageBreak(pageno, hookf))
+        | ImHorzInlineTabular(wid, hgt, dpt, imtabular)   -> (wid, EvHorzInlineTabular(hgt, dpt, embed_page_info_to_tabular pbinfo imtabular))
+        | ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)      -> (wid, EvHorzEmbeddedVert(hgt, dpt, embed_page_info_vert pbinfo imvblst))
+        | ImHorzHookPageBreak(hookf) -> (Length.zero, EvHorzHookPageBreak(pbinfo, hookf))
       )
 
-  and embed_page_info_to_tabular (pageno : int) (imtabular : intermediate_row list) : evaled_row list =
+  and embed_page_info_to_tabular (pbinfo : page_break_info) (imtabular : intermediate_row list) : evaled_row list =
     imtabular |> List.map (fun (widtotal, imcelllst) ->
       let evcelllst =
         imcelllst |> List.map (function
           | ImEmptyCell(len)            -> EvEmptyCell(len)
-          | ImNormalCell(info, imhblst) -> EvNormalCell(info, embed_page_info pageno imhblst)
-          | ImMultiCell(info, imhblst)  -> EvMultiCell(info, embed_page_info pageno imhblst)
+          | ImNormalCell(info, imhblst) -> EvNormalCell(info, embed_page_info pbinfo imhblst)
+          | ImMultiCell(info, imhblst)  -> EvMultiCell(info, embed_page_info pbinfo imhblst)
         )
       in
         (widtotal, evcelllst)
     )
 
-  and embed_page_info_vert (pageno : int) (imvblst : intermediate_vert_box list) : evaled_vert_box list =
+  and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert_box list) : evaled_vert_box list =
     imvblst |> List.map (function
-      | ImVertLine(hgt, dpt, imhblst)         -> EvVertLine(hgt, dpt, embed_page_info pageno imhblst)
+      | ImVertLine(hgt, dpt, imhblst)         -> EvVertLine(hgt, dpt, embed_page_info pbinfo imhblst)
       | ImVertFixedEmpty(vskip)               -> EvVertFixedEmpty(vskip)
-      | ImVertFrame(pads, deco, wid, imvblst) -> EvVertFrame(pads, deco, wid, embed_page_info_vert pageno imvblst)
+      | ImVertFrame(pads, deco, wid, imvblst) -> EvVertFrame(pads, deco, wid, embed_page_info_vert pbinfo imvblst)
     )
   in
 
@@ -84,7 +84,8 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
             let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
             (evvbacc, Some(pbvblst), hgttotalnew, vpb)
           else
-            let evhblst = embed_page_info pageno imhblst in
+            let pbinfo = { current_page_number = pageno; } in
+            let evhblst = embed_page_info pbinfo imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
               aux true vpb evvbaccnew Alist.empty hgttotalnew imvbtail
 
