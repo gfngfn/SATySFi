@@ -326,6 +326,11 @@ and evaled_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
 
+and header_or_footer = page_break_info -> intermediate_vert_box list
+
+and page =
+  | Page of evaled_vert_box list * page_break_info
+
 and math_char_kern_func = length -> length -> length
   (* --
      takes the actual font size and the y-position,

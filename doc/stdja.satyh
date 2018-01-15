@@ -1,3 +1,4 @@
+% -*- coding: utf-8 -*-
 
 module StdJa : sig
 
@@ -78,7 +79,15 @@ end = struct
     let () = ref-title <- title in
     let () = ref-author <- author in
     let bc = read-block ctx-doc inner in
-      form-document ctx-doc bc
+    let header pbinfo =
+      line-break true true ctx-doc (read-inline ctx-doc title ++ inline-fil)
+    in
+    let footer pbinfo =
+      let it-pageno = embed-string (arabic pbinfo#page-number) in
+      line-break true true ctx-doc
+        (inline-fil ++ (read-inline ctx-doc {— #it-pageno; —}) ++ inline-fil)
+    in
+      form-document ctx-doc bc header footer
 
   let title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in

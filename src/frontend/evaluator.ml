@@ -252,15 +252,29 @@ and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
     aux Graphics.empty value
 
 
+and make_page_break_info pbinfo =
+  let asc =
+    Assoc.of_list [
+      ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
+    ]
+  in
+    RecordValue(asc)
+
+
+and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_footer =
+  (fun pbinfo ->
+    let valuepbinfo = make_page_break_info pbinfo in
+    let ast = Apply(Value(valuef), Value(valuepbinfo)) in
+    let vblst = interpret_vert env ast in
+      PageBreak.solidify vblst
+  )
+
+
 and make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
   (fun pbinfo (xpos, yposbaseline) ->
     let astpt = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple))) in
-    let asc =
-      Assoc.of_list [
-        ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
-      ]
-    in
-    let ast = Apply(Apply(Value(valuehook), Value(RecordValue(asc))), astpt) in
+    let valuepbinfo = make_page_break_info pbinfo in
+    let ast = Apply(Apply(Value(valuehook), Value(valuepbinfo)), astpt) in
     let valueret = interpret env ast in
       match valueret with
       | UnitConstant -> ()
@@ -714,10 +728,14 @@ and interpret env ast =
       let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 
-  | BackendPageBreaking(astctx, astvert) ->
+  | BackendPageBreaking(astctx, astvert, astheader, astfooter) ->
       let ctx = interpret_context env astctx in
       let vblst = interpret_vert env astvert in
-        DocumentValue(ctx, vblst)
+      let valueheader = interpret env astheader in
+      let valuefooter = interpret env astfooter in
+      let header = make_header_or_footer env valueheader in
+      let footer = make_header_or_footer env valuefooter in
+        DocumentValue(ctx, vblst, header, footer)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
       let ctx = interpret_context env astctx in

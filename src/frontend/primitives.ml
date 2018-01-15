@@ -99,6 +99,8 @@ let tPBINFO =
   in
     (~! "page-break-info", RecordType(asc))
 
+let tHOF = tPBINFO @-> tBB
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
@@ -597,8 +599,8 @@ let make_environments () =
         ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                                 , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
-        ("form-document"         , ~% (tCTX @-> tBB @-> tDOC)                                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
+        ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
+        ("form-document"         , ~% (tCTX @-> tBB @-> tHOF @-> tHOF @-> tDOC)              , lambda4 (fun vctx vbc vhdr vftr -> BackendPageBreaking(vctx, vbc, vhdr, vftr)));
         ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
