@@ -111,10 +111,10 @@ let initialize (dumpfile : file_path) : bool =
   end
 
 
-let make_pdf file_name_out pagesch pagelst header footer =
+let make_pdf file_name_out (pagesize : HorzBox.page_size) (pagelst : HorzBox.page list) (pagepartsf : HorzBox.page_parts_scheme_func) =
   let pdf = HandlePdf.create_empty_pdf file_name_out in
-    pagelst |> List.fold_left (fun pdf evvblstpage ->
-      pdf |> HandlePdf.write_page pagesch evvblstpage header footer
+    pagelst |> List.fold_left (fun pdf page ->
+      pdf |> HandlePdf.write_page pagesize page pagepartsf
     ) pdf
 
 
@@ -191,12 +191,14 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                 print_endline ("  evaluation done.");
                 begin
                   match valuedoc with
-                  | DocumentValue(ctxdoc, imvblst, header, footer) ->
+                  | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
+(*
                       let pagesch = ctxdoc.HorzBox.page_scheme in
-                      let pagelst = PageBreak.main pagesch imvblst in
-                      let pdf = make_pdf file_name_out pagesch pagelst header footer in
+*)
+                      let pagelst = PageBreak.main pagecontf imvblst in
+                      let pdf = make_pdf file_name_out pagesize pagelst pagepartsf in
                       begin
                         match CrossRef.needs_another_trial dumpfile with
                         | CrossRef.NeedsAnotherTrial ->

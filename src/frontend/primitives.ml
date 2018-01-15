@@ -99,7 +99,32 @@ let tPBINFO =
   in
     (~! "page-break-info", RecordType(asc))
 
-let tHOF = tPBINFO @-> tBB
+let tPAGECONT =
+  let asc =
+    Assoc.of_list [
+      ("text-origin", tPT);
+      ("text-height", tLN);
+    ]
+  in
+    (~! "page-content-scheme", RecordType(asc))
+
+let tPAGECONTF = tPBINFO @-> tPAGECONT
+
+let tPCINFO =
+  tPBINFO  (* temporary; may have more fields in the future *)
+
+let tPAGEPARTS =
+  let asc =
+    Assoc.of_list [
+      ("header-origin" , tPT);
+      ("header-content", tBB);
+      ("footer-origin" , tPT);
+      ("footer-content", tBB);
+    ]
+  in
+    (~! "page-parts", RecordType(asc))
+
+let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
@@ -451,7 +476,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     ])
 
 
-let get_initial_context pagesch evidcmd =
+let get_initial_context wid evidcmd =
   let open HorzBox in
     {
       font_scheme            = default_font_scheme;
@@ -464,14 +489,13 @@ let get_initial_context pagesch evidcmd =
       space_shrink           = 0.08;
       space_stretch          = 0.16; (* 0.32; *)
       adjacent_stretch       = 0.025;
-      paragraph_width        = pagesch.area_width;
+      paragraph_width        = wid;
       paragraph_top          = pdfpt 18.;
       paragraph_bottom       = pdfpt 18.;
       leading                = pdfpt 18.;
       min_gap_of_lines       = pdfpt 2.;
       text_color             = GraphicData.DeviceGray(0.);
       manual_rising          = pdfpt 0.;
-      page_scheme            = pagesch;
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
@@ -600,7 +624,7 @@ let make_environments () =
         ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
-        ("form-document"         , ~% (tCTX @-> tBB @-> tHOF @-> tHOF @-> tDOC)              , lambda4 (fun vctx vbc vhdr vftr -> BackendPageBreaking(vctx, vbc, vhdr, vftr)));
+        ("page-break"            , ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)  , lambda4 (fun vpgsz vpcf vppf vbb -> BackendPageBreaking(vpgsz, vpcf, vppf, vbb)));
         ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
@@ -618,7 +642,7 @@ let make_environments () =
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCMD @-> tCTX), lambda5 (fun vpage vpt vwid vhgt vcmd -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt, vcmd)));
+        ("get-initial-context", ~% (tLN @-> tCMD @-> tCTX)               , lambda2 (fun vwid vcmd -> PrimitiveGetInitialContext(vwid, vcmd)));
         ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
         ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));

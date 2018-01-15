@@ -67,7 +67,7 @@ and embed_page_info_vert (pbinfo : page_break_info) (imvblst : intermediate_vert
   )
 
 
-let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_box list) : page_break_info * evaled_vert_box list * pb_vert_box list option =
+let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -75,12 +75,7 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
         int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
-  let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) : page_break_info * evaled_vert_box Alist.t * (pb_vert_box list) option * length * pure_badness =
-    let pbinfo =
-      {
-        current_page_number = pageno;
-      }  (* -- may contain more fields in the future -- *)
-    in
+  let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) : evaled_vert_box Alist.t * (pb_vert_box list) option * length * pure_badness =
     match pbvblst with
     | PBVertLine(hgt, dpt, imhblst) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
@@ -88,7 +83,7 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
           (* -- if getting worse, output the accumulated non-discardable lines 'evvbacc' as a page -- *)
             let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (pbinfo, evvbacc, Some(pbvblst), hgttotalnew, vpb)
+            (evvbacc, Some(pbvblst), hgttotalnew, vpb)
           else
             let evhblst = embed_page_info pbinfo imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
@@ -99,7 +94,7 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
             let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-            (pbinfo, evvbacc, Some(pbvbtail), hgttotalnew, vpb)
+            (evvbacc, Some(pbvbtail), hgttotalnew, vpb)
           else
             let evvbaccdiscardablenew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
               aux true vpb evvbacc evvbaccdiscardablenew hgttotalnew pbvbtail
@@ -111,7 +106,7 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotalbefore = hgttotal +% pads.paddingT in
-        let (_, evvbaccsub, restsubopt, hgttotalsub, vpbsub) =
+        let (evvbaccsub, restsubopt, hgttotalsub, vpbsub) =
           aux false vpbprev Alist.empty Alist.empty hgttotalbefore pbvblstsub
         in
         let hgttotalafter = hgttotalsub +% pads.paddingB in
@@ -140,16 +135,16 @@ let chop_single_page (pageno : int) (area_height : length) (pbvblst : pb_vert_bo
                     (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list evvbaccsub))
               in
               let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
-                (pbinfo, evvbaccret, pbvbrest, hgttotalafter, vpbsub)
+                (evvbaccret, pbvbrest, hgttotalafter, vpbsub)
         end
 
     | [] ->
         let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
-        (pbinfo, evvbacc, None, hgttotal, vpbprev)
+        (evvbacc, None, hgttotal, vpbprev)
   in
   let vpbinit = 100000 in
-  let (pbinfo, evvbacc, restopt, _, _) = aux false vpbinit Alist.empty Alist.empty Length.zero pbvblst in
-    (pbinfo, Alist.to_list evvbacc, restopt)
+  let (evvbacc, restopt, _, _) = aux false vpbinit Alist.empty Alist.empty Length.zero pbvblst in
+    (Alist.to_list evvbacc, restopt)
 
 
 let normalize (vblst : vert_box list) : pb_vert_box list =
@@ -224,14 +219,16 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
     aux pbvblst
 
 
-let main (pagesch : page_scheme) (vblst : vert_box list) : page list =
+let main (pgctschf : page_content_scheme_func) (vblst : vert_box list) : page list =
 
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length vblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_vert_box) vblst in  (* for debug *)
 
   let rec aux pageno pageacc pbvblst =
-    let (pbinfo, evvblstpage, restopt) = chop_single_page pageno pagesch.area_height pbvblst in
-    let pageaccnew = Alist.extend pageacc (Page(evvblstpage, pbinfo)) in
+    let pbinfo = { current_page_number = pageno; } in
+    let pgctsch = pgctschf pbinfo in  (* -- constructs the page scheme -- *)
+    let (evvblstpage, restopt) = chop_single_page pbinfo pgctsch.page_content_height pbvblst in
+    let pageaccnew = Alist.extend pageacc (Page(pgctsch, evvblstpage, pbinfo)) in
 
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
     let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)

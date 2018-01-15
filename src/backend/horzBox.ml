@@ -63,15 +63,22 @@ type page_size =
   | UserDefinedPaper of length * length
 [@@deriving show { with_path = false }]
 
-type page_scheme =
+type page_content_scheme =
   {
-    page_size        : page_size;
-    left_page_margin : length;
-    top_page_margin  : length;
-    area_width       : length;
-    area_height      : length;
+    page_content_origin : point;
+    page_content_height : length;
   }
-[@@deriving show { with_path = false }]
+
+let pp_page_content_scheme fmt _ = Format.fprintf fmt "<page-content-scheme>"
+
+type page_break_info = {
+  current_page_number : int;
+}
+[@@deriving show {with_path = false }]
+
+type page_content_scheme_func = page_break_info -> page_content_scheme
+
+let pp_page_content_scheme_func fmt _ = Format.fprintf fmt "<page-content-scheme-func>"
 
 type paddings =
   {
@@ -195,11 +202,6 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-type page_break_info = {
-  current_page_number : int;
-}
-[@@deriving show {with_path = false }]
-
 type input_context = {
   font_size              : length;
   font_scheme            : font_with_ratio ScriptSchemeMap.t;
@@ -220,7 +222,6 @@ type input_context = {
   min_gap_of_lines       : length;
   text_color             : color;
   manual_rising          : length;
-  page_scheme            : page_scheme;
   badness_space          : pure_badness;
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
@@ -329,7 +330,26 @@ and evaled_vert_box =
 and header_or_footer = page_break_info -> intermediate_vert_box list
 
 and page =
-  | Page of evaled_vert_box list * page_break_info
+  | Page of page_content_scheme * evaled_vert_box list * page_break_info
+
+and page_parts_scheme = {
+  header_origin  : point;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]
+  header_content : intermediate_vert_box list;
+  footer_origin  : point;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]
+  footer_content : intermediate_vert_box list;
+}
+
+and page_content_info =
+  page_break_info
+(*
+{
+  page_number : int;
+}
+*)
+
+and page_parts_scheme_func = page_content_info -> page_parts_scheme
 
 and math_char_kern_func = length -> length -> length
   (* --

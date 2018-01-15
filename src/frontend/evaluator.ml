@@ -149,9 +149,12 @@ and reduce_beta_list env valuef astarglst =
 
 and interpret_vert env ast =
   let value = interpret env ast in
+    get_vert value
+
+and get_vert value =
     match value with
     | Vert(imvblst) -> imvblst
-    | _             -> report_bug_evaluator "interpret_vert" ast value
+    | _             -> report_bug_evaluator_value "get_vert" value
 
 
 and interpret_horz env ast =
@@ -167,11 +170,15 @@ and get_horz value =
 
 and interpret_point env ast =
   let value = interpret env ast in
+    get_point value
+
+
+and get_point value =
     match value with
     | TupleCons(LengthConstant(lenx),
         TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
 
-    | _ -> report_bug_evaluator "interpret_point" ast value
+    | _ -> report_bug_evaluator_value "get_point" value
 
 
 and interpret_prepath env ast =
@@ -261,12 +268,79 @@ and make_page_break_info pbinfo =
     RecordValue(asc)
 
 
+and make_page_content_info pcinfo =
+  make_page_break_info pcinfo  (* temporary *)
+(*
+  let asc =
+    Assoc.of_list [
+      ("page-number", IntegerConstant(pcinfo.HorzBox.page_number));
+    ]
+  in
+    RecordValue(asc)
+*)
+
 and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_footer =
   (fun pbinfo ->
     let valuepbinfo = make_page_break_info pbinfo in
     let ast = Apply(Value(valuef), Value(valuepbinfo)) in
     let vblst = interpret_vert env ast in
       PageBreak.solidify vblst
+  )
+
+
+and make_page_content_scheme_func env astf : HorzBox.page_content_scheme_func =
+  let valuef = interpret env astf in
+    (fun pbinfo ->
+      let valuepbinfo = make_page_break_info pbinfo in
+      let ast = Apply(Value(valuef), Value(valuepbinfo)) in
+      let valueret = interpret env ast in
+        match valueret with
+        | RecordValue(asc) ->
+            begin
+              match
+                (Assoc.find_opt asc "text-origin",
+                 Assoc.find_opt asc "text-height")
+              with
+              | (Some(vTO), Some(vTH)) ->
+                  HorzBox.({
+                    page_content_origin = get_point vTO;
+                    page_content_height = get_length vTH;
+                  })
+
+              | _ -> report_bug_evaluator_value "make_page_scheme_func" valueret
+            end
+
+        | _ -> report_bug_evaluator "make_page_scheme_func" ast valueret
+    )
+
+
+and make_page_parts_scheme_func env astf : HorzBox.page_parts_scheme_func =
+  let valuef = interpret env astf in
+  (fun pcinfo ->
+    let valuepcinfo = make_page_content_info pcinfo in
+    let ast = Apply(Value(valuef), Value(valuepcinfo)) in
+    let valueret = interpret env ast in
+      match valueret with
+      | RecordValue(asc) ->
+          begin
+            match
+              (Assoc.find_opt asc "header-origin",
+               Assoc.find_opt asc "header-content",
+               Assoc.find_opt asc "footer-origin",
+               Assoc.find_opt asc "footer-content")
+            with
+            | (Some(vHO), Some(vHC), Some(vFO), Some(vFC)) ->
+                HorzBox.({
+                  header_origin  = get_point vHO;
+                  header_content = PageBreak.solidify (get_vert vHC);
+                  footer_origin  = get_point vFO;
+                  footer_content = PageBreak.solidify (get_vert vFC);
+                })
+
+            | _ -> report_bug_evaluator_value "make_page_parts_scheme_func" valueret
+          end
+
+      | _ -> report_bug_evaluator "make_page_parts_scheme_func" ast valueret
   )
 
 
@@ -728,14 +802,12 @@ and interpret env ast =
       let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 
-  | BackendPageBreaking(astctx, astvert, astheader, astfooter) ->
-      let ctx = interpret_context env astctx in
+  | BackendPageBreaking(astpagesize, astpagecontf, astpagepartsf, astvert) ->
+      let pagesize = interpret_page_size env astpagesize in
+      let pagecontf = make_page_content_scheme_func env astpagecontf in
+      let pagepartsf = make_page_parts_scheme_func env astpagepartsf in
       let vblst = interpret_vert env astvert in
-      let valueheader = interpret env astheader in
-      let valuefooter = interpret env astfooter in
-      let header = make_header_or_footer env valueheader in
-      let footer = make_header_or_footer env valuefooter in
-        DocumentValue(ctx, vblst, header, footer)
+        DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
       let ctx = interpret_context env astctx in
@@ -797,15 +869,9 @@ and interpret env ast =
       let (hgt, dpt) = adjust_to_last_line imvblst in
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
-  | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt, astcmd) ->
-      let page = interpret_page env astpage in
-      let (lmargin, tmargin) = interpret_point env astpt in
+  | PrimitiveGetInitialContext(astwid, astcmd) ->
       let txtwid = interpret_length env astwid in
-      let txthgt = interpret_length env asthgt in
 (*
-      let txtwid = Length.of_pdf_point 400. in  (* temporary; should be variable *)
-      let txthgt = Length.of_pdf_point 650. in  (* temporary; should be variable *)
-*)
       let pagesch =
         HorzBox.({
           page_size        = page;
@@ -815,10 +881,11 @@ and interpret env ast =
           area_height      = txthgt;
         })
       in
+*)
       let valuecmd = interpret env astcmd in
       begin
         match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context pagesch evidcmd)
+        | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context txtwid evidcmd)
         | _ -> report_bug_evaluator "PrimitiveGetInitialContext" astcmd valuecmd
       end
 
@@ -1735,7 +1802,7 @@ and get_length (value : syntactic_value) : length =
     | _                  -> report_bug_evaluator_value "get_float" value
 
 
-and interpret_page env ast : HorzBox.page_size =
+and interpret_page_size env ast : HorzBox.page_size =
   let value = interpret env ast in
     match value with
     | Constructor("A0Paper" , UnitConstant) -> HorzBox.A0Paper

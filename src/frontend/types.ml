@@ -511,7 +511,7 @@ and syntactic_value =
   | Context                     of HorzBox.input_context
   | FrozenCommand               of EvalVarID.t
   | UninitializedContext
-  | DocumentValue               of HorzBox.input_context * HorzBox.vert_box list * HorzBox.header_or_footer * HorzBox.header_or_footer
+  | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
 and abstract_tree =
   | Value                 of syntactic_value
@@ -623,7 +623,7 @@ and abstract_tree =
 
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
-  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree

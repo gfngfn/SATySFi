@@ -54,40 +54,70 @@ end = struct
     ctx |> set-font HanIdeographic font
         |> set-font Kana           font
 
+
+  let get-standard-context wid =
+    get-initial-context wid (command \math)
+      |> set-dominant-wide-script Kana
+      |> set-language Kana Japanese
+      |> set-language HanIdeographic Japanese
+      |> set-dominant-narrow-script Latin
+      |> set-language Latin English
+      |> set-font Kana           font-cjk-mincho
+      |> set-font HanIdeographic font-cjk-mincho
+      |> set-font Latin          font-latin-roman
+      |> set-math-font `lmodern`
+
+
   let-mutable ref-title <- {}
   let-mutable ref-author <- {}
+
 
   let document rcd inner =
     let title = rcd#title in
     let author = rcd#author in
     let page = A4Paper in
-    let pt = (80pt, 80pt) in
-    let wid = 440pt in
-    let hgt = 650pt in
-    let ctx-doc =
-      get-initial-context page pt wid hgt (command \math)
-        |> set-dominant-wide-script Kana
-        |> set-language Kana Japanese
-        |> set-language HanIdeographic Japanese
-        |> set-dominant-narrow-script Latin
-        |> set-language Latin English
-        |> set-font Kana           font-cjk-mincho
-        |> set-font HanIdeographic font-cjk-mincho
-        |> set-font Latin          font-latin-roman
-        |> set-math-font `lmodern`
-    in
+    let txtorg = (80pt, 80pt) in
+    let txtwid = 440pt in
+    let txthgt = 650pt in
+    let hdrorg = (40pt, 40pt) in
+    let ftrorg = (40pt, 770pt) in
+    let hdrwid = 520pt in
+    let ftrwid = 520pt in
+
     let () = ref-title <- title in
     let () = ref-author <- author in
-    let bc = read-block ctx-doc inner in
-    let header pbinfo =
-      line-break true true ctx-doc (read-inline ctx-doc title ++ inline-fil)
+    let bb =
+      let ctx-doc = get-standard-context txtwid
+      in
+        read-block ctx-doc inner
     in
-    let footer pbinfo =
-      let it-pageno = embed-string (arabic pbinfo#page-number) in
-      line-break true true ctx-doc
-        (inline-fil ++ (read-inline ctx-doc {— #it-pageno; —}) ++ inline-fil)
+
+    let page-text-scheme pbinfo =
+      (|
+        text-origin = txtorg;
+        text-height = txthgt;
+      |)
     in
-      form-document ctx-doc bc header footer
+    let page-parts pbinfo =
+      let header =
+        let ctx = get-standard-context hdrwid in
+          line-break true true ctx (read-inline ctx title ++ inline-fil)
+      in
+      let footer =
+        let ctx = get-standard-context ftrwid in
+        let it-pageno = embed-string (arabic pbinfo#page-number) in
+          line-break true true ctx
+            (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+      in
+        (|
+          header-origin  = hdrorg;
+          header-content = header;
+          footer-origin  = ftrorg;
+          footer-content = footer;
+        |)
+    in
+      page-break page page-text-scheme page-parts bb
+
 
   let title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in

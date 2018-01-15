@@ -1,6 +1,8 @@
-open Types
 
-val get_initial_context : HorzBox.page_scheme -> EvalVarID.t -> HorzBox.input_context
+open Types
+open LengthInterface
+
+val get_initial_context : length -> EvalVarID.t -> HorzBox.input_context
 
 val make_environments : unit -> Typeenv.t * environment
 (*

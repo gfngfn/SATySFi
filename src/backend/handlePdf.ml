@@ -197,10 +197,14 @@ and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, ypos
     Alist.to_list opacc
 
 
-let write_page (pagesch : page_scheme) (Page(evvblst, pbinfo) : page) (header : header_or_footer) (footer : header_or_footer) ((pdf, pageacc, flnm) : t) : t =
+let invert_coordinate paper_height (xraw, yraw) =
+  (xraw, paper_height -% yraw)
+
+
+let write_page (pagesize : page_size) (Page(pagecontsch, evvblst, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((pdf, pageacc, flnm) : t) : t =
 
   let paper =
-    match pagesch.page_size with
+    match pagesize with
     | A0Paper                -> Pdfpaper.a0
     | A1Paper                -> Pdfpaper.a1
     | A2Paper                -> Pdfpaper.a2
@@ -212,18 +216,16 @@ let write_page (pagesch : page_scheme) (Page(evvblst, pbinfo) : page) (header : 
     | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
   in
   let paper_height = get_paper_height paper in
-  let xinit = pagesch.left_page_margin in
-  let yinit = paper_height -% pagesch.top_page_margin in
-  let (_, opaccend) = ops_of_evaled_vert_box_list pbinfo (xinit, yinit) Alist.empty evvblst in
+  let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
+  let (_, opaccend) = ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblst in
 
-  let imvblst_header = header pbinfo in  (* -- invokes the header function -- *)
-  let evvblst_header = imvblst_header |> PageBreak.embed_page_info_vert pbinfo in
-  let pt_header = (xinit, paper_height -% Length.of_pdf_point 10.) in  (* temporary *)
+  let pagepartssch = pagepartsf pbinfo in  (* -- invokes the page-parts function -- *)
+  let evvblst_header = pagepartssch.header_content |> PageBreak.embed_page_info_vert pbinfo in
+  let pt_header = invert_coordinate paper_height pagepartssch.header_origin in
   let (_, opacc_header) = ops_of_evaled_vert_box_list pbinfo pt_header opaccend evvblst_header in
 
-  let imvblst_footer = footer pbinfo in  (* -- invokes the footer function -- *)
-  let evvblst_footer = imvblst_footer |> PageBreak.embed_page_info_vert pbinfo in
-  let pt_footer = (xinit, Length.of_pdf_point 10.) in  (* temporary *)
+  let evvblst_footer = pagepartssch.footer_content |> PageBreak.embed_page_info_vert pbinfo in
+  let pt_footer = invert_coordinate paper_height pagepartssch.footer_origin in
   let (_, opacc_footer) = ops_of_evaled_vert_box_list pbinfo pt_footer opacc_header evvblst_footer in
 
   let oplst = Alist.to_list opacc_footer in
