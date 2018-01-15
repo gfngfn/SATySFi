@@ -56,7 +56,7 @@ let document rcd inner =
   let () = ref-title <- title in
   let () = ref-author <- author in
   let bc = read-block ctx-doc inner in
-    form-document ctx-doc bc
+    form-document ctx-doc bc (fun _ -> block-nil) (fun _ -> block-nil)
 
 let title-deco =
   let pads = (5pt, 5pt, 10pt, 10pt) in
