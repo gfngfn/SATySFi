@@ -41,6 +41,16 @@ let tLIST m =
     ${\paren{#m}\math-skip!(4pt)#token}
 
 
+let-rec repeat-inline ibacc n ib =
+  if n <= 0 then ibacc else
+    repeat-inline (ibacc ++ ib) (n - 1) ib
+
+
+let-inline ctx \repeat n inner =
+  let ib = read-inline ctx inner in
+    repeat-inline inline-nil n ib
+
+
 let gap-paragraph = 12pt
 
 let gap-command = 6pt

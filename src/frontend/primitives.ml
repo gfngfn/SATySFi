@@ -235,22 +235,8 @@ let rec lambda5 astf env =
     lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
 
 
-(* -- begin: constants just for experimental use -- *)
-
 let pdfpt = Length.of_pdf_point
 
-
-(*
-let default_font_scheme =
-  List.fold_left (fun mapacc (script, font_info) ->
-    mapacc |> CharBasis.ScriptSchemeMap.add script font_info
-  ) CharBasis.ScriptSchemeMap.empty [
-    (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
-    (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
-    (CharBasis.Latin             , ("Arno"  , 1., 0.));
-    (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
-  ]
-*)
 
 (*
 let default_math_left_paren hgt dpt hgtaxis fontsize color =
@@ -492,8 +478,8 @@ let get_initial_context wid evidcmd =
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
       space_natural          = 0.33;
       space_shrink           = 0.08;
-      space_stretch          = 0.16; (* 0.32; *)
-      adjacent_stretch       = 0.025;
+      space_stretch          = 0.16;
+      adjacent_stretch       = 0.05;
       paragraph_width        = wid;
       paragraph_top          = pdfpt 18.;
       paragraph_bottom       = pdfpt 18.;
@@ -669,6 +655,8 @@ let make_environments satysfi_root_dir =
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
         ("get-natural-width"  , ~% (tIB @-> tLN)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
+        ("get-natural-length" , ~% (tBB @-> tLN)                         , lambda1 (fun vbb -> PrimitiveGetNaturalLength(vbb)));
+        ("display-message"    , ~% (tS @-> tU)                           , lambda1 (fun vs -> PrimitiveDisplayMessage(vs)));
 
         ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)             , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
         ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)   , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));

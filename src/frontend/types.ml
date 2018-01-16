@@ -644,6 +644,8 @@ and abstract_tree =
   | PrimitiveSetManualRising    of abstract_tree * abstract_tree
   | PrimitiveEmbed              of abstract_tree
   | PrimitiveGetNaturalWidth    of abstract_tree
+  | PrimitiveGetNaturalLength   of abstract_tree
+  | PrimitiveDisplayMessage     of abstract_tree
   | PrimitiveDrawText           of abstract_tree * abstract_tree
   | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetMathCommand     of abstract_tree * abstract_tree

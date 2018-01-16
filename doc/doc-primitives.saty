@@ -138,6 +138,10 @@ document (|
     }
     +command (`get-natural-width`) (tIB --> tL) {
       インラインボックス列を受け取り，その自然な幅を返す．
+      \figure<+p{
+        これは図だと思ってください．文章はテストのために一時的に入れているものです．
+        \repeat(10){象の卵は大きいぞう．}
+      }>
     }
     +command (`inline-graphics`) (tL --> (tL --> (tL --> (tIGR --> tIB)))) {
       \code{inline-graphics ${w} ${h} ${d} ${igr}}で

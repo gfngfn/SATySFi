@@ -1068,6 +1068,17 @@ and interpret env ast =
       let (wid, _, _) = LineBreak.get_natural_metrics hblst in
         LengthConstant(wid)
 
+  | PrimitiveGetNaturalLength(astvert) ->
+      let vblst = interpret_vert env astvert in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_first_line imvblst in
+        LengthConstant(hgt +% (Length.negate dpt))
+
+  | PrimitiveDisplayMessage(aststr) ->
+      let str = interpret_string env aststr in
+        print_endline str;
+        UnitConstant
+
 (* ---- list value ---- *)
 
   | PrimitiveTupleCons(asthd, asttl) ->
