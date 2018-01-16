@@ -190,7 +190,7 @@ and ops_of_evaled_vert_box_list pbinfo (xinit, yinit) opaccinit evvblst =
 
 
 and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, yposbaseline) : point) (imhblst : intermediate_horz_box list) : Pdfops.t list =
-  let evhblst = PageBreak.embed_page_info pbinfo imhblst in
+  let evhblst = PageInfo.embed_page_info pbinfo imhblst in
   let (_, opacc) =
       evhblst |> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline) (xpos, Alist.empty)
   in
@@ -220,11 +220,11 @@ let write_page (pagesize : page_size) (Page(pagecontsch, evvblst, pbinfo) : page
   let (_, opaccend) = ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblst in
 
   let pagepartssch = pagepartsf pbinfo in  (* -- invokes the page-parts function -- *)
-  let evvblst_header = pagepartssch.header_content |> PageBreak.embed_page_info_vert pbinfo in
+  let evvblst_header = pagepartssch.header_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_header = invert_coordinate paper_height pagepartssch.header_origin in
   let (_, opacc_header) = ops_of_evaled_vert_box_list pbinfo pt_header opaccend evvblst_header in
 
-  let evvblst_footer = pagepartssch.footer_content |> PageBreak.embed_page_info_vert pbinfo in
+  let evvblst_footer = pagepartssch.footer_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_footer = invert_coordinate paper_height pagepartssch.footer_origin in
   let (_, opacc_footer) = ops_of_evaled_vert_box_list pbinfo pt_footer opacc_header evvblst_footer in
 
