@@ -41,6 +41,9 @@ end = struct
   let font-size-author  = 16pt
   let font-size-section = 18pt
 
+  let section-top-margin = 20pt
+  let section-bottom-margin = 12pt
+
   let font-ratio-latin = 1.
   let font-ratio-cjk = 0.88
 
@@ -80,7 +83,7 @@ end = struct
     let txtwid = 440pt in
     let txthgt = 630pt in
     let hdrorg = (40pt, 30pt) in
-    let ftrorg = (40pt, 770pt) in
+    let ftrorg = (40pt, 780pt) in
     let hdrwid = 520pt in
     let ftrwid = 520pt in
     let thickness = 0.5pt in
@@ -101,8 +104,17 @@ end = struct
     in
     let page-parts pbinfo =
       let header =
-        let ctx = get-standard-context hdrwid in
-          line-break true true ctx (read-inline ctx title ++ inline-fil)
+        let ctx =
+          get-standard-context hdrwid
+            |> set-paragraph-margin 0pt 0pt
+        in
+        let ib-text =
+         if pbinfo#page-number mod 2 == 0 then
+           (inline-fil ++ read-inline ctx title)
+         else
+           (read-inline ctx title ++ inline-fil)
+       in
+          line-break true true ctx ib-text
             +++ line-break true true ctx
               ((inline-graphics hdrwid thickness 0pt
                 (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
@@ -227,7 +239,7 @@ end = struct
     let () = num-section <- !num-section + 1 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
-    let br-num =
+    let ib-num =
       match crefopt with
       | None ->
           read-inline ctx-title (embed-string (s-num ^ `.`))
@@ -237,10 +249,13 @@ end = struct
             read-inline ctx-title (embed-string (s-num ^ `.`))
               ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
-    let br-title = read-inline ctx-title title in
-    let bc-title = line-break true false ctx (br-num ++ (inline-skip 10pt) ++ br-title ++ (inline-fil)) in
-    let bc-inner = read-block ctx inner in
-      bc-title +++ bc-inner
+    let ib-title = read-inline ctx-title title in
+    let bb-title =
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
 
 
   let-block ctx +section title inner =
@@ -260,3 +275,7 @@ end = struct
       read-inline ctx-emph inner
 
 end
+
+
+let document = StdJa.document
+  % ad-hoc

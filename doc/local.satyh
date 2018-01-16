@@ -41,19 +41,26 @@ let tLIST m =
     ${\paren{#m}\math-skip!(4pt)#token}
 
 
+let gap-paragraph = 12pt
+
+let gap-command = 6pt
+
+
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
   let font-size = get-font-size ctx in
   let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
   let quad = discretionary 1000 quad-glue inline-nil inline-nil in
-  let margin = (ctx |> get-font-size) *' 2. in
+  let indent = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
-    line-break true false ctx (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+    line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
+      (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
   +++
-    block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
-      form-paragraph ctx (ib-inner ++ inline-fil)
-    ))
+    block-frame-breakable (ctx |> set-paragraph-margin gap-command gap-paragraph)
+      (indent, 0pt, 0pt, 0pt) VDecoSet.empty (fun ctx ->
+          form-paragraph (ctx |> set-paragraph-margin 0pt 0pt) (ib-inner ++ inline-fil)
+        )
 
 
 let name-context ctx =
