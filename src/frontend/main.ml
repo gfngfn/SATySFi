@@ -184,7 +184,12 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
 *)
               let rec aux i =
                 print_endline (" ---- ---- ---- ----");
-                print_endline ("  begin to evaluate the document (" ^ (ordinal i) ^ " trial) ...");
+                begin
+                  if i <= 1 then
+                    print_endline ("  evaluating texts ...")
+                  else
+                    print_endline ("  evaluating texts (" ^ (ordinal i) ^ " trial) ...")
+                end;
                 reset ();
                 let env = unfreeze_environment env_freezed in
                 let valuedoc = Evaluator.interpret env ast in

@@ -76,13 +76,14 @@ end = struct
     let title = rcd#title in
     let author = rcd#author in
     let page = A4Paper in
-    let txtorg = (80pt, 80pt) in
+    let txtorg = (80pt, 100pt) in
     let txtwid = 440pt in
-    let txthgt = 650pt in
-    let hdrorg = (40pt, 40pt) in
+    let txthgt = 630pt in
+    let hdrorg = (40pt, 30pt) in
     let ftrorg = (40pt, 770pt) in
     let hdrwid = 520pt in
     let ftrwid = 520pt in
+    let thickness = 0.5pt in
 
     let () = ref-title <- title in
     let () = ref-author <- author in
@@ -102,6 +103,9 @@ end = struct
       let header =
         let ctx = get-standard-context hdrwid in
           line-break true true ctx (read-inline ctx title ++ inline-fil)
+            +++ line-break true true ctx
+              ((inline-graphics hdrwid thickness 0pt
+                (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
       in
       let footer =
         let ctx = get-standard-context ftrwid in

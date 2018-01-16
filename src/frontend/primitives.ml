@@ -644,6 +644,7 @@ let make_environments () =
 
         ("get-initial-context", ~% (tLN @-> tCMD @-> tCTX)               , lambda2 (fun vwid vcmd -> PrimitiveGetInitialContext(vwid, vcmd)));
         ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
+        ("set-paragraph-margin", ~% (tLN @-> tLN @-> tCTX @-> tCTX)      , lambda3 (fun vl1 vl2 vctx -> PrimitiveSetParagraphMargin(vl1, vl2, vctx)));
         ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
         ("set-font"           , ~% (tSCR @-> tFT @-> tCTX @-> tCTX)      , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));

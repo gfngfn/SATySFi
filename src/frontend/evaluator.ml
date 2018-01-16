@@ -894,6 +894,15 @@ and interpret env ast =
       let ctx = interpret_context env astctx in
         Context(HorzBox.({ ctx with space_natural = ratio; }))
 
+  | PrimitiveSetParagraphMargin(asttop, astbottom, astctx) ->
+      let lentop = interpret_length env asttop in
+      let lenbottom = interpret_length env astbottom in
+      let ctx = interpret_context env astctx in
+        Context(HorzBox.({ ctx with
+          paragraph_top    = lentop;
+          paragraph_bottom = lenbottom;
+        }))
+
   | PrimitiveSetFontSize(astsize, astctx) ->
       let size = interpret_length env astsize in
       let ctx = interpret_context env astctx in

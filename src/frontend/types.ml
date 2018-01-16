@@ -625,6 +625,7 @@ and abstract_tree =
   | VertLex                     of abstract_tree * abstract_tree
   | PrimitiveGetInitialContext  of abstract_tree * abstract_tree
   | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
+  | PrimitiveSetParagraphMargin of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetFontSize        of abstract_tree * abstract_tree
   | PrimitiveGetFontSize        of abstract_tree
   | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
