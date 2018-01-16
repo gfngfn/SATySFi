@@ -100,7 +100,7 @@ let reset () =
 
 
 (* -- initialization that should be performed before typechecking -- *)
-let initialize (dumpfile : file_path) : bool =
+let initialize (dumpfile : file_path) =
   begin
     FreeID.initialize ();
     BoundID.initialize ();
@@ -109,7 +109,8 @@ let initialize (dumpfile : file_path) : bool =
     EvalVarID.initialize ();
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dumpfile in
-    dump_file_exists
+    let (tyenv, env) = Primitives.make_environments (!libdir_ref) in
+    (tyenv, env, dump_file_exists)
   end
 
 
@@ -335,6 +336,44 @@ let error_log_environment suspended =
         NormalLine("in the font hash file '" ^ srcpath ^ "':");
         NormalLine("the value associated with font name '" ^ abbrev ^ "' "
                      ^ "does NOT have the required designation key '" ^ key ^ "'.");
+      ]
+
+  | SetDefaultFont.InvalidYOJSON(srcpath, msg) ->
+      report_error Interface [
+        NormalLine("the default font hash file '" ^ srcpath ^ "' is NOT a valid YOJSON file;");
+        DisplayLine(msg);
+      ]
+
+  | SetDefaultFont.OtherThanDictionary(srcpath) ->
+      report_error Interface [
+        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
+        NormalLine("the content is NOT a dictionary.");
+      ]
+
+  |  SetDefaultFont.MissingRequiredScriptKey(srcpath, key_script) ->
+      report_error Interface [
+        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
+        NormalLine("missing required script key '" ^ key_script ^ "'");
+      ]
+
+  | SetDefaultFont.MissingRequiredKey(srcpath, key_script, key) ->
+      report_error Interface [
+        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
+        NormalLine("missing required key '" ^ key ^ "' for the script '" ^ key_script ^ "'");
+      ]
+
+  | SetDefaultFont.ElementOtherThanDictionary(srcpath, key_script, jsonstr) ->
+      report_error Interface [
+        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
+        NormalLine("the value associated with the script key '" ^ key_script ^ "' is NOT a dictionary.");
+        DisplayLine(jsonstr);
+      ]
+
+  | SetDefaultFont.InvalidDataTypeOfKey(srcpath, key_script, key) ->
+      report_error Interface [
+        NormalLine("in the default font hash file '" ^ srcpath ^ ":");
+        NormalLine("the value associated with the key '" ^ key ^ "' "
+                      ^ "for the script '" ^ key_script ^ "' is of invalid data type.");
       ]
 
   | Lexer.LexError(rng, s) ->
@@ -607,14 +646,13 @@ let () =
     print_endline (" ---- ---- ---- ----");
     print_endline ("  target file: '" ^ output ^ "'");
     let dumpfile = (Filename.remove_extension output) ^ ".satysfi-aux" in
-    let dump_file_exists = initialize dumpfile in
+    let (tyenv, env, dump_file_exists) = initialize dumpfile in
     begin
     if dump_file_exists then
       print_endline ("  dump file: '" ^ dumpfile ^ "' (already exists)")
     else
       print_endline ("  dump file: '" ^ dumpfile ^ "' (will be created)")
     end;
-    let (tyenv, env) = Primitives.make_environments () in
 (*
     (* begin: for debug *)
     Format.printf "Main> ==== ====\n";

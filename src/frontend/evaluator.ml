@@ -916,7 +916,7 @@ and interpret env ast =
       let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
       let ctx = interpret_context env astctx in
-      let font_scheme_new = HorzBox.(ctx.font_scheme |> ScriptSchemeMap.add script font_info) in
+      let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
         Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }))
 
   | PrimitiveGetFont(astscript, astctx) ->
@@ -952,7 +952,7 @@ and interpret env ast =
       let script = interpret_script env astscript in
       let langsys = interpret_language_system env astlangsys in
       let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> ScriptSchemeMap.add script langsys}))
+        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys}))
 
   | PrimitiveGetLangSys(astscript, astctx) ->
       let script = interpret_script env astscript in

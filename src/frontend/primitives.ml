@@ -240,15 +240,17 @@ let rec lambda5 astf env =
 let pdfpt = Length.of_pdf_point
 
 
+(*
 let default_font_scheme =
-  List.fold_left (fun mapacc (script, font_info) -> mapacc |> HorzBox.ScriptSchemeMap.add script font_info)
-    HorzBox.ScriptSchemeMap.empty
-    [
-      (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
-      (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
-      (CharBasis.Latin             , ("Arno"  , 1., 0.));
-      (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
-    ]
+  List.fold_left (fun mapacc (script, font_info) ->
+    mapacc |> CharBasis.ScriptSchemeMap.add script font_info
+  ) CharBasis.ScriptSchemeMap.empty [
+    (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
+    (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
+    (CharBasis.Latin             , ("Arno"  , 1., 0.));
+    (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
+  ]
+*)
 
 (*
 let default_math_left_paren hgt dpt hgtaxis fontsize color =
@@ -476,15 +478,18 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     ])
 
 
+let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
+
+
 let get_initial_context wid evidcmd =
   let open HorzBox in
     {
-      font_scheme            = default_font_scheme;
+      font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
       math_font              = "lmodern";
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
-      langsys_scheme         = ScriptSchemeMap.empty;
+      langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
       space_natural          = 0.33;
       space_shrink           = 0.08;
       space_stretch          = 0.16; (* 0.32; *)
@@ -570,7 +575,7 @@ let frame_deco_VM =
 (* -- end: constants just for experimental use -- *)
 
 
-let make_environments () =
+let make_environments satysfi_root_dir =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
@@ -720,7 +725,6 @@ let make_environments () =
         (tyenvnew, envnew, Alist.extend acc (loc, deff))
     ) (tyenvinit, envinit, Alist.empty)
   in
-  let () =
-    locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> begin loc := deff envfinal; end)
-  in
+  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
+  default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
     (tyenvfinal, envfinal)

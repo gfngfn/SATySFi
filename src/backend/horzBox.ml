@@ -145,13 +145,6 @@ type math_string_info =
 
 (* -- internal representation of boxes -- *)
 
-module ScriptSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
-
-
 type math_kind =
   | MathOrdinary
   | MathBinary
@@ -204,9 +197,9 @@ module MathVariantCharMap = Map.Make
 
 type input_context = {
   font_size              : length;
-  font_scheme            : font_with_ratio ScriptSchemeMap.t;
+  font_scheme            : font_with_ratio CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  langsys_scheme         : CharBasis.language_system ScriptSchemeMap.t;
+  langsys_scheme         : CharBasis.language_system CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_font              : math_font_abbrev;
   dominant_wide_script   : CharBasis.script;
@@ -581,10 +574,6 @@ module MathContext
 type math_context = MathContext.t
 
 
-let default_font_with_ratio =
-  ("Arno", 1., 0.)  (* TEMPORARY *)
-
-
 let normalize_script ctx script_raw =
   match script_raw with
   | CharBasis.CommonNarrow
@@ -599,14 +588,14 @@ let normalize_script ctx script_raw =
 
 let get_font_with_ratio ctx script_raw =
   let script = normalize_script ctx script_raw in
-    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
-    | None          -> default_font_with_ratio
+    match ctx.font_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
+    | None          -> failwith "get_font_with_ratio"
     | Some(fontsch) -> fontsch
 
 
 let get_language_system ctx script_raw =
   let script = normalize_script ctx script_raw in
-    match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+    match ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
     | None          -> CharBasis.NoLanguageSystem
     | Some(langsys) -> langsys
 
