@@ -231,9 +231,10 @@ let write_page (pagesize : page_size) (Page(pagecontsch, evvblst, pbinfo) : page
   let oplst = Alist.to_list opacc_footer in
 
   let pdfobjstream = Pdfops.stream_of_ops oplst in
-(*
+
   Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate pdfobjstream;
-*)
+    (* -- conpresses the operatand/operator stream -- *)
+
   let pagenew =
     { (Pdfpage.blankpage paper) with
         Pdfpage.content = [pdfobjstream];

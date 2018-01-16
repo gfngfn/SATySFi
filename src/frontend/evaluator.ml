@@ -827,7 +827,7 @@ and interpret env ast =
                       make_frame_deco env valuedecoT,
                       ctx.paragraph_width, vblst);
           VertBottomMargin(true, ctx.paragraph_bottom);
-        ]))  (* temporary; frame decorations should be variable *)
+        ]))
 
   | BackendEmbeddedVertTop(astctx, astlen, astk) ->
       let ctx = interpret_context env astctx in

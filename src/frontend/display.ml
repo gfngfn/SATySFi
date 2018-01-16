@@ -112,6 +112,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
                 show_type_variable iter s (FreeID.get_kind tvid)
         end
 
+    | BaseType(EnvType)     -> "env"  (* -- unused -- *)
     | BaseType(UnitType)    -> "unit"
     | BaseType(BoolType)    -> "bool"
     | BaseType(IntType)     -> "int"

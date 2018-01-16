@@ -170,6 +170,7 @@ type manual_kind =
 [@@deriving show]
 
 type base_type =
+  | EnvType
   | UnitType
   | BoolType
   | IntType
@@ -953,6 +954,7 @@ let rec string_of_mono_type_basic tystr =
   let (rng, tymain) = tystr in
   let qstn = if Range.is_dummy rng then "?" else "" in
     match tymain with
+    | BaseType(EnvType)     -> "env" ^ qstn
     | BaseType(UnitType)    -> "unit" ^ qstn
     | BaseType(BoolType)    -> "bool" ^ qstn
     | BaseType(IntType)     -> "int" ^ qstn

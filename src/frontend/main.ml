@@ -5,6 +5,7 @@ open Display
 type file_path = string
 
 
+exception NoLibraryRootDesignation
 exception IllegalExtension of file_path
 exception NotAHeaderFile   of file_path * Typeenv.t * mono_type
 exception NotADocumentFile of file_path * Typeenv.t * mono_type
@@ -72,26 +73,27 @@ let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (f
         Lexer.reset_to_progexpr ();
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
         let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
-          begin
-            print_endline ("  type check: " ^ (string_of_mono_type tyenv ty));
+        print_endline ("  type check passed.");
+        match ty with
+        | (_, BaseType(EnvType)) ->
             let value = Evaluator.interpret env ast in
+            begin
               match value with
               | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
-              | _                            -> raise (NotAHeaderFile(file_name_in, tyenvnew, ty))
-          end
+              | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
+            end
+
+        | _ -> raise (NotAHeaderFile(file_name_in, tyenvnew, ty))
       end
   end
 
 
-let libdir_ref : file_path ref = ref "/usr/local/lib-satysfi"
+let libdir_ref : file_path ref = ref ""
 
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
   begin
-(*
-    StoreID.reset ();
-*)
     FontInfo.initialize (!libdir_ref);
     ImageInfo.initialize ();
   end
@@ -179,9 +181,6 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
         let env_freezed = freeze_environment env in
           match ty with
           | (_, BaseType(DocumentType)) ->
-(*
-              StoreID.set ();
-*)
               let rec aux i =
                 print_endline (" ---- ---- ---- ----");
                 begin
@@ -199,9 +198,6 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                   | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-(*
-                      let pagesch = ctxdoc.HorzBox.page_scheme in
-*)
                       let pagelst = PageBreak.main pagecontf imvblst in
                       let pdf = make_pdf file_name_out pagesize pagelst pagepartsf in
                       begin
@@ -237,10 +233,24 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
   end
 
 
+let env_var_lib_root = "SATYSFI_LIB_ROOT"
+
+
 let error_log_environment suspended =
   try
     suspended ()
   with
+  | NoLibraryRootDesignation ->
+      report_error Interface [
+        NormalLine("the environment variable '" ^ env_var_lib_root ^ "' is NOT defined;");
+        NormalLine("in order to work SATySFi correctly, for example,");
+        NormalLine("you can add to your '~/.bash_profile' a line of the form:");
+        DisplayLine("export " ^ env_var_lib_root^ "=/path/to/library/root/");
+        NormalLine("and execute:");
+        DisplayLine("$ source ~/.bash_profile");
+        NormalLine("The library root is typically '/usr/local/lib-satysfi/'.")
+      ]
+
   | IllegalExtension(s) ->
       report_error Interface [
         NormalLine("File '" ^ s ^ "' has illegal filename extension;");
@@ -582,6 +592,12 @@ let handle_anonimous_arg s =
 
 let () =
   error_log_environment (fun () ->
+    let libdirsys =
+      match Sys.getenv_opt env_var_lib_root with
+      | None    -> raise NoLibraryRootDesignation
+      | Some(s) -> s
+    in
+    libdir_ref := libdirsys;
     Arg.parse arg_spec_list handle_anonimous_arg "";
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in

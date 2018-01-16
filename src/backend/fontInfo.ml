@@ -377,7 +377,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
     Pdf.Dictionary(keyval)
 
 
-let initialize (satysfi_root_dir : string) =
+let initialize (satysfi_lib_root : string) =
 
   begin
     FontAbbrevHashTable.initialize ();
@@ -385,20 +385,20 @@ let initialize (satysfi_root_dir : string) =
 
     PrintForDebug.initfontE "!!ScriptDataMap";
 
-    let filename_S   = Filename.concat satysfi_root_dir "dist/unidata/Scripts.txt" in
-    let filename_EAW = Filename.concat satysfi_root_dir "dist/unidata/EastAsianWidth.txt" in
+    let filename_S   = Filename.concat satysfi_lib_root "dist/unidata/Scripts.txt" in
+    let filename_EAW = Filename.concat satysfi_lib_root "dist/unidata/EastAsianWidth.txt" in
     ScriptDataMap.set_from_file filename_S filename_EAW;
 
     PrintForDebug.initfontE "!!LineBreakDataMap";
 
-    LineBreakDataMap.set_from_file (Filename.concat satysfi_root_dir "dist/unidata/LineBreak.txt");
+    LineBreakDataMap.set_from_file (Filename.concat satysfi_lib_root "dist/unidata/LineBreak.txt");
 
     PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
 
-    let font_hash = LoadFont.main satysfi_root_dir "fonts.satysfi-hash" in
+    let font_hash = LoadFont.main satysfi_lib_root "fonts.satysfi-hash" in
     List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
 
-    let math_font_hash = LoadFont.main satysfi_root_dir "mathfonts.satysfi-hash" in
+    let math_font_hash = LoadFont.main satysfi_lib_root "mathfonts.satysfi-hash" in
     List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
 
     PrintForDebug.initfontE "!!end initialize"  (* for debug *)

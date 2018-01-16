@@ -296,13 +296,13 @@ let rec typecheck
   | UTFinishStruct ->
       begin
         final_tyenv := tyenv;
-        (FinishStruct, (Range.dummy "finish-struct", BaseType(UnitType)))
+        (FinishStruct, (Range.dummy "finish-struct", BaseType(EnvType)))
       end
 
   | UTFinishHeaderFile ->
       begin
         final_tyenv := tyenv;
-        (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(UnitType)))
+        (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(EnvType)))
       end
 
   | UTContentOf(mdlnmlst, varnm) ->
