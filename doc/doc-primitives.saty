@@ -89,10 +89,18 @@ document (|
       \code{read-inline ${ctx} ${it}}で
       文脈\code{${ctx}}を用いて
       インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
+      \figure<+p{
+        これは図だと思ってください．文章はテストのために一時的に入れているものです．
+        \repeat(10){象の卵は大きいぞう．}
+      }>
     }
     +command (`inline-skip`) (tL --> tIB) {
       \code{inline-skip ${l}}で
       長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
+      \figure<+p{
+        これも図だと思ってください．文章はテストのために一時的に入れているものです．
+        \repeat(10){象の卵は大きいぞう．}
+      }>
     }
     +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
       \code{inline-glue ${l_0} ${l_1} ${l_2}}で
@@ -138,10 +146,6 @@ document (|
     }
     +command (`get-natural-width`) (tIB --> tL) {
       インラインボックス列を受け取り，その自然な幅を返す．
-      \figure<+p{
-        これは図だと思ってください．文章はテストのために一時的に入れているものです．
-        \repeat(10){象の卵は大きいぞう．}
-      }>
     }
     +command (`inline-graphics`) (tL --> (tL --> (tL --> (tIGR --> tIB)))) {
       \code{inline-graphics ${w} ${h} ${d} ${igr}}で

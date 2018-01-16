@@ -82,8 +82,8 @@ end = struct
   let height-of-float-boxes pageno =
     let () = display-message `get height` in
     (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
-      if pn <= pageno then h +' (get-natural-length bb) else h
-    )) 100pt
+      if pn < pageno then h +' (get-natural-length bb) else h
+    )) 0pt
 
 
   let-mutable ref-figure <- 0
@@ -146,12 +146,13 @@ end = struct
          else
            (read-inline ctx title ++ inline-fil)
        in
+       let () = display-message `insert` in
        let (bb-float-boxes, acc) =
          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
            let (pn, bb) = elem in
-             if pn <= pageno then
+             if pn < pageno then
                let bbs =
-                 line-break true true ctx
+                 line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
                    (inline-fil ++ embedded-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
                      % 'ctx' is a dummy context
                in

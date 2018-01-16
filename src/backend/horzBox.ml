@@ -322,9 +322,6 @@ and evaled_vert_box =
 
 and header_or_footer = page_break_info -> intermediate_vert_box list
 
-and page =
-  | Page of page_content_scheme * evaled_vert_box list * page_break_info
-
 and page_parts_scheme = {
   header_origin  : point;
     [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]

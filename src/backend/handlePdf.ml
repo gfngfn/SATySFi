@@ -6,12 +6,12 @@ open HorzBox
 
 type t = Pdf.t * Pdfpage.t list * file_path
 
-
+(*
 let get_paper_height (paper : Pdfpaper.t) : length =
   let dpi = 300. in  (* temporary; should be variable *)
   let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
     Length.of_pdf_point pdfpt
-
+*)
 
 let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
   let (wid, evhbmain) = evhb in
@@ -197,12 +197,23 @@ and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, ypos
     Alist.to_list opacc
 
 
+type contents = Pdfops.t Alist.t
+
+type page =
+  | Page of Pdfpaper.t * page_content_scheme * contents * page_break_info
+
+
 let invert_coordinate paper_height (xraw, yraw) =
   (xraw, paper_height -% yraw)
 
 
-let write_page (pagesize : page_size) (Page(pagecontsch, evvblst, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((pdf, pageacc, flnm) : t) : t =
+let get_paper_height (paper : Pdfpaper.t) : length =
+  let dpi = 300. in  (* temporary; should be variable *)
+  let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.height paper) in
+    Length.of_pdf_point pdfpt
 
+
+let page_of_evaled_vert_box_list (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstpage : evaled_vert_box list) : page =
   let paper =
     match pagesize with
     | A0Paper                -> Pdfpaper.a0
@@ -216,13 +227,20 @@ let write_page (pagesize : page_size) (Page(pagecontsch, evvblst, pbinfo) : page
     | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
   in
   let paper_height = get_paper_height paper in
+
   let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
-  let (_, opaccend) = ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblst in
+  let (_, opaccpage) = ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblstpage in
+    Page(paper, pagecontsch, opaccpage, pbinfo)
+
+
+let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((pdf, pageacc, flnm) : t) : t =
+
+  let paper_height = get_paper_height paper in
 
   let pagepartssch = pagepartsf pbinfo in  (* -- invokes the page-parts function -- *)
   let evvblst_header = pagepartssch.header_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_header = invert_coordinate paper_height pagepartssch.header_origin in
-  let (_, opacc_header) = ops_of_evaled_vert_box_list pbinfo pt_header opaccend evvblst_header in
+  let (_, opacc_header) = ops_of_evaled_vert_box_list pbinfo pt_header opaccpage evvblst_header in
 
   let evvblst_footer = pagepartssch.footer_content |> PageInfo.embed_page_info_vert pbinfo in
   let pt_footer = invert_coordinate paper_height pagepartssch.footer_origin in

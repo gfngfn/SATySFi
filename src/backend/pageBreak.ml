@@ -187,16 +187,18 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
     aux pbvblst
 
 
-let main (pgctschf : page_content_scheme_func) (vblst : vert_box list) : page list =
+let main (pagesize : page_size) (pagecontschf : page_content_scheme_func) (vblst : vert_box list) : HandlePdf.page list =
 
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length vblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_vert_box) vblst in  (* for debug *)
 
   let rec aux pageno pageacc pbvblst =
     let pbinfo = { current_page_number = pageno; } in
-    let pgctsch = pgctschf pbinfo in  (* -- constructs the page scheme -- *)
-    let (evvblstpage, restopt) = chop_single_page pbinfo pgctsch.page_content_height pbvblst in
-    let pageaccnew = Alist.extend pageacc (Page(pgctsch, evvblstpage, pbinfo)) in
+    let pagecontsch = pagecontschf pbinfo in  (* -- invokes the page scheme function -- *)
+    let (evvblstpage, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
+
+    let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
+    let pageaccnew = Alist.extend pageacc page in
 
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
     let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
