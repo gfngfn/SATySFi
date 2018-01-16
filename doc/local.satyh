@@ -41,6 +41,10 @@ let tLIST m =
     ${\paren{#m}\math-skip!(4pt)#token}
 
 
+let-block ctx +centered-image wid srcpath =
+  let img = register-image srcpath in
+    line-break true true ctx (inline-fil ++ use-image-by-width img wid ++ inline-fil)
+
 let-rec repeat-inline ibacc n ib =
   if n <= 0 then ibacc else
     repeat-inline (ibacc ++ ib) (n - 1) ib

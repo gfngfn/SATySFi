@@ -8,7 +8,7 @@ module StdJa : sig
   val font-latin-italic : font
   direct \ref : [string] inline-cmd
   direct \ref-page : [string] inline-cmd
-  direct \figure : [block-text] inline-cmd
+  direct \figure : [inline-text; block-text] inline-cmd
   direct +make-title : [] block-cmd
   direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
@@ -89,13 +89,13 @@ end = struct
   let-mutable ref-figure <- 0
 
 
-  let-inline ctx \figure inner =
+  let-inline ctx \figure caption inner =
     let () = ref-figure <- !ref-figure + 1 in
     let s-num = embed-string (arabic (!ref-figure)) in
     let bb-inner =
       block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (VDecoSet.simple-frame 1pt Color.red) (fun ctx -> (
         read-block ctx inner
-          +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num;} ++ inline-fil)
+          +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num; #caption;} ++ inline-fil)
       ))
     in
       hook-page-break (fun pbinfo _ -> (

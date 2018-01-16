@@ -89,18 +89,15 @@ document (|
       \code{read-inline ${ctx} ${it}}で
       文脈\code{${ctx}}を用いて
       インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
-      \figure<+p{
+      \figure({テスト})('<+p{
         これは図だと思ってください．文章はテストのために一時的に入れているものです．
         \repeat(10){象の卵は大きいぞう．}
-      }>
+      }>);
     }
     +command (`inline-skip`) (tL --> tIB) {
       \code{inline-skip ${l}}で
       長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
-      \figure<+p{
-        これも図だと思ってください．文章はテストのために一時的に入れているものです．
-        \repeat(10){象の卵は大きいぞう．}
-      }>
+      \figure({めっちゃリプライに使われる成瀬順})('<+centered-image(10cm)(`../tests/naruse1.jpg`);>);
     }
     +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
       \code{inline-glue ${l_0} ${l_1} ${l_2}}で
