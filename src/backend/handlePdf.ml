@@ -4,7 +4,8 @@ open LengthInterface
 open HorzBox
 
 
-type t = Pdf.t * Pdfpage.t list * file_path
+type t =
+  | PDF of Pdf.t * Pdfpage.t list * file_path
 
 (*
 let get_paper_height (paper : Pdfpaper.t) : length =
@@ -233,7 +234,7 @@ let page_of_evaled_vert_box_list (pagesize : page_size) (pbinfo : page_break_inf
     Page(paper, pagecontsch, opaccpage, pbinfo)
 
 
-let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((pdf, pageacc, flnm) : t) : t =
+let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf : page_parts_scheme_func) ((PDF(pdf, pageacc, flnm)) : t) : t =
 
   let paper_height = get_paper_height paper in
 
@@ -258,15 +259,15 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
         Pdfpage.content = [pdfobjstream];
     }
   in
-    (pdf, pagenew :: pageacc, flnm)
+    PDF(pdf, pagenew :: pageacc, flnm)
 
 
 let create_empty_pdf (flnm : file_path) : t =
   let pdf = Pdf.empty () in
-    (pdf, [], flnm)
+    PDF(pdf, [], flnm)
 
 
-let write_to_file ((pdf, pageacc, flnm) : t) : unit =
+let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  embedding fonts ...");
   let pdfdict_font = FontInfo.get_font_dictionary pdf in

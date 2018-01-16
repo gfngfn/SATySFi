@@ -114,13 +114,6 @@ let initialize (dumpfile : file_path) =
   end
 
 
-let make_pdf file_name_out (pagelst : HandlePdf.page list) (pagepartsf : HorzBox.page_parts_scheme_func) =
-  let pdf = HandlePdf.create_empty_pdf file_name_out in
-    pagelst |> List.fold_left (fun pdf page ->
-      pdf |> HandlePdf.write_page page pagepartsf
-    ) pdf
-
-
 let output_pdf pdfret =
   HandlePdf.write_to_file pdfret
 
@@ -199,8 +192,7 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
                   | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                       print_endline (" ---- ---- ---- ----");
                       print_endline ("  breaking contents into pages ...");
-                      let pagelst = PageBreak.main pagesize pagecontf imvblst in
-                      let pdf = make_pdf file_name_out pagelst pagepartsf in
+                      let pdf = PageBreak.main file_name_out pagesize pagecontf pagepartsf imvblst in
                       begin
                         match CrossRef.needs_another_trial dumpfile with
                         | CrossRef.NeedsAnotherTrial ->
