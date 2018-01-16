@@ -19,7 +19,7 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     | EvHorzEmpty ->
         (xpos +% wid, opacc)
 
-    | EvHorzFrame(hgt_frame, dpt_frame, pbinfo, deco, imhblst) ->
+    | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
         let gr_background =
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
@@ -71,7 +71,7 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let ((_, _), opaccnew) = ops_of_evaled_vert_box_list pbinfo (xpos, yposbaseline +% hgt) opacc evvblst in
           (xpos +% wid, opaccnew)
 
-    | EvHorzInlineGraphics(hgt, dpt, pbinfo, graphics) ->
+    | EvHorzInlineGraphics(hgt, dpt, graphics) ->
         let gr =
 (*
           List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)

@@ -284,9 +284,9 @@ and evaled_horz_box_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
-  | EvHorzFrame          of length * length * page_break_info * decoration * evaled_horz_box list
+  | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * page_break_info * (point -> (intermediate_horz_box list) Graphics.t)
+  | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) Graphics.t)
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
