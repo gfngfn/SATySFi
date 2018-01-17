@@ -1,4 +1,4 @@
-let-rec id x = x
+let id x = x
 
 let s = arabic (id 1) ^ `,` ^ (id `s`)
 

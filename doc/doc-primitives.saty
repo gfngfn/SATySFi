@@ -2,6 +2,8 @@
 document (|
   title = {\SATySFi;プリミティヴ一覧};
   author = {Takashi SUWA};
+  show-title = true;
+  show-toc = true
 |) '<
   +p {
     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
