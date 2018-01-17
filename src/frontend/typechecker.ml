@@ -12,6 +12,7 @@ exception UnknownUnitOfLength   of Range.t * length_unit_name
 exception HorzCommandInMath     of Range.t
 exception MathCommandInHorz     of Range.t
 exception BreaksValueRestriction of Range.t
+exception MultiplePatternVariable of Range.t * Range.t * var_name
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -22,6 +23,47 @@ let print_for_debug_typecheck msg =
   print_endline msg;
 *)
   ()
+
+
+let rec is_nonexpandable_expression e =
+  match e with
+  | Function(_)
+  | ContentOf(_)
+      -> true
+
+  | LetRecIn(_, e2) ->
+      is_nonexpandable_expression e2
+
+  | _ -> false
+
+
+module PatternVarMap = Map.Make
+  (struct
+    type t = var_name
+    let compare = Pervasives.compare
+  end)
+
+
+type pattern_var_map = (Range.t * EvalVarID.t * mono_type) PatternVarMap.t
+
+
+let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_var_map) : pattern_var_map =
+  PatternVarMap.union (fun varnm (rng1, _, _) (rng2, _, _) ->
+    raise (MultiplePatternVariable(rng1, rng2, varnm))
+  ) patvarmap1 patvarmap2
+
+
+let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
+  PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
+    Typeenv.add tyenvacc varnm (Poly(ty), evid)
+  ) patvarmap tyenv
+
+
+let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
+  PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
+    let pty = generalize lev ty in
+      Typeenv.add tyenvacc varnm (pty, evid)
+  ) patvarmap tyenv
 
 
 let point_type_main =
@@ -453,9 +495,17 @@ let rec typecheck
         (PatternMatch(eO, patbrs), tyP)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
-      let (pat, tyP, tyenvnew) = typecheck_pattern qtfbl (FreeID.succ_level lev) tyenv utpat in
+      let (pat, tyP, patvarmap) = typecheck_pattern qtfbl (FreeID.succ_level lev) tyenv utpat in
       let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenv utast1 in
       let () = unify ty1 tyP in
+      let tyenvnew =
+        if is_nonexpandable_expression e1 then
+        (* -- if 'e1' is polymorphically typeable -- *)
+          add_pattern_var_poly lev tyenv patvarmap
+        else
+        (* -- 'e1' should be typed monomorphically -- *)
+          add_pattern_var_mono tyenv patvarmap
+      in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
         (LetNonRecIn(pat, e1, e2), ty2)
 (*
@@ -602,7 +652,7 @@ let rec typecheck
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
       let betaF = (rng, TypeVariable(ref (Free(tvidF)))) in
-      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
+      let tvid1 = FreeID.fresh (normalize_kind (RecordKind(Assoc.of_list [(fldnm, betaF)]))) qtfbl lev () in
       let beta1 = (get_range utast1, TypeVariable(ref (Free(tvid1)))) in
       let () = unify beta1 ty1 in
         (AccessField(e1, fldnm), betaF)
@@ -861,16 +911,18 @@ and typecheck_pattern_branch_list
     | [] -> ([], tyres)
 
     | UTPatternBranch(utpat, utast1) :: tail ->
-        let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
+        let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
         let () = unify typat tyobj in
+        let tyenvpat = add_pattern_var_mono tyenv patvarmap in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
         let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
           (PatternBranch(epat, e1) :: patbrtail, tytail)
 
     | UTPatternBranchWhen(utpat, utastB, utast1) :: tail ->
-        let (epat, typat, tyenvpat) = typecheck_pattern qtfbl lev tyenv utpat in
+        let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
         let () = unify typat tyobj in
+        let tyenvpat = add_pattern_var_mono tyenv patvarmap in
         let (eB, tyB) = typecheck qtfbl lev tyenvpat utastB in
         let () = unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
@@ -881,60 +933,71 @@ and typecheck_pattern_branch_list
 
 and typecheck_pattern
     (qtfbl : quantifiability) (lev : FreeID.level)
-    (tyenv : Typeenv.t) ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * Typeenv.t =
-  let iter = typecheck_pattern qtfbl lev in
+    (tyenv : Typeenv.t)
+    ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
+  let iter = typecheck_pattern qtfbl lev tyenv in
   let unify = unify_ tyenv in
     match utpatmain with
-    | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), tyenv)
-    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), tyenv)
-    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), tyenv)
+    | UTPIntegerConstant(nc) -> (PIntegerConstant(nc), (rng, BaseType(IntType)), PatternVarMap.empty)
+    | UTPBooleanConstant(bc) -> (PBooleanConstant(bc), (rng, BaseType(BoolType)), PatternVarMap.empty)
+    | UTPUnitConstant        -> (PUnitConstant, (rng, BaseType(UnitType)), PatternVarMap.empty)
 
     | UTPStringConstant(ut1) ->
         let (e1, ty1) = typecheck qtfbl lev tyenv ut1 in
         let () = unify (Range.dummy "pattern-string-constant", BaseType(StringType)) ty1 in
-          (PStringConstant(e1), (rng, BaseType(StringType)), tyenv)
+          (PStringConstant(e1), (rng, BaseType(StringType)), PatternVarMap.empty)
 
     | UTPListCons(utpat1, utpat2) ->
-        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-        let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
+        let (epat1, typat1, patvarmap1) = iter utpat1 in
+        let (epat2, typat2, patvarmap2) = iter utpat2 in
         let () = unify typat2 (Range.dummy "pattern-list-cons", ListType(typat1)) in
-          (PListCons(epat1, epat2), typat2, tyenv2)
+        let patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
+          (PListCons(epat1, epat2), typat2, patvarmap)
 
     | UTPEndOfList ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-          (PEndOfList, (rng, ListType(beta)), tyenv)
+          (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTupleCons(utpat1, utpat2) ->
-        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-        let (epat2, typat2, tyenv2) = iter tyenv1 utpat2 in
+        let (epat1, typat1, patvarmap1) = iter utpat1 in
+        let (epat2, typat2, patvarmap2) = iter utpat2 in
         let tyres =
           match typat2 with
           | (rng, ProductType(tylist)) -> (rng, ProductType(typat1 :: tylist))
           | _                          -> assert false
         in
-          (PTupleCons(epat1, epat2), tyres, tyenv2)
+        let patvarmap = unite_pattern_var_map patvarmap1 patvarmap2 in
+          (PTupleCons(epat1, epat2), tyres, patvarmap)
 
-    | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), tyenv)
+    | UTPEndOfTuple -> (PEndOfTuple, (rng, ProductType([])), PatternVarMap.empty)
 
     | UTPWildCard ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-          (PWildCard, beta, tyenv)
+          (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
         let evid = EvalVarID.fresh varnm in
         let () = print_for_debug_typecheck ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
-          (PVariable(evid), beta, Typeenv.add tyenv varnm (Poly(beta), evid))
+          (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-        let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
-        let evid = EvalVarID.fresh varnm in
-          (PAsVariable(evid, epat1), typat1, Typeenv.add tyenv varnm (Poly(beta), evid))
+        let (epat1, typat1, patvarmap1) = iter utpat1 in
+        begin
+          match PatternVarMap.find_opt varnm patvarmap1 with
+          | Some((rngsub, _, _)) ->
+            (* -- if 'varnm' also occurs in 'utpat1' -- *)
+              raise (MultiplePatternVariable(rngsub, rng, varnm))
+
+          | None ->
+              let evid = EvalVarID.fresh varnm in
+                (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
+        end
 
     | UTPConstructor(constrnm, utpat1) ->
         begin
@@ -942,7 +1005,7 @@ and typecheck_pattern
           | None -> raise (UndefinedConstructor(rng, constrnm))
           | Some((tyarglist, tyid, tyc)) ->
               let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
-              let (epat1, typat1, tyenv1) = iter tyenv utpat1 in
+              let (epat1, typat1, tyenv1) = iter utpat1 in
               let () = unify tyc typat1 in
                 (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
         end

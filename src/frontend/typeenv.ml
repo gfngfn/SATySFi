@@ -513,7 +513,7 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) 
     | (_, tyargnm, mnkd) :: tailcons ->
        let kd = fix_manual_kind_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnkd in
        let () = print_for_debug_variantenv ("FMT " ^ tyargnm ^ " :: " ^ (string_of_kind string_of_mono_type_basic kd)) in (* for debug *)
-       let tvid = FreeID.fresh kd Quantifiable lev () in
+       let tvid = FreeID.fresh (normalize_kind kd) Quantifiable lev () in
        begin
          MapList.add tyargmaplist tyargnm (ref (Free(tvid)));
          aux tailcons
@@ -533,7 +533,7 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
   let () =
     constrntcons |> List.iter (fun (tyargnm, mkd) ->
       let kd = fix_manual_kind_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mkd in
-      let tvid = FreeID.fresh kd qtfbl lev () in
+      let tvid = FreeID.fresh (normalize_kind kd) qtfbl lev () in
       let tvref = ref (Free(tvid)) in
         MapList.add tyargmaplist tyargnm tvref
     )
@@ -542,7 +542,7 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
   let (bidlist, ptyin) = fix_manual_type_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mnty in
   let tyarglist =
     bidlist |> List.map (fun bid ->
-      let tvid = FreeID.fresh (BoundID.get_kind bid) qtfbl lev () in
+      let tvid = FreeID.fresh (normalize_kind (BoundID.get_kind bid)) qtfbl lev () in
         (Range.dummy "fix_manual_type_free", TypeVariable(ref (Free(tvid))))
     )
   in
@@ -584,7 +584,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     let (tyid, (bidlist, pty)) = dfn in
     let tyarglist =
       bidlist |> List.map (fun bid ->
-        let tvid = FreeID.fresh (BoundID.get_kind bid) qtfbl lev () in
+        let tvid = FreeID.fresh (normalize_kind (BoundID.get_kind bid)) qtfbl lev () in
           (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
       )
     in
@@ -798,8 +798,25 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
         end
           (* -- valid substitution of bound type variables -- *)
 
-    | (_, TypeVariable({contents= Free(_)} as tvref)) ->
-        begin tvref := Link(ty1); true end
+    | (RecordType(tyasc1), TypeVariable({contents= Free(tvid2)} as tvref)) ->
+        let kd2 = FreeID.get_kind tvid2 in
+        let binc =
+          match kd2 with
+          | UniversalKind      -> true
+          | RecordKind(tyasc2) -> Assoc.domain_included tyasc1 tyasc2
+        in
+        if binc then tvref := Link(ty1) else ();
+        binc
+
+    | (_, TypeVariable({contents= Free(tvid2)} as tvref)) ->
+        let kd2 = FreeID.get_kind tvid2 in
+        let binc =
+          match kd2 with
+          | UniversalKind -> true
+          | RecordKind(_) -> false
+        in
+        if binc then tvref := Link(ty1) else ();
+        binc
 
     | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2)) ->
         (aux tyd1 tyd2) && (aux tyc1 tyc2)
@@ -865,7 +882,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
           let () = print_for_debug_variantenv ("SIGT " ^ tynm) in (* for debug *)
           begin
             match find_type_definition_for_inner tyenv tynm with
-            | None              -> raise (NotProvidingTypeImplementation(rng, tynm))
+            | None ->
+                raise (NotProvidingTypeImplementation(rng, tynm))
+
             | Some((tyid, dfn)) ->
                 let tyenvforsigInew = add_type_definition tyenvforsigI tynm (tyid, dfn) in
                 let len = type_argument_length tyargcons in (* temporary; should check whether len is valid as to dfn *)

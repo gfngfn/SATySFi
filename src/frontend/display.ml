@@ -34,7 +34,7 @@ let rec variable_name_of_number (n : int) =
 let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
   match kd with
   | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f (normalize_kind kd)) ^ ")"
 
 
 type general_id = FreeID of FreeID.t | BoundID of BoundID.t
@@ -78,10 +78,11 @@ module GeneralIDHashTable
       end
 
     let intern_number (current_ht : 'a t) (gid : general_id) =
-      try
-        find current_ht gid
-      with
-      | Not_found ->
+      match find_opt current_ht gid with
+      | Some(num) ->
+          num
+
+      | None ->
           let num = new_number () in
           begin
             add current_ht gid num;
@@ -100,7 +101,13 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | TypeVariable(tvref) ->
         begin
           match !tvref with
-          | Link(tyl)  -> assert false  (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' -- *)
+          | Link(tyl)  ->
+            (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' and 'normalize_kind' -- *)
+              assert false
+(*
+              "${" ^ iter tyl ^ "}"  (* TEMPORARY *)
+*)
+
           | Bound(bid) ->
               let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
               let s = "'#" ^ (variable_name_of_number num) in

@@ -81,15 +81,17 @@ module FreeID_
 
     let current_id = ref 0
 
-    let initialize () = ( current_id := 0 )
+    let initialize () =
+      begin current_id := 0; end
 
     let fresh kd qtfbl lev () =
       begin
-        incr current_id ;
+        incr current_id;
         (!current_id, kd, qtfbl, lev)
       end
 
-    let equal (i1, _, _, _) (i2, _, _, _) = (i1 = i2)
+    let equal (i1, _, _, _) (i2, _, _, _) =
+      (i1 = i2)
 
     let is_quantifiable (_, _, qtfbl, _) =
         match qtfbl with
@@ -771,6 +773,12 @@ let rec normalize_mono_type ty =
 let normalize_poly_type (Poly(ty)) = Poly(normalize_mono_type ty)
 
 
+let normalize_kind kd =
+  match kd with
+  | UniversalKind     -> kd
+  | RecordKind(tyasc) -> RecordKind(Assoc.map_value normalize_mono_type tyasc)
+
+
 let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
   let current_ht : (type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
   let rec aux ((rng, tymain) as ty) =
@@ -782,17 +790,17 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
           | Free(tvid) -> ty
           | Bound(bid) ->
               begin
-                try
-                  let tvrefnew = BoundIDHashtbl.find current_ht bid in
+                match BoundIDHashtbl.find_opt current_ht bid with
+                | Some(tvrefnew) ->
                     (rng, TypeVariable(tvrefnew))
-                with
-                | Not_found ->
+
+                | None ->
                     let kd = BoundID.get_kind bid in
                     let kdfree = instantiate_kind kd in
                     let tvid = FreeID.fresh kdfree qtfbl lev () in
                     let tvrefnew = ref (Free(tvid)) in
                     begin
-                      BoundIDHashtbl.add current_ht bid tvrefnew ;
+                      BoundIDHashtbl.add current_ht bid tvrefnew;
                       (rng, TypeVariable(tvrefnew))
                     end
               end
