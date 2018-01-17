@@ -586,6 +586,16 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
     arrange None Alist.empty (Alist.to_list acclines)
 
 
+let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
+  let lphblst = convert_list_for_line_breaking_pure hblst in
+    determine_widths None lphblst
+
+
+let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * length * length =
+  let lphblst = convert_list_for_line_breaking_pure hblst in
+    determine_widths (Some(widreq)) lphblst
+
+
 let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
@@ -684,8 +694,15 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
     let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
-      | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
-          [VertLine(Length.zero, Length.zero, [])] (* temporary *)
+      | None ->
+        (* -- when no set of discretionary points is suitable for line breaking -- *)
+          let (imhblst, _, _) = natural hblst in
+            [
+              VertTopMargin(is_breakable_top, margin_top);
+              VertLine(Length.zero, Length.zero, imhblst);
+              VertBottomMargin(is_breakable_bottom, margin_bottom);
+            ]
+
       | Some(path) ->
           break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end
@@ -699,12 +716,3 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
 let get_natural_metrics (hblst : horz_box list) : length * length * length =
   let (widinfo, hgt, dpt) = get_metrics_of_horz_box hblst in
     (widinfo.natural, hgt, dpt)
-
-
-let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths None lphblst
-
-let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths (Some(widreq)) lphblst
