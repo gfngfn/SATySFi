@@ -15,12 +15,11 @@ let font-size-section = 18pt
 let font-ratio-latin = 1.
 let font-ratio-cjk = 0.88
 
-let font-latin-roman  = font `Arno`   font-ratio-latin 0.
-let font-latin-italic = font `ArnoIt` font-ratio-latin 0.
-let font-latin-sans   = font `Hlv`    font-ratio-latin 0.
-% let font-cjk-mincho   = font `KozMin` font-ratio-cjk   0.
-let font-cjk-mincho   = font `ipaexm` font-ratio-cjk   0.
-let font-cjk-gothic   = font `Osaka`  font-ratio-cjk   0.
+let font-latin-roman  = (`Arno`  , font-ratio-latin, 0.)
+let font-latin-italic = (`ArnoIt`, font-ratio-latin, 0.)
+let font-latin-sans   = (`Hlv`   , font-ratio-latin, 0.)
+let font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
+let font-cjk-gothic   = (`Osaka` , font-ratio-cjk  , 0.)
 
 let set-cjk-font font ctx =
   ctx |> set-font HanIdeographic font
@@ -47,7 +46,7 @@ let document rcd inner =
   let wid = 400pt in
   let hgt = 650pt in
   let ctx-doc =
-    get-initial-context page pt wid hgt (command \math)
+    get-initial-context wid (command \math)
       |> set-font Latin font-latin-roman
       |> set-language Latin English
       |> set-dominant-narrow-script Latin
@@ -56,7 +55,16 @@ let document rcd inner =
   let () = ref-title <- title in
   let () = ref-author <- author in
   let bc = read-block ctx-doc inner in
-    form-document ctx-doc bc (fun _ -> block-nil) (fun _ -> block-nil)
+  let pagecontf _ = (| text-height = hgt; text-origin = pt; |) in
+  let pagepartsf _ =
+    (|
+      header-origin  = (0pt, 0pt);
+      header-content = block-nil;
+      footer-origin  = (0pt, 0pt);
+      footer-content = block-nil;
+    |)
+  in
+    page-break page pagecontf pagepartsf bc
 
 let title-deco =
   let pads = (5pt, 5pt, 10pt, 10pt) in

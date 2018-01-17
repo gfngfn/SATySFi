@@ -33,7 +33,9 @@ let tIT           = (~! "itext"   , BaseType(TextRowType) )
 let tBT           = (~! "btext"   , BaseType(TextColType) )
 let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
+(*
 let tFT           = (~! "font"    , BaseType(FontType)    )
+*)
 let tCTX          = (~! "context" , BaseType(ContextType) )
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
@@ -58,6 +60,7 @@ let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
 let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
 
 (* -- predefined alias types -- *)
+let tFONT         = tPROD [tS; tFL; tFL]
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
@@ -622,7 +625,9 @@ let make_environments satysfi_root_dir =
         ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
         ("inline-frame-solid"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+(*
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
+*)
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
         ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
@@ -638,8 +643,8 @@ let make_environments satysfi_root_dir =
         ("set-paragraph-margin", ~% (tLN @-> tLN @-> tCTX @-> tCTX)      , lambda3 (fun vl1 vl2 vctx -> PrimitiveSetParagraphMargin(vl1, vl2, vctx)));
         ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
-        ("set-font"           , ~% (tSCR @-> tFT @-> tCTX @-> tCTX)      , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
-        ("get-font"           , ~% (tSCR @-> tCTX @-> tFT)               , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-font"           , ~% (tSCR @-> tFONT @-> tCTX @-> tCTX)    , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
+        ("get-font"           , ~% (tSCR @-> tCTX @-> tFONT)             , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
         ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)    , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
         ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)             , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
         ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));

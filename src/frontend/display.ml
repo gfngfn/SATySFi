@@ -123,7 +123,9 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(TextColType) -> "block-text"
     | BaseType(BoxRowType)  -> "inline-boxes"
     | BaseType(BoxColType)  -> "block-boxes"
+(*
     | BaseType(FontType)    -> "font"
+*)
     | BaseType(ContextType) -> "context"
     | BaseType(PrePathType) -> "pre-path"
     | BaseType(PathType)    -> "path"

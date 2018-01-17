@@ -79,7 +79,7 @@ let command-scheme ctx ib-name ty inner =
 
 let name-context ctx =
   ctx |> set-dominant-narrow-script Latin
-      |> set-font Latin (font `lmmono` 1. 0.)
+      |> set-font Latin (`lmmono`, 1., 0.)
       |> set-text-color Color.red
 
 

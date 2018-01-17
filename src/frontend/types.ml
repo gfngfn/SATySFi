@@ -181,7 +181,9 @@ type base_type =
   | TextColType
   | BoxRowType
   | BoxColType
+(*
   | FontType
+*)
   | ContextType
   | PrePathType
   | PathType
@@ -206,7 +208,9 @@ let base_type_hash_table =
       ("block-text"  , TextColType );
       ("inline-boxes", BoxRowType  );
       ("block-boxes" , BoxColType  );
+(*
       ("font"        , FontType    );
+*)
       ("context"     , ContextType );
       ("pre-path"    , PrePathType );
       ("path"        , PathType    );
@@ -508,7 +512,9 @@ and syntactic_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
+(*
   | FontDesignation             of HorzBox.font_with_ratio
+*)
   | Context                     of HorzBox.input_context
   | FrozenCommand               of EvalVarID.t
   | UninitializedContext
@@ -966,7 +972,9 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(TextColType) -> "block-text" ^ qstn
     | BaseType(BoxRowType)  -> "inline-boxes" ^ qstn
     | BaseType(BoxColType)  -> "block-boxes" ^ qstn
+(*
     | BaseType(FontType)    -> "font" ^ qstn
+*)
     | BaseType(ContextType) -> "context" ^ qstn
     | BaseType(PrePathType) -> "pre-path" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn

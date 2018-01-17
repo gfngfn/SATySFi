@@ -344,7 +344,8 @@ and make_page_parts_scheme_func env astf : HorzBox.page_parts_scheme_func =
   )
 
 
-and make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
+and make_hook env (asthook : abstract_tree) : (HorzBox.page_break_info -> point -> unit) =
+  let valuehook = interpret env asthook in
   (fun pbinfo (xpos, yposbaseline) ->
     let astpt = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple))) in
     let valuepbinfo = make_page_break_info pbinfo in
@@ -707,8 +708,7 @@ and interpret env ast =
       end
 
   | BackendHookPageBreak(asthook) ->
-      let valuehook = interpret env asthook in
-      let hookf : HorzBox.page_break_info -> point -> unit = make_hook env valuehook in
+      let hookf : HorzBox.page_break_info -> point -> unit = make_hook env asthook in
         Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
   | Path(astpt0, pathcomplst, cycleopt) ->
@@ -789,10 +789,10 @@ and interpret env ast =
       end
 
   | BackendFont(astabbrev, astszrat, astrsrat) ->
-      let font_abbrev = interpret_string env astabbrev in
+      let abbrev = interpret_string env astabbrev in
       let size_ratio = interpret_float env astszrat in
       let rising_ratio = interpret_float env astrsrat in
-        FontDesignation((font_abbrev, size_ratio, rising_ratio))
+        make_font_value (abbrev, size_ratio, rising_ratio)
 
   | BackendLineBreaking(astb1, astb2, astctx, asthorz) ->
       let is_breakable_top = interpret_bool env astb1 in
@@ -923,7 +923,7 @@ and interpret env ast =
       let script = interpret_script env astscript in
       let ctx = interpret_context env astctx in
       let fontwr = HorzBox.get_font_with_ratio ctx script in
-        FontDesignation(fontwr)
+        make_font_value fontwr
 
   | PrimitiveSetMathFont(aststr, astctx) ->
       let mfabbrev = interpret_string env aststr in
@@ -1679,6 +1679,12 @@ and make_script_value script =
     Constructor(label, UnitConstant)
 
 
+and make_font_value (abbrev, sizer, risingr) =
+  TupleCons(StringConstant(abbrev),
+    TupleCons(FloatConstant(sizer),
+      TupleCons(FloatConstant(risingr), EndOfTuple)))
+
+
 and interpret_language_system env ast : CharBasis.language_system =
   let value = interpret env ast in
     match value with
@@ -1782,8 +1788,15 @@ and interpret_color env ast : GraphicData.color =
 and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_with_ratio =
   let value = interpret env ast in
     match value with
-    | FontDesignation(fontwr) -> fontwr
-    | _                       -> report_bug_evaluator "interpret_font" ast value
+    | TupleCons(valueabbrev,
+        TupleCons(valuesizer,
+          TupleCons(valuerisingr, EndOfTuple))) ->
+        let abbrev = get_string valueabbrev in
+        let sizer = get_float valuesizer in
+        let risingr = get_float valuerisingr in
+          (abbrev, sizer, risingr)
+
+    | _ -> report_bug_evaluator "interpret_font" ast value
 
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =
@@ -1806,9 +1819,13 @@ and get_int (value : syntactic_value) : int =
 
 and interpret_float (env : environment) (ast : abstract_tree) : float =
   let value = interpret env ast in
-    match value with
-    | FloatConstant(nc) -> nc
-    | _                 -> report_bug_evaluator "interpret_float" ast value
+    get_float value
+
+
+and get_float value : float =
+  match value with
+  | FloatConstant(nc) -> nc
+  | _                 -> report_bug_evaluator_value "get_float" value
 
 
 and interpret_length (env : environment) (ast : abstract_tree) : length =
