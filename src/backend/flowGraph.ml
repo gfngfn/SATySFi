@@ -110,15 +110,15 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
 
-      let rec backtrack (acc : vertex list) (vtx : vertex) =
+      let rec backtrack (acc : vertex Alist.t) (vtx : vertex) =
         match MainTable.find_opt grph vtx with
         | None -> assert false
         | Some((_, _, lblref)) ->
             begin
               match !lblref with
-              | Infinite                   -> assert false  (* doubtful; may contain infinite edge *)
-              | Finite(_, None)            -> List.rev acc
-              | Finite(_, Some(vtxparent)) -> backtrack (vtxparent :: acc) vtxparent
+              | Infinite                   -> None  (* -- unreachable -- *)
+              | Finite(_, None)            -> Some(Alist.to_list acc)
+              | Finite(_, Some(vtxparent)) -> backtrack (Alist.extend acc vtxparent) vtxparent
             end
       in
 
@@ -130,8 +130,8 @@ module Make (Vertex : VertexType) (Weight : WeightType)
         | Some(vtxP) ->
             let () = print_for_debug ("see " ^ (Vertex.show vtxP)) in (* for debug *)
               if equal_vertex vtxP vtxT then
-                let path = backtrack [] vtxT in
-                  Some(path)
+                let pathopt = backtrack Alist.empty vtxT in
+                  pathopt
               else
                 let (dstblP, vherefP, vheP, lblrefP) =
                   match MainTable.find_opt grph vtxP with
@@ -146,9 +146,10 @@ module Make (Vertex : VertexType) (Weight : WeightType)
                       end
                 in
                 match !lblrefP with
-                | Infinite         ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                | Infinite ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
                     let () = print_for_debug "| infinite" in (* for debug *)
                       None
+
                 | Finite(distP, _) ->
                     let () = print_for_debug ("| " ^ (Weight.show distP)) in (* for debug *)
                     begin
