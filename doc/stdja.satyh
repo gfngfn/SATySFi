@@ -9,13 +9,20 @@ module StdJa : sig
   direct \ref : [string] inline-cmd
   direct \ref-page : [string] inline-cmd
   direct \figure : [inline-text; block-text] inline-cmd
-  direct +make-title : [] block-cmd
   direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
   direct +section-ref : [string; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
 
 end = struct
+
+  let generate-fresh-label =
+    let-mutable count <- 0 in
+      (fun () -> (
+        let () = count <- !count + 1 in
+          `generated:` ^ (arabic (!count))
+      ))
+
 
   let-inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
@@ -72,10 +79,6 @@ end = struct
       |> set-math-font `lmodern`
 
 
-  let-mutable ref-title <- {}
-  let-mutable ref-author <- {}
-
-
   let-mutable ref-float-boxes <- []
 
 
@@ -104,7 +107,88 @@ end = struct
       ))
 
 
+let title-deco =
+    let pads = (5pt, 5pt, 10pt, 10pt) in
+    let deco (x, y) wid hgt dpt =
+      let path1 =
+        let cx = 14pt in
+        let cy = 8pt in
+        let xL = x in
+        let xR = x +' wid in
+        let yT = y +' hgt in
+        let yB = y -' dpt in
+          start-path (xL, yT)
+            |> line-to (xR, yT)
+            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+            |> line-to (xL, yB)
+            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+      in
+      let path2 =
+        let cx = 12pt in
+        let cy = 8pt in
+        let gapx = 3pt in
+        let gapy = 5pt in
+        let xL = x +' gapx in
+        let xR = x +' wid -' gapx in
+        let yT = y +' hgt -' gapy in
+        let yB = y -' dpt +' gapy in
+          start-path (xL, yT)
+            |> line-to (xR, yT)
+            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
+            |> line-to (xL, yB)
+            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
+      in
+        [
+          stroke 3pt Color.black path1;
+          stroke 1pt Color.black path2;
+        ]
+    in
+      (deco, deco, deco, deco)
+
+
+  let-block ctx +make-title it-title it-author =
+    let pads = (20pt, 20pt, 10pt, 10pt) in
+    block-frame-breakable ctx pads title-deco (fun ctx -> (
+      let ctx-title =
+        ctx |> set-font-size font-size-title
+            |> set-font Latin font-latin-roman
+      in
+      let ctx-author =
+        ctx |> set-font-size font-size-author
+            |> set-font Latin font-latin-roman
+      in
+      let ib-title = read-inline ctx-title it-title in
+      let ib-line =
+        let thk = 1pt in
+        let wid = get-text-width ctx in
+        let path (x, y) =
+          start-path (x, y +' thk *' 0.5)
+            |> line-to (x +' wid, y +' thk *' 0.5)
+            |> terminate-path
+        in
+        inline-graphics wid thk 0pt (fun pt -> (
+          [ stroke thk Color.black (path pt); ]
+        ))
+      in
+      let ib-author = read-inline ctx-author it-author in
+      let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
+      let bb-line = form-paragraph ctx (ib-line ++ inline-fil) in
+      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+        bb-title +++ bb-line +++ bb-author
+    ))
+
+
+  let make-section-title ctx =
+    ctx |> set-font-size font-size-section
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let-mutable section-acc-ref <- []
+
+
   let document rcd inner =
+    % -- constants --
     let title = rcd#title in
     let author = rcd#author in
     let page = A4Paper in
@@ -117,15 +201,38 @@ end = struct
     let ftrwid = 520pt in
     let thickness = 0.5pt in
 
-    let () = ref-title <- title in
-    let () = ref-author <- author in
-    let bb =
-      let ctx-doc = get-standard-context txtwid
-      in
-        read-block ctx-doc inner
+    let ctx-doc = get-standard-context txtwid in
+
+    % -- title --
+    let bb-title = read-block ctx-doc '<+make-title(title)(author);> in
+
+    % -- main --
+    let bb-main = read-block ctx-doc inner in
+
+    % -- table of contents --
+    let bb-toc-title =
+      line-break true false ctx-doc (read-inline (make-section-title ctx-doc) {目次} ++ inline-fil)
+    in
+    let bb-toc =
+      (!section-acc-ref) |> List.reverse |> List.fold-left (fun bbacc (label, title) -> (
+        let s-num =
+          match get-cross-reference (label ^ `:num`) with
+          | None    -> `?`
+          | Some(s) -> s
+        in
+        let ib-num = embed-string s-num in
+        let s-page =
+          match get-cross-reference (label ^ `:page`) with
+          | None    -> `?`
+          | Some(s) -> s
+        in
+          bbacc +++ line-break true true ctx-doc
+            (read-inline ctx-doc {#ib-num;. #title;} ++ inline-fil ++ read-inline ctx-doc (embed-string s-page))
+      )) block-nil
     in
 
-    let page-text-scheme pbinfo =
+    % -- page settings --
+    let pagecontf pbinfo =
       let hgtfb = height-of-float-boxes pbinfo#page-number in
       let (txtorgx, txtorgy) = txtorg in
       (|
@@ -133,7 +240,7 @@ end = struct
         text-height = txthgt -' hgtfb;
       |)
     in
-    let page-parts pbinfo =
+    let pagepartsf pbinfo =
       let pageno = pbinfo#page-number in
       let header =
         let ctx =
@@ -181,77 +288,7 @@ end = struct
           footer-content = footer;
         |)
     in
-      page-break page page-text-scheme page-parts bb
-
-
-  let title-deco =
-    let pads = (5pt, 5pt, 10pt, 10pt) in
-    let deco (x, y) wid hgt dpt =
-      let path1 =
-        let cx = 14pt in
-        let cy = 8pt in
-        let xL = x in
-        let xR = x +' wid in
-        let yT = y +' hgt in
-        let yB = y -' dpt in
-          start-path (xL, yT)
-            |> line-to (xR, yT)
-            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-            |> line-to (xL, yB)
-            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
-      in
-      let path2 =
-        let cx = 12pt in
-        let cy = 8pt in
-        let gapx = 3pt in
-        let gapy = 5pt in
-        let xL = x +' gapx in
-        let xR = x +' wid -' gapx in
-        let yT = y +' hgt -' gapy in
-        let yB = y -' dpt +' gapy in
-          start-path (xL, yT)
-            |> line-to (xR, yT)
-            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-            |> line-to (xL, yB)
-            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
-      in
-        [
-          stroke 3pt Color.black path1;
-          stroke 1pt Color.black path2;
-        ]
-    in
-      (deco, deco, deco, deco)
-
-  let-block ctx +make-title =
-    let pads = (20pt, 20pt, 10pt, 10pt) in
-    block-frame-breakable ctx pads title-deco (fun ctx -> (
-      let ctx-title =
-        ctx |> set-font-size font-size-title
-            |> set-font Latin font-latin-roman
-      in
-      let ctx-author =
-        ctx |> set-font-size font-size-author
-            |> set-font Latin font-latin-roman
-      in
-      let ib-title = read-inline ctx-title (!ref-title) in
-      let ib-line =
-        let thk = 1pt in
-        let wid = get-text-width ctx in
-        let path (x, y) =
-          start-path (x, y +' thk *' 0.5)
-            |> line-to (x +' wid, y +' thk *' 0.5)
-            |> terminate-path
-        in
-        inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk Color.black (path pt); ]
-        ))
-      in
-      let ib-author = read-inline ctx-author (!ref-author) in
-      let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
-      let bb-line = form-paragraph ctx (ib-line ++ inline-fil) in
-      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
-        bb-title +++ bb-line +++ bb-author
-    ))
+      page-break page pagecontf pagepartsf (bb-title +++ bb-toc-title +++ bb-toc +++ bb-main)
 
 
   let-mutable needs-indentation-ref <- true
@@ -279,24 +316,16 @@ end = struct
       form-paragraph ctx br-parag
 
 
-  let section-scheme ctx crefopt title inner =
-    let ctx-title =
-      ctx |> set-font-size font-size-section
-          |> set-font Latin font-latin-sans
-          |> set-cjk-font font-cjk-gothic
-    in
+  let section-scheme ctx label title inner =
+    let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let () = section-acc-ref <- (label, title) :: !section-acc-ref in
     let ib-num =
-      match crefopt with
-      | None ->
-          read-inline ctx-title (embed-string (s-num ^ `.`))
-
-      | Some(label) ->
-          let () = register-cross-reference (label ^ `:num`) s-num in
-            read-inline ctx-title (embed-string (s-num ^ `.`))
-              ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
@@ -308,11 +337,12 @@ end = struct
 
 
   let-block ctx +section title inner =
-    section-scheme ctx None title inner
+    let label = generate-fresh-label () in
+      section-scheme ctx label title inner
 
 
   let-block ctx +section-ref label title inner =
-    section-scheme ctx (Some(label)) title inner
+    section-scheme ctx label title inner
 
 
   let-inline ctx \emph inner =

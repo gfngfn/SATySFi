@@ -3,7 +3,6 @@ document (|
   title = {\SATySFi;プリミティヴ一覧};
   author = {Takashi SUWA};
 |) '<
-  +make-title;
   +p {
     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
     特に根幹となるのは第\ref(`sec:inline`);節（\ref-page(`sec:inline`);ページ）である．
