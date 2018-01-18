@@ -41,19 +41,23 @@ let math-list lst =
 %let math-equal = math-char MathRel `=`
 %let math-comma = math-char MathPunct `,`
 
+
+let single cp = string-unexplode [cp]
+
+
 let-math \tau =
-  let cp = 0x1D70F in
-  let cpb = 0x1D749 in
+  let s = single 0x1D70F in
+  let sb = single 0x1D749 in
     math-variant-char MathOrd (|
-      italic        = cp;
-      bold-italic   = cpb;
-      roman         = cp;
-      bold-roman    = cpb;
-      script        = cp;
-      bold-script   = cpb;
-      fraktur       = cp;
-      bold-fraktur  = cpb;
-      double-struck = cp;
+      italic        = s;
+      bold-italic   = sb;
+      roman         = s;
+      bold-roman    = sb;
+      script        = s;
+      bold-script   = sb;
+      fraktur       = s;
+      bold-fraktur  = sb;
+      double-struck = s;
     |)
 
 let-math \pi =
@@ -65,18 +69,18 @@ let-math \lambda =
     % temporary
 
 let-math \Gamma =
-  let cp = 0x1D6E4 in
-  let cpb = 0x1D71E in
+  let s = single 0x1D6E4 in
+  let sb = single 0x1D71E in
     math-variant-char MathOrd (|
-      italic        = cp;
-      bold-italic   = cpb;
-      roman         = 0x0393;
-      bold-roman    = 0x1D6AA;
-      script        = cp;
-      bold-script   = cpb;
-      fraktur       = cp;
-      bold-fraktur  = cpb;
-      double-struck = cp;
+      italic        = s;
+      bold-italic   = sb;
+      roman         = single 0x0393;
+      bold-roman    = single 0x1D6AA;
+      script        = s;
+      bold-script   = sb;
+      fraktur       = s;
+      bold-fraktur  = sb;
+      double-struck = s;
     |)
 
 let-math \frac = math-frac
