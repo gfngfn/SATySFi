@@ -235,7 +235,7 @@ let multi_cell_vertical vmetrarr indexR nr =
   | Invalid_argument(_) -> assert false
 
 
-let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : evaled_row list =
+let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) (htabular : row list) : intermediate_row list =
   let vmetrarr = Array.of_list vmetrlst in
   let widarr = Array.of_list widlst in
   htabular |> list_fold_left_index (fun indexR evrowacc row ->
@@ -246,7 +246,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
           match cell with
           | EmptyCell ->
               let wid = access widarr indexC in
-                EvEmptyCell(wid)
+                ImEmptyCell(wid)
 
           | NormalCell(pads, hblst) ->
               let wid = access widarr indexC in
@@ -257,8 +257,8 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   [HorzPure(PHSFixedEmpty(pads.paddingR))];
                 ]
               in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblstwithpads wid in
-                EvNormalCell(wid, hgtnmlcell, dptnmlcell, evhblst)
+              let (imhblst, hgt, dpt) = LineBreak.fit hblstwithpads wid in
+                ImNormalCell((wid, hgtnmlcell, dptnmlcell), imhblst)
                 (* temporary; should return information about vertical psitioning *)
 
           | MultiCell(nr, nc, pads, hblst) ->
@@ -272,7 +272,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   [HorzPure(PHSFixedEmpty(pads.paddingR))];
                 ]
               in
-              let (evhblst, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
+              let (imhblst, hgt, dpt) = LineBreak.fit hblstwithpads widmulti in
               let (hgtcell, dptcell) =
                 if nr < 1 then
                   assert false
@@ -284,7 +284,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
                   let lenspace = (vlencell -% vlencontent) *% 0.5 in
                     (hgt +% lenspace, dpt -% lenspace)
               in
-                EvMultiCell(nr, nc, widsingle, widmulti, hgtcell, dptcell, evhblst)
+                ImMultiCell((nr, nc, widsingle, widmulti, hgtcell, dptcell), imhblst)
         in
           Alist.extend evcellacc evcell
       ) Alist.empty |> Alist.to_list
@@ -294,7 +294,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
   ) Alist.empty |> Alist.to_list
 
 
-let main (tabular : row list) =
+let main (tabular : row list) : intermediate_row list * length * length * length =
 
   let (ncols, htabular) = normalize_tabular tabular in
   let (nrows, vtabular) = transpose_tabular tabular in
@@ -322,5 +322,5 @@ let main (tabular : row list) =
   let widtotal = List.fold_left (+%) Length.zero widlst in
   let hgttotal = List.fold_left (fun len (hgt, dpt) -> len +% hgt +% (Length.negate dpt)) Length.zero vmetrlst in
   let dpttotal = Length.zero in
-  let evtabular = solidify_tabular vmetrlst widlst htabular in
-    (evtabular, widtotal, hgttotal, dpttotal)
+  let imtabular = solidify_tabular vmetrlst widlst htabular in
+    (imtabular, widtotal, hgttotal, dpttotal)

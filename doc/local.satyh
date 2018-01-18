@@ -41,24 +41,45 @@ let tLIST m =
     ${\paren{#m}\math-skip!(4pt)#token}
 
 
+let-block ctx +centered-image wid srcpath =
+  let img = register-image srcpath in
+    line-break true true ctx (inline-fil ++ use-image-by-width img wid ++ inline-fil)
+
+let-rec repeat-inline ibacc n ib =
+  if n <= 0 then ibacc else
+    repeat-inline (ibacc ++ ib) (n - 1) ib
+
+
+let-inline ctx \repeat n inner =
+  let ib = read-inline ctx inner in
+    repeat-inline inline-nil n ib
+
+
+let gap-paragraph = 12pt
+
+let gap-command = 6pt
+
+
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
   let font-size = get-font-size ctx in
   let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
   let quad = discretionary 1000 quad-glue inline-nil inline-nil in
-  let margin = (ctx |> get-font-size) *' 2. in
+  let indent = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
-    line-break true false ctx (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
+    line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
+      (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
   +++
-    block-frame-breakable ctx (margin, 0pt, 0pt, 0pt) DecoSet.empty (fun ctx -> (
-      form-paragraph ctx (ib-inner ++ inline-fil)
-    ))
+    block-frame-breakable (ctx |> set-paragraph-margin gap-command gap-paragraph)
+      (indent, 0pt, 0pt, 0pt) VDecoSet.empty (fun ctx ->
+          form-paragraph (ctx |> set-paragraph-margin 0pt 0pt) (ib-inner ++ inline-fil)
+        )
 
 
 let name-context ctx =
   ctx |> set-dominant-narrow-script Latin
-      |> set-font Latin (font `lmmono` 1. 0.)
+      |> set-font Latin (`lmmono`, 1., 0.)
       |> set-text-color Color.red
 
 
@@ -68,10 +89,13 @@ let-block ctx +command name ty inner =
     command-scheme ctx ib-name ty inner
 
 
+let-mutable flag <- true
+
+
 let-block ctx +commands namelst ty inner =
   let ctx-name = name-context ctx in
   let ib-comma = read-inline ctx {,\ } in
-  let-mutable flag <- true in
+  let () = flag <- true in
   let ib-name =
     namelst |> List.fold-left (fun acc name -> (
       let ib-name = read-inline ctx-name (embed-string name) in

@@ -15,6 +15,12 @@ type script =
 (* temporary; should add more scripts *)
   | OtherScript
 
+module ScriptSchemeMap = Map.Make
+  (struct
+    type t = script
+    let compare = Pervasives.compare
+  end)
+
 type east_asian_width =
   | EAWHalfWidth
   | EAWFullWidth

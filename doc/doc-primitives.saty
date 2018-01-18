@@ -1,11 +1,13 @@
 % -*- coding: utf-8 -*-
-StdJa.document (|
+document (|
   title = {\SATySFi;プリミティヴ一覧};
   author = {Takashi SUWA};
+  show-title = true;
+  show-toc = true
 |) '<
-  +make-title;
   +p {
     この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
+    特に根幹となるのは第\ref(`sec:inline`);節（\ref-page(`sec:inline`);ページ）である．
   }
   +section({基本演算})(
     let t-int-arith = tI --> (tI --> tI) in
@@ -83,15 +85,20 @@ StdJa.document (|
       \subject-to-change;\discouraged;
     }
   >
-  +section {インライン方向に関する処理} <
+  +section-ref(`sec:inline`) {インライン方向に関する処理} <
     +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
       \code{read-inline ${ctx} ${it}}で
       文脈\code{${ctx}}を用いて
       インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
+      \figure({テスト})('<+p{
+        これは図だと思ってください．文章はテストのために一時的に入れているものです．
+        \repeat(10){象の卵は大きいぞう．}
+      }>);
     }
     +command (`inline-skip`) (tL --> tIB) {
       \code{inline-skip ${l}}で
       長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
+      \figure({めっちゃリプライに使われる成瀬順})('<+centered-image(10cm)(`../tests/naruse1.jpg`);>);
     }
     +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
       \code{inline-glue ${l_0} ${l_1} ${l_2}}で

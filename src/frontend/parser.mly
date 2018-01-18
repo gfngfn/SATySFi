@@ -1,5 +1,8 @@
 %{
 
+  exception IllegalArgumentLength of Range.t * int * int
+
+
   let report_bug_parser msg =
     failwith msg;
 
@@ -18,7 +21,7 @@
     | ([], [])                                -> Range.dummy "empty-input-horz"
     | ((rngfirst, _) :: _, (rnglast, _) :: _) -> Range.unite rngfirst rnglast
     | _                                       -> assert false
-    
+
 
   let make_range sttx endx =
     let extract x =
@@ -70,7 +73,14 @@
     UTConstructor("Just", (Range.dummy "id_name_to", UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))))
 *)
 
-  let rec curry_lambda_abstract (rng : Range.t) (argvarcons : untyped_argument_variable_cons) (utastdef : untyped_abstract_tree) =
+  let rec curry_lambda_abstract (rng : Range.t) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree) =
+    match argpatlst with
+    | [] ->
+        utastdef
+
+    | argpat :: argpattail ->
+        (rng, UTFunction([UTPatternBranch(argpat, curry_lambda_abstract rng argpattail utastdef)]))
+(*
     match argvarcons with
     | []                                     -> utastdef
     | (varrng, UTPVariable(varnm)) :: avtail ->
@@ -82,7 +92,7 @@
         let dummyutast   = (varrng, UTContentOf([], "%patarg")) in
         let dummypatcons = UTPatternMatchCons((varrng, argpatas), afterabs, UTEndOfPatternMatch) in
           (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
-
+*)
 
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
@@ -96,7 +106,7 @@
     let len = String.length str in
       if len = 0 then "" else
         match String.sub str 0 1 with
-        | " " -> omit_pre_spaces (String.sub str 1 (len - 1)) 
+        | " " -> omit_pre_spaces (String.sub str 1 (len - 1))
         | _   -> str
 
   let rec omit_post_spaces str =
@@ -185,8 +195,18 @@
     let rng = make_range sttknd endknd in (rng, main)
 
 
-  let make_let_expression (lettok : Range.t) (decs : untyped_mutual_let_cons) (utastaft : untyped_abstract_tree) =
-    make_standard (Tok lettok) (Ranged utastaft) (UTLetIn(decs, utastaft))
+  let make_letrec_expression (lettok : Range.t) (utrecbinds : untyped_letrec_binding list) (utastaft : untyped_abstract_tree) =
+    make_standard (Tok lettok) (Ranged utastaft) (UTLetRecIn(utrecbinds, utastaft))
+
+
+  let make_let_expression (lettok : Range.t) ((mntyopt, vartok, utast1) : manual_type option * (Range.t * var_name) * untyped_abstract_tree) (utast2 : untyped_abstract_tree) =
+    let (varrng, varnm) = vartok in
+    make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(mntyopt, (varrng, UTPVariable(varnm)), utast1, utast2))
+
+
+  let make_let_expression_of_pattern (lettok : Range.t) ((mntyopt, pat, argpatlst, utast1) : untyped_let_binding) (utast2 : untyped_abstract_tree) =
+    let curried = curry_lambda_abstract (get_range pat) argpatlst utast1 in
+    make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(mntyopt, pat, curried, utast2))
 
 
   let make_let_mutable_expression
@@ -202,104 +222,141 @@
     make_standard (Tok firsttk) (Ranged utastaft) (UTDeclareVariantIn(varntdecs, utastaft))
 
 
-  let make_mutual_let_cons
+  let make_letrec_binding
       (mntyopt : manual_type option)
-      (vartok : Range.t * var_name) (argcons : untyped_argument_variable_cons) (utastdef : untyped_abstract_tree)
-      (tailcons : untyped_mutual_let_cons)
-  : untyped_mutual_let_cons
+      (vartok : Range.t * var_name) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree)
+      (tailcons : untyped_letrec_binding list)
+  : untyped_letrec_binding list
   =
     let (varrng, varnm) = vartok in
-    let curried = curry_lambda_abstract varrng argcons utastdef in
-      (mntyopt, varnm, curried) :: tailcons
+    let curried = curry_lambda_abstract varrng argpatlst utastdef in
+      (UTLetRecBinding(mntyopt, varnm, curried)) :: tailcons
 
 
-  let rec make_mutual_let_cons_par
-      (mntyopt : manual_type option)
-      (vartok : Range.t * var_name) (argletpatcons : untyped_let_pattern_cons)
-      (tailcons : untyped_mutual_let_cons)
-  : untyped_mutual_let_cons
-  =
-    let (_, varnm) = vartok in
-    let pmcons  = make_pattern_match_cons_of_argument_pattern_cons argletpatcons in
-    let fullrng = get_range_of_let_pattern_cons argletpatcons in
-    let abs     = make_lambda_abstract_for_parallel fullrng argletpatcons pmcons in
-      (mntyopt, varnm, abs) :: tailcons
-
-
-  and get_range_of_let_pattern_cons (argletpatcons : untyped_let_pattern_cons) : Range.t =
-    let get_first_range argletpatcons =
-      match argletpatcons with
-      | UTLetPatternCons((argpatrng, _) :: _, _, _) -> argpatrng
-      | _                                           -> assert false
-    in
-    let rec get_last_range argletpatcons =
-      match argletpatcons with
-      | UTEndOfLetPattern                                             -> assert false
-      | UTLetPatternCons(argpatcons, (lastrng, _), UTEndOfLetPattern) -> lastrng
-      | UTLetPatternCons(_, _, tailcons)                              -> get_last_range tailcons
-    in
-      make_range (Tok (get_first_range argletpatcons)) (Tok (get_last_range argletpatcons))
-
-
-  and make_pattern_match_cons_of_argument_pattern_cons (argletpatcons : untyped_let_pattern_cons) : untyped_pattern_match_cons =
-    match argletpatcons with
-    | UTEndOfLetPattern                                         -> UTEndOfPatternMatch
-    | UTLetPatternCons(argpatcons, utastdef, argletpattailcons) ->
-        let tailpmcons = make_pattern_match_cons_of_argument_pattern_cons argletpattailcons in
-        let prodpatrng = get_range_of_argument_variable_cons argpatcons in
-        let prodpat    = make_product_pattern_of_argument_cons prodpatrng argpatcons in
-          UTPatternMatchCons(prodpat, utastdef, tailpmcons)
-
-  and get_range_of_argument_variable_cons (argpatcons : untyped_argument_variable_cons) : Range.t =
-    let first_range =
-      match argpatcons with
-      | (fstrng, _) :: _ -> fstrng
+  let get_range_of_arguments (patlst : untyped_pattern_tree list) : Range.t =
+    let rngfirst =
+      match patlst with
+      | (rngpat, _) :: _ -> rngpat
       | _                -> assert false
     in
-    let rec get_last_range apcons =
-      match apcons with
-      | []                  -> assert false
-      | (lastrng, _) :: []  -> lastrng
-      | _ :: tailargpatcons -> get_last_range tailargpatcons
+    let rnglast =
+      match List.rev patlst with
+      | (rngpat, _) :: _  -> rngpat
+      | []                -> assert false
     in
-      make_range (Tok first_range) (Tok (get_last_range argpatcons))
+      make_range (Tok rngfirst) (Tok rnglast)
 
 
-  and make_product_pattern_of_argument_cons (prodpatrng : Range.t) (argpatcons : untyped_argument_variable_cons) : untyped_pattern_tree =
-    let rec aux argpatcons =
-      match argpatcons with
-      | []                 -> (Range.dummy "endofargvar", UTPEndOfTuple)
-      | argpat :: tailcons -> (Range.dummy "argvarcons", UTPTupleCons(argpat, aux tailcons))
+  let get_range_of_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : Range.t =
+    let rngfirst =
+      match recpatbrs with
+      | UTLetRecPatternBranch((rngpat, _) :: _, _) :: _ -> rngpat
+      | UTLetRecPatternBranch([], _) :: _               -> Range.dummy "get_range_of_pattern_branch_list"
+      | []                                              -> assert false
     in
-      let (_, prodpatmain) = aux argpatcons in (prodpatrng, prodpatmain)
+    let rnglast =
+      match List.rev recpatbrs with
+      | UTLetRecPatternBranch(_, (rngutast, _)) :: _ -> rngutast
+      | []                                           -> assert false
+    in
+      make_range (Tok rngfirst) (Tok rnglast)
 
 
-  and make_lambda_abstract_for_parallel
-      (fullrng : Range.t) (argletpatcons : untyped_let_pattern_cons)
-      (pmcons : untyped_pattern_match_cons)
-  =
-    match argletpatcons with
-    | UTEndOfLetPattern                  -> assert false
-    | UTLetPatternCons(argpatcons, _, _) ->
-        make_lambda_abstract_for_parallel_sub fullrng (fun u -> u) 0 argpatcons pmcons
+  let make_product_pattern (rngfull : Range.t) (patlst : untyped_pattern_tree list) : untyped_pattern_tree =
+    let rec aux patlst =
+      match patlst with
+      | []             -> (Range.dummy "make_product_pattern:1", UTPEndOfTuple)
+      | pat :: pattail -> (Range.dummy "make_product_pattern:2", UTPTupleCons(pat, aux pattail))
+    in
+    let (_, patprodmain) = aux patlst in
+      (rngfull, patprodmain)
+
+
+  let unite_into_pattern_branch_list (recpatbrs : untyped_letrec_pattern_branch list) : untyped_pattern_branch list * int =
+    let (acc, numopt) =
+      recpatbrs |> List.fold_left (fun (acc, numprevopt) recpatbr ->
+        match recpatbr with
+        | UTLetRecPatternBranch(patlst, utastdef) ->
+            let rngargs = get_range_of_arguments patlst in
+            let num = List.length patlst in
+            let numopt =
+              match numprevopt with
+              | None          -> Some(num)
+              | Some(numprev) -> if numprev = num then numprevopt else raise (IllegalArgumentLength(rngargs, num, numprev))
+            in
+            let patprod = make_product_pattern rngargs patlst in
+              (Alist.extend acc (UTPatternBranch(patprod, utastdef)), numopt)
+      ) (Alist.empty, None)
+    in
+      match numopt with
+      | None            -> assert false  (* -- 'recpatbrs' is not '[]' -- *)
+      | Some(numofargs) -> (Alist.to_list acc, numofargs)
+
+
+  let make_product_expression (utastlst : untyped_abstract_tree list) : untyped_abstract_tree =
+    let rngdummy = Range.dummy "make_product_expression" in
+    let rec aux utastprod utastlstrev =
+      match utastlstrev with
+      | []            -> utastprod
+      | utast :: rest -> aux (rngdummy, UTTupleCons(utast, utastprod)) rest
+    in
+      aux (rngdummy, UTEndOfTuple) (List.rev utastlst)
+
+
+  let make_function_for_parallel (rngfull : Range.t) (numofargs : int) (patbrs : untyped_pattern_branch list) =
+
+    let numbered_var_name i = "%pattup" ^ (string_of_int i) in
+
+    let rec aux acc i =
+      if i = numofargs then
+        let utastprod = make_product_expression (Alist.to_list acc) in
+          (Range.dummy "make_function_for_parallel:1", UTPatternMatch(utastprod, patbrs))
+      else
+        let varnm = numbered_var_name i in
+        let accnew = Alist.extend acc (Range.dummy "make_function_for_parallel:2", UTContentOf([], varnm)) in
+        let patvar = (Range.dummy "make_function_for_parallel:3", UTPVariable(varnm)) in
+          (Range.dummy "make_function_for_parallel:4", UTFunction([UTPatternBranch(patvar, aux accnew (i + 1))]))
+    in
+      aux Alist.empty 0
+(*
+    match recpatbrs with
+    | [] ->
+        assert false
+
+    | UTLetRecPatternBranch(argpatlst, _) :: _ ->
+        make_lambda_abstract_for_parallel_sub fullrng (fun u -> u) 0 argpatlst patbrs
 
 
   and make_lambda_abstract_for_parallel_sub
       (fullrng : Range.t) (k : untyped_abstract_tree -> untyped_abstract_tree)
-      (i : int) (argpatcons : untyped_argument_variable_cons)
-      (pmcons : untyped_pattern_match_cons)
-  : untyped_abstract_tree
-  =
-    match argpatcons with
+      (i : int) (argpatlst : untyped_pattern_tree list)
+      (patbrs : untyped_pattern_branch list)
+  : untyped_abstract_tree =
+
+    let numbered_var_name i = "%pattup" ^ (string_of_int i) in
+
+    match argpatlst with
     | []                   -> (fullrng, UTPatternMatch(k (Range.dummy "endoftuple", UTEndOfTuple), pmcons))
-    | (rng, _) :: tailcons ->
+    | (rng, _) :: argpattail ->
 (*        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in *)
 (*        let knew = (fun u -> k (dummy_range, UTTupleCons(((3000, 0, 0, 0), UTContentOf(numbered_var_name i)), u))) in (* for test *) *)
         let knew = (fun u -> k (Range.dummy "knew1", UTTupleCons((Range.dummy "knew2", UTContentOf([], numbered_var_name i)), u))) in (* for test *)
         let after = make_lambda_abstract_for_parallel_sub fullrng knew (i + 1) tailcons pmcons in
           (Range.dummy "pattup1", UTLambdaAbstract(Range.dummy "pattup2", numbered_var_name i, after))
+*)
 
-  and numbered_var_name i = "%pattup" ^ (string_of_int i)
+
+  let rec make_letrec_binding_from_pattern
+      (mntyopt : manual_type option)
+      (vartok : Range.t * var_name) (recpatbrs : untyped_letrec_pattern_branch list)
+      (tailcons : untyped_letrec_binding list)
+  : untyped_letrec_binding list
+  =
+    let (_, varnm) = vartok in
+    let (patbrs, numofargs) = unite_into_pattern_branch_list recpatbrs in
+    let rngfull = get_range_of_pattern_branch_list recpatbrs in
+    let abs = make_function_for_parallel rngfull numofargs patbrs in
+      (UTLetRecBinding(mntyopt, varnm, abs)) :: tailcons
 
 
   let kind_type_argument_cons (uktyargcons : untyped_unkinded_type_argument_cons) (constrntcons : constraint_cons) : untyped_type_argument_cons =
@@ -403,11 +460,11 @@
 %token <Range.t * Types.class_name>   CLASSNAME
 *)
 %token <Range.t> LAMBDA ARROW COMMAND
-%token <Range.t> LET DEFEQ LETAND IN
+%token <Range.t> LETREC LETNONREC DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH LETVERTDETAILED
+%token <Range.t> LETHORZ LETVERT LETMATH (* LETVERTDETAILED *)
 %token <Range.t> REFNOW (* REFFINAL *)
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
@@ -470,7 +527,8 @@
 %type <Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
-%type <Types.untyped_mutual_let_cons> nxdec
+%type <Types.untyped_letrec_binding list> nxrecdec
+%type <Types.untyped_let_binding> nxnonrecdec
 %type <Types.untyped_abstract_tree> nxbfr
 %type <Types.untyped_abstract_tree> nxwhl
 %type <Types.untyped_abstract_tree> nxif
@@ -486,7 +544,7 @@
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
 %type <Types.untyped_abstract_tree> tuple
-%type <Range.t * Types.untyped_pattern_match_cons> pats
+%type <Range.t * Types.untyped_pattern_branch list> pats
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
 %type <Types.untyped_abstract_tree> nxlist
@@ -502,7 +560,7 @@
 *)
 %type <Types.untyped_abstract_tree> narg
 %type <Types.untyped_abstract_tree> sarg
-%type <Types.untyped_argument_variable_cons> argvar
+%type <Types.untyped_pattern_tree list> argpats
 %type <Range.t * Types.var_name> binop
 %type <Types.untyped_unkinded_type_argument_cons> xpltyvars
 
@@ -515,12 +573,15 @@ main:
   | utast=nxwhl; EOI    { utast }
 ;
 nxtoplevel:
-  | top=LET; dec=nxdec; subseq=nxtopsubseq                                   { make_let_expression top dec subseq }
+  | top=LETREC; recdec=nxrecdec; subseq=nxtopsubseq                          { make_letrec_expression top recdec subseq }
+  | top=LETNONREC; nonrecdec=nxnonrecdec; subseq=nxtopsubseq                 { make_let_expression_of_pattern top nonrecdec subseq }
   | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETMATH; dec=nxmathdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
+(*
   | top=LETVERTDETAILED; dec=nxvertdetaileddec; subseq=nxtopsubseq           { make_let_expression top dec subseq }
+*)
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
@@ -549,61 +610,64 @@ constrnt:
   | CONSTRAINT; tyvar=TYPEVAR; CONS; mnkd=kxtop { let (_, tyvarnm) = tyvar in (tyvarnm, mnkd) }
 ;
 nxstruct:
-  | END                                                            { (end_struct $1) }
-  | LET nxdec nxstruct                                             { make_let_expression $1 $2 $3 }
-  | LETMUTABLE VAR OVERWRITEEQ nxlet nxstruct                      { make_let_mutable_expression $1 $2 $4 $5 }
-  | LETHORZ nxhorzdec nxstruct                                     { make_let_expression $1 $2 $3 }
-  | LETVERT nxvertdec nxstruct                                     { make_let_expression $1 $2 $3 }
-  | LETMATH nxmathdec nxstruct                                     { make_let_expression $1 $2 $3 }
-  | TYPE nxvariantdec nxstruct                                     { make_variant_declaration $1 $2 $3 }
-  | MODULE CONSTRUCTOR nxsigopt DEFEQ STRUCT nxstruct nxstruct     { make_module $1 $2 $3 $6 $7 }
+  | endtok=END                                                       { end_struct endtok }
+  | top=LETREC; recdec=nxrecdec; tail=nxstruct                       { make_letrec_expression top recdec tail }
+  | top=LETNONREC; nonrecdec=nxnonrecdec; tail=nxstruct              { make_let_expression_of_pattern top nonrecdec tail }
+  | top=LETMUTABLE; var=VAR; OVERWRITEEQ; utast=nxlet; tail=nxstruct { make_let_mutable_expression top var utast tail }
+  | top=LETHORZ; dec=nxhorzdec; tail=nxstruct                        { make_let_expression top dec tail }
+  | top=LETVERT; dec=nxvertdec; tail=nxstruct                        { make_let_expression top dec tail }
+  | top=LETMATH; dec=nxmathdec; tail=nxstruct                        { make_let_expression top dec tail }
+  | top=TYPE; varntdec=nxvariantdec; tail=nxstruct                   { make_variant_declaration top varntdec tail }
+  | top=MODULE; tok=CONSTRUCTOR; sigopt=nxsigopt;
+      DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct                   { make_module top tok sigopt strct tail }
 ;
 nxhorzdec:
-  | ctxvartok=VAR; hcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = hcmdtok in
+  | ctxvartok=VAR; hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+      let (rngcs, _) = hcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argvarlst utast in
-        (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
+      let curried = curry_lambda_abstract rngcs argpatlst utast in
+        (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
-  | hcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = hcmdtok in
+  | hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+      let (rngcs, _) = hcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
       let rngctxvar = Range.dummy "context-of-lightweight-let-inline" in
       let ctxvarnm = "%context" in
       let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
       let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
-      let curried = curry_lambda_abstract rngcs argvarlst utastread in
-        (None, csnm, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried))) :: []
+      let curried = curry_lambda_abstract rngcs argpatlst utastread in
+        (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
 ;
 nxvertdec:
-  | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = vcmdtok in
+  | ctxvartok=VAR; vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+      let (rngcs, _) = vcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argvarlst utast in
-        (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      let curried = curry_lambda_abstract rngcs argpatlst utast in
+        (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
-  | vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = vcmdtok in
+  | vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+      let (rngcs, _) = vcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
       let rngctxvar = Range.dummy "context-of-lightweight-let-block" in
       let ctxvarnm = "%context" in
       let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
       let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
-      let curried = curry_lambda_abstract rngcs argvarlst utastread in
-        (None, csnm, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried))) :: []
+      let curried = curry_lambda_abstract rngcs argpatlst utastread in
+        (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
 ;
 nxmathdec:
-  | mcmdtok=HORZCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = mcmdtok in
+  | mcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+      let (rngcs, _) = mcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argvarlst utast in
-        (None, csnm, (rng, UTLambdaMath(curried))) :: []
+      let curried = curry_lambda_abstract rngcs argpatlst utast in
+        (None, mcmdtok, (rng, UTLambdaMath(curried)))
       }
 ;
+(*
 nxvertdetaileddec:
   | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
       let (rngcs, csnm) = vcmdtok in
@@ -613,33 +677,40 @@ nxvertdetaileddec:
         (None, csnm, (rng, UTLambdaVertDetailed(rngctxvar, ctxvarnm, curried))) :: []
       }
 ;
+*)
 nxdecargpart:
   | COLON; mty=txfunc                                       { (Some(mty), []) }
-  | COLON; mty=txfunc; BAR; argvarlst=nonempty_list(patbot) { (Some(mty), argvarlst) }
-  | BAR; argvarlst=nonempty_list(patbot)                    { (None, argvarlst) }
-  | argvarlst=argvar                                        { (None, argvarlst) }
-;
-nxdecsub:
-  | LETAND; dec=nxdec { dec }
-  |                   { [] }
+  | COLON; mty=txfunc; BAR; argpatlst=nonempty_list(patbot) { (Some(mty), argpatlst) }
+  | BAR; argpatlst=nonempty_list(patbot)                    { (None, argpatlst) }
+  | argpatlst=argpats                                       { (None, argpatlst) }
 ;
 %inline defedvar:
-  | vartok=VAR  { vartok }
+  | vartok=VAR                  { vartok }
   | LPAREN; optok=binop; RPAREN { optok }
 ;
-nxdec: /* -> untyped_mutual_let_cons */
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxdecsub {
-        let (mtyopt, argvarlst) = argpart in
-          make_mutual_let_cons mtyopt vartok argvarlst utastdef dec
+nxrecdecsub:
+  | LETAND; dec=nxrecdec { dec }
+  |                      { [] }
+;
+nxrecdec:
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxrecdecsub {
+        let (mntyopt, argpatlst) = argpart in
+          make_letrec_binding mntyopt vartok argpatlst utastdef dec
       }
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; decpar=nxdecpar; dec=nxdecsub {
-        let (mtyopt, argvarlst) = argpart in
-          make_mutual_let_cons_par mtyopt vartok (UTLetPatternCons(argvarlst, utastdef, decpar)) dec
+  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
+        let (mntyopt, argpatlst) = argpart in
+          make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: tail) dec
       }
 ;
-nxdecpar:
-  | argvar DEFEQ nxlet BAR nxdecpar { UTLetPatternCons($1, $3, $5) }
-  | argvar DEFEQ nxlet              { UTLetPatternCons($1, $3, UTEndOfLetPattern) }
+nxrecdecpar:
+  | patlst=argpats; DEFEQ; utast=nxlet; BAR; tail=nxrecdecpar { UTLetRecPatternBranch(patlst, utast) :: tail }
+  | patlst=argpats; DEFEQ; utast=nxlet                        { UTLetRecPatternBranch(patlst, utast) :: [] }
+;
+nxnonrecdec:
+  | pat=patbot; argpart=nxdecargpart; DEFEQ; utastdef=nxlet {
+        let (mntyopt, argpatlst) = argpart in
+          (mntyopt, pat, argpatlst, utastdef)
+      }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
   | xpltyvars VAR DEFEQ variants constrnts LETAND nxvariantdec     { make_mutual_variant_cons $1 $2 $4 $5 $7 }
@@ -662,15 +733,16 @@ nxlet:
   | nxletsub { $1 }
 ;
 nxletsub:
-  | tok=LET; dec=nxdec; IN; utast=nxlet { make_let_expression tok dec utast }
+  | tok=LETREC; recdec=nxrecdec; IN; utast=nxlet                         { make_letrec_expression tok recdec utast }
+  | tok=LETNONREC; nonrecdec=nxnonrecdec; IN; utast=nxlet                { make_let_expression_of_pattern tok nonrecdec utast }
+  | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet { make_let_mutable_expression tok var utast1 utast2 }
+  | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet                          { make_let_expression tok dec utast }
+  | utast=nxwhl { utast }
+(*
   | tok=LET; pat=patbotwithoutvar; DEFEQ; utast1=nxlet; IN; utast2=nxlet {
         make_standard (Tok tok) (Ranged utast2) (UTPatternMatch(utast1, UTPatternMatchCons(pat, utast2, UTEndOfPatternMatch)))
       }
-  | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet {
-        make_let_mutable_expression tok var utast1 utast2
-      }
-  | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet { make_let_expression tok dec utast }
-  | utast=nxwhl { utast }
+*)
 ;
 nxwhl:
   | tok=WHILE utast1=nxlet; DO; utast2=nxwhl {
@@ -697,11 +769,11 @@ nxlambda:
   | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
         make_standard (Tok $1) (Ranged $4) (UTOverwriteGlobalHash($2, $4)) }
 *)
-  | LAMBDA argvar ARROW nxlor {
+  | LAMBDA argpats ARROW nxlor {
         let rng = make_range (Tok $1) (Ranged $4) in curry_lambda_abstract rng $2 $4 }
   | nxlor { $1 }
 ;
-argvar: /* -> argument_variable_cons */
+argpats: /* -> argument_variable_cons */
   | argpatlst=list(patbot) { argpatlst }
 ;
 nxlor:
@@ -921,19 +993,21 @@ tuple: /* -> untyped_tuple_cons */
   | nxlet             { make_standard (Ranged $1) (Ranged $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }
   | nxlet COMMA tuple { make_standard (Ranged $1) (Ranged $3) (UTTupleCons($1, $3)) }
 ;
-pats: /* -> code_range * untyped_patter_match_cons */
-  | patas ARROW nxletsub {
-        let (lastrng, _) = $3 in
-          (lastrng, UTPatternMatchCons($1, $3, UTEndOfPatternMatch)) }
-  | patas ARROW nxletsub BAR pats {
-        let (lastrng, pmcons) = $5 in
-          (lastrng, UTPatternMatchCons($1, $3, pmcons)) }
-  | patas WHEN nxletsub ARROW nxletsub {
-        let (lastrng, _) = $5 in
-          (lastrng, UTPatternMatchConsWhen($1, $3, $5, UTEndOfPatternMatch)) }
-  | patas WHEN nxletsub ARROW nxletsub BAR pats {
-        let (lastrng, pmcons) = $7 in
-          (lastrng, UTPatternMatchConsWhen($1, $3, $5, pmcons)) }
+pats: /* -> code_range * untyped_pattern_branch list */
+  | pat=patas; ARROW; utast=nxletsub {
+        let (rnglast, _) = utast in
+          (rnglast, UTPatternBranch(pat, utast) :: [])
+      }
+  | pat=patas; ARROW; utast=nxletsub; BAR; tail=pats {
+        let (rnglast, patbrs) = tail in
+          (rnglast, UTPatternBranch(pat, utast) :: patbrs)
+      }
+  | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub {
+        let (rnglast, _) = utast in
+          (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: []) }
+  | pat=patas; WHEN; utastcond=nxletsub; ARROW; utast=nxletsub; BAR; tail=pats {
+        let (rnglast, patbrs) = tail in
+          (rnglast, UTPatternBranchWhen(pat, utastcond, utast) :: patbrs) }
 ;
 patas:
   | pattr AS VAR       { make_standard (Ranged $1) (Ranged $3) (UTPAsVariable(extract_name $3, $1)) }
@@ -951,13 +1025,14 @@ patbot: /* -> Types.untyped_pattern_tree */
   | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
   | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
-  | VAR                { make_standard (Ranged $1) (Ranged $1) (UTPVariable(extract_name $1)) }
+  | vartok=defedvar    { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
 ;
+(*
 patbotwithoutvar: /* -> Types.untyped_pattern_tree */
   | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
@@ -970,6 +1045,7 @@ patbotwithoutvar: /* -> Types.untyped_pattern_tree */
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
 ;
+*)
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
@@ -1161,4 +1237,3 @@ vxbot:
           make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
       }
 ;
-

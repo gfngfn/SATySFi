@@ -3,15 +3,33 @@ module Math : sig
 
   direct \math : [math] inline-cmd
   direct \text : [inline-text] math-cmd
-  direct \to : [] math-cmd
-  direct \paren : [math] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
   direct \lower : [math; math] math-cmd
   direct \upper : [math; math] math-cmd
   direct \math-skip : [length] math-cmd
+  direct \math-color : [color; math] math-cmd
+  direct \mathord : [math] math-cmd
+  direct \mathbin : [math] math-cmd
+  direct \mathrel : [math] math-cmd
+  direct \paren : [math] math-cmd
+  direct \to : [] math-cmd
+  direct \ldots : [] math-cmd
+  val concat : math -> math list -> math
 
 end = struct
+
+  let concat msep mlst =
+    match
+      mlst |> List.fold-left (fun maccopt m -> (
+        match maccopt with
+        | None       -> Some(m)
+        | Some(macc) -> Some(${#macc #msep #m})
+      )) None
+    with
+    | None       -> ${}
+    | Some(macc) -> macc
+
 
   let-inline ctx \math fml =
       embed-math ctx fml
@@ -29,6 +47,14 @@ end = struct
 
   let-math \math-skip len =
     text-in-math MathOrd (fun ctx -> inline-skip len)
+
+  let-math \math-color color m =
+    math-color color m
+
+
+  let-math \mathord = math-group MathOrd MathOrd
+  let-math \mathbin = math-group MathBin MathBin
+  let-math \mathrel = math-group MathRel MathRel
 
 
   let-block ctx +math math =
@@ -86,6 +112,7 @@ end = struct
   let-math \colon-rel = math-char MathRel `:`
   let-math \equiv = math-char MathRel `≡`
   let-math \mapsto = math-char MathRel `↦`
+  let-math \ldots = math-char MathPunct `…`
 
   %let math-lim = math-lower (math-group MathOp MathOp (math-char MathOrd `lim`))
   let-math \lim = (math-group MathOp MathOp (math-char MathOrd `lim`))

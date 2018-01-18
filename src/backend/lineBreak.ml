@@ -31,6 +31,7 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBFixedGraphics(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
   | LBFixedImage(wid, hgt, _)          -> (natural wid, hgt, Length.zero)
+  | LBHookPageBreak(_)                 -> (widinfo_zero, Length.zero, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -227,74 +228,77 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
       let (lphblstnew, _) = append_horz_padding_pure lphblst widinfo_sub pads in
         puref (LBFixedFrame(wid_req, hgt +% pads.paddingT, dpt -% pads.paddingB, deco, lphblstnew))
 
-  | PHGEmbeddedVert(wid, hgt, dpt, evvblst) ->
-      puref (LBEmbeddedVert(wid, hgt, dpt, evvblst))
+  | PHGEmbeddedVert(wid, hgt, dpt, imvblst) ->
+      puref (LBEmbeddedVert(wid, hgt, dpt, imvblst))
 
   | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
 
-  | PHGFixedTabular(wid, hgt, dpt, evtabular) ->
-      puref (LBFixedTabular(wid, hgt, dpt, evtabular))
+  | PHGFixedTabular(wid, hgt, dpt, imtabular) ->
+      puref (LBFixedTabular(wid, hgt, dpt, imtabular))
 
   | PHGFixedImage(wid, hgt, imgkey) ->
-        puref (LBFixedImage(wid, hgt, imgkey))
+      puref (LBFixedImage(wid, hgt, imgkey))
+
+  | PHGHookPageBreak(hookf) ->
+      puref(LBHookPageBreak(hookf))
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
   let rec aux lbeacc hblst =
     match hblst with
     | [] ->
-        List.rev lbeacc
+        Alist.to_list lbeacc
 
     | HorzDiscretionary(pnlty, hblst0, hblst1, hblst2) :: tail ->
         let lphblst0 = convert_list_for_line_breaking_pure hblst0 in
         let lphblst1 = convert_list_for_line_breaking_pure hblst1 in
         let lphblst2 = convert_list_for_line_breaking_pure hblst2 in
         let dscrid = DiscretionaryID.fresh () in
-          aux (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)) :: lbeacc) tail
+          aux (Alist.extend lbeacc (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)))) tail
 
     | HorzPure(phb) :: tail ->
         let lbe = convert_pure_box_for_line_breaking phb in
-          aux (lbe :: lbeacc) tail
+          aux (Alist.extend lbeacc lbe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
         let lbelst = convert_list_for_line_breaking hblst in
         let lhblst = normalize_chunks lbelst in
         let lhblstnew = append_horz_padding lhblst pads in
-          aux (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)) :: lbeacc) tail
+          aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)))) tail
 
     | HorzScriptGuard(script, hblstG) :: tail ->
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
-          aux (ScriptGuard(script, lhblstG) :: lbeacc) tail
+          aux (Alist.extend lbeacc (ScriptGuard(script, lhblstG))) tail
   in
-    aux [] hblst
+    aux Alist.empty hblst
 
 
 and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box list =
   let rec aux lbpeacc hblst =
     match hblst with
-    | [] -> List.rev lbpeacc
+    | [] -> Alist.to_list lbpeacc
 
     | HorzDiscretionary(pnlty, hblst0, _, _) :: tail ->
-        let lphblst0 = aux [] hblst0 in
-          aux (List.rev_append lphblst0 lbpeacc) tail
+        let lphblst0 = aux Alist.empty hblst0 in
+          aux (Alist.append lbpeacc lphblst0) tail
 
     | HorzPure(phb) :: tail ->
         let lbpe = convert_pure_box_for_line_breaking_pure phb in
-          aux (lbpe :: lbpeacc) tail
+          aux (Alist.extend lbpeacc lbpe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblstsub) :: tail ->
         let lphblst = convert_list_for_line_breaking_pure hblstsub in
         let (widinfo_sub, hgt, dpt) = get_total_metrics lphblst in
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
-          aux (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)) :: lbpeacc) tail
+          aux (Alist.extend lbpeacc (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)))) tail
 
     | HorzScriptGuard(script, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
-          aux (PScriptGuard(script, lphblstG) :: lbpeacc) tail
+          aux (Alist.extend lbpeacc (PScriptGuard(script, lphblstG))) tail
   in
-  let lbpelst = aux [] hblst in
+  let lbpelst = aux Alist.empty hblst in
     normalize_chunks_pure lbpelst
 
 
@@ -389,7 +393,7 @@ let calculate_ratios (widrequired : length) (widinfo_total : length_info) : rati
           (PermissiblyLong(ratio_raw), Length.zero)
 
 
-let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : evaled_horz_box list * length * length =
+let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list) : intermediate_horz_box list * length * length =
   let (widinfo_total, hgt_total, dpt_total) = get_total_metrics lphblst in
   let (ratios, widperfil) =
     match widreqopt with
@@ -397,12 +401,25 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | None         -> (PermissiblyShort(0.), Length.zero)
   in
 
-  let rec main_conversion ratios widperfil lphb =
+  let get_intermediate_total_width imhblst =
+    imhblst |> List.fold_left (fun wacc imhb ->
+      match imhb with
+      | ImHorz(w, _)                     -> wacc +% w
+      | ImHorzRising(w, _, _, _, _)      -> wacc +% w
+      | ImHorzFrame(w, _, _, _, _)       -> wacc +% w
+      | ImHorzInlineTabular(w, _, _, _)  -> wacc +% w
+      | ImHorzInlineGraphics(w, _, _, _) -> wacc +% w
+      | ImHorzEmbeddedVert(w, _, _, _)   -> wacc +% w
+      | ImHorzHookPageBreak(_)           -> wacc
+    ) Length.zero
+  in
+
+  let rec main_conversion ratios widperfil lphb : intermediate_horz_box =
     match lphb with
     | LBAtom((widinfo, _, _), evhb) ->
         begin
           match widinfo.stretchable with
-          | Fils(nfil)  when nfil > 0 -> EvHorz(widinfo.natural +% widperfil, evhb)
+          | Fils(nfil)  when nfil > 0 -> ImHorz(widinfo.natural +% widperfil, evhb)
           | Fils(_)                   -> assert false  (* -- number of fils cannot be nonpositive -- *)
           | FiniteStretch(widstretch) ->
               let widappend =
@@ -412,43 +429,42 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
                 | PermissiblyShort(pure_ratio) -> widstretch *% pure_ratio          (* -- pure_ratio is positive -- *)
                 | TooShort                     -> widstretch
               in
-                EvHorz(widinfo.natural +% widappend, evhb)
+                ImHorz(widinfo.natural +% widappend, evhb)
         end
 
     | LBRising((_, hgtsub, dptsub), lenrising, lphblstsub) ->
-        let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
-        let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-          EvHorz(wid_total, EvHorzRising(hgtsub, dptsub, lenrising, evhblst))
+        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let wid_total = get_intermediate_total_width imhblst in
+          ImHorzRising(wid_total, hgtsub, dptsub, lenrising, imhblst)
 
     | LBOuterFrame((_, hgt_frame, dpt_frame), deco, lphblstsub) ->
-        let evhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
-        let wid_total = evhblst @|> Length.zero @|> List.fold_left (fun acc (EvHorz(w, _)) -> acc +% w) in
-          EvHorz(wid_total, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
+        let imhblst = lphblstsub |> List.map (main_conversion ratios widperfil) in
+        let wid_total = get_intermediate_total_width imhblst in
+          ImHorzFrame(wid_total, hgt_frame, dpt_frame, deco, imhblst)
 
     | LBFixedFrame(wid_frame, hgt_frame, dpt_frame, deco, lphblstsub) ->
-        let (evhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
-          EvHorz(wid_frame, EvHorzFrame(hgt_frame, dpt_frame, deco, evhblst))
+        let (imhblst, _, _) = determine_widths (Some(wid_frame)) lphblstsub in
+          ImHorzFrame(wid_frame, hgt_frame, dpt_frame, deco, imhblst)
 
-    | LBEmbeddedVert(wid, hgt, dpt, evvblst) ->
-        EvHorz(wid, EvHorzEmbeddedVert(hgt, dpt, evvblst))
+    | LBEmbeddedVert(wid, hgt, dpt, imvblst) ->
+        ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
 
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
-        EvHorz(wid, EvHorzInlineGraphics(hgt, dpt, graphics))
+        ImHorzInlineGraphics(wid, hgt, dpt, graphics)
 
-    | LBFixedTabular(wid, hgt, dpt, evtabular) ->
-        EvHorz(wid, EvHorzInlineTabular(hgt, dpt, evtabular))
+    | LBFixedTabular(wid, hgt, dpt, imtabular) ->
+        ImHorzInlineTabular(wid, hgt, dpt, imtabular)
 
     | LBFixedImage(wid, hgt, imgkey) ->
-        EvHorz(wid, EvHorzInlineImage(hgt, imgkey))
+        ImHorz(wid, EvHorzInlineImage(hgt, imgkey))
+
+    | LBHookPageBreak(hookf) ->
+        ImHorzHookPageBreak(hookf)
   in
-      let evhblst = lphblst |> List.map (main_conversion ratios widperfil) in
+      let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 
       (* begin : for debug *)
-      let checksum =
-        evhblst |> List.map (function
-          | EvHorz(wid, _) -> wid
-        ) |> List.fold_left ( +% ) Length.zero
-      in
+      let checksum = get_intermediate_total_width imhblst in
       let msg_stretch =
         match widinfo_total.stretchable with
         | FiniteStretch(widstretch) -> Length.show widstretch
@@ -468,10 +484,10 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
          "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
 
-        (evhblst, hgt_total, dpt_total)
+        (imhblst, hgt_total, dpt_total)
 
 
-let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : intermediate_vert_box list =
+let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
     let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
@@ -549,28 +565,38 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
         Alist.extend acclines (Alist.to_list accline)
   in
 
-  let rec arrange (dptprevopt : length option) (accvlines : intermediate_vert_box Alist.t) (lines : (lb_pure_box list) list) =
+  let rec arrange (dptprevopt : length option) (accvlines : vert_box Alist.t) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
         begin
           match dptprevopt with
           | None ->
-              arrange (Some(dpt)) (Alist.extend Alist.empty (ImVertLine(hgt, dpt, evhblst))) tail
+              arrange (Some(dpt)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
 
           | Some(dptprev) ->
               let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt)) (Alist.append accvlines [ImVertFixedBreakable(vskip); ImVertLine(hgt, dpt, evhblst)]) tail 
+                arrange (Some(dpt)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
         end
 
-    | [] -> ImVertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (ImVertBottomMargin(is_breakable_bottom, margin_bottom))))
+    | [] -> VertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (VertBottomMargin(is_breakable_bottom, margin_bottom))))
   in
 
   let acclines = cut Alist.empty Alist.empty lhblst in
     arrange None Alist.empty (Alist.to_list acclines)
 
 
-let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : intermediate_vert_box list =
+let natural (hblst : horz_box list) : intermediate_horz_box list * length * length =
+  let lphblst = convert_list_for_line_breaking_pure hblst in
+    determine_widths None lphblst
+
+
+let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list * length * length =
+  let lphblst = convert_list_for_line_breaking_pure hblst in
+    determine_widths (Some(widreq)) lphblst
+
+
+let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in
@@ -620,7 +646,7 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
                   found_candidate := true;
                   LineBreakGraph.add_edge grph dscridfrom dscridto badness_for_too_long;
                 end
-                  
+
       );
       (!found_candidate, RemovalSet.fold (fun dscrid wm -> wm |> WidthMap.remove dscrid) htomit wmap)
     end
@@ -668,8 +694,15 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
     let _ (* wmapfinal *) = aux 0 wmapinit lhblst in
     let pathopt = LineBreakGraph.shortest_path grph DiscretionaryID.beginning DiscretionaryID.final in
       match pathopt with
-      | None       -> (* -- when no set of discretionary points is suitable for line breaking -- *)
-          [ImVertLine(Length.zero, Length.zero, [])] (* temporary *)
+      | None ->
+        (* -- when no set of discretionary points is suitable for line breaking -- *)
+          let (imhblst, _, _) = natural hblst in
+            [
+              VertTopMargin(is_breakable_top, margin_top);
+              VertLine(Length.zero, Length.zero, imhblst);
+              VertBottomMargin(is_breakable_bottom, margin_bottom);
+            ]
+
       | Some(path) ->
           break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
   end
@@ -683,12 +716,3 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
 let get_natural_metrics (hblst : horz_box list) : length * length * length =
   let (widinfo, hgt, dpt) = get_metrics_of_horz_box hblst in
     (widinfo.natural, hgt, dpt)
-
-
-let natural (hblst : horz_box list) : evaled_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths None lphblst
-
-let fit (hblst : horz_box list) (widreq : length) : evaled_horz_box list * length * length =
-  let lphblst = convert_list_for_line_breaking_pure hblst in
-    determine_widths (Some(widreq)) lphblst

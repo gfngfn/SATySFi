@@ -33,7 +33,9 @@ let tIT           = (~! "itext"   , BaseType(TextRowType) )
 let tBT           = (~! "btext"   , BaseType(TextColType) )
 let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
+(*
 let tFT           = (~! "font"    , BaseType(FontType)    )
+*)
 let tCTX          = (~! "context" , BaseType(ContextType) )
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
@@ -58,6 +60,7 @@ let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
 let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
 
 (* -- predefined alias types -- *)
+let tFONT         = tPROD [tS; tFL; tFL]
 let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
@@ -90,6 +93,41 @@ let tMCSTY =
     ])  (* temporary *)
   in
     (~! "math-char-style", RecordType(asc))
+
+let tPBINFO =
+  let asc =
+    Assoc.of_list [
+      ("page-number", tI);
+    ]
+  in
+    (~! "page-break-info", RecordType(asc))
+
+let tPAGECONT =
+  let asc =
+    Assoc.of_list [
+      ("text-origin", tPT);
+      ("text-height", tLN);
+    ]
+  in
+    (~! "page-content-scheme", RecordType(asc))
+
+let tPAGECONTF = tPBINFO @-> tPAGECONT
+
+let tPCINFO =
+  tPBINFO  (* temporary; may have more fields in the future *)
+
+let tPAGEPARTS =
+  let asc =
+    Assoc.of_list [
+      ("header-origin" , tPT);
+      ("header-content", tBB);
+      ("footer-origin" , tPT);
+      ("footer-content", tBB);
+    ]
+  in
+    (~! "page-parts", RecordType(asc))
+
+let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
@@ -165,13 +203,9 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let add_to_environment env varnm rfast =
-  Hashtbl.add env varnm rfast
-
-
-let lam evid ast = LambdaAbstract(evid, ast)
-let lamenv env evid ast = FuncWithEnvironment(evid, ast, env)
-let ( !- ) evid = ContentOf(evid)
+let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
+let lamenv env evid ast = FuncWithEnvironment([PatternBranch(PVariable(evid), ast)], env)
+let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let rec lambda1 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
@@ -204,20 +238,8 @@ let rec lambda5 astf env =
     lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
 
 
-(* -- begin: constants just for experimental use -- *)
-
 let pdfpt = Length.of_pdf_point
 
-
-let default_font_scheme =
-  List.fold_left (fun mapacc (script, font_info) -> mapacc |> HorzBox.ScriptSchemeMap.add script font_info)
-    HorzBox.ScriptSchemeMap.empty
-    [
-      (CharBasis.HanIdeographic    , ("ipaexm", 0.92, 0.));
-      (CharBasis.HiraganaOrKatakana, ("ipaexm", 0.92, 0.));
-      (CharBasis.Latin             , ("Arno"  , 1., 0.));
-      (CharBasis.OtherScript       , HorzBox.default_font_with_ratio);
-    ]
 
 (*
 let default_math_left_paren hgt dpt hgtaxis fontsize color =
@@ -307,23 +329,24 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let hB = hA -% wB *% a2 in
 
   let graphics (xpos, ypos) =
-    Graphics.pdfops_of_fill color [
-      GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-        LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
-        LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
-        LineTo(xpos +% wM            , ypos -% dpt +% h1);
-        LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
-        LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
-        LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
-        LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
-        LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
-      ], Some(LineTo(())))
-    ]
+    let grelem =
+      let open GraphicData in
+      Graphics.make_fill color [
+        GeneralPath((xpos +% wid, ypos +% hgt_bar), [
+          LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
+          LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
+          LineTo(xpos +% wM            , ypos -% dpt +% h1);
+          LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
+          LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
+          LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
+          LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
+          LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
+        ], Some(LineTo(())))
+      ]
+    in
+      Graphics.singleton grelem
   in
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
-
-
-let envinit : environment = Hashtbl.create 128
 
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
@@ -444,27 +467,29 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
     ])
 
 
-let get_initial_context pagesch evidcmd =
+let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
+
+
+let get_initial_context wid evidcmd =
   let open HorzBox in
     {
-      font_scheme            = default_font_scheme;
+      font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
       math_font              = "lmodern";
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
-      langsys_scheme         = ScriptSchemeMap.empty;
+      langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
       space_natural          = 0.33;
       space_shrink           = 0.08;
-      space_stretch          = 0.16; (* 0.32; *)
-      adjacent_stretch       = 0.025;
-      paragraph_width        = pagesch.area_width;
+      space_stretch          = 0.16;
+      adjacent_stretch       = 0.05;
+      paragraph_width        = wid;
       paragraph_top          = pdfpt 18.;
       paragraph_bottom       = pdfpt 18.;
       leading                = pdfpt 18.;
       min_gap_of_lines       = pdfpt 2.;
-      text_color             = DeviceGray(0.);
+      text_color             = GraphicData.DeviceGray(0.);
       manual_rising          = pdfpt 0.;
-      page_scheme            = pagesch;
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
@@ -539,8 +564,9 @@ let frame_deco_VM =
 (* -- end: constants just for experimental use -- *)
 
 
-let make_environments () =
+let make_environments satysfi_root_dir =
   let tyenvinit = add_default_types Typeenv.empty in
+  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
   let (~@) n        = (~! "tv"      , TypeVariable(n)      ) in
   let (-%) n ptysub = ptysub in
@@ -551,7 +577,7 @@ let make_environments () =
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
-  let table : (var_name * poly_type * (environment -> abstract_tree)) list =
+  let table : (var_name * poly_type * (environment -> syntactic_value)) list =
     let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
     let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
     let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
@@ -571,8 +597,8 @@ let make_environments () =
         ( "&&" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalAnd(v1, v2))              );
         ( "||" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalOr(v1, v2))               );
         ( "not", ~% (tB @-> tB)          , lambda1 (fun v1 -> LogicalNot(v1))                     );
-        ( "!"  , ptyderef                , lambda1 (fun v1 -> Reference(v1))                      );
-        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> ListCons(v1, v2))                );
+        ( "!"  , ptyderef                , lambda1 (fun v1 -> Dereference(v1))                    );
+        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))       );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
@@ -591,15 +617,17 @@ let make_environments () =
         ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
 
-        ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                                 , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
-        ("form-document"         , ~% (tCTX @-> tBB @-> tDOC)                                , lambda2 (fun vctx vbc -> BackendPageBreaking(vctx, vbc)));
+        ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
+        ("page-break"            , ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)  , lambda4 (fun vpgsz vpcf vppf vbb -> BackendPageBreaking(vpgsz, vpcf, vppf, vbb)));
         ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
         ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
         ("inline-frame-solid"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
         ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+(*
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
+*)
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
         ("embedded-block-top"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
@@ -610,12 +638,13 @@ let make_environments () =
         ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
         ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
 
-        ("get-initial-context", ~% (tPG @-> tPT @-> tLN @-> tLN @-> tCMD @-> tCTX), lambda5 (fun vpage vpt vwid vhgt vcmd -> PrimitiveGetInitialContext(vpage, vpt, vwid, vhgt, vcmd)));
+        ("get-initial-context", ~% (tLN @-> tCMD @-> tCTX)               , lambda2 (fun vwid vcmd -> PrimitiveGetInitialContext(vwid, vcmd)));
         ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
+        ("set-paragraph-margin", ~% (tLN @-> tLN @-> tCTX @-> tCTX)      , lambda3 (fun vl1 vl2 vctx -> PrimitiveSetParagraphMargin(vl1, vl2, vctx)));
         ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
         ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
-        ("set-font"           , ~% (tSCR @-> tFT @-> tCTX @-> tCTX)      , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
-        ("get-font"           , ~% (tSCR @-> tCTX @-> tFT)               , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
+        ("set-font"           , ~% (tSCR @-> tFONT @-> tCTX @-> tCTX)    , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
+        ("get-font"           , ~% (tSCR @-> tCTX @-> tFONT)             , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
         ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)    , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
         ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)             , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
         ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
@@ -631,6 +660,8 @@ let make_environments () =
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
         ("get-natural-width"  , ~% (tIB @-> tLN)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
+        ("get-natural-length" , ~% (tBB @-> tLN)                         , lambda1 (fun vbb -> PrimitiveGetNaturalLength(vbb)));
+        ("display-message"    , ~% (tS @-> tU)                           , lambda1 (fun vs -> PrimitiveDisplayMessage(vs)));
 
         ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)             , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
         ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)   , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
@@ -672,21 +703,21 @@ let make_environments () =
         ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
         ("script-guard"            , ~% (tSCR @-> tIB @-> tIB)                       , lambda2 (fun vscr vh -> BackendScriptGuard(vscr, vh)));
         ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
+        ("register-cross-reference", ~% (tS @-> tS @-> tU)                           , lambda2 (fun vk vv -> BackendRegisterCrossReference(vk, vv)));
+        ("get-cross-reference"     , ~% (tS @-> (tOPT tS))                           , lambda1 (fun vk -> BackendGetCrossReference(vk)));
+        ("hook-page-break"         , ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)           , lambda1 (fun vhook -> BackendHookPageBreak(vhook)));
       ]
   in
   let temporary_ast = StringEmpty in
-  let (tyenvfinal, locacc) =
-    table |> List.fold_left (fun (tyenv, acc) (varnm, pty, deff) ->
+  let (tyenvfinal, envfinal, locacc) =
+    table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
       let evid = EvalVarID.fresh varnm in
       let loc = ref temporary_ast in
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
-      begin
-        add_to_environment envinit evid loc;
-        (tyenvnew, (loc, deff) :: acc)
-      end
-    ) (tyenvinit, [])
+      let envnew = add_to_environment env evid loc in
+        (tyenvnew, envnew, Alist.extend acc (loc, deff))
+    ) (tyenvinit, envinit, Alist.empty)
   in
-  let () =
-    locacc |> List.iter (fun (loc, deff) -> begin loc := deff envinit; end)
-  in
-    (tyenvfinal, envinit)
+  locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
+  default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
+    (tyenvfinal, envfinal)

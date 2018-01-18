@@ -20,3 +20,5 @@ val map : ('a -> 'b) -> 'a t -> 'b t
 val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b t -> 'a
 
 val fold_right : ('a -> 'b -> 'b) -> 'a t -> 'b -> 'b
+
+val cat : 'a t -> 'a t -> 'a t

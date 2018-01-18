@@ -253,7 +253,8 @@ rule progexpr = parse
           | "if"                -> IF(pos)
           | "then"              -> THEN(pos)
           | "else"              -> ELSE(pos)
-          | "let"               -> LET(pos)
+          | "let"               -> LETNONREC(pos)
+          | "let-rec"           -> LETREC(pos)
           | "and"               -> LETAND(pos)
           | "in"                -> IN(pos)
           | "fun"               -> LAMBDA(pos)
@@ -283,7 +284,9 @@ rule progexpr = parse
           | "let-inline"        -> LETHORZ(pos)
           | "let-block"         -> LETVERT(pos)
           | "let-math"          -> LETMATH(pos)
+(*
           | "let-block-detailed" -> LETVERTDETAILED(pos)  (* wil be deprecated *)
+*)
           | "controls"          -> CONTROLS(pos)
           | "cycle"             -> CYCLE(pos)
           | "inline-cmd"        -> HORZCMDTYPE(pos)
@@ -718,7 +721,8 @@ and comment = parse
       | LPAREN(_)      -> "("
       | RPAREN(_)      -> ")"
       | COMMA(_)       -> ","
-      | LET(_)         -> "let"
+      | LETNONREC(_)   -> "let"
+      | LETREC(_)      -> "let-rec"
       | CONTROLS(_)    -> "controls"
       | LETAND(_)      -> "and"
       | PATHLINE(_)    -> "--"

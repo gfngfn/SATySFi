@@ -1,0 +1,11 @@
+let-inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in
+document (|
+  title = {Glue Test};
+  author = {Takashi SUWA};
+|) '<
+  +frame <
+    +p {
+      \glueneg;The quick brown fox jumps over the\glueneg;lazy dog.
+    }
+  >
+>

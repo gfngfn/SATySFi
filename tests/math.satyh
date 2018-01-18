@@ -362,3 +362,5 @@ let-math \overwrite f x v =
 
 let-math \math-style sty m =
   math-char-class sty m
+
+let-math \bm m = ${\math-style!(MathBoldItalic){#m}}

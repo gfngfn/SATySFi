@@ -1,0 +1,9 @@
+let id x = x
+
+let s = arabic (id 1) ^ `,` ^ (id `s`)
+
+let-inline ctx \math = embed-math ctx
+let ctx = get-initial-context 400pt (command \math)
+let pagecontf _ = (| text-origin = (20pt, 20pt); text-height = 600pt; |)
+let pagepartsf _ = (| header-origin = (0pt, 0pt); header-content = block-nil; footer-origin = (0pt, 0pt); footer-content = block-nil; |)
+in page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx (embed-string s)) ++ inline-fil))
