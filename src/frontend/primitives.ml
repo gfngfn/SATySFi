@@ -696,6 +696,7 @@ let make_environments satysfi_root_dir =
         ("set-math-command"        , ~% (tCMD @-> tCTX @-> tCTX)                     , lambda2 (fun vcmd vctx -> PrimitiveSetMathCommand(vcmd, vctx)));
         ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
+        ("get-axis-height"         , ~% (tCTX @-> tLN)                               , lambda1 (fun vctx -> PrimitiveGetAxisHeight(vctx)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
         ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
         ("register-pdf-image"      , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));

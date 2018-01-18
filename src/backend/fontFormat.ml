@@ -1436,6 +1436,11 @@ type math_constants =
 let get_main_ratio mvr = to_ratio (get_main_math_value mvr)
 
 
+let get_axis_height_ratio (md : math_decoder) : float =
+  let mc = md.math_constants in
+    get_main_ratio mc.Otfm.axis_height
+
+
 let get_math_constants (md : math_decoder) : math_constants =
   let mc = md.math_constants in
     {

@@ -152,6 +152,8 @@ type math_constants =
     lower_limit_baseline_drop_min : float;
   }
 
+val get_axis_height_ratio : math_decoder -> float
+
 val get_math_constants : math_decoder -> math_constants
 
 val find_kern_ratio : math_kern -> float -> float

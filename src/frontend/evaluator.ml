@@ -966,6 +966,13 @@ and interpret env ast =
       let str = interpret_string env aststr in
         InputHorzWithEnvironment([InputHorzText(str)], env)
 
+  | PrimitiveGetAxisHeight(astctx) ->
+      let ctx = interpret_context env astctx in
+      let fontsize = ctx.HorzBox.font_size in
+      let mfabbrev = ctx.HorzBox.math_font in
+      let hgt = FontInfo.get_axis_height mfabbrev fontsize in
+        LengthConstant(hgt)
+
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
         Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
