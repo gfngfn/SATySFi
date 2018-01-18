@@ -4,4 +4,4 @@ all:
 	satysfi $(DEPS) doc-primitives.saty -o primitives.pdf
 
 lang:
-	satysfi $(DEPS) local-math.satyh doc-lang.saty -o lang.pdf
+	satysfi $(DEPS) cd.satyh local-math.satyh doc-lang.saty -o lang.pdf
