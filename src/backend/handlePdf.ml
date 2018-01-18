@@ -18,7 +18,13 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
   let (wid, evhbmain) = evhb in
     match evhbmain with
     | EvHorzEmpty ->
-        (xpos +% wid, opacc)
+        let opaccnew =
+(*
+          (Graphics.pdfops_test_box (GraphicData.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.)) |> Alist.append
+*)
+          opacc
+        in
+          (xpos +% wid, opaccnew)
 
     | EvHorzFrame(hgt_frame, dpt_frame, deco, imhblst) ->
         let gr_background =
@@ -48,13 +54,13 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let otxt = OutputText.append_glyph_id OutputText.empty_hex_style gid in
         let ops =
-(*
-          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
-*)
+
+          List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+
           (Graphics.pdfops_of_text (xpos, yposbaseline) Length.zero tag msinfo.math_font_size msinfo.math_color otxt)
         in
         let opaccnew = Alist.append opacc ops in
-        (xpos +% wid, opaccnew)
+          (xpos +% wid, opaccnew)
 
     | EvHorzRising(hgt, dpt, lenrising, evhblst) ->
         let (_, opaccsub) =

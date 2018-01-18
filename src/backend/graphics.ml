@@ -173,7 +173,7 @@ let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (path
     List.concat [[op_q]; [op_stroke_color]; [op_fill_color]; ops_state; ops_path; [drawop; op_Q]]
 *)
 
-let pdfops_of_stroke_color stroke_color =
+let pdfop_of_stroke_color stroke_color =
   match stroke_color with
   | DeviceRGB(r, g, b)     -> op_RG (r, g, b)
   | DeviceCMYK(c, m, y, k) -> op_K (c, m, y, k)
@@ -182,7 +182,7 @@ let pdfops_of_stroke_color stroke_color =
 
 let pdfops_of_stroke (line_width : length) (stroke_color : color) (pathlst : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list pathlst in
-  let op_stroke_color = pdfops_of_stroke_color stroke_color in
+  let op_stroke_color = pdfop_of_stroke_color stroke_color in
   let ops_state =
     [ op_w line_width; ]
   in
@@ -192,7 +192,7 @@ let pdfops_of_stroke (line_width : length) (stroke_color : color) (pathlst : pat
 
 let pdfops_of_dashed_stroke (line_width : length) (d1, d2, d0) (stroke_color : color) (pathlst : path list) : Pdfops.t list =
   let ops_path = pdfops_of_path_list pathlst in
-  let op_stroke_color = pdfops_of_stroke_color stroke_color in
+  let op_stroke_color = pdfop_of_stroke_color stroke_color in
   let ops_state =
     let op_dashed = Pdfops.Op_d([~% d1; ~% d2], ~% d0) in
       [ op_w line_width; op_dashed ]
@@ -248,18 +248,18 @@ let to_pdfops (gr : 'a t) (f : point -> 'a -> Pdfops.t list) : Pdfops.t list =
     ) |> List.concat
 
 
-(* -- 'ops_test_box': output bounding box of vertical elements for debugging -- *)
+(* -- 'pdfops_test_box': output bounding box of vertical elements for debugging -- *)
 let pdfops_test_box color (xpos, ypos) wid hgt =
   [
     op_q;
-    pdfop_of_text_color color;
+    pdfop_of_stroke_color color;
     op_re (xpos, ypos) (wid, Length.negate hgt);
     op_S;
     op_Q;
   ]
 
 
-(* -- 'ops_test_frame': output bounding box of horizontal elements for debugging -- *)
+(* -- 'pdfops_test_frame': output bounding box of horizontal elements for debugging -- *)
 let pdfops_test_frame (xpos, yposbaseline) wid hgt dpt =
   [
     op_q;
