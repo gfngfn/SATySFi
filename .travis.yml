@@ -16,6 +16,8 @@ install:
   - opam install -y result
   - opam install -y bitv
   - opam install -y batteries
+  - opam install -y yojson
+  - opam install -y camlimages
   - eval `opam config env`
   - git submodule update -i
 script:
