@@ -912,14 +912,24 @@ txfunc: /* -> manual_type */
       }
   | mnty=txprod { mnty }
 ;
-txprod: /* -> manual_type */
-  | txapppre EXACT_TIMES txprod {
-        let rng = make_range (Ranged $1) (Ranged $3) in
-          match $3 with
-          | (_, MProductType(tylist)) -> (rng, MProductType($1 :: tylist))
-          | other                     -> (rng, MProductType([$1; $3]))
+txprod:
+  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
+        let (rng1, _) = mnty in
+        let (rng2, mntylst) = mntyprod in
+          make_standard (Tok rng1) (Tok rng2) (MProductType(mnty :: mntylst))
       }
-  | txapppre { $1 }
+
+  | mnty=txapppre { mnty }
+;
+txprodsub: /* -> Range.t * manual_type list */
+  | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
+        let (rng2, mntylst) = mntyprod in
+          (rng2, mnty :: mntylst)
+      }
+  | mnty=txapppre {
+        let (rng2, _) = mnty in
+          (rng2, mnty :: [])
+      }
 ;
 txapppre: /* -> manual_type */
   | tyapp=txapp {
