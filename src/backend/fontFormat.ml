@@ -1372,14 +1372,16 @@ let get_math_script_variant (md : math_decoder) (gidorg : glyph_id) =
 
 
 let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) =
+(*
   let dcdr = md.as_normal_font in
   let (wid, _, _) = get_glyph_metrics dcdr gid in
   let (_, _, ymin, ymax) = get_math_bbox md gid in
   let hgt = max 0 ymax in
   let dpt = min 0 ymin in
+*)
   let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
   let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
-    (wid, hgt, dpt, micopt, mkiopt)
+    (micopt, mkiopt)
 
 
 let get_math_variants gidorg map =

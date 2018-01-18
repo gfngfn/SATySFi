@@ -214,7 +214,7 @@ let pdfops_of_fill (fill_color : color) (pathlst : path list) : Pdfops.t list =
     List.concat [[op_q; op_fill_color]; ops_path; [op_draw; op_Q]]
 
 
-let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.style * OutputText.element list) =
+let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.t) =
   [
     op_cm_translate (Length.zero, Length.zero);
     op_q;

@@ -6,7 +6,7 @@ open HorzBox
 
 
 type low_math_atom =
-  | LowMathGlyph        of math_string_info * length * length * length * FontFormat.glyph_id
+  | LowMathGlyph        of math_string_info * length * length * length * OutputText.t
   | LowMathEmbeddedHorz of horz_box list
 
 type left_kern =
@@ -619,22 +619,22 @@ let make_radical mathctx radical hgt_bar t_bar dpt =
     hblst
 
 
-let convert_math_char mathctx is_big uch mk =
+let convert_math_char mathctx is_big (uchlst : Uchar.t list) mk =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
+  let (otxt, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-let convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR =
+let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk kernfL kernfR =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
+  let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let fontsize = mathstrinfo.math_font_size in
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
 let change_math_context chg mathctx =
@@ -677,17 +677,17 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkrawv in
       begin
         match mvvaluemain with
-        | MathVariantToChar(is_big, uch) ->
-            convert_math_char mathctx is_big uch mk
+        | MathVariantToChar(is_big, uchlst) ->
+            convert_math_char mathctx is_big uchlst mk
 
-        | MathVariantToCharWithKern(is_big, uch, kernfL, kernfR) ->
-            convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
+        | MathVariantToCharWithKern(is_big, uchlst, kernfL, kernfR) ->
+            convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
       end
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->  (* TEMPORARY; should extend more *)
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
-      let uch =
+      let uchlst =
         let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
         match mccls with
         | MathItalic       -> mvsty.math_italic
@@ -701,15 +701,15 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathDoubleStruck -> mvsty.math_double_struck
             (* TEMPORARY; should extend more *)
       in
-        convert_math_char mathctx is_big uch mk
+        convert_math_char mathctx is_big uchlst mk
 
-  | MathElement(mkraw, MathChar(is_big, uch)) ->
+  | MathElement(mkraw, MathChar(is_big, uchlst)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char mathctx is_big uch mk
+        convert_math_char mathctx is_big uchlst mk
 
-  | MathElement(mkraw, MathCharWithKern(is_big, uch, kernfL, kernfR)) ->
+  | MathElement(mkraw, MathCharWithKern(is_big, uchlst, kernfL, kernfR)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
+        convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
 
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
@@ -865,8 +865,8 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
 
 let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
   match lme with
-  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid) ->
-      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
+  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt) ->
+      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, otxt))]
 
   | LowMathEmbeddedHorz(hblst) ->
       hblst

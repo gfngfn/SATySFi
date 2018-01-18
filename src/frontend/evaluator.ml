@@ -483,14 +483,14 @@ and interpret env ast =
 
 (* ---- values for backend ---- *)
 
-  | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, astcp, astctx) ->
+  | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, aststr, astctx) ->
       let s = interpret_string env asts in
       let mccls = interpret_math_char_class env astmccls in
       let is_big = false in
       let mathcls = interpret_math_class env astmathcls in
-      let cp = interpret_int env astcp in
+      let uchlst = interpret_uchar_list env aststr in
       let ctx = interpret_context env astctx in
-      let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, Uchar.of_int cp)) in
+      let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, uchlst)) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
         Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
 
@@ -533,26 +533,26 @@ and interpret env ast =
             Some(vcpF),
             Some(vcpBF),
             Some(vcpDS) ) ->
-              let cpI  = get_int vcpI  in
-              let cpBI = get_int vcpBI in
-              let cpR  = get_int vcpR  in
-              let cpBR = get_int vcpBR in
-              let cpS  = get_int vcpS  in
-              let cpBS = get_int vcpBS in
-              let cpF  = get_int vcpF  in
-              let cpBF = get_int vcpBF in
-              let cpDS = get_int vcpDS in
+              let uchlstI  = get_uchar_list vcpI  in
+              let uchlstBI = get_uchar_list vcpBI in
+              let uchlstR  = get_uchar_list vcpR  in
+              let uchlstBR = get_uchar_list vcpBR in
+              let uchlstS  = get_uchar_list vcpS  in
+              let uchlstBS = get_uchar_list vcpBS in
+              let uchlstF  = get_uchar_list vcpF  in
+              let uchlstBF = get_uchar_list vcpBF in
+              let uchlstDS = get_uchar_list vcpDS in
               let mvsty =
                 HorzBox.({
-                  math_italic        = Uchar.of_int cpI ;
-                  math_bold_italic   = Uchar.of_int cpBI;
-                  math_roman         = Uchar.of_int cpR ;
-                  math_bold_roman    = Uchar.of_int cpBR;
-                  math_script        = Uchar.of_int cpS ;
-                  math_bold_script   = Uchar.of_int cpBS;
-                  math_fraktur       = Uchar.of_int cpF ;
-                  math_bold_fraktur  = Uchar.of_int cpBF;
-                  math_double_struck = Uchar.of_int cpDS;
+                  math_italic        = uchlstI ;
+                  math_bold_italic   = uchlstBI;
+                  math_roman         = uchlstR ;
+                  math_bold_roman    = uchlstBR;
+                  math_script        = uchlstS ;
+                  math_bold_script   = uchlstBS;
+                  math_fraktur       = uchlstF ;
+                  math_bold_fraktur  = uchlstBF;
+                  math_double_struck = uchlstDS;
                 })
               in
                 MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
@@ -622,10 +622,7 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
-      let mlst =
-        uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch)))))
-      in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uchlst))))] in
         MathValue(mlst)
 
   | BackendMathCharWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
@@ -636,21 +633,7 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let kernfL = make_math_char_kern_func env valuekernfL in
       let kernfR = make_math_char_kern_func env valuekernfR in
-      let kernf0 _ _ = Length.zero in
-      let mlst =
-        uchlst |> list_fold_adjacent (fun acc uch prevopt nextopt ->
-          let math =
-            match (prevopt, nextopt) with
-            | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernfR))))
-            | (None   , Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernf0))))
-            | (Some(_), None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernf0, kernfR))))
-            | (Some(_), Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch))))
-          in
-              (* -- provides left/right kern only with the leftmost/rightmost character -- *)
-              (* needs reconsideration; maybe more natural if arbitrary number of code points can be handled as one glyph *)
-            math :: acc
-        ) [] |> List.rev
-      in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uchlst, kernfL, kernfR))))] in
         MathValue(mlst)
 
   | BackendMathText(astmathcls, astf) ->
@@ -1715,6 +1698,18 @@ and get_string (value : syntactic_value) : string =
     | StringEmpty       -> ""
     | StringConstant(s) -> s
     | _                 -> report_bug_evaluator_value "get_string" value
+
+
+and interpret_uchar_list (env : environment) (ast : abstract_tree) : Uchar.t list =
+  let value = interpret env ast in
+    get_uchar_list value
+
+
+and get_uchar_list (value : syntactic_value) : Uchar.t list =
+  match value with
+  | StringEmpty       -> []
+  | StringConstant(s) -> InternalText.to_uchar_list (InternalText.of_utf8 s)
+  | _                 -> report_bug_evaluator_value "get_uchar_list" value
 
 
 and interpret_path_value env ast : GraphicData.path list =

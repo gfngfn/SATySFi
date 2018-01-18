@@ -70,31 +70,40 @@ end = struct
     lst |> List.fold-left math-concat (math-char MathOrd ` `)
 
 
+  let single cp = string-unexplode [cp]
+
+
   let greek-lowercase cp cpb =
+    let s = single cp in
+    let sb = single cpb in
       math-variant-char MathOrd (|
-        italic        = cp;
-        bold-italic   = cpb;
-        roman         = cp;
-        bold-roman    = cpb;
-        script        = cp;
-        bold-script   = cpb;
-        fraktur       = cp;
-        bold-fraktur  = cpb;
-        double-struck = cp;
+        italic        = s;
+        bold-italic   = sb;
+        roman         = s;
+        bold-roman    = sb;
+        script        = s;
+        bold-script   = sb;
+        fraktur       = s;
+        bold-fraktur  = sb;
+        double-struck = s;
       |)
 
 
   let greek-uppercase cp cpb cpr cprb =
+    let s = single cp in
+    let sb = single cpb in
+    let sr = single cpr in
+    let srb = single cprb in
       math-variant-char MathOrd (|
-        italic        = cp;
-        bold-italic   = cpb;
-        roman         = cpr;
-        bold-roman    = cprb;
-        script        = cp;
-        bold-script   = cpb;
-        fraktur       = cp;
-        bold-fraktur  = cpb;
-        double-struck = cp;
+        italic        = s;
+        bold-italic   = sb;
+        roman         = sr;
+        bold-roman    = srb;
+        script        = s;
+        bold-script   = sb;
+        fraktur       = s;
+        bold-fraktur  = sb;
+        double-struck = s;
       |)
 
 

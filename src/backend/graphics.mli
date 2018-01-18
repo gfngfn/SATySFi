@@ -46,7 +46,7 @@ val make_dashed_stroke : length -> dash -> color -> path list -> 'a element
 
 val make_text : point -> 'a -> 'a element
 
-val pdfops_of_text : point -> length -> string -> length -> color -> OutputText.style * OutputText.element list -> Pdfops.t list
+val pdfops_of_text : point -> length -> string -> length -> color -> OutputText.t -> Pdfops.t list
 
 val pdfops_of_image : point -> float -> float -> string -> Pdfops.t list
 

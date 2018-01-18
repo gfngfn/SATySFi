@@ -173,15 +173,15 @@ type math_char_class =
 
 type math_variant_style =
   {
-    math_italic        : Uchar.t;
-    math_bold_italic   : Uchar.t;
-    math_roman         : Uchar.t;
-    math_bold_roman    : Uchar.t;
-    math_script        : Uchar.t;
-    math_bold_script   : Uchar.t;
-    math_fraktur       : Uchar.t;
-    math_bold_fraktur  : Uchar.t;
-    math_double_struck : Uchar.t;
+    math_italic        : Uchar.t list;
+    math_bold_italic   : Uchar.t list;
+    math_roman         : Uchar.t list;
+    math_bold_roman    : Uchar.t list;
+    math_script        : Uchar.t list;
+    math_bold_script   : Uchar.t list;
+    math_fraktur       : Uchar.t list;
+    math_bold_fraktur  : Uchar.t list;
+    math_double_struck : Uchar.t list;
   }
 
 let pp_math_variant_style =
@@ -234,7 +234,7 @@ and pure_horz_box =
 (* -- texts -- *)
   | PHCInnerString    of input_context * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHCInnerMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
+  | PHCInnerMathGlyph of math_string_info * length * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
 (* -- groups -- *)
   | PHGRising         of length * horz_box list
@@ -280,7 +280,7 @@ and evaled_horz_box_main =
          (4) content string
          -- *)
 
-  | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
+  | EvHorzMathGlyph      of math_string_info * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
@@ -348,13 +348,13 @@ and math_char_kern_func = length -> length -> length
      -- *)
 
 and math_element_main =
-  | MathChar         of bool * Uchar.t
+  | MathChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
       (* --
          (1) whether it is a big operator
          (2) Unicode code point (currently singular)
          -- *)
-  | MathCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
+  | MathCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
       (* --
          (1) whether it is a big operator
@@ -385,9 +385,9 @@ and math_kern_func = length -> length
 and math_variant_value = math_kind * math_variant_value_main
 
 and math_variant_value_main =
-  | MathVariantToChar         of bool * Uchar.t
+  | MathVariantToChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
-  | MathVariantToCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
+  | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
 and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
@@ -512,11 +512,8 @@ module MathContext
 (*
             Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
 *)
-            begin
-              match InternalText.to_uchar_list (InternalText.of_utf8 s) with
-              | []       -> (MathOrdinary, MathVariantToChar(false, Uchar.of_int 0))  (* needs reconsideration *)
-              | uch :: _ -> (MathOrdinary, MathVariantToChar(false, uch))
-            end
+            let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+              (MathOrdinary, MathVariantToChar(false, uchlst))
 
     let context_for_text mctx =
       mctx.context_for_text

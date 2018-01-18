@@ -141,39 +141,43 @@ let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
     (* temporary; should use UnitsPerEm? *)
 
 
+let ( @>> ) = OutputText.append_glyph_id
+let ( @*> ) = OutputText.append_kern
+
+
+let convert_gid_list (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * int * int * int =
+  let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
+
+  let (_, otxt, rawwid, rawhgt, rawdpt) =
+    gidligedlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->
+      let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
+      let (tjsaccnew, waccnew) =
+        match gidprevopt with
+        | None          -> (otxtacc @>> gid, wacc + w)
+        | Some(gidprev) ->
+            match FontFormat.find_kerning dcdr gidprev gid with
+            | None        -> (otxtacc @>> gid, wacc + w)
+            | Some(wkern) ->
+                PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
+                ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
+                (* -- kerning value is negative if two characters are supposed to be closer -- *)
+      in
+        (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
+    ) (None, OutputText.empty_hex_style, 0, 0, 0)
+  in
+    (gidligedlst, otxt, rawwid, rawhgt, rawdpt)
+
+
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
   let font_abbrev = hsinfo.font_abbrev in
   let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
     match FontAbbrevHashTable.find_opt font_abbrev with
     | None               -> raise (InvalidFontAbbrev(font_abbrev))
     | Some((_, _, dcdr)) ->
-          let init =
-            OutputText.empty_hex_style
-          in
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
-          let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
-
-          let (_, otxt, rawwid, rawhgt, rawdpt) =
-            gidligedlst @|> (None, init, 0, 0, 0) @|> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->
-              let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
-              let ( @>> ) = OutputText.append_glyph_id in
-              let ( @*> ) = OutputText.append_kern in
-              let (tjsaccnew, waccnew) =
-                match gidprevopt with
-                | None          -> (otxtacc @>> gid, wacc + w)
-                | Some(gidprev) ->
-                    match FontFormat.find_kerning dcdr gidprev gid with
-                    | None        -> (otxtacc @>> gid, wacc + w)
-                    | Some(wkern) ->
-                        PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
-                        ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
-                        (* -- kerning value is negative if two characters are supposed to be closer -- *)
-              in
-                (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
-            )
-        in
+          let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list dcdr gidlst in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
           let dptsub = f_skip rawdpt in
@@ -315,44 +319,49 @@ let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt :
   | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
 
 
-let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uch : Uchar.t) : FontFormat.glyph_id * length * length * length * length * FontFormat.math_kern_info option =
-  let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
+let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =
   let mfabbrev = MathContext.math_font_abbrev mathctx in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
-    | None             -> raise (InvalidFontAbbrev(mfabbrev))
-    | Some((_, _, md)) ->
-        let gidraw = FontFormat.get_math_glyph_id md uch in
-        let gidsub =
-          if MathContext.is_in_base_level mathctx then
-            gidraw
-          else
-            FontFormat.get_math_script_variant md gidraw
-        in
-        let gid =
-          if is_in_display && is_big then
-            match FontFormat.get_math_vertical_variants md gidsub with
-            | [] -> gidsub
+    | None ->
+        raise (InvalidFontAbbrev(mfabbrev))
 
-            | (gidvar, _) :: []
-            | _ :: (gidvar, _) :: _
-              ->
-                Format.printf "FontInfo> variant exists: %d ---> %d\n" (FontFormat.gid gidsub) (FontFormat.gid gidvar);  (* for debug *)
-                gidvar  (* -- somewhat ad-hoc; uses the sole variant as the glyph for display style -- *)
-(*
-            | _ ->
-                Format.printf "FontInfo> more than one variants\n";  (* for debug *)
+    | Some((_, _, md)) ->
+        let gidlst =
+          uchlst |> List.map (fun uch ->
+            let gidraw = FontFormat.get_math_glyph_id md uch in
+            let gidsub =
+              if MathContext.is_in_base_level mathctx then
+                gidraw
+              else
+                FontFormat.get_math_script_variant md gidraw
+            in
+              if is_in_display && is_big then
+                match FontFormat.get_math_vertical_variants md gidsub with
+                | [] -> gidsub
+
+                | (gidvar, _) :: []
+                | _ :: (gidvar, _) :: _
+                    ->
+                    Format.printf "FontInfo> variant exists: %d ---> %d\n" (FontFormat.gid gidsub) (FontFormat.gid gidvar);  (* for debug *)
+                    gidvar
+                      (* -- somewhat ad-hoc; uses the second smallest as the glyph for display style -- *)
+              else
                 gidsub
-*)
-          else
-            gidsub
+          )
         in
-        let (rawwid, rawhgt, rawdpt, rawmicopt, rawmkiopt) = FontFormat.get_math_glyph_metrics md gid in
+        let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list (FontFormat.math_base_font md) gidlst in
+        let (rawmicopt, rawmkiopt) =
+          match List.rev gidligedlst with
+          | gidlast :: _ -> FontFormat.get_math_glyph_metrics md gidlast
+          | []           -> (None, None)
+        in
+        let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in
         let mic =
           match rawmicopt with
           | None         -> Length.zero
           | Some(rawmic) -> f_skip rawmic
         in
-          (gid, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
+          (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
 
 
 let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =

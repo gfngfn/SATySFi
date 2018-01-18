@@ -80,7 +80,7 @@ let tCMD = (~! "cmd", HorzCommandType([tMATH]))
 
 let tMCSTY =
   let asc =
-    Assoc.of_list (List.map (fun k -> (k, tI)) [
+    Assoc.of_list (List.map (fun k -> (k, tS)) [
       "italic";
       "bold-italic";
       "roman";
@@ -351,7 +351,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
   let open HorzBox in
-  let code_point cp = MathVariantToChar(false, Uchar.of_int cp) in
+  let code_point cp = MathVariantToChar(false, [Uchar.of_int cp]) in
 
   List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
     (List.concat [

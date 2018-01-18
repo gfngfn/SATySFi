@@ -191,8 +191,8 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHCInnerString(ctx, uchlst) ->
       chunkf (ConvertText.to_chunks ctx uchlst)
 
-  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, gid) ->
-      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, gid)))
+  | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, otxt) ->
+      puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
 
   | PHGRising(lenrising, hblst) ->
       let lphblst = listf hblst in
