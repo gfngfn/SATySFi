@@ -28,7 +28,7 @@ document (|
 
     sub-superscript: ${a_{n - 1}^{2} b},
 
-    sub-superscript correction: ${a_1^{\frac{n}{2}}},
+    sub-superscript correction: ${a_1^{\frac{n}{2}}}, ${\bm{f_1}^2},
 
     big operator: ${\upper{\lower{\sum}{n = 1}}{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}},
 

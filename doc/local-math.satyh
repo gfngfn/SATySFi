@@ -20,5 +20,5 @@ let-math \tuple mlst =
     math-color synt-color ${\paren{\math-skip!(2pt)#inner\math-skip!(1pt)}}
 
 let-math \BNF nontm mlst =
-  let defs = Math.concat ${\mathrel{\|}} mlst in
+  let defs = Math.concat ${\|} mlst in
     ${#nontm \mathrel{: : =} #defs}
