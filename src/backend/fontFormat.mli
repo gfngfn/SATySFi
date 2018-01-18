@@ -114,7 +114,9 @@ val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 
-val get_math_glyph_metrics : math_decoder -> glyph_id -> int option * math_kern_info option
+val get_math_glyph_metrics : math_decoder -> glyph_id -> int * int * int
+
+val get_math_correction_metrics : math_decoder -> glyph_id -> int option * math_kern_info option
 
 val get_math_vertical_variants : math_decoder -> glyph_id -> (glyph_id * float) list
 

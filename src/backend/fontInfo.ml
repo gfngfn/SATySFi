@@ -145,12 +145,12 @@ let ( @>> ) = OutputText.append_glyph_id
 let ( @*> ) = OutputText.append_kern
 
 
-let convert_gid_list (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * int * int * int =
+let convert_gid_list (metricsf : FontFormat.glyph_id -> int * int * int) (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * int * int * int =
   let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 
   let (_, otxt, rawwid, rawhgt, rawdpt) =
     gidligedlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->
-      let (w, h, d) = FontFormat.get_glyph_metrics dcdr gid in
+      let (w, h, d) = metricsf gid in
       let (tjsaccnew, waccnew) =
         match gidprevopt with
         | None          -> (otxtacc @>> gid, wacc + w)
@@ -177,7 +177,7 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
-          let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list dcdr gidlst in
+          let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
           let dptsub = f_skip rawdpt in
@@ -358,10 +358,12 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
                 gidsub
           )
         in
-        let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list (FontFormat.math_base_font md) gidlst in
+        let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) =
+          convert_gid_list (FontFormat.get_math_glyph_metrics md) (FontFormat.math_base_font md) gidlst
+        in
         let (rawmicopt, rawmkiopt) =
           match List.rev gidligedlst with
-          | gidlast :: _ -> FontFormat.get_math_glyph_metrics md gidlast
+          | gidlast :: _ -> FontFormat.get_math_correction_metrics md gidlast
           | []           -> (None, None)
         in
         let f_skip = raw_length_to_skip_length (actual_math_font_size mathctx) in

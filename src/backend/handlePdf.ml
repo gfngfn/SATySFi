@@ -53,9 +53,9 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     | EvHorzMathGlyph(msinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let ops =
-(*
+
           List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
-*)
+
           (Graphics.pdfops_of_text (xpos, yposbaseline) Length.zero tag msinfo.math_font_size msinfo.math_color otxt)
         in
         let opaccnew = Alist.append opacc ops in
