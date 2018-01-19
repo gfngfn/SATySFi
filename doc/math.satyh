@@ -14,6 +14,7 @@ module Math : sig
   direct \mathrel : [math] math-cmd
   direct \mathrm : [math] math-cmd
   direct \paren : [math] math-cmd
+  direct \angle : [math] math-cmd
   direct \to : [] math-cmd
   direct \ldots : [] math-cmd
   direct \lambda : [] math-cmd

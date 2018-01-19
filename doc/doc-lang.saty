@@ -7,6 +7,9 @@ StdJa.document (|
 |) '<
   +section {構文} <
     +p {
+      \SATySFi;の構文は以下のように定義されている：
+    }
+    +p {
       ${
         \BNF{\patp}![
           ${\varx};
@@ -24,6 +27,8 @@ StdJa.document (|
           ${\cstc};
           ${\exprfunc{\patsP}};
           ${\exprabsI{\varx}{\expre}};
+          ${\exprabsB{\varx}{\expre}};
+          ${\valB{\bt}};
         ]
       }
     }

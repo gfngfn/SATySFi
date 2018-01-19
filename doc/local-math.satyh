@@ -9,10 +9,13 @@ let-math \constrC = math-color meta-color ${C}
 let-math \patsP = math-color meta-color ${P}
 let-math \valv = math-color meta-color ${v}
 let-math \expre = math-color meta-color ${e}
+let-math \bt = math-color meta-color ${bt}
 
-let-math \token s = ${\math-color!(synt-color){\text!{#s;}}}
+let-math \synt-color m = ${\math-color!(synt-color){#m}}
 
-let-math \wildcard = ${\math-color!(synt-color){\_}}
+let-math \token s = ${\synt-color{\text!{#s;}}}
+
+let-math \wildcard = ${\synt-color{\_}}
 
 let-math \patas p x =
   ${#p \token!{\ as\ } #x}
@@ -26,11 +29,17 @@ let-math \tuple mlst =
 let-math \exprfunc p =
   ${\token!{function\ } #p}
 
-%let-math \exprabsI x e =
-%  ${\token!{${\lambda^{\token!{I}}}}#x.\token!{\ }#e}
-
 let-math \exprabsI x e =
-  ${\math-color!(synt-color){\lambda^{\mathrm{I}}}#x\token!{.\ }#e}
+  ${\token!{${\lambda^{\token!{I}}}}#x.\token!{\ }#e}
+
+%let-math \exprabsI x e =
+%  ${\synt-color{\lambda^{\mathrm{I}}}#x\token!{.\ }#e}
+
+let-math \exprabsB x e =
+  ${\synt-color{\lambda^{\mathrm{B}}}#x\token!{.\ }#e}
+
+let-math \valB m =
+  ${\synt-color{\angle{#m}}}
 
 let-math \BNF nontm mlst =
   let defs = Math.concat ${\|} mlst in
