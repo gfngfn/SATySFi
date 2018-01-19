@@ -28,12 +28,6 @@ let report_bug_evaluator_value msg value =
   failwith ("bug: " ^ msg)
 
 
-let rec make_argument_cons lst =
-  match lst with
-  | []           -> EndOfArgumentVariable
-  | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
-
-
 let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
@@ -1634,7 +1628,6 @@ and interpret_context (env : environment) (ast : abstract_tree) : HorzBox.input_
 and get_context (value : syntactic_value) : HorzBox.input_context =
     match value with
     | Context(ctx)         -> ctx
-    | UninitializedContext -> raise (EvalError("uninitialized context"))
     | _                    -> report_bug_evaluator_value "get_context" value
 
 

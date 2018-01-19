@@ -243,8 +243,8 @@ module DependencyGraph = DirectedGraph.Make
 
 
 type vertex_label =
-  | VariantVertex of Range.t * TypeID.t * untyped_type_argument_cons * untyped_variant_cons
-  | SynonymVertex of Range.t * TypeID.t * untyped_type_argument_cons * manual_type * (type_scheme option) ref
+  | VariantVertex of Range.t * TypeID.t * untyped_type_argument list * untyped_constructor_dec list
+  | SynonymVertex of Range.t * TypeID.t * untyped_type_argument list * manual_type * (type_scheme option) ref
 
 
 let extract_range_in_vertex_label vtxlabel =
@@ -505,7 +505,7 @@ and fix_manual_kind_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID
          RecordKind(Assoc.map_value aux mntyasc)
 
 
-let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargcons : untyped_type_argument_cons) (mnty : manual_type) =
+let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargcons : untyped_type_argument list) (mnty : manual_type) =
   let tyargmaplist = MapList.create () in
   let rec aux cons =
     match cons with
@@ -526,12 +526,12 @@ let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) 
 
 
 (* PUBLIC *)
-let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (mnty : manual_type) (constrntcons : constraint_cons) =
+let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (mnty : manual_type) (constrnts : constraints) =
 
   let tyargmaplist = MapList.create () in
 
   let () =
-    constrntcons |> List.iter (fun (tyargnm, mkd) ->
+    constrnts |> List.iter (fun (tyargnm, mkd) ->
       let kd = fix_manual_kind_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mkd in
       let tvid = FreeID.fresh (normalize_kind kd) qtfbl lev () in
       let tvref = ref (Free(tvid)) in

@@ -183,9 +183,6 @@ type base_type =
   | TextColType
   | BoxRowType
   | BoxColType
-(*
-  | FontType
-*)
   | ContextType
   | PrePathType
   | PathType
@@ -210,9 +207,6 @@ let base_type_hash_table =
       ("block-text"  , TextColType );
       ("inline-boxes", BoxRowType  );
       ("block-boxes" , BoxColType  );
-(*
-      ("font"        , FontType    );
-*)
       ("context"     , ContextType );
       ("pre-path"    , PrePathType );
       ("path"        , PathType    );
@@ -239,9 +233,6 @@ and mono_type_main =
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of mono_type list
   | VertCommandType of mono_type list
-(*
-  | VertDetailedCommandType of mono_type list  (* will be deprecated *)
-*)
   | MathCommandType of mono_type list
 
 and poly_type =
@@ -273,9 +264,8 @@ module BoundID =
   end
 
 (* ---- untyped ---- *)
-type untyped_argument_cons = untyped_abstract_tree list
 
-and untyped_letrec_binding =
+type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * var_name * untyped_abstract_tree
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
@@ -317,9 +307,6 @@ and untyped_abstract_tree_main =
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
-(*
-  | UTLambdaVertDetailed   of Range.t * var_name * untyped_abstract_tree  (* will be deprecated *)
-*)
 (* -- graphics -- *)
   | UTPath                 of untyped_abstract_tree * (untyped_abstract_tree untyped_path_component) list * (unit untyped_path_component) option
 (* -- horizontal box list -- *)
@@ -360,11 +347,6 @@ and untyped_abstract_tree_main =
   | UTLetMutableIn         of Range.t * var_name * untyped_abstract_tree * untyped_abstract_tree
   | UTSequential           of untyped_abstract_tree * untyped_abstract_tree
   | UTWhileDo              of untyped_abstract_tree * untyped_abstract_tree
-(*
-  | UTDeclareGlobalHash    of untyped_abstract_tree * untyped_abstract_tree
-  | UTOverwriteGlobalHash  of untyped_abstract_tree * untyped_abstract_tree
-  | UTReferenceFinal       of untyped_abstract_tree
-*)
   | UTOverwrite            of Range.t * var_name * untyped_abstract_tree
 (* -- lightweight itemize -- *)
   | UTItemize              of untyped_itemize
@@ -374,12 +356,12 @@ and untyped_abstract_tree_main =
   | UTLexHorz              of untyped_abstract_tree * untyped_abstract_tree
   | UTLexVert              of untyped_abstract_tree * untyped_abstract_tree
 
-and constraint_cons = (var_name * manual_kind) list
+and constraints = (var_name * manual_kind) list
 
 and manual_signature_content =
-  | SigType   of untyped_type_argument_cons * type_name
-  | SigValue  of var_name * manual_type * constraint_cons
-  | SigDirect of var_name * manual_type * constraint_cons
+  | SigType   of untyped_type_argument list * type_name
+  | SigValue  of var_name * manual_type * constraints
+  | SigDirect of var_name * manual_type * constraints
 (*
   | SigModule of module_name * manual_signature
 *)
@@ -387,13 +369,13 @@ and manual_signature_content =
 and manual_signature = manual_signature_content list
 
 and untyped_itemize =
-  | UTItem                 of untyped_abstract_tree * (untyped_itemize list)
+  | UTItem of untyped_abstract_tree * (untyped_itemize list)
 
-and untyped_variant_cons = (Range.t * constructor_name * manual_type) list
+and untyped_constructor_dec = Range.t * constructor_name * manual_type
 
 and untyped_mutual_variant_cons =
-  | UTMutualVariantCons    of untyped_type_argument_cons * Range.t * type_name * untyped_variant_cons * untyped_mutual_variant_cons
-  | UTMutualSynonymCons    of untyped_type_argument_cons * Range.t * type_name * manual_type * untyped_mutual_variant_cons
+  | UTMutualVariantCons    of untyped_type_argument list * Range.t * type_name * untyped_constructor_dec list * untyped_mutual_variant_cons
+  | UTMutualSynonymCons    of untyped_type_argument list * Range.t * type_name * manual_type * untyped_mutual_variant_cons
   | UTEndOfMutualVariant
 
 and untyped_pattern_tree = Range.t * untyped_pattern_tree_main
@@ -415,9 +397,9 @@ and untyped_pattern_branch =
   | UTPatternBranch     of untyped_pattern_tree * untyped_abstract_tree
   | UTPatternBranchWhen of untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
 
-and untyped_unkinded_type_argument_cons = (Range.t * var_name) list
+and untyped_unkinded_type_argument = Range.t * var_name
 
-and untyped_type_argument_cons = (Range.t * var_name * manual_kind) list
+and untyped_type_argument = Range.t * var_name * manual_kind
 
 and untyped_math = Range.t * untyped_math_main
 
@@ -437,20 +419,10 @@ type untyped_letrec_pattern_branch =
 type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_pattern_tree list * untyped_abstract_tree
 
 (* ---- typed ---- *)
-type argument_variable_cons =
-  | ArgumentVariableCons  of var_name * argument_variable_cons
-  | EndOfArgumentVariable
 
-type argument_cons =
-  | ArgumentCons          of abstract_tree * argument_cons
-  | EndOfArgument
-
-and letrec_binding =
+type letrec_binding =
   | LetRecBinding of EvalVarID.t * pattern_branch list
-(*
-  | MutualLetCons         of EvalVarID.t * abstract_tree * mutual_let_cons
-  | EndOfMutualLet
-*)
+
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
 
@@ -514,12 +486,8 @@ and syntactic_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
-(*
-  | FontDesignation             of HorzBox.font_with_ratio
-*)
   | Context                     of HorzBox.input_context
   | FrozenCommand               of EvalVarID.t
-  | UninitializedContext
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
 and abstract_tree =

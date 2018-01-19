@@ -47,32 +47,6 @@
   let end_struct (rng : Range.t) : untyped_abstract_tree = (rng, UTFinishStruct)
 
 
-  let rec append_argument_list (arglsta : untyped_argument_cons) (arglstb : untyped_argument_cons) =
-    List.append arglsta arglstb
-
-(*
-  let class_and_id_region (utast : untyped_abstract_tree) =
-    (Range.dummy "class_and_id_region", UTClassAndIDRegion(utast))
-
-  let convert_into_apply (csutast : untyped_abstract_tree) (clsnmutast : untyped_abstract_tree)
-                               (idnmutast : untyped_abstract_tree) (argcons : untyped_argument_cons) =
-    let (csrng, _) = csutast in
-    let rec iter argcons utastconstr =
-      match argcons with
-      | []                          -> utastconstr
-      | (argrng, argmain) :: actail -> iter actail (Range.unite csrng argrng, UTApply(utastconstr, (argrng, argmain)))
-    in
-      iter argcons (Range.dummy "convert_into_apply", UTApplyClassAndID(clsnmutast, idnmutast, csutast))
-
-
-  let class_name_to_abstract_tree (clsnm : class_name) =
-    UTConstructor("Just", (Range.dummy "class_name_to", UTStringConstant((String.sub clsnm 1 ((String.length clsnm) - 1)))))
-
-
-  let id_name_to_abstract_tree (idnm : id_name) =
-    UTConstructor("Just", (Range.dummy "id_name_to", UTStringConstant((String.sub idnm 1 ((String.length idnm) - 1)))))
-*)
-
   let rec curry_lambda_abstract (rng : Range.t) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree) =
     match argpatlst with
     | [] ->
@@ -80,19 +54,7 @@
 
     | argpat :: argpattail ->
         (rng, UTFunction([UTPatternBranch(argpat, curry_lambda_abstract rng argpattail utastdef)]))
-(*
-    match argvarcons with
-    | []                                     -> utastdef
-    | (varrng, UTPVariable(varnm)) :: avtail ->
-        (rng, UTLambdaAbstract(varrng, varnm, curry_lambda_abstract rng avtail utastdef))
-    | (varrng, UTPWildCard) :: avtail        ->
-        (rng, UTLambdaAbstract(varrng, "%wild", curry_lambda_abstract rng avtail utastdef))
-    | (varrng, argpatas) :: avtail           ->
-        let afterabs     = curry_lambda_abstract rng avtail utastdef in
-        let dummyutast   = (varrng, UTContentOf([], "%patarg")) in
-        let dummypatcons = UTPatternMatchCons((varrng, argpatas), afterabs, UTEndOfPatternMatch) in
-          (rng, UTLambdaAbstract(varrng, "%patarg", (varrng, UTPatternMatch(dummyutast, dummypatcons))))
-*)
+
 
   let rec stringify_literal ltrl =
     let (_, ltrlmain) = ltrl in
@@ -148,12 +110,14 @@
           ( match str_ltrl.[index] with
             | ' '  -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace (spnum + 1) minspnum
             | '\n' -> min_indent_space_sub str_ltrl (index + 1) ReadingSpace 0 minspnum
-                (* does not take space-only line into account *)
+                (* -- does not take space-only line into account -- *)
             | _    -> min_indent_space_sub str_ltrl (index + 1) Normal 0 (if spnum < minspnum then spnum else minspnum)
           )
 
+
   and shave_indent str_ltrl minspnum =
     shave_indent_sub str_ltrl minspnum 0 "" Normal 0
+
 
   and shave_indent_sub str_ltrl minspnum index str_constr lrstate spnum =
     if index >= (String.length str_ltrl) then
@@ -178,6 +142,7 @@
             | '\n' -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ "\n") ReadingSpace 0
             | ch   -> shave_indent_sub str_ltrl minspnum (index + 1) (str_constr ^ (String.make 1 ch)) Normal 0
           end
+
 
   let extract_main (_, utastmain) = utastmain
 
@@ -359,25 +324,25 @@
       (UTLetRecBinding(mntyopt, varnm, abs)) :: tailcons
 
 
-  let kind_type_argument_cons (uktyargcons : untyped_unkinded_type_argument_cons) (constrntcons : constraint_cons) : untyped_type_argument_cons =
-    uktyargcons |> List.map (fun (rng, tyvarnm) ->
-      try
-        let mkd = List.assoc tyvarnm constrntcons in (rng, tyvarnm, mkd)
-      with
-      | Not_found -> (rng, tyvarnm, MUniversalKind)
+  let kind_type_arguments (uktyargs : untyped_unkinded_type_argument list) (constrntcons : constraints) : untyped_type_argument list =
+    uktyargs |> List.map (fun (rng, tyvarnm) ->
+      match List.assoc_opt tyvarnm constrntcons with
+      | Some(mkd) -> (rng, tyvarnm, mkd)
+      | None      -> (rng, tyvarnm, MUniversalKind)
     )
 
 
-  let make_mutual_variant_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (constrdecs : untyped_variant_cons) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
+  let make_mutual_variant_cons (uktyargs : untyped_unkinded_type_argument list) (tynmtk : Range.t * type_name) (constrdecs : untyped_constructor_dec list) (constrnts : constraints) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
-    let tyargcons = kind_type_argument_cons uktyargcons constrntcons in
+    let tyargcons = kind_type_arguments uktyargs constrnts in
       UTMutualVariantCons(tyargcons, tynmrng, tynm, constrdecs, tailcons)
 
-  let make_mutual_synonym_cons (uktyargcons : untyped_unkinded_type_argument_cons) (tynmtk : Range.t * type_name) (mnty : manual_type) (constrntcons : constraint_cons) (tailcons : untyped_mutual_variant_cons) =
+
+  let make_mutual_synonym_cons (uktyargs : untyped_unkinded_type_argument list) (tynmtk : Range.t * type_name) (mnty : manual_type) (constrnts : constraints) (tailcons : untyped_mutual_variant_cons) =
     let tynm = extract_name tynmtk in
     let tynmrng = get_range tynmtk in
-    let tyargcons = kind_type_argument_cons uktyargcons constrntcons in
+    let tyargcons = kind_type_arguments uktyargs constrnts in
       UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons)
 
   let make_module
@@ -553,7 +518,7 @@
 %type <Types.untyped_abstract_tree> vxblock
 %type <Types.untyped_input_vert_element> vxbot
 %type <Types.var_name * Types.manual_kind> constrnt
-%type <Types.constraint_cons> constrnts
+%type <Types.constraints> constrnts
 (*
 %type <Types.untyped_abstract_tree> sxclsnm
 %type <Types.untyped_abstract_tree> sxidnm
@@ -562,7 +527,7 @@
 %type <Types.untyped_abstract_tree> sarg
 %type <Types.untyped_pattern_tree list> argpats
 %type <Range.t * Types.var_name> binop
-%type <Types.untyped_unkinded_type_argument_cons> xpltyvars
+%type <Types.untyped_unkinded_type_argument list> xpltyvars
 
 %%
 
@@ -596,7 +561,7 @@ nxsigopt:
   | COLON; SIG; sg=list(nxsigelem); END { Some(sg) }
 ;
 nxsigelem:
-  | TYPE; tyvarlst=xpltyvars; tytok=VAR; clst=constrnts         { let (_, tynm) = tytok in (SigType(kind_type_argument_cons tyvarlst clst, tynm)) }
+  | TYPE; tyvarlst=xpltyvars; tytok=VAR; clst=constrnts         { let (_, tynm) = tytok in (SigType(kind_type_arguments tyvarlst clst, tynm)) }
   | VAL; vartok=VAR; COLON; mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
   | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = hcmdtok in (SigValue(csnm, mnty, clst)) }
   | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = vcmdtok in (SigValue(csnm, mnty, clst)) }
