@@ -283,32 +283,6 @@
           (Range.dummy "make_function_for_parallel:4", UTFunction([UTPatternBranch(patvar, aux accnew (i + 1))]))
     in
       aux Alist.empty 0
-(*
-    match recpatbrs with
-    | [] ->
-        assert false
-
-    | UTLetRecPatternBranch(argpatlst, _) :: _ ->
-        make_lambda_abstract_for_parallel_sub fullrng (fun u -> u) 0 argpatlst patbrs
-
-
-  and make_lambda_abstract_for_parallel_sub
-      (fullrng : Range.t) (k : untyped_abstract_tree -> untyped_abstract_tree)
-      (i : int) (argpatlst : untyped_pattern_tree list)
-      (patbrs : untyped_pattern_branch list)
-  : untyped_abstract_tree =
-
-    let numbered_var_name i = "%pattup" ^ (string_of_int i) in
-
-    match argpatlst with
-    | []                   -> (fullrng, UTPatternMatch(k (Range.dummy "endoftuple", UTEndOfTuple), pmcons))
-    | (rng, _) :: argpattail ->
-(*        let knew = (fun u -> k (dummy_range, UTTupleCons((rng, UTContentOf(numbered_var_name i)), u))) in *)
-(*        let knew = (fun u -> k (dummy_range, UTTupleCons(((3000, 0, 0, 0), UTContentOf(numbered_var_name i)), u))) in (* for test *) *)
-        let knew = (fun u -> k (Range.dummy "knew1", UTTupleCons((Range.dummy "knew2", UTContentOf([], numbered_var_name i)), u))) in (* for test *)
-        let after = make_lambda_abstract_for_parallel_sub fullrng knew (i + 1) tailcons pmcons in
-          (Range.dummy "pattup1", UTLambdaAbstract(Range.dummy "pattup2", numbered_var_name i, after))
-*)
 
 
   let rec make_letrec_binding_from_pattern
@@ -383,7 +357,7 @@
     | UTItem(uta, hditmz :: tlitmzlst) ->
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
-  (* range_kind -> string -> 'a *)
+
   let report_error rngknd (tok : string) =
     match rngknd with
     | Tok(rng) ->
@@ -420,17 +394,13 @@
 %token <Range.t> SPACE BREAK
 %token <Range.t * string> MATHCHAR
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
-(*
-%token <Range.t * Types.id_name>      IDNAME
-%token <Range.t * Types.class_name>   CLASSNAME
-*)
 %token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LETREC LETNONREC DEFEQ LETAND IN
 %token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
-%token <Range.t> LETHORZ LETVERT LETMATH (* LETVERTDETAILED *)
-%token <Range.t> REFNOW (* REFFINAL *)
+%token <Range.t> LETHORZ LETVERT LETMATH
+%token <Range.t> DEREF
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
@@ -544,9 +514,6 @@ nxtoplevel:
   | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
   | top=LETMATH; dec=nxmathdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
-(*
-  | top=LETVERTDETAILED; dec=nxvertdetaileddec; subseq=nxtopsubseq           { make_let_expression top dec subseq }
-*)
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
@@ -632,17 +599,6 @@ nxmathdec:
         (None, mcmdtok, (rng, UTLambdaMath(curried)))
       }
 ;
-(*
-nxvertdetaileddec:
-  | ctxvartok=VAR; vcmdtok=VERTCMD; argvarlst=argvar; DEFEQ; utast=nxlet {
-      let (rngcs, csnm) = vcmdtok in
-      let (rngctxvar, ctxvarnm) = ctxvartok in
-      let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argvarlst utast in
-        (None, csnm, (rng, UTLambdaVertDetailed(rngctxvar, ctxvarnm, curried))) :: []
-      }
-;
-*)
 nxdecargpart:
   | COLON; mty=txfunc                                       { (Some(mty), []) }
   | COLON; mty=txfunc; BAR; argpatlst=nonempty_list(patbot) { (Some(mty), argpatlst) }
@@ -703,11 +659,6 @@ nxletsub:
   | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet { make_let_mutable_expression tok var utast1 utast2 }
   | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet                          { make_let_expression tok dec utast }
   | utast=nxwhl { utast }
-(*
-  | tok=LET; pat=patbotwithoutvar; DEFEQ; utast1=nxlet; IN; utast2=nxlet {
-        make_standard (Tok tok) (Ranged utast2) (UTPatternMatch(utast1, UTPatternMatchCons(pat, utast2, UTEndOfPatternMatch)))
-      }
-*)
 ;
 nxwhl:
   | tok=WHILE utast1=nxlet; DO; utast2=nxwhl {
@@ -727,15 +678,11 @@ nxbfr:
 nxlambda:
   | VAR OVERWRITEEQ nxlor {
         let (varrng, varnm) = $1 in
-          make_standard (Ranged $1) (Ranged $3) (UTOverwrite(varrng, varnm, $3)) }
-(*
-  | NEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
-        make_standard (Tok $1) (Ranged $4) (UTDeclareGlobalHash($2, $4)) }
-  | RENEWGLOBALHASH nxlet OVERWRITEGLOBALHASH nxlor {
-        make_standard (Tok $1) (Ranged $4) (UTOverwriteGlobalHash($2, $4)) }
-*)
+          make_standard (Ranged $1) (Ranged $3) (UTOverwrite(varrng, varnm, $3))
+      }
   | LAMBDA argpats ARROW nxlor {
-        let rng = make_range (Tok $1) (Ranged $4) in curry_lambda_abstract rng $2 $4 }
+        let rng = make_range (Tok $1) (Ranged $4) in curry_lambda_abstract rng $2 $4
+      }
   | nxlor { $1 }
 ;
 argpats: /* -> argument_variable_cons */
@@ -803,15 +750,12 @@ nxun:
   | nxapp             { $1 }
 ;
 nxapp:
-  | nxapp nxbot    { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
+  | nxapp nxbot { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
   | nxapp CONSTRUCTOR {
       let (rng, constrnm) = $2 in
         make_standard (Ranged $1) (Ranged $2)
           (UTApply($1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))))) }
-  | REFNOW nxbot   { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
-(*
-  | REFFINAL nxbot { make_standard (Tok $1) (Ranged $2) (UTReferenceFinal($2)) }
-*)
+  | DEREF nxbot { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
         make_standard (Tok pre) (Tok rng) (UTFrozenCommand(mdlnmlst, csnm)) }
@@ -1007,20 +951,6 @@ patbot: /* -> Types.untyped_pattern_tree */
   | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
         let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
 ;
-(*
-patbotwithoutvar: /* -> Types.untyped_pattern_tree */
-  | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
-  | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
-  | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
-  | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
-  | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
-  | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
-  | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
-  | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
-        let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
-;
-*)
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
@@ -1129,11 +1059,7 @@ ihcmd:
           make_standard (Tok rngcs) (Tok rngargs) (UTInputHorzEmbedded(utastcmd, args))
       }
   | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
-(*
-        let utastcmd = (Range.dummy "inline-math", UTContentOf([], "\\math")) in
-            (* -- inline command '\\math' is inserted -- *)
-*)
-          make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
+        make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
       }
   | vartok=VARINHORZ; cls=ENDACTIVE {
         let (rng, mdlnmlst, varnm) = vartok in
@@ -1153,15 +1079,6 @@ ihchar:
   | SPACE { let rng = $1 in (rng, " ") }
   | BREAK { let rng = $1 in (rng, "\n") }
 ;
-(*
-sxclsnm:
-  | CLASSNAME { make_standard (Ranged $1) (Ranged $1) (class_name_to_abstract_tree (extract_name $1)) }
-  |           { (Range.dummy "no-class-name1", UTConstructor("Nothing", (Range.dummy "no-class-name2", UTUnitConstant))) }
-sxidnm:
-  | IDNAME    { make_standard (Ranged $1) (Ranged $1) (id_name_to_abstract_tree (extract_name $1)) }
-  |           { (Range.dummy "no-id-name1", UTConstructor("Nothing", (Range.dummy "no-id-name2", UTUnitConstant))) }
-;
-*)
 nargs:
   | nargs=list(narg) { nargs }
 ;

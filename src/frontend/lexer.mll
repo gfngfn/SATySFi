@@ -207,9 +207,6 @@ rule progexpr = parse
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
-(*
-  | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
-*)
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
   | "."   { DOT(get_pos lexbuf) }
@@ -231,10 +228,7 @@ rule progexpr = parse
   | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | "!" { REFNOW(get_pos lexbuf) }
-(*
-  | "!!"  { REFFINAL(get_pos lexbuf) }
-*)
+  | "!" { DEREF(get_pos lexbuf) }
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
   | ((constructor ".")+ identifier) {
@@ -264,10 +258,6 @@ rule progexpr = parse
           | "while"             -> WHILE(pos)
           | "do"                -> DO(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
-(*
-          | "new-global-hash"   -> NEWGLOBALHASH(pos)
-          | "renew-global-hash" -> RENEWGLOBALHASH(pos)
-*)
           | "match"             -> MATCH(pos)
           | "with"              -> WITH(pos)
           | "when"              -> WHEN(pos)
@@ -284,9 +274,6 @@ rule progexpr = parse
           | "let-inline"        -> LETHORZ(pos)
           | "let-block"         -> LETVERT(pos)
           | "let-math"          -> LETMATH(pos)
-(*
-          | "let-block-detailed" -> LETVERTDETAILED(pos)  (* wil be deprecated *)
-*)
           | "controls"          -> CONTROLS(pos)
           | "cycle"             -> CYCLE(pos)
           | "inline-cmd"        -> HORZCMDTYPE(pos)
@@ -454,16 +441,6 @@ and horzexpr = parse
           CHAR(get_pos lexbuf, tok)
         end
     }
-(*
-  | ("@" identifier) {
-        let tok = Lexing.lexeme lexbuf in
-        let vnm = String.sub tok 1 ((String.length tok) - 1) in
-          begin
-            next_state := ActiveState;
-            VARINSTR(get_pos lexbuf, vnm)
-          end
-    }
-*)
   | ((break | space)* ("`"+ as openqtstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       openqtdepth := String.length openqtstr;
@@ -573,10 +550,6 @@ and active = parse
     }
   | space { active lexbuf }
   | break { increment_line lexbuf; active lexbuf }
-(*
-  | ("#" identifier) { let tok = Lexing.lexeme lexbuf in IDNAME(get_pos lexbuf, tok) }
-  | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
-*)
   | "(" {
       push AtoPParen;
       next_state := ProgramState;
