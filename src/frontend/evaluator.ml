@@ -420,37 +420,6 @@ and interpret env ast =
 
   | Value(v) -> v
 
-(*
-  | StringEmpty                           -> ast
-  | IntegerConstant(_)                    -> ast
-  | FloatConstant(_)                      -> ast
-  | StringConstant(_)                     -> ast
-  | BooleanConstant(_)                    -> ast
-  | UnitConstant                          -> ast
-  | EvaluatedEnvironment(_)               -> ast
-  | FuncWithEnvironment(_, _, _)          -> ast
-  | InputHorzWithEnvironment(_, _)        -> ast
-  | InputVertWithEnvironment(_, _)        -> ast
-  | LengthConstant(_) -> ast
-  | MathValue(_) -> ast
-  | ImageKey(_) -> ast
-  | PathValue(_) -> ast
-  | PrePathValue(_) -> ast
-  | GraphicsValue(_) -> ast
-  | FontDesignation(_) -> ast
-  | Horz(_) -> ast
-  | Vert(_) -> ast
-  | Context(_) -> ast
-  | UninitializedContext -> ast
-  | LambdaVertWithEnvironment(_, _, _) -> ast
-  | LambdaHorzWithEnvironment(_, _, _) -> ast
-  | DocumentValue(_, _) -> ast
-  | FrozenCommand(_) -> ast
-  | EndOfList -> ast
-  | EndOfTuple -> ast
-  | Location(loc) -> Location(loc)
-*)
-
   | FinishHeaderFile -> EvaluatedEnvironment(env)
 
   | FinishStruct -> EvaluatedEnvironment(env)
@@ -822,7 +791,9 @@ and interpret env ast =
       let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let imvblst = PageBreak.solidify vblst in
       let (hgt, dpt) = adjust_to_first_line imvblst in
+(*
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
+*)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
@@ -835,7 +806,9 @@ and interpret env ast =
       let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let imvblst = PageBreak.solidify vblst in
       let (hgt, dpt) = adjust_to_last_line imvblst in
+(*
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
+*)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendLineStackTop(astlst) ->
@@ -982,26 +955,14 @@ and interpret env ast =
       let widshrink = interpret_length env astshrink in
       let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
-(*
-  | BackendFixedString(astctx, aststr) ->
-      let ctx = interpret_font env astctx in
-      let string_info =
-        {
-          HorzBox.font_abbrev = font_abbrev;
-          HorzBox.font_size   = size;
-          HorzBox.text_color  = HorzBox.DeviceGray(0.0);
-        }
-      in
-      let purestr = interpret_string env aststr in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(string_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
-*)
+
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env astbr in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
-          make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
+          make_frame_deco env valuedeco,
           hblst))])
 
   | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
@@ -1069,8 +1030,6 @@ and interpret env ast =
         print_endline str;
         UnitConstant
 
-(* ---- list value ---- *)
-
   | PrimitiveTupleCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
@@ -1081,18 +1040,19 @@ and interpret env ast =
       let valuetl = interpret env asttl in
         ListCons(valuehd, valuetl)
 
-(* ---- tuple value ---- *)
-
-
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid) ->
+(*
       let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
+*)
       begin
         match find_in_environment env evid with
         | Some(rfvalue) ->
           let value = !rfvalue in
+(*
           let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
+*)
             value
 
         | None ->
@@ -1111,7 +1071,9 @@ and interpret env ast =
       FuncWithEnvironment(patbrs, env)
 
   | Apply(ast1, ast2) ->
+(*
       let () = PrintForDebug.evalE ("Apply(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
+*)
       let value1 = interpret env ast1 in
       begin
         match value1 with
@@ -1145,24 +1107,6 @@ and interpret env ast =
         | _ -> report_bug_evaluator "AccessField: not a Record" ast1 value1
       end
 
-(* ---- class/id option ---- *)
-(*
-  | ApplyClassAndID(evidcls, evidid, clsnmast, idnmast, astf) ->
-      let () = PrintForDebug.evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
-      let valuef =  interpret env
-                      (LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
-                        LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astf))) in
-      begin
-        PrintForDebug.evaluator ("%2 " ^ (Display.string_of_ast valuef) ^ "\n") ;   (* for debug *)
-        match valuef with
-        | FuncWithEnvironment(varnm, astdef, envf) ->
-            FuncWithEnvironment(varnm,
-              LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
-                LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astdef)
-              ), envf)
-        | other ->  valuef
-      end
-*)
 (* ---- imperatives ---- *)
 
   | LetMutableIn(evid, astini, astaft) ->
@@ -1175,11 +1119,17 @@ and interpret env ast =
         interpret envnew astaft
 
   | Sequential(ast1, ast2) ->
+(*
       let () = PrintForDebug.evalE ("Sequential(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
+*)
       let value1 = interpret env ast1 in
+(*
       let () = PrintForDebug.evalE ("value1 = " ^ (show_syntactic_value value1)) in  (* for debug *)
+*)
       let value2 = interpret env ast2 in
+(*
       let () = PrintForDebug.evalE ("value2 = " ^ (show_syntactic_value value2)) in  (* for debug *)
+*)
         begin
           match value1 with
           | UnitConstant -> value2
@@ -1229,45 +1179,7 @@ and interpret env ast =
         | _ ->
             report_bug_evaluator "Dereference" astcont valuecont
       end
-(*
-(* ---- final reference ---- *)
 
-  | DeclareGlobalHash(astkey, astdflt) ->
-      begin
-        try
-          let str_key = Out.main (interpret env astkey) in
-          let valueini = interpret env astdflt in
-          let loc = ref valueini in
-            begin
-              Hashtbl.add global_hash_env str_key (ref (Location(loc))) ;
-              UnitConstant
-            end
-        with
-        | Out.IllegalOut(_) -> raise (EvalError("this cannot hapen:\n    illegal hash key for 'declare-global-hash'"))
-      end
-
-  | OverwriteGlobalHash(astkey, astnew) ->
-      begin
-        try
-          let str_key = Out.main (interpret env astkey) in
-            try
-              let rfvalue = Hashtbl.find global_hash_env str_key in
-                match !rfvalue with
-                | Location(loc) ->
-                    let valuenew = interpret env astnew in
-                      begin
-                        loc := valuenew ;
-                        UnitConstant
-                      end
-                | _             -> report_bug_evaluator "OverwriteGlobalHash: value is not a Location"
-            with
-            | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
-        with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for '<<-': " ^ s))
-      end
-
-  | ReferenceFinal(astkey) -> ReferenceFinal(interpret env astkey)
-*)
 (* ---- others ---- *)
 
   | PatternMatch(astobj, patbrs) ->
@@ -1315,27 +1227,15 @@ and interpret env ast =
       in
         StringConstant(s)
 
-(*
-  | PrimitiveInclude(astfile_name) ->
-      ( try
-          let str_file_name = Out.main env (interpret env astfile_name) in
-          let file = open_in str_file_name in
-          let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file) in
-            interpret env parsed
-        with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument of \\include: " ^ s))
-        | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
-      )
-*)
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env astnum in StringConstant(string_of_int num)
 
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
-  | PrimitiveDrawText(astpt, asttext) ->
+  | PrimitiveDrawText(astpt, asth) ->
       let pt = interpret_point env astpt in
-      let hblst = interpret_horz env asttext in
+      let hblst = interpret_horz env asth in
       let (imhblst, _, _) = LineBreak.natural hblst in
       let grelem = Graphics.make_text pt imhblst in
         GraphicsValue(grelem)
@@ -1959,78 +1859,3 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
   (* end: for debug *)
 
   envnew
-(*
-  let (lstzero, envnew) = add_mutuals_to_environment_sub Alist.empty env recbinds in
-  let envzero = add_zeroary_mutuals lstzero envnew in
-  fix_dependency envzero mutletcons;
-  envzero
-
-
-and add_mutuals_to_environment_sub (acc : (EvalVarID.t * abstract_tree) Alist.t) (env : environment) (mutletcons : mutual_let_cons) : (EvalVarID.t * abstract_tree) list * environment =
-  match mutletcons with
-  | EndOfMutualLet ->
-      (Alist.to_list acc, env)
-
-  | MutualLetCons(evid, astcont, tailcons) ->
-      begin
-        try
-          let valuecont = interpret env astcont in
-          let envnew = add_to_environment env evid (ref valuecont) in
-            add_mutuals_to_environment_sub acc envnew tailcons
-        with
-        | EvalError(_) ->
-            add_mutuals_to_environment_sub (Alist.extend acc (evid, astcont)) env tailcons
-            (* 0-ary definition dependent of ``sibling'' functions *)
-      end
-
-
-and add_zeroary_mutuals (lstzero : (EvalVarID.t * abstract_tree) list) (env : environment) : environment =
-  let (lstzeronew, envnew) = add_zeroary_mutuals_sub lstzero env Alist.empty in
-    if List.length lstzeronew = 0 then
-      envnew
-    else if (List.length lstzeronew) = (List.length lstzero) then
-      let msg = lstzero |> List.fold_left (fun s (evid, _) -> s ^ (EvalVarID.show_direct evid) ^ " ") "" in
-      raise (EvalError("meaningless 0-ary mutual recursion; " ^ msg))
-    else
-      add_zeroary_mutuals lstzeronew envnew
-
-
-and add_zeroary_mutuals_sub (lstzero : (EvalVarID.t * abstract_tree) list) (env : environment) (acc : (EvalVarID.t * abstract_tree) Alist.t) : (EvalVarID.t * abstract_tree) list * environment =
-  match lstzero with
-  | [] ->
-      (Alist.to_list acc, env)
-
-  | (evid, astcont) :: tail ->
-      begin
-        try
-          let valuecont = interpret env astcont in
-          let envnew = add_to_environment env evid (ref valuecont) in
-            add_zeroary_mutuals_sub tail envnew acc
-        with
-        | EvalError(_) ->
-            add_zeroary_mutuals_sub tail env (Alist.extend acc (evid, astcont))
-      end
-
-
-and fix_dependency envzero mutletcons =
-  match mutletcons with
-  | EndOfMutualLet -> ()
-
-  | MutualLetCons(evid, _, tailcons) ->
-      begin
-        match find_in_environment envzero evid with
-        | None -> assert false
-        | Some(loc) ->
-            let value = !loc in
-            let () =
-              match value with
-              | FuncWithEnvironment(evidx, astbody, _)       -> loc := (FuncWithEnvironment(evidx, astbody, envzero))
-              | InputHorzWithEnvironment(ihlst, _)           -> loc := (InputHorzWithEnvironment(ihlst, envzero))
-              | InputVertWithEnvironment(ivlst, _)           -> loc := (InputVertWithEnvironment(ivlst, envzero))
-              | LambdaHorzWithEnvironment(evidx, astbody, _) -> loc := (LambdaHorzWithEnvironment(evidx, astbody, envzero))
-              | LambdaVertWithEnvironment(evidx, astbody, _) -> loc := (LambdaVertWithEnvironment(evidx, astbody, envzero))
-              | _                                            -> ()
-            in
-            fix_dependency envzero tailcons
-      end
-*)
