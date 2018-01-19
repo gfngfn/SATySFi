@@ -262,34 +262,28 @@ let normalize_math_kind mkprev mknext mkraw =
 
 
 let space_ord_bin fontsize =
-  Format.printf "Math> space_ord_bin\n";
   Some(outer_empty (fontsize *% 0.25) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
 let space_ord_rel fontsize =
-  Format.printf "Math> space_ord_rel\n";
   Some(outer_empty (fontsize *% 0.375) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
 let space_ord_inner fontsize =
-  Format.printf "Math> space_ord_inner\n";
   Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
     (* temporary; should be variable *)
 
 
 let space_punct fontsize =
-  Format.printf "Math> space_punct\n";
   space_ord_rel fontsize  (* temporary *)
 
 let space_ord_op fontsize =
-  Format.printf "Math> space_ord_op\n";
   space_ord_inner fontsize  (* temporary *)
 
 
 let space_ord_prefix fontsize =
-  Format.printf "Math> space_ord_prefix\n";
   Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
     (* temporary; should be variable *)
 
@@ -667,7 +661,9 @@ let rec check_subscript mlstB =
 let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
   match me with
   | MathElement(mkraw, MathEmbeddedText(hblstf)) ->
+      Format.printf "Math> 1\n";  (* for debug *)
       let hblst = hblstf (MathContext.context_for_text mathctx) in
+      Format.printf "Math> 2\n";  (* for debug *)
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
       let mk = normalize_math_kind mkprev mknext mkraw in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)

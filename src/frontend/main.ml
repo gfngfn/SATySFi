@@ -73,6 +73,9 @@ let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (f
         Lexer.reset_to_progexpr ();
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
         let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
+(*
+        Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
+*)
         print_endline ("  type check passed.");
         match ty with
         | (_, BaseType(EnvType)) ->

@@ -603,6 +603,8 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
       let hblstf ctx =
+          Format.printf "Evaluator> BackendMathText\n";
+          Format.printf "%a\n" pp_syntactic_value valuef;
           interpret_horz env (Apply(Value(valuef), Value(Context(ctx))))
       in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
@@ -1047,6 +1049,7 @@ and interpret env ast =
 (*
           let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
 *)
+          Format.printf "Evaluator> ContentOf: %s ---> %s\n" (EvalVarID.show_direct evid) (show_syntactic_value value);
             value
 
         | None ->

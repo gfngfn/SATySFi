@@ -116,8 +116,9 @@
 
 let space = [' ' '\t']
 let break = ['\n' '\r']
-let digit = ['0'-'9']
-let hex   = (['0'-'9'] | ['A'-'F'])
+let nzdigit = ['1'-'9']
+let digit = (nzdigit | "0")
+let hex   = (digit | ['A'-'F'])
 let capital = ['A'-'Z']
 let small = ['a'-'z']
 let latin = (small | capital)
@@ -217,12 +218,12 @@ rule progexpr = parse
   | "="   { DEFEQ(get_pos lexbuf) }
   | "*"   { EXACT_TIMES(get_pos lexbuf) }
 
-(* binary operators; should be extended *)
+(* -- binary operators; should be extended -- *)
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("-" opsymbol+) { BINOP_MINUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("*" opsymbol+) { BINOP_TIMES(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("/" opsymbol*) { BINOP_DIVIDES(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ("=" opsymbol*) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("=" opsymbol+) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("<" opsymbol*) { BINOP_LT(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (">" opsymbol*) { BINOP_GT(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -283,12 +284,12 @@ rule progexpr = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit digit*)                                        { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
-  | (digit+ "." digit*)                                   { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
-  | ("." digit+)                                          { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
-  | (((digit digit*) as i) (identifier as unitnm))        { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
-  | (((digit+ "." digit*) as flt) (identifier as unitnm)) { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
+  | (((digit | (nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
+  | (((digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | ((("." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
       if !first_state = ProgramState then EOI else
         report_error lexbuf "text input ended while reading a program area"
