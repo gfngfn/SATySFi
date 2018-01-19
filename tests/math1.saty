@@ -1,7 +1,7 @@
 % -*- coding: utf-8 -*-
 document (|
   title  = {Math Test};
-  author = {gfn};
+  author = {Takashi SUWA};
 |) '<
   +make-title;
   +p {
@@ -56,4 +56,33 @@ document (|
       bold Fraktur:  ${\math-style!(MathBoldFraktur ){#test}},
       double struck: ${\math-style!(MathDoubleStruck){#test}}.
     });
+  +p {Typing rule is defined as follows:}
+  +math(${
+    \derive{\paren{\app{\Gamma}{x} \synteq \tau}}{
+      \tyjd{\Gamma}{x}{\tau}
+    }
+    \and-also
+    \derive{
+      \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
+    }{
+      \tyjd{\Gamma}{\paren{\tmabstyped{x}{\tau_1}{M}}}{\tau_1 \to \tau_2}
+    }
+  });
+  +math(${
+    \derive{
+      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
+    }{
+      \tyjd{\Gamma}{M N}{\tau_2}
+    }
+  });
+  +math (${
+    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+  });
+  +p {
+    A table
+    \tabular(fun cellf multif empty -> [
+      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
+      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
+    ]);
+  }
 >

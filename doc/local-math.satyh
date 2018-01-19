@@ -6,18 +6,31 @@ let-math \patp = math-color meta-color ${p}
 let-math \varx = math-color meta-color ${x}
 let-math \cstc = math-color meta-color ${c}
 let-math \constrC = math-color meta-color ${C}
+let-math \patsP = math-color meta-color ${P}
+let-math \valv = math-color meta-color ${v}
+let-math \expre = math-color meta-color ${e}
 
+let-math \token s = ${\math-color!(synt-color){\text!{#s;}}}
 
 let-math \wildcard = ${\math-color!(synt-color){\_}}
 
 let-math \patas p x =
-  ${#p \math-color!(synt-color){\text!{\ as\ }} #x}
+  ${#p \token!{\ as\ } #x}
 
 let-math \constrapp m1 m2 = ${#m1 \math-skip!(4pt) #m2}
 
 let-math \tuple mlst =
   let inner = Math.concat ${,} mlst in
     math-color synt-color ${\paren{\math-skip!(2pt)#inner\math-skip!(1pt)}}
+
+let-math \exprfunc p =
+  ${\token!{function\ } #p}
+
+%let-math \exprabsI x e =
+%  ${\token!{${\lambda^{\token!{I}}}}#x.\token!{\ }#e}
+
+let-math \exprabsI x e =
+  ${\math-color!(synt-color){\lambda^{\mathrm{I}}}#x\token!{.\ }#e}
 
 let-math \BNF nontm mlst =
   let defs = Math.concat ${\|} mlst in

@@ -12,9 +12,11 @@ module Math : sig
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
   direct \mathrel : [math] math-cmd
+  direct \mathrm : [math] math-cmd
   direct \paren : [math] math-cmd
   direct \to : [] math-cmd
   direct \ldots : [] math-cmd
+  direct \lambda : [] math-cmd
   val concat : math -> math list -> math
 
 end = struct
@@ -55,7 +57,6 @@ end = struct
   let-math \mathord = math-group MathOrd MathOrd
   let-math \mathbin = math-group MathBin MathBin
   let-math \mathrel = math-group MathRel MathRel
-
 
   let-block ctx +math math =
     let ib = embed-math ctx math in
@@ -375,5 +376,8 @@ end = struct
 
   let-math \math-style sty m =
     math-char-class sty m
+
+  let-math \mathrm m =
+    ${\math-style!(MathRoman){#m}}
 
 end

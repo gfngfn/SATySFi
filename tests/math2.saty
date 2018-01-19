@@ -1,7 +1,7 @@
 % -*- coding: utf-8 -*-
 document (|
   title  = {Math Test 2};
-  author = {gfn};
+  author = {Takashi SUWA};
 |) '<
   +make-title;
   +p-jp{
@@ -15,24 +15,5 @@ document (|
   }
   +math(${
     Z = -\npe^x + f^{x^{n^2}}
-  });
-  +p {Typing rule is defined as follows:}
-  +math(${
-    \derive{\paren{\app{\Gamma}{x} \synteq \tau}}{
-      \tyjd{\Gamma}{x}{\tau}
-    }
-    \and-also
-    \derive{
-      \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
-    }{
-      \tyjd{\Gamma}{\paren{\tmabstyped{x}{\tau_1}{M}}}{\tau_1 \to \tau_2}
-    }
-  });
-  +math(${
-    \derive{
-      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
-    }{
-      \tyjd{\Gamma}{M N}{\tau_2}
-    }
   });
 >

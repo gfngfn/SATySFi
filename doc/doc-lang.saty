@@ -19,15 +19,24 @@ StdJa.document (|
       }
     }
     +p {
-      \CD(5cm)(5cm)(fun c -> (
-        let oA = CD.set c (1cm, 4cm) ${A} in
-        let oB = CD.set c (4cm, 1cm) ${B} in
-          [
-            CD.object oA;
-            CD.object oB;
-            CD.arrow oA oB;
-          ]
-      ));
+      ${
+        \BNF{\valv}![
+          ${\cstc};
+          ${\exprfunc{\patsP}};
+          ${\exprabsI{\varx}{\expre}};
+        ]
+      }
     }
+%    +p {
+%      \CD(5cm)(5cm)(fun c -> (
+%        let oA = CD.set c (1cm, 4cm) ${A} in
+%        let oB = CD.set c (4cm, 1cm) ${B} in
+%          [
+%            CD.object oA;
+%            CD.object oB;
+%            CD.arrow oA oB;
+%          ]
+%      ));
+%    }
   >
 >
