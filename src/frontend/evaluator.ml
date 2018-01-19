@@ -5,9 +5,9 @@ open Types
 
 exception EvalError of string
 
-type eval_input_horz_element =
-  | EvInputHorzText     of string
-  | EvInputHorzEmbedded of abstract_tree * abstract_tree list
+type nom_input_horz_element =
+  | NomInputHorzText     of string
+  | NomInputHorzEmbedded of abstract_tree * abstract_tree list
 
 
 let report_bug_evaluator msg ast value =
@@ -407,6 +407,45 @@ and make_inline_graphics env valueg =
   )
 
 
+and interpret_input_horz_content env (ihlst : input_horz_element list) =
+  ihlst |> List.map (function
+    | InputHorzText(s) ->
+        ImInputHorzText(s)
+
+    | InputHorzEmbedded(astcmd, astarglst) ->
+        ImInputHorzEmbedded(astcmd, astarglst)
+
+    | InputHorzEmbeddedMath(astmath) ->
+        ImInputHorzEmbeddedMath(astmath)
+
+    | InputHorzContent(ast) ->
+        let value = interpret env ast in
+        begin
+          match value with
+          | InputHorzWithEnvironment(imihlst, envsub) ->
+              ImInputHorzContent(imihlst, envsub)
+
+          | _ -> report_bug_evaluator "interpret_input_horz_content" ast value
+        end
+  )
+
+and interpret_input_vert_content env (ivlst : input_vert_element list) =
+  ivlst |> List.map (function
+    | InputVertEmbedded(astcmd, astarglst) ->
+        ImInputVertEmbedded(astcmd, astarglst)
+
+    | InputVertContent(ast) ->
+        let value = interpret env ast in
+        begin
+          match value with
+          | InputVertWithEnvironment(imivlst, envsub) ->
+              ImInputVertContent(imivlst, envsub)
+
+          | _ -> report_bug_evaluator "interpret_input_vert_content" ast value
+        end
+  )
+
+
 and interpret env ast =
   match ast with
 
@@ -418,9 +457,15 @@ and interpret env ast =
 
   | FinishStruct -> EvaluatedEnvironment(env)
 
-  | InputHorz(ihlst) -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
+  | InputHorz(ihlst) ->
+      let imihlst = interpret_input_horz_content env ihlst in
+        InputHorzWithEnvironment(imihlst, env)
+          (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | InputVert(ivlst) -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
+  | InputVert(ivlst) ->
+      let imivlst = interpret_input_vert_content env ivlst in
+        InputVertWithEnvironment(imivlst, env)
+          (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | LengthDescription(flt, unitnm) ->
       let len =
@@ -723,8 +768,8 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi valuectx ihlst
-        | _                                     -> report_bug_evaluator "HorzLex" ast1 value1
+        | InputHorzWithEnvironment(imihlst, envi) -> interpret_intermediate_input_horz envi valuectx imihlst
+        | _                                       -> report_bug_evaluator "HorzLex" ast1 value1
       end
 
   | VertLex(astctx, ast1) ->
@@ -732,8 +777,8 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputVertWithEnvironment(ivlst, envi) -> interpret_input_vert envi valuectx ivlst
-        | _                                     -> report_bug_evaluator "VertLex" ast1 value1
+        | InputVertWithEnvironment(imivlst, envi) -> interpret_intermediate_input_vert envi valuectx imivlst
+        | _                                       -> report_bug_evaluator "VertLex" ast1 value1
       end
 
   | BackendFont(astabbrev, astszrat, astrsrat) ->
@@ -933,7 +978,7 @@ and interpret env ast =
 
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
-        InputHorzWithEnvironment([InputHorzText(str)], env)
+        InputHorzWithEnvironment([ImInputHorzText(str)], env)
 
   | PrimitiveGetAxisHeight(astctx) ->
       let ctx = interpret_context env astctx in
@@ -1365,11 +1410,11 @@ and interpret env ast =
         BooleanConstant(HorzBox.(len2 <% len1))
 
 
-and interpret_input_vert env (valuectx : syntactic_value) (ivlst : input_vert_element list) : syntactic_value =
-  let rec aux env ivlst =
-    ivlst |> List.fold_left (fun imvbacc iv ->
+and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
+  let rec aux env (imivlst : intermediate_input_vert_element list) =
+    imivlst |> List.fold_left (fun imvbacc iv ->
       match iv with
-      | InputVertEmbedded(astcmd, astarglst) ->
+      | ImInputVertEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
@@ -1378,84 +1423,70 @@ and interpret_input_vert env (valuectx : syntactic_value) (ivlst : input_vert_el
                 let valueret = reduce_beta_list env valuedef astarglst in
                 begin
                   match valueret with
-                  | Vert(imvblst) -> List.rev_append imvblst imvbacc
+                  | Vert(imvblst) -> Alist.append imvbacc imvblst
                   | _             -> report_bug_evaluator_value "interpret_input_vert" valueret
                 end
 
             | _ -> report_bug_evaluator "interpret_input_vert: other than LambdaVertWithEnvironment" astcmd valuecmd
           end
 
-      | InputVertContent(ast0) ->
-          let value0 = interpret env ast0 in
-          begin
-            match value0 with
-            | InputVertWithEnvironment(ivlstsub, envsub) ->
-                let imvblst = aux envsub ivlstsub |> List.rev in
-                  List.rev_append imvblst imvbacc
+      | ImInputVertContent(imivlstsub, envsub) ->
+          let imvblst = aux envsub imivlstsub in
+            Alist.append imvbacc imvblst
 
-            | _ -> report_bug_evaluator "interpret_input_vert" ast0 value0
-          end
-
-    ) []
+    ) Alist.empty |> Alist.to_list
   in
-  let imvblst = aux env ivlst |> List.rev in
+  let imvblst = aux env imivlst in
     Vert(imvblst)
 
 
-and interpret_input_horz (env : environment) (valuectx : syntactic_value) (ihlst : input_horz_element list) : syntactic_value =
+and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
   let ctx = get_context valuectx in
 
-  let rec eval_content env ihlst =
-    ihlst |> List.fold_left (fun evihacc ih ->
+  let rec eval_content (env : environment) (imihlst : intermediate_input_horz_element list) =
+    imihlst |> List.fold_left (fun evihacc ih ->
       match ih with
-      | InputHorzText(s) ->
-          EvInputHorzText(s) :: evihacc
+      | ImInputHorzText(s) ->
+          Alist.extend evihacc (NomInputHorzText(s))
 
-      | InputHorzEmbedded(astcmd, astlst) ->
-          EvInputHorzEmbedded(astcmd, astlst) :: evihacc
+      | ImInputHorzEmbedded(astcmd, astlst) ->
+          Alist.extend evihacc (NomInputHorzEmbedded(astcmd, astlst))
 
-      | InputHorzEmbeddedMath(astmath) ->
+      | ImInputHorzEmbeddedMath(astmath) ->
           let evidcmd = ctx.HorzBox.inline_math_command in
-            EvInputHorzEmbedded(ContentOf(Range.dummy "interpret_input_horz", evidcmd), [astmath]) :: evihacc
+          let evih = NomInputHorzEmbedded(ContentOf(Range.dummy "interpret_input_horz", evidcmd), [astmath]) in
+            Alist.extend evihacc evih
               (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
-      | InputHorzContent(ast0) ->
-          let value0 = interpret env ast0 in
-          begin
-            match value0 with
-            | InputHorzWithEnvironment(ihlstsub, envsub) ->
-                let evihlst = eval_content envsub ihlstsub in
-                  List.rev_append evihlst evihacc
+      | ImInputHorzContent(ihlstsub, envsub) ->
+          let evihlst = eval_content envsub ihlstsub in
+            Alist.append evihacc evihlst
 
-            | _ ->
-                Format.printf "eval_content; %a --->* %a" pp_abstract_tree ast0 pp_syntactic_value value0;
-                assert false
-          end
-    ) [] |> List.rev
+    ) Alist.empty |> Alist.to_list
   in
 
-  let normalize evihlst =
-    evihlst |> List.fold_left (fun acc evih ->
-      match evih with
-      | EvInputHorzEmbedded(_, _) ->
-          (evih :: acc)
+  let normalize (nmihlst : nom_input_horz_element list) =
+    nmihlst |> List.fold_left (fun acc nmih ->
+      match nmih with
+      | NomInputHorzEmbedded(_, _) ->
+          Alist.extend acc nmih
 
-      | EvInputHorzText(s2) ->
+      | NomInputHorzText(s2) ->
           begin
-            match acc with
-            | EvInputHorzText(s1) :: acctail -> (EvInputHorzText(s1 ^ s2) :: acctail)
-            | _                              -> (evih :: acc)
+            match Alist.chop_last acc with
+            | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
+            | _                                   -> (Alist.extend acc nmih)
           end
 
-    ) [] |> List.rev
+    ) Alist.empty |> Alist.to_list
   in
-  let evihlst = eval_content env ihlst in
+  let evihlst = eval_content env imihlst in
   let evihlstnml = normalize evihlst in
-  let hblstacc =
+  let hblstlst =
     evihlstnml |> List.fold_left (fun lstacc ih ->
       match ih with
-      | EvInputHorzEmbedded(astcmd, astarglst) ->
+      | NomInputHorzEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
@@ -1463,17 +1494,17 @@ and interpret_input_horz (env : environment) (valuectx : syntactic_value) (ihlst
                 let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
                 let hblst = get_horz valueret in
-                  hblst :: lstacc
+                  Alist.extend lstacc hblst
 
             | _ -> report_bug_evaluator "interpret_input_horz: other than LambdaHorzWithEnvironment(_, _, _)" astcmd valuecmd
           end
 
-      | EvInputHorzText(s) ->
-          (lex_horz_text ctx s) :: lstacc
+      | NomInputHorzText(s) ->
+          Alist.extend lstacc (lex_horz_text ctx s)
 
-    ) []
+    ) Alist.empty |> Alist.to_list
   in
-  let hblst = hblstacc |> List.rev |> List.concat in
+  let hblst = hblstlst |> List.concat in
   Horz(hblst)
 
 

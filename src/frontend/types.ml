@@ -429,15 +429,24 @@ and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t)
 and location = syntactic_value ref
 
 and input_horz_element =
-  | InputHorzText     of string
-  | InputHorzEmbedded of abstract_tree * abstract_tree list
-  | InputHorzContent  of abstract_tree
+  | InputHorzText         of string
+  | InputHorzEmbedded     of abstract_tree * abstract_tree list
+  | InputHorzContent      of abstract_tree
   | InputHorzEmbeddedMath of abstract_tree
+
+and intermediate_input_horz_element =
+  | ImInputHorzText         of string
+  | ImInputHorzEmbedded     of abstract_tree * abstract_tree list
+  | ImInputHorzContent      of intermediate_input_horz_element list * environment
+  | ImInputHorzEmbeddedMath of abstract_tree
+
+and intermediate_input_vert_element =
+  | ImInputVertEmbedded of abstract_tree * abstract_tree list
+  | ImInputVertContent  of intermediate_input_vert_element list * environment
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
   | InputVertContent  of abstract_tree
-
 
 and 'a path_component =
   | PathLineTo        of 'a
@@ -469,8 +478,8 @@ and syntactic_value =
 
   | Location              of StoreID.t
 
-  | InputHorzWithEnvironment of input_horz_element list * environment
-  | InputVertWithEnvironment of input_vert_element list * environment
+  | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
+  | InputVertWithEnvironment of intermediate_input_vert_element list * environment
 
   | Horz                  of HorzBox.horz_box list
   | Vert                  of HorzBox.vert_box list

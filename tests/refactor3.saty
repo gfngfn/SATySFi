@@ -2,7 +2,9 @@
 let-math \text it =
   text-in-math MathOrd (fun ctx -> read-inline ctx it)
 
-let-math \token s = ${\text!{#s;}}
+%let-math \token s = ${\text!{#s;}}
+
+let-math \token s = ${\text!(s)}
 
 let-inline ctx \math = embed-math ctx
 
