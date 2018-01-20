@@ -596,7 +596,7 @@ let fit (hblst : horz_box list) (widreq : length) : intermediate_horz_box list *
     determine_widths (Some(widreq)) lphblst
 
 
-let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : input_context) (hblst : horz_box list) : vert_box list =
+let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (ctx : context_main) (hblst : horz_box list) : vert_box list =
 
   let paragraph_width = ctx.paragraph_width in
   let leading_required = ctx.leading in

@@ -3,6 +3,7 @@ open MyUtil
 open LengthInterface
 open GraphicData
 open HorzBox
+open Types
 
 
 type low_math_atom =

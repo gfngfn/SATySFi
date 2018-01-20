@@ -195,7 +195,7 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-type input_context = {
+type context_main = {
   font_size              : length;
   font_scheme            : font_with_ratio CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
@@ -219,7 +219,9 @@ type input_context = {
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_char_class        : math_char_class;
+(*
   inline_math_command    : EvalVarID.t;
+*)
 }
 
 (* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
@@ -232,7 +234,7 @@ and pure_horz_box =
   | PHSOuterFil
   | PHSFixedEmpty     of length
 (* -- texts -- *)
-  | PHCInnerString    of input_context * Uchar.t list
+  | PHCInnerString    of context_main * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
   | PHCInnerMathGlyph of math_string_info * length * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
@@ -341,43 +343,12 @@ and page_content_info =
 
 and page_parts_scheme_func = page_content_info -> page_parts_scheme
 
+
 and math_char_kern_func = length -> length -> length
   (* --
      takes the actual font size and the y-position,
      and returns a kerning value (positive for making characters closer)
      -- *)
-
-and math_element_main =
-  | MathChar         of bool * Uchar.t list
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         -- *)
-  | MathCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         (3) left-hand-side kerning function
-         (4) right-hand-side kerning function
-         --*)
-  | MathEmbeddedText of (input_context -> horz_box list)
-
-and math_element =
-  | MathElement           of math_kind * math_element_main
-  | MathVariantChar       of string
-  | MathVariantCharDirect of math_kind * bool * math_variant_style
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
-      (* --
-         (1) math class
-         (2) whether it is a big operator
-         (3) Unicode code point for Italic
-         (4) Unicode code point for bold Italic
-         (5) Unicode code point for Roman
-         (6) Unicode code point for bold Roman
-         -- *)
-      (* TEMPORARY; should extend more *)
 
 and math_kern_func = length -> length
   (* -- takes the y-position and then returns a kerning value -- *)
@@ -414,23 +385,6 @@ and radical = length -> length -> length -> length -> color -> horz_box list
        and then returns the inline box representation.
      -- *)
 
-and math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of math_char_class
-
-and math =
-  | MathPure              of math_element
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of math_kind * math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of radical * math list
-  | MathParen             of paren * paren * math list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
-
 and cell =
   | NormalCell of paddings * horz_box list
   | EmptyCell
@@ -454,118 +408,6 @@ and evaled_row = length * evaled_cell list
 [@@deriving show { with_path = false }]
 
 type column = cell list
-
-
-
-module MathContext
-: sig
-    type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
-    val convert_math_variant_char : t -> string -> math_variant_value
-    val color : t -> color
-    val set_color : color -> t -> t
-    val enter_script : t -> t
-    val math_char_class : t -> math_char_class
-    val set_math_char_class : math_char_class -> t -> t
-    val is_in_base_level : t -> bool
-    val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
-    val math_font_abbrev : t -> math_font_abbrev
-  end
-= struct
-    type level =
-      | BaseLevel
-      | ScriptLevel
-      | ScriptScriptLevel
-
-    type t =
-      {
-        mc_font_abbrev    : math_font_abbrev;
-        mc_base_font_size : length;
-        mc_level_int      : int;
-        mc_level          : level;
-        context_for_text  : input_context;
-      }
-
-    let make ctx =
-      {
-        mc_font_abbrev    = ctx.math_font;
-        mc_base_font_size = ctx.font_size;
-        mc_level_int      = 0;
-        mc_level          = BaseLevel;
-        context_for_text  = ctx;
-      }
-
-    let convert_math_variant_char mctx s =
-      let ctx = mctx.context_for_text in
-      let mcclsmap = ctx.math_variant_char_map in
-      let mccls = ctx.math_char_class in
-        match mcclsmap |> MathVariantCharMap.find_opt (s, mccls) with
-        | Some(mvvalue) ->
-(*
-            Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
-*)
-            mvvalue
-
-        | None ->
-(*
-            Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
-*)
-            let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-              (MathOrdinary, MathVariantToChar(false, uchlst))
-
-    let context_for_text mctx =
-      mctx.context_for_text
-        (* temporary; maybe should update font size *)
-
-    let color mctx =
-      mctx.context_for_text.text_color
-
-    let set_color color mctx =
-      let ctx = mctx.context_for_text in
-      let ctxnew = { ctx with text_color = color; } in
-        { mctx with context_for_text = ctxnew; }
-
-    let math_char_class mctx =
-      mctx.context_for_text.math_char_class
-
-    let set_math_char_class mccls mctx =
-      let ctx = mctx.context_for_text in
-      let ctxnew = { ctx with math_char_class = mccls } in
-        { mctx with context_for_text = ctxnew }
-
-    let enter_script mctx =
-      let levnew = mctx.mc_level_int + 1 in
-      match mctx.mc_level with
-      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
-      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
-
-    let is_in_base_level mctx =
-      match mctx.mc_level with
-      | BaseLevel -> true
-      | _         -> false
-
-    let actual_font_size mctx (mdf : math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.mc_base_font_size in
-      let md = mdf mctx.mc_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
-      match mctx.mc_level with
-      | BaseLevel         -> bfsize
-      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
-      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
-
-    let base_font_size mctx =
-      mctx.mc_base_font_size
-
-    let math_font_abbrev mctx =
-      mctx.mc_font_abbrev
-
-  end
-
-
-type math_context = MathContext.t
 
 
 let normalize_script ctx script_raw =

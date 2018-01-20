@@ -5,7 +5,7 @@ open CharBasis
 open LineBreakBox
 
 
-type chunk_info = input_context * script * line_break_class
+type chunk_info = context_main * script * line_break_class
 
 
 let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
@@ -114,13 +114,13 @@ let adjacent_space ctx1 ctx2 =
 let halfwidth_kern ctx script : lb_box =
   let size = get_corrected_font_size ctx script in
     LBPure(LBAtom((natural (Length.negate (size *% 0.5)), Length.zero, Length.zero), EvHorzEmpty))
-  
+
 
 (*  -- 'quarterwidth_kern': inserts a solid backward quaterwidth kern for CJK characters -- *)
 let quarterwidth_kern ctx script : lb_box =
   let size = get_corrected_font_size ctx script in
     LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
-  
+
 
 let breakable_space ctx : lb_box =
   let dscrid = DiscretionaryID.fresh () in
@@ -132,7 +132,7 @@ let unbreakable_space ctx : lb_box =
 
 
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
-let inner_string (ctx : input_context) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
+let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
@@ -247,7 +247,7 @@ let ideographic_single ctx script lbc uchlst =
 type chunk_accumulator =
   | AccInitial
   | AccNone
-  | AccSome    of (input_context * script * line_break_class) * break_opportunity
+  | AccSome    of (context_main * script * line_break_class) * break_opportunity
 
 
 let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) (script_after : script) : lb_box list =

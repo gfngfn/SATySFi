@@ -28,7 +28,7 @@ let report_bug_evaluator_value msg value =
   failwith ("bug: " ^ msg)
 
 
-let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz_box list =
+let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
@@ -497,19 +497,15 @@ and interpret env ast =
       let is_big = false in
       let mathcls = interpret_math_class env astmathcls in
       let uchlst = interpret_uchar_list env aststr in
-      let ctx = interpret_context env astctx in
+      let (ctx, v) = interpret_context env astctx in
       let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, uchlst)) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
-        Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
+        Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }), v)
 
   | PrimitiveSetMathCommand(astcmd, astctx) ->
       let valuecmd = interpret env astcmd in
-      let ctx = interpret_context env astctx in
-      begin
-        match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(HorzBox.({ ctx with inline_math_command = evidcmd; }))
-        | _                      -> report_bug_evaluator "PrimitiveSetMathCommand" astcmd valuecmd
-      end
+      let (ctx, _) = interpret_context env astctx in
+        Context(ctx, valuecmd)
 
   | BackendMathVariantCharDirect(astmathcls, astrcd) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
@@ -581,22 +577,22 @@ and interpret env ast =
       let mathcls1 = interpret_math_class env astmathcls1 in
       let mathcls2 = interpret_math_class env astmathcls2 in
       let mlst = interpret_math env astm in
-        MathValue([HorzBox.MathGroup(mathcls1, mathcls2, mlst)])
+        MathValue([MathGroup(mathcls1, mathcls2, mlst)])
 
   | BackendMathSuperscript(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathSuperscript(mlst1, mlst2)])
+        MathValue([MathSuperscript(mlst1, mlst2)])
 
   | BackendMathSubscript(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathSubscript(mlst1, mlst2)])
+        MathValue([MathSubscript(mlst1, mlst2)])
 
   | BackendMathFraction(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathFraction(mlst1, mlst2)])
+        MathValue([MathFraction(mlst1, mlst2)])
 
   | BackendMathRadical(astm1, astm2) ->
       let mlst1opt = interpret_option interpret env get_math astm1 in
@@ -604,8 +600,8 @@ and interpret env ast =
       let radical = Primitives.default_radical in  (* temporary; should be variable *)
       begin
         match mlst1opt with
-        | None        -> MathValue([HorzBox.MathRadical(radical, mlst2)])
-        | Some(mlst1) -> MathValue([HorzBox.MathRadicalWithDegree(mlst1, mlst2)])
+        | None        -> MathValue([MathRadical(radical, mlst2)])
+        | Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
       end
 
   | BackendMathParen(astparenL, astparenR, astm1) ->
@@ -614,17 +610,17 @@ and interpret env ast =
       let valueparenR = interpret env astparenR in
       let parenL = make_paren env valueparenL in
       let parenR = make_paren env valueparenR in
-        MathValue([HorzBox.MathParen(parenL, parenR, mlst1)])
+        MathValue([MathParen(parenL, parenR, mlst1)])
 
   | BackendMathUpperLimit(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathUpperLimit(mlst1, mlst2)])
+        MathValue([MathUpperLimit(mlst1, mlst2)])
 
   | BackendMathLowerLimit(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathLowerLimit(mlst1, mlst2)])
+        MathValue([MathLowerLimit(mlst1, mlst2)])
 
   | BackendMathChar(astmathcls, is_big, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
@@ -647,10 +643,10 @@ and interpret env ast =
   | BackendMathText(astmathcls, astf) ->
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
-      let hblstf ctx =
+      let hblstf ictx =
           Format.printf "Evaluator> BackendMathText\n";
           Format.printf "%a\n" pp_syntactic_value valuef;
-          interpret_horz env (Apply(Value(valuef), Value(Context(ctx))))
+          interpret_horz env (Apply(Value(valuef), Value(Context(ictx))))
       in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
@@ -665,9 +661,9 @@ and interpret env ast =
         MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 
   | BackendEmbeddedMath(astctx, astm) ->
-      let ctx = interpret_context env astctx in
+      let ictx = interpret_context env astctx in
       let mlst = interpret_math env astm in
-      let mathctx = HorzBox.MathContext.make ctx in
+      let mathctx = MathContext.make ictx in
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 
@@ -790,7 +786,7 @@ and interpret env ast =
   | BackendLineBreaking(astb1, astb2, astctx, asthorz) ->
       let is_breakable_top = interpret_bool env astb1 in
       let is_breakable_bottom = interpret_bool env astb2 in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let hblst = interpret_horz env asthorz in
       let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
@@ -803,12 +799,12 @@ and interpret env ast =
         DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let valuek = interpret env astk in
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }))
+        Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }), valuecmd)
       in
       let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
         Vert(HorzBox.([
@@ -823,11 +819,11 @@ and interpret env ast =
         ]))
 
   | BackendEmbeddedVertTop(astctx, astlen, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = wid; }))
+        Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
       let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let imvblst = PageBreak.solidify vblst in
@@ -838,11 +834,11 @@ and interpret env ast =
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = wid; }))
+        Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
       let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
       let imvblst = PageBreak.solidify vblst in
@@ -868,120 +864,105 @@ and interpret env ast =
 
   | PrimitiveGetInitialContext(astwid, astcmd) ->
       let txtwid = interpret_length env astwid in
-(*
-      let pagesch =
-        HorzBox.({
-          page_size        = page;
-          left_page_margin = lmargin;
-          top_page_margin  = tmargin;
-          area_width       = txtwid;
-          area_height      = txthgt;
-        })
-      in
-*)
       let valuecmd = interpret env astcmd in
-      begin
-        match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context txtwid evidcmd)
-        | _ -> report_bug_evaluator "PrimitiveGetInitialContext" astcmd valuecmd
-      end
+        Context(Primitives.get_initial_context txtwid, valuecmd)
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with space_natural = ratio; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with space_natural = ratio; }), valuecmd)
 
   | PrimitiveSetParagraphMargin(asttop, astbottom, astctx) ->
       let lentop = interpret_length env asttop in
       let lenbottom = interpret_length env astbottom in
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
         Context(HorzBox.({ ctx with
           paragraph_top    = lentop;
           paragraph_bottom = lenbottom;
-        }))
+        }), valuecmd)
 
   | PrimitiveSetFontSize(astsize, astctx) ->
       let size = interpret_length env astsize in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with font_size = size; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
 
   | PrimitiveGetFontSize(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         LengthConstant(ctx.HorzBox.font_size)
 
   | PrimitiveSetFont(astscript, astfont, astctx) ->
       let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
-        Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }))
+        Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
 
   | PrimitiveGetFont(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let fontwr = HorzBox.get_font_with_ratio ctx script in
         make_font_value fontwr
 
   | PrimitiveSetMathFont(aststr, astctx) ->
       let mfabbrev = interpret_string env aststr in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with math_font = mfabbrev; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
 
   | PrimitiveSetDominantWideScript(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with dominant_wide_script = script; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
 
   | PrimitiveGetDominantWideScript(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         make_script_value ctx.HorzBox.dominant_wide_script
 
   | PrimitiveSetDominantNarrowScript(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with dominant_narrow_script = script; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
 
   | PrimitiveGetDominantNarrowScript(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         make_script_value ctx.HorzBox.dominant_narrow_script
 
   | PrimitiveSetLangSys(astscript, astlangsys, astctx) ->
       let script = interpret_script env astscript in
       let langsys = interpret_language_system env astlangsys in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys}))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys}), valuecmd)
 
   | PrimitiveGetLangSys(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let langsys = HorzBox.get_language_system ctx script in
         make_language_system_value langsys
 
   | PrimitiveSetTextColor(astcolor, astctx) ->
       let color = interpret_color env astcolor in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with text_color = color; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
 
   | PrimitiveSetLeading(astlen, astctx) ->
       let len = interpret_length env astlen in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with leading = len; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with leading = len; }), valuecmd)
 
   | PrimitiveGetTextWidth(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         LengthConstant(ctx.HorzBox.paragraph_width)
 
   | PrimitiveSetManualRising(astrising, astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let rising = interpret_length env astrising in
-        Context(HorzBox.({ ctx with manual_rising = rising; }))
+        Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
 
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
         InputHorzWithEnvironment([ImInputHorzText(str)], env)
 
   | PrimitiveGetAxisHeight(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let fontsize = ctx.HorzBox.font_size in
       let mfabbrev = ctx.HorzBox.math_font in
       let hgt = FontInfo.get_axis_height mfabbrev fontsize in
@@ -1094,7 +1075,9 @@ and interpret env ast =
 (*
           let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
 *)
+(*
           Format.printf "Evaluator> ContentOf: %s ---> %s\n" (EvalVarID.show_direct evid) (show_syntactic_value value);
+*)
             value
 
         | None ->
@@ -1442,7 +1425,7 @@ and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst 
 
 and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
-  let ctx = get_context valuectx in
+  let (ctx, valuecmd) = get_context valuectx in
 
   let rec eval_content (env : environment) (imihlst : intermediate_input_horz_element list) =
     imihlst |> List.fold_left (fun evihacc ih ->
@@ -1454,9 +1437,7 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
           Alist.extend evihacc (NomInputHorzEmbedded(astcmd, astlst))
 
       | ImInputHorzEmbeddedMath(astmath) ->
-          let evidcmd = ctx.HorzBox.inline_math_command in
-            (* !!THIS IS NOT SAFE!! *)
-          let evih = NomInputHorzEmbedded(ContentOf(Range.dummy "interpret_input_horz", evidcmd), [astmath]) in
+          let evih = NomInputHorzEmbedded(Value(valuecmd), [astmath]) in
             Alist.extend evihacc evih
               (* -- inserts (the EvalVarID of) the math command of the input context -- *)
 
@@ -1548,12 +1529,12 @@ and interpret_math_class env ast : HorzBox.math_kind =
         report_bug_evaluator "interpret_math_class" ast value
 
 
-and interpret_math env ast : HorzBox.math list =
+and interpret_math env ast : math list =
   let value = interpret env ast in
     get_math value
 
 
-and get_math value : HorzBox.math list =
+and get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst
     | _               -> report_bug_evaluator_value "get_math" value
@@ -1655,15 +1636,15 @@ and interpret_path_value env ast : GraphicData.path list =
     | _                  -> report_bug_evaluator "interpret_path_value" ast value
 
 
-and interpret_context (env : environment) (ast : abstract_tree) : HorzBox.input_context =
+and interpret_context (env : environment) (ast : abstract_tree) : input_context =
   let value = interpret env ast in
     get_context value
 
 
-and get_context (value : syntactic_value) : HorzBox.input_context =
+and get_context (value : syntactic_value) : input_context =
     match value with
-    | Context(ctx)         -> ctx
-    | _                    -> report_bug_evaluator_value "get_context" value
+    | Context(ictx) -> ictx
+    | _             -> report_bug_evaluator_value "get_context" value
 
 
 and interpret_tuple3 env getf ast =

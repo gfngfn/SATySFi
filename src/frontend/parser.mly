@@ -758,7 +758,7 @@ nxapp:
   | DEREF nxbot { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
-        make_standard (Tok pre) (Tok rng) (UTFrozenCommand(mdlnmlst, csnm)) }
+        make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm)) }
   | nxbot { $1 }
 ;
 nxbot:

@@ -78,7 +78,7 @@ let find ctx uch =
       | Some(script_raw) -> normalize_script ctx script_raw
 
 
-let divide_by_script (ctx : input_context) (trilst : line_break_element list) : LineBreakBox.line_break_chunk_main list =
+let divide_by_script (ctx : context_main) (trilst : line_break_element list) : LineBreakBox.line_break_chunk_main list =
 
   let ideographic script lbc uch alw =
     IdeographicChunk(script, lbc, uch, alw)
@@ -173,4 +173,3 @@ let divide_by_script (ctx : input_context) (trilst : line_break_element list) : 
 
   let scrlst = aux Alist.empty None trilst in
     scrlst
-
