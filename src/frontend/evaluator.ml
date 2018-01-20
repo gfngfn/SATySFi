@@ -1455,6 +1455,7 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
 
       | ImInputHorzEmbeddedMath(astmath) ->
           let evidcmd = ctx.HorzBox.inline_math_command in
+            (* !!THIS IS NOT SAFE!! *)
           let evih = NomInputHorzEmbedded(ContentOf(Range.dummy "interpret_input_horz", evidcmd), [astmath]) in
             Alist.extend evihacc evih
               (* -- inserts (the EvalVarID of) the math command of the input context -- *)
