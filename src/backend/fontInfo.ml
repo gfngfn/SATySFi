@@ -2,6 +2,7 @@
 open MyUtil
 open LengthInterface
 open HorzBox
+open Types
 
 
 exception InvalidFontAbbrev     of font_abbrev

@@ -360,18 +360,6 @@ let rec typecheck
                 (ContentOf(rng, evid), tyres)
       end
 
-  | UTFrozenCommand(mdlnmlst, csnm) ->
-      begin
-        match Typeenv.find tyenv mdlnmlst csnm rng with
-        | None ->
-            raise (UndefinedVariable(rng, append_module_names mdlnmlst csnm))
-
-        | Some((pty, evid)) ->
-            let tyfree = instantiate lev qtfbl pty in
-            let tyres = overwrite_range_of_type tyfree rng in
-              (Value(FrozenCommand(evid)), tyres)
-      end
-
   | UTConstructor(constrnm, utast1) ->
       begin
         match Typeenv.find_constructor qtfbl tyenv lev constrnm with

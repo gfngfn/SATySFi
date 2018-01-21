@@ -2,7 +2,7 @@
 open LengthInterface
 open HorzBox
 
-val main : bool -> bool -> length -> length -> input_context -> horz_box list -> vert_box list
+val main : bool -> bool -> length -> length -> context_main -> horz_box list -> vert_box list
 
 val natural : horz_box list -> intermediate_horz_box list * length * length
 

@@ -4,6 +4,8 @@ let-math \text it =
 
 let-math \token s = ${\text!{#s;}}
 
+%let-math \token s = ${\text!(s)}
+
 let-inline ctx \math = embed-math ctx
 
 let-math \exprabsI x e =

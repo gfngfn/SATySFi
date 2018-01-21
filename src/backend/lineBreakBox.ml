@@ -74,4 +74,4 @@ type line_break_chunk_main =
          (4) whether breaking line immediate after the chunk is allowed
          -- *)
 
-type line_break_chunk = input_context * line_break_chunk_main
+type line_break_chunk = context_main * line_break_chunk_main

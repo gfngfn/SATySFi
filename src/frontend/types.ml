@@ -1,5 +1,6 @@
 
 open LengthInterface
+open GraphicData
 
 
 exception ParseErrorDetail of string
@@ -327,7 +328,6 @@ and untyped_abstract_tree_main =
 (* -- fundamental -- *)
   | UTContentOf            of (module_name list) * var_name
       [@printer (fun fmt (_, vn) -> Format.fprintf fmt "%s" vn)]
-  | UTFrozenCommand        of (module_name list) * var_name
   | UTApply                of untyped_abstract_tree * untyped_abstract_tree
       [@printer (fun fmt (u1, u2) -> Format.fprintf fmt "(%a %a)" pp_untyped_abstract_tree u1 pp_untyped_abstract_tree u2)]
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
@@ -410,8 +410,7 @@ and untyped_math_main =
   | UTMCommand     of untyped_abstract_tree * untyped_abstract_tree list
   | UTMList        of untyped_math list
   | UTMEmbed       of untyped_abstract_tree
-
-[@@deriving show { with_path = false }]
+[@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
@@ -429,15 +428,24 @@ and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t)
 and location = syntactic_value ref
 
 and input_horz_element =
-  | InputHorzText     of string
-  | InputHorzEmbedded of abstract_tree * abstract_tree list
-  | InputHorzContent  of abstract_tree
+  | InputHorzText         of string
+  | InputHorzEmbedded     of abstract_tree * abstract_tree list
+  | InputHorzContent      of abstract_tree
   | InputHorzEmbeddedMath of abstract_tree
+
+and intermediate_input_horz_element =
+  | ImInputHorzText         of string
+  | ImInputHorzEmbedded     of abstract_tree * abstract_tree list
+  | ImInputHorzContent      of intermediate_input_horz_element list * environment
+  | ImInputHorzEmbeddedMath of abstract_tree
+
+and intermediate_input_vert_element =
+  | ImInputVertEmbedded of abstract_tree * abstract_tree list
+  | ImInputVertContent  of intermediate_input_vert_element list * environment
 
 and input_vert_element =
   | InputVertEmbedded of abstract_tree * abstract_tree list
   | InputVertContent  of abstract_tree
-
 
 and 'a path_component =
   | PathLineTo        of 'a
@@ -469,8 +477,8 @@ and syntactic_value =
 
   | Location              of StoreID.t
 
-  | InputHorzWithEnvironment of input_horz_element list * environment
-  | InputVertWithEnvironment of input_vert_element list * environment
+  | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
+  | InputVertWithEnvironment of intermediate_input_vert_element list * environment
 
   | Horz                  of HorzBox.horz_box list
   | Vert                  of HorzBox.vert_box list
@@ -481,13 +489,12 @@ and syntactic_value =
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
-  | MathValue                   of HorzBox.math list
+  | MathValue                   of math list
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
-  | Context                     of HorzBox.input_context
-  | FrozenCommand               of EvalVarID.t
+  | Context                     of input_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
 and abstract_tree =
@@ -661,6 +668,57 @@ and pattern_tree =
   | PVariable             of EvalVarID.t
   | PAsVariable           of EvalVarID.t * pattern_tree
   | PConstructor          of constructor_name * pattern_tree
+
+and input_context = HorzBox.context_main * syntactic_value
+
+and math_element_main =
+  | MathChar         of bool * Uchar.t list
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
+      (* --
+         (1) whether it is a big operator
+         (2) Unicode code point (currently singular)
+         -- *)
+  | MathCharWithKern of bool * Uchar.t list * HorzBox.math_char_kern_func * HorzBox.math_char_kern_func
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
+      (* --
+         (1) whether it is a big operator
+         (2) Unicode code point (currently singular)
+         (3) left-hand-side kerning function
+         (4) right-hand-side kerning function
+         --*)
+  | MathEmbeddedText of (input_context -> HorzBox.horz_box list)
+
+and math_element =
+  | MathElement           of HorzBox.math_kind * math_element_main
+  | MathVariantChar       of string
+  | MathVariantCharDirect of HorzBox.math_kind * bool * HorzBox.math_variant_style
+      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
+      (* --
+         (1) math class
+         (2) whether it is a big operator
+         (3) Unicode code point for Italic
+         (4) Unicode code point for bold Italic
+         (5) Unicode code point for Roman
+         (6) Unicode code point for bold Roman
+         -- *)
+      (* TEMPORARY; should extend more *)
+
+and math_context_change =
+  | MathChangeColor         of color
+  | MathChangeMathCharClass of HorzBox.math_char_class
+
+and math =
+  | MathPure              of math_element
+  | MathChangeContext     of math_context_change * math list
+  | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
+  | MathSubscript         of math list * math list
+  | MathSuperscript       of math list * math list
+  | MathFraction          of math list * math list
+  | MathRadicalWithDegree of math list * math list
+  | MathRadical           of HorzBox.radical * math list
+  | MathParen             of HorzBox.paren * HorzBox.paren * math list
+  | MathUpperLimit        of math list * math list
+  | MathLowerLimit        of math list * math list
 [@@deriving show { with_path = false; }]
 (*
 type output_unit =
@@ -904,6 +962,124 @@ let find_location_value (env : environment) (stid : StoreID.t) : syntactic_value
   let (_, stenvref) = env in
   StoreIDHashTable.find_opt (!stenvref) stid
 
+
+module MathContext
+: sig
+    type t
+    val make : input_context -> t
+    val context_for_text : t -> input_context
+    val context_main : t -> HorzBox.context_main
+    val convert_math_variant_char : t -> string -> HorzBox.math_variant_value
+    val color : t -> color
+    val set_color : color -> t -> t
+    val enter_script : t -> t
+    val math_char_class : t -> HorzBox.math_char_class
+    val set_math_char_class : HorzBox.math_char_class -> t -> t
+    val is_in_base_level : t -> bool
+    val actual_font_size : t -> (HorzBox.math_font_abbrev -> FontFormat.math_decoder) -> length
+    val base_font_size : t -> length
+    val math_font_abbrev : t -> HorzBox.math_font_abbrev
+  end
+= struct
+    type level =
+      | BaseLevel
+      | ScriptLevel
+      | ScriptScriptLevel
+
+    type t =
+      {
+        mc_font_abbrev    : HorzBox.math_font_abbrev;
+        mc_base_font_size : length;
+        mc_level_int      : int;
+        mc_level          : level;
+        context_for_text  : input_context;
+      }
+
+    let make (ictx : input_context) : t =
+      let (ctx, _) = ictx in
+        {
+          mc_font_abbrev    = ctx.HorzBox.math_font;
+          mc_base_font_size = ctx.HorzBox.font_size;
+          mc_level_int      = 0;
+          mc_level          = BaseLevel;
+          context_for_text  = ictx;
+        }
+
+    let convert_math_variant_char (mctx : t) (s : string) =
+      let (ctx, _) = mctx.context_for_text in
+      let mcclsmap = ctx.HorzBox.math_variant_char_map in
+      let mccls = ctx.HorzBox.math_char_class in
+        match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (s, mccls) with
+        | Some(mvvalue) ->
+(*
+            Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
+*)
+            mvvalue
+
+        | None ->
+(*
+            Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
+*)
+            let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+              (HorzBox.MathOrdinary, HorzBox.MathVariantToChar(false, uchlst))
+
+    let context_for_text (mctx : t) =
+      mctx.context_for_text
+        (* temporary; maybe should update font size *)
+
+    let context_main (mctx : t) =
+      let (ctx, _) = mctx.context_for_text in
+        ctx
+
+    let color (mctx : t) =
+      let (ctx, _) = mctx.context_for_text in
+        ctx.HorzBox.text_color
+
+    let set_color (color : color) (mctx : t) =
+      let (ctx, v) = mctx.context_for_text in
+      let ctxnew = { ctx with HorzBox.text_color = color; } in
+        { mctx with context_for_text = (ctxnew, v); }
+
+    let math_char_class (mctx : t) =
+      let (ctx, _) = mctx.context_for_text in
+        ctx.HorzBox.math_char_class
+
+    let set_math_char_class mccls (mctx : t) =
+      let (ctx, v) = mctx.context_for_text in
+      let ctxnew = { ctx with HorzBox.math_char_class = mccls } in
+        { mctx with context_for_text = (ctxnew, v) }
+
+    let enter_script mctx =
+      let levnew = mctx.mc_level_int + 1 in
+      match mctx.mc_level with
+      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
+      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
+      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
+
+    let is_in_base_level mctx =
+      match mctx.mc_level with
+      | BaseLevel -> true
+      | _         -> false
+
+    let actual_font_size mctx (mdf : HorzBox.math_font_abbrev -> FontFormat.math_decoder) =
+      let bfsize = mctx.mc_base_font_size in
+      let md = mdf mctx.mc_font_abbrev in
+      let mc = FontFormat.get_math_constants md in
+      match mctx.mc_level with
+      | BaseLevel         -> bfsize
+      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
+      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
+
+    let base_font_size mctx =
+      mctx.mc_base_font_size
+
+    let math_font_abbrev mctx =
+      mctx.mc_font_abbrev
+
+  end
+
+
+type math_context = MathContext.t
 
 (*
 (* !!!! ---- global variable ---- !!!! *)

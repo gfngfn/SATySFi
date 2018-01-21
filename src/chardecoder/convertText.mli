@@ -1,8 +1,9 @@
 
 open CharBasis
 open LineBreakBox
+open HorzBox
 
-val to_chunks : HorzBox.input_context -> Uchar.t list -> line_break_chunk list
+val to_chunks : context_main -> Uchar.t list -> line_break_chunk list
 
 val chunks_to_boxes : script -> line_break_chunk list -> script -> lb_box list
 
