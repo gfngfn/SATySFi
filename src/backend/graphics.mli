@@ -38,6 +38,10 @@ val extend : 'a t -> 'a element -> 'a t
 
 val singleton : 'a element -> 'a t
 
+val map_element : ('a -> 'b) -> 'a element -> 'b element
+
+val shift_element : point -> 'a element -> 'a element
+
 val make_fill : color -> path list -> 'a element
 
 val make_stroke : length -> color -> path list -> 'a element

@@ -119,6 +119,16 @@ let interpret_option interpretf (env : environment) (getf : syntactic_value -> '
     | _                                 -> report_bug_evaluator "interpret_option" ast value
 
 
+let graphics_of_list (f : 'a -> 'b) (value : syntactic_value) : 'b Graphics.t =
+  let rec aux gracc value =
+    match value with
+    | EndOfList                             -> gracc
+    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc (Graphics.map_element f grelem)) tail
+    | _                                     -> report_bug_evaluator_value "graphics_of_list" value
+  in
+    aux Graphics.empty value
+
+
 let rec reduce_beta envf evid valuel astdef =
   let envnew = add_to_environment envf evid (ref valuel) in
     interpret envnew astdef
@@ -244,16 +254,6 @@ and interpret_path env pathcomplst cycleopt =
     (pathelemlst, closingopt)
 
 
-and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
-  let rec aux gracc value =
-    match value with
-    | EndOfList                             -> gracc
-    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
-    | _                                     -> report_bug_evaluator_value "make_frame_deco" value
-  in
-    aux Graphics.empty value
-
-
 and make_page_break_info pbinfo =
   let asc =
     Assoc.of_list [
@@ -352,7 +352,7 @@ and make_hook env (asthook : abstract_tree) : (HorzBox.page_break_info -> point 
   )
 
 
-and make_frame_deco env valuedeco =
+and make_frame_deco (env : environment) (ictx : input_context) (valuedeco : syntactic_value) : HorzBox.decoration =
   (fun (xpos, ypos) wid hgt dpt ->
     let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
     let astwid = Value(LengthConstant(wid)) in
@@ -360,7 +360,11 @@ and make_frame_deco env valuedeco =
     let astdpt = Value(LengthConstant(Length.negate dpt)) in
       (* -- depth values for users are nonnegative -- *)
     let valueret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
-      graphics_of_list valueret
+      valueret |> graphics_of_list (fun hblstf ->
+        let hblst = hblstf ictx in
+        let (imhblst, _, _) = LineBreak.natural hblst in
+          imhblst
+      )
   )
 
 
@@ -400,11 +404,15 @@ and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
       get_length valueret
   )
 
-and make_inline_graphics env valueg =
+and make_inline_graphics (env : environment) (ictx : input_context) (valueg : syntactic_value) : HorzBox.inline_graphics =
   (fun (xpos, ypos) ->
     let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
     let valueret = reduce_beta_list env valueg [astpos] in
-      graphics_of_list valueret
+      valueret |> graphics_of_list (fun hblstf ->
+        let hblst = hblstf ictx in
+        let (imhblst, _, _) = LineBreak.natural hblst in
+          imhblst
+      )
   )
 
 
@@ -802,7 +810,8 @@ and interpret env ast =
         DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
-      let (ctx, valuecmd) = interpret_context env astctx in
+      let ictx = interpret_context env astctx in
+      let (ctx, valuecmd) = ictx in
       let valuek = interpret env astk in
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
@@ -813,10 +822,10 @@ and interpret env ast =
         Vert(HorzBox.([
           VertTopMargin(true, ctx.paragraph_top);
           VertFrame(pads,
-                      make_frame_deco env valuedecoS,
-                      make_frame_deco env valuedecoH,
-                      make_frame_deco env valuedecoM,
-                      make_frame_deco env valuedecoT,
+                      make_frame_deco env ictx valuedecoS,
+                      make_frame_deco env ictx valuedecoH,
+                      make_frame_deco env ictx valuedecoM,
+                      make_frame_deco env ictx valuedecoT,
                       ctx.paragraph_width, vblst);
           VertBottomMargin(true, ctx.paragraph_bottom);
         ]))
@@ -981,34 +990,37 @@ and interpret env ast =
       let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
 
-  | BackendOuterFrame(astpads, astdeco, astbr) ->
+  | BackendOuterFrame(astctx, astpads, astdeco, asth) ->
+      let ictx = interpret_context env astctx in
       let pads = interpret_paddings env astpads in
-      let hblst = interpret_horz env astbr in
+      let hblst = interpret_horz env asth in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
-          make_frame_deco env valuedeco,
+          make_frame_deco env ictx valuedeco,
           hblst))])
 
-  | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
-      let hblst = interpret_horz env astbr in
+  | BackendOuterFrameBreakable(astctx, astpads, astdecoset, asth) ->
+      let ictx = interpret_context env astctx in
+      let hblst = interpret_horz env asth in
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
           pads, Length.zero, Length.zero,
-          make_frame_deco env valuedecoS,
-          make_frame_deco env valuedecoH,
-          make_frame_deco env valuedecoM,
-          make_frame_deco env valuedecoT,
+          make_frame_deco env ictx valuedecoS,
+          make_frame_deco env ictx valuedecoH,
+          make_frame_deco env ictx valuedecoM,
+          make_frame_deco env ictx valuedecoT,
           hblst
         )])
 
-  | BackendInlineGraphics(astwid, asthgt, astdpt, astg) ->
+  | BackendInlineGraphics(astctx, astwid, asthgt, astdpt, astg) ->
+      let ictx = interpret_context env astctx in
       let wid = interpret_length env astwid in
       let hgt = interpret_length env asthgt in
       let dpt = interpret_length env astdpt in
       let valueg = interpret env astg in
-      let graphics = make_inline_graphics env valueg in
+      let graphics = make_inline_graphics env ictx valueg in
         Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
   | BackendScriptGuard(astscript, asth) ->
@@ -1261,11 +1273,13 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
-  | PrimitiveDrawText(astpt, asth) ->
+  | PrimitiveDrawText(astpt, astf) ->
       let pt = interpret_point env astpt in
-      let hblst = interpret_horz env asth in
-      let (imhblst, _, _) = LineBreak.natural hblst in
-      let grelem = Graphics.make_text pt imhblst in
+      let valuef = interpret env astf in
+      let hblstf ictx =
+        interpret_horz env (Apply(Value(valuef), Value(Context(ictx))))
+      in
+      let grelem = Graphics.make_text pt hblstf in
         GraphicsValue(grelem)
 
   | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
@@ -1280,6 +1294,15 @@ and interpret env ast =
       let pathlst = interpret_path_value env astpath in
       let grelem = Graphics.make_fill color pathlst in
         GraphicsValue(grelem)
+
+  | PrimitiveShiftGraphics(astpt, astgrelem) ->
+      let pt = interpret_point env astpt in
+      let value = interpret env astgrelem in
+      begin
+        match value with
+        | GraphicsValue(grelem) -> GraphicsValue(Graphics.shift_element pt grelem)
+        | _                     -> report_bug_evaluator_value "PrimitiveShiftGraphics" value
+      end
 
   | PrimitiveDrawDashedStroke(astwid, astdash, astcolor, astpath) ->
       let wid = interpret_length env astwid in

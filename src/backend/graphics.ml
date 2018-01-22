@@ -93,7 +93,53 @@ let empty = Alist.empty
 let extend = Alist.extend
 
 
-let singleton elem = Alist.extend Alist.empty elem
+let singleton elem =
+  Alist.extend Alist.empty elem
+
+
+let map_element f elem =
+  match elem with
+  | Fill(color, pathlst)                  -> Fill(color, pathlst)
+  | Stroke(t, color, pathlst)             -> Stroke(t, color, pathlst)
+  | DashedStroke(t, dash, color, pathlst) -> DashedStroke(t, dash, color, pathlst)
+  | HorzText(pt, textvalue)               -> HorzText(pt, f textvalue)
+
+
+let ( +@% ) (x1, y1) (x2, y2) = (x1 +% x2, y1 +% y2)
+
+
+let shift_path_list vshift pathlst =
+  pathlst |> List.map (function
+    | Rectangle(pt1, pt2) ->
+        Rectangle(vshift +@% pt1, vshift +@% pt2)
+
+    | GeneralPath(pt0, pathelemlst, cycleopt) ->
+        let pt0new = vshift +@% pt0 in
+        let pathelemlstnew =
+          pathelemlst |> List.map (function
+            | LineTo(ptto)                    -> LineTo(vshift +@% ptto)
+            | CubicBezierTo(ptc1, ptc2, ptto) -> CubicBezierTo(vshift +@% ptc1, vshift +@% ptc2, vshift +@% ptto)
+          )
+        in
+        let cycleoptnew =
+          match cycleopt with
+          | None
+          | Some(LineTo(()))
+              -> cycleopt
+
+          | Some(CubicBezierTo(ptc1, ptc2, ())) ->
+              Some(CubicBezierTo(vshift +@% ptc1, vshift +@% ptc2, ()))
+        in
+          GeneralPath(pt0new, pathelemlstnew, cycleoptnew)
+  )
+
+
+let shift_element vshift elem =
+  match elem with
+  | Fill(color, pathlst)                  -> Fill(color, shift_path_list vshift pathlst)
+  | Stroke(t, color, pathlst)             -> Stroke(t, color, shift_path_list vshift pathlst)
+  | DashedStroke(t, dash, color, pathlst) -> DashedStroke(t, dash, color, shift_path_list vshift pathlst)
+  | HorzText(pt, textvalue)               -> HorzText(vshift +@% pt, textvalue)
 
 
 let make_fill (color : color) (pathlst : path list) : 'a element =

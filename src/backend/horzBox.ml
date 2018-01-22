@@ -223,6 +223,8 @@ type context_main = {
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
 
+and inline_graphics = (point -> (intermediate_horz_box list) Graphics.t)
+
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
@@ -239,7 +241,7 @@ and pure_horz_box =
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | PHGFixedGraphics  of length * length * length * inline_graphics
   | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]

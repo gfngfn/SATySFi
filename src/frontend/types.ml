@@ -485,7 +485,7 @@ and syntactic_value =
 
   | PathValue             of GraphicData.path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of (HorzBox.intermediate_horz_box list) Graphics.element
+  | GraphicsValue               of (input_context -> HorzBox.horz_box list) Graphics.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]
@@ -638,12 +638,13 @@ and abstract_tree =
   | BackendPageBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendFixedEmpty           of abstract_tree
   | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendVertFrame            of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedVertBottom   of abstract_tree * abstract_tree * abstract_tree
-  | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveShiftGraphics      of abstract_tree * abstract_tree
   | BackendLineStackTop         of abstract_tree
   | BackendLineStackBottom      of abstract_tree
   | BackendScriptGuard          of abstract_tree * abstract_tree

@@ -622,8 +622,8 @@ let make_environments satysfi_root_dir =
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
         ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
-        ("inline-frame-solid"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
+        ("inline-frame-solid"    , ~% (tCTX @-> tPADS @-> tDECO @-> tIB @-> tIB)             , lambda4 (fun vctx vpads vdeco vbr -> BackendOuterFrame(vctx, vpads, vdeco, vbr)));
+        ("inline-frame-breakable", ~% (tCTX @-> tPADS @-> tDECOSET @-> tIB @-> tIB)          , lambda4 (fun vctx vpads vdecoset vbr -> BackendOuterFrameBreakable(vctx, vpads, vdecoset, vbr)));
 (*
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
 *)
@@ -657,7 +657,8 @@ let make_environments satysfi_root_dir =
         ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
 
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
-        ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
+        ("inline-graphics"    , ~% (tCTX @-> tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda5 (fun vctx vwid vhgt vdpt vg -> BackendInlineGraphics(vctx, vwid, vhgt, vdpt, vg)));
+        ("shift-graphics"     , ~% (tPT @-> tGR @-> tGR)                 , lambda2 (fun vpt vgr -> PrimitiveShiftGraphics(vpt, vgr)));
         ("get-natural-width"  , ~% (tIB @-> tLN)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
         ("get-natural-length" , ~% (tBB @-> tLN)                         , lambda1 (fun vbb -> PrimitiveGetNaturalLength(vbb)));
         ("display-message"    , ~% (tS @-> tU)                           , lambda1 (fun vs -> PrimitiveDisplayMessage(vs)));
@@ -665,7 +666,7 @@ let make_environments satysfi_root_dir =
         ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)             , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
         ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)   , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
         ("fill"                    , ~% (tCLR @-> tPATH @-> tGR)                     , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
-        ("draw-text"               , ~% (tPT @-> tIB @-> tGR)                        , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
+        ("draw-text"               , ~% (tPT @-> (tCTX @-> tIB) @-> tGR)             , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
         ("start-path"              , ~% (tPT @-> tPRP)                               , lambda1 (fun vpt -> PrePathBeginning(vpt)));
         ("line-to"                 , ~% (tPT @-> tPRP @-> tPRP)                      , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
         ("bezier-to"               , ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)      , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
