@@ -219,12 +219,7 @@ type context_main = {
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_char_class        : math_char_class;
-(*
-  inline_math_command    : EvalVarID.t;
-*)
 }
-
-(* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
 
