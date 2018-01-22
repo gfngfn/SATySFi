@@ -157,7 +157,7 @@ end = struct
       let thickness = 0.5pt in
       let gap = 2pt in
       let bar =
-        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
+        inline-graphics ctx w (thickness +' gap) gap (fun (x, y) ->
           [ fill (Gray(0.)) (rectangle (x, y) w thickness); ]
         )
       in
@@ -190,7 +190,7 @@ end = struct
     let lenappend = fontsize *' 0.1 in
       length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
 
-  let angle-left hgt dpt hgtaxis fontsize color =
+  let angle-left ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -210,9 +210,9 @@ end = struct
         else
           0pt
     in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics ctx wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let angle-right hgt dpt hgtaxis fontsize color =
+  let angle-right ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -232,12 +232,14 @@ end = struct
         else
           0pt
     in
-      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics ctx wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let-math \angle =
-    math-paren angle-left angle-right
+  let-math \angle m =
+    text-in-math MathOrd (fun ctx ->
+      embed-math ctx (math-paren (angle-left ctx) (angle-right ctx) m)
+    )
 
-  let paren-left hgt dpt hgtaxis fontsize color =
+  let paren-left ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -268,9 +270,9 @@ end = struct
     in
     let graphics point = [ fill color (path point); ] in
     let kerninfo _ = 0pt in
-      (inline-graphics (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics ctx (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let paren-right hgt dpt hgtaxis fontsize color =
+  let paren-right ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -310,14 +312,16 @@ end = struct
         else
           0pt
     in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics ctx widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let-math \paren =
-    math-paren paren-left paren-right
+  let-math \paren m =
+    text-in-math MathOrd (fun ctx ->
+      embed-math ctx (math-paren (paren-left ctx) (paren-right ctx) m)
+    )
 
   let-math \app m1 m2 = ${#m1 \paren{#m2}}
 
-  let bracket-left hgt dpt hgtaxis fontsize color =
+  let bracket-left ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -341,9 +345,9 @@ end = struct
     in
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+      (inline-graphics ctx widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
-  let bracket-right hgt dpt hgtaxis fontsize color =
+  let bracket-right ctx hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
@@ -367,10 +371,12 @@ end = struct
           |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+      (inline-graphics ctx widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
-  let-math \sqbracket =
-    math-paren bracket-left bracket-right
+  let-math \sqbracket m =
+    text-in-math MathOrd (fun ctx ->
+      embed-math ctx (math-paren (bracket-left ctx) (bracket-right ctx) m)
+    )
 
   let-math \overwrite f x v =
     ${#f \sqbracket{#x \mapsto #v}}

@@ -171,7 +171,7 @@ let title-deco =
             |> line-to (x +' wid, y +' thk *' 0.5)
             |> terminate-path
         in
-        inline-graphics wid thk 0pt (fun pt -> (
+        inline-graphics ctx wid thk 0pt (fun pt -> (
           [ stroke thk Color.black (path pt); ]
         ))
       in
@@ -287,7 +287,7 @@ let title-deco =
        let () = ref-float-boxes <- acc in
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin 0pt 6pt)
-              ((inline-graphics hdrwid thickness 0pt
+              ((inline-graphics ctx hdrwid thickness 0pt
                 (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
             +++ bb-float-boxes
       in

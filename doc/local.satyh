@@ -129,7 +129,7 @@ let-inline ctx \code inner =
     name-context ctx |> set-math-command (command \meta)
   in
   let ib-frame =
-    inline-frame-breakable pads-code decoset-code
+    inline-frame-breakable ctx pads-code decoset-code
       (read-inline ctx-code inner)
   in
     script-guard Latin ib-frame

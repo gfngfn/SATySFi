@@ -2,31 +2,37 @@ module CD : sig
 
   type obj
   type t
-  type c
-  val set : c -> length * length -> math -> obj
+  val set : length * length -> math -> obj
   val object : obj -> t
   val arrow : obj -> obj -> t
-  direct \CD : [length; length; c -> t list] inline-cmd
+  direct \CD : [length; length; t list] inline-cmd
 
 end = struct
 
-  type c = context * (length * length)
-
   type obj =
-    | Object of (length * length) * inline-boxes * length * length
+    | Object of (length * length) * graphics * length ref * length ref
 
   type t = graphics
 
   let (+^) (x1, y1) (x2, y2) = (x1 +' x2, y1 +' y2)
 
-  let set (ctx, origin) center math =
-    let ib = embed-math ctx math in
-    let axhgt = get-axis-height ctx in
-    let wid = get-natural-width ib in
-      Object(origin +^ center, ib, wid, axhgt)
 
-  let object (Object((x, y), ib, w, ah)) =
-    draw-text (x -' w *' 0.5, y -' ah) ib
+  let set center math =
+    let-mutable width-ref <- 0pt in
+    let-mutable axis-height-ref <- 0pt in
+    let g =
+      draw-text (0pt, 0pt) (fun ctx -> (
+        let ib = embed-math ctx math in
+        let () = axis-height-ref <- get-axis-height ctx in
+        let () = width-ref <- get-natural-width ib in
+          ib
+      ))
+    in
+      Object(center, g, width-ref, axis-height-ref)
+
+
+  let object (Object((x, y), g, wref, ahref)) =
+    shift-graphics (x -' !wref *' 0.5, y -' !ahref) g
 
   let arrow (Object(pt1, _, w1, ah1)) (Object(pt2, _, w2, ah2)) =
     let path =
@@ -36,7 +42,9 @@ end = struct
     in
       stroke 0.5pt Color.black path
 
-  let-inline ctx \CD wid hgt k =
-    inline-graphics wid hgt 0pt (fun origin -> k (ctx, origin))
+  let-inline ctx \CD wid hgt glst =
+    inline-graphics ctx wid hgt 0pt (fun origin ->
+      glst |> List.map (shift-graphics origin)
+    )
 
 end
