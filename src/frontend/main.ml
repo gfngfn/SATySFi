@@ -346,7 +346,7 @@ let error_log_environment suspended =
         NormalLine("the content is NOT a dictionary.");
       ]
 
-  |  SetDefaultFont.MissingRequiredScriptKey(srcpath, key_script) ->
+  | SetDefaultFont.MissingRequiredScriptKey(srcpath, key_script) ->
       report_error Interface [
         NormalLine("in the default font hash file '" ^ srcpath ^ "':");
         NormalLine("missing required script key '" ^ key_script ^ "'");
@@ -435,6 +435,13 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("this expression breaks the value restriction;");
         NormalLine("it should be a syntactic function.");
+      ]
+
+  | Typechecker.MultiplePatternVariable(rng1, rng2, varnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng1));
+        NormalLine("and at " ^ (Range.to_string rng2) ^ ":");
+        NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
       ]
 
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->

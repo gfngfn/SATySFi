@@ -755,11 +755,6 @@ and interpret env ast =
 
   | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
 
-(*
-  | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)
-
-  | LambdaVertDetailedWithEnv(_, _, _) -> ast
-*)
   | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
 
   | HorzLex(astctx, ast1) ->

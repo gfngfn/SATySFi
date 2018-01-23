@@ -25,16 +25,21 @@ let print_for_debug_typecheck msg =
   ()
 
 
-let rec is_nonexpandable_expression e =
-  match e with
-  | Function(_)
-  | ContentOf(_)
-      -> true
+let rec is_nonexpansive_expression e =
+  let iter = is_nonexpansive_expression in
+    match e with
+    | Value(_)
+    | Function(_)
+    | ContentOf(_)
+        -> true
 
-  | LetRecIn(_, e2) ->
-      is_nonexpandable_expression e2
-
-  | _ -> false
+    | NonValueConstructor(constrnm, e1) -> iter e1
+    | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
+    | PrimitiveTupleCons(e1, e2)        -> iter e1 && iter e2
+    | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
+    | LetRecIn(_, e2)                   -> iter e2
+    | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
+    | _                                 -> false
 
 
 module PatternVarMap = Map.Make
@@ -55,13 +60,14 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 
 let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    Typeenv.add tyenvacc varnm (Poly(ty), evid)
+    let pty = poly_extend erase_range_of_type (Poly(ty)) in
+      Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = generalize lev ty in
+    let pty = poly_extend erase_range_of_type (generalize lev ty) in
       Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
@@ -487,7 +493,7 @@ let rec typecheck
       let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenv utast1 in
       let () = unify ty1 tyP in
       let tyenvnew =
-        if is_nonexpandable_expression e1 then
+        if is_nonexpansive_expression e1 then
         (* -- if 'e1' is polymorphically typeable -- *)
           add_pattern_var_poly lev tyenv patvarmap
         else
