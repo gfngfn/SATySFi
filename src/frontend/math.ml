@@ -237,6 +237,30 @@ let normalize_math_kind mkprev mknext mkraw =
     -> mkraw
 
   | MathBinary ->
+      let bprev =
+        match mkprev with
+        | MathOperator
+        | MathBinary
+        | MathRelation
+        | MathOpen
+        | MathPunct
+            -> true
+        | _ -> false
+      in
+      let bnext =
+        match mknext with
+        | MathRelation
+        | MathClose
+        | MathPunct
+            -> true
+        | _ -> false
+      in
+        if bprev || bnext then
+          MathOrdinary
+        else
+          MathBinary
+
+(*
       begin
         match (mkprev, mknext) with
         | (MathOrdinary, MathOrdinary)
@@ -257,6 +281,7 @@ let normalize_math_kind mkprev mknext mkraw =
             Format.printf "Math> normalize (%a, %a)\n" pp_math_kind mkprev pp_math_kind mknext;  (*for debug *)
             MathOrdinary
       end
+*)
 
   | MathRelation ->
       mkraw
