@@ -3,26 +3,22 @@ type file_path = string
 
 type glyph_id
 
+(*
 val gid : glyph_id -> int  (* for debug *)
+*)
 
 val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
-exception FailToLoadFontFormatOwingToSize   of file_path
-exception FailToLoadFontFormatOwingToSystem of string
-exception FontFormatBroken                  of Otfm.error
-exception NoGlyphID                         of glyph_id
-exception UnsupportedTTC  (* temporary *)
-exception CannotFindUnicodeCmap
+exception FailToLoadFontOwingToSize   of file_path
+exception FailToLoadFontOwingToSystem of file_path * string
+exception BrokenFont                  of file_path * string
+exception CannotFindUnicodeCmap       of file_path
 
 type cid_system_info
 
 type font_registration =
-(*
-  | Type1Registration          of int * int * encoding_in_pdf
-  | TrueTypeRegistration       of int * int * encoding_in_pdf
-*)
   | CIDFontType0Registration   of cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
   | CIDFontType2OTRegistration of cid_system_info * bool
@@ -73,9 +69,6 @@ type cid_font =
 
 type font =
   | Type1    of Type1.font
-(*  | Type1C *)
-(*  | MMType1 *)
-(*  | Type3 *)
   | TrueType of TrueType.font
   | Type0    of Type0.font
 

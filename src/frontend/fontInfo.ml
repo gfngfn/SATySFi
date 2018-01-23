@@ -159,9 +159,11 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> int * int * int) (dcdr :
             match FontFormat.find_kerning dcdr gidprev gid with
             | None        -> (otxtacc @>> gid, wacc + w)
             | Some(wkern) ->
+(*
                 PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
+*)
                 ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
-                (* -- kerning value is negative if two characters are supposed to be closer -- *)
+                  (* -- kerning value is negative if two characters are supposed to be closer -- *)
       in
         (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
     ) (None, OutputText.empty_hex_style, 0, 0, 0)
@@ -352,7 +354,9 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
                 | (gidvar, _) :: []
                 | _ :: (gidvar, _) :: _
                     ->
+(*
                     Format.printf "FontInfo> variant exists: %d ---> %d\n" (FontFormat.gid gidsub) (FontFormat.gid gidvar);  (* for debug *)
+*)
                     gidvar
                       (* -- somewhat ad-hoc; uses the second smallest as the glyph for display style -- *)
               else

@@ -372,6 +372,28 @@ let error_log_environment suspended =
                       ^ "for the script '" ^ key_script ^ "' is of invalid data type.");
       ]
 
+  | FontFormat.FailToLoadFontOwingToSize(srcpath) ->
+      report_error Interface [
+        NormalLine("font file '" ^ srcpath ^ "' is too large to be loaded.");
+      ]
+
+  | FontFormat.FailToLoadFontOwingToSystem(srcpath, msg) ->
+      report_error Interface [
+        NormalLine("cannot load font file '" ^ srcpath ^ "';");
+        DisplayLine(msg);
+      ]
+
+  | FontFormat.BrokenFont(srcpath, msg) ->
+      report_error Interface [
+        NormalLine("font file '" ^ srcpath ^ "' is broken;");
+        DisplayLine(msg);
+      ]
+
+  | FontFormat.CannotFindUnicodeCmap(srcpath) ->
+      report_error Interface [
+        NormalLine("font file '" ^ srcpath ^ "' does not have 'cmap' subtable for Unicode code points.");
+      ]
+
   | Lexer.LexError(rng, s) ->
       report_error Lexer [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

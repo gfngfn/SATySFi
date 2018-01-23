@@ -6,9 +6,9 @@ type file_path = string
 
 type glyph_id = Otfm.glyph_id
 
-
+(*
 let gid x = x  (* for debug *)
-
+*)
 
 let hex_of_glyph_id gid =
   let b0 = gid / 256 in
@@ -16,43 +16,46 @@ let hex_of_glyph_id gid =
     Printf.sprintf "%02X%02X" b0 b1
 
 
-exception FailToLoadFontFormatOwingToSize   of file_path
-exception FailToLoadFontFormatOwingToSystem of string
-exception FontFormatBroken                  of Otfm.error
-exception FontFormatBrokenAboutWidthClass
-exception NoGlyphID                         of Otfm.glyph_id
-exception UnsupportedTTC  (* temporary *)
-exception CannotFindUnicodeCmap
+exception FailToLoadFontOwingToSize   of file_path
+exception FailToLoadFontOwingToSystem of file_path * string
+exception BrokenFont                  of file_path * string
+exception CannotFindUnicodeCmap       of file_path
 
 
-let raise_err e =
-  begin
-    Format.printf "@[%a@]\n" Otfm.pp_error e;  (* for debug *)
-    raise (FontFormatBroken(e))
-  end
+let raise_err srcpath oerr =
+  let msg = Format.asprintf "%a" Otfm.pp_error oerr in
+  raise (BrokenFont(srcpath, msg))
 
 
-let string_of_file (flnmin : file_path) : string =
-  try
-    let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
-    let buf : Buffer.t = Buffer.create bufsize in
-    let byt : bytes = Bytes.create bufsize in
-    let ic : in_channel = open_in_bin flnmin in
-      try
+let string_of_file (srcpath : file_path) : string =
+  let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
+  let buf : Buffer.t = Buffer.create bufsize in
+  let byt : bytes = Bytes.create bufsize in
+  let ic =
+    try
+      open_in_bin srcpath
+    with
+    | Sys_error(msg) -> raise (FailToLoadFontOwingToSystem(srcpath, msg))
+  in
+
+  let rec aux () =
+    let c = input ic byt 0 bufsize in
+      if c = 0 then
         begin
-          while true do
-            let c = input ic byt 0 bufsize in
-              if c = 0 then raise Exit else
-                Buffer.add_substring buf (Bytes.unsafe_to_string byt) 0 c
-          done;
-          assert false
+          close_in ic;
+          Buffer.contents buf
         end
-      with
-      | Exit           -> begin close_in ic; Buffer.contents buf end
-      | Failure(_)     -> begin close_in ic; raise (FailToLoadFontFormatOwingToSize(flnmin)) end
-      | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontFormatOwingToSystem(msg)) end
-  with
-  | Sys_error(msg) -> raise (FailToLoadFontFormatOwingToSystem(msg))
+      else
+        begin
+          Buffer.add_subbytes buf byt 0 c;
+          aux ()
+        end
+  in
+    try
+      aux ()
+    with
+    | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
+    | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
 
 
 type cid_system_info = {
@@ -67,10 +70,6 @@ let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0
 
 
 type font_registration =
-(*
-  | Type1Registration          of int * int * encoding_in_pdf
-  | TrueTypeRegistration       of int * int * encoding_in_pdf
-*)
   | CIDFontType0Registration   of cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
   | CIDFontType2OTRegistration of cid_system_info * bool
@@ -180,8 +179,7 @@ module GlyphMetricsTable
     let add gid (w, h, d) gmtbl = Ht.add gmtbl gid (w, h, d)
 
     let find_opt gid gmtbl =
-      try Some(Ht.find gmtbl gid) with
-      | Not_found -> None
+      Ht.find_opt gmtbl gid
 
     let fold f init gmtbl =
       Ht.fold f gmtbl init
@@ -405,6 +403,7 @@ let get_kerning_table (d : Otfm.decoder) =
 
 
 type decoder = {
+  file_path           : file_path;
   main                : Otfm.decoder;
   cmap_subtable       : Otfm.cmap_subtable;
   head_record         : Otfm.head;
@@ -450,7 +449,7 @@ type font_stretch =
   | SemiExpandedStretch | ExpandedStretch | ExtraExpandedStretch | UltraExpandedStretch
 
 
-let font_stretch_of_width_class = function
+let font_stretch_of_width_class srcpath = function
   | 0 -> UltraCondensedStretch
   | 1 -> ExtraCondensedStretch
   | 3 -> CondensedStretch
@@ -460,7 +459,7 @@ let font_stretch_of_width_class = function
   | 7 -> ExpandedStretch
   | 8 -> ExtraExpandedStretch
   | 9 -> UltraExpandedStretch
-  | _ -> raise FontFormatBrokenAboutWidthClass
+  | w -> raise (BrokenFont(srcpath, "illegal width class " ^ (string_of_int w)))
 
 
 type font_descriptor = {
@@ -508,7 +507,7 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
       let bufout = Bytes.create (2 * src_len) in
         (* --
            in the worst case the output size is 1.003 times as large as the input size
-        -- *)
+           -- *)
       let write_byte_as_output bufret len =
         let out_offset = !out_offset_ref in
           if len <= 0 then () else
@@ -522,7 +521,9 @@ let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
         Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
         let out_len = !out_offset_ref in
         let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
+(*
         PrintForDebug.fontfmtE (Printf.sprintf "FlateDecode: input = %d, output = %d" src_len (Pdfio.bytes_size bt));  (* for debug *)
+*)
         ("/FlateDecode", bt)
       end
 
@@ -545,7 +546,7 @@ let add_stream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string 
     irstream
 
 
-let get_glyph_id_main (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) : Otfm.glyph_id option =
+let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) : Otfm.glyph_id option =
   let cp = Uchar.to_int uch in
   let cmapres =
     Otfm.cmap_subtable cmapsubtbl (fun accopt mapkd (u0, u1) gid ->
@@ -561,19 +562,20 @@ let get_glyph_id_main (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) : Otfm.g
     ) None
   in
     match cmapres with
-    | Error(e)      -> raise_err e
-    | Ok(None)      -> None
-    | Ok(Some(gid)) -> Some(gid)
+    | Error(e)      -> raise_err srcpath e
+    | Ok(opt)       -> opt
 
 
 let cmap_predicate f =
   List.find_opt (fun subtbl -> f (Otfm.cmap_subtable_ids subtbl))
 
 
-let get_cmap_subtable d =
+let get_cmap_subtable srcpath d =
   let opt =
     match Otfm.cmap d with
-    | Error(e)      -> raise (FontFormatBroken(e))
+    | Error(oerr) ->
+        raise_err srcpath oerr
+
     | Ok(subtbllst) ->
         List.fold_left (fun opt idspred ->
           match opt with
@@ -589,7 +591,7 @@ let get_cmap_subtable d =
         ]
   in
     match opt with
-    | None         -> raise CannotFindUnicodeCmap
+    | None         -> raise (CannotFindUnicodeCmap(srcpath))
     | Some(subtbl) -> subtbl
 
 
@@ -597,15 +599,17 @@ let get_cmap_subtable d =
 let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
   let gidtbl = dcdr.glyph_id_table in
     match gidtbl |> GlyphIDTable.find_opt uch with
-    | Some(gid) -> Some(gid)
-    | None      ->
-        match get_glyph_id_main dcdr.cmap_subtable uch with
-        | None      -> None
-        | Some(gid) ->
-            begin
-              gidtbl |> GlyphIDTable.add uch gid;
-              Some(gid)
-            end
+    | Some(_) as gidopt ->
+        gidopt
+
+    | None ->
+        let gidopt = get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch in
+        begin
+          match gidopt with
+          | None      -> ()
+          | Some(gid) -> gidtbl |> GlyphIDTable.add uch gid
+        end;
+        gidopt
 
 
 let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) gid
@@ -626,7 +630,7 @@ let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) =
   match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
   | Error(`Missing_required_table(t))
                when t = Otfm.Tag.loca -> (dcdr.default_ascent, dcdr.default_descent)
-  | Error(e)                          -> raise_err e
+  | Error(e)                          -> raise_err dcdr.file_path e
   | Ok(None)                          -> (dcdr.default_ascent, dcdr.default_descent)
   | Ok(Some((_, (_, ymin, _, ymax)))) -> (ymax, ymin)
 
@@ -641,7 +645,7 @@ let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
     )
   in
     match hmtxres with
-    | Error(e)             -> raise_err e
+    | Error(e)             -> raise_err dcdr.file_path e
     | Ok(None)             -> 0
     | Ok(Some((adv, lsb))) -> adv
 
@@ -673,26 +677,25 @@ let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int)
       range (m :: acc) (m + 1) n
   in
     (range [] firstchar lastchar) |> List.map (fun charcode ->
-      get_glyph_id_main dcdr.cmap_subtable (Uchar.of_int charcode) |> function
+      get_glyph_id_main dcdr.file_path dcdr.cmap_subtable (Uchar.of_int charcode) |> function
         | None      -> 0
         | Some(gid) -> get_glyph_advance_width dcdr gid
     )
 
 
-let font_descriptor_of_decoder (dcdr : decoder) font_name =
+let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
   let d = dcdr.main in
   let rcdhead = dcdr.head_record in
   let rcdhhea = dcdr.hhea_record in
-  let (>>-) x f =
-    match x with
-    | Error(e) -> raise_err e
-    | Ok(v)    -> f v
-  in
-    Otfm.os2 d  >>- fun rcdos2 ->
+  match Otfm.os2 d with
+  | Error(e) ->
+      raise_err dcdr.file_path e
+
+  | Ok(rcdos2) ->
     {
       font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
       font_family  = "";    (* temporary; should be gotten from decoder *)
-      font_stretch = Some(font_stretch_of_width_class rcdos2.Otfm.os2_us_width_class);
+      font_stretch = Some(font_stretch_of_width_class dcdr.file_path rcdos2.Otfm.os2_us_width_class);
       font_weight  = Some(rcdos2.Otfm.os2_us_weight_class);
       flags        = None;  (* temporary; should be gotten from decoder *)
       font_bbox    = (rcdhead.Otfm.head_xmin, rcdhead.Otfm.head_ymin,
@@ -706,9 +709,10 @@ let font_descriptor_of_decoder (dcdr : decoder) font_name =
     }
 
 
-let get_postscript_name dcdr =
-  match Otfm.postscript_name dcdr with
-  | Error(e)    -> raise_err e
+let get_postscript_name (dcdr : decoder) =
+  let d = dcdr.main in
+  match Otfm.postscript_name d with
+  | Error(e)    -> raise_err dcdr.file_path e
   | Ok(None)    -> assert false  (* temporary *)
   | Ok(Some(x)) -> x
 
@@ -744,8 +748,7 @@ module Type1Scheme_
 
 
     let of_decoder dcdr fc lc =
-      let d = dcdr.main in
-      let base_font = get_postscript_name d in
+      let base_font = get_postscript_name dcdr in
         {
           name            = None;
           base_font       = base_font;
@@ -841,8 +844,7 @@ module CIDFontType0
 
 
     let of_decoder dcdr cidsysinfo =
-      let d = dcdr.main in
-      let base_font = get_postscript_name d in
+      let base_font = get_postscript_name dcdr in
         {
           cid_system_info = cidsysinfo;
           base_font       = base_font;
@@ -876,8 +878,7 @@ module CIDFontType2
 
 
     let of_decoder dcdr cidsysinfo isptt =
-      let d = dcdr.main in
-      let base_font = get_postscript_name d in
+      let base_font = get_postscript_name dcdr in
         {
           cid_system_info  = cidsysinfo;
           base_font        = base_font;
@@ -1084,8 +1085,8 @@ let cid_font_type_2 cidty2font fontname cmap =
     Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap toucopt)
 
 
-let make_decoder (d : Otfm.decoder) : decoder =
-  let cmapsubtbl = get_cmap_subtable d in
+let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
+  let cmapsubtbl = get_cmap_subtable srcpath d in
   let kerntbl = get_kerning_table d in
   let ligtbl = get_ligature_table d in
   let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
@@ -1093,14 +1094,15 @@ let make_decoder (d : Otfm.decoder) : decoder =
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
-    | Error(e)    -> raise_err e
+    | Error(e)    -> raise_err srcpath e
   in
   let (rcdhead, units_per_em) =
     match Otfm.head d with
     | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
-    | Error(e)    -> raise_err e
+    | Error(e)    -> raise_err srcpath e
   in
     {
+      file_path           = srcpath;
       main                = d;
       cmap_subtable       = cmapsubtbl;
       head_record         = rcdhead;
@@ -1117,29 +1119,29 @@ let make_decoder (d : Otfm.decoder) : decoder =
 
 let get_decoder_single (srcpath : file_path) : (decoder * font_registration) option =
   match get_main_decoder_single srcpath with
-  | Error(oerr)            -> raise (FontFormatBroken(oerr))
+  | Error(oerr)            -> raise_err srcpath oerr
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> Some((make_decoder d, fontreg))
+  | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
 
 
 let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registration) option =
   match get_main_decoder_ttc srcpath i with
-  | Error(oerr)            -> raise (FontFormatBroken(oerr))
+  | Error(oerr)            -> raise_err srcpath oerr
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> Some((make_decoder d, fontreg))
+  | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
 
 
 let convert_to_ligatures dcdr gidlst =
   let ligtbl = dcdr.ligature_table in
   let rec aux acc gidrest =
     match gidrest with
-    | []      -> List.rev acc
+    | []      -> Alist.to_list acc
     | g :: gs ->
         match ligtbl |> LigatureTable.match_prefix gidrest with
-        | NoMatch                       -> aux (g :: acc) gs
-        | MatchExactly(gidlig, gidtail) -> aux (gidlig :: acc) gidtail
+        | NoMatch                       -> aux (Alist.extend acc g) gs
+        | MatchExactly(gidlig, gidtail) -> aux (Alist.extend acc gidlig) gidtail
   in
-    aux [] gidlst
+    aux Alist.empty gidlst
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : int option =
@@ -1203,7 +1205,7 @@ let get_math_bbox (md : math_decoder) (gid : glyph_id) =
           (* -- if the math font is in CFF OT -- *)
             begin
               match Otfm.charstring_absolute csinfo gid with
-              | Error(oerr)       -> raise (FontFormatBroken(oerr))
+              | Error(oerr)       -> raise_err md.as_normal_font.file_path oerr
               | Ok(None)          -> (0, 0, 0, 0)  (* needs reconsideration; maybe should emit an error *)
               | Ok(Some(pathlst)) ->
                   begin
@@ -1269,7 +1271,9 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
   (get_decoder_single srcpath) >>= fun (dcdr, fontreg) ->
   let d = dcdr.main in
     match Otfm.math d with
-    | Error(oerr) -> raise (FontFormatBroken(oerr))
+    | Error(oerr) ->
+        raise_err srcpath oerr
+
     | Ok(mathraw) ->
         let micmap =
           mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
