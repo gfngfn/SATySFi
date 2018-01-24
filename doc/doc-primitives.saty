@@ -1,367 +1,369 @@
 % -*- coding: utf-8 -*-
 document (|
-  title = {\SATySFi;プリミティヴ一覧};
+  title = {\SATySFi;の\fil-both;\no-break{基本型}と\fil-both;\no-break{プリミティヴ}};
   author = {Takashi SUWA};
   show-title = true;
   show-toc = true
 |) '<
   +p {
-    この文書では，\SATySFi;によって提供されるプリミティヴをすべて掲げる．
+    この文書では，\SATySFi;によって提供される型とプリミティヴを掲げる．
     特に根幹となるのは第\ref(`sec:inline`);節（\ref-page(`sec:inline`);ページ）である．
   }
-  +section({基本演算})(
-    let t-int-arith = tI --> (tI --> tI) in
-    let t-int-comp  = tI --> (tI --> tB) in
-    let t-bool-op = tB --> (tB --> tB) in
-  '<
-    +commands [`+`; `-`; `*`] (t-int-arith) {
-      整数の加算・減算・乗算．
-    }
-    +commands [`/`; `mod`] (t-int-arith) {
-      整数の除算と剰余．現在の仕様では，第2引数に \code{0} を与えて評価した場合の結果は未定義．
-      現在の実装では実行時エラーとなり処理を中止する．
-      \subject-to-change;
-    }
-    +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
-      整数の比較演算．
-    }
-    +commands [`&&`; `||`] (t-bool-op) {
-      真偽値の連言・選言．
-    }
-    +commands [`not`] (tB --> tB) {
-      論理否定．
-    }
-    +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
-      浮動小数点数の加算・減算．IEEE754に従う．
-    }
-    +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
-      長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
-    }
-    +commands [`*'`] (tL --> (tF --> tL)) {
-      長さのスカラー演算．
-    }
-    +commands [`/'`] (tL --> (tL --> tF)) {
-      長さの割合．
-    }
-    +commands [`<'`; `>'`] (tL --> (tL --> tB)) {
-      長さの比較．
-    }
-    +command (`float`) (tI --> tF) {
-      整数を浮動小数点数に変換する．
-    }
-  >);
-  +section {文字列演算} <
-    +p {
-      文字列操作のための簡単なプリミティヴがいくつか用意されているが，
-      現状これらのうちの一部は開発初期の名残といった様相であり，積極的な使用を推奨しない．
-      Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
-      直接UTF-8バイト列を扱うなど，低級な処理として形式化されているためである．
-    }
-    +command (`^`) (tS --> (tS --> tS)) {
-      文字列の結合．
-    }
-    +command (`arabic`) (tI --> tS) {
-      受け取った整数の十進文字列を返す．
-    }
-    +command (`string-unexplode`) ((tLIST tI) --> tS) {
-      受け取った整数列をUnicodeコードポイント列と看なして対応する文字列を返す．
-      Unicodeコードポイントとして不適切な整数が含まれていた場合の動作は未定義．
-      \subject-to-change;
-    }
-    +command (`string-same`) (tS --> (tS --> tB)) {
-      文字列がUTF-8のバイト列として等価かの判定．
-      \subject-to-change;\discouraged;
-    }
-    +command (`string-sub`) (tS --> (tI --> (tI --> tS))) {
-      \code{string-sub ${s} ${i} ${l}}で
-      文字列\code{${s}}の第\code{${i}}番目の文字を先頭とする
-      長さ\code{${l}}の部分文字列を取り出す．
-      最初の文字は0番目，また長さはUTF-8表現でのバイト長であって
-      Unicodeコードポイントの個数ではないことに注意．
-      \subject-to-change;\discouraged;
-    }
-    +command (`string-length`) (tS --> tI) {
-      受け取った文字列のUTF-8表現のバイト長を返す．
-      \subject-to-change;\discouraged;
-    }
-  >
-  +section-ref(`sec:inline`) {インライン方向に関する処理} <
-    +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
-      \code{read-inline ${ctx} ${it}}で
-      文脈\code{${ctx}}を用いて
-      インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
-%      \figure({テスト})('<+p{
-%        これは図だと思ってください．文章はテストのために一時的に入れているものです．
-%        \repeat(10){象の卵は大きいぞう．}
-%      }>);
-    }
-    +command (`inline-skip`) (tL --> tIB) {
-      \code{inline-skip ${l}}で
-      長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
-%      \figure({めっちゃリプライに使われる成瀬順})('<+centered-image(10cm)(`../tests/naruse1.jpg`);>);
-    }
-    +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
-      \code{inline-glue ${l_0} ${l_1} ${l_2}}で
-      自然長\code{${l_0}}，縮小基準長\code{${l_1}}，伸長基準長\code{${l_2}}
-      のインライン方向の空白を返す．
-    }
-    +command (`inline-fil`) (tIB) {
-      自然長0，罰則なしで任意有限長に伸長できるインライン方向の空白．
-      左揃え，右揃え，中央揃えなどに有用である．
-      特に段落の整形を目的として
-      \code{line-break true true (${ib} ++ inline-fil)}の形で使う場面が多い．
-    }
-    +command (`++`) (tIB --> (tIB --> tIB)) {
-      2つのインラインボックス列を結合して返す．
-    }
-    +command (`inline-nil`) (tIB) {
-      長さ0のインライン方向の空白．
-      より正確に言えばこれは空白ではなく，任意のインラインボックス列\code{${ib}}に対して
-      \code{${ib} ++ inline-nil}が\code{${ib}}と全く同様に振舞うようになっている．
-    }
-    +command (`embed-string`) (tS --> tIT) {
-      文字列をインラインテキストに変換する．
-    }
-    +command (`embed-math`) (tCTX --> (tMATH --> tIB)) {
-      数式をインラインボックス列に変換する．
-    }
-    +command (`discretionary`) (tI --> (tIB --> (tIB --> (tIB --> tIB)))) {
-      \code{line-break}による行分割の候補位置をつくる．
-      \code{discretionary ${p} ${ib_0} ${ib_1} ${ib_2}}で
-      「行分割されなかったときは\code{${ib_0}}を出力し，
-      行分割されたときは分割位置の直前に\code{${ib_1}}を挿入し直後に\code{${ib_2}}を挿入する」
-      という効果をもつインラインボックス列を返す．
-      なお，この位置で行分割することになるか否かにかかわらず，
-      各\code{${ib_i}}内にあるすべての行分割候補位置は行分割しない箇所として扱われる．
-      \code{${p}}はペナルティ値であり，“どの程度行分割してほしくないか”の指標である．
-      \code{10000}以上で「最悪」，すなわち「本当に行分割することが避けられない場合を除いてなんとしてもここで行分割しないでほしい」
-      ことを指し，\code{0}で「行分割の抑制も促進もしない」を指す．
-      \code{0}未満は「行分割しないよりも行分割する方が望ましい」ことを意味し，よりその位置での行分割が促進される．
-    }
-    +command (`script-guard`) (tSCR --> (tIB --> tIB)) {
-      \code{script-guard ${script} ${ib}}で，インラインボックス列\code{${ib}}を
-      文字体系\code{${script}}の単語として扱う．これは和欧間空白など異なる文字体系間のスペースの挿入の有無に影響を与える．
-    }
-    +command (`get-natural-width`) (tIB --> tL) {
-      インラインボックス列を受け取り，その自然な幅を返す．
-    }
-    +command (`inline-graphics`) (tL --> (tL --> (tL --> (tIGR --> tIB)))) {
-      \code{inline-graphics ${w} ${h} ${d} ${igr}}で
-      幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
-      領域にインライングラフィックス\code{${igr}}を描画したものをインラインボックス列として返す．
-    }
-    +command (`inline-frame-solid`) (tPADS --> (tDECO --> (tIB --> tIB))) {
-      \code{inline-frame-solid ${p} ${d} ${ib}}で
-      パディング指定\code{${p}}，装飾指定\code{${d}}，
-      内容\code{${ib}}の，途中で行分割不可能なフレームを返す．
-    }
-    +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
-      \code{inline-frame-breakable ${p} ${ds} ${ib}}で
-      パディング指定\code{${p}}，装飾4つ組指定\code{${ds}}，
-      内容\code{${ib}}の，途中で行分割可能なフレームを返す．
-    }
-    +commands [`embedded-block-top`; `embedded-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
-      \code{embedded-block-top ${ctx} ${l} ${k}}
-      で文脈\code{${ctx}}をテキスト幅に関して\code{${l}}に変更して
-      継続\code{${k}}に渡し，
-      その結果のブロックボックス列をインラインボックス列内に埋め込む．
-      高さと深さは中身の最初の行のベースラインが外のベースラインと一致するように決められる．
-      \code{embedded-block-bottom}は
-      最後の行のベースラインが外のベースラインと一致することを除いて
-      \code{embedded-block-top}と同様．
-    }
-    +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
-      複数のインラインボックス列をブロック方向に積む．全体の幅は最も長い行の幅となる．
-      \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
-      \code{line-stack-bottom}は最後の行に合わせて決められる．
-    }
-  >
-  +section {ブロック方向に関する処理} <
-    +command (`read-block`) (tCTX --> (tBT --> tBB)) {
-      \code{read-block ${ctx} ${bt}}で
-      文脈\code{${ctx}}に従ってブロックテキスト\code{${bt}}を
-      変換したブロックボックス列を返す．
-    }
-    +command (`line-break`) (tB --> (tB --> (tCTX --> (tIB --> tBB)))) {
-      \code{line-break ${b_1} ${b_2} ${ctx} ${ib}}
-      で文脈\code{${ctx}}にしたがってインラインボックス列\code{${ib}}を
-      適切に行分割して段落の形に組んだブロックボックス列を返す．
-      \code{${b_1}}が\code{true}のときはその段落の直前での改ページを許し，
-      \code{false}のときは許さない．
-      \code{${b_2}}も同様に段落の直後で改ページを許すかの指定である．
-      \subject-to-change;
-    }
-    +command (`form-document`) (tCTX --> (tBB --> tDOC)) {
-      与えられたインラインボックス列を適切にページ分割して文書に整形する．
-    }
-    +command (`+++`) (tBB --> (tBB --> tBB)) {
-      2つのブロックボックス列を結合して返す．
-    }
-    +command (`block-nil`) (tBB) {
-      高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
-      \code{${bb}}と\code{${bb} ++ block-nil}が全く等価に振舞うようになっている．
-    }
-    +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> (tCTX --> tBB) --> tBB))) {
-      \code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
-      文脈\code{${ctx}}をテキスト幅に関して\code{${pads}}を用いて変更して
-      継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
-      この処理でつくられるフレームは途中で改ページ可能である．
-    }
-  >
-  +section {テキスト文脈に関する処理} <
-    +command (`set-space-ratio`) (tF --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\code{${r}}倍に変更したテキスト文脈を返す．
-      \subject-to-change;
-    }
-    +command (`set-font-size`) (tL --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\code{${s}}に変更したテキスト文脈を返す．
-    }
-    +command (`get-font-size`) (tCTX --> tL) {
-      テキスト文脈が保持しているフォントサイズを返す．
-    }
-    +command (`set-font`) (tSCR --> (tFONT --> (tCTX --> tCTX))) {
-      \code{${ctx} \|\> set-font ${script} ${font}}で
-      文字体系\code{${script}}の文字に対して使うフォントを\code{${font}}に変更した文脈を返す．
-    }
-    +command (`set-language`) (tSCR --> (tLANG --> (tCTX --> tCTX))) {
-      \code{${ctx} \|\> set-language ${script} ${lang}}で
-      文字体系\code{${script}}に対して言語システム\code{${lang}}を割り当てた文脈を返す．
-    }
-    +command (`get-language`) (tSCR --> (tCTX --> tLANG)) {
-      \code{${ctx} \|\> get-language ${script}}で
-      文脈\code{${ctx}}に於いて文字体系\code{${script}}に割り当てられている言語システムを返す．
-    }
-    +command (`set-math-font`) (tS --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-math-font ${fname}}で数式フォントを\code{${fname}}に変更した文脈を返す．
-    }
-    +command (`set-dominant-wide-script`) (tSCR --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-dominant-wide-script ${script}}で
-      East\_Asian\_WidthプロパティがW (wide)，F (fullwidth)のいずれかである文字を文字体系\code{${script}}の文字と看なす文脈を返す．
-    }
-    +command (`get-dominant-wide-script`) (tCTX --> tSCR) {
-      受け取ったテキスト文脈に於いて
-      East\_Asian\_WidthプロパティがW，Fのいずれかである文字がどの文字体系に属すると看なされているかを返す．
-    }
-    +command (`set-dominant-narrow-script`) (tSCR --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-dominant-wide-script ${script}}で
-      East\_Asian\_WidthプロパティがNa (narrow)，H (halfwidth)，A (ambiguous)，N (neutral)のいずれか
-      である文字を文字体系\code{${script}}の文字と看なす文脈を返す．
-    }
-    +command (`get-dominant-narrow-script`) (tCTX --> tSCR) {
-      受け取ったテキスト文脈に於いて
-      East\_Asian\_WidthプロパティがNa，H，A，Nのいずれかである文字がどの文字体系に属すると看なされているかを返す．
-    }
-    +command (`set-text-color`) (tCLR --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-text-color ${color}}で文字色を\code{${color}}に変更した文脈を返す．
-    }
-    +command (`set-leading`) (tL --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-leading ${l}}で行送りを\code{${l}}に変更した文脈を返す．
-      これはフォントサイズに対する比での指定ではなく，直接長さを指定するプリミティヴであることに注意．
-      すなわち，フォントサイズを変更しても標準の行送りの長さは変更されない．
-    }
-    +command (`set-manual-rising`) (tL --> (tCTX --> tCTX)) {
-      \code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\code{${l}}だけ持ち上げて組む文脈を返す．
-    }
-    +command (`get-text-width`) (tCTX --> tL) {
-      テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
-    }
-  >
-  +section {数式に関する処理} <
-    +command (`math-char`) (tMATHCLS --> (tS --> tMATH)) {
-      \code{math-char ${mathcls} ${s}}で文字列\code{${s}}を数式中の文字として使えるようにしたものを返す．
-      \code{${mathcls}}はその文字をスペーシングに関してどのように扱ってほしいかの指定である．
-    }
-    +command (`math-big-char`) (tMATHCLS --> (tS --> tMATH)) {
-      \code{math-char}の大型演算子版．
-    }
-    +command (`math-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
-      \code{math-char}と同様だが，添字や上附をつけるためのカーニング量を${y}座標に応じて長さを返す函数で指定できる．
-    }
-    +command (`math-big-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
-      \code{math-char-with-kern}の大型演算子版．
-    }
-    +commands [`math-sup`; `math-sub`; `math-upper`; `math-lower`] (tMATH --> (tMATH --> tMATH)) {
-      上附，添字，真上，真下．
-    }
-    +command (`math-frac`) (tMATH --> (tMATH --> tMATH)) {
-      分数．
-    }
-    +command (`math-radical`) (tMATH --> tMATH) {
-      根号．
-    }
-    +command (`math-paren`) (tPAREN --> (tPAREN --> (tMATH --> tMATH))) {
-      中身に応じて自動で大きさが調整される括弧で囲う．
-    }
-    +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
-      数式中にインラインボックス列を埋め込む．
-    }
-    +command (`math-variant-char`) (tMATHCLS --> tMCSTY --> tMATH) {
-      数式文字クラス指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
-    }
-    +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
-      数式の文字色を変更する．
-    }
-    +command (`math-char-class`) (tMCCLS --> tMATH --> tMATH) {
-      数式文字クラスを変更する．
-    }
-  >
-  +section {画像に関する処理} <
-    +p {
-      外部の画像ファイルを読み込んで用いるためのプリミティヴを（まだ少数ながら）用意してある．
-      現状ではPDFとJPEGのみをサポートしている．
-    }
-    +command (`register-pdf-image`) (tS --> (tI --> tIMG)) {
-      外部PDFファイルのパスとページ番号\code{${n}}（最初のページを1ページと数える）を受け取り，そのPDFの${n}ページ目を
-      画像情報として返す．
-      \subject-to-change;
-    }
-    +command (`register-image`) (tS --> tIMG) {
-      外部の画像ファイルのパスを受け取り，その内容を画像情報として返す．
-      現在はJPEGファイルのみをサポートする．
-    }
-    +command (`use-image-by-width`) (tIMG --> (tL --> tIB)) {
-      \code{use-image-by-width ${img} ${w}}で
-      画像\code{${img}}を幅\code{${w}}の大きさで描画したものをインラインボックス列として返す．
-    }
-  >
-  +section {グラフィックスに関する処理} <
-    +command (`start-path`) (tPT --> tPRP) {
-      点を受け取り，その点からパスを開始する．
-    }
-    +command (`line-to`) (tPT --> (tPRP --> tPRP)) {
-      \code{${prepath} \|\> line-to ${v}}で
-      未完パス\code{${prepath}}を終点から点\code{${v}}へと線分で延長したものを返す．
-    }
-    +command (`bezier-to`) (tPT --> (tPT --> (tPT --> (tPRP --> tPRP)))) {
-      \code{${prepath} \|\> bezier-to ${u_1} ${u_2} ${v}}で
-      未完パス\code{${prepath}}を終点から点\code{${v}}へとBezier曲線で延長したものを返す．
-      \code{${u_1}}と\code{${u_2}}は制御点である．
-    }
-    +command (`close-with-line`) (tPRP --> tPATH) {
-      未完パスを受け取り，起点と終点を線分で結んで閉じてできるパスを返す．
-    }
-    +command (`close-with-bezier`) (tPT --> (tPT --> (tPRP --> tPATH))) {
-      \code{${prepath} \|\> close-with-bezier ${u_1} ${u_2}}で
-      未完パス\code{${prepath}}の起点と終点を制御点\code{${u_1}}，\code{${u_2}}のBezier曲線で結んで閉じてできるパスを返す．
-    }
-    +command (`terminate-path`) (tPRP --> tPATH) {
-      未完パスを受け取り，開いたままのパスとして返す．
-    }
-    +command (`unite-path`) (tPATH --> (tPATH --> tPATH)) {
-      2つのパスを統合して1つにする．これはドーナツ形など中空のパスをつくるのに必須である．
-    }
-    +command (`fill`) (tCLR --> (tPATH --> tGR)) {
-      \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
-      パスのどこが内側であるかは偶奇則によって決められる．
-    }
-    +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
-      \code{stroke ${t} ${color} ${path}}で
-      パス\code{${path}}を幅\code{${t}}，色\code{${color}}の線として描いたグラフィックスを返す．
-      \subject-to-change;
-    }
-    +command (`draw-text`) (tPT --> (tIB --> tGR)) {
-      \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
-      インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
-    }
+  +section {プリミティヴ一覧} <
+    +subsection({基本演算})(
+      let t-int-arith = tI --> (tI --> tI) in
+      let t-int-comp  = tI --> (tI --> tB) in
+      let t-bool-op = tB --> (tB --> tB) in
+    '<
+      +commands [`+`; `-`; `*`] (t-int-arith) {
+        整数の加算・減算・乗算．
+      }
+      +commands [`/`; `mod`] (t-int-arith) {
+        整数の除算と剰余．現在の仕様では，第2引数に \code{0} を与えて評価した場合の結果は未定義．
+        現在の実装では実行時エラーとなり処理を中止する．
+        \subject-to-change;
+      }
+      +commands [`==`; `<>`; `<`; `>`; `<=`; `>=`] (t-int-comp) {
+        整数の比較演算．
+      }
+      +commands [`&&`; `||`] (t-bool-op) {
+        真偽値の連言・選言．
+      }
+      +commands [`not`] (tB --> tB) {
+        論理否定．
+      }
+      +commands [`+.`; `-.`] (tF --> (tF --> tF)) {
+        浮動小数点数の加算・減算．IEEE754に従う．
+      }
+      +commands [`+'`; `-'`] (tL --> (tL --> tL)) {
+        長さの加算・減算．内部的にはPDFポイント単位の浮動小数点数で扱われ，IEEE754に従う．
+      }
+      +commands [`*'`] (tL --> (tF --> tL)) {
+        長さのスカラー演算．
+      }
+      +commands [`/'`] (tL --> (tL --> tF)) {
+        長さの割合．
+      }
+      +commands [`<'`; `>'`] (tL --> (tL --> tB)) {
+        長さの比較．
+      }
+      +command (`float`) (tI --> tF) {
+        整数を浮動小数点数に変換する．
+      }
+    >);
+    +subsection {文字列演算} <
+      +p {
+        文字列操作のための簡単なプリミティヴがいくつか用意されているが，
+        現状これらのうちの一部は開発初期の名残といった様相であり，積極的な使用を推奨しない．
+        Unicode正規化の指定などはおろかUnicodeコードポイント単位の扱いをサポートせず，
+        直接UTF-8バイト列を扱うなど，低級な処理として形式化されているためである．
+      }
+      +command (`^`) (tS --> (tS --> tS)) {
+        文字列の結合．
+      }
+      +command (`arabic`) (tI --> tS) {
+        受け取った整数の十進文字列を返す．
+      }
+      +command (`string-unexplode`) ((tLIST tI) --> tS) {
+        受け取った整数列をUnicodeコードポイント列と看なして対応する文字列を返す．
+        Unicodeコードポイントとして不適切な整数が含まれていた場合の動作は未定義．
+        \subject-to-change;
+      }
+      +command (`string-same`) (tS --> (tS --> tB)) {
+        文字列がUTF-8のバイト列として等価かの判定．
+        \subject-to-change;\discouraged;
+      }
+      +command (`string-sub`) (tS --> (tI --> (tI --> tS))) {
+        \code{string-sub ${s} ${i} ${l}}で
+        文字列\code{${s}}の第\code{${i}}番目の文字を先頭とする
+        長さ\code{${l}}の部分文字列を取り出す．
+        最初の文字は0番目，また長さはUTF-8表現でのバイト長であって
+        Unicodeコードポイントの個数ではないことに注意．
+        \subject-to-change;\discouraged;
+      }
+      +command (`string-length`) (tS --> tI) {
+        受け取った文字列のUTF-8表現のバイト長を返す．
+        \subject-to-change;\discouraged;
+      }
+    >
+    +subsection-ref(`sec:inline`) {インライン方向に関する処理} <
+      +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
+        \code{read-inline ${ctx} ${it}}で
+        文脈\code{${ctx}}を用いて
+        インラインテキスト\code{${it}}を変換したインラインボックス列を返す．
+  %      \figure({テスト})('<+p{
+  %        これは図だと思ってください．文章はテストのために一時的に入れているものです．
+  %        \repeat(10){象の卵は大きいぞう．}
+  %      }>);
+      }
+      +command (`inline-skip`) (tL --> tIB) {
+        \code{inline-skip ${l}}で
+        長さ\code{${l}}の（伸縮しない）インライン方向の空白を返す．
+  %      \figure({めっちゃリプライに使われる成瀬順})('<+centered-image(10cm)(`../tests/naruse1.jpg`);>);
+      }
+      +command (`inline-glue`) (tL --> (tL --> (tL --> tIB))) {
+        \code{inline-glue ${l_0} ${l_1} ${l_2}}で
+        自然長\code{${l_0}}，縮小基準長\code{${l_1}}，伸長基準長\code{${l_2}}
+        のインライン方向の空白を返す．
+      }
+      +command (`inline-fil`) (tIB) {
+        自然長0，罰則なしで任意有限長に伸長できるインライン方向の空白．
+        左揃え，右揃え，中央揃えなどに有用である．
+        特に段落の整形を目的として
+        \code{line-break true true (${ib} ++ inline-fil)}の形で使う場面が多い．
+      }
+      +command (`++`) (tIB --> (tIB --> tIB)) {
+        2つのインラインボックス列を結合して返す．
+      }
+      +command (`inline-nil`) (tIB) {
+        長さ0のインライン方向の空白．
+        より正確に言えばこれは空白ではなく，任意のインラインボックス列\code{${ib}}に対して
+        \code{${ib} ++ inline-nil}が\code{${ib}}と全く同様に振舞うようになっている．
+      }
+      +command (`embed-string`) (tS --> tIT) {
+        文字列をインラインテキストに変換する．
+      }
+      +command (`embed-math`) (tCTX --> (tMATH --> tIB)) {
+        数式をインラインボックス列に変換する．
+      }
+      +command (`discretionary`) (tI --> (tIB --> (tIB --> (tIB --> tIB)))) {
+        \code{line-break}による行分割の候補位置をつくる．
+        \code{discretionary ${p} ${ib_0} ${ib_1} ${ib_2}}で
+        「行分割されなかったときは\code{${ib_0}}を出力し，
+        行分割されたときは分割位置の直前に\code{${ib_1}}を挿入し直後に\code{${ib_2}}を挿入する」
+        という効果をもつインラインボックス列を返す．
+        なお，この位置で行分割することになるか否かにかかわらず，
+        各\code{${ib_i}}内にあるすべての行分割候補位置は行分割しない箇所として扱われる．
+        \code{${p}}はペナルティ値であり，“どの程度行分割してほしくないか”の指標である．
+        \code{10000}以上で「最悪」，すなわち「本当に行分割することが避けられない場合を除いてなんとしてもここで行分割しないでほしい」
+        ことを指し，\code{0}で「行分割の抑制も促進もしない」を指す．
+        \code{0}未満は「行分割しないよりも行分割する方が望ましい」ことを意味し，よりその位置での行分割が促進される．
+      }
+      +command (`script-guard`) (tSCR --> (tIB --> tIB)) {
+        \code{script-guard ${script} ${ib}}で，インラインボックス列\code{${ib}}を
+        文字体系\code{${script}}の単語として扱う．これは和欧間空白など異なる文字体系間のスペースの挿入の有無に影響を与える．
+      }
+      +command (`get-natural-width`) (tIB --> tL) {
+        インラインボックス列を受け取り，その自然な幅を返す．
+      }
+      +command (`inline-graphics`) (tL --> (tL --> (tL --> (tIGR --> tIB)))) {
+        \code{inline-graphics ${w} ${h} ${d} ${igr}}で
+        幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
+        領域にインライングラフィックス\code{${igr}}を描画したものをインラインボックス列として返す．
+      }
+      +command (`inline-frame-solid`) (tPADS --> (tDECO --> (tIB --> tIB))) {
+        \code{inline-frame-solid ${p} ${d} ${ib}}で
+        パディング指定\code{${p}}，装飾指定\code{${d}}，
+        内容\code{${ib}}の，途中で行分割不可能なフレームを返す．
+      }
+      +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
+        \code{inline-frame-breakable ${p} ${ds} ${ib}}で
+        パディング指定\code{${p}}，装飾4つ組指定\code{${ds}}，
+        内容\code{${ib}}の，途中で行分割可能なフレームを返す．
+      }
+      +commands [`embedded-block-top`; `embedded-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
+        \code{embedded-block-top ${ctx} ${l} ${k}}
+        で文脈\code{${ctx}}をテキスト幅に関して\code{${l}}に変更して
+        継続\code{${k}}に渡し，
+        その結果のブロックボックス列をインラインボックス列内に埋め込む．
+        高さと深さは中身の最初の行のベースラインが外のベースラインと一致するように決められる．
+        \code{embedded-block-bottom}は
+        最後の行のベースラインが外のベースラインと一致することを除いて
+        \code{embedded-block-top}と同様．
+      }
+      +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
+        複数のインラインボックス列をブロック方向に積む．全体の幅は最も長い行の幅となる．
+        \code{line-stack-top}は最初の行のベースラインが外のベースラインと一致するように位置が決められ，
+        \code{line-stack-bottom}は最後の行に合わせて決められる．
+      }
+    >
+    +subsection {ブロック方向に関する処理} <
+      +command (`read-block`) (tCTX --> (tBT --> tBB)) {
+        \code{read-block ${ctx} ${bt}}で
+        文脈\code{${ctx}}に従ってブロックテキスト\code{${bt}}を
+        変換したブロックボックス列を返す．
+      }
+      +command (`line-break`) (tB --> (tB --> (tCTX --> (tIB --> tBB)))) {
+        \code{line-break ${b_1} ${b_2} ${ctx} ${ib}}
+        で文脈\code{${ctx}}にしたがってインラインボックス列\code{${ib}}を
+        適切に行分割して段落の形に組んだブロックボックス列を返す．
+        \code{${b_1}}が\code{true}のときはその段落の直前での改ページを許し，
+        \code{false}のときは許さない．
+        \code{${b_2}}も同様に段落の直後で改ページを許すかの指定である．
+        \subject-to-change;
+      }
+      +command (`form-document`) (tCTX --> (tBB --> tDOC)) {
+        与えられたインラインボックス列を適切にページ分割して文書に整形する．
+      }
+      +command (`+++`) (tBB --> (tBB --> tBB)) {
+        2つのブロックボックス列を結合して返す．
+      }
+      +command (`block-nil`) (tBB) {
+        高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
+        \code{${bb}}と\code{${bb} ++ block-nil}が全く等価に振舞うようになっている．
+      }
+      +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> (tCTX --> tBB) --> tBB))) {
+        \code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
+        文脈\code{${ctx}}をテキスト幅に関して\code{${pads}}を用いて変更して
+        継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
+        この処理でつくられるフレームは途中で改ページ可能である．
+      }
+    >
+    +subsection {テキスト文脈に関する処理} <
+      +command (`set-space-ratio`) (tF --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-space-ratio ${r}}で単語間空白の幅をフォントサイズの\code{${r}}倍に変更したテキスト文脈を返す．
+        \subject-to-change;
+      }
+      +command (`set-font-size`) (tL --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-font-size ${s}}でフォントサイズを\code{${s}}に変更したテキスト文脈を返す．
+      }
+      +command (`get-font-size`) (tCTX --> tL) {
+        テキスト文脈が保持しているフォントサイズを返す．
+      }
+      +command (`set-font`) (tSCR --> (tFONT --> (tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-font ${script} ${font}}で
+        文字体系\code{${script}}の文字に対して使うフォントを\code{${font}}に変更した文脈を返す．
+      }
+      +command (`set-language`) (tSCR --> (tLANG --> (tCTX --> tCTX))) {
+        \code{${ctx} \|\> set-language ${script} ${lang}}で
+        文字体系\code{${script}}に対して言語システム\code{${lang}}を割り当てた文脈を返す．
+      }
+      +command (`get-language`) (tSCR --> (tCTX --> tLANG)) {
+        \code{${ctx} \|\> get-language ${script}}で
+        文脈\code{${ctx}}に於いて文字体系\code{${script}}に割り当てられている言語システムを返す．
+      }
+      +command (`set-math-font`) (tS --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-math-font ${fname}}で数式フォントを\code{${fname}}に変更した文脈を返す．
+      }
+      +command (`set-dominant-wide-script`) (tSCR --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-dominant-wide-script ${script}}で
+        East\_Asian\_WidthプロパティがW (wide)，F (fullwidth)のいずれかである文字を文字体系\code{${script}}の文字と看なす文脈を返す．
+      }
+      +command (`get-dominant-wide-script`) (tCTX --> tSCR) {
+        受け取ったテキスト文脈に於いて
+        East\_Asian\_WidthプロパティがW，Fのいずれかである文字がどの文字体系に属すると看なされているかを返す．
+      }
+      +command (`set-dominant-narrow-script`) (tSCR --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-dominant-wide-script ${script}}で
+        East\_Asian\_WidthプロパティがNa (narrow)，H (halfwidth)，A (ambiguous)，N (neutral)のいずれか
+        である文字を文字体系\code{${script}}の文字と看なす文脈を返す．
+      }
+      +command (`get-dominant-narrow-script`) (tCTX --> tSCR) {
+        受け取ったテキスト文脈に於いて
+        East\_Asian\_WidthプロパティがNa，H，A，Nのいずれかである文字がどの文字体系に属すると看なされているかを返す．
+      }
+      +command (`set-text-color`) (tCLR --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-text-color ${color}}で文字色を\code{${color}}に変更した文脈を返す．
+      }
+      +command (`set-leading`) (tL --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-leading ${l}}で行送りを\code{${l}}に変更した文脈を返す．
+        これはフォントサイズに対する比での指定ではなく，直接長さを指定するプリミティヴであることに注意．
+        すなわち，フォントサイズを変更しても標準の行送りの長さは変更されない．
+      }
+      +command (`set-manual-rising`) (tL --> (tCTX --> tCTX)) {
+        \code{${ctx} \|\> set-manual-rising ${l}}で文字全体を長さ\code{${l}}だけ持ち上げて組む文脈を返す．
+      }
+      +command (`get-text-width`) (tCTX --> tL) {
+        テキスト文脈が保持している段落幅を返す．\code{line-break}はこの長さにしたがって行分割を行なう．
+      }
+    >
+    +subsection {数式に関する処理} <
+      +command (`math-char`) (tMATHCLS --> (tS --> tMATH)) {
+        \code{math-char ${mathcls} ${s}}で文字列\code{${s}}を数式中の文字として使えるようにしたものを返す．
+        \code{${mathcls}}はその文字をスペーシングに関してどのように扱ってほしいかの指定である．
+      }
+      +command (`math-big-char`) (tMATHCLS --> (tS --> tMATH)) {
+        \code{math-char}の大型演算子版．
+      }
+      +command (`math-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
+        \code{math-char}と同様だが，添字や上附をつけるためのカーニング量を${y}座標に応じて長さを返す函数で指定できる．
+      }
+      +command (`math-big-char-with-kern`) (tMATHCLS --> (tS --> (tMKERNF --> (tMKERNF --> tMATH)))) {
+        \code{math-char-with-kern}の大型演算子版．
+      }
+      +commands [`math-sup`; `math-sub`; `math-upper`; `math-lower`] (tMATH --> (tMATH --> tMATH)) {
+        上附，添字，真上，真下．
+      }
+      +command (`math-frac`) (tMATH --> (tMATH --> tMATH)) {
+        分数．
+      }
+      +command (`math-radical`) (tMATH --> tMATH) {
+        根号．
+      }
+      +command (`math-paren`) (tPAREN --> (tPAREN --> (tMATH --> tMATH))) {
+        中身に応じて自動で大きさが調整される括弧で囲う．
+      }
+      +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
+        数式中にインラインボックス列を埋め込む．
+      }
+      +command (`math-variant-char`) (tMATHCLS --> tMCSTY --> tMATH) {
+        数式文字クラス指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
+      }
+      +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
+        数式の文字色を変更する．
+      }
+      +command (`math-char-class`) (tMCCLS --> tMATH --> tMATH) {
+        数式文字クラスを変更する．
+      }
+    >
+    +subsection {画像に関する処理} <
+      +p {
+        外部の画像ファイルを読み込んで用いるためのプリミティヴを（まだ少数ながら）用意してある．
+        現状ではPDFとJPEGのみをサポートしている．
+      }
+      +command (`register-pdf-image`) (tS --> (tI --> tIMG)) {
+        外部PDFファイルのパスとページ番号\code{${n}}（最初のページを1ページと数える）を受け取り，そのPDFの${n}ページ目を
+        画像情報として返す．
+        \subject-to-change;
+      }
+      +command (`register-image`) (tS --> tIMG) {
+        外部の画像ファイルのパスを受け取り，その内容を画像情報として返す．
+        現在はJPEGファイルのみをサポートする．
+      }
+      +command (`use-image-by-width`) (tIMG --> (tL --> tIB)) {
+        \code{use-image-by-width ${img} ${w}}で
+        画像\code{${img}}を幅\code{${w}}の大きさで描画したものをインラインボックス列として返す．
+      }
+    >
+    +subsection {グラフィックスに関する処理} <
+      +command (`start-path`) (tPT --> tPRP) {
+        点を受け取り，その点からパスを開始する．
+      }
+      +command (`line-to`) (tPT --> (tPRP --> tPRP)) {
+        \code{${prepath} \|\> line-to ${v}}で
+        未完パス\code{${prepath}}を終点から点\code{${v}}へと線分で延長したものを返す．
+      }
+      +command (`bezier-to`) (tPT --> (tPT --> (tPT --> (tPRP --> tPRP)))) {
+        \code{${prepath} \|\> bezier-to ${u_1} ${u_2} ${v}}で
+        未完パス\code{${prepath}}を終点から点\code{${v}}へとBezier曲線で延長したものを返す．
+        \code{${u_1}}と\code{${u_2}}は制御点である．
+      }
+      +command (`close-with-line`) (tPRP --> tPATH) {
+        未完パスを受け取り，起点と終点を線分で結んで閉じてできるパスを返す．
+      }
+      +command (`close-with-bezier`) (tPT --> (tPT --> (tPRP --> tPATH))) {
+        \code{${prepath} \|\> close-with-bezier ${u_1} ${u_2}}で
+        未完パス\code{${prepath}}の起点と終点を制御点\code{${u_1}}，\code{${u_2}}のBezier曲線で結んで閉じてできるパスを返す．
+      }
+      +command (`terminate-path`) (tPRP --> tPATH) {
+        未完パスを受け取り，開いたままのパスとして返す．
+      }
+      +command (`unite-path`) (tPATH --> (tPATH --> tPATH)) {
+        2つのパスを統合して1つにする．これはドーナツ形など中空のパスをつくるのに必須である．
+      }
+      +command (`fill`) (tCLR --> (tPATH --> tGR)) {
+        \code{fill ${color} ${path}}でパス\code{${path}}の内側を色\code{${color}}で塗ったグラフィックスを返す．
+        パスのどこが内側であるかは偶奇則によって決められる．
+      }
+      +command (`stroke`) (tL --> (tCLR --> (tPATH --> tGR))) {
+        \code{stroke ${t} ${color} ${path}}で
+        パス\code{${path}}を幅\code{${t}}，色\code{${color}}の線として描いたグラフィックスを返す．
+        \subject-to-change;
+      }
+      +command (`draw-text`) (tPT --> (tIB --> tGR)) {
+        \code{draw-text ${v} ${ib}}で位置\code{${v}}をベースラインの左端として
+        インラインボックス列\code{${ib}}を置いたグラフィックスを返す．
+      }
+    >
   >
 >

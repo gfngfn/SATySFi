@@ -17,9 +17,16 @@ module StdJa : sig
   direct +p : [inline-text] block-cmd
   direct +section : [inline-text; block-text] block-cmd
   direct +section-ref : [string; inline-text; block-text] block-cmd
+  direct +subsection : [inline-text; block-text] block-cmd
+  direct +subsection-ref : [string; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
 
 end = struct
+
+  type toc-element =
+    | TOCElementSection    of string * inline-text
+    | TOCElementSubsection of string * inline-text
+
 
   let generate-fresh-label =
     let-mutable count <- 0 in
@@ -53,6 +60,7 @@ end = struct
   let font-size-title   = 32pt
   let font-size-author  = 16pt
   let font-size-section = 18pt
+  let font-size-subsection = 16pt
 
   let section-top-margin = 20pt
   let section-bottom-margin = 12pt
@@ -88,7 +96,7 @@ end = struct
 
 
   let height-of-float-boxes pageno =
-    let () = display-message `get height` in
+%    let () = display-message `get height` in
     (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
       if pn < pageno then h +' (get-natural-length bb) else h
     )) 0pt
@@ -107,7 +115,7 @@ end = struct
       ))
     in
       hook-page-break (fun pbinfo _ -> (
-        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
+%        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
         ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
       ))
 
@@ -176,7 +184,12 @@ let title-deco =
         ))
       in
       let ib-author = read-inline ctx-author it-author in
-      let bb-title = form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil) in
+      let bb-title =
+%        if get-text-width ctx <' get-natural-width ib-title then
+%          form-paragraph ctx-title (ib-title ++ inline-fil)
+%        else
+          form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
+      in
       let bb-line = form-paragraph ctx (ib-line ++ inline-fil) in
       let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
         bb-title +++ bb-line +++ bb-author
@@ -189,7 +202,25 @@ let title-deco =
         |> set-cjk-font font-cjk-gothic
 
 
-  let-mutable section-acc-ref <- []
+  let make-subsection-title ctx =
+    ctx |> set-font-size font-size-subsection
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let-mutable toc-acc-ref <- []
+
+
+  let get-cross-reference-number label =
+    match get-cross-reference (label ^ `:num`) with
+    | None    -> `?`
+    | Some(s) -> s
+
+
+  let get-cross-reference-page label =
+    match get-cross-reference (label ^ `:page`) with
+    | None    -> `?`
+    | Some(s) -> s
 
 
   let document record inner =
@@ -228,20 +259,20 @@ let title-deco =
           line-break true false ctx-doc (read-inline (make-section-title ctx-doc) {目次} ++ inline-fil)
         in
         let bb-toc-main =
-          (!section-acc-ref) |> List.reverse |> List.fold-left (fun bbacc (label, title) -> (
-            let s-num =
-              match get-cross-reference (label ^ `:num`) with
-              | None    -> `?`
-              | Some(s) -> s
-            in
-            let ib-num = embed-string s-num in
-            let s-page =
-              match get-cross-reference (label ^ `:page`) with
-              | None    -> `?`
-              | Some(s) -> s
-            in
-              bbacc +++ line-break true true ctx-doc
-                (read-inline ctx-doc {#ib-num;. #title;} ++ inline-fil ++ read-inline ctx-doc (embed-string s-page))
+          (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
+            match tocelem with
+            | TOCElementSection(label, title) ->
+                let it-num = embed-string (get-cross-reference-number label) in
+                let it-page = embed-string (get-cross-reference-page label) in
+                  bbacc +++ line-break true true ctx-doc
+                    (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+
+          | TOCElementSubsection(label, title) ->
+                let it-num = embed-string (get-cross-reference-number label) in
+                let it-page = embed-string (get-cross-reference-page label) in
+                  bbacc +++ line-break true true ctx-doc
+                    (inline-skip 20pt ++ read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+
           )) block-nil
         in
         bb-toc-title +++ bb-toc-main
@@ -269,7 +300,7 @@ let title-deco =
          else
            (read-inline ctx title ++ inline-fil)
        in
-       let () = display-message `insert` in
+%       let () = display-message `insert` in
        let (bb-float-boxes, acc) =
          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
            let (pn, bb) = elem in
@@ -310,6 +341,7 @@ let title-deco =
   let-mutable needs-indentation-ref <- true
 
   let-mutable num-section <- 0
+  let-mutable num-subsection <- 0
 
 
   let quad-indent ctx =
@@ -335,10 +367,31 @@ let title-deco =
   let section-scheme ctx label title inner =
     let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
+    let () = num-subsection <- 0 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
     let () = register-cross-reference (label ^ `:num`) s-num in
-    let () = section-acc-ref <- (label, title) :: !section-acc-ref in
+    let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+    in
+    let ib-title = read-inline ctx-title title in
+    let bb-title =
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  let subsection-scheme ctx label title inner =
+    let () = num-subsection <- !num-subsection + 1 in
+    let () = needs-indentation-ref <- false in
+    let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let () = toc-acc-ref <- (TOCElementSubsection(label, title)) :: !toc-acc-ref in
+    let ctx-title = make-subsection-title ctx in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
@@ -359,6 +412,15 @@ let title-deco =
 
   let-block ctx +section-ref label title inner =
     section-scheme ctx label title inner
+
+
+  let-block ctx +subsection title inner =
+    let label = generate-fresh-label () in
+      subsection-scheme ctx label title inner
+
+
+  let-block ctx +subsection-ref label title inner =
+    subsection-scheme ctx label title inner
 
 
   let-inline ctx \emph inner =
