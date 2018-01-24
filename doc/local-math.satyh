@@ -2,6 +2,10 @@
 let synt-color = RGB(0.0, 0.0, 0.75)
 let meta-color = RGB(0.75, 0.0, 0.75)
 
+let-math \synt-color m = ${\math-color!(synt-color){#m}}
+
+let-math \token s = ${\synt-color{\text!{#s;}}}
+
 let-math \patp = math-color meta-color ${p}
 let-math \varx = math-color meta-color ${x}
 let-math \cstc = math-color meta-color ${c}
@@ -10,10 +14,14 @@ let-math \patsP = math-color meta-color ${P}
 let-math \valv = math-color meta-color ${v}
 let-math \expre = math-color meta-color ${e}
 let-math \bt = math-color meta-color ${bt}
+let-math \it = math-color meta-color ${it}
 
-let-math \synt-color m = ${\math-color!(synt-color){#m}}
+let-math \valunit = math-color synt-color ${\text!{()}}
+let-math \valtrue = math-color synt-color ${\token!{true}}
+let-math \valfalse = math-color synt-color ${\token!{false}}
 
-let-math \token s = ${\synt-color{\text!{#s;}}}
+let-math \valit m =
+  ${\text!{\{}#m\text!{\}}}
 
 let-math \wildcard = ${\synt-color{\_}}
 

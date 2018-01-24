@@ -6,6 +6,7 @@ let type-name name =
   text-in-math MathOrd (fun ctx -> read-inline ctx name)
 
 
+let tU = type-name {unit}
 let tI = type-name {int}
 let tB = type-name {bool}
 let tF = type-name {float}
@@ -62,9 +63,6 @@ let gap-command = 6pt
 
 let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
-  let font-size = get-font-size ctx in
-  let quad-glue = inline-glue font-size (font-size *' 0.25) (font-size *' 2.) in
-  let quad = discretionary 1000 quad-glue inline-nil inline-nil in
   let indent = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
   let m-ty = embed-math ctx ty in
@@ -107,6 +105,18 @@ let-block ctx +commands namelst ty inner =
     )) inline-nil
   in
     command-scheme ctx ib-name ty inner
+
+
+let-block ctx +type ty inner =
+  let font-size = get-font-size ctx in
+  let quad = discretionary 1000 (inline-skip font-size) inline-nil inline-nil in
+  let indent = (ctx |> get-font-size) *' 2. in
+  let ib-inner = read-inline ctx inner in
+    block-frame-breakable ctx (indent, 0pt, 0pt, 0pt) VDecoSet.empty
+        (fun ctx ->
+          form-paragraph (ctx |> set-paragraph-margin 0pt 0pt)
+            (inline-skip (0pt -' indent) ++ embed-math ctx ty ++ quad ++ ib-inner ++ inline-fil)
+        )
 
 
 let-inline \subject-to-change = {\emph{〔今後仕様変更の可能性あり〕}}
