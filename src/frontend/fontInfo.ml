@@ -35,14 +35,6 @@ let get_latin1_width_list (dcdr : FontFormat.decoder) =
 let get_font dcdr fontreg fontname =
   let cmap = FontFormat.PredefinedCMap("Identity-H") in
   match fontreg with
-(*
-  | Type1Registration(fc, lc, enc) ->
-      let ty1font = FontFormat.Type1.of_decoder dcdr fc lc in
-        (FontFormat.type1 ty1font, enc)
-  | TrueTypeRegistration(fc, lc, enc) ->
-      let trtyfont = FontFormat.TrueType.of_decoder dcdr fc lc in
-        (FontFormat.true_type trtyfont, enc)
-*)
   | FontFormat.CIDFontType0Registration(cidsysinfo, embedW) ->
       let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
         (FontFormat.cid_font_type_0 cidty0font fontname cmap)
@@ -116,7 +108,9 @@ module FontAbbrevHashTable
       (* -- if this is the first access to the font -- *)
                 begin
                   match FontFormat.get_decoder_single srcpath with
-                  | None                  -> raise (NotASingleFont(abbrev, srcpath))
+                  | None ->
+                      raise (NotASingleFont(abbrev, srcpath))
+
                   | Some((dcdr, fontreg)) ->
                       let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
                       let tag = generate_tag () in
@@ -246,7 +240,7 @@ module MathFontAbbrevHashTable
           begin
             match !storeref with
             | UnusedMath(srcpath) ->
-      (* -- if this is the first access to the math font -- *)
+              (* -- if this is the first access to the math font -- *)
                 begin
                   match FontFormat.get_math_decoder srcpath with
                   | None ->

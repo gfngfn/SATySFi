@@ -394,6 +394,30 @@ let error_log_environment suspended =
         NormalLine("font file '" ^ srcpath ^ "' does not have 'cmap' subtable for Unicode code points.");
       ]
 
+  | FontInfo.InvalidFontAbbrev(abbrev) ->
+      report_error Interface [
+        NormalLine ("cannot find a font named '" ^ abbrev ^ "'.");
+      ]
+
+  | FontInfo.InvalidMathFontAbbrev(mfabbrev) ->
+      report_error Interface [
+        NormalLine("cannot find a math font named '" ^ mfabbrev ^ "'.");
+      ]
+
+  | FontInfo.NotASingleFont(abbrev, srcpath) ->
+      report_error Interface [
+        NormalLine("the font file '" ^ srcpath ^ "',");
+        NormalLine("which is associated with the font name '" ^ abbrev ^ "',");
+        NormalLine("is not a single font file; it is a TrueType collection.");
+      ]
+
+  | FontInfo.NotASingleMathFont(mfabbrev, srcpath) ->
+      report_error Interface [
+        NormalLine("the font file '" ^ srcpath ^ "',");
+        NormalLine("which is associated with the math font name '" ^ mfabbrev ^ "',");
+        NormalLine("is not a single font file; it is a TrueType collection.");
+      ]
+
   | Lexer.LexError(rng, s) ->
       report_error Lexer [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

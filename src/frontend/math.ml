@@ -182,7 +182,6 @@ let make_left_and_right_kern hgt dpt mk mic mkspec : left_kern * right_kern =
   let rk =
     match mkspec with
     | MathKernInfo(Some(mki)) ->
-        Format.printf "Math> rk = Some(...)\n";
         {
           italics_correction = mic;
           kernTR             = FontInfo.make_discrete_math_kern mki.FontFormat.kernTR;
@@ -315,13 +314,14 @@ let space_ord_prefix fontsize =
 
 
 let space_after_script mathctx =
-  Format.printf "Math> space_after_script\n";
   let fontsize = FontInfo.actual_math_font_size mathctx in
   if not (MathContext.is_in_base_level mathctx) then
     None
   else
     let mc = FontInfo.get_math_constants mathctx in
+(*
     Format.printf "Math> space_after_script = %f\n" mc.FontFormat.space_after_script;  (* for debug *)
+*)
     Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
       (* temporary; should have variable stretchability and shrinkability *)
 
@@ -687,9 +687,7 @@ let rec check_subscript mlstB =
 let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
   match me with
   | MathElement(mkraw, MathEmbeddedText(hblstf)) ->
-      Format.printf "Math> 1\n";  (* for debug *)
       let hblst = hblstf (MathContext.context_for_text mathctx) in
-      Format.printf "Math> 2\n";  (* for debug *)
       let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
       let mk = normalize_math_kind mkprev mknext mkraw in
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
@@ -710,7 +708,9 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
       let uchlst =
+(*
         let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
+*)
         match mccls with
         | MathItalic       -> mvsty.math_italic
         | MathBoldItalic   -> mvsty.math_bold_italic
@@ -976,7 +976,9 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
         let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic   = rkB.italics_correction in
+(*
         Format.printf "Math> l_italic = %f\n" (Length.to_pdf_point l_italic);
+*)
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = fixed_empty kern in
         let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
