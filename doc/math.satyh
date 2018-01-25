@@ -355,7 +355,11 @@ end = struct
 
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
-    let w-straight = h-straight *' 0.2 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
 
     let x0 = fontsize *' 0.125 in
     let x1 = fontsize *' 0.25 in
@@ -364,23 +368,23 @@ end = struct
     let x4 = x3 +' fontsize *' 0.01 in
     let x5 = x2 +' fontsize *' 0.0625 in
     let x6 = x5 +' w-straight in
-      let p6 = x6 +' fontsize *' 0.03 in
-      let p7 = fontsize *' 0.3 in
     let x7 = fontsize *' 0.225 in
 
     let p0 = fontsize *' 0.2 in
-    let p1 = x1 +' fontsize *' 0.025 in
-    let p2 = x2 -' fontsize *' 0.03 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
     let p3 = x3 -' fontsize *' 0.1 in
     let p4 = x4 -' fontsize *' 0.09 in
-    let p5 = x5 -' fontsize *' 0.015 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = fontsize *' 0.3 in
 
     let y0 = t0 in
     let y1 = fontsize *' 0.125 in
     let y2 = y1 +' h-straight in
     let y3 = halflen in
     let y4 = halflen -' t4 in
-    let y5 = halflen -' fontsize *' 0.15 in
+    let y5 = halflen -' fontsize *' 0.175 in
     let y6 = y5 -' h-straight in
     let y7 = 0pt in
 
@@ -393,25 +397,109 @@ end = struct
     let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
     let q7 = fontsize *' 0.025 in
 
-    let path (x, ypos) =
-      let yc = ypos +' hgtaxis in
-        start-path   (x +' x0, yc +' y0)
-          |> bezier-to (x +' p0, yc +' q0) (x +' p1, yc +' q1) (x +' x1, yc +' y1)
-          |> line-to (x +' x2, yc +' y2)
-          |> bezier-to (x +' p2, yc +' q2) (x +' p3, yc +' q3) (x +' x3, yc +' y3)
-          |> line-to (x +' x4, yc +' y4)
-          |> bezier-to (x +' p4, yc +' q4) (x +' p5, yc +' q5) (x +' x5, yc +' y5)
-          |> line-to (x +' x6, yc +' y6)
-          |> bezier-to (x +' p6, yc +' q6) (x +' p7, yc +' q7) (x +' x7, yc +' y7)
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
           |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
     let kerninfo _ = 0pt in
-      (inline-graphics (fontsize *' 0.5) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let brace-right hgt dpt hgtaxis fontsize color =
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
+
+    let x0 = fontsize *' 0.125 in
+    let x1 = fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+    let x7 = fontsize *' 0.225 in
+
+    let p0 = fontsize *' 0.2 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = fontsize *' 0.3 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.175 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x4 -' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x4 -' x, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
 let-math \brace =
-  math-paren brace-left paren-right
+  math-paren brace-left brace-right
 
 
   let bracket-left hgt dpt hgtaxis fontsize color =
