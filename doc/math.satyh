@@ -2,6 +2,7 @@
 module Math : sig
 
   direct \math : [math] inline-cmd
+  direct +math : [math] block-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
@@ -9,16 +10,43 @@ module Math : sig
   direct \upper : [math; math] math-cmd
   direct \math-skip : [length] math-cmd
   direct \math-color : [color; math] math-cmd
+  val concat : math -> math list -> math
+
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
   direct \mathrel : [math] math-cmd
+
+  direct \math-style : [math-char-class; math] math-cmd
   direct \mathrm : [math] math-cmd
+  direct \bm : [math] math-cmd
+
   direct \paren : [math] math-cmd
+  direct \app : [math; math] math-cmd
   direct \angle : [math] math-cmd
+  direct \brace : [math] math-cmd
+
   direct \to : [] math-cmd
+  direct \pm : [] math-cmd
+  direct \infty : [] math-cmd
   direct \ldots : [] math-cmd
+  direct \sum : [] math-cmd
+  direct \int : [] math-cmd
+  direct \ordd : [] math-cmd
+
+  direct \lim : [] math-cmd
+
+  direct \Gamma : [] math-cmd
   direct \lambda : [] math-cmd
-  val concat : math -> math list -> math
+  direct \pi : [] math-cmd
+  direct \tau : [] math-cmd
+
+  % -- temporary --
+  direct \synteq : [] math-cmd
+  direct \derive : [math; math] math-cmd
+  direct \tyjd : [math; math; math] math-cmd
+  direct \and-also : [] math-cmd
+  direct \overwrite : [math; math; math] math-cmd
+  direct \tmabstyped : [math; math; math] math-cmd
 
 end = struct
 
@@ -312,10 +340,79 @@ end = struct
     in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
+
   let-math \paren =
     math-paren paren-left paren-right
 
+
   let-math \app m1 m2 = ${#m1 \paren{#m2}}
+
+
+  let brace-left hgt dpt hgtaxis fontsize color =
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.2 in
+
+    let x0 = fontsize *' 0.125 in
+    let x1 = fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+      let p6 = x6 +' fontsize *' 0.03 in
+      let p7 = fontsize *' 0.3 in
+    let x7 = fontsize *' 0.225 in
+
+    let p0 = fontsize *' 0.2 in
+    let p1 = x1 +' fontsize *' 0.025 in
+    let p2 = x2 -' fontsize *' 0.03 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' fontsize *' 0.015 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.15 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (x, ypos) =
+      let yc = ypos +' hgtaxis in
+        start-path   (x +' x0, yc +' y0)
+          |> bezier-to (x +' p0, yc +' q0) (x +' p1, yc +' q1) (x +' x1, yc +' y1)
+          |> line-to (x +' x2, yc +' y2)
+          |> bezier-to (x +' p2, yc +' q2) (x +' p3, yc +' q3) (x +' x3, yc +' y3)
+          |> line-to (x +' x4, yc +' y4)
+          |> bezier-to (x +' p4, yc +' q4) (x +' p5, yc +' q5) (x +' x5, yc +' y5)
+          |> line-to (x +' x6, yc +' y6)
+          |> bezier-to (x +' p6, yc +' q6) (x +' p7, yc +' q7) (x +' x7, yc +' y7)
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics (fontsize *' 0.5) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+let-math \brace =
+  math-paren brace-left paren-right
+
 
   let bracket-left hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -380,5 +477,8 @@ end = struct
 
   let-math \mathrm m =
     ${\math-style!(MathRoman){#m}}
+
+  let-math \bm m =
+    ${\math-style!(MathBoldItalic){#m}}
 
 end
