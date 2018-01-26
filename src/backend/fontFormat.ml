@@ -150,8 +150,8 @@ module GlyphIDTable
     let add uch gid gidtbl = Ht.add gidtbl uch gid
 
     let find_opt uch gidtbl =
-      try Some(Ht.find gidtbl uch) with
-      | Not_found -> None
+      Ht.find_opt gidtbl uch
+
   end
 
 
@@ -231,11 +231,11 @@ module LigatureTable
       match gidlst with
       | []                -> NoMatch
       | gidfst :: gidtail ->
-          try
-            let liginfolst = Ht.find ligtbl gidfst in
-            lookup liginfolst gidtail
-          with
-          | Not_found -> NoMatch
+          begin
+            match Ht.find_opt ligtbl gidfst with
+            | Some(liginfolst) -> lookup liginfolst gidtail
+            | None             -> NoMatch
+          end
 end
 
 
@@ -337,15 +337,20 @@ module KerningTable
         | (cdl1, cdl2, htC) :: tail ->
             match (to_class_value gid1 cdl1, to_class_value gid2 cdl2) with
             | (Some(cls1), Some(cls2)) ->
+                let kernopt = HtClass.find_opt htC (cls1, cls2) in
                 begin
-                  try Some(HtClass.find htC (cls1, cls2)) with
-                  | Not_found -> find_for_subtables tail
+                  match kernopt with
+                  | Some(_) -> kernopt
+                  | None    -> find_for_subtables tail
                 end
             | _ -> find_for_subtables tail
       in
 
-      try Some(HtSingle.find htS (gid1, gid2)) with
-      | Not_found -> find_for_subtables (!refC)
+      let kernopt = HtSingle.find_opt htS (gid1, gid2) in
+        match kernopt with
+        | Some(_) -> kernopt
+        | None    -> find_for_subtables (!refC)
+
   end
 
 
@@ -1242,13 +1247,13 @@ let convert_kern (mkopt : Otfm.math_kern option) : math_kern =
   let f = get_main_math_value in
   let rec aux acc mk =
     match mk with
-    | ([], kernlast :: [])                       -> (List.rev acc, f kernlast)
-    | (hgthead :: hgttail, kernhead :: kerntail) -> aux ((f hgthead, f kernhead) :: acc) (hgttail, kerntail)
+    | ([], kernlast :: [])                       -> (Alist.to_list acc, f kernlast)
+    | (hgthead :: hgttail, kernhead :: kerntail) -> aux (Alist.extend acc (f hgthead, f kernhead)) (hgttail, kerntail)
     | _                                          -> assert false  (* temporary; should report error *)
   in
   match mkopt with
   | None     -> ([], 0)
-  | Some(mk) -> aux [] mk
+  | Some(mk) -> aux Alist.empty mk
 
 
 let convert_kern_info (mkir : Otfm.math_kern_info_record) =
