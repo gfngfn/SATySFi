@@ -475,7 +475,7 @@ let get_initial_context wid =
     {
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
-      math_font              = "lmodern";
+      math_font              = "lmodern";  (* TEMPORARY *)
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
