@@ -3,6 +3,11 @@ type file_path = string
 
 type glyph_id
 
+type per_mille =
+  | PerMille of int
+
+type metrics = per_mille * per_mille * per_mille
+
 (*
 val gid : glyph_id -> int  (* for debug *)
 *)
@@ -35,7 +40,7 @@ type 'a resource =
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of (string resource) ref  (* temporary;*)
-
+(*
 module Type1 : sig
   type font
   val of_decoder : decoder -> int -> int -> font
@@ -47,7 +52,7 @@ module TrueType : sig
   val of_decoder : decoder -> int -> int -> font
   val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
-
+*)
 module Type0 : sig
   type font
   val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
@@ -68,16 +73,20 @@ type cid_font =
   | CIDFontType2 of CIDFontType2.font
 
 type font =
+(*
   | Type1    of Type1.font
   | TrueType of TrueType.font
+*)
   | Type0    of Type0.font
 
+(*
 val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
+*)
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
 
-val get_glyph_metrics : decoder -> glyph_id -> int * int * int
+val get_glyph_metrics : decoder -> glyph_id -> metrics
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
 val adobe_japan1 : cid_system_info
@@ -107,9 +116,9 @@ val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 
-val get_math_glyph_metrics : math_decoder -> glyph_id -> int * int * int
+val get_math_glyph_metrics : math_decoder -> glyph_id -> metrics
 
-val get_math_correction_metrics : math_decoder -> glyph_id -> int option * math_kern_info option
+val get_math_correction_metrics : math_decoder -> glyph_id -> per_mille option * math_kern_info option
 
 val get_math_vertical_variants : math_decoder -> glyph_id -> (glyph_id * float) list
 

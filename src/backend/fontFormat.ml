@@ -6,6 +6,13 @@ type file_path = string
 
 type glyph_id = Otfm.glyph_id
 
+type design_units = int
+
+type per_mille =
+  | PerMille of int
+
+type metrics = per_mille * per_mille * per_mille
+
 (*
 let gid x = x  (* for debug *)
 *)
@@ -159,9 +166,9 @@ module GlyphMetricsTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> int * int * int -> t -> unit
-    val find_opt : glyph_id -> t -> (int * int * int) option
-    val fold : (glyph_id -> int * int * int -> 'a -> 'a) -> 'a -> t -> 'a
+    val add : glyph_id -> metrics -> t -> unit
+    val find_opt : glyph_id -> t -> metrics option
+    val fold : (glyph_id -> metrics -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
@@ -172,11 +179,13 @@ module GlyphMetricsTable
         let hash = Hashtbl.hash
       end)
 
-    type t = (int * int * int) Ht.t
+    type t = metrics Ht.t
 
-    let create = Ht.create
+    let create =
+      Ht.create
 
-    let add gid (w, h, d) gmtbl = Ht.add gmtbl gid (w, h, d)
+    let add gid (w, h, d) gmtbl =
+      Ht.add gmtbl gid (w, h, d)
 
     let find_opt gid gmtbl =
       Ht.find_opt gmtbl gid
@@ -418,8 +427,8 @@ type decoder = {
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
   units_per_em        : int;
-  default_ascent      : int;
-  default_descent     : int;
+  default_ascent      : per_mille;
+  default_descent     : per_mille;
 }
 
 type 'a resource =
@@ -444,7 +453,7 @@ type cmap =
   | PredefinedCMap of string
   | CMapFile       of cmap_resource
 
-type bbox = int * int * int * int
+type bbox = per_mille * per_mille * per_mille * per_mille
 
 type matrix = float * float * float * float
 
@@ -475,8 +484,8 @@ type font_descriptor = {
     flags        : int option;  (* temporary; maybe should be handled as a boolean record *)
     font_bbox    : bbox;
     italic_angle : float;
-    ascent       : int;
-    descent      : int;
+    ascent       : per_mille;
+    descent      : per_mille;
     stemv        : float;
     font_data    : (Otfm.decoder resource) ref;
     (* temporary; should contain more fields *)
@@ -617,8 +626,16 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         gidopt
 
 
+let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
+  PerMille(int_of_float ((float_of_int (w * 1000)) /. (float_of_int units_per_em)))
+
+
+let per_mille (dcdr : decoder) (w : design_units) : per_mille =
+  per_mille_raw dcdr.units_per_em w
+
+
 let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) gid
-    : ((((bool * int * int) list) list * (int * int * int * int)) option, Otfm.error) result =
+    : ((((bool * design_units * design_units) list) list * (design_units * design_units * design_units * design_units)) option, Otfm.error) result =
   let d = dcdr.main in
   match Otfm.loca d gid with
   | Error(e)    -> Error(e)
@@ -631,16 +648,16 @@ let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) gid
       | Ok((`Simple(precntrlst), bbox)) -> Ok(Some((precntrlst, bbox)))
 
 
-let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) =
+let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) : per_mille * per_mille =
   match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
   | Error(`Missing_required_table(t))
                when t = Otfm.Tag.loca -> (dcdr.default_ascent, dcdr.default_descent)
   | Error(e)                          -> raise_err dcdr.file_path e
   | Ok(None)                          -> (dcdr.default_ascent, dcdr.default_descent)
-  | Ok(Some((_, (_, ymin, _, ymax)))) -> (ymax, ymin)
+  | Ok(Some((_, (_, ymin, _, ymax)))) -> (per_mille dcdr ymax, per_mille dcdr ymin)
 
 
-let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
+let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : per_mille =
   let d = dcdr.main in
   let hmtxres =
     None |> Otfm.hmtx d (fun accopt gid adv lsb ->
@@ -651,22 +668,18 @@ let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : int =
   in
     match hmtxres with
     | Error(e)             -> raise_err dcdr.file_path e
-    | Ok(None)             -> 0
-    | Ok(Some((adv, lsb))) -> adv
+    | Ok(None)             -> PerMille(0)
+    | Ok(Some((adv, lsb))) -> per_mille dcdr adv
 
 
-let per_mille dcdr w =
-  (int_of_float ((float_of_int (w * 1000)) /. (float_of_int dcdr.units_per_em)))
-
-
-let get_glyph_metrics_main (dcdr : decoder) (gid : glyph_id) =
+let get_glyph_metrics_main (dcdr : decoder) (gid : glyph_id) : metrics =
   let wid = get_glyph_advance_width dcdr gid in
   let (hgt, dpt) = get_glyph_height_and_depth dcdr gid in
-    (per_mille dcdr wid, per_mille dcdr hgt, per_mille dcdr dpt)
+    (wid, hgt, dpt)
 
 
 (* PUBLIC *)
-let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : int * int * int =
+let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
   let gmtbl = dcdr.glyph_metrics_table in
     match gmtbl |> GlyphMetricsTable.find_opt gid with
     | Some(gm) -> gm
@@ -675,7 +688,7 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : int * int * int =
           begin gmtbl |> GlyphMetricsTable.add gid gm; gm end
 
 
-
+(*
 let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int) : int list =
   let rec range acc m n =
     if m > n then List.rev acc else
@@ -686,6 +699,20 @@ let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int)
         | None      -> 0
         | Some(gid) -> get_glyph_advance_width dcdr gid
     )
+*)
+
+let of_per_mille = function
+  | PerMille(x) -> Pdf.Integer(x)
+
+
+let of_per_mille_opt = function
+  | None              -> Pdf.Null
+  | Some(PerMille(x)) -> Pdf.Integer(x)
+
+
+let of_per_mille_pair_opt = function
+  | None                             -> Pdf.Null
+  | Some((PerMille(a), PerMille(b))) -> Pdf.Array[Pdf.Integer(a); Pdf.Integer(b)]
 
 
 let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
@@ -697,21 +724,26 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
       raise_err dcdr.file_path e
 
   | Ok(rcdos2) ->
-    {
-      font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
-      font_family  = "";    (* temporary; should be gotten from decoder *)
-      font_stretch = Some(font_stretch_of_width_class dcdr.file_path rcdos2.Otfm.os2_us_width_class);
-      font_weight  = Some(rcdos2.Otfm.os2_us_weight_class);
-      flags        = None;  (* temporary; should be gotten from decoder *)
-      font_bbox    = (rcdhead.Otfm.head_xmin, rcdhead.Otfm.head_ymin,
-                      rcdhead.Otfm.head_xmax, rcdhead.Otfm.head_ymax);
-      italic_angle = 0.;    (* temporary; should be gotten from decoder; 'post.italicAngle' *)
-      ascent       = rcdhhea.Otfm.hhea_ascender;
-      descent      = rcdhhea.Otfm.hhea_descender;
-      stemv        = 0.;    (* temporary; should be gotten from decoder *)
-      font_data    = ref (Data(d));
-      (* temporary; should contain more fields *)
-    }
+      let bbox =
+        (per_mille dcdr rcdhead.Otfm.head_xmin,
+         per_mille dcdr rcdhead.Otfm.head_ymin,
+         per_mille dcdr rcdhead.Otfm.head_xmax,
+         per_mille dcdr rcdhead.Otfm.head_ymax)
+      in
+      {
+        font_name    = font_name; (* -- same as Otfm.postscript_name dcdr -- *)
+        font_family  = "";    (* temporary; should be gotten from decoder *)
+        font_stretch = Some(font_stretch_of_width_class dcdr.file_path rcdos2.Otfm.os2_us_width_class);
+        font_weight  = Some(rcdos2.Otfm.os2_us_weight_class);
+        flags        = None;  (* temporary; should be gotten from decoder *)
+        font_bbox    = bbox;
+        italic_angle = 0.;    (* temporary; should be gotten from decoder; 'post.italicAngle' *)
+        ascent       = per_mille dcdr rcdhhea.Otfm.hhea_ascender;
+        descent      = per_mille dcdr rcdhhea.Otfm.hhea_descender;
+        stemv        = 0.;    (* temporary; should be gotten from decoder *)
+        font_data    = ref (Data(d));
+        (* temporary; should contain more fields *)
+      }
 
 
 let get_postscript_name (dcdr : decoder) =
@@ -733,7 +765,7 @@ let font_file_info_of_embedding embedding =
   | FontFile2      -> ("/FontFile2", None)
   | FontFile3(sub) -> ("/FontFile3", Some(sub))
 
-
+(*
 module Type1Scheme_
 = struct
     type font = {
@@ -783,8 +815,8 @@ module Type1Scheme_
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , Pdf.Array[Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0); Pdf.Integer(0)]);  (* temporary; should be variable *)
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
-          ("/Ascent"     , Pdf.Integer(fontdescr.ascent));
-          ("/Descent"    , Pdf.Integer(fontdescr.descent));
+          ("/Ascent"     , of_per_mille fontdescr.ascent);
+          ("/Descent"    , of_per_mille fontdescr.descent);
           ("/StemV"      , Pdf.Real(fontdescr.stemv));
           (font_file_key , Pdf.Indirect(irstream));
         ]
@@ -829,7 +861,7 @@ module Type3
         to_unicode      : cmap_resource option;
       }
   end
-
+*)
 
 module CIDFontType0
 = struct
@@ -837,7 +869,7 @@ module CIDFontType0
         cid_system_info : cid_system_info;
         base_font       : string;
         font_descriptor : font_descriptor;
-        dw              : int option;  (* represented by units defined by head.unitsPerEm *)
+        dw              : design_units option;  (* represented by units defined by head.unitsPerEm *)
         dw2             : (int * int) option;
         (* temporary; should contain more fields; /W2 *)
       }
@@ -906,7 +938,7 @@ let pdfobject_of_cmap pdf cmap =
   | CMapFile(res)            -> failwith "cmap file for Type 0 fonts; remains to be implemented."
 
 
-let pdfobject_of_bbox (xmin, ymin, xmax, ymax) =
+let pdfobject_of_bbox (PerMille(xmin), PerMille(ymin), PerMille(xmax), PerMille(ymax)) =
   Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
 
 
@@ -945,8 +977,8 @@ module Type0
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
           ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);  (* temporary; should be variable *)
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
-          ("/Ascent"     , Pdf.Integer(fontdescr.ascent));
-          ("/Descent"    , Pdf.Integer(fontdescr.descent));
+          ("/Ascent"     , of_per_mille fontdescr.ascent);
+          ("/Descent"    , of_per_mille fontdescr.descent);
           ("/StemV"      , Pdf.Real(fontdescr.stemv));
           (font_file_key , Pdf.Indirect(irstream));
         ]
@@ -966,21 +998,11 @@ module Type0
     let pdfarray_of_widths dcdr =
       let gmtbl = dcdr.glyph_metrics_table in
       let arr =
-        gmtbl |> GlyphMetricsTable.fold (fun gid (w, _, _) acc ->
+        gmtbl |> GlyphMetricsTable.fold (fun gid (PerMille(w), _, _) acc ->
           Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
         Pdf.Array(arr)
-
-
-    let pdfint_opt = function
-      | None    -> Pdf.Null
-      | Some(x) -> Pdf.Integer(x)
-
-
-    let pdfintpair_opt = function
-      | None         -> Pdf.Null
-      | Some((a, b)) -> Pdf.Array[Pdf.Integer(a); Pdf.Integer(b)]
 
 
     let add_cid_type_0 pdf cidty0font dcdr =
@@ -988,6 +1010,8 @@ module Type0
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
       let irdescr = add_font_descriptor pdf fontdescr base_font (FontFile3("OpenType")) in
+      let pmoptdw = option_map (per_mille dcdr) cidty0font.CIDFontType0.dw in
+      let pmpairoptdw2 = option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b)) cidty0font.CIDFontType0.dw2 in
       let objdescend =
         Pdf.Dictionary[
           ("/Type"          , Pdf.Name("/Font"));
@@ -995,9 +1019,9 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-          ("/DW"            , pdfint_opt cidty0font.CIDFontType0.dw);
+          ("/DW"            , of_per_mille_opt pmoptdw);
           ("/W"             , pdfarray_of_widths dcdr);
-          ("/DW2"           , pdfintpair_opt cidty0font.CIDFontType0.dw2);
+          ("/DW2"           , of_per_mille_pair_opt pmpairoptdw2);
           (* temporary; should add more; /W2 *)
         ]
       in
@@ -1038,9 +1062,9 @@ module Type0
           ("/BaseFont"      , Pdf.Name("/" ^ base_font));
           ("/CIDSystemInfo" , pdfdict_of_cid_system_info cidsysinfo);
           ("/FontDescriptor", Pdf.Indirect(irdescr));
-          ("/DW"            , pdfint_opt dwpmopt);
+          ("/DW"            , of_per_mille_opt dwpmopt);
           ("/W"             , pdfarray_of_widths dcdr);
-          ("/DW2"           , pdfintpair_opt dw2pmpairopt);
+          ("/DW2"           , of_per_mille_pair_opt dw2pmpairopt);
           ("/CIDToGIDMap"   , pdfobject_cid_to_gid_map)
             (* should add more; /W2 *)
         ]
@@ -1069,17 +1093,18 @@ module Type0
   end
 
 type font =
-  | Type1    of Type1.font
+(*  | Type1    of Type1.font *)
 (*  | Type1C *)
 (*  | MMType1 *)
 (*  | Type3 *)
-  | TrueType of TrueType.font
+(*  | TrueType of TrueType.font *)
   | Type0    of Type0.font
 
-
+(*
 let type1 ty1font = Type1(ty1font)
 
 let true_type trtyfont = TrueType(trtyfont)
+*)
 
 let cid_font_type_0 cidty0font fontname cmap =
   let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
@@ -1117,8 +1142,8 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
       glyph_id_table      = gidtbl;
       glyph_metrics_table = gmtbl;
       units_per_em        = units_per_em;
-      default_ascent      = ascent;  (* -- by the unit defined in the font -- *)
-      default_descent     = descent; (* -- by the unit defined in the font -- *)
+      default_ascent      = per_mille_raw units_per_em ascent;  (* -- by the unit defined in the font -- *)
+      default_descent     = per_mille_raw units_per_em descent; (* -- by the unit defined in the font -- *)
     }
 
 
@@ -1168,7 +1193,7 @@ module MathBBoxTable = Hashtbl.Make
     let hash = Hashtbl.hash
   end)
 
-type math_kern = (int * int) list * int
+type math_kern = (design_units * design_units) list * int
 
 type math_kern_info =
   {
@@ -1184,8 +1209,8 @@ type math_decoder =
   {
     as_normal_font             : decoder;
     math_constants             : Otfm.math_constants;
-    math_italics_correction    : int MathInfoMap.t;
-    math_top_accent_attachment : int MathInfoMap.t;
+    math_italics_correction    : per_mille MathInfoMap.t;
+    math_top_accent_attachment : per_mille MathInfoMap.t;
     math_vertical_variants     : (math_variant_glyph list) MathInfoMap.t;
     math_horizontal_variants   : (math_variant_glyph list) MathInfoMap.t;
     math_kern_info             : math_kern_info MathInfoMap.t;
@@ -1195,7 +1220,11 @@ type math_decoder =
   }
 
 
-let get_math_bbox (md : math_decoder) (gid : glyph_id) =
+let bbox_zero =
+  (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
+
+
+let get_math_bbox (md : math_decoder) (gid : glyph_id) : bbox =
   let mbboxtbl = md.math_bbox_table in
   match MathBBoxTable.find_opt mbboxtbl gid with
   | Some(bbox) -> bbox
@@ -1204,19 +1233,24 @@ let get_math_bbox (md : math_decoder) (gid : glyph_id) =
         match md.math_charstring_info with
         | None ->
           (* -- if the math font is in TrueType OT -- *)
-            (0, 0, 0, 0)  (* temporary; should access 'glyf' table *)
+            bbox_zero  (* temporary; should access 'glyf' table *)
 
         | Some(csinfo) ->
           (* -- if the math font is in CFF OT -- *)
             begin
               match Otfm.charstring_absolute csinfo gid with
               | Error(oerr)       -> raise_err md.as_normal_font.file_path oerr
-              | Ok(None)          -> (0, 0, 0, 0)  (* needs reconsideration; maybe should emit an error *)
+              | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
               | Ok(Some(pathlst)) ->
                   begin
                     match Otfm.charstring_bbox pathlst with
-                    | None       -> (0, 0, 0, 0)
-                    | Some(bbox) -> bbox
+                    | None ->
+                        bbox_zero
+
+                    | Some(bbox) ->
+                        let (xmin, ymin, xmax, ymax) = bbox in
+                        let f = per_mille md.as_normal_font in
+                          (f xmin, f ymin, f xmax, f ymax)
                   end
             end
       end
@@ -1282,7 +1316,7 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
     | Ok(mathraw) ->
         let micmap =
           mathraw.Otfm.math_glyph_info.Otfm.math_italics_correction
-            |> assoc_to_map get_main_math_value
+            |> assoc_to_map (fun v -> per_mille dcdr (get_main_math_value v))
         in
         let mkimap =
           mathraw.Otfm.math_glyph_info.Otfm.math_kern_info
@@ -1380,16 +1414,24 @@ let get_math_script_variant (md : math_decoder) (gidorg : glyph_id) =
     gidssty
 
 
-let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) =
+let truncate_negative (PerMille(x)) =
+  PerMille(max 0 x)
+
+
+let truncate_positive (PerMille(x)) =
+  PerMille(min 0 x)
+
+
+let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : per_mille * per_mille * per_mille =
   let dcdr = md.as_normal_font in
   let (wid, _, _) = get_glyph_metrics dcdr gid in
   let (_, _, ymin, ymax) = get_math_bbox md gid in
-  let hgt = max 0 ymax in
-  let dpt = min 0 ymin in
+  let hgt = truncate_negative ymax in
+  let dpt = truncate_positive ymin in
     (wid, hgt, dpt)
 
 
-let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) =
+let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) : per_mille option * math_kern_info option =
   let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
   let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
     (micopt, mkiopt)

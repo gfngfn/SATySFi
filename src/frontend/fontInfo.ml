@@ -131,21 +131,20 @@ let get_font_tag (abbrev : font_abbrev) : tag =
   | Some((tag, _, _)) -> tag
 
 
-let raw_length_to_skip_length (fontsize : length) (rawlen : int) =
+let raw_length_to_skip_length (fontsize : length) (FontFormat.PerMille(rawlen) : FontFormat.per_mille) =
   fontsize *% ((float_of_int rawlen) /. 1000.)
-    (* temporary; should use UnitsPerEm? *)
 
 
 let ( @>> ) = OutputText.append_glyph_id
 let ( @*> ) = OutputText.append_kern
 
 
-let convert_gid_list (metricsf : FontFormat.glyph_id -> int * int * int) (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * int * int * int =
+let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * FontFormat.metrics =
   let gidligedlst = FontFormat.convert_to_ligatures dcdr gidlst in
 
   let (_, otxt, rawwid, rawhgt, rawdpt) =
     gidligedlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gid ->
-      let (w, h, d) = metricsf gid in
+      let (FontFormat.PerMille(w), FontFormat.PerMille(h), FontFormat.PerMille(d)) = metricsf gid in
       let (tjsaccnew, waccnew) =
         match gidprevopt with
         | None          -> (otxtacc @>> gid, wacc + w)
@@ -162,7 +161,7 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> int * int * int) (dcdr :
         (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
     ) (None, OutputText.empty_hex_style, 0, 0, 0)
   in
-    (gidligedlst, otxt, rawwid, rawhgt, rawdpt)
+    (gidligedlst, otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
@@ -174,7 +173,7 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
-          let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
+          let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
           let dptsub = f_skip rawdpt in
@@ -357,7 +356,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
                 gidsub
           )
         in
-        let (gidligedlst, otxt, rawwid, rawhgt, rawdpt) =
+        let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) =
           convert_gid_list (FontFormat.get_math_glyph_metrics md) (FontFormat.math_base_font md) gidlst
         in
         let (rawmicopt, rawmkiopt) =
@@ -376,8 +375,10 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
 
 let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
   match fontdfn with
+(*
   | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
+*)
   | FontFormat.Type0(ty0font)     -> FontFormat.Type0.to_pdfdict pdf ty0font dcdr
 
 
