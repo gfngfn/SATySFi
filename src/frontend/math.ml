@@ -328,21 +328,32 @@ let space_after_script mathctx =
 
 let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
   let is_in_script = not (MathContext.is_in_base_level mathctx) in
+  let fontsize = FontInfo.actual_math_font_size mathctx in
   if is_in_script then
-    None
+    match (mkprev, mk) with
+    | (MathOperator, MathOrdinary)
+    | (MathOrdinary, MathOperator)
+    | (MathOperator, MathOperator)
+    | (MathClose   , MathOperator)
+    | (MathInner   , MathOperator)
+        -> space_ord_op fontsize
+
+    | _ -> None
   else
-    let fontsize = FontInfo.actual_math_font_size mathctx in
       match (mkprev, mk) with
-      | (MathOrdinary, MathInner   )
-      | (MathInner   , MathInner   )
+      | (MathPunct   , _           )
+        -> space_punct fontsize
+
       | (MathInner   , MathOrdinary)
+      | (MathInner   , MathOpen    )
+      | (MathInner   , MathPunct   )
+      | (MathInner   , MathInner   )
+      | (MathOrdinary, MathInner   )
       | (MathPrefix  , MathInner   )
+      | (MathClose   , MathInner   )
         -> space_ord_inner fontsize
 
       | (_           , MathClose   )
-(*
-      | (MathPrefix  , MathClose   )
-*)
         ->
           begin
             match corr with
@@ -361,31 +372,33 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
             | ItalicsCorrection(italcorr) -> Some(fixed_empty italcorr)
           end
 
-      | (MathPunct   , _           )
-        -> space_punct fontsize
-
       | (MathBinary  , MathOrdinary)
-      | (MathBinary  , MathInner   )
-      | (MathBinary  , MathOpen    )
       | (MathBinary  , MathPrefix  )
+      | (MathBinary  , MathOperator)
+      | (MathBinary  , MathOpen    )
+      | (MathBinary  , MathInner   )
       | (MathOrdinary, MathBinary  )
-      | (MathInner   , MathBinary  )
       | (MathClose   , MathBinary  )
+      | (MathInner   , MathBinary  )
         -> space_ord_bin fontsize
 
       | (MathRelation, MathOrdinary)
+      | (MathRelation, MathOperator)
       | (MathRelation, MathInner   )
       | (MathRelation, MathOpen    )
       | (MathRelation, MathPrefix  )
       | (MathOrdinary, MathRelation)
+      | (MathOperator, MathRelation)
       | (MathInner   , MathRelation)
       | (MathClose   , MathRelation)
         -> space_ord_rel fontsize
 
       | (MathOperator, MathOrdinary)
+      | (MathOperator, MathOperator)
       | (MathOperator, MathInner   )
       | (MathOperator, MathPrefix  )
       | (MathOrdinary, MathOperator)
+      | (MathClose   , MathOperator)
       | (MathInner   , MathOperator)
         -> space_ord_op fontsize
 
