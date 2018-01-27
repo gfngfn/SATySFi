@@ -94,7 +94,7 @@ val adobe_identity : cid_system_info
 
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
-val find_kerning : decoder -> glyph_id -> glyph_id -> int option
+val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
 type math_kern
 
@@ -160,4 +160,4 @@ val get_axis_height_ratio : math_decoder -> float
 
 val get_math_constants : math_decoder -> math_constants
 
-val find_kern_ratio : math_kern -> float -> float
+val find_kern_ratio : math_decoder -> math_kern -> float -> float

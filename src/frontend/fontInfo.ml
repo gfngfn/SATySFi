@@ -4,7 +4,6 @@ open LengthInterface
 open HorzBox
 open Types
 
-
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
 exception NotASingleFont        of font_abbrev * file_path
@@ -147,16 +146,22 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
       let (FontFormat.PerMille(w), FontFormat.PerMille(h), FontFormat.PerMille(d)) = metricsf gid in
       let (tjsaccnew, waccnew) =
         match gidprevopt with
-        | None          -> (otxtacc @>> gid, wacc + w)
+        | None ->
+            (otxtacc @>> gid, wacc + w)
+
         | Some(gidprev) ->
-            match FontFormat.find_kerning dcdr gidprev gid with
-            | None        -> (otxtacc @>> gid, wacc + w)
-            | Some(wkern) ->
+            begin
+              match FontFormat.find_kerning dcdr gidprev gid with
+              | None ->
+                  (otxtacc @>> gid, wacc + w)
+
+              | Some(FontFormat.PerMille(wkern)) ->
 (*
-                PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
+                  PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
 *)
-                ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
-                  (* -- kerning value is negative if two characters are supposed to be closer -- *)
+                  ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
+                    (* -- kerning value is negative if two characters are supposed to be closer -- *)
+            end
       in
         (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
     ) (None, OutputText.empty_hex_style, 0, 0, 0)
@@ -318,10 +323,18 @@ let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
    -- *)
 let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
   let fontsize = actual_math_font_size mathctx in
-  match mkern with
-  | NoMathKern              -> Length.zero
-  | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio mkern (corrhgt /% fontsize) in fontsize *% ratiok
-  | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
+  let mfabbrev = MathContext.math_font_abbrev mathctx in
+    match MathFontAbbrevHashTable.find_opt mfabbrev with
+    | None ->
+        raise (InvalidMathFontAbbrev(mfabbrev))
+
+    | Some((_, _, md)) ->
+        begin
+          match mkern with
+          | NoMathKern              -> Length.zero
+          | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio md mkern (corrhgt /% fontsize) in fontsize *% ratiok
+          | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
+        end
 
 
 let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big : bool) (uchlst : Uchar.t list) : OutputText.t * length * length * length * length * FontFormat.math_kern_info option =

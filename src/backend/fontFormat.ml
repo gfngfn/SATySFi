@@ -285,9 +285,9 @@ module KerningTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> glyph_id -> int -> t -> unit
+    val add : glyph_id -> glyph_id -> design_units -> t -> unit
     val add_by_class : Otfm.class_definition list -> Otfm.class_definition list -> (Otfm.class_value * (Otfm.class_value * Otfm.value_record * Otfm.value_record) list) list -> t -> unit
-    val find_opt : glyph_id -> glyph_id -> t -> int option
+    val find_opt : glyph_id -> glyph_id -> t -> design_units option
   end
 = struct
     module HtSingle = Hashtbl.Make
@@ -304,7 +304,7 @@ module KerningTable
         let hash = Hashtbl.hash
       end)
 
-    type subtable = Otfm.class_definition list * Otfm.class_definition list * int HtClass.t
+    type subtable = Otfm.class_definition list * Otfm.class_definition list * design_units HtClass.t
 
     type t = int HtSingle.t * (subtable list) ref
 
@@ -1174,9 +1174,11 @@ let convert_to_ligatures dcdr gidlst =
     aux Alist.empty gidlst
 
 
-let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : int option =
+let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mille option =
   let kerntbl = dcdr.kerning_table in
-    kerntbl |> KerningTable.find_opt gidprev gid
+  let open OptionMonad in
+    kerntbl |> KerningTable.find_opt gidprev gid >>= fun du ->
+    return (per_mille dcdr du)
 
 
 module MathInfoMap = Map.Make
@@ -1193,7 +1195,7 @@ module MathBBoxTable = Hashtbl.Make
     let hash = Hashtbl.hash
   end)
 
-type math_kern = (design_units * design_units) list * int
+type math_kern = (design_units * design_units) list * design_units
 
 type math_kern_info =
   {
@@ -1203,7 +1205,7 @@ type math_kern_info =
     kernBL : math_kern;
   }
 
-type math_variant_glyph = glyph_id * int
+type math_variant_glyph = glyph_id * design_units
 
 type math_decoder =
   {
@@ -1267,13 +1269,14 @@ let percent n =
   (float_of_int n) /. 100.
 
 
-let to_design_units ratio =
-  int_of_float (ratio *. 1000.)
-    (* temporary; should use UnitsPerEm *)
+let to_design_units (md : math_decoder) (ratio : float) : design_units =
+  let upem = md.as_normal_font.units_per_em in
+    int_of_float (ratio *. (float_of_int upem))
 
 
-let to_ratio du =
-  (float_of_int du) /. 1000.
+let to_ratio (md : math_decoder) (du : design_units) : float =
+  let upem = md.as_normal_font.units_per_em in
+    (float_of_int du) /. (float_of_int upem)
     (* temporary; should use UnitsPerEm *)
 
 
@@ -1437,20 +1440,20 @@ let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) : per_mille
     (micopt, mkiopt)
 
 
-let get_math_variants gidorg map =
+let get_math_variants (md : math_decoder) (gidorg : glyph_id) map =
   match map |> MathInfoMap.find_opt gidorg with
   | None        -> []
-  | Some(assoc) -> assoc |> List.map (fun (gid, du) -> (gid, to_ratio du))
+  | Some(assoc) -> assoc |> List.map (fun (gid, du) -> (gid, to_ratio md du))
 
 
 let get_math_vertical_variants (md : math_decoder) (gidorg : glyph_id) =
   let mvertvarmap = md.math_vertical_variants in
-  mvertvarmap |> get_math_variants gidorg
+  mvertvarmap |> get_math_variants md gidorg
 
 
 let get_math_horizontal_variants (md : math_decoder) (gidorg : glyph_id) =
   let mhorzvarmap = md.math_horizontal_variants in
-  mhorzvarmap |> get_math_variants gidorg
+  mhorzvarmap |> get_math_variants md gidorg
 
 
 type math_constants =
@@ -1486,53 +1489,55 @@ type math_constants =
   }
 
 
-let get_main_ratio mvr = to_ratio (get_main_math_value mvr)
+let get_main_ratio (md : math_decoder) (mvr : Otfm.math_value_record) : float =
+  to_ratio md (get_main_math_value mvr)
 
 
 let get_axis_height_ratio (md : math_decoder) : float =
   let mc = md.math_constants in
-    get_main_ratio mc.Otfm.axis_height
+    get_main_ratio md mc.Otfm.axis_height
 
 
 let get_math_constants (md : math_decoder) : math_constants =
   let mc = md.math_constants in
+  let f = get_main_ratio md in
     {
-      axis_height                   = get_main_ratio mc.Otfm.axis_height;
+      axis_height                   = f mc.Otfm.axis_height;
 
-      superscript_bottom_min        = get_main_ratio mc.Otfm.superscript_bottom_min;
-      superscript_shift_up          = get_main_ratio mc.Otfm.superscript_shift_up;
-      superscript_baseline_drop_max = get_main_ratio mc.Otfm.superscript_baseline_drop_max;
-      subscript_top_max             = get_main_ratio mc.Otfm.subscript_top_max;
-      subscript_shift_down          = get_main_ratio mc.Otfm.subscript_shift_down;
-      subscript_baseline_drop_min   = get_main_ratio mc.Otfm.subscript_baseline_drop_min;
+      superscript_bottom_min        = f mc.Otfm.superscript_bottom_min;
+      superscript_shift_up          = f mc.Otfm.superscript_shift_up;
+      superscript_baseline_drop_max = f mc.Otfm.superscript_baseline_drop_max;
+      subscript_top_max             = f mc.Otfm.subscript_top_max;
+      subscript_shift_down          = f mc.Otfm.subscript_shift_down;
+      subscript_baseline_drop_min   = f mc.Otfm.subscript_baseline_drop_min;
       script_scale_down             = percent mc.Otfm.script_percent_scale_down;
       script_script_scale_down      = percent mc.Otfm.script_script_percent_scale_down;
-      space_after_script            = get_main_ratio mc.Otfm.space_after_script;
-      sub_superscript_gap_min       = get_main_ratio mc.Otfm.sub_superscript_gap_min;
+      space_after_script            = f mc.Otfm.space_after_script;
+      sub_superscript_gap_min       = f mc.Otfm.sub_superscript_gap_min;
 
-      fraction_rule_thickness       = get_main_ratio mc.Otfm.fraction_rule_thickness;
-      fraction_numer_d_shift_up     = get_main_ratio mc.Otfm.fraction_numerator_display_style_shift_up;
-      fraction_numer_d_gap_min      = get_main_ratio mc.Otfm.fraction_num_display_style_gap_min;
-      fraction_denom_d_shift_down   = get_main_ratio mc.Otfm.fraction_denominator_display_style_shift_down;
-      fraction_denom_d_gap_min      = get_main_ratio mc.Otfm.fraction_denom_display_style_gap_min;
+      fraction_rule_thickness       = f mc.Otfm.fraction_rule_thickness;
+      fraction_numer_d_shift_up     = f mc.Otfm.fraction_numerator_display_style_shift_up;
+      fraction_numer_d_gap_min      = f mc.Otfm.fraction_num_display_style_gap_min;
+      fraction_denom_d_shift_down   = f mc.Otfm.fraction_denominator_display_style_shift_down;
+      fraction_denom_d_gap_min      = f mc.Otfm.fraction_denom_display_style_gap_min;
 
-      radical_extra_ascender        = get_main_ratio mc.Otfm.radical_extra_ascender;
-      radical_rule_thickness        = get_main_ratio mc.Otfm.radical_rule_thickness;
-      radical_d_vertical_gap        = get_main_ratio mc.Otfm.radical_display_style_vertical_gap;
+      radical_extra_ascender        = f mc.Otfm.radical_extra_ascender;
+      radical_rule_thickness        = f mc.Otfm.radical_rule_thickness;
+      radical_d_vertical_gap        = f mc.Otfm.radical_display_style_vertical_gap;
 
-      upper_limit_gap_min           = get_main_ratio mc.Otfm.upper_limit_gap_min;
-      upper_limit_baseline_rise_min = get_main_ratio mc.Otfm.upper_limit_baseline_rise_min;
-      lower_limit_gap_min           = get_main_ratio mc.Otfm.lower_limit_gap_min;
-      lower_limit_baseline_drop_min = get_main_ratio mc.Otfm.lower_limit_baseline_drop_min;
+      upper_limit_gap_min           = f mc.Otfm.upper_limit_gap_min;
+      upper_limit_baseline_rise_min = f mc.Otfm.upper_limit_baseline_rise_min;
+      lower_limit_gap_min           = f mc.Otfm.lower_limit_gap_min;
+      lower_limit_baseline_drop_min = f mc.Otfm.lower_limit_baseline_drop_min;
     }
 
 
-let find_kern_ratio (mkern : math_kern) (ratio : float) =
-  let du = to_design_units ratio in
+let find_kern_ratio (md : math_decoder) (mkern : math_kern) (ratio : float) =
+  let du = to_design_units md ratio in
   let (kernlst, kfinal) = mkern in
   let rec aux prevc kernlst =
     match kernlst with
-    | []             -> to_ratio kfinal
-    | (c, k) :: tail -> if prevc <= du && du < c then to_ratio k else aux c tail
+    | []             -> to_ratio md kfinal
+    | (c, k) :: tail -> if prevc <= du && du < c then to_ratio md k else aux c tail
   in
     aux 0 kernlst
