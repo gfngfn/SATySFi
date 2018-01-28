@@ -223,6 +223,8 @@ type context_main = {
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
 
+and rules_func = length list -> length list -> (intermediate_horz_box list) Graphics.t
+
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
@@ -240,7 +242,7 @@ and pure_horz_box =
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
   | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
-  | PHGFixedTabular   of length * length * length * intermediate_row list
+  | PHGFixedTabular   of length * length * length * intermediate_row list * length list * length list * rules_func
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
   | PHGHookPageBreak  of (page_break_info -> point -> unit)
@@ -256,7 +258,7 @@ and intermediate_horz_box =
   | ImHorz               of evaled_horz_box
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
-  | ImHorzInlineTabular  of length * length * length * intermediate_row list
+  | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
@@ -284,7 +286,7 @@ and evaled_horz_box_main =
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
   | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) Graphics.t)
-  | EvHorzInlineTabular  of length * length * evaled_row list
+  | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
   | EvHorzHookPageBreak  of page_break_info * (page_break_info -> point -> unit)

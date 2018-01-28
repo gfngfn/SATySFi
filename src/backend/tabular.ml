@@ -294,7 +294,7 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
   ) Alist.empty |> Alist.to_list
 
 
-let main (tabular : row list) : intermediate_row list * length * length * length =
+let main (tabular : row list) : intermediate_row list * length list * length list * length * length * length =
 
   let (ncols, htabular) = normalize_tabular tabular in
   let (nrows, vtabular) = transpose_tabular tabular in
@@ -323,4 +323,5 @@ let main (tabular : row list) : intermediate_row list * length * length * length
   let hgttotal = List.fold_left (fun len (hgt, dpt) -> len +% hgt +% (Length.negate dpt)) Length.zero vmetrlst in
   let dpttotal = Length.zero in
   let imtabular = solidify_tabular vmetrlst widlst htabular in
-    (imtabular, widtotal, hgttotal, dpttotal)
+  let lenlst = vmetrlst |> List.map (fun (hgt, dpt) -> hgt +% (Length.negate dpt)) in
+    (imtabular, widlst, lenlst, widtotal, hgttotal, dpttotal)

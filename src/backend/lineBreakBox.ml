@@ -13,7 +13,7 @@ type lb_pure_box =
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
   | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
   | LBFixedGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
-  | LBFixedTabular  of length * length * length * intermediate_row list
+  | LBFixedTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | LBFixedImage    of length * length * ImageInfo.key
   | LBHookPageBreak of (page_break_info -> point -> unit)
 

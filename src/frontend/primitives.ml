@@ -129,6 +129,8 @@ let tPAGEPARTS =
 
 let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
+let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
@@ -697,7 +699,7 @@ let make_environments satysfi_root_dir =
         ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
         ("get-axis-height"         , ~% (tCTX @-> tLN)                               , lambda1 (fun vctx -> PrimitiveGetAxisHeight(vctx)));
         ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
-        ("tabular"                 , ~% ((tL (tL tCELL)) @-> tIB)                    , lambda1 (fun vtblr -> BackendTabular(vtblr)));
+        ("tabular"                 , ~% ((tL (tL tCELL)) @-> tRULESF @-> tIB)        , lambda2 (fun vtblr vrulesf -> BackendTabular(vtblr, vrulesf)));
         ("register-pdf-image"      , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));
         ("register-image"          , ~% (tS @-> tIMG)                                , lambda1 (fun vs -> BackendRegisterOtherImage(vs)));
         ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));

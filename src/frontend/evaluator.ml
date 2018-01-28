@@ -135,7 +135,7 @@ and reduce_beta_list env valuef astarglst =
         | FuncWithEnvironment(patbrs, envf) ->
           (* -- left-to-right evaluation -- *)
             let valuearg = interpret env astarg in
-            let valuefnew = select_pattern envf valuearg patbrs in
+            let valuefnew = select_pattern (Range.dummy "reduce_beta_list") envf valuearg patbrs in
               reduce_beta_list env valuefnew astargtail
 
         | _ -> report_bug_evaluator_value "reduce_beta_list" valuef
@@ -670,11 +670,49 @@ and interpret env ast =
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 
-  | BackendTabular(asttabular) ->
+  | BackendTabular(asttabular, astrulesf) ->
       let get_row : syntactic_value -> HorzBox.cell list = get_list get_cell in
       let tabular : HorzBox.row list = interpret_list interpret env get_row asttabular in
-      let (imtabular, wid, hgt, dpt) = Tabular.main tabular in
-        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular))]))
+      let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
+      let valuerulesf = interpret env astrulesf in
+      let rulesf xs ys =
+        let valueret =
+          reduce_beta_list env valuerulesf [Value(make_length_list xs); Value(make_length_list ys)]
+        in
+        graphics_of_list valueret
+      in
+(*
+      (* begin: temporary *)
+      let rulesf xs ys =
+        let (xfirst, xlast) =
+          match (xs, List.rev xs) with
+          | (xfirst :: _, xlast :: _) -> (xfirst, xlast)
+          | _                         -> assert false
+        in
+        let (yfirst, ylast) =
+          match (ys, List.rev ys) with
+          | (yfirst :: _, ylast :: _) -> (yfirst, ylast)
+          | _                         -> assert false
+        in
+        let open GraphicData in
+        let thickness = Length.of_pdf_point 0.5 in
+        let color = DeviceRGB(0., 0., 0.) in
+        let grxs : 'a Graphics.t =
+          xs |> List.fold_left (fun gr x ->
+            Graphics.extend gr
+              (Graphics.make_stroke thickness color
+                [GeneralPath((x, yfirst), [LineTo((x, ylast))], None)])
+          ) Graphics.empty
+        in
+          ys |> List.fold_left (fun gr y ->
+            Graphics.extend gr
+              (Graphics.make_stroke thickness color
+                [GeneralPath((xfirst, y), [LineTo((xlast, y))], None)])
+          ) grxs
+      in
+      (* end: temporary *)
+*)
+        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 
   | BackendRegisterPdfImage(aststr, astpageno) ->
       let srcpath = interpret_string env aststr in
@@ -1088,7 +1126,7 @@ and interpret env ast =
 
   | LetNonRecIn(pat, ast1, ast2) ->
       let value1 = interpret env ast1 in
-        select_pattern env value1 [PatternBranch(pat, ast2)]
+        select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
   | Function(patbrs) ->
       FuncWithEnvironment(patbrs, env)
@@ -1102,7 +1140,7 @@ and interpret env ast =
         match value1 with
         | FuncWithEnvironment(patbrs, env1) ->
             let value2 = interpret env ast2 in
-              select_pattern env1 value2 patbrs
+              select_pattern (Range.dummy "Apply") env1 value2 patbrs
 
         | _ -> report_bug_evaluator "Apply: not a function" ast1 value1
       end
@@ -1205,9 +1243,9 @@ and interpret env ast =
 
 (* ---- others ---- *)
 
-  | PatternMatch(astobj, patbrs) ->
+  | PatternMatch(rng, astobj, patbrs) ->
       let valueobj = interpret env astobj in
-        select_pattern env valueobj patbrs
+        select_pattern rng env valueobj patbrs
 
   | NonValueConstructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
@@ -1644,6 +1682,12 @@ and interpret_tuple3 env getf ast =
     | _ -> report_bug_evaluator "interpret_tuple3" ast value
 
 
+and make_length_list lenlst =
+  List.fold_right (fun l acc ->
+    ListCons(LengthConstant(l), acc)
+  ) lenlst EndOfList
+
+
 and make_color_value color =
   let open GraphicData in
     match color with
@@ -1755,16 +1799,19 @@ and interpret_page_size env ast : HorzBox.page_size =
     | _ -> report_bug_evaluator "interpret_page" ast value
 
 
-and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
+and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
+  let iter = select_pattern rng env valueobj in
   match patbrs with
-  | [] -> raise (EvalError("no matches"))
+  | [] ->
+      Format.printf "Evaluator> %a\n" pp_syntactic_value valueobj;
+      raise (EvalError("no matches (" ^ (Range.to_string rng) ^ ")"))
 
   | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
         if b then
           interpret envnew astto
         else
-          select_pattern env valueobj tail
+          iter tail
 
   | PatternBranchWhen(pat, astcond, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
@@ -1772,7 +1819,7 @@ and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pa
         if b && cond then
           interpret envnew astto
         else
-          select_pattern env valueobj tail
+          iter tail
 
 
 and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =

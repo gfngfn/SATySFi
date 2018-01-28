@@ -538,7 +538,7 @@ and abstract_tree =
   | Function              of pattern_branch list
   | Apply                 of abstract_tree * abstract_tree
 (* -- pattern match -- *)
-  | PatternMatch          of abstract_tree * pattern_branch list
+  | PatternMatch          of Range.t * abstract_tree * pattern_branch list
   | NonValueConstructor   of constructor_name * abstract_tree
 (* -- imperative -- *)
   | LetMutableIn          of EvalVarID.t * abstract_tree * abstract_tree
@@ -592,7 +592,7 @@ and abstract_tree =
   | BackendMathCharClass        of abstract_tree * abstract_tree
   | BackendMathVariantCharDirect of abstract_tree * abstract_tree
   | BackendEmbeddedMath         of abstract_tree * abstract_tree
-  | BackendTabular              of abstract_tree
+  | BackendTabular              of abstract_tree * abstract_tree
   | BackendRegisterPdfImage     of abstract_tree * abstract_tree
   | BackendRegisterOtherImage   of abstract_tree
   | BackendUseImageByWidth      of abstract_tree * abstract_tree

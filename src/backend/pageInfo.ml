@@ -8,7 +8,7 @@ let rec embed_page_info (pbinfo : page_break_info) (imhblst : intermediate_horz_
       | ImHorz(evhb)                                    -> evhb
       | ImHorzRising(wid, hgt, dpt, lenrising, imhblst) -> (wid, EvHorzRising(hgt, dpt, lenrising, iter imhblst))
       | ImHorzFrame(wid, hgt, dpt, deco, imhblst)       -> (wid, EvHorzFrame(hgt, dpt, deco, iter imhblst))
-      | ImHorzInlineTabular(wid, hgt, dpt, imtabular)   -> (wid, EvHorzInlineTabular(hgt, dpt, embed_page_info_to_tabular pbinfo imtabular))
+      | ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) -> (wid, EvHorzInlineTabular(hgt, dpt, embed_page_info_to_tabular pbinfo imtabular, widlst, lenlst, rulesf))
       | ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)      -> (wid, EvHorzEmbeddedVert(hgt, dpt, embed_page_info_vert pbinfo imvblst))
       | ImHorzHookPageBreak(hookf)                      -> (Length.zero, EvHorzHookPageBreak(pbinfo, hookf))
       | ImHorzInlineGraphics(wid, hgt, dpt, graphics)   -> (wid, EvHorzInlineGraphics(hgt, dpt, graphics))
