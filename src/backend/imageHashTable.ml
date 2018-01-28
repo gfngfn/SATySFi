@@ -69,7 +69,9 @@ let add_image (srcpath : file_path) =
   let infolst = imgheader.Images.header_infos in
   let widdots = imgheader.Images.header_width in
   let hgtdots = imgheader.Images.header_height in
-  Format.printf "ImageInfo> length of info = %d width = %d, height = %d\n" (List.length infolst) widdots hgtdots;
+(*
+  Format.printf "ImageHashTable> length of info = %d width = %d, height = %d\n" (List.length infolst) widdots hgtdots;
+*)
   let dpi =
     match Images.dpi infolst with
     | Some(dpi) -> dpi

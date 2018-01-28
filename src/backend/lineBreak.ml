@@ -23,15 +23,15 @@ let ( ~@ ) = int_of_float
 
 let get_metrics (lphb : lb_pure_box) : metrics =
   match lphb with
-  | LBAtom(metr, _)                    -> metr
-  | LBRising(metr, _, _)               -> metr
-  | LBOuterFrame(metr, _, _)           -> metr
-  | LBFixedFrame(wid, hgt, dpt, _, _)  -> (natural wid, hgt, dpt)
-  | LBEmbeddedVert(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
-  | LBFixedGraphics(wid, hgt, dpt, _)  -> (natural wid, hgt, dpt)
-  | LBFixedTabular(wid, hgt, dpt, _)   -> (natural wid, hgt, dpt)
-  | LBFixedImage(wid, hgt, _)          -> (natural wid, hgt, Length.zero)
-  | LBHookPageBreak(_)                 -> (widinfo_zero, Length.zero, Length.zero)
+  | LBAtom(metr, _)                           -> metr
+  | LBRising(metr, _, _)                      -> metr
+  | LBOuterFrame(metr, _, _)                  -> metr
+  | LBFixedFrame(wid, hgt, dpt, _, _)         -> (natural wid, hgt, dpt)
+  | LBEmbeddedVert(wid, hgt, dpt, _)          -> (natural wid, hgt, dpt)
+  | LBFixedGraphics(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
+  | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
+  | LBFixedImage(wid, hgt, _)                 -> (natural wid, hgt, Length.zero)
+  | LBHookPageBreak(_)                        -> (widinfo_zero, Length.zero, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -234,8 +234,8 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
 
-  | PHGFixedTabular(wid, hgt, dpt, imtabular) ->
-      puref (LBFixedTabular(wid, hgt, dpt, imtabular))
+  | PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
+      puref (LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))
 
   | PHGFixedImage(wid, hgt, imgkey) ->
       puref (LBFixedImage(wid, hgt, imgkey))
@@ -404,13 +404,13 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
   let get_intermediate_total_width imhblst =
     imhblst |> List.fold_left (fun wacc imhb ->
       match imhb with
-      | ImHorz(w, _)                     -> wacc +% w
-      | ImHorzRising(w, _, _, _, _)      -> wacc +% w
-      | ImHorzFrame(w, _, _, _, _)       -> wacc +% w
-      | ImHorzInlineTabular(w, _, _, _)  -> wacc +% w
-      | ImHorzInlineGraphics(w, _, _, _) -> wacc +% w
-      | ImHorzEmbeddedVert(w, _, _, _)   -> wacc +% w
-      | ImHorzHookPageBreak(_)           -> wacc
+      | ImHorz(w, _)                             -> wacc +% w
+      | ImHorzRising(w, _, _, _, _)              -> wacc +% w
+      | ImHorzFrame(w, _, _, _, _)               -> wacc +% w
+      | ImHorzInlineTabular(w, _, _, _, _, _, _) -> wacc +% w
+      | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
+      | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
+      | ImHorzHookPageBreak(_)                   -> wacc
     ) Length.zero
   in
 
@@ -452,8 +452,8 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
         ImHorzInlineGraphics(wid, hgt, dpt, graphics)
 
-    | LBFixedTabular(wid, hgt, dpt, imtabular) ->
-        ImHorzInlineTabular(wid, hgt, dpt, imtabular)
+    | LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
+        ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf)
 
     | LBFixedImage(wid, hgt, imgkey) ->
         ImHorz(wid, EvHorzInlineImage(hgt, imgkey))

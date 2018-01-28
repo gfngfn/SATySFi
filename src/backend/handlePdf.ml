@@ -78,14 +78,29 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
 *)
           (graphics (xpos, yposbaseline))
         in
-        let opaccnew = Alist.append opacc (Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)) in
+        let opaccnew = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
           (xpos +% wid, opaccnew)
 
-    | EvHorzInlineTabular(hgt, dpt, evtabular) ->
+    | EvHorzInlineTabular(hgt, dpt, evtabular, widlst, lenlst, rulesf) ->
         let ops_tabular =
           ops_of_evaled_tabular pbinfo (xpos, yposbaseline +% hgt) evtabular
         in
-        let opaccnew = Alist.append opacc ops_tabular in
+        let (xacc, _) =
+          widlst |> List.fold_left (fun (xacc, x) w ->
+            let xnew = x +% w in
+              (Alist.extend xacc xnew, xnew)
+          ) (Alist.extend Alist.empty xpos, xpos)
+        in
+        let (yacc, _) =
+          let yinit = yposbaseline +% hgt in
+          lenlst |> List.fold_left (fun (yacc, y) l ->
+            let ynew = y -% l in
+              (Alist.extend yacc ynew, ynew)
+          ) (Alist.extend Alist.empty yinit, yinit)
+        in
+        let gr = rulesf (Alist.to_list xacc) (Alist.to_list yacc) in
+        let ops_rules = pdfops_of_graphics pbinfo gr in
+        let opaccnew = Alist.append (Alist.append opacc ops_tabular) ops_rules in
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineImage(hgt, imgkey) ->
@@ -185,7 +200,7 @@ and ops_of_evaled_vert_box_list pbinfo (xinit, yinit) opaccinit evvblst =
         let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list pbinfo (xpossubinit, ypossubinit) opacc evvblstsub in
         let yposend = ypossub -% pads.paddingB in
         let gr = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
-          ((xpos, yposend), Alist.append opaccsub (Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)))
+          ((xpos, yposend), Alist.append opaccsub (pdfops_of_graphics pbinfo gr))
   )
 
 
@@ -195,6 +210,10 @@ and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, ypos
       evhblst |> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline) (xpos, Alist.empty)
   in
     Alist.to_list opacc
+
+
+and pdfops_of_graphics (pbinfo : page_break_info) gr =
+  Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)
 
 
 type contents = Pdfops.t Alist.t
