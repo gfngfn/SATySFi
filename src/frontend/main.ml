@@ -67,8 +67,7 @@ let is_standalone_file = is_suffix ".satys"
 
 let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) : Typeenv.t * environment =
   begin
-    print_endline (" ---- ---- ---- ----");
-    print_endline ("  reading '" ^ file_name_in ^ "' ...");
+    Logging.begin_to_read_file file_name_in;
     let file_in = open_in file_name_in in
       begin
         Lexer.reset_to_progexpr ();
@@ -77,7 +76,7 @@ let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (f
 (*
         Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
 *)
-        print_endline ("  type check passed.");
+        Logging.pass_type_check None;
         match ty with
         | (_, BaseType(EnvType)) ->
             let value = Evaluator.interpret env ast in
@@ -122,17 +121,6 @@ let output_pdf pdfret =
   HandlePdf.write_to_file pdfret
 
 
-let ordinal i =
-  let suffix =
-    match i mod 10 with
-    | 1 -> "st"
-    | 2 -> "nd"
-    | 3 -> "rd"
-    | _ -> "th"
-  in
-  (string_of_int i) ^ suffix
-
-
 module StoreIDMap = Map.Make(StoreID)
 
 
@@ -159,8 +147,7 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
 
 let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (file_name_out : file_path) (dumpfile : file_path) =
   begin
-    print_endline (" ---- ---- ---- ----");
-    print_endline ("  reading '" ^ file_name_in ^ "' ...");
+    Logging.begin_to_read_file file_name_in;
     let file_in = open_in file_name_in in
       begin
         Lexer.reset_to_progexpr ();
@@ -177,48 +164,41 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
 *)
-        let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
+        Logging.pass_type_check (Some((tyenv, ty)));
         let env_freezed = freeze_environment env in
           match ty with
           | (_, BaseType(DocumentType)) ->
               let rec aux i =
-                print_endline (" ---- ---- ---- ----");
-                begin
-                  if i <= 1 then
-                    print_endline ("  evaluating texts ...")
-                  else
-                    print_endline ("  evaluating texts (" ^ (ordinal i) ^ " trial) ...")
-                end;
+                Logging.start_evaluation i;
                 reset ();
                 let env = unfreeze_environment env_freezed in
                 let valuedoc = Evaluator.interpret env ast in
-                print_endline ("  evaluation done.");
+                Logging.end_evaluation ();
                 begin
                   match valuedoc with
                   | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
-                      print_endline (" ---- ---- ---- ----");
-                      print_endline ("  breaking contents into pages ...");
+                      Logging.start_page_break ();
                       let pdf = PageBreak.main file_name_out pagesize pagecontf pagepartsf imvblst in
                       begin
                         match CrossRef.needs_another_trial dumpfile with
                         | CrossRef.NeedsAnotherTrial ->
-                            print_endline ("  needs another trial for solving cross references...");
-                            aux (i + 1)
+                            begin
+                              Logging.needs_another_trial ();
+                              aux (i + 1);
+                            end
 
                         | CrossRef.CountMax ->
                             begin
-                              print_endline ("  some cross references were not solved.");
+                              Logging.achieve_count_max ();
                               output_pdf pdf;
-                              print_endline (" ---- ---- ---- ----");
-                              print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                              Logging.end_output file_name_out;
                             end
 
                         | CrossRef.CanTerminate ->
                             begin
-                              print_endline ("  all cross references were solved.");
+                              Logging.achieve_fixpoint ();
                               output_pdf pdf;
-                              print_endline (" ---- ---- ---- ----");
-                              print_endline ("  output written on '" ^ file_name_out ^ "'.");
+                              Logging.end_output file_name_out;
                             end
                       end
 
@@ -611,10 +591,7 @@ type input_file_kind =
 let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : file_path) (dump_file_name : file_path) =
     match input_list with
     | [] ->
-        begin
-          print_endline " ---- ---- ---- ----";
-          print_endline "  no output.";
-        end
+        Logging.no_output ()
 
     | (DocumentFile, file_name_in) :: tail ->
         read_document_file tyenv env file_name_in file_name_out dump_file_name
@@ -691,19 +668,10 @@ let () =
     Arg.parse arg_spec_list handle_anonimous_arg "";
     let input_list = Alist.to_list (!input_acc_ref) in
     let output = !output_name_ref in
-(*
-    input_list |> List.iter (fun (_, s) -> print_endline ("  [input] " ^ s));
-*)
-    print_endline (" ---- ---- ---- ----");
-    print_endline ("  target file: '" ^ output ^ "'");
+    Logging.target_file output;
     let dumpfile = (Filename.remove_extension output) ^ ".satysfi-aux" in
     let (tyenv, env, dump_file_exists) = initialize dumpfile in
-    begin
-    if dump_file_exists then
-      print_endline ("  dump file: '" ^ dumpfile ^ "' (already exists)")
-    else
-      print_endline ("  dump file: '" ^ dumpfile ^ "' (will be created)")
-    end;
+    Logging.dump_file dump_file_exists dumpfile;
 (*
     (* begin: for debug *)
     Format.printf "Main> ==== ====\n";
