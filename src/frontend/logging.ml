@@ -75,3 +75,13 @@ let  dump_file dump_file_exists dump_file =
     print_endline ("  dump file: '" ^ dump_file ^ "' (already exists)")
   else
     print_endline ("  dump file: '" ^ dump_file ^ "' (will be created)")
+
+
+let begin_to_embed_fonts () =
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  embedding fonts ...")
+
+
+let begin_to_write_page () =
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  writing pages ...")

@@ -5,7 +5,7 @@ open HorzBox
 
 
 type t =
-  | PDF of Pdf.t * Pdfpage.t list * file_path
+  | PDF of Pdf.t * Pdfpage.t Alist.t * file_path
 
 
 let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
@@ -258,17 +258,16 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
         Pdfpage.content = [pdfobjstream];
     }
   in
-    PDF(pdf, pagenew :: pageacc, flnm)
+    PDF(pdf, Alist.extend pageacc pagenew, flnm)
 
 
 let create_empty_pdf (flnm : file_path) : t =
   let pdf = Pdf.empty () in
-    PDF(pdf, [], flnm)
+    PDF(pdf, Alist.empty, flnm)
 
 
 let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  embedding fonts ...");
+  Logging.begin_to_embed_fonts ();
   let pdfdict_font = FontInfo.get_font_dictionary pdf in
   let pdfarr_procset =
     Pdf.Array(List.map (fun s -> Pdf.Name(s))
@@ -282,10 +281,9 @@ let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
       ("/ProcSet", pdfarr_procset);
     ])
   in
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  writing pages ...");
+  Logging.begin_to_write_page ();
   let pagelst =
-    pageacc |> List.rev |> List.map (fun page ->
+    pageacc |> Alist.to_list |> List.map (fun page ->
       { page with Pdfpage.resources = Pdf.Indirect(ir_resources); }
     )
   in
