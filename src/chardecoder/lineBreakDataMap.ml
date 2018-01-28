@@ -316,7 +316,7 @@ let match_prefix (type a) (getf : a -> line_break_class) (trilst : a list) (lreg
     match cut trilst lregexp with
     | None            -> trilst
     | Some(trilstsub) -> cut_by_star trilstsub lregexp
-      
+
   in
     match cut trilst lregexp with
     | None    -> false
@@ -344,11 +344,13 @@ let find_first_match rules proj1 proj2 acc lst =
         let b1 = match_postfix proj1 acc lregexp1 in
         let b2 = match_prefix proj2 lst lregexp2 in
         if b1 && b2 then
+(*
           let () = PrintForDebug.lbc (" (" ^ (show_lregexp lregexp1) ^ ", " ^ (show_lregexp lregexp2) ^ ")") in  (* for debug *)
+*)
           Some(rescand)
         else
           None
-          
+
   ) None
 
 
@@ -367,7 +369,9 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
           match replopt with
           | None       -> normalize (Alist.extend biacc bihead) bitail
           | Some(repl) ->
+(*
               let () = PrintForDebug.lbcE "" in  (* for debug *)
+*)
                 normalize (Alist.append biacc repl) bitail
   in
 
@@ -394,19 +398,25 @@ let append_break_opportunity (uchlst : Uchar.t list) =
 
     | (uch, lbc) :: bitail ->
         begin
+(*
           PrintForDebug.lbc (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
           PrintForDebug.lbc (" " ^ (show_lb_class lbc));  (* for debug *)
+*)
           match bitail with
           | [] ->
               begin
+(*
                 PrintForDebug.lbcE "";  (* for debug *)
+*)
                 Alist.to_list (Alist.extend triacc (uch, lbc, alw_last))
               end
 
           | _ :: _ ->
               begin
                 let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
+(*
                 PrintForDebug.lbcE "";  (* for debug *)
+*)
                 let alw = if b then PreventBreak else AllowBreak in
                   aux (Alist.extend triacc (uch, lbc, alw)) bitail
               end
@@ -416,6 +426,7 @@ let append_break_opportunity (uchlst : Uchar.t list) =
     aux Alist.empty bilstinit
 
 
+(*
 (* for debug *)
 let print_trilist trilst =
   trilst |> List.iter (fun (uch, lbc, alw) ->
@@ -423,6 +434,7 @@ let print_trilist trilst =
     let sa = match alw with AllowBreak -> "/" | PreventBreak -> "." in
       PrintForDebug.lbc (sc ^ sa)
   ); PrintForDebug.lbcE ""
+*)
 
 (*
 (* unit test *)
@@ -435,4 +447,3 @@ let () =
   let trilst = append_break_opportunity uchlst in
   print_trilist trilst
 *)
-

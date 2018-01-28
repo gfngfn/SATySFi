@@ -665,7 +665,7 @@ and comment = parse
       | LiteralState    -> literal lexbuf
       | MathState       -> mathexpr lexbuf
     in
-
+(*
     (* begin: for debug *)
     let () = PrintForDebug.lexerE (
       match output with
@@ -719,7 +719,7 @@ and comment = parse
       | _              -> "_"
     ) in
     (* end: for debug *)
-
+*)
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

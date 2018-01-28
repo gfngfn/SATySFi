@@ -11,7 +11,7 @@ type chunk_info = context_main * script * line_break_class
 let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   let trilst = LineBreakDataMap.append_break_opportunity uchlst in
   let scrlst = ScriptDataMap.divide_by_script ctx trilst in
-
+(*
   (* begin: for debug *)
   let () =
     trilst |> List.iter (fun (uch, lbc, alw) ->
@@ -39,7 +39,7 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
     )
   in
   (* end: for debug *)
-
+*)
   scrlst
 
 

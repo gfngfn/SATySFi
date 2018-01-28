@@ -1,4 +1,4 @@
-
+(*
 type message_category =
   | LBC | LexHorz | Eval | LineBreak | PageBreak | Kern | Lexer | Main | FontFormat | EmbVert | InitFont
 
@@ -58,3 +58,4 @@ let lexerE msg = printE Lexer msg
 
 (* -- main.ml -- *)
 let mainE msg = printE Main msg
+*)

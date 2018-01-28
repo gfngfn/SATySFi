@@ -164,17 +164,19 @@ let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : f
     let file_in = open_in file_name_in in
       begin
         Lexer.reset_to_progexpr ();
+(*
         let () = PrintForDebug.mainE "END INITIALIZATION" in  (* for debug *)
+*)
         let utast = ParserInterface.process (Lexing.from_channel file_in) in
 (*
         Format.printf "Main> %a\n" pp_untyped_abstract_tree utast;  (* for debug *)
-*)
         let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
+*)
         let (ty, _, ast) = Typechecker.main tyenv utast in
 (*
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
-*)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
+*)
         let () = print_endline ("  type check: " ^ (string_of_mono_type tyenv ty)) in
         let env_freezed = freeze_environment env in
           match ty with

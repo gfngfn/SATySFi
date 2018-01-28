@@ -365,7 +365,7 @@ module KerningTable
 
 let get_kerning_table (d : Otfm.decoder) =
   let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
-  let res =
+  let _ =
     () |> Otfm.kern d (fun () kinfo ->
       match kinfo with
       | { Otfm.kern_dir = `H; Otfm.kern_kind = `Kern; Otfm.kern_cross_stream = false } -> (`Fold, ())
@@ -374,11 +374,6 @@ let get_kerning_table (d : Otfm.decoder) =
       kerntbl |> KerningTable.add gid1 gid2 wid
     )
   in
-  (match res with  (* for debug *)
-    | Ok(())   -> PrintForDebug.kernE "'kern' exists"   (* for debug *)
-    | Error(e) -> PrintForDebug.kernE "'kern' missing"  (* for debug *)
-  ) |>  (* for debug *)
-      ignore;
   let res =
     let (>>=) = result_bind in
     Otfm.gpos_script d >>= fun scriptlst ->
@@ -393,7 +388,9 @@ let get_kerning_table (d : Otfm.decoder) =
         match valrcd1.Otfm.x_advance with
         | None      -> ()
         | Some(xa1) ->
+(*
             let () = if gid1 <= 100 then PrintForDebug.kernE (Printf.sprintf "Add KERN (%d, %d) xa1 = %d" gid1 gid2 xa1) in  (* for debug *)
+*)
             kerntbl |> KerningTable.add gid1 gid2 xa1
       )
     )
@@ -404,14 +401,18 @@ let get_kerning_table (d : Otfm.decoder) =
   in
   match res with
   | Ok(sublst) ->
+(*
       let () = PrintForDebug.kernE "'GPOS' exists" in  (* for debug *)
+*)
         kerntbl
 
   | Error(e) ->
       match e with
       | `Missing_required_table(t)
           when t = Otfm.Tag.gpos ->
+(*
             let () = PrintForDebug.kernE "'GPOS' missing" in  (* for debug *)
+*)
             kerntbl
       | _                        -> (* raise_err e *) kerntbl  (* temporary *)
 

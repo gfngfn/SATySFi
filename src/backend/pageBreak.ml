@@ -50,7 +50,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
           (* -- if getting worse, output the accumulated non-discardable lines 'evvbacc' as a page -- *)
+(*
             let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
+*)
             (evvbacc, Some(pbvblst), hgttotalnew, vpb)
           else
             let evhblst = PageInfo.embed_page_info pbinfo imhblst in
@@ -61,7 +63,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotalnew = hgttotal +% vskip in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
+(*
             let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
+*)
             (evvbacc, Some(pbvbtail), hgttotalnew, vpb)
           else
             let evvbaccdiscardablenew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
@@ -107,7 +111,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         end
 
     | [] ->
+(*
         let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
+*)
         (evvbacc, None, hgttotal, vpbprev)
   in
   let vpbinit = 100000 in
@@ -189,9 +195,10 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
 
 let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
+(*
   let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length vblst))) in  (* for debug *)
   let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_vert_box) vblst in  (* for debug *)
-
+*)
   let pdfinit = HandlePdf.create_empty_pdf file_name_out in
 
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
@@ -201,10 +208,10 @@ let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_conte
 
     let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
-
+(*
     let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
     let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
-
+*)
       match restopt with
       | None              -> pdfaccnew
       | Some(imvblstrest) -> aux (pageno + 1) pdfaccnew imvblstrest

@@ -462,7 +462,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         ImHorzHookPageBreak(hookf)
   in
       let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
-
+(*
       (* begin : for debug *)
       let checksum = get_intermediate_total_width imhblst in
       let msg_stretch =
@@ -483,7 +483,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
          msg ^ ", " ^
          "checksum = " ^ (Length.show checksum)) in
       (* end : for debug *)
-
+*)
         (imhblst, hgt_total, dpt_total)
 
 
