@@ -158,10 +158,17 @@ end = struct
 
   let-math \sum = math-big-char MathOp `∑`
 
+%  let-math \int =
+%    let kernfL _ _ = 0pt in
+%    let kernfR fontsize ypos = fontsize *' 0.45 in
+%      math-big-char-with-kern MathOp `∫` kernfL kernfR
+
+
   let-math \int =
     let kernfL _ _ = 0pt in
-    let kernfR fontsize ypos = fontsize *' 0.45 in
+    let kernfR fontsize ypos = fontsize *' 0.2 in
       math-big-char-with-kern MathOp `∫` kernfL kernfR
+
 
   let-math \ordd = math-char MathPrefix `d`
 
