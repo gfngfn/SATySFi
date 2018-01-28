@@ -77,7 +77,9 @@ let determine_row_metrics (restprev : rest_row) (row : row) : rest_row * length 
 
 
 let determine_column_width (restprev : rest_column) (col : column) : rest_column * length =
+(*
   Format.printf "Tabular> L(restprev) = %d, L(col) = %d\n" (List.length restprev) (List.length col);
+*)
   let rec aux restacc widmax rest col =
     match (rest, col) with
     | ([], []) ->
@@ -203,9 +205,13 @@ let access arr index =
 
 
 let multi_cell_width widarr indexC nc =
+(*
   Format.printf "Tabular> L(widarr) = %d\n" (Array.length widarr);
+*)
   let rec aux len i =
+(*
     Format.printf "Tabular> access C %d\n" i;
+*)
     let lennew = len +% widarr.(i) in
       if i >= indexC + nc - 1 then
         lennew
@@ -219,9 +225,13 @@ let multi_cell_width widarr indexC nc =
 
 
 let multi_cell_vertical vmetrarr indexR nr =
+(*
   Format.printf "Tabular> L(vmetrarr) = %d\n" (Array.length vmetrarr);
+*)
   let rec aux len i =
+(*
     Format.printf "Tabular> access R %d\n" i;
+*)
     let (hgt, dpt) = vmetrarr.(i) in
     let lennew = len +% hgt +% (Length.negate dpt) in
       if i >= indexR + nr - 1 then
@@ -263,7 +273,9 @@ let solidify_tabular (vmetrlst : (length * length) list) (widlst : length list) 
 
           | MultiCell(nr, nc, pads, hblst) ->
               let widsingle = access widarr indexC in
+(*
               Format.printf "Tabular> indexC = %d, nc = %d\n" indexC nc;
+*)
               let widmulti = multi_cell_width widarr indexC nc in
               let hblstwithpads =
                 List.concat [
@@ -298,12 +310,14 @@ let main (tabular : row list) : intermediate_row list * length list * length lis
 
   let (ncols, htabular) = normalize_tabular tabular in
   let (nrows, vtabular) = transpose_tabular tabular in
-
+(*
   Format.printf "nrows = %d, ncols = %d\n" nrows ncols;
-
+*)
   let (_, vmetracc) =
     htabular |> List.fold_left (fun (restprev, vmetracc) row ->
+(*
       Format.printf "Tabular> L(row) = ncols = %d\n" (List.length row);
+*)
       let (rest, hgt, dpt) = determine_row_metrics restprev row in
         (rest, Alist.extend vmetracc (hgt, dpt))
     ) (list_make ncols None, Alist.empty)
@@ -312,7 +326,9 @@ let main (tabular : row list) : intermediate_row list * length list * length lis
 
   let (_, widacc) =
     vtabular |> List.fold_left (fun (restprev, widacc) col ->
+(*
       Format.printf "Tabular> L(col) = nrows = %d\n" (List.length col);
+*)
       let (rest, wid) = determine_column_width restprev col in
       (rest, Alist.extend widacc wid)
     ) (list_make nrows None, Alist.empty)

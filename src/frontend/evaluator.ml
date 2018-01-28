@@ -1803,7 +1803,9 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
   let iter = select_pattern rng env valueobj in
   match patbrs with
   | [] ->
+(*
       Format.printf "Evaluator> %a\n" pp_syntactic_value valueobj;
+*)
       raise (EvalError("no matches (" ^ (Range.to_string rng) ^ ")"))
 
   | PatternBranch(pat, astto) :: tail ->
