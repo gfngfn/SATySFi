@@ -12,12 +12,12 @@ type style =
 type t = style * element list
   [@@deriving show]
 
+let pp fmt _ =
+  Format.fprintf fmt "<output-text>"
+
+(*
 let empty_literal_style = (Literal, [])
 
-let empty_hex_style = (Hex, [])
-
-let append_kern (sty, otxtmain) rawwid =
-  (sty, Kern(rawwid) :: otxtmain)
 
 let append_uchar (sty, otxtmain) uch =
   let data =
@@ -27,10 +27,18 @@ let append_uchar (sty, otxtmain) uch =
   in
       (* temporary; inefficient conversion *)
     (sty, Data(data) :: otxtmain)
+*)
+
+let empty_hex_style = (Hex, [])
+
+
+let append_kern (sty, otxtmain) rawwid =
+  (sty, Kern(rawwid) :: otxtmain)
 
 let append_glyph_id (sty, otxtmain) gid =
   let data = FontFormat.hex_of_glyph_id gid in
     (sty, Data(data) :: otxtmain)
+
 
 let to_TJ_argument (sty, otxtmain) =
   let pdfstr =

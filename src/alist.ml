@@ -27,3 +27,6 @@ let fold_left f init eacc =
 
 let fold_right f eacc init =
   List.fold_right f (eacc |> to_list) init
+
+let cat eacc1 eacc2 =
+  List.append eacc2 eacc1

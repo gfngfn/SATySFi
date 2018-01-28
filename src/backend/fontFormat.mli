@@ -3,26 +3,27 @@ type file_path = string
 
 type glyph_id
 
+type per_mille =
+  | PerMille of int
+
+type metrics = per_mille * per_mille * per_mille
+
+(*
 val gid : glyph_id -> int  (* for debug *)
+*)
 
 val hex_of_glyph_id : glyph_id -> string
 
 type decoder
 
-exception FailToLoadFontFormatOwingToSize   of file_path
-exception FailToLoadFontFormatOwingToSystem of string
-exception FontFormatBroken                  of Otfm.error
-exception NoGlyphID                         of glyph_id
-exception UnsupportedTTC  (* temporary *)
-exception CannotFindUnicodeCmap
+exception FailToLoadFontOwingToSize   of file_path
+exception FailToLoadFontOwingToSystem of file_path * string
+exception BrokenFont                  of file_path * string
+exception CannotFindUnicodeCmap       of file_path
 
 type cid_system_info
 
 type font_registration =
-(*
-  | Type1Registration          of int * int * encoding_in_pdf
-  | TrueTypeRegistration       of int * int * encoding_in_pdf
-*)
   | CIDFontType0Registration   of cid_system_info * bool
       (* -- last boolean: true iff it should embed /W information -- *)
   | CIDFontType2OTRegistration of cid_system_info * bool
@@ -39,7 +40,7 @@ type 'a resource =
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of (string resource) ref  (* temporary;*)
-
+(*
 module Type1 : sig
   type font
   val of_decoder : decoder -> int -> int -> font
@@ -51,7 +52,7 @@ module TrueType : sig
   val of_decoder : decoder -> int -> int -> font
   val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
-
+*)
 module Type0 : sig
   type font
   val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
@@ -72,19 +73,20 @@ type cid_font =
   | CIDFontType2 of CIDFontType2.font
 
 type font =
+(*
   | Type1    of Type1.font
-(*  | Type1C *)
-(*  | MMType1 *)
-(*  | Type3 *)
   | TrueType of TrueType.font
+*)
   | Type0    of Type0.font
 
+(*
 val type1 : Type1.font -> font
 val true_type : TrueType.font -> font
+*)
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
 
-val get_glyph_metrics : decoder -> glyph_id -> int * int * int
+val get_glyph_metrics : decoder -> glyph_id -> metrics
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
 val adobe_japan1 : cid_system_info
@@ -92,7 +94,7 @@ val adobe_identity : cid_system_info
 
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 
-val find_kerning : decoder -> glyph_id -> glyph_id -> int option
+val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
 type math_kern
 
@@ -114,7 +116,9 @@ val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 
-val get_math_glyph_metrics : math_decoder -> glyph_id -> int * int * int * int option * math_kern_info option
+val get_math_glyph_metrics : math_decoder -> glyph_id -> metrics
+
+val get_math_correction_metrics : math_decoder -> glyph_id -> per_mille option * math_kern_info option
 
 val get_math_vertical_variants : math_decoder -> glyph_id -> (glyph_id * float) list
 
@@ -152,6 +156,8 @@ type math_constants =
     lower_limit_baseline_drop_min : float;
   }
 
+val get_axis_height_ratio : math_decoder -> float
+
 val get_math_constants : math_decoder -> math_constants
 
-val find_kern_ratio : math_kern -> float -> float
+val find_kern_ratio : math_decoder -> math_kern -> float -> float

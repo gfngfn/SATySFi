@@ -1,0 +1,21 @@
+let-rec fold-left
+  | f i []        = i
+  | f i (x :: xs) = fold-left f (f i x) xs
+
+let sum = fold-left (+) 0 [3; 1; 4; 1; 5; 9; 2]
+
+let-rec f | 0 y = y
+          | t _ = t + 2
+
+let g p q =
+  match (p, q) with
+  | (0, y) -> y
+  | (t, _) -> t + 2
+
+let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42)
+
+let-inline ctx \math = embed-math ctx
+let ctx = get-initial-context 400pt (command \math)
+let pagecontf _ = (| text-origin = (20pt, 20pt); text-height = 600pt; |)
+let pagepartsf _ = (| header-origin = (0pt, 0pt); header-content = block-nil; footer-origin = (0pt, 0pt); footer-content = block-nil; |)
+in page-break A4Paper pagecontf pagepartsf (line-break true true ctx ((read-inline ctx (embed-string s)) ++ inline-fil))

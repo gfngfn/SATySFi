@@ -1,0 +1,47 @@
+% -*- coding: utf-8 -*-
+StdJa.document (|
+  title = {\SATySFi;言語仕様};
+  author = {Takashi SUWA};
+  show-title = true;
+  show-toc = false;
+|) '<
+  +section {構文} <
+    +p {
+      \SATySFi;の構文は以下のように定義されている：
+    }
+    +p {
+      ${
+        \BNF{\patp}![
+          ${\varx};
+          ${\wildcard};
+          ${\cstc};
+          ${\patas{\patp}{\varx}};
+          ${\constrapp{\constrC}{\patp}};
+          ${\tuple![${\patp}; ${\ldots}; ${\patp}]}
+        ]
+      }
+    }
+    +p {
+      ${
+        \BNF{\valv}![
+          ${\cstc};
+          ${\exprfunc{\patsP}};
+          ${\exprabsI{\varx}{\expre}};
+          ${\exprabsB{\varx}{\expre}};
+          ${\valB{\bt}};
+        ]
+      }
+    }
+%    +p {
+%      \CD(5cm)(5cm)(fun c -> (
+%        let oA = CD.set c (1cm, 4cm) ${A} in
+%        let oB = CD.set c (4cm, 1cm) ${B} in
+%          [
+%            CD.object oA;
+%            CD.object oB;
+%            CD.arrow oA oB;
+%          ]
+%      ));
+%    }
+  >
+>

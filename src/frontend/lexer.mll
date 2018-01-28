@@ -116,8 +116,9 @@
 
 let space = [' ' '\t']
 let break = ['\n' '\r']
-let digit = ['0'-'9']
-let hex   = (['0'-'9'] | ['A'-'F'])
+let nzdigit = ['1'-'9']
+let digit = (nzdigit | "0")
+let hex   = (digit | ['A'-'F'])
 let capital = ['A'-'Z']
 let small = ['a'-'z']
 let latin = (small | capital)
@@ -207,9 +208,6 @@ rule progexpr = parse
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
-(*
-  | "<<-" { OVERWRITEGLOBALHASH(get_pos lexbuf) }
-*)
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
   | "."   { DOT(get_pos lexbuf) }
@@ -220,21 +218,18 @@ rule progexpr = parse
   | "="   { DEFEQ(get_pos lexbuf) }
   | "*"   { EXACT_TIMES(get_pos lexbuf) }
 
-(* binary operators; should be extended *)
+(* -- binary operators; should be extended -- *)
   | ("+" opsymbol*) { BINOP_PLUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("-" opsymbol+) { BINOP_MINUS(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("*" opsymbol+) { BINOP_TIMES(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("/" opsymbol*) { BINOP_DIVIDES(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ("=" opsymbol*) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ("=" opsymbol+) { BINOP_EQ(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("<" opsymbol*) { BINOP_LT(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (">" opsymbol*) { BINOP_GT(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | "!" { REFNOW(get_pos lexbuf) }
-(*
-  | "!!"  { REFFINAL(get_pos lexbuf) }
-*)
+  | "!" { DEREF(get_pos lexbuf) }
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
   | ((constructor ".")+ identifier) {
@@ -253,7 +248,8 @@ rule progexpr = parse
           | "if"                -> IF(pos)
           | "then"              -> THEN(pos)
           | "else"              -> ELSE(pos)
-          | "let"               -> LET(pos)
+          | "let"               -> LETNONREC(pos)
+          | "let-rec"           -> LETREC(pos)
           | "and"               -> LETAND(pos)
           | "in"                -> IN(pos)
           | "fun"               -> LAMBDA(pos)
@@ -263,10 +259,6 @@ rule progexpr = parse
           | "while"             -> WHILE(pos)
           | "do"                -> DO(pos)
           | "let-mutable"       -> LETMUTABLE(pos)
-(*
-          | "new-global-hash"   -> NEWGLOBALHASH(pos)
-          | "renew-global-hash" -> RENEWGLOBALHASH(pos)
-*)
           | "match"             -> MATCH(pos)
           | "with"              -> WITH(pos)
           | "when"              -> WHEN(pos)
@@ -283,7 +275,6 @@ rule progexpr = parse
           | "let-inline"        -> LETHORZ(pos)
           | "let-block"         -> LETVERT(pos)
           | "let-math"          -> LETMATH(pos)
-          | "let-block-detailed" -> LETVERTDETAILED(pos)  (* wil be deprecated *)
           | "controls"          -> CONTROLS(pos)
           | "cycle"             -> CYCLE(pos)
           | "inline-cmd"        -> HORZCMDTYPE(pos)
@@ -293,12 +284,12 @@ rule progexpr = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit digit*)                                        { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
-  | (digit+ "." digit*)                                   { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
-  | ("." digit+)                                          { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
-  | (((digit digit*) as i) (identifier as unitnm))        { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
-  | (((digit+ "." digit*) as flt) (identifier as unitnm)) { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
+  | (((digit | (nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
+  | (((digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | ((("." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
       if !first_state = ProgramState then EOI else
         report_error lexbuf "text input ended while reading a program area"
@@ -451,16 +442,6 @@ and horzexpr = parse
           CHAR(get_pos lexbuf, tok)
         end
     }
-(*
-  | ("@" identifier) {
-        let tok = Lexing.lexeme lexbuf in
-        let vnm = String.sub tok 1 ((String.length tok) - 1) in
-          begin
-            next_state := ActiveState;
-            VARINSTR(get_pos lexbuf, vnm)
-          end
-    }
-*)
   | ((break | space)* ("`"+ as openqtstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       openqtdepth := String.length openqtstr;
@@ -570,10 +551,6 @@ and active = parse
     }
   | space { active lexbuf }
   | break { increment_line lexbuf; active lexbuf }
-(*
-  | ("#" identifier) { let tok = Lexing.lexeme lexbuf in IDNAME(get_pos lexbuf, tok) }
-  | ("." identifier) { let tok = Lexing.lexeme lexbuf in CLASSNAME(get_pos lexbuf, tok) }
-*)
   | "(" {
       push AtoPParen;
       next_state := ProgramState;
@@ -688,7 +665,7 @@ and comment = parse
       | LiteralState    -> literal lexbuf
       | MathState       -> mathexpr lexbuf
     in
-
+(*
     (* begin: for debug *)
     let () = PrintForDebug.lexerE (
       match output with
@@ -718,7 +695,8 @@ and comment = parse
       | LPAREN(_)      -> "("
       | RPAREN(_)      -> ")"
       | COMMA(_)       -> ","
-      | LET(_)         -> "let"
+      | LETNONREC(_)   -> "let"
+      | LETREC(_)      -> "let-rec"
       | CONTROLS(_)    -> "controls"
       | LETAND(_)      -> "and"
       | PATHLINE(_)    -> "--"
@@ -741,7 +719,7 @@ and comment = parse
       | _              -> "_"
     ) in
     (* end: for debug *)
-
+*)
       match output with
       | IGNORED -> cut_token lexbuf
       | _       -> output

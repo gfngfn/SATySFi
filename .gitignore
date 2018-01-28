@@ -1,5 +1,6 @@
 .DS_Store
 \#*
+.\#*
 *~
 *.cmi
 *.cmo
@@ -39,3 +40,4 @@ satysfi
 *.dat
 *.ttx
 *.jpg
+*.satysfi-aux

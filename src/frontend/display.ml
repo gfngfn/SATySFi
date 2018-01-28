@@ -34,7 +34,7 @@ let rec variable_name_of_number (n : int) =
 let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
   match kd with
   | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f (normalize_kind kd)) ^ ")"
 
 
 type general_id = FreeID of FreeID.t | BoundID of BoundID.t
@@ -78,10 +78,11 @@ module GeneralIDHashTable
       end
 
     let intern_number (current_ht : 'a t) (gid : general_id) =
-      try
-        find current_ht gid
-      with
-      | Not_found ->
+      match find_opt current_ht gid with
+      | Some(num) ->
+          num
+
+      | None ->
           let num = new_number () in
           begin
             add current_ht gid num;
@@ -100,7 +101,13 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | TypeVariable(tvref) ->
         begin
           match !tvref with
-          | Link(tyl)  -> assert false  (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' -- *)
+          | Link(tyl)  ->
+            (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' and 'normalize_kind' -- *)
+              assert false
+(*
+              "${" ^ iter tyl ^ "}"  (* TEMPORARY *)
+*)
+
           | Bound(bid) ->
               let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
               let s = "'#" ^ (variable_name_of_number num) in
@@ -112,6 +119,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
                 show_type_variable iter s (FreeID.get_kind tvid)
         end
 
+    | BaseType(EnvType)     -> "env"  (* -- unused -- *)
     | BaseType(UnitType)    -> "unit"
     | BaseType(BoolType)    -> "bool"
     | BaseType(IntType)     -> "int"
@@ -122,7 +130,9 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(TextColType) -> "block-text"
     | BaseType(BoxRowType)  -> "inline-boxes"
     | BaseType(BoxColType)  -> "block-boxes"
+(*
     | BaseType(FontType)    -> "font"
+*)
     | BaseType(ContextType) -> "context"
     | BaseType(PrePathType) -> "pre-path"
     | BaseType(PathType)    -> "path"
@@ -174,9 +184,11 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
+(*
     | VertDetailedCommandType(tylist) ->
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
+*)
 
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
@@ -248,8 +260,9 @@ let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
 
 
 (* -- following are all for debug -- *)
+let string_of_utast utast = show_untyped_abstract_tree utast
 
-
+(*
 let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   match utastmain with
   | UTStringEmpty                  -> "{}"
@@ -261,17 +274,17 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
   | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
   | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
-  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")" 
+  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")"
   | UTEndOfList                    -> "[]"
   | UTTupleCons(hd, tl)            -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
   | UTEndOfTuple                   -> "$"
 (*
   | UTBreakAndIndent               -> "break"
 *)
-  | UTLetIn(umlc, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
+  | UTLetRecIn(_, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
   | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
                                         ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
-  | UTLambdaAbstract(_, varnm, ut) -> "(" ^ varnm ^ " -> " ^ (string_of_utast ut) ^ ")"
+  | UTFunction(_)                  -> "(function ...)"
   | UTFinishHeaderFile             -> "finish"
   | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
   | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
@@ -279,8 +292,9 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | UTInputVert(utivlst)           -> "(textV " ^ (String.concat " " (List.map string_of_utiv utivlst)) ^ ")"
   | UTInputHorz(utihlst)           -> "(textH " ^ (String.concat " " (List.map string_of_utih utihlst)) ^ ")"
   | _                              -> "OTHER"
+*)
 
-and string_of_utiv (_, utivmain) =
+let rec string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
       "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
@@ -296,17 +310,17 @@ and string_of_utih (_, utihmain) =
       "(embHC " ^ (string_of_utast utast0) ^ ")"
   | UTInputHorzEmbeddedMath(utastmath) ->
       "(embHM " ^ (string_of_utast utastmath) ^ ")"
- 
+
 and string_of_itemize dp (UTItem(utast, itmzlst)) =
   "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
     ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"
 
 and string_of_pmcons pmcons =
   match pmcons with
-  | UTEndOfPatternMatch -> ""
-  | UTPatternMatchCons(pat, ut, tail)
+  | [] -> ""
+  | UTPatternBranch(pat, ut) :: tail
       -> " | " ^ (string_of_utpat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
-  | UTPatternMatchConsWhen(pat, utb, ut, tail)
+  | UTPatternBranchWhen(pat, utb, ut) :: tail
       -> " | " ^ (string_of_utpat pat) ^ " when " ^ (string_of_utast utb)
           ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
 
@@ -340,11 +354,14 @@ let escape_letters str =
     aux str (String.length str)
 
 
+let string_of_ast (ast : abstract_tree) = show_abstract_tree ast
+
+(*
 let rec string_of_ast (ast : abstract_tree) =
   match ast with
   | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
   | FuncWithEnvironment(x, m, _) -> "(" ^ (EvalVarID.show_direct x) ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(x)                 -> EvalVarID.show_direct x
+  | ContentOf(rng, x)            -> EvalVarID.show_direct x
   | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
   | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
   | StringEmpty                  -> "\"\""
@@ -358,7 +375,7 @@ let rec string_of_ast (ast : abstract_tree) =
   | ApplyClassAndID(c, i, m)     ->
       "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
 *)
-  | Reference(a)                 -> "(!" ^ (string_of_ast a) ^ ")"
+  | Dereference(a)               -> "(!" ^ (string_of_ast a) ^ ")"
 (*
   | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
 *)
@@ -410,5 +427,4 @@ let rec string_of_ast (ast : abstract_tree) =
   | Context(_)                   -> "(context)"
   | FontDesignation(_)           -> "(font-designation)"
   | _                            -> "OTHER"
-
-
+*)

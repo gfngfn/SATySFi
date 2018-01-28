@@ -11,3 +11,5 @@ S ../../src/chardecoder/
 B ../../_build/src/chardecoder/
 S ../
 B ../../_build/src/
+S ../../src/frontend/
+B ../../_build/src/frontend/

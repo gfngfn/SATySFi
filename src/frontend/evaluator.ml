@@ -5,36 +5,36 @@ open Types
 
 exception EvalError of string
 
-type eval_input_horz_element =
-  | EvInputHorzText     of string
-  | EvInputHorzEmbedded of abstract_tree * abstract_tree list
+type nom_input_horz_element =
+  | NomInputHorzText     of string
+  | NomInputHorzEmbedded of abstract_tree * abstract_tree list
+  | NomInputHorzContent  of nom_input_horz_element list * environment
 
 
 let report_bug_evaluator msg ast value =
   Format.printf "[Bug]@ %s:" msg;
-  Format.printf "%a@ --->*@ %a" pp_abstract_tree ast pp_abstract_tree value;
+  Format.printf "%a@ --->*@ %a" pp_abstract_tree ast pp_syntactic_value value;
   failwith ("bug: " ^ msg)
 
 
-let rec make_argument_cons lst =
-  match lst with
-  | []           -> EndOfArgumentVariable
-  | head :: tail -> ArgumentVariableCons(head, make_argument_cons tail)
+let report_bug_evaluator_ast msg ast =
+  Format.printf "[Bug]@ %s:" msg;
+  Format.printf "%a" pp_abstract_tree ast;
+  failwith ("bug: " ^ msg)
 
 
-let copy_environment (env : environment) = Hashtbl.copy env
+let report_bug_evaluator_value msg value =
+  Format.printf "[Bug]@ %s:" msg;
+  Format.printf "%a" pp_syntactic_value value;
+  failwith ("bug: " ^ msg)
 
-let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : abstract_tree ref) = Hashtbl.add env evid rfast
 
-let find_in_environment (env : environment) (evid : EvalVarID.t) = Hashtbl.find env evid
-
-
-let lex_horz_text (ctx : HorzBox.input_context) (s_utf8 : string) : HorzBox.horz_box list =
+let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let make_line_stack hblstlst =
+let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
   let open HorzBox in
   let wid =
     hblstlst |> List.fold_left (fun widacc hblst ->
@@ -43,120 +43,137 @@ let make_line_stack hblstlst =
     ) Length.zero
   in
   let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let evvblst =
-    trilst |> List.fold_left (fun evvbacc (evhblst, hgt, dpt) ->
-      EvVertLine(hgt, dpt, evhblst) :: evvbacc
-    ) [] |> List.rev
+  let imvblst =
+    trilst |> List.fold_left (fun imvbacc (imhblst, hgt, dpt) ->
+      Alist.extend imvbacc (VertLine(hgt, dpt, imhblst))
+    ) Alist.empty |> Alist.to_list
   in
-    (wid, evvblst)
+    (wid, imvblst)
 
 
-let adjust_to_first_line evvblst =
+let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
   let open HorzBox in
-  let rec aux optinit totalhgtinit evvblst =
-    evvblst |> List.fold_left (fun (opt, totalhgt) evvb ->
-      match (evvb, opt) with
-      | (EvVertLine(hgt, dpt, _), None)          -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
-      | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+  let rec aux optinit totalhgtinit imvblst =
+    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
+      match (imvb, opt) with
+      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+
+      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
           let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
+          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
           let totalhgtafter = totalhgtsub +% pads.paddingB in
             (optsub, totalhgtafter)
+
     ) (optinit, totalhgtinit)
   in
-    match aux None Length.zero evvblst with
+    match aux None Length.zero imvblst with
     | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
     | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
 
 
-let adjust_to_last_line evvblst =
+let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
     let open HorzBox in
     let rec aux optinit totalhgtinit evvblst =
       let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) evvblast ->
-            match (evvblast, opt) with
-            | (EvVertLine(hgt, dpt, _), None)          -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (EvVertLine(hgt, dpt, _), _)             -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (EvVertFixedEmpty(vskip), _)             -> (opt, totalhgt +% vskip)
-            | (EvVertFrame(pads, _, _, evvblstsub), _) ->
+        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
+            match (imvblast, opt) with
+            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
+            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
+            | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+
+            | (ImVertFrame(pads, _, _, evvblstsub), _) ->
                 let totalhgtbefore = totalhgt +% pads.paddingB in
                 let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
                 let totalhgtafter = totalhgtsub +% pads.paddingT in
                   (optsub, totalhgtafter)
+
         ) (optinit, totalhgtinit)
     in
-      match aux None Length.zero evvblst with
+      match aux None Length.zero imvblst with
       | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
       | (None, totalhgt)      -> (totalhgt, Length.zero)
 
 
-let interpret_list interpretf (env : environment) extractf (ast : abstract_tree) =
+let get_list getf value =
   let rec aux acc value =
     match value with
-    | ListCons(vhead, vtail) -> aux ((extractf vhead) :: acc) vtail
-    | EndOfList              -> List.rev acc
-    | _                      -> report_bug_evaluator "interpret_list" ast value
+    | ListCons(vhead, vtail) -> aux (Alist.extend acc (getf vhead)) vtail
+    | EndOfList              -> Alist.to_list acc
+    | _                      -> report_bug_evaluator_value "get_list" value
   in
+    aux Alist.empty value
+
+
+let interpret_list interpretf (env : environment) getf (ast : abstract_tree) =
   let value = interpretf env ast in
-    aux [] value
+    get_list getf value
+
+
+let interpret_option interpretf (env : environment) (getf : syntactic_value -> 'a) (ast : abstract_tree) : 'a option =
+  let value = interpretf env ast in
+    match value with
+    | Constructor("None", UnitConstant) -> None
+    | Constructor("Some", valuesub)     -> Some(getf valuesub)
+    | _                                 -> report_bug_evaluator "interpret_option" ast value
 
 
 let rec reduce_beta envf evid valuel astdef =
-  let envnew = copy_environment envf in
-    begin
-      add_to_environment envnew evid (ref valuel);
-      interpret envnew astdef
-    end
+  let envnew = add_to_environment envf evid (ref valuel) in
+    interpret envnew astdef
 
 
 and reduce_beta_list env valuef astarglst =
   match astarglst with
-  | []                   -> valuef
+  | [] ->
+      valuef
+
   | astarg :: astargtail ->
       begin
         match valuef with
-        | FuncWithEnvironment(evid, astdef, envf) ->
+        | FuncWithEnvironment(patbrs, envf) ->
+          (* -- left-to-right evaluation -- *)
             let valuearg = interpret env astarg in
-            let valuefnew = reduce_beta envf evid valuearg astdef in
-            reduce_beta_list env valuefnew astargtail
+            let valuefnew = select_pattern envf valuearg patbrs in
+              reduce_beta_list env valuefnew astargtail
 
-        | _ -> report_bug_evaluator "reduce_beta_list" valuef valuef
+        | _ -> report_bug_evaluator_value "reduce_beta_list" valuef
       end
 
-(*
-and interpret_horz_boxes env astrow =
-  let valuerow = interpret env astrow in
-  let rec aux value =
-    match value with
-    | Horz(hblst)                -> hblst
-    | HorzConcat(value1, value2) -> List.append (aux value1) (aux value2)
-    | _                          -> report_bug_evaluator ("interpret_horz_boxes; " ^ (Display.string_of_ast valuerow))
-  in
-    aux valuerow
-*)
 
 and interpret_vert env ast =
   let value = interpret env ast in
+    get_vert value
+
+and get_vert value =
     match value with
     | Vert(imvblst) -> imvblst
-    | _             -> report_bug_evaluator "interpret_vert" ast value
+    | _             -> report_bug_evaluator_value "get_vert" value
 
 
 and interpret_horz env ast =
   let value = interpret env ast in
-    match value with
-    | Horz(hblst) -> hblst
-    | _           -> report_bug_evaluator "interpret_horz" ast value
+    get_horz value
+
+
+and get_horz value =
+  match value with
+  | Horz(hblst) -> hblst
+  | _           -> report_bug_evaluator_value "get_horz" value
 
 
 and interpret_point env ast =
   let value = interpret env ast in
+    get_point value
+
+
+and get_point value =
     match value with
     | TupleCons(LengthConstant(lenx),
         TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
-    | _ -> report_bug_evaluator "interpret_point" ast value
+
+    | _ -> report_bug_evaluator_value "get_point" value
 
 
 and interpret_prepath env ast =
@@ -168,6 +185,10 @@ and interpret_prepath env ast =
 
 and interpret_paddings env ast =
   let value = interpret env ast in
+    get_paddings value
+
+
+and get_paddings value =
   match value with
   | TupleCons(LengthConstant(lenL),
       TupleCons(LengthConstant(lenR),
@@ -180,7 +201,7 @@ and interpret_paddings env ast =
         HorzBox.paddingB = lenB;
       }
 
-  | _ -> report_bug_evaluator "interpret_paddings" ast value
+  | _ -> report_bug_evaluator_value "interpret_paddings" value
 
 
 and interpret_decoset env ast =
@@ -200,92 +221,229 @@ and interpret_path env pathcomplst cycleopt =
     pathcomplst |> List.map (function
       | PathLineTo(astpt) ->
           let pt = interpret_point env astpt in
-            HorzBox.LineTo(pt)
+            GraphicData.LineTo(pt)
 
       | PathCubicBezierTo(astpt1, astpt2, astpt) ->
           let pt1 = interpret_point env astpt1 in
           let pt2 = interpret_point env astpt2 in
           let pt = interpret_point env astpt in
-            HorzBox.CubicBezierTo(pt1, pt2, pt)
+            GraphicData.CubicBezierTo(pt1, pt2, pt)
     )
   in
   let closingopt =
     match cycleopt with
     | None -> None
 
-    | Some(PathLineTo(())) -> Some(HorzBox.LineTo(()))
+    | Some(PathLineTo(())) -> Some(GraphicData.LineTo(()))
 
     | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
         let pt1 = interpret_point env astpt1 in
         let pt2 = interpret_point env astpt2 in
-          Some(HorzBox.CubicBezierTo(pt1, pt2, ()))
+          Some(GraphicData.CubicBezierTo(pt1, pt2, ()))
   in
     (pathelemlst, closingopt)
 
 
-and graphics_of_list value =
-  let rec aux acc value =
+and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
+  let rec aux gracc value =
     match value with
-    | EndOfList                             -> List.rev acc
-    | ListCons(GraphicsValue(pdfops), tail) -> aux (pdfops :: acc) tail
-    | _                                     -> report_bug_evaluator "make_frame_deco" value value
+    | EndOfList                             -> gracc
+    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
+    | _                                     -> report_bug_evaluator_value "make_frame_deco" value
   in
-    List.concat (aux [] value)
+    aux Graphics.empty value
+
+
+and make_page_break_info pbinfo =
+  let asc =
+    Assoc.of_list [
+      ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
+    ]
+  in
+    RecordValue(asc)
+
+
+and make_page_content_info pcinfo =
+  make_page_break_info pcinfo  (* temporary *)
+(*
+  let asc =
+    Assoc.of_list [
+      ("page-number", IntegerConstant(pcinfo.HorzBox.page_number));
+    ]
+  in
+    RecordValue(asc)
+*)
+
+and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_footer =
+  (fun pbinfo ->
+    let valuepbinfo = make_page_break_info pbinfo in
+    let ast = Apply(Value(valuef), Value(valuepbinfo)) in
+    let vblst = interpret_vert env ast in
+      PageBreak.solidify vblst
+  )
+
+
+and make_page_content_scheme_func env astf : HorzBox.page_content_scheme_func =
+  let valuef = interpret env astf in
+    (fun pbinfo ->
+      let valuepbinfo = make_page_break_info pbinfo in
+      let ast = Apply(Value(valuef), Value(valuepbinfo)) in
+      let valueret = interpret env ast in
+        match valueret with
+        | RecordValue(asc) ->
+            begin
+              match
+                (Assoc.find_opt asc "text-origin",
+                 Assoc.find_opt asc "text-height")
+              with
+              | (Some(vTO), Some(vTH)) ->
+                  HorzBox.({
+                    page_content_origin = get_point vTO;
+                    page_content_height = get_length vTH;
+                  })
+
+              | _ -> report_bug_evaluator_value "make_page_scheme_func" valueret
+            end
+
+        | _ -> report_bug_evaluator "make_page_scheme_func" ast valueret
+    )
+
+
+and make_page_parts_scheme_func env astf : HorzBox.page_parts_scheme_func =
+  let valuef = interpret env astf in
+  (fun pcinfo ->
+    let valuepcinfo = make_page_content_info pcinfo in
+    let ast = Apply(Value(valuef), Value(valuepcinfo)) in
+    let valueret = interpret env ast in
+      match valueret with
+      | RecordValue(asc) ->
+          begin
+            match
+              (Assoc.find_opt asc "header-origin",
+               Assoc.find_opt asc "header-content",
+               Assoc.find_opt asc "footer-origin",
+               Assoc.find_opt asc "footer-content")
+            with
+            | (Some(vHO), Some(vHC), Some(vFO), Some(vFC)) ->
+                HorzBox.({
+                  header_origin  = get_point vHO;
+                  header_content = PageBreak.solidify (get_vert vHC);
+                  footer_origin  = get_point vFO;
+                  footer_content = PageBreak.solidify (get_vert vFC);
+                })
+
+            | _ -> report_bug_evaluator_value "make_page_parts_scheme_func" valueret
+          end
+
+      | _ -> report_bug_evaluator "make_page_parts_scheme_func" ast valueret
+  )
+
+
+and make_hook env (asthook : abstract_tree) : (HorzBox.page_break_info -> point -> unit) =
+  let valuehook = interpret env asthook in
+  (fun pbinfo (xpos, yposbaseline) ->
+    let astpt = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple))) in
+    let valuepbinfo = make_page_break_info pbinfo in
+    let ast = Apply(Apply(Value(valuehook), Value(valuepbinfo)), astpt) in
+    let valueret = interpret env ast in
+      match valueret with
+      | UnitConstant -> ()
+      | _            -> report_bug_evaluator "make_hook" ast valueret
+  )
 
 
 and make_frame_deco env valuedeco =
   (fun (xpos, ypos) wid hgt dpt ->
-    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-    let valuewid = LengthConstant(wid) in
-    let valuehgt = LengthConstant(hgt) in
-    let valuedpt = LengthConstant(Length.negate dpt) in
+    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
+    let astwid = Value(LengthConstant(wid)) in
+    let asthgt = Value(LengthConstant(hgt)) in
+    let astdpt = Value(LengthConstant(Length.negate dpt)) in
       (* -- depth values for users are nonnegative -- *)
-    let valueret = reduce_beta_list env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
+    let valueret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
       graphics_of_list valueret
   )
 
 
 and make_paren env valueparenf : HorzBox.paren =
   (fun hgt dpt hgtaxis fontsize color ->
-    let valuehgt      = LengthConstant(hgt) in
-    let valuedpt      = LengthConstant(Length.negate dpt) in
+    let asthgt      = Value(LengthConstant(hgt)) in
+    let astdpt      = Value(LengthConstant(Length.negate dpt)) in
       (* -- depth values for users are nonnegative -- *)
-    let valuehgtaxis  = LengthConstant(hgtaxis) in
-    let valuefontsize = LengthConstant(fontsize) in
-    let valuecolor    = make_color_value color in
-    let valueret = reduce_beta_list env valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
+    let asthgtaxis  = Value(LengthConstant(hgtaxis)) in
+    let astfontsize = Value(LengthConstant(fontsize)) in
+    let astcolor    = Value(make_color_value color) in
+    let valueret = reduce_beta_list env valueparenf [asthgt; astdpt; asthgtaxis; astfontsize; astcolor] in
       match valueret with
       | TupleCons(valuehorz, TupleCons(valuekernf, EndOfTuple)) ->
-          let hblst = interpret_horz env valuehorz in
+          let hblst = interpret_horz env (Value(valuehorz)) in
           let kernf = make_math_kern_func env valuekernf in
             (hblst, kernf)
 
       | _ ->
-          report_bug_evaluator "make_paren" valueret valueret
+          report_bug_evaluator_value "make_paren" valueret
   )
 
 
 and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
   (fun ypos ->
-    let valueypos = LengthConstant(ypos) in
-    let valueret = reduce_beta_list env valuekernf [valueypos] in
-      interpret_length env valueret
+    let astypos = Value(LengthConstant(ypos)) in
+    let valueret = reduce_beta_list env valuekernf [astypos] in
+      get_length valueret
   )
 
 
 and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
-    let valuefontsize = LengthConstant(fontsize) in
-    let valueypos = LengthConstant(ypos) in
-    let valueret = reduce_beta_list env valuekernf [valuefontsize; valueypos] in
-      interpret_length env valueret
+    let astfontsize = Value(LengthConstant(fontsize)) in
+    let astypos     = Value(LengthConstant(ypos)) in
+    let valueret = reduce_beta_list env valuekernf [astfontsize; astypos] in
+      get_length valueret
   )
 
 and make_inline_graphics env valueg =
   (fun (xpos, ypos) ->
-    let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-    let valueret = reduce_beta_list env valueg [valuepos] in
+    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
+    let valueret = reduce_beta_list env valueg [astpos] in
       graphics_of_list valueret
+  )
+
+
+and interpret_input_horz_content env (ihlst : input_horz_element list) =
+  ihlst |> List.map (function
+    | InputHorzText(s) ->
+        ImInputHorzText(s)
+
+    | InputHorzEmbedded(astcmd, astarglst) ->
+        ImInputHorzEmbedded(astcmd, astarglst)
+
+    | InputHorzEmbeddedMath(astmath) ->
+        ImInputHorzEmbeddedMath(astmath)
+
+    | InputHorzContent(ast) ->
+        let value = interpret env ast in
+        begin
+          match value with
+          | InputHorzWithEnvironment(imihlst, envsub) ->
+              ImInputHorzContent(imihlst, envsub)
+
+          | _ -> report_bug_evaluator "interpret_input_horz_content" ast value
+        end
+  )
+
+and interpret_input_vert_content env (ivlst : input_vert_element list) =
+  ivlst |> List.map (function
+    | InputVertEmbedded(astcmd, astarglst) ->
+        ImInputVertEmbedded(astcmd, astarglst)
+
+    | InputVertContent(ast) ->
+        let value = interpret env ast in
+        begin
+          match value with
+          | InputVertWithEnvironment(imivlst, envsub) ->
+              ImInputVertContent(imivlst, envsub)
+
+          | _ -> report_bug_evaluator "interpret_input_vert_content" ast value
+        end
   )
 
 
@@ -294,22 +452,21 @@ and interpret env ast =
 
 (* ---- basic value ---- *)
 
-  | StringEmpty                           -> ast
-  | IntegerConstant(_)                    -> ast
-  | FloatConstant(_)                      -> ast
-  | StringConstant(_)                     -> ast
-  | BooleanConstant(_)                    -> ast
-  | UnitConstant                          -> ast
-  | EvaluatedEnvironment(_)               -> ast
-  | FuncWithEnvironment(_, _, _)          -> ast
+  | Value(v) -> v
 
-  | InputHorz(ihlst)                      -> InputHorzWithEnvironment(ihlst, env)  (* -- lazy evaluation -- *)
+  | FinishHeaderFile -> EvaluatedEnvironment(env)
 
-  | InputHorzWithEnvironment(_, _)        -> ast
+  | FinishStruct -> EvaluatedEnvironment(env)
 
-  | InputVert(ivlst)                      -> InputVertWithEnvironment(ivlst, env)  (* -- lazy evaluation -- *)
+  | InputHorz(ihlst) ->
+      let imihlst = interpret_input_horz_content env ihlst in
+        InputHorzWithEnvironment(imihlst, env)
+          (* -- lazy evaluation; evaluates embedded variables only -- *)
 
-  | InputVertWithEnvironment(_, _)        -> ast
+  | InputVert(ivlst) ->
+      let imivlst = interpret_input_vert_content env ivlst in
+        InputVertWithEnvironment(imivlst, env)
+          (* -- lazy evaluation; evaluates embedded variables only -- *)
 
   | LengthDescription(flt, unitnm) ->
       let len =
@@ -318,11 +475,9 @@ and interpret env ast =
         | "cm"   -> Length.of_centimeter flt
         | "mm"   -> Length.of_millimeter flt
         | "inch" -> Length.of_inch flt
-        | _      -> report_bug_evaluator "LengthDescription; unknown unit name" ast ast
+        | _      -> report_bug_evaluator_ast "LengthDescription; unknown unit name" ast
       in
         LengthConstant(len)
-
-  | LengthConstant(_) -> ast
 
   | Concat(ast1, ast2) ->
       let value1 = interpret env ast1 in
@@ -337,27 +492,21 @@ and interpret env ast =
 
 (* ---- values for backend ---- *)
 
-  | MathValue(_) -> ast
-
-  | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, astcp, astctx) ->
+  | PrimitiveSetMathVariantToChar(asts, astmccls, astmathcls, aststr, astctx) ->
       let s = interpret_string env asts in
       let mccls = interpret_math_char_class env astmccls in
       let is_big = false in
       let mathcls = interpret_math_class env astmathcls in
-      let cp = interpret_int env astcp in
-      let ctx = interpret_context env astctx in
-      let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, Uchar.of_int cp)) in
+      let uchlst = interpret_uchar_list env aststr in
+      let (ctx, v) = interpret_context env astctx in
+      let mvvalue = (mathcls, HorzBox.MathVariantToChar(is_big, uchlst)) in
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
-        Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }))
+        Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }), v)
 
   | PrimitiveSetMathCommand(astcmd, astctx) ->
       let valuecmd = interpret env astcmd in
-      let ctx = interpret_context env astctx in
-      begin
-        match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(HorzBox.({ ctx with inline_math_command = evidcmd; }))
-        | _                      -> report_bug_evaluator "PrimitiveSetMathCommand" astcmd valuecmd
-      end
+      let (ctx, _) = interpret_context env astctx in
+        Context(ctx, valuecmd)
 
   | BackendMathVariantCharDirect(astmathcls, astrcd) ->   (* TEMPORARY; should extend more *)
       let mathcls = interpret_math_class env astmathcls in
@@ -365,8 +514,8 @@ and interpret env ast =
       let valuercd = interpret env astrcd in
       let rcd =
         match valuercd with
-        | Record(rcd) -> rcd
-        | _           -> report_bug_evaluator "BackendMathVariantCharDirect: not a record" astrcd valuercd
+        | RecordValue(rcd) -> rcd
+        | _                -> report_bug_evaluator "BackendMathVariantCharDirect: not a record" astrcd valuercd
       in
       begin
         match
@@ -389,26 +538,26 @@ and interpret env ast =
             Some(vcpF),
             Some(vcpBF),
             Some(vcpDS) ) ->
-              let cpI  = interpret_int env vcpI  in
-              let cpBI = interpret_int env vcpBI in
-              let cpR  = interpret_int env vcpR  in
-              let cpBR = interpret_int env vcpBR in
-              let cpS  = interpret_int env vcpS  in
-              let cpBS = interpret_int env vcpBS in
-              let cpF  = interpret_int env vcpF  in
-              let cpBF = interpret_int env vcpBF in
-              let cpDS = interpret_int env vcpDS in
+              let uchlstI  = get_uchar_list vcpI  in
+              let uchlstBI = get_uchar_list vcpBI in
+              let uchlstR  = get_uchar_list vcpR  in
+              let uchlstBR = get_uchar_list vcpBR in
+              let uchlstS  = get_uchar_list vcpS  in
+              let uchlstBS = get_uchar_list vcpBS in
+              let uchlstF  = get_uchar_list vcpF  in
+              let uchlstBF = get_uchar_list vcpBF in
+              let uchlstDS = get_uchar_list vcpDS in
               let mvsty =
                 HorzBox.({
-                  math_italic        = Uchar.of_int cpI ;
-                  math_bold_italic   = Uchar.of_int cpBI;
-                  math_roman         = Uchar.of_int cpR ;
-                  math_bold_roman    = Uchar.of_int cpBR;
-                  math_script        = Uchar.of_int cpS ;
-                  math_bold_script   = Uchar.of_int cpBS;
-                  math_fraktur       = Uchar.of_int cpF ;
-                  math_bold_fraktur  = Uchar.of_int cpBF;
-                  math_double_struck = Uchar.of_int cpDS;
+                  math_italic        = uchlstI ;
+                  math_bold_italic   = uchlstBI;
+                  math_roman         = uchlstR ;
+                  math_bold_roman    = uchlstBR;
+                  math_script        = uchlstS ;
+                  math_bold_script   = uchlstBS;
+                  math_fraktur       = uchlstF ;
+                  math_bold_fraktur  = uchlstBF;
+                  math_double_struck = uchlstDS;
                 })
               in
                 MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
@@ -429,31 +578,31 @@ and interpret env ast =
       let mathcls1 = interpret_math_class env astmathcls1 in
       let mathcls2 = interpret_math_class env astmathcls2 in
       let mlst = interpret_math env astm in
-        MathValue([HorzBox.MathGroup(mathcls1, mathcls2, mlst)])
+        MathValue([MathGroup(mathcls1, mathcls2, mlst)])
 
   | BackendMathSuperscript(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathSuperscript(mlst1, mlst2)])
+        MathValue([MathSuperscript(mlst1, mlst2)])
 
   | BackendMathSubscript(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathSubscript(mlst1, mlst2)])
+        MathValue([MathSubscript(mlst1, mlst2)])
 
   | BackendMathFraction(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathFraction(mlst1, mlst2)])
+        MathValue([MathFraction(mlst1, mlst2)])
 
   | BackendMathRadical(astm1, astm2) ->
-      let mlst1opt = interpret_option env (interpret_math env) astm1 in
+      let mlst1opt = interpret_option interpret env get_math astm1 in
       let mlst2 = interpret_math env astm2 in
       let radical = Primitives.default_radical in  (* temporary; should be variable *)
       begin
         match mlst1opt with
-        | None        -> MathValue([HorzBox.MathRadical(radical, mlst2)])
-        | Some(mlst1) -> MathValue([HorzBox.MathRadicalWithDegree(mlst1, mlst2)])
+        | None        -> MathValue([MathRadical(radical, mlst2)])
+        | Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
       end
 
   | BackendMathParen(astparenL, astparenR, astm1) ->
@@ -462,26 +611,23 @@ and interpret env ast =
       let valueparenR = interpret env astparenR in
       let parenL = make_paren env valueparenL in
       let parenR = make_paren env valueparenR in
-        MathValue([HorzBox.MathParen(parenL, parenR, mlst1)])
+        MathValue([MathParen(parenL, parenR, mlst1)])
 
   | BackendMathUpperLimit(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathUpperLimit(mlst1, mlst2)])
+        MathValue([MathUpperLimit(mlst1, mlst2)])
 
   | BackendMathLowerLimit(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
       let mlst2 = interpret_math env astm2 in
-        MathValue([HorzBox.MathLowerLimit(mlst1, mlst2)])
+        MathValue([MathLowerLimit(mlst1, mlst2)])
 
   | BackendMathChar(astmathcls, is_big, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
-      let mlst =
-        uchlst |> List.map (fun uch ->
-          HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch)))))
-      in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uchlst))))] in
         MathValue(mlst)
 
   | BackendMathCharWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
@@ -492,28 +638,18 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let kernfL = make_math_char_kern_func env valuekernfL in
       let kernfR = make_math_char_kern_func env valuekernfR in
-      let kernf0 _ _ = Length.zero in
-      let mlst =
-        uchlst |> list_fold_adjacent (fun acc uch prevopt nextopt ->
-          let math =
-            match (prevopt, nextopt) with
-            | (None   , None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernfR))))
-            | (None   , Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernfL, kernf0))))
-            | (Some(_), None   ) -> HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uch, kernf0, kernfR))))
-            | (Some(_), Some(_)) -> HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uch))))
-          in
-              (* -- provides left/right kern only with the leftmost/rightmost character -- *)
-              (* needs reconsideration; maybe more natural if arbitrary number of code points can be handled as one glyph *)
-            math :: acc
-        ) [] |> List.rev
-      in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uchlst, kernfL, kernfR))))] in
         MathValue(mlst)
 
   | BackendMathText(astmathcls, astf) ->
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
-      let hblstf ctx =
-          interpret_horz env (Apply(valuef, Context(ctx)))
+      let hblstf ictx =
+(*
+          Format.printf "Evaluator> BackendMathText\n";
+          Format.printf "%a\n" pp_syntactic_value valuef;
+*)
+          interpret_horz env (Apply(Value(valuef), Value(Context(ictx))))
       in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
@@ -528,17 +664,17 @@ and interpret env ast =
         MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
 
   | BackendEmbeddedMath(astctx, astm) ->
-      let ctx = interpret_context env astctx in
+      let ictx = interpret_context env astctx in
       let mlst = interpret_math env astm in
-      let mathctx = HorzBox.MathContext.make ctx in
+      let mathctx = MathContext.make ictx in
       let hblst = Math.main mathctx mlst in
         Horz(hblst)
 
   | BackendTabular(asttabular) ->
-      let interpret_row : abstract_tree -> HorzBox.cell list = interpret_list interpret env (interpret_cell env) in
-      let tabular : HorzBox.row list = interpret_list interpret env interpret_row asttabular in
-      let (evtabular, wid, hgt, dpt) = Tabular.main tabular in
-        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, evtabular))]))
+      let get_row : syntactic_value -> HorzBox.cell list = get_list get_cell in
+      let tabular : HorzBox.row list = interpret_list interpret env get_row asttabular in
+      let (imtabular, wid, hgt, dpt) = Tabular.main tabular in
+        Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular))]))
 
   | BackendRegisterPdfImage(aststr, astpageno) ->
       let srcpath = interpret_string env aststr in
@@ -550,8 +686,6 @@ and interpret env ast =
       let srcpath = interpret_string env aststr in
       let imgkey = ImageInfo.add_image srcpath in
         ImageKey(imgkey)
-
-  | ImageKey(_) -> ast
 
   | BackendUseImageByWidth(astimg, astwid) ->
       let valueimg = interpret env astimg in
@@ -565,19 +699,19 @@ and interpret env ast =
         | _ -> report_bug_evaluator "BackendUseImage" astimg valueimg
       end
 
+  | BackendHookPageBreak(asthook) ->
+      let hookf : HorzBox.page_break_info -> point -> unit = make_hook env asthook in
+        Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
-        PathValue([HorzBox.GeneralPath(pt0, pathelemlst, closingopt)])
-
-  | PathValue(_) -> ast
+        PathValue([GraphicData.GeneralPath(pt0, pathelemlst, closingopt)])
 
   | PathUnite(astpath1, astpath2) ->
       let pathlst1 = interpret_path_value env astpath1 in
       let pathlst2 = interpret_path_value env astpath2 in
         PathValue(List.append pathlst1 pathlst2)
-
-  | PrePathValue(_) -> ast
 
   | PrePathBeginning(astpt0) ->
       let pt0 = interpret_point env astpt0 in
@@ -608,67 +742,28 @@ and interpret env ast =
       let ptT = interpret_point env astptT in
       let prepath = interpret_prepath env astprepath in
         PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
-(*
-  | GraphicsContext(_) -> ast
-*)
-  | GraphicsValue(_) -> ast
-
-  | FontDesignation(_) -> ast
-
-  | Horz(_) -> ast
 
   | HorzConcat(ast1, ast2) ->
       let hblst1 = interpret_horz env ast1 in
       let hblst2 = interpret_horz env ast2 in
         Horz(List.append hblst1 hblst2)
-(*
-      begin
-        match (value1, value2) with
-        | (Horz(evhblst1), Horz(evhblst2)) -> Horz(List.append evhblst1 evhblst2)
-        | _ -> report_bug_evaluator ("HorzConcat; " ^ (Display.string_of_ast value1) ^ ", " ^ (Display.string_of_ast value2))
-        | (_, Horz([])) -> value1
-        | (_, _)        -> HorzConcat(value1, value2)
-      end
-*)
-
-  | Vert(_) -> ast
 
   | VertConcat(ast1, ast2) ->
-      let imvblst1 = interpret_vert env ast1 in
-      let imvblst2 = interpret_vert env ast2 in
-        Vert(List.append imvblst1 imvblst2)
-(*
-      begin
-        match (value1, value2) with
-        | (Vert([]), _) -> value2
-        | (_, Vert([])) -> value1
-        | (_, _)        -> VertConcat(value1, value2)
-      end
-*)
-
-  | Context(_) -> ast
-
-  | UninitializedContext -> ast
+      let vblst1 = interpret_vert env ast1 in
+      let vblst2 = interpret_vert env ast2 in
+        Vert(List.append vblst1 vblst2)
 
   | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
 
-  | LambdaVertWithEnvironment(_, _, _) -> ast
-
-  | LambdaVertDetailed(evid, astdef) -> LambdaVertDetailedWithEnv(evid, astdef, env)
-
-  | LambdaVertDetailedWithEnv(_, _, _) -> ast
-
   | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
-
-  | LambdaHorzWithEnvironment(_, _, _) -> ast
 
   | HorzLex(astctx, ast1) ->
       let valuectx = interpret env astctx in
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputHorzWithEnvironment(ihlst, envi) -> interpret_input_horz envi valuectx ihlst
-        | _                                     -> report_bug_evaluator "HorzLex" ast1 value1
+        | InputHorzWithEnvironment(imihlst, envi) -> interpret_intermediate_input_horz envi valuectx imihlst
+        | _                                       -> report_bug_evaluator "HorzLex" ast1 value1
       end
 
   | VertLex(astctx, ast1) ->
@@ -676,201 +771,200 @@ and interpret env ast =
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | InputVertWithEnvironment(ivlst, envi) -> interpret_input_vert envi valuectx ivlst
-        | _                                     -> report_bug_evaluator "VertLex" ast1 value1
+        | InputVertWithEnvironment(imivlst, envi) -> interpret_intermediate_input_vert envi valuectx imivlst
+        | _                                       -> report_bug_evaluator "VertLex" ast1 value1
       end
 
   | BackendFont(astabbrev, astszrat, astrsrat) ->
-      let font_abbrev = interpret_string env astabbrev in
+      let abbrev = interpret_string env astabbrev in
       let size_ratio = interpret_float env astszrat in
       let rising_ratio = interpret_float env astrsrat in
-        FontDesignation((font_abbrev, size_ratio, rising_ratio))
+        make_font_value (abbrev, size_ratio, rising_ratio)
 
   | BackendLineBreaking(astb1, astb2, astctx, asthorz) ->
       let is_breakable_top = interpret_bool env astb1 in
       let is_breakable_bottom = interpret_bool env astb2 in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let hblst = interpret_horz env asthorz in
       let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
         Vert(imvblst)
 
-  | BackendPageBreaking(astctx, astvert) ->
-      let ctx = interpret_context env astctx in
-      let imvblst = interpret_vert env astvert in
-        DocumentValue(ctx, imvblst)
-
-  | DocumentValue(_, _) -> ast
+  | BackendPageBreaking(astpagesize, astpagecontf, astpagepartsf, astvert) ->
+      let pagesize = interpret_page_size env astpagesize in
+      let pagecontf = make_page_content_scheme_func env astpagecontf in
+      let pagepartsf = make_page_parts_scheme_func env astpagepartsf in
+      let vblst = interpret_vert env astvert in
+        DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let valuek = interpret env astk in
       let pads = interpret_paddings env astpads in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }))
+        Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }), valuecmd)
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
+      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
         Vert(HorzBox.([
-          ImVertTopMargin(true, ctx.paragraph_top);
-          ImVertFrame(pads,
+          VertTopMargin(true, ctx.paragraph_top);
+          VertFrame(pads,
                       make_frame_deco env valuedecoS,
                       make_frame_deco env valuedecoH,
                       make_frame_deco env valuedecoM,
                       make_frame_deco env valuedecoT,
-                      ctx.paragraph_width, imvblst);
-          ImVertBottomMargin(true, ctx.paragraph_bottom);
-        ]))  (* temporary; frame decorations should be variable *)
+                      ctx.paragraph_width, vblst);
+          VertBottomMargin(true, ctx.paragraph_bottom);
+        ]))
 
   | BackendEmbeddedVertTop(astctx, astlen, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = wid; }))
+        Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
-      let evvblst = PageBreak.solidify imvblst in
-
-      let (hgt, dpt) = adjust_to_first_line evvblst in
+      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_first_line imvblst in
+(*
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+*)
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
-        Context(HorzBox.({ ctx with paragraph_width = wid; }))
+        Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
-      let imvblst = interpret_vert env (Apply(valuek, valuectxsub)) in
-      let evvblst = PageBreak.solidify imvblst in
-      let (hgt, dpt) = adjust_to_last_line evvblst in
+      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_last_line imvblst in
+(*
       let () = PrintForDebug.embvertE (Format.sprintf "EmbeddedVert: height = %f, depth = %f" (Length.to_pdf_point hgt) (Length.to_pdf_point dpt)) in  (* for debug *)
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+*)
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendLineStackTop(astlst) ->
-      let hblstlst = interpret_list interpret env (interpret_horz env) astlst in
-      let (wid, evvblst) = make_line_stack hblstlst in
-      let (hgt, dpt) = adjust_to_first_line evvblst in
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+      let hblstlst = interpret_list interpret env get_horz astlst in
+      let (wid, vblst) = make_line_stack hblstlst in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_first_line imvblst in
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
   | BackendLineStackBottom(astlst) ->
-      let hblstlst = interpret_list interpret env (interpret_horz env) astlst in
-      let (wid, evvblst) = make_line_stack hblstlst in
-      let (hgt, dpt) = adjust_to_last_line evvblst in
-        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, evvblst))]))
+      let hblstlst = interpret_list interpret env get_horz astlst in
+      let (wid, vblst) = make_line_stack hblstlst in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_last_line imvblst in
+        Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
-  | PrimitiveGetInitialContext(astpage, astpt, astwid, asthgt, astcmd) ->
-      let page = interpret_page env astpage in
-      let (lmargin, tmargin) = interpret_point env astpt in
+  | PrimitiveGetInitialContext(astwid, astcmd) ->
       let txtwid = interpret_length env astwid in
-      let txthgt = interpret_length env asthgt in
-(*
-      let txtwid = Length.of_pdf_point 400. in  (* temporary; should be variable *)
-      let txthgt = Length.of_pdf_point 650. in  (* temporary; should be variable *)
-*)
-      let pagesch =
-        HorzBox.({
-          page_size        = page;
-          left_page_margin = lmargin;
-          top_page_margin  = tmargin;
-          area_width       = txtwid;
-          area_height      = txthgt;
-        })
-      in
       let valuecmd = interpret env astcmd in
-      begin
-        match valuecmd with
-        | FrozenCommand(evidcmd) -> Context(Primitives.get_initial_context pagesch evidcmd)
-        | _ -> report_bug_evaluator "PrimitiveGetInitialContext" astcmd valuecmd
-      end
-
-  | FrozenCommand(_) -> ast
+        Context(Primitives.get_initial_context txtwid, valuecmd)
 
   | PrimitiveSetSpaceRatio(astratio, astctx) ->
       let ratio = interpret_float env astratio in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with space_natural = ratio; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with space_natural = ratio; }), valuecmd)
+
+  | PrimitiveSetParagraphMargin(asttop, astbottom, astctx) ->
+      let lentop = interpret_length env asttop in
+      let lenbottom = interpret_length env astbottom in
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with
+          paragraph_top    = lentop;
+          paragraph_bottom = lenbottom;
+        }), valuecmd)
 
   | PrimitiveSetFontSize(astsize, astctx) ->
       let size = interpret_length env astsize in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with font_size = size; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
 
   | PrimitiveGetFontSize(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         LengthConstant(ctx.HorzBox.font_size)
 
   | PrimitiveSetFont(astscript, astfont, astctx) ->
       let script = interpret_script env astscript in
       let font_info = interpret_font env astfont in
-      let ctx = interpret_context env astctx in
-      let font_scheme_new = HorzBox.(ctx.font_scheme |> ScriptSchemeMap.add script font_info) in
-        Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+      let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
+        Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
 
   | PrimitiveGetFont(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let fontwr = HorzBox.get_font_with_ratio ctx script in
-        FontDesignation(fontwr)
+        make_font_value fontwr
 
   | PrimitiveSetMathFont(aststr, astctx) ->
       let mfabbrev = interpret_string env aststr in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with math_font = mfabbrev; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
 
   | PrimitiveSetDominantWideScript(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with dominant_wide_script = script; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
 
   | PrimitiveGetDominantWideScript(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         make_script_value ctx.HorzBox.dominant_wide_script
 
   | PrimitiveSetDominantNarrowScript(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with dominant_narrow_script = script; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
 
   | PrimitiveGetDominantNarrowScript(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         make_script_value ctx.HorzBox.dominant_narrow_script
 
   | PrimitiveSetLangSys(astscript, astlangsys, astctx) ->
       let script = interpret_script env astscript in
       let langsys = interpret_language_system env astlangsys in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> ScriptSchemeMap.add script langsys}))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys}), valuecmd)
 
   | PrimitiveGetLangSys(astscript, astctx) ->
       let script = interpret_script env astscript in
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
       let langsys = HorzBox.get_language_system ctx script in
         make_language_system_value langsys
 
   | PrimitiveSetTextColor(astcolor, astctx) ->
       let color = interpret_color env astcolor in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with text_color = color; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
 
   | PrimitiveSetLeading(astlen, astctx) ->
       let len = interpret_length env astlen in
-      let ctx = interpret_context env astctx in
-        Context(HorzBox.({ ctx with leading = len; }))
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with leading = len; }), valuecmd)
 
   | PrimitiveGetTextWidth(astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, _) = interpret_context env astctx in
         LengthConstant(ctx.HorzBox.paragraph_width)
 
   | PrimitiveSetManualRising(astrising, astctx) ->
-      let ctx = interpret_context env astctx in
+      let (ctx, valuecmd) = interpret_context env astctx in
       let rising = interpret_length env astrising in
-        Context(HorzBox.({ ctx with manual_rising = rising; }))
+        Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
 
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in
-        InputHorzWithEnvironment([InputHorzText(str)], env)
+        InputHorzWithEnvironment([ImInputHorzText(str)], env)
+
+  | PrimitiveGetAxisHeight(astctx) ->
+      let (ctx, _) = interpret_context env astctx in
+      let fontsize = ctx.HorzBox.font_size in
+      let mfabbrev = ctx.HorzBox.math_font in
+      let hgt = FontInfo.get_axis_height mfabbrev fontsize in
+        LengthConstant(hgt)
 
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
@@ -881,26 +975,14 @@ and interpret env ast =
       let widshrink = interpret_length env astshrink in
       let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
-(*
-  | BackendFixedString(astctx, aststr) ->
-      let ctx = interpret_font env astctx in
-      let string_info =
-        {
-          HorzBox.font_abbrev = font_abbrev;
-          HorzBox.font_size   = size;
-          HorzBox.text_color  = HorzBox.DeviceGray(0.0);
-        }
-      in
-      let purestr = interpret_string env aststr in
-        Horz([HorzBox.HorzPure(HorzBox.PHFixedString(string_info, InternalText.to_uchar_list (InternalText.of_utf8 purestr)))])
-*)
+
   | BackendOuterFrame(astpads, astdeco, astbr) ->
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env astbr in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
-          make_frame_deco env valuedeco (* Primitives.frame_deco_S *),
+          make_frame_deco env valuedeco,
           hblst))])
 
   | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
@@ -936,75 +1018,109 @@ and interpret env ast =
       let hblst2 = interpret_horz env asth2 in
         Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 
+  | BackendRegisterCrossReference(astk, astv) ->
+      let k = interpret_string env astk in
+      let v = interpret_string env astv in
+      begin
+        CrossRef.register k v;
+        UnitConstant
+      end
+
+  | BackendGetCrossReference(astk) ->
+      let k = interpret_string env astk in
+      begin
+        match CrossRef.get k with
+        | None    -> Constructor("None", UnitConstant)
+        | Some(v) -> Constructor("Some", StringConstant(v))
+      end
+
   | PrimitiveGetNaturalWidth(asthorz) ->
       let hblst = interpret_horz env asthorz in
       let (wid, _, _) = LineBreak.get_natural_metrics hblst in
         LengthConstant(wid)
 
-(* ---- list value ---- *)
+  | PrimitiveGetNaturalLength(astvert) ->
+      let vblst = interpret_vert env astvert in
+      let imvblst = PageBreak.solidify vblst in
+      let (hgt, dpt) = adjust_to_first_line imvblst in
+        LengthConstant(hgt +% (Length.negate dpt))
 
-  | EndOfList -> ast
+  | PrimitiveDisplayMessage(aststr) ->
+      let str = interpret_string env aststr in
+        print_endline str;
+        UnitConstant
 
-  | ListCons(asthd, asttl) ->
-      let valuehd = interpret env asthd in
-      let valuetl = interpret env asttl in
-        ListCons(valuehd, valuetl)
-
-(* ---- tuple value ---- *)
-
-  | EndOfTuple -> ast
-
-  | TupleCons(asthd, asttl) ->
+  | PrimitiveTupleCons(asthd, asttl) ->
       let valuehd = interpret env asthd in
       let valuetl = interpret env asttl in
         TupleCons(valuehd, valuetl)
 
+  | PrimitiveListCons(asthd, asttl) ->
+      let valuehd = interpret env asthd in
+      let valuetl = interpret env asttl in
+        ListCons(valuehd, valuetl)
+
 (* -- fundamentals -- *)
 
-  | ContentOf(evid) ->
+  | ContentOf(rng, evid) ->
+(*
       let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
+*)
       begin
-        try
-          let content = !(find_in_environment env evid) in
-          let () = PrintForDebug.evalE ("  -> " ^ (Display.string_of_ast content)) in  (* for debug *)
-            content
-        with
-        | Not_found -> report_bug_evaluator ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+          let value = !rfvalue in
+(*
+          let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
+*)
+(*
+          Format.printf "Evaluator> ContentOf: %s ---> %s\n" (EvalVarID.show_direct evid) (show_syntactic_value value);
+*)
+            value
+
+        | None ->
+            report_bug_evaluator_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
       end
 
-  | LetIn(mutletcons, astrest) ->
-      let envfunc = copy_environment env in
-        begin
-          add_mutuals_to_environment envfunc mutletcons ;
-          interpret envfunc astrest
-        end
+  | LetRecIn(recbinds, ast2) ->
+      let envnew = add_letrec_bindings_to_environment env recbinds in
+        interpret envnew ast2
 
-  | LambdaAbstract(evid, ast) -> FuncWithEnvironment(evid, ast, env)
+  | LetNonRecIn(pat, ast1, ast2) ->
+      let value1 = interpret env ast1 in
+        select_pattern env value1 [PatternBranch(pat, ast2)]
 
-  | Apply(astf, astl) ->
-      let () = PrintForDebug.evalE ("Apply(" ^ (Display.string_of_ast astf) ^ ", " ^ (Display.string_of_ast astl) ^ ")") in  (* for debug *)
-      let valuef = interpret env astf in
-        begin
-          match valuef with
-          | FuncWithEnvironment(evid, astdef, envf) ->
-              let valuel = interpret env astl in
-              reduce_beta envf evid valuel astdef
+  | Function(patbrs) ->
+      FuncWithEnvironment(patbrs, env)
 
-          | _ -> report_bug_evaluator "Apply: not a function" astf valuef
-        end
+  | Apply(ast1, ast2) ->
+(*
+      let () = PrintForDebug.evalE ("Apply(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
+*)
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | FuncWithEnvironment(patbrs, env1) ->
+            let value2 = interpret env ast2 in
+              select_pattern env1 value2 patbrs
 
-  | IfThenElse(astb, astf, astl) ->
-      if interpret_bool env astb then interpret env astf else interpret env astl
+        | _ -> report_bug_evaluator "Apply: not a function" ast1 value1
+      end
+
+  | IfThenElse(astb, ast1, ast2) ->
+      let b = interpret_bool env astb in
+        if b then interpret env ast1 else interpret env ast2
 
 (* ---- record ---- *)
 
-  | Record(asc) -> Record(Assoc.map_value (interpret env) asc)
+  | Record(asc) ->
+      RecordValue(Assoc.map_value (interpret env) asc)
 
   | AccessField(ast1, fldnm) ->
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | Record(asc1) ->
+        | RecordValue(asc1) ->
             begin
               match Assoc.find_opt asc1 fldnm with
               | None    -> report_bug_evaluator ("AccessField: field '" ^ fldnm ^ "' not found") ast1 value1
@@ -1014,64 +1130,56 @@ and interpret env ast =
         | _ -> report_bug_evaluator "AccessField: not a Record" ast1 value1
       end
 
-(* ---- class/id option ---- *)
-(*
-  | ApplyClassAndID(evidcls, evidid, clsnmast, idnmast, astf) ->
-      let () = PrintForDebug.evaluator ("%1 " ^ (Display.string_of_ast astf) ^ "\n") in  (* for debug *)
-      let valuef =  interpret env
-                      (LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
-                        LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astf))) in
-      begin
-        PrintForDebug.evaluator ("%2 " ^ (Display.string_of_ast valuef) ^ "\n") ;   (* for debug *)
-        match valuef with
-        | FuncWithEnvironment(varnm, astdef, envf) ->
-            FuncWithEnvironment(varnm,
-              LetIn(MutualLetCons(evidcls, clsnmast, EndOfMutualLet),
-                LetIn(MutualLetCons(evidid, idnmast, EndOfMutualLet), astdef)
-              ), envf)
-        | other ->  valuef
-      end
-*)
 (* ---- imperatives ---- *)
 
-  | LetMutableIn(evid, astdflt, astaft) ->
-      let valueini = interpret env astdflt in
-      let loc = ref valueini in
-      let envnew = copy_environment env in
-        begin
-          add_to_environment envnew evid (ref (Location(loc))) ;
-          interpret envnew astaft
-        end
+  | LetMutableIn(evid, astini, astaft) ->
+      let valueini = interpret env astini in
+      let stid = register_location env valueini in
+(*
+      Format.printf "Evaluator> LetMutableIn; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valueini);  (* for debug *)
+*)
+      let envnew = add_to_environment env evid (ref (Location(stid))) in
+        interpret envnew astaft
 
   | Sequential(ast1, ast2) ->
-      let () = PrintForDebug.evalE ("Sequential(" ^ (Display.string_of_ast ast1) ^ ", " ^ (Display.string_of_ast ast2) ^ ")") in  (* for debug *)
+(*
+      let () = PrintForDebug.evalE ("Sequential(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
+*)
       let value1 = interpret env ast1 in
-      let () = PrintForDebug.evalE ("value1 = " ^ (Display.string_of_ast value1)) in  (* for debug *)
+(*
+      let () = PrintForDebug.evalE ("value1 = " ^ (show_syntactic_value value1)) in  (* for debug *)
+*)
       let value2 = interpret env ast2 in
-      let () = PrintForDebug.evalE ("value2 = " ^ (Display.string_of_ast value2)) in  (* for debug *)
+(*
+      let () = PrintForDebug.evalE ("value2 = " ^ (show_syntactic_value value2)) in  (* for debug *)
+*)
         begin
           match value1 with
           | UnitConstant -> value2
           | _            -> report_bug_evaluator "Sequential: first operand value is not a UnitConstant" ast1 value1
         end
 
-  | Location(loc) -> Location(loc)
-
   | Overwrite(evid, astnew) ->
       begin
-        try
-          let rfvalue = find_in_environment env evid in
-          let value = !rfvalue in
-            match value with
-            | Location(loc) ->
-                let newvalue = interpret env astnew in
-                  begin
-                    loc := newvalue;
-                    UnitConstant
-                  end
-            | _ -> report_bug_evaluator "Overwrite: value is not a Location" value value
-        with
-        | Not_found -> report_bug_evaluator ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast ast
+        match find_in_environment env evid with
+        | Some(rfvalue) ->
+            let value = !rfvalue in
+            begin
+              match value with
+              | Location(stid) ->
+                  let valuenew = interpret env astnew in
+(*
+                  Format.printf "Evaluator> Overwrite; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valuenew);  (* for debug *)
+*)
+                    begin
+                      update_location env stid valuenew;
+                      UnitConstant
+                    end
+              | _ -> report_bug_evaluator_value "Overwrite: value is not a Location" value
+            end
+
+        | None ->
+            report_bug_evaluator_ast ("Overwrite: mutable value '" ^ (EvalVarID.show_direct evid) ^ "' not found") ast
       end
 
   | WhileDo(astb, astc) ->
@@ -1080,62 +1188,28 @@ and interpret env ast =
       else
         UnitConstant
 
-  | Reference(astcont) ->
+  | Dereference(astcont) ->
       let valuecont = interpret env astcont in
-        begin
-          match valuecont with
-          | Location(loc) -> !loc
-          | _             -> report_bug_evaluator "Reference" astcont valuecont
-        end
-(*
-(* ---- final reference ---- *)
-
-  | DeclareGlobalHash(astkey, astdflt) ->
       begin
-        try
-          let str_key = Out.main (interpret env astkey) in
-          let valueini = interpret env astdflt in
-          let loc = ref valueini in
+        match valuecont with
+        | Location(stid) ->
             begin
-              Hashtbl.add global_hash_env str_key (ref (Location(loc))) ;
-              UnitConstant
+              match find_location_value env stid with
+              | Some(value) -> value
+              | None        -> report_bug_evaluator "Dereference; not found" astcont valuecont
             end
-        with
-        | Out.IllegalOut(_) -> raise (EvalError("this cannot hapen:\n    illegal hash key for 'declare-global-hash'"))
+
+        | _ ->
+            report_bug_evaluator "Dereference" astcont valuecont
       end
 
-  | OverwriteGlobalHash(astkey, astnew) ->
-      begin
-        try
-          let str_key = Out.main (interpret env astkey) in
-            try
-              let rfvalue = Hashtbl.find global_hash_env str_key in
-                match !rfvalue with
-                | Location(loc) ->
-                    let valuenew = interpret env astnew in
-                      begin
-                        loc := valuenew ;
-                        UnitConstant
-                      end
-                | _             -> report_bug_evaluator "OverwriteGlobalHash: value is not a Location"
-            with
-            | Not_found -> raise (EvalError("undefined global hash key \"" ^ str_key ^ "\""))
-        with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument for '<<-': " ^ s))
-      end
-
-  | ReferenceFinal(astkey) -> ReferenceFinal(interpret env astkey)
-*)
 (* ---- others ---- *)
 
-  | FinishHeaderFile -> EvaluatedEnvironment(env)
+  | PatternMatch(astobj, patbrs) ->
+      let valueobj = interpret env astobj in
+        select_pattern env valueobj patbrs
 
-  | FinishStruct     -> EvaluatedEnvironment(env)
-
-  | PatternMatch(astobj, pmcons) ->
-      let valueobj = interpret env astobj in select_pattern env valueobj pmcons
-
-  | Constructor(constrnm, astcont) ->
+  | NonValueConstructor(constrnm, astcont) ->
       let valuecont = interpret env astcont in
         Constructor(constrnm, valuecont)
 
@@ -1144,7 +1218,7 @@ and interpret env ast =
       begin
         match value with
         | EvaluatedEnvironment(envfinal) -> interpret envfinal astaft
-        | _                              -> report_bug_evaluator "module did evaluate not to EvaluatedEnvironment" astmdl value
+        | _                              -> report_bug_evaluator "Module" astmdl value
       end
 
 (* -- primitive operation -- *)
@@ -1170,50 +1244,37 @@ and interpret env ast =
         IntegerConstant(String.length str)
 
   | PrimitiveStringUnexplode(astil) ->
-      let ilst = interpret_list interpret env (interpret_int env) astil in
+      let ilst = interpret_list interpret env get_int astil in
       let s =
         (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8
       in
         StringConstant(s)
 
-(*
-  | PrimitiveInclude(astfile_name) ->
-      ( try
-          let str_file_name = Out.main env (interpret env astfile_name) in
-          let file = open_in str_file_name in
-          let parsed = Parser.main Lexer.cut_token (Lexing.from_channel file) in
-            interpret env parsed
-        with
-        | Out.IllegalOut(s) -> raise (EvalError("illegal argument of \\include: " ^ s))
-        | Sys_error(s) -> raise (EvalError("System error at \\include - " ^ s))
-      )
-*)
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env astnum in StringConstant(string_of_int num)
 
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
-  | PrimitiveDrawText(astpt, asttext) ->
+  | PrimitiveDrawText(astpt, asth) ->
       let pt = interpret_point env astpt in
-      let valuetext = interpret env asttext in
-      let hblst = interpret_horz env valuetext in
-      let (evhblst, _, _) = LineBreak.natural hblst in
-      let pdfops = HandlePdf.pdfops_of_evaled_horz_box pt evhblst in
-        GraphicsValue(pdfops)
+      let hblst = interpret_horz env asth in
+      let (imhblst, _, _) = LineBreak.natural hblst in
+      let grelem = Graphics.make_text pt imhblst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawStroke(astwid, astcolor, astpath) ->
       let wid = interpret_length env astwid in
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_stroke wid color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_stroke wid color pathlst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawFill(astcolor, astpath) ->
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_fill color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_fill color pathlst in
+        GraphicsValue(grelem)
 
   | PrimitiveDrawDashedStroke(astwid, astdash, astcolor, astpath) ->
       let wid = interpret_length env astwid in
@@ -1226,8 +1287,8 @@ and interpret env ast =
       in
       let color = interpret_color env astcolor in
       let pathlst = interpret_path_value env astpath in
-      let pdfops = Graphics.pdfops_of_dashed_stroke wid (len1, len2, len3) color pathlst in
-        GraphicsValue(pdfops)
+      let grelem = Graphics.make_dashed_stroke wid (len1, len2, len3) color pathlst in
+        GraphicsValue(grelem)
 
   | Times(astl, astr) ->
       let numl = interpret_int env astl in
@@ -1330,132 +1391,101 @@ and interpret env ast =
         BooleanConstant(HorzBox.(len2 <% len1))
 
 
-and interpret_input_vert env valuectx (ivlst : input_vert_element list) : abstract_tree =
-  let rec aux env ivlst =
-    ivlst |> List.fold_left (fun imvbacc iv ->
-      match iv with
-      | InputVertEmbedded(astcmd, astarglst) ->
+and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
+  let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
+    imivlst |> List.map (fun imiv ->
+      match imiv with
+      | ImInputVertEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
             | LambdaVertWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
-                begin
-                  match valueret with
-                  | Vert(imvblst) -> List.rev_append imvblst imvbacc
-                  | _             -> report_bug_evaluator "interpret_input_vert" valueret valueret
-                end
+                  get_vert valueret
 
-            | _ -> report_bug_evaluator "interpret_input_vert: other than LambdaVertWithEnvironment" astcmd valuecmd
+            | _ -> report_bug_evaluator "interpret_intermediate_input_vert:1" astcmd valuecmd
           end
 
-      | InputVertContent(ast0) ->
-          let value0 = interpret env ast0 in
-          begin
-            match value0 with
-            | InputVertWithEnvironment(ivlstsub, envsub) ->
-                let imvblst = aux envsub ivlstsub |> List.rev in
-                  List.rev_append imvblst imvbacc
+      | ImInputVertContent(imivlstsub, envsub) ->
+          interpret_commands envsub imivlstsub
 
-            | _ -> report_bug_evaluator "interpret_input_vert" ast0 value0
-          end
-
-    ) []
+    ) |> List.concat
   in
-  let imvblst = aux env ivlst |> List.rev in
+  let imvblst = interpret_commands env imivlst in
     Vert(imvblst)
 
 
-and interpret_input_horz (env : environment) (valuectx : abstract_tree) (ihlst : input_horz_element list) : abstract_tree =
+and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
-  let ctx = interpret_context env valuectx in
+  let (ctx, valuemcmd) = get_context valuectx in
 
-  let rec eval_content env ihlst =
-    ihlst |> List.fold_left (fun evihacc ih ->
-      match ih with
-      | InputHorzText(s) ->
-          EvInputHorzText(s) :: evihacc
+  let rec normalize (imihlst : intermediate_input_horz_element list) =
+    imihlst |> List.fold_left (fun acc imih ->
+      match imih with
+      | ImInputHorzEmbedded(astcmd, astarglst) ->
+          let nmih = NomInputHorzEmbedded(astcmd, astarglst) in
+            Alist.extend acc nmih
 
-      | InputHorzEmbedded(astcmd, astlst) ->
-          EvInputHorzEmbedded(astcmd, astlst) :: evihacc
-
-      | InputHorzEmbeddedMath(astmath) ->
-          let evidcmd = ctx.HorzBox.inline_math_command in
-            EvInputHorzEmbedded(ContentOf(evidcmd), [astmath]) :: evihacc
-              (* -- inserts (the EvalVarID of) the math command of the input context -- *)
-
-      | InputHorzContent(ast0) ->
-          let value0 = interpret env ast0 in
+      | ImInputHorzText(s2) ->
           begin
-            match value0 with
-            | InputHorzWithEnvironment(ihlstsub, envsub) ->
-                let evihlst = eval_content envsub ihlstsub in
-                  List.rev_append evihlst evihacc
-
-            | _ ->
-                Format.printf "eval_content; %a --->* %a" pp_abstract_tree ast0 pp_abstract_tree value0;
-                assert false
-          end
-    ) [] |> List.rev
-  in
-
-  let normalize evihlst =
-    evihlst |> List.fold_left (fun acc evih ->
-      match evih with
-      | EvInputHorzEmbedded(_, _) ->
-          (evih :: acc)
-
-      | EvInputHorzText(s2) ->
-          begin
-            match acc with
-            | EvInputHorzText(s1) :: acctail -> (EvInputHorzText(s1 ^ s2) :: acctail)
-            | _                              -> (evih :: acc)
+            match Alist.chop_last acc with
+            | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
+            | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
           end
 
-    ) [] |> List.rev
+      | ImInputHorzEmbeddedMath(astmath) ->
+          let nmih = NomInputHorzEmbedded(Value(valuemcmd), [astmath]) in
+            Alist.extend acc nmih
+
+      | ImInputHorzContent(imihlstsub, envsub) ->
+          let nmihlstsub = normalize imihlstsub in
+          let nmih = NomInputHorzContent(nmihlstsub, envsub) in
+            Alist.extend acc nmih
+
+    ) Alist.empty |> Alist.to_list
   in
-  let evihlst = eval_content env ihlst in
-  let evihlstnml = normalize evihlst in
-  let hblstacc =
-    evihlstnml |> List.fold_left (fun lstacc ih ->
-      match ih with
-      | EvInputHorzEmbedded(astcmd, astarglst) ->
+
+  let rec interpret_commands env (nmihlst : nom_input_horz_element list) : HorzBox.horz_box list =
+    nmihlst |> List.map (fun nmih ->
+      match nmih with
+      | NomInputHorzEmbedded(astcmd, astarglst) ->
           let valuecmd = interpret env astcmd in
           begin
             match valuecmd with
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid valuectx astdef in
                 let valueret = reduce_beta_list env valuedef astarglst in
-                let hblst = interpret_horz env valueret in
-                  hblst :: lstacc
+                let hblst = get_horz valueret in
+                  hblst
 
-            | _ -> report_bug_evaluator "interpret_input_horz: other than LambdaHorzWithEnvironment(_, _, _)" astcmd valuecmd
+            | _ -> report_bug_evaluator "interpret_input_horz" astcmd valuecmd
           end
 
-      | EvInputHorzText(s) ->
-          (lex_horz_text ctx s) :: lstacc
+      | NomInputHorzText(s) ->
+          lex_horz_text ctx s
 
-    ) []
+      | NomInputHorzContent(nmihlstsub, envsub) ->
+          interpret_commands envsub nmihlstsub
+
+    ) |> List.concat
   in
-  let hblst = hblstacc |> List.rev |> List.concat in
-  Horz(hblst)
 
-
-and interpret_option env extractf ast =
-  let value = interpret env ast in
-    match value with
-    | Constructor("None", UnitConstant) -> None
-    | Constructor("Some", valuesub)     -> Some(extractf valuesub)
-    | _                                 -> report_bug_evaluator "interpret_option" ast value
+  let nmihlst = normalize imihlst in
+  let hblst = interpret_commands env nmihlst in
+    Horz(hblst)
 
 
 and interpret_cell env ast : HorzBox.cell =
   let value = interpret env ast in
+    get_cell value
+
+
+and get_cell value : HorzBox.cell =
     match value with
     | Constructor("NormalCell", TupleCons(valuepads,
                                   TupleCons(Horz(hblst), EndOfTuple))) ->
-        let pads = interpret_paddings env valuepads in
+        let pads = get_paddings valuepads in
           HorzBox.NormalCell(pads, hblst)
 
     | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
@@ -1464,10 +1494,10 @@ and interpret_cell env ast : HorzBox.cell =
                                  TupleCons(IntegerConstant(nc),
                                    TupleCons(valuepads,
                                      TupleCons(Horz(hblst), EndOfTuple))))) ->
-        let pads = interpret_paddings env valuepads in
+        let pads = get_paddings valuepads in
           HorzBox.MultiCell(nr, nc, pads, hblst)
 
-    | _ -> report_bug_evaluator "interpret_cell" ast value
+    | _ -> report_bug_evaluator_value "get_cell" value
 
 
 and interpret_math_class env ast : HorzBox.math_kind =
@@ -1485,11 +1515,15 @@ and interpret_math_class env ast : HorzBox.math_kind =
         report_bug_evaluator "interpret_math_class" ast value
 
 
-and interpret_math env ast : HorzBox.math list =
+and interpret_math env ast : math list =
   let value = interpret env ast in
+    get_math value
+
+
+and get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst
-    | _               -> report_bug_evaluator "interpret_math" ast value
+    | _               -> report_bug_evaluator_value "get_math" value
 
 
 and interpret_math_char_class env ast : HorzBox.math_char_class =
@@ -1526,9 +1560,15 @@ and make_script_value script =
     | CharBasis.HiraganaOrKatakana -> "Kana"
     | CharBasis.Latin              -> "Latin"
     | CharBasis.OtherScript        -> "OtherScript"
-    | _                            -> report_bug_evaluator "make_script_value" UnitConstant UnitConstant
+    | _                            -> report_bug_evaluator_value "make_script_value" UnitConstant
   in
     Constructor(label, UnitConstant)
+
+
+and make_font_value (abbrev, sizer, risingr) =
+  TupleCons(StringConstant(abbrev),
+    TupleCons(FloatConstant(sizer),
+      TupleCons(FloatConstant(risingr), EndOfTuple)))
 
 
 and interpret_language_system env ast : CharBasis.language_system =
@@ -1553,35 +1593,45 @@ and make_language_system_value langsys =
 
 and interpret_string (env : environment) (ast : abstract_tree) : string =
   let value = interpret env ast in
+    get_string value
+
+
+and get_string (value : syntactic_value) : string =
     match value with
     | StringEmpty       -> ""
     | StringConstant(s) -> s
-    | _                 -> report_bug_evaluator "interpret_string" ast value
+    | _                 -> report_bug_evaluator_value "get_string" value
 
 
-and interpret_path_value env ast : HorzBox.path list =
+and interpret_uchar_list (env : environment) (ast : abstract_tree) : Uchar.t list =
+  let value = interpret env ast in
+    get_uchar_list value
+
+
+and get_uchar_list (value : syntactic_value) : Uchar.t list =
+  match value with
+  | StringEmpty       -> []
+  | StringConstant(s) -> InternalText.to_uchar_list (InternalText.of_utf8 s)
+  | _                 -> report_bug_evaluator_value "get_uchar_list" value
+
+
+and interpret_path_value env ast : GraphicData.path list =
   let value = interpret env ast in
     match value with
     | PathValue(pathlst) -> pathlst
     | _                  -> report_bug_evaluator "interpret_path_value" ast value
 
 
-and interpret_context (env : environment) (ast : abstract_tree) : HorzBox.input_context =
+and interpret_context (env : environment) (ast : abstract_tree) : input_context =
   let value = interpret env ast in
-    match value with
-    | Context(ctx)         -> ctx
-    | UninitializedContext -> raise (EvalError("uninitialized context"))
-    | _                    -> report_bug_evaluator "interpret_context" ast value
+    get_context value
 
-(*
-and interpret_graphics_context (env : environment) (ast : abstract_tree) : HorzBox.graphics_state =
-  let value = interpret env ast in
+
+and get_context (value : syntactic_value) : input_context =
     match value with
-    | GraphicsContext(gctx) -> gctx
-    | _                     -> report_bug_evaluator ("interpret_graphics_context: not a GraphicsContext; "
-                                                     ^ (Display.string_of_ast ast)
-                                                     ^ " ->* " ^ (Display.string_of_ast value))
-*)
+    | Context(ictx) -> ictx
+    | _             -> report_bug_evaluator_value "get_context" value
+
 
 and interpret_tuple3 env getf ast =
   let value = interpret env ast in
@@ -1595,7 +1645,7 @@ and interpret_tuple3 env getf ast =
 
 
 and make_color_value color =
-  let open HorzBox in
+  let open GraphicData in
     match color with
     | DeviceGray(gray) ->
         Constructor("Gray", FloatConstant(gray))
@@ -1612,21 +1662,22 @@ and make_color_value color =
                                   TupleCons(FloatConstant(k), EndOfTuple)))))
 
 
-and interpret_color env ast : HorzBox.color =
+and interpret_color env ast : GraphicData.color =
   let value = interpret env ast in
+  let open GraphicData in
     match value with
-    | Constructor("Gray", FloatConstant(gray)) -> HorzBox.DeviceGray(gray)
+    | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
 
     | Constructor("RGB", TupleCons(FloatConstant(fltR),
                            TupleCons(FloatConstant(fltG),
                              TupleCons(FloatConstant(fltB), EndOfTuple)))) ->
-        HorzBox.DeviceRGB(fltR, fltG, fltB)
+        DeviceRGB(fltR, fltG, fltB)
 
     | Constructor("CMYK", TupleCons(FloatConstant(fltC),
                             TupleCons(FloatConstant(fltM),
                               TupleCons(FloatConstant(fltY),
                                 TupleCons(FloatConstant(fltK), EndOfTuple))))) ->
-        HorzBox.DeviceCMYK(fltC, fltM, fltY, fltK)
+        DeviceCMYK(fltC, fltM, fltY, fltK)
 
     | _ -> report_bug_evaluator "interpret_color" ast value
 
@@ -1634,8 +1685,15 @@ and interpret_color env ast : HorzBox.color =
 and interpret_font (env : environment) (ast : abstract_tree) : HorzBox.font_with_ratio =
   let value = interpret env ast in
     match value with
-    | FontDesignation(fontwr) -> fontwr
-    | _                       -> report_bug_evaluator "interpret_font" ast value
+    | TupleCons(valueabbrev,
+        TupleCons(valuesizer,
+          TupleCons(valuerisingr, EndOfTuple))) ->
+        let abbrev = get_string valueabbrev in
+        let sizer = get_float valuesizer in
+        let risingr = get_float valuerisingr in
+          (abbrev, sizer, risingr)
+
+    | _ -> report_bug_evaluator "interpret_font" ast value
 
 
 and interpret_bool (env : environment) (ast : abstract_tree) : bool =
@@ -1647,26 +1705,38 @@ and interpret_bool (env : environment) (ast : abstract_tree) : bool =
 
 and interpret_int (env : environment) (ast : abstract_tree) : int =
   let value = interpret env ast in
-    match value with
-    | IntegerConstant(nc) -> nc
-    | _                   -> report_bug_evaluator "interpret_int" ast value
+    get_int value
+
+
+and get_int (value : syntactic_value) : int =
+  match value with
+  | IntegerConstant(nc) -> nc
+  | _                   -> report_bug_evaluator_value "get_int" value
 
 
 and interpret_float (env : environment) (ast : abstract_tree) : float =
   let value = interpret env ast in
-    match value with
-    | FloatConstant(nc) -> nc
-    | _                 -> report_bug_evaluator "interpret_float" ast value
+    get_float value
+
+
+and get_float value : float =
+  match value with
+  | FloatConstant(nc) -> nc
+  | _                 -> report_bug_evaluator_value "get_float" value
 
 
 and interpret_length (env : environment) (ast : abstract_tree) : length =
   let value = interpret env ast in
+    get_length value
+
+
+and get_length (value : syntactic_value) : length =
     match value with
     | LengthConstant(lc) -> lc
-    | _                  -> report_bug_evaluator "interpret_float" ast value
+    | _                  -> report_bug_evaluator_value "get_float" value
 
 
-and interpret_page env ast : HorzBox.page_size =
+and interpret_page_size env ast : HorzBox.page_size =
   let value = interpret env ast in
     match value with
     | Constructor("A0Paper" , UnitConstant) -> HorzBox.A0Paper
@@ -1685,101 +1755,102 @@ and interpret_page env ast : HorzBox.page_size =
     | _ -> report_bug_evaluator "interpret_page" ast value
 
 
-and select_pattern (env : environment) (astobj : abstract_tree) (pmcons : pattern_match_cons) =
-  match pmcons with
-  | EndOfPatternMatch -> raise (EvalError("no matches"))
+and select_pattern (env : environment) (valueobj : syntactic_value) (patbrs : pattern_branch list) =
+  match patbrs with
+  | [] -> raise (EvalError("no matches"))
 
-  | PatternMatchCons(pat, astto, tailcons) ->
-      let envnew = copy_environment env in
-      let b = check_pattern_matching envnew pat astobj in
-        if b then interpret envnew astto else select_pattern env astobj tailcons
+  | PatternBranch(pat, astto) :: tail ->
+      let (b, envnew) = check_pattern_matching env pat valueobj in
+        if b then
+          interpret envnew astto
+        else
+          select_pattern env valueobj tail
 
-  | PatternMatchConsWhen(pat, astb, astto, tailcons) ->
-      let envnew = copy_environment env in
-      let b = check_pattern_matching envnew pat astobj in
-      let bb = interpret_bool envnew astb in
-        if b && bb then interpret envnew astto else select_pattern env astobj tailcons
+  | PatternBranchWhen(pat, astcond, astto) :: tail ->
+      let (b, envnew) = check_pattern_matching env pat valueobj in
+      let cond = interpret_bool envnew astcond in
+        if b && cond then
+          interpret envnew astto
+        else
+          select_pattern env valueobj tail
 
 
-and check_pattern_matching (env : environment) (pat : pattern_tree) (astobj : abstract_tree) =
-  match (pat, astobj) with
-  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> pnc = nc
-  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> pbc = bc
-  | (PStringConstant(ast1), ast2)                ->
+and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : syntactic_value) =
+  let return b = (b, env) in
+  match (pat, valueobj) with
+  | (PIntegerConstant(pnc), IntegerConstant(nc)) -> return (pnc = nc)
+  | (PBooleanConstant(pbc), BooleanConstant(bc)) -> return (pbc = bc)
+
+  | (PStringConstant(ast1), value2) ->
       let str1 = interpret_string env ast1 in
-      let str2 = interpret_string env ast2 in
-        String.equal str1 str2
+      let str2 = get_string value2 in
+        return (String.equal str1 str2)
 
-  | (PUnitConstant, UnitConstant)                -> true
-  | (PWildCard, _)                               -> true
-  | (PVariable(evid), _)                         ->
-      begin
-        add_to_environment env evid (ref astobj) ; true
-      end
-  | (PAsVariable(evid, psub), sub)              ->
-      begin
-        add_to_environment env evid (ref sub) ; check_pattern_matching env psub sub
-      end
+  | (PUnitConstant, UnitConstant) -> return true
+  | (PWildCard, _)                -> return true
 
-  | (PEndOfList, EndOfList)                      -> true
-  | (PListCons(phd, ptl), ListCons(hd, tl))      ->
-      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PVariable(evid), _) ->
+      let envnew = add_to_environment env evid (ref valueobj) in
+        (true, envnew)
 
-  | (PEndOfTuple, EndOfTuple)                    -> true
-  | (PTupleCons(phd, ptl), TupleCons(hd, tl))    ->
-      (check_pattern_matching env phd hd) && (check_pattern_matching env ptl tl)
+  | (PAsVariable(evid, psub), sub) ->
+      let envnew = add_to_environment env evid (ref sub) in
+        check_pattern_matching envnew psub sub
+
+  | (PEndOfList, EndOfList) -> return true
+
+  | (PListCons(phd, ptl), ListCons(hd, tl)) ->
+      let (bhd, envhd) = check_pattern_matching env phd hd in
+      let (btl, envtl) = check_pattern_matching envhd ptl tl in
+      if bhd && btl then
+        (true, envtl)
+      else
+        return false
+
+  | (PEndOfTuple, EndOfTuple) -> return true
+
+  | (PTupleCons(phd, ptl), TupleCons(hd, tl)) ->
+      let (bhd, envhd) = check_pattern_matching env phd hd in
+      let (btl, envtl) = check_pattern_matching envhd ptl tl in
+      if bhd && btl then
+        (true, envtl)
+      else
+        return false
 
   | (PConstructor(cnm1, psub), Constructor(cnm2, sub))
-      when cnm1 = cnm2                           -> check_pattern_matching env psub sub
+      when cnm1 = cnm2 -> check_pattern_matching env psub sub
 
-  | _                                            -> false
-
-
-and add_mutuals_to_environment (env : environment) (mutletcons : mutual_let_cons) =
-  let lst = add_mutuals_to_environment_sub [] env mutletcons in
-  let () = PrintForDebug.evalE ("add_mutuals_to_environment") in  (* for debug *)
-      add_zeroary_mutuals lst env
+  | _ -> return false
 
 
-and add_mutuals_to_environment_sub (lst : (EvalVarID.t * abstract_tree) list) (env : environment) (mutletcons : mutual_let_cons) =
-  match mutletcons with
-  | EndOfMutualLet                         -> lst
-  | MutualLetCons(evid, astcont, tailcons) ->
-      begin
-        try
-          let valuecont = interpret env astcont in
-            begin
-              add_to_environment env evid (ref valuecont) ;
-              add_mutuals_to_environment_sub lst env tailcons
-            end
-        with
-        | EvalError(_) -> add_mutuals_to_environment_sub ((evid, astcont) :: lst) env tailcons
-            (* 0-ary definition dependent of ``sibling'' functions *)
-      end
+and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
+  let trilst =
+    recbinds |> List.map (function LetRecBinding(evid, patbrs) ->
+      let loc = ref StringEmpty in
+      (evid, loc, patbrs)
+    )
+  in
+  let envnew =
+    trilst @|> env @|> List.fold_left (fun envacc (evid, loc, _) ->
+      add_to_environment envacc evid loc
+    )
+  in
+  trilst |> List.iter (fun (evid, loc, patbrs) ->
+(*
+    Format.printf "Evaluator> letrec %s\n" (EvalVarID.show_direct evid);  (* for debug *)
+*)
+    loc := FuncWithEnvironment(patbrs, envnew)
+  );
 
+  (* begin: for debug *)
+(*
+  let () =
+    let (valenv, _) = envnew in
+    valenv |> EvalVarIDMap.iter (fun evid loc ->
+      Format.printf "| %s =\n" (EvalVarID.show_direct evid);
+    );
+  in
+*)
+  (* end: for debug *)
 
-and add_zeroary_mutuals (lst : (EvalVarID.t * abstract_tree) list) (env : environment) =
-  let newlst = add_zeroary_mutuals_sub lst env [] in
-    if List.length newlst = 0 then
-      ()
-    else if (List.length newlst) = (List.length lst) then
-      let msg = lst |> List.fold_left (fun s (evid, _) -> s ^ (EvalVarID.show_direct evid) ^ " ") "" in
-      raise (EvalError("meaningless 0-ary mutual recursion; " ^ msg))
-    else
-      add_zeroary_mutuals newlst env
-
-
-and add_zeroary_mutuals_sub (lst : (EvalVarID.t * abstract_tree) list) (env : environment) (acc : (EvalVarID.t * abstract_tree) list) =
-  match lst with
-  | []                      -> acc
-  | (evid, astcont) :: tail ->
-      begin
-        try
-          let valuecont = interpret env astcont in
-            begin
-              add_to_environment env evid (ref valuecont) ;
-              add_zeroary_mutuals_sub tail env acc
-            end
-        with
-        | EvalError(_) -> add_zeroary_mutuals_sub tail env ((evid, astcont) :: acc)
-      end
+  envnew

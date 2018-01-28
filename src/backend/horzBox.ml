@@ -1,5 +1,6 @@
 
 open LengthInterface
+open GraphicData
 
 
 type stretchable =
@@ -62,15 +63,22 @@ type page_size =
   | UserDefinedPaper of length * length
 [@@deriving show { with_path = false }]
 
-type page_scheme =
+type page_content_scheme =
   {
-    page_size        : page_size;
-    left_page_margin : length;
-    top_page_margin  : length;
-    area_width       : length;
-    area_height      : length;
+    page_content_origin : point;
+    page_content_height : length;
   }
-[@@deriving show { with_path = false }]
+
+let pp_page_content_scheme fmt _ = Format.fprintf fmt "<page-content-scheme>"
+
+type page_break_info = {
+  current_page_number : int;
+}
+[@@deriving show {with_path = false }]
+
+type page_content_scheme_func = page_break_info -> page_content_scheme
+
+let pp_page_content_scheme_func fmt _ = Format.fprintf fmt "<page-content-scheme-func>"
 
 type paddings =
   {
@@ -81,22 +89,7 @@ type paddings =
   }
 [@@deriving show { with_path = false }]
 
-(* -- representation about graphics based on PDF 1.7 specification -- *)
-
-type color =
-  | DeviceGray of float
-  | DeviceRGB  of float * float * float
-  | DeviceCMYK of float * float * float * float
-[@@deriving show { with_path = false }]
-
-type 'a path_element =
-  | LineTo              of 'a
-  | CubicBezierTo       of point * point * 'a
-
-type path =
-  | GeneralPath of point * (point path_element) list * (unit path_element) option
-  | Rectangle   of point * point
-
+(*
 type line_dash =
   | SolidLine
   | DashedLine of length * length * length
@@ -130,6 +123,7 @@ type graphics_command =
   | DrawFillByEvenOdd
   | DrawBothByNonzero
   | DrawBothByEvenOdd
+*)
 
 type horz_string_info =
   {
@@ -150,17 +144,6 @@ type math_string_info =
   }
 
 (* -- internal representation of boxes -- *)
-
-type decoration = point -> length -> length -> length -> Pdfops.t list
-[@@deriving show]
-
-
-module ScriptSchemeMap = Map.Make
-  (struct
-    type t = CharBasis.script
-    let compare = Pervasives.compare
-  end)
-
 
 type math_kind =
   | MathOrdinary
@@ -190,15 +173,15 @@ type math_char_class =
 
 type math_variant_style =
   {
-    math_italic        : Uchar.t;
-    math_bold_italic   : Uchar.t;
-    math_roman         : Uchar.t;
-    math_bold_roman    : Uchar.t;
-    math_script        : Uchar.t;
-    math_bold_script   : Uchar.t;
-    math_fraktur       : Uchar.t;
-    math_bold_fraktur  : Uchar.t;
-    math_double_struck : Uchar.t;
+    math_italic        : Uchar.t list;
+    math_bold_italic   : Uchar.t list;
+    math_roman         : Uchar.t list;
+    math_bold_roman    : Uchar.t list;
+    math_script        : Uchar.t list;
+    math_bold_script   : Uchar.t list;
+    math_fraktur       : Uchar.t list;
+    math_bold_fraktur  : Uchar.t list;
+    math_double_struck : Uchar.t list;
   }
 
 let pp_math_variant_style =
@@ -212,11 +195,11 @@ module MathVariantCharMap = Map.Make
   end)
 
 
-type input_context = {
+type context_main = {
   font_size              : length;
-  font_scheme            : font_with_ratio ScriptSchemeMap.t;
+  font_scheme            : font_with_ratio CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
-  langsys_scheme         : CharBasis.language_system ScriptSchemeMap.t;
+  langsys_scheme         : CharBasis.language_system CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_font              : math_font_abbrev;
   dominant_wide_script   : CharBasis.script;
@@ -232,35 +215,35 @@ type input_context = {
   min_gap_of_lines       : length;
   text_color             : color;
   manual_rising          : length;
-  page_scheme            : page_scheme;
   badness_space          : pure_badness;
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_char_class        : math_char_class;
-  inline_math_command    : EvalVarID.t;
 }
 
-(* -- 'pure_horz_box': core part of the definition of horizontal boxes -- *)
+and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
+
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
   | PHSOuterFil
   | PHSFixedEmpty     of length
 (* -- texts -- *)
-  | PHCInnerString    of input_context * Uchar.t list
+  | PHCInnerString    of context_main * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedString(...)@]")]
-  | PHCInnerMathGlyph of math_string_info * length * length * length * FontFormat.glyph_id
+  | PHCInnerMathGlyph of math_string_info * length * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "@[FixedMathGlyph(...)@]")]
 (* -- groups -- *)
   | PHGRising         of length * horz_box list
   | PHGFixedFrame     of paddings * length * decoration * horz_box list
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
-  | PHGEmbeddedVert   of length * length * length * evaled_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> Pdfops.t list)
-  | PHGFixedTabular   of length * length * length * evaled_row list
+  | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
+  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | PHGFixedTabular   of length * length * length * intermediate_row list
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
+  | PHGHookPageBreak  of (page_break_info -> point -> unit)
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -268,6 +251,22 @@ and horz_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * horz_box list
+
+and intermediate_horz_box =
+  | ImHorz               of evaled_horz_box
+  | ImHorzRising         of length * length * length * length * intermediate_horz_box list
+  | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
+  | ImHorzInlineTabular  of length * length * length * intermediate_row list
+  | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
+  | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
+
+and evaled_horz_box =
+  length * evaled_horz_box_main
+      (* --
+         (1) width
+         (2) contents
+         -- *)
 
 and evaled_horz_box_main =
   | EvHorzString of horz_string_info * length * length * OutputText.t
@@ -278,37 +277,67 @@ and evaled_horz_box_main =
          (4) content string
          -- *)
 
-  | EvHorzMathGlyph      of math_string_info * length * length * FontFormat.glyph_id
+  | EvHorzMathGlyph      of math_string_info * length * length * OutputText.t
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzMathGlyph(...)")]
   | EvHorzRising         of length * length * length * evaled_horz_box list
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * (point -> Pdfops.t list)
+  | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) Graphics.t)
   | EvHorzInlineTabular  of length * length * evaled_row list
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
+  | EvHorzHookPageBreak  of page_break_info * (page_break_info -> point -> unit)
+      (* --
+         (1) page number determined during the page breaking
+         (2) hook function invoked during the construction of PDF data
+         -- *)
 
-and evaled_horz_box =
-  | EvHorz of length * evaled_horz_box_main
+and vert_box =
+  | VertLine              of length * length * intermediate_horz_box list
+      [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
+  | VertFixedBreakable    of length
+      [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
+  | VertTopMargin         of bool * length
+      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Top%s" (if b then "" else "*"))]
+  | VertBottomMargin      of bool * length
+      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
+  | VertFrame             of paddings * decoration * decoration * decoration * decoration * length * vert_box list
+(*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
 
 and intermediate_vert_box =
-  | ImVertLine              of length * length * evaled_horz_box list
-      [@printer (fun fmt _ -> Format.fprintf fmt "Line")]
-  | ImVertFixedBreakable    of length
-      [@printer (fun fmt _ -> Format.fprintf fmt "Breakable")]
-  | ImVertTopMargin         of bool * length
-      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Top%s" (if b then "" else "*"))]
-  | ImVertBottomMargin      of bool * length
-      [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
-  | ImVertFrame             of paddings * decoration * decoration * decoration * decoration * length * intermediate_vert_box list
-(*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+  | ImVertLine       of length * length * intermediate_horz_box list
+  | ImVertFixedEmpty of length
+  | ImVertFrame      of paddings * decoration * length * intermediate_vert_box list
+
 and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
-  | EvVertFrame      of paddings * decoration * length * evaled_vert_box list
+  | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
+
+and header_or_footer = page_break_info -> intermediate_vert_box list
+
+and page_parts_scheme = {
+  header_origin  : point;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]
+  header_content : intermediate_vert_box list;
+  footer_origin  : point;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]
+  footer_content : intermediate_vert_box list;
+}
+
+and page_content_info =
+  page_break_info
+(*
+{
+  page_number : int;
+}
+*)
+
+and page_parts_scheme_func = page_content_info -> page_parts_scheme
+
 
 and math_char_kern_func = length -> length -> length
   (* --
@@ -316,47 +345,15 @@ and math_char_kern_func = length -> length -> length
      and returns a kerning value (positive for making characters closer)
      -- *)
 
-and math_element_main =
-  | MathChar         of bool * Uchar.t
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         -- *)
-  | MathCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-char'>")]
-      (* --
-         (1) whether it is a big operator
-         (2) Unicode code point (currently singular)
-         (3) left-hand-side kerning function
-         (4) right-hand-side kerning function
-         --*)
-  | MathEmbeddedText of (input_context -> horz_box list)
-
-and math_element =
-  | MathElement           of math_kind * math_element_main
-  | MathVariantChar       of string
-  | MathVariantCharDirect of math_kind * bool * math_variant_style
-      [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-direct>")]
-      (* --
-         (1) math class
-         (2) whether it is a big operator
-         (3) Unicode code point for Italic
-         (4) Unicode code point for bold Italic
-         (5) Unicode code point for Roman
-         (6) Unicode code point for bold Roman
-         -- *)
-      (* TEMPORARY; should extend more *)
-
 and math_kern_func = length -> length
   (* -- takes the y-position and then returns a kerning value -- *)
 
 and math_variant_value = math_kind * math_variant_value_main
 
 and math_variant_value_main =
-  | MathVariantToChar         of bool * Uchar.t
+  | MathVariantToChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
-  | MathVariantToCharWithKern of bool * Uchar.t * math_char_kern_func * math_char_kern_func
+  | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 
 and paren = length -> length -> length -> length -> color -> horz_box list * math_kern_func
@@ -383,23 +380,6 @@ and radical = length -> length -> length -> length -> color -> horz_box list
        and then returns the inline box representation.
      -- *)
 
-and math_context_change =
-  | MathChangeColor         of color
-  | MathChangeMathCharClass of math_char_class
-
-and math =
-  | MathPure              of math_element
-  | MathChangeContext     of math_context_change * math list
-  | MathGroup             of math_kind * math_kind * math list
-  | MathSubscript         of math list * math list
-  | MathSuperscript       of math list * math list
-  | MathFraction          of math list * math list
-  | MathRadicalWithDegree of math list * math list
-  | MathRadical           of radical * math list
-  | MathParen             of paren * paren * math list
-  | MathUpperLimit        of math list * math list
-  | MathLowerLimit        of math list * math list
-
 and cell =
   | NormalCell of paddings * horz_box list
   | EmptyCell
@@ -407,130 +387,22 @@ and cell =
 
 and row = cell list
 
+and intermediate_cell =
+  | ImNormalCell of (length * length * length) * intermediate_horz_box list
+  | ImEmptyCell  of length
+  | ImMultiCell  of (int * int * length * length * length * length) * intermediate_horz_box list
+
+and intermediate_row = length * intermediate_cell list
+
 and evaled_cell =
-  | EvNormalCell of length * length * length * evaled_horz_box list
+  | EvNormalCell of (length * length * length) * evaled_horz_box list
   | EvEmptyCell  of length
-  | EvMultiCell  of int * int * length * length * length * length * evaled_horz_box list
+  | EvMultiCell  of (int * int * length * length * length * length) * evaled_horz_box list
 
 and evaled_row = length * evaled_cell list
 [@@deriving show { with_path = false }]
 
 type column = cell list
-
-
-
-module MathContext
-: sig
-    type t
-    val make : input_context -> t
-    val context_for_text : t -> input_context
-    val convert_math_variant_char : t -> string -> math_variant_value
-    val color : t -> color
-    val set_color : color -> t -> t
-    val enter_script : t -> t
-    val math_char_class : t -> math_char_class
-    val set_math_char_class : math_char_class -> t -> t
-    val is_in_base_level : t -> bool
-    val actual_font_size : t -> (math_font_abbrev -> FontFormat.math_decoder) -> length
-    val base_font_size : t -> length
-    val math_font_abbrev : t -> math_font_abbrev
-  end
-= struct
-    type level =
-      | BaseLevel
-      | ScriptLevel
-      | ScriptScriptLevel
-
-    type t =
-      {
-        mc_font_abbrev    : math_font_abbrev;
-        mc_base_font_size : length;
-        mc_level_int      : int;
-        mc_level          : level;
-        context_for_text  : input_context;
-      }
-
-    let make ctx =
-      {
-        mc_font_abbrev    = ctx.math_font;
-        mc_base_font_size = ctx.font_size;
-        mc_level_int      = 0;
-        mc_level          = BaseLevel;
-        context_for_text  = ctx;
-      }
-
-    let convert_math_variant_char mctx s =
-      let ctx = mctx.context_for_text in
-      let mcclsmap = ctx.math_variant_char_map in
-      let mccls = ctx.math_char_class in
-        match mcclsmap |> MathVariantCharMap.find_opt (s, mccls) with
-        | Some(mvvalue) ->
-            Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
-            mvvalue
-
-        | None ->
-            Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
-            begin
-              match InternalText.to_uchar_list (InternalText.of_utf8 s) with
-              | []       -> (MathOrdinary, MathVariantToChar(false, Uchar.of_int 0))  (* needs reconsideration *)
-              | uch :: _ -> (MathOrdinary, MathVariantToChar(false, uch))
-            end
-
-    let context_for_text mctx =
-      mctx.context_for_text
-        (* temporary; maybe should update font size *)
-
-    let color mctx =
-      mctx.context_for_text.text_color
-
-    let set_color color mctx =
-      let ctx = mctx.context_for_text in
-      let ctxnew = { ctx with text_color = color; } in
-        { mctx with context_for_text = ctxnew; }
-
-    let math_char_class mctx =
-      mctx.context_for_text.math_char_class
-
-    let set_math_char_class mccls mctx =
-      let ctx = mctx.context_for_text in
-      let ctxnew = { ctx with math_char_class = mccls } in
-        { mctx with context_for_text = ctxnew }
-
-    let enter_script mctx =
-      let levnew = mctx.mc_level_int + 1 in
-      match mctx.mc_level with
-      | BaseLevel         -> { mctx with mc_level = ScriptLevel;       mc_level_int = levnew; }
-      | ScriptLevel       -> { mctx with mc_level = ScriptScriptLevel; mc_level_int = levnew; }
-      | ScriptScriptLevel -> { mctx with                               mc_level_int = levnew; }
-
-    let is_in_base_level mctx =
-      match mctx.mc_level with
-      | BaseLevel -> true
-      | _         -> false
-
-    let actual_font_size mctx (mdf : math_font_abbrev -> FontFormat.math_decoder) =
-      let bfsize = mctx.mc_base_font_size in
-      let md = mdf mctx.mc_font_abbrev in
-      let mc = FontFormat.get_math_constants md in
-      match mctx.mc_level with
-      | BaseLevel         -> bfsize
-      | ScriptLevel       -> bfsize *% mc.FontFormat.script_scale_down
-      | ScriptScriptLevel -> bfsize *% mc.FontFormat.script_script_scale_down
-
-    let base_font_size mctx =
-      mctx.mc_base_font_size
-
-    let math_font_abbrev mctx =
-      mctx.mc_font_abbrev
-
-  end
-
-
-type math_context = MathContext.t
-
-
-let default_font_with_ratio =
-  ("Arno", 1., 0.)  (* TEMPORARY *)
 
 
 let normalize_script ctx script_raw =
@@ -547,14 +419,14 @@ let normalize_script ctx script_raw =
 
 let get_font_with_ratio ctx script_raw =
   let script = normalize_script ctx script_raw in
-    match ctx.font_scheme |> ScriptSchemeMap.find_opt script with
-    | None          -> default_font_with_ratio
+    match ctx.font_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
+    | None          -> failwith "get_font_with_ratio"
     | Some(fontsch) -> fontsch
 
 
 let get_language_system ctx script_raw =
   let script = normalize_script ctx script_raw in
-    match ctx.langsys_scheme |> ScriptSchemeMap.find_opt script with
+    match ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.find_opt script with
     | None          -> CharBasis.NoLanguageSystem
     | Some(langsys) -> langsys
 

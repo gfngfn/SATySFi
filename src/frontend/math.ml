@@ -1,11 +1,13 @@
 
 open MyUtil
 open LengthInterface
+open GraphicData
 open HorzBox
+open Types
 
 
 type low_math_atom =
-  | LowMathGlyph        of math_string_info * length * length * length * FontFormat.glyph_id
+  | LowMathGlyph        of math_string_info * length * length * length * OutputText.t
   | LowMathEmbeddedHorz of horz_box list
 
 type left_kern =
@@ -36,11 +38,10 @@ type low_radical = horz_box list
 type low_math_main =
   | LowMathPure of low_math_pure
 
-  | LowMathList of math_context_change * low_math * math_kind
+  | LowMathList of math_context_change * low_math
       (* --
          (1) information for updating math contexts
          (2) inner contents
-         (3) math class of the next element
          -- *)
 
   | LowMathGroup of math_kind * math_kind * low_math
@@ -181,7 +182,6 @@ let make_left_and_right_kern hgt dpt mk mic mkspec : left_kern * right_kern =
   let rk =
     match mkspec with
     | MathKernInfo(Some(mki)) ->
-        Format.printf "Math> rk = Some(...)\n";
         {
           italics_correction = mic;
           kernTR             = FontInfo.make_discrete_math_kern mki.FontFormat.kernTR;
@@ -236,6 +236,30 @@ let normalize_math_kind mkprev mknext mkraw =
     -> mkraw
 
   | MathBinary ->
+      let bprev =
+        match mkprev with
+        | MathOperator
+        | MathBinary
+        | MathRelation
+        | MathOpen
+        | MathPunct
+            -> true
+        | _ -> false
+      in
+      let bnext =
+        match mknext with
+        | MathRelation
+        | MathClose
+        | MathPunct
+            -> true
+        | _ -> false
+      in
+        if bprev || bnext then
+          MathOrdinary
+        else
+          MathBinary
+
+(*
       begin
         match (mkprev, mknext) with
         | (MathOrdinary, MathOrdinary)
@@ -256,6 +280,7 @@ let normalize_math_kind mkprev mknext mkraw =
             Format.printf "Math> normalize (%a, %a)\n" pp_math_kind mkprev pp_math_kind mknext;  (*for debug *)
             MathOrdinary
       end
+*)
 
   | MathRelation ->
       mkraw
@@ -276,9 +301,11 @@ let space_ord_inner fontsize =
     (* temporary; should be variable *)
 
 
-let space_punct = space_ord_rel  (* temporary *)
+let space_punct fontsize =
+  space_ord_rel fontsize  (* temporary *)
 
-let space_ord_op = space_ord_inner  (* temporary *)
+let space_ord_op fontsize =
+  space_ord_inner fontsize  (* temporary *)
 
 
 let space_ord_prefix fontsize =
@@ -292,26 +319,41 @@ let space_after_script mathctx =
     None
   else
     let mc = FontInfo.get_math_constants mathctx in
+(*
     Format.printf "Math> space_after_script = %f\n" mc.FontFormat.space_after_script;  (* for debug *)
+*)
     Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
       (* temporary; should have variable stretchability and shrinkability *)
 
 
 let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
   let is_in_script = not (MathContext.is_in_base_level mathctx) in
+  let fontsize = FontInfo.actual_math_font_size mathctx in
   if is_in_script then
-    None
+    match (mkprev, mk) with
+    | (MathOperator, MathOrdinary)
+    | (MathOrdinary, MathOperator)
+    | (MathOperator, MathOperator)
+    | (MathClose   , MathOperator)
+    | (MathInner   , MathOperator)
+        -> space_ord_op fontsize
+
+    | _ -> None
   else
-    let fontsize = FontInfo.actual_math_font_size mathctx in
       match (mkprev, mk) with
-      | (MathOrdinary, MathInner   )
-      | (MathInner   , MathInner   )
+      | (MathPunct   , _           )
+        -> space_punct fontsize
+
       | (MathInner   , MathOrdinary)
+      | (MathInner   , MathOpen    )
+      | (MathInner   , MathPunct   )
+      | (MathInner   , MathInner   )
+      | (MathOrdinary, MathInner   )
       | (MathPrefix  , MathInner   )
+      | (MathClose   , MathInner   )
         -> space_ord_inner fontsize
 
-      | (MathOrdinary, MathClose   )
-      | (MathPrefix  , MathClose   )
+      | (_           , MathClose   )
         ->
           begin
             match corr with
@@ -330,31 +372,33 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
             | ItalicsCorrection(italcorr) -> Some(fixed_empty italcorr)
           end
 
-      | (MathPunct   , _           )
-        -> space_punct fontsize
-
       | (MathBinary  , MathOrdinary)
-      | (MathBinary  , MathInner   )
-      | (MathBinary  , MathOpen    )
       | (MathBinary  , MathPrefix  )
+      | (MathBinary  , MathOperator)
+      | (MathBinary  , MathOpen    )
+      | (MathBinary  , MathInner   )
       | (MathOrdinary, MathBinary  )
-      | (MathInner   , MathBinary  )
       | (MathClose   , MathBinary  )
+      | (MathInner   , MathBinary  )
         -> space_ord_bin fontsize
 
       | (MathRelation, MathOrdinary)
+      | (MathRelation, MathOperator)
       | (MathRelation, MathInner   )
       | (MathRelation, MathOpen    )
       | (MathRelation, MathPrefix  )
       | (MathOrdinary, MathRelation)
+      | (MathOperator, MathRelation)
       | (MathInner   , MathRelation)
       | (MathClose   , MathRelation)
         -> space_ord_rel fontsize
 
       | (MathOperator, MathOrdinary)
+      | (MathOperator, MathOperator)
       | (MathOperator, MathInner   )
       | (MathOperator, MathPrefix  )
       | (MathOrdinary, MathOperator)
+      | (MathClose   , MathOperator)
       | (MathInner   , MathOperator)
         -> space_ord_op fontsize
 
@@ -399,7 +443,7 @@ let get_left_kern lmmain hgt dpt =
   let nokernf = no_left_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, lk, _)          -> lk
-  | LowMathList(_, (_, _, _, lk, _), _)        -> lk
+  | LowMathList(_, (_, _, _, lk, _))           -> lk
   | LowMathGroup(mkL, _, _)                    -> nokernf mkL
   | LowMathSubscript(_, (_, _, _, lk, _), _)   -> lk
   | LowMathSuperscript(_, (_, _, _, lk, _), _) -> lk
@@ -416,7 +460,7 @@ let get_right_kern lmmain hgt dpt =
   let nokernf = no_right_kern hgt dpt in
   match lmmain with
   | LowMathPure(_, _, _, _, _, _, rk)          -> rk
-  | LowMathList(_, (_, _, _, _, rk), _)        -> rk
+  | LowMathList(_, (_, _, _, _, rk))           -> rk
   | LowMathGroup(_, mkR, _)                    -> nokernf mkR
   | LowMathSubscript(_, (_, _, _, _, rk), _)   -> nokernf rk.right_math_kind
   | LowMathSuperscript(_, (_, _, _, _, rk), _) -> nokernf rk.right_math_kind
@@ -608,28 +652,49 @@ let make_radical mathctx radical hgt_bar t_bar dpt =
     hblst
 
 
-let convert_math_char mathctx is_big uch mk =
+let convert_math_char mathctx is_big (uchlst : Uchar.t list) mk =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
+  let (otxt, wid, hgt, dpt, mic, mkiopt) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic (MathKernInfo(mkiopt)) in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-let convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR =
+let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk kernfL kernfR =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
-  let (gid, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uch in
+  let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let fontsize = mathstrinfo.math_font_size in
   let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
-    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid), lk, rk)
+    (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
 let change_math_context chg mathctx =
   match chg with
   | MathChangeColor(color)         -> mathctx |> MathContext.set_color color
   | MathChangeMathCharClass(mccls) -> mathctx |> MathContext.set_math_char_class mccls
+
+
+let rec check_subscript mlstB =
+  match List.rev mlstB with
+  | MathSubscript(mlstBB, mlstT) :: mtailrev ->
+    (* -- if the last element of the base contents has a subscript -- *)
+      let mlstBnew = List.rev_append mtailrev mlstBB in
+      Some((mlstT, mlstBnew))
+
+  | MathChangeContext(chg, mlstBsub) :: mtailrev ->
+      begin
+        match check_subscript mlstBsub with
+        | Some((mlstT, mlstBsubnew)) ->
+            let mlstBnew = List.rev (MathChangeContext(chg, mlstBsubnew) :: mtailrev) in
+              Some(([MathChangeContext(chg, mlstT)], mlstBnew))
+
+        | None ->
+            None
+      end
+
+  | _ -> None
 
 
 let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mknext : math_kind) (me : math_element) : low_math_pure =
@@ -645,18 +710,20 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkrawv in
       begin
         match mvvaluemain with
-        | MathVariantToChar(is_big, uch) ->
-            convert_math_char mathctx is_big uch mk
+        | MathVariantToChar(is_big, uchlst) ->
+            convert_math_char mathctx is_big uchlst mk
 
-        | MathVariantToCharWithKern(is_big, uch, kernfL, kernfR) ->
-            convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
+        | MathVariantToCharWithKern(is_big, uchlst, kernfL, kernfR) ->
+            convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
       end
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->  (* TEMPORARY; should extend more *)
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
-      let uch =
+      let uchlst =
+(*
         let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
+*)
         match mccls with
         | MathItalic       -> mvsty.math_italic
         | MathBoldItalic   -> mvsty.math_bold_italic
@@ -669,15 +736,15 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathDoubleStruck -> mvsty.math_double_struck
             (* TEMPORARY; should extend more *)
       in
-        convert_math_char mathctx is_big uch mk
+        convert_math_char mathctx is_big uchlst mk
 
-  | MathElement(mkraw, MathChar(is_big, uch)) ->
+  | MathElement(mkraw, MathChar(is_big, uchlst)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char mathctx is_big uch mk
+        convert_math_char mathctx is_big uchlst mk
 
-  | MathElement(mkraw, MathCharWithKern(is_big, uch, kernfL, kernfR)) ->
+  | MathElement(mkraw, MathCharWithKern(is_big, uchlst, kernfL, kernfR)) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
-        convert_math_char_with_kern mathctx is_big uch mk kernfL kernfR
+        convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
 
 
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
@@ -699,7 +766,7 @@ and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math
       let lk = no_left_kern Length.zero Length.zero MathEnd in
       let rk = no_right_kern Length.zero Length.zero MathEnd in
         ([], Length.zero, Length.zero, lk, rk)
-  
+
   | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) ->
       (List.rev lmmainacc, hgt, dpt, lkfirst, rklast)
 
@@ -714,7 +781,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let mathctxnew = mathctx |> change_math_context chg in
       let lmI = convert_to_low mathctxnew mkprev mknext mlstI in
       let (_, h_inner, d_inner, _, rk) = lmI in
-        (LowMathList(chg, lmI, mknext), h_inner, d_inner)
+        (LowMathList(chg, lmI), h_inner, d_inner)
 
   | MathGroup(mkL, mkR, mlstC) ->
       let lmC = convert_to_low mathctx MathEnd MathClose mlstC in
@@ -744,10 +811,9 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
 
   | MathSuperscript(mlstB, mlstS) ->
       begin
-        match List.rev mlstB with
-        | MathSubscript(mlstBB, mlstT) :: mtailrev ->
+        match check_subscript mlstB with
+        | Some((mlstT, mlstB)) ->
           (* -- if the last element of the base contents has a subscript -- *)
-            let mlstB = List.rev_append mtailrev mlstBB in
             let lmB = convert_to_low mathctx mkprev MathEnd mlstB in
             let lmS = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstS in
             let lmT = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstT in
@@ -761,7 +827,7 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
             let d_whole = Length.min d_base (d_subbl +% d_sub) in
               (LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT), h_whole, d_whole)
 
-        | _ ->
+        | None ->
           (* -- if the last element of the base contents does NOT have a subscript -- *)
             let lmB = convert_to_low mathctx mkprev MathEnd mlstB in
             let lmS = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstS in
@@ -834,8 +900,8 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
 
 let horz_of_low_math_element (lme : low_math_atom) : horz_box list =
   match lme with
-  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, gid) ->
-      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, gid))]
+  | LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt) ->
+      [HorzPure(PHCInnerMathGlyph(mathstrinfo, wid, hgt, dpt, otxt))]
 
   | LowMathEmbeddedHorz(hblst) ->
       hblst
@@ -853,9 +919,9 @@ let horz_fraction_bar mathctx wid =
   let h_bart        = h_bar +% t_bar *% 0.5 in
   let bar_color = MathContext.color mathctx in
   let bar_graphics (xpos, ypos) =
-    Graphics.pdfops_of_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))]
+    Graphics.singleton (Graphics.make_fill bar_color [Rectangle((xpos, ypos +% h_bart), (wid, t_bar))])
   in
-    HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))  
+    HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
 
 let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) =
@@ -868,28 +934,28 @@ let raise_horz r hblst =
 
 let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mklast : math_kind) (lm : low_math) =
   let (lmmainlst, _, _, _, _) = lm in
-  let rec aux hbacc mkprev (corr : space_correction) lmmainlst =
+  let rec aux (hbacc : horz_box Alist.t) mkprev (corr : space_correction) lmmainlst =
     match lmmainlst with
     | [] ->
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr mklast in
         begin
           match hbspaceopt with
-          | None          -> List.rev hbacc
-          | Some(hbspace) -> List.rev (hbspace :: hbacc)
+          | None          -> Alist.to_list hbacc
+          | Some(hbspace) -> Alist.to_list (Alist.extend hbacc hbspace)
               (* --
                  appends italics correction for the last glyph of inner contents of a parenthesis;
                  -- *)
         end
 
-    | LowMathList(chg, lmI, mknext) :: lmmaintail ->
+    | LowMathList(chg, lmI) :: lmmaintail ->
         let (_, _, _, lkI, rkI) = lmI in
         let mathctxnew = mathctx |> change_math_context chg in
-        let hblst = horz_of_low_math mathctxnew mkprevfirst mknext lmI in
+        let hblst = horz_of_low_math mathctxnew mkprevfirst MathEnd lmI in
         let hbspaceopt = space_between_math_kinds mathctxnew mkprev corr lkI.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblst hbacc
-          | Some(hbspace) -> List.rev_append hblst (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblst
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblst
         in
           aux hbaccnew rkI.right_math_kind (ItalicsCorrection(rkI.italics_correction)) lmmaintail
 
@@ -898,8 +964,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hblstpure = horz_of_low_math_element lma in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstpure hbacc
-          | Some(hbspace) -> List.rev_append hblstpure (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstpure
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstpure
         in
           aux hbaccnew mk (ItalicsCorrection(rk.italics_correction)) lmmaintail
 
@@ -908,8 +974,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr mkL in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstC hbacc
-          | Some(hbspace) -> List.rev_append hblstC (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstC
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstC
         in
           aux hbaccnew mkR NoSpace lmmaintail
 
@@ -923,15 +989,17 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
         let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic   = rkB.italics_correction in
+(*
         Format.printf "Math> l_italic = %f\n" (Length.to_pdf_point l_italic);
+*)
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = fixed_empty kern in
         let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsup hbacc
-          | Some(hbspace) -> List.rev_append hblstsup (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsup
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsup
         in
           aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
 
@@ -959,8 +1027,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
 
@@ -1006,8 +1074,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstappended hbacc
-          | Some(hbspace) -> List.rev_append hblstappended (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstappended
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstappended
         in
           aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
 
@@ -1035,8 +1103,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew MathOrdinary NoSpace lmmaintail
 
@@ -1046,15 +1114,18 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbbar =
           HorzPure(PHGFixedGraphics(w_cont, h_bar +% t_bar, Length.zero,
             (fun (xpos, ypos) ->
-              Graphics.pdfops_of_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))])))
+              let grelem =
+                Graphics.make_fill (MathContext.color mathctx) [Rectangle((xpos, ypos +% h_bar), (w_cont, t_bar))]
+              in
+                Graphics.singleton grelem)))
         in
         let hbback = fixed_empty (Length.negate w_cont) in
         let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew MathInner NoSpace lmmaintail
 
@@ -1069,8 +1140,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew MathClose NoSpace lmmaintail
 
@@ -1097,8 +1168,8 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew rkB.right_math_kind NoSpace lmmaintail
 
@@ -1125,13 +1196,13 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
-          | None          -> List.rev_append hblstsub hbacc
-          | Some(hbspace) -> List.rev_append hblstsub (hbspace :: hbacc)
+          | None          -> Alist.append hbacc hblstsub
+          | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
         in
           aux hbaccnew rkB.right_math_kind NoSpace lmmaintail
 
   in
-  aux [] mkprevfirst NoSpace lmmainlst
+  aux Alist.empty mkprevfirst NoSpace lmmainlst
 
 
 let main mathctx mathlst =

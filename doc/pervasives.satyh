@@ -26,3 +26,14 @@ let length-min len1 len2 =
 let length-abs len =
   if len <' 0pt then 0pt -' len else len
 
+
+let-inline ctx \no-break inner =
+  inline-frame-solid (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) (read-inline ctx inner)
+
+
+let-inline ctx \fil =
+  discretionary 0 inline-nil inline-fil inline-nil
+
+
+let-inline ctx \fil-both =
+  discretionary 0 inline-nil inline-fil inline-fil

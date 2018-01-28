@@ -20,6 +20,10 @@ let equal (i1, _) (i2, _) =
   (i1 = i2)
 
 
+let compare (i1, _) (i2, _) =
+  Pervasives.compare i1 i2
+
+
 let show_direct (i, varnm) =
   "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
 

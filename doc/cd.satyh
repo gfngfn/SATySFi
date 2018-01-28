@@ -1,0 +1,42 @@
+module CD : sig
+
+  type obj
+  type t
+  type c
+  val set : c -> length * length -> math -> obj
+  val object : obj -> t
+  val arrow : obj -> obj -> t
+  direct \CD : [length; length; c -> t list] inline-cmd
+
+end = struct
+
+  type c = context * (length * length)
+
+  type obj =
+    | Object of (length * length) * inline-boxes * length * length
+
+  type t = graphics
+
+  let (+^) (x1, y1) (x2, y2) = (x1 +' x2, y1 +' y2)
+
+  let set (ctx, origin) center math =
+    let ib = embed-math ctx math in
+    let axhgt = get-axis-height ctx in
+    let wid = get-natural-width ib in
+      Object(origin +^ center, ib, wid, axhgt)
+
+  let object (Object((x, y), ib, w, ah)) =
+    draw-text (x -' w *' 0.5, y -' ah) ib
+
+  let arrow (Object(pt1, _, w1, ah1)) (Object(pt2, _, w2, ah2)) =
+    let path =
+      start-path pt1
+        |> line-to pt2
+        |> terminate-path
+    in
+      stroke 0.5pt Color.black path
+
+  let-inline ctx \CD wid hgt k =
+    inline-graphics wid hgt 0pt (fun origin -> k (ctx, origin))
+
+end

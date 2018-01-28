@@ -11,10 +11,11 @@ type lb_pure_box =
   | LBRising        of metrics * length * lb_pure_box list
   | LBOuterFrame    of metrics * decoration * lb_pure_box list
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
-  | LBEmbeddedVert  of length * length * length * evaled_vert_box list
-  | LBFixedGraphics of length * length * length * (point -> Pdfops.t list)
-  | LBFixedTabular  of length * length * length * evaled_row list
+  | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
+  | LBFixedGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | LBFixedTabular  of length * length * length * intermediate_row list
   | LBFixedImage    of length * length * ImageInfo.key
+  | LBHookPageBreak of (page_break_info -> point -> unit)
 
 type lb_box =
   | LBPure           of lb_pure_box
@@ -73,4 +74,4 @@ type line_break_chunk_main =
          (4) whether breaking line immediate after the chunk is allowed
          -- *)
 
-type line_break_chunk = input_context * line_break_chunk_main
+type line_break_chunk = context_main * line_break_chunk_main

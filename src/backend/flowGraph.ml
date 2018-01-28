@@ -81,39 +81,45 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
 
     let add_edge (grph : t) (vtx1 : vertex) (vtx2 : vertex) (wgt : weight) : unit =
-      let (dstbl1, _, _) =
-        try MainTable.find grph vtx1 with
-        | Not_found -> raise UndefinedSourceVertex
-      in
-        if not (MainTable.mem grph vtx2) then
-          raise UndefinedDestinationVertex
-        else
-        let () = print_for_debug ("add (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
-          DestinationTable.add dstbl1 vtx2 wgt
+      match MainTable.find_opt grph vtx1 with
+      | None ->
+          raise UndefinedSourceVertex
+
+      | Some((dstbl1, _, _)) ->
+          if not (MainTable.mem grph vtx2) then
+            raise UndefinedDestinationVertex
+          else
+          let () = print_for_debug ("add (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
+            DestinationTable.add dstbl1 vtx2 wgt
 
 
     let compare_vertex (grph : t) (vtx1 : vertex) (vtx2 : vertex) =
-      let ((_, _, lblref1), (_, _, lblref2)) =
-        try (MainTable.find grph vtx1, MainTable.find grph vtx2) with
-        | Not_found -> assert false
-      in
-        match (!lblref1, !lblref2) with
-        | (Infinite, _)                  -> 1
-        | (_, Infinite)                  -> -1
-        | (Finite(d1, _), Finite(d2, _)) -> Weight.compare d1 d2
+      match (MainTable.find_opt grph vtx1, MainTable.find_opt grph vtx2) with
+      | (None, _)
+      | (_, None)
+          -> assert false
+
+      | (Some((_, _, lblref1)), Some((_, _, lblref2))) ->
+          begin
+            match (!lblref1, !lblref2) with
+            | (Infinite, _)                  -> 1
+            | (_, Infinite)                  -> -1
+            | (Finite(d1, _), Finite(d2, _)) -> Weight.compare d1 d2
+          end
 
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
 
-      let rec backtrack (acc : vertex list) (vtx : vertex) =
-        let (_, _, lblref) =
-          try MainTable.find grph vtx with
-          | Not_found -> assert false
-        in
-          match !lblref with
-          | Infinite                   -> assert false  (* doubtful; may contain infinite edge *)
-          | Finite(_, None)            -> List.rev acc
-          | Finite(_, Some(vtxparent)) -> backtrack (vtxparent :: acc) vtxparent
+      let rec backtrack (acc : vertex Alist.t) (vtx : vertex) =
+        match MainTable.find_opt grph vtx with
+        | None -> assert false
+        | Some((_, _, lblref)) ->
+            begin
+              match !lblref with
+              | Infinite                   -> None  (* -- unreachable -- *)
+              | Finite(_, None)            -> Some(Alist.to_list acc)
+              | Finite(_, Some(vtxparent)) -> backtrack (Alist.extend acc vtxparent) vtxparent
+            end
       in
 
       let hp : vertex Heap.t = Heap.create ~cmp:(compare_vertex grph) () in
@@ -124,89 +130,107 @@ module Make (Vertex : VertexType) (Weight : WeightType)
         | Some(vtxP) ->
             let () = print_for_debug ("see " ^ (Vertex.show vtxP)) in (* for debug *)
               if equal_vertex vtxP vtxT then
-                let path = backtrack [] vtxT in 
-                  Some(path)
+                let pathopt = backtrack Alist.empty vtxT in
+                  pathopt
               else
                 let (dstblP, vherefP, vheP, lblrefP) =
-                  try
-                    let (dstblP, vherefP, lblrefP) = MainTable.find grph vtxP in
-                      match !vherefP with
-                      | None       -> assert false
-                      | Some(vheP) -> (dstblP, vherefP, vheP, lblrefP)
-                  with
-                  | Not_found -> assert false
+                  match MainTable.find_opt grph vtxP with
+                  | None ->
+                      assert false
+
+                  | Some((dstblP, vherefP, lblrefP)) ->
+                      begin
+                        match !vherefP with
+                        | None       -> assert false
+                        | Some(vheP) -> (dstblP, vherefP, vheP, lblrefP)
+                      end
                 in
                 match !lblrefP with
-                | Infinite         ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                | Infinite ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
                     let () = print_for_debug "| infinite" in (* for debug *)
                       None
+
                 | Finite(distP, _) ->
                     let () = print_for_debug ("| " ^ (Weight.show distP)) in (* for debug *)
                     begin
                       dstblP |> DestinationTable.iter (fun vtx wgt ->
                         let () = print_for_debug ("|--> " ^ (Vertex.show vtx) ^ " " ^ (Weight.show wgt)) in (*for debug *)
-                        let (_, vheref, lblref) =
-                          try MainTable.find grph vtx with Not_found -> assert false
-                        in
-                          match !vheref with
-                          | None      -> ()  (* -- when `vtx` is not a member of `hp`; equivalent to `Heap.mem ?equal:equal_vertex hp vtx` -- *)
-                          | Some(vhe) ->
-                              match !lblref with
-                              | Infinite        ->
-                                  let distfromP = distP +@ wgt in
+                        match MainTable.find_opt grph vtx with
+                        | None ->
+                            assert false
+
+                        | Some((_, vheref, lblref)) ->
+                            begin
+                              match !vheref with
+                              | None ->  (* -- when `vtx` is not a member of `hp`; equivalent to `Heap.mem ?equal:equal_vertex hp vtx` -- *)
+                                  ()
+
+                              | Some(vhe) ->
                                   begin
-                                    lblref := Finite(distP +@ wgt, Some(vtxP)) ;
-                                    print_for_debug ("  update " ^ (Vertex.show vtx) ^ " infinite -> " ^ (Weight.show distfromP)) ;
-                                    let vhenew = Heap.update hp vhe vtx in
-                                    vheref := Some(vhenew) ;
+                                    match !lblref with
+                                    | Infinite ->
+                                        let distfromP = distP +@ wgt in
+                                        begin
+                                          lblref := Finite(distP +@ wgt, Some(vtxP));
+                                          print_for_debug ("  update " ^ (Vertex.show vtx) ^ " infinite -> " ^ (Weight.show distfromP));
+                                          let vhenew = Heap.update hp vhe vtx in
+                                          vheref := Some(vhenew);
+                                        end
+                                    | Finite(dist, _) ->
+                                        let distfromP = distP +@ wgt in
+                                          if distfromP <@ dist then
+                                            begin
+                                              lblref := Finite(distfromP, Some(vtxP));
+                                              print_for_debug ("  update " ^ (Vertex.show vtx) ^ " " ^ (Weight.show dist) ^ " -> " ^ (Weight.show distfromP));
+                                              let vhenew = Heap.update hp vhe vtx in
+                                              vheref := Some(vhenew);
+                                            end
+                                          else ()
                                   end
-                              | Finite(dist, _) ->
-                                  let distfromP = distP +@ wgt in
-                                    if distfromP <@ dist then
-                                      begin
-                                        lblref := Finite(distfromP, Some(vtxP)) ;
-                                        print_for_debug ("  update " ^ (Vertex.show vtx) ^ " " ^ (Weight.show dist) ^ " -> " ^ (Weight.show distfromP)) ;
-                                        let vhenew = Heap.update hp vhe vtx in
-                                        vheref := Some(vhenew) ;
-                                      end
-                                    else ()
-                      ) ;
-                      Heap.remove hp vheP ;
-                      vherefP := None ;
+                            end
+                      );
+                      Heap.remove hp vheP;
+                      vherefP := None;
                       aux ()
                     end
       in
 
-      let (dstblS, _, lblrefS) =
-        try MainTable.find grph vtxS with
-        | Not_found -> raise UndefinedSourceVertex
-      in
-        if not (MainTable.mem grph vtxT) then raise UndefinedDestinationVertex else
-          begin
-            (* -- initialization -- *)
-            lblrefS := Finite(weight_zero, None) ;
-            dstblS |> DestinationTable.iter (fun vtx wgt ->
-              let (_, _, lblref) =
-                try MainTable.find grph vtx with
-                | Not_found -> assert false
-              in
-              let () = print_for_debug ("set " ^ (Vertex.show vtx) ^ " " ^ (Weight.show wgt)) in (* for debug *)
-              begin lblref := Finite(wgt, Some(vtxS)) ; end
-            ) ;
-            grph |> MainTable.iter (fun vtx (_, vheref, _) ->
-              if equal_vertex vtx vtxS then () else
-                let vhe = Heap.add_removable hp vtx in
-                begin vheref := Some(vhe) ; end
-            ) ;
-            (* begin : for debug *)
-            grph |> MainTable.iter (fun vtx (_, _, lblref) ->
-              match !lblref with
-              | Infinite       -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : infinite")
-              | Finite(wgt, _) -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : " ^ (Weight.show wgt))
-            ) ;
-            (* end : for debug *)
-            (* -- main iteration -- *)
-            aux ()
-          end
+      match MainTable.find_opt grph vtxS with
+      | None ->
+          raise UndefinedSourceVertex
+
+      | Some((dstblS, _, lblrefS)) ->
+          if not (MainTable.mem grph vtxT) then
+            raise UndefinedDestinationVertex
+          else
+            begin
+              (* -- initialization -- *)
+              lblrefS := Finite(weight_zero, None);
+              dstblS |> DestinationTable.iter (fun vtx wgt ->
+                  match MainTable.find_opt grph vtx with
+                  | None ->
+                      assert false
+
+                  | Some((_, _, lblref)) ->
+                      let () = print_for_debug ("set " ^ (Vertex.show vtx) ^ " " ^ (Weight.show wgt)) in (* for debug *)
+                      begin lblref := Finite(wgt, Some(vtxS)); end
+              );
+              grph |> MainTable.iter (fun vtx (_, vheref, _) ->
+                if equal_vertex vtx vtxS then () else
+                  let vhe = Heap.add_removable hp vtx in
+                  begin vheref := Some(vhe); end
+              );
+
+              (* begin : for debug *)
+              grph |> MainTable.iter (fun vtx (_, _, lblref) ->
+                match !lblref with
+                | Infinite       -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : infinite")
+                | Finite(wgt, _) -> print_for_debug ("initially " ^ (Vertex.show vtx) ^ " : " ^ (Weight.show wgt))
+              );
+              (* end : for debug *)
+
+              (* -- main iteration -- *)
+              aux ()
+            end
 
   end

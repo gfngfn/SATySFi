@@ -1,6 +1,6 @@
 
 open LengthInterface
-open HorzBox
+open GraphicData
 
 type t
 

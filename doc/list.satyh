@@ -5,21 +5,25 @@ module List
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val filter : ('a -> bool) -> 'a list -> 'a list
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
+    val reverse : 'a list -> 'a list
   end
 = struct
-    let map
+    let-rec map
       | f []        = []
       | f (x :: xs) = (f x) :: map f xs
 
-    let fold-left
+    let-rec fold-left
       | f init []        = init
       | f init (x :: xs) = fold-left f (f init x) xs
 
-    let filter
+    let-rec filter
       | _ []        = []
       | p (x :: xs) = if p x then x :: filter p xs else filter p xs
 
-    let assoc
+    let-rec assoc
       | _ _ []              = None
       | eq a ((x, y) :: xs) = if eq a x then Some(y) else assoc eq a xs
+
+    let reverse lst =
+      fold-left (fun acc x -> x :: acc) [] lst
   end
