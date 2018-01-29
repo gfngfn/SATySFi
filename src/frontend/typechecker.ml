@@ -106,6 +106,15 @@ let flatten_type ty =
 *)
 
 
+let eliminate_optionals (ty : mono_type) (e : abstract_tree) : mono_type * abstract_tree =
+  let rec aux ty e =
+    match ty with
+    | (_, OptFuncType(_, tycod)) -> aux tycod (Apply(e, Value(Constructor("None", UnitConstant))))
+    | _                          -> (ty, e)
+  in
+  aux ty e
+
+
 let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   let iter = occurs tvid in
   let iter_list = List.fold_left (fun b ty -> b || iter ty) false in
@@ -129,6 +138,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
                 false
       end
   | FuncType(tydom, tycod)         -> iter tydom || iter tycod
+  | OptFuncType(tydom, tycod)      -> iter tydom || iter tycod
   | ProductType(tylist)            -> iter_list tylist
   | ListType(tysub)                -> iter tysub
   | RefType(tysub)                 -> iter tysub
@@ -154,7 +164,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
-    | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2)) ->
+    | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2))
+    | (OptFuncType(tydom1, tycod1), OptFuncType(tydom2, tycod2))
+      ->
         begin
           unify_sub tydom1 tydom2;
           unify_sub tycod1 tycod2;
@@ -444,8 +456,10 @@ let rec typecheck
 (*
       let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain))) in (* for debug *)
 *)
+      let (ty1sub, e1sub) = eliminate_optionals ty1 e1 in
+      let eret = Apply(e1sub, e2) in
       begin
-        match ty1 with
+        match ty1sub with
         | (_, FuncType(tydom, tycod)) ->
             let () = unify tydom ty2 in
 (*
@@ -453,15 +467,50 @@ let rec typecheck
                                                ^ (string_of_mono_type_basic tycod)) in        (* for debug *)
 *)
             let tycodnew = overwrite_range_of_type tycod rng in
-              (Apply(e1, e2), tycodnew)
+              (eret, tycodnew)
+
         | _ ->
             let tvid = FreeID.fresh UniversalKind qtfbl lev () in
             let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-            let () = unify ty1 (get_range utast1, FuncType(ty2, beta)) in
+            let () = unify ty1sub (get_range utast1, FuncType(ty2, beta)) in
 (*
             let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
 *)
-                (Apply(e1, e2), beta)
+                (eret, beta)
+      end
+
+  | UTApplyOptional(utast1, utast2) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let (e2, ty2) = typecheck_iter tyenv utast2 in
+      begin
+        match ty1 with
+        | (_, OptFuncType(tydom, tycod)) ->
+            let () = unify tydom ty2 in
+            let tycodnew = overwrite_range_of_type tycod rng in
+              (Apply(e1, NonValueConstructor("Some", e2)), tycodnew)
+
+        | _ ->
+            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+            let () = unify ty1 (get_range utast1, OptFuncType(ty2, beta)) in
+              (Apply(e1, NonValueConstructor("Some", e2)), beta)
+      end
+
+  | UTApplyOmission(utast1) ->
+      let (e1, ty1) = typecheck_iter tyenv utast1 in
+      let eret = Apply(e1, Value(Constructor("None", UnitConstant))) in
+      begin
+        match ty1 with
+        | (_, OptFuncType(_, tycod)) ->
+            (eret, tycod)
+
+        | _ ->
+            let tviddom = FreeID.fresh UniversalKind qtfbl lev () in
+            let betadom = (rng, TypeVariable(ref (Free(tviddom)))) in
+            let tvidcod = FreeID.fresh UniversalKind qtfbl lev () in
+            let betacod = (rng, TypeVariable(ref (Free(tvidcod)))) in
+            let () = unify ty1 (get_range utast1, OptFuncType(betadom, betacod)) in
+              (eret, betacod)
       end
 
   | UTFunction(utpatbrs) ->

@@ -152,24 +152,44 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         let strcod = iter tycod in
           begin
             match tydom with
-            | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
-            | _                   -> strdom
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+                -> "(" ^ strdom ^ ")"
+            | _ -> strdom
+          end ^ " -> " ^ strcod
+
+    | OptFuncType(tydom, tycod) ->
+        let strdom = iter tydom in
+        let strcod = iter tycod in
+          "?" ^
+          begin
+            match tydom with
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+                -> "(" ^ strdom ^ ")"
+            | _ -> strdom
           end ^ " -> " ^ strcod
 
     | ListType(tycont) ->
         let strcont = iter tycont in
           begin
             match tycont with
-            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-            | _                                             -> strcont
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+            | (_, ProductType(_))
+                -> "(" ^ strcont ^ ")"
+            | _ -> strcont
           end ^ " list"
 
     | RefType(tycont) ->
         let strcont = iter tycont in
           begin
             match tycont with
-            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-            | _                                             -> strcont
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+            | (_, ProductType(_))
+                -> "(" ^ strcont ^ ")"
+            | _ -> strcont
           end ^ " ref"
 
     | ProductType(tylist) -> iter_list tylist
@@ -206,9 +226,15 @@ and string_of_type_argument_list tyenv current_ht tyarglist =
         let (_, headmain) = head in
           begin
             match headmain with
-            | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
-              | ListType(_) | RefType(_) | VariantType(_ :: _, _) )         -> "(" ^ strhd ^ ")"
-            | _                                                             -> strhd
+            | FuncType(_, _)
+            | OptFuncType(_, _)
+            | ProductType(_)
+           (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
+            | ListType(_)
+            | RefType(_)
+            | VariantType(_ :: _, _)
+                -> "(" ^ strhd ^ ")"
+            | _ -> strhd
           end ^ " " ^ strtl
 
 
@@ -223,8 +249,11 @@ and string_of_mono_type_list tyenv current_ht tylist =
         let (_, headmain) = head in
         begin
           match headmain with
-          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
-          | _                                   -> strhead
+          | ProductType(_)
+          | FuncType(_, _)
+          | OptFuncType(_, _)
+              -> "(" ^ strhead ^ ")"
+          | _ -> strhead
         end ^
         begin
           match tail with
