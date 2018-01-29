@@ -1185,13 +1185,12 @@ let rec string_of_mono_type_basic tystr =
     | OptFuncType(tydom, tycod) ->
         let strdom = string_of_mono_type_basic tydom in
         let strcod = string_of_mono_type_basic tycod in
-          "?" ^
           begin match tydom with
           | (_, FuncType(_, _))
           | (_, OptFuncType(_, _))
               -> "(" ^ strdom ^ ")"
           | _ -> strdom
-          end ^ " ->" ^ qstn ^ " " ^ strcod
+          end ^ "? ->" ^ qstn ^ " " ^ strcod
 
     | ListType(tycont) ->
         let strcont = string_of_mono_type_basic tycont in
@@ -1248,7 +1247,7 @@ let rec string_of_mono_type_basic tystr =
 
 and string_of_command_argument_type = function
   | MandatoryArgumentType(ty) -> string_of_mono_type_basic ty
-  | OptionalArgumentType(ty)  -> "?" ^ (string_of_mono_type_basic ty)
+  | OptionalArgumentType(ty)  -> "(" ^ (string_of_mono_type_basic ty) ^ ")?"
 
 
 and string_of_type_argument_list_basic tyarglist =
@@ -1314,7 +1313,7 @@ let rec string_of_manual_type (_, mtymain) =
   | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
   | MTypeParam(tpnm)          -> "'" ^ tpnm
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
-  | MOptFuncType(mtydom, mtycod) -> "?" ^ (iter mtydom) ^ " -> " ^ (iter mtycod)
+  | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
   | MHorzCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] inline-cmd"
@@ -1324,4 +1323,4 @@ let rec string_of_manual_type (_, mtymain) =
 
 and string_of_manual_command_argument_type = function
   | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
-  | MOptionalArgumentType(mnty)  -> "?" ^ string_of_manual_type mnty
+  | MOptionalArgumentType(mnty)  -> "(" ^ (string_of_manual_type mnty) ^ ")?"

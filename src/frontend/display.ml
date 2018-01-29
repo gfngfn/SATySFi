@@ -162,14 +162,13 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | OptFuncType(tydom, tycod) ->
         let strdom = iter tydom in
         let strcod = iter tycod in
-          "?" ^
           begin
             match tydom with
             | (_, FuncType(_, _))
             | (_, OptFuncType(_, _))
                 -> "(" ^ strdom ^ ")"
             | _ -> strdom
-          end ^ " -> " ^ strcod
+          end ^ "? -> " ^ strcod
 
     | ListType(tycont) ->
         let strcont = iter tycont in
@@ -212,7 +211,17 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
 
 and string_of_command_argument_type tyenv current_ht = function
   | MandatoryArgumentType(ty) -> string_of_mono_type_sub tyenv current_ht ty
-  | OptionalArgumentType(ty)  -> "?" ^ (string_of_mono_type_sub tyenv current_ht ty)
+  | OptionalArgumentType(ty)  ->
+      let strty = string_of_mono_type_sub tyenv current_ht ty in
+      begin
+        match ty with
+        | (_, ProductType(_))
+        | (_, FuncType(_))
+        | (_, OptFuncType(_))
+          -> "(" ^ strty ^  ")?"
+
+        | _ -> strty ^ "?"
+      end
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =

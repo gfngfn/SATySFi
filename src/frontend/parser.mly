@@ -428,7 +428,7 @@
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> UNITVALUE WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
-%token <Range.t> OPTIONAL OMISSION
+%token <Range.t> OPTIONAL OMISSION OPTIONALTYPE
 (*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
@@ -508,6 +508,7 @@
 %type <Types.untyped_unkinded_type_argument list> xpltyvars
 %type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
 %type <Types.manual_type option * untyped_argument list> nonrecdecargpart
+%type <Range.t * Types.type_name> txbot
 
 %%
 
@@ -564,11 +565,11 @@ nxstruct:
       DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct                   { make_module top tok sigopt strct tail }
 ;
 nxhorzdec:
-  | ctxvartok=VAR; hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+  | ctxvartok=VAR; hcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
       let (rngcs, _) = hcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
+      let curried = curry_lambda_abstract rngcs cmdarglst utast in
         (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
   | hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -583,11 +584,11 @@ nxhorzdec:
       }
 ;
 nxvertdec:
-  | ctxvartok=VAR; vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+  | ctxvartok=VAR; vcmdtok=VERTCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
       let (rngcs, _) = vcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
+      let curried = curry_lambda_abstract rngcs cmdarglst utast in
         (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
   | vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -839,7 +840,10 @@ variants: /* -> untyped_variant_cons */
 ;
 txfunc: /* -> manual_type */
   | mntydom=txprod; ARROW; mntycod=txfunc {
-        let rng = make_range (Ranged mntydom) (Ranged mntycod) in (rng, MFuncType(mntydom, mntycod))
+        make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mntydom, mntycod))
+      }
+  | mntydom=txprod; OPTIONALTYPE; ARROW; mntycod=txfunc {
+        make_standard (Ranged mntydom) (Ranged mntycod) (MOptFuncType(mntydom, mntycod))
       }
   | mnty=txprod { mnty }
 ;
@@ -910,7 +914,7 @@ txapp: /* Range.t * manual_type list * type_name */
       }
   | tybot=txbot { let (rng, tynm) = tybot in (rng, [], tynm) }
 ;
-txbot: /* -> Range.t * type_name */
+txbot:
   | tytok=VAR { tytok }
   | mdltok=CONSTRUCTOR; DOT; tytok=VAR {
       (* temporary; currently only one module name can be appended *)
@@ -921,9 +925,11 @@ txbot: /* -> Range.t * type_name */
       }
 ;
 txlist:
-  | mnty=txfunc; LISTPUNCT; tail=txlist { MMandatoryArgumentType(mnty) :: tail }
-  | mnty=txfunc                         { MMandatoryArgumentType(mnty) :: [] }
-  |                                     { [] }
+  | mnty=txfunc; LISTPUNCT; tail=txlist                 { MMandatoryArgumentType(mnty) :: tail }
+  | mnty=txfunc                                         { MMandatoryArgumentType(mnty) :: [] }
+  | mnty=txapppre; OPTIONALTYPE; LISTPUNCT; tail=txlist { MOptionalArgumentType(mnty) :: tail }
+  | mnty=txapppre; OPTIONALTYPE                         { MOptionalArgumentType(mnty) :: [] }
+  |                                                     { [] }
 ;
 txrecord: /* -> (field_name * manual_type) list */
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
@@ -1119,6 +1125,19 @@ narg:
   | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
+  | opn=OPTIONAL; OPENPROG; utast=nxlet; cls=CLOSEPROG {
+        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+      }
+  | opn=OPTIONAL; OPENPROG; cls=CLOSEPROG {
+        UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
+      }
+  | opn=OPTIONAL; OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD {
+        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
+      }
+  | opn=OPTIONAL; OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
+        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+      }
+  | rng=OMISSION { UTOmission(rng) }
 ;
 str:
   | chartok=CHAR { let (rng, c) = chartok in c }

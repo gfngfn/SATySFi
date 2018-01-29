@@ -838,13 +838,16 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (MathCommandType(catyl1), MathCommandType(catyl2))
       ->
         begin
-          List.fold_left2 (fun b caty1 caty2 ->
-            match (caty1, caty2) with
-            | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2))
-            | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) )
-                -> b && aux ty1 ty2
-            | _ -> false
-          ) true catyl1 catyl2
+          try
+            List.fold_left2 (fun b caty1 caty2 ->
+              match (caty1, caty2) with
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2))
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) )
+                  -> b && aux ty1 ty2
+              | _ -> false
+            ) true catyl1 catyl2
+          with
+          | Invalid_argument(_) -> false
         end
 
     | (ProductType(tyl1), ProductType(tyl2))
