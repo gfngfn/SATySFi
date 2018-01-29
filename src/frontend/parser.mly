@@ -47,13 +47,20 @@
   let end_struct (rng : Range.t) : untyped_abstract_tree = (rng, UTFinishStruct)
 
 
-  let rec curry_lambda_abstract (rng : Range.t) (argpatlst : untyped_pattern_tree list) (utastdef : untyped_abstract_tree) =
-    match argpatlst with
+  let rec curry_lambda_abstract (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
+    match utarglst with
     | [] ->
         utastdef
 
-    | argpat :: argpattail ->
-        (rng, UTFunction([UTPatternBranch(argpat, curry_lambda_abstract rng argpattail utastdef)]))
+    | UTPatternArgument(argpat) :: utargtail ->
+        (rng, UTFunction([UTPatternBranch(argpat, curry_lambda_abstract rng utargtail utastdef)]))
+
+    | UTOptionalArgument(rngvar, varnm) :: utargtail ->
+        (rng, UTLambdaOptional(rngvar, varnm, curry_lambda_abstract rng utargtail utastdef))
+
+
+  let curry_lambda_abstract_pattern (rng : Range.t) (argpatlst : untyped_pattern_tree list) =
+    curry_lambda_abstract rng (argpatlst |> List.map (fun argpat -> UTPatternArgument(argpat)))
 
 
   let rec stringify_literal ltrl =
@@ -169,8 +176,8 @@
     make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(mntyopt, (varrng, UTPVariable(varnm)), utast1, utast2))
 
 
-  let make_let_expression_of_pattern (lettok : Range.t) ((mntyopt, pat, argpatlst, utast1) : untyped_let_binding) (utast2 : untyped_abstract_tree) =
-    let curried = curry_lambda_abstract (get_range pat) argpatlst utast1 in
+  let make_let_expression_of_pattern (lettok : Range.t) ((mntyopt, pat, utarglst, utast1) : untyped_let_binding) (utast2 : untyped_abstract_tree) =
+    let curried = curry_lambda_abstract (get_range pat) utarglst utast1 in
     make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(mntyopt, pat, curried, utast2))
 
 
@@ -194,7 +201,7 @@
   : untyped_letrec_binding list
   =
     let (varrng, varnm) = vartok in
-    let curried = curry_lambda_abstract varrng argpatlst utastdef in
+    let curried = curry_lambda_abstract_pattern varrng argpatlst utastdef in
       (UTLetRecBinding(mntyopt, varnm, curried)) :: tailcons
 
 
@@ -421,6 +428,7 @@
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> UNITVALUE WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
+%token <Range.t> OPTIONAL OMISSION
 (*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
@@ -498,6 +506,8 @@
 %type <Types.untyped_pattern_tree list> argpats
 %type <Range.t * Types.var_name> binop
 %type <Types.untyped_unkinded_type_argument list> xpltyvars
+%type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
+%type <Types.manual_type option * untyped_argument list> nonrecdecargpart
 
 %%
 
@@ -558,7 +568,7 @@ nxhorzdec:
       let (rngcs, _) = hcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argpatlst utast in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
         (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
   | hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -568,7 +578,7 @@ nxhorzdec:
       let ctxvarnm = "%context" in
       let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
       let utastread = (Range.dummy "read-inline-of-lightweight-let-inline", UTLexHorz(utctx, utast)) in
-      let curried = curry_lambda_abstract rngcs argpatlst utastread in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
         (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
 ;
@@ -577,7 +587,7 @@ nxvertdec:
       let (rngcs, _) = vcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argpatlst utast in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
         (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
   | vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -587,7 +597,7 @@ nxvertdec:
       let ctxvarnm = "%context" in
       let utctx = (rngctxvar, UTContentOf([], ctxvarnm)) in
       let utastread = (Range.dummy "read-block-of-lightweight-let-block", UTLexVert(utctx, utast)) in
-      let curried = curry_lambda_abstract rngcs argpatlst utastread in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utastread in
         (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
 ;
@@ -595,15 +605,25 @@ nxmathdec:
   | mcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
       let (rngcs, _) = mcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs argpatlst utast in
+      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
         (None, mcmdtok, (rng, UTLambdaMath(curried)))
       }
 ;
-nxdecargpart:
+nonrecdecargpart:
+  | COLON; mty=txfunc                                   { (Some(mty), []) }
+  | COLON; mty=txfunc; BAR; utarglst=nonempty_list(arg) { (Some(mty), utarglst) }
+  | BAR; utarglst=nonempty_list(arg)                    { (None, utarglst) }
+  | utarglst=list(arg)                                  { (None, utarglst) }
+;
+recdecargpart:
   | COLON; mty=txfunc                                       { (Some(mty), []) }
   | COLON; mty=txfunc; BAR; argpatlst=nonempty_list(patbot) { (Some(mty), argpatlst) }
   | BAR; argpatlst=nonempty_list(patbot)                    { (None, argpatlst) }
   | argpatlst=argpats                                       { (None, argpatlst) }
+;
+arg:
+  | pattr=patbot              { UTPatternArgument(pattr) }
+  | OPTIONAL; vartok=defedvar { let (rng, varnm) = vartok in UTOptionalArgument(rng, varnm) }
 ;
 %inline defedvar:
   | vartok=VAR                  { vartok }
@@ -614,11 +634,11 @@ nxrecdecsub:
   |                      { [] }
 ;
 nxrecdec:
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; dec=nxrecdecsub {
+  | vartok=defedvar; argpart=recdecargpart; DEFEQ; utastdef=nxlet; dec=nxrecdecsub {
         let (mntyopt, argpatlst) = argpart in
           make_letrec_binding mntyopt vartok argpatlst utastdef dec
       }
-  | vartok=defedvar; argpart=nxdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
+  | vartok=defedvar; argpart=recdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
         let (mntyopt, argpatlst) = argpart in
           make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: tail) dec
       }
@@ -628,9 +648,9 @@ nxrecdecpar:
   | patlst=argpats; DEFEQ; utast=nxlet                        { UTLetRecPatternBranch(patlst, utast) :: [] }
 ;
 nxnonrecdec:
-  | pat=patbot; argpart=nxdecargpart; DEFEQ; utastdef=nxlet {
-        let (mntyopt, argpatlst) = argpart in
-          (mntyopt, pat, argpatlst, utastdef)
+  | pat=patbot; argpart=nonrecdecargpart; DEFEQ; utastdef=nxlet {
+        let (mntyopt, utarglst) = argpart in
+          (mntyopt, pat, utarglst, utastdef)
       }
 ;
 nxvariantdec: /* -> untyped_mutual_variant_cons */
@@ -676,14 +696,14 @@ nxbfr:
   | utast=nxlambda { utast }
 ;
 nxlambda:
-  | VAR OVERWRITEEQ nxlor {
-        let (varrng, varnm) = $1 in
-          make_standard (Ranged $1) (Ranged $3) (UTOverwrite(varrng, varnm, $3))
+  | vartok=VAR; OVERWRITEEQ; utast=nxlor {
+        let (rngvar, varnm) = vartok in
+          make_standard (Tok rngvar) (Ranged utast) (UTOverwrite(rngvar, varnm, utast))
       }
-  | LAMBDA argpats ARROW nxlor {
-        let rng = make_range (Tok $1) (Ranged $4) in curry_lambda_abstract rng $2 $4
+  | top=LAMBDA; argpatlst=argpats; ARROW; utast=nxlor {
+        let rng = make_range (Tok top) (Ranged utast) in curry_lambda_abstract_pattern rng argpatlst utast
       }
-  | nxlor { $1 }
+  | utast=nxlor { utast }
 ;
 argpats: /* -> argument_variable_cons */
   | argpatlst=list(patbot) { argpatlst }
@@ -759,6 +779,8 @@ nxapp:
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
         make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm)) }
+  | utast1=nxapp; OPTIONAL; utast2=nxbot { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
+  | utast1=nxapp; tok=OMISSION { make_standard (Ranged utast1) (Tok tok) (UTApplyOmission(utast1)) }
   | nxbot { $1 }
 ;
 nxbot:

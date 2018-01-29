@@ -351,6 +351,7 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
           end
 
       | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
+      | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(aux tydom, aux tycod))
       | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
       | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
       | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
@@ -383,6 +384,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       match mntymain with
 
       | MFuncType(mntydom, mntycod)      -> FuncType(iter mntydom, iter mntycod)
+      | MOptFuncType(mntydom, mntycod)   -> OptFuncType(iter mntydom, iter mntycod)
       | MProductType(mntylist)           -> ProductType(List.map iter mntylist)
       | MRecordType(mnasc)               -> RecordType(Assoc.map_value iter mnasc)
 
@@ -640,6 +642,7 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         match mtymain with
         | MTypeParam(varnm)           -> ()
         | MFuncType(mtydom, mtycod)   -> begin iter mtydom; iter mtycod; end
+        | MOptFuncType(mtydom, mtycod) -> begin iter mtydom; iter mtycod; end
         | MProductType(mtylist)       -> List.iter iter mtylist
         | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
         | MHorzCommandType(mtylist)   -> List.iter iter mtylist

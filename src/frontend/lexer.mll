@@ -229,6 +229,8 @@ rule progexpr = parse
   | ("&" opsymbol+) { BINOP_AMP(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | "?:" { OPTIONAL(get_pos lexbuf) }
+  | "?*" { OMISSION(get_pos lexbuf) }
   | "!" { DEREF(get_pos lexbuf) }
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 

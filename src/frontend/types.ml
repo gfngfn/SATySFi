@@ -158,6 +158,7 @@ and manual_type_main =
   | MTypeName        of (manual_type list) * type_name
   | MTypeParam       of var_name
   | MFuncType        of manual_type * manual_type
+  | MOptFuncType     of manual_type * manual_type
   | MProductType     of manual_type list
   | MRecordType      of manual_type Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
@@ -419,7 +420,11 @@ and untyped_math_main =
 type untyped_letrec_pattern_branch =
   | UTLetRecPatternBranch of untyped_pattern_tree list * untyped_abstract_tree
 
-type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_pattern_tree list * untyped_abstract_tree
+type untyped_argument =
+  | UTPatternArgument  of untyped_pattern_tree
+  | UTOptionalArgument of Range.t * var_name
+
+type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_argument list * untyped_abstract_tree
 
 (* ---- typed ---- *)
 
@@ -728,7 +733,6 @@ type output_unit =
   | ODeepen
   | OShallow
 *)
-
 
 let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
   (fun (Poly(ty)) -> Poly(fmono ty))
@@ -1274,6 +1278,7 @@ let rec string_of_manual_type (_, mtymain) =
   | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
   | MTypeParam(tpnm)          -> "'" ^ tpnm
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
+  | MOptFuncType(mtydom, mtycod) -> "?" ^ (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
   | MHorzCommandType(mtylst)  -> "[" ^ (String.concat "; " (List.map iter mtylst)) ^ "] inline-cmd"
