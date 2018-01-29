@@ -120,7 +120,7 @@ document (|
         \subject-to-change;\discouraged;
       }
     >
-    +subsection-ref(`sec:inline`) {インライン方向に関する処理} <
+    +subsection ?:(`sec:inline`) {インライン方向に関する処理} <
       +command (`read-inline`) (tCTX --> (tIT --> tIB)) {
         \code{read-inline ${ctx} ${it}}で
         文脈\code{${ctx}}を用いて

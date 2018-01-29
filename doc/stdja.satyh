@@ -15,10 +15,8 @@ module StdJa : sig
   direct \ref-page : [string] inline-cmd
   direct \figure : [inline-text; block-text] inline-cmd
   direct +p : [inline-text] block-cmd
-  direct +section : [inline-text; block-text] block-cmd
-  direct +section-ref : [string; inline-text; block-text] block-cmd
-  direct +subsection : [inline-text; block-text] block-cmd
-  direct +subsection-ref : [string; inline-text; block-text] block-cmd
+  direct +section : [string?; inline-text; block-text] block-cmd
+  direct +subsection : [string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
 
 end = struct
@@ -405,22 +403,22 @@ let title-deco =
       bb-title +++ bb-inner
 
 
-  let-block ctx +section title inner =
-    let label = generate-fresh-label () in
+  let-block ctx +section ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
       section-scheme ctx label title inner
 
 
-  let-block ctx +section-ref label title inner =
-    section-scheme ctx label title inner
-
-
-  let-block ctx +subsection title inner =
-    let label = generate-fresh-label () in
+  let-block ctx +subsection ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
       subsection-scheme ctx label title inner
-
-
-  let-block ctx +subsection-ref label title inner =
-    subsection-scheme ctx label title inner
 
 
   let-inline ctx \emph inner =
