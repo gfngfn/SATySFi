@@ -94,6 +94,7 @@ module GeneralIDHashTable
 
 let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : mono_type) =
   let iter = string_of_mono_type_sub tyenv current_ht in
+  let iter_cmd  = string_of_command_argument_type tyenv current_ht in
   let iter_args = string_of_type_argument_list tyenv current_ht in
   let iter_list = string_of_mono_type_list tyenv current_ht in
     match tymain with
@@ -152,47 +153,75 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         let strcod = iter tycod in
           begin
             match tydom with
-            | (_, FuncType(_, _)) -> "(" ^ strdom ^ ")"
-            | _                   -> strdom
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+                -> "(" ^ strdom ^ ")"
+            | _ -> strdom
           end ^ " -> " ^ strcod
+
+    | OptFuncType(tydom, tycod) ->
+        let strdom = iter tydom in
+        let strcod = iter tycod in
+          begin
+            match tydom with
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+                -> "(" ^ strdom ^ ")"
+            | _ -> strdom
+          end ^ "? -> " ^ strcod
 
     | ListType(tycont) ->
         let strcont = iter tycont in
           begin
             match tycont with
-            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-            | _                                             -> strcont
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+            | (_, ProductType(_))
+                -> "(" ^ strcont ^ ")"
+            | _ -> strcont
           end ^ " list"
 
     | RefType(tycont) ->
         let strcont = iter tycont in
           begin
             match tycont with
-            | ( (_, FuncType(_, _)) | (_, ProductType(_)) ) -> "(" ^ strcont ^ ")"
-            | _                                             -> strcont
+            | (_, FuncType(_, _))
+            | (_, OptFuncType(_, _))
+            | (_, ProductType(_))
+                -> "(" ^ strcont ^ ")"
+            | _ -> strcont
           end ^ " ref"
 
     | ProductType(tylist) -> iter_list tylist
 
     | RecordType(asc) -> string_of_record_type iter asc
 
-    | HorzCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | HorzCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] inline-cmd"
 
-    | VertCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | VertCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
-(*
-    | VertDetailedCommandType(tylist) ->
-        let slist = List.map iter tylist in
-        "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
-*)
-
-    | MathCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | MathCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
+
+
+and string_of_command_argument_type tyenv current_ht = function
+  | MandatoryArgumentType(ty) -> string_of_mono_type_sub tyenv current_ht ty
+  | OptionalArgumentType(ty)  ->
+      let strty = string_of_mono_type_sub tyenv current_ht ty in
+      begin
+        match ty with
+        | (_, ProductType(_))
+        | (_, FuncType(_))
+        | (_, OptFuncType(_))
+          -> "(" ^ strty ^  ")?"
+
+        | _ -> strty ^ "?"
+      end
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
@@ -206,9 +235,15 @@ and string_of_type_argument_list tyenv current_ht tyarglist =
         let (_, headmain) = head in
           begin
             match headmain with
-            | ( FuncType(_, _) | ProductType(_) (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
-              | ListType(_) | RefType(_) | VariantType(_ :: _, _) )         -> "(" ^ strhd ^ ")"
-            | _                                                             -> strhd
+            | FuncType(_, _)
+            | OptFuncType(_, _)
+            | ProductType(_)
+           (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
+            | ListType(_)
+            | RefType(_)
+            | VariantType(_ :: _, _)
+                -> "(" ^ strhd ^ ")"
+            | _ -> strhd
           end ^ " " ^ strtl
 
 
@@ -223,8 +258,11 @@ and string_of_mono_type_list tyenv current_ht tylist =
         let (_, headmain) = head in
         begin
           match headmain with
-          | ( ProductType(_) | FuncType(_, _) ) -> "(" ^ strhead ^ ")"
-          | _                                   -> strhead
+          | ProductType(_)
+          | FuncType(_, _)
+          | OptFuncType(_, _)
+              -> "(" ^ strhead ^ ")"
+          | _ -> strhead
         end ^
         begin
           match tail with
@@ -294,6 +332,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | _                              -> "OTHER"
 *)
 
+(*
 let rec string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
@@ -338,7 +377,7 @@ and string_of_utpat (_, pat) =
   | UTPVariable(varnm)      -> varnm
   | UTPAsVariable(varnm, p) -> "(" ^ (string_of_utpat p) ^ " as " ^ varnm ^ ")"
   | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_utpat p) ^ ")"
-
+*)
 
 let escape_letters str =
   let rec aux str index =

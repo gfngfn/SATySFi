@@ -76,7 +76,7 @@ let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
-let tCMD = (~! "cmd", HorzCommandType([tMATH]))
+let tCMD = (~! "cmd", HorzCommandType([MandatoryArgumentType(tMATH)]))
 
 let tMCSTY =
   let asc =
@@ -130,6 +130,9 @@ let tPAGEPARTS =
 let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 
 let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
+
+
+let option_type = tOPT
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =

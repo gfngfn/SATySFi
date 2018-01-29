@@ -351,6 +351,7 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
           end
 
       | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
+      | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(aux tydom, aux tycod))
       | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
       | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
       | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
@@ -358,9 +359,9 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
       | ListType(tysub)                   -> (rng, ListType(aux tysub))
       | RefType(tysub)                    -> (rng, RefType(aux tysub))
       | BaseType(_)                       -> (rng, tymain)
-      | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
-      | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
-      | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
+      | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
+      | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
+      | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
 (*
       | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))  (* will be deprecated *)
 *)
@@ -377,18 +378,18 @@ let rec type_argument_length tyargcons = List.length tyargcons
 let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
   let rec aux mnty =
     let (rng, mntymain) = mnty in
-    let iter = aux in
     let error tynm lenexp lenerr = raise (IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr)) in
     let tymainnew =
       match mntymain with
 
-      | MFuncType(mntydom, mntycod)      -> FuncType(iter mntydom, iter mntycod)
-      | MProductType(mntylist)           -> ProductType(List.map iter mntylist)
-      | MRecordType(mnasc)               -> RecordType(Assoc.map_value iter mnasc)
+      | MFuncType(mntydom, mntycod)      -> FuncType(aux mntydom, aux mntycod)
+      | MOptFuncType(mntydom, mntycod)   -> OptFuncType(aux mntydom, aux mntycod)
+      | MProductType(mntylist)           -> ProductType(List.map aux mntylist)
+      | MRecordType(mnasc)               -> RecordType(Assoc.map_value aux mnasc)
 
-      | MHorzCommandType(mntylist)       -> HorzCommandType(List.map iter mntylist)
-      | MVertCommandType(mntylist)       -> VertCommandType(List.map iter mntylist)
-      | MMathCommandType(mntylist)       -> MathCommandType(List.map iter mntylist)
+      | MHorzCommandType(mncmdargtylist) -> HorzCommandType(List.map aux_cmd mncmdargtylist)
+      | MVertCommandType(mncmdargtylist) -> VertCommandType(List.map aux_cmd mncmdargtylist)
+      | MMathCommandType(mncmdargtylist) -> MathCommandType(List.map aux_cmd mncmdargtylist)
 
       | MTypeName([], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
           begin
@@ -400,13 +401,13 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MTypeName(mntyarglist, tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
           error tynm 0 (List.length mntyarglist)
 
-      | MTypeName(mntyarg :: [], "list") -> ListType(iter mntyarg)
+      | MTypeName(mntyarg :: [], "list") -> ListType(aux mntyarg)
       | MTypeName(mntyarglist, "list")   -> error "list" 1 (List.length mntyarglist)
-      | MTypeName(mntyarg :: [], "ref")  -> RefType(iter mntyarg)
+      | MTypeName(mntyarg :: [], "ref")  -> RefType(aux mntyarg)
       | MTypeName(mntyarglist, "ref")    -> error "ref" 1 (List.length mntyarglist)
       | MTypeName(mntyarglist, tynm) ->
           let len = List.length mntyarglist in
-          let tyarglist = List.map iter mntyarglist in
+          let tyarglist = List.map aux mntyarglist in
           let find_in_variant_environment () =
             match find_type_definition_for_outer tyenv tynm with
             | None -> raise (UndefinedTypeName(rng, tynm))
@@ -414,7 +415,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
             | Some((tyid, Data(lenexp))) ->
                 if lenexp <> len then error tynm lenexp len else
                   let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
-                    VariantType(List.map iter mntyarglist, tyid)
+                    VariantType(List.map aux mntyarglist, tyid)
 
             | Some((tyid, Alias(bidlist, ptyscheme))) ->
                 let lenexp = List.length bidlist in
@@ -473,7 +474,12 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
                   end
             end
     in
-      (rng, tymainnew)
+    (rng, tymainnew)
+
+  and aux_cmd = function
+    | MMandatoryArgumentType(mnty) -> MandatoryArgumentType(aux mnty)
+    | MOptionalArgumentType(mnty)  -> OptionalArgumentType(aux mnty)
+
   in
   let ty = aux mnty in
   match tyargmode with
@@ -640,11 +646,12 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         match mtymain with
         | MTypeParam(varnm)           -> ()
         | MFuncType(mtydom, mtycod)   -> begin iter mtydom; iter mtycod; end
+        | MOptFuncType(mtydom, mtycod) -> begin iter mtydom; iter mtycod; end
         | MProductType(mtylist)       -> List.iter iter mtylist
         | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
-        | MHorzCommandType(mtylist)   -> List.iter iter mtylist
-        | MVertCommandType(mtylist)   -> List.iter iter mtylist
-        | MMathCommandType(mtylist)   -> List.iter iter mtylist
+        | MHorzCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
+        | MVertCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
+        | MMathCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
         | MTypeName(mtyarglist, tynm) ->
             if DependencyGraph.mem_vertex tynm dg then
               begin
@@ -822,9 +829,27 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
         (aux tyd1 tyd2) && (aux tyc1 tyc2)
           (* -- both domain and codomain are covariant -- *)
 
-    | (HorzCommandType(tyl1), HorzCommandType(tyl2))
-    | (VertCommandType(tyl1), VertCommandType(tyl2))
-    | (MathCommandType(tyl1), MathCommandType(tyl2))
+    | (OptFuncType(tyd1, tyc1), OptFuncType(tyd2, tyc2)) ->
+        (aux tyd1 tyd2) && (aux tyc1 tyc2)
+          (* -- both domain and codomain are covariant -- *)
+
+    | (HorzCommandType(catyl1), HorzCommandType(catyl2))
+    | (VertCommandType(catyl1), VertCommandType(catyl2))
+    | (MathCommandType(catyl1), MathCommandType(catyl2))
+      ->
+        begin
+          try
+            List.fold_left2 (fun b caty1 caty2 ->
+              match (caty1, caty2) with
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2))
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) )
+                  -> b && aux ty1 ty2
+              | _ -> false
+            ) true catyl1 catyl2
+          with
+          | Invalid_argument(_) -> false
+        end
+
     | (ProductType(tyl1), ProductType(tyl2))
       ->
         begin
