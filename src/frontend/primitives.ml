@@ -132,6 +132,9 @@ let tPAGEPARTSF = tPCINFO @-> tPAGEPARTS
 let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
 
 
+let option_type = tOPT
+
+
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = BoundID.fresh UniversalKind () in

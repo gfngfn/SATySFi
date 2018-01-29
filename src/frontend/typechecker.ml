@@ -435,6 +435,13 @@ let rec typecheck
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (eF, (rng, MathCommandType(tyarglst)))
 
+  | UTLambdaOptional(varrng, varnmctx, utast1) ->
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
+      let evid = EvalVarID.fresh varnmctx in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(Primitives.option_type beta), evid)) utast1 in
+        (Function([PatternBranch(PVariable(evid), e1)]), (rng, OptFuncType(beta, ty1)))
+
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
