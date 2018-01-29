@@ -52,16 +52,19 @@ let to_chunks ctx uchlst : line_break_chunk list =
     scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
 
 
-let pure_space_between_scripts size script1 script2 =
-  match (script1, script2) with
-  | (HanIdeographic    , Latin             )
-  | (Latin             , HanIdeographic    )
-  | (HiraganaOrKatakana, Latin             )
-  | (Latin             , HiraganaOrKatakana)
-    ->
-      Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
-        (* temporary; shold refer to the context for spacing information between two scripts *)
-  | _ -> None
+let pure_space_between_scripts size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
+  if is_open_punctuation lbc1 || is_close_punctuation lbc2 then
+    None
+  else
+    match (script1, script2) with
+    | (HanIdeographic    , Latin             )
+    | (Latin             , HanIdeographic    )
+    | (HiraganaOrKatakana, Latin             )
+    | (Latin             , HiraganaOrKatakana)
+      ->
+        Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
+          (* temporary; shold refer to the context for spacing information between two scripts *)
+    | _ -> None
 
 
 let space_width_info ctx : length_info =
@@ -181,7 +184,7 @@ let space_between_chunks info1 alw info2 : lb_box list =
   let badns = max ctx1.badness_space ctx2.badness_space in
   if not (script_equal script1 script2) then
     let size = Length.max ctx1.font_size ctx2.font_size in
-      match pure_space_between_scripts size script1 script2 with
+      match pure_space_between_scripts size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
           [discretionary_if_breakable alw badns lphb]
 
@@ -207,7 +210,7 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
   let (ctx2, script2, lbc2) = info2 in
   if not (script_equal script1 script2) then
     let size = Length.max ctx1.font_size ctx2.font_size in
-      match pure_space_between_scripts size script1 script2 with
+      match pure_space_between_scripts size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
           [lphb]
 

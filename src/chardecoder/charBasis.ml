@@ -115,7 +115,19 @@ type line_break_class =
 
 let is_ideographic_class = function
   | CJ | ID | JLOP | JLCP | JLHY | JLNS | JLMD | JLFS | JLCM | JLPL | JLSM
-    -> true
+      -> true
+  | _ -> false
+
+
+let is_open_punctuation = function
+  | OP | QU | JLOP
+      -> true
+  | _ -> false
+
+
+let is_close_punctuation = function
+  | CL | CP | QU | JLCP
+      -> true
   | _ -> false
 
 

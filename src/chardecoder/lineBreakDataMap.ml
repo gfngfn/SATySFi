@@ -52,9 +52,21 @@ let class_of_string _ s =
   | _     -> raise InputFileBroken
 
 
-(* temporary; should depend on the language of the context *)
+(* temporary; should depend on the language system of the context *)
 let line_break_class_overriding_list =
   [
+(*
+  (* -- U+0000..U+00FF -- *)
+    (0x00AB, OP  );  (* LEFT-POINTING DOUBLE ANGLE QUOTATION MARK  *)
+    (0x00BB, CP  );  (* RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK *)
+*)
+  (* -- U+2000..U+20FF -- *)
+    (0x2018, OP  );  (* LEFT SINGLE QUOTATION MARK             *)
+    (0x2019, CP  );  (* RIGHT SINGLE QUOTATION MARK            *)
+    (0x201B, OP  );  (* SINGLE HIGH-REVERSED-9 QUOTATION MARK  *)
+    (0x201C, OP  );  (* LEFT DOUBLE QUOTATION MARK             *)
+    (0x201D, CP  );  (* RIGHT DOUBLE QUOTATION MARK            *)
+    (0x201F, OP  );  (* DOUBLE HIGH-REVERSED-9 QUOTATION MARK  *)
   (* -- U+3000..U+30FF -- *)
     (0x3001, JLCM);  (* IDEOGRAPHIC COMMA                      *)
     (0x3002, JLFS);  (* IDEOGRAPHIC FULL STOP                  *)
