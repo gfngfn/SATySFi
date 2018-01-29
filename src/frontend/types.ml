@@ -744,35 +744,6 @@ let get_range (rng, _) = rng
 let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, tymain)
 
 
-let rec erase_range_of_type ((_, tymain) : mono_type) =
-  let iter = erase_range_of_type in
-  let newtymain =
-    match tymain with
-    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
-    | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
-    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
-    | ListType(tycont)                  -> ListType(iter tycont)
-    | RefType(tycont)                   -> RefType(iter tycont)
-    | _                                 -> tymain
-  in
-    (Range.dummy "erased", newtymain)
-
-
-and erase_range_of_kind (kd : kind) =
-  match kd with
-  | UniversalKind   -> UniversalKind
-  | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
-
-
-module BoundIDHashtbl = Hashtbl.Make(
-  struct
-    type t = BoundID.t
-    let equal = BoundID.eq
-    let hash = Hashtbl.hash
-  end)
-
-
 (* -- 'normalize_mono_type': eliminates 'Link(_)' -- *)
 let rec normalize_mono_type ty =
   let iter = normalize_mono_type in
@@ -807,6 +778,42 @@ let normalize_kind kd =
   match kd with
   | UniversalKind     -> kd
   | RecordKind(tyasc) -> RecordKind(Assoc.map_value normalize_mono_type tyasc)
+
+
+let rec erase_range_of_type (ty : mono_type) =
+  let iter = erase_range_of_type in
+  let tymainnew =
+    let (_, tymain) = normalize_mono_type ty in
+    match tymain with
+    | BaseType(_)                       -> tymain
+    | TypeVariable(_)                   -> tymain
+    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
+    | OptFuncType(tydom, tycod)         -> OptFuncType(iter tydom, iter tycod)
+    | ProductType(tylist)               -> ProductType(List.map iter tylist)
+    | RecordType(tyasc)                 -> RecordType(Assoc.map_value iter tyasc)
+    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
+    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
+    | ListType(tycont)                  -> ListType(iter tycont)
+    | RefType(tycont)                   -> RefType(iter tycont)
+    | HorzCommandType(tylist)           -> HorzCommandType(List.map iter tylist)
+    | VertCommandType(tylist)           -> VertCommandType(List.map iter tylist)
+    | MathCommandType(tylist)           -> MathCommandType(List.map iter tylist)
+  in
+    (Range.dummy "erased", tymainnew)
+
+
+and erase_range_of_kind (kd : kind) =
+  match kd with
+  | UniversalKind   -> UniversalKind
+  | RecordKind(asc) -> RecordKind(Assoc.map_value erase_range_of_type asc)
+
+
+module BoundIDHashtbl = Hashtbl.Make(
+  struct
+    type t = BoundID.t
+    let equal = BoundID.eq
+    let hash = Hashtbl.hash
+  end)
 
 
 let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) =
