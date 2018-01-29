@@ -434,22 +434,7 @@ let rec typecheck
       let (tyarglst, tyret) = flatten_type tyF in
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (eF, (rng, MathCommandType(tyarglst)))
-(*
-  | UTLambdaVertDetailed(varrng, varnmctx, utast1) ->  (* will be deprecated *)
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnmctx in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
-      let (tyarglst, tyret) = flatten_type ty1 in
-      let tyretreq =
-        (Range.dummy "lambda-vert-detailed-return", ProductType([
-          (Range.dummy "lambda-vert-detailed-1", BaseType(ContextType));
-          (Range.dummy "lambda-vert-detailed-2", BaseType(BoxColType));
-        ]))
-      in
-      let () = unify tyret tyretreq in
-        (LambdaVertDetailed(evid, e1), (rng, VertDetailedCommandType(tyarglst)))
-*)
+
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in

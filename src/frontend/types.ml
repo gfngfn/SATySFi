@@ -306,6 +306,7 @@ and untyped_abstract_tree_main =
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
+  | UTLambdaOptional       of Range.t * var_name * untyped_abstract_tree
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
@@ -603,10 +604,6 @@ and abstract_tree =
 
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaVert                  of EvalVarID.t * abstract_tree
-(*
-  | LambdaVertDetailed          of EvalVarID.t * abstract_tree
-  | LambdaVertDetailedWithEnv   of EvalVarID.t * abstract_tree * environment
-*)
 
   | HorzLex                     of abstract_tree * abstract_tree
   | VertLex                     of abstract_tree * abstract_tree
@@ -797,9 +794,7 @@ let rec normalize_mono_type ty =
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
-(*
-    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))  (* will be deprecated *)
-*)
+
 
 let normalize_poly_type (Poly(ty)) = Poly(normalize_mono_type ty)
 
@@ -847,9 +842,6 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
-(*
-    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))
-*)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
 
   and instantiate_kind kd =
@@ -894,9 +886,6 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | BaseType(_)                       -> ty
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
-(*
-    | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map iter tylist))
-*)
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
 
   and generalize_kind kd =
@@ -1149,7 +1138,7 @@ let rec string_of_mono_type_basic tystr =
     | SynonymType(tyarglist, tyid, tyreal) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
 
-    | FuncType(tydom, tycod)    ->
+    | FuncType(tydom, tycod) ->
         let strdom = string_of_mono_type_basic tydom in
         let strcod = string_of_mono_type_basic tycod in
           begin match tydom with
@@ -1159,7 +1148,7 @@ let rec string_of_mono_type_basic tystr =
           | _ -> strdom
           end ^ " ->" ^ qstn ^ " " ^ strcod
 
-    | OptFuncType(tydom, tycod)    ->
+    | OptFuncType(tydom, tycod) ->
         let strdom = string_of_mono_type_basic tydom in
         let strcod = string_of_mono_type_basic tycod in
           "?" ^
@@ -1170,7 +1159,7 @@ let rec string_of_mono_type_basic tystr =
           | _ -> strdom
           end ^ " ->" ^ qstn ^ " " ^ strcod
 
-    | ListType(tycont)          ->
+    | ListType(tycont) ->
         let strcont = string_of_mono_type_basic tycont in
         let (_, tycontmain) = tycont in
           begin match tycontmain with
@@ -1183,7 +1172,7 @@ let rec string_of_mono_type_basic tystr =
           | _ -> strcont
           end ^ " list" ^ qstn
 
-    | RefType(tycont)           ->
+    | RefType(tycont) ->
         let strcont = string_of_mono_type_basic tycont in
         let (_, tycontmain) = tycont in
           begin match tycontmain with
@@ -1196,8 +1185,10 @@ let rec string_of_mono_type_basic tystr =
           | _ -> strcont
           end ^ " ref" ^ qstn
 
-    | ProductType(tylist)       -> string_of_mono_type_list_basic tylist
-    | TypeVariable(tvref)       ->
+    | ProductType(tylist) ->
+        string_of_mono_type_list_basic tylist
+
+    | TypeVariable(tvref) ->
         begin
           match !tvref with
           | Link(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
@@ -1205,18 +1196,17 @@ let rec string_of_mono_type_basic tystr =
           | Bound(bid) -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ qstn
         end
 
-    | RecordType(asc)           -> string_of_record_type string_of_mono_type_basic asc
+    | RecordType(asc) ->
+        string_of_record_type string_of_mono_type_basic asc
+
     | HorzCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "[" ^ (String.concat "; " slist) ^ "] horz-command"
+
     | VertCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "[" ^ (String.concat "; " slist) ^ "] vert-command"
-(*
-    | VertDetailedCommandType(tylist)   ->
-        let slist = List.map string_of_mono_type_basic tylist in
-        "(" ^ (String.concat ", " slist) ^ ") vert-detailed-command"
-*)
+
     | MathCommandType(tylist)   ->
         let slist = List.map string_of_mono_type_basic tylist in
         "[" ^ (String.concat "; " slist) ^ "] math-command"

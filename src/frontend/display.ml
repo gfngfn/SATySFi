@@ -204,12 +204,6 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
-(*
-    | VertDetailedCommandType(tylist) ->
-        let slist = List.map iter tylist in
-        "[" ^ (String.concat "; " slist) ^ "] vert-detailed-command"  (* will be deprecated *)
-*)
-
     | MathCommandType(tylist) ->
         let slist = List.map iter tylist in
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
