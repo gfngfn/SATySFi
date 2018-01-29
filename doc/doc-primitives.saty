@@ -195,15 +195,15 @@ document (|
         パディング指定\code{${p}}，装飾4つ組指定\code{${ds}}，
         内容\code{${ib}}の，途中で行分割可能なフレームを返す．
       }
-      +commands [`embedded-block-top`; `embedded-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
-        \code{embedded-block-top ${ctx} ${l} ${k}}
+      +commands [`embed-block-top`; `embed-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
+        \code{embed-block-top ${ctx} ${l} ${k}}
         で文脈\code{${ctx}}をテキスト幅に関して\code{${l}}に変更して
         継続\code{${k}}に渡し，
         その結果のブロックボックス列をインラインボックス列内に埋め込む．
         高さと深さは中身の最初の行のベースラインが外のベースラインと一致するように決められる．
-        \code{embedded-block-bottom}は
+        \code{embed-block-bottom}は
         最後の行のベースラインが外のベースラインと一致することを除いて
-        \code{embedded-block-top}と同様．
+        \code{embed-block-top}と同様．
       }
       +commands [`line-stack-top`; `line-stack-bottom`] ((tLIST tIB) --> tIB) {
         複数のインラインボックス列をブロック方向に積む．全体の幅は最も長い行の幅となる．
@@ -345,14 +345,19 @@ document (|
         外部の画像ファイルを読み込んで用いるためのプリミティヴを（まだ少数ながら）用意してある．
         現状ではPDFとJPEGのみをサポートしている．
       }
-      +command (`register-pdf-image`) (tS --> (tI --> tIMG)) {
+      +command (`load-pdf-image`) (tS --> (tI --> tIMG)) {
         外部PDFファイルのパスとページ番号\code{${n}}（最初のページを1ページと数える）を受け取り，そのPDFの${n}ページ目を
         画像情報として返す．
+        指定されたファイルが存在しない場合の動作は未定義．
+        現在の実装では実行時エラーとなり処理を中止する．
         \subject-to-change;
       }
-      +command (`register-image`) (tS --> tIMG) {
+      +command (`load-image`) (tS --> tIMG) {
         外部の画像ファイルのパスを受け取り，その内容を画像情報として返す．
-        現在はJPEGファイルのみをサポートする．
+        現状では色空間がグレイスケールまたはRGBのJPEGファイルのみをサポートする．
+        指定されたファイルが存在しない場合の動作は未定義．
+        現在の実装では実行時エラーとなり処理を中止する．
+        \subject-to-change;
       }
       +command (`use-image-by-width`) (tIMG --> (tL --> tIB)) {
         \code{use-image-by-width ${img} ${w}}で

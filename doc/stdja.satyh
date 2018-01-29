@@ -307,7 +307,7 @@ let title-deco =
              if pn < pageno then
                let bbs =
                  line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
-                   (inline-fil ++ embedded-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                   (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
                      % 'ctx' is a dummy context
                in
                  (bbacc +++ bbs, acc)

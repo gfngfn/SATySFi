@@ -43,7 +43,7 @@ let tLIST m =
 
 
 let-block ctx +centered-image wid srcpath =
-  let img = register-image srcpath in
+  let img = load-image srcpath in
     line-break true true ctx (inline-fil ++ use-image-by-width img wid ++ inline-fil)
 
 let-rec repeat-inline ibacc n ib =
