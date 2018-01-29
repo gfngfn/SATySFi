@@ -432,12 +432,39 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
-
+(*
   | Typechecker.InvalidArityOfCommand(rng, lenreq, lenreal) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("this command expects " ^ (string_of_int lenreq) ^ " argument(s),");
         NormalLine("but here is applied to " ^ (string_of_int lenreal) ^ " argument(s).");
+      ]
+*)
+  | Typechecker.TooManyArgument(rngcmdapp, tyenv, tycmd) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
+        NormalLine("too many argument(s);");
+        NormalLine("the command has type");
+        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ".")
+      ]
+
+  | Typechecker.NeedsMoreArgument(rngcmdapp, tyenv, tycmd, tyreq) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
+        NormalLine("needs more mandatory argument(s);");
+        NormalLine("the command has type");
+        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ",");
+        NormalLine("and another argument of type");
+        DisplayLine(Display.string_of_mono_type tyenv tyreq);
+        NormalLine("is needed.");
+      ]
+
+  | Typechecker.InvalidOptionalCommandArgument(tyenv, tycmd, rngarg) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rngarg) ^ ":");
+        NormalLine("invalid application of an optional argument;");
+        NormalLine("the command has type");
+        DisplayLine((Display.string_of_mono_type tyenv tycmd) ^ ".");
       ]
 
   | Typechecker.UnknownUnitOfLength(rng, unitnm) ->

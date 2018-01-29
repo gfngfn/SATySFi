@@ -7,12 +7,14 @@ exception UndefinedVariable     of Range.t * var_name
 exception UndefinedConstructor  of Range.t * var_name
 exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type
-exception InvalidArityOfCommand of Range.t * int * int
 exception UnknownUnitOfLength   of Range.t * length_unit_name
 exception HorzCommandInMath     of Range.t
 exception MathCommandInHorz     of Range.t
 exception BreaksValueRestriction of Range.t
 exception MultiplePatternVariable of Range.t * Range.t * var_name
+exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
+exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
+exception TooManyArgument                of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -754,8 +756,48 @@ let rec typecheck
         (HorzLex(ectx, ev), (rng, BaseType(BoxColType)))
 
 
-and typecheck_command_arguments qtfbl lev tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylistreq : command_argument_type list) : abstract_tree list =
-  failwith "typecheck_command_arguments" (* TEMPORARY *)
+and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) qtfbl lev tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : command_argument_type list) : abstract_tree list =
+  let rec aux eacc utcmdarglst cmdargtylst =
+    match (utcmdarglst, cmdargtylst) with
+    | ([], _) ->
+        let eaccnew =
+          cmdargtylst |> List.fold_left (fun eacc cmdargty ->
+            match cmdargty with
+            | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tyenv, tycmd, ty))
+            | OptionalArgumentType(_)   -> Alist.extend eacc (Value(Constructor("None", UnitConstant)))
+          ) eacc
+        in
+          Alist.to_list eaccnew
+
+    | (_ :: _, []) ->
+        raise (TooManyArgument(rngcmdapp, tyenv, tycmd))
+
+    | (UTMandatoryArgument(_) :: _, OptionalArgumentType(_) :: cmdargtytail) ->
+        let enone = Value(Constructor("None", UnitConstant)) in
+          aux (Alist.extend eacc enone) utcmdarglst cmdargtytail
+
+    | (UTMandatoryArgument(utastA) :: utcmdargtail, MandatoryArgumentType(tyreq) :: cmdargtytail) ->
+        let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
+        let () = unify_ tyenv tyA tyreq in
+          aux (Alist.extend eacc eA) utcmdargtail cmdargtytail
+
+    | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
+        let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
+        let () = unify_ tyenv tyA tyreq in
+        let esome = NonValueConstructor("Some", eA) in
+          aux (Alist.extend eacc esome) utcmdargtail cmdargtytail
+
+    | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
+        raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
+
+    | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
+        let enone = Value(Constructor("None", UnitConstant)) in
+          aux (Alist.extend eacc enone) utcmdargtail cmdargtytail
+
+    | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
+        raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
+  in
+  aux Alist.empty utcmdarglst cmdargtylst
 
 
 and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
@@ -780,11 +822,12 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
           BackendMathSuperscript(astB, astS)
 
     | UTMCommand(utastcmd, utcmdarglst) ->
-        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+        let (ecmd, tycmd) = typecheck qtfbl lev tyenv utastcmd in
+        let (_, tycmdmain) = tycmd in
         begin
           match tycmdmain with
           | MathCommandType(cmdargtylstreq) ->
-              let elstarg = typecheck_command_arguments qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+              let elstarg = typecheck_command_arguments tycmd rng qtfbl lev tyenv utcmdarglst cmdargtylstreq in
 (*
               let trilst =
                 utmatharglst |> List.map (function
@@ -877,13 +920,21 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
     | [] ->
         List.rev acc
 
-    | (_, UTInputVertEmbedded(utastcmd, utcmdarglst)) :: tail ->
-        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+    | (_, UTInputVertEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
+        let (ecmd, tycmd) = typecheck qtfbl lev tyenv utastcmd in
+        let (_, tycmdmain) = tycmd in
         begin
           match tycmdmain with
 
           | VertCommandType(cmdargtylstreq) ->
-              let elstarg = typecheck_command_arguments qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+              let rngcmdapp =
+                match List.rev utcmdarglst with
+                | []                                 -> rngcmd
+                | UTMandatoryArgument((rng, _)) :: _ -> Range.unite rngcmd rng
+                | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
+                | UTOmission(rng) :: _               -> Range.unite rngcmd rng
+              in
+              let elstarg = typecheck_command_arguments tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
 (*
               let trilst =
                 List.map (function
@@ -934,13 +985,21 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
     match lst with
     | [] -> Alist.to_list acc
 
-    | (_, UTInputHorzEmbedded(utastcmd, utcmdarglst)) :: tail ->
-        let (ecmd, (_, tycmdmain)) = typecheck qtfbl lev tyenv utastcmd in
+    | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
+        let rngcmdapp =
+          match List.rev utcmdarglst with
+          | []                                 -> rngcmd
+          | UTMandatoryArgument((rng, _)) :: _ -> Range.unite rngcmd rng
+          | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
+          | UTOmission(rng) :: _               -> Range.unite rngcmd rng
+        in
+        let (ecmd, tycmd) = typecheck qtfbl lev tyenv utastcmd in
+        let (_, tycmdmain) = tycmd in
         begin
           match tycmdmain with
 
           | HorzCommandType(cmdargtylstreq) ->
-              let elstarg = typecheck_command_arguments qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+              let elstarg = typecheck_command_arguments tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
 (*
               let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
               let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
