@@ -162,10 +162,14 @@ and manual_type_main =
   | MProductType     of manual_type list
   | MRecordType      of manual_type Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
-  | MHorzCommandType of manual_type list
-  | MVertCommandType of manual_type list
-  | MMathCommandType of manual_type list
+  | MHorzCommandType of manual_command_argument_type list
+  | MVertCommandType of manual_command_argument_type list
+  | MMathCommandType of manual_command_argument_type list
 [@@deriving show]
+
+and manual_command_argument_type =
+  | MMandatoryArgumentType of manual_type
+  | MOptionalArgumentType  of manual_type
 
 type manual_kind =
   | MUniversalKind
@@ -234,9 +238,13 @@ and mono_type_main =
   | VariantType     of (mono_type list) * TypeID.t
   | RecordType      of mono_type Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
-  | HorzCommandType of mono_type list
-  | VertCommandType of mono_type list
-  | MathCommandType of mono_type list
+  | HorzCommandType of command_argument_type list
+  | VertCommandType of command_argument_type list
+  | MathCommandType of command_argument_type list
+
+and command_argument_type =
+  | MandatoryArgumentType of mono_type
+  | OptionalArgumentType  of mono_type
 
 and poly_type =
   | Poly of mono_type
@@ -274,13 +282,13 @@ type untyped_letrec_binding =
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
   | UTInputHorzText         of string
-  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
 and untyped_input_vert_element_main =
-  | UTInputVertEmbedded of untyped_abstract_tree * untyped_abstract_tree list
+  | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
   | UTInputVertContent  of untyped_abstract_tree
 
 and 'a untyped_path_component =
@@ -412,9 +420,14 @@ and untyped_math_main =
   | UTMChar        of string
   | UTMSuperScript of untyped_math * untyped_math
   | UTMSubScript   of untyped_math * untyped_math
-  | UTMCommand     of untyped_abstract_tree * untyped_abstract_tree list
+  | UTMCommand     of untyped_abstract_tree * untyped_command_argument list
   | UTMList        of untyped_math list
   | UTMEmbed       of untyped_abstract_tree
+
+and untyped_command_argument =
+  | UTMandatoryArgument of untyped_abstract_tree
+  | UTOptionalArgument  of untyped_abstract_tree
+  | UTOmission          of Range.t
 [@@deriving show { with_path = false; }]
 
 type untyped_letrec_pattern_branch =
@@ -744,6 +757,16 @@ let get_range (rng, _) = rng
 let overwrite_range_of_type ((_, tymain) : mono_type) (rng : Range.t) = (rng, tymain)
 
 
+let lift_argument_type f = function
+  | MandatoryArgumentType(ty) -> MandatoryArgumentType(f ty)
+  | OptionalArgumentType(ty)  -> OptionalArgumentType(f ty)
+
+
+let lift_manual_common f = function
+  | MMandatoryArgumentType(mnty) -> f mnty
+  | MOptionalArgumentType(mnty)  -> f mnty
+
+
 (* -- 'normalize_mono_type': eliminates 'Link(_)' -- *)
 let rec normalize_mono_type ty =
   let iter = normalize_mono_type in
@@ -766,9 +789,9 @@ let rec normalize_mono_type ty =
     | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
     | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
 
 
 let normalize_poly_type (Poly(ty)) = Poly(normalize_mono_type ty)
@@ -795,9 +818,9 @@ let rec erase_range_of_type (ty : mono_type) =
     | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
-    | HorzCommandType(tylist)           -> HorzCommandType(List.map iter tylist)
-    | VertCommandType(tylist)           -> VertCommandType(List.map iter tylist)
-    | MathCommandType(tylist)           -> MathCommandType(List.map iter tylist)
+    | HorzCommandType(tylist)           -> HorzCommandType(List.map (lift_argument_type iter) tylist)
+    | VertCommandType(tylist)           -> VertCommandType(List.map (lift_argument_type iter) tylist)
+    | MathCommandType(tylist)           -> MathCommandType(List.map (lift_argument_type iter) tylist)
   in
     (Range.dummy "erased", tymainnew)
 
@@ -851,9 +874,9 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(_)                       -> ty
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map aux tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map aux tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map aux tylist))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
 
   and instantiate_kind kd =
     match kd with
@@ -895,9 +918,9 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(_)                       -> ty
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map iter tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map iter tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map iter tylist))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
 
   and generalize_kind kd =
     match kd with
@@ -1210,17 +1233,22 @@ let rec string_of_mono_type_basic tystr =
     | RecordType(asc) ->
         string_of_record_type string_of_mono_type_basic asc
 
-    | HorzCommandType(tylist)   ->
-        let slist = List.map string_of_mono_type_basic tylist in
+    | HorzCommandType(tylist) ->
+        let slist = List.map string_of_command_argument_type tylist in
         "[" ^ (String.concat "; " slist) ^ "] horz-command"
 
     | VertCommandType(tylist)   ->
-        let slist = List.map string_of_mono_type_basic tylist in
+        let slist = List.map string_of_command_argument_type tylist in
         "[" ^ (String.concat "; " slist) ^ "] vert-command"
 
     | MathCommandType(tylist)   ->
-        let slist = List.map string_of_mono_type_basic tylist in
+        let slist = List.map string_of_command_argument_type tylist in
         "[" ^ (String.concat "; " slist) ^ "] math-command"
+
+
+and string_of_command_argument_type = function
+  | MandatoryArgumentType(ty) -> string_of_mono_type_basic ty
+  | OptionalArgumentType(ty)  -> "?" ^ (string_of_mono_type_basic ty)
 
 
 and string_of_type_argument_list_basic tyarglist =
@@ -1281,6 +1309,7 @@ and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
 
 let rec string_of_manual_type (_, mtymain) =
   let iter = string_of_manual_type in
+  let iter_cmd = string_of_manual_command_argument_type in
   match mtymain with
   | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
   | MTypeParam(tpnm)          -> "'" ^ tpnm
@@ -1288,6 +1317,11 @@ let rec string_of_manual_type (_, mtymain) =
   | MOptFuncType(mtydom, mtycod) -> "?" ^ (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
-  | MHorzCommandType(mtylst)  -> "[" ^ (String.concat "; " (List.map iter mtylst)) ^ "] inline-cmd"
-  | MVertCommandType(mtylst)  -> "[" ^ (String.concat "; " (List.map iter mtylst)) ^ "] block-cmd"
-  | MMathCommandType(mtylst)  -> "[" ^ (String.concat "; " (List.map iter mtylst)) ^ "] math-cmd"
+  | MHorzCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] inline-cmd"
+  | MVertCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] block-cmd"
+  | MMathCommandType(mncatylst) -> "[" ^ (String.concat "; " (List.map iter_cmd mncatylst)) ^ "] math-cmd"
+
+
+and string_of_manual_command_argument_type = function
+  | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
+  | MOptionalArgumentType(mnty)  -> "?" ^ string_of_manual_type mnty

@@ -76,7 +76,7 @@ let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
-let tCMD = (~! "cmd", HorzCommandType([tMATH]))
+let tCMD = (~! "cmd", HorzCommandType([MandatoryArgumentType(tMATH)]))
 
 let tMCSTY =
   let asc =

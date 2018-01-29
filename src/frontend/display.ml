@@ -94,6 +94,7 @@ module GeneralIDHashTable
 
 let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : mono_type) =
   let iter = string_of_mono_type_sub tyenv current_ht in
+  let iter_cmd  = string_of_command_argument_type tyenv current_ht in
   let iter_args = string_of_type_argument_list tyenv current_ht in
   let iter_list = string_of_mono_type_list tyenv current_ht in
     match tymain with
@@ -196,17 +197,22 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
 
     | RecordType(asc) -> string_of_record_type iter asc
 
-    | HorzCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | HorzCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] inline-cmd"
 
-    | VertCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | VertCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] block-cmd"
 
-    | MathCommandType(tylist) ->
-        let slist = List.map iter tylist in
+    | MathCommandType(cmdargtylist) ->
+        let slist = List.map iter_cmd cmdargtylist in
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
+
+
+and string_of_command_argument_type tyenv current_ht = function
+  | MandatoryArgumentType(ty) -> string_of_mono_type_sub tyenv current_ht ty
+  | OptionalArgumentType(ty)  -> "?" ^ (string_of_mono_type_sub tyenv current_ht ty)
 
 
 and string_of_type_argument_list tyenv current_ht tyarglist =
@@ -317,6 +323,7 @@ let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
   | _                              -> "OTHER"
 *)
 
+(*
 let rec string_of_utiv (_, utivmain) =
   match utivmain with
   | UTInputVertEmbedded(utastcmd, utastlst) ->
@@ -361,7 +368,7 @@ and string_of_utpat (_, pat) =
   | UTPVariable(varnm)      -> varnm
   | UTPAsVariable(varnm, p) -> "(" ^ (string_of_utpat p) ^ " as " ^ varnm ^ ")"
   | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_utpat p) ^ ")"
-
+*)
 
 let escape_letters str =
   let rec aux str index =
