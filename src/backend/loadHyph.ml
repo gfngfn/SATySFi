@@ -154,3 +154,66 @@ let main (satysfi_root_dir : dir_path) (filename : file_path) : t =
 
 
 let empty = (ExceptionMap.empty, [])
+
+
+let match_prefix (pairlst : (Uchar.t * number) list) (clst : (Uchar.t * number ref) list) : unit =
+  let rec aux acc pairlst clst =
+  match (pairlst, clst) with
+  | (_ :: _, []) ->
+      ()
+
+  | ([], _) ->
+      acc |> Alist.to_list |> List.iter (fun (numref, num) -> numref := max (!numref) num)
+
+  | ((uchp, num) :: pairtail, (uchw, numref) :: ctail) ->
+      if Uchar.equal uchp uchw then
+        aux (Alist.extend acc (numref, num)) pairtail ctail
+      else
+        ()
+  in
+    aux Alist.empty pairlst clst
+
+
+let rec match_every pairlst clst =
+  match clst with
+  | [] ->
+      ()
+
+  | _ :: ctail ->
+      match_prefix pairlst clst;
+      match_every pairlst ctail
+
+
+let make_fraction fracacc =
+  fracacc |> Alist.to_list
+
+
+(* --
+   'lookup_patterns':
+     determines hyphen pattern of the given word.
+     this implemenmtation is currently very inefficient. -- *)
+let lookup_patterns (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t list) list =
+  let clst = uchlst |> List.map (fun uch -> (uch, ref 0)) in
+  let () =
+    patlst |> List.iter (fun (beginning, pairlst, final) ->
+      match beginning with
+      | TopOfWord          -> match_prefix pairlst clst
+      | ArbitraryBeginning -> match_every pairlst clst
+    )
+  in
+  let (acc, fracacc) =
+    clst |> List.fold_left (fun (acc, fracacc) (uch, numref) ->
+      if (!numref) mod 2 = 1 then
+        let sfrac = make_fraction (Alist.extend fracacc uch) in
+          (Alist.extend acc sfrac, Alist.empty)
+      else
+        (acc, Alist.extend fracacc uch)
+    ) (Alist.empty, Alist.empty)
+  in
+    Alist.extend acc (make_fraction fracacc) |> Alist.to_list
+
+
+let lookup ((excpmap, patlst) : t) (uchlst : Uchar.t list) : (Uchar.t list) list =
+  match excpmap |> ExceptionMap.find_opt (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) with
+  | Some(sfraclst) -> sfraclst |> List.map (fun sfrac -> InternalText.to_uchar_list (InternalText.of_utf8 sfrac))
+  | None           -> lookup_patterns patlst uchlst

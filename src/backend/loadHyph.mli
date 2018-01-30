@@ -16,3 +16,5 @@ type t
 val empty : t
 
 val main : dir_path -> file_path -> t
+
+val lookup : t -> Uchar.t list -> (Uchar.t list) list

@@ -480,6 +480,7 @@ let get_initial_context wid =
   let open HorzBox in
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
+      hyphen_badness         = 100;
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
       math_font              = "lmodern";  (* TEMPORARY *)

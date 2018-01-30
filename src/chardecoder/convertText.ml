@@ -1,4 +1,5 @@
 
+open MyUtil
 open LengthInterface
 open HorzBox
 open CharBasis
@@ -125,7 +126,7 @@ let quarterwidth_kern ctx script : lb_box =
     LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
 
 
-let breakable_space ctx : lb_box =
+let breakable_space ctx () : lb_box =
   let dscrid = DiscretionaryID.fresh () in
     LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], [], [])
 
@@ -134,14 +135,33 @@ let unbreakable_space ctx : lb_box =
     LBPure(pure_space ctx)
 
 
-(* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
-let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
+let inner_string_pure (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 
-let discretionary_if_breakable alw badns lphb =
+let soft_hyphen ctx script () : lb_box =
+  let lphb_hyphen = inner_string_pure ctx script [Uchar.of_char '-'] in
+  let dscrid = DiscretionaryID.fresh () in
+    LBDiscretionary(ctx.hyphen_badness, dscrid, [], [lphb_hyphen], [])
+
+
+(* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
+let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_box list =
+  let hsinfo = get_string_info ctx script in
+  let uchlstlst = LoadHyph.lookup ctx.hyphen_dictionary uchlst in
+  let lbhyphenf = soft_hyphen ctx script in
+  uchlstlst |> list_fold_adjacent (fun lbacc uchlst _ optnext ->
+    let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+    let lbfrac = LBPure(LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))) in
+      match optnext with
+      | None    -> Alist.extend lbacc lbfrac
+      | Some(_) -> Alist.extend (Alist.extend lbacc lbfrac) (lbhyphenf ())
+  ) Alist.empty |> Alist.to_list
+
+
+let discretionary_if_breakable alw badns lphb () =
   match alw with
   | AllowBreak ->
       let dscrid = DiscretionaryID.fresh () in
@@ -186,20 +206,20 @@ let space_between_chunks info1 alw info2 : lb_box list =
     let size = Length.max ctx1.font_size ctx2.font_size in
       match pure_space_between_scripts size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
-          [discretionary_if_breakable alw badns lphb]
+          [discretionary_if_breakable alw badns lphb ()]
 
       | None ->
         (* -- if there is no space between scripts -- *)
           begin
             match pure_space_between_classes info1 info2 with
-            | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2)]
-            | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
+            | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
+            | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
           end
   else
   (* -- if scripts are the same -- *)
     match pure_space_between_classes info1 info2 with
-    | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2)]
-    | Some(lphb) -> [discretionary_if_breakable alw badns lphb]
+    | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
+    | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
 
 (*
   LBPure(fixed_string ctx script [Uchar.of_int (Char.code 'A')])
@@ -229,7 +249,7 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
 
 (* -- 'ideographic_single': converts single CJK character, not depending on adjacent characters -- *)
 let ideographic_single ctx script lbc uchlst =
-  let lphbraw = LBPure(inner_string ctx script uchlst) in
+  let lphbraw = LBPure(inner_string_pure ctx script uchlst) in
   let hwkern = halfwidth_kern ctx script in
   let qwkern = quarterwidth_kern ctx script in
     match lbc with
@@ -280,14 +300,14 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
         let (opt, lhblstmain) =
           match chunkmain with
           | Space ->
-              (AccNone, [breakable_space ctx])
+              (AccNone, [breakable_space ctx ()])
 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
 
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alwnext) ->
               let opt = AccSome(((ctx, script, lbclast), alwnext)) in
-              let lhblststr = [LBPure(inner_string ctx script uchlst)] in
+              let lhblststr = inner_string ctx script uchlst in
               begin
                 match optprev with
                 | AccInitial ->
@@ -357,7 +377,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
 
           | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
               let opt = AccSome(((ctx, script, lbclast), alw)) in
-              let lphblstmain = [inner_string ctx script uchlst] in
+              let lphblstmain = [inner_string_pure ctx script uchlst] in
               begin
                 match optprev with
                 | AccInitial ->
@@ -375,7 +395,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
 
           | IdeographicChunk(script, lbc, uch, alw) ->
               let opt = AccSome(((ctx, script, lbc), alw)) in
-              let lphblstmain = [inner_string ctx script [uch]] in
+              let lphblstmain = [inner_string_pure ctx script [uch]] in
               begin
                 match optprev with
                 | AccInitial ->

@@ -1,21 +1,28 @@
 
-type t = Beginning | Middle of int | Final
+type t =
+  | Beginning
+  | Middle of int
+  | Final
 
 
 let current_id = ref 0
 
+
 let beginning = Beginning
+
 
 let final = Final
 
+
 let initialize () =
+  print_endline "DiscretionaryID> INITIALIZE";  (* for debug  *)
   begin current_id := 0 ; end
 
+
 let fresh () =
-  begin
-    incr current_id ;
-      Middle(!current_id)
-  end
+  incr current_id;
+  Middle(!current_id)
+
 
 let equal did1 did2 =
   match (did1, did2) with
@@ -24,12 +31,15 @@ let equal did1 did2 =
   | (Final, Final)           -> true
   | _                        -> false
 
+
 let show did =
   match did with
   | Beginning -> "<beginning>"
   | Final     -> "<final>"
   | Middle(i) -> "<" ^ (string_of_int i) ^ ">"
 
+
 let hash = Hashtbl.hash
+
 
 let compare = compare

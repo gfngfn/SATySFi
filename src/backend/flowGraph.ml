@@ -1,9 +1,9 @@
 
 let print_for_debug msg =
-  ()
 (*
-  print_endline msg
+  print_endline msg;
 *)
+  ()
 
 module Heap = Core.Heap.Removable
 
@@ -33,6 +33,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
     type weight = Weight.t
     exception UndefinedSourceVertex
     exception UndefinedDestinationVertex
+    exception AlreadyDefinedVertex
     val create : unit -> t
     val add_vertex : t -> vertex -> unit
     val add_edge : t -> vertex -> vertex -> weight -> unit
@@ -57,8 +58,16 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
     exception UndefinedSourceVertex
     exception UndefinedDestinationVertex
+    exception AlreadyDefinedVertex
 
     type t = (weight DestinationTable.t * ((vertex Heap.Elt.t) option) ref * label ref) MainTable.t
+      (* --
+         the main table maps each vertex to
+         (1) its destination table,
+         (2) its representation in the heap, and
+         (3) its label that indicates
+               the reachability and the distance from the source vertex
+         -- *)
 
     let ( +@ ) = Weight.add
 
@@ -66,18 +75,20 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
     let weight_zero = Weight.zero
 
-    let equal_vertex = Vertex.equal
-
 
     let create () =
       MainTable.create 32
 
 
     let add_vertex (grph : t) (vtx : vertex) : unit =
-      let dstbl = DestinationTable.create 32 in
-      let vheref = ref None in
-      let lblref = ref Infinite in
-        MainTable.add grph vtx (dstbl, vheref, lblref)
+      print_for_debug ("addV " ^ (Vertex.show vtx));
+      if MainTable.mem grph vtx then
+        raise (AlreadyDefinedVertex)
+      else
+        let dstbl = DestinationTable.create 32 in
+        let vheref = ref None in
+        let lblref = ref Infinite in
+          MainTable.add grph vtx (dstbl, vheref, lblref)
 
 
     let add_edge (grph : t) (vtx1 : vertex) (vtx2 : vertex) (wgt : weight) : unit =
@@ -89,7 +100,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
           if not (MainTable.mem grph vtx2) then
             raise UndefinedDestinationVertex
           else
-          let () = print_for_debug ("add (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
+          let () = print_for_debug ("addE (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
             DestinationTable.add dstbl1 vtx2 wgt
 
 
@@ -97,6 +108,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
       match (MainTable.find_opt grph vtx1, MainTable.find_opt grph vtx2) with
       | (None, _)
       | (_, None)
+        (* -- when either 'vtx1' or 'vtx2' does not belong to 'grph'; it cannot happen -- *)
           -> assert false
 
       | (Some((_, _, lblref1)), Some((_, _, lblref2))) ->
@@ -110,9 +122,12 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
 
-      let rec backtrack (acc : vertex Alist.t) (vtx : vertex) =
+      let rec backtrack (acc : vertex Alist.t) (vtx : vertex) : (vertex list) option =
         match MainTable.find_opt grph vtx with
-        | None -> assert false
+        | None ->
+          (* -- when the vertex 'vtx' does not belong to 'grph'; it cannot happen -- *)
+            assert false
+
         | Some((_, _, lblref)) ->
             begin
               match !lblref with
@@ -124,18 +139,20 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
       let hp : vertex Heap.t = Heap.create ~cmp:(compare_vertex grph) () in
 
-      let rec aux () =
+      let rec aux () : (vertex list) option =
         match Heap.pop hp with
-        | None       -> None
+        | None ->
+            None
+
         | Some(vtxP) ->
             let () = print_for_debug ("see " ^ (Vertex.show vtxP)) in (* for debug *)
-              if equal_vertex vtxP vtxT then
-                let pathopt = backtrack Alist.empty vtxT in
-                  pathopt
+              if Vertex.equal vtxP vtxT then
+                backtrack Alist.empty vtxT
               else
                 let (dstblP, vherefP, vheP, lblrefP) =
                   match MainTable.find_opt grph vtxP with
                   | None ->
+                    (* -- when 'vtxP' does not belong to 'grph'; it cannot happen -- *)
                       assert false
 
                   | Some((dstblP, vherefP, lblrefP)) ->
@@ -146,7 +163,8 @@ module Make (Vertex : VertexType) (Weight : WeightType)
                       end
                 in
                 match !lblrefP with
-                | Infinite ->  (* -- when Infinite is the least element in `hp`, i.e. `vtxT` is unreachable -- *)
+                | Infinite ->
+                  (* -- when 'Infinite' is the least element in 'hp', i.e. 'vtxT' is unreachable -- *)
                     let () = print_for_debug "| infinite" in (* for debug *)
                       None
 
@@ -162,7 +180,9 @@ module Make (Vertex : VertexType) (Weight : WeightType)
                         | Some((_, vheref, lblref)) ->
                             begin
                               match !vheref with
-                              | None ->  (* -- when `vtx` is not a member of `hp`; equivalent to `Heap.mem ?equal:equal_vertex hp vtx` -- *)
+                              | None ->
+                                (* -- when 'vtx' is not a member of the heap 'hp';
+                                      equivalent to 'Heap.mem ?equal:Vertex.equal hp vtx' -- *)
                                   ()
 
                               | Some(vhe) ->
@@ -216,7 +236,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
                       begin lblref := Finite(wgt, Some(vtxS)); end
               );
               grph |> MainTable.iter (fun vtx (_, vheref, _) ->
-                if equal_vertex vtx vtxS then () else
+                if Vertex.equal vtx vtxS then () else
                   let vhe = Heap.add_removable hp vtx in
                   begin vheref := Some(vhe); end
               );
