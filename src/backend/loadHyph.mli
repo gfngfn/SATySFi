@@ -11,8 +11,8 @@ exception NotProvidingPatternList     of file_path
 exception PatternListOtherThanArray   of file_path
 exception InvalidPatternElement       of file_path
 
-type exception_map
+type t
 
-type patterns
+val empty : t
 
-val main : dir_path -> file_path -> exception_map * patterns
+val main : dir_path -> file_path -> t

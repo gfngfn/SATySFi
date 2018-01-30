@@ -31,7 +31,7 @@ type final =
 
 type pattern = beginning * (Uchar.t * number) list * final
 
-type patterns = pattern list
+type t = exception_map * pattern list
 
 
 let read_exception_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : exception_map =
@@ -115,7 +115,7 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
     (beginning, pairlst, final)
 
 
-let read_pattern_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : patterns =
+let read_pattern_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : pattern list =
   match jsonarr with
   | `List(jsonlst) ->
       jsonlst |> List.map (function
@@ -127,7 +127,7 @@ let read_pattern_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : patte
       raise (PatternListOtherThanArray(srcpath))
 
 
-let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) : exception_map * patterns =
+let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) : t =
   let excpmap =
     match assoc |> List.assoc_opt "exceptions" with
     | None          -> raise (NotProvidingExceptionList(srcpath))
@@ -141,7 +141,7 @@ let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) 
     (excpmap, hyphpatlst)
 
 
-let main (satysfi_root_dir : dir_path) (filename : file_path) =
+let main (satysfi_root_dir : dir_path) (filename : file_path) : t =
   let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hyph" filename) in
     try
       let json = Yojson.Safe.from_file srcpath in
@@ -151,3 +151,6 @@ let main (satysfi_root_dir : dir_path) (filename : file_path) =
         | json_other    -> raise (OtherThanDictionary(srcpath))
     with
     | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))
+
+
+let empty = (ExceptionMap.empty, [])

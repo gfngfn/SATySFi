@@ -113,7 +113,6 @@ let initialize (dumpfile : file_path) =
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dumpfile in
     let (tyenv, env) = Primitives.make_environments (!libdir_ref) in
-    let _ = LoadHyph.main (!libdir_ref) "english.satysfi-hyph" in  (* TEMPORARY *)
     (tyenv, env, dump_file_exists)
   end
 

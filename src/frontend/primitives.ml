@@ -474,10 +474,12 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
 
 let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
 
+let default_hyphen_dictionary = ref LoadHyph.empty
 
 let get_initial_context wid =
   let open HorzBox in
     {
+      hyphen_dictionary      = !default_hyphen_dictionary;
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
       math_font              = "lmodern";  (* TEMPORARY *)
@@ -725,4 +727,6 @@ let make_environments satysfi_root_dir =
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
   default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
+  default_hyphen_dictionary := LoadHyph.main satysfi_root_dir "english.satysfi-hyph";
+      (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)
