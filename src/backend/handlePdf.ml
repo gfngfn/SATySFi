@@ -36,9 +36,9 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let ops =
-
+(*
           List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
-
+*)
           (Graphics.pdfops_of_text (xpos, yposbaseline) hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt)
         in
         let opaccnew = Alist.append opacc ops in

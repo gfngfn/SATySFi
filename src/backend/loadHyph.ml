@@ -23,7 +23,7 @@ type number = int
 
 type beginning =
   | TopOfWord
-  | ArbitraryBeginning
+  | ArbitraryBeginning of number
 
 type final =
   | EndOfWord
@@ -77,7 +77,9 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
           if uch0 = Uchar.of_char '.' then
             (TopOfWord, uchtail)
           else
-            (ArbitraryBeginning, uchlstraw)
+            match numeric uch0 with
+            | None      -> (ArbitraryBeginning(0), uchlstraw)
+            | Some(num) -> (ArbitraryBeginning(num), uchtail)
   in
   let (final, uchlst) =
     match List.rev uchlstsub with
@@ -100,7 +102,7 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
           begin
             match optnext with
             | None ->
-                acc
+                Alist.extend acc (uch, 0)
 
             | Some(uchnext) ->
                 let pair =
@@ -112,6 +114,16 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
           end
     ) Alist.empty |> Alist.to_list
   in
+  let pp_pair fmt (uch, num) = Format.fprintf fmt "%s(%n)" (InternalText.to_utf8 (InternalText.of_uchar uch)) num in
+
+  (* begin: for debug *)
+  Format.printf "LoadHyph>";
+  (match beginning with
+  | TopOfWord -> ()
+  | ArbitraryBeginning(num) -> Format.printf "(%d)" num);
+  Format.printf "%a\n" (Format.pp_print_list pp_pair) pairlst;
+  (* end: for debug *)
+
     (beginning, pairlst, final)
 
 
@@ -156,7 +168,7 @@ let main (satysfi_root_dir : dir_path) (filename : file_path) : t =
 let empty = (ExceptionMap.empty, [])
 
 
-let match_prefix (pairlst : (Uchar.t * number) list) (clst : (Uchar.t * number ref) list) : unit =
+let match_prefix (opt : (number ref * number) option) (pairlst : (Uchar.t * number) list) (clst : (Uchar.t * number ref) list) : unit =
   let rec aux acc pairlst clst =
   match (pairlst, clst) with
   | (_ :: _, []) ->
@@ -171,17 +183,30 @@ let match_prefix (pairlst : (Uchar.t * number) list) (clst : (Uchar.t * number r
       else
         ()
   in
-    aux Alist.empty pairlst clst
+  let accinit =
+    match opt with
+    | None       -> Alist.empty
+    | Some(pair) -> Alist.extend Alist.empty pair
+  in
+    aux accinit pairlst clst
 
 
-let rec match_every pairlst clst =
+let rec match_every (numbeginning : number) pairlst clst =
+  let rec aux (refoptprev : (number ref) option) pairlst clst =
   match clst with
   | [] ->
       ()
 
-  | _ :: ctail ->
-      match_prefix pairlst clst;
-      match_every pairlst ctail
+  | (_, numref) :: ctail ->
+      let opt =
+        match refoptprev with
+        | None             -> None
+        | Some(numrefprev) -> Some((numrefprev, numbeginning))
+      in
+      match_prefix opt pairlst clst;
+      aux (Some(numref)) pairlst ctail
+  in
+    aux None pairlst clst
 
 
 let make_fraction fracacc =
@@ -197,8 +222,8 @@ let lookup_patterns (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t l
   let () =
     patlst |> List.iter (fun (beginning, pairlst, final) ->
       match beginning with
-      | TopOfWord          -> match_prefix pairlst clst
-      | ArbitraryBeginning -> match_every pairlst clst
+      | TopOfWord               -> match_prefix None pairlst clst
+      | ArbitraryBeginning(num) -> match_every num pairlst clst
     )
   in
   let (acc, fracacc) =
