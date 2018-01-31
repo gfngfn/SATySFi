@@ -87,7 +87,8 @@ end = struct
       |> set-font Kana           font-cjk-mincho
       |> set-font HanIdeographic font-cjk-mincho
       |> set-font Latin          font-latin-roman
-      |> set-math-font `CambriaMath`
+      |> set-math-font `lmodern`
+      |> set-hyphen-penalty 100
 
 
   let-mutable ref-float-boxes <- []

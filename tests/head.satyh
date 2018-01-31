@@ -51,6 +51,7 @@ let document rcd inner =
       |> set-language Latin English
       |> set-dominant-narrow-script Latin
       |> set-math-font `lmodern`
+      |> set-hyphen-penalty 100
   in
   let () = ref-title <- title in
   let () = ref-author <- author in
