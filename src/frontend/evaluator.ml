@@ -29,9 +29,29 @@ let report_bug_evaluator_value msg value =
   failwith ("bug: " ^ msg)
 
 
+let chop_space_indent s =
+  let imax = String.length s in
+  let rec aux i s =
+    if i >= imax then
+      (i, "")
+    else
+      match String.get s i with
+      | ' ' -> aux (i + 1) s
+      | _   -> (i, String.sub s i (imax - i))
+  in
+  try
+    aux 0 s
+  with
+  | Invalid_argument(_) -> assert false
+
+
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
+
+
+let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
+  List.fold_right (fun x ast -> ListCons(makef x, ast)) lst EndOfList
 
 
 let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
@@ -1292,6 +1312,13 @@ and interpret env ast =
         (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8
       in
         StringConstant(s)
+
+  | PrimitiveSplitIntoLines(asts) ->
+      let s = interpret_string env asts in
+      let slst = String.split_on_char '\n' s in
+      let pairlst = slst |> List.map chop_space_indent in
+        pairlst |> make_list (fun (i, s) ->
+          TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
 
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env astnum in StringConstant(string_of_int num)

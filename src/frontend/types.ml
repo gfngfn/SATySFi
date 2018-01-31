@@ -586,6 +586,7 @@ and abstract_tree =
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
   | PrimitiveStringUnexplode of abstract_tree
+  | PrimitiveSplitIntoLines  of abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
