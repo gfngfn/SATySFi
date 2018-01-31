@@ -33,6 +33,9 @@ type pattern = beginning * (Uchar.t * number) list * final
 
 type t = exception_map * pattern list
 
+type answer =
+  | Fractions of (Uchar.t list) list
+
 
 let read_exception_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : exception_map =
   match jsonarr with
@@ -226,19 +229,31 @@ let lookup_patterns (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t l
       | ArbitraryBeginning(num) -> match_every num pairlst clst
     )
   in
-  let (acc, fracacc) =
-    clst |> List.fold_left (fun (acc, fracacc) (uch, numref) ->
+  let (acc, fracaccopt) =
+    clst |> List.fold_left (fun (acc, fracaccopt) (uch, numref) ->
       if (!numref) mod 2 = 1 then
-        let sfrac = make_fraction (Alist.extend fracacc uch) in
-          (Alist.extend acc sfrac, Alist.empty)
+        let fracacc =
+          match fracaccopt with
+          | Some(fracacc) -> fracacc
+          | None          -> Alist.empty
+        in
+          let sfrac = make_fraction (Alist.extend fracacc uch) in
+            (Alist.extend acc sfrac, None)
       else
-        (acc, Alist.extend fracacc uch)
-    ) (Alist.empty, Alist.empty)
+        match fracaccopt with
+        | Some(fracacc) -> (acc, Some(Alist.extend fracacc uch))
+        | None          -> (acc, Some(Alist.extend Alist.empty uch))
+    ) (Alist.empty, None)
   in
-    Alist.extend acc (make_fraction fracacc) |> Alist.to_list
+    match fracaccopt with
+    | Some(fracacc) -> Alist.extend acc (make_fraction fracacc) |> Alist.to_list
+    | None          -> acc |> Alist.to_list
 
 
-let lookup ((excpmap, patlst) : t) (uchlst : Uchar.t list) : (Uchar.t list) list =
-  match excpmap |> ExceptionMap.find_opt (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) with
-  | Some(sfraclst) -> sfraclst |> List.map (fun sfrac -> InternalText.to_uchar_list (InternalText.of_utf8 sfrac))
-  | None           -> lookup_patterns patlst uchlst
+let lookup ((excpmap, patlst) : t) (uchlst : Uchar.t list) : answer =
+  let fraclst =
+    match excpmap |> ExceptionMap.find_opt (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) with
+    | Some(sfraclst) -> sfraclst |> List.map (fun sfrac -> InternalText.to_uchar_list (InternalText.of_utf8 sfrac))
+    | None           -> lookup_patterns patlst uchlst
+  in
+    Fractions(fraclst)

@@ -150,15 +150,16 @@ let soft_hyphen ctx script () : lb_box =
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
 let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_box list =
   let hsinfo = get_string_info ctx script in
-  let uchlstlst = LoadHyph.lookup ctx.hyphen_dictionary uchlst in
   let lbhyphenf = soft_hyphen ctx script in
-  uchlstlst |> list_fold_adjacent (fun lbacc uchlst _ optnext ->
-    let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
-    let lbfrac = LBPure(LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))) in
-      match optnext with
-      | None    -> Alist.extend lbacc lbfrac
-      | Some(_) -> Alist.extend (Alist.extend lbacc lbfrac) (lbhyphenf ())
-  ) Alist.empty |> Alist.to_list
+    match LoadHyph.lookup ctx.hyphen_dictionary uchlst with
+    | LoadHyph.Fractions(uchlstlst) ->
+        uchlstlst |> list_fold_adjacent (fun lbacc uchlst _ optnext ->
+          let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+          let lbfrac = LBPure(LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))) in
+            match optnext with
+            | None    -> Alist.extend lbacc lbfrac
+            | Some(_) -> Alist.extend (Alist.extend lbacc lbfrac) (lbhyphenf ())
+        ) Alist.empty |> Alist.to_list
 
 
 let discretionary_if_breakable alw badns lphb () =
