@@ -34,6 +34,7 @@ type pattern = beginning * (Uchar.t * number) list * final
 type t = exception_map * pattern list
 
 type answer =
+  | Single    of Uchar.t list
   | Fractions of (Uchar.t list) list
 
 
@@ -117,16 +118,16 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
           end
     ) Alist.empty |> Alist.to_list
   in
-  let pp_pair fmt (uch, num) = Format.fprintf fmt "%s(%n)" (InternalText.to_utf8 (InternalText.of_uchar uch)) num in
-
+(*
   (* begin: for debug *)
+  let pp_pair fmt (uch, num) = Format.fprintf fmt "%s(%n)" (InternalText.to_utf8 (InternalText.of_uchar uch)) num in
   Format.printf "LoadHyph>";
   (match beginning with
   | TopOfWord -> ()
   | ArbitraryBeginning(num) -> Format.printf "(%d)" num);
   Format.printf "%a\n" (Format.pp_print_list pp_pair) pairlst;
   (* end: for debug *)
-
+*)
     (beginning, pairlst, final)
 
 
@@ -256,4 +257,6 @@ let lookup ((excpmap, patlst) : t) (uchlst : Uchar.t list) : answer =
     | Some(sfraclst) -> sfraclst |> List.map (fun sfrac -> InternalText.to_uchar_list (InternalText.of_utf8 sfrac))
     | None           -> lookup_patterns patlst uchlst
   in
-    Fractions(fraclst)
+  match fraclst with
+  | frac :: [] -> Single(frac)
+  | _          -> Fractions(fraclst)

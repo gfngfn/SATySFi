@@ -14,6 +14,7 @@ exception InvalidPatternElement       of file_path
 type t
 
 type answer =
+  | Single    of Uchar.t list
   | Fractions of (Uchar.t list) list
 
 val empty : t

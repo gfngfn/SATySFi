@@ -92,6 +92,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
 
     let add_edge (grph : t) (vtx1 : vertex) (vtx2 : vertex) (wgt : weight) : unit =
+      let () = print_for_debug ("addE (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
       match MainTable.find_opt grph vtx1 with
       | None ->
           raise UndefinedSourceVertex
@@ -100,7 +101,6 @@ module Make (Vertex : VertexType) (Weight : WeightType)
           if not (MainTable.mem grph vtx2) then
             raise UndefinedDestinationVertex
           else
-          let () = print_for_debug ("addE (" ^ (Vertex.show vtx1) ^ " ----> " ^ (Vertex.show vtx2) ^ ") : " ^ (Weight.show wgt)) in (* for debug *)
             DestinationTable.add dstbl1 vtx2 wgt
 
 
@@ -121,6 +121,7 @@ module Make (Vertex : VertexType) (Weight : WeightType)
 
 
     let shortest_path (grph : t) (vtxS : vertex) (vtxT : vertex) : (vertex list) option =
+      let () = print_for_debug ("SHORTEST_PATH (" ^ (Vertex.show vtxS) ^ " ---> " ^ (Vertex.show vtxT) ^ ")") in (* for debug *)
 
       let rec backtrack (acc : vertex Alist.t) (vtx : vertex) : (vertex list) option =
         match MainTable.find_opt grph vtx with

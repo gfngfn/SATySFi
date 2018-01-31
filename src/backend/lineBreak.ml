@@ -559,10 +559,16 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
         begin
           match dscrlst |> List.find_opt (fun (dscrid, _, _) -> List.mem dscrid path) with
           | None ->
+(*
+              Format.printf "LineBreak> None\n";  (* for debug *)
+*)
               let acclinenew = Alist.append accline lphblst0 in
                 cut acclines acclinenew tail
 
-          | Some((_, lphblst1, lphblst2)) ->
+          | Some((dscrid, lphblst1, lphblst2)) ->
+(*
+              Format.printf "LineBreak> Some(%s)\n" (DiscretionaryID.show dscrid);  (* for debug *)
+*)
               let acclinesub = Alist.append accline lphblst1 in
               let acclinefresh = Alist.of_list lphblst2 in
                 cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
@@ -689,21 +695,24 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
 
     | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
         let widinfo0 = get_width_info_list lphblst0 in
-        let (wmapsub, foundacc) =
-          dscrlst |> List.fold_left (fun (wmapacc, foundacc) (dscrid, lphblst1, lphblst2) ->
+        let (wmapsub, foundpairacc) =
+          dscrlst |> List.fold_left (fun (wmap, foundpairacc) (dscrid, lphblst1, lphblst2) ->
             let widinfo1 = get_width_info_list lphblst1 in
             let widinfo2 = get_width_info_list lphblst2 in
             let (found, wmapsub) = update_graph wmap dscrid widinfo1 pnlty () in
             if found then
-              (wmapsub, Alist.extend foundacc (dscrid, widinfo2))
+              (wmapsub, Alist.extend foundpairacc (dscrid, widinfo2))
             else
-              (wmapsub, foundacc)
-          ) (WidthMap.empty, Alist.empty)
+              (wmapsub, foundpairacc)
+          ) (wmap, Alist.empty)
         in
         let wmapall = wmapsub |> WidthMap.add_width_all widinfo0 in
-          foundacc |> Alist.to_list |> List.fold_left (fun wmapacc (dscrid, widinfo2) ->
+        let wmapnew =
+          foundpairacc |> Alist.to_list |> List.fold_left (fun wmap (dscrid, widinfo2) ->
             wmap |> WidthMap.add dscrid widinfo2
           ) wmapall
+        in
+          aux iterdepth wmapnew tail
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
@@ -734,10 +743,11 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
       match pathopt with
       | None ->
         (* -- when no set of discretionary points is suitable for line breaking -- *)
-          let (imhblst, _, _) = natural hblst in
+          Format.printf "LineBreak> UNREACHABLE\n";  (* for debug *)
+          let (imhblst, hgt, dpt) = natural hblst in
             [
               VertTopMargin(is_breakable_top, margin_top);
-              VertLine(Length.zero, Length.zero, imhblst);
+              VertLine(hgt, dpt, imhblst);
               VertBottomMargin(is_breakable_bottom, margin_bottom);
             ]
 

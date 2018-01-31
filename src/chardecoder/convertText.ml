@@ -140,19 +140,60 @@ let inner_string_pure (ctx : context_main) (script : script) (uchlst : Uchar.t l
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
-
+(*
 let soft_hyphen ctx script () : lb_box =
   let lphb_hyphen = inner_string_pure ctx script [Uchar.of_char '-'] in
   let dscrid = DiscretionaryID.fresh () in
     LBDiscretionary(ctx.hyphen_badness, dscrid, [], [lphb_hyphen], [])
+*)
+
+let generate_separation_list (uchlstlst : (Uchar.t list) list) : (Uchar.t list * Uchar.t list) list =
+  let rec aux (acc : (Uchar.t list * Uchar.t list) Alist.t) (revprefix : Uchar.t Alist.t) (suffix : (Uchar.t list) list) =
+    match suffix with
+    | [] ->
+        Alist.to_list acc
+
+    | uchlst :: [] ->
+        Alist.to_list acc
+
+    | uchlst :: suffixnew ->
+        let revprefixnew = Alist.append revprefix uchlst in
+        let accnew = Alist.extend acc (Alist.to_list revprefixnew, List.concat suffixnew) in
+          aux accnew revprefixnew suffixnew
+  in
+    aux Alist.empty Alist.empty uchlstlst
+
+
+let make_string_atom (hsinfo : horz_string_info) (uchlst : Uchar.t list) : lb_pure_box =
+  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+    LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
 let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_box list =
   let hsinfo = get_string_info ctx script in
+(*
   let lbhyphenf = soft_hyphen ctx script in
+*)
     match LoadHyph.lookup ctx.hyphen_dictionary uchlst with
+    | LoadHyph.Single(uchlst) ->
+        [LBPure(make_string_atom hsinfo uchlst)]
+
     | LoadHyph.Fractions(uchlstlst) ->
+        let uchlst0 = List.concat uchlstlst in
+        let lphb0 = make_string_atom hsinfo uchlst0 in
+        let lphb_hyphen = inner_string_pure ctx script [Uchar.of_char '-'] in
+        let seplst = generate_separation_list uchlstlst in
+        let dscrlst =
+          seplst |> List.fold_left (fun dscracc (uchlstP, uchlstS) ->
+            let lphbP = make_string_atom hsinfo uchlstP in
+            let lphbS = make_string_atom hsinfo uchlstS in
+            let dscrid = DiscretionaryID.fresh () in
+            Alist.extend dscracc (dscrid, [lphbP; lphb_hyphen], [lphbS])
+          ) Alist.empty |> Alist.to_list
+        in
+        [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
+(*
         uchlstlst |> list_fold_adjacent (fun lbacc uchlst _ optnext ->
           let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
           let lbfrac = LBPure(LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))) in
@@ -160,7 +201,7 @@ let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) 
             | None    -> Alist.extend lbacc lbfrac
             | Some(_) -> Alist.extend (Alist.extend lbacc lbfrac) (lbhyphenf ())
         ) Alist.empty |> Alist.to_list
-
+*)
 
 let discretionary_if_breakable alw badns lphb () =
   match alw with
