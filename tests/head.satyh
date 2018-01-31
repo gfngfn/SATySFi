@@ -18,8 +18,12 @@ let font-ratio-cjk = 0.88
 let font-latin-roman  = (`Arno`  , font-ratio-latin, 0.)
 let font-latin-italic = (`ArnoIt`, font-ratio-latin, 0.)
 let font-latin-sans   = (`Hlv`   , font-ratio-latin, 0.)
+let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
 let font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
 let font-cjk-gothic   = (`Osaka` , font-ratio-cjk  , 0.)
+
+let set-latin-font font ctx =
+  ctx |> set-font Latin font
 
 let set-cjk-font font ctx =
   ctx |> set-font HanIdeographic font
@@ -506,3 +510,38 @@ end = struct
     let img = load-image filepath in
       use-image-by-width img wid
 end
+
+
+let-inline ctx \fil =
+  inline-fil
+
+
+let-block ctx +code code =
+  let pads = (5pt, 5pt, 5pt, 5pt) in
+  block-frame-breakable ctx pads simple-decoset (fun ctx -> (
+    let fontsize = get-font-size ctx in
+    let charwid = get-natural-width (read-inline ctx {0}) in
+    let ctx-code =
+      ctx |> set-latin-font font-latin-mono
+          |> set-space-ratio (charwid /' fontsize)
+    in
+
+    let lst = split-into-lines code in
+    let ib-code =
+      lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
+        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
+        let ib-last =
+          match optnext with
+          | Some(_) -> inline-fil ++ discretionary 0 (inline-skip 1000000pt) inline-nil inline-nil
+          | None    -> inline-fil
+        in
+        let ib =
+          inline-skip (charwid *' (float i))
+            ++ read-inline ctx-code (embed-string s)
+            ++ ib-last
+        in
+          ibacc ++ ib
+      )) inline-nil
+    in
+      line-break true true ctx ib-code
+  ))

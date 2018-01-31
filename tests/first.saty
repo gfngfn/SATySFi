@@ -198,23 +198,49 @@ document (|
   }
   +p {
     PDF import:
-    \import-pdf(`imported.pdf`)(1)(5cm);
+    \import-pdf(`imported.pdf`)(1)(7cm);\fil;
     JPEG import:
-    \import-image(`naruse1.jpg`)(5cm);
+    \import-image(`naruse1.jpg`)(10cm);
   }
   +p {
-      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
-      sed do eiusmod tempor incididunt ut labore
-      et dolore magna aliqua.\new-line;%
-      Ut enim ad minim veniam,
-      quis nostrud exercitation ullamco laboris nisi
-      ut aliquip ex ea commodo consequat.\new-line;%
-      Duis aute irure dolor in reprehenderit
-      in voluptate velit esse
-      cillum dolore eu fugiat nulla pariatur.
-      Excepteur sint occaecat cupidatat non proident,
-      sunt in culpa
-      qui officia deserunt mollit anim id est laborum.  }
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+    sed do eiusmod tempor incididunt ut labore
+    et dolore magna aliqua.\new-line;%
+    Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi
+    ut aliquip ex ea commodo consequat.\new-line;%
+    Duis aute irure dolor in reprehenderit
+    in voluptate velit esse
+    cillum dolore eu fugiat nulla pariatur.
+    Excepteur sint occaecat cupidatat non proident,
+    sunt in culpa
+    qui officia deserunt mollit anim id est laborum.
+  }
+  +p {
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+    sed do eiusmod tempor incididunt ut labore
+    et dolore magna aliqua.
+    Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi
+    ut aliquip ex ea commodo consequat.
+    Duis aute irure dolor in reprehenderit
+    in voluptate velit esse
+    cillum dolore eu fugiat nulla pariatur.
+    Excepteur sint occaecat cupidatat non proident,
+    sunt in culpa
+    qui officia deserunt mollit anim id est laborum.
+  }
+  +code(```
+    #include<stdio.h>
+
+    int main(void) {
+      printf("Hello World!\n");
+      return EXIT_SUCCESS;
+    }
+  ```);
+>
+
+
 %  +section {Spaces and Leading} <
 %    +frame < +p {
 %      \expand-spaces {
@@ -249,4 +275,3 @@ document (|
 %      }
 %    > >
 %  >
->

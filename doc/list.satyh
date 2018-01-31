@@ -6,6 +6,7 @@ module List
     val filter : ('a -> bool) -> 'a list -> 'a list
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
     val reverse : 'a list -> 'a list
+    val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
   end
 = struct
     let-rec map
@@ -26,4 +27,21 @@ module List
 
     let reverse lst =
       fold-left (fun acc x -> x :: acc) [] lst
+
+    let fold-left-adjacent f init lst =
+      let-rec aux leftopt init lst =
+        match lst with
+        | [] ->
+            init
+
+        | head :: [] ->
+            let initnew = f init head leftopt None in
+            initnew
+
+        | head :: ((right :: _) as tail) ->
+            let initnew = f init head leftopt (Some(right)) in
+            aux (Some(head)) initnew tail
+      in
+      aux None init lst
+
   end
