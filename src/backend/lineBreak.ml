@@ -329,16 +329,20 @@ module WidthMap
 
     type t = (length_info * bool ref) DiscretionaryIDMap.t
 
-    let empty = DiscretionaryIDMap.empty
+    let empty =
+      DiscretionaryIDMap.empty
 
-    let add dscrid widinfo wmap = wmap |> DiscretionaryIDMap.add dscrid (widinfo, ref false)
+    let add dscrid distinfo wmap =
+      wmap |> DiscretionaryIDMap.add dscrid (distinfo, ref false)
 
-    let iter f = DiscretionaryIDMap.iter (fun dscrid (widinfo, bref) -> f dscrid widinfo bref)
+    let iter f =
+      DiscretionaryIDMap.iter (fun dscrid (distinfo, bref) -> f dscrid distinfo bref)
 
     let add_width_all (widinfo : length_info) (wmap : t) : t =
       wmap |> DiscretionaryIDMap.map (fun (distinfo, bref) -> (distinfo +%@ widinfo, bref))
 
-    let remove = DiscretionaryIDMap.remove
+    let remove =
+      DiscretionaryIDMap.remove
 
   end
 
@@ -551,6 +555,19 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
           let acclinenew = Alist.append accline lphblst0 in
             cut acclines acclinenew tail
 
+    | LBDiscretionaryList(_, lphblst0, dscrlst) :: tail ->
+        begin
+          match dscrlst |> List.find_opt (fun (dscrid, _, _) -> List.mem dscrid path) with
+          | None ->
+              let acclinenew = Alist.append accline lphblst0 in
+                cut acclines acclinenew tail
+
+          | Some((_, lphblst1, lphblst2)) ->
+              let acclinesub = Alist.append accline lphblst1 in
+              let acclinefresh = Alist.of_list lphblst2 in
+                cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
+        end
+
     | LBPure(lphb) :: tail ->
         cut acclines (Alist.extend accline lphb) tail
 
@@ -626,7 +643,9 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
       wmap |> WidthMap.iter (fun dscridfrom widinfofrom is_already_too_long ->
         let (ratios, _) = calculate_ratios paragraph_width (widinfofrom +%@ widinfobreak) in
           match ratios with
-          | ( PermissiblyLong(pure_ratio) | PermissiblyShort(pure_ratio) ) ->
+          | PermissiblyLong(pure_ratio)
+          | PermissiblyShort(pure_ratio)
+            ->
               let badness = calculate_badness pure_ratio in
               begin
                 found_candidate := true;
@@ -637,6 +656,7 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
 
           | TooLong ->
               if !is_already_too_long then
+              (* -- if this is the second time of experiencing 'TooLong' about 'dscridfrom' -- *)
                 begin
                   RemovalSet.add htomit dscridfrom;
                 end
@@ -666,6 +686,24 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
             wmapsub |> WidthMap.add_width_all widinfo0
         in
           aux iterdepth wmapnew tail
+
+    | LBDiscretionaryList(pnlty, lphblst0, dscrlst) :: tail ->
+        let widinfo0 = get_width_info_list lphblst0 in
+        let (wmapsub, foundacc) =
+          dscrlst |> List.fold_left (fun (wmapacc, foundacc) (dscrid, lphblst1, lphblst2) ->
+            let widinfo1 = get_width_info_list lphblst1 in
+            let widinfo2 = get_width_info_list lphblst2 in
+            let (found, wmapsub) = update_graph wmap dscrid widinfo1 pnlty () in
+            if found then
+              (wmapsub, Alist.extend foundacc (dscrid, widinfo2))
+            else
+              (wmapsub, foundacc)
+          ) (WidthMap.empty, Alist.empty)
+        in
+        let wmapall = wmapsub |> WidthMap.add_width_all widinfo0 in
+          foundacc |> Alist.to_list |> List.fold_left (fun wmapacc (dscrid, widinfo2) ->
+            wmap |> WidthMap.add dscrid widinfo2
+          ) wmapall
 
     | LBPure(lphb) :: tail ->
         let widinfo = get_width_info lphb in
