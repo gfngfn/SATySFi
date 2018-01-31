@@ -643,6 +643,7 @@ and abstract_tree =
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
   | PrimitiveSetManualRising    of abstract_tree * abstract_tree
+  | PrimitiveSetHyphenPenalty   of abstract_tree * abstract_tree
   | PrimitiveEmbed              of abstract_tree
   | PrimitiveGetNaturalWidth    of abstract_tree
   | PrimitiveGetNaturalLength   of abstract_tree

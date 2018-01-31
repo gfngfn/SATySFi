@@ -662,6 +662,7 @@ let make_environments satysfi_root_dir =
         ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)              , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
+        ("set-hyphen-penalty" , ~% (tI @-> tCTX @-> tCTX)                , lambda2 (fun vpnlty vctx -> PrimitiveSetHyphenPenalty(vpnlty, vctx)));
         ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
 
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));

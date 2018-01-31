@@ -989,9 +989,14 @@ and interpret env ast =
         LengthConstant(ctx.HorzBox.paragraph_width)
 
   | PrimitiveSetManualRising(astrising, astctx) ->
-      let (ctx, valuecmd) = interpret_context env astctx in
       let rising = interpret_length env astrising in
+      let (ctx, valuecmd) = interpret_context env astctx in
         Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
+
+  | PrimitiveSetHyphenPenalty(astpnlty, astctx) ->
+      let pnlty = interpret_int env astpnlty in
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), valuecmd)
 
   | PrimitiveEmbed(aststr) ->
       let str = interpret_string env aststr in

@@ -15,8 +15,10 @@ let final = Final
 
 
 let initialize () =
+(*
   print_endline "DiscretionaryID> INITIALIZE";  (* for debug  *)
-  begin current_id := 0 ; end
+*)
+  begin current_id := 0; end
 
 
 let fresh () =
