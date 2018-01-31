@@ -196,6 +196,9 @@ module MathVariantCharMap = Map.Make
 
 
 type context_main = {
+  hyphen_dictionary      : LoadHyph.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<hyph>")]
+  hyphen_badness         : int;
   font_size              : length;
   font_scheme            : font_with_ratio CharBasis.ScriptSchemeMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]

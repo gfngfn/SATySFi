@@ -20,6 +20,7 @@ type lb_pure_box =
 type lb_box =
   | LBPure           of lb_pure_box
   | LBDiscretionary  of pure_badness * DiscretionaryID.t * lb_pure_box list * lb_pure_box list * lb_pure_box list
+  | LBDiscretionaryList of pure_badness * lb_pure_box list * (DiscretionaryID.t * lb_pure_box list * lb_pure_box list) list
   | LBFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * lb_box list
 
 

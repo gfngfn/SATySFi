@@ -474,10 +474,13 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
 
 let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
 
+let default_hyphen_dictionary = ref LoadHyph.empty
 
 let get_initial_context wid =
   let open HorzBox in
     {
+      hyphen_dictionary      = !default_hyphen_dictionary;
+      hyphen_badness         = 100;
       font_scheme            = !default_font_scheme_ref;
       font_size              = pdfpt 12.;
       math_font              = "lmodern";  (* TEMPORARY *)
@@ -659,6 +662,7 @@ let make_environments satysfi_root_dir =
         ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)              , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
         ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
         ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
+        ("set-hyphen-penalty" , ~% (tI @-> tCTX @-> tCTX)                , lambda2 (fun vpnlty vctx -> PrimitiveSetHyphenPenalty(vpnlty, vctx)));
         ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
 
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
@@ -725,4 +729,6 @@ let make_environments satysfi_root_dir =
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
   default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
+  default_hyphen_dictionary := LoadHyph.main satysfi_root_dir "english.satysfi-hyph";
+      (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)
