@@ -28,7 +28,7 @@ let length-abs len =
 
 
 let-inline ctx \no-break inner =
-  inline-frame-solid (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) (read-inline ctx inner)
+  inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) (read-inline ctx inner)
 
 
 let-inline ctx \fil =

@@ -268,6 +268,10 @@ let simple-decoset =
   in
     (decoS, decoH, decoM, decoT)
 
+
+let (simple-deco, _, _, _) = simple-decoset
+
+
 let screen-decoset size ib-heading-raw =
   let lskip = size *' 0.125 in
   let ib-heading = inline-skip lskip ++ ib-heading-raw ++ inline-skip lskip in
@@ -301,6 +305,19 @@ let-inline ctx \inline-frame inner =
   let pads = (5pt, 5pt, 5pt, 5pt) in
   let br = read-inline ctx inner in
     (inline-frame-breakable pads simple-decoset br)
+
+
+let paddings = (5pt, 5pt, 5pt, 5pt)
+
+let-inline ctx \frame-inner it =
+  inline-frame-inner paddings simple-deco (read-inline ctx it)
+
+let-inline ctx \frame-outer it =
+  inline-frame-outer paddings simple-deco (read-inline ctx it)
+
+let-inline ctx \frame-fixed wid it =
+  inline-frame-fixed wid paddings simple-deco (read-inline ctx it)
+
 
 let (+++>) = List.fold-left (+++)
 

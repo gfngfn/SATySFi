@@ -185,10 +185,13 @@ document (|
         幅\code{${w}}，高さ\code{${h}}，深さ\code{${d}}の
         領域にインライングラフィックス\code{${igr}}を描画したものをインラインボックス列として返す．
       }
-      +command (`inline-frame-solid`) (tPADS --> (tDECO --> (tIB --> tIB))) {
-        \code{inline-frame-solid ${p} ${d} ${ib}}で
+      +commands [`inline-frame-outer`; `inline-frame-inner`] (tPADS --> (tDECO --> (tIB --> tIB))) {
+        \code{inline-frame-outer ${p} ${d} ${ib}}で
         パディング指定\code{${p}}，装飾指定\code{${d}}，
         内容\code{${ib}}の，途中で行分割不可能なフレームを返す．
+        \code{inline-frame-outer}は外側の都合に合わせて内側の空白などが伸縮するのに対し，
+        \code{inline-frame-inner}は内側の自然な長さのみにより組まれる．
+        すなわち，後者は枠で囲われた部分全体が“1つの文字”のように振舞う．
       }
       +command (`inline-frame-breakable`) (tPADS --> (tDECOSET --> (tIB --> tIB))) {
         \code{inline-frame-breakable ${p} ${ds} ${ib}}で

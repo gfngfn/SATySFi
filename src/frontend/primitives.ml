@@ -631,7 +631,9 @@ let make_environments satysfi_root_dir =
         ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
         ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
         ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
-        ("inline-frame-solid"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("inline-frame-outer"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
+        ("inline-frame-inner"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendInnerFrame(vpads, vdeco, vbr)));
+        ("inline-frame-fixed"    , ~% (tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)              , lambda4 (fun vwid vpads vdeco vbr -> BackendFixedFrame(vwid, vpads, vdeco, vbr)));
         ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
 (*
         ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));

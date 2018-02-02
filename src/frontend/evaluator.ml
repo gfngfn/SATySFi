@@ -1039,18 +1039,37 @@ and interpret env ast =
       let widstretch = interpret_length env aststretch in
         Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
 
-  | BackendOuterFrame(astpads, astdeco, astbr) ->
+  | BackendOuterFrame(astpads, astdeco, asth) ->
       let pads = interpret_paddings env astpads in
-      let hblst = interpret_horz env astbr in
+      let hblst = interpret_horz env asth in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
           make_frame_deco env valuedeco,
           hblst))])
 
-  | BackendOuterFrameBreakable(astpads, astdecoset, astbr) ->
-      let hblst = interpret_horz env astbr in
+  | BackendInnerFrame(astpads, astdeco, asth) ->
       let pads = interpret_paddings env astpads in
+      let hblst = interpret_horz env asth in
+      let valuedeco = interpret env astdeco in
+        Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
+          pads,
+          make_frame_deco env valuedeco,
+          hblst))])
+
+  | BackendFixedFrame(astwid, astpads, astdeco, asth) ->
+      let wid = interpret_length env astwid in
+      let pads = interpret_paddings env astpads in
+      let hblst = interpret_horz env asth in
+      let valuedeco = interpret env astdeco in
+        Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
+          pads, wid,
+          make_frame_deco env valuedeco,
+          hblst))])
+
+  | BackendOuterFrameBreakable(astpads, astdecoset, asth) ->
+      let pads = interpret_paddings env astpads in
+      let hblst = interpret_horz env asth in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
           pads, Length.zero, Length.zero,

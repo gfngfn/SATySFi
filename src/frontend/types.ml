@@ -659,6 +659,8 @@ and abstract_tree =
   | BackendFixedEmpty           of abstract_tree
   | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
+  | BackendInnerFrame           of abstract_tree * abstract_tree * abstract_tree
+  | BackendFixedFrame           of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
   | BackendVertFrame            of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree

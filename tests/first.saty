@@ -25,8 +25,8 @@ document (|
       My quiz above the kiwi juice
       needs \emph{priceless} fixing.
       The \emph2{quick brown fox} jumps over the lazy dog.
-      ¿But aren't Kafka's Schloß and Æsop's Œuvres often
-      naïve vis-à-vis the dæmonic phœnix's official rôle
+      ¿But aren’t Kafka’s Schloß and Æsop’s Œuvres often
+      naïve vis-à-vis the dæmonic phœnix’s official rôle
       in fluffy soufflés?
     }
     #p-sample;
@@ -238,6 +238,14 @@ document (|
       return EXIT_SUCCESS;
     }
   ```);
+  +p (
+    let test = {This is a content of a frame.} in
+    {
+      Let’s compare different kinds of inline frames.
+      Inner: \frame-inner{#test;},
+      outer: \frame-outer{#test;},
+      and fixed-width (here the width is set to 160pt): \frame-fixed(160pt){#test;}
+    });
 >
 
 
