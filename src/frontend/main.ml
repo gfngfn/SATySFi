@@ -8,7 +8,7 @@ type file_path = string
 
 exception NoLibraryRootDesignation
 exception NoInputFileDesignation
-exception IllegalExtension of file_path
+exception CyclicFileDependency of file_path list
 exception NotALibraryFile  of file_path * Typeenv.t * mono_type
 exception NotADocumentFile of file_path * Typeenv.t * mono_type
 
@@ -81,8 +81,8 @@ type file_info =
 
 let make_absolute_path pkgdir curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> Filename.concat pkgdir s
-  | HeaderImport(s)  -> Filename.concat curdir s
+  | HeaderRequire(s) -> Filename.concat pkgdir (s ^ ".satyh")
+  | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
 let rec register_library_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
@@ -182,7 +182,7 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
 
 let register_document_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
   begin
-    Logging.begin_to_read_file file_path_in;
+    Logging.begin_to_parse_file file_path_in;
     let file_in = open_in file_path_in in
     let curdir = Filename.dirname file_path_in in
     Lexer.reset_to_progexpr ();
@@ -276,14 +276,22 @@ let error_log_environment suspended =
 
   | NoInputFileDesignation ->
       report_error Interface [
-        NormalLine("No input file designation.");
+        NormalLine("no input file designation.");
       ]
 
+  | CyclicFileDependency(cycle) ->
+      report_error Interface (
+        (NormalLine("cyclic dependency detected:")) ::
+        (cycle |> List.map (fun s -> DisplayLine(s)))
+      )
+
+(*
   | IllegalExtension(s) ->
       report_error Interface [
         NormalLine("File '" ^ s ^ "' has illegal filename extension;");
         NormalLine("maybe you need to use '--doc', or '--header' option.");
       ]
+*)
 
   | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
@@ -780,15 +788,20 @@ let () =
 
     let dg = FileDependencyGraph.create 32 in
     register_document_file pkgdir dg input_file;
-    FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
-      match file_info with
-      | DocumentFile(utast) ->
-          eval_document_file libdir tyenv env file_path_in utast output_file dump_file;
-          (tyenv, env)
+    match FileDependencyGraph.find_cycle dg with
+    | Some(cycle) ->
+        raise (CyclicFileDependency(cycle))
 
-      | LibraryFile(utast) ->
-          eval_library_file tyenv env file_path_in utast
-    ) (tyenv, env) dg |> ignore
+    | None ->
+        FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
+          match file_info with
+          | DocumentFile(utast) ->
+              eval_document_file libdir tyenv env file_path_in utast output_file dump_file;
+              (tyenv, env)
+
+          | LibraryFile(utast) ->
+              eval_library_file tyenv env file_path_in utast
+        ) (tyenv, env) dg |> ignore
 (*
     (* begin: for debug *)
     Format.printf "Main> ==== ====\n";
