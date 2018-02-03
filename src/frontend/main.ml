@@ -7,8 +7,9 @@ type file_path = string
 
 
 exception NoLibraryRootDesignation
+exception NoInputFileDesignation
 exception IllegalExtension of file_path
-exception NotAHeaderFile   of file_path * Typeenv.t * mono_type
+exception NotALibraryFile  of file_path * Typeenv.t * mono_type
 exception NotADocumentFile of file_path * Typeenv.t * mono_type
 
 
@@ -65,45 +66,79 @@ let is_header_file     = is_suffix ".satyh"
 let is_standalone_file = is_suffix ".satys"
 
 
-let make_environment_from_header_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) : Typeenv.t * environment =
-  begin
-    Logging.begin_to_read_file file_name_in;
-    let file_in = open_in file_name_in in
-      begin
-        Lexer.reset_to_progexpr ();
-        let utast = ParserInterface.process (Lexing.from_channel file_in) in
-        let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
-(*
-        Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
-*)
-        Logging.pass_type_check None;
-        match ty with
-        | (_, BaseType(EnvType)) ->
-            let value = Evaluator.interpret env ast in
-            begin
-              match value with
-              | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
-              | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
-            end
+module FileDependencyGraph = DirectedGraph.Make
+  (struct
+    type t = file_path
+    let compare = String.compare
+    let show s = Filename.basename s
+  end)
 
-        | _ -> raise (NotAHeaderFile(file_name_in, tyenvnew, ty))
-      end
+
+type file_info =
+  | DocumentFile of untyped_abstract_tree
+  | LibraryFile  of untyped_abstract_tree
+
+
+let make_absolute_path pkgdir curdir headerelem =
+  match headerelem with
+  | HeaderRequire(s) -> Filename.concat pkgdir s
+  | HeaderImport(s)  -> Filename.concat curdir s
+
+
+let rec register_library_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
+  begin
+    Logging.begin_to_parse_file file_path_in;
+    let curdir = Filename.dirname file_path_in in
+    let file_in = open_in file_path_in in
+    Lexer.reset_to_progexpr ();
+    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
+    header |> List.iter (fun headerelem ->
+      let file_path_sub = make_absolute_path pkgdir curdir headerelem in
+(*
+      Format.printf "Main> lib: %s ---> %s\n" (Filename.basename file_path_in) (Filename.basename file_path_sub);  (* for debug *)
+*)
+      begin
+        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+          register_library_file pkgdir dg file_path_sub
+      end;
+      FileDependencyGraph.add_edge dg file_path_in file_path_sub
+    )
   end
 
 
-let libdir_ref : file_path ref = ref ""
+let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
+  Logging.begin_to_read_file file_name_in;
+  let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
+(*
+  Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
+*)
+  Logging.pass_type_check None;
+  match ty with
+  | (_, BaseType(EnvType)) ->
+      let value = Evaluator.interpret env ast in
+      begin
+        match value with
+        | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
+        | _                            -> failwith "not an 'EvaluatedEnvironment(...)'"
+      end
 
+  | _ -> raise (NotALibraryFile(file_name_in, tyenvnew, ty))
+
+(*
+let libdir_ref : file_path ref = ref ""
+*)
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
-let reset () =
+let reset (libdir : file_path) =
   begin
-    FontInfo.initialize (!libdir_ref);
+    FontInfo.initialize libdir;
     ImageInfo.initialize ();
   end
 
 
 (* -- initialization that should be performed before typechecking -- *)
-let initialize (dumpfile : file_path) =
+let initialize (libdir : file_path) (dump_file : file_path) =
   begin
     FreeID.initialize ();
     BoundID.initialize ();
@@ -111,8 +146,8 @@ let initialize (dumpfile : file_path) =
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
     StoreID.initialize ();
-    let dump_file_exists = CrossRef.initialize dumpfile in
-    let (tyenv, env) = Primitives.make_environments (!libdir_ref) in
+    let dump_file_exists = CrossRef.initialize dump_file in
+    let (tyenv, env) = Primitives.make_environments libdir in
     (tyenv, env, dump_file_exists)
   end
 
@@ -145,71 +180,80 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   (valenv, ref stenv)
 
 
-let read_document_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (file_name_out : file_path) (dumpfile : file_path) =
+let register_document_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
   begin
-    Logging.begin_to_read_file file_name_in;
-    let file_in = open_in file_name_in in
+    Logging.begin_to_read_file file_path_in;
+    let file_in = open_in file_path_in in
+    let curdir = Filename.dirname file_path_in in
+    Lexer.reset_to_progexpr ();
+    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+    header |> List.iter (fun headerelem ->
+      let file_path_sub = make_absolute_path pkgdir curdir headerelem in
       begin
-        Lexer.reset_to_progexpr ();
-(*
-        let () = PrintForDebug.mainE "END INITIALIZATION" in  (* for debug *)
-*)
-        let utast = ParserInterface.process (Lexing.from_channel file_in) in
+        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+          register_library_file pkgdir dg file_path_sub;
+      end;
+      FileDependencyGraph.add_edge dg file_path_in file_path_sub
+    )
+  end
 (*
         Format.printf "Main> %a\n" pp_untyped_abstract_tree utast;  (* for debug *)
         let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
 *)
-        let (ty, _, ast) = Typechecker.main tyenv utast in
+
+
+let eval_document_file (libdir : file_path) (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
+    Logging.begin_to_read_file file_path_in;
+    let (ty, _, ast) = Typechecker.main tyenv utast in
 (*
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
 *)
-        Logging.pass_type_check (Some((tyenv, ty)));
-        let env_freezed = freeze_environment env in
-          match ty with
-          | (_, BaseType(DocumentType)) ->
-              let rec aux i =
-                Logging.start_evaluation i;
-                reset ();
-                let env = unfreeze_environment env_freezed in
-                let valuedoc = Evaluator.interpret env ast in
-                Logging.end_evaluation ();
-                begin
-                  match valuedoc with
-                  | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
-                      Logging.start_page_break ();
-                      let pdf = PageBreak.main file_name_out pagesize pagecontf pagepartsf imvblst in
-                      begin
-                        match CrossRef.needs_another_trial dumpfile with
-                        | CrossRef.NeedsAnotherTrial ->
-                            begin
-                              Logging.needs_another_trial ();
-                              aux (i + 1);
-                            end
+    Logging.pass_type_check (Some((tyenv, ty)));
+    let env_freezed = freeze_environment env in
+      match ty with
+      | (_, BaseType(DocumentType)) ->
+          let rec aux i =
+            Logging.start_evaluation i;
+            reset libdir;
+            let env = unfreeze_environment env_freezed in
+            let valuedoc = Evaluator.interpret env ast in
+            Logging.end_evaluation ();
+            begin
+              match valuedoc with
+              | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
+                  Logging.start_page_break ();
+                  let pdf = PageBreak.main file_path_out pagesize pagecontf pagepartsf imvblst in
+                  begin
+                    match CrossRef.needs_another_trial file_path_dump with
+                    | CrossRef.NeedsAnotherTrial ->
+                        begin
+                          Logging.needs_another_trial ();
+                          aux (i + 1);
+                        end
 
-                        | CrossRef.CountMax ->
-                            begin
-                              Logging.achieve_count_max ();
-                              output_pdf pdf;
-                              Logging.end_output file_name_out;
-                            end
+                    | CrossRef.CountMax ->
+                        begin
+                          Logging.achieve_count_max ();
+                          output_pdf pdf;
+                          Logging.end_output file_path_out;
+                        end
 
-                        | CrossRef.CanTerminate ->
-                            begin
-                              Logging.achieve_fixpoint ();
-                              output_pdf pdf;
-                              Logging.end_output file_name_out;
-                            end
-                      end
+                    | CrossRef.CanTerminate ->
+                        begin
+                          Logging.achieve_fixpoint ();
+                          output_pdf pdf;
+                          Logging.end_output file_path_out;
+                        end
+                  end
 
-                  | _ -> failwith "main; not a DocumentValue(...)"
-                end
-              in
-                aux 1
+              | _ -> failwith "main; not a DocumentValue(...)"
+            end
+          in
+            aux 1
 
-          | _  -> raise (NotADocumentFile(file_name_in, tyenv, ty))
-      end
-  end
+      | _  -> raise (NotADocumentFile(file_path_in, tyenv, ty))
 
 
 let env_var_lib_root = "SATYSFI_LIB_ROOT"
@@ -230,13 +274,18 @@ let error_log_environment suspended =
         NormalLine("The library root is typically '/usr/local/lib-satysfi/'.")
       ]
 
+  | NoInputFileDesignation ->
+      report_error Interface [
+        NormalLine("No input file designation.");
+      ]
+
   | IllegalExtension(s) ->
       report_error Interface [
         NormalLine("File '" ^ s ^ "' has illegal filename extension;");
         NormalLine("maybe you need to use '--doc', or '--header' option.");
       ]
 
-  | NotAHeaderFile(file_name_in, tyenv, ty) ->
+  | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
         NormalLine("file '" ^ file_name_in ^ "' is not a header file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
@@ -610,6 +659,7 @@ let error_log_environment suspended =
   | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
 *)
 
+(*
 type input_file_kind =
   | DocumentFile
   | HeaderFile
@@ -631,10 +681,6 @@ let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_k
 let output_name_ref : file_path ref = ref "a.pdf"
 let input_acc_ref : ((input_file_kind * string) Alist.t) ref = ref Alist.empty
 
-
-let arg_output s =
-  begin output_name_ref := s; end
-
 let arg_header s =
   begin input_acc_ref := Alist.extend (!input_acc_ref) (HeaderFile, s); end
 
@@ -643,6 +689,11 @@ let arg_doc s =
 
 let arg_libdir s =
   begin libdir_ref := s; end
+*)
+
+let output_ref : (file_path option) ref = ref None
+
+let input_ref : (file_path option) ref = ref None
 
 
 let arg_version () =
@@ -663,17 +714,35 @@ let arg_version () =
     exit 0;
   end
 
-let arg_spec_list =
+
+let arg_output curdir s =
+  let file_path =
+    if Filename.is_relative s then Filename.concat curdir s else s
+  in
+  output_ref := Some(file_path)
+
+
+let handle_anonimous_arg (curdir : file_path) (s : file_path) =
+  let file_path =
+    if Filename.is_relative s then Filename.concat curdir s else s
+  in
+  input_ref := Some(file_path)
+
+
+let arg_spec_list curdir =
   [
+    ("-o"          , Arg.String(arg_output curdir), " Specify output file");
+    ("--output"    , Arg.String(arg_output curdir), " Specify output file");
+    ("-v"          , Arg.Unit(arg_version)        , " Print version");
+    ("--version"   , Arg.Unit(arg_version)        , " Print version");
+(*
     ("--libdir"    , Arg.String(arg_libdir)    , " Specify SATySFi library directory");
-    ("-o"          , Arg.String(arg_output)    , " Specify output file");
-    ("--output"    , Arg.String(arg_output)    , " Specify output file");
-    ("-v"          , Arg.Unit(arg_version)     , " Print version");
-    ("--version"   , Arg.Unit(arg_version)     , " Print version");
     ("--header"    , Arg.String(arg_header)    , " Specify input file as a header");
     ("--doc"       , Arg.String(arg_doc)       , " Specify input file as a document file");
+*)
   ]
 
+(*
 let handle_anonimous_arg s =
   let i =
     match () with
@@ -682,23 +751,44 @@ let handle_anonimous_arg s =
     | _                           -> raise (IllegalExtension(s))
   in
   input_acc_ref := Alist.extend (!input_acc_ref) i
-
+*)
 
 let () =
   error_log_environment (fun () ->
-    let libdirsys =
+    let libdir =
       match Sys.getenv_opt env_var_lib_root with
       | None    -> raise NoLibraryRootDesignation
       | Some(s) -> s
     in
-    libdir_ref := libdirsys;
-    Arg.parse arg_spec_list handle_anonimous_arg "";
-    let input_list = Alist.to_list (!input_acc_ref) in
-    let output = !output_name_ref in
-    Logging.target_file output;
-    let dumpfile = (Filename.remove_extension output) ^ ".satysfi-aux" in
-    let (tyenv, env, dump_file_exists) = initialize dumpfile in
-    Logging.dump_file dump_file_exists dumpfile;
+    let pkgdir = Filename.concat libdir "dist/pkgs" in
+    let curdir = Sys.getcwd () in
+    Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
+    let input_file =
+      match !input_ref with
+      | None    -> raise NoInputFileDesignation
+      | Some(v) -> v
+    in
+    let output_file =
+      match !output_ref with
+      | None    -> Filename.concat curdir "a.pdf"
+      | Some(v) -> v
+    in
+    Logging.target_file output_file;
+    let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in
+    let (tyenv, env, dump_file_exists) = initialize libdir dump_file in
+    Logging.dump_file dump_file_exists dump_file;
+
+    let dg = FileDependencyGraph.create 32 in
+    register_document_file pkgdir dg input_file;
+    FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
+      match file_info with
+      | DocumentFile(utast) ->
+          eval_document_file libdir tyenv env file_path_in utast output_file dump_file;
+          (tyenv, env)
+
+      | LibraryFile(utast) ->
+          eval_library_file tyenv env file_path_in utast
+    ) (tyenv, env) dg |> ignore
 (*
     (* begin: for debug *)
     Format.printf "Main> ==== ====\n";
@@ -709,5 +799,7 @@ let () =
     Format.printf "Main> ==== ====\n";
     (* end: for debug *)
 *)
+(*
     main tyenv env input_list output dumpfile
+*)
   )

@@ -12,6 +12,7 @@
     | CommentState
     | LiteralState
     | MathState
+    | HeaderContentState
 
   type transition =
     | HtoV        (* -- inline  -> block   (with "<"   ) -- *)
@@ -116,6 +117,7 @@
 
 let space = [' ' '\t']
 let break = ['\n' '\r']
+let nonbreak = [^ '\n' '\r']
 let nzdigit = ['1'-'9']
 let digit = (nzdigit | "0")
 let hex   = (digit | ['A'-'F'])
@@ -135,6 +137,17 @@ rule progexpr = parse
       after_comment_state := ProgramState;
       next_state := CommentState;
       IGNORED
+    }
+  | ("@" identifier ":") {
+      let pos = get_pos lexbuf in
+      let tok =
+        match Lexing.lexeme lexbuf with
+        | "@require:" -> HEADER_REQUIRE(pos)
+        | "@import:"  -> HEADER_IMPORT(pos)
+        | other       -> raise (LexError(pos, "undefined header token '" ^ other ^ "'"))
+      in
+      next_state := HeaderContentState;
+      tok
     }
   | space { progexpr lexbuf }
   | break {
@@ -658,6 +671,17 @@ and comment = parse
   | eof { EOI }
   | _ { comment lexbuf }
 
+and headercontent = parse
+  | (" "*) (nonbreak+ as content) break {
+      increment_line lexbuf;
+      next_state := ProgramState;
+      HEADER_CONTENT(get_pos lexbuf, content)
+    }
+  | _ {
+      let tok = Lexing.lexeme lexbuf in
+      report_error lexbuf ("unexpected token '" ^ tok ^ "' in a header content")
+    }
+
 {
   let rec cut_token lexbuf =
     let output =
@@ -669,6 +693,7 @@ and comment = parse
       | CommentState    -> comment lexbuf
       | LiteralState    -> literal lexbuf
       | MathState       -> mathexpr lexbuf
+      | HeaderContentState -> headercontent lexbuf
     in
 (*
     (* begin: for debug *)

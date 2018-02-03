@@ -1,8 +1,8 @@
 
 let print_for_debug_digraph msg =
-(*
+
   print_endline msg;
-*)
+
   ()
 
 
@@ -67,6 +67,7 @@ module Make (Vertex : VertexType) =
 
 
     let add_vertex (dg : 'a t) (vtx : vertex) (label : 'a) =
+      print_for_debug_digraph ("addV (" ^ (Vertex.show vtx) ^ ")");
       if VertexHashTable.mem dg vtx then () else
         VertexHashTable.add dg vtx (label, ref 0, ref Remained, ref VertexSet.empty, ref VertexSet.empty)
 
@@ -90,6 +91,7 @@ module Make (Vertex : VertexType) =
 
 
     let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =
+      print_for_debug_digraph ("addE (" ^ (Vertex.show vtx1) ^ " ---> " ^ (Vertex.show vtx2) ^ ")");
       let (_, _, _, srcsetref2, _) =
         match VertexHashTable.find_opt dg vtx2 with
         | Some(info) -> info
@@ -177,13 +179,25 @@ module Make (Vertex : VertexType) =
             sttref := Done;
             (!srcsetref) |> VertexSet.iter (fun vtx1 ->
               let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
-              let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
+              let (_, degref1, sttref1, _, _) = get_vertex_data dg vtx1 in
+              decr degref1;
                 match !sttref1 with
-                | Done     -> ()
-                | Touched  -> assert false
+                | Done     ->
+                    print_for_debug_digraph "(done)";  (* for debug *)
+                    ()
+
+                | Touched  ->
+                    print_for_debug_digraph "(touched)";  (* for debug *)
+                    ()
+
                 | Remained ->
-                    let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
-                      Queue.push vtx1 vq
+                    if !degref1 = 0 then
+                      begin
+                        print_for_debug_digraph ("push " ^ (Vertex.show vtx1));  (* for debug *)
+                        sttref1 := Touched;
+                        Queue.push vtx1 vq;
+                      end
+                    else ()
             );
             step initnew;
           with
@@ -191,10 +205,13 @@ module Make (Vertex : VertexType) =
         in
         begin
           initialize_state dg;
-          dg |> VertexHashTable.iter (fun vtx (_, degref, _, _, _) ->
+          dg |> VertexHashTable.iter (fun vtx (_, degref, sttref, _, _) ->
             if !degref = 0 then
-              let () = print_for_debug_digraph ("push0 " ^ (Vertex.show vtx)) in (* for debug *)
-              Queue.push vtx vq
+              begin
+                print_for_debug_digraph ("push0 " ^ (Vertex.show vtx));  (* for debug *)
+                sttref := Touched;
+                Queue.push vtx vq;
+              end
             else ()
           );
           step init;
