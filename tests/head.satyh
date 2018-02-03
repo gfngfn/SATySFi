@@ -1,5 +1,5 @@
-@import: list
-@import: math
+@require: list
+@require: math
 
 let form-paragraph = line-break true true
 

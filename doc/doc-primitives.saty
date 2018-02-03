@@ -1,14 +1,5 @@
 % -*- coding: utf-8 -*-
-%@import: pervasives
-%@import: gr
-%@import: list
-%@import: tabular
-%@import: math
-%@import: color
-%@import: deco
-%@import: decoset
-%@import: vdecoset
-@import: stdja
+@require: stdja
 @import: local
 @import: local-math
 

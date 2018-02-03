@@ -1,6 +1,6 @@
 % -*- coding: utf-8 -*-
+@require: stdja
 @import: tabular
-@import: stdja
 
 document (|
   title  = {Math Test};

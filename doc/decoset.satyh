@@ -1,4 +1,4 @@
-@import: gr
+@require: gr
 
 module DecoSet : sig
 

@@ -1,4 +1,4 @@
-@import: math
+@require: math
 
 let synt-color = RGB(0.0, 0.0, 0.75)
 let meta-color = RGB(0.75, 0.0, 0.75)

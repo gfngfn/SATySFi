@@ -768,7 +768,7 @@ let () =
       | None    -> raise NoLibraryRootDesignation
       | Some(s) -> s
     in
-    let pkgdir = Filename.concat libdir "dist/pkgs" in
+    let pkgdir = Filename.concat libdir "dist/packages" in
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
     let input_file =
