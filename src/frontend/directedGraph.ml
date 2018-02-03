@@ -28,6 +28,7 @@ module type S =
     val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
+    val backward_bfs_fold : ('b -> vertex -> 'a -> 'b) -> 'b -> 'a t -> 'b
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
     val get_vertex : 'a t -> vertex -> 'a
   end
@@ -165,30 +166,28 @@ module Make (Vertex : VertexType) =
               Some(cycle)
 
 
-    let backward_bfs (f : vertex -> 'a -> unit) (dg : 'a t) =
+    let backward_bfs_fold (f : 'b -> vertex -> 'a -> 'b) (init : 'b) (dg : 'a t) : 'b =
         let vq = Queue.create () in
-        let rec step () =
+        let rec step init =
           try
             let vtx = Queue.pop vq in
               let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
             let (label, _, sttref, srcsetref, _) = get_vertex_data dg vtx in
-            begin
-              f vtx label;
-              sttref := Done;
-              (!srcsetref) |> VertexSet.iter (fun vtx1 ->
-                let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
-                let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
-                  match !sttref1 with
-                  | Done     -> ()
-                  | Touched  -> assert false
-                  | Remained ->
-                      let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
-                        Queue.push vtx1 vq
-              );
-              step ();
-            end
+            let initnew = f init vtx label in
+            sttref := Done;
+            (!srcsetref) |> VertexSet.iter (fun vtx1 ->
+              let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
+              let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
+                match !sttref1 with
+                | Done     -> ()
+                | Touched  -> assert false
+                | Remained ->
+                    let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
+                      Queue.push vtx1 vq
+            );
+            step initnew;
           with
-          | Queue.Empty -> ()
+          | Queue.Empty -> init
         in
         begin
           initialize_state dg;
@@ -198,7 +197,11 @@ module Make (Vertex : VertexType) =
               Queue.push vtx vq
             else ()
           );
-          step ();
+          step init;
         end
+
+
+    let backward_bfs (f : vertex -> 'a -> unit) (dg : 'a t) : unit =
+      backward_bfs_fold (fun () -> f) () dg
 
 end

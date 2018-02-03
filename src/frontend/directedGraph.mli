@@ -21,6 +21,7 @@ module type S =
     val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
+    val backward_bfs_fold : ('b -> vertex -> 'a -> 'b) -> 'b -> 'a t -> 'b
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
     val get_vertex : 'a t -> vertex -> 'a
   end
