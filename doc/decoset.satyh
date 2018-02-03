@@ -1,3 +1,5 @@
+@require: gr
+
 module DecoSet : sig
 
   val empty : deco-set

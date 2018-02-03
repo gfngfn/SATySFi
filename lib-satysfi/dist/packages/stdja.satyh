@@ -1,4 +1,9 @@
 % -*- coding: utf-8 -*-
+@require: pervasives
+@require: gr
+@require: list
+@require: math
+@require: color
 
 module StdJa : sig
 
@@ -108,7 +113,8 @@ end = struct
     let () = ref-figure <- !ref-figure + 1 in
     let s-num = embed-string (arabic (!ref-figure)) in
     let bb-inner =
-      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (VDecoSet.simple-frame 1pt Color.red) (fun ctx -> (
+      let d (_, _) _ _ _ = [] in
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num; #caption;} ++ inline-fil)
       ))

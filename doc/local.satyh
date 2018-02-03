@@ -1,3 +1,8 @@
+@require: pervasives
+@require: math
+@require: stdja
+@import: vdecoset
+@import: decoset
 
 let ( --> ) m1 m2 =
   ${\paren{#m1 \to #m2}}

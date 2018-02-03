@@ -433,6 +433,8 @@
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
 %token <Range.t * int> ITEM
+%token <Range.t> HEADER_REQUIRE HEADER_IMPORT
+%token <Range.t * string> HEADER_CONTENT
 %token EOI
 %token IGNORED
 
@@ -467,7 +469,7 @@
 *)
 
 %start main
-%type <Types.untyped_abstract_tree> main
+%type <Types.header_element list * Types.untyped_abstract_tree> main
 %type <Types.untyped_abstract_tree> nxlet
 %type <Types.untyped_abstract_tree> nxletsub
 %type <Types.untyped_letrec_binding list> nxrecdec
@@ -514,9 +516,13 @@
 
 
 main:
-  | utast=nxtoplevel    { utast }
-  | utast=vxblock; EOI  { utast }
-  | utast=nxwhl; EOI    { utast }
+  | header=list(headerelem); utast=nxtoplevel    { (header, utast) }
+  | header=list(headerelem); utast=vxblock; EOI  { (header, utast) }
+  | header=list(headerelem); utast=nxwhl; EOI    { (header, utast) }
+;
+headerelem:
+  | HEADER_REQUIRE; content=HEADER_CONTENT { let (_, s) = content in HeaderRequire(s) }
+  | HEADER_IMPORT; content=HEADER_CONTENT  { let (_, s) = content in HeaderImport(s) }
 ;
 nxtoplevel:
   | top=LETREC; recdec=nxrecdec; subseq=nxtopsubseq                          { make_letrec_expression top recdec subseq }

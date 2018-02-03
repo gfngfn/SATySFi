@@ -28,6 +28,7 @@ module type S =
     val mem_vertex : vertex -> 'a t -> bool
     val add_edge : 'a t -> vertex -> vertex -> unit
     val find_cycle : 'a t -> (vertex list) option
+    val backward_bfs_fold : ('b -> vertex -> 'a -> 'b) -> 'b -> 'a t -> 'b
     val backward_bfs : (vertex -> 'a -> unit) -> 'a t -> unit
     val get_vertex : 'a t -> vertex -> 'a
   end
@@ -66,6 +67,7 @@ module Make (Vertex : VertexType) =
 
 
     let add_vertex (dg : 'a t) (vtx : vertex) (label : 'a) =
+      print_for_debug_digraph ("addV (" ^ (Vertex.show vtx) ^ ")");
       if VertexHashTable.mem dg vtx then () else
         VertexHashTable.add dg vtx (label, ref 0, ref Remained, ref VertexSet.empty, ref VertexSet.empty)
 
@@ -89,6 +91,7 @@ module Make (Vertex : VertexType) =
 
 
     let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =
+      print_for_debug_digraph ("addE (" ^ (Vertex.show vtx1) ^ " ---> " ^ (Vertex.show vtx2) ^ ")");
       let (_, _, _, srcsetref2, _) =
         match VertexHashTable.find_opt dg vtx2 with
         | Some(info) -> info
@@ -165,40 +168,57 @@ module Make (Vertex : VertexType) =
               Some(cycle)
 
 
-    let backward_bfs (f : vertex -> 'a -> unit) (dg : 'a t) =
+    let backward_bfs_fold (f : 'b -> vertex -> 'a -> 'b) (init : 'b) (dg : 'a t) : 'b =
         let vq = Queue.create () in
-        let rec step () =
+        let rec step init =
           try
             let vtx = Queue.pop vq in
               let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
             let (label, _, sttref, srcsetref, _) = get_vertex_data dg vtx in
-            begin
-              f vtx label;
-              sttref := Done;
-              (!srcsetref) |> VertexSet.iter (fun vtx1 ->
-                let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
-                let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
-                  match !sttref1 with
-                  | Done     -> ()
-                  | Touched  -> assert false
-                  | Remained ->
-                      let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
-                        Queue.push vtx1 vq
-              );
-              step ();
-            end
+            let initnew = f init vtx label in
+            sttref := Done;
+            (!srcsetref) |> VertexSet.iter (fun vtx1 ->
+              let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
+              let (_, degref1, sttref1, _, _) = get_vertex_data dg vtx1 in
+              decr degref1;
+                match !sttref1 with
+                | Done     ->
+                    print_for_debug_digraph "(done)";  (* for debug *)
+                    ()
+
+                | Touched  ->
+                    print_for_debug_digraph "(touched)";  (* for debug *)
+                    ()
+
+                | Remained ->
+                    if !degref1 = 0 then
+                      begin
+                        print_for_debug_digraph ("push " ^ (Vertex.show vtx1));  (* for debug *)
+                        sttref1 := Touched;
+                        Queue.push vtx1 vq;
+                      end
+                    else ()
+            );
+            step initnew;
           with
-          | Queue.Empty -> ()
+          | Queue.Empty -> init
         in
         begin
           initialize_state dg;
-          dg |> VertexHashTable.iter (fun vtx (_, degref, _, _, _) ->
+          dg |> VertexHashTable.iter (fun vtx (_, degref, sttref, _, _) ->
             if !degref = 0 then
-              let () = print_for_debug_digraph ("push0 " ^ (Vertex.show vtx)) in (* for debug *)
-              Queue.push vtx vq
+              begin
+                print_for_debug_digraph ("push0 " ^ (Vertex.show vtx));  (* for debug *)
+                sttref := Touched;
+                Queue.push vtx vq;
+              end
             else ()
           );
-          step ();
+          step init;
         end
+
+
+    let backward_bfs (f : vertex -> 'a -> unit) (dg : 'a t) : unit =
+      backward_bfs_fold (fun () -> f) () dg
 
 end

@@ -20,6 +20,11 @@ type type_argument_name = string  [@@deriving show]
 type length_unit_name   = string  [@@deriving show]
 
 
+type header_element =
+  | HeaderRequire of string
+  | HeaderImport  of string
+
+
 module TypeID : sig
   type t
     [@@deriving show]

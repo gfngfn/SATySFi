@@ -1,4 +1,7 @@
 % -*- coding: utf-8 -*-
+@require: stdja
+@import: local-math
+
 StdJa.document (|
   title = {\SATySFi;言語仕様};
   author = {Takashi SUWA};

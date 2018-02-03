@@ -1,3 +1,4 @@
+@require: pervasives
 
 module Math : sig
 

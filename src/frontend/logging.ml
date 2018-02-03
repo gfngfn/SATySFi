@@ -4,6 +4,10 @@ let begin_to_read_file file_name_in =
   print_endline ("  reading '" ^ file_name_in ^ "' ...")
 
 
+let begin_to_parse_file file_name_in =
+  print_endline ("  parsing '" ^ file_name_in ^ "' ...")
+
+
 let pass_type_check opt =
   match opt with
   | None ->

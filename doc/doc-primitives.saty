@@ -1,4 +1,8 @@
 % -*- coding: utf-8 -*-
+@require: stdja
+@import: local
+@import: local-math
+
 document (|
   title = {\SATySFi;の\fil-both;\no-break{基本型}と\fil-both;\no-break{プリミティヴ}};
   author = {Takashi SUWA};
