@@ -1,7 +1,7 @@
 
 let print_for_debug_digraph msg =
 (*
-  print_endline msg ;
+  print_endline msg;
 *)
   ()
 
@@ -38,13 +38,23 @@ module Make (Vertex : VertexType) =
 
     module VertexSet = Set.Make(Vertex)
 
-    type state = Remained | Touched | Done
+    module VertexHashTable = Hashtbl.Make
+      (struct
+        type t = Vertex.t
+        let equal v1 v2 = (Vertex.compare v1 v2 = 0)
+        let hash = Hashtbl.hash
+      end)
+
+    type state =
+      | Remained
+      | Touched
+      | Done
 
     type vertex = Vertex.t
 
     type degree_out = int
 
-    type 'a t = (vertex, 'a * degree_out ref * state ref * VertexSet.t ref * VertexSet.t ref) Hashtbl.t
+    type 'a t = ('a * degree_out ref * state ref * VertexSet.t ref * VertexSet.t ref) VertexHashTable.t
 
     exception Cyclic
     exception Loop of vertex
@@ -52,58 +62,59 @@ module Make (Vertex : VertexType) =
     exception UndefinedDestinationVertex
 
 
-    let create initsize = Hashtbl.create initsize
+    let create initsize = VertexHashTable.create initsize
 
 
     let add_vertex (dg : 'a t) (vtx : vertex) (label : 'a) =
-      if Hashtbl.mem dg vtx then () else
-        Hashtbl.add dg vtx (label, ref 0, ref Remained, ref VertexSet.empty, ref VertexSet.empty)
+      if VertexHashTable.mem dg vtx then () else
+        VertexHashTable.add dg vtx (label, ref 0, ref Remained, ref VertexSet.empty, ref VertexSet.empty)
 
 
     let find_vertex (dg : 'a t) (vtx : vertex) =
-      try
-        let (label, _, _, _, _) = Hashtbl.find dg vtx in
-          label
-      with
-      | Not_found -> raise UndefinedSourceVertex
+      match VertexHashTable.find_opt dg vtx with
+      | Some((label, _, _, _, _)) -> label
+      | None                      -> raise UndefinedSourceVertex
 
 
     let iter_vertex (f : vertex -> 'a -> unit) (dg : 'a t) =
-      dg |> Hashtbl.iter (fun vtx (label, _, _, _, _) -> f vtx label)
+      dg |> VertexHashTable.iter (fun vtx (label, _, _, _, _) -> f vtx label)
 
 
     let fold_vertex (f : vertex -> 'a -> 'b -> 'b) (dg : 'a t) (init : 'b) =
-      Hashtbl.fold (fun vtx (label, _, _, _, _) acc -> f vtx label acc) dg init
+      VertexHashTable.fold (fun vtx (label, _, _, _, _) acc -> f vtx label acc) dg init
 
 
     let mem_vertex (vtx : vertex) (dg : 'a t) =
-      Hashtbl.mem dg vtx
+      VertexHashTable.mem dg vtx
 
 
     let add_edge (dg : 'a t) (vtx1 : vertex) (vtx2 : vertex) =
       let (_, _, _, srcsetref2, _) =
-        try Hashtbl.find dg vtx2 with
-        | Not_found -> raise UndefinedDestinationVertex
+        match VertexHashTable.find_opt dg vtx2 with
+        | Some(info) -> info
+        | None       -> raise UndefinedDestinationVertex
       in
       let (_, degref1, _, _, destsetref1) =
-        try Hashtbl.find dg vtx1 with
-        | Not_found -> raise UndefinedSourceVertex
+        match VertexHashTable.find_opt dg vtx1 with
+        | Some(info) -> info
+        | None       -> raise UndefinedSourceVertex
       in
         if VertexSet.mem vtx2 (!destsetref1) then () else
           begin
-            incr degref1 ;
-            destsetref1 := VertexSet.add vtx2 (!destsetref1) ;
-            srcsetref2 := VertexSet.add vtx1 (!srcsetref2) ;
+            incr degref1;
+            destsetref1 := VertexSet.add vtx2 (!destsetref1);
+            srcsetref2 := VertexSet.add vtx1 (!srcsetref2);
           end
 
 
     let initialize_state (dg : 'a t) =
-      dg |> Hashtbl.iter (fun vtx (_, _, sttref, _, _) -> sttref := Remained)
+      dg |> VertexHashTable.iter (fun vtx (_, _, sttref, _, _) -> sttref := Remained)
 
 
     let get_vertex_data (dg : 'a t) (vtx : vertex) =
-      try Hashtbl.find dg vtx with
-      |  Not_found -> assert false
+      match VertexHashTable.find_opt dg vtx with
+      | Some(info) -> info
+      | None       -> assert false
 
 
     let get_vertex (dg : 'a t) (vtx : vertex) =
@@ -118,34 +129,34 @@ module Make (Vertex : VertexType) =
             | Touched  -> raise Cyclic
             | Remained ->
                 begin
-                  sttref := Touched ;
-                  VertexSet.iter aux (!destsetref) ;
-                  sttref := Done ;
+                  sttref := Touched;
+                  VertexSet.iter aux (!destsetref);
+                  sttref := Done;
                 end
       in
         try
           begin
-            initialize_state dg ;
-            dg |> Hashtbl.iter (fun vtx1 (_, _, sttref, _, destsetref) ->
+            initialize_state dg;
+            dg |> VertexHashTable.iter (fun vtx1 (_, _, sttref, _, destsetref) ->
               begin
                 begin
                   if VertexSet.mem vtx1 (!destsetref) then
                     raise (Loop(vtx1))
                   else
                     ()
-                end ;
+                end;
                 match !sttref with
                 | Remained -> aux vtx1
                 | _        -> ()
               end
-            ) ;
+            );
             None
           end
         with
         | Loop(vtx) -> Some([vtx])
         | Cyclic ->
             let cycle =
-              Hashtbl.fold (fun vtx1 (_, _, sttref, _, _) lst ->
+              VertexHashTable.fold (fun vtx1 (_, _, sttref, _, _) lst ->
                 match !sttref with
                 | Touched -> vtx1 :: lst
                 | _       -> lst
@@ -162,8 +173,8 @@ module Make (Vertex : VertexType) =
               let () = print_for_debug_digraph ("pop " ^ (Vertex.show vtx)) in (* for debug *)
             let (label, _, sttref, srcsetref, _) = get_vertex_data dg vtx in
             begin
-              f vtx label ;
-              sttref := Done ;
+              f vtx label;
+              sttref := Done;
               (!srcsetref) |> VertexSet.iter (fun vtx1 ->
                 let () = print_for_debug_digraph ("see " ^ (Vertex.show vtx1)) in (* for debug *)
                 let (_, _, sttref1, _, _) = get_vertex_data dg vtx1 in
@@ -173,21 +184,21 @@ module Make (Vertex : VertexType) =
                   | Remained ->
                       let () = print_for_debug_digraph ("push " ^ (Vertex.show vtx1)) in (* for debug *)
                         Queue.push vtx1 vq
-              ) ;
-              step () ;
+              );
+              step ();
             end
           with
           | Queue.Empty -> ()
         in
         begin
-          initialize_state dg ;
-          dg |> Hashtbl.iter (fun vtx (_, degref, _, _, _) ->
+          initialize_state dg;
+          dg |> VertexHashTable.iter (fun vtx (_, degref, _, _, _) ->
             if !degref = 0 then
               let () = print_for_debug_digraph ("push0 " ^ (Vertex.show vtx)) in (* for debug *)
               Queue.push vtx vq
             else ()
-          ) ;
-          step () ;
+          );
+          step ();
         end
 
 end
