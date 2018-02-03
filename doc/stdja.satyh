@@ -1,4 +1,8 @@
 % -*- coding: utf-8 -*-
+@import: pervasives.satyh
+@import: gr.satyh
+@import: list.satyh
+@import: math.satyh
 
 module StdJa : sig
 

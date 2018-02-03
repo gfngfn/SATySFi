@@ -1,4 +1,17 @@
 % -*- coding: utf-8 -*-
+@import: pervasives.satyh
+@import: gr.satyh
+@import: list.satyh
+@import: tabular.satyh
+@import: math.satyh
+@import: color.satyh
+@import: deco.satyh
+@import: decoset.satyh
+@import: vdecoset.satyh
+@import: stdja.satyh
+@import: local.satyh
+@import: local-math.satyh
+
 document (|
   title = {\SATySFi;の\fil-both;\no-break{基本型}と\fil-both;\no-break{プリミティヴ}};
   author = {Takashi SUWA};
