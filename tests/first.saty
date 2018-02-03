@@ -246,6 +246,11 @@ document (|
       outer: \frame-outer{#test;},
       and fixed-width (here the width is set to 160pt): \frame-fixed(160pt){#test;}
     });
+  +p-jp {
+    \ruby{JLreq}{日本語組版処理の要件}に\ruby{完全}{かんぜん}に\ruby{対応}{たいおう}しているわけではありませんが，
+    \ruby{一応}{いちおう}ルビを\ruby{振}{ふ}ることもできます。
+    和同\ruby-both{開珎}{かいちん}{かいほう}
+  }
 >
 
 

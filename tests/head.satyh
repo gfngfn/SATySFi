@@ -546,7 +546,7 @@ let-block ctx +code code =
     let lst = split-into-lines code in
     let ib-code =
       lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
-        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
+%        let () = display-message (`+code: (` ^ (arabic i) ^ `)` ^ s) in
         let ib-last =
           match optnext with
           | Some(_) -> inline-fil ++ discretionary 0 (inline-skip 1000000pt) inline-nil inline-nil
@@ -562,3 +562,20 @@ let-block ctx +code code =
     in
       line-break true true ctx ib-code
   ))
+
+
+let-inline ctx \ruby itmain itruby =
+  let fontsize = get-font-size ctx in
+  let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
+  let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
+  let ibruby = inline-fil ++ (read-inline ctx-ruby itruby) ++ inline-fil in
+    line-stack-bottom [ibruby; ibmain]
+
+
+let-inline ctx \ruby-both itmain itrubyT itrubyB =
+  let fontsize = get-font-size ctx in
+  let ctx-ruby = ctx |> set-font-size (fontsize *' 0.5) in
+  let ibmain = inline-fil ++ (read-inline ctx itmain) ++ inline-fil in
+  let ibrubyT = inline-fil ++ (read-inline ctx-ruby itrubyT) ++ inline-fil in
+  let ibrubyB = inline-fil ++ (read-inline ctx-ruby itrubyB) ++ inline-fil in
+    line-stack-top [line-stack-bottom [ibrubyT; ibmain]; ibrubyB]
