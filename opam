@@ -7,7 +7,9 @@ homepage: "https://github.com/gfngfn/Macrodown"
 dev-repo: "https://github.com/gfngfn/Macrodown.git"
 bug-reports: "https://github.com/gfngfn/Macrodown/issues"
 build: [
+  [make "-f" "Makefile" "preliminary" "PREFIX=%{prefix}"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%"]
+  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%"]
 ]
 install: [
   [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
@@ -20,4 +22,4 @@ depends: [
   "ocamlbuild" {build}
   "menhir"
 ]
-available: [ ocaml-version >= "4.02" ]
+available: [ ocaml-version >= "4.05" ]
