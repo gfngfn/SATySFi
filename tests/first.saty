@@ -1,4 +1,6 @@
 % -*- coding: utf-8 -*-
+@import: head.satyh
+
 document (|
   title  = {Sample Document};
   author = {Takashi SUWA};
