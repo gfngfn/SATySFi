@@ -1,4 +1,7 @@
 % -*- coding: utf-8 -*-
+@import: tabular
+@import: stdja
+
 document (|
   title  = {Math Test};
   author = {Takashi SUWA};
@@ -84,6 +87,6 @@ document (|
     \tabular(fun cellf multif empty -> [
       [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
       [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
-    ]);
+    ])(fun xs ys -> []);
   }
 >

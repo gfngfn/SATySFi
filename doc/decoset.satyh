@@ -1,4 +1,4 @@
-@import: gr.satyh
+@import: gr
 
 module DecoSet : sig
 

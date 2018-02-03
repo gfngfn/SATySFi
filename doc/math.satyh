@@ -1,4 +1,4 @@
-@import: pervasives.satyh
+@import: pervasives
 
 module Math : sig
 

@@ -1,5 +1,5 @@
 % -*- coding: utf-8 -*-
-@import: head.satyh
+@import: head
 
 document (|
   title  = {Sample Document};

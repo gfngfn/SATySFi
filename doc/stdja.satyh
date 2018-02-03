@@ -1,8 +1,10 @@
 % -*- coding: utf-8 -*-
-@import: pervasives.satyh
-@import: gr.satyh
-@import: list.satyh
-@import: math.satyh
+@import: pervasives
+@import: gr
+@import: list
+@import: math
+@import: color
+@import: vdecoset
 
 module StdJa : sig
 

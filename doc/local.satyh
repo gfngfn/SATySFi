@@ -1,6 +1,6 @@
-@import: pervasives.satyh
-@import: math.satyh
-@import: stdja.satyh
+@import: pervasives
+@import: math
+@import: stdja
 
 let ( --> ) m1 m2 =
   ${\paren{#m1 \to #m2}}

@@ -1,5 +1,5 @@
-@import: list.satyh
-@import: math.satyh
+@import: list
+@import: math
 
 let form-paragraph = line-break true true
 
