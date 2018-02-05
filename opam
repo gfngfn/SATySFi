@@ -7,7 +7,7 @@ homepage: "https://github.com/gfngfn/Macrodown"
 dev-repo: "https://github.com/gfngfn/Macrodown.git"
 bug-reports: "https://github.com/gfngfn/Macrodown/issues"
 build: [
-  [make "-f" "Makefile" "preliminary" "PREFIX=%{prefix}"]
+  ["git" "submodule" "update" "-i"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%"]
   [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%"]
 ]
@@ -20,6 +20,15 @@ remove: [
 depends: [
   "ocamlfind"
   "ocamlbuild" {build}
+  "ppx_deriving"
   "menhir"
+  "core.v0.9.1"
+  "ctypes"
+  "uutf"
+  "result"
+  "bitv"
+  "batteries"
+  "yojson"
+  "camlimages"
 ]
-available: [ ocaml-version >= "4.05" ]
+available: [ ocaml-version = "4.05" ]
