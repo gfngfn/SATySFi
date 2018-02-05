@@ -20,20 +20,21 @@ all:
 install: $(TARGET)
 	mkdir -p $(BINDIR)
 	install $(TARGET) $(BINDIR)
+	install -d $(PREFIX_LIB)/lib-satysfi
+	install -d $(PREFIX_LIB)/lib-satysfi/dist
+	install -d $(PREFIX_LIB)/lib-satysfi/dist/unidata
+	install -m 644 lib-satysfi/dist/unidata/*.txt $(PREFIX_LIB)/lib-satysfi/dist/unidata
+	install -d $(PREFIX_LIB)/lib-satysfi/dist/fonts
+	install -m 644 lib-satysfi/dist/fonts/* $(PREFIX_LIB)/lib-satysfi/dist/fonts
+	install -d $(PREFIX_LIB)/lib-satysfi/dist/hash
+	install -m 644 lib-satysfi/dist/hash/* $(PREFIX_LIB)/lib-satysfi/dist/hash
+	install -d $(PREFIX_LIB)/lib-satysfi/dist/hyph
+	install -m 644 lib-satysfi/dist/hyph/* $(PREFIX_LIB)/lib-satysfi/dist/hyph
+	install -d $(PREFIX_LIB)/lib-satysfi/dist/packages
+	install -m 644 lib-satysfi/dist/packages/* $(PREFIX_LIB)/lib-satysfi/dist/packages
 
 preliminary:
-	opam install -y ppx_deriving
-	opam install -y menhir
-	opam install -y core.v0.9.1
-	opam install -y ctypes
-	opam install -y uutf
-	opam install -y result
-	opam install -y bitv
-	opam install -y batteries
-	opam install -y yojson
-	opam install -y camlimages
-	eval `opam config env`
-	git submodule update -i
+	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
 
 lib:
 # -- downloads UNIDATA --
@@ -52,11 +53,10 @@ lib:
 	wget http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -O temp/latinmodern-math-1959.zip
 	unzip temp/latinmodern-math-1959.zip -d temp/
 	cp temp/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
-# -- make a symbolic link for libraries --
-	ln -s -i `pwd`/lib-satysfi $(PREFIX_LIB)/lib-satysfi
 
 uninstall:
 	rm -rf $(BINDIR)/$(TARGET)
+	rm -rf $(PREFIX_LIB)/lib-satysfi
 
 clean:
 	$(OCB) -clean
