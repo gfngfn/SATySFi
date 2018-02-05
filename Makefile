@@ -38,20 +38,20 @@ preliminary:
 
 lib:
 # -- downloads UNIDATA --
-	wget http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt       -O lib-satysfi/dist/unidata/EastAsianWidth.txt
-	wget http://www.unicode.org/Public/UNIDATA/LineBreak.txt            -O lib-satysfi/dist/unidata/LineBreak.txt
-	wget http://www.unicode.org/Public/UNIDATA/PropList.txt             -O lib-satysfi/dist/unidata/PropList.txt
-	wget http://www.unicode.org/Public/UNIDATA/PropertyAliases.txt      -O lib-satysfi/dist/unidata/PropertyAliases.txt
-	wget http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt -O lib-satysfi/dist/unidata/PropertyValueAliases.txt
-	wget http://www.unicode.org/Public/UNIDATA/Scripts.txt              -O lib-satysfi/dist/unidata/Scripts.txt
-	wget http://www.unicode.org/Public/UNIDATA/ScriptExtensions.txt     -O lib-satysfi/dist/unidata/ScriptExtensions.txt
-	wget http://www.unicode.org/Public/UNIDATA/UnicodeData.txt          -O lib-satysfi/dist/unidata/UnicodeData.txt
+	wget -N http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt       -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/LineBreak.txt            -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/PropList.txt             -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/PropertyAliases.txt      -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/Scripts.txt              -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/ScriptExtensions.txt     -P lib-satysfi/dist/unidata/
+	wget -N http://www.unicode.org/Public/UNIDATA/UnicodeData.txt          -P lib-satysfi/dist/unidata/
 # -- downloads fonts --
 	mkdir -p temp/
-	wget http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -O temp/lm2.004otf.zip
-	unzip temp/lm2.004otf.zip -d lib-satysfi/dist/fonts/
-	wget http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -O temp/latinmodern-math-1959.zip
-	unzip temp/latinmodern-math-1959.zip -d temp/
+	wget -N http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -P temp/
+	unzip -o temp/lm2.004otf.zip -d lib-satysfi/dist/fonts/
+	wget -N http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -P temp/
+	unzip -o temp/latinmodern-math-1959.zip -d temp/
 	cp temp/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
 
 uninstall:
