@@ -22,22 +22,11 @@ remove: [
   [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 depends: [
-  "ppx_deriving"
-  "menhir"
-  "core" {= "v0.9.1"}
-  "ctypes"
-  "uutf"
-  "result"
-  "bitv"
-  "batteries"
-  "yojson"
-  "camlimages"
   "ocamlfind"
   "ocamlbuild" {build}
-  "ppx_deriving"
   "menhir"
-  "core.v0.9.1"
-  "ctypes"
+  "ppx_deriving"
+  "core" {= "v0.9.1"}
   "uutf"
   "result"
   "bitv"
@@ -45,4 +34,4 @@ depends: [
   "yojson"
   "camlimages"
 ]
-available: [ ocaml-version = "4.05" ]
+available: [ ocaml-version = "4.05.0" ]
