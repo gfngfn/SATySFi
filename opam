@@ -7,6 +7,7 @@ homepage: "https://github.com/gfngfn/Macrodown"
 dev-repo: "https://github.com/gfngfn/Macrodown.git"
 bug-reports: "https://github.com/gfngfn/Macrodown/issues"
 build: [
+  ["echo" "\"begin to build SATySFi\""]
   [make "-f" "Makefile" "preliminary" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
   [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
@@ -22,6 +23,7 @@ remove: [
   [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 depends: [
+  "depext"
   "ocamlfind"
   "ocamlbuild" {build}
   "menhir"
