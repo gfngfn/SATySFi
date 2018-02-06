@@ -8,7 +8,6 @@ dev-repo: "https://github.com/gfngfn/Macrodown.git"
 bug-reports: "https://github.com/gfngfn/Macrodown/issues"
 build: [
   ["echo" "\"begin to build SATySFi\""]
-  [make "-f" "Makefile" "preliminary" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
   [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]

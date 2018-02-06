@@ -11,6 +11,7 @@ OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
 
 all:
+	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
 	mkdir -p _build/
 	cp $(EXTERNAL)/camlpdf/*.c _build/
 	cp $(EXTERNAL)/camlpdf/*.h _build/
@@ -33,8 +34,8 @@ install: $(TARGET)
 	install -d $(PREFIX_LIB)/lib-satysfi/dist/packages
 	install -m 644 lib-satysfi/dist/packages/* $(PREFIX_LIB)/lib-satysfi/dist/packages
 
-preliminary:
-	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
+#preliminary:
+#	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
 
 lib:
 # -- downloads UNIDATA --
