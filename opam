@@ -7,23 +7,26 @@ homepage: "https://github.com/gfngfn/Macrodown"
 dev-repo: "https://github.com/gfngfn/Macrodown.git"
 bug-reports: "https://github.com/gfngfn/Macrodown/issues"
 build: [
-  ["git" "submodule" "update" "-i"]
-  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
-  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%"]
+  [make "-f" "Makefile" "preliminary" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
+  [make "-f" "Makefile" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
+  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 install: [
-  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
+  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
+]
+post-messages: [
+  "Please set SATYSFI_LIB_ROOT. You may want to add the following line to ~/.bashrc"
+  "export SATYSFI_LIB_ROOT=\"$(PREFIX_LIB)/lib-satysfi\""
 ]
 remove: [
-  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
+  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 depends: [
   "ocamlfind"
   "ocamlbuild" {build}
-  "ppx_deriving"
   "menhir"
-  "core.v0.9.1"
-  "ctypes"
+  "ppx_deriving"
+  "core" {= "v0.9.1"}
   "uutf"
   "result"
   "bitv"
@@ -31,4 +34,4 @@ depends: [
   "yojson"
   "camlimages"
 ]
-available: [ ocaml-version = "4.05" ]
+available: [ ocaml-version = "4.05.0" ]
