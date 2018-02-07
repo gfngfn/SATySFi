@@ -1,9 +1,13 @@
 % -*- coding: utf-8 -*-
+@import: head
+@require: math
+
 document (|
   title  = {Math Test};
   author = {Takashi SUWA};
+  show-title = true;
+  show-toc = false;
 |) '<
-  +make-title;
   +p {
     This document was typeset by using \satysfi;.
   }
