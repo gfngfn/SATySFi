@@ -1,3 +1,4 @@
+@require: list
 
 module Gr : sig
 
@@ -5,6 +6,8 @@ module Gr : sig
   val rectangle-round       : length -> length * length -> length * length -> path
   val rectangle-round-left  : length -> length * length -> length * length -> path
   val rectangle-round-right : length -> length * length -> length * length -> path
+  val poly-line : length * length -> (length * length) list -> path
+  val line : length * length -> length * length -> path
 
 end = struct
 
@@ -14,6 +17,7 @@ end = struct
       |> line-to (x2, y2)
       |> line-to (x2, y1)
       |> close-with-line
+
 
   let rectangle-round r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
@@ -31,6 +35,7 @@ end = struct
         |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
         |> close-with-line
 
+
   let rectangle-round-left r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
     let x1 = length-min xA xB in
@@ -45,6 +50,7 @@ end = struct
         |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
         |> close-with-line
 
+
   let rectangle-round-right r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
     let x1 = length-min xA xB in
@@ -58,5 +64,15 @@ end = struct
         |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
         |> line-to                               (x1, y2)
         |> close-with-line
+
+
+  let poly-line ptinit ptlst =
+    ptlst |> List.fold-left (fun acc pt -> (
+      acc |> line-to pt
+    )) (start-path ptinit) |> terminate-path
+
+
+  let line pt1 pt2 =
+    start-path pt1 |> line-to pt2 |> terminate-path
 
 end

@@ -1,4 +1,7 @@
 % -*- coding: utf-8 -*-
+@import: head
+@import: math
+
 document (|
   title  = {Math Test 2};
   author = {Takashi SUWA};
