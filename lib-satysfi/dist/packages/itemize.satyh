@@ -1,0 +1,46 @@
+@require: list
+@require: gr
+
+module Itemize : sig
+
+  direct +listing : [itemize] block-cmd
+
+end = struct
+
+  let (+++>) = List.fold-left (+++)
+
+
+  let item-indent = 16pt
+
+
+  let bullet color (x, y) =
+    let cx = x +' 4pt in
+    let cy = y +' 4pt in
+    let r = 2pt in
+      [ fill color (Gr.circle (cx, cy) r); ]
+
+
+  let-rec item : context -> int -> itemize -> block-boxes
+    | ctx depth (Item(parent, children)) =
+        let color = get-text-color ctx in
+        let br-bullet = (inline-graphics 8pt 8pt 0pt (bullet color)) ++ (inline-skip 8pt) in
+        let bullet-width = get-natural-width br-bullet in
+        let parent-indent = item-indent *' (float depth) in
+        let br-parent =
+          embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
+            form-paragraph ctx ((read-inline ctx parent) ++ inline-fil)
+          )
+        in
+        let bc-parent =
+          form-paragraph ctx
+            ((inline-skip parent-indent) ++ br-bullet ++ br-parent)
+        in
+        let bclst-children = List.map (item ctx (depth + 1)) children in
+          bc-parent +++> bclst-children
+
+
+  let-block ctx +listing (Item(_, itmzlst)) =
+    let bclst = List.map (item ctx 0) itmzlst in
+      block-nil +++> bclst
+
+end

@@ -15,6 +15,29 @@ let-inline ctx \SATySFi =
     script-guard Latin ib
 
 
+let-inline ctx \LaTeX =
+  let size = get-font-size ctx in
+  let f = read-inline ctx in
+  let fA = ctx |> set-font-size (size *' 0.7)
+               |> set-manual-rising (size *' 0.2)
+               |> read-inline
+  in
+  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+               |> read-inline
+  in
+    f {L} ++ kern (size *' 0.2) ++ fA {A}
+      ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+
+
+let-inline ctx \TeX =
+  let size = get-font-size ctx in
+  let f = read-inline ctx in
+  let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
+               |> read-inline
+  in
+    f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+
+
 let length-max len1 len2 =
   if len1 <' len2 then len2 else len1
 

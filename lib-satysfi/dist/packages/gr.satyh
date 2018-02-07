@@ -8,6 +8,7 @@ module Gr : sig
   val rectangle-round-right : length -> length * length -> length * length -> path
   val poly-line : length * length -> (length * length) list -> path
   val line : length * length -> length * length -> path
+  val circle : length * length -> length -> path
 
 end = struct
 
@@ -74,5 +75,14 @@ end = struct
 
   let line pt1 pt2 =
     start-path pt1 |> line-to pt2 |> terminate-path
+
+
+  let circle (cx, cy) r =
+    let t = r *' 0.55228 in
+      start-path (cx -' r, cy)
+        |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+        |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+        |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+        |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
 
 end
