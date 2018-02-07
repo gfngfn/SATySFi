@@ -1,11 +1,26 @@
 
+
+let show_full_path_ref = ref false
+
+
+let show_full_path b =
+  show_full_path_ref := b
+
+
+let show_path s =
+  if !show_full_path_ref then
+    s
+  else
+    Filename.basename s
+
+
 let begin_to_read_file file_name_in =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  reading '" ^ file_name_in ^ "' ...")
+  print_endline ("  reading '" ^ (show_path file_name_in) ^ "' ...")
 
 
 let begin_to_parse_file file_name_in =
-  print_endline ("  parsing '" ^ file_name_in ^ "' ...")
+  print_endline ("  parsing '" ^ (show_path file_name_in) ^ "' ...")
 
 
 let pass_type_check opt =
@@ -61,7 +76,7 @@ let achieve_fixpoint () =
 
 let end_output file_name_out =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  output written on '" ^ file_name_out ^ "'.")
+  print_endline ("  output written on '" ^ (show_path file_name_out) ^ "'.")
 
 
 let no_output () =
@@ -71,14 +86,14 @@ let no_output () =
 
 let target_file file_name_out =
   print_endline (" ---- ---- ---- ----");
-  print_endline ("  target file: '" ^ file_name_out ^ "'")
+  print_endline ("  target file: '" ^ (show_path file_name_out) ^ "'")
 
 
 let  dump_file dump_file_exists dump_file =
   if dump_file_exists then
-    print_endline ("  dump file: '" ^ dump_file ^ "' (already exists)")
+    print_endline ("  dump file: '" ^ (show_path dump_file) ^ "' (already exists)")
   else
-    print_endline ("  dump file: '" ^ dump_file ^ "' (will be created)")
+    print_endline ("  dump file: '" ^ (show_path dump_file) ^ "' (will be created)")
 
 
 let begin_to_embed_fonts () =

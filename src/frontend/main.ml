@@ -667,47 +667,17 @@ let error_log_environment suspended =
   | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
 *)
 
-(*
-type input_file_kind =
-  | DocumentFile
-  | HeaderFile
-
-
-let rec main (tyenv : Typeenv.t) (env : environment) (input_list : (input_file_kind * string) list) (file_name_out : file_path) (dump_file_name : file_path) =
-    match input_list with
-    | [] ->
-        Logging.no_output ()
-
-    | (DocumentFile, file_name_in) :: tail ->
-        read_document_file tyenv env file_name_in file_name_out dump_file_name
-
-    | (HeaderFile, file_name_in) :: tail ->
-        let (tyenvnew, envnew) = make_environment_from_header_file tyenv env file_name_in in
-        main tyenvnew envnew tail file_name_out dump_file_name
-
-
-let output_name_ref : file_path ref = ref "a.pdf"
-let input_acc_ref : ((input_file_kind * string) Alist.t) ref = ref Alist.empty
-
-let arg_header s =
-  begin input_acc_ref := Alist.extend (!input_acc_ref) (HeaderFile, s); end
-
-let arg_doc s =
-  begin input_acc_ref := Alist.extend (!input_acc_ref) (DocumentFile, s); end
-
-let arg_libdir s =
-  begin libdir_ref := s; end
-*)
 
 let output_ref : (file_path option) ref = ref None
 
 let input_ref : (file_path option) ref = ref None
 
+let show_full_path_ref : bool ref = ref false
 
 let arg_version () =
   begin
     print_string (
-        "  SATySFi version 0.00\n"
+        "  SATySFi version 0.0.1\n"
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
       ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
@@ -743,23 +713,9 @@ let arg_spec_list curdir =
     ("--output"    , Arg.String(arg_output curdir), " Specify output file");
     ("-v"          , Arg.Unit(arg_version)        , " Print version");
     ("--version"   , Arg.Unit(arg_version)        , " Print version");
-(*
-    ("--libdir"    , Arg.String(arg_libdir)    , " Specify SATySFi library directory");
-    ("--header"    , Arg.String(arg_header)    , " Specify input file as a header");
-    ("--doc"       , Arg.String(arg_doc)       , " Specify input file as a document file");
-*)
+    ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style")
   ]
 
-(*
-let handle_anonimous_arg s =
-  let i =
-    match () with
-    | ()  when is_document_file s -> (DocumentFile, s)
-    | ()  when is_header_file s   -> (HeaderFile, s)
-    | _                           -> raise (IllegalExtension(s))
-  in
-  input_acc_ref := Alist.extend (!input_acc_ref) i
-*)
 
 let () =
   error_log_environment (fun () ->
@@ -778,9 +734,16 @@ let () =
     in
     let output_file =
       match !output_ref with
-      | None    -> Filename.concat curdir "a.pdf"
-      | Some(v) -> v
+      | Some(v) ->
+          v
+
+      | None ->
+          begin
+            try (Filename.chop_extension input_file) ^ ".pdf" with
+            | Invalid_argument(_) -> input_file ^ ".pdf"
+          end
     in
+    Logging.show_full_path (!show_full_path_ref);
     Logging.target_file output_file;
     let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in
     let (tyenv, env, dump_file_exists) = initialize libdir dump_file in
