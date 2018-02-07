@@ -999,6 +999,11 @@ and interpret env ast =
       let (ctx, valuecmd) = interpret_context env astctx in
         Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
 
+  | PrimitiveGetTextColor(astctx) ->
+      let (ctx, _) = interpret_context env astctx in
+      let color = ctx.HorzBox.text_color in
+        make_color_value color
+
   | PrimitiveSetLeading(astlen, astctx) ->
       let len = interpret_length env astlen in
       let (ctx, valuecmd) = interpret_context env astctx in

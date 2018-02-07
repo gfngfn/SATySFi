@@ -646,6 +646,7 @@ and abstract_tree =
   | PrimitiveSetLangSys         of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveGetLangSys         of abstract_tree * abstract_tree
   | PrimitiveSetTextColor       of abstract_tree * abstract_tree
+  | PrimitiveGetTextColor       of abstract_tree
   | PrimitiveSetLeading         of abstract_tree * abstract_tree
   | PrimitiveGetTextWidth       of abstract_tree
   | PrimitiveSetManualRising    of abstract_tree * abstract_tree
