@@ -1,0 +1,9 @@
+module Deco : sig
+
+  val empty : deco
+
+end = struct
+
+  let empty _ _ _ _ = []
+
+end

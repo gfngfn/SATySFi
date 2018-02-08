@@ -1,0 +1,22 @@
+% -*- coding: utf-8 -*-
+@import: head
+@import: math
+
+document (|
+  title  = {Math Test 2};
+  author = {Takashi SUWA};
+|) '<
+  +make-title;
+  +p-jp{
+    万有引力定数を ${G} として，距離 ${R} だけ離れた質量 ${M_1}，${M_2} の2物体間にはたらく重力は
+  }
+  +math(${
+    F = G \frac{M_1 M_2}{R^2}
+  });
+  +p-jp{
+    と表される．
+  }
+  +math(${
+    Z = -\npe^x + f^{x^{n^2}}
+  });
+>

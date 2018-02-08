@@ -1,0 +1,92 @@
+% -*- coding: utf-8 -*-
+@require: stdja
+@import: tabular
+
+document (|
+  title  = {Math Test};
+  author = {Takashi SUWA};
+  show-title = false;
+  show-toc = false;
+|) '<
+  +p {
+    This document was typeset by using \SATySFi;.
+  }
+  +p {
+    Italics correction and kerning:
+      ${\paren{F^n} \paren{F} = \paren{G \frac{M m}{R^2}}^{n + 1}},
+
+    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2},\fil;
+
+    parentheses: ${\paren{\paren{\paren{A} + B} + C}}, ${\brace{\brace{\brace{A} + B} + C}},
+
+    radical: ${2 \sqrt{3} + \frac{2}{\sqrt{5}} + \frac{1}{\sqrt{x^2 + 1}}}.\fil;
+
+    The solution of the equation ${a x^2 + b x + c = 0} as to ${x} is
+      ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}.
+
+    Multiplex radicals: ${\sqrt{\sqrt{\sqrt{\sqrt{2}}}}},
+
+    limits: ${\lower{\lim}{n \to \infty} \paren{1 + \frac{1}{n}}^{n} = e},
+
+    fraction superscript: ${e^{\frac{x}{2}}},
+
+    sub-superscript: ${a_{n - 1}^{2} b},
+
+    sub-superscript correction: ${a_1^{\frac{n}{2}}}, ${\bm{f_1}^2},
+
+    big operator: ${\upper{\lower{\sum}{n = 1}}{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}},
+
+    integral: ${\int_0^1 \sqrt{1 - x^2} \ordd x},
+
+    texts contained in formulae: ${\frac{\text!{Hoge}}{2} + \sqrt{\text!{Piyo}}},
+
+    tuple: ${\angle{x, y, z}}.
+  }
+  +math (
+    let int1 = ${\int_0^a} in
+    let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+    let sqrt2 = ${\sqrt{x^2 + r^2}} in
+      ${
+        \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{#int1 \ordd x #int2 r #sqrt2 \ordd r}
+          = \frac{2a}{5}
+      }
+  );
+  +p (
+    let test = ${ABCMNOPQRXYZabc} in
+    {
+      Script:        ${\math-style!(MathScript      ){#test}},
+      bold script:   ${\math-style!(MathBoldScript  ){#test}},
+      Fraktur:       ${\math-style!(MathFraktur     ){#test}},
+      bold Fraktur:  ${\math-style!(MathBoldFraktur ){#test}},
+      double struck: ${\math-style!(MathDoubleStruck){#test}}.
+    });
+  +p {Typing rule is defined as follows:}
+  +math(${
+    \derive{\paren{\app{\Gamma}{x} \synteq \tau}}{
+      \tyjd{\Gamma}{x}{\tau}
+    }
+    \and-also
+    \derive{
+      \tyjd{\overwrite{\Gamma}{x}{\tau_1}}{M}{\tau_2}
+    }{
+      \tyjd{\Gamma}{\paren{\tmabstyped{x}{\tau_1}{M}}}{\tau_1 \to \tau_2}
+    }
+  });
+  +math(${
+    \derive{
+      \tyjd{\Gamma}{M}{\tau_1 \to \tau_2} \and-also \tyjd{\Gamma}{N}{\tau_1}
+    }{
+      \tyjd{\Gamma}{M N}{\tau_2}
+    }
+  });
+  +math (${
+    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+  });
+  +p {
+    A table
+    \tabular(fun cellf multif empty -> [
+      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
+      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
+    ])(fun xs ys -> []);
+  }
+>

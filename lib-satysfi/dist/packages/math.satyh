@@ -1,0 +1,579 @@
+@require: pervasives
+
+module Math : sig
+
+  direct \math : [math] inline-cmd
+  direct +math : [math] block-cmd
+  direct \text : [inline-text] math-cmd
+  direct \frac : [math; math] math-cmd
+  direct \sqrt : [math] math-cmd
+  direct \lower : [math; math] math-cmd
+  direct \upper : [math; math] math-cmd
+  direct \math-skip : [length] math-cmd
+  direct \math-color : [color; math] math-cmd
+  val concat : math -> math list -> math
+
+  direct \mathord : [math] math-cmd
+  direct \mathbin : [math] math-cmd
+  direct \mathrel : [math] math-cmd
+
+  direct \math-style : [math-char-class; math] math-cmd
+  direct \mathrm : [math] math-cmd
+  direct \bm : [math] math-cmd
+
+  direct \paren : [math] math-cmd
+  direct \app : [math; math] math-cmd
+  direct \angle : [math] math-cmd
+  direct \brace : [math] math-cmd
+
+  direct \to : [] math-cmd
+  direct \pm : [] math-cmd
+  direct \infty : [] math-cmd
+  direct \ldots : [] math-cmd
+  direct \sum : [] math-cmd
+  direct \int : [] math-cmd
+  direct \ordd : [] math-cmd
+
+  direct \lim : [] math-cmd
+
+  direct \Gamma : [] math-cmd
+  direct \lambda : [] math-cmd
+  direct \pi : [] math-cmd
+  direct \tau : [] math-cmd
+
+  % -- temporary --
+  direct \synteq : [] math-cmd
+  direct \derive : [math; math] math-cmd
+  direct \tyjd : [math; math; math] math-cmd
+  direct \and-also : [] math-cmd
+  direct \overwrite : [math; math; math] math-cmd
+  direct \tmabstyped : [math; math; math] math-cmd
+
+end = struct
+
+  let concat msep mlst =
+    match
+      mlst |> List.fold-left (fun maccopt m -> (
+        match maccopt with
+        | None       -> Some(m)
+        | Some(macc) -> Some(${#macc #msep #m})
+      )) None
+    with
+    | None       -> ${}
+    | Some(macc) -> macc
+
+
+  let-inline ctx \math fml =
+      embed-math ctx fml
+
+  let-math \frac = math-frac
+
+  let-math \sqrt = math-radical None
+
+  let-math \lower = math-lower
+
+  let-math \upper = math-upper
+
+  let-math \text it =
+    text-in-math MathOrd (fun ctx -> read-inline ctx it)
+
+  let-math \math-skip len =
+    text-in-math MathOrd (fun ctx -> inline-skip len)
+
+  let-math \math-color color m =
+    math-color color m
+
+
+  let-math \mathord = math-group MathOrd MathOrd
+  let-math \mathbin = math-group MathBin MathBin
+  let-math \mathrel = math-group MathRel MathRel
+
+  let-block ctx +math math =
+    let ib = embed-math ctx math in
+      line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+  let math-ord-char cp =
+    math-char MathOrd (string-unexplode [cp])
+
+
+  let math-list lst =
+    lst |> List.fold-left math-concat (math-char MathOrd ` `)
+
+
+  let single cp = string-unexplode [cp]
+
+
+  let greek-lowercase cp cpb =
+    let s = single cp in
+    let sb = single cpb in
+      math-variant-char MathOrd (|
+        italic        = s;
+        bold-italic   = sb;
+        roman         = s;
+        bold-roman    = sb;
+        script        = s;
+        bold-script   = sb;
+        fraktur       = s;
+        bold-fraktur  = sb;
+        double-struck = s;
+      |)
+
+
+  let greek-uppercase cp cpb cpr cprb =
+    let s = single cp in
+    let sb = single cpb in
+    let sr = single cpr in
+    let srb = single cprb in
+      math-variant-char MathOrd (|
+        italic        = s;
+        bold-italic   = sb;
+        roman         = sr;
+        bold-roman    = srb;
+        script        = s;
+        bold-script   = sb;
+        fraktur       = s;
+        bold-fraktur  = sb;
+        double-struck = s;
+      |)
+
+
+  let-math \lambda = greek-lowercase 0x1D706 0x1D740
+  let-math \pi     = greek-lowercase 0x1D70B 0x1D745
+  let-math \tau    = greek-lowercase 0x1D70F 0x1D749
+
+  let-math \Gamma = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
+
+
+  let-math \infty = math-char MathOrd `∞`
+  let-math \to    = math-char MathRel `→`
+  let-math \pm    = math-char MathBin `±`
+  let-math \vdash = math-char MathRel `⊢`
+  let-math \colon-rel = math-char MathRel `:`
+  let-math \equiv = math-char MathRel `≡`
+  let-math \mapsto = math-char MathRel `↦`
+  let-math \ldots = math-char MathPunct `…`
+
+  let-math \lim = math-char MathOp `lim`
+
+  let-math \sum = math-big-char MathOp `∑`
+
+%% -- for Latin Modern Math --
+  let-math \int =
+    let kernfL _ _ = 0pt in
+    let kernfR fontsize ypos = fontsize *' 0.45 in
+      math-big-char-with-kern MathOp `∫` kernfL kernfR
+
+%% -- for Cambria Math --
+%  let-math \int =
+%    let kernfL _ _ = 0pt in
+%    let kernfR fontsize ypos = fontsize *' 0.2 in
+%      math-big-char-with-kern MathOp `∫` kernfL kernfR
+
+  let-math \ordd = math-char MathPrefix `d`
+
+  let-math \partial = math-char MathPrefix `∂`
+
+  let math-space =
+    text-in-math MathOrd (fun ctx -> inline-skip 30pt)
+
+  let rectangle (x, y) w h =
+    start-path (x, y)
+      |> line-to (x +' w, y)
+      |> line-to (x +' w, y +' h)
+      |> line-to (x, y +' h)
+      |> close-with-line
+
+  let math-deriv m1 m2 =
+    text-in-math MathOrd (fun ctx -> (
+      let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
+      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
+      let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
+      let thickness = 0.5pt in
+      let gap = 2pt in
+      let bar =
+        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
+          [ fill (Gray(0.)) (rectangle (x, y) w thickness); ]
+        )
+      in
+        line-stack-bottom [ib1; bar; ib2]
+    ))
+
+  let-math \derive = math-deriv
+
+  let-math \and-also = math-space
+
+  let-math \tyjd tyenv tm ty =
+    ${#tyenv \vdash #tm \colon-rel #ty}
+
+  let-math \synteq = ${\equiv}
+
+  let-math \dot-punct =
+    math-char MathPunct `.`
+
+  let-math \tmabstyped var ty body =
+    ${\lambda #var \colon-rel #ty \dot-punct #body}
+
+  let-math \npe =
+    math-color (RGB(1., 0., 0.)) (math-char-class MathRoman ${e})
+
+  let-math \bi m =
+    math-char-class MathBoldItalic m
+
+  let half-length hgt dpt hgtaxis fontsize =
+    let minhalflen = fontsize *' 0.5 in
+    let lenappend = fontsize *' 0.1 in
+      length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
+
+  let angle-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let widparen = halflen *' 0.375 in
+    let wid = widparen +' fontsize *' 0.1 in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid -' widparen, ypos +' hgtaxis)
+        |> line-to (xpos +' wid, ypos +' hgtaxis -' halflen)
+        |> terminate-path
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo y =
+      let widkern = widparen in
+      let r = 0. in
+      let gap = length-abs (y -' hgtaxis) in
+        if halflen *' r <' gap then
+          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let angle-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let widparen = halflen *' 0.375 in
+    let wid = widparen +' fontsize *' 0.1 in
+    let path (xpos, ypos) =
+      start-path (xpos, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' widparen, ypos +' hgtaxis)
+        |> line-to (xpos, ypos +' hgtaxis -' halflen)
+        |> terminate-path
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo y =
+      let widkern = widparen in
+      let r = 0. in
+      let gap = length-abs (y -' hgtaxis) in
+        if halflen *' r <' gap then
+          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let-math \angle =
+    math-paren angle-left angle-right
+
+  let paren-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let t1 = fontsize *' 0.025 in
+    let t2 = fontsize *' 0.025 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+      start-path (x2, ycenter +' halflen)
+        |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+        |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+        |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+        |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+        |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+        |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let paren-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.25 in %temporary
+    let t1 = 0pt -' fontsize *' 0.025 in
+    let t2 = fontsize *' 0.025 in
+
+    let qA = halflen *' 0.35 in
+    let p1 = 0pt -' (w1 +' w2) *' 0.75 in
+    let q1 = halflen *' 0.3 in
+
+    let qB = halflen *' 0.45 in
+    let p2 = 0pt -' w2 *' 0.5 in
+    let q2 = halflen *' 0.2 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let x0 = xpos +' w2 +' w1 in
+      let x1 = xpos +' w2 in
+      let x2 = xpos in
+      start-path (x2, ycenter +' halflen)
+        |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
+        |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
+        |> line-to (x2 +' t1, ycenter -' halflen +' t2)
+        |> bezier-to (x2 -' p2, ycenter -' halflen +' q2) (x1, ycenter -' qB) (x1, ycenter)
+        |> bezier-to (x1, ycenter +' qB) (x2 -' p2, ycenter +' halflen -' q2) (x2 +' t1, ycenter +' halflen -' t2)
+        |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let widparen = w0 +' w1 +' w2 in
+    let kerninfo y =
+      let widkern = widparen in
+      let r = 0.7 in
+      let gap = length-abs (y -' hgtaxis) in
+        if halflen *' r <' gap then
+          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        else
+          0pt
+    in
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \paren =
+    math-paren paren-left paren-right
+
+
+  let-math \app m1 m2 = ${#m1 \paren{#m2}}
+
+
+  let brace-left hgt dpt hgtaxis fontsize color =
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
+
+    let x0 = fontsize *' 0.125 in
+    let x1 = fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+    let x7 = fontsize *' 0.225 in
+
+    let p0 = fontsize *' 0.2 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = fontsize *' 0.3 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.175 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let brace-right hgt dpt hgtaxis fontsize color =
+
+    let t0 = fontsize *' 0.0125 in
+    let t4 = fontsize *' 0.025 in
+
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
+    let w-straight = h-straight *' 0.15 in
+    let w1 = fontsize *' 0.0125 in
+    let w2 = fontsize *' 0.02 in
+    let w5 = fontsize *' 0.01 in
+    let w6 = fontsize *' 0.015 in
+
+    let x0 = fontsize *' 0.125 in
+    let x1 = fontsize *' 0.25 in
+    let x2 = x1 -' w-straight in
+    let x3 = x2 +' fontsize *' 0.2 in
+    let x4 = x3 +' fontsize *' 0.01 in
+    let x5 = x2 +' fontsize *' 0.0625 in
+    let x6 = x5 +' w-straight in
+    let x7 = fontsize *' 0.225 in
+
+    let p0 = fontsize *' 0.2 in
+    let p1 = x1 +' w1 in
+    let p2 = x2 -' w2 in
+    let p3 = x3 -' fontsize *' 0.1 in
+    let p4 = x4 -' fontsize *' 0.09 in
+    let p5 = x5 -' w5 in
+    let p6 = x6 +' w6 in
+    let p7 = fontsize *' 0.3 in
+
+    let y0 = t0 in
+    let y1 = fontsize *' 0.125 in
+    let y2 = y1 +' h-straight in
+    let y3 = halflen in
+    let y4 = halflen -' t4 in
+    let y5 = halflen -' fontsize *' 0.175 in
+    let y6 = y5 -' h-straight in
+    let y7 = 0pt in
+
+    let q0 = y0 in
+    let q1 = y1 -' (y2 -' y1) *' ((x1 -' p1) /' (x2 -' x1)) in
+    let q2 = y2 +' (y2 -' y1) *' ((p2 -' x2) /' (x2 -' x1)) in
+    let q3 = halflen -' fontsize *' 0.00875 in
+    let q4 = halflen -' t4 -' fontsize *' 0.01 in
+    let q5 = y5 +' (y5 -' y6) *' ((p5 -' x5) /' (x5 -' x6)) in
+    let q6 = y6 -' (y5 -' y6) *' ((x6 -' p6) /' (x5 -' x6)) in
+    let q7 = fontsize *' 0.025 in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x4 -' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x4 -' x, ycenter -' y) in
+        start-path   (fP (x0, y0))
+          |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
+          |> line-to (fP (x2, y2))
+          |> bezier-to (fP (p2, q2)) (fP (p3, q3)) (fP (x3, y3))
+          |> line-to (fP (x4, y4))
+          |> bezier-to (fP (p4, q4)) (fP (p5, q5)) (fP (x5, y5))
+          |> line-to (fP (x6, y6))
+          |> bezier-to (fP (p6, q6)) (fP (p7, q7)) (fP (x7, y7))
+          |> bezier-to (fN (p7, q7)) (fN (p6, q6)) (fN (x6, y6))
+          |> line-to (fN (x5, y5))
+          |> bezier-to (fN (p5, q5)) (fN (p4, q4)) (fN (x4, y4))
+          |> line-to (fN (x3, y3))
+          |> bezier-to (fN (p3, q3)) (fN (p2, q2)) (fN (x2, y2))
+          |> line-to (fN (x1, y1))
+          |> bezier-to (fN (p1, q1)) (fN (p0, q0)) (fN (x0, y0))
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+let-math \brace =
+  math-paren brace-left brace-right
+
+
+  let bracket-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.3 in
+    let t = fontsize *' 0.05 in
+    let path (xpos, ypos) =
+      let x0 = xpos +' w0 in
+      let x1 = x0 +' w1 in
+      let x2 = x1 +' w2 in
+      let ytop = ypos +' hgtaxis +' halflen in
+      let ybot = ypos +' hgtaxis -' halflen in
+        start-path (x2, ytop +' t)
+          |> line-to (x0, ytop +' t)
+          |> line-to (x0, ybot -' t)
+          |> line-to (x2, ybot -' t)
+          |> line-to (x2, ybot)
+          |> line-to (x1, ybot)
+          |> line-to (x1, ytop)
+          |> line-to (x2, ytop)
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+    let widparen = w0 +' w1 +' w2 in
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+  let bracket-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let w0 = fontsize *' 0.1 in
+    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w2 = halflen *' 0.3 in
+    let t = fontsize *' 0.05 in
+    let widparen = w0 +' w1 +' w2 in
+    let path (xpos, ypos) =
+      let x0 = xpos +' widparen in
+      let x1 = x0 -' w1 in
+      let x2 = x1 -' w2 in
+      let ytop = ypos +' hgtaxis +' halflen in
+      let ybot = ypos +' hgtaxis -' halflen in
+        start-path (x2, ytop +' t)
+          |> line-to (x0, ytop +' t)
+          |> line-to (x0, ybot -' t)
+          |> line-to (x2, ybot -' t)
+          |> line-to (x2, ybot)
+          |> line-to (x1, ybot)
+          |> line-to (x1, ytop)
+          |> line-to (x2, ytop)
+          |> close-with-line
+    in
+    let graphics point = [ fill color (path point); ] in
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+
+  let-math \sqbracket =
+    math-paren bracket-left bracket-right
+
+  let-math \overwrite f x v =
+    ${#f \sqbracket{#x \mapsto #v}}
+
+  let-math \math-style sty m =
+    math-char-class sty m
+
+  let-math \mathrm m =
+    ${\math-style!(MathRoman){#m}}
+
+  let-math \bm m =
+    ${\math-style!(MathBoldItalic){#m}}
+
+end

@@ -1,12 +1,10 @@
-all: output.tex output.dvi output.pdf
-output.tex: to_latex.mcrdh intr_style_latex.mcrdh introduction.mcrd
-	macrodown $^ -o output.tex
-output.dvi: output.tex
-	platex output.tex
-output.pdf: output.dvi
-	dvipdfmx output.dvi
+#DEPS=pervasives.satyh gr.satyh list.satyh tabular.satyh math.satyh color.satyh deco.satyh decoset.satyh vdecoset.satyh stdja.satyh local.satyh
 
-html: output.html
-output.html: to_html.mcrdh intr_style_html.mcrdh introduction.mcrd
-	macrodown $^ -o output.html
+all:
+	satysfi doc-primitives.saty -o primitives.pdf
 
+lang:
+	satysfi doc-lang.saty -o lang.pdf
+
+math1:
+	satysfi math1.saty -o math1.pdf

@@ -1,0 +1,54 @@
+@require: list
+@require: color
+@require: gr
+
+module Code : sig
+
+  direct +code : [string] block-cmd
+
+end = struct
+
+  let decoset =
+    let strokef = stroke 0.5pt Color.black in
+    let decoS (x, y) w h d = [ strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ] in
+    let decoH (x, y) w h d = [ strokef (Gr.poly-line (x, y -' d) [(x, y +' h); (x +' w, y +' h); (x +' w, y -' d);]) ] in
+    let decoM (x, y) w h d =
+      [
+        strokef (Gr.line (x, y -' d) (x, y +' h));
+        strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h));
+      ]
+    in
+    let decoT (x, y) w h d = [ strokef (Gr.poly-line (x, y +' h) [(x, y -' d); (x +' w, y -' d); (x +' w, y +' h)]) ] in
+      (decoS, decoH, decoM, decoT)
+
+
+  let-block ctx +code code =
+    let pads = (5pt, 5pt, 5pt, 5pt) in
+    block-frame-breakable ctx pads decoset (fun ctx -> (
+      let fontsize = get-font-size ctx in
+      let charwid = get-natural-width (read-inline ctx {0}) in
+      let ctx-code =
+        ctx |> set-font Latin (`lmmono`, 1., 0.)
+            |> set-space-ratio (charwid /' fontsize)
+      in
+
+      let lst = split-into-lines code in
+      let ib-code =
+        lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
+          let ib-last =
+            match optnext with
+            | Some(_) -> inline-fil ++ discretionary 0 (inline-skip ((get-text-width ctx) *' 2.)) inline-nil inline-nil
+            | None    -> inline-fil
+          in
+          let ib =
+            inline-skip (charwid *' (float i))
+              ++ read-inline ctx-code (embed-string s)
+              ++ ib-last
+          in
+            ibacc ++ ib
+        )) inline-nil
+      in
+        line-break true true ctx ib-code
+    ))
+
+end

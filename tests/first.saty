@@ -1,0 +1,292 @@
+% -*- coding: utf-8 -*-
+@import: head
+
+document (|
+  title  = {Sample Document};
+  author = {Takashi SUWA};
+|) '<
+  +make-title;
+  +section ({Sample Text}) (
+    let p-sample = '<
+      +p {
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore
+        et dolore magna aliqua.
+        Ut enim ad minim veniam,
+        quis nostrud exercitation ullamco laboris nisi
+        ut aliquip ex ea commodo consequat.
+        Duis aute irure dolor in reprehenderit
+        in voluptate velit esse
+        cillum dolore eu fugiat nulla pariatur.
+        Excepteur sint occaecat cupidatat non proident,
+        sunt in culpa
+        qui officia deserunt mollit anim id est laborum.
+      }
+    > in '<
+    +p {
+      My quiz above the kiwi juice
+      needs \emph{priceless} fixing.
+      The \emph2{quick brown fox} jumps over the lazy dog.
+      ¿But aren’t Kafka’s Schloß and Æsop’s Œuvres often
+      naïve vis-à-vis the dæmonic phœnix’s official rôle
+      in fluffy soufflés?
+    }
+    #p-sample;
+    #p-sample;
+    +frame <
+      +p {
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore
+        et dolore magna aliqua.
+        Ut enim ad minim veniam,
+        quis nostrud exercitation ullamco laboris nisi
+        ut aliquip ex ea commodo consequat.
+        Duis aute irure dolor in reprehenderit
+        in voluptate velit esse
+        cillum dolore eu fugiat nulla pariatur.
+        Excepteur sint occaecat cupidatat non proident,
+        sunt in culpa
+        qui officia deserunt mollit anim id est laborum.
+      }
+      +frame <
+        +p {
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+          sed do eiusmod tempor incididunt ut labore
+          et dolore magna aliqua.
+          \inline-frame{
+            Ut enim ad minim veniam,
+            quis nostrud exercitation ullamco laboris nisi
+            ut aliquip ex ea commodo consequat.
+            Duis aute irure dolor in reprehenderit
+            in voluptate velit esse
+            cillum dolore eu fugiat nulla pariatur.
+          }
+          Excepteur sint occaecat cupidatat non proident,
+          sunt in culpa
+          qui officia deserunt mollit anim id est laborum.
+        }
+      >
+      +repeat (1) < +p {
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+        sed do eiusmod tempor incididunt ut labore
+        et dolore magna aliqua.
+        Ut enim ad minim veniam,
+        quis nostrud exercitation ullamco laboris nisi
+        ut aliquip ex ea commodo consequat.
+        Duis aute irure dolor in reprehenderit
+        in voluptate velit esse
+        cillum dolore eu fugiat nulla pariatur.
+        Excepteur sint occaecat cupidatat non proident,
+        sunt in culpa
+        qui officia deserunt mollit anim id est laborum.
+      } >
+    >
+    +p {
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+      sed do eiusmod tempor incididunt ut labore
+      et dolore magna aliqua.
+      Ut enim ad minim veniam,
+      quis nostrud exercitation ullamco laboris nisi
+      ut aliquip ex ea commodo consequat.
+      Duis aute irure dolor in reprehenderit
+      in voluptate velit esse
+      cillum dolore eu fugiat nulla pariatur.
+      Excepteur sint occaecat cupidatat non proident,
+      sunt in culpa
+      qui officia deserunt mollit anim id est laborum.
+    }
+  >);
+  +section {和文の例} <
+    +p-jp {
+      ようやく和文もわりとまともな様相で組めるようになりました。
+      行頭禁則や行末禁則ももちろん対応しています。
+      行頭行末の括弧類のベタ組みはやや実装に関してアドホックながら対応してみました。
+      複数の文字体系間の共存（文字体系ごとのフォントの切り替え）は future work です
+      （和欧間空白の挿入はひとまず実現したが，まだBASEテーブルによる高さの調整は行なっていない）。
+      ←閉じ括弧と句点など行頭行末以外のベタ組みにも対応しました。
+      このほか\emph2{和文はゴシック，欧文はItalicになる強調}のコマンドなども定義可能。
+      \underline{
+        行分割できる下線をつけたりすることもできます
+        （途中で行分割可能なインラインボックスを使って実現しています）。
+      }
+      \donut;これはドーナツ。\donuts;こっちは重なったドーナツ。
+    }
+    +screen {タイトルつきの枠} <
+      +p-jp (
+      let platex =
+        let p = {p} in
+          {#p;\latex;} in
+      {
+        定理環境などに使える枠です。#platex;のascmacパッケージのscreen環境に近いです。
+      });
+    >
+    +p { \latex; vs. \satysfi;  \emph{\latex; vs. \satysfi;} }
+    +p { \raw-font-size(16pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+    +p { \raw-font-size(20pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+    +p { \raw-font-size(24pt){\latex; vs. \satysfi; \emph{\latex; vs. \satysfi;}} }
+  >
+  +section {Descriptions and Listings} <
+    +p {
+      Inline vertical box (top): \parbox-top (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      The baseline for a vertical box is set
+      so that the height of the first line of the contents is the same as that of the outer line.
+      Inline vertical box (bottom): \parbox-bottom (160pt) < +frame < +p {The quick brown fox jumps over the lazy dog.} > >
+      The baseline for a vertical box is set
+      so that the height of the last line of the contents is the same as that of the outer line.
+      The inline vertical box system enables us
+      to typeset what is called a description environment in \latex;:
+    }
+    +description [
+      ({Pangram 1}, {
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+        The quick brown fox jumps over the lazy dog.
+      });
+      ({Pangram 2}, {
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+        My quiz above the kiwi juice needs priceless fixing.
+      });
+    ];
+    +listing {
+      * Tokyo
+        ** Hongo Campus:
+             the main area of the university.
+        ** Yayoi Campus
+        ** Asano Campus:
+             no person found, only computers left.
+        ** Komaba Campus:
+             having the College of Liberal Arts
+             and a kindergarten pretending to be a college of liberal arts.
+      * Chiba
+        ** Kashiwa Campus: located at the end of Asia, too far to visit, and famous for having a sushi bar.
+    }
+  >
+  +section ({Stacks}) (
+    let top = {
+      Line stack (top):
+      \stack-top [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];
+    } in
+    let bottom = {
+      line stack (bottom):
+      \stack-bottom [
+        {The};
+        {quick brown fox};
+        {jumps over};
+        {the lazy dog.};
+      ];
+    } in
+    '<
+    +p {
+      #top;, #bottom;.
+    }
+  >);
+  +math (${
+    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+  });
+  +p {
+    A table
+    \tabular(fun cellf multif empty -> [
+      [multif 2 1 {The}; cellf {quick}; cellf {brown}; multif 1 2 {fox jumps over}; empty;];
+      [empty; multif 1 2 {the}; empty; cellf {lazy}; cellf {dog};];
+    ]);
+  }
+  +p {
+    PDF import:
+    \import-pdf(`imported.pdf`)(1)(7cm);\fil;
+    JPEG import:
+    \import-image(`naruse1.jpg`)(10cm);
+  }
+  +p {
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+    sed do eiusmod tempor incididunt ut labore
+    et dolore magna aliqua.\new-line;%
+    Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi
+    ut aliquip ex ea commodo consequat.\new-line;%
+    Duis aute irure dolor in reprehenderit
+    in voluptate velit esse
+    cillum dolore eu fugiat nulla pariatur.
+    Excepteur sint occaecat cupidatat non proident,
+    sunt in culpa
+    qui officia deserunt mollit anim id est laborum.
+  }
+  +p {
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+    sed do eiusmod tempor incididunt ut labore
+    et dolore magna aliqua.
+    Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi
+    ut aliquip ex ea commodo consequat.
+    Duis aute irure dolor in reprehenderit
+    in voluptate velit esse
+    cillum dolore eu fugiat nulla pariatur.
+    Excepteur sint occaecat cupidatat non proident,
+    sunt in culpa
+    qui officia deserunt mollit anim id est laborum.
+  }
+  +code(```
+    #include<stdio.h>
+
+    int main(void) {
+      printf("Hello World!\n");
+      return EXIT_SUCCESS;
+    }
+  ```);
+  +p (
+    let test = {This is a content of a frame.} in
+    {
+      Let’s compare different kinds of inline frames.
+      Inner: \frame-inner{#test;},
+      outer: \frame-outer{#test;},
+      and fixed-width (here the width is set to 160pt): \frame-fixed(160pt){#test;}
+    });
+  +p-jp {
+    \ruby{JLreq}{日本語組版処理の要件}に\ruby{完全}{かんぜん}に\ruby{対応}{たいおう}しているわけではありませんが，
+    \ruby{一応}{いちおう}ルビを\ruby{振}{ふ}ることもできます。
+    和同\ruby-both{開珎}{かいちん}{かいほう}
+  }
+>
+
+
+%  +section {Spaces and Leading} <
+%    +frame < +p {
+%      \expand-spaces {
+%        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+%        sed do eiusmod tempor incididunt ut labore
+%        et dolore magna aliqua.
+%        Ut enim ad minim veniam,
+%        quis nostrud exercitation ullamco laboris nisi
+%        ut aliquip ex ea commodo consequat.
+%        Duis aute irure dolor in reprehenderit
+%        in voluptate velit esse
+%        cillum dolore eu fugiat nulla pariatur.
+%        Excepteur sint occaecat cupidatat non proident,
+%        sunt in culpa
+%        qui officia deserunt mollit anim id est laborum.
+%      }
+%    } >
+%    +frame < +expand-leading <
+%      +p {
+%        Lorem ipsum dolor sit amet, consectetur adipiscing elit,
+%        sed do eiusmod tempor incididunt ut labore
+%        et dolore magna aliqua.
+%        Ut enim ad minim veniam,
+%        quis nostrud exercitation ullamco laboris nisi
+%        ut aliquip ex ea commodo consequat.
+%        Duis aute irure dolor in reprehenderit
+%        in voluptate velit esse
+%        cillum dolore eu fugiat nulla pariatur.
+%        Excepteur sint occaecat cupidatat non proident,
+%        sunt in culpa
+%        qui officia deserunt mollit anim id est laborum.
+%      }
+%    > >
+%  >
