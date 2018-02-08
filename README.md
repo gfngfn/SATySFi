@@ -1,3 +1,6 @@
+
+(Macrodown has already given way to the SATySFi project, which is a new typesetting system, not just a preprocessing markup language.)
+
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/Macrodown/img/macrodown-logo1.png)
 
 [![Build Status](https://travis-ci.org/gfngfn/Macrodown.svg?branch=master)](https://travis-ci.org/gfngfn/Macrodown)
