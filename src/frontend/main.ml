@@ -678,6 +678,7 @@ let arg_version () =
   begin
     print_string (
         "  SATySFi version 0.0.1\n"
+(*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
       ^ "    \\   \\  \\   \\     /   _____|   /   __| /      \\\n"
@@ -688,6 +689,7 @@ let arg_version () =
       ^ "  /   /  \\   \\  \\   \\  \\___\\ /___/   /   /        \\   \\\n"
       ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
       ^ "/___/      \\___\\  \\___\\            /_________________/\n"
+*)
     );
     exit 0;
   end
