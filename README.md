@@ -4,7 +4,7 @@
 
 ## Summary of SATySFi
 
-SATySFi is a new typesetting system (the name is supposed to be pronounced in the same way as the verb “satisfy” in English). It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has ML-like syntax, is for defining functions and commands with Hindley-Milner polymorphic static typing. It enables you to write documents semantically markuped with flexible commands of your own making.
+*SATySFi* (pronounced in the same way as the verb “satisfy” in English) is a new typesetting system with a static type system. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has ML-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.
 
 ## Install
 
