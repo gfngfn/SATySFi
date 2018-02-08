@@ -3,9 +3,9 @@ maintainer: "gfngfn"
 authors: [
   "gfngfn"
 ]
-homepage: "https://github.com/gfngfn/Macrodown"
-dev-repo: "https://github.com/gfngfn/Macrodown.git"
-bug-reports: "https://github.com/gfngfn/Macrodown/issues"
+homepage: "https://github.com/gfngfn/SATySFi"
+dev-repo: "https://github.com/gfngfn/SATySFi.git"
+bug-reports: "https://github.com/gfngfn/SATySFi/issues"
 build: [
   ["echo" "\"begin to build SATySFi\""]
   [make "-f" "Makefile" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
