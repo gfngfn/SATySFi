@@ -1,4 +1,5 @@
 @require: stdjabook
+@require: vdecoset
 
 let-inline ctx \dfn word =
   let ctx-dfn =
@@ -7,3 +8,28 @@ let-inline ctx \dfn word =
         |> set-text-color (RGB(0.8, 0., 0.))
   in
     read-inline ctx-dfn word
+
+
+let-inline ctx \file filename =
+  let ctx-file =
+    ctx |> StdJaBook.set-latin-font StdJaBook.font-latin-mono
+  in
+    script-guard Latin (read-inline ctx-file filename)
+
+
+let-block ctx +frame content =
+  let pads = (0pt, 0pt, 10pt, 0pt) in
+  let decoset = VDecoSet.simple-frame-stroke 1pt (Color.gray 0.75) in % (RGB(1., 0.95, 0.95)) in
+    block-frame-breakable ctx pads decoset (fun ctx -> read-block ctx content)
+
+
+let-block ctx +math-list mlst =
+  let ib =
+    mlst |> List.fold-left-adjacent (fun ibacc m _ mnextopt -> (
+      let ib = embed-math ctx m in
+      match mnextopt with
+      | None    -> ibacc ++ ib ++ inline-fil
+      | Some(_) -> ibacc ++ ib ++ discretionary 1000 inline-fil inline-fil inline-fil
+    )) inline-fil
+  in
+    line-break true true ctx ib
