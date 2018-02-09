@@ -12,6 +12,7 @@ build: [
   [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 install: [
+  [git "submodule" "update" "-i"]
   [make "-f" "Makefile" "install" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
 ]
 post-messages: [
@@ -27,7 +28,7 @@ depends: [
   "ocamlbuild" {build}
   "menhir"
   "ppx_deriving"
-  "core" {= "v0.9.1"}
+  "core"
   "uutf"
   "result"
   "bitv"
@@ -35,4 +36,4 @@ depends: [
   "yojson"
   "camlimages"
 ]
-available: [ ocaml-version = "4.05.0" ]
+available: [ ocaml-version >= "4.05.0" ]
