@@ -27,7 +27,7 @@ depends: [
   "ocamlbuild" {build}
   "menhir"
   "ppx_deriving"
-  "core" {= "v0.9.1"}
+  "core" {= "v0.10.0"}
   "uutf"
   "result"
   "bitv"
