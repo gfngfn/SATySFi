@@ -18,6 +18,7 @@ module StdJaBook : sig
   val font-latin-roman  : string * float * float
   val font-latin-italic : string * float * float
   val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
   val font-cjk-mincho   : string * float * float
   val font-cjk-gothic   : string * float * float
   val set-latin-font : (string * float * float) -> context -> context
@@ -86,6 +87,7 @@ end = struct
   let font-latin-roman  = (`Arno`  , font-ratio-latin, 0.)
   let font-latin-italic = (`ArnoIt`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
+  let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
   let font-cjk-gothic   = (`Osaka` , font-ratio-cjk  , 0.)
 

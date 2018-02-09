@@ -1,6 +1,7 @@
 @require: list
 @require: color
 @require: gr
+@require: vdecoset
 
 module Code : sig
 
@@ -15,6 +16,10 @@ end = struct
 
 
   let decoset-code =
+    VDecoSet.simple-frame 1pt code-stroke-color code-fill-color
+
+
+  let dummy _ =
     let strokef = stroke 1pt code-stroke-color in
     let gr-back x y w d h =
       fill code-fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h))
