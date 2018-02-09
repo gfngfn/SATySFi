@@ -274,6 +274,18 @@ let title-deco =
       ib ++ inline-skip (0pt -' w)
 
 
+  let-rec repeat-inline n ib =
+    if n <= 0 then inline-nil else
+      ib ++ (repeat-inline (n - 1) ib)
+
+
+  let make-dots-line ctx w =
+    let ib = read-inline ctx {.} ++ inline-skip 1pt in
+    let wdot = get-natural-width ib in
+    let n = round (w /' wdot) in
+      inline-fil ++ (repeat-inline n ib)
+
+
   let document record inner =
     % -- constants --
     let title = record#title in
@@ -302,6 +314,7 @@ let title-deco =
     let bb-main = read-block ctx-doc inner in
 
     % -- table of contents --
+    let toc-subsection-indent = 20pt in
     let bb-toc =
       if not record#show-toc then
         block-nil
@@ -315,14 +328,32 @@ let title-deco =
             | TOCElementSection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
+                let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
+                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+                let ib-middle =
+                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                    if w <' 0pt then inline-fil else
+                      make-dots-line ctx-doc w
+                in
                   bbacc +++ line-break true true ctx-doc
-                    (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+                    (ib-title ++ ib-middle ++ ib-page)
 
           | TOCElementSubsection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
+                let ib-title =
+                  inline-skip toc-subsection-indent
+                    ++ read-inline ctx-doc {#it-num;. #title;}
+                      ++ inline-skip 3pt
+                in
+                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+                let ib-middle =
+                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                    if w <' 0pt then inline-fil else
+                      make-dots-line ctx-doc w
+                in
                   bbacc +++ line-break true true ctx-doc
-                    (inline-skip 20pt ++ read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+                    (ib-title ++ ib-middle ++ ib-page)
 
           )) block-nil
         in
