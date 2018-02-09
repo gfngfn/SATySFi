@@ -13,11 +13,31 @@ end = struct
       (deco, deco, deco, deco)
 
 
-  let simple-frame-stroke t color =
-    let decoS (x, y) wid hgt dpt =
-      [ stroke t color (Gr.rectangle (x, y -' dpt) (x +' wid, y +' hgt)); ]
+  let simple-frame-stroke t scolor =
+    let strokef = stroke t scolor in
+    let decoS (x, y) w h d =
+      [
+        strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));
+      ]
     in
-      (decoS, decoS, decoS, decoS)
+    let decoH (x, y) w h d =
+      [
+        strokef (Gr.poly-line (x, y -' d) [(x, y +' h); (x +' w, y +' h); (x +' w, y -' d);])
+      ]
+    in
+    let decoM (x, y) w h d =
+      [
+        strokef (Gr.line (x, y -' d) (x, y +' h));
+        strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h));
+      ]
+    in
+    let decoT (x, y) w h d =
+      [
+        strokef (Gr.poly-line (x, y +' h) [(x, y -' d); (x +' w, y -' d); (x +' w, y +' h)])
+      ]
+    in
+      (decoS, decoH, decoM, decoT)
+
 
   let simple-frame t scolor fcolor =
     let strokef = stroke t scolor in
