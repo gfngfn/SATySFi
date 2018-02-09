@@ -74,9 +74,9 @@ end = struct
 
   let section-top-margin = 20pt
   let section-bottom-margin = 12pt
-  let section-top-padding = 5pt
+  let section-top-padding = 0pt
   let section-bottom-padding = 5pt
-  let section-line-sep = 3pt
+  let section-line-sep = 4pt
   let section-line-thickness1 = 2pt
   let section-line-thickness2 = 1pt
 
@@ -85,7 +85,7 @@ end = struct
 
   let font-latin-roman  = (`Arno`  , font-ratio-latin, 0.)
   let font-latin-italic = (`ArnoIt`, font-ratio-latin, 0.)
-  let font-latin-sans   = (`Hlv`   , font-ratio-latin, 0.)
+  let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`, font-ratio-cjk  , 0.)
   let font-cjk-gothic   = (`Osaka` , font-ratio-cjk  , 0.)
 
@@ -210,9 +210,10 @@ let title-deco =
 %        if get-text-width ctx <' get-natural-width ib-title then
 %          form-paragraph ctx-title (ib-title ++ inline-fil)
 %        else
-          form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
+          form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
+            (inline-fil ++ ib-title ++ inline-fil)
       in
-      let bb-line = form-paragraph ctx (ib-line ++ inline-fil) in
+      let bb-line = form-paragraph (ctx |> set-paragraph-margin 0pt 0pt) (ib-line ++ inline-fil) in
       let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
         bb-title +++ bb-line +++ bb-author
     ))
@@ -243,6 +244,34 @@ let title-deco =
     match get-cross-reference (label ^ `:page`) with
     | None    -> `?`
     | Some(s) -> s
+
+
+  let section-heading ctx ib-heading =
+    let wid = get-text-width ctx in
+    let h = section-line-sep in
+    let th1 = section-line-thickness1 in
+    let th2 = section-line-thickness2 in
+    let color = get-text-color ctx in
+      line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
+        (inline-graphics wid h 0pt (fun (x, y) -> [
+          stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h));
+          stroke th2 color (Gr.line (x, y) (x +' wid, y));
+        ]))
+    +++
+      line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
+        ib-heading
+    +++
+      line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
+        (inline-graphics wid h 0pt (fun (x, y) -> [
+          stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h));
+          stroke th1 color (Gr.line (x, y) (x +' wid, y));
+        ]))
+
+
+  let-inline ctx \dummy it =
+    let ib = read-inline (ctx |> set-text-color Color.white) it in
+    let w = get-natural-width ib in
+      ib ++ inline-skip (0pt -' w)
 
 
   let document record inner =
@@ -277,8 +306,8 @@ let title-deco =
       if not record#show-toc then
         block-nil
       else
-        let bb-toc-title =
-          line-break true false ctx-doc (read-inline (make-section-title ctx-doc) {目次} ++ inline-fil)
+        let ib-toc-title =
+          read-inline (make-section-title ctx-doc) {\dummy{0}目次} ++ inline-fil
         in
         let bb-toc-main =
           (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
@@ -297,7 +326,7 @@ let title-deco =
 
           )) block-nil
         in
-        bb-toc-title +++ bb-toc-main
+          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main
     in
 
     % -- page settings --
@@ -405,27 +434,7 @@ let title-deco =
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
-    let wid = get-text-width ctx in
-    let h = section-line-sep in
-    let th1 = section-line-thickness1 in
-    let th2 = section-line-thickness2 in
-    let color = get-text-color ctx in
-    let bb-title =
-      line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th2 color (Gr.line (x, y) (x +' wid, y));
-        ]))
-    +++
-      line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
-    +++
-      line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th1 color (Gr.line (x, y) (x +' wid, y));
-        ]))
-    in
+    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
 

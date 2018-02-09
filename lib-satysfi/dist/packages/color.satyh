@@ -3,6 +3,7 @@ module Color : sig
   val gray : float -> color
   val rgb : float -> float -> float -> color
   val black : color
+  val white : color
   val red : color
   val yellow : color
   val orange : color
@@ -13,6 +14,7 @@ end = struct
   let rgb r g b = RGB(r, g, b)
 
   let black = gray 0.
+  let white = gray 1.
   let red = rgb 1. 0. 0.
   let yellow = rgb 1. 1. 0.
   let orange = rgb 1. 0.5 0.
