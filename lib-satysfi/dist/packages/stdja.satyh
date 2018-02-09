@@ -20,6 +20,7 @@ module StdJa : sig
   direct \ref-page : [string] inline-cmd
   direct \figure : [inline-text; block-text] inline-cmd
   direct +p : [inline-text] block-cmd
+  direct +pn : [inline-text] block-cmd
   direct +section : [string?; inline-text; block-text] block-cmd
   direct +subsection : [string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
@@ -367,6 +368,12 @@ let title-deco =
         ib-inner ++ inline-fil
     in
       form-paragraph ctx br-parag
+
+
+  let-block ctx +pn inner =
+    let () = needs-indentation-ref <- true in
+    let ib-inner = read-inline ctx inner in
+      form-paragraph ctx (ib-inner ++ inline-fil)
 
 
   let section-scheme ctx label title inner =
