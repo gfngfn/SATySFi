@@ -5,24 +5,56 @@
 module Code : sig
 
   direct +code : [string] block-cmd
+  direct +console : [string] block-cmd
 
 end = struct
 
-  let decoset =
-    let strokef = stroke 0.5pt Color.black in
-    let decoS (x, y) w h d = [ strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ] in
-    let decoH (x, y) w h d = [ strokef (Gr.poly-line (x, y -' d) [(x, y +' h); (x +' w, y +' h); (x +' w, y -' d);]) ] in
+  let code-fill-color = (RGB(0.975, 0.975, 1.))
+  let code-stroke-color = (RGB(0., 0., 0.25))
+  let console-fill-color = (Gray(0.25))
+
+
+  let decoset-code =
+    let strokef = stroke 1pt code-stroke-color in
+    let gr-back x y w d h =
+      fill code-fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h))
+    in
+    let decoS (x, y) w h d =
+      [
+        gr-back x y w d h;
+        strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));
+      ]
+    in
+    let decoH (x, y) w h d =
+      [
+        gr-back x y w d h;
+        strokef (Gr.poly-line (x, y -' d) [(x, y +' h); (x +' w, y +' h); (x +' w, y -' d);])
+      ]
+    in
     let decoM (x, y) w h d =
       [
+        gr-back x y w d h;
         strokef (Gr.line (x, y -' d) (x, y +' h));
         strokef (Gr.line (x +' w, y -' d) (x +' w, y +' h));
       ]
     in
-    let decoT (x, y) w h d = [ strokef (Gr.poly-line (x, y +' h) [(x, y -' d); (x +' w, y -' d); (x +' w, y +' h)]) ] in
+    let decoT (x, y) w h d =
+      [
+        gr-back x y w d h;
+        strokef (Gr.poly-line (x, y +' h) [(x, y -' d); (x +' w, y -' d); (x +' w, y +' h)])
+      ]
+    in
       (decoS, decoH, decoM, decoT)
 
 
-  let-block ctx +code code =
+  let decoset-console =
+    let deco (x, y) w h d =
+      [ fill console-fill-color (Gr.rectangle (x, y -' d) (x +' w, y +' h)) ]
+    in
+      (deco, deco, deco, deco)
+
+
+  let code-scheme decoset txtcolor ctx code =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
@@ -30,6 +62,7 @@ end = struct
       let ctx-code =
         ctx |> set-font Latin (`lmmono`, 1., 0.)
             |> set-space-ratio (charwid /' fontsize)
+            |> set-text-color txtcolor
       in
 
       let lst = split-into-lines code in
@@ -50,5 +83,13 @@ end = struct
       in
         line-break true true ctx ib-code
     ))
+
+
+  let-block ctx +code code =
+    code-scheme decoset-code Color.black ctx code
+
+
+  let-block ctx +console code =
+    code-scheme decoset-console Color.white ctx code
 
 end
