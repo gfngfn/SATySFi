@@ -163,70 +163,20 @@ document (|
         \SATySFi;およびその上に実装されたクラスファイル\file{stdja}および\file{stdjabook}は，
         万全ではないもののこのJLreqとして定められた和文組版規則に原則従って和文を組むように実装されている。
       }
-      +p{
-        具体的な例はここでは掲げない。幸いにもこの文書は多くの部分が和文で書かれており，
-        いたるところに組版結果の例が見られるからである。和文と欧文の間に挿入された空白や，
-        閉じ括弧や読点でで終わっている行の末端に
-        余分なスペースが入っていないことを確かめたりして楽しんでほしい。
-      }
-      +p{
-        なお，和文組版では欧文組版のような合字処理やカーニング処理を施さずとも十分見栄えの良い組版ができる。
-        ユーザからすれば知った話ではないがこれは組版処理システムを実装する人間の労力からすれば有難い話であり，
-        実際\SATySFi;は和文文字の処理については合字の存在を加味していない。
-        ただし，近年は主にデザイン性の志向から字幅がプロポーショナルな和文文字のグリフを持つフォント，
-        さらには合字処理により連綿などを表現するフォントなども登場しており，
-        今後対応が必要になるものと想定している。
-      }
-    >
-    +subsection{数式}<
-      +p{
-        既存の組版処理システムである\LaTeX;が圧倒的な高品質での出力を得意とする機能のひとつに数式組版がある。
-        \SATySFi;でも，十分にこれに肩を並べられるといってよい程度の数式組版が実現されている。
-        試しにちょっとした数式を並べてみよう：
-      }
-      +display-boxes('<
-        +math-list[
-          ${F = G \frac{M m}{R^2}};
-          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
-                                                       = \frac{\pi^2}{6}};
-          ${\paren{\paren{\paren{A} + B} + C}};
-          ${\brace{\brace{\brace{A} + B} + C}}
-        ];
-      >)(```
-        +math-list[
-          ${F = G \frac{M m}{R^2}};
-          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
-                                                       = \frac{\pi^2}{6}};
-          ${\paren{\paren{\paren{A} + B} + C}};
-          ${\brace{\brace{\brace{A} + B} + C}}
-        ];
-      ```);
-      +display-boxes('<
-        +p{ The solution of the equation ${a x^2 + b x + c = 0}
-            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
-      >)(```
-        +p{ The solution of the equation ${a x^2 + b x + c = 0}
-            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
-      ```);
-      +display-boxes('<
-        +math(
-          let int1 = ${\int_0^a} in
-          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
-          let sqrt2 = ${\sqrt{x^2 + r^2}} in
-            ${
-              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
-                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
-        );
-      >)(```
-        +math(
-          let int1 = ${\int_0^a} in
-          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
-          let sqrt2 = ${\sqrt{x^2 + r^2}} in
-            ${
-              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
-                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
-        );
-      ```);
+%      +p{
+%        具体的な例はここでは掲げない。幸いにもこの文書は多くの部分が和文で書かれており，
+%        いたるところに組版結果の例が見られるからである。和文と欧文の間に挿入された空白や，
+%        閉じ括弧や読点でで終わっている行の末端に
+%        余分なスペースが入っていないことを確かめたりして楽しんでほしい。
+%      }
+%      +p{
+%        なお，和文組版では欧文組版のような合字処理やカーニング処理を施さずとも十分見栄えの良い組版ができる。
+%        ユーザからすれば知った話ではないがこれは組版処理システムを実装する人間の労力からすれば有難い話であり，
+%        実際\SATySFi;は和文文字の処理については合字の存在を加味していない。
+%        ただし，近年は主にデザイン性の志向から字幅がプロポーショナルな和文文字のグリフを持つフォント，
+%        さらには合字処理により連綿などを表現するフォントなども登場しており，
+%        今後対応が必要になるものと想定している。
+%      }
     >
     +subsection{画像挿入機能}<
       +display-boxes('<
@@ -284,6 +234,56 @@ document (|
           ));
         }
       >
+    >
+    +subsection{数式}<
+      +p{
+        既存の組版処理システムである\LaTeX;が圧倒的な高品質での出力を得意とする機能のひとつに数式組版がある。
+        \SATySFi;でも，十分にこれに肩を並べられるといってよい程度の数式組版が実現されている。
+        試しにちょっとした数式を並べてみよう：
+      }
+      +display-boxes('<
+        +math-list[
+          ${F = G \frac{M m}{R^2}};
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
+                                                       = \frac{\pi^2}{6}};
+          ${\paren{\paren{\paren{A} + B} + C}};
+          ${\brace{\brace{\brace{A} + B} + C}}
+        ];
+      >)(```
+        +math-list[
+          ${F = G \frac{M m}{R^2}};
+          ${\limto{N}{\infty} \sums{n = 1}{N} \frac{1}{n^2}
+                                                       = \frac{\pi^2}{6}};
+          ${\paren{\paren{\paren{A} + B} + C}};
+          ${\brace{\brace{\brace{A} + B} + C}}
+        ];
+      ```);
+      +display-boxes('<
+        +p{ The solution of the equation ${a x^2 + b x + c = 0}
+            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
+      >)(```
+        +p{ The solution of the equation ${a x^2 + b x + c = 0}
+            as to ${x} is ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}. }
+      ```);
+      +display-boxes('<
+        +math(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+            ${
+              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+        );
+      >)(```
+        +math(
+          let int1 = ${\int_0^a} in
+          let int2 = ${\int_0^\sqrt{a^2 - x^2}} in
+          let sqrt2 = ${\sqrt{x^2 + r^2}} in
+            ${
+              \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
+                #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
+        );
+      ```);
     >
   >
 >

@@ -70,7 +70,13 @@ end = struct
             |> set-text-color txtcolor
       in
 
-      let lst = split-into-lines code in
+      let lstraw = split-into-lines code in
+      let lst =
+        match lstraw with
+        | []        -> lstraw
+        | x :: []   -> lstraw
+        | _ :: tail -> tail
+      in
       let ib-code =
         lst |> List.fold-left-adjacent (fun ibacc (i, s) _ optnext -> (
           let ib-last =
