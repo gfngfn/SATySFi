@@ -5,5 +5,6 @@
   "ipaexm": <Single: {"src-dist": "ipaexm.ttf"}>,
   "Arno"  : <Single: {"src-dist": "ArnoPro-Regular.otf"}>,
   "ArnoIt": <Single: {"src-dist": "ArnoPro-Italic.otf"}>,
-  "lmmono": <Single: {"src-dist": "lmmono10-regular.otf"}>
+  "lmmono": <Single: {"src-dist": "lmmono10-regular.otf"}>,
+  "lmsans": <Single: {"src-dist": "lmsans10-regular.otf">
 }
