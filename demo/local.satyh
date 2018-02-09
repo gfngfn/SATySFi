@@ -1,0 +1,9 @@
+@require: stdjabook
+
+let-inline ctx \dfn word =
+  let ctx-dfn =
+    ctx |> StdJaBook.set-latin-font StdJaBook.font-latin-sans
+        |> StdJaBook.set-cjk-font StdJaBook.font-cjk-gothic
+        |> set-text-color (RGB(0.8, 0., 0.))
+  in
+    read-inline ctx-dfn word
