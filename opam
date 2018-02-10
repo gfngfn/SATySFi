@@ -8,18 +8,14 @@ dev-repo: "https://github.com/gfngfn/SATySFi.git"
 bug-reports: "https://github.com/gfngfn/SATySFi/issues"
 build: [
   ["echo" "\"begin to build SATySFi\""]
-  [make "-f" "Makefile" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
-  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
+  [make "-f" "Makefile" "PREFIX=%{prefix}%"]
+  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%"]
 ]
 install: [
-  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
-]
-post-messages: [
-  "Please set SATYSFI_LIB_ROOT. You may want to add the following line to ~/.bashrc"
-  "export SATYSFI_LIB_ROOT=\"$(PREFIX_LIB)/lib-satysfi\""
+  [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
 ]
 remove: [
-  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
+  [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
 ]
 depends: [
   "depext"
