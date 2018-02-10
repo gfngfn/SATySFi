@@ -1,0 +1,2 @@
+all:
+	satysfi demo.saty

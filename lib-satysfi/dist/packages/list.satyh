@@ -7,6 +7,7 @@ module List
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
     val reverse : 'a list -> 'a list
     val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
+    val append : 'a list -> 'a list -> 'a list
   end
 = struct
     let-rec map
@@ -27,6 +28,11 @@ module List
 
     let reverse lst =
       fold-left (fun acc x -> x :: acc) [] lst
+
+    let-rec append lst1 lst2 =
+      match lst1 with
+      | []      -> lst2
+      | x :: xs -> x :: append xs lst2
 
     let fold-left-adjacent f init lst =
       let-rec aux leftopt init lst =

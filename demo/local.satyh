@@ -1,0 +1,85 @@
+@require: stdjabook
+@require: hdecoset
+@require: vdecoset
+@require: code
+
+
+let-inline ctx \gray inner =
+  let pads-code = (2pt, 2pt, 2pt, 2pt) in
+  let decoset-code = HDecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+  let ib-frame = inline-frame-breakable pads-code decoset-code (read-inline ctx inner) in
+    script-guard Latin ib-frame
+
+
+let-inline ctx \dfn word =
+  let ctx-dfn =
+    ctx |> StdJaBook.set-latin-font StdJaBook.font-latin-sans
+        |> StdJaBook.set-cjk-font StdJaBook.font-cjk-gothic
+        |> set-text-color (RGB(0.8, 0., 0.))
+  in
+    read-inline ctx-dfn word
+
+
+let-inline ctx \file filename =
+  let ctx-file =
+    ctx |> StdJaBook.set-latin-font StdJaBook.font-latin-mono
+  in
+    script-guard Latin (read-inline ctx-file filename)
+
+
+let-math \sums m1 m2 =
+  ${\upper{\lower{\sum}{#m1}}{#m2}}
+
+
+let-math \limto m1 m2 =
+  ${\lower{\lim}{#m1 \to #m2}}
+
+
+let-block ctx +frame content =
+  let pads = (10pt, 10pt, 10pt, 10pt) in
+  let decoset = VDecoSet.simple-frame-stroke 1pt (Color.gray 0.75) in
+    block-frame-breakable ctx pads decoset (fun ctx -> read-block ctx content)
+
+
+let-block ctx +centering it =
+  line-break true true ctx (inline-fil ++ read-inline ctx it ++ inline-fil)
+
+
+let-block ctx +p-latin content =
+  let ctx-latin = ctx |> set-font-size (get-font-size ctx *' 1.2) |> set-leading 20pt in
+    line-break true true ctx-latin
+      (inline-skip ((get-font-size ctx-latin) *' 2.) ++ read-inline ctx-latin content ++ inline-fil)
+
+
+let-block ctx +image-frame content =
+  let pads = (10pt, 10pt, 10pt, 10pt) in
+  let decoset = VDecoSet.simple-frame-stroke 1pt Color.black in
+    block-frame-breakable ctx pads decoset (fun ctx -> read-block ctx '<+centering{#content;}>)
+
+
+let-block ctx +paragraph-frame content =
+  let pads = (15pt, 15pt, 15pt, 15pt) in
+  let decoset = VDecoSet.simple-frame-stroke 1pt (Color.gray 0.75) in
+    block-frame-breakable ctx pads decoset (fun ctx -> read-block (ctx |> set-hyphen-penalty 150) content)
+
+
+let-block ctx +math-list mlst =
+  let ib =
+    mlst |> List.fold-left-adjacent (fun ibacc m _ mnextopt -> (
+      let ib = embed-math ctx m in
+      match mnextopt with
+      | None    -> ibacc ++ ib ++ inline-fil
+      | Some(_) -> ibacc ++ ib ++ discretionary 1000 inline-fil inline-fil inline-fil
+    )) inline-fil
+  in
+    line-break true true ctx ib
+
+
+let-inline ctx \insert-image w path =
+  let img = load-image path in
+    use-image-by-width img w
+
+
+let-block ctx +display-boxes content code =
+  read-block (ctx |> set-paragraph-margin 12pt 0pt) '<+frame(content);>
+    +++ read-block (ctx |> set-paragraph-margin 0pt 12pt) '<+code(code);>

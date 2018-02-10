@@ -28,7 +28,7 @@ parser.output
 lexer_hand.ml
 *.png
 _build/
-macrodown
+temp/
 satysfi
 *.ttf
 *.otf
