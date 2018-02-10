@@ -16,7 +16,7 @@ install: [
 ]
 post-messages: [
   "Please set SATYSFI_LIB_ROOT. You may want to add the following line to ~/.bashrc"
-  "export SATYSFI_LIB_ROOT=\"$(PREFIX_LIB)/lib-satysfi\""
+  "export SATYSFI_LIB_ROOT=\"%{prefix}%/lib-satysfi\""
 ]
 remove: [
   [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%" "PREFIX_LIB=%{prefix}%"]
