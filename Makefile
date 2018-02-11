@@ -38,15 +38,6 @@ install: $(TARGET)
 #	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
 
 lib:
-# -- downloads UNIDATA --
-	wget -N http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt       -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/LineBreak.txt            -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/PropList.txt             -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/PropertyAliases.txt      -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/PropertyValueAliases.txt -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/Scripts.txt              -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/ScriptExtensions.txt     -P lib-satysfi/dist/unidata/
-	wget -N http://www.unicode.org/Public/UNIDATA/UnicodeData.txt          -P lib-satysfi/dist/unidata/
 # -- downloads fonts --
 	mkdir -p temp/
 	wget -N http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -P temp/

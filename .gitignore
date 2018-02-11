@@ -8,7 +8,6 @@
 *.o
 *.exe
 *.native
-*.html
 *.tex
 *.log
 *.aux
@@ -16,11 +15,10 @@
 *.pdf
 *.out
 *.html
+obsolete/*.txt
 bin/
 old/
 test/
-*.txt
-library/
 lexer.ml
 parser.ml
 parser.mli
