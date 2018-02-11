@@ -64,7 +64,7 @@ end = struct
 
 
   let-inline ctx \math fml =
-      embed-math ctx fml
+      script-guard Latin (embed-math ctx fml)
 
   let-math \frac = math-frac
 

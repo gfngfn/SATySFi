@@ -255,9 +255,9 @@ let eval_document_file (libdir : file_path) (tyenv : Typeenv.t) (env : environme
 
       | _  -> raise (NotADocumentFile(file_path_in, tyenv, ty))
 
-
+(*
 let env_var_lib_root = "SATYSFI_LIB_ROOT"
-
+*)
 
 let error_log_environment suspended =
   try
@@ -265,6 +265,9 @@ let error_log_environment suspended =
   with
   | NoLibraryRootDesignation ->
       report_error Interface [
+        NormalLine("cannot determine where the SATySFi library root is;");
+        NormalLine("the environment variable 'HOME' is NOT defined.");
+(*
         NormalLine("the environment variable '" ^ env_var_lib_root ^ "' is NOT defined;");
         NormalLine("in order to work SATySFi correctly, for example,");
         NormalLine("you can add to your '~/.bash_profile' a line of the form:");
@@ -272,6 +275,7 @@ let error_log_environment suspended =
         NormalLine("and execute:");
         DisplayLine("$ source ~/.bash_profile");
         NormalLine("The library root is typically '/usr/local/lib-satysfi/'.")
+*)
       ]
 
   | NoInputFileDesignation ->
@@ -722,9 +726,14 @@ let arg_spec_list curdir =
 let () =
   error_log_environment (fun () ->
     let libdir =
+(*
       match Sys.getenv_opt env_var_lib_root with
       | None    -> raise NoLibraryRootDesignation
       | Some(s) -> s
+*)
+      match Sys.getenv_opt "HOME" with
+      | None    -> raise NoLibraryRootDesignation
+      | Some(s) -> Filename.concat s ".satysfi"
     in
     let pkgdir = Filename.concat libdir "dist/packages" in
     let curdir = Sys.getcwd () in

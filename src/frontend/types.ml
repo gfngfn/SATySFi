@@ -594,6 +594,7 @@ and abstract_tree =
   | PrimitiveSplitIntoLines  of abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
+  | PrimitiveRound        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
   | FloatMinus            of abstract_tree * abstract_tree
   | LengthPlus            of abstract_tree * abstract_tree

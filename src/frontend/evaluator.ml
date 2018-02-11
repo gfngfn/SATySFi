@@ -1350,6 +1350,9 @@ and interpret env ast =
   | PrimitiveFloat(ast1) ->
       let ic1 = interpret_int env ast1 in FloatConstant(float_of_int ic1)
 
+  | PrimitiveRound(ast1) ->
+      let fc1 = interpret_float env ast1 in IntegerConstant(int_of_float fc1)
+
   | PrimitiveDrawText(astpt, asth) ->
       let pt = interpret_point env astpt in
       let hblst = interpret_horz env asth in

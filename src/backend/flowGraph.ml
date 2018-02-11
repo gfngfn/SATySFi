@@ -5,7 +5,7 @@ let print_for_debug msg =
 *)
   ()
 
-module Heap = Core.Heap.Removable
+module Heap = Core.Heap
 
 
 module type VertexType =

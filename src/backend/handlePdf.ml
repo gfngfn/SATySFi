@@ -107,9 +107,9 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let tag = ImageInfo.get_tag imgkey in
         let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
-
+(*
           List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
-
+*)
           (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
         in
         let opaccnew = Alist.append opacc ops_image in
@@ -135,9 +135,9 @@ and ops_of_evaled_tabular (pbinfo : page_break_info) point evtabular =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline) (xpos, opacc)
               in
               let opaccnew =
-
+(*
                 (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
-
+*)
                   opaccsub
               in
                 (opaccnew, (xpos +% wid, ypos))
@@ -148,9 +148,9 @@ and ops_of_evaled_tabular (pbinfo : page_break_info) point evtabular =
                   evhblst |> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline) (xpos, opacc)
               in
               let opaccnew =
-
+(*
                 (Graphics.pdfops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
-
+*)
                   opaccsub
               in
                 (opaccnew, (xpos +% widsingle, ypos))
@@ -197,10 +197,12 @@ and ops_of_evaled_vert_box_list pbinfo (xinit, yinit) opaccinit evvblst =
     | EvVertFrame(pads, _, deco, wid, evvblstsub) ->
         let xpossubinit = xpos +% pads.paddingL in
         let ypossubinit = ypos -% pads.paddingT in
-        let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list pbinfo (xpossubinit, ypossubinit) opacc evvblstsub in
+        let ((_, ypossub), opaccsub) = ops_of_evaled_vert_box_list pbinfo (xpossubinit, ypossubinit) Alist.empty evvblstsub in
         let yposend = ypossub -% pads.paddingB in
         let gr = deco (xpos, yposend) wid (ypos -% yposend) Length.zero in
-          ((xpos, yposend), Alist.append opaccsub (pdfops_of_graphics pbinfo gr))
+        let opaccframe = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
+        let opaccnew = Alist.append opaccframe (Alist.to_list opaccsub) in
+          ((xpos, yposend), opaccnew)
   )
 
 

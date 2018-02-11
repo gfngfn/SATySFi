@@ -1,0 +1,30 @@
+@require: gr
+
+module HDecoSet : sig
+
+  val empty : deco-set
+  val rectangle-round-fill : length -> length -> color -> deco-set
+
+end = struct
+
+  let empty =
+    let deco _ _ _ _ = [] in
+      (deco, deco, deco, deco)
+
+
+  let rectangle-round-fill r extra color =
+    let decoS (x, y) wid hgt dpt =
+      [ fill color (Gr.rectangle-round r (x, y -' dpt) (x +' wid, y +' hgt)) ]
+    in
+    let decoH (x, y) wid hgt dpt =
+      [ fill color (Gr.rectangle-round-left r (x, y -' dpt) (x +' wid +' extra, y +' hgt)) ]
+    in
+    let decoM (x, y) wid hgt dpt =
+      [ fill color (Gr.rectangle (x, y -' dpt) (x +' wid +' extra, y +' hgt)) ]
+    in
+    let decoT (x, y) wid hgt dpt =
+      [ fill color (Gr.rectangle-round-right r (x -' extra, y -' dpt) (x +' wid, y +' hgt)) ]
+    in
+      (decoS, decoH, decoM, decoT)
+
+end

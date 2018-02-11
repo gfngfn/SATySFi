@@ -1,5 +1,5 @@
 PREFIX=/usr/local
-PREFIX_LIB=/usr/local
+LIBDIR=~/.satysfi
 SRCROOT=src
 BACKEND=src/backend
 FRONTEND=src/frontend
@@ -21,18 +21,18 @@ all:
 install: $(TARGET)
 	mkdir -p $(BINDIR)
 	install $(TARGET) $(BINDIR)
-	install -d $(PREFIX_LIB)/lib-satysfi
-	install -d $(PREFIX_LIB)/lib-satysfi/dist
-	install -d $(PREFIX_LIB)/lib-satysfi/dist/unidata
-	install -m 644 lib-satysfi/dist/unidata/*.txt $(PREFIX_LIB)/lib-satysfi/dist/unidata
-	install -d $(PREFIX_LIB)/lib-satysfi/dist/fonts
-	install -m 644 lib-satysfi/dist/fonts/* $(PREFIX_LIB)/lib-satysfi/dist/fonts
-	install -d $(PREFIX_LIB)/lib-satysfi/dist/hash
-	install -m 644 lib-satysfi/dist/hash/* $(PREFIX_LIB)/lib-satysfi/dist/hash
-	install -d $(PREFIX_LIB)/lib-satysfi/dist/hyph
-	install -m 644 lib-satysfi/dist/hyph/* $(PREFIX_LIB)/lib-satysfi/dist/hyph
-	install -d $(PREFIX_LIB)/lib-satysfi/dist/packages
-	install -m 644 lib-satysfi/dist/packages/* $(PREFIX_LIB)/lib-satysfi/dist/packages
+	install -d $(LIBDIR)
+	install -d $(LIBDIR)/dist
+	install -d $(LIBDIR)/dist/unidata
+	install -m 644 lib-satysfi/dist/unidata/*.txt $(LIBDIR)/dist/unidata
+	install -d $(LIBDIR)/dist/fonts
+	install -m 644 lib-satysfi/dist/fonts/* $(LIBDIR)/dist/fonts
+	install -d $(LIBDIR)/dist/hash
+	install -m 644 lib-satysfi/dist/hash/* $(LIBDIR)/dist/hash
+	install -d $(LIBDIR)/dist/hyph
+	install -m 644 lib-satysfi/dist/hyph/* $(LIBDIR)/dist/hyph
+	install -d $(LIBDIR)/dist/packages
+	install -m 644 lib-satysfi/dist/packages/* $(LIBDIR)/dist/packages
 
 #preliminary:
 #	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
@@ -57,7 +57,7 @@ lib:
 
 uninstall:
 	rm -rf $(BINDIR)/$(TARGET)
-	rm -rf $(PREFIX_LIB)/lib-satysfi
+	rm -rf $(LIBDIR)
 
 clean:
 	$(OCB) -clean
