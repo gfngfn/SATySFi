@@ -9,13 +9,70 @@
 
 本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。
 
-## インストール
+## OPAM を使ったインストール方法
 
-### OPAMによる場合
-* インストール：
-  1. `git submodule update -i` を実行してサブモジュールをフェッチ
-  2. `opam pin add satysfi .` を実行
-  3. `opam install satysfi` を実行
+### 事前に必要なもの
+
+ビルド前に最低限，以下のソフトウェアが必要です。
+
+* bzip2
+* cc
+* git
+* m4
+* make
+* unzip
+* wget
+* [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
+* ocaml 4.05.0 （OPAM からインストールします）
+
+#### 準備例（Ubuntu）
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip wget
+
+# 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
+# 必ず説明を読み，環境変数を適切に設定してください。
+wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
+
+opam switch 4.05.0
+eval `opam config env`
+opam update
+```
+
+#### 準備例（OS X Mavericks 以降）
+
+```sh
+# このスクリプトを実行する前に，GCC や Make などの基本的なソフトウェアをインストールしておいてください。これらは Xcode Command Line Tools からインストールできます。
+# また，Homebrew もインストールしてください。
+
+brew update
+brew install unzip wget git opam
+
+# 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
+# 必ず説明を読み，環境変数を適切に設定してください。
+opam init
+
+opam switch 4.05.0
+eval `opam config env`
+opam update
+```
+
+### ビルド
+
+まず，このレポジトリとサブモジュールを clone します。その後 OPAM を使って SATySFi をビルドします。
+
+```sh
+# clone
+git clone https://github.com/gfngfn/SATySFi.git
+cd SATySFi
+git submodule update --init --recursive
+
+# build
+opam pin add satysfi .
+opam install satysfi
+```
+
 * 再インストール： `opam reinstall satysfi` を実行
 * アンインストール： `opam uninstall satysfi` を実行
 
