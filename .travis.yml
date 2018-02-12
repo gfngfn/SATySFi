@@ -10,7 +10,7 @@ install:
   - bash -ex .travis-ocaml.sh
   - opam install -y ppx_deriving
   - opam install -y menhir
-  - opam install -y core.v0.9.1
+  - opam install -y core_kernel.v0.10.0
   - opam install -y ctypes
   - opam install -y uutf
   - opam install -y result
