@@ -49,7 +49,7 @@ opam update
 brew update
 brew install unzip wget git opam
 
-# 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
+# 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
 opam init
 
@@ -75,14 +75,6 @@ opam install satysfi
 
 * 再インストール： `opam reinstall satysfi` を実行
 * アンインストール： `opam uninstall satysfi` を実行
-
-<!--
-###手動ビルド
-1. ocamlbuild，ocamlfind，Menhirをインストール
-2. このリポジトリをクローンし，`make` を実行
-3. バイナリ `macrodown` が `Macrodown/` 直下に生成される
-4. `make install` を実行し `/bin/macrodown` としてインストール
--->
 
 ## 用法
 

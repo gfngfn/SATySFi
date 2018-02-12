@@ -30,7 +30,7 @@ Here is a list of minimally required softwares.
 sudo apt-get update
 sudo apt-get install build-essential git m4 unzip wget
 
-# The following command will ask if OPAM modifies some files.
+# The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
 wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
 
