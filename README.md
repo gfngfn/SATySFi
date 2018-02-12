@@ -8,16 +8,70 @@
 
 This software is supported by IPA Mitou Project.
 
-## Install
+## Install using OPAM
 
-First, clone this repository.
+### Prerequisites
 
-### Using OPAM
+Here is a list of minimally required softwares.
 
-* To install SATySFi, in the repository
-  1. run `git submodule update -i` to clone submodules.
-  2. run `opam pin add satysfi .`.
-  3. run `opam install satysfi`.
+* bzip2
+* cc
+* git
+* m4
+* make
+* unzip
+* wget
+* [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
+* ocaml 4.05.0 (installed by OPAM)
+
+#### Example (Ubuntu)
+
+```sh
+sudo apt-get update
+sudo apt-get install build-essential git m4 unzip wget
+
+# The following command will ask if OPAM modifies some files.
+# Be sure to read its instructions. Otherwise, some environment variables won't be set.
+wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
+
+opam switch 4.05.0
+eval `opam config env`
+opam update
+```
+
+#### Example (OS X Mavericks or later)
+
+```sh
+# Before running this scripts, install essential softwares such as GCC and Make. They can be installed from Xcode Command Line Tools.
+# Also, install Homebrew.
+
+brew update
+brew install unzip wget git opam
+
+# The following command will ask if OPAM modifies some files.
+# Be sure to read their instructions. Otherwise, some environment variables won't be set.
+opam init
+
+opam switch 4.05.0
+eval `opam config env`
+opam update
+```
+
+### Build
+
+First, clone this repository and submodules. Then build SATySFi using OPAM.
+
+```sh
+# clone
+git clone https://github.com/gfngfn/SATySFi.git
+cd SATySFi
+git submodule update --init --recursive
+
+# build
+opam pin add satysfi .
+opam install satysfi
+```
+
 * To reinstall, run `opam reinstall satysfi`.
 * To uninstall, run `opam uninstall satysfi`.
 
