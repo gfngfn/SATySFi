@@ -8,6 +8,7 @@ sudo: required
 install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
+  - eval `opam config env`
   - opam install -y ppx_deriving
   - opam install -y menhir
   - opam install -y core.v0.9.1
