@@ -118,3 +118,4 @@ in order to convert `<input files>` (file names separated with spaces) into `<ou
 * `-v`, `--version`: Prints the version.
 * `-o`, `--output`: Specify the name of the output PDF file. if this option is not given explicitly, the name of the output file is the concatenation of the base name of the input file and the extension `.pdf`.
 * `--full-path`: Displays file names with their absolute path when outputting them to stdout.
+* `--type-check-only`: Stops after type checking.

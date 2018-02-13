@@ -106,13 +106,15 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
   end
 
 
-let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
+let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) (type_check_only : bool) : Typeenv.t * environment =
   Logging.begin_to_read_file file_name_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
 (*
   Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
 *)
   Logging.pass_type_check None;
+  if type_check_only then (tyenvnew, env)
+  else
   match ty with
   | (_, BaseType(EnvType)) ->
       let value = Evaluator.interpret env ast in
@@ -201,7 +203,7 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
 *)
 
 
-let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
+let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) (type_check_only : bool) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
 (*
@@ -209,6 +211,8 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
 *)
     Logging.pass_type_check (Some((tyenv, ty)));
+    if type_check_only then ()
+    else
     let env_freezed = freeze_environment env in
       match ty with
       | (_, BaseType(DocumentType)) ->
@@ -682,6 +686,8 @@ let input_ref : (file_path option) ref = ref None
 
 let show_full_path_ref : bool ref = ref false
 
+let type_check_only_ref : bool ref = ref false
+
 let arg_version () =
   begin
     print_string (
@@ -725,6 +731,7 @@ let arg_spec_list curdir =
     ("--version"   , Arg.Unit(arg_version)        , " Print version");
     ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style");
     ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
+    ("--type-check-only", Arg.Set(type_check_only_ref) , "Stops after type checking")
   ]
 
 
@@ -775,11 +782,11 @@ let () =
         FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
           match file_info with
           | DocumentFile(utast) ->
-              eval_document_file tyenv env file_path_in utast output_file dump_file;
+              eval_document_file tyenv env file_path_in utast output_file dump_file !type_check_only_ref;
               (tyenv, env)
 
           | LibraryFile(utast) ->
-              eval_library_file tyenv env file_path_in utast
+              eval_library_file tyenv env file_path_in utast !type_check_only_ref
         ) (tyenv, env) dg |> ignore
 (*
     (* begin: for debug *)
