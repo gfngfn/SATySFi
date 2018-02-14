@@ -29,7 +29,7 @@ let pass_type_check opt =
       print_endline ("  type check passed.")
 
   | Some((tyenv, ty)) ->
-      print_endline ("  type check: " ^ (Display.string_of_mono_type tyenv ty))
+      print_endline ("  type check passed. (" ^ (Display.string_of_mono_type tyenv ty) ^ ")")
 
 
 let ordinal i =
