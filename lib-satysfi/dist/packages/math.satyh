@@ -31,8 +31,19 @@ module Math : sig
   direct \infty : [] math-cmd
   direct \ldots : [] math-cmd
   direct \sum : [] math-cmd
+  direct \prod : [] math-cmd
   direct \int : [] math-cmd
   direct \ordd : [] math-cmd
+  direct \partial : [] math-cmd
+  direct \times : [] math-cmd
+  direct \nabla : [] math-cmd
+
+  direct \equiv  : [] math-cmd
+  direct \neq    : [] math-cmd
+  direct \simeq  : [] math-cmd
+  direct \sim    : [] math-cmd
+  direct \approx : [] math-cmd
+  direct \propto : [] math-cmd
 
   direct \lim : [] math-cmd
 
@@ -148,15 +159,23 @@ end = struct
   let-math \infty = math-char MathOrd `∞`
   let-math \to    = math-char MathRel `→`
   let-math \pm    = math-char MathBin `±`
+  let-math \times = math-char MathBin `×`
   let-math \vdash = math-char MathRel `⊢`
   let-math \colon-rel = math-char MathRel `:`
-  let-math \equiv = math-char MathRel `≡`
+  let-math \equiv  = math-char MathRel `≡`
+  let-math \neq    = math-char MathRel `≠`
+  let-math \simeq  = math-char MathRel `≃`
+  let-math \sim    = math-char MathRel `∼`
+  let-math \approx = math-char MathRel `≈`
+  let-math \propto = math-char MathRel `∝`
+
   let-math \mapsto = math-char MathRel `↦`
   let-math \ldots = math-char MathPunct `…`
 
   let-math \lim = math-char MathOp `lim`
 
   let-math \sum = math-big-char MathOp `∑`
+  let-math \prod = math-big-char MathOp `∏`
 
 %% -- for Latin Modern Math --
   let-math \int =
@@ -173,6 +192,8 @@ end = struct
   let-math \ordd = math-char MathPrefix `d`
 
   let-math \partial = math-char MathPrefix `∂`
+
+  let-math \nabla  = math-char MathPrefix `∇`
 
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
