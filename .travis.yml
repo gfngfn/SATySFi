@@ -5,15 +5,13 @@ services:
 matrix:
   include:
     - os: osx
-      env: OCAML_VERSION="4.06.1"
+      env: OCAML_VERSION="4.06.0"
     - os: linux
       env: DISTRO="alpine" OCAML_VERSION="4.05.0"
     - os: linux
       env: DISTRO="alpine" OCAML_VERSION="4.06.0"
     - os: linux
-      env: DISTRO="alpine" OCAML_VERSION="4.06.1"
-    - os: linux
-      env: DISTRO="ubuntu-16.04" OCAML_VERSION="4.06.1"
+      env: DISTRO="ubuntu-16.04" OCAML_VERSION="4.06.0"
 env:
   global:
     - PACKAGE="satysfi"
