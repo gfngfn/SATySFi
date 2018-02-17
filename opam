@@ -23,12 +23,12 @@ depends: [
   "ocamlbuild" {build}
   "menhir"
   "ppx_deriving"
-  "core" {= "v0.10.0"}
   "uutf"
   "result"
+  "core_kernel" {>= "v0.10.0"}
   "bitv"
   "batteries"
   "yojson"
   "camlimages"
 ]
-available: [ ocaml-version = "4.05.0" ]
+available: [ ocaml-version >= "4.06.0" ]
