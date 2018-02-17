@@ -1,25 +1,36 @@
 language: c
-os:
-  - linux
-  - osx
-env:
-  - OCAML_VERSION=4.06
 sudo: required
-install:
-  - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
-  - bash -ex .travis-ocaml.sh
-  - eval `opam config env`
-  - opam install -y ppx_deriving
-  - opam install -y menhir
-  - opam install -y core_kernel.v0.10.0
-  - opam install -y ctypes
-  - opam install -y uutf
-  - opam install -y result
-  - opam install -y bitv
-  - opam install -y batteries
-  - opam install -y yojson
-  - opam install -y camlimages
-  - eval `opam config env`
-  - git submodule update -i
-script:
-  - make all
+services:
+  - docker
+matrix:
+  include:
+    - os: osx
+      env: OCAML_VERSION="4.06.0"
+    - os: linux
+      env: DISTRO="alpine" OCAML_VERSION="4.05.0"
+    - os: linux
+      env: DISTRO="alpine" OCAML_VERSION="4.06.0"
+    - os: linux
+      env: DISTRO="ubuntu-16.04" OCAML_VERSION="4.06.0"
+env:
+  global:
+    - PACKAGE="satysfi"
+    - OPAMBUILDTEST="false"
+    # For osx
+    - OPAMYES="true"
+    - OPAMJOBS=2
+before_script: |
+  if [[ "${TRAVIS_OS_NAME}" == "linux" ]] ; then
+    bash -ex ./travis/linux-before-script.sh ;
+  elif [[ "${TRAVIS_OS_NAME}" == "osx" ]] ; then
+    bash -ex ./travis/osx-before-script.sh ;
+  else
+    echo "Unkown OS name: ${TRAVIS_OS_NAME}" ;
+    false ;
+  fi
+script: |
+  if [[ "${TRAVIS_OS_NAME}" == "linux" ]] ; then
+    docker run satysfi/satysfi:travis ;
+  else
+    opam install "${PACKAGE}.dev" ;
+  fi
