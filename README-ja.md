@@ -7,7 +7,7 @@
 
 *SATySFi*（英単語の “satisfy” と同様に発音します）は，新しい組版処理システムとその言語です。構文は主にテキスト部分とプログラム部分からなり，前者はLaTeX風の構文で文書を執筆するために，後者はコマンドを定義するために使われます。いわゆる函数型プログラミングの要領でコマンドが定義でき，かつ静的に型がつけられるため，柔軟な記述とわかりやすいエラー報告が実現されています。
 
-本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。
+本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。（概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)）
 
 ## OPAM を使ったインストール方法
 
@@ -23,7 +23,7 @@
 * unzip
 * wget
 * [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
-* ocaml 4.05.0 （OPAM からインストールします）
+* ocaml 4.06.0 （OPAM からインストールします）
 
 #### 準備例（Ubuntu）
 
@@ -35,7 +35,7 @@ sudo apt-get install build-essential git m4 unzip wget
 # 必ず説明を読み，環境変数を適切に設定してください。
 wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
 
-opam switch 4.05.0
+opam switch 4.06.0
 eval `opam config env`
 opam update
 ```
@@ -53,7 +53,7 @@ brew install unzip wget git opam
 # 必ず説明を読み，環境変数を適切に設定してください。
 opam init
 
-opam switch 4.05.0
+opam switch 4.06.0
 eval `opam config env`
 opam update
 ```
