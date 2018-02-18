@@ -889,6 +889,10 @@ and interpret env ast =
 *)
         Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
+  | BackendVertSkip(astlen) ->
+      let len = interpret_length env astlen in
+        Vert(HorzBox.([VertFixedBreakable(len)]))
+
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
       let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
