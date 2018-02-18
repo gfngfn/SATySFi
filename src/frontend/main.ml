@@ -1,7 +1,7 @@
 
 open Types
 open Display
-
+open Config
 
 type file_path = string
 
@@ -79,13 +79,13 @@ type file_info =
   | LibraryFile  of untyped_abstract_tree
 
 
-let make_absolute_path pkgdir curdir headerelem =
+let make_absolute_path curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> Filename.concat pkgdir (s ^ ".satyh")
+  | HeaderRequire(s) -> resolve_dist_path (Filename.concat "dist/packages" s ^ ".satyh")
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
-let rec register_library_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
+let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
   begin
     Logging.begin_to_parse_file file_path_in;
     let curdir = Filename.dirname file_path_in in
@@ -94,13 +94,13 @@ let rec register_library_file (pkgdir : file_path) (dg : file_info FileDependenc
     let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
-      let file_path_sub = make_absolute_path pkgdir curdir headerelem in
+      let file_path_sub = make_absolute_path curdir headerelem in
 (*
       Format.printf "Main> lib: %s ---> %s\n" (Filename.basename file_path_in) (Filename.basename file_path_sub);  (* for debug *)
 *)
       begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file pkgdir dg file_path_sub
+          register_library_file dg file_path_sub
       end;
       FileDependencyGraph.add_edge dg file_path_in file_path_sub
     )
@@ -130,15 +130,15 @@ let libdir_ref : file_path ref = ref ""
 *)
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
-let reset (libdir : file_path) =
+let reset () =
   begin
-    FontInfo.initialize libdir;
+    FontInfo.initialize ();
     ImageInfo.initialize ();
   end
 
 
 (* -- initialization that should be performed before typechecking -- *)
-let initialize (libdir : file_path) (dump_file : file_path) =
+let initialize (dump_file : file_path) =
   begin
     FreeID.initialize ();
     BoundID.initialize ();
@@ -147,7 +147,7 @@ let initialize (libdir : file_path) (dump_file : file_path) =
     EvalVarID.initialize ();
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dump_file in
-    let (tyenv, env) = Primitives.make_environments libdir in
+    let (tyenv, env) = Primitives.make_environments () in
     (tyenv, env, dump_file_exists)
   end
 
@@ -180,7 +180,7 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
   (valenv, ref stenv)
 
 
-let register_document_file (pkgdir : file_path) (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
+let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
   begin
     Logging.begin_to_parse_file file_path_in;
     let file_in = open_in file_path_in in
@@ -189,10 +189,10 @@ let register_document_file (pkgdir : file_path) (dg : file_info FileDependencyGr
     let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     header |> List.iter (fun headerelem ->
-      let file_path_sub = make_absolute_path pkgdir curdir headerelem in
+      let file_path_sub = make_absolute_path curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file pkgdir dg file_path_sub;
+          register_library_file dg file_path_sub;
       end;
       FileDependencyGraph.add_edge dg file_path_in file_path_sub
     )
@@ -203,7 +203,7 @@ let register_document_file (pkgdir : file_path) (dg : file_info FileDependencyGr
 *)
 
 
-let eval_document_file (libdir : file_path) (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
+let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
 (*
@@ -216,7 +216,7 @@ let eval_document_file (libdir : file_path) (tyenv : Typeenv.t) (env : environme
       | (_, BaseType(DocumentType)) ->
           let rec aux i =
             Logging.start_evaluation i;
-            reset libdir;
+            reset ();
             let env = unfreeze_environment env_freezed in
             let valuedoc = Evaluator.interpret env ast in
             Logging.end_evaluation ();
@@ -296,6 +296,10 @@ let error_log_environment suspended =
         NormalLine("maybe you need to use '--doc', or '--header' option.");
       ]
 *)
+  | DistFileNotFound(file_name) ->
+      report_error Interface [
+        NormalLine("package file not found: " ^ file_name);
+      ]
 
   | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
@@ -723,19 +727,19 @@ let arg_spec_list curdir =
   ]
 
 
+let setup_root_dirs () =
+  let ds =
+    (match Sys.getenv_opt "HOME" with
+    | None    -> []
+    | Some(s) -> [Filename.concat s ".satysfi"]) @ ["/usr/local/share/satysfi"; "/usr/share/satysfi"] in
+  (if List.length ds = 0 then
+    raise NoLibraryRootDesignation);
+  Config.initialize ds
+
+
 let () =
   error_log_environment (fun () ->
-    let libdir =
-(*
-      match Sys.getenv_opt env_var_lib_root with
-      | None    -> raise NoLibraryRootDesignation
-      | Some(s) -> s
-*)
-      match Sys.getenv_opt "HOME" with
-      | None    -> raise NoLibraryRootDesignation
-      | Some(s) -> Filename.concat s ".satysfi"
-    in
-    let pkgdir = Filename.concat libdir "dist/packages" in
+    setup_root_dirs ();
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
     let input_file =
@@ -757,11 +761,11 @@ let () =
     Logging.show_full_path (!show_full_path_ref);
     Logging.target_file output_file;
     let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in
-    let (tyenv, env, dump_file_exists) = initialize libdir dump_file in
+    let (tyenv, env, dump_file_exists) = initialize dump_file in
     Logging.dump_file dump_file_exists dump_file;
 
     let dg = FileDependencyGraph.create 32 in
-    register_document_file pkgdir dg input_file;
+    register_document_file dg input_file;
     match FileDependencyGraph.find_cycle dg with
     | Some(cycle) ->
         raise (CyclicFileDependency(cycle))
@@ -770,7 +774,7 @@ let () =
         FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
           match file_info with
           | DocumentFile(utast) ->
-              eval_document_file libdir tyenv env file_path_in utast output_file dump_file;
+              eval_document_file tyenv env file_path_in utast output_file dump_file;
               (tyenv, env)
 
           | LibraryFile(utast) ->

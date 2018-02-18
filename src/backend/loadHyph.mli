@@ -19,6 +19,6 @@ type answer =
 
 val empty : t
 
-val main : dir_path -> file_path -> t
+val main : file_path -> t
 
 val lookup : t -> Uchar.t list -> answer

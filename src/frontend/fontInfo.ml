@@ -3,6 +3,7 @@ open MyUtil
 open LengthInterface
 open HorzBox
 open Types
+open Config
 
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
@@ -104,7 +105,8 @@ module FontAbbrevHashTable
           begin
             match store with
             | Unused(srcpath) ->
-      (* -- if this is the first access to the font -- *)
+                let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+                (* -- if this is the first access to the font -- *)
                 begin
                   match FontFormat.get_decoder_single srcpath with
                   | None ->
@@ -245,6 +247,7 @@ module MathFontAbbrevHashTable
             match !storeref with
             | UnusedMath(srcpath) ->
               (* -- if this is the first access to the math font -- *)
+                let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
                 begin
                   match FontFormat.get_math_decoder srcpath with
                   | None ->
@@ -410,7 +413,7 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
     Pdf.Dictionary(keyval)
 
 
-let initialize (satysfi_lib_root : string) =
+let initialize () =
 
   begin
     FontAbbrevHashTable.initialize ();
@@ -418,20 +421,20 @@ let initialize (satysfi_lib_root : string) =
 (*
     PrintForDebug.initfontE "!!ScriptDataMap";
 *)
-    let filename_S   = Filename.concat satysfi_lib_root "dist/unidata/Scripts.txt" in
-    let filename_EAW = Filename.concat satysfi_lib_root "dist/unidata/EastAsianWidth.txt" in
+    let filename_S   = resolve_dist_path "dist/unidata/Scripts.txt" in
+    let filename_EAW = resolve_dist_path "dist/unidata/EastAsianWidth.txt" in
     ScriptDataMap.set_from_file filename_S filename_EAW;
 (*
     PrintForDebug.initfontE "!!LineBreakDataMap";
 *)
-    LineBreakDataMap.set_from_file (Filename.concat satysfi_lib_root "dist/unidata/LineBreak.txt");
+    LineBreakDataMap.set_from_file (resolve_dist_path "dist/unidata/LineBreak.txt");
 (*
     PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
 *)
-    let font_hash = LoadFont.main satysfi_lib_root "fonts.satysfi-hash" in
+    let font_hash = LoadFont.main "fonts.satysfi-hash" in
     List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
 
-    let math_font_hash = LoadFont.main satysfi_lib_root "mathfonts.satysfi-hash" in
+    let math_font_hash = LoadFont.main "mathfonts.satysfi-hash" in
     List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
 (*
     PrintForDebug.initfontE "!!end initialize"  (* for debug *)

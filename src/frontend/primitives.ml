@@ -571,7 +571,7 @@ let frame_deco_VM =
 (* -- end: constants just for experimental use -- *)
 
 
-let make_environments satysfi_root_dir =
+let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
@@ -733,7 +733,7 @@ let make_environments satysfi_root_dir =
     ) (tyenvinit, envinit, Alist.empty)
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-  default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
-  default_hyphen_dictionary := LoadHyph.main satysfi_root_dir "english.satysfi-hyph";
+  default_font_scheme_ref := SetDefaultFont.main ();
+  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
       (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)
