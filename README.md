@@ -29,7 +29,7 @@ Here is a list of minimally required softwares.
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git m4 unzip wget autoconf
+sudo apt-get install autoconf build-essential git m4 unzip wget
 
 # The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
@@ -47,7 +47,7 @@ opam update
 # Also, install Homebrew.
 
 brew update
-brew install unzip wget git opam autoconf
+brew install autoconf git opam unzip wget
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
