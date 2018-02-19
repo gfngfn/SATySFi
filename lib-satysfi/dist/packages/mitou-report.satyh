@@ -75,13 +75,10 @@ end = struct
   let font-size-section = 18pt
   let font-size-subsection = 16pt
 
-  let section-top-margin = 20pt
-  let section-bottom-margin = 12pt
-  let section-top-padding = 0pt
-  let section-bottom-padding = 5pt
-  let section-line-sep = 4pt
-  let section-line-thickness1 = 2pt
-  let section-line-thickness2 = 1pt
+  let section-top-margin = 4pt
+  let section-bottom-margin = 4pt
+  let section-top-gap = 0pt
+  let section-bottom-gap = 0pt
 
   let font-ratio-latin = 1.
   let font-ratio-cjk = 0.88
@@ -218,24 +215,9 @@ end = struct
 
   let section-heading ctx ib-heading =
     let wid = get-text-width ctx in
-    let h = section-line-sep in
-    let th1 = section-line-thickness1 in
-    let th2 = section-line-thickness2 in
     let color = get-text-color ctx in
-      line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th2 color (Gr.line (x, y) (x +' wid, y));
-        ]))
-    +++
-      line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
+      line-break false false (ctx |> set-paragraph-margin section-top-gap section-bottom-gap)
         ib-heading
-    +++
-      line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th1 color (Gr.line (x, y) (x +' wid, y));
-        ]))
 
 
   let-rec repeat-inline n ib =
@@ -323,7 +305,7 @@ end = struct
 
           )) block-nil
         in
-          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main
+          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main +++ clear-page
     in
 
     % -- page settings --
@@ -376,8 +358,6 @@ end = struct
       page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main)
 
 
-  let-mutable needs-indentation-ref <- true
-
   let-mutable num-section <- 0
   let-mutable num-subsection <- 0
 
@@ -387,23 +367,11 @@ end = struct
 
 
   let-block ctx +p inner =
-    let needs-indentation =
-      if !needs-indentation-ref then true else
-        let () = needs-indentation-ref <- true in
-          false
-    in
     let ib-inner = read-inline ctx inner in
-    let br-parag =
-      if needs-indentation then
-        (quad-indent ctx) ++ ib-inner ++ inline-fil
-      else
-        ib-inner ++ inline-fil
-    in
-      form-paragraph ctx br-parag
+      form-paragraph ctx (quad-indent ctx ++ ib-inner ++ inline-fil)
 
 
   let-block ctx +pn inner =
-    let () = needs-indentation-ref <- true in
     let ib-inner = read-inline ctx inner in
       form-paragraph ctx (ib-inner ++ inline-fil)
 
@@ -412,7 +380,6 @@ end = struct
     let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
     let () = num-subsection <- 0 in
-    let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
     let () = register-cross-reference (label ^ `:num`) s-num in
     let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
@@ -428,7 +395,6 @@ end = struct
 
   let subsection-scheme ctx label title inner =
     let () = num-subsection <- !num-subsection + 1 in
-    let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
     let () = register-cross-reference (label ^ `:num`) s-num in
     let () = toc-acc-ref <- (TOCElementSubsection(label, title)) :: !toc-acc-ref in
