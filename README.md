@@ -28,7 +28,7 @@ Here is a list of minimally required softwares.
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git m4 unzip wget
+sudo apt-get install build-essential git m4 unzip wget autoconf
 
 # The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
