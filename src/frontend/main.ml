@@ -278,6 +278,11 @@ let error_log_environment suspended =
 *)
       ]
 
+  | Config.DistFileNotFound(filename) ->
+      report_error Interface [
+        NormalLine("file '" ^ filename ^ "' not found in any candidate path.");
+      ]
+
   | NoInputFileDesignation ->
       report_error Interface [
         NormalLine("no input file designation.");
