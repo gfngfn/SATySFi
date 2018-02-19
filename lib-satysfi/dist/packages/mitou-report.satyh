@@ -102,6 +102,8 @@ end = struct
 
   let get-standard-context wid =
     get-initial-context wid (command \math)
+      |> set-font-size 12.5pt
+      |> set-leading 20pt
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -166,8 +168,8 @@ end = struct
       let bb3 = single-centering-line ctx-upper (read-inline ctx-upper {成果報告書}) in
         bb1 +++ bb2 +++ bb3
     in
+    let ctx-lower = ctx |> set-font-size 18pt in
     let bb-lower =
-      let ctx-lower = ctx |> set-font-size 18pt in
       let pads = (0pt, 0pt, 4pt, 4pt) in
       let text-cell it = NormalCell(pads, read-inline ctx-lower it) in
       let acc =
@@ -183,7 +185,11 @@ end = struct
       let tbl = ([ text-cell {担当PM}; text-cell {：}; text-cell pm ] :: acc) |> List.reverse in
         single-centering-line ctx-lower (tabular tbl (fun _ _ -> []))
     in
-      bb-upper +++ block-skip 100pt +++ bb-lower
+    let bb-date =
+      let it-year = embed-string (arabic (year + 1)) in
+        single-centering-line ctx-lower (read-inline ctx-lower {#it-year;年2月28日})
+    in
+      block-skip 100pt +++ bb-upper +++ block-skip 100pt +++ bb-lower +++ block-skip 100pt +++ bb-date
 
 
   let make-section-title ctx =
@@ -239,8 +245,8 @@ end = struct
     let creatorlst = record#creators in
     let pm = record#manager in
     let page = A4Paper in
-    let txtorg = (80pt, 100pt) in
-    let txtwid = 440pt in
+    let txtorg = (100pt, 100pt) in
+    let txtwid = 390pt in
     let txthgt = 630pt in
     let hdrorg = (40pt, 40pt) in
     let ftrorg = (40pt, 780pt) in
@@ -343,10 +349,11 @@ end = struct
         bb-float-boxes
       in
       let footer =
-        let ctx = get-standard-context ftrwid in
-        let it-pageno = embed-string (arabic pbinfo#page-number) in
-          line-break true true ctx
-            (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+        if pageno <= 2 then block-nil else
+          let ctx = get-standard-context ftrwid in
+          let it-pageno = embed-string (arabic (pageno - 2)) in
+            line-break true true ctx
+              (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
       in
         (|
           header-origin  = hdrorg;
