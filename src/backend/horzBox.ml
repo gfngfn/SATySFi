@@ -309,6 +309,7 @@ and vert_box =
       [@printer (fun fmt (b, _) -> Format.fprintf fmt "Bottom%s" (if b then "" else "*"))]
   | VertFrame             of paddings * decoration * decoration * decoration * decoration * length * vert_box list
 (*      [@printer (fun fmt (_, _, _, _, _, imvblst) -> Format.fprintf fmt "%a" (pp_list pp_intermediate_vert_box) imvblst)] *)
+  | VertClearPage
 
 and intermediate_vert_box =
   | ImVertLine       of length * length * intermediate_horz_box list

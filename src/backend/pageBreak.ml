@@ -33,6 +33,7 @@ type pb_vert_box =
   | PBVertFixedBreakable   of length
   | PBVertFixedUnbreakable of length
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
+  | PBClearPage
 
 
 let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
@@ -75,6 +76,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotalnew = hgttotal +% vskip in
         let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip)) in
           aux false vpbprev evvbaccnew Alist.empty hgttotalnew pbvbtail
+
+    | PBClearPage :: pbvbtail ->
+        (evvbacc, Some(pbvbtail), hgttotal, 0)
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotalbefore = hgttotal +% pads.paddingT in
@@ -134,29 +138,29 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
     | VertBottomMargin(_, _) :: []
         -> Alist.to_list pbvbacc
 
-    | VertLine(hgt, dpt, imhblst) :: imvbtail ->
-        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, imhblst))) imvbtail
+    | VertLine(hgt, dpt, imhblst) :: vbtail ->
+        aux (Alist.extend pbvbacc (PBVertLine(hgt, dpt, imhblst))) vbtail
 
-    | VertFixedBreakable(vskip) :: imvbtail ->
-        aux (Alist.extend pbvbacc (PBVertFixedBreakable(vskip))) imvbtail
+    | VertFixedBreakable(vskip) :: vbtail ->
+        aux (Alist.extend pbvbacc (PBVertFixedBreakable(vskip))) vbtail
 
-    | VertBottomMargin(breakable1, mgn1) :: VertTopMargin(breakable2, mgn2) :: imvbtail ->
+    | VertBottomMargin(breakable1, mgn1) :: VertTopMargin(breakable2, mgn2) :: vbtail ->
         if breakable1 && breakable2 then
-          aux (Alist.extend pbvbacc (PBVertFixedBreakable(Length.max mgn1 mgn2))) imvbtail
+          aux (Alist.extend pbvbacc (PBVertFixedBreakable(Length.max mgn1 mgn2))) vbtail
         else
-          aux (Alist.extend pbvbacc (PBVertFixedUnbreakable(Length.max mgn1 mgn2))) imvbtail
+          aux (Alist.extend pbvbacc (PBVertFixedUnbreakable(Length.max mgn1 mgn2))) vbtail
 
 
-    | VertBottomMargin(breakable1, mgn1) :: imvbtail ->
+    | VertBottomMargin(breakable1, mgn1) :: vbtail ->
         let pbvb = if breakable1 then PBVertFixedBreakable(mgn1) else PBVertFixedUnbreakable(mgn1) in
-          aux (Alist.extend pbvbacc pbvb) imvbtail
+          aux (Alist.extend pbvbacc pbvb) vbtail
 
-    | VertTopMargin(breakable2, mgn2) :: imvbtail ->
+    | VertTopMargin(breakable2, mgn2) :: vbtail ->
         begin
           match Alist.to_list_rev pbvbacc with
           | [] ->
             (* -- ignores the first top margin -- *)
-              aux Alist.empty imvbtail
+              aux Alist.empty vbtail
 
           | _ :: _ ->
               let pbvb =
@@ -165,12 +169,15 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
                 else
                   PBVertFixedUnbreakable(mgn2)
               in
-                aux (Alist.extend pbvbacc pbvb) imvbtail
+                aux (Alist.extend pbvbacc pbvb) vbtail
         end
 
-    | VertFrame(pads, decoS, decoH, decoM, decoT, wid, imvblstsub) :: imvbtail ->
-        let pbvblstsub = aux Alist.empty imvblstsub in
-          aux (Alist.extend pbvbacc (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub))) imvbtail
+    | VertFrame(pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
+        let pbvblstsub = aux Alist.empty vblstsub in
+          aux (Alist.extend pbvbacc (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub))) vbtail
+
+    | VertClearPage :: vbtail ->
+        aux (Alist.extend pbvbacc PBClearPage) vbtail
 
   in
     aux Alist.empty vblst
@@ -187,6 +194,8 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
       | PBVertFrame(_, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) ->
           let imvblstsub = aux pbvblstsub in
             ImVertFrame(pads, decoS, wid, imvblstsub)
+
+      | PBClearPage -> ImVertFixedEmpty(Length.zero)
     )
   in
   let pbvblst = normalize vblst in

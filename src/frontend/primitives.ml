@@ -641,6 +641,8 @@ let make_environments () =
 *)
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
+        ("block-skip"            , ~% (tLN @-> tBB)                                          , lambda1 (fun vlen -> BackendVertSkip(vlen)));
+        ("clear-page"            , ~% tBB                                                    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
         ("embed-block-top"       , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
         ("embed-block-bottom"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
         ("line-stack-top"        , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackTop(vlst)));
