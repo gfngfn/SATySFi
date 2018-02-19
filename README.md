@@ -14,6 +14,7 @@ This software is supported by IPA Mitou Project 2017 (see the abstract [here](ht
 
 Here is a list of minimally required softwares.
 
+* autoconf
 * bzip2
 * cc
 * git
