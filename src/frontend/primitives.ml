@@ -490,7 +490,7 @@ let get_initial_context wid =
       space_natural          = 0.33;
       space_shrink           = 0.08;
       space_stretch          = 0.16;
-      adjacent_stretch       = 0.05;
+      adjacent_stretch       = 0.025;
       paragraph_width        = wid;
       paragraph_top          = pdfpt 18.;
       paragraph_bottom       = pdfpt 18.;
@@ -571,7 +571,7 @@ let frame_deco_VM =
 (* -- end: constants just for experimental use -- *)
 
 
-let make_environments satysfi_root_dir =
+let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
@@ -641,6 +641,8 @@ let make_environments satysfi_root_dir =
 *)
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
+        ("block-skip"            , ~% (tLN @-> tBB)                                          , lambda1 (fun vlen -> BackendVertSkip(vlen)));
+        ("clear-page"            , ~% tBB                                                    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
         ("embed-block-top"       , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
         ("embed-block-bottom"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
         ("line-stack-top"        , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackTop(vlst)));
@@ -733,7 +735,7 @@ let make_environments satysfi_root_dir =
     ) (tyenvinit, envinit, Alist.empty)
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-  default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
-  default_hyphen_dictionary := LoadHyph.main satysfi_root_dir "english.satysfi-hyph";
+  default_font_scheme_ref := SetDefaultFont.main ();
+  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
       (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)

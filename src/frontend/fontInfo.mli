@@ -10,7 +10,7 @@ exception NotASingleMathFont    of font_abbrev * file_path
 
 type tag = string
 
-val initialize : string -> unit
+val initialize : unit -> unit
 
 val get_metrics_of_word : horz_string_info -> Uchar.t list -> OutputText.t * length * length * length
 

@@ -1,5 +1,5 @@
 PREFIX=/usr/local
-LIBDIR=~/.satysfi
+LIBDIR=$(PREFIX)/share/satysfi
 SRCROOT=src
 BACKEND=src/backend
 FRONTEND=src/frontend
