@@ -222,7 +222,7 @@ end = struct
   let section-heading ctx ib-heading =
     let wid = get-text-width ctx in
     let color = get-text-color ctx in
-      line-break false false (ctx |> set-paragraph-margin section-top-gap section-bottom-gap)
+      line-break true false (ctx |> set-paragraph-margin section-top-gap section-bottom-gap)
         ib-heading
 
 
@@ -247,7 +247,7 @@ end = struct
     let page = A4Paper in
     let txtorg = (100pt, 100pt) in
     let txtwid = 390pt in
-    let txthgt = 630pt in
+    let txthgt = 625pt in
     let hdrorg = (40pt, 40pt) in
     let ftrorg = (40pt, 780pt) in
     let hdrwid = 520pt in
