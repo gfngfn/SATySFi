@@ -622,6 +622,7 @@ and active = parse
             end
         | _    -> report_error lexbuf "BUG; this cannot happen"
     }
+(*
   | "`"+ {
       openqtdepth := String.length (Lexing.lexeme lexbuf);
       ignore_space := false;
@@ -629,6 +630,7 @@ and active = parse
       next_state := LiteralState;
       OPENQT(get_pos lexbuf)
     }
+*)
   | ";" {
       let pos = get_pos lexbuf in
       let trs = pop lexbuf "BUG; this cannot happen" in
