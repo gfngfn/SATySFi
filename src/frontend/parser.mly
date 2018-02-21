@@ -742,53 +742,53 @@ nxlplus:
   | nxlminus                    { $1 }
 ;
 nxlminus:
-  | nxlplus BINOP_MINUS nxrtimes { binary_operator $1 $2 $3 }
-  | nxlplus EXACT_MINUS nxrtimes { binary_operator $1 ($2, "-") $3 }
-  | nxltimes                     { $1 }
+  | utastL=nxlplus; op=BINOP_MINUS;  utastR=nxrtimes { binary_operator utastL op utastR }
+  | utastL=nxlplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
+  | utast=nxltimes                                   { utast }
 ;
 nxrplus:
-  | nxrminus BINOP_PLUS nxrplus { binary_operator $1 $2 $3 }
-  | nxrminus                    { $1 }
+  | utastL=nxrminus; op=BINOP_PLUS; utastR=nxrplus { binary_operator utastL op utastR }
+  | utast=nxrminus                                 { utast }
 ;
 nxrminus:
-  | nxrplus BINOP_MINUS nxrtimes  { binary_operator $1 $2 $3 }
-  | nxrtimes                      { $1 }
+  | utastL=nxrplus; op=BINOP_MINUS; utastR=nxrtimes  { binary_operator utastL op utastR }
+  | utastL=nxrplus; rng=EXACT_MINUS; utastR=nxrtimes { binary_operator utastL (rng, "-") utastR }
+  | utast=nxrtimes                                   { utast }
 ;
 nxltimes:
-  | nxun BINOP_TIMES nxrtimes    { binary_operator $1 $2 $3 }
-  | nxun EXACT_TIMES nxrtimes    { binary_operator $1 ($2, "*") $3 }
-  | nxltimes BINOP_DIVIDES nxapp { binary_operator $1 $2 $3 }
-  | nxltimes MOD nxapp           { binary_operator $1 ($2, "mod") $3 }
-  | nxun                         { $1 }
+  | utastL=nxun; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
+  | utastL=nxun; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
+  | utastL=nxun; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
+  | utastL=nxun; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
+  | utast=nxun                                     { utast }
 ;
 nxrtimes:
-  | nxapp EXACT_TIMES nxrtimes   { binary_operator $1 ($2, "*") $3 }
-  | nxapp BINOP_TIMES nxrtimes   { binary_operator $1 $2 $3 }
-  | nxrtimes BINOP_DIVIDES nxapp { binary_operator $1 $2 $3 }
-  | nxrtimes MOD nxapp           { binary_operator $1 ($2, "mod") $3 }
-  | nxapp                        { $1 }
+  | utastL=nxapp; op=BINOP_TIMES;   utastR=nxrtimes { binary_operator utastL op utastR }
+  | utastL=nxapp; rng=EXACT_TIMES;  utastR=nxrtimes { binary_operator utastL (rng, "*") utastR }
+  | utastL=nxapp; op=BINOP_DIVIDES; utastR=nxrtimes { binary_operator utastL op utastR }
+  | utastL=nxapp; rng=MOD;          utastR=nxrtimes { binary_operator utastL (rng, "mod") utastR }
+  | utast=nxapp                                     { utast }
 ;
 nxun:
-  | EXACT_MINUS nxapp { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) ($1, "-") $2 }
-  | LNOT nxapp        { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "not")), $2)) }
-  | CONSTRUCTOR nxbot { make_standard (Ranged $1) (Ranged $2) (UTConstructor(extract_name $1, $2)) }
-  | CONSTRUCTOR       { make_standard (Ranged $1) (Ranged $1)
-                          (UTConstructor(extract_name $1, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
-  | nxapp             { $1 }
+  | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
+  | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "not")), utast2)) }
+  | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
+  | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
+  | utast=nxapp                      { utast }
 ;
 nxapp:
-  | nxapp nxbot { make_standard (Ranged $1) (Ranged $2) (UTApply($1, $2)) }
-  | nxapp CONSTRUCTOR {
-      let (rng, constrnm) = $2 in
-        make_standard (Ranged $1) (Ranged $2)
-          (UTApply($1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))))) }
-  | DEREF nxbot { make_standard (Tok $1) (Ranged $2) (UTApply(($1, UTContentOf([], "!")), $2)) }
+  | utast1=nxapp; utast2=nxbot { make_standard (Ranged utast1) (Ranged utast2) (UTApply(utast1, utast2)) }
+  | utast1=nxapp; constr=CONSTRUCTOR {
+      let (rng, constrnm) = constr in
+        make_standard (Ranged utast1) (Tok rng)
+          (UTApply(utast1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))))) }
+  | tok=DEREF; utast2=nxbot { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "!")), utast2)) }
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
         make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm)) }
   | utast1=nxapp; OPTIONAL; utast2=nxbot { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
   | utast1=nxapp; tok=OMISSION { make_standard (Ranged utast1) (Tok tok) (UTApplyOmission(utast1)) }
-  | nxbot { $1 }
+  | utast=nxbot { utast }
 ;
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
