@@ -1,0 +1,43 @@
+@require: gr
+
+module Proof : sig
+
+  direct \derive : [math list; math] math-cmd
+
+end = struct
+
+  let-math \math-space len =
+    text-in-math MathOrd (fun _ -> inline-skip len)
+
+
+  let length-max len1 len2 =
+    if len1 <' len2 then len2 else len1
+
+
+  let derive mlst1 m2 =
+    let m1 =
+      mlst1 |> List.fold-left-adjacent (fun macc m prevopt _ -> (
+        match prevopt with
+        | None    -> m
+        | Some(_) -> ${#macc\math-space!(30pt)#m}
+      )) ${}
+    in
+    text-in-math MathOrd (fun ctx -> (
+      let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
+      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
+      let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
+      let color = get-text-color ctx in
+      let thickness = 0.5pt in
+      let gap = 2pt in
+      let bar =
+        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
+          [ fill color (Gr.rectangle (x, y) (x +' w, y +' thickness)); ]
+        )
+      in
+        line-stack-bottom [ib1; bar; ib2]
+    ))
+
+
+  let-math \derive = derive
+
+end
