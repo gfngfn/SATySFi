@@ -11,7 +11,8 @@ ENV OPAMBUILDTEST %opambuildtest%
 # install
 # Note: We should manually update the local opam-repository
 #       because ocaml/opam uses it instead of the online one.
-RUN cd /home/opam/opam-repository \
+RUN set -ex \
+ && cd /home/opam/opam-repository \
  && git pull --quiet origin master \
  && cd /home/opam/build \
  && opam update \
