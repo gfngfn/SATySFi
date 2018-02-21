@@ -47,10 +47,55 @@ module Math : sig
 
   direct \lim : [] math-cmd
 
-  direct \Gamma : [] math-cmd
-  direct \lambda : [] math-cmd
-  direct \pi : [] math-cmd
-  direct \tau : [] math-cmd
+  direct \Alpha   : [] math-cmd
+  direct \Beta    : [] math-cmd
+  direct \Gamma   : [] math-cmd
+  direct \Delta   : [] math-cmd
+  direct \Epsilon : [] math-cmd
+  direct \Zeta    : [] math-cmd
+  direct \Eta     : [] math-cmd
+  direct \Theta   : [] math-cmd
+  direct \Iota    : [] math-cmd
+  direct \Kappa   : [] math-cmd
+  direct \Lambda  : [] math-cmd
+  direct \Mu      : [] math-cmd
+  direct \Nu      : [] math-cmd
+  direct \Xi      : [] math-cmd
+  direct \O       : [] math-cmd
+  direct \Pi      : [] math-cmd
+  direct \Rho     : [] math-cmd
+  direct \Sigma   : [] math-cmd
+  direct \Tau     : [] math-cmd
+  direct \Upsilon : [] math-cmd
+  direct \Phi     : [] math-cmd
+  direct \Chi     : [] math-cmd
+  direct \Psi     : [] math-cmd
+  direct \Omega   : [] math-cmd
+
+  direct \alpha   : [] math-cmd
+  direct \beta    : [] math-cmd
+  direct \gamma   : [] math-cmd
+  direct \delta   : [] math-cmd
+  direct \epsilon : [] math-cmd
+  direct \zeta    : [] math-cmd
+  direct \eta     : [] math-cmd
+  direct \theta   : [] math-cmd
+  direct \iota    : [] math-cmd
+  direct \kappa   : [] math-cmd
+  direct \lambda  : [] math-cmd
+  direct \mu      : [] math-cmd
+  direct \nu      : [] math-cmd
+  direct \xi      : [] math-cmd
+  direct \o       : [] math-cmd
+  direct \pi      : [] math-cmd
+  direct \rho     : [] math-cmd
+  direct \sigma   : [] math-cmd
+  direct \tau     : [] math-cmd
+  direct \upsilon : [] math-cmd
+  direct \phi     : [] math-cmd
+  direct \chi     : [] math-cmd
+  direct \psi     : [] math-cmd
+  direct \omega   : [] math-cmd
 
   % -- temporary --
   direct \synteq : [] math-cmd
@@ -148,13 +193,55 @@ end = struct
         double-struck = s;
       |)
 
+  let-math \alpha    = greek-lowercase 0x1D6FC 0x1D736
+  let-math \beta     = greek-lowercase 0x1D6FD 0x1D737
+  let-math \gamma    = greek-lowercase 0x1D6FE 0x1D738
+  let-math \delta    = greek-lowercase 0x1D6FF 0x1D739
+  let-math \epsilon  = greek-lowercase 0x1D700 0x1D73A
+  let-math \zeta     = greek-lowercase 0x1D701 0x1D73B
+  let-math \eta      = greek-lowercase 0x1D702 0x1D73C
+  let-math \theta    = greek-lowercase 0x1D703 0x1D73D
+  let-math \iota     = greek-lowercase 0x1D704 0x1D73E
+  let-math \kappa    = greek-lowercase 0x1D705 0x1D73F
+  let-math \lambda   = greek-lowercase 0x1D706 0x1D740
+  let-math \mu       = greek-lowercase 0x1D707 0x1D741
+  let-math \nu       = greek-lowercase 0x1D708 0x1D742
+  let-math \xi       = greek-lowercase 0x1D709 0x1D743
+  let-math \o        = greek-lowercase 0x1D70A 0x1D744
+  let-math \pi       = greek-lowercase 0x1D70B 0x1D745
+  let-math \rho      = greek-lowercase 0x1D70C 0x1D746
+  let-math \sigma    = greek-lowercase 0x1D70E 0x1D748
+  let-math \tau      = greek-lowercase 0x1D70F 0x1D749
+  let-math \upsilon  = greek-lowercase 0x1D710 0x1D74A
+  let-math \phi      = greek-lowercase 0x1D711 0x1D74B
+  let-math \chi      = greek-lowercase 0x1D712 0x1D74C
+  let-math \psi      = greek-lowercase 0x1D713 0x1D74D
+  let-math \omega    = greek-lowercase 0x1D714 0x1D74E
 
-  let-math \lambda = greek-lowercase 0x1D706 0x1D740
-  let-math \pi     = greek-lowercase 0x1D70B 0x1D745
-  let-math \tau    = greek-lowercase 0x1D70F 0x1D749
-
-  let-math \Gamma = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
-
+  let-math \Alpha    = greek-uppercase 0x1D6E2 0x1D71C 0x0391 0x1D6A8
+  let-math \Beta     = greek-uppercase 0x1D6E3 0x1D71D 0x0392 0x1D6A9
+  let-math \Gamma    = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
+  let-math \Delta    = greek-uppercase 0x1D6E5 0x1D71F 0x0394 0x1D6AB
+  let-math \Epsilon  = greek-uppercase 0x1D6E6 0x1D720 0x0395 0x1D6AC
+  let-math \Zeta     = greek-uppercase 0x1D6E7 0x1D721 0x0396 0x1D6AD
+  let-math \Eta      = greek-uppercase 0x1D6E8 0x1D722 0x0397 0x1D6AE
+  let-math \Theta    = greek-uppercase 0x1D6E9 0x1D723 0x0398 0x1D6AF
+  let-math \Iota     = greek-uppercase 0x1D6EA 0x1D724 0x0399 0x1D6B0
+  let-math \Kappa    = greek-uppercase 0x1D6EB 0x1D725 0x039A 0x1D6B1
+  let-math \Lambda   = greek-uppercase 0x1D6EC 0x1D726 0x039B 0x1D6B2
+  let-math \Mu       = greek-uppercase 0x1D6ED 0x1D727 0x039C 0x1D6B3
+  let-math \Nu       = greek-uppercase 0x1D6EE 0x1D728 0x039D 0x1D6B4
+  let-math \Xi       = greek-uppercase 0x1D6EF 0x1D729 0x039E 0x1D6B5
+  let-math \O        = greek-uppercase 0x1D6F0 0x1D72A 0x039F 0x1D6B6
+  let-math \Pi       = greek-uppercase 0x1D6F1 0x1D72B 0x03A0 0x1D6B7
+  let-math \Rho      = greek-uppercase 0x1D6F2 0x1D72C 0x03A1 0x1D6B8
+  let-math \Sigma    = greek-uppercase 0x1D6F4 0x1D72E 0x03A3 0x1D6BA
+  let-math \Tau      = greek-uppercase 0x1D6F5 0x1D72F 0x03A4 0x1D6BB
+  let-math \Upsilon  = greek-uppercase 0x1D6F6 0x1D730 0x03A5 0x1D6BC
+  let-math \Phi      = greek-uppercase 0x1D6F7 0x1D731 0x03A6 0x1D6BD
+  let-math \Chi      = greek-uppercase 0x1D6F8 0x1D732 0x03A7 0x1D6BE
+  let-math \Psi      = greek-uppercase 0x1D6F9 0x1D733 0x03A8 0x1D6BF
+  let-math \Omega    = greek-uppercase 0x1D6FA 0x1D734 0x03A9 0x1D6C0
 
   let-math \infty = math-char MathOrd `∞`
   let-math \to    = math-char MathRel `→`
