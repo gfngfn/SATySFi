@@ -15,6 +15,7 @@ module MitouReport : sig
       manager : inline-text;
       show-toc : bool;
       show-title : bool;
+      no-page-number-max : int;
     |)
 
   val font-latin-roman  : string * float * float
@@ -238,12 +239,17 @@ end = struct
       inline-fil ++ (repeat-inline n ib)
 
 
+  let-mutable no-page-number-max-ref <- 0
+
+
   let document record inner =
     % -- constants --
     let project = record#project in
     let year = record#year in
     let creatorlst = record#creators in
     let pm = record#manager in
+    let nopagenomax = record#no-page-number-max in
+    let () = no-page-number-max-ref <- nopagenomax in
     let page = A4Paper in
     let txtorg = (100pt, 100pt) in
     let txtwid = 390pt in
@@ -349,9 +355,9 @@ end = struct
         bb-float-boxes
       in
       let footer =
-        if pageno <= 2 then block-nil else
+        if pageno <= nopagenomax then block-nil else
           let ctx = get-standard-context ftrwid in
-          let it-pageno = embed-string (arabic (pageno - 2)) in
+          let it-pageno = embed-string (arabic (pageno - nopagenomax)) in
             line-break true true ctx
               (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
       in
@@ -383,6 +389,10 @@ end = struct
       form-paragraph ctx (ib-inner ++ inline-fil)
 
 
+  let page-number-string pbinfo =
+    arabic (pbinfo#page-number + (!no-page-number-max-ref))
+
+
   let section-scheme ctx label title inner =
     let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
@@ -392,7 +402,8 @@ end = struct
     let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
-        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+        ++ hook-page-break (fun pbinfo _ ->
+          register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
     in
     let ib-title = read-inline ctx-title title in
     let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
@@ -408,7 +419,7 @@ end = struct
     let ctx-title = make-subsection-title ctx in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
-        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
