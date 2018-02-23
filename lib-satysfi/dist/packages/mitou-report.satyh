@@ -13,9 +13,8 @@ module MitouReport : sig
       year : int;
       creators : inline-text list;
       manager : inline-text;
-      show-toc : bool;
-      show-title : bool;
       no-page-number-max : int;
+      jouzai-number : int;
     |)
 
   val font-latin-roman  : string * float * float
@@ -162,8 +161,8 @@ end = struct
 
   let-block ctx +make-title year project creatorlst pm =
     let bb-upper =
-      let ctx-upper = ctx |> set-font-size 20pt in
       let it-year = embed-string (arabic year) in
+      let ctx-upper = ctx |> set-font-size 20pt in
       let bb1 = single-centering-line ctx-upper (read-inline ctx-upper {#it-year;年度未踏IT人材・育成事業}) in
       let bb2 = single-centering-line ctx-upper (read-inline ctx-upper project) in
       let bb3 = single-centering-line ctx-upper (read-inline ctx-upper {成果報告書}) in
@@ -187,8 +186,8 @@ end = struct
         single-centering-line ctx-lower (tabular tbl (fun _ _ -> []))
     in
     let bb-date =
-      let it-year = embed-string (arabic (year + 1)) in
-        single-centering-line ctx-lower (read-inline ctx-lower {#it-year;年2月28日})
+      let it-next-year = embed-string (arabic (year + 1)) in
+        single-centering-line ctx-lower (read-inline ctx-lower {#it-next-year;年2月28日})
     in
       block-skip 100pt +++ bb-upper +++ block-skip 100pt +++ bb-lower +++ block-skip 100pt +++ bb-date
 
@@ -264,10 +263,7 @@ end = struct
 
     % -- title --
     let bb-title =
-      if record#show-title then
-        read-block ctx-doc '<+make-title(year)(project)(creatorlst)(pm);> +++ clear-page
-      else
-        block-nil
+      read-block ctx-doc '<+make-title(year)(project)(creatorlst)(pm);> +++ clear-page
     in
 
     % -- main --
@@ -276,48 +272,45 @@ end = struct
     % -- table of contents --
     let toc-subsection-indent = 20pt in
     let bb-toc =
-      if not record#show-toc then
-        block-nil
-      else
-        let ib-toc-title =
-          inline-fil ++ read-inline (make-section-title ctx-doc) {目次} ++ inline-fil
-        in
-        let bb-toc-main =
-          (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
-            match tocelem with
-            | TOCElementSection(label, title) ->
-                let it-num = embed-string (get-cross-reference-number label) in
-                let it-page = embed-string (get-cross-reference-page label) in
-                let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
-                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
-                let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
-                    if w <' 0pt then inline-fil else
-                      make-dots-line ctx-doc w
-                in
-                  bbacc +++ line-break true true ctx-doc
-                    (ib-title ++ ib-middle ++ ib-page)
+      let ib-toc-title =
+        inline-fil ++ read-inline (make-section-title ctx-doc) {目次} ++ inline-fil
+      in
+      let bb-toc-main =
+        (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
+          match tocelem with
+          | TOCElementSection(label, title) ->
+              let it-num = embed-string (get-cross-reference-number label) in
+              let it-page = embed-string (get-cross-reference-page label) in
+              let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
+              let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+              let ib-middle =
+                let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  if w <' 0pt then inline-fil else
+                    make-dots-line ctx-doc w
+              in
+                bbacc +++ line-break true true ctx-doc
+                  (ib-title ++ ib-middle ++ ib-page)
 
-          | TOCElementSubsection(label, title) ->
-                let it-num = embed-string (get-cross-reference-number label) in
-                let it-page = embed-string (get-cross-reference-page label) in
-                let ib-title =
-                  inline-skip toc-subsection-indent
-                    ++ read-inline ctx-doc {#it-num;. #title;}
-                      ++ inline-skip 3pt
-                in
-                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
-                let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
-                    if w <' 0pt then inline-fil else
-                      make-dots-line ctx-doc w
-                in
-                  bbacc +++ line-break true true ctx-doc
-                    (ib-title ++ ib-middle ++ ib-page)
+        | TOCElementSubsection(label, title) ->
+              let it-num = embed-string (get-cross-reference-number label) in
+              let it-page = embed-string (get-cross-reference-page label) in
+              let ib-title =
+                inline-skip toc-subsection-indent
+                  ++ read-inline ctx-doc {#it-num;. #title;}
+                    ++ inline-skip 3pt
+              in
+              let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+              let ib-middle =
+                let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  if w <' 0pt then inline-fil else
+                    make-dots-line ctx-doc w
+              in
+                bbacc +++ line-break true true ctx-doc
+                  (ib-title ++ ib-middle ++ ib-page)
 
-          )) block-nil
-        in
-          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main +++ clear-page
+        )) block-nil
+      in
+        (section-heading ctx-doc ib-toc-title) +++ bb-toc-main +++ clear-page
     in
 
     % -- page settings --
@@ -336,23 +329,28 @@ end = struct
           get-standard-context hdrwid
             |> set-paragraph-margin 0pt 0pt
         in
-%       let () = display-message `insert` in
-        let (bb-float-boxes, acc) =
-          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
-            let (pn, bb) = elem in
-              if pn < pageno then
-                let bbs =
-                  line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
-                    (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
-                      % 'ctx' is a dummy context
-                in
-                  (bbacc +++ bbs, acc)
-              else
-                (bbacc, elem :: acc)
-          )) (block-nil, [])
-        in
-        let () = ref-float-boxes <- acc in
-        bb-float-boxes
+        if pageno == 1 then
+          let it-jouzai-number = embed-string (arabic record#jouzai-number) in
+          let it-year = embed-string (arabic year) in
+            line-break false false ctx (inline-fil ++ read-inline ctx {#it-year;情財第#it-jouzai-number;号})
+        else
+  %       let () = display-message `insert` in
+          let (bb-float-boxes, acc) =
+            (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+              let (pn, bb) = elem in
+                if pn < pageno then
+                  let bbs =
+                    line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
+                      (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                        % 'ctx' is a dummy context
+                  in
+                    (bbacc +++ bbs, acc)
+                else
+                  (bbacc, elem :: acc)
+            )) (block-nil, [])
+          in
+          let () = ref-float-boxes <- acc in
+          bb-float-boxes
       in
       let footer =
         if pageno <= nopagenomax then block-nil else
