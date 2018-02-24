@@ -13,7 +13,6 @@ module MitouReport : sig
       year : int;
       creators : inline-text list;
       manager : inline-text;
-      no-page-number-max : int;
       jouzai-number : int;
     |)
 
@@ -84,7 +83,7 @@ end = struct
   let font-ratio-cjk = 0.88
 
   let font-latin-roman  = (`ArnoPro`   , font-ratio-latin, 0.)
-  let font-latin-italic = (`lmroman-it`, font-ratio-latin, 0.)
+  let font-latin-italic = (`ArnoPro-it`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
   let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
@@ -238,7 +237,7 @@ end = struct
       inline-fil ++ (repeat-inline n ib)
 
 
-  let-mutable no-page-number-max-ref <- 0
+  let-mutable no-page-number-max-ref <- None
 
 
   let document record inner =
@@ -247,8 +246,6 @@ end = struct
     let year = record#year in
     let creatorlst = record#creators in
     let pm = record#manager in
-    let nopagenomax = record#no-page-number-max in
-    let () = no-page-number-max-ref <- nopagenomax in
     let page = A4Paper in
     let txtorg = (100pt, 100pt) in
     let txtwid = 390pt in
@@ -305,8 +302,11 @@ end = struct
                   if w <' 0pt then inline-fil else
                     make-dots-line ctx-doc w
               in
+              let ib-hook =
+                hook-page-break (fun pbinfo _ -> (no-page-number-max-ref <- Some(pbinfo#page-number)))
+              in
                 bbacc +++ line-break true true ctx-doc
-                  (ib-title ++ ib-middle ++ ib-page)
+                  (ib-title ++ ib-middle ++ ib-page ++ ib-hook)
 
         )) block-nil
       in
@@ -353,11 +353,16 @@ end = struct
           bb-float-boxes
       in
       let footer =
-        if pageno <= nopagenomax then block-nil else
-          let ctx = get-standard-context ftrwid in
-          let it-pageno = embed-string (arabic (pageno - nopagenomax)) in
-            line-break true true ctx
-              (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+        match !no-page-number-max-ref with
+        | None ->
+            block-nil
+
+        | Some(nopagenomax) ->
+          if pageno <= nopagenomax then block-nil else
+            let ctx = get-standard-context ftrwid in
+            let it-pageno = embed-string (arabic (pageno - nopagenomax)) in
+              line-break true true ctx
+                (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
       in
         (|
           header-origin  = hdrorg;
@@ -388,7 +393,9 @@ end = struct
 
 
   let page-number-string pbinfo =
-    arabic (pbinfo#page-number + (!no-page-number-max-ref))
+    match !no-page-number-max-ref with
+    | None              -> ` `
+    | Some(nopagenomax) -> arabic (pbinfo#page-number + nopagenomax)
 
 
   let section-scheme ctx label title inner =
