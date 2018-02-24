@@ -154,7 +154,6 @@ rule progexpr = parse
       increment_line lexbuf;
       progexpr lexbuf
     }
-  | "()" { UNITVALUE(get_pos lexbuf) }
   | "(" { push Paren; LPAREN(get_pos lexbuf) }
   | ")" {
       let pos = get_pos lexbuf in
