@@ -1,0 +1,372 @@
+% -*- coding: utf-8 -*-
+@require: pervasives
+@require: gr
+@require: list
+@require: math
+@require: color
+
+module MitouDetail : sig
+
+  val document : 'a -> block-text -> document
+    constraint 'a :: (|
+      project : inline-text;
+      subtitle : inline-text;
+    |)
+
+  val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
+  val font-cjk-gothic   : string * float * float
+  val set-latin-font : (string * float * float) -> context -> context
+  val set-cjk-font   : (string * float * float) -> context -> context
+  direct \ref : [string] inline-cmd
+  direct \ref-page : [string] inline-cmd
+  direct \figure : [string?; inline-text; block-text] inline-cmd
+  direct +p : [inline-text] block-cmd
+  direct +pn : [inline-text] block-cmd
+  direct +section : [string?; inline-text; block-text] block-cmd
+  direct +subsection : [string?; inline-text; block-text] block-cmd
+
+end = struct
+
+  let generate-fresh-label =
+    let-mutable count <- 0 in
+      (fun () -> (
+        let () = count <- !count + 1 in
+          `generated:` ^ (arabic (!count))
+      ))
+
+
+  let-inline ctx \ref key =
+    let opt = get-cross-reference (key ^ `:num`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
+
+  let-inline ctx \ref-page key =
+    let opt = get-cross-reference (key ^ `:page`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
+
+  let font-ratio-latin = 1.
+  let font-ratio-cjk = 0.88
+
+
+  let cjk-arranged-size size =
+    size *' (1. /. font-ratio-cjk)
+
+
+  let font-size-section = cjk-arranged-size 14pt
+  let font-size-subsection = 16pt
+
+  let section-top-margin = 4pt
+  let section-bottom-margin = 4pt
+  let section-top-gap = 0pt
+  let section-bottom-gap = 0pt
+
+  let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
+  let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
+  let font-cjk-gothic   = (`ipaexg`, font-ratio-cjk  , 0.)
+
+
+  let set-latin-font font ctx =
+    ctx |> set-font Latin font
+
+
+  let set-cjk-font font ctx =
+    ctx |> set-font HanIdeographic font
+        |> set-font Kana           font
+
+
+  let get-standard-context wid =
+    get-initial-context wid (command \math)
+      |> set-font-size (cjk-arranged-size 12pt)
+      |> set-leading 20pt
+      |> set-dominant-wide-script Kana
+      |> set-language Kana Japanese
+      |> set-language HanIdeographic Japanese
+      |> set-dominant-narrow-script Latin
+      |> set-language Latin English
+      |> set-font Kana           font-cjk-gothic
+      |> set-font HanIdeographic font-cjk-gothic
+      |> set-font Latin          font-latin-sans
+      |> set-math-font `lmodern`
+      |> set-hyphen-penalty 100
+
+
+  let-mutable ref-float-boxes <- []
+
+
+  let height-of-float-boxes pageno =
+%    let () = display-message `get height` in
+    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+      if pn < pageno then h +' (get-natural-length bb) else h
+    )) 0pt
+
+
+  let-mutable ref-figure <- 0
+
+
+  let-inline ctx \figure ?:labelopt caption inner =
+    let () = ref-figure <- !ref-figure + 1 in
+    let s-num = arabic (!ref-figure) in
+    let () =
+      match labelopt with
+      | Some(label) -> register-cross-reference (label ^ `:num`) s-num
+      | None        -> ()
+    in
+    let it-num = embed-string s-num in
+    let bb-inner =
+      let d (_, _) _ _ _ = [] in
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
+        read-block ctx inner
+          +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
+      ))
+    in
+      hook-page-break (fun pbinfo _ -> (
+%        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
+        ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
+      ))
+
+
+  let single-line ctx =
+    line-break false false ctx
+
+
+  let single-centering-line ctx ib =
+    single-line ctx (inline-fil ++ ib ++ inline-fil)
+
+
+  let-block ctx +make-title project subtitle =
+    let ctx-upper =
+      ctx |> set-font-size (cjk-arranged-size 14pt)
+    in
+    let bb1 =
+      single-centering-line (ctx-upper |> set-paragraph-margin 12pt 4pt)
+        (read-inline ctx-upper project)
+    in
+    let bb2 =
+      single-centering-line (ctx-upper |> set-paragraph-margin 4pt 12pt)
+        (read-inline ctx-upper {– #subtitle; –})
+    in
+      bb1 +++ bb2
+
+
+  let make-section-title ctx =
+    ctx |> set-font-size font-size-section
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let make-subsection-title ctx =
+    ctx |> set-font-size font-size-subsection
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let get-cross-reference-number label =
+    match get-cross-reference (label ^ `:num`) with
+    | None    -> `?`
+    | Some(s) -> s
+
+
+  let get-cross-reference-page label =
+    match get-cross-reference (label ^ `:page`) with
+    | None    -> `?`
+    | Some(s) -> s
+
+
+  let section-heading ctx ib-heading =
+    let wid = get-text-width ctx in
+    let color = get-text-color ctx in
+      line-break true false (ctx |> set-paragraph-margin 12pt 2pt)
+        ib-heading
+
+
+  let-rec repeat-inline n ib =
+    if n <= 0 then inline-nil else
+      ib ++ (repeat-inline (n - 1) ib)
+
+
+  let make-dots-line ctx w =
+    let ib = read-inline ctx {.} ++ inline-skip 1pt in
+    let wdot = get-natural-width ib in
+    let n = round (w /' wdot) in
+      inline-fil ++ (repeat-inline n ib)
+
+
+  let-mutable no-page-number-max-ref <- None
+
+
+  let document record inner =
+    % -- constants --
+    let project = record#project in
+    let subtitle = record#subtitle in
+    let page = A4Paper in
+    let txtorg = (25mm, 25mm) in
+    let txtwid = 210mm -' 25mm *' 2. in
+    let txthgt = 297mm -' 25mm *' 2. in
+    let hdrorg = (25mm, 25mm) in
+    let hdrwid = txtwid in
+    let ftrorg = (25mm, 297mm -' 15mm) in
+    let ftrwid = txtwid in
+    let thickness = 0.5pt in
+
+    let ctx-doc = get-standard-context txtwid in
+
+    % -- title --
+    let bb-title =
+      read-block ctx-doc '<+make-title(project)(subtitle);>
+    in
+
+    % -- main --
+    let bb-main =
+      read-block ctx-doc inner
+        +++ line-break false false ctx-doc (hook-page-break (fun pbinfo _ ->
+              (register-cross-reference `number-of-pages` (arabic pbinfo#page-number))) ++ inline-fil)
+    in
+
+    % -- page settings --
+    let pagecontf pbinfo =
+      let hgtfb = height-of-float-boxes pbinfo#page-number in
+      let (txtorgx, txtorgy) = txtorg in
+      (|
+        text-origin = (txtorgx, txtorgy +' hgtfb);
+        text-height = txthgt -' hgtfb;
+      |)
+    in
+    let pagepartsf pbinfo =
+      let pageno = pbinfo#page-number in
+      let header =
+        let ctx =
+          get-standard-context hdrwid
+            |> set-paragraph-margin 0pt 0pt
+        in
+%       let () = display-message `insert` in
+        let (bb-float-boxes, acc) =
+          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+            let (pn, bb) = elem in
+              if pn < pageno then
+                let bbs =
+                  line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
+                    (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                      % 'ctx' is a dummy context
+                in
+                  (bbacc +++ bbs, acc)
+              else
+                (bbacc, elem :: acc)
+          )) (block-nil, [])
+        in
+        let () = ref-float-boxes <- acc in
+        bb-float-boxes
+      in
+      let footer =
+        let ctx = get-standard-context ftrwid in
+        let it-pageno = embed-string (arabic pageno) in
+        let it-numofpages =
+          match get-cross-reference `number-of-pages` with
+          | None    -> {?}
+          | Some(s) -> embed-string s
+        in
+          line-break true true ctx
+            (inline-fil ++ (read-inline ctx {#it-pageno; / #it-numofpages;}) ++ inline-fil)
+      in
+        (|
+          header-origin  = hdrorg;
+          header-content = header;
+          footer-origin  = ftrorg;
+          footer-content = footer;
+        |)
+    in
+      page-break page pagecontf pagepartsf (bb-title +++ bb-main)
+
+
+  let-mutable num-section <- 0
+  let-mutable num-subsection <- 0
+
+
+  let quad-indent ctx =
+    inline-skip (get-font-size ctx)
+
+
+  let-block ctx +p inner =
+    let ib-inner = read-inline ctx inner in
+      form-paragraph (ctx |> set-paragraph-margin 4pt 12pt) (quad-indent ctx ++ ib-inner ++ inline-fil)
+
+
+  let-block ctx +pn inner =
+    let ib-inner = read-inline ctx inner in
+      form-paragraph (ctx |> set-paragraph-margin 4pt 12pt) (ib-inner ++ inline-fil)
+
+
+  let page-number-string pbinfo =
+    match !no-page-number-max-ref with
+    | None              -> ` `
+    | Some(nopagenomax) -> arabic (pbinfo#page-number + nopagenomax)
+
+
+  let section-scheme ctx label title inner =
+    let ctx-title = make-section-title ctx in
+    let () = num-section <- !num-section + 1 in
+    let () = num-subsection <- 0 in
+    let s-num = arabic (!num-section) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ ->
+          register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+    in
+    let ib-title = read-inline ctx-title title in
+    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  let subsection-scheme ctx label title inner =
+    let () = num-subsection <- !num-subsection + 1 in
+    let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let ctx-title = make-subsection-title ctx in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+    in
+    let ib-title = read-inline ctx-title title in
+    let bb-title =
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  let-block ctx +section ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
+      section-scheme ctx label title inner
+
+
+  let-block ctx +subsection ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
+      subsection-scheme ctx label title inner
+
+end
+
+
+let document = MitouDetail.document
+  % ad-hoc
