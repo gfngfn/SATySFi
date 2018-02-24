@@ -47,7 +47,7 @@ opam update
 # また，Homebrew もインストールしてください。
 
 brew update
-brew install unzip wget git opam
+brew install wget opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。

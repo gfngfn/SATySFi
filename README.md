@@ -46,7 +46,7 @@ opam update
 # Also, install Homebrew.
 
 brew update
-brew install unzip wget git opam
+brew install wget opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
