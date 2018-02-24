@@ -608,6 +608,8 @@ let make_environments () =
         ( "::" , ptycons                 , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))       );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
+        ( "*." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatTimes(v1, v2))              );
+        ( "/." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatDivides(v1, v2))            );
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
         ( "-'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthMinus(v1, v2))             );
         ( "*'" , ~% (tLN @-> tFL @-> tLN), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
@@ -624,6 +626,13 @@ let make_environments () =
         ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
         ( "round"        , ~% (tFL @-> tI)             , lambda1 (fun vf -> PrimitiveRound(vf)) );
+        ( "sin"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatSine(vf)) );
+        ( "asin"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcSine(vf)) );
+        ( "cos"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatCosine(vf)) );
+        ( "acos"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcCosine(vf)) );
+        ( "tan"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatTangent(vf)) );
+        ( "atan"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcTangent(vf)) );
+        ( "atan2"        , ~% (tFL @-> tFL @-> tFL)    , lambda2 (fun vf1 vf2 -> FloatArcTangent2(vf1, vf2)) );
         ("split-into-lines", ~% (tS @-> (tL (tPROD [tI; tS]))), lambda1 (fun vs -> PrimitiveSplitIntoLines(vs)));
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );

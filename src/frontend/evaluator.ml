@@ -1461,6 +1461,45 @@ and interpret env ast =
       let flt2 = interpret_float env ast2 in
         FloatConstant(flt1 -. flt2)
 
+  | FloatTimes(ast1, ast2) ->
+      let flt1 = interpret_float env ast1 in
+      let flt2 = interpret_float env ast2 in
+        FloatConstant(flt1 *. flt2)
+
+  | FloatDivides(ast1, ast2) ->
+      let flt1 = interpret_float env ast1 in
+      let flt2 = interpret_float env ast2 in
+        FloatConstant(flt1 /. flt2)
+
+  | FloatSine(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(sin flt1)
+
+  | FloatArcSine(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(asin flt1)
+
+  | FloatCosine(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(cos flt1)
+
+  | FloatArcCosine(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(acos flt1)
+
+  | FloatTangent(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(tan flt1)
+
+  | FloatArcTangent(ast1) ->
+      let flt1 = interpret_float env ast1 in
+        FloatConstant(atan flt1)
+
+  | FloatArcTangent2(ast1, ast2) ->
+      let flt1 = interpret_float env ast1 in
+      let flt2 = interpret_float env ast2 in
+        FloatConstant(atan2 flt1 flt2)
+
   | LengthPlus(ast1, ast2) ->
       let len1 = interpret_length env ast1 in
       let len2 = interpret_length env ast2 in

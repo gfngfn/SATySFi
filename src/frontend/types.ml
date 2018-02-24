@@ -597,6 +597,15 @@ and abstract_tree =
   | PrimitiveRound        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
   | FloatMinus            of abstract_tree * abstract_tree
+  | FloatTimes            of abstract_tree * abstract_tree
+  | FloatDivides          of abstract_tree * abstract_tree
+  | FloatSine             of abstract_tree
+  | FloatArcSine          of abstract_tree
+  | FloatCosine           of abstract_tree
+  | FloatArcCosine        of abstract_tree
+  | FloatTangent          of abstract_tree
+  | FloatArcTangent       of abstract_tree
+  | FloatArcTangent2      of abstract_tree * abstract_tree
   | LengthPlus            of abstract_tree * abstract_tree
   | LengthMinus           of abstract_tree * abstract_tree
   | LengthTimes           of abstract_tree * abstract_tree
