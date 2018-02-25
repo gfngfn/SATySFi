@@ -426,7 +426,7 @@
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
 %token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
-%token <Range.t> UNITVALUE WHILE DO
+%token <Range.t> WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
 %token <Range.t> OPTIONAL OMISSION OPTIONALTYPE
 (*
@@ -799,7 +799,7 @@ nxbot:
   | lc=LENGTHCONST               { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
   | tok=TRUE                                              { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
   | tok=FALSE                                             { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
-  | tok=UNITVALUE                                         { make_standard (Tok tok) (Tok tok) UTUnitConstant }
+  | opn=LPAREN; cls=RPAREN                                { make_standard (Tok opn) (Tok cls) UTUnitConstant }
   | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
   | opn=OPENHORZ; utast=sxsep; cls=CLOSEHORZ     { make_standard (Tok opn) (Tok cls) (extract_main utast) }
@@ -976,7 +976,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
   | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
-  | UNITVALUE          { make_standard (Tok $1) (Tok $1) UTPUnitConstant }
+  | LPAREN RPAREN      { make_standard (Tok $1) (Tok $2) UTPUnitConstant }
   | WILDCARD           { make_standard (Tok $1) (Tok $1) UTPWildCard }
   | vartok=defedvar    { make_standard (Ranged vartok) (Ranged vartok) (UTPVariable(extract_name vartok)) }
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
