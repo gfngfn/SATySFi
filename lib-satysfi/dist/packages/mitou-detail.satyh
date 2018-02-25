@@ -15,7 +15,8 @@ module MitouDetail : sig
 
   val font-latin-sans   : string * float * float
   val font-latin-mono   : string * float * float
-  val font-cjk-gothic   : string * float * float
+  val font-cjk-normal   : string * float * float
+  val font-cjk-bold     : string * float * float
   val set-latin-font : (string * float * float) -> context -> context
   val set-cjk-font   : (string * float * float) -> context -> context
   direct \ref : [string] inline-cmd
@@ -74,7 +75,8 @@ end = struct
 
   let font-latin-sans   = (`lmsans`, font-ratio-latin, 0.)
   let font-latin-mono   = (`lmmono`, font-ratio-latin, 0.)
-  let font-cjk-gothic   = (`ipaexg`, font-ratio-cjk  , 0.)
+  let font-cjk-normal   = (`HiraKakuProN-W2`, font-ratio-cjk, 0.)
+  let font-cjk-bold     = (`HiraKakuProN-W5`, font-ratio-cjk, 0.)
 
 
   let set-latin-font font ctx =
@@ -95,8 +97,8 @@ end = struct
       |> set-language HanIdeographic Japanese
       |> set-dominant-narrow-script Latin
       |> set-language Latin English
-      |> set-font Kana           font-cjk-gothic
-      |> set-font HanIdeographic font-cjk-gothic
+      |> set-font Kana           font-cjk-normal
+      |> set-font HanIdeographic font-cjk-normal
       |> set-font Latin          font-latin-sans
       |> set-math-font `lmodern`
       |> set-hyphen-penalty 100
@@ -107,9 +109,20 @@ end = struct
 
   let height-of-float-boxes pageno =
 %    let () = display-message `get height` in
-    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
-      if pn < pageno then h +' (get-natural-length bb) else h
-    )) 0pt
+    let hopt =
+      (!ref-float-boxes) |> List.fold-left (fun hopt (pn, bb) -> (
+        if pn < pageno then
+          let hadded = get-natural-length bb in
+          match hopt with
+          | Some(h) -> Some(h +' hadded)
+          | None    -> Some(hadded)
+        else
+          hopt
+      )) None
+    in
+      match hopt with
+      | Some(h) -> h +' 24pt
+      | None    -> 0pt
 
 
   let-mutable ref-figure <- 0
@@ -163,13 +176,13 @@ end = struct
   let make-section-title ctx =
     ctx |> set-font-size font-size-section
         |> set-font Latin font-latin-sans
-        |> set-cjk-font font-cjk-gothic
+        |> set-cjk-font font-cjk-bold
 
 
   let make-subsection-title ctx =
     ctx |> set-font-size font-size-subsection
         |> set-font Latin font-latin-sans
-        |> set-cjk-font font-cjk-gothic
+        |> set-cjk-font font-cjk-bold
 
 
   let get-cross-reference-number label =
@@ -187,7 +200,7 @@ end = struct
   let section-heading ctx ib-heading =
     let wid = get-text-width ctx in
     let color = get-text-color ctx in
-      line-break true false (ctx |> set-paragraph-margin 12pt 2pt)
+      line-break true false (ctx |> set-paragraph-margin 12pt 12pt)
         ib-heading
 
 
