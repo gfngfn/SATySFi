@@ -25,6 +25,7 @@ module MitouDetail : sig
   direct +p : [inline-text] block-cmd
   direct +pn : [inline-text] block-cmd
   direct +section : [string?; inline-text; block-text] block-cmd
+  direct +section-no-number : [inline-text; block-text] block-cmd
   direct +subsection : [string?; inline-text; block-text] block-cmd
 
 end = struct
@@ -198,10 +199,7 @@ end = struct
 
 
   let section-heading ctx ib-heading =
-    let wid = get-text-width ctx in
-    let color = get-text-color ctx in
-      line-break true false (ctx |> set-paragraph-margin 12pt 12pt)
-        ib-heading
+    line-break true false (ctx |> set-paragraph-margin 12pt 12pt) ib-heading
 
 
   let-rec repeat-inline n ib =
@@ -326,36 +324,48 @@ end = struct
     | Some(nopagenomax) -> arabic (pbinfo#page-number + nopagenomax)
 
 
-  let section-scheme ctx label title inner =
+  let section-scheme ctx labelopt title inner =
     let ctx-title = make-section-title ctx in
-    let () = num-section <- !num-section + 1 in
     let () = num-subsection <- 0 in
-    let s-num = arabic (!num-section) in
-    let () = register-cross-reference (label ^ `:num`) s-num in
     let ib-num =
-      read-inline ctx-title (embed-string (s-num ^ `.`))
-        ++ hook-page-break (fun pbinfo _ ->
-          register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+      match labelopt with
+      | None ->
+          inline-nil
+
+      | Some(label) ->
+          let () = num-section <- !num-section + 1 in
+          let s-num = arabic (!num-section) in
+          let () = register-cross-reference (label ^ `:num`) s-num in
+            read-inline ctx-title (embed-string (s-num ^ `.`))
+              ++ hook-page-break (fun pbinfo _ ->
+                register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+              ++ inline-skip 10pt
     in
     let ib-title = read-inline ctx-title title in
-    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
+    let bb-title = section-heading ctx-title (ib-num ++ ib-title ++ inline-fil) in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
 
 
-  let subsection-scheme ctx label title inner =
-    let () = num-subsection <- !num-subsection + 1 in
-    let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
-    let () = register-cross-reference (label ^ `:num`) s-num in
+  let subsection-scheme ctx labelopt title inner =
     let ctx-title = make-subsection-title ctx in
     let ib-num =
-      read-inline ctx-title (embed-string (s-num ^ `.`))
-        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+      match labelopt with
+      | None ->
+          inline-nil
+
+      | Some(label) ->
+          let () = num-subsection <- !num-subsection + 1 in
+          let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+          let () = register-cross-reference (label ^ `:num`) s-num in
+            read-inline ctx-title (embed-string (s-num ^ `.`))
+              ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+              ++ inline-skip 10pt
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+        (ib-num ++ ib-title ++ inline-fil)
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
@@ -367,7 +377,11 @@ end = struct
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      section-scheme ctx label title inner
+      section-scheme ctx (Some(label)) title inner
+
+
+  let-block ctx +section-no-number title inner =
+    section-scheme ctx None title inner
 
 
   let-block ctx +subsection ?:labelopt title inner =
@@ -376,7 +390,11 @@ end = struct
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      subsection-scheme ctx label title inner
+      subsection-scheme ctx (Some(label)) title inner
+
+
+  let-block ctx +subsectin-no-number title inner =
+    subsection-scheme ctx None title inner
 
 end
 
