@@ -1000,6 +1000,7 @@ binop:
   | BINOP_BAR
   | BINOP_PLUS
   | BINOP_MINUS { $1 }
+  | EXACT_TIMES { ($1, "*") }
   | EXACT_MINUS { ($1, "-") }
   | MOD         { ($1, "mod") }
   | BEFORE      { ($1, "before") }
