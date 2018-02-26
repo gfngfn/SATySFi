@@ -3,7 +3,7 @@
 FROM ocaml/opam:%distro%_ocaml-%ocaml_version%
 
 WORKDIR /home/opam/build
-ADD . .
+COPY . .
 # Enable --yes option for opam commands (see `opam --help`)
 ENV OPAMYES "true"
 # Enable/disable tests (see `opam install --help`)
