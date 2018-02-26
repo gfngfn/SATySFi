@@ -436,7 +436,6 @@
 %token <Range.t> HEADER_REQUIRE HEADER_IMPORT
 %token <Range.t * string> HEADER_CONTENT
 %token EOI
-%token IGNORED
 
 (*
 %nonassoc LET DEFEQ IN LETAND LETMUTABLE OVERWRITEEQ

@@ -9,7 +9,6 @@
     | VerticalState
     | HorizontalState
     | ActiveState
-    | CommentState
     | LiteralState
     | MathState
     | HeaderContentState
@@ -40,7 +39,6 @@
   let next_state  : lexer_state ref = ref ProgramState
   let first_state : lexer_state ref = ref ProgramState
   let after_literal_state : lexer_state ref = ref HorizontalState
-  let after_comment_state : lexer_state ref = ref HorizontalState
 
   let ignore_space : bool ref = ref true
   let openqtdepth : int ref = ref 0
@@ -134,9 +132,8 @@ let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '\'' | 
 
 rule progexpr = parse
   | "%" {
-      after_comment_state := ProgramState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      progexpr lexbuf
     }
   | ("@" identifier ":") {
       let pos = get_pos lexbuf in
@@ -314,9 +311,8 @@ rule progexpr = parse
 
 and vertexpr = parse
   | "%" {
-      after_comment_state := VerticalState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      vertexpr lexbuf
     }
   | (break | space)* {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
@@ -375,10 +371,9 @@ and vertexpr = parse
 
 and horzexpr = parse
   | "%" {
-      after_comment_state := HorizontalState;
       ignore_space := true;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      horzexpr lexbuf
     }
   | ((break | space)* "{") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
@@ -485,9 +480,8 @@ and mathexpr = parse
   | space { mathexpr lexbuf }
   | break { increment_line lexbuf; mathexpr lexbuf }
   | "%" {
-      after_comment_state := MathState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      mathexpr lexbuf
     }
   | "!{" {
       push MtoH;
@@ -561,9 +555,8 @@ and mathexpr = parse
 
 and active = parse
   | "%" {
-      after_comment_state := ActiveState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      active lexbuf
     }
   | space { active lexbuf }
   | break { increment_line lexbuf; active lexbuf }
@@ -667,10 +660,8 @@ and literal = parse
 and comment = parse
   | break {
       increment_line lexbuf;
-      next_state := !after_comment_state;
-      IGNORED
     }
-  | eof { EOI }
+  | eof { () }
   | _ { comment lexbuf }
 
 and headercontent = parse
@@ -685,75 +676,14 @@ and headercontent = parse
     }
 
 {
-  let rec cut_token lexbuf =
-    let output =
-      match !next_state with
-      | ProgramState    -> progexpr lexbuf
-      | VerticalState   -> vertexpr lexbuf
-      | HorizontalState -> horzexpr lexbuf
-      | ActiveState     -> active lexbuf
-      | CommentState    -> comment lexbuf
-      | LiteralState    -> literal lexbuf
-      | MathState       -> mathexpr lexbuf
-      | HeaderContentState -> headercontent lexbuf
-    in
-(*
-    (* begin: for debug *)
-    let () = PrintForDebug.lexerE (
-      match output with
-      | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
-      | HORZCMD(_, cs) -> "HCMD(" ^ cs ^ ")"
-      | BHORZGRP(_)    -> "{ (BHORZGRP)"
-      | EHORZGRP(_)    -> "} (EHORZGRP)"
-      | OPENHORZ(_)    -> "{ (OPENHORZ)"
-      | CLOSEHORZ(_)   -> "} (CLOSEHORZ)"
-      | BVERTGRP(_)    -> "< (BVERTGRP)"
-      | EVERTGRP(_)    -> "> (EVERTGRP)"
-      | OPENVERT(_)    -> "'< (OPENVERT)"
-      | CLOSEVERT(_)   -> "> (CLOSEVERT)"
-      | OPENPROG(_)    -> "( (OPENPROG)"
-      | CLOSEPROG(_)   -> ") (CLOSEPROG)"
-      | END(_)         -> "; (END)"
-      | ENDACTIVE(_)   -> "; (ENDACTIVE)"
-      | CHAR(_, s)     -> "\"" ^ s ^ "\""
-      | SPACE(_)       -> "SPACE"
-      | BREAK(_)       -> "BREAK"
-      | EOI            -> "EOI"
-      | LETHORZ(_)     -> "let-inline"
-      | LETVERT(_)     -> "let-block"
-      | VAR(_, v)      -> "VAR(" ^ v ^ ")"
-      | DEFEQ(_)       -> "="
-      | BAR(_)         -> "|"
-      | LPAREN(_)      -> "("
-      | RPAREN(_)      -> ")"
-      | COMMA(_)       -> ","
-      | LETNONREC(_)   -> "let"
-      | LETREC(_)      -> "let-rec"
-      | CONTROLS(_)    -> "controls"
-      | LETAND(_)      -> "and"
-      | PATHLINE(_)    -> "--"
-      | PATHCURVE(_)   -> ".."
-      | CYCLE(_)       -> "cycle"
-      | BPATH(_)       -> "<["
-      | EPATH(_)       -> "]>"
-      | BMATHGRP(_)    -> "BMATHGRP"
-      | EMATHGRP(_)    -> "EMATHGRP"
-      | OPENMATH(_)    -> "${ (OPENMATH)"
-      | CLOSEMATH(_)   -> "} (CLOSEMATH)"
-      | MATHCHAR(_, s) -> "MATHCHAR(" ^ s ^ ")"
-      | SUBSCRIPT(_)   -> "_ (SUBSCRIPT)"
-      | SUPERSCRIPT(_) -> "^ (SUPERSCRIPT)"
-
-      | BINOP_PLUS(_, v)
-      | BINOP_MINUS(_, v)
-        -> "BIN(" ^ v ^ ")"
-
-      | _              -> "_"
-    ) in
-    (* end: for debug *)
-*)
-      match output with
-      | IGNORED -> cut_token lexbuf
-      | _       -> output
+  let cut_token lexbuf =
+    match !next_state with
+    | ProgramState    -> progexpr lexbuf
+    | VerticalState   -> vertexpr lexbuf
+    | HorizontalState -> horzexpr lexbuf
+    | ActiveState     -> active lexbuf
+    | LiteralState    -> literal lexbuf
+    | MathState       -> mathexpr lexbuf
+    | HeaderContentState -> headercontent lexbuf
 
 }
