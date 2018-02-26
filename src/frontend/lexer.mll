@@ -447,6 +447,7 @@ and horzexpr = parse
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
       let rng = get_pos lexbuf in
+        push HtoA;
         next_state := ActiveState;
         HORZCMDWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
     }
