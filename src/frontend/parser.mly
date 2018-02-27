@@ -398,6 +398,7 @@
 %token <Range.t * float> FLOATCONST
 %token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
+%token <Range.t * string> LITERAL
 %token <Range.t> SPACE BREAK
 %token <Range.t * string> MATHCHAR
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
@@ -416,7 +417,6 @@
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
 %token <Range.t> BMATHGRP EMATHGRP
-%token <Range.t> OPENQT CLOSEQT
 %token <Range.t> OPENVERT CLOSEVERT
 %token <Range.t> OPENHORZ CLOSEHORZ
 %token <Range.t> OPENPROG CLOSEPROG
@@ -803,7 +803,7 @@ nxbot:
   | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
   | opn=OPENHORZ; utast=sxsep; cls=CLOSEHORZ     { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=OPENVERT; utast=vxblock; cls=CLOSEVERT   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT    { make_standard (Tok opn) (Tok cls) (omit_spaces (String.concat "" strlst)) }
+  | tok=LITERAL                                  { let (rng, str) = tok in make_standard (Tok rng) (Tok rng) (omit_spaces str) }
   | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
   | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
@@ -981,8 +981,7 @@ patbot: /* -> Types.untyped_pattern_tree */
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
-  | opn=OPENQT; strlst=list(str); cls=CLOSEQT {
-        let rng = make_range (Tok opn) (Tok cls) in (rng, UTPStringConstant(rng, omit_spaces (String.concat "" strlst))) }
+  | tok=LITERAL                        { let (rng, str) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(rng, omit_spaces str)) }
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
@@ -1144,11 +1143,6 @@ narg:
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
   | rng=OMISSION { UTOmission(rng) }
-;
-str:
-  | chartok=CHAR { let (rng, c) = chartok in c }
-  | BREAK        { "\n" }
-  | SPACE        { " " }
 ;
 sargs:
   | rng=ENDACTIVE             { (rng, []) }
