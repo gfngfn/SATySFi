@@ -433,8 +433,7 @@
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
 %token <Range.t * int> ITEM
-%token <Range.t> HEADER_REQUIRE HEADER_IMPORT
-%token <Range.t * string> HEADER_CONTENT
+%token <Range.t * string> HEADER_REQUIRE HEADER_IMPORT
 %token EOI
 
 (*
@@ -520,8 +519,8 @@ main:
   | header=list(headerelem); utast=nxwhl; EOI    { (header, utast) }
 ;
 headerelem:
-  | HEADER_REQUIRE; content=HEADER_CONTENT { let (_, s) = content in HeaderRequire(s) }
-  | HEADER_IMPORT; content=HEADER_CONTENT  { let (_, s) = content in HeaderImport(s) }
+  | content=HEADER_REQUIRE { let (_, s) = content in HeaderRequire(s) }
+  | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 nxtoplevel:
   | top=LETREC; recdec=nxrecdec; subseq=nxtopsubseq                          { make_letrec_expression top recdec subseq }
