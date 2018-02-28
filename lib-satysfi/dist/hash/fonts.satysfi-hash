@@ -7,6 +7,8 @@
   "lmsans"    : <Single: {"src-dist": "lmsans10-regular.otf"}>,
   "ArnoPro"   : <Single: {"src-dist": "ArnoPro-Regular.otf"}>,
   "ArnoPro-it": <Single: {"src-dist": "ArnoPro-Italic.otf"}>,
+  "Junicode"  : <Single: {"src-dist": "Junicode.ttf"}>,
+  "Junicode-it": <Single: {"src-dist": "Junicode-Italic.ttf"}>,
   "HiraKakuProN-W2": <Single: {"src-dist": "HiraKakuProN-W2.otf"}>,
   "HiraKakuProN-W5": <Single: {"src-dist": "HiraKakuProN-W5.otf"}>
 }

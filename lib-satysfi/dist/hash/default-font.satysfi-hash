@@ -10,12 +10,12 @@
     "rising"   : 0.0
   },
   "latin": {
-    "font-name": "lmroman",
+    "font-name": "Junicode",
     "ratio"    : 1.0,
     "rising"   : 0.0
   },
   "other-script": {
-    "font-name": "lmroman",
+    "font-name": "Junicode",
     "ratio"    : 1.0,
     "rising"   : 0.0
   }
