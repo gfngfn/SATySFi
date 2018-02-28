@@ -29,9 +29,9 @@ exception BrokenFont                  of file_path * string
 exception CannotFindUnicodeCmap       of file_path
 
 
-let raise_err srcpath oerr =
+let raise_err srcpath oerr s =
   let msg = Format.asprintf "%a" Otfm.pp_error oerr in
-  raise (BrokenFont(srcpath, msg))
+  raise (BrokenFont(srcpath, msg ^ "; " ^ s))
 
 
 let string_of_file (srcpath : file_path) : string =
@@ -161,14 +161,15 @@ module GlyphIDTable
 
   end
 
+type bbox = per_mille * per_mille * per_mille * per_mille
 
-module GlyphMetricsTable
+module GlyphBBoxTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> metrics -> t -> unit
-    val find_opt : glyph_id -> t -> metrics option
-    val fold : (glyph_id -> metrics -> 'a -> 'a) -> 'a -> t -> 'a
+    val add : glyph_id -> bbox -> t -> unit
+    val find_opt : glyph_id -> t -> bbox option
+    val fold : (glyph_id -> bbox -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
@@ -179,13 +180,13 @@ module GlyphMetricsTable
         let hash = Hashtbl.hash
       end)
 
-    type t = metrics Ht.t
+    type t = bbox Ht.t
 
     let create =
       Ht.create
 
-    let add gid (w, h, d) gmtbl =
-      Ht.add gmtbl gid (w, h, d)
+    let add gid bbox gmtbl =
+      Ht.add gmtbl gid bbox
 
     let find_opt gid gmtbl =
       Ht.find_opt gmtbl gid
@@ -424,9 +425,10 @@ type decoder = {
   head_record         : Otfm.head;
   hhea_record         : Otfm.hhea;
   glyph_id_table      : GlyphIDTable.t;
-  glyph_metrics_table : GlyphMetricsTable.t;
+  glyph_bbox_table    : GlyphBBoxTable.t;
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
+  charstring_info     : Otfm.charstring_info option;
   units_per_em        : int;
   default_ascent      : per_mille;
   default_descent     : per_mille;
@@ -453,8 +455,6 @@ type cmap_resource = (string resource) ref  (* temporary;*)
 type cmap =
   | PredefinedCMap of string
   | CMapFile       of cmap_resource
-
-type bbox = per_mille * per_mille * per_mille * per_mille
 
 type matrix = float * float * float * float
 
@@ -577,7 +577,7 @@ let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) 
     ) None
   in
     match cmapres with
-    | Error(e)      -> raise_err srcpath e
+    | Error(e)      -> raise_err srcpath e (Printf.sprintf "get_glyph_id_main (cp = %d)" cp)
     | Ok(opt)       -> opt
 
 
@@ -589,7 +589,7 @@ let get_cmap_subtable srcpath d =
   let opt =
     match Otfm.cmap d with
     | Error(oerr) ->
-        raise_err srcpath oerr
+        raise_err srcpath oerr "get_cmap_subtable"
 
     | Ok(subtbllst) ->
         List.fold_left (fun opt idspred ->
@@ -649,15 +649,6 @@ let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) gid
       | Ok((`Simple(precntrlst), bbox)) -> Ok(Some((precntrlst, bbox)))
 
 
-let get_glyph_height_and_depth (dcdr : decoder) (gid : glyph_id) : per_mille * per_mille =
-  match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
-  | Error(`Missing_required_table(t))
-               when t = Otfm.Tag.loca -> (dcdr.default_ascent, dcdr.default_descent)
-  | Error(e)                          -> raise_err dcdr.file_path e
-  | Ok(None)                          -> (dcdr.default_ascent, dcdr.default_descent)
-  | Ok(Some((_, (_, ymin, _, ymax)))) -> (per_mille dcdr ymax, per_mille dcdr ymin)
-
-
 let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : per_mille =
   let d = dcdr.main in
   let hmtxres =
@@ -668,25 +659,10 @@ let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : per_mille =
     )
   in
     match hmtxres with
-    | Error(e)             -> raise_err dcdr.file_path e
+    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidkey)
     | Ok(None)             -> PerMille(0)
     | Ok(Some((adv, lsb))) -> per_mille dcdr adv
 
-
-let get_glyph_metrics_main (dcdr : decoder) (gid : glyph_id) : metrics =
-  let wid = get_glyph_advance_width dcdr gid in
-  let (hgt, dpt) = get_glyph_height_and_depth dcdr gid in
-    (wid, hgt, dpt)
-
-
-(* PUBLIC *)
-let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
-  let gmtbl = dcdr.glyph_metrics_table in
-    match gmtbl |> GlyphMetricsTable.find_opt gid with
-    | Some(gm) -> gm
-    | None     ->
-        let gm = get_glyph_metrics_main dcdr gid in
-          begin gmtbl |> GlyphMetricsTable.add gid gm; gm end
 
 
 (*
@@ -722,7 +698,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
   let rcdhhea = dcdr.hhea_record in
   match Otfm.os2 d with
   | Error(e) ->
-      raise_err dcdr.file_path e
+      raise_err dcdr.file_path e "font_descriptor_of_decoder"
 
   | Ok(rcdos2) ->
       let bbox =
@@ -750,7 +726,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
 let get_postscript_name (dcdr : decoder) =
   let d = dcdr.main in
   match Otfm.postscript_name d with
-  | Error(e)    -> raise_err dcdr.file_path e
+  | Error(e)    -> raise_err dcdr.file_path e "get_postscript_name"
   | Ok(None)    -> assert false  (* temporary *)
   | Ok(Some(x)) -> x
 
@@ -997,9 +973,10 @@ module Type0
 
 
     let pdfarray_of_widths dcdr =
-      let gmtbl = dcdr.glyph_metrics_table in
+      let bboxtbl = dcdr.glyph_bbox_table in
       let arr =
-        gmtbl |> GlyphMetricsTable.fold (fun gid (PerMille(w), _, _) acc ->
+        bboxtbl |> GlyphBBoxTable.fold (fun gid (PerMille(x1), _, PerMille(x2), _) acc ->
+          let w = x2 - x1 in
           Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
@@ -1121,16 +1098,21 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let kerntbl = get_kerning_table d in
   let ligtbl = get_ligature_table d in
   let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
-  let gmtbl = GlyphMetricsTable.create 256 in (* temporary; initial size of hash tables *)
+  let bboxtbl = GlyphBBoxTable.create 256 in (* temporary; initial size of hash tables *)
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
-    | Error(e)    -> raise_err srcpath e
+    | Error(e)    -> raise_err srcpath e "make_decoder (hhea)"
   in
   let (rcdhead, units_per_em) =
     match Otfm.head d with
     | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
-    | Error(e)    -> raise_err srcpath e
+    | Error(e)    -> raise_err srcpath e "make_decoder (head)"
+  in
+  let csinfo =
+    match Otfm.cff d with
+    | Error(_)    -> None
+    | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
   in
     {
       file_path           = srcpath;
@@ -1141,7 +1123,8 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
       glyph_id_table      = gidtbl;
-      glyph_metrics_table = gmtbl;
+      glyph_bbox_table    = bboxtbl;
+      charstring_info     = csinfo;
       units_per_em        = units_per_em;
       default_ascent      = per_mille_raw units_per_em ascent;  (* -- by the unit defined in the font -- *)
       default_descent     = per_mille_raw units_per_em descent; (* -- by the unit defined in the font -- *)
@@ -1150,14 +1133,14 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
 
 let get_decoder_single (srcpath : file_path) : (decoder * font_registration) option =
   match get_main_decoder_single srcpath with
-  | Error(oerr)            -> raise_err srcpath oerr
+  | Error(oerr)            -> raise_err srcpath oerr "get_decoder_single"
   | Ok(None)               -> None
   | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
 
 
 let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registration) option =
   match get_main_decoder_ttc srcpath i with
-  | Error(oerr)            -> raise_err srcpath oerr
+  | Error(oerr)            -> raise_err srcpath oerr "get_decoder_ttc"
   | Ok(None)               -> None
   | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
 
@@ -1189,12 +1172,14 @@ module MathInfoMap = Map.Make
     let compare = Pervasives.compare
   end)
 
+(*
 module MathBBoxTable = Hashtbl.Make
   (struct
     type t = glyph_id
     let equal = (=)
     let hash = Hashtbl.hash
   end)
+*)
 
 type math_kern = (design_units * design_units) list * design_units
 
@@ -1217,8 +1202,10 @@ type math_decoder =
     math_vertical_variants     : (math_variant_glyph list) MathInfoMap.t;
     math_horizontal_variants   : (math_variant_glyph list) MathInfoMap.t;
     math_kern_info             : math_kern_info MathInfoMap.t;
+(*
     math_bbox_table            : bbox MathBBoxTable.t;
     math_charstring_info       : Otfm.charstring_info option;
+*)
     script_style_info          : Otfm.gsub_feature option;
   }
 
@@ -1227,22 +1214,41 @@ let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
 
 
-let get_math_bbox (md : math_decoder) (gid : glyph_id) : bbox =
-  let mbboxtbl = md.math_bbox_table in
-  match MathBBoxTable.find_opt mbboxtbl gid with
+let get_ttf_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
+  let f = per_mille dcdr in
+  match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
+(*
+  | Error(`Missing_required_table(t))
+                     when t = Otfm.Tag.loca ->
+*)
+  | Error(e) ->
+      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gid)
+
+  | Ok(None) ->
+      bbox_zero  (* temporary; maybe should emit an error *)
+
+  | Ok(Some((_, bbox_raw))) ->
+      let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
+        (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+
+
+
+let get_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
+  let bboxtbl = dcdr.glyph_bbox_table in
+  match bboxtbl |> GlyphBBoxTable.find_opt gid with
   | Some(bbox) -> bbox
   | None ->
       begin
-        match md.math_charstring_info with
+        match dcdr.charstring_info with
         | None ->
-          (* -- if the math font is in TrueType OT -- *)
-            bbox_zero  (* temporary; should access 'glyf' table *)
+          (* -- if the font is TrueType OT -- *)
+            get_ttf_bbox dcdr gid
 
         | Some(csinfo) ->
-          (* -- if the math font is in CFF OT -- *)
+          (* -- if the font is CFF OT -- *)
             begin
               match Otfm.charstring_absolute csinfo gid with
-              | Error(oerr)       -> raise_err md.as_normal_font.file_path oerr
+              | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gid)
               | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
               | Ok(Some(pathlst)) ->
                   begin
@@ -1250,13 +1256,34 @@ let get_math_bbox (md : math_decoder) (gid : glyph_id) : bbox =
                     | None ->
                         bbox_zero
 
-                    | Some(bbox) ->
-                        let (xmin, ymin, xmax, ymax) = bbox in
-                        let f = per_mille md.as_normal_font in
-                          (f xmin, f ymin, f xmax, f ymax)
+                    | Some(bbox_raw) ->
+                        let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
+                        let f = per_mille dcdr in
+                          (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
                   end
             end
       end
+
+
+(* PUBLIC *)
+let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
+  let wid = get_glyph_advance_width dcdr gid in
+  let bboxtbl = dcdr.glyph_bbox_table in
+  let (_, ymin, _, ymax) =
+    match bboxtbl |> GlyphBBoxTable.find_opt gid with
+    | Some(bbox) ->
+        bbox
+
+    | None ->
+        let bbox = get_bbox dcdr gid in
+        begin
+          bboxtbl |> GlyphBBoxTable.add gid bbox;
+          bbox
+        end
+  in
+  let hgt = ymax in
+  let dpt = ymin in
+    (wid, hgt, dpt)
 
 
 let math_base_font (md : math_decoder) : decoder =
@@ -1315,7 +1342,7 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
   let d = dcdr.main in
     match Otfm.math d with
     | Error(oerr) ->
-        raise_err srcpath oerr
+        raise_err srcpath oerr "get_math_decoder"
 
     | Ok(mathraw) ->
         let micmap =
@@ -1334,12 +1361,14 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
           mathraw.Otfm.math_variants.Otfm.horiz_glyph_assoc
             |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
         in
+(*
         let mbboxtbl = MathBBoxTable.create 256 (* temporary *) in
         let csinfo =
           match Otfm.cff d with
           | Error(_)    -> None
           | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
         in
+*)
         let sstyopt =
           let ( >>= ) = result_bind in
           let res =
@@ -1362,8 +1391,10 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
             math_vertical_variants     = mvertvarmap;
             math_horizontal_variants   = mhorzvarmap;
             math_kern_info             = mkimap;
+(*
             math_bbox_table            = mbboxtbl;
             math_charstring_info       = csinfo;
+*)
             script_style_info          = sstyopt;
           }
         in
@@ -1429,7 +1460,7 @@ let truncate_positive (PerMille(x)) =
 let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : per_mille * per_mille * per_mille =
   let dcdr = md.as_normal_font in
   let (wid, _, _) = get_glyph_metrics dcdr gid in
-  let (_, _, ymin, ymax) = get_math_bbox md gid in
+  let (_, _, ymin, ymax) = get_bbox md.as_normal_font gid in
   let hgt = truncate_negative ymax in
   let dpt = truncate_positive ymin in
     (wid, hgt, dpt)

@@ -313,7 +313,7 @@ let make_discrete_math_kern mkern = DiscreteMathKern(mkern)
 let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
   | None ->
-      raise (Invalid_argument(mfabbrev))
+      raise (InvalidMathFontAbbrev(mfabbrev))
 
   | Some((_, _, md)) ->
       let ratio = FontFormat.get_axis_height_ratio md in
