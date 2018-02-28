@@ -36,10 +36,14 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let ops =
-(*
-          List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)  (* for test *)
-*)
-          (Graphics.pdfops_of_text (xpos, yposbaseline) hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt)
+          let opsmain =
+            Graphics.pdfops_of_text (xpos, yposbaseline)
+              hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt
+          in
+          if OptionState.debug_show_bbox () then
+            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+          else
+            opsmain
         in
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)
@@ -47,10 +51,14 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     | EvHorzMathGlyph(msinfo, hgt, dpt, otxt) ->
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let ops =
-(*
-          List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
-*)
-          (Graphics.pdfops_of_text (xpos, yposbaseline) Length.zero tag msinfo.math_font_size msinfo.math_color otxt)
+          let opsmain =
+            Graphics.pdfops_of_text (xpos, yposbaseline)
+              Length.zero tag msinfo.math_font_size msinfo.math_color otxt
+          in
+          if OptionState.debug_show_bbox () then
+            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+          else
+            opsmain
         in
         let opaccnew = Alist.append opacc ops in
           (xpos +% wid, opaccnew)

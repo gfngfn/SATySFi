@@ -1,7 +1,7 @@
 
 open Types
 open Display
-open Config
+
 
 type file_path = string
 
@@ -81,7 +81,7 @@ type file_info =
 
 let make_absolute_path curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> resolve_dist_path (Filename.concat "dist/packages" s ^ ".satyh")
+  | HeaderRequire(s) -> Config.resolve_dist_path (Filename.concat "dist/packages" s ^ ".satyh")
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
@@ -296,7 +296,7 @@ let error_log_environment suspended =
         NormalLine("maybe you need to use '--doc', or '--header' option.");
       ]
 *)
-  | DistFileNotFound(file_name) ->
+  | Config.DistFileNotFound(file_name) ->
       report_error Interface [
         NormalLine("package file not found: " ^ file_name);
       ]
@@ -723,7 +723,8 @@ let arg_spec_list curdir =
     ("--output"    , Arg.String(arg_output curdir), " Specify output file");
     ("-v"          , Arg.Unit(arg_version)        , " Print version");
     ("--version"   , Arg.Unit(arg_version)        , " Print version");
-    ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style")
+    ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style");
+    ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
   ]
 
 
