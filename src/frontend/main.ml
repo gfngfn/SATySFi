@@ -90,7 +90,6 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
     Logging.begin_to_parse_file file_path_in;
     let curdir = Filename.dirname file_path_in in
     let file_in = open_in file_path_in in
-    Lexer.reset_to_progexpr ();
     let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
