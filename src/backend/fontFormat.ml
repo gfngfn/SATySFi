@@ -167,9 +167,9 @@ module GlyphBBoxTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> bbox -> t -> unit
-    val find_opt : glyph_id -> t -> bbox option
-    val fold : (glyph_id -> bbox -> 'a -> 'a) -> 'a -> t -> 'a
+    val add : glyph_id -> per_mille * bbox -> t -> unit
+    val find_opt : glyph_id -> t -> (per_mille * bbox) option
+    val fold : (glyph_id -> per_mille * bbox -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
@@ -180,13 +180,13 @@ module GlyphBBoxTable
         let hash = Hashtbl.hash
       end)
 
-    type t = bbox Ht.t
+    type t = (per_mille * bbox) Ht.t
 
     let create =
       Ht.create
 
-    let add gid bbox gmtbl =
-      Ht.add gmtbl gid bbox
+    let add gid pair gmtbl =
+      Ht.add gmtbl gid pair
 
     let find_opt gid gmtbl =
       Ht.find_opt gmtbl gid
@@ -975,8 +975,7 @@ module Type0
     let pdfarray_of_widths dcdr =
       let bboxtbl = dcdr.glyph_bbox_table in
       let arr =
-        bboxtbl |> GlyphBBoxTable.fold (fun gid (PerMille(x1), _, PerMille(x2), _) acc ->
-          let w = x2 - x1 in
+        bboxtbl |> GlyphBBoxTable.fold (fun gid (PerMille(w), _) acc ->
           Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
@@ -1234,51 +1233,46 @@ let get_ttf_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
 
 
 let get_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
-  let bboxtbl = dcdr.glyph_bbox_table in
-  match bboxtbl |> GlyphBBoxTable.find_opt gid with
-  | Some(bbox) -> bbox
+  match dcdr.charstring_info with
   | None ->
+    (* -- if the font is TrueType OT -- *)
+      get_ttf_bbox dcdr gid
+
+  | Some(csinfo) ->
+    (* -- if the font is CFF OT -- *)
       begin
-        match dcdr.charstring_info with
-        | None ->
-          (* -- if the font is TrueType OT -- *)
-            get_ttf_bbox dcdr gid
-
-        | Some(csinfo) ->
-          (* -- if the font is CFF OT -- *)
+        match Otfm.charstring_absolute csinfo gid with
+        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gid)
+        | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
+        | Ok(Some(pathlst)) ->
             begin
-              match Otfm.charstring_absolute csinfo gid with
-              | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gid)
-              | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
-              | Ok(Some(pathlst)) ->
-                  begin
-                    match Otfm.charstring_bbox pathlst with
-                    | None ->
-                        bbox_zero
+              match Otfm.charstring_bbox pathlst with
+              | None ->
+                  bbox_zero
 
-                    | Some(bbox_raw) ->
-                        let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
-                        let f = per_mille dcdr in
-                          (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
-                  end
+              | Some(bbox_raw) ->
+                  let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
+                  let f = per_mille dcdr in
+                    (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
             end
       end
 
 
 (* PUBLIC *)
 let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
-  let wid = get_glyph_advance_width dcdr gid in
   let bboxtbl = dcdr.glyph_bbox_table in
-  let (_, ymin, _, ymax) =
+  let (wid, (_, ymin, _, ymax)) =
     match bboxtbl |> GlyphBBoxTable.find_opt gid with
-    | Some(bbox) ->
-        bbox
+    | Some(pair) ->
+        pair
 
     | None ->
+        let wid = get_glyph_advance_width dcdr gid in
         let bbox = get_bbox dcdr gid in
+        let pair = (wid, bbox) in
         begin
-          bboxtbl |> GlyphBBoxTable.add gid bbox;
-          bbox
+          bboxtbl |> GlyphBBoxTable.add gid pair;
+          pair
         end
   in
   let hgt = ymax in
