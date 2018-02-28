@@ -417,15 +417,10 @@
 %token <Range.t> BVERTGRP EVERTGRP
 %token <Range.t> BHORZGRP EHORZGRP
 %token <Range.t> BMATHGRP EMATHGRP
-%token <Range.t> OPENVERT CLOSEVERT
-%token <Range.t> OPENHORZ CLOSEHORZ
-%token <Range.t> OPENPROG CLOSEPROG
-%token <Range.t> OPENMATH CLOSEMATH
 %token <Range.t> BPATH EPATH PATHLINE PATHCURVE CONTROLS CYCLE
 %token <Range.t> TRUE FALSE
 %token <Range.t> SEP ENDACTIVE COMMA
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
-%token <Range.t> OPENPROG_AND_BRECORD CLOSEPROG_AND_ERECORD OPENPROG_AND_BLIST CLOSEPROG_AND_ELIST
 %token <Range.t> WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
 %token <Range.t> OPTIONAL OMISSION OPTIONALTYPE
@@ -800,8 +795,8 @@ nxbot:
   | opn=LPAREN; cls=RPAREN                                { make_standard (Tok opn) (Tok cls) UTUnitConstant }
   | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
-  | opn=OPENHORZ; utast=sxsep; cls=CLOSEHORZ     { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=OPENVERT; utast=vxblock; cls=CLOSEVERT   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str) = tok in make_standard (Tok rng) (Tok rng) (omit_spaces str) }
   | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
   | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
@@ -809,7 +804,7 @@ nxbot:
   | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
   | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
-  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
@@ -1092,7 +1087,7 @@ ihcmd:
         let args = List.append nargs sargs in
           make_standard (Tok rngcs) (Tok rnglast) (UTInputHorzEmbedded(utastcmd, args))
       }
-  | opn=OPENMATH; utast=mathblock; cls=CLOSEMATH {
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
         make_standard (Tok opn) (Tok cls) (UTInputHorzEmbeddedMath(utast))
       }
   | vartok=VARINHORZ; cls=ENDACTIVE {
@@ -1117,28 +1112,28 @@ nargs:
   | nargs=list(narg) { nargs }
 ;
 narg:
-  | opn=OPENPROG; utast=nxlet; cls=CLOSEPROG {
+  | opn=LPAREN; utast=nxlet; cls=RPAREN {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
-  | opn=OPENPROG; cls=CLOSEPROG {
+  | opn=LPAREN; cls=RPAREN {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
       }
-  | opn=OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD {
+  | opn=BRECORD; rcd=nxrecord; cls=ERECORD {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
       }
-  | opn=OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
+  | opn=BLIST; utast=nxlist; cls=ELIST {
         UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
-  | opn=OPTIONAL; OPENPROG; utast=nxlet; cls=CLOSEPROG {
+  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
-  | opn=OPTIONAL; OPENPROG; cls=CLOSEPROG {
+  | opn=OPTIONAL; LPAREN; cls=RPAREN {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
       }
-  | opn=OPTIONAL; OPENPROG_AND_BRECORD; rcd=nxrecord; cls=CLOSEPROG_AND_ERECORD {
+  | opn=OPTIONAL; BRECORD; rcd=nxrecord; cls=ERECORD {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
       }
-  | opn=OPTIONAL; OPENPROG_AND_BLIST; utast=nxlist; cls=CLOSEPROG_AND_ELIST {
+  | opn=OPTIONAL; BLIST; utast=nxlist; cls=ELIST {
         UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
       }
   | rng=OMISSION { UTOmission(rng) }
