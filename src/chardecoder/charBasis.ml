@@ -143,15 +143,11 @@ let script_equal = (=)
 
 
 let add_to_map cp scr umap =
-  match UCoreLib.UChar.of_int cp with
-  | Some(uch_ucore) -> umap |> UCoreLib.UMap.add uch_ucore scr
-  | None            -> umap  (* needs reconsideration; maybe should cause an error *)
+  umap |> BatIMap.add cp scr
 
 
 let add_range_to_map cp1 cp2 scr umap =
-  match (UCoreLib.UChar.of_int cp1, UCoreLib.UChar.of_int cp2) with
-  | (Some(uch_ucore1), Some(uch_ucore2)) -> umap |> UCoreLib.UMap.add_range uch_ucore1 uch_ucore2 scr
-  | _                                    -> umap  (* needs reconsideration; maybe should canse an error *)
+  umap |> BatIMap.add_range cp1 cp2 scr
 
 
 let map_of_list (type a) (readf : int -> string -> a) (lst : (code_point_kind * string) list) =
@@ -160,7 +156,7 @@ let map_of_list (type a) (readf : int -> string -> a) (lst : (code_point_kind * 
     | (CodePoint(cp), data)            -> accmap |> add_to_map cp (readf cp data)
     | (CodePointRange(cp1, cp2), data) -> accmap |> add_range_to_map cp1 cp2 (readf cp1 data)
         (* -- needs reconsideration: 'readf' receives the first code point of the range -- *)
-  ) (UCoreLib.UMap.empty ~eq:(=))
+  ) (BatIMap.empty ~eq:(=))
 
 
 (* for debug *)
