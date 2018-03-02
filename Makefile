@@ -9,7 +9,7 @@ OCB_FLAGS = -cflags -unsafe-string -cflag -w -cflag -3 \
 	-use-ocamlfind -use-menhir \
 	-I $(SRCROOT)/ -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ \
 	-I $(EXTERNAL)/otfm/src/ -I $(EXTERNAL)/camlpdf/ \
-	-pkgs "ppx_deriving.show,core_kernel,result,uutf,bitv,batteries, \
+	-pkgs "ppx_deriving.show,core_kernel,result,uutf,batteries, \
 	menhirLib,yojson,camlimages,camlimages.jpeg" \
 	-tag thread -yaccflags "--table --explain" \
 	-lflags "flatestubs.c rijndael-alg-fst.c stubs-aes.c sha2.c stubs-sha2.c"

@@ -26,7 +26,6 @@ depends: [
   "uutf"
   "result"
   "core_kernel" {>= "v0.10.0"}
-  "bitv"
   "batteries"
   "yojson"
   "camlimages"
