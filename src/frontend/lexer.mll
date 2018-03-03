@@ -4,47 +4,27 @@
 
   exception LexError of Range.t * string
 
+  (*
+   * The SATySFi lexer is stateful; the transitions are:
+   * | to \ from |program|block |inline|active |  math  |
+   * |-----------|-------|------|------|-------|--------|
+   * |  program  | (   ) |      |      | (   ) | !(   ) |
+   * |           | (| |) |      |      | (| |) | !(| |) |
+   * |           | [   ] |      |      | [   ] | ![   ] |
+   * |  block    | '<  > | <  > | <  > | <     | !<   > |
+   * |  inline   | {   } | {  } | {  } | {     | !{   } |
+   * |  active   |       | +x ; | \x ; |       |        |
+   * |           |       | #x ; | #x ; |       |        |
+   * |  math     | ${  } |      | ${ } |       | {    } |
+   *
+   * Note that the active-block and active-inline transitions are one-way.
+   *)
   type lexer_state =
-    | ProgramState
-    | VerticalState
-    | HorizontalState
-    | ActiveState
-    | CommentState
-    | LiteralState
-    | MathState
-    | HeaderContentState
-
-  type transition =
-    | HtoV        (* -- inline  -> block   (with "<"   ) -- *)
-    | HtoA        (* -- inline  -> active  (with "\cmd") -- *)
-    | VtoH        (* -- block   -> inline  (with "{"   ) -- *)
-    | VtoA        (* -- block   -> active  (with "+cmd") -- *)
-    | PtoH        (* -- program -> inline  (with "{"   ) -- *)
-    | PtoV        (* -- program -> block   (with "'<"  ) -- *)
-    | HtoM        (* -- inline  -> math    (with "${"  ) -- *)
-    | PtoM        (* -- program -> math    (with "${"  ) -- *)
-    | MtoH        (* -- math    -> inline  (with "!{"  ) -- *)
-    | MtoV        (* -- math    -> block   (with "!<"  ) -- *)
-    | MtoPParen   (* -- math    -> program (with "!("  ) -- *)
-    | MtoPRecord  (* -- math    -> program (with "!(|" ) -- *)
-    | MtoPList    (* -- math    -> program (with "!["  ) -- *)
-    | AtoPParen   (* -- active  -> program (with "("   ) -- *)
-    | AtoPRecord  (* -- active  -> program (with "(|"  ) -- *)
-    | AtoPList    (* -- active  -> program (with "["   ) -- *)
-    | Paren       (* -- "("  -- *)
-    | Record      (* -- "(|" -- *)
-    | List        (* -- "["  -- *)
-    | Brace       (* -- "{"  -- *)
-    | Angle       (* -- "<"  -- *)
-
-  let next_state  : lexer_state ref = ref ProgramState
-  let first_state : lexer_state ref = ref ProgramState
-  let after_literal_state : lexer_state ref = ref HorizontalState
-  let after_comment_state : lexer_state ref = ref HorizontalState
-
-  let ignore_space : bool ref = ref true
-  let openqtdepth : int ref = ref 0
-  let stack : transition Stack.t = Stack.create ()
+    | ProgramState (* program mode *)
+    | VerticalState (* block mode *)
+    | HorizontalState (* inline mode *)
+    | ActiveState (* active mode *)
+    | MathState (* math mode *)
 
   let get_pos lexbuf =
     let posS = Lexing.lexeme_start_p lexbuf in
@@ -58,12 +38,11 @@
     let rng = get_pos lexbuf in
       raise (LexError(rng, errmsg))
 
-  let pop lexbuf errmsg =
-    try Stack.pop stack with
-    | Stack.Empty -> report_error lexbuf errmsg
-
-  let push trs =
-    Stack.push trs stack
+  let pop lexbuf errmsg stack =
+    if Stack.length stack > 1 then
+      Stack.pop stack |> ignore
+    else
+      report_error lexbuf errmsg
 
   let increment_line lexbuf =
     begin
@@ -88,13 +67,9 @@
 
 
   let initialize state =
-    begin
-      first_state := state;
-      next_state := !first_state;
-      ignore_space := true;
-      openqtdepth := 0;
-      stack |> Stack.clear;
-    end
+    let stack = Stack.create () in
+    Stack.push state stack;
+    stack
 
 
   let reset_to_progexpr () =
@@ -132,85 +107,65 @@ let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<'
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '<' '>' '%' '|' '*' '$' '#' ';']
 let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | ',' | '?' | '`' )
 
-rule progexpr = parse
+rule progexpr stack = parse
   | "%" {
-      after_comment_state := ProgramState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      progexpr stack lexbuf
     }
-  | ("@" identifier ":") {
+  | ("@" (identifier as headertype) ":" (" "*) (nonbreak* as content) (break | eof)) {
       let pos = get_pos lexbuf in
-      let tok =
-        match Lexing.lexeme lexbuf with
-        | "@require:" -> HEADER_REQUIRE(pos)
-        | "@import:"  -> HEADER_IMPORT(pos)
-        | other       -> raise (LexError(pos, "undefined header token '" ^ other ^ "'"))
-      in
-      next_state := HeaderContentState;
-      tok
+      increment_line lexbuf;
+      match headertype with
+      | "require" -> HEADER_REQUIRE(pos, content)
+      | "import"  -> HEADER_IMPORT(pos, content)
+      | _         -> raise (LexError(pos, "undefined header type '" ^ headertype ^ "'"))
     }
-  | space { progexpr lexbuf }
+  | space { progexpr stack lexbuf }
   | break {
       increment_line lexbuf;
-      progexpr lexbuf
+      progexpr stack lexbuf
     }
-  | "()" { UNITVALUE(get_pos lexbuf) }
-  | "(" { push Paren; LPAREN(get_pos lexbuf) }
+  | "(" { Stack.push ProgramState stack; LPAREN(get_pos lexbuf) }
   | ")" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | Paren     -> RPAREN(pos)
-        | AtoPParen -> begin next_state := ActiveState; CLOSEPROG(pos) end
-        | MtoPParen -> begin next_state := MathState; CLOSEPROG(pos) end
-        | _         -> report_error lexbuf "unbalanced ')'"
+      pop lexbuf "too many closing" stack;
+      RPAREN(pos)
     }
-  | "(|" { push Record; BRECORD(get_pos lexbuf) }
+  | "(|" { Stack.push ProgramState stack; BRECORD(get_pos lexbuf) }
   | "|)" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | Record     -> ERECORD(pos)
-        | AtoPRecord -> begin next_state := ActiveState; CLOSEPROG_AND_ERECORD(pos) end
-        | MtoPRecord -> begin next_state := MathState; CLOSEPROG_AND_ERECORD(pos) end
-        | _          -> report_error lexbuf "unbalanced '|)'"
+      pop lexbuf "too many closing" stack;
+      ERECORD(pos)
     }
-  | "[" { push List; BLIST(get_pos lexbuf) }
+  | "[" { Stack.push ProgramState stack; BLIST(get_pos lexbuf) }
   | "]" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | List     -> ELIST(pos)
-        | AtoPList -> begin next_state := ActiveState; CLOSEPROG_AND_ELIST(pos) end
-        | MtoPList -> begin next_state := MathState; CLOSEPROG_AND_ELIST(pos) end
-        | _        -> report_error lexbuf "unbalanced ']'"
+      pop lexbuf "too many closing" stack;
+      ELIST(pos)
      }
   | ";" { LISTPUNCT(get_pos lexbuf) }
   | "{" {
-      push PtoH;
-      next_state := HorizontalState;
-      ignore_space := true;
-      OPENHORZ(get_pos lexbuf)
+      Stack.push HorizontalState stack;
+      skip_spaces lexbuf;
+      BHORZGRP(get_pos lexbuf)
     }
   | "'<" {
-      push PtoV;
-      next_state := VerticalState;
-      OPENVERT(get_pos lexbuf)
+      Stack.push VerticalState stack;
+      BVERTGRP(get_pos lexbuf)
     }
   | "${" {
-      push PtoM;
-      next_state := MathState;
-      OPENMATH(get_pos lexbuf)
+      Stack.push MathState stack;
+      BMATHGRP(get_pos lexbuf)
     }
   | "<[" { BPATH(get_pos lexbuf) }
   | "]>" { EPATH(get_pos lexbuf) }
   | ".." { PATHCURVE(get_pos lexbuf) }
   | "--" { PATHLINE(get_pos lexbuf) }  (* -- prior to BINOP_MINUS -- *)
   | "`"+ {
-      openqtdepth := String.length (Lexing.lexeme lexbuf);
-      after_literal_state := ProgramState;
-      next_state := LiteralState;
-      OPENQT(get_pos lexbuf)
+      let quote_range = get_pos lexbuf in
+      let quote_length = String.length (Lexing.lexeme lexbuf) in
+      let buffer = Buffer.create 256 in
+      literal quote_range quote_length buffer lexbuf
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
@@ -307,140 +262,119 @@ rule progexpr = parse
   | (((digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | ((("." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
-      if !first_state = ProgramState then EOI else
+      if Stack.length stack = 1 then EOI else
         report_error lexbuf "text input ended while reading a program area"
     }
   | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in a program area") }
 
 
-and vertexpr = parse
+and vertexpr stack = parse
   | "%" {
-      after_comment_state := VerticalState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      vertexpr stack lexbuf
     }
   | (break | space)* {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      vertexpr lexbuf
+      vertexpr stack lexbuf
     }
   | ("#" (identifier as varnm)) {
-      push VtoA;
-      next_state := ActiveState;
+      Stack.push ActiveState stack;
       VARINVERT(get_pos lexbuf, [], varnm)
     }
   | ("#" (constructor ".")* (identifier | constructor)) {
       let csnmpure = Lexing.lexeme lexbuf in
       let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list csstr in
-        push VtoA;
-        next_state := ActiveState;
+        Stack.push ActiveState stack;
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("+" (identifier | constructor)) {
-      push VtoA;
-      next_state := ActiveState;
+      Stack.push ActiveState stack;
       VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
   | ("+" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
-      push VtoA;
-      next_state := ActiveState;
+      Stack.push ActiveState stack;
       VERTCMDWITHMOD(get_pos lexbuf, mdlnmlst, "+" ^ csnm)
     }
-  | "<" { push Angle; BVERTGRP(get_pos lexbuf) }
+  | "<" { Stack.push VerticalState stack; BVERTGRP(get_pos lexbuf) }
   | ">" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | Angle -> EVERTGRP(pos)
-        | PtoV  -> begin next_state := ProgramState; CLOSEVERT(pos) end
-        | MtoV  -> begin next_state := MathState; EVERTGRP(pos) end
-        | HtoV  -> begin next_state := HorizontalState; ignore_space := false; EVERTGRP(pos) end
-        | _     -> report_error lexbuf "unbalanced '>'"
+      pop lexbuf "too many closing" stack;
+      EVERTGRP(pos)
     }
   | "{" {
-      push VtoH;
-      next_state := HorizontalState;
-      ignore_space := true;
+      Stack.push HorizontalState stack;
+      skip_spaces lexbuf;
       BHORZGRP(get_pos lexbuf)
     }
   | eof {
-      if !first_state = VerticalState then EOI else
+      if Stack.length stack = 1 then EOI else
         report_error lexbuf "unexpected end of input while reading a vertical area"
     }
   | _ as c {
       report_error lexbuf ("unexpected character '" ^ (String.make 1 c) ^ "' in a vertical area")
     }
 
-and horzexpr = parse
+and horzexpr stack = parse
   | "%" {
-      after_comment_state := HorizontalState;
-      ignore_space := true;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      skip_spaces lexbuf;
+      horzexpr stack lexbuf
     }
   | ((break | space)* "{") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      push Brace;
-      ignore_space := true;
+      Stack.push HorizontalState stack;
+      skip_spaces lexbuf;
       BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | Brace -> begin ignore_space := false; EHORZGRP(pos) end
-        | VtoH  -> begin next_state := VerticalState; EHORZGRP(pos) end
-        | MtoH  -> begin next_state := MathState; EHORZGRP(pos) end
-        | PtoH  -> begin next_state := ProgramState; CLOSEHORZ(pos) end
-        | _     -> report_error lexbuf "unbalanced '}'"
+      pop lexbuf "too many closing" stack;
+      EHORZGRP(pos)
     }
   | ((break | space)* "<") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      push HtoV;
-      next_state := VerticalState;
+      Stack.push VerticalState stack;
       BVERTGRP(get_pos lexbuf)
     }
   | ((break | space)* "|") {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      ignore_space := true;
+      skip_spaces lexbuf;
       SEP(get_pos lexbuf)
     }
   | break {
       increment_line lexbuf;
-      if !ignore_space then horzexpr lexbuf else
-        begin ignore_space := true; BREAK(get_pos lexbuf) end
+      skip_spaces lexbuf;
+      BREAK(get_pos lexbuf)
     }
   | space {
-      if !ignore_space then horzexpr lexbuf else
-        begin ignore_space := true; SPACE(get_pos lexbuf) end
+      skip_spaces lexbuf;
+      SPACE(get_pos lexbuf)
     }
   | ((break | space)* (item as itemstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      ignore_space := true;
+      skip_spaces lexbuf;
       ITEM(get_pos lexbuf, String.length itemstr)
     }
   | ("#" (identifier as varnm)) {
-      push HtoA;
-      next_state := ActiveState;
+      Stack.push ActiveState stack;
       VARINHORZ(get_pos lexbuf, [], varnm)
     }
   | ("#" (constructor ".")* (identifier | constructor)) {
       let csnmpure = Lexing.lexeme lexbuf in
       let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list csstr in
-        push HtoA;
-        next_state := ActiveState;
+        Stack.push ActiveState stack;
         VARINHORZ(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in
       let rng = get_pos lexbuf in
-      push HtoA;
-      next_state := ActiveState;
+      Stack.push ActiveState stack;
       HORZCMD(rng, tok)
     }
   | ("\\" (constructor ".")* (identifier | constructor)) {
@@ -448,85 +382,72 @@ and horzexpr = parse
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
       let rng = get_pos lexbuf in
-        next_state := ActiveState;
+        Stack.push ActiveState stack;
         HORZCMDWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
         begin
-          ignore_space := false;
           CHAR(get_pos lexbuf, tok)
         end
     }
   | ((break | space)* ("`"+ as openqtstr)) {
       increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      openqtdepth := String.length openqtstr;
-      after_literal_state := HorizontalState;
-      next_state := LiteralState;
-      OPENQT(get_pos lexbuf)
+      let quote_range = get_pos lexbuf in
+      let quote_length = String.length (Lexing.lexeme lexbuf) in
+      let buffer = Buffer.create 256 in
+      literal quote_range quote_length buffer lexbuf
     }
   | "${" {
-      push HtoM;
-      next_state := MathState;
-      OPENMATH(get_pos lexbuf)
+      Stack.push MathState stack;
+      BMATHGRP(get_pos lexbuf)
     }
   | eof {
-      if !first_state = HorizontalState then EOI else
+      if Stack.length stack = 1 then EOI else
         report_error lexbuf "unexpected end of input while reading an inline text area"
     }
   | str+ {
-      ignore_space := false;
       let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok)
     }
 
   | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in an inline text area") }
 
-and mathexpr = parse
-  | space { mathexpr lexbuf }
-  | break { increment_line lexbuf; mathexpr lexbuf }
+and mathexpr stack = parse
+  | space { mathexpr stack lexbuf }
+  | break { increment_line lexbuf; mathexpr stack lexbuf }
   | "%" {
-      after_comment_state := MathState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      mathexpr stack lexbuf
     }
   | "!{" {
-      push MtoH;
-      next_state := HorizontalState;
-      ignore_space := true;
+      Stack.push HorizontalState stack;
+      skip_spaces lexbuf;
       BHORZGRP(get_pos lexbuf);
     }
   | "!<" {
-      push MtoV;
-      next_state := VerticalState;
+      Stack.push VerticalState stack;
       BVERTGRP(get_pos lexbuf)
     }
   | "!(" {
-      push MtoPParen;
-      next_state := ProgramState;
-      OPENPROG(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      LPAREN(get_pos lexbuf)
     }
   | "![" {
-      push MtoPList;
-      next_state := ProgramState;
-      OPENPROG_AND_BLIST(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      BLIST(get_pos lexbuf)
     }
   | "!(|" {
-      push MtoPRecord;
-      next_state := ProgramState;
-      OPENPROG_AND_BRECORD(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      BRECORD(get_pos lexbuf)
     }
   | "{" {
-      push Brace;
+      Stack.push MathState stack;
       BMATHGRP(get_pos lexbuf)
     }
   | "}" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "too many closing" in
-        match trs with
-        | Brace -> EMATHGRP(pos)
-        | HtoM  -> begin next_state := HorizontalState; ignore_space := false; CLOSEMATH(pos) end
-        | PtoM  -> begin next_state := ProgramState; CLOSEMATH(pos) end
-        | _     -> report_error lexbuf "unbalanced '}'"
+      pop lexbuf "too many closing" stack;
+      EMATHGRP(pos)
     }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
@@ -559,85 +480,44 @@ and mathexpr = parse
 
   | eof { report_error lexbuf "unexpected end of file in a math area" }
 
-and active = parse
+and active stack = parse
   | "%" {
-      after_comment_state := ActiveState;
-      next_state := CommentState;
-      IGNORED
+      comment lexbuf;
+      active stack lexbuf
     }
-  | space { active lexbuf }
-  | break { increment_line lexbuf; active lexbuf }
+  | space { active stack lexbuf }
+  | break { increment_line lexbuf; active stack lexbuf }
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
   | "(" {
-      push AtoPParen;
-      next_state := ProgramState;
-      OPENPROG(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      LPAREN(get_pos lexbuf)
     }
   | "(|" {
-      push AtoPRecord;
-      next_state := ProgramState;
-      OPENPROG_AND_BRECORD(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      BRECORD(get_pos lexbuf)
     }
   | "[" {
-      push AtoPList;
-      next_state := ProgramState;
-      OPENPROG_AND_BLIST(get_pos lexbuf)
+      Stack.push ProgramState stack;
+      BLIST(get_pos lexbuf)
     }
   | "{" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "BUG; this cannot happen" in
-        match trs with
-        | HtoA ->
-            begin
-              push Brace;
-              next_state := HorizontalState;
-              ignore_space := true;
-              BHORZGRP(pos)
-            end
-        | VtoA ->
-            begin
-              push VtoH;
-              next_state := HorizontalState;
-              ignore_space := true;
-              BHORZGRP(pos)
-            end
-        | _    -> report_error lexbuf "BUG; this cannot happen"
+      pop lexbuf "BUG; this cannot happen" stack;
+      Stack.push HorizontalState stack;
+      skip_spaces lexbuf;
+      BHORZGRP(pos)
     }
   | "<" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "BUG; this cannot happen" in
-        match trs with
-        | HtoA ->
-            begin
-              push HtoV;
-              next_state := VerticalState;
-              BVERTGRP(pos)
-            end
-        | VtoA ->
-            begin
-              push Angle;
-              next_state := VerticalState;
-              BVERTGRP(pos)
-            end
-        | _    -> report_error lexbuf "BUG; this cannot happen"
+      pop lexbuf "BUG; this cannot happen" stack;
+      Stack.push VerticalState stack;
+      BVERTGRP(pos)
     }
-(*
-  | "`"+ {
-      openqtdepth := String.length (Lexing.lexeme lexbuf);
-      ignore_space := false;
-      after_literal_state := HorizontalState;
-      next_state := LiteralState;
-      OPENQT(get_pos lexbuf)
-    }
-*)
   | ";" {
       let pos = get_pos lexbuf in
-      let trs = pop lexbuf "BUG; this cannot happen" in
-        match trs with
-        | HtoA -> begin next_state := HorizontalState; ignore_space := false; ENDACTIVE(pos) end
-        | VtoA -> begin next_state := VerticalState; ENDACTIVE(pos) end
-        | _    -> report_error lexbuf "BUG; this cannot happen"
+      pop lexbuf "BUG; this cannot happen" stack;
+      ENDACTIVE(pos)
     }
   | eof {
       report_error lexbuf "unexpected end of input while reading an active area"
@@ -647,113 +527,62 @@ and active = parse
       report_error lexbuf ("unexpected token '" ^ tok ^ "' in an active area")
     }
 
-and literal = parse
+and literal quote_range quote_length buffer = parse
   | "`"+ {
       let tok = Lexing.lexeme lexbuf in
       let len = String.length tok in
-        if len < !openqtdepth then
-          CHAR(get_pos lexbuf, tok)
-        else if len > !openqtdepth then
+        if len < quote_length then begin
+          Buffer.add_string buffer tok;
+          literal quote_range quote_length buffer lexbuf
+        end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
-          begin next_state := !after_literal_state; CLOSEQT(get_pos lexbuf) end
+          let pos = Range.unite quote_range (get_pos lexbuf) in
+          LITERAL(pos, Buffer.contents buffer)
     }
-  | break { increment_line lexbuf; CHAR(get_pos lexbuf, "\n") }
+  | break {
+      let tok = Lexing.lexeme lexbuf in
+      increment_line lexbuf;
+      Buffer.add_string buffer tok;
+      literal quote_range quote_length buffer lexbuf
+    }
   | eof {
       report_error lexbuf "unexpected end of input while reading literal area"
     }
-  | _ { let tok = Lexing.lexeme lexbuf in CHAR(get_pos lexbuf, tok) }
+  | _ {
+      let tok = Lexing.lexeme lexbuf in
+      Buffer.add_string buffer tok;
+      literal quote_range quote_length buffer lexbuf
+    }
 
 and comment = parse
   | break {
       increment_line lexbuf;
-      next_state := !after_comment_state;
-      IGNORED
     }
-  | eof { EOI }
+  | eof { () }
   | _ { comment lexbuf }
 
-and headercontent = parse
-  | (" "*) (nonbreak+ as content) break {
+and skip_spaces = parse
+  | break {
       increment_line lexbuf;
-      next_state := ProgramState;
-      HEADER_CONTENT(get_pos lexbuf, content)
+      skip_spaces lexbuf
     }
-  | _ {
-      let tok = Lexing.lexeme lexbuf in
-      report_error lexbuf ("unexpected token '" ^ tok ^ "' in a header content")
+  | space {
+      skip_spaces lexbuf
     }
+  | "%" {
+      comment lexbuf;
+      skip_spaces lexbuf
+    }
+  | "" { () }
 
 {
-  let rec cut_token lexbuf =
-    let output =
-      match !next_state with
-      | ProgramState    -> progexpr lexbuf
-      | VerticalState   -> vertexpr lexbuf
-      | HorizontalState -> horzexpr lexbuf
-      | ActiveState     -> active lexbuf
-      | CommentState    -> comment lexbuf
-      | LiteralState    -> literal lexbuf
-      | MathState       -> mathexpr lexbuf
-      | HeaderContentState -> headercontent lexbuf
-    in
-(*
-    (* begin: for debug *)
-    let () = PrintForDebug.lexerE (
-      match output with
-      | VERTCMD(_, cs) -> "VCMD(" ^ cs ^ ")"
-      | HORZCMD(_, cs) -> "HCMD(" ^ cs ^ ")"
-      | BHORZGRP(_)    -> "{ (BHORZGRP)"
-      | EHORZGRP(_)    -> "} (EHORZGRP)"
-      | OPENHORZ(_)    -> "{ (OPENHORZ)"
-      | CLOSEHORZ(_)   -> "} (CLOSEHORZ)"
-      | BVERTGRP(_)    -> "< (BVERTGRP)"
-      | EVERTGRP(_)    -> "> (EVERTGRP)"
-      | OPENVERT(_)    -> "'< (OPENVERT)"
-      | CLOSEVERT(_)   -> "> (CLOSEVERT)"
-      | OPENPROG(_)    -> "( (OPENPROG)"
-      | CLOSEPROG(_)   -> ") (CLOSEPROG)"
-      | END(_)         -> "; (END)"
-      | ENDACTIVE(_)   -> "; (ENDACTIVE)"
-      | CHAR(_, s)     -> "\"" ^ s ^ "\""
-      | SPACE(_)       -> "SPACE"
-      | BREAK(_)       -> "BREAK"
-      | EOI            -> "EOI"
-      | LETHORZ(_)     -> "let-inline"
-      | LETVERT(_)     -> "let-block"
-      | VAR(_, v)      -> "VAR(" ^ v ^ ")"
-      | DEFEQ(_)       -> "="
-      | BAR(_)         -> "|"
-      | LPAREN(_)      -> "("
-      | RPAREN(_)      -> ")"
-      | COMMA(_)       -> ","
-      | LETNONREC(_)   -> "let"
-      | LETREC(_)      -> "let-rec"
-      | CONTROLS(_)    -> "controls"
-      | LETAND(_)      -> "and"
-      | PATHLINE(_)    -> "--"
-      | PATHCURVE(_)   -> ".."
-      | CYCLE(_)       -> "cycle"
-      | BPATH(_)       -> "<["
-      | EPATH(_)       -> "]>"
-      | BMATHGRP(_)    -> "BMATHGRP"
-      | EMATHGRP(_)    -> "EMATHGRP"
-      | OPENMATH(_)    -> "${ (OPENMATH)"
-      | CLOSEMATH(_)   -> "} (CLOSEMATH)"
-      | MATHCHAR(_, s) -> "MATHCHAR(" ^ s ^ ")"
-      | SUBSCRIPT(_)   -> "_ (SUBSCRIPT)"
-      | SUPERSCRIPT(_) -> "^ (SUPERSCRIPT)"
-
-      | BINOP_PLUS(_, v)
-      | BINOP_MINUS(_, v)
-        -> "BIN(" ^ v ^ ")"
-
-      | _              -> "_"
-    ) in
-    (* end: for debug *)
-*)
-      match output with
-      | IGNORED -> cut_token lexbuf
-      | _       -> output
+  let cut_token stack lexbuf =
+    match Stack.top stack with
+    | ProgramState    -> progexpr stack lexbuf
+    | VerticalState   -> vertexpr stack lexbuf
+    | HorizontalState -> horzexpr stack lexbuf
+    | ActiveState     -> active stack lexbuf
+    | MathState       -> mathexpr stack lexbuf
 
 }
