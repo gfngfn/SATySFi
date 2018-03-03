@@ -29,7 +29,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * m4
 * make
 * unzip
-* wget
+* wget or curl
 * [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
 * ocaml 4.06.0 （OPAM からインストールします）
 
@@ -55,7 +55,7 @@ opam update
 # また，Homebrew もインストールしてください。
 
 brew update
-brew install wget opam
+brew install opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。

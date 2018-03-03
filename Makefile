@@ -47,9 +47,14 @@ install: $(TARGET)
 lib:
 # -- downloads fonts --
 	mkdir -p temp/
-	wget -N http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -P temp/
+	if [ -x "$$(command -v curl)" ]; then \
+	  curl -R -o temp/lm2.004otf.zip http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip; \
+	  curl -R -o temp/latinmodern-math-1959.zip http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip; \
+	else \
+	  wget -N http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -P temp/; \
+	  wget -N http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -P temp/; \
+        fi
 	unzip -o temp/lm2.004otf.zip -d lib-satysfi/dist/fonts/
-	wget -N http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -P temp/
 	unzip -o temp/latinmodern-math-1959.zip -d temp/
 	cp temp/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
 

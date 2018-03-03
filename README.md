@@ -28,7 +28,7 @@ Here is a list of minimally required softwares.
 * m4
 * make
 * unzip
-* wget
+* wget or curl
 * [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
 * ocaml 4.06.0 (installed by OPAM)
 
@@ -54,7 +54,7 @@ opam update
 # Also, install Homebrew.
 
 brew update
-brew install wget opam
+brew install opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
