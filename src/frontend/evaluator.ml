@@ -1341,6 +1341,11 @@ and interpret env ast =
       in
         StringConstant(s)
 
+  | PrimitiveStringMatch(apat, astr) ->
+      let pat = Str.regexp (interpret_string env apat) in
+      let s   = interpret_string env astr in
+      BooleanConstant(Str.string_match pat s 0)
+
   | PrimitiveSplitIntoLines(asts) ->
       let s = interpret_string env asts in
       let slst = String.split_on_char '\n' s in
