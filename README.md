@@ -8,6 +8,14 @@
 
 This software is supported by IPA Mitou Project 2017 (see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)).
 
+## Install using Homebrew (for OSX users)
+
+There is a homebrew formula for SATySFi.
+
+```sh
+$ brew install --HEAD nyuichi/satysfi/satysfi
+```
+
 ## Install using OPAM
 
 ### Prerequisites
