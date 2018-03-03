@@ -134,6 +134,8 @@ let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
 
 let option_type = tOPT
 
+let itemize_type = tITMZ
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in

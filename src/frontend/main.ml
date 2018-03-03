@@ -184,7 +184,6 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
     Logging.begin_to_parse_file file_path_in;
     let file_in = open_in file_path_in in
     let curdir = Filename.dirname file_path_in in
-    Lexer.reset_to_progexpr ();
     let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     header |> List.iter (fun headerelem ->
@@ -485,10 +484,11 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
 
-  | Typechecker.UndefinedVariable(rng, varnm) ->
+  | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm) ->
+      let s = String.concat "." (List.append mdlnmlst [varnm]) in
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined variable '" ^ varnm ^ "'.");
+        NormalLine("undefined variable '" ^ s ^ "'.");
       ]
 
   | Typechecker.UndefinedConstructor(rng, constrnm) ->
@@ -570,10 +570,11 @@ let error_log_environment suspended =
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]
 
-  | Typeenv.UndefinedTypeName(rng, tynm) ->
+  | Typeenv.UndefinedTypeName(rng, mdlnmlst, tynm) ->
+      let s = String.concat "." (List.append mdlnmlst [tynm]) in
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("undefined type name '" ^ tynm ^ "'");
+        NormalLine("undefined type name '" ^ s ^ "'");
       ]
 
   | Typeenv.UndefinedModuleName(rng, mdlnm) ->

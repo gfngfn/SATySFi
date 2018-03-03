@@ -9,7 +9,7 @@ type type_definition =
   | Alias of type_scheme
 
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
-exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeName               of Range.t * module_name list * type_name
 exception UndefinedTypeArgument           of Range.t * var_name
 exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
@@ -17,6 +17,9 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name
+(*
+exception UndefinedModuleNameList         of module_name list
+*)
 
 val initialize_id : unit -> unit
 
@@ -36,7 +39,7 @@ val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name 
 
 val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraints -> mono_type
 
-val find_type_id : t -> type_name -> TypeID.t option
+val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option
 
 val find_type_name : t -> TypeID.t -> type_name
 
