@@ -503,7 +503,8 @@
 %type <Types.untyped_unkinded_type_argument list> xpltyvars
 %type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
 %type <Types.manual_type option * untyped_argument list> nonrecdecargpart
-%type <Range.t * Types.type_name> txbot
+%type <Range.t * manual_type list * (module_name list * type_name)> txapp
+%type <Range.t * module_name list * Types.type_name> txbot
 
 %%
 
@@ -834,8 +835,8 @@ nxlist:
 variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: $5 }
   | CONSTRUCTOR OF txfunc               { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: [] }
-  | CONSTRUCTOR BAR variants            { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], "unit"))) :: $3 }
-  | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], "unit"))) :: [] }
+  | CONSTRUCTOR BAR variants            { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit1", MTypeName([], [], "unit"))) :: $3 }
+  | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], [], "unit"))) :: [] }
 ;
 txfunc: /* -> manual_type */
   | mntydom=txprod; ARROW; mntycod=txfunc {
@@ -867,8 +868,8 @@ txprodsub: /* -> Range.t * manual_type list */
 ;
 txapppre: /* -> manual_type */
   | tyapp=txapp {
-        let (rng, lst, tynm) = tyapp in
-          (rng, MTypeName(lst, tynm))
+        let (rng, lst, (mdlnmlst, tynm)) = tyapp in
+          (rng, MTypeName(lst, mdlnmlst, tynm))
       }
   | opn=BLIST; mntylst=txlist; ELIST; last=HORZCMDTYPE {
         let rng = make_range (Tok opn) (Tok last) in
@@ -892,36 +893,30 @@ txapppre: /* -> manual_type */
         let (rng, tyargnm) = tyvar in (rng, MTypeParam(tyargnm))
       }
 ;
-txapp: /* Range.t * manual_type list * type_name */
+txapp:
   | tybot=txbot; tyapp=txapp {
-        let (rng1, tynm) = tybot in
-        let mnty = (rng1, MTypeName([], tynm)) in
-        let (rng2, lst, tynm) = tyapp in
+        let (rng1, mdlnmlst, tynm) = tybot in
+        let mnty = (rng1, MTypeName([], mdlnmlst, tynm)) in
+        let (rng2, lst, tyconstr) = tyapp in
         let rng = make_range (Ranged mnty) (Tok rng2) in
-          (rng, mnty :: lst, tynm)
+          (rng, mnty :: lst, tyconstr)
       }
   | LPAREN; mnty=txfunc; RPAREN; tyapp=txapp {
-        let (rng2, lst, tynm) = tyapp in
+        let (rng2, lst, tyconstr) = tyapp in
         let rng = make_range (Ranged mnty) (Tok rng2) in
-          (rng, mnty :: lst, tynm)
+          (rng, mnty :: lst, tyconstr)
       }
   | tyvar=TYPEVAR; tyapp=txapp {
         let (rngtyarg, tyargnm) = tyvar in
-        let (rng2, lst, tynm) = tyapp in
+        let (rng2, lst, tyconstr) = tyapp in
         let rng = make_range (Tok rngtyarg) (Tok rng2) in
-          (rng, (rngtyarg, MTypeParam(tyargnm)) :: lst, tynm)
+          (rng, (rngtyarg, MTypeParam(tyargnm)) :: lst, tyconstr)
       }
-  | tybot=txbot { let (rng, tynm) = tybot in (rng, [], tynm) }
+  | tybot=txbot { let (rng, mdlnmlst, tynm) = tybot in (rng, [], (mdlnmlst, tynm)) }
 ;
 txbot:
-  | tytok=VAR { tytok }
-  | mdltok=CONSTRUCTOR; DOT; tytok=VAR {
-      (* temporary; currently only one module name can be appended *)
-        let (rng1, mdlnm) = mdltok in
-        let (rng2, tynm)  = tytok in
-        let rng = make_range (Tok rng1) (Tok rng2) in
-          (rng, mdlnm ^ "." ^ tynm)
-      }
+  | tytok=VAR        { let (rng, tynm) = tytok in (rng, [], tynm) }
+  | tytok=VARWITHMOD { tytok }
 ;
 txlist:
   | mnty=txfunc; LISTPUNCT; tail=txlist                 { MMandatoryArgumentType(mnty) :: tail }
@@ -1168,7 +1163,7 @@ vxbot:
         let (rngcs, mdlnmlst, csnm) = vcmd in
         let (rnglast, sargs) = sargsraw in
         let args = List.append nargs sargs in
-          make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf([], csnm)), args))
+          make_standard (Tok rngcs) (Tok rnglast) (UTInputVertEmbedded((rngcs, UTContentOf(mdlnmlst, csnm)), args))
       }
   | vartok=VARINVERT; cls=ENDACTIVE {
         let (rng, mdlnmlst, varnm) = vartok in

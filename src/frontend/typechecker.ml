@@ -3,7 +3,7 @@ open MyUtil
 open Types
 open Display
 
-exception UndefinedVariable     of Range.t * var_name
+exception UndefinedVariable     of Range.t * module_name list * var_name
 exception UndefinedConstructor  of Range.t * var_name
 exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type
@@ -338,10 +338,6 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
 let final_tyenv    : Typeenv.t ref = ref (Typeenv.empty)
 
 
-let append_module_names mdlnmlst varnm =
-  (List.fold_right (fun mdlnm s -> mdlnm ^ "." ^ s) mdlnmlst "") ^ varnm
-
-
 let rec typecheck
     (qtfbl : quantifiability) (lev : FreeID.level)
     (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
@@ -396,7 +392,7 @@ let rec typecheck
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
         | None ->
-            raise (UndefinedVariable(rng, append_module_names mdlnmlst varnm))
+            raise (UndefinedVariable(rng, mdlnmlst, varnm))
 
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
@@ -466,7 +462,8 @@ let rec typecheck
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
       let evid = EvalVarID.fresh varnmctx in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(Primitives.option_type beta), evid)) utast1 in
+      let ty = overwrite_range_of_type (Primitives.option_type beta) rng in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(ty), evid)) utast1 in
         (Function([PatternBranch(PVariable(evid), e1)]), (rng, OptFuncType(beta, ty1)))
 
   | UTApply(utast1, utast2) ->
@@ -671,11 +668,8 @@ let rec typecheck
 
   | UTItemize(utitmz) ->
       let eitmz = typecheck_itemize qtfbl lev tyenv utitmz in
-      begin
-        match Typeenv.find_type_id tyenv "itemize" with
-        | None       -> assert false
-        | Some(tvid) -> (eitmz, (rng, VariantType([], tvid))) (* temporary *)
-      end
+      let ty = overwrite_range_of_type Primitives.itemize_type rng in
+        (eitmz, ty)
 
 (* ---- list ---- *)
 

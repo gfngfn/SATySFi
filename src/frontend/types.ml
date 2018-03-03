@@ -160,7 +160,7 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
-  | MTypeName        of (manual_type list) * type_name
+  | MTypeName        of (manual_type list) * module_name list * type_name
   | MTypeParam       of var_name
   | MFuncType        of manual_type * manual_type
   | MOptFuncType     of manual_type * manual_type
@@ -1331,7 +1331,7 @@ let rec string_of_manual_type (_, mtymain) =
   let iter = string_of_manual_type in
   let iter_cmd = string_of_manual_command_argument_type in
   match mtymain with
-  | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
+  | MTypeName(mtylst, mdlnmlst, tynm) -> (String.concat " " (List.map iter mtylst)) ^ " " ^ (String.concat "." (List.append mdlnmlst [tynm]))
   | MTypeParam(tpnm)          -> "'" ^ tpnm
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)
