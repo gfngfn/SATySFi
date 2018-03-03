@@ -592,6 +592,7 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveStringUnexplode of abstract_tree
   | PrimitiveSplitIntoLines  of abstract_tree
+  | PrimitiveSplitOnRegex    of abstract_tree * abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | PrimitiveRound        of abstract_tree

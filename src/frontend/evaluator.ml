@@ -1348,6 +1348,14 @@ and interpret env ast =
         pairlst |> make_list (fun (i, s) ->
           TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
 
+  | PrimitiveSplitOnRegex(areg, asts) ->
+      let sep = Str.regexp (interpret_string env areg) in
+      let s = interpret_string env asts in
+      let slst = Str.split sep s in
+      let pairlst = slst |> List.map chop_space_indent in
+        pairlst |> make_list (fun (i, s) ->
+          TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
+
   | PrimitiveArabic(astnum) ->
       let num = interpret_int env astnum in StringConstant(string_of_int num)
 

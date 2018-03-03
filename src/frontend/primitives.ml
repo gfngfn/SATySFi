@@ -634,6 +634,7 @@ let make_environments () =
         ( "atan"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcTangent(vf)) );
         ( "atan2"        , ~% (tFL @-> tFL @-> tFL)    , lambda2 (fun vf1 vf2 -> FloatArcTangent2(vf1, vf2)) );
         ("split-into-lines", ~% (tS @-> (tL (tPROD [tI; tS]))), lambda1 (fun vs -> PrimitiveSplitIntoLines(vs)));
+        ("split-on-regex", ~% (tS @-> tS @-> (tL (tPROD [tI; tS]))), lambda2 (fun vpat vs -> PrimitiveSplitOnRegex(vpat, vs)));
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
         ("page-break"            , ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)  , lambda4 (fun vpgsz vpcf vppf vbb -> BackendPageBreaking(vpgsz, vpcf, vppf, vbb)));
