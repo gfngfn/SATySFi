@@ -13,47 +13,6 @@ exception NotALibraryFile  of file_path * Typeenv.t * mono_type
 exception NotADocumentFile of file_path * Typeenv.t * mono_type
 
 
-type line =
-  | NormalLine  of string
-  | DisplayLine of string
-
-type error_category =
-  | Lexer
-  | Parser
-  | Typechecker
-  | Evaluator
-  | Interface
-  | System
-
-let show_error_category = function
-  | Lexer       -> "Syntax Error at Lexer"
-  | Parser      -> "Syntax Error at Parser"
-  | Typechecker -> "Type Error"
-  | Evaluator   -> "Error during Evaluation"
-  | Interface   -> "Error"
-  | System      -> "Error"
-
-
-let report_error (cat : error_category) (lines : line list) =
-  let rec aux lst =
-    match lst with
-    | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s) ; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s); aux tail end
-  in
-  let first lst =
-    match lst with
-    | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline s; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("\n      " ^ s); aux tail end
-  in
-  begin
-    print_string ("! [" ^ (show_error_category cat) ^ "] ");
-    first lines;
-    exit 1;
-  end
-
-
 let is_suffix pfx str =
   let pfxlen = String.length pfx in
   let strlen = String.length str in
@@ -258,6 +217,7 @@ let env_var_lib_root = "SATYSFI_LIB_ROOT"
 *)
 
 let error_log_environment suspended =
+  let open ErrorReporting in
   try
     suspended ()
   with
@@ -461,12 +421,6 @@ let error_log_environment suspended =
         NormalLine("the font file '" ^ srcpath ^ "',");
         NormalLine("which is associated with the math font name '" ^ mfabbrev ^ "',");
         NormalLine("is not a single font file; it is a TrueType collection.");
-      ]
-
-  | Lexer.LexError(rng, s) ->
-      report_error Lexer [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine(s);
       ]
 
   | Parsing.Parse_error             -> report_error Parser [ NormalLine("something is wrong."); ]
@@ -674,6 +628,7 @@ let error_log_environment suspended =
 (*
   | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
 *)
+  | ErrorReported -> exit 1 (* already reported *)
 
 
 let output_ref : (file_path option) ref = ref None
