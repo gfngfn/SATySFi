@@ -481,11 +481,10 @@
 %type <Types.untyped_abstract_tree> nxun
 %type <Types.untyped_abstract_tree> nxapp
 %type <Types.untyped_abstract_tree> nxbot
-%type <Types.untyped_abstract_tree> tuple
 %type <Range.t * Types.untyped_pattern_branch list> pats
 %type <Types.untyped_pattern_tree> patas
 %type <Types.untyped_pattern_tree> patbot
-%type <Types.untyped_abstract_tree> nxlist
+%type <Types.untyped_abstract_tree> nxenclosed
 %type <Types.untyped_abstract_tree> sxsep
 %type <Types.untyped_abstract_tree> sxblock
 %type <Types.untyped_abstract_tree> vxblock
@@ -788,17 +787,11 @@ nxbot:
   | lc=LENGTHCONST               { let (rng, flt, unitnm) = lc in make_standard (Tok rng) (Tok rng) (UTLengthDescription(flt, unitnm)) }
   | tok=TRUE                                              { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(true)) }
   | tok=FALSE                                             { make_standard (Tok tok) (Tok tok) (UTBooleanConstant(false)) }
-  | opn=LPAREN; cls=RPAREN                                { make_standard (Tok opn) (Tok cls) UTUnitConstant }
-  | opn=LPAREN; utast=nxlet; cls=RPAREN                   { make_standard (Tok opn) (Tok cls) (extract_main utast) }
-  | opn=LPAREN; utast=nxlet; COMMA; tup=tuple; cls=RPAREN { make_standard (Tok opn) (Tok cls) (UTTupleCons(utast, tup)) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP      { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP    { make_standard (Tok opn) (Tok cls) (extract_main utast) }
   | tok=LITERAL                                  { let (rng, str) = tok in make_standard (Tok rng) (Tok rng) (omit_spaces str) }
-  | opn=BLIST; cls=ELIST                         { make_standard (Tok opn) (Tok cls) UTEndOfList }
-  | opn=BLIST; utast=nxlist; cls=ELIST           { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | utast=nxenclosed                             { utast }
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
-  | opn=BRECORD; cls=ERECORD                     { make_standard (Tok opn) (Tok cls) (UTRecord([])) }
-  | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
 ;
@@ -817,15 +810,27 @@ pathcompcycle:
   | PATHLINE; CYCLE                                                       { UTPathLineTo(()) }
   | PATHCURVE; CONTROLS; ast1=nxbot; LETAND; ast2=nxbot; PATHCURVE; CYCLE { UTPathCubicBezierTo(ast1, ast2, ()) }
 ;
-nxrecord:
-  | VAR DEFEQ nxlet                    { (extract_name $1, $3) :: [] }
-  | VAR DEFEQ nxlet LISTPUNCT          { (extract_name $1, $3) :: [] }
-  | VAR DEFEQ nxlet LISTPUNCT nxrecord { (extract_name $1, $3) :: $5 }
+nxenclosed:
+  | opn=LPAREN; elems=separated_list(COMMA, nxlet); cls=RPAREN {
+      let len = List.length elems in
+      if len = 0 then
+        make_standard (Tok opn) (Tok cls) UTUnitConstant
+      else if List.length elems = 1 then
+        List.hd elems
+      else
+        make_standard (Tok opn) (Tok cls) (extract_main (make_product_expression elems))
+    }
+  | opn=BLIST; elems=separated_terminable_list(LISTPUNCT, nxlet) cls=ELIST {
+      let (elems, _) = elems in
+      make_standard (Tok opn) (Tok cls) (extract_main (make_cons elems))
+    }
+  | opn=BRECORD; fields=separated_terminable_list(LISTPUNCT, recordfield); cls=ERECORD {
+      let (fields, _) = fields in
+      make_standard (Tok opn) (Tok cls) (UTRecord(fields))
+    }
 ;
-nxlist:
-  | nxlet LISTPUNCT nxlist { make_standard (Ranged $1) (Ranged $3) (UTListCons($1, $3)) }
-  | nxlet LISTPUNCT        { make_standard (Ranged $1) (Tok $2) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
-  | nxlet                  { make_standard (Ranged $1) (Ranged $1) (UTListCons($1, (Range.dummy "end-of-list", UTEndOfList))) }
+recordfield:
+  | fieldname=VAR; DEFEQ; utast=nxlet { (extract_name fieldname, utast) }
 ;
 variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR OF txfunc BAR variants  { let (rng, constrnm) = $1 in (rng, constrnm, $3) :: $5 }
@@ -924,10 +929,6 @@ txrecord: /* -> (field_name * manual_type) list */
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT; tail=txrecord { let (_, fldnm) = fldtok in (fldnm, mnty) :: tail }
   | fldtok=VAR; COLON; mnty=txfunc; LISTPUNCT                { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
   | fldtok=VAR; COLON; mnty=txfunc                           { let (_, fldnm) = fldtok in (fldnm, mnty) :: [] }
-;
-tuple: /* -> untyped_tuple_cons */
-  | nxlet             { make_standard (Ranged $1) (Ranged $1) (UTTupleCons($1, (Range.dummy "end-of-tuple'", UTEndOfTuple))) }
-  | nxlet COMMA tuple { make_standard (Ranged $1) (Ranged $3) (UTTupleCons($1, $3)) }
 ;
 pats: /* -> code_range * untyped_pattern_branch list */
   | pat=patas; ARROW; utast=nxletsub {
@@ -1102,29 +1103,11 @@ nargs:
   | nargs=list(narg) { nargs }
 ;
 narg:
-  | opn=LPAREN; utast=nxlet; cls=RPAREN {
-        UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+  | utast=nxenclosed {
+        UTMandatoryArgument(utast)
       }
-  | opn=LPAREN; cls=RPAREN {
-        UTMandatoryArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
-      }
-  | opn=BRECORD; rcd=nxrecord; cls=ERECORD {
-        UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
-      }
-  | opn=BLIST; utast=nxlist; cls=ELIST {
-        UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
-      }
-  | opn=OPTIONAL; LPAREN; utast=nxlet; cls=RPAREN {
-        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
-      }
-  | opn=OPTIONAL; LPAREN; cls=RPAREN {
-        UTOptionalArgument(make_standard (Tok opn) (Tok cls) UTUnitConstant)
-      }
-  | opn=OPTIONAL; BRECORD; rcd=nxrecord; cls=ERECORD {
-        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (UTRecord(rcd)))
-      }
-  | opn=OPTIONAL; BLIST; utast=nxlist; cls=ELIST {
-        UTOptionalArgument(make_standard (Tok opn) (Tok cls) (extract_main utast))
+  | OPTIONAL; utast=nxenclosed {
+        UTOptionalArgument(utast)
       }
   | rng=OMISSION { UTOmission(rng) }
 ;
@@ -1165,3 +1148,8 @@ vxbot:
           make_standard (Tok rng) (Tok cls) (UTInputVertContent((rng, UTContentOf(mdlnmlst, varnm))))
       }
 ;
+
+separated_terminable_list(sep, X):
+  | { ([], false) }
+  | x = X { ([x], true) }
+  | x = X; sep; xs = separated_terminable_list(sep, X) { (x :: fst xs, snd xs) }
