@@ -23,8 +23,10 @@ let k_fail chkpt =
 
 let process lexbuf =
   ErrorReporting.with_error_store (fun error_store ->
-    (* print_endline "parserInterface.process";  (* for debug *) *)
-    let stack = Lexer.reset_to_progexpr () in
-    let supplier = I.lexer_lexbuf_to_supplier (Lexer.cut_token error_store stack) lexbuf in
-      I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
+    ParserContext.with_context error_store (fun () ->
+      (* print_endline "parserInterface.process";  (* for debug *) *)
+      let stack = Lexer.reset_to_progexpr () in
+      let supplier = I.lexer_lexbuf_to_supplier (Lexer.cut_token error_store stack) lexbuf in
+        I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
+    )
   )

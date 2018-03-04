@@ -365,6 +365,20 @@
         insert_last (resitmzlst @ [hditmz]) (UTItem(uta, tlitmzlst)) i depth utast
 
 
+  let record_error error_store rngknd errmsg =
+    let open ErrorReporting in
+    let rng =
+      match rngknd with
+      | Tok(rng) -> rng
+      | Ranged((rng, _)) -> rng
+      | _ -> assert false
+    in
+    record_error error_store Parser [
+      NormalLine("at " ^ (Range.to_string rng) ^ ":");
+      NormalLine(errmsg);
+    ]
+
+
   let report_error rngknd (tok : string) =
     match rngknd with
     | Tok(rng) ->
@@ -794,6 +808,12 @@ nxbot:
   | opn=LPAREN; optok=binop; cls=RPAREN          { make_standard (Tok opn) (Tok cls) (UTContentOf([], extract_name optok)) }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | tok=WILDCARD {
+      record_error (ParserContext.get_error_store ()) (Tok tok)
+        "\"_\" cannot be used as an expression";
+      (* TODO: should be replaced with UTError *)
+      (tok, UTUnitConstant)
+    }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
