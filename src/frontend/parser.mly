@@ -519,10 +519,7 @@ headerelem:
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 nxtoplevel:
-  | modifier=letdecl; subseq=nxtopsubseq                  { modifier subseq }
-  | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq { make_variant_declaration top variantdec subseq }
-  | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
-      DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq   { make_module top mdlnmtok sigopt strct subseq }
+  | modifier=structdecl; subseq=nxtopsubseq { modifier subseq }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -548,11 +545,14 @@ constrnt:
   | CONSTRAINT; tyvar=TYPEVAR; CONS; mnkd=kxtop { let (_, tyvarnm) = tyvar in (tyvarnm, mnkd) }
 ;
 nxstruct:
-  | endtok=END                                     { end_struct endtok }
-  | modifier=letdecl; tail=nxstruct                { modifier tail }
-  | top=TYPE; varntdec=nxvariantdec; tail=nxstruct { make_variant_declaration top varntdec tail }
+  | endtok=END                         { end_struct endtok }
+  | modifier=structdecl; tail=nxstruct { modifier tail }
+;
+structdecl:
+  | modifier=letdecl                  { modifier }
+  | top=TYPE; variantdec=nxvariantdec { make_variant_declaration top variantdec }
   | top=MODULE; tok=CONSTRUCTOR; sigopt=nxsigopt;
-      DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct { make_module top tok sigopt strct tail }
+      DEFEQ; STRUCT; strct=nxstruct   { make_module top tok sigopt strct }
 ;
 letdecl:
   | tok=LETREC; recdec=nxrecdec                       { make_letrec_expression tok recdec }
