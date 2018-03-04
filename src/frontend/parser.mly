@@ -519,15 +519,10 @@ headerelem:
   | content=HEADER_IMPORT  { let (_, s) = content in HeaderImport(s) }
 ;
 nxtoplevel:
-  | top=LETREC; recdec=nxrecdec; subseq=nxtopsubseq                          { make_letrec_expression top recdec subseq }
-  | top=LETNONREC; nonrecdec=nxnonrecdec; subseq=nxtopsubseq                 { make_let_expression_of_pattern top nonrecdec subseq }
-  | top=LETMUTABLE; vartok=VAR; OVERWRITEEQ; utast=nxlet; subseq=nxtopsubseq { make_let_mutable_expression top vartok utast subseq }
-  | top=LETHORZ; dec=nxhorzdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
-  | top=LETVERT; dec=nxvertdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
-  | top=LETMATH; dec=nxmathdec; subseq=nxtopsubseq                           { make_let_expression top dec subseq }
-  | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
+  | modifier=letdecl; subseq=nxtopsubseq                  { modifier subseq }
+  | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
-      DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
+      DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq   { make_module top mdlnmtok sigopt strct subseq }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -553,16 +548,19 @@ constrnt:
   | CONSTRAINT; tyvar=TYPEVAR; CONS; mnkd=kxtop { let (_, tyvarnm) = tyvar in (tyvarnm, mnkd) }
 ;
 nxstruct:
-  | endtok=END                                                       { end_struct endtok }
-  | top=LETREC; recdec=nxrecdec; tail=nxstruct                       { make_letrec_expression top recdec tail }
-  | top=LETNONREC; nonrecdec=nxnonrecdec; tail=nxstruct              { make_let_expression_of_pattern top nonrecdec tail }
-  | top=LETMUTABLE; var=VAR; OVERWRITEEQ; utast=nxlet; tail=nxstruct { make_let_mutable_expression top var utast tail }
-  | top=LETHORZ; dec=nxhorzdec; tail=nxstruct                        { make_let_expression top dec tail }
-  | top=LETVERT; dec=nxvertdec; tail=nxstruct                        { make_let_expression top dec tail }
-  | top=LETMATH; dec=nxmathdec; tail=nxstruct                        { make_let_expression top dec tail }
-  | top=TYPE; varntdec=nxvariantdec; tail=nxstruct                   { make_variant_declaration top varntdec tail }
+  | endtok=END                                     { end_struct endtok }
+  | modifier=letdecl; tail=nxstruct                { modifier tail }
+  | top=TYPE; varntdec=nxvariantdec; tail=nxstruct { make_variant_declaration top varntdec tail }
   | top=MODULE; tok=CONSTRUCTOR; sigopt=nxsigopt;
-      DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct                   { make_module top tok sigopt strct tail }
+      DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct { make_module top tok sigopt strct tail }
+;
+letdecl:
+  | tok=LETREC; recdec=nxrecdec                       { make_letrec_expression tok recdec }
+  | tok=LETNONREC; nonrecdec=nxnonrecdec              { make_let_expression_of_pattern tok nonrecdec }
+  | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast=nxlet { make_let_mutable_expression tok var utast }
+  | tok=LETHORZ; dec=nxhorzdec                        { make_let_expression tok dec }
+  | tok=LETVERT; dec=nxvertdec                        { make_let_expression tok dec }
+  | tok=LETMATH; dec=nxmathdec                        { make_let_expression tok dec }
 ;
 nxhorzdec:
   | ctxvartok=VAR; hcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
@@ -675,10 +673,7 @@ nxlet:
   | nxletsub { $1 }
 ;
 nxletsub:
-  | tok=LETREC; recdec=nxrecdec; IN; utast=nxlet                         { make_letrec_expression tok recdec utast }
-  | tok=LETNONREC; nonrecdec=nxnonrecdec; IN; utast=nxlet                { make_let_expression_of_pattern tok nonrecdec utast }
-  | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet { make_let_mutable_expression tok var utast1 utast2 }
-  | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet                          { make_let_expression tok dec utast }
+  | modifier=letdecl; IN; utast=nxlet { modifier utast }
   | utast=nxwhl { utast }
 ;
 nxwhl:
