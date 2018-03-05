@@ -171,11 +171,17 @@ rule progexpr error_store stack = parse
       let buffer = Buffer.create 256 in
       literal error_store quote_range quote_length buffer lexbuf
     }
-  | ("\\" (identifier | constructor)) {
-      let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
+  | ("\\" (constructor ".")* (identifier | constructor)) {
+      let tokstrpure = Lexing.lexeme lexbuf in
+      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list tokstr in
+      HORZCMD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
     }
-  | ("+" (identifier | constructor)) {
-      let tok = Lexing.lexeme lexbuf in VERTCMD(get_pos lexbuf, tok)
+  | ("+" (constructor ".")* (identifier | constructor)) {
+      let tokstrpure = Lexing.lexeme lexbuf in
+      let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
+      let (mdlnmlst, csnm) = split_module_list tokstr in
+      VERTCMD(get_pos lexbuf, mdlnmlst, "+" ^ csnm)
     }
   | "#"   { ACCESS(get_pos lexbuf) }
   | "->"  { ARROW(get_pos lexbuf) }
@@ -211,7 +217,7 @@ rule progexpr error_store stack = parse
         let tokstr = Lexing.lexeme lexbuf in
         let pos = get_pos lexbuf in
         let (mdlnmlst, varnm) = split_module_list tokstr in
-          VARWITHMOD(pos, mdlnmlst, varnm)
+          VAR(pos, mdlnmlst, varnm)
       }
 
   | identifier {
@@ -256,7 +262,7 @@ rule progexpr error_store stack = parse
           | "block-cmd"         -> VERTCMDTYPE(pos)
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
-          | _                   -> VAR(pos, tokstr)
+          | _                   -> VAR(pos, [], tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
@@ -296,16 +302,12 @@ and vertexpr error_store stack = parse
         Stack.push ActiveState stack;
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
     }
-  | ("+" (identifier | constructor)) {
-      Stack.push ActiveState stack;
-      VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
-    }
   | ("+" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
       Stack.push ActiveState stack;
-      VERTCMDWITHMOD(get_pos lexbuf, mdlnmlst, "+" ^ csnm)
+      VERTCMD(get_pos lexbuf, mdlnmlst, "+" ^ csnm)
     }
   | "<" { Stack.push VerticalState stack; BVERTGRP(get_pos lexbuf) }
   | ">" {
@@ -381,19 +383,12 @@ and horzexpr error_store stack = parse
         Stack.push ActiveState stack;
         VARINHORZ(get_pos lexbuf, mdlnmlst, csnm)
     }
-  | ("\\" (identifier | constructor)) {
-      let tok = Lexing.lexeme lexbuf in
-      let rng = get_pos lexbuf in
-      Stack.push ActiveState stack;
-      HORZCMD(rng, tok)
-    }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let tokstrpure = Lexing.lexeme lexbuf in
       let tokstr = String.sub tokstrpure 1 ((String.length tokstrpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list tokstr in
-      let rng = get_pos lexbuf in
-        Stack.push ActiveState stack;
-        HORZCMDWITHMOD(rng, mdlnmlst, "\\" ^ csnm)
+      Stack.push ActiveState stack;
+      HORZCMD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
@@ -467,24 +462,17 @@ and mathexpr error_store stack = parse
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | ("#" (identifier as varnm)) {
-      VARINMATH(get_pos lexbuf, [], varnm)
-    }
   | ("#" (constructor ".")* (identifier | constructor)) {
       let csnmpure = Lexing.lexeme lexbuf in
       let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list csstr in
         VARINMATH(get_pos lexbuf, mdlnmlst, csnm)
     }
-  | ("\\" (identifier | constructor)) {
-      let csnm = Lexing.lexeme lexbuf in
-        MATHCMD(get_pos lexbuf, csnm)
-    }
   | ("\\" (constructor ".")* (identifier | constructor)) {
       let csnmpure = Lexing.lexeme lexbuf in
       let csstr = String.sub csnmpure 1 ((String.length csnmpure) - 1) in
       let (mdlnmlst, csnm) = split_module_list csstr in
-        MATHCMDWITHMOD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
+      MATHCMD(get_pos lexbuf, mdlnmlst, "\\" ^ csnm)
     }
   | ("\\" symbol) {
       let tok = String.sub (Lexing.lexeme lexbuf) 1 1 in
