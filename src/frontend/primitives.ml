@@ -134,6 +134,8 @@ let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
 
 let option_type = tOPT
 
+let itemize_type = tITMZ
+
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
@@ -490,7 +492,7 @@ let get_initial_context wid =
       space_natural          = 0.33;
       space_shrink           = 0.08;
       space_stretch          = 0.16;
-      adjacent_stretch       = 0.05;
+      adjacent_stretch       = 0.025;
       paragraph_width        = wid;
       paragraph_top          = pdfpt 18.;
       paragraph_bottom       = pdfpt 18.;
@@ -571,7 +573,7 @@ let frame_deco_VM =
 (* -- end: constants just for experimental use -- *)
 
 
-let make_environments satysfi_root_dir =
+let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
@@ -608,6 +610,8 @@ let make_environments satysfi_root_dir =
         ( "::" , ptycons                 , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))       );
         ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
         ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
+        ( "*." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatTimes(v1, v2))              );
+        ( "/." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatDivides(v1, v2))            );
         ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
         ( "-'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthMinus(v1, v2))             );
         ( "*'" , ~% (tLN @-> tFL @-> tLN), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
@@ -624,6 +628,13 @@ let make_environments satysfi_root_dir =
         ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
         ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
         ( "round"        , ~% (tFL @-> tI)             , lambda1 (fun vf -> PrimitiveRound(vf)) );
+        ( "sin"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatSine(vf)) );
+        ( "asin"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcSine(vf)) );
+        ( "cos"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatCosine(vf)) );
+        ( "acos"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcCosine(vf)) );
+        ( "tan"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatTangent(vf)) );
+        ( "atan"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcTangent(vf)) );
+        ( "atan2"        , ~% (tFL @-> tFL @-> tFL)    , lambda2 (fun vf1 vf2 -> FloatArcTangent2(vf1, vf2)) );
         ("split-into-lines", ~% (tS @-> (tL (tPROD [tI; tS]))), lambda1 (fun vs -> PrimitiveSplitIntoLines(vs)));
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
@@ -641,6 +652,8 @@ let make_environments satysfi_root_dir =
 *)
         ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
         ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
+        ("block-skip"            , ~% (tLN @-> tBB)                                          , lambda1 (fun vlen -> BackendVertSkip(vlen)));
+        ("clear-page"            , ~% tBB                                                    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
         ("embed-block-top"       , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
         ("embed-block-bottom"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
         ("line-stack-top"        , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackTop(vlst)));
@@ -733,7 +746,7 @@ let make_environments satysfi_root_dir =
     ) (tyenvinit, envinit, Alist.empty)
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-  default_font_scheme_ref := SetDefaultFont.main satysfi_root_dir;
-  default_hyphen_dictionary := LoadHyph.main satysfi_root_dir "english.satysfi-hyph";
+  default_font_scheme_ref := SetDefaultFont.main ();
+  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
       (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)

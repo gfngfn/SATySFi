@@ -25,30 +25,24 @@ let read_script eaw_map cp data =
 
   | "Common" ->
       begin
-        match UCoreLib.UChar.of_int cp with
-        | None ->
-            CommonNarrow  (* temporary; maybe should emit an error *)
+        try
+          match eaw_map |> BatIMap.find cp with
+          | EAWNarrow
+          | EAWHalfWidth
+          | EAWAmbiguous
+          | EAWNeutral
+              -> CommonNarrow
 
-        | Some(uch_ucore) ->
-            begin
-              match eaw_map |> UCoreLib.UMap.find_opt uch_ucore with
-              | None
-              | Some(EAWNarrow)
-              | Some(EAWHalfWidth)
-              | Some(EAWAmbiguous)
-              | Some(EAWNeutral)
-                  -> CommonNarrow
-
-              | Some(EAWFullWidth)
-              | Some(EAWWide)
-                  -> CommonWide
-            end
+          | EAWFullWidth
+          | EAWWide
+              -> CommonWide
+        with Not_found -> CommonNarrow
       end
 
   | _ -> OtherScript
 
 
-let script_map_ref : (script UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
+let script_map_ref : (script BatIMap.t) ref = ref (BatIMap.empty ~eq:(=))
 
 
 let set_from_file filename_S filename_EAW =
@@ -70,12 +64,10 @@ let set_from_file filename_S filename_EAW =
 
 
 let find ctx uch =
-  match UCoreLib.UChar.of_int (Uchar.to_int uch) with
-  | None            -> OtherScript
-  | Some(uch_ucore) ->
-      match (!script_map_ref) |> UCoreLib.UMap.find_opt uch_ucore with
-      | None             -> OtherScript
-      | Some(script_raw) -> normalize_script ctx script_raw
+  try
+    (!script_map_ref) |> BatIMap.find (Uchar.to_int uch)
+                      |> normalize_script ctx
+  with Not_found -> OtherScript
 
 
 let divide_by_script (ctx : context_main) (trilst : line_break_element list) : LineBreakBox.line_break_chunk_main list =

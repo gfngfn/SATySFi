@@ -1,7 +1,7 @@
 open Types
 open Typeenv
 
-exception UndefinedVariable     of Range.t * var_name
+exception UndefinedVariable     of Range.t * module_name list * var_name
 exception UndefinedConstructor  of Range.t * var_name
 exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type

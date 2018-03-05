@@ -99,7 +99,7 @@ type t =
 
 
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
-exception UndefinedTypeName               of Range.t * type_name
+exception UndefinedTypeName               of Range.t * module_name list * type_name
 exception UndefinedTypeArgument           of Range.t * var_name
 exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
@@ -107,7 +107,9 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name
+(*
 exception UndefinedModuleNameList         of module_name list
+*)
 
 let empty : t =
   {
@@ -138,7 +140,7 @@ let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) :
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
   match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
-  | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -262,7 +264,7 @@ let add_type_definition (tyenv : t) (tynm : type_name) ((tyid, dfn) : TypeID.t *
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
-    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -274,11 +276,19 @@ let find_type_definition_for_inner (tyenv : t) (tynm : type_name) : (TypeID.t * 
     )
 
 
-let find_type_definition_for_outer (tyenv : t) (tynm : type_name) : (TypeID.t * type_definition) option =
+let find_type_definition_for_outer (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : (TypeID.t * type_definition) option =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
+  let nmtoid = tyenv.name_to_id_map in
+  let mdlidlst =
+    mdlnmlst |> List.map (fun mdlnm ->
+      match nmtoid |> ModuleNameMap.find_opt mdlnm with
+      | Some(mdlid) -> mdlid
+      | None        -> raise (UndefinedModuleName(rng, mdlnm))
+    )
+  in
   let straddr = String.concat "." (addrlst |> List.map ModuleID.extract_name) in (* for debug *)
-    ModuleTree.search_backward mtr addrlst [] (fun (_, tdmap, _, sigopt) ->
+    ModuleTree.search_backward mtr addrlst mdlidlst (fun (_, tdmap, _, sigopt) ->
       match sigopt with
       | None ->
           let () = print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> no signature") in (* for debug *)
@@ -291,9 +301,9 @@ let find_type_definition_for_outer (tyenv : t) (tynm : type_name) : (TypeID.t * 
 
 
 (* PUBLIC *)
-let find_type_id (tyenv : t) (tynm : type_name) : TypeID.t option =
+let find_type_id (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : TypeID.t option =
   let open OptionMonad in
-  find_type_definition_for_outer tyenv tynm >>= fun (tyid, _) ->
+  find_type_definition_for_outer tyenv mdlnmlst tynm rng >>= fun (tyid, _) ->
   return tyid
 
 
@@ -309,7 +319,7 @@ let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme)
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
-    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -391,26 +401,26 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
       | MVertCommandType(mncmdargtylist) -> VertCommandType(List.map aux_cmd mncmdargtylist)
       | MMathCommandType(mncmdargtylist) -> MathCommandType(List.map aux_cmd mncmdargtylist)
 
-      | MTypeName([], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+      | MTypeName([], [], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
           begin
             match Hashtbl.find_opt base_type_hash_table tynm with
             | None     -> assert false
             | Some(bt) -> BaseType(bt)
           end
 
-      | MTypeName(mntyarglist, tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
+      | MTypeName(mntyarglist, [], tynm)  when tynm |> Hashtbl.mem base_type_hash_table ->
           error tynm 0 (List.length mntyarglist)
 
-      | MTypeName(mntyarg :: [], "list") -> ListType(aux mntyarg)
-      | MTypeName(mntyarglist, "list")   -> error "list" 1 (List.length mntyarglist)
-      | MTypeName(mntyarg :: [], "ref")  -> RefType(aux mntyarg)
-      | MTypeName(mntyarglist, "ref")    -> error "ref" 1 (List.length mntyarglist)
-      | MTypeName(mntyarglist, tynm) ->
+      | MTypeName(mntyarg :: [], [], "list") -> ListType(aux mntyarg)
+      | MTypeName(mntyarglist, [], "list")   -> error "list" 1 (List.length mntyarglist)
+      | MTypeName(mntyarg :: [], [], "ref")  -> RefType(aux mntyarg)
+      | MTypeName(mntyarglist, [], "ref")    -> error "ref" 1 (List.length mntyarglist)
+      | MTypeName(mntyarglist, mdlnmlst, tynm) ->
           let len = List.length mntyarglist in
           let tyarglist = List.map aux mntyarglist in
           let find_in_variant_environment () =
-            match find_type_definition_for_outer tyenv tynm with
-            | None -> raise (UndefinedTypeName(rng, tynm))
+            match find_type_definition_for_outer tyenv mdlnmlst tynm rng with
+            | None -> raise (UndefinedTypeName(rng, mdlnmlst, tynm))
 
             | Some((tyid, Data(lenexp))) ->
                 if lenexp <> len then error tynm lenexp len else
@@ -559,7 +569,7 @@ let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) (
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
-    | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+    | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -652,7 +662,7 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         | MHorzCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
         | MVertCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
         | MMathCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
-        | MTypeName(mtyarglist, tynm) ->
+        | MTypeName(mtyarglist, [], tynm) ->
             if DependencyGraph.mem_vertex tynm dg then
               begin
                 DependencyGraph.add_edge dg tynm1 tynm;
@@ -661,6 +671,9 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
               end
             else
               ()
+
+        | MTypeName(_, mdlnmlst, tynm) ->
+            ()
     in
     let iter = add_each_dependency_as_edge in
       match mutvarntcons with
@@ -920,7 +933,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
                   let addrlst = Alist.to_list tyenvsub.current_address in
                   let mtr = tyenvsub.main_tree in
                   match ModuleTree.update mtr addrlst (update_so (fun _ -> sigoptaccnew)) with
-                  | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+                  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
                   | Some(mtrnew) -> { tyenvsub with main_tree = mtrnew; }
                 in
                   iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
@@ -935,7 +948,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
           let () = print_for_debug_variantenv ("LEVEL " ^ (FreeID.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
             match find_for_inner tyenv varnm with
-            | None              -> raise (NotProvidingValueImplementation(rng, varnm))
+            | None ->
+                raise (NotProvidingValueImplementation(rng, varnm))
+
             | Some((ptyimp, _)) ->
                 let b = reflects ptysigI ptyimp in
                   (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
@@ -958,9 +973,13 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
           let () = print_for_debug_variantenv ("LEVEL " ^ (FreeID.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
             match find_for_inner tyenv csnm with
-            | None                    -> raise (NotProvidingValueImplementation(rng, csnm))
+            | None ->
+                raise (NotProvidingValueImplementation(rng, csnm))
+
             | Some((ptyimp, evidimp)) ->
-                if reflects ptysigI ptyimp then
+                let b = reflects ptysigI ptyimp in
+                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
+                if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
                   let tyenvaccnew =
                     let mtr = tyenvacc.main_tree in
@@ -997,7 +1016,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
             let addrlst = Alist.to_list tyenvdir.current_address in
             let mtr = tyenvdir.main_tree in
               match ModuleTree.update mtr addrlst (update_so (fun _ -> sigopt)) with
-              | None         -> raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name))
+              | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
               | Some(mtrnew) -> { tyenvdir with main_tree = mtrnew; }
 
 

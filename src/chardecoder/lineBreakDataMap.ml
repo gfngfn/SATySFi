@@ -102,7 +102,7 @@ let line_break_class_overriding_list =
   ]
 
 
-let line_break_map_ref : (line_break_class UCoreLib.UMap.t) ref = ref (UCoreLib.UMap.empty ~eq:(=))
+let line_break_map_ref : (line_break_class BatIMap.t) ref = ref (BatIMap.empty ~eq:(=))
 
 
 let set_from_file filename =
@@ -111,9 +111,7 @@ let set_from_file filename =
   let line_break_map_raw = line_break_list |> CharBasis.map_of_list class_of_string in
   let line_break_map =
     List.fold_left (fun mapacc (cp, lbc) ->
-      match UCoreLib.UChar.of_int cp with
-      | None            -> mapacc  (* needs reconsideration; maybe should warn emptyness *)
-      | Some(uch_ucore) -> mapacc |> UCoreLib.UMap.add uch_ucore lbc
+      mapacc |> BatIMap.add cp lbc
     ) line_break_map_raw line_break_class_overriding_list
   in
   begin
@@ -122,12 +120,8 @@ let set_from_file filename =
 
 
 let find uch =
-  match UCoreLib.UChar.of_int (Uchar.to_int uch) with
-  | None            -> XX  (* temporary *)
-  | Some(uch_ucore) ->
-      match (!line_break_map_ref) |> UCoreLib.UMap.find_opt uch_ucore with
-      | None      -> XX  (* temporary *)
-      | Some(lbc) -> lbc
+  try (!line_break_map_ref) |> BatIMap.find (Uchar.to_int uch)
+  with Not_found -> XX  (* temporary *)
 
 
 (* --

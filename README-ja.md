@@ -9,6 +9,14 @@
 
 本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。（概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)）
 
+## Homebrew を使ったインストール方法 (Macユーザ向け)
+
+Homebrewのフォーミュラが用意されています。
+
+```sh
+$ brew install --HEAD nyuichi/satysfi/satysfi
+```
+
 ## OPAM を使ったインストール方法
 
 ### 事前に必要なもの
@@ -48,7 +56,7 @@ opam update
 # また，Homebrew もインストールしてください。
 
 brew update
-brew install autoconf git opam unzip wget
+brew install autoconf wget opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
@@ -69,6 +77,8 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 git submodule update --init --recursive
 
+# Issue #46: core_kernel を正しくビルドするために 1.0+beta18 を避ける
+opam pin add -y jbuilder 1.0+beta17
 # build
 opam pin add satysfi .
 opam install satysfi

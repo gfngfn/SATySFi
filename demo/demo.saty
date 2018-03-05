@@ -2,6 +2,7 @@
 @require: code
 @require: itemize
 @require: tabular
+@require: proof
 @import: local
 
 document (|
@@ -283,6 +284,19 @@ document (|
               \frac{#int1 x \ordd x #int2 r #sqrt2 \ordd r}{
                 #int1 \ordd x #int2 r #sqrt2 \ordd r} = \frac{2a}{5} }
         );
+      ```);
+      +display-boxes('<
+        +math(${
+          \derive![
+            ${A}; ${\derive![${B}; ${C}]{D}}
+          ]{E}
+        });
+      >)(```
+        +math(${
+          \derive![
+            ${A}; ${\derive![${B}; ${C}]{D}}
+          ]{E}
+        });
       ```);
     >
   >

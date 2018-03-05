@@ -1,5 +1,6 @@
 
 open MyUtil
+open Config
 
 
 type dir_path = string
@@ -157,8 +158,8 @@ let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) 
     (excpmap, hyphpatlst)
 
 
-let main (satysfi_root_dir : dir_path) (filename : file_path) : t =
-  let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hyph" filename) in
+let main (filename : file_path) : t =
+  let srcpath = resolve_dist_path (Filename.concat "dist/hyph" filename) in
     try
       let json = Yojson.Safe.from_file srcpath in
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)

@@ -3,6 +3,7 @@
 module HDecoSet : sig
 
   val empty : deco-set
+  val simple-frame-stroke : length -> color -> deco-set
   val rectangle-round-fill : length -> length -> color -> deco-set
 
 end = struct
@@ -10,6 +11,32 @@ end = struct
   let empty =
     let deco _ _ _ _ = [] in
       (deco, deco, deco, deco)
+
+
+  let simple-frame-stroke t scolor =
+    let strokef = stroke t scolor in
+    let decoS (x, y) w h d =
+      [
+        strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));
+      ]
+    in
+    let decoH (x, y) w h d =
+      [
+        strokef (Gr.poly-line (x +' w, y -' d) [(x, y -' d); (x, y +' h); (x +' w, y +' h);])
+      ]
+    in
+    let decoM (x, y) w h d =
+      [
+        strokef (Gr.line (x, y -' d) (x +' w, y -' d));
+        strokef (Gr.line (x, y +' h) (x +' w, y +' h));
+      ]
+    in
+    let decoT (x, y) w h d =
+      [
+        strokef (Gr.poly-line (x, y -' d) [(x +' w, y -' d); (x +' w, y +' h); (x, y +' h)])
+      ]
+    in
+      (decoS, decoH, decoM, decoT)
 
 
   let rectangle-round-fill r extra color =

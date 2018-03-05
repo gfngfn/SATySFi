@@ -1,3 +1,4 @@
+open Config
 
 type file_path = string
 type dir_path = string
@@ -12,14 +13,14 @@ exception UnexpectedYOJSONValue           of file_path * font_abbrev * string * 
 exception MissingRequiredYOJSONKey        of file_path * font_abbrev * string
 
 
-let read_assoc_single (srcpath : file_path) (abbrev : font_abbrev) (dir_dist : dir_path) assoc =
+let read_assoc_single (srcpath : file_path) (abbrev : font_abbrev) assoc =
   let opt =
     assoc |> List.fold_left (fun opt pair ->
       match pair with
       | ("src-dist", `String(data)) ->
           begin
             match opt with
-            | None    -> Some(Filename.concat dir_dist data)
+            | None    -> Some(data)
             | Some(_) -> raise (MultipleDesignation(srcpath, abbrev, "src-dist"))
           end
 
@@ -35,11 +36,11 @@ let read_assoc_single (srcpath : file_path) (abbrev : font_abbrev) (dir_dist : d
   | Some(data) -> data
 
 
-let read_assoc (srcpath : file_path) (dir_dist : dir_path) assoc =
+let read_assoc (srcpath : file_path) assoc =
   assoc |> List.fold_left (fun acc (abbrev, json) ->
     match json with
     | `Variant("Single", Some(`Assoc(assocsingle))) ->
-        let data = read_assoc_single srcpath abbrev dir_dist assocsingle in
+        let data = read_assoc_single srcpath abbrev assocsingle in
           Alist.extend acc (abbrev, data)
 
     | json_other ->
@@ -47,17 +48,16 @@ let read_assoc (srcpath : file_path) (dir_dist : dir_path) assoc =
   ) Alist.empty |> Alist.to_list
 
 
-let main (satysfi_root_dir : dir_path) (filename : file_path) =
+let main (filename : file_path) =
 (*
   Format.printf "LoadFont> main %s\n" filename;  (* for debug *)
 *)
-  let dir_dist = Filename.concat satysfi_root_dir "dist/fonts" in
-  let srcpath = Filename.concat satysfi_root_dir (Filename.concat "dist/hash" filename) in
+  let srcpath = resolve_dist_path (Filename.concat "dist/hash" filename) in
     try
       let json = Yojson.Safe.from_file srcpath in
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
         match json with
-        | `Assoc(assoc) -> read_assoc srcpath dir_dist assoc
+        | `Assoc(assoc) -> read_assoc srcpath assoc
         | json_other    -> raise (FontHashOtherThanDictionary(srcpath))
     with
     | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))

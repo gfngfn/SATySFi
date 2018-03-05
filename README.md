@@ -8,6 +8,14 @@
 
 This software is supported by IPA Mitou Project 2017 (see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)).
 
+## Install using Homebrew (for OSX users)
+
+There is a homebrew formula for SATySFi.
+
+```sh
+$ brew install --HEAD nyuichi/satysfi/satysfi
+```
+
 ## Install using OPAM
 
 ### Prerequisites
@@ -47,7 +55,7 @@ opam update
 # Also, install Homebrew.
 
 brew update
-brew install autoconf git opam unzip wget
+brew install autoconf wget opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
@@ -68,6 +76,8 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 git submodule update --init --recursive
 
+# Issue #46: avoid 1.0+beta18 to build core_kernel correctly.
+opam pin add -y jbuilder 1.0+beta17
 # build
 opam pin add satysfi .
 opam install satysfi

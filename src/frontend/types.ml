@@ -160,7 +160,7 @@ module EvalVarIDMap = Map.Make(EvalVarID)
 
 type manual_type = Range.t * manual_type_main
 and manual_type_main =
-  | MTypeName        of (manual_type list) * type_name
+  | MTypeName        of (manual_type list) * module_name list * type_name
   | MTypeParam       of var_name
   | MFuncType        of manual_type * manual_type
   | MOptFuncType     of manual_type * manual_type
@@ -597,6 +597,15 @@ and abstract_tree =
   | PrimitiveRound        of abstract_tree
   | FloatPlus             of abstract_tree * abstract_tree
   | FloatMinus            of abstract_tree * abstract_tree
+  | FloatTimes            of abstract_tree * abstract_tree
+  | FloatDivides          of abstract_tree * abstract_tree
+  | FloatSine             of abstract_tree
+  | FloatArcSine          of abstract_tree
+  | FloatCosine           of abstract_tree
+  | FloatArcCosine        of abstract_tree
+  | FloatTangent          of abstract_tree
+  | FloatArcTangent       of abstract_tree
+  | FloatArcTangent2      of abstract_tree * abstract_tree
   | LengthPlus            of abstract_tree * abstract_tree
   | LengthMinus           of abstract_tree * abstract_tree
   | LengthTimes           of abstract_tree * abstract_tree
@@ -670,6 +679,7 @@ and abstract_tree =
   | BackendFixedFrame           of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
   | BackendVertFrame            of abstract_tree * abstract_tree * abstract_tree * abstract_tree
+  | BackendVertSkip             of abstract_tree
   | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree
   | BackendEmbeddedVertBottom   of abstract_tree * abstract_tree * abstract_tree
   | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
@@ -1321,7 +1331,7 @@ let rec string_of_manual_type (_, mtymain) =
   let iter = string_of_manual_type in
   let iter_cmd = string_of_manual_command_argument_type in
   match mtymain with
-  | MTypeName(mtylst, tynm)   -> (String.concat " " (List.map iter mtylst)) ^ " " ^ tynm
+  | MTypeName(mtylst, mdlnmlst, tynm) -> (String.concat " " (List.map iter mtylst)) ^ " " ^ (String.concat "." (List.append mdlnmlst [tynm]))
   | MTypeParam(tpnm)          -> "'" ^ tpnm
   | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)

@@ -1,0 +1,468 @@
+% -*- coding: utf-8 -*-
+@require: pervasives
+@require: gr
+@require: list
+@require: math
+@require: color
+
+module MitouReport : sig
+
+  val document : 'a -> block-text -> document
+    constraint 'a :: (|
+      project : inline-text;
+      year : int;
+      creators : inline-text list;
+      manager : inline-text;
+      jouzai-number : int;
+    |)
+
+  val font-latin-roman  : string * float * float
+  val font-latin-italic : string * float * float
+  val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
+  val font-cjk-mincho   : string * float * float
+  val font-cjk-gothic   : string * float * float
+  val set-latin-font : (string * float * float) -> context -> context
+  val set-cjk-font   : (string * float * float) -> context -> context
+  direct \ref : [string] inline-cmd
+  direct \ref-page : [string] inline-cmd
+  direct \figure : [string?; inline-text; block-text] inline-cmd
+  direct +p : [inline-text] block-cmd
+  direct +pn : [inline-text] block-cmd
+  direct +section : [string?; inline-text; block-text] block-cmd
+  direct +subsection : [string?; inline-text; block-text] block-cmd
+  direct \emph : [inline-text] inline-cmd
+
+end = struct
+
+  type toc-element =
+    | TOCElementSection    of string * inline-text
+    | TOCElementSubsection of string * inline-text
+
+
+  let generate-fresh-label =
+    let-mutable count <- 0 in
+      (fun () -> (
+        let () = count <- !count + 1 in
+          `generated:` ^ (arabic (!count))
+      ))
+
+
+  let-inline ctx \ref key =
+    let opt = get-cross-reference (key ^ `:num`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
+
+  let-inline ctx \ref-page key =
+    let opt = get-cross-reference (key ^ `:page`) in
+    let it =
+      match opt with
+      | None    -> {?}
+      | Some(s) -> embed-string s
+    in
+      read-inline ctx it
+
+
+  let font-size-normal  = 12pt
+  let font-size-title   = 32pt
+  let font-size-author  = 16pt
+  let font-size-section = 18pt
+  let font-size-subsection = 16pt
+
+  let section-top-margin = 4pt
+  let section-bottom-margin = 4pt
+  let section-top-gap = 0pt
+  let section-bottom-gap = 0pt
+
+  let font-ratio-latin = 1.
+  let font-ratio-cjk = 0.88
+
+  let font-latin-roman  = (`ArnoPro`   , font-ratio-latin, 0.)
+  let font-latin-italic = (`ArnoPro-it`, font-ratio-latin, 0.)
+  let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
+  let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
+  let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
+  let font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
+
+
+  let set-latin-font font ctx =
+    ctx |> set-font Latin font
+
+
+  let set-cjk-font font ctx =
+    ctx |> set-font HanIdeographic font
+        |> set-font Kana           font
+
+
+  let get-standard-context wid =
+    get-initial-context wid (command \math)
+      |> set-font-size 12.5pt
+      |> set-leading 20pt
+      |> set-dominant-wide-script Kana
+      |> set-language Kana Japanese
+      |> set-language HanIdeographic Japanese
+      |> set-dominant-narrow-script Latin
+      |> set-language Latin English
+      |> set-font Kana           font-cjk-mincho
+      |> set-font HanIdeographic font-cjk-mincho
+      |> set-font Latin          font-latin-roman
+      |> set-math-font `lmodern`
+      |> set-hyphen-penalty 100
+
+
+  let-mutable ref-float-boxes <- []
+
+
+  let height-of-float-boxes pageno =
+%    let () = display-message `get height` in
+    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+      if pn < pageno then h +' (get-natural-length bb) else h
+    )) 0pt
+
+
+  let-mutable ref-figure <- 0
+
+
+  let-inline ctx \figure ?:labelopt caption inner =
+    let () = ref-figure <- !ref-figure + 1 in
+    let s-num = arabic (!ref-figure) in
+    let () =
+      match labelopt with
+      | Some(label) -> register-cross-reference (label ^ `:num`) s-num
+      | None        -> ()
+    in
+    let it-num = embed-string s-num in
+    let bb-inner =
+      let d (_, _) _ _ _ = [] in
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
+        read-block ctx inner
+          +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
+      ))
+    in
+      hook-page-break (fun pbinfo _ -> (
+%        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
+        ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
+      ))
+
+
+  let single-line ctx =
+    line-break false false ctx
+
+
+  let single-centering-line ctx ib =
+    single-line ctx (inline-fil ++ ib ++ inline-fil)
+
+
+  let-block ctx +make-title year project creatorlst pm =
+    let bb-upper =
+      let it-year = embed-string (arabic year) in
+      let ctx-upper = ctx |> set-font-size 20pt in
+      let bb1 = single-centering-line ctx-upper (read-inline ctx-upper {#it-year;年度未踏IT人材・育成事業}) in
+      let bb2 = single-centering-line ctx-upper (read-inline ctx-upper project) in
+      let bb3 = single-centering-line ctx-upper (read-inline ctx-upper {成果報告書}) in
+        bb1 +++ bb2 +++ bb3
+    in
+    let ctx-lower = ctx |> set-font-size 18pt in
+    let bb-lower =
+      let pads = (0pt, 0pt, 4pt, 4pt) in
+      let text-cell it = NormalCell(pads, read-inline ctx-lower it) in
+      let acc =
+        creatorlst |> List.fold-left-adjacent (fun acc creator prevopt _ -> (
+          let (cell1, cell2) =
+            match prevopt with
+            | None    -> (text-cell {クリエータ}, text-cell {：})
+            | Some(_) -> (EmptyCell, EmptyCell)
+          in
+          [ cell1; cell2; text-cell creator; ] :: acc
+        )) []
+      in
+      let tbl = ([ text-cell {担当PM}; text-cell {：}; text-cell pm ] :: acc) |> List.reverse in
+        single-centering-line ctx-lower (tabular tbl (fun _ _ -> []))
+    in
+    let bb-date =
+      let it-next-year = embed-string (arabic (year + 1)) in
+        single-centering-line ctx-lower (read-inline ctx-lower {#it-next-year;年2月28日})
+    in
+      block-skip 100pt +++ bb-upper +++ block-skip 100pt +++ bb-lower +++ block-skip 100pt +++ bb-date
+
+
+  let make-section-title ctx =
+    ctx |> set-font-size font-size-section
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let make-subsection-title ctx =
+    ctx |> set-font-size font-size-subsection
+        |> set-font Latin font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
+  let-mutable toc-acc-ref <- []
+
+
+  let get-cross-reference-number label =
+    match get-cross-reference (label ^ `:num`) with
+    | None    -> `?`
+    | Some(s) -> s
+
+
+  let get-cross-reference-page label =
+    match get-cross-reference (label ^ `:page`) with
+    | None    -> `?`
+    | Some(s) -> s
+
+
+  let section-heading ctx ib-heading =
+    let wid = get-text-width ctx in
+    let color = get-text-color ctx in
+      line-break true false (ctx |> set-paragraph-margin section-top-gap section-bottom-gap)
+        ib-heading
+
+
+  let-rec repeat-inline n ib =
+    if n <= 0 then inline-nil else
+      ib ++ (repeat-inline (n - 1) ib)
+
+
+  let make-dots-line ctx w =
+    let ib = read-inline ctx {.} ++ inline-skip 1pt in
+    let wdot = get-natural-width ib in
+    let n = round (w /' wdot) in
+      inline-fil ++ (repeat-inline n ib)
+
+
+  let-mutable no-page-number-max-ref <- None
+
+
+  let document record inner =
+    % -- constants --
+    let project = record#project in
+    let year = record#year in
+    let creatorlst = record#creators in
+    let pm = record#manager in
+    let page = A4Paper in
+    let txtorg = (100pt, 100pt) in
+    let txtwid = 390pt in
+    let txthgt = 625pt in
+    let hdrorg = (40pt, 40pt) in
+    let ftrorg = (40pt, 780pt) in
+    let hdrwid = 520pt in
+    let ftrwid = 520pt in
+    let thickness = 0.5pt in
+
+    let ctx-doc = get-standard-context txtwid in
+
+    % -- title --
+    let bb-title =
+      read-block ctx-doc '<+make-title(year)(project)(creatorlst)(pm);> +++ clear-page
+    in
+
+    % -- main --
+    let bb-main = read-block ctx-doc inner in
+
+    % -- table of contents --
+    let toc-subsection-indent = 20pt in
+    let bb-toc =
+      let ib-toc-title =
+        inline-fil ++ read-inline (make-section-title ctx-doc) {目次} ++ inline-fil
+      in
+      let bb-toc-main =
+        (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
+          match tocelem with
+          | TOCElementSection(label, title) ->
+              let it-num = embed-string (get-cross-reference-number label) in
+              let it-page = embed-string (get-cross-reference-page label) in
+              let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
+              let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+              let ib-middle =
+                let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  if w <' 0pt then inline-fil else
+                    make-dots-line ctx-doc w
+              in
+                bbacc +++ line-break true true ctx-doc
+                  (ib-title ++ ib-middle ++ ib-page)
+
+        | TOCElementSubsection(label, title) ->
+              let it-num = embed-string (get-cross-reference-number label) in
+              let it-page = embed-string (get-cross-reference-page label) in
+              let ib-title =
+                inline-skip toc-subsection-indent
+                  ++ read-inline ctx-doc {#it-num;. #title;}
+                    ++ inline-skip 3pt
+              in
+              let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
+              let ib-middle =
+                let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  if w <' 0pt then inline-fil else
+                    make-dots-line ctx-doc w
+              in
+              let ib-hook =
+                hook-page-break (fun pbinfo _ -> (no-page-number-max-ref <- Some(pbinfo#page-number)))
+              in
+                bbacc +++ line-break true true ctx-doc
+                  (ib-title ++ ib-middle ++ ib-page ++ ib-hook)
+
+        )) block-nil
+      in
+        (section-heading ctx-doc ib-toc-title) +++ bb-toc-main +++ clear-page
+    in
+
+    % -- page settings --
+    let pagecontf pbinfo =
+      let hgtfb = height-of-float-boxes pbinfo#page-number in
+      let (txtorgx, txtorgy) = txtorg in
+      (|
+        text-origin = (txtorgx, txtorgy +' hgtfb);
+        text-height = txthgt -' hgtfb;
+      |)
+    in
+    let pagepartsf pbinfo =
+      let pageno = pbinfo#page-number in
+      let header =
+        let ctx =
+          get-standard-context hdrwid
+            |> set-paragraph-margin 0pt 0pt
+        in
+        if pageno == 1 then
+          let it-jouzai-number = embed-string (arabic record#jouzai-number) in
+          let it-year = embed-string (arabic year) in
+            line-break false false ctx (inline-fil ++ read-inline ctx {#it-year;情財第#it-jouzai-number;号})
+        else
+  %       let () = display-message `insert` in
+          let (bb-float-boxes, acc) =
+            (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+              let (pn, bb) = elem in
+                if pn < pageno then
+                  let bbs =
+                    line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
+                      (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                        % 'ctx' is a dummy context
+                  in
+                    (bbacc +++ bbs, acc)
+                else
+                  (bbacc, elem :: acc)
+            )) (block-nil, [])
+          in
+          let () = ref-float-boxes <- acc in
+          bb-float-boxes
+      in
+      let footer =
+        match !no-page-number-max-ref with
+        | None ->
+            block-nil
+
+        | Some(nopagenomax) ->
+          if pageno <= nopagenomax then block-nil else
+            let ctx = get-standard-context ftrwid in
+            let it-pageno = embed-string (arabic (pageno - nopagenomax)) in
+              line-break true true ctx
+                (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+      in
+        (|
+          header-origin  = hdrorg;
+          header-content = header;
+          footer-origin  = ftrorg;
+          footer-content = footer;
+        |)
+    in
+      page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main)
+
+
+  let-mutable num-section <- 0
+  let-mutable num-subsection <- 0
+
+
+  let quad-indent ctx =
+    inline-skip (get-font-size ctx)
+
+
+  let-block ctx +p inner =
+    let ib-inner = read-inline ctx inner in
+      form-paragraph ctx (quad-indent ctx ++ ib-inner ++ inline-fil)
+
+
+  let-block ctx +pn inner =
+    let ib-inner = read-inline ctx inner in
+      form-paragraph ctx (ib-inner ++ inline-fil)
+
+
+  let page-number-string pbinfo =
+    match !no-page-number-max-ref with
+    | None              -> ` `
+    | Some(nopagenomax) -> arabic (pbinfo#page-number + nopagenomax)
+
+
+  let section-scheme ctx label title inner =
+    let ctx-title = make-section-title ctx in
+    let () = num-section <- !num-section + 1 in
+    let () = num-subsection <- 0 in
+    let s-num = arabic (!num-section) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ ->
+          register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+    in
+    let ib-title = read-inline ctx-title title in
+    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  let subsection-scheme ctx label title inner =
+    let () = num-subsection <- !num-subsection + 1 in
+    let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
+    let () = register-cross-reference (label ^ `:num`) s-num in
+    let () = toc-acc-ref <- (TOCElementSubsection(label, title)) :: !toc-acc-ref in
+    let ctx-title = make-subsection-title ctx in
+    let ib-num =
+      read-inline ctx-title (embed-string (s-num ^ `.`))
+        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (page-number-string pbinfo))
+    in
+    let ib-title = read-inline ctx-title title in
+    let bb-title =
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+    in
+    let bb-inner = read-block ctx inner in
+      bb-title +++ bb-inner
+
+
+  let-block ctx +section ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
+      section-scheme ctx label title inner
+
+
+  let-block ctx +subsection ?:labelopt title inner =
+    let label =
+      match labelopt with
+      | None        -> generate-fresh-label ()
+      | Some(label) -> label
+    in
+      subsection-scheme ctx label title inner
+
+
+  let-inline ctx \emph inner =
+    let ctx-emph =
+      ctx |> set-font Latin font-latin-italic
+          |> set-cjk-font font-cjk-gothic
+          |> set-text-color (CMYK(1., 0., 0., 0.))
+    in
+      read-inline ctx-emph inner
+
+end
+
+
+let document = MitouReport.document
+  % ad-hoc
