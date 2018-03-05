@@ -1,5 +1,5 @@
 
-exception Error of Range.t
+exception Error of Range.t * string option
 
 module I = Parser.MenhirInterpreter
 
@@ -16,7 +16,13 @@ let k_fail chkpt =
       let cnumS = lposS.Lexing.pos_cnum - lposS.Lexing.pos_bol in
       let cnumE = lposE.Lexing.pos_cnum - lposE.Lexing.pos_bol in
       let rng = Range.make lposS.Lexing.pos_lnum cnumS cnumE in
-      raise (Error(rng))
+
+      let message = ParserMessages.message (I.current_state_number penv) in
+      (* TODO: remove all placeholders from *.messages *)
+      if message = "<YOUR SYNTAX ERROR MESSAGE HERE>\n" then
+        raise (Error(rng, None))
+      else
+        raise (Error(rng, Some(String.trim message)))
 
   | _ -> assert false
 

@@ -433,7 +433,13 @@ let error_log_environment suspended =
         NormalLine("but is expected to have " ^ (string_of_int lenexp) ^ ".");
       ]
 
-  | ParserInterface.Error(rng) ->
+  | ParserInterface.Error(rng, Some(errmsg)) ->
+      report_error Parser [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(errmsg);
+      ]
+
+  | ParserInterface.Error(rng, message) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
