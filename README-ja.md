@@ -9,6 +9,14 @@
 
 本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。（概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)）
 
+## Homebrew を使ったインストール方法 (Macユーザ向け)
+
+Homebrewのフォーミュラが用意されています。
+
+```sh
+$ brew install --HEAD nyuichi/satysfi/satysfi
+```
+
 ## OPAM を使ったインストール方法
 
 ### 事前に必要なもの
