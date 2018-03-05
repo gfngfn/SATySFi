@@ -640,6 +640,7 @@ let make_environments () =
         ("split-on-regexp", ~% (tRE @-> tS @-> (tL (tPROD [tI; tS]))), lambda2 (fun vpat vs -> PrimitiveSplitOnRegExp(vpat, vs)));
         ("regexp-of-string", ~% (tS @-> tRE), lambda1 (fun vs -> PrimitiveRegExpOfString(vs)));
         ("string-match", ~% (tRE @-> tS @-> tB), lambda2 (fun vpat vs -> PrimitiveStringMatch(vpat, vs)));
+        ("string-scan", ~% (tRE @-> tS @-> tOPT (tPROD [tS ; tS])), lambda2 (fun vpat vs -> PrimitiveStringScan(vpat, vs)));
 
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );

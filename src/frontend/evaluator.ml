@@ -1354,6 +1354,18 @@ and interpret env ast =
       let s   = interpret_string env astr in
       BooleanConstant(Str.string_match pat s 0)
 
+  | PrimitiveStringScan(astpat, astr) ->
+      let pat = interpret_regexp env astpat in
+      let s   = interpret_string env astr in
+      if Str.string_match pat s 0
+      then
+        let matched = Str.matched_string s in
+        let start   = String.length matched in
+        let rest    = String.sub s start (String.length s - start) in
+        Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+      else
+        Constructor("None", UnitConstant)
+
   | PrimitiveSplitIntoLines(asts) ->
       let s = interpret_string env asts in
       let slst = String.split_on_char '\n' s in
