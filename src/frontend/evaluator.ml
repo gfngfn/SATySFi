@@ -1330,9 +1330,13 @@ and interpret env ast =
         in
           StringConstant(resstr)
 
-  | PrimitiveStringLength(aststr) ->
+  | PrimitiveStringByteLength(aststr) ->
       let str = interpret_string env aststr in
         IntegerConstant(String.length str)
+
+  | PrimitiveStringLength(aststr) ->
+      let str = interpret_string env aststr in
+        IntegerConstant(BatUTF8.length str)
 
   | PrimitiveStringUnexplode(astil) ->
       let ilst = interpret_list interpret env get_int astil in

@@ -594,6 +594,7 @@ and abstract_tree =
   | PrimitiveSame         of abstract_tree * abstract_tree
   | PrimitiveStringMatch  of abstract_tree * abstract_tree
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
+  | PrimitiveStringByteLength of abstract_tree
   | PrimitiveStringLength of abstract_tree
   | PrimitiveStringUnexplode of abstract_tree
   | PrimitiveSplitIntoLines  of abstract_tree
