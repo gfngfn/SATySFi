@@ -43,6 +43,7 @@ let tDOC          = (~! "document", BaseType(DocumentType))
 let tMATH         = (~! "math"    , BaseType(MathType)    )
 let tGR           = (~! "graphics", BaseType(GraphicsType))
 let tIMG          = (~! "image"   , BaseType(ImageType)   )
+let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
@@ -636,6 +637,10 @@ let make_environments () =
         ( "atan"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcTangent(vf)) );
         ( "atan2"        , ~% (tFL @-> tFL @-> tFL)    , lambda2 (fun vf1 vf2 -> FloatArcTangent2(vf1, vf2)) );
         ("split-into-lines", ~% (tS @-> (tL (tPROD [tI; tS]))), lambda1 (fun vs -> PrimitiveSplitIntoLines(vs)));
+        ("split-on-regexp", ~% (tRE @-> tS @-> (tL (tPROD [tI; tS]))), lambda2 (fun vpat vs -> PrimitiveSplitOnRegExp(vpat, vs)));
+        ("regexp-of-string", ~% (tS @-> tRE), lambda1 (fun vs -> PrimitiveRegExpOfString(vs)));
+        ("string-match", ~% (tRE @-> tS @-> tB), lambda2 (fun vpat vs -> PrimitiveStringMatch(vpat, vs)));
+
 
         ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
         ("page-break"            , ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)  , lambda4 (fun vpgsz vpcf vppf vbb -> BackendPageBreaking(vpgsz, vpcf, vppf, vbb)));

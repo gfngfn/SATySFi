@@ -1341,9 +1341,30 @@ and interpret env ast =
       in
         StringConstant(s)
 
+  | PrimitiveRegExpOfString(aststr) ->
+      let str = interpret_string env aststr in
+      let regexp =
+        try Str.regexp str with
+        | Failure(msg) -> raise (EvalError("regexp-of-string: " ^ msg))
+      in
+        RegExpConstant(regexp)
+
+  | PrimitiveStringMatch(astpat, astr) ->
+      let pat = interpret_regexp env astpat in
+      let s   = interpret_string env astr in
+      BooleanConstant(Str.string_match pat s 0)
+
   | PrimitiveSplitIntoLines(asts) ->
       let s = interpret_string env asts in
       let slst = String.split_on_char '\n' s in
+      let pairlst = slst |> List.map chop_space_indent in
+        pairlst |> make_list (fun (i, s) ->
+          TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
+
+  | PrimitiveSplitOnRegExp(astre, aststr) ->
+      let sep = interpret_regexp env astre in
+      let str = interpret_string env aststr in
+      let slst = Str.split sep str in
       let pairlst = slst |> List.map chop_space_indent in
         pairlst |> make_list (fun (i, s) ->
           TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
@@ -1741,6 +1762,17 @@ and get_string (value : syntactic_value) : string =
     | StringEmpty       -> ""
     | StringConstant(s) -> s
     | _                 -> report_bug_evaluator_value "get_string" value
+
+
+and interpret_regexp (env : environment) (ast : abstract_tree) : Str.regexp =
+  let value = interpret env ast in
+    get_regexp value
+
+
+and get_regexp (value : syntactic_value) : Str.regexp =
+  match value with
+  | RegExpConstant(regexp) -> regexp
+  | _                      -> report_bug_evaluator_value "get_regexp" value
 
 
 and interpret_uchar_list (env : environment) (ast : abstract_tree) : Uchar.t list =
