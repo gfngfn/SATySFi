@@ -226,6 +226,7 @@ let base_type_hash_table =
       ("image"       , ImageType   );
       ("document"    , DocumentType);
       ("math"        , MathType    );
+      ("regexp"      , RegExpType  );
     ];
     ht
   end
