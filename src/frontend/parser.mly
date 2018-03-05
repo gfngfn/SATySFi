@@ -526,7 +526,6 @@
 
 main:
   | header=list(headerelem); utast=nxtoplevel    { (header, utast) }
-  | header=list(headerelem); utast=vxblock; EOI  { (header, utast) }
   | header=list(headerelem); utast=nxwhl; EOI    { (header, utast) }
 ;
 headerelem:
