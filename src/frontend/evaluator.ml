@@ -1341,9 +1341,22 @@ and interpret env ast =
       in
         StringConstant(s)
 
+  | PrimitiveStringMatch(apat, astr) ->
+      let pat = Str.regexp (interpret_string env apat) in
+      let s   = interpret_string env astr in
+      BooleanConstant(Str.string_match pat s 0)
+
   | PrimitiveSplitIntoLines(asts) ->
       let s = interpret_string env asts in
       let slst = String.split_on_char '\n' s in
+      let pairlst = slst |> List.map chop_space_indent in
+        pairlst |> make_list (fun (i, s) ->
+          TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))
+
+  | PrimitiveSplitOnRegex(areg, asts) ->
+      let sep = Str.regexp (interpret_string env areg) in
+      let s = interpret_string env asts in
+      let slst = Str.split sep s in
       let pairlst = slst |> List.map chop_space_indent in
         pairlst |> make_list (fun (i, s) ->
           TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple)))

@@ -588,10 +588,12 @@ and abstract_tree =
   | LogicalOr             of abstract_tree * abstract_tree
   | LogicalNot            of abstract_tree
   | PrimitiveSame         of abstract_tree * abstract_tree
+  | PrimitiveStringMatch  of abstract_tree * abstract_tree
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
   | PrimitiveStringUnexplode of abstract_tree
   | PrimitiveSplitIntoLines  of abstract_tree
+  | PrimitiveSplitOnRegex    of abstract_tree * abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | PrimitiveRound        of abstract_tree
