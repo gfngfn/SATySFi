@@ -1319,13 +1319,24 @@ and interpret env ast =
       let str2 = interpret_string env ast2 in
         BooleanConstant(String.equal str1 str2)
 
-
-  | PrimitiveStringSub(aststr, astpos, astwid) ->
+  | PrimitiveStringSubBytes(aststr, astpos, astwid) ->
       let str = interpret_string env aststr in
       let pos = interpret_int env astpos in
       let wid = interpret_int env astwid in
         let resstr =
           try String.sub str pos wid with
+          | Invalid_argument(s) -> raise (EvalError("illegal index for 'string-sub'"))
+        in
+          StringConstant(resstr)
+
+  | PrimitiveStringSub(aststr, astpos, astwid) ->
+      let str = interpret_string env aststr in
+      let pos = interpret_int env astpos in
+      let wid = interpret_int env astwid in
+      let start = BatUTF8.nth str pos in
+      let end_  = BatUTF8.nth str (pos + wid) in
+        let resstr =
+          try String.sub str start (end_ - start) with
           | Invalid_argument(s) -> raise (EvalError("illegal index for 'string-sub'"))
         in
           StringConstant(resstr)
