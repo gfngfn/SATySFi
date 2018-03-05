@@ -142,6 +142,7 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(ImageType)    -> "image"
     | BaseType(DocumentType) -> "document"
     | BaseType(MathType)     -> "math"
+    | BaseType(RegExpType)   -> "regexp"
 
     | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
 

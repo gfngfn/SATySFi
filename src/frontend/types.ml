@@ -201,6 +201,7 @@ type base_type =
   | ImageType
   | DocumentType
   | MathType
+  | RegExpType
 [@@deriving show]
 
 
@@ -486,6 +487,8 @@ and syntactic_value =
   | LengthConstant        of length
   | StringEmpty
   | StringConstant        of string
+  | RegExpConstant        of Str.regexp
+      [@printer (fun fmt _ -> Format.fprintf fmt "<regexp>")]
 
   | Constructor           of constructor_name * syntactic_value
 
@@ -593,7 +596,8 @@ and abstract_tree =
   | PrimitiveStringLength of abstract_tree
   | PrimitiveStringUnexplode of abstract_tree
   | PrimitiveSplitIntoLines  of abstract_tree
-  | PrimitiveSplitOnRegex    of abstract_tree * abstract_tree
+  | PrimitiveSplitOnRegExp   of abstract_tree * abstract_tree
+  | PrimitiveRegExpOfString  of abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | PrimitiveRound        of abstract_tree
@@ -1188,6 +1192,7 @@ let rec string_of_mono_type_basic tystr =
     | BaseType(ImageType)    -> "image" ^ qstn
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
+    | BaseType(RegExpType)   -> "regexp" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
