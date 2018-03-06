@@ -214,15 +214,15 @@ module MapList
     val to_list : ('a, 'b) t -> ('a * 'b) list
   end
 = struct
-    type ('a, 'b) t = (('a * 'b) list) ref
+    type ('a, 'b) t = (('a * 'b) Alist.t) ref
 
-    let create () = ref []
+    let create () = ref Alist.empty
 
-    let add mapl k v = begin mapl := (k, v) :: !mapl; end
+    let add mapl k v = begin mapl := Alist.extend !mapl (k, v); end
 
-    let find_opt mapl k = List.assoc_opt k (!mapl)
+    let find_opt mapl k = List.assoc_opt k (Alist.to_list (!mapl))
 
-    let to_list = ( ! )
+    let to_list mapl = Alist.to_list (!mapl)
 
   end
 
