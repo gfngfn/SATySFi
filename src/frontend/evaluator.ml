@@ -1319,6 +1319,10 @@ and interpret env ast =
       let str2 = interpret_string env ast2 in
         BooleanConstant(String.equal str1 str2)
 
+  | PrimitiveStringCompare(ast1, ast2) ->
+      let str1 = interpret_string env ast1 in
+      let str2 = interpret_string env ast2 in
+        IntegerConstant(String.compare str1 str2)
 
   | PrimitiveStringSub(aststr, astpos, astwid) ->
       let str = interpret_string env aststr in

@@ -624,6 +624,7 @@ let make_environments () =
         ( "|>" , ptyappinv               , lambda2 (fun vx vf -> Apply(vf, vx)));
 
         ( "string-same"  , ~% (tS @-> tS @-> tB)       , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
+        ( "string-compare"  , ~% (tS @-> tS @-> tI)    , lambda2 (fun v1 v2 -> PrimitiveStringCompare(v1, v2)) );
         ( "string-sub"   , ~% (tS @-> tI @-> tI @-> tS), lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
         ( "string-length", ~% (tS @-> tI)              , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
         ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );

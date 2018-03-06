@@ -592,6 +592,7 @@ and abstract_tree =
   | LogicalOr             of abstract_tree * abstract_tree
   | LogicalNot            of abstract_tree
   | PrimitiveSame         of abstract_tree * abstract_tree
+  | PrimitiveStringCompare of abstract_tree * abstract_tree
   | PrimitiveStringMatch  of abstract_tree * abstract_tree
   | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
   | PrimitiveStringLength of abstract_tree
