@@ -1,3 +1,7 @@
+main: BHORZGRP HORZCMD LPAREN TYPE
+
+Expected expression or `)`.
+
 main: BLIST VAR TYPE
 
 Expected expression, `;`, or `]`.
@@ -9,8 +13,13 @@ Expected expression or `]`.
 
 main: BVERTGRP VERTCMD WITH
 main: BHORZGRP HORZCMD WITH
+main: BHORZGRP HORZCMD OMISSION WITH
 
 BUG: expected `(`, `(|`, `[`, `?:`, `?*`, `{`, `<`, or `;`.
+
+main: BHORZGRP HORZCMD OPTIONAL OPTIONAL
+
+Expected `(`, `(|`, or `[`.
 
 main: BVERTGRP VARINVERT LPAREN
 main: BHORZGRP VARINHORZ LPAREN
@@ -24,27 +33,32 @@ main: BHORZGRP HORZCMD BVERTGRP BVERTGRP
 
 Expected `+command` or `>`.
 
+main: BHORZGRP HORZCMD BHORZGRP EHORZGRP LITERAL
+
+Expected text, escape, `\command`, `#variable`, `${`, `{`, `<`, or `}`.
+
 main: BHORZGRP ITEM SPACE SEP
 main: BHORZGRP ITEM SEP
 
-Expected text, `\command`, `*`, or `}`.
+Expected text, escape, `\command`, `#variable`, `${`, `*`, or `}`.
 
 main: BHORZGRP SEP SEP ITEM
 main: BHORZGRP SEP SPACE ITEM
 main: BHORZGRP SEP ITEM
 
-Expected text, `\command`, `|`, or `}`.
+Expected text, escape, `\command`, `#variable`, `${`, `|`, or `}`.
 
 main: BHORZGRP BHORZGRP
 main: BHORZGRP SPACE BHORZGRP
 main: BMATHGRP MATHCMD BHORZGRP BHORZGRP
+main: BHORZGRP HORZCMD BHORZGRP BHORZGRP
 
-Expected text, `\command`, `*`, `|`, or `}`.
+Expected text, escape, `\command`, `#variable`, `${`, `*`, `|`, or `}`.
 
 main: BHORZGRP VARINHORZ ENDACTIVE BHORZGRP
 main: BHORZGRP SPACE VARINHORZ ENDACTIVE BHORZGRP
 
-Expected text, `\command`, or `}`.
+Expected text, escape, `\command`, `#variable`, `${`, or `}`.
 
 main: BHORZGRP SPACE ITEM
 main: BMATHGRP MATHCMD BHORZGRP SPACE ITEM
@@ -1046,24 +1060,3 @@ main: VAR WITH
 main: WITH
 
 <YOUR SYNTAX ERROR MESSAGE HERE>
-
-main: BHORZGRP HORZCMD OPTIONAL WITH
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-main: BHORZGRP HORZCMD LPAREN WITH
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-main: BHORZGRP HORZCMD BHORZGRP WITH
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-main: BHORZGRP HORZCMD BVERTGRP EVERTGRP WITH
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
-main: BHORZGRP HORZCMD OMISSION WITH
-
-<YOUR SYNTAX ERROR MESSAGE HERE>
-
