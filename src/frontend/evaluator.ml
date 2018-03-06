@@ -1333,10 +1333,8 @@ and interpret env ast =
       let str = interpret_string env aststr in
       let pos = interpret_int env astpos in
       let wid = interpret_int env astwid in
-      let start = BatUTF8.nth str pos in
-      let end_  = BatUTF8.nth str (pos + wid) in
         let resstr =
-          try String.sub str start (end_ - start) with
+          try BatUTF8.sub str pos wid with
           | Invalid_argument(s) -> raise (EvalError("illegal index for 'string-sub'"))
         in
           StringConstant(resstr)
