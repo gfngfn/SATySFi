@@ -585,6 +585,12 @@ and abstract_tree =
   | Mod                   of abstract_tree * abstract_tree
   | Plus                  of abstract_tree * abstract_tree
   | Minus                 of abstract_tree * abstract_tree
+  | BitShiftRight         of abstract_tree * abstract_tree
+  | BitShiftLeft          of abstract_tree * abstract_tree
+  | BitXor                of abstract_tree * abstract_tree
+  | BitAnd                of abstract_tree * abstract_tree
+  | BitOr                 of abstract_tree * abstract_tree
+  | BitNot                of abstract_tree
   | GreaterThan           of abstract_tree * abstract_tree
   | LessThan              of abstract_tree * abstract_tree
   | EqualTo               of abstract_tree * abstract_tree

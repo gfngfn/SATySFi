@@ -1443,6 +1443,43 @@ and interpret env ast =
       let numr = interpret_int env astr in
         IntegerConstant(numl - numr)
 
+  | BitShiftRight(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      let bits =
+        try numl lsr numr with
+        | Invalid_argument(s) -> raise (EvalError("Bit offset out of bounds for '>>'"))
+      in
+        IntegerConstant(bits)
+
+  | BitShiftLeft(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      let bits =
+        try numl lsl numr with
+        | Invalid_argument(s) -> raise (EvalError("Bit offset out of bounds for '>>'"))
+      in
+        IntegerConstant(bits)
+
+  | BitXor(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      IntegerConstant(numl lxor numr)
+
+  | BitAnd(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      IntegerConstant(numl land numr)
+
+  | BitOr(astl, astr) ->
+      let numl = interpret_int env astl in
+      let numr = interpret_int env astr in
+      IntegerConstant(numl lor numr)
+
+  | BitNot(ast) ->
+      let num = interpret_int env ast in
+      IntegerConstant(lnot num)
+
   | EqualTo(astl, astr) ->
       let numl = interpret_int env astl in
       let numr = interpret_int env astr in

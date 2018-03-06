@@ -597,6 +597,12 @@ let make_environments () =
         ( "mod", ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Mod(v1, v2))                     );
         ( "*"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Times(v1, v2))                   );
         ( "/"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Divides(v1, v2))                 );
+        ( ">>"  , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> BitShiftRight(v1, v2))          );
+        ( "<<"  , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> BitShiftLeft(v1, v2))           );
+        ( "xor", ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> BitXor(v1, v2))                  );
+        ( "band", ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> BitAnd(v1, v2))                 );
+        ( "bor", ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> BitOr(v1, v2))                   );
+        ( "bnot", ~% (tI @-> tI)         , lambda1 (fun v1    -> BitNot(v1))                      );
         ( "^"  , ~% (tS @-> tS @-> tS)   , lambda2 (fun v1 v2 -> Concat(v1, v2))                  );
         ( "==" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> EqualTo(v1, v2))                 );
         ( "<>" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))     );
