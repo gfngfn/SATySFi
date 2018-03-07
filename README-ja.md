@@ -23,6 +23,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 
 ビルド前に最低限，以下のソフトウェアが必要です。
 
+* autoconf
 * bzip2
 * cc
 * git
@@ -37,7 +38,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git m4 unzip wget
+sudo apt-get install autoconf build-essential git m4 unzip wget
 
 # 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
@@ -55,7 +56,7 @@ opam update
 # また，Homebrew もインストールしてください。
 
 brew update
-brew install wget opam
+brew install autoconf wget opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
