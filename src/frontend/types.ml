@@ -600,6 +600,7 @@ and abstract_tree =
   | PrimitiveSplitIntoLines  of abstract_tree
   | PrimitiveSplitOnRegExp   of abstract_tree * abstract_tree
   | PrimitiveRegExpOfString  of abstract_tree
+  | PrimitiveCharCode     of abstract_tree
   | PrimitiveArabic       of abstract_tree
   | PrimitiveFloat        of abstract_tree
   | PrimitiveRound        of abstract_tree
