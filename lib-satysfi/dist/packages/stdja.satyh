@@ -72,8 +72,8 @@ end = struct
   let font-ratio-latin = 1.
   let font-ratio-cjk = 0.88
 
-  let font-latin-roman  = (`ArnoPro`   , font-ratio-latin, 0.)
-  let font-latin-italic = (`lmroman-it`, font-ratio-latin, 0.)
+  let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
+  let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
   let font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
