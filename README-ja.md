@@ -76,8 +76,6 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 git submodule update --init --recursive
 
-# Issue #46: core_kernel を正しくビルドするために 1.0+beta18 を避ける
-opam pin add -y jbuilder 1.0+beta17
 # build
 opam pin add satysfi .
 opam install satysfi
