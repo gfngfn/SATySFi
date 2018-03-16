@@ -24,6 +24,14 @@ A Homebrew formula is provided for SATySFi (v0.0.2).
 $ brew install --HEAD nyuichi/satysfi/satysfi
 ```
 
+## Install using Nix (for Linux users)
+
+Follow the instructions here [here](https://nixos.org/nix/download.html) to install the Nix package manager.
+
+```sh
+$ nix-env -iA nixpkgs.satysfi
+```
+
 ## Install using OPAM
 
 ### Prerequisites

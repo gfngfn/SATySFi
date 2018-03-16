@@ -25,6 +25,14 @@ Homebrew のフォーミュラが用意されています。
 $ brew install --HEAD nyuichi/satysfi/satysfi
 ```
 
+## Nix を使ったインストール方法 (Linuxユーザ向け)
+
+Nixパッケージマネージャを[ここ](https://nixos.org/nix/download.html)の指示に従ってインストールします。
+
+```sh
+$ nix-env -iA nixpkgs.satysfi
+```
+
 ## OPAM を使ったインストール方法
 
 ### 事前に必要なもの
