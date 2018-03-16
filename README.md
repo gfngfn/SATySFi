@@ -26,7 +26,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 
 ## Install using Nix (for Linux users)
 
-Follow the instructions here [here](https://nixos.org/nix/download.html) to install the Nix package manager.
+Follow the instructions [here](https://nixos.org/nix/download.html) to install the Nix package manager.
 
 ```sh
 $ nix-env -iA nixpkgs.satysfi
