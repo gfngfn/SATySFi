@@ -736,10 +736,25 @@ let arg_spec_list curdir =
 
 
 let setup_root_dirs () =
-  let ds =
-    (match Sys.getenv_opt "HOME" with
-    | None    -> []
-    | Some(s) -> [Filename.concat s ".satysfi"]) @ ["/usr/local/share/satysfi"; "/usr/share/satysfi"] in
+  let runtime_dirs =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "SATYSFI_RUNTIME" with
+      | None    -> []
+      | Some(s) -> [s]
+    else
+      ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
+  in
+  let user_dirs =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "userprofile" with
+      | None    -> []
+      | Some(s) -> [Filename.concat s ".satysfi"]
+    else
+      match Sys.getenv_opt "HOME" with
+      | None    -> []
+      | Some(s) -> [Filename.concat s ".satysfi"]
+  in
+  let ds = user_dirs @ runtime_dirs in
   (if List.length ds = 0 then
     raise NoLibraryRootDesignation);
   Config.initialize ds
