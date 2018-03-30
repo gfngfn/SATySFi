@@ -9,7 +9,7 @@ val initialize : file_path -> bool
 
 type answer =
   | NeedsAnotherTrial
-  | CanTerminate
+  | CanTerminate of string list
   | CountMax
 
 val needs_another_trial : file_path -> answer
