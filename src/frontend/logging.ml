@@ -74,7 +74,7 @@ let achieve_fixpoint unresolved_crossrefs =
   if unresolved_crossrefs = [] then
     print_endline ("  all cross references were solved.")
   else
-    print_endline ("  some cross references were not solved.")
+    print_endline ("  some cross references were not solved: " ^ String.concat " " unresolved_crossrefs ^ ".")
 
 
 let end_output file_name_out =
