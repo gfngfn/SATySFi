@@ -9,6 +9,7 @@ install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
+  - opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
   - opam update
 # Issue #46: we temporarily pin camlimages to avoid Graphics-related problems.
 # See https://github.com/ocaml/dune/issues/563 for details.
@@ -23,7 +24,8 @@ install:
   - opam install -y batteries
   - opam install -y yojson
   - opam install -y camlimages
+  - opam install -y camlpdf.2.2.1+satysfi
+  - opam install -y otfm.0.3.0+satysfi
   - eval `opam config env`
-  - git submodule update -i
 script:
   - make all
