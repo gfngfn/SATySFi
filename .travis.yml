@@ -10,9 +10,6 @@ install:
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
   - opam update
-# Issue #46: we temporarily pin jbuilder to avoid problems in 1.0+beta18.
-# See https://github.com/ocaml/dune/issues/567 for details.
-  - opam pin add -y jbuilder 1.0+beta17
 # Issue #46: we temporarily pin camlimages to avoid Graphics-related problems.
 # See https://github.com/ocaml/dune/issues/563 for details.
   - opam pin add -y camlimages 4.2.6
