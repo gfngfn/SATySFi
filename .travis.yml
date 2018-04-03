@@ -11,9 +11,6 @@ install:
   - eval `opam config env`
   - opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
   - opam update
-# Issue #46: we temporarily pin camlimages to avoid Graphics-related problems.
-# See https://github.com/ocaml/dune/issues/563 for details.
-  - opam pin add -y camlimages 4.2.6
   - opam install -y ppx_deriving
   - opam install -y menhir
   - opam install -y core_kernel.v0.10.0
