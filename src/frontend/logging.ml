@@ -106,5 +106,5 @@ let begin_to_write_page () =
   print_endline ("  writing pages ...")
 
 let warn_cmyk_image file_name =
-  print_endline ("  [Warning]: (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode is not fully supported.");
-  print_endline ("  Please convert the image to a jpeg image with YCbCR (RGB) color model.");
+  print_endline ("  [Warning]: (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
+  print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.");
