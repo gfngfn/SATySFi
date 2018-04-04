@@ -95,6 +95,7 @@ let add_image (srcpath : file_path) =
     match colormodel with
     | Images.Gray  -> Pdf.Name("/DeviceGray")
     | Images.RGB   -> Pdf.Name("/DeviceRGB")
+    | Images.YCbCr -> Pdf.Name("/DeviceRGB")
     | _            -> raise (UnsupportedColorModel(colormodel))
   in
   let pdf_points_of_inches inch = 72. *. inch in
