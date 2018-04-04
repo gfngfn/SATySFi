@@ -28,8 +28,8 @@ let pass_type_check opt =
   | None ->
       print_endline ("  type check passed.")
 
-  | Some((tyenv, ty)) ->
-      print_endline ("  type check passed. (" ^ (Display.string_of_mono_type tyenv ty) ^ ")")
+  | Some(str) ->
+      print_endline ("  type check passed. (" ^ str ^ ")")
 
 
 let ordinal i =
@@ -104,3 +104,7 @@ let begin_to_embed_fonts () =
 let begin_to_write_page () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...")
+
+let warn_cmyk_image file_name =
+  print_endline ("  [Warning]: (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode is not fully supported.");
+  print_endline ("  Please convert the image to a jpeg image with YCbCR (RGB) color model.");

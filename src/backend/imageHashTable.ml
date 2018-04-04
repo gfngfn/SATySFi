@@ -96,6 +96,7 @@ let add_image (srcpath : file_path) =
     | Images.Gray  -> Pdf.Name("/DeviceGray")
     | Images.RGB   -> Pdf.Name("/DeviceRGB")
     | Images.YCbCr -> Pdf.Name("/DeviceRGB")
+    | Images.CMYK  -> Logging.warn_cmyk_image srcpath; Pdf.Name("/DeviceCMYK")
     | _            -> raise (UnsupportedColorModel(colormodel))
   in
   let pdf_points_of_inches inch = 72. *. inch in

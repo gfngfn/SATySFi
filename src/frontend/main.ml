@@ -209,8 +209,8 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
 (*
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
-*)
-    Logging.pass_type_check (Some((tyenv, ty)));
+ *)
+    Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
     if type_check_only then ()
     else
     let env_freezed = freeze_environment env in
