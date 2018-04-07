@@ -4,20 +4,43 @@ SRCROOT=src
 BACKEND=src/backend
 FRONTEND=src/frontend
 CHARDECODER=src/chardecoder
+BYTECOMP=$(FRONTEND)/bytecomp
 OCB_FLAGS = -cflags -unsafe-string -cflag -w -cflag -3 \
 	-use-ocamlfind -use-menhir \
-	-I $(SRCROOT)/ -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ \
+	-I $(SRCROOT)/ -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ -I $(BYTECOMP) \
 	-pkgs "str,ppx_deriving.show,core_kernel,uutf,batteries, \
 	menhirLib,yojson,camlimages,camlimages.jpeg,otfm,camlpdf" \
 	-tag thread -yaccflags "--table --explain"
 TARGET=satysfi
 OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
+RM=rm -f
+RUBY=ruby
+GENCODE=./gen_code.rb
+INSTDEF=$(BYTECOMP)/vminstdef.yaml
 
-all:
+all: $(FRONTEND)/types_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
 	mkdir -p _build/
 	$(OCB) main.native
 	mv main.native $(TARGET)
+
+$(FRONTEND)/types_.ml: $(FRONTEND)/types.ml $(INSTDEF)
+	$(RUBY) $(GENCODE) --gen-insttype $(INSTDEF) > $(FRONTEND)/__insttype.ml
+	$(RUBY) $(GENCODE) --gen-attype $(INSTDEF) > $(FRONTEND)/__attype.ml
+	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/types.ml > $(FRONTEND)/types_.ml
+	$(RM)   $(FRONTEND)/__insttype.ml
+	$(RM)   $(FRONTEND)/__attype.ml
+
+$(BYTECOMP)/vm_.ml: $(BYTECOMP)/vm.ml $(INSTDEF)
+	$(RUBY) $(GENCODE) --gen-vm $(INSTDEF) > $(BYTECOMP)/__vm.ml
+	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/vm.ml > $(BYTECOMP)/vm_.ml
+	$(RM)   $(BYTECOMP)/__vm.ml
+
+$(BYTECOMP)/ir_.ml: $(BYTECOMP)/ir.ml $(INSTDEF)
+	$(RUBY) $(GENCODE) --gen-ir $(INSTDEF) > $(BYTECOMP)/__ir.ml
+	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/ir.ml > $(BYTECOMP)/ir_.ml
+	$(RM)   $(BYTECOMP)/__ir.ml
+
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)
@@ -58,6 +81,14 @@ uninstall:
 
 clean:
 	$(OCB) -clean
+	$(RM)  $(FRONTEND)/types_.ml
+	$(RM)  $(BYTECOMP)/vm_.ml
+	$(RM)  $(BYTECOMP)/ir_.ml
+	$(RM)  $(FRONTEND)/__insttype.ml
+	$(RM)  $(FRONTEND)/__attype.ml
+	$(RM)  $(BYTECOMP)/__vm.ml
+	$(RM)  $(BYTECOMP)/__ir.ml
+
 
 #clean-sub:
 #	rm -f $(FRONTEND)/lexer.ml $(FRONTEND)/parser.mli $(FRONTEND)/parser.ml $(FRONTEND)/*.cmi $(FRONTEND)/*.cmx $(FRONTEND)/*.o

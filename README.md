@@ -29,6 +29,7 @@ Here is a list of minimally required softwares.
 * make
 * unzip
 * wget or curl
+* ruby
 * [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
 * ocaml 4.06.0 (installed by OPAM)
 
