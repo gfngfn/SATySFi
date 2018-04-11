@@ -16,4 +16,6 @@ val needs_another_trial : file_path -> answer
 
 val register : string -> string -> unit
 
+val probe : string -> string option
+
 val get : string -> string option

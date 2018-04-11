@@ -695,6 +695,7 @@ and abstract_tree =
   | BackendScriptGuard          of abstract_tree * abstract_tree
   | BackendDiscretionary        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendRegisterCrossReference of abstract_tree * abstract_tree
+  | BackendProbeCrossReference    of abstract_tree
   | BackendGetCrossReference      of abstract_tree
 
 and pattern_branch =

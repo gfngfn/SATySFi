@@ -114,6 +114,12 @@ let register (key : string) (value : string) =
         end
 
 
+let probe (key : string) =
+  match CrossRefHashTable.find_opt main_hash_table key with
+  | Some(value) -> Some(value)
+  | None -> None
+
+
 let get (key : string) =
   match CrossRefHashTable.find_opt main_hash_table key with
   | Some(value) -> Some(value)
