@@ -236,7 +236,7 @@ end = struct
         |> terminate-path
     in
     let graphics point = [ stroke 0.5pt color (path point); ] in
-    let kerninfo y =
+    let kerninfo _ _ y =
       let widkern = widparen in
       let r = 0. in
       let gap = length-abs (y -' hgtaxis) in
@@ -258,7 +258,7 @@ end = struct
         |> terminate-path
     in
     let graphics point = [ stroke 0.5pt color (path point); ] in
-    let kerninfo y =
+    let kerninfo _ _ y =
       let widkern = widparen in
       let r = 0. in
       let gap = length-abs (y -' hgtaxis) in
@@ -302,7 +302,7 @@ end = struct
         |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-    let kerninfo _ = 0pt in
+    let kerninfo _ _ _ = 0pt in
       (inline-graphics (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
   let paren-right hgt dpt hgtaxis fontsize color =
@@ -336,9 +336,9 @@ end = struct
     in
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
-    let kerninfo y =
-      let widkern = widparen *' 0.25 in
-      let r = 0.7 in
+    let kerninfo y _ _ =
+      let widkern = widparen *' 0.5 in
+      let r = 0.25 in
       let gap = length-abs (y -' hgtaxis) in
         let diff = length-min (gap -' halflen *' r) (halflen *' (1. -. r)) in
         if 0pt <' diff then
@@ -427,7 +427,7 @@ end = struct
           |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-    let kerninfo _ = 0pt in
+    let kerninfo _ _ _ = 0pt in
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
@@ -502,7 +502,7 @@ end = struct
           |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-    let kerninfo _ = 0pt in
+    let kerninfo _ _ _ = 0pt in
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
@@ -534,7 +534,7 @@ let-math \brace =
     in
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ _ _ -> 0pt))
 
   let bracket-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -560,7 +560,7 @@ let-math \brace =
           |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
+      (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ _ _ -> 0pt))
 
   let-math \sqbracket =
     math-paren bracket-left bracket-right
