@@ -405,11 +405,9 @@ and make_paren env valueparenf : HorzBox.paren =
 
 
 and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
-  (fun yposB yposH yposD ->
-    let astyposB = Value(LengthConstant(yposB)) in
-    let astyposH = Value(LengthConstant(yposH)) in
-    let astyposD = Value(LengthConstant(yposD)) in
-    let valueret = reduce_beta_list env valuekernf [astyposB; astyposH; astyposD] in
+  (fun corrhgt ->
+    let astcorrhgt = Value(LengthConstant(corrhgt)) in
+    let valueret = reduce_beta_list env valuekernf [astcorrhgt] in
       get_length valueret
   )
 

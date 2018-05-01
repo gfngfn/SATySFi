@@ -75,7 +75,7 @@ let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
 let tIGR_raw = tPT @-> (tL tGR)
 let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
 
-let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN @-> tLN @-> tLN]
+let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
 let tCMD = (~! "cmd", HorzCommandType([MandatoryArgumentType(tMATH)]))
 

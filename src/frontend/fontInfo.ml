@@ -300,7 +300,7 @@ let get_math_constants mathctx =
 type math_kern_scheme =
   | NoMathKern
   | DiscreteMathKern of FontFormat.math_kern
-  | DenseMathKern    of (length -> length -> length -> length)
+  | DenseMathKern    of math_kern_func
 
 
 let no_math_kern = NoMathKern
@@ -324,7 +324,7 @@ let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
      returns kerning length
      (negative value stands for being closer to the previous glyph)
    -- *)
-let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrbasehgt : length) (corrdpthgt : length) (corrhgthgt) : length =
+let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt : length) : length =
   let fontsize = actual_math_font_size mathctx in
   let mfabbrev = MathContext.math_font_abbrev mathctx in
     match MathFontAbbrevHashTable.find_opt mfabbrev with
@@ -335,8 +335,8 @@ let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrbaseh
         begin
           match mkern with
           | NoMathKern              -> Length.zero
-          | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio md mkern (corrbasehgt /% fontsize) in fontsize *% ratiok
-          | DenseMathKern(kernf)    -> Length.negate (kernf corrbasehgt corrhgthgt corrdpthgt)
+          | DiscreteMathKern(mkern) -> let ratiok = FontFormat.find_kern_ratio md mkern (corrhgt /% fontsize) in fontsize *% ratiok
+          | DenseMathKern(kernf)    -> Length.negate (kernf corrhgt)
         end
 
 

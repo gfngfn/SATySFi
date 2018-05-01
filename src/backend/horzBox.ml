@@ -351,8 +351,8 @@ and math_char_kern_func = length -> length -> length
      and returns a kerning value (positive for making characters closer)
      -- *)
 
-and math_kern_func = length -> length -> length -> length
-  (* -- takes the y-positions of base, height, and depth of sub/superscript and then returns a kerning value -- *)
+and math_kern_func = length -> length
+  (* -- takes a y-position as a correction height and then returns a kerning value -- *)
 
 and math_variant_value = math_kind * math_variant_value_main
 

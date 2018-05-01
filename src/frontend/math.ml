@@ -671,7 +671,7 @@ let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk (kernf
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
   let fontsize = mathstrinfo.math_font_size in
-  let mkspec = MathKernFunc((fun corrbasehgt _ _ -> kernfL fontsize corrbasehgt), (fun corrbasehgt _ _ -> kernfR fontsize corrbasehgt)) in  (* temporary *)
+  let mkspec = MathKernFunc(kernfL fontsize, kernfR fontsize) in  (* temporary *)
   let (lk, rk) = make_left_and_right_kern hgt dpt mk mic mkspec in
     (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
@@ -930,10 +930,10 @@ let horz_fraction_bar mathctx wid =
     HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
 
-let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrbasehgt : length) (corrhgthgt : length) (corrdpthgt : length) : length =
-  Format.printf "Math> corrB = %f, corrH = %f, corrD = %f\n" (Length.to_pdf_point corrbasehgt) (Length.to_pdf_point corrhgthgt) (Length.to_pdf_point corrdpthgt);  (* for debug *)
-  let len = FontInfo.get_math_kern mathctx mkernsch corrbasehgt corrhgthgt corrdpthgt in
-  Format.printf "Math> kern = %f\n" (Length.to_pdf_point len);
+let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) : length =
+  Format.printf "Math> corrB = %f\n" (Length.to_pdf_point corrhgt);  (* for debug *)
+  let len = FontInfo.get_math_kern mathctx mkernsch corrhgt in
+  Format.printf "Math> kern = %f\n" (Length.to_pdf_point len);  (* for debug *)
   len
 
 
@@ -994,10 +994,9 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
         let hblstS = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmS in
         let h_base = rkB.last_height in
-        let d_base = rkB.last_depth in
         let (l_base, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
-        let l_kernbase = calculate_kern mathctx rkB.kernTR l_base (l_base +% h_base) (l_base +% d_base) in
-        let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup (l_sup +% lkS.first_height) (l_sup +% lkS.first_depth) in
+        let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
+        let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic   = rkB.italics_correction in
 
         Format.printf "Math> l_italic = %f, l_kernbase = %f, l_kernsup = %f\n" (Length.to_pdf_point l_italic) (Length.to_pdf_point l_kernbase) (Length.to_pdf_point l_kernsup);
@@ -1023,11 +1022,10 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let (_, h_sub, _, lkS, _) = lmS in
         let hblstB = horz_of_low_math mathctx MathEnd MathEnd lmB in
         let hblstS = horz_of_low_math (MathContext.enter_script mathctx) MathEnd MathEnd lmS in
-        let h_base = rkB.last_height in
         let d_base = rkB.last_depth in
         let (l_base, l_sub) = subscript_correction_heights mathctx d_subbl d_base h_sub in
-        let l_kernbase = calculate_kern mathctx rkB.kernBR l_base (l_base +% h_base) (l_base +% d_base) in
-        let l_kernsub  = calculate_kern mathctx lkS.kernTL l_sub (l_sub +% lkS.first_height) (l_sub +% lkS.first_depth) in
+        let l_kernbase = calculate_kern mathctx rkB.kernBR l_base in
+        let l_kernsub  = calculate_kern mathctx lkS.kernTL l_sub in
         let kern = l_kernbase +% l_kernsub in
         let hbkern = fixed_empty kern in
         let (w_sub, _, _) = LineBreak.get_natural_metrics hblstS in
@@ -1059,15 +1057,15 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let d_base = rkB.last_depth in
 
         let (l_base_sup, l_sup) = superscript_correction_heights mathctx h_supbl h_base d_sup in
-        let l_kernbase_sup = calculate_kern mathctx rkB.kernTR l_base_sup (l_base_sup +% h_base) (l_base_sup +% d_base) in
-        let l_kernsup      = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup (l_sup +% lkS.first_height) (l_sup +% lkS.first_depth) in
+        let l_kernbase_sup = calculate_kern mathctx rkB.kernTR l_base_sup in
+        let l_kernsup      = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic       = rkB.italics_correction in
         let kernsup = l_italic +% l_kernbase_sup +% l_kernsup in
         let hbkernsup = fixed_empty kernsup in
 
         let (l_base_sub, l_sub) = subscript_correction_heights mathctx d_subbl d_base h_sub in
-        let l_kernbase_sub = calculate_kern mathctx rkB.kernBR l_base_sub (l_base_sub +% h_base) (l_base_sub +% d_base) in
-        let l_kernsub      = calculate_kern mathctx lkS.kernTL l_sub (l_sub +% lkS.first_height) (l_sub +% lkS.first_depth) in
+        let l_kernbase_sub = calculate_kern mathctx rkB.kernBR l_base_sub in
+        let l_kernsub      = calculate_kern mathctx lkS.kernTL l_sub in
         let kernsub = (l_kernbase_sub +% l_kernsub) in
         let hbkernsub = fixed_empty kernsub in
 
