@@ -931,9 +931,13 @@ let horz_fraction_bar mathctx wid =
 
 
 let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) : length =
+(*
   Format.printf "Math> corrB = %f\n" (Length.to_pdf_point corrhgt);  (* for debug *)
+*)
   let len = FontInfo.get_math_kern mathctx mkernsch corrhgt in
+(*
   Format.printf "Math> kern = %f\n" (Length.to_pdf_point len);  (* for debug *)
+*)
   len
 
 
@@ -998,9 +1002,9 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
         let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic   = rkB.italics_correction in
-
+(*
         Format.printf "Math> l_italic = %f, l_kernbase = %f, l_kernsup = %f\n" (Length.to_pdf_point l_italic) (Length.to_pdf_point l_kernbase) (Length.to_pdf_point l_kernsup);
-
+*)
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = fixed_empty kern in
         let hblstsup =
