@@ -28,7 +28,7 @@ val no_math_kern : math_kern_scheme
 
 val make_discrete_math_kern : FontFormat.math_kern -> math_kern_scheme
 
-val make_dense_math_kern : (length -> length) -> math_kern_scheme
+val make_dense_math_kern : math_kern_func -> math_kern_scheme
 
 val get_math_kern : math_context -> math_kern_scheme -> length -> length
 

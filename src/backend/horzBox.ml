@@ -352,7 +352,7 @@ and math_char_kern_func = length -> length -> length
      -- *)
 
 and math_kern_func = length -> length
-  (* -- takes the y-position and then returns a kerning value -- *)
+  (* -- takes a y-position as a correction height and then returns a kerning value -- *)
 
 and math_variant_value = math_kind * math_variant_value_main
 

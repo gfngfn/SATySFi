@@ -300,7 +300,7 @@ let get_math_constants mathctx =
 type math_kern_scheme =
   | NoMathKern
   | DiscreteMathKern of FontFormat.math_kern
-  | DenseMathKern    of (length -> length)
+  | DenseMathKern    of math_kern_func
 
 
 let no_math_kern = NoMathKern

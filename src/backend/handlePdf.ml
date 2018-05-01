@@ -69,9 +69,11 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         in
         let opaccnew =
 (*
-          List.rev_append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
+          if OptionState.debug_show_bbox () then
+            Alist.append opaccsub (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+          else
 *)
-          opaccsub
+            opaccsub
         in
           (xpos +% wid, opaccnew)
 
@@ -81,12 +83,15 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
 
     | EvHorzInlineGraphics(hgt, dpt, graphics) ->
         let gr =
-(*
-          List.append (ops_test_frame (xpos, yposbaseline) wid hgt dpt)
-*)
-          (graphics (xpos, yposbaseline))
+          graphics (xpos, yposbaseline)
         in
-        let opaccnew = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
+        let opaccsub = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
+        let opaccnew =
+          if OptionState.debug_show_bbox () then
+            Alist.append opaccsub (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+          else
+            opaccsub
+        in
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineTabular(hgt, dpt, evtabular, widlst, lenlst, rulesf) ->

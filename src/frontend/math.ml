@@ -31,7 +31,13 @@ type right_kern =
 
 type low_math_pure = math_kind * length * length * length * low_math_atom * left_kern * right_kern
 
-type low_paren = horz_box list * length * length * FontInfo.math_kern_scheme
+type low_paren =
+  {
+    lp_main : horz_box list;
+    lp_height : length;
+    lp_depth : length;
+    lp_math_kern_scheme : FontInfo.math_kern_scheme;
+  }
 
 type low_radical = horz_box list
 
@@ -451,7 +457,7 @@ let get_left_kern lmmain hgt dpt =
   | LowMathFraction(_, _, _, _)                -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
-  | LowMathParen((_, hL, dL, mkernsL), _, _)   -> make_left_paren_kern hL dL mkernsL
+  | LowMathParen(lpL, _, _)                    -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
   | LowMathUpperLimit(_, (_, _, _, lk, _), _)  -> lk
   | LowMathLowerLimit(_, (_, _, _, lk, _), _)  -> lk
 
@@ -468,7 +474,7 @@ let get_right_kern lmmain hgt dpt =
   | LowMathFraction(_, _, _, _)                -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
-  | LowMathParen(_, (_, hR, dR, mkernsR), _)   -> make_right_paren_kern hR dR mkernsR
+  | LowMathParen(_, lpR, _)                    -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
   | LowMathUpperLimit(_, (_, _, _, _, rk), _)  -> rk
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
@@ -534,7 +540,7 @@ let superscript_baseline_height mathctx h_base d_sup =
 
 (* -- calculates the base correction height and the superscript correction height -- *)
 let superscript_correction_heights mathctx h_supbl h_base d_sup =
-  let l_base = h_supbl -% d_sup in
+  let l_base = h_supbl +% d_sup in
   let l_sup = h_base -% h_supbl in
     (l_base, l_sup)
 
@@ -660,7 +666,7 @@ let convert_math_char mathctx is_big (uchlst : Uchar.t list) mk =
     (mk, wid, hgt, dpt, LowMathGlyph(mathstrinfo, wid, hgt, dpt, otxt), lk, rk)
 
 
-let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk kernfL kernfR =
+let convert_math_char_with_kern mathctx is_big (uchlst : Uchar.t list) mk (kernfL : math_char_kern_func) (kernfR : math_char_kern_func) =
   let mathstrinfo = FontInfo.get_math_string_info mathctx in
   let is_in_display = true (* temporary *) in
   let (otxt, wid, hgt, dpt, mic, _) = FontInfo.get_math_char_info mathctx is_in_display is_big uchlst in
@@ -713,8 +719,8 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathVariantToChar(is_big, uchlst) ->
             convert_math_char mathctx is_big uchlst mk
 
-        | MathVariantToCharWithKern(is_big, uchlst, kernfL, kernfR) ->
-            convert_math_char_with_kern mathctx is_big uchlst mk kernfL kernfR
+        | MathVariantToCharWithKern(is_big, uchlst, mckernfL, mckernfR) ->
+            convert_math_char_with_kern mathctx is_big uchlst mk mckernfL mckernfR
       end
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->  (* TEMPORARY; should extend more *)
@@ -873,8 +879,8 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let (_, hR, dR) = LineBreak.get_natural_metrics hblstparenR in
       let h_whole = [hL; hR] |> List.fold_left Length.max hC in
       let d_whole = [dL; dR] |> List.fold_left Length.min dC in
-      let lpL = (hblstparenL, hL, dL, mkernsL) in
-      let lpR = (hblstparenR, hR, dR, mkernsR) in
+      let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
+      let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
         (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
 
   | MathUpperLimit(mlstB, mlstU) ->
@@ -924,8 +930,15 @@ let horz_fraction_bar mathctx wid =
     HorzPure(PHGFixedGraphics(wid, h_bart, Length.zero, bar_graphics))
 
 
-let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) =
-  FontInfo.get_math_kern mathctx mkernsch corrhgt
+let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) : length =
+(*
+  Format.printf "Math> corrB = %f\n" (Length.to_pdf_point corrhgt);  (* for debug *)
+*)
+  let len = FontInfo.get_math_kern mathctx mkernsch corrhgt in
+(*
+  Format.printf "Math> kern = %f\n" (Length.to_pdf_point len);  (* for debug *)
+*)
+  len
 
 
 let raise_horz r hblst =
@@ -990,11 +1003,16 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
         let l_italic   = rkB.italics_correction in
 (*
-        Format.printf "Math> l_italic = %f\n" (Length.to_pdf_point l_italic);
+        Format.printf "Math> l_italic = %f, l_kernbase = %f, l_kernsup = %f\n" (Length.to_pdf_point l_italic) (Length.to_pdf_point l_kernbase) (Length.to_pdf_point l_kernsup);
 *)
         let kern = l_italic +% l_kernbase +% l_kernsup in
         let hbkern = fixed_empty kern in
-        let hblstsup = List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS] in
+        let hblstsup =
+          List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS]
+(*
+          List.concat [hblstB; raise_horz h_supbl hblstS]
+*)
+        in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
         let hbaccnew =
           match hbspaceopt with
@@ -1133,8 +1151,14 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
         failwith "unsupported; LowMathRadicalWithDegree"  (* temporary *)
 
     | LowMathParen(lpL, lpR, lmE) :: lmmaintail ->
-        let (hblstparenL, _, _, mkernsL) = lpL in
-        let (hblstparenR, _, _, mkernsR) = lpR in
+        let hblstparenL = lpL.lp_main in
+(*
+        let mkernsL = lpL.lp_math_kern_scheme in
+*)
+        let hblstparenR = lpR.lp_main in
+(*
+        let mkernsR = lpR.lp_math_kern_scheme in
+*)
         let hblstE = horz_of_low_math mathctx MathOpen MathClose lmE in
         let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
         let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
