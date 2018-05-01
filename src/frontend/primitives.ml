@@ -322,9 +322,9 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let h1 = fontsize *% 0.3 in
   let h2 = fontsize *% 0.375 in
 
-  let dpt = dpt +% fontsize *% 0.1 in
+  let nonnegdpt = (Length.negate dpt) +% fontsize *% 0.1 in
 
-  let lR = hgt_bar +% dpt in
+  let lR = hgt_bar +% nonnegdpt in
 
   let wid = wM +% w1 +% w2 +% w3 in
   let a1 = (h2 -% h1) /% w1 in
@@ -341,12 +341,12 @@ let default_radical hgt_bar t_bar dpt fontsize color =
       let open GraphicData in
       Graphics.make_fill color [
         GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-          LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
-          LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
-          LineTo(xpos +% wM            , ypos -% dpt +% h1);
-          LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
-          LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
-          LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
+          LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
+          LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
+          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
+          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
+          LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
+          LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
           LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
           LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
         ], Some(LineTo(())))
@@ -354,7 +354,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
     in
       Graphics.singleton grelem
   in
-    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
+    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
 
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =

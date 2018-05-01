@@ -33,9 +33,9 @@ type low_math_pure = math_kind * length * length * length * low_math_atom * left
 
 type low_paren =
   {
-    lp_main : horz_box list;
-    lp_height : length;
-    lp_depth : length;
+    lp_main             : horz_box list;
+    lp_height           : length;
+    lp_depth            : length;
     lp_math_kern_scheme : FontInfo.math_kern_scheme;
   }
 
@@ -648,13 +648,13 @@ let make_paren mathctx paren hgt dpt =
   let fontsize = FontInfo.actual_math_font_size mathctx in
   let mc = FontInfo.get_math_constants mathctx in
   let h_bar = fontsize *% mc.FontFormat.axis_height in
-  let (hblst, kernf) = paren hgt (Length.negate dpt) h_bar fontsize (MathContext.color mathctx) in
+  let (hblst, kernf) = paren hgt dpt h_bar fontsize (MathContext.color mathctx) in
     (hblst, FontInfo.make_dense_math_kern kernf)
 
 
 let make_radical mathctx radical hgt_bar t_bar dpt =
   let fontsize = FontInfo.actual_math_font_size mathctx in
-  let hblst = radical hgt_bar t_bar (Length.negate dpt) fontsize (MathContext.color mathctx) in
+  let hblst = radical hgt_bar t_bar dpt fontsize (MathContext.color mathctx) in
     hblst
 
 
