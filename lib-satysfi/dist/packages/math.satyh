@@ -337,11 +337,12 @@ end = struct
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
     let kerninfo y =
-      let widkern = widparen in
+      let widkern = widparen *' 0.25 in
       let r = 0.7 in
       let gap = length-abs (y -' hgtaxis) in
-        if halflen *' r <' gap then
-          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        let diff = length-min (gap -' halflen *' r) (halflen *' (1. -. r)) in
+        if 0pt <' diff then
+          widkern *' (diff /' (halflen *' (1. -. r)))
         else
           0pt
     in
