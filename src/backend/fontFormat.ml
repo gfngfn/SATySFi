@@ -135,29 +135,50 @@ let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_reg
         extract_registration d
 
 
+module UHt = Hashtbl.Make
+  (struct
+    type t = Uchar.t
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
+
+
+module GHt = Hashtbl.Make
+  (struct
+    type t = glyph_id
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
+
+
 module GlyphIDTable
 : sig
     type t
     val create : int -> t
     val add : Uchar.t -> glyph_id -> t -> unit
     val find_opt : Uchar.t -> t -> glyph_id option
+    val fold_rev : (glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
-    module Ht = Hashtbl.Make
-      (struct
-        type t = Uchar.t
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
 
-    type t = glyph_id Ht.t
+    type t = glyph_id UHt.t * Uchar.t GHt.t
 
-    let create = Ht.create
+    let create n =
+      let ht = UHt.create n in
+      let revht = GHt.create n in
+        (ht, revht)
 
-    let add uch gid gidtbl = Ht.add gidtbl uch gid
+    let add uch gid (ht, revht) =
+      begin
+        UHt.add ht uch gid;
+        GHt.add revht gid uch;
+      end
 
-    let find_opt uch gidtbl =
-      Ht.find_opt gidtbl uch
+    let find_opt uch (ht, _) =
+      UHt.find_opt ht uch
+
+    let fold_rev f init (_, revht) =
+      GHt.fold f revht init
 
   end
 
@@ -173,26 +194,19 @@ module GlyphBBoxTable
   end
 = struct
 
-    module Ht = Hashtbl.Make
-      (struct
-        type t = glyph_id
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
-
-    type t = (per_mille * bbox) Ht.t
+    type t = (per_mille * bbox) GHt.t
 
     let create =
-      Ht.create
+      GHt.create
 
     let add gid pair gmtbl =
-      Ht.add gmtbl gid pair
+      GHt.add gmtbl gid pair
 
     let find_opt gid gmtbl =
-      Ht.find_opt gmtbl gid
+      GHt.find_opt gmtbl gid
 
     let fold f init gmtbl =
-      Ht.fold f gmtbl init
+      GHt.fold f gmtbl init
 
   end
 
@@ -210,18 +224,16 @@ module LigatureTable
     val match_prefix : glyph_id list -> t -> ligature_matching
   end
 = struct
-    module Ht = Hashtbl.Make
-      (struct
-        type t = glyph_id
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
 
-    type t = ((glyph_id list * glyph_id) list) Ht.t
+    type entry = (glyph_id list * glyph_id) list
+      (* -- pairs of the tail GID array and the GID of the resulting ligature -- *)
 
-    let create = Ht.create
+    type t = entry GHt.t
 
-    let add gid liginfolst ligtbl = Ht.add ligtbl gid liginfolst
+    let create = GHt.create
+
+    let add gid liginfolst ligtbl =
+      GHt.add ligtbl gid liginfolst
 
     let rec prefix lst1 lst2 =
       match (lst1, lst2) with
@@ -242,7 +254,7 @@ module LigatureTable
       | []                -> NoMatch
       | gidfst :: gidtail ->
           begin
-            match Ht.find_opt ligtbl gidfst with
+            match GHt.find_opt ligtbl gidfst with
             | Some(liginfolst) -> lookup liginfolst gidtail
             | None             -> NoMatch
           end
@@ -450,11 +462,11 @@ type encoding =
   | PredefinedEncoding of predefined_encoding
   | CustomEncoding     of predefined_encoding * differences
 
-type cmap_resource = (string resource) ref  (* temporary;*)
-
 type cmap =
   | PredefinedCMap of string
+(*
   | CMapFile       of cmap_resource
+*)
 
 type matrix = float * float * float * float
 
@@ -912,8 +924,9 @@ type cid_font =
 let pdfobject_of_cmap pdf cmap =
   match cmap with
   | PredefinedCMap(cmapname) -> Pdf.Name("/" ^ cmapname)
+(*
   | CMapFile(res)            -> failwith "cmap file for Type 0 fonts; remains to be implemented."
-
+*)
 
 let pdfobject_of_bbox (PerMille(xmin), PerMille(ymin), PerMille(xmax), PerMille(ymax)) =
   Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
@@ -925,7 +938,9 @@ module Type0
         base_font        : string;
         encoding         : cmap;
         descendant_fonts : cid_font;  (* -- represented as a singleton list in PDF -- *)
-        to_unicode       : cmap_resource option;
+(*
+        to_unicode       : to_unicode_cmap option;
+*)
       }
 
 
@@ -934,7 +949,9 @@ module Type0
         base_font        = fontname;
         encoding         = cmap;
         descendant_fonts = cidfont;
+(*
         to_unicode       = toucopt;
+*)
       }
 
 
@@ -980,6 +997,10 @@ module Type0
         ) []
       in
         Pdf.Array(arr)
+
+
+    let pdfobject_of_to_unicode_cmap (pdf : Pdf.t) (dcdr : decoder) =
+      Pdf.Null  (* temporary *)
 
 
     let add_cid_type_0 pdf cidty0font dcdr =
@@ -1059,12 +1080,14 @@ module Type0
         | CIDFontType0(cidty0font) -> add_cid_type_0 pdf cidty0font dcdr
         | CIDFontType2(cidty2font) -> add_cid_type_2 pdf cidty2font dcdr
       in
+      let pdfobjtouc = pdfobject_of_to_unicode_cmap pdf dcdr in
         Pdf.Dictionary[
           ("/Type"           , Pdf.Name("/Font"));
           ("/Subtype"        , Pdf.Name("/Type0"));
           ("/Encoding"       , pdfobject_of_cmap pdf cmap);
           ("/BaseFont"       , Pdf.Name("/" ^ base_font_ty0));  (* -- can be arbitrary name -- *)
           ("/DescendantFonts", Pdf.Array[Pdf.Indirect(irdescend)]);
+          ("/ToUnicode"      , pdfobjtouc);
         ]
 
   end

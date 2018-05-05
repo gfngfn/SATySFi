@@ -39,7 +39,9 @@ type 'a resource =
 
 type cmap =
   | PredefinedCMap of string
+(*
   | CMapFile       of (string resource) ref  (* temporary;*)
+*)
 (*
 module Type1 : sig
   type font
