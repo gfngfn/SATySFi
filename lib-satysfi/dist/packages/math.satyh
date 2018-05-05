@@ -16,9 +16,16 @@ module Math : sig
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
   direct \mathrel : [math] math-cmd
+  direct \mathop : [math] math-cmd
+  direct \mathprefix : [math] math-cmd
+  direct \mathpunct : [math] math-cmd
 
   direct \math-style : [math-char-class; math] math-cmd
   direct \mathrm : [math] math-cmd
+  direct \mathbf : [math] math-cmd
+  direct \mathcal : [math] math-cmd
+  direct \mathfrak : [math] math-cmd
+  direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
 
   direct \paren : [math] math-cmd
@@ -61,7 +68,7 @@ module Math : sig
   direct \Mu      : [] math-cmd
   direct \Nu      : [] math-cmd
   direct \Xi      : [] math-cmd
-  direct \O       : [] math-cmd
+  direct \Omicron : [] math-cmd
   direct \Pi      : [] math-cmd
   direct \Rho     : [] math-cmd
   direct \Sigma   : [] math-cmd
@@ -86,7 +93,7 @@ module Math : sig
   direct \mu      : [] math-cmd
   direct \nu      : [] math-cmd
   direct \xi      : [] math-cmd
-  direct \o       : [] math-cmd
+  direct \omicron : [] math-cmd
   direct \pi      : [] math-cmd
   direct \rho     : [] math-cmd
   direct \sigma   : [] math-cmd
@@ -143,14 +150,27 @@ end = struct
   let-math \mathord = math-group MathOrd MathOrd
   let-math \mathbin = math-group MathBin MathBin
   let-math \mathrel = math-group MathRel MathRel
+  let-math \mathop = math-group MathOp MathOp
+  let-math \mathprefix = math-group MathPrefix MathPrefix
+  let-math \mathpunct = math-group MathPunct MathPunct
+
+  let-math \math-style sty m =
+    math-char-class sty m
+
+  let-math \mathrm m = ${\math-style!(MathRoman){#m}}
+  let-math \mathbf m = ${\math-style!(MathBoldRoman){#m}}
+  let-math \mathcal m = ${\math-style!(MathScript){#m}}
+  let-math \mathfrak m = ${\math-style!(MathFraktur){#m}}
+  let-math \mathbb m = ${\math-style!(MathDoubleStruck){#m}}
+  let-math \bm m = ${\math-style!(MathBoldItalic){#m}}
 
   let-block ctx +math math =
     let ib = embed-math ctx math in
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-  let math-ord-char cp =
-    math-char MathOrd (string-unexplode [cp])
+%  let math-ord-char cp =
+%    math-char MathOrd (string-unexplode [cp])
 
 
   let math-list lst =
@@ -207,7 +227,7 @@ end = struct
   let-math \mu       = greek-lowercase 0x1D707 0x1D741
   let-math \nu       = greek-lowercase 0x1D708 0x1D742
   let-math \xi       = greek-lowercase 0x1D709 0x1D743
-  let-math \o        = greek-lowercase 0x1D70A 0x1D744
+  let-math \omicron  = greek-lowercase 0x1D70A 0x1D744
   let-math \pi       = greek-lowercase 0x1D70B 0x1D745
   let-math \rho      = greek-lowercase 0x1D70C 0x1D746
   let-math \sigma    = greek-lowercase 0x1D70E 0x1D748
@@ -232,7 +252,7 @@ end = struct
   let-math \Mu       = greek-uppercase 0x1D6ED 0x1D727 0x039C 0x1D6B3
   let-math \Nu       = greek-uppercase 0x1D6EE 0x1D728 0x039D 0x1D6B4
   let-math \Xi       = greek-uppercase 0x1D6EF 0x1D729 0x039E 0x1D6B5
-  let-math \O        = greek-uppercase 0x1D6F0 0x1D72A 0x039F 0x1D6B6
+  let-math \Omicron  = greek-uppercase 0x1D6F0 0x1D72A 0x039F 0x1D6B6
   let-math \Pi       = greek-uppercase 0x1D6F1 0x1D72B 0x03A0 0x1D6B7
   let-math \Rho      = greek-uppercase 0x1D6F2 0x1D72C 0x03A1 0x1D6B8
   let-math \Sigma    = greek-uppercase 0x1D6F4 0x1D72E 0x03A3 0x1D6BA
@@ -675,14 +695,5 @@ let-math \brace =
 
   let-math \overwrite f x v =
     ${#f \sqbracket{#x \mapsto #v}}
-
-  let-math \math-style sty m =
-    math-char-class sty m
-
-  let-math \mathrm m =
-    ${\math-style!(MathRoman){#m}}
-
-  let-math \bm m =
-    ${\math-style!(MathBoldItalic){#m}}
 
 end
