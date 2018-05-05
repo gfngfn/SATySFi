@@ -67,11 +67,14 @@ let needs_another_trial () =
 
 
 let achieve_count_max () =
-  print_endline ("  some cross references were not solved.")
+  print_endline ("  could not reach to fixpoint when resolving cross references.")
 
 
-let achieve_fixpoint () =
-  print_endline ("  all cross references were solved.")
+let achieve_fixpoint unresolved_crossrefs =
+  if unresolved_crossrefs = [] then
+    print_endline ("  all cross references were solved.")
+  else
+    print_endline ("  some cross references were not solved: " ^ String.concat " " unresolved_crossrefs ^ ".")
 
 
 let end_output file_name_out =

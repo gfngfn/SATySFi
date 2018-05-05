@@ -736,6 +736,7 @@ let make_environments () =
         ("script-guard"            , ~% (tSCR @-> tIB @-> tIB)                       , lambda2 (fun vscr vh -> BackendScriptGuard(vscr, vh)));
         ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
         ("register-cross-reference", ~% (tS @-> tS @-> tU)                           , lambda2 (fun vk vv -> BackendRegisterCrossReference(vk, vv)));
+        ("probe-cross-reference"     , ~% (tS @-> (tOPT tS))                         , lambda1 (fun vk -> BackendProbeCrossReference(vk)));
         ("get-cross-reference"     , ~% (tS @-> (tOPT tS))                           , lambda1 (fun vk -> BackendGetCrossReference(vk)));
         ("hook-page-break"         , ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)           , lambda1 (fun vhook -> BackendHookPageBreak(vhook)));
       ]

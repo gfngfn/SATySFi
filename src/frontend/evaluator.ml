@@ -1117,6 +1117,14 @@ and interpret env ast =
         UnitConstant
       end
 
+  | BackendProbeCrossReference(astk) ->
+      let k = interpret_string env astk in
+      begin
+        match CrossRef.probe k with
+        | None    -> Constructor("None", UnitConstant)
+        | Some(v) -> Constructor("Some", StringConstant(v))
+      end
+
   | BackendGetCrossReference(astk) ->
       let k = interpret_string env astk in
       begin

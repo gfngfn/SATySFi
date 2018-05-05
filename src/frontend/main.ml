@@ -242,9 +242,9 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
                           Logging.end_output file_path_out;
                         end
 
-                    | CrossRef.CanTerminate ->
+                    | CrossRef.CanTerminate unresolved_crossrefs ->
                         begin
-                          Logging.achieve_fixpoint ();
+                          Logging.achieve_fixpoint unresolved_crossrefs;
                           output_pdf pdf;
                           Logging.end_output file_path_out;
                         end
