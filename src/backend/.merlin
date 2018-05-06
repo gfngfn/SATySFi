@@ -1,4 +1,4 @@
-PKG result core ctypes bitv bateries yojson camlimages
+PKG result core ctypes bitv bateries yojson camlimages camlpdf otfm
 S ./
 B ../../_build/src/backend/
 S ../../external/otfm/src/

@@ -135,29 +135,64 @@ let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_reg
         extract_registration d
 
 
+module UHt = Hashtbl.Make
+  (struct
+    type t = Uchar.t
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
+
+
+module GHt = Hashtbl.Make
+  (struct
+    type t = glyph_id
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
+
+
 module GlyphIDTable
 : sig
     type t
     val create : int -> t
     val add : Uchar.t -> glyph_id -> t -> unit
     val find_opt : Uchar.t -> t -> glyph_id option
+    val find_rev_opt : glyph_id -> t -> Uchar.t option
+    val fold_rev : (glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
-    module Ht = Hashtbl.Make
-      (struct
-        type t = Uchar.t
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
 
-    type t = glyph_id Ht.t
+    type t = glyph_id UHt.t * Uchar.t GHt.t
 
-    let create = Ht.create
+    let create n =
+      let ht = UHt.create n in
+      let revht = GHt.create n in
+        (ht, revht)
 
-    let add uch gid gidtbl = Ht.add gidtbl uch gid
+    let add uch gid (ht, revht) =
+      begin
+        UHt.add ht uch gid;
+        match GHt.find_opt revht gid with
+        | None ->
+            GHt.add revht gid uch
 
-    let find_opt uch gidtbl =
-      Ht.find_opt gidtbl uch
+        | Some(uchpre) ->
+            begin
+              Format.printf "FontFormat> warning:\n";
+              Format.printf "FontFormat> multiple Unicode code points (%d, %d)\n" (Uchar.to_int uchpre) (Uchar.to_int uch);
+              Format.printf "FontFormat> are mapped to the same GID %d.\n" gid
+                (* temporary; should log the warning in a more sophisticated manner *)
+            end
+      end
+
+    let find_opt uch (ht, _) =
+      UHt.find_opt ht uch
+
+    let find_rev_opt gid (_, revht) =
+      GHt.find_opt revht gid
+
+    let fold_rev f init (_, revht) =
+      GHt.fold f revht init
 
   end
 
@@ -173,26 +208,19 @@ module GlyphBBoxTable
   end
 = struct
 
-    module Ht = Hashtbl.Make
-      (struct
-        type t = glyph_id
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
-
-    type t = (per_mille * bbox) Ht.t
+    type t = (per_mille * bbox) GHt.t
 
     let create =
-      Ht.create
+      GHt.create
 
     let add gid pair gmtbl =
-      Ht.add gmtbl gid pair
+      GHt.add gmtbl gid pair
 
     let find_opt gid gmtbl =
-      Ht.find_opt gmtbl gid
+      GHt.find_opt gmtbl gid
 
     let fold f init gmtbl =
-      Ht.fold f gmtbl init
+      GHt.fold f gmtbl init
 
   end
 
@@ -207,21 +235,39 @@ module LigatureTable
     type t
     val create : int -> t
     val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
+    val fold_rev : (glyph_id -> glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
     val match_prefix : glyph_id list -> t -> ligature_matching
   end
 = struct
-    module Ht = Hashtbl.Make
-      (struct
-        type t = glyph_id
-        let equal = (=)
-        let hash = Hashtbl.hash
-      end)
 
-    type t = ((glyph_id list * glyph_id) list) Ht.t
+    type entry = (glyph_id list * glyph_id) list
+      (* -- pairs of the tail GID array and the GID of the resulting ligature -- *)
 
-    let create = Ht.create
+    type t = entry GHt.t * (glyph_id list) GHt.t
 
-    let add gid liginfolst ligtbl = Ht.add ligtbl gid liginfolst
+    let create n =
+      let htmain = GHt.create n in
+      let htrev = GHt.create n in
+        (htmain, htrev)
+
+    let add gid liginfolst (htmain, htrev) =
+      begin
+        GHt.add htmain gid liginfolst;
+        liginfolst |> List.iter (fun (gidtail, gidlig) ->
+          match GHt.find_opt htrev gidlig with
+          | None ->
+              GHt.add htrev gidlig (gid :: gidtail)
+
+          | Some(_) ->
+              begin
+                Format.printf "FontFormat> GID %d is used as more than one kind of ligatures.\n" gidlig;
+                  (* temporary; should log the warning in a more sophisticated manner *)
+              end
+        );
+      end
+
+    let fold_rev f init (_, htrev) =
+      GHt.fold f htrev init
 
     let rec prefix lst1 lst2 =
       match (lst1, lst2) with
@@ -237,12 +283,12 @@ module LigatureTable
           | None          -> lookup liginfotail gidlst
           | Some(gidrest) -> MatchExactly(gidlig, gidrest)
 
-    let match_prefix gidlst ligtbl =
+    let match_prefix gidlst (mainht, _) =
       match gidlst with
       | []                -> NoMatch
       | gidfst :: gidtail ->
           begin
-            match Ht.find_opt ligtbl gidfst with
+            match GHt.find_opt mainht gidfst with
             | Some(liginfolst) -> lookup liginfolst gidtail
             | None             -> NoMatch
           end
@@ -450,11 +496,11 @@ type encoding =
   | PredefinedEncoding of predefined_encoding
   | CustomEncoding     of predefined_encoding * differences
 
-type cmap_resource = (string resource) ref  (* temporary;*)
-
 type cmap =
   | PredefinedCMap of string
+(*
   | CMapFile       of cmap_resource
+*)
 
 type matrix = float * float * float * float
 
@@ -912,11 +958,72 @@ type cid_font =
 let pdfobject_of_cmap pdf cmap =
   match cmap with
   | PredefinedCMap(cmapname) -> Pdf.Name("/" ^ cmapname)
+(*
   | CMapFile(res)            -> failwith "cmap file for Type 0 fonts; remains to be implemented."
-
+*)
 
 let pdfobject_of_bbox (PerMille(xmin), PerMille(ymin), PerMille(xmax), PerMille(ymax)) =
   Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
+
+
+module ToUnicodeCMap
+: sig
+    type t
+    val create : unit -> t
+    val add_single : t -> glyph_id -> Uchar.t list -> unit
+    val stringify : t -> string
+  end
+= struct
+
+    type t = ((Uchar.t list) GHt.t) array
+
+    let create () =
+      Array.init 1024 (fun _ -> GHt.create 32)
+
+    let add_single touccmap gid uchlst =
+      let i = gid / 64 in
+      GHt.add (touccmap.(i)) gid uchlst
+
+    let stringify touccmap =
+      let prefix =
+          "/CIDInit /ProcSet findresource begin "
+        ^ "12 dict begin begincmap /CIDSystemInfo << "
+        ^ "/Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def "
+        ^ "/CMapName /Adobe-Identity-UCS def /CMapType 2 def "
+        ^ "1 begincodespacerange <0000> <FFFF> endcodespacerange "
+      in
+      let postfix =
+        "endcmap CMapName currentdict /CMap defineresource pop end end"
+      in
+      let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
+      Array.iteri (fun i ht ->
+        let ht = touccmap.(i) in
+        let num = GHt.length ht in
+        if num <= 0 then
+          ()
+        else
+          begin
+            Printf.bprintf buf "%d beginbfchar" num;
+            GHt.iter (fun gid uchlst ->
+              let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
+(*
+              Format.printf "FontFormat> GID %04X -> %s\n" gid dst;  (* for debug *)
+*)
+              Printf.bprintf buf "<%04X><%s>" gid dst
+            ) ht;
+            Printf.bprintf buf "endbfchar ";
+          end
+      ) touccmap;
+      let strmain = Buffer.contents buf in
+      let res = prefix ^ strmain ^ postfix in
+(*
+      Format.printf "FontFormat> result:\n";  (* for debug *)
+      Format.printf "%s" res;  (* for debug *)
+*)
+      res
+
+
+  end
 
 
 module Type0
@@ -925,7 +1032,9 @@ module Type0
         base_font        : string;
         encoding         : cmap;
         descendant_fonts : cid_font;  (* -- represented as a singleton list in PDF -- *)
-        to_unicode       : cmap_resource option;
+(*
+        to_unicode       : to_unicode_cmap option;
+*)
       }
 
 
@@ -934,7 +1043,9 @@ module Type0
         base_font        = fontname;
         encoding         = cmap;
         descendant_fonts = cidfont;
+(*
         to_unicode       = toucopt;
+*)
       }
 
 
@@ -980,6 +1091,45 @@ module Type0
         ) []
       in
         Pdf.Array(arr)
+
+
+    let pdfobject_of_to_unicode_cmap (pdf : Pdf.t) (dcdr : decoder) =
+      let gidtbl = dcdr.glyph_id_table in
+      let ligtbl = dcdr.ligature_table in
+      let touccmap = ToUnicodeCMap.create () in
+
+      gidtbl |> GlyphIDTable.fold_rev (fun gid uch () ->
+        ToUnicodeCMap.add_single touccmap gid [uch]
+      ) ();
+
+      ligtbl |> LigatureTable.fold_rev (fun gidlig gidlst () ->
+        try
+          let uchlst =
+            gidlst |> List.map (fun gid ->
+              match gidtbl |> GlyphIDTable.find_rev_opt gid with
+              | None      -> raise Exit
+              | Some(uch) -> uch
+            )
+          in
+(*
+          let pp_uchar_list fmt uchlst = Format.fprintf fmt "%s" (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) in  (* for debug *)
+          let () = Format.printf "FontFormat> add ligature GID %04X -> [%a](debug)\n" gidlig pp_uchar_list uchlst in  (* for debug *)
+*)
+          ToUnicodeCMap.add_single touccmap gidlig uchlst
+        with
+        | Exit -> ()
+      ) ();
+
+      let str = ToUnicodeCMap.stringify touccmap in
+      let iobytes = Pdfio.bytes_of_string str in
+      let stream = Pdf.Got(iobytes) in
+      let len = Pdfio.bytes_size iobytes in
+      let objstream = Pdf.Stream(ref (Pdf.Dictionary[("/Length", Pdf.Integer(len))], stream)) in
+
+      Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate objstream;
+
+      let ir = Pdf.addobj pdf objstream in
+      Pdf.Indirect(ir)
 
 
     let add_cid_type_0 pdf cidty0font dcdr =
@@ -1059,12 +1209,14 @@ module Type0
         | CIDFontType0(cidty0font) -> add_cid_type_0 pdf cidty0font dcdr
         | CIDFontType2(cidty2font) -> add_cid_type_2 pdf cidty2font dcdr
       in
+      let pdfobjtouc = pdfobject_of_to_unicode_cmap pdf dcdr in
         Pdf.Dictionary[
           ("/Type"           , Pdf.Name("/Font"));
           ("/Subtype"        , Pdf.Name("/Type0"));
           ("/Encoding"       , pdfobject_of_cmap pdf cmap);
           ("/BaseFont"       , Pdf.Name("/" ^ base_font_ty0));  (* -- can be arbitrary name -- *)
           ("/DescendantFonts", Pdf.Array[Pdf.Indirect(irdescend)]);
+          ("/ToUnicode"      , pdfobjtouc);
         ]
 
   end
