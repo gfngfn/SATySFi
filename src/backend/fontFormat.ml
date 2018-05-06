@@ -157,6 +157,7 @@ module GlyphIDTable
     val create : int -> t
     val add : Uchar.t -> glyph_id -> t -> unit
     val find_opt : Uchar.t -> t -> glyph_id option
+    val find_rev_opt : glyph_id -> t -> Uchar.t option
     val fold_rev : (glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
@@ -186,6 +187,9 @@ module GlyphIDTable
 
     let find_opt uch (ht, _) =
       UHt.find_opt ht uch
+
+    let find_rev_opt gid (_, revht) =
+      GHt.find_opt revht gid
 
     let fold_rev f init (_, revht) =
       GHt.fold f revht init
@@ -231,6 +235,7 @@ module LigatureTable
     type t
     val create : int -> t
     val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
+    val fold_rev : (glyph_id -> glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
     val match_prefix : glyph_id list -> t -> ligature_matching
   end
 = struct
@@ -238,12 +243,31 @@ module LigatureTable
     type entry = (glyph_id list * glyph_id) list
       (* -- pairs of the tail GID array and the GID of the resulting ligature -- *)
 
-    type t = entry GHt.t
+    type t = entry GHt.t * (glyph_id list) GHt.t
 
-    let create = GHt.create
+    let create n =
+      let htmain = GHt.create n in
+      let htrev = GHt.create n in
+        (htmain, htrev)
 
-    let add gid liginfolst ligtbl =
-      GHt.add ligtbl gid liginfolst
+    let add gid liginfolst (htmain, htrev) =
+      begin
+        GHt.add htmain gid liginfolst;
+        liginfolst |> List.iter (fun (gidtail, gidlig) ->
+          match GHt.find_opt htrev gidlig with
+          | None ->
+              GHt.add htrev gidlig (gid :: gidtail)
+
+          | Some(_) ->
+              begin
+                Format.printf "FontFormat> GID %d is used as more than one kind of ligatures.\n" gidlig;
+                  (* temporary; should log the warning in a more sophisticated manner *)
+              end
+        );
+      end
+
+    let fold_rev f init (_, htrev) =
+      GHt.fold f htrev init
 
     let rec prefix lst1 lst2 =
       match (lst1, lst2) with
@@ -259,12 +283,12 @@ module LigatureTable
           | None          -> lookup liginfotail gidlst
           | Some(gidrest) -> MatchExactly(gidlig, gidrest)
 
-    let match_prefix gidlst ligtbl =
+    let match_prefix gidlst (mainht, _) =
       match gidlst with
       | []                -> NoMatch
       | gidfst :: gidtail ->
           begin
-            match GHt.find_opt ligtbl gidfst with
+            match GHt.find_opt mainht gidfst with
             | Some(liginfolst) -> lookup liginfolst gidtail
             | None             -> NoMatch
           end
@@ -981,13 +1005,22 @@ module ToUnicodeCMap
           begin
             Printf.bprintf buf "%d beginbfchar" num;
             GHt.iter (fun gid uchlst ->
-              Printf.bprintf buf "<%04x><%s>" gid (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst))
+              let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
+(*
+              Format.printf "FontFormat> GID %04X -> %s\n" gid dst;  (* for debug *)
+*)
+              Printf.bprintf buf "<%04X><%s>" gid dst
             ) ht;
             Printf.bprintf buf "endbfchar ";
           end
       ) touccmap;
       let strmain = Buffer.contents buf in
-      prefix ^ strmain ^ postfix
+      let res = prefix ^ strmain ^ postfix in
+(*
+      Format.printf "FontFormat> result:\n";  (* for debug *)
+      Format.printf "%s" res;  (* for debug *)
+*)
+      res
 
 
   end
@@ -1064,14 +1097,29 @@ module Type0
       let gidtbl = dcdr.glyph_id_table in
       let ligtbl = dcdr.ligature_table in
       let touccmap = ToUnicodeCMap.create () in
-      let () =
-        gidtbl |> GlyphIDTable.fold_rev (fun gid uch () ->
-          ToUnicodeCMap.add_single touccmap gid [uch]
-        ) ()
-      in
-      let () =
-        ()  (* temporary; should implement the iteration on the ligature table *)
-      in
+
+      gidtbl |> GlyphIDTable.fold_rev (fun gid uch () ->
+        ToUnicodeCMap.add_single touccmap gid [uch]
+      ) ();
+
+      ligtbl |> LigatureTable.fold_rev (fun gidlig gidlst () ->
+        try
+          let uchlst =
+            gidlst |> List.map (fun gid ->
+              match gidtbl |> GlyphIDTable.find_rev_opt gid with
+              | None      -> raise Exit
+              | Some(uch) -> uch
+            )
+          in
+(*
+          let pp_uchar_list fmt uchlst = Format.fprintf fmt "%s" (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) in  (* for debug *)
+          let () = Format.printf "FontFormat> add ligature GID %04X -> [%a](debug)\n" gidlig pp_uchar_list uchlst in  (* for debug *)
+*)
+          ToUnicodeCMap.add_single touccmap gidlig uchlst
+        with
+        | Exit -> ()
+      ) ();
+
       let str = ToUnicodeCMap.stringify touccmap in
       let iobytes = Pdfio.bytes_of_string str in
       let stream = Pdf.Got(iobytes) in
