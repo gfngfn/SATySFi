@@ -171,7 +171,17 @@ module GlyphIDTable
     let add uch gid (ht, revht) =
       begin
         UHt.add ht uch gid;
-        GHt.add revht gid uch;
+        match GHt.find_opt revht gid with
+        | None ->
+            GHt.add revht gid uch
+
+        | Some(uchpre) ->
+            begin
+              Format.printf "FontFormat> warning:\n";
+              Format.printf "FontFormat> multiple Unicode code points (%d, %d)\n" (Uchar.to_int uchpre) (Uchar.to_int uch);
+              Format.printf "FontFormat> are mapped to the same GID %d.\n" gid
+                (* temporary; should log the warning in a more sophisticated manner *)
+            end
       end
 
     let find_opt uch (ht, _) =
@@ -932,6 +942,57 @@ let pdfobject_of_bbox (PerMille(xmin), PerMille(ymin), PerMille(xmax), PerMille(
   Pdf.Array[Pdf.Integer(xmin); Pdf.Integer(ymin); Pdf.Integer(xmax); Pdf.Integer(ymax)]
 
 
+module ToUnicodeCMap
+: sig
+    type t
+    val create : unit -> t
+    val add_single : t -> glyph_id -> Uchar.t list -> unit
+    val stringify : t -> string
+  end
+= struct
+
+    type t = ((Uchar.t list) GHt.t) array
+
+    let create () =
+      Array.init 1024 (fun _ -> GHt.create 32)
+
+    let add_single touccmap gid uchlst =
+      let i = gid / 64 in
+      GHt.add (touccmap.(i)) gid uchlst
+
+    let stringify touccmap =
+      let prefix =
+          "/CIDInit /ProcSet findresource begin "
+        ^ "12 dict begin begincmap /CIDSystemInfo << "
+        ^ "/Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def "
+        ^ "/CMapName /Adobe-Identity-UCS def /CMapType 2 def "
+        ^ "1 begincodespacerange <0000> <FFFF> endcodespacerange "
+      in
+      let postfix =
+        "endcmap CMapName currentdict /CMap defineresource pop end end"
+      in
+      let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
+      Array.iteri (fun i ht ->
+        let ht = touccmap.(i) in
+        let num = GHt.length ht in
+        if num <= 0 then
+          ()
+        else
+          begin
+            Printf.bprintf buf "%d beginbfchar" num;
+            GHt.iter (fun gid uchlst ->
+              Printf.bprintf buf "<%04x><%s>" gid (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst))
+            ) ht;
+            Printf.bprintf buf "endbfchar ";
+          end
+      ) touccmap;
+      let strmain = Buffer.contents buf in
+      prefix ^ strmain ^ postfix
+
+
+  end
+
+
 module Type0
 = struct
     type font = {
@@ -1000,7 +1061,27 @@ module Type0
 
 
     let pdfobject_of_to_unicode_cmap (pdf : Pdf.t) (dcdr : decoder) =
-      Pdf.Null  (* temporary *)
+      let gidtbl = dcdr.glyph_id_table in
+      let ligtbl = dcdr.ligature_table in
+      let touccmap = ToUnicodeCMap.create () in
+      let () =
+        gidtbl |> GlyphIDTable.fold_rev (fun gid uch () ->
+          ToUnicodeCMap.add_single touccmap gid [uch]
+        ) ()
+      in
+      let () =
+        ()  (* temporary; should implement the iteration on the ligature table *)
+      in
+      let str = ToUnicodeCMap.stringify touccmap in
+      let iobytes = Pdfio.bytes_of_string str in
+      let stream = Pdf.Got(iobytes) in
+      let len = Pdfio.bytes_size iobytes in
+      let objstream = Pdf.Stream(ref (Pdf.Dictionary[("/Length", Pdf.Integer(len))], stream)) in
+
+      Pdfcodec.encode_pdfstream pdf Pdfcodec.Flate objstream;
+
+      let ir = Pdf.addobj pdf objstream in
+      Pdf.Indirect(ir)
 
 
     let add_cid_type_0 pdf cidty0font dcdr =
