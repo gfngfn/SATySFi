@@ -91,7 +91,9 @@ val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
 val get_glyph_metrics : decoder -> glyph_id -> metrics
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
+(*
 val adobe_japan1 : cid_system_info
+*)
 val adobe_identity : cid_system_info
 
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
