@@ -1129,14 +1129,22 @@ module Type0
       Pdf.Indirect(ir)
 
 
-    let add_cid_type_0 pdf cidty0font dcdr =
+    (* --
+       pdfobject_of_cid_type_0:
+         returns a descendant font dictionary of Type 0 CIDFont as an indirect reference
+       -- *)
+    let pdfobject_of_cid_type_0 pdf cidty0font dcdr : Pdf.pdfobject =
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
       let objdescr = pdfobject_of_font_descriptor pdf fontdescr base_font (FontFile3("OpenType")) in
-      let pmoptdw = option_map (per_mille dcdr) cidty0font.CIDFontType0.dw in
       let objwarr = pdfobject_of_width_array pdf dcdr in
-      let pmpairoptdw2 = option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b)) cidty0font.CIDFontType0.dw2 in
+      let pmoptdw =
+        cidty0font.CIDFontType0.dw |> option_map (per_mille dcdr)
+      in
+      let pmpairoptdw2 =
+        cidty0font.CIDFontType0.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
+      in
       let objdescend =
         Pdf.Dictionary[
           ("/Type"          , Pdf.Name("/Font"));
@@ -1151,9 +1159,14 @@ module Type0
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
-        irdescend
+      Pdf.Indirect(irdescend)
 
-    let add_cid_type_2 pdf cidty2font dcdr =
+
+    (* --
+       pdfobject_of_cid_type_2:
+         returns a descendant font dictionary of Type 2 CIDFont as an indirect reference
+       -- *)
+    let pdfobject_of_cid_type_2 pdf cidty2font dcdr : Pdf.pdfobject =
       let cidsysinfo = cidty2font.CIDFontType2.cid_system_info in
       let base_font  = cidty2font.CIDFontType2.base_font in
       let fontdescr  = cidty2font.CIDFontType2.font_descriptor in
@@ -1165,20 +1178,16 @@ module Type0
           FontFile3("OpenType")
       in
       let objdescr = pdfobject_of_font_descriptor pdf fontdescr base_font font_file in
-      let pdfobject_cid_to_gid_map =
+      let objcidtogidmap =
         match cidty2font.CIDFontType2.cid_to_gid_map with
         | CIDToGIDIdentity -> Pdf.Name("/Identity")
         | _                -> failwith "/CIDToGIDMap other than /Identity; remains to be implemented."  (* temporary *)
       in
       let dwpmopt =
-        match cidty2font.CIDFontType2.dw with
-        | None     -> None
-        | Some(dw) -> Some(per_mille dcdr dw)
+        cidty2font.CIDFontType2.dw |> option_map (fun dw -> per_mille dcdr dw)
       in  (* -- per mille -- *)
       let dw2pmpairopt =
-        match cidty2font.CIDFontType2.dw2 with
-        | None         -> None
-        | Some((a, b)) -> Some((per_mille dcdr a, per_mille dcdr b))
+        cidty2font.CIDFontType2.dw2 |> option_map (fun (a, b) -> (per_mille dcdr a, per_mille dcdr b))
       in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let objdescend =
@@ -1191,22 +1200,22 @@ module Type0
           ("/DW"            , of_per_mille_opt dwpmopt);
           ("/W"             , objwarr);
           ("/DW2"           , of_per_mille_pair_opt dw2pmpairopt);
-          ("/CIDToGIDMap"   , pdfobject_cid_to_gid_map)
+          ("/CIDToGIDMap"   , objcidtogidmap);
             (* should add more; /W2 *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
-      irdescend
+      Pdf.Indirect(irdescend)
 
 
     let to_pdfdict pdf ty0font dcdr =
       let cidfont       = ty0font.descendant_fonts in
       let base_font_ty0 = ty0font.base_font in
       let cmap          = ty0font.encoding in
-      let irdescend =
+      let objdescend =
         match cidfont with
-        | CIDFontType0(cidty0font) -> add_cid_type_0 pdf cidty0font dcdr
-        | CIDFontType2(cidty2font) -> add_cid_type_2 pdf cidty2font dcdr
+        | CIDFontType0(cidty0font) -> pdfobject_of_cid_type_0 pdf cidty0font dcdr
+        | CIDFontType2(cidty2font) -> pdfobject_of_cid_type_2 pdf cidty2font dcdr
       in
       let pdfobjtouc = pdfobject_of_to_unicode_cmap pdf dcdr in
         Pdf.Dictionary[
@@ -1214,7 +1223,7 @@ module Type0
           ("/Subtype"        , Pdf.Name("/Type0"));
           ("/Encoding"       , pdfobject_of_cmap pdf cmap);
           ("/BaseFont"       , Pdf.Name("/" ^ base_font_ty0));  (* -- can be arbitrary name -- *)
-          ("/DescendantFonts", Pdf.Array[Pdf.Indirect(irdescend)]);
+          ("/DescendantFonts", Pdf.Array[objdescend]);
           ("/ToUnicode"      , pdfobjtouc);
         ]
 
