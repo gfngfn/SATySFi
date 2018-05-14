@@ -49,6 +49,8 @@ module Math : sig
 
   direct \le     : [] math-cmd
   direct \ge     : [] math-cmd
+  direct \in     : [] math-cmd
+
   direct \equiv  : [] math-cmd
   direct \neq    : [] math-cmd
   direct \simeq  : [] math-cmd
