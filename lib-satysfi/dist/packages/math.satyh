@@ -63,6 +63,14 @@ module Math : sig
   direct \max : [] math-cmd
   direct \min : [] math-cmd
 
+  direct \wedge : [] math-cmd
+  direct \vee : [] math-cmd
+  direct \rightarrow : [] math-cmd
+  direct \leftarrow : [] math-cmd
+  direct \leftrightarrow : [] math-cmd
+  direct \forall : [] math-cmd
+  direct \exists : [] math-cmd
+
 
   direct \Alpha   : [] math-cmd
   direct \Beta    : [] math-cmd
@@ -300,6 +308,15 @@ end = struct
 
   let-math \sum = math-big-char MathOp `∑`
   let-math \prod = math-big-char MathOp `∏`
+
+  let-math \wedge = math-char MathBin `∧`
+  let-math \vee   = math-char MathBin `∨`
+  let-math \rightarrow = math-char MathRel `⇒`
+  let-math \leftarrow = math-char MathRel `⇐`
+  let-math \leftrightarrow = math-char MathRel `⇔`
+  let-math \forall = math-char MathOrd `∀`
+  let-math \exists = math-char MathOrd `∃`
+
 
 %% -- for Latin Modern Math --
   let-math \int =
