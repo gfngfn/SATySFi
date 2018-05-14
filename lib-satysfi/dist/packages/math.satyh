@@ -60,6 +60,9 @@ module Math : sig
   direct \propto : [] math-cmd
 
   direct \lim : [] math-cmd
+  direct \max : [] math-cmd
+  direct \min : [] math-cmd
+
 
   direct \Alpha   : [] math-cmd
   direct \Beta    : [] math-cmd
@@ -291,6 +294,9 @@ end = struct
   let-math \ldots = math-char MathPunct `…`
 
   let-math \lim = math-char MathOp `lim`
+  let-math \max = math-char MathOp `max`
+  let-math \min = math-char MathOp `min`
+
 
   let-math \sum = math-big-char MathOp `∑`
   let-math \prod = math-big-char MathOp `∏`
