@@ -50,6 +50,7 @@ module Math : sig
   direct \le     : [] math-cmd
   direct \ge     : [] math-cmd
   direct \in     : [] math-cmd
+  direct \mid : [] math-cmd
 
   direct \equiv  : [] math-cmd
   direct \neq    : [] math-cmd
@@ -271,6 +272,8 @@ end = struct
 
   let-math \infty = math-char MathOrd `∞`
   let-math \to    = math-char MathRel `→`
+  let-math \in    = math-char MathRel `∈`
+  let-math \mid   = math-char MathRel `|`
   let-math \pm    = math-char MathBin `±`
   let-math \times = math-char MathBin `×`
   let-math \vdash = math-char MathRel `⊢`
