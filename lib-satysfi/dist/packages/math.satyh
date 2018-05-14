@@ -71,6 +71,9 @@ module Math : sig
   direct \forall : [] math-cmd
   direct \exists : [] math-cmd
 
+  direct \because : [] math-cmd
+  direct \therefore : [] math-cmd
+
 
   direct \Alpha   : [] math-cmd
   direct \Beta    : [] math-cmd
@@ -316,6 +319,9 @@ end = struct
   let-math \leftrightarrow = math-char MathRel `⇔`
   let-math \forall = math-char MathOrd `∀`
   let-math \exists = math-char MathOrd `∃`
+
+  let-math \therefore = math-char MathOrd `∴`
+  let-math \because = math-char MathOrd `∵`
 
 
 %% -- for Latin Modern Math --
