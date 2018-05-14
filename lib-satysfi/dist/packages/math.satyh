@@ -45,6 +45,8 @@ module Math : sig
   direct \times : [] math-cmd
   direct \nabla : [] math-cmd
 
+  direct \le     : [] math-cmd
+  direct \ge     : [] math-cmd
   direct \equiv  : [] math-cmd
   direct \neq    : [] math-cmd
   direct \simeq  : [] math-cmd
@@ -269,6 +271,8 @@ end = struct
   let-math \times = math-char MathBin `×`
   let-math \vdash = math-char MathRel `⊢`
   let-math \colon-rel = math-char MathRel `:`
+  let-math \le     = math-char MathRel `≤`
+  let-math \ge     = math-char MathRel `≥`
   let-math \equiv  = math-char MathRel `≡`
   let-math \neq    = math-char MathRel `≠`
   let-math \simeq  = math-char MathRel `≃`
