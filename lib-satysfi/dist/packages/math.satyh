@@ -32,6 +32,8 @@ module Math : sig
   direct \app : [math; math] math-cmd
   direct \angle : [math] math-cmd
   direct \brace : [math] math-cmd
+  direct \abs : [math] math-cmd
+  direct \norm : [math] math-cmd
 
   direct \to : [] math-cmd
   direct \pm : [] math-cmd
@@ -699,5 +701,75 @@ let-math \brace =
 
   let-math \overwrite f x v =
     ${#f \sqbracket{#x \mapsto #v}}
+
+
+  let abs-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let abs-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \abs =
+    math-paren abs-left abs-right
+
+
+  let norm-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let norm-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \norm =
+    math-paren norm-left norm-right
 
 end
