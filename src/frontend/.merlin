@@ -1,4 +1,4 @@
-PKG ppx_deriving.show menhirLib
+PKG ppx_deriving.show menhirLib camlpdf
 S ./
 B ../../_build/src/frontend/
 S ../../src/backend/

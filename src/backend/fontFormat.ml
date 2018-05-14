@@ -4,7 +4,7 @@ open MyUtil
 
 type file_path = string
 
-type glyph_id = Otfm.glyph_id
+type original_glyph_id = Otfm.glyph_id
 
 type 'a ok = ('a, Otfm.error) result
 
@@ -20,12 +20,6 @@ type indirect = int
 (*
 let gid x = x  (* for debug *)
 *)
-
-let hex_of_glyph_id gid =
-  let b0 = gid / 256 in
-  let b1 = gid mod 256 in
-    Printf.sprintf "%02X%02X" b0 b1
-
 
 exception FailToLoadFontOwingToSize   of file_path
 exception FailToLoadFontOwingToSystem of file_path * string
@@ -150,53 +144,142 @@ module UHt = Hashtbl.Make
 
 module GHt = Hashtbl.Make
   (struct
-    type t = glyph_id
+    type t = original_glyph_id
     let equal = (=)
     let hash = Hashtbl.hash
   end)
 
 
-module GlyphIDTable
+type subset_glyph_id = Otfm.glyph_id
+
+type glyph_id_pair = {
+  original_id : original_glyph_id;
+  subset_id   : subset_glyph_id;
+}
+
+type glyph_id =
+  | SubsetGlyphID of original_glyph_id * subset_glyph_id
+
+
+let hex_of_glyph_id ((SubsetGlyphID(_, gidsub)) : glyph_id) =
+  let b0 = gidsub / 256 in
+  let b1 = gidsub mod 256 in
+    Printf.sprintf "%02X%02X" b0 b1
+
+
+module SubsetMap
 : sig
     type t
     val create : int -> t
-    val add : Uchar.t -> glyph_id -> t -> unit
-    val find_opt : Uchar.t -> t -> glyph_id option
-    val find_rev_opt : glyph_id -> t -> Uchar.t option
-    val fold_rev : (glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
+    val create_dummy : unit -> t
+    val intern : original_glyph_id -> t -> subset_glyph_id
+(*
+    val find_rev_opt : glyph_id -> t -> original_glyph_id option
+*)
+    val to_list : t -> (original_glyph_id list) option
   end
 = struct
 
-    type t = glyph_id UHt.t * Uchar.t GHt.t
+    type t =
+      | Subset of subset_glyph_id GHt.t * int ref * (original_glyph_id Alist.t) ref * original_glyph_id GHt.t
+      | Dummy
+
 
     let create n =
+      let ht = GHt.create n in
+      let revht = GHt.create n in
+      GHt.add ht 0 0;
+      Subset(ht, ref 0, ref (Alist.extend Alist.empty 0), revht)
+
+
+    let create_dummy () =
+      Dummy
+
+
+    let intern gidorg submap =
+      match submap with
+      | Dummy ->
+          gidorg
+
+      | Subset(ht, count, store, revht) ->
+          begin
+            match GHt.find_opt ht gidorg with
+            | Some(gidsub) ->
+                gidsub
+
+            | None ->
+                incr count;
+                let gidsub = !count in
+                GHt.add ht gidorg gidsub;
+                GHt.add revht gidsub gidorg;
+                let alst = Alist.extend (!store) gidorg in
+                store := alst;
+                gidsub
+          end
+
+(*
+    let find_rev_opt (SubsetGlyphID(_, gidsub)) (_, _, _, revht) =
+      GHt.find_opt revht gidsub
+*)
+
+    let to_list submap =
+      match submap with
+      | Subset(_, _, store, _) -> Some(Alist.to_list (!store))
+      | Dummy                  -> None
+
+  end
+
+
+type subset_map = SubsetMap.t
+
+
+module GlyphIDTable
+: sig
+    type t
+    val create : subset_map -> int -> t
+    val add : Uchar.t -> original_glyph_id -> t -> unit
+    val find_opt : Uchar.t -> t -> glyph_id_pair option
+    val find_rev_opt : original_glyph_id -> t -> Uchar.t option
+    val fold_rev : (original_glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
+  end
+= struct
+
+    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GHt.t
+
+
+    let create submap n =
       let ht = UHt.create n in
       let revht = GHt.create n in
-        (ht, revht)
+      (submap, ht, revht)
 
-    let add uch gid (ht, revht) =
+
+    let add uch gidorg (submap, ht, revht) =
       begin
-        UHt.add ht uch gid;
-        match GHt.find_opt revht gid with
+        let gidsub = submap |> SubsetMap.intern gidorg in
+        UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
+        match GHt.find_opt revht gidsub with
         | None ->
-            GHt.add revht gid uch
+            GHt.add revht gidsub uch
 
         | Some(uchpre) ->
             begin
               Format.printf "FontFormat> warning:\n";
               Format.printf "FontFormat> multiple Unicode code points (%d, %d)\n" (Uchar.to_int uchpre) (Uchar.to_int uch);
-              Format.printf "FontFormat> are mapped to the same GID %d.\n" gid
+              Format.printf "FontFormat> are mapped to the same GID %d.\n" gidsub
                 (* temporary; should log the warning in a more sophisticated manner *)
             end
       end
 
-    let find_opt uch (ht, _) =
+
+    let find_opt uch (_, ht, _) =
       UHt.find_opt ht uch
 
-    let find_rev_opt gid (_, revht) =
-      GHt.find_opt revht gid
 
-    let fold_rev f init (_, revht) =
+    let find_rev_opt gidsub (_, _, revht) =
+      GHt.find_opt revht gidsub
+
+
+    let fold_rev f init (_, _, revht) =
       GHt.fold f revht init
 
   end
@@ -209,9 +292,9 @@ module GlyphBBoxTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> per_mille * bbox -> t -> unit
-    val find_opt : glyph_id -> t -> (per_mille * bbox) option
-    val fold : (glyph_id -> per_mille * bbox -> 'a -> 'a) -> 'a -> t -> 'a
+    val add : original_glyph_id -> per_mille * bbox -> t -> unit
+    val find_opt : original_glyph_id -> t -> (per_mille * bbox) option
+    val fold : (original_glyph_id -> per_mille * bbox -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
@@ -233,48 +316,52 @@ module GlyphBBoxTable
 
 
 type ligature_matching =
-  | MatchExactly of glyph_id * glyph_id list
+  | MatchExactly of original_glyph_id * original_glyph_id list
   | NoMatch
 
 
 module LigatureTable
 : sig
     type t
-    val create : int -> t
-    val add : glyph_id -> (glyph_id list * glyph_id) list -> t -> unit
-    val fold_rev : (glyph_id -> glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
-    val match_prefix : glyph_id list -> t -> ligature_matching
+    val create : subset_map -> int -> t
+    val add : original_glyph_id -> (original_glyph_id list * original_glyph_id) list -> t -> unit
+    val fold_rev : (original_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
+    val match_prefix : original_glyph_id list -> t -> ligature_matching
   end
 = struct
 
-    type entry = (glyph_id list * glyph_id) list
+    type entry = (original_glyph_id list * original_glyph_id) list
       (* -- pairs of the tail GID array and the GID of the resulting ligature -- *)
 
-    type t = entry GHt.t * (glyph_id list) GHt.t
+    type t = subset_map * entry GHt.t * (original_glyph_id list) GHt.t
 
-    let create n =
+
+    let create submap n =
       let htmain = GHt.create n in
       let htrev = GHt.create n in
-        (htmain, htrev)
+      (submap, htmain, htrev)
 
-    let add gid liginfolst (htmain, htrev) =
+
+    let add gidorg liginfolst (submap, htmain, htrev) =
       begin
-        GHt.add htmain gid liginfolst;
-        liginfolst |> List.iter (fun (gidtail, gidlig) ->
-          match GHt.find_opt htrev gidlig with
+        GHt.add htmain gidorg liginfolst;
+        liginfolst |> List.iter (fun (gidorgtail, gidorglig) ->
+          match GHt.find_opt htrev gidorglig with
           | None ->
-              GHt.add htrev gidlig (gid :: gidtail)
+              GHt.add htrev gidorglig (gidorg :: gidorgtail)
 
           | Some(_) ->
               begin
-                Format.printf "FontFormat> GID %d is used as more than one kind of ligatures.\n" gidlig;
+                Format.printf "FontFormat> GID %d is used as more than one kind of ligatures.\n" gidorglig;
                   (* temporary; should log the warning in a more sophisticated manner *)
               end
         );
       end
 
-    let fold_rev f init (_, htrev) =
-      GHt.fold f htrev init
+
+    let fold_rev f init (_, _, htrev) =
+      GHt.fold (fun gidorg gidorglst acc -> f gidorg gidorglst acc) htrev init
+
 
     let rec prefix lst1 lst2 =
       match (lst1, lst2) with
@@ -282,21 +369,26 @@ module LigatureTable
       | (head1 :: tail1, head2 :: tail2)  when head1 = head2 -> prefix tail1 tail2
       | _                                                    -> None
 
-    let rec lookup liginfolst gidlst =
+    let rec lookup liginfolst gidorglst =
       match liginfolst with
-      | []                               -> NoMatch
-      | (gidtail, gidlig) :: liginfotail ->
-          match prefix gidtail gidlst with
-          | None          -> lookup liginfotail gidlst
-          | Some(gidrest) -> MatchExactly(gidlig, gidrest)
+      | [] ->
+          NoMatch
 
-    let match_prefix gidlst (mainht, _) =
-      match gidlst with
-      | []                -> NoMatch
-      | gidfst :: gidtail ->
+      | (gidorgtail, gidorglig) :: liginfotail ->
+          match prefix gidorgtail gidorglst with
+          | None             -> lookup liginfotail gidorglst
+          | Some(gidorgrest) -> MatchExactly(gidorglig, gidorgrest)
+
+
+    let match_prefix gidorglst (_, mainht, _) =
+      match gidorglst with
+      | [] ->
+          NoMatch
+
+      | gidorgfst :: gidorgtail ->
           begin
-            match GHt.find_opt mainht gidfst with
-            | Some(liginfolst) -> lookup liginfolst gidtail
+            match GHt.find_opt mainht gidorgfst with
+            | Some(liginfolst) -> lookup liginfolst gidorgtail
             | None             -> NoMatch
           end
 end
@@ -311,8 +403,8 @@ let result_bind x f =
   | Error(e) -> Error(e :> error)
 
 
-let get_ligature_table (d : Otfm.decoder) : LigatureTable.t =
-  let ligtbl = LigatureTable.create 32 (* temporary; size of the hash table *) in
+let get_ligature_table (submap : subset_map) (d : Otfm.decoder) : LigatureTable.t =
+  let ligtbl = LigatureTable.create submap 32 (* temporary; size of the hash table *) in
   let res =
     let (>>=) = result_bind in
     Otfm.gsub_script d >>= fun scriptlst ->
@@ -339,9 +431,9 @@ module KerningTable
 : sig
     type t
     val create : int -> t
-    val add : glyph_id -> glyph_id -> design_units -> t -> unit
+    val add : original_glyph_id -> original_glyph_id -> design_units -> t -> unit
     val add_by_class : Otfm.class_definition list -> Otfm.class_definition list -> (Otfm.class_value * (Otfm.class_value * Otfm.value_record * Otfm.value_record) list) list -> t -> unit
-    val find_opt : glyph_id -> glyph_id -> t -> design_units option
+    val find_opt : original_glyph_id -> original_glyph_id -> t -> design_units option
   end
 = struct
 
@@ -477,6 +569,7 @@ type decoder = {
   cmap_subtable       : Otfm.cmap_subtable;
   head_record         : Otfm.head;
   hhea_record         : Otfm.hhea;
+  subset_map          : subset_map;
   glyph_id_table      : GlyphIDTable.t;
   glyph_bbox_table    : GlyphBBoxTable.t;
   kerning_table       : KerningTable.t;
@@ -517,6 +610,20 @@ type font_stretch =
   | SemiExpandedStretch | ExpandedStretch | ExtraExpandedStretch | UltraExpandedStretch
 
 
+let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
+(*
+  match dcdr.subset_map |> SubsetMap.find_rev_opt gid with
+  | None         -> assert false
+  | Some(gidorg) -> gidorg
+*)
+  let SubsetGlyphID(gidorg, _) = gid in
+  gidorg
+
+
+let intern_gid (dcdr : decoder) (gidorg : original_glyph_id) : glyph_id =
+  SubsetGlyphID(gidorg, dcdr.subset_map |> SubsetMap.intern gidorg)
+
+
 let font_stretch_of_width_class srcpath = function
   | 0 -> UltraCondensedStretch
   | 1 -> ExtraCondensedStretch
@@ -553,44 +660,58 @@ let to_base85_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
         ("/ASCII85Decode", Pdfio.bytes_of_string s85)
 *)
 
-let to_flate_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
-  match Otfm.decoder_src d with
-  | `String(s) ->
-      let src_offset_ref = ref 0 in
-      let src_len = String.length s in
-      let write_byte_as_input buf =
-        let src_offset = !src_offset_ref in
-        if src_offset >= src_len then 0 else
-          let len =
-            if src_len - src_offset < 1024 then src_len - src_offset else 1024
-          in
-          begin
-            src_offset_ref += len;
-            Bytes.blit_string s src_offset buf 0 len;
-            len
-          end
-      in
-      let out_offset_ref = ref 0 in
-      let bufout = Bytes.create (2 * src_len) in
-        (* -- in the worst case the output size is 1.003 times as large as the input size -- *)
-      let write_byte_as_output bufret len =
-        let out_offset = !out_offset_ref in
-          if len <= 0 then () else
-          begin
-            out_offset_ref += len;
-            Bytes.blit bufret 0 bufout out_offset len
-          end
+let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
+  let src_offset_ref = ref 0 in
+  let src_len = String.length data in
+  let write_byte_as_input buf =
+    let src_offset = !src_offset_ref in
+    if src_offset >= src_len then 0 else
+      let len =
+        if src_len - src_offset < 1024 then src_len - src_offset else 1024
       in
       begin
-        Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
-        let out_len = !out_offset_ref in
-        let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
-        ("/FlateDecode", bt)
+        src_offset_ref += len;
+        Bytes.blit_string data src_offset buf 0 len;
+        len
       end
+  in
+  let out_offset_ref = ref 0 in
+  let bufout = Bytes.create (2 * src_len) in
+    (* -- in the worst case the output size is 1.003 times as large as the input size -- *)
+  let write_byte_as_output bufret len =
+    let out_offset = !out_offset_ref in
+      if len <= 0 then () else
+      begin
+        out_offset_ref += len;
+        Bytes.blit bufret 0 bufout out_offset len
+      end
+  in
+  begin
+    Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
+    let out_len = !out_offset_ref in
+    let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
+    ("/FlateDecode", bt)
+  end
 
 
-let pdfstream_of_decoder (pdf : Pdf.t) (d : Otfm.decoder) (subtypeopt : string option) : Pdf.pdfobject =
-  let (filter, bt) = (* to_base85_pdf_bytes d *) to_flate_pdf_bytes d in
+let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string option) : Pdf.pdfobject =
+  let d = dcdr.main in
+  let data =
+      match SubsetMap.to_list dcdr.subset_map with
+      | None ->
+          begin
+            match Otfm.decoder_src d with
+            | `String(s) -> s
+          end
+
+      | Some(gidorglst) ->
+          begin
+            match OtfSubset.make d gidorglst with
+            | Error(e) -> raise_err dcdr.file_path e "pdfstream_of_decoder"
+            | Ok(s)    -> s
+          end
+  in
+  let (filter, bt) = (* to_base85_pdf_bytes d *) to_flate_pdf_bytes data in
   let len = Pdfio.bytes_size bt in
   let contents = [
       ("/Length", Pdf.Integer(len));
@@ -656,21 +777,54 @@ let get_cmap_subtable srcpath d =
     | Some(subtbl) -> subtbl
 
 
+let add_element_of_composite_glyph (dcdr : decoder) (gidorg : original_glyph_id) =
+  let d = dcdr.main in
+  let submap = dcdr.subset_map in
+  let open ResultMonad in
+    let rec aux gidorg =
+      let _ = submap |> SubsetMap.intern gidorg in
+      Otfm.loca d gidorg >>= function
+      | None ->
+          return ()
+
+      | Some(loc) ->
+          Otfm.glyf d loc >>= fun (descrmain, _) ->
+          begin
+            match descrmain with
+            | `Simple(_) ->
+                return ()
+
+            | `Composite(lst) ->
+                lst |> List.fold_left (fun res (gidorg, _, _) ->
+                  res >>= fun () ->
+                  aux gidorg
+                ) (return ())
+          end
+    in
+    let res =
+      Otfm.flavour d >>= function
+      | Otfm.TTF_true | Otfm.TTF_OT -> aux gidorg
+      | Otfm.CFF                    -> return ()
+    in
+    match res with
+    | Error(e) -> raise_err dcdr.file_path e "add_element_of_composite_glyph"
+    | Ok(())   -> ()
+
+
 (* PUBLIC *)
 let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
   let gidtbl = dcdr.glyph_id_table in
     match gidtbl |> GlyphIDTable.find_opt uch with
-    | Some(_) as gidopt ->
-        gidopt
+    | Some(gidpair) ->
+        Some(SubsetGlyphID(gidpair.original_id, gidpair.subset_id))
 
     | None ->
-        let gidopt = get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch in
-        begin
-          match gidopt with
-          | None      -> ()
-          | Some(gid) -> gidtbl |> GlyphIDTable.add uch gid
-        end;
-        gidopt
+        let open OptionMonad in
+        get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch >>= fun gidorg ->
+        gidtbl |> GlyphIDTable.add uch gidorg;
+        add_element_of_composite_glyph dcdr gidorg;
+        let gid = intern_gid dcdr gidorg in
+        return gid
 
 
 let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
@@ -680,12 +834,12 @@ let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
 let per_mille (dcdr : decoder) (w : design_units) : per_mille =
   per_mille_raw dcdr.units_per_em w
 
-
-let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gid : glyph_id)
+(*
+let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : original_glyph_id)
     : ((((bool * design_units * design_units) list) list * (design_units * design_units * design_units * design_units)) option) ok =
   let d = dcdr.main in
   let open ResultMonad in
-  Otfm.loca d gid >>= function
+  Otfm.loca d gidorg >>= function
   | None ->
       return None
 
@@ -694,19 +848,32 @@ let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gid : glyph_id
       | (`Composite(_), _)          -> return None
           (* temporary; does not deal with composite glyphs *)
       | (`Simple(precntrlst), bbox) -> return (Some((precntrlst, bbox)))
+*)
+
+let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
+    : ((design_units * design_units * design_units * design_units) option) ok =
+  let d = dcdr.main in
+  let open ResultMonad in
+  Otfm.loca d gidorg >>= function
+  | None ->
+      return None
+
+  | Some(gloc) ->
+      Otfm.glyf d gloc >>= fun (_, rawbbox) ->
+      return (Some(rawbbox))
 
 
-let get_glyph_advance_width (dcdr : decoder) (gidkey : glyph_id) : per_mille =
+let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : per_mille =
   let d = dcdr.main in
   let hmtxres =
-    None |> Otfm.hmtx d (fun accopt gid adv lsb ->
+    None |> Otfm.hmtx d (fun accopt gidorg adv lsb ->
       match accopt with
       | Some(_) -> accopt
-      | None    -> if gid = gidkey then Some((adv, lsb)) else None
+      | None    -> if gidorg = gidorgkey then Some((adv, lsb)) else None
     )
   in
     match hmtxres with
-    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidkey)
+    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
     | Ok(None)             -> PerMille(0)
     | Ok(Some((adv, lsb))) -> per_mille dcdr adv
 
@@ -971,7 +1138,7 @@ module ToUnicodeCMap
 : sig
     type t
     val create : unit -> t
-    val add_single : t -> glyph_id -> Uchar.t list -> unit
+    val add_single : t -> original_glyph_id -> Uchar.t list -> unit
     val stringify : t -> string
   end
 = struct
@@ -1044,12 +1211,7 @@ module Type0
       }
 
 
-    let pdfobject_of_font_descriptor (pdf : Pdf.t) fontdescr base_font embedding : Pdf.pdfobject =
-      let dcdr =
-        match !(fontdescr.font_data) with
-        | Data(d) -> d
-        | _       -> assert false
-      in
+    let pdfobject_of_font_descriptor (pdf : Pdf.t) (dcdr : decoder) fontdescr base_font embedding : Pdf.pdfobject =
       let (font_file_key, tagopt) = font_file_info_of_embedding embedding in
       let objstream = pdfstream_of_decoder pdf dcdr tagopt in
         (* -- add to the PDF the stream in which the font file is embedded -- *)
@@ -1081,8 +1243,9 @@ module Type0
     let pdfobject_of_width_array (pdf : Pdf.t) (dcdr : decoder) : Pdf.pdfobject =
       let bboxtbl = dcdr.glyph_bbox_table in
       let arr =
-        bboxtbl |> GlyphBBoxTable.fold (fun gid (PerMille(w), _) acc ->
-          Pdf.Integer(gid) :: Pdf.Array[Pdf.Integer(w)] :: acc
+        bboxtbl |> GlyphBBoxTable.fold (fun gidorg (PerMille(w), _) acc ->
+          let gidsub = dcdr.subset_map |> SubsetMap.intern gidorg in
+          Pdf.Integer(gidsub) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
       let obj = Pdf.Array(arr) in
@@ -1095,8 +1258,8 @@ module Type0
       let ligtbl = dcdr.ligature_table in
       let touccmap = ToUnicodeCMap.create () in
 
-      gidtbl |> GlyphIDTable.fold_rev (fun gid uch () ->
-        ToUnicodeCMap.add_single touccmap gid [uch]
+      gidtbl |> GlyphIDTable.fold_rev (fun gidsub uch () ->
+        ToUnicodeCMap.add_single touccmap gidsub [uch]
       ) ();
 
       ligtbl |> LigatureTable.fold_rev (fun gidlig gidlst () ->
@@ -1137,7 +1300,7 @@ module Type0
       let cidsysinfo = cidty0font.CIDFontType0.cid_system_info in
       let base_font  = cidty0font.CIDFontType0.base_font in
       let fontdescr  = cidty0font.CIDFontType0.font_descriptor in
-      let objdescr = pdfobject_of_font_descriptor pdf fontdescr base_font (FontFile3("OpenType")) in
+      let objdescr = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font (FontFile3("OpenType")) in
       let objwarr = pdfobject_of_width_array pdf dcdr in
       let pmoptdw =
         cidty0font.CIDFontType0.dw |> option_map (per_mille dcdr)
@@ -1177,7 +1340,7 @@ module Type0
         else
           FontFile3("OpenType")
       in
-      let objdescr = pdfobject_of_font_descriptor pdf fontdescr base_font font_file in
+      let objdescr = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font font_file in
       let objcidtogidmap =
         match cidty2font.CIDFontType2.cid_to_gid_map with
         | CIDToGIDIdentity -> Pdf.Name("/Identity")
@@ -1255,8 +1418,14 @@ let cid_font_type_2 cidty2font fontname cmap =
 let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let cmapsubtbl = get_cmap_subtable srcpath d in
   let kerntbl = get_kerning_table d in
-  let ligtbl = get_ligature_table d in
-  let gidtbl = GlyphIDTable.create 256 in  (* temporary; initial size of hash tables *)
+  let submap =
+    match Otfm.flavour d with
+    | Error(e)                        -> raise_err srcpath e "make_decoder"
+    | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
+    | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
+  in
+  let ligtbl = get_ligature_table submap d in
+  let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in (* temporary; initial size of hash tables *)
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
@@ -1281,6 +1450,7 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
       hhea_record         = rcdhhea;
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
+      subset_map          = submap;
       glyph_id_table      = gidtbl;
       glyph_bbox_table    = bboxtbl;
       charstring_info     = csinfo;
@@ -1304,29 +1474,37 @@ let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registratio
   | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
 
 
-let convert_to_ligatures dcdr gidlst =
+let convert_to_ligatures (dcdr : decoder) (gidlst : glyph_id list) : glyph_id list =
   let ligtbl = dcdr.ligature_table in
-  let rec aux acc gidrest =
-    match gidrest with
-    | []      -> Alist.to_list acc
-    | g :: gs ->
-        match ligtbl |> LigatureTable.match_prefix gidrest with
-        | NoMatch                       -> aux (Alist.extend acc g) gs
-        | MatchExactly(gidlig, gidtail) -> aux (Alist.extend acc gidlig) gidtail
+  let intf = intern_gid dcdr in
+  let rec aux acc gidorglst =
+    match gidorglst with
+    | [] ->
+        Alist.to_list acc
+
+    | go :: gos ->
+        begin
+          match ligtbl |> LigatureTable.match_prefix gidorglst with
+          | NoMatch                             -> aux (Alist.extend acc (intf go)) gos
+          | MatchExactly(gidorglig, gidorgrest) -> aux (Alist.extend acc (intf gidorglig)) gidorgrest
+        end
   in
-    aux Alist.empty gidlst
+  let gidorglst = gidlst |> List.map (get_original_gid dcdr) in
+  aux Alist.empty gidorglst
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mille option =
   let kerntbl = dcdr.kerning_table in
+  let gidorgprev = get_original_gid dcdr gidprev in
+  let gidorg = get_original_gid dcdr gid in
   let open OptionMonad in
-    kerntbl |> KerningTable.find_opt gidprev gid >>= fun du ->
+    kerntbl |> KerningTable.find_opt gidorgprev gidorg >>= fun du ->
     return (per_mille dcdr du)
 
 
 module MathInfoMap = Map.Make
   (struct
-    type t = glyph_id
+    type t = original_glyph_id
     let equal = (=)
     let compare = Pervasives.compare
   end)
@@ -1342,7 +1520,7 @@ type math_kern_info =
     kernBL : math_kern;
   }
 
-type math_variant_glyph = glyph_id * design_units
+type math_variant_glyph = original_glyph_id * design_units
 
 type math_decoder =
   {
@@ -1361,36 +1539,36 @@ let bbox_zero =
   (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
 
 
-let get_ttf_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
+let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   let f = per_mille dcdr in
-  match get_glyph_raw_contour_list_and_bounding_box dcdr gid with
+  match get_glyph_raw_bbox dcdr gidorg with
 (*
   | Error(`Missing_required_table(t))
                      when t = Otfm.Tag.loca ->
 *)
   | Error(e) ->
-      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gid)
+      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
   | Ok(None) ->
-      bbox_zero  (* temporary; maybe should emit an error *)
+      bbox_zero
 
-  | Ok(Some((_, bbox_raw))) ->
+  | Ok(Some(bbox_raw)) ->
       let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
         (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
 
 
 
-let get_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
+let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   match dcdr.charstring_info with
   | None ->
     (* -- if the font is TrueType OT -- *)
-      get_ttf_bbox dcdr gid
+      get_ttf_bbox dcdr gidorg
 
   | Some(csinfo) ->
     (* -- if the font is CFF OT -- *)
       begin
-        match Otfm.charstring_absolute csinfo gid with
-        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gid)
+        match Otfm.charstring_absolute csinfo gidorg with
+        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
         | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
         | Ok(Some(pathlst)) ->
             begin
@@ -1409,17 +1587,18 @@ let get_bbox (dcdr : decoder) (gid : glyph_id) : bbox =
 (* PUBLIC *)
 let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
   let bboxtbl = dcdr.glyph_bbox_table in
+  let gidorg = get_original_gid dcdr gid in
   let (wid, (_, ymin, _, ymax)) =
-    match bboxtbl |> GlyphBBoxTable.find_opt gid with
+    match bboxtbl |> GlyphBBoxTable.find_opt gidorg with
     | Some(pair) ->
         pair
 
     | None ->
-        let wid = get_glyph_advance_width dcdr gid in
-        let bbox = get_bbox dcdr gid in
+        let wid = get_glyph_advance_width dcdr gidorg in
+        let bbox = get_bbox dcdr gidorg in
         let pair = (wid, bbox) in
         begin
-          bboxtbl |> GlyphBBoxTable.add gid pair;
+          bboxtbl |> GlyphBBoxTable.add gidorg pair;
           pair
         end
   in
@@ -1543,7 +1722,7 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
         Some((md, fontreg))
 
 
-let get_script_style_id (md : math_decoder) (gid : glyph_id) =
+let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =
   match md.script_style_info with
   | None ->
 (*
@@ -1552,39 +1731,42 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) =
       gid
 
   | Some(feature_ssty) ->
-      let f_single opt (gidfrom, gidto) =
+      let dcdr = md.as_normal_font in
+      let gidorg = get_original_gid dcdr gid in
+      let f_single opt (gidorgfrom, gidorgto) =
         match opt with
         | Some(_) -> opt
-        | None    -> if gidfrom = gid then Some(gidto) else opt
+        | None    -> if gidorgfrom = gidorg then Some(gidorgto) else opt
       in
-      let f_alt opt (gidfrom, gidlst) =
-        match (opt, gidlst) with
-        | (Some(_), _)       -> opt
-        | (None, [])         -> opt
-        | (None, gidto :: _) -> if gidfrom = gid then Some(gidto) else opt
+      let f_alt opt (gidorgfrom, gidorglst) =
+        match (opt, gidorglst) with
+        | (Some(_), _)          -> opt
+        | (None, [])            -> opt
+        | (None, gidorgto :: _) -> if gidorgfrom = gidorg then Some(gidorgto) else opt
       in
       let skip opt _ = opt in
       let res = Otfm.gsub feature_ssty f_single f_alt skip None in
       match res with
-      | Error(oerr)       -> gid  (* temporary; maybe should emit an error *)
-      | Ok(None)          -> gid
-      | Ok(Some(gidssty)) -> gidssty
+      | Error(oerr)          -> gid  (* temporary; maybe should emit an error *)
+      | Ok(None)             -> gid
+      | Ok(Some(gidorgssty)) -> intern_gid dcdr gidorgssty
 
 
-let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) =
+
+let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
   | None ->
 (*
       let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
 *)
-      0
+      SubsetGlyphID(0, 0)
 
   | Some(gid) -> gid
 
 
-let get_math_script_variant (md : math_decoder) (gidorg : glyph_id) =
-  let gidssty = get_script_style_id md gidorg in
+let get_math_script_variant (md : math_decoder) (gid : glyph_id) =
+  let gidssty = get_script_style_id md gid in
 (*
     Format.printf "FontFormat> ssty %d ---> %d\n" gidorg gidssty;  (* for debug *)
 *)
@@ -1602,32 +1784,36 @@ let truncate_positive (PerMille(x)) =
 let get_math_glyph_metrics (md : math_decoder) (gid : glyph_id) : per_mille * per_mille * per_mille =
   let dcdr = md.as_normal_font in
   let (wid, _, _) = get_glyph_metrics dcdr gid in
-  let (_, _, ymin, ymax) = get_bbox md.as_normal_font gid in
+  let gidorg = get_original_gid dcdr gid in
+  let (_, _, ymin, ymax) = get_bbox md.as_normal_font gidorg in
   let hgt = truncate_negative ymax in
   let dpt = truncate_positive ymin in
     (wid, hgt, dpt)
 
 
 let get_math_correction_metrics (md : math_decoder) (gid : glyph_id) : per_mille option * math_kern_info option =
-  let micopt = md.math_italics_correction |> MathInfoMap.find_opt gid in
-  let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gid in
+  let gidorg = get_original_gid md.as_normal_font gid in
+  let micopt = md.math_italics_correction |> MathInfoMap.find_opt gidorg in
+  let mkiopt = md.math_kern_info |> MathInfoMap.find_opt gidorg in
     (micopt, mkiopt)
 
 
-let get_math_variants (md : math_decoder) (gidorg : glyph_id) map =
+let get_math_variants (md : math_decoder) (gid : glyph_id) (map : (math_variant_glyph list) MathInfoMap.t) : (glyph_id * float) list =
+  let dcdr = md.as_normal_font in
+  let gidorg = get_original_gid dcdr gid in
   match map |> MathInfoMap.find_opt gidorg with
   | None        -> []
-  | Some(assoc) -> assoc |> List.map (fun (gid, du) -> (gid, to_ratio md du))
+  | Some(assoc) -> assoc |> List.map (fun (gidorg, du) -> (intern_gid dcdr gidorg, to_ratio md du))
 
 
-let get_math_vertical_variants (md : math_decoder) (gidorg : glyph_id) =
+let get_math_vertical_variants (md : math_decoder) (gid : glyph_id) : (glyph_id * float) list =
   let mvertvarmap = md.math_vertical_variants in
-  mvertvarmap |> get_math_variants md gidorg
+  mvertvarmap |> get_math_variants md gid
 
 
-let get_math_horizontal_variants (md : math_decoder) (gidorg : glyph_id) =
+let get_math_horizontal_variants (md : math_decoder) (gid : glyph_id) =
   let mhorzvarmap = md.math_horizontal_variants in
-  mhorzvarmap |> get_math_variants md gidorg
+  mhorzvarmap |> get_math_variants md gid
 
 
 type math_constants =
