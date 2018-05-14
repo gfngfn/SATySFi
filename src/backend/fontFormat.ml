@@ -707,7 +707,7 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
       | Some(gidorglst) ->
           begin
             match OtfSubset.make d gidorglst with
-            | Error(e) -> assert false  (* temporary *)
+            | Error(e) -> raise_err dcdr.file_path e "pdfstream_of_decoder"
             | Ok(s)    -> s
           end
   in
@@ -777,6 +777,40 @@ let get_cmap_subtable srcpath d =
     | Some(subtbl) -> subtbl
 
 
+let add_element_of_composite_glyph (dcdr : decoder) (gidorg : original_glyph_id) =
+  let d = dcdr.main in
+  let submap = dcdr.subset_map in
+  let open ResultMonad in
+    let rec aux gidorg =
+      let _ = submap |> SubsetMap.intern gidorg in
+      Otfm.loca d gidorg >>= function
+      | None ->
+          return ()
+
+      | Some(loc) ->
+          Otfm.glyf d loc >>= fun (descrmain, _) ->
+          begin
+            match descrmain with
+            | `Simple(_) ->
+                return ()
+
+            | `Composite(lst) ->
+                lst |> List.fold_left (fun res (gidorg, _, _) ->
+                  res >>= fun () ->
+                  aux gidorg
+                ) (return ())
+          end
+    in
+    let res =
+      Otfm.flavour d >>= function
+      | Otfm.TTF_true | Otfm.TTF_OT -> aux gidorg
+      | Otfm.CFF                    -> return ()
+    in
+    match res with
+    | Error(e) -> raise_err dcdr.file_path e "add_element_of_composite_glyph"
+    | Ok(())   -> ()
+
+
 (* PUBLIC *)
 let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
   let gidtbl = dcdr.glyph_id_table in
@@ -785,17 +819,12 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         Some(SubsetGlyphID(gidpair.original_id, gidpair.subset_id))
 
     | None ->
-        let gidorgopt = get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch in
-        begin
-          match gidorgopt with
-          | None ->
-              None
-
-          | Some(gidorg) ->
-              gidtbl |> GlyphIDTable.add uch gidorg;
-              let gid = intern_gid dcdr gidorg in
-              Some(gid)
-        end
+        let open OptionMonad in
+        get_glyph_id_main dcdr.file_path dcdr.cmap_subtable uch >>= fun gidorg ->
+        gidtbl |> GlyphIDTable.add uch gidorg;
+        add_element_of_composite_glyph dcdr gidorg;
+        let gid = intern_gid dcdr gidorg in
+        return gid
 
 
 let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
@@ -805,7 +834,7 @@ let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
 let per_mille (dcdr : decoder) (w : design_units) : per_mille =
   per_mille_raw dcdr.units_per_em w
 
-
+(*
 let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : original_glyph_id)
     : ((((bool * design_units * design_units) list) list * (design_units * design_units * design_units * design_units)) option) ok =
   let d = dcdr.main in
@@ -819,6 +848,19 @@ let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : origi
       | (`Composite(_), _)          -> return None
           (* temporary; does not deal with composite glyphs *)
       | (`Simple(precntrlst), bbox) -> return (Some((precntrlst, bbox)))
+*)
+
+let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
+    : ((design_units * design_units * design_units * design_units) option) ok =
+  let d = dcdr.main in
+  let open ResultMonad in
+  Otfm.loca d gidorg >>= function
+  | None ->
+      return None
+
+  | Some(gloc) ->
+      Otfm.glyf d gloc >>= fun (_, rawbbox) ->
+      return (Some(rawbbox))
 
 
 let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : per_mille =
@@ -1378,7 +1420,7 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let kerntbl = get_kerning_table d in
   let submap =
     match Otfm.flavour d with
-    | Error(e)                        -> assert false
+    | Error(e)                        -> raise_err srcpath e "make_decoder"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
     | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
   in
@@ -1499,7 +1541,7 @@ let bbox_zero =
 
 let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   let f = per_mille dcdr in
-  match get_glyph_raw_contour_list_and_bounding_box dcdr gidorg with
+  match get_glyph_raw_bbox dcdr gidorg with
 (*
   | Error(`Missing_required_table(t))
                      when t = Otfm.Tag.loca ->
@@ -1508,9 +1550,9 @@ let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
       raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
   | Ok(None) ->
-      bbox_zero  (* temporary; maybe should emit an error *)
+      bbox_zero
 
-  | Ok(Some((_, bbox_raw))) ->
+  | Ok(Some(bbox_raw)) ->
       let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
         (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
 
