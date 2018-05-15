@@ -66,9 +66,9 @@ module Math : sig
 
   direct \wedge : [] math-cmd
   direct \vee : [] math-cmd
-  direct \rightarrow : [] math-cmd
-  direct \leftarrow : [] math-cmd
-  direct \leftrightarrow : [] math-cmd
+  direct \Rightarrow : [] math-cmd
+  direct \Leftarrow : [] math-cmd
+  direct \Leftrightarrow : [] math-cmd
   direct \forall : [] math-cmd
   direct \exists : [] math-cmd
 
@@ -315,9 +315,9 @@ end = struct
 
   let-math \wedge = math-char MathBin `∧`
   let-math \vee   = math-char MathBin `∨`
-  let-math \rightarrow = math-char MathRel `⇒`
-  let-math \leftarrow = math-char MathRel `⇐`
-  let-math \leftrightarrow = math-char MathRel `⇔`
+  let-math \Rightarrow = math-char MathRel `⇒`
+  let-math \Leftarrow = math-char MathRel `⇐`
+  let-math \Leftrightarrow = math-char MathRel `⇔`
   let-math \forall = math-char MathOrd `∀`
   let-math \exists = math-char MathOrd `∃`
 
