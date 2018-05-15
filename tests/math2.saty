@@ -1,6 +1,6 @@
 % -*- coding: utf-8 -*-
 @import: head
-@import: math
+@require: math
 
 document (|
   title  = {Math Test 2};
@@ -17,6 +17,12 @@ document (|
     と表される．
   }
   +math(${
-    Z = -\npe^x + f^{x^{n^2}}
+    Z = -\mathrm{e}^x + f^{x^{n^2}}
+  });
+  +math(${
+    \norm{x - y}, \abs{x - y}, K\sqbracket{X_1, X_2}, \brace{a, b, c}, \paren{x - \frac{b}{2 a}}^{2}
+  });
+  +math(${
+    x > y \Rightarrow x \geq y \Leftrightarrow y \leq x \Rightarrow \max\brace{x, y} = x
   });
 >
