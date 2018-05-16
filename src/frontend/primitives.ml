@@ -33,9 +33,7 @@ let tIT           = (~! "itext"   , BaseType(TextRowType) )
 let tBT           = (~! "btext"   , BaseType(TextColType) )
 let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
-(*
-let tFT           = (~! "font"    , BaseType(FontType)    )
-*)
+
 let tCTX          = (~! "context" , BaseType(ContextType) )
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
@@ -505,80 +503,13 @@ let get_initial_context wid =
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
     }
-(*
-let margin = pdfpt 2.
-
-
-let frame_deco_VS =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
-      ]
-  )
-
-let frame_deco_VH =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% dptb), [
-          HorzBox.LineTo(xposb, ypos +% hgtb);
-          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-        ], None);
-      ]
-  )
-
-let frame_deco_VT =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb, ypos +% dptb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
-        ], None);
-      ]
-  )
-
-let frame_deco_VM =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-    List.append (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb, ypos +% dptb);
-        ], None);
-      ]
-    ) (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-        ], None);
-      ]
-    )
-  )
-*)
-(* -- end: constants just for experimental use -- *)
 
 
 let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
-  let (~@) n        = (~! "tv"      , TypeVariable(n)      ) in
+  let (~@) n        = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
 
