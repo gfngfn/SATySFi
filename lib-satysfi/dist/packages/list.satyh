@@ -2,7 +2,9 @@
 module List
 : sig
     val map : ('a -> 'b) -> 'a list -> 'b list
+    val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+    val fold-lefti : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val filter : ('a -> bool) -> 'a list -> 'a list
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
     val reverse : 'a list -> 'a list
@@ -14,9 +16,23 @@ module List
       | f []        = []
       | f (x :: xs) = (f x) :: map f xs
 
+    let mapi f xs =
+      let-rec aux
+        | f i []        = []
+        | f i (x :: xs) = (f i x) :: aux f (i + 1) xs
+      in
+      aux f 0 xs
+
     let-rec fold-left
       | f init []        = init
       | f init (x :: xs) = fold-left f (f init x) xs
+
+    let fold-lefti f init xs =
+      let-rec aux
+        | f i init []        = init
+        | f i init (x :: xs) = aux f (i + 1) (f i init x) xs
+      in
+      aux f 0 init xs
 
     let-rec filter
       | _ []        = []
