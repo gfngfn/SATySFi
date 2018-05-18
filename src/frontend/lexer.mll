@@ -190,7 +190,6 @@ rule progexpr stack = parse
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
-  | "."   { DOT(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
   | ","   { COMMA(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }
@@ -454,6 +453,7 @@ and mathexpr stack = parse
       pop lexbuf "too many closing" stack;
       EMATHGRP(pos)
     }
+  | "|" { SEP(get_pos lexbuf) }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
