@@ -190,7 +190,6 @@ rule progexpr stack = parse
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
-  | "."   { DOT(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
   | ","   { COMMA(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }

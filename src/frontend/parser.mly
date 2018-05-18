@@ -408,7 +408,7 @@
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LETREC LETNONREC DEFEQ LETAND IN
-%token <Range.t> MODULE STRUCT END DIRECT DOT SIG VAL CONSTRAINT
+%token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
 %token <Range.t> LETHORZ LETVERT LETMATH
@@ -1018,9 +1018,9 @@ mcmd:
   | tok=MATHCMDWITHMOD { tok }
 ;
 mathblock:
-  | utm=mathlist { let (rng, _) = utm in (rng, UTMath(utm)) }
+  | utm=mathmain { let (rng, _) = utm in (rng, UTMath(utm)) }
 ;
-mathlist:
+mathmain:
   | utmlst=list(mathsuper) {
         let rng =
           match (utmlst, List.rev utmlst) with
@@ -1044,7 +1044,7 @@ mathsub:
   | utm=mathbot { utm }
 ;
 mathgroup:
-  | opn=BMATHGRP; utm=mathlist; cls=EMATHGRP { make_standard (Tok opn) (Tok cls) (extract_main utm) }
+  | opn=BMATHGRP; utm=mathmain; cls=EMATHGRP { make_standard (Tok opn) (Tok cls) (extract_main utm) }
   | utm=mathbot                              { utm }
 ;
 mathbot:
