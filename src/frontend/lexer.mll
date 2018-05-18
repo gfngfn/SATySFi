@@ -453,6 +453,7 @@ and mathexpr stack = parse
       pop lexbuf "too many closing" stack;
       EMATHGRP(pos)
     }
+  | "|" { SEP(get_pos lexbuf) }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }

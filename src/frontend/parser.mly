@@ -1018,7 +1018,12 @@ mcmd:
   | tok=MATHCMDWITHMOD { tok }
 ;
 mathblock:
-  | utm=mathmain { let (rng, _) = utm in (rng, UTMath(utm)) }
+  | SEP; utmlst=mathlist { utmlst |> List.map (fun utm -> let (rng, _) = utm in (rng, UTMath(utm))) |> make_cons }
+  | utm=mathmain         { let (rng, _) = utm in (rng, UTMath(utm)) }
+;
+mathlist:
+  | utm=mathmain; SEP; utmtail=mathlist { utm :: utmtail }
+  |                                     { [] }
 ;
 mathmain:
   | utmlst=list(mathsuper) {
