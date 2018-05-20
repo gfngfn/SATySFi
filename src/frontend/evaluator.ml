@@ -1038,6 +1038,15 @@ and interpret env ast =
       let hgt = FontInfo.get_axis_height mfabbrev fontsize in
         LengthConstant(hgt)
 
+  | PrimitiveSetEveryWordBreak(asth1, asth2, astctx) ->
+      let hblst1 = interpret_horz env asth1 in
+      let hblst2 = interpret_horz env asth2 in
+      let (ctx, valuecmd) = interpret_context env astctx in
+        Context(HorzBox.({ ctx with
+          before_word_break = hblst1;
+          after_word_break = hblst2;
+        }), valuecmd)
+
   | BackendFixedEmpty(astwid) ->
       let wid = interpret_length env astwid in
         Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])

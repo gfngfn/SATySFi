@@ -3,26 +3,6 @@ open LengthInterface
 open GraphicData
 
 
-type stretchable =
-  | FiniteStretch of length
-  | Fils          of int
-
-
-let add_stretchable strc1 strc2 =
-  match (strc1, strc2) with
-  | (FiniteStretch(w1), FiniteStretch(w2)) -> FiniteStretch(w1 +% w2)
-  | (Fils(i1), Fils(i2))                   -> Fils(i1 + i2)
-  | (Fils(i1), _)                          -> Fils(i1)
-  | (_, Fils(i2))                          -> Fils(i2)
-
-
-type length_info =
-  {
-    natural     : length;
-    shrinkable  : length;
-    stretchable : stretchable;
-  }
-
 type pure_badness = int
 [@@deriving show]
 
@@ -222,6 +202,8 @@ type context_main = {
   math_variant_char_map  : math_variant_value MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   math_char_class        : math_char_class;
+  before_word_break      : horz_box list;
+  after_word_break       : horz_box list;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t

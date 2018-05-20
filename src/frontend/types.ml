@@ -676,6 +676,7 @@ and abstract_tree =
   | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | PrimitiveSetMathCommand     of abstract_tree * abstract_tree
   | PrimitiveGetAxisHeight      of abstract_tree
+  | PrimitiveSetEveryWordBreak  of abstract_tree * abstract_tree * abstract_tree
   | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
   | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
   | BackendPageBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree

@@ -502,6 +502,8 @@ let get_initial_context wid =
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
+      before_word_break      = [];
+      after_word_break       = [];
     }
 
 
@@ -618,6 +620,7 @@ let make_environments () =
         ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
         ("set-hyphen-penalty" , ~% (tI @-> tCTX @-> tCTX)                , lambda2 (fun vpnlty vctx -> PrimitiveSetHyphenPenalty(vpnlty, vctx)));
         ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
+        ("set-every-word-break", ~% (tIB @-> tIB @-> tCTX @-> tCTX)      , lambda3 (fun vib1 vib2 vctx -> PrimitiveSetEveryWordBreak(vib1, vib2, vctx)));
 
         ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
         ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
