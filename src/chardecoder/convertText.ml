@@ -44,13 +44,13 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   scrlst
 
 
-let half_kern (hsinfo : horz_string_info) : lb_pure_box =
-  LBAtom((natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero), EvHorzEmpty)
-
-
 let to_chunks ctx uchlst : line_break_chunk list =
   let scrlstsp = to_chunk_main_list ctx uchlst in
     scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
+
+
+let half_kern (hsinfo : horz_string_info) : lb_pure_box =
+  LBAtom((natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero), EvHorzEmpty)
 
 
 let pure_space_between_scripts size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
@@ -126,9 +126,11 @@ let quarterwidth_kern ctx script : lb_box =
     LBPure(LBAtom((natural (Length.negate (size *% 0.25)), Length.zero, Length.zero), EvHorzEmpty))
 
 
-let breakable_space ctx () : lb_box =
+let breakable_space lphbf ctx () : lb_box =
   let dscrid = DiscretionaryID.fresh () in
-    LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], [], [])
+  let lphb1 = lphbf ctx.before_word_break in
+  let lphb2 = lphbf ctx.after_word_break in
+    LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], lphb1, lphb2)
 
 
 let unbreakable_space ctx : lb_box =
@@ -315,7 +317,7 @@ type chunk_accumulator =
   | AccSome    of (context_main * script * line_break_class) * break_opportunity
 
 
-let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) (script_after : script) : lb_box list =
+let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before : script) (chunklst : line_break_chunk list) (script_after : script) : lb_box list =
   let rec aux lhbacc optprev chunklst =
     match chunklst with
     | [] ->
@@ -342,7 +344,7 @@ let chunks_to_boxes (script_before : script) (chunklst : line_break_chunk list) 
         let (opt, lhblstmain) =
           match chunkmain with
           | Space ->
-              (AccNone, [breakable_space ctx ()])
+              (AccNone, [breakable_space lphbf ctx ()])
 
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
