@@ -89,3 +89,7 @@ let-block ctx +BNF mnontm mlstlst =
   in
   let ib = tabular celllstlst (fun _ _ -> []) in
   line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+let-math \synteq = ${\equiv}
+let-math \defsynteq = math-group MathRel MathRel ${:\synteq}
