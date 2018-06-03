@@ -1,4 +1,5 @@
 
+module Types = Types_
 open MyUtil
 open LengthInterface
 open Types
@@ -210,30 +211,42 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
 
 let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
-let lamenv env evid ast = FuncWithEnvironment([PatternBranch(PVariable(evid), ast)], env)
+let lamenv env evid arity ast astf = PrimitiveWithEnvironment([PatternBranch(PVariable(evid), ast)], env, arity, astf)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let rec lambda1 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
-    lamenv env evid1 (astf (!- evid1))
+    lamenv env evid1 1 (astf (!- evid1))
+      (fun lst -> match lst with
+                  | [a1] -> astf a1
+                  | _ -> failwith "internal error")
 
 let rec lambda2 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda2-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda2-2)" in
-    lamenv env evid1 (lam evid2 (astf (!- evid1) (!- evid2)))
+    lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
+      (fun lst -> match lst with
+                  | [a1;a2] -> astf a1 a2
+                  | _ -> failwith "internal error")
 
 let rec lambda3 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda3-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
+    lamenv env evid1 3 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3] -> astf a1 a2 a3
+                  | _ -> failwith "internal error")
 
 let rec lambda4 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda4-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda4-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
   let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
+    lamenv env evid1 4 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
+                  | _ -> failwith "internal error")
 
 let rec lambda5 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda5-1)" in
@@ -241,7 +254,10 @@ let rec lambda5 astf env =
   let evid3 = EvalVarID.fresh "(dummy:lambda5-3)" in
   let evid4 = EvalVarID.fresh "(dummy:lambda5-4)" in
   let evid5 = EvalVarID.fresh "(dummy:lambda5-5)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
+    lamenv env evid1 5 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
+                  | _ -> failwith "internal error")
 
 
 let pdfpt = Length.of_pdf_point
@@ -640,10 +656,10 @@ let make_environments () =
         ("close-with-bezier"       , ~% (tPT @-> tPT @-> tPRP @-> tPATH)             , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
         ("unite-path"              , ~% (tPATH @-> tPATH @-> tPATH)                  , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
 
-        ("math-char"               , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathChar(vmc, false, vs)));
-        ("math-big-char"           , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathChar(vmc, true, vs)));
-        ("math-char-with-kern"     , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathCharWithKern(vmc, false, vs, vkfL, vkfR)));
-        ("math-big-char-with-kern" , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathCharWithKern(vmc, true, vs, vkfL, vkfR)));
+        ("math-char"               , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathChar(vmc, vs)));
+        ("math-big-char"           , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathBigChar(vmc, vs)));
+        ("math-char-with-kern"     , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathCharWithKern(vmc, vs, vkfL, vkfR)));
+        ("math-big-char-with-kern" , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathBigCharWithKern(vmc, vs, vkfL, vkfR)));
         ("math-group"              , ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)  , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
         ("math-sup"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
         ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));

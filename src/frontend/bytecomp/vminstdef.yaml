@@ -1,0 +1,1963 @@
+# ---------------------------------------------------
+#   SATySFi virtual machine instruction definitions
+# ---------------------------------------------------
+#
+# This is formatted according to the YAML.
+#
+# This file is read by gen_code.rb.
+# gen_code.rb generates OCaml source code and 
+# type declarations for types.ml, ir.ml and vm.ml.
+# Final source codes that gen_code.rb generates are
+# types_.ml, ir_.ml and vm_.ml.
+#
+# To add a new primitive,
+#   1. Add a new instruction definition to this file.
+#      (is-primitive should be yes.)
+#   2. Add a new entry to primitives.ml.
+#
+#
+# inst:          Instruction name (essential)
+# is-primitive:  Primitive or pure vm instruction (default: no)
+# suppress-pp:   Use a simple pritty printer (default: no)
+# custom-pp:     Specify custom pritty printer
+# no-ircode:     Suppress code generation for ir.ml (default: no)
+# fields:        Field list (for 'abstract_tree' type)
+# params:        Paramater list
+# code:          Instruction code
+#   (note: If is-primitive is yes, code that pushes to stack and
+#          go to next instruction will be automatically inserted.
+#          (see gen_code.rb))
+#
+---
+inst: AccessField
+fields:
+- field_nm : field_name
+params:
+- value1
+code: |
+  match value1 with
+  | RecordValue(asc1) ->
+    begin
+      match Assoc.find_opt asc1 field_nm with
+      | Some(v) -> exec (v::stack) env code dump
+      | None    -> report_bug_vm ("AccessField field " ^ field_nm ^ " not found")
+    end
+
+  | _ -> report_bug_vm "not a Record"
+
+---
+inst: Apply
+fields:
+- n : int
+params:
+- f
+code: |
+  match f with
+  | CompiledFuncWithEnvironment(arity, pargs, framesize, body, env1) ->
+    if arity = n then 
+      begin
+       if pargs = [] then
+          exec stack (newframe env1 framesize) body ((env, code)::dump)
+        else
+          let (args, stack) = popn stack n in
+          let allargs = List.rev (pargs @ args) in
+            exec (allargs @ stack) (newframe env1 framesize) body ((env, code)::dump)
+      end
+ 
+    else if arity > n then
+      let (args, stack) = popn stack n in
+      let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
+        exec (applied::stack) env code dump
+ 
+    else
+      let (surplus, stack) = popn stack (n-arity) in
+      let (args, stack) = popn stack arity in
+      let allargs = List.rev (pargs @ args) in
+        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApply(n-arity)::code)::dump)
+ 
+   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+     if arity = n then
+       exec stack (newframe env1 framesize) body ((env, code)::dump)
+
+     else if arity > n then
+       let (args, stack) = popn stack n in
+        let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
+          exec (applied::stack) env code dump
+ 
+     else
+       let (surplus, stack) = popn stack (n-arity) in
+         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApply(n-arity)::code)::dump)
+ 
+   | _ -> report_bug_vm "Apply: not a function"
+
+---
+inst: ApplyT
+fields:
+- n : int
+params:
+- f
+code: |
+  match f with
+  | CompiledFuncWithEnvironment(arity, pargs, framesize, body, env1) ->
+    if arity = n then 
+      begin
+       if pargs = [] then
+          exec stack (newframe env1 framesize) body dump
+        else
+          let (args, stack) = popn stack n in
+          let allargs = List.rev (pargs @ args) in
+            exec (allargs @ stack) (newframe env1 framesize) body dump
+      end
+ 
+    else if arity > n then
+      let (args, stack) = popn stack n in
+      let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
+        exec (applied::stack) env code dump
+ 
+    else
+      let (surplus, stack) = popn stack (n-arity) in
+      let (args, stack) = popn stack arity in
+      let allargs = List.rev (pargs @ args) in
+        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApplyT(n-arity)::code)::dump)
+ 
+   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+     if arity = n then
+       exec stack (newframe env1 framesize) body dump
+
+     else if arity > n then
+       let (args, stack) = popn stack n in
+        let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
+          exec (applied::stack) env code dump
+ 
+     else
+       let (surplus, stack) = popn stack (n-arity) in
+         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApplyT(n-arity)::code)::dump)
+ 
+   | _ -> report_bug_vm "ApplyT: not a function"
+
+---
+inst: BindGlobal
+fields:
+- loc : syntactic_value ref
+- evid : EvalVarID.t
+- refs : int
+params:
+- v
+code: |
+  loc := v;
+  exec stack env code dump
+
+---
+inst: BindLocal
+fields:
+- lv : int
+- offset : int
+- evid : EvalVarID.t
+- refs : int
+params:
+- v
+code: |
+  local_set_value env lv offset v;
+  exec stack env code dump
+
+---
+inst: BindClosuresRec
+fields:
+- binds : (varloc * instruction list) list
+code: |
+  binds |> List.iter (fun (var, code) ->
+    let recfunc = exec [] env code [] in
+      match var with
+      | GlobalVar(loc, evid, refs) -> loc := recfunc
+      | LocalVar(lv, offset, evid, refs) -> local_set_value env lv offset recfunc
+  );
+  exec stack env code dump
+
+---
+inst: Branch
+suppress-pp : yes
+fields:
+- body : instruction list
+code: |
+  exec stack env body dump
+
+---
+inst: BranchIf
+suppress-pp : yes
+fields:
+- body : instruction list
+params:
+- b : bool
+code: |
+  if b then
+    exec stack env body dump
+  else
+    exec stack env code dump
+
+---
+inst: BranchIfNot
+suppress-pp : yes
+fields:
+- body : instruction list
+params:
+- b : bool
+code: |
+  if b then
+    exec stack env code dump
+  else
+    exec stack env body dump
+
+---
+inst: LoadGlobal
+custom-pp:
+  (fun fmt (r, evid, refs) -> Format.fprintf fmt "OpLoadGlobal(%s)" (EvalVarID.show_direct evid))
+fields:
+- loc : syntactic_value ref
+- evid : EvalVarID.t
+- refs : int
+code: |
+  exec ((!loc)::stack) env code dump
+
+---
+inst: LoadLocal
+fields:
+- lv : int
+- offset : int
+- evid : EvalVarID.t
+- refs : int
+code: |
+  exec ((local_get_value env lv offset)::stack) env code dump
+
+---
+inst: Dereference
+is-primitive: yes
+params:
+- valuecont
+code: |
+  match valuecont with
+  | Location(stid) ->
+     begin
+       match find_location_value (vmenv_global env) stid with
+       | Some(value) -> value
+       | None        -> report_bug_vm "Dereference"
+     end
+ 
+  | _ ->
+    report_bug_vm "Dereference" 
+
+---
+inst: Dup
+code: | 
+  exec ((List.hd stack)::stack) env code dump
+
+---
+inst: Error
+fields:
+- msg : string
+code: | 
+  raise (ExecError msg)
+
+---
+inst: MakeConstructor
+fields:
+- ctor_nm : constructor_name
+params:
+- valuecont
+code: |
+  exec (Constructor(ctor_nm, valuecont)::stack) env code dump
+
+---
+inst: MakeRecord
+suppress-pp : yes
+fields:
+- keylst : Assoc.key list
+code: |
+  let rec collect keys asc st =
+    match keys with
+    | [] -> (asc, st)
+    | k::rest ->
+        begin
+          match st with
+          | v::stnew -> collect rest (Assoc.add asc k v) stnew
+          | _-> report_bug_vm "MakeRecord"
+        end
+    in
+    let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
+      exec ((RecordValue(asc))::stack) env code dump
+
+---
+inst: MakeTuple
+fields:
+- len : int
+code: |
+  let rec iter n last st =
+    if n = 0 then
+      (last, st)
+    else
+      begin match st with
+      | value :: stnew ->
+        iter (n-1) (TupleCons(value, last)) stnew
+      | [] -> report_bug_vm "stack underflow"
+      end
+  in
+  let (tuple, stack) = iter len EndOfTuple stack in
+    exec (tuple::stack) env code dump
+  
+---
+inst: Pop
+code: | 
+  exec (List.tl stack) env code dump
+
+---
+inst: Push
+fields:
+- v : syntactic_value
+code: | 
+  exec (v::stack) env code dump
+
+---
+inst: PushEnv
+code: | 
+  exec ((EvaluatedEnvironment(vmenv_global env))::stack) env code dump
+
+---
+inst: CheckStackTopBool
+suppress-pp : yes
+fields:
+- b : bool
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | BooleanConstant(b0) when b=b0 ->
+    exec stack env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopCtor
+suppress-pp : yes
+fields:
+- ctor_nm : constructor_name
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | Constructor(nm, sub) when nm=ctor_nm ->
+    exec (sub::stack) env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopEndOfList
+suppress-pp : yes
+fields:
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | EndOfList ->
+    exec stack env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopInt
+suppress-pp : yes
+fields:
+- i : int
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | IntegerConstant(i0) when i=i0 ->
+    exec stack env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopListCons
+suppress-pp : yes
+fields:
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | ListCons(car, cdr) ->
+    exec (car::cdr::stack) env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopStr
+suppress-pp : yes
+fields:
+- str : string
+- next : instruction list
+params:
+- v
+code: |
+  match v with
+  | StringConstant(s0) when s0=str ->
+    exec stack env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: CheckStackTopTupleCons
+suppress-pp : yes
+fields:
+- next : instruction list
+params:
+- v 
+code: |
+  match v with
+  | TupleCons(car, cdr) ->
+    exec (car::cdr::stack) env code dump
+  | _ -> 
+    exec stack env next dump
+
+---
+inst: Closure
+fields:
+- arity : int
+- framesize : int
+- body : instruction list
+code: |
+  exec (CompiledFuncWithEnvironment(arity, [], framesize, body, env)::stack) env code dump
+
+---
+inst: ClosureInputHorz
+fields:
+- body : syntactic_value
+code: |
+  let imihclos = get_input_horz_content env body in
+    exec (imihclos::stack) env code dump
+
+---
+inst: ClosureInputVert
+fields:
+- body : syntactic_value
+code: |
+  let imivclos = get_input_vert_content env body in
+    exec (imivclos::stack) env code dump
+
+---
+inst: BindLocationGlobal
+fields:
+- loc : syntactic_value ref
+- evid : EvalVarID.t
+params:
+- valueini
+code: |
+  let stid = register_location (vmenv_global env) valueini in
+    loc := Location(stid);
+    exec stack env code dump
+
+---
+inst: BindLocationLocal
+fields:
+- lv : int
+- offset : int
+- evid : EvalVarID.t
+params:
+- valueini
+code: |
+  let stid = register_location (vmenv_global env) valueini in
+    local_set_value env lv offset (Location(stid));
+    exec stack env code dump
+
+---
+inst: UpdateGlobal
+suppress-pp : yes
+fields:
+- loc : syntactic_value ref
+- evid : EvalVarID.t
+params:
+- valuenew
+code: |
+   match !loc with
+   | Location(stid) ->
+      begin
+        update_location (vmenv_global env) stid valuenew;
+        exec (UnitConstant::stack) env code dump
+      end
+
+   | _ -> report_bug_vm "UpdateGlobal"
+
+---
+inst: UpdateLocal
+suppress-pp : yes
+fields:
+- lv : int
+- offset : int
+- evid : EvalVarID.t
+params:
+- valuenew
+code: |
+  match local_get_value env lv offset with
+  | Location(stid) ->
+     begin
+       update_location (vmenv_global env) stid valuenew;
+       exec (UnitConstant::stack) env code dump
+     end
+
+  | _ -> report_bug_vm "UpdateLocal"
+
+---
+inst: Sel
+fields:
+- tpart : instruction list
+- fpart : instruction list
+suppress-pp: yes
+params:
+- b : bool
+code: |
+  if b then
+    exec stack env tpart dump
+  else
+    exec stack env fpart dump
+
+---
+inst: Concat 
+is-primitive: yes 
+params:
+- value1
+- value2
+code: |
+  match (value1, value2) with
+  | (StringEmpty, _)   -> value2
+  | (_, StringEmpty)   -> value1
+  | (StringConstant(s1), StringConstant(s2)) -> StringConstant(s1 ^ s2)
+  | _  -> report_bug_vm "Concat"
+  
+---
+inst: PrimitiveSetMathVariantToChar 
+is-primitive: yes 
+params:
+- s : string
+- mccls : math_char_class
+- mathcls : math_class
+- uchlst : uchar_list
+- (ctx, v) : context
+code: | 
+  let mvvalue = (mathcls, HorzBox.MathVariantToChar(false, uchlst)) in
+  let mcclsmap = ctx.HorzBox.math_variant_char_map in
+    Context(HorzBox.({ ctx with math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue }), v)
+  
+---
+inst: PrimitiveSetMathCommand 
+is-primitive: yes 
+params:
+- valuecmd
+- (ctx, _) : context
+code: |
+  Context(ctx, valuecmd)
+  
+---
+inst: BackendMathVariantCharDirect 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- valuercd
+code: |
+  let is_big = false in  (* temporary *)
+  let rcd =
+    match valuercd with
+    | RecordValue(rcd) -> rcd
+    | _  -> report_bug_vm "BackendMathVariantCharDirect not a record"
+  in
+  begin
+    match
+      ( Assoc.find_opt rcd "italic",
+        Assoc.find_opt rcd "bold-italic",
+        Assoc.find_opt rcd "roman",
+        Assoc.find_opt rcd "bold-roman",
+        Assoc.find_opt rcd "script",
+        Assoc.find_opt rcd "bold-script",
+        Assoc.find_opt rcd "fraktur",
+        Assoc.find_opt rcd "bold-fraktur",
+        Assoc.find_opt rcd "double-struck" )
+    with
+    | ( Some(vcpI),
+        Some(vcpBI),
+        Some(vcpR),
+        Some(vcpBR),
+        Some(vcpS),
+        Some(vcpBS),
+        Some(vcpF),
+        Some(vcpBF),
+        Some(vcpDS) ) ->
+          let uchlstI  = get_uchar_list vcpI  in
+          let uchlstBI = get_uchar_list vcpBI in
+          let uchlstR  = get_uchar_list vcpR  in
+          let uchlstBR = get_uchar_list vcpBR in
+          let uchlstS  = get_uchar_list vcpS  in
+          let uchlstBS = get_uchar_list vcpBS in
+          let uchlstF  = get_uchar_list vcpF  in
+          let uchlstBF = get_uchar_list vcpBF in
+          let uchlstDS = get_uchar_list vcpDS in
+          let mvsty =
+            HorzBox.({
+              math_italic  = uchlstI ;
+              math_bold_italic   = uchlstBI;
+              math_roman   = uchlstR ;
+              math_bold_roman    = uchlstBR;
+              math_script  = uchlstS ;
+              math_bold_script   = uchlstBS;
+              math_fraktur       = uchlstF ;
+              math_bold_fraktur  = uchlstBF;
+              math_double_struck = uchlstDS;
+     })
+      in
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
+  
+    | _ -> report_bug_vm "BackendMathVariantCharDirect missing some field"
+    end
+ 
+---
+inst: BackendMathConcat 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue(List.append mlst1 mlst2)
+  
+---
+inst: BackendMathGroup 
+is-primitive: yes 
+params:
+- mathcls1 : math_class
+- mathcls2 : math_class
+- mlst : math
+code: |
+  MathValue([MathGroup(mathcls1, mathcls2, mlst)])
+  
+---
+inst: BackendMathSuperscript 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue([MathSuperscript(mlst1, mlst2)])
+  
+---
+inst: BackendMathSubscript 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue([MathSubscript(mlst1, mlst2)])
+  
+---
+inst: BackendMathFraction 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue([MathFraction(mlst1, mlst2)])
+  
+---
+inst: BackendMathRadical 
+is-primitive: yes 
+params:
+- mlst1opt
+- mlst2 : math
+code: |
+  let mlst1opt = get_option (fun v -> match v with
+                                      | MathValue(mlst) -> mlst
+                                      | _ -> report_bug_vm "MathValue expected"
+  ) mlst1opt in
+  let radical = Primitives.default_radical in  (* temporary; should be variable *)
+    match mlst1opt with
+    | None  -> MathValue([MathRadical(radical, mlst2)])
+    | Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
+ 
+---
+inst: BackendMathParen 
+is-primitive: yes 
+params:
+- valueparenL
+- valueparenR
+- mlst1 : math
+code: |
+  let parenL = make_paren env valueparenL in
+  let parenR = make_paren env valueparenR in
+    MathValue([MathParen(parenL, parenR, mlst1)])
+  
+---
+inst: BackendMathUpperLimit 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue([MathUpperLimit(mlst1, mlst2)])
+  
+---
+inst: BackendMathLowerLimit 
+is-primitive: yes 
+params:
+- mlst1 : math
+- mlst2 : math
+code: |
+  MathValue([MathLowerLimit(mlst1, mlst2)])
+  
+---
+inst: BackendMathChar 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- s : string
+code: |
+  let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+  let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
+    MathValue(mlst)
+
+---
+inst: BackendMathBigChar 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- s : string
+code: |
+  let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+  let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(true, uchlst))))] in
+    MathValue(mlst)
+
+---
+inst: BackendMathCharWithKern 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- s : string
+- valuekernfL
+- valuekernfR
+code: |
+  let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+  let kernfL = make_math_char_kern_func env valuekernfL in
+  let kernfR = make_math_char_kern_func env valuekernfR in
+  let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
+    MathValue(mlst)
+
+---
+inst: BackendMathBigCharWithKern 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- s : string
+- valuekernfL
+- valuekernfR
+code: |
+  let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+  let kernfL = make_math_char_kern_func env valuekernfL in
+  let kernfR = make_math_char_kern_func env valuekernfR in
+  let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
+    MathValue(mlst)
+  
+---
+inst: BackendMathText 
+is-primitive: yes 
+params:
+- mathcls : math_class
+- valuef
+code: |
+  let hblstf ictx =
+    match exec [valuef; Context(ictx)] env [OpApplyT(1)] [] with
+    | Horz(h) -> h
+    | _ -> report_bug_vm "Horz expected"
+  in
+    MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
+  
+---
+inst: BackendMathColor 
+is-primitive: yes 
+params:
+- color : color
+- mlst : math
+code: |
+  MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
+  
+---
+inst: BackendMathCharClass 
+is-primitive: yes 
+params:
+- mccls : math_char_class
+- mlst : math
+code: |
+  MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
+
+---
+inst: BackendMathList
+no-ircode: yes
+fields:
+- n : int
+code: |
+  let rec iter n st acc =
+    match n with 
+    | 0 -> (acc, st)
+    | n ->
+      begin
+        match st with
+        | MathValue(m) :: stnew -> iter (n-1) stnew (m::acc)
+        | _ -> report_bug_vm "BackendMathList"
+      end
+  in
+  let (mlst, stack) = iter n stack [] in
+    exec (MathValue(List.concat mlst)::stack) env code dump
+ 
+---
+inst: BackendEmbeddedMath 
+is-primitive: yes 
+params:
+- ictx : context
+- mlst : math
+code: |
+  let mathctx = MathContext.make ictx in
+  let hblst = Math.main mathctx mlst in
+    Horz(hblst)
+  
+---
+inst: BackendTabular 
+is-primitive: yes 
+params:
+- tabular
+- valuerulesf
+code: |
+  let tabular = get_list (get_list get_cell) tabular in
+  let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
+  let rulesf xs ys =
+    let valueret =
+      exec [valuerulesf; make_length_list ys; make_length_list xs] env [OpApplyT(2)] []
+    in
+      graphics_of_list valueret
+  in
+    Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+  
+---
+inst: BackendRegisterPdfImage 
+is-primitive: yes 
+params:
+- srcpath : string
+- pageno : int
+code: |
+  let imgkey = ImageInfo.add_pdf srcpath pageno in
+    ImageKey(imgkey)
+  
+---
+inst: BackendRegisterOtherImage 
+is-primitive: yes 
+params:
+- srcpath : string
+code: |
+  let imgkey = ImageInfo.add_image srcpath in
+    ImageKey(imgkey)
+  
+---
+inst: BackendUseImageByWidth 
+is-primitive: yes 
+params:
+- valueimg
+- wid : length
+code: | 
+  match valueimg with
+  | ImageKey(imgkey) ->
+     let hgt = ImageInfo.get_height_from_width imgkey wid in
+       Horz(HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
+  
+  | _ -> report_bug_vm "BackendUseImage"
+  
+---
+inst: BackendHookPageBreak 
+is-primitive: yes 
+params:
+- hookf
+code: |
+  let hookf = make_hook env hookf in
+    Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+  
+---
+inst: Path
+suppress-pp : yes
+is-primitive : yes
+no-ircode : yes
+fields:
+- c_pathcomplst : ((instruction list) compiled_path_component) list
+- c_cycleopt : (unit compiled_path_component) option
+params:
+- pt0 : point
+code: |
+  let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
+    PathValue([GraphicData.GeneralPath(pt0, pathelemlst, closingopt)])
+  
+---
+inst: PathUnite 
+is-primitive: yes 
+params:
+- pathlst1 : path_value
+- pathlst2 : path_value
+code: |
+  PathValue(List.append pathlst1 pathlst2)
+  
+---
+inst: PrePathBeginning 
+is-primitive: yes 
+params:
+- pt0 : point
+code: |
+  PrePathValue(PrePath.start pt0)
+  
+---
+inst: PrePathLineTo 
+is-primitive: yes 
+params:
+- pt1 : point
+- prepath : prepath
+code: |
+  PrePathValue(prepath |> PrePath.line_to pt1)
+  
+---
+inst: PrePathCubicBezierTo 
+is-primitive: yes 
+params:
+- ptS : point
+- ptT : point
+- pt1 : point
+- prepath: prepath
+code: |
+  PrePathValue(prepath |> PrePath.bezier_to ptS ptT pt1)
+  
+---
+inst: PrePathTerminate 
+is-primitive: yes 
+params:
+- prepath : prepath
+code: |
+  PathValue([prepath |> PrePath.terminate])
+  
+---
+inst: PrePathCloseWithLine 
+is-primitive: yes 
+params:
+- prepath : prepath
+code: |
+  PathValue([prepath |> PrePath.close_with_line])
+  
+---
+inst: PrePathCloseWithCubicBezier 
+is-primitive: yes 
+params:
+- ptS : point
+- ptT : point
+- prepath : prepath
+code: |
+  PathValue([prepath |> PrePath.close_with_bezier ptS ptT])
+  
+---
+inst: HorzConcat 
+is-primitive: yes 
+params:
+- hblst1 : horz
+- hblst2 : horz
+code: |
+  Horz(List.append hblst1 hblst2)
+  
+---
+inst: VertConcat 
+is-primitive: yes 
+params:
+- vblst1 : vert
+- vblst2 : vert
+code: |
+  Vert(List.append vblst1 vblst2)
+  
+---
+inst: HorzLex 
+is-primitive: yes 
+params:
+- valuectx
+- value1
+code: |
+  match value1 with
+  | CompiledInputHorzWithEnvironment(imihlst, envi) -> 
+     exec_intermediate_input_horz envi valuectx imihlst
+  (*| InputHorzWithEnvironment(imihlst, envi) -> 
+     Evaluator.interpret_intermediate_input_horz envi valuectx imihlst*)
+  | _         -> report_bug_vm "HorzLex"
+  
+---
+inst: VertLex 
+is-primitive: yes 
+params:
+- valuectx
+- value1
+code: |
+  match value1 with
+  | CompiledInputVertWithEnvironment(imivlst, envi) ->
+     exec_intermediate_input_vert envi valuectx imivlst
+  | _         -> report_bug_vm "VertLex"
+  
+---
+inst: BackendFont 
+is-primitive: yes 
+params:
+- abbrev : string
+- size_ratio : float
+- rising_ratio : float
+code: |
+  make_font_value (abbrev, size_ratio, rising_ratio)
+  
+---
+inst: BackendLineBreaking 
+is-primitive: yes 
+params:
+- is_breakable_top : bool
+- is_breakable_bottom : bool
+- (ctx,  _) : context
+- hblst : horz
+code: | 
+  let imvblst = HorzBox.(LineBreak.main is_breakable_top is_breakable_bottom ctx.paragraph_top ctx.paragraph_bottom ctx hblst) in
+    Vert(imvblst)
+  
+---
+inst: BackendPageBreaking 
+is-primitive: yes 
+params:
+- pagesize : page_size
+- pagecontf
+- pagepartsf
+- vblst : vert
+code: |
+  let pagecontf = make_page_content_scheme_func env pagecontf in
+  let pagepartsf = make_page_parts_scheme_func env pagepartsf in
+    DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
+  
+---
+inst: BackendVertFrame 
+is-primitive: yes 
+params:
+- (ctx, valuecmd) : context
+- pads : paddings
+- (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
+- valuek
+code: |
+  let valuectxsub =
+    Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }), valuecmd)
+  in
+  let vblst = 
+    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
+    | Vert(v) -> v
+    | _ -> report_bug_vm "BackendVertFrame"
+  in
+    Vert(HorzBox.([
+      VertTopMargin(true, ctx.paragraph_top);
+      VertFrame(pads,
+                  make_frame_deco env valuedecoS,
+                  make_frame_deco env valuedecoH,
+                  make_frame_deco env valuedecoM,
+                  make_frame_deco env valuedecoT,
+                  ctx.paragraph_width, vblst);
+      VertBottomMargin(true, ctx.paragraph_bottom);
+  ]))
+  
+---
+inst: BackendEmbeddedVertTop 
+is-primitive: yes 
+params:
+- (ctx, valuecmd) : context
+- wid : length
+- valuek
+code: |
+  let valuectxsub =
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+  in
+  let vblst = 
+    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
+    | Vert(v) -> v
+    | _ -> report_bug_vm "BackendEmbeddedVertTop"
+  in
+  let imvblst = PageBreak.solidify vblst in
+  let (hgt, dpt) = adjust_to_first_line imvblst in
+    Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  
+---
+inst: BackendVertSkip 
+is-primitive: yes 
+params:
+- len : length
+code: |
+  Vert(HorzBox.([VertFixedBreakable(len)]))
+  
+---
+inst: BackendEmbeddedVertBottom 
+is-primitive: yes 
+params:
+- (ctx, valuecmd) : context
+- wid : length
+- valuek
+code: |
+  let valuectxsub =
+    Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
+  in
+  let vblst = 
+    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
+    | Vert(v) -> v
+    | _ -> report_bug_vm "BackendEmbeddedVertBottom"
+  in
+  let imvblst = PageBreak.solidify vblst in
+  let (hgt, dpt) = adjust_to_last_line imvblst in
+    Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  
+---
+inst: BackendLineStackTop 
+is-primitive: yes 
+params:
+- hblstlst
+code: |
+  let hblstlst = get_list (fun v -> match v with 
+                                    | Horz(h) -> h
+                                    | _ -> report_bug_vm "BackendLineStackTop"
+  ) hblstlst 
+  in
+  let (wid, vblst) = make_line_stack hblstlst in
+  let imvblst = PageBreak.solidify vblst in
+  let (hgt, dpt) = adjust_to_first_line imvblst in
+    Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  
+---
+inst: BackendLineStackBottom 
+is-primitive: yes 
+params:
+- hblstlst
+code: |
+  let hblstlst = get_list (fun v -> match v with
+                                    | Horz(h) -> h
+                                    | _ -> report_bug_vm "BackendLineStackBottom"
+  ) hblstlst
+  in
+  let (wid, vblst) = make_line_stack hblstlst in
+  let imvblst = PageBreak.solidify vblst in
+  let (hgt, dpt) = adjust_to_last_line imvblst in
+    Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+  
+---
+inst: PrimitiveGetInitialContext 
+is-primitive: yes 
+params:
+- txtwid : length
+- valuecmd
+code: |
+  Context(Primitives.get_initial_context txtwid, valuecmd)
+  
+---
+inst: PrimitiveSetSpaceRatio 
+is-primitive: yes 
+params:
+- ratio : float
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with space_natural = ratio; }), valuecmd)
+  
+---
+inst: PrimitiveSetParagraphMargin 
+is-primitive: yes 
+params:
+- lentop : length
+- lenbottom : length
+- (ctx, valuecmd) : context 
+code: | 
+  Context(HorzBox.({ ctx with
+    paragraph_top    = lentop;
+    paragraph_bottom = lenbottom;
+  }), valuecmd)
+  
+---
+inst: PrimitiveSetFontSize 
+is-primitive: yes 
+params:
+- size : length
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with font_size = size; }), valuecmd)
+  
+---
+inst: PrimitiveGetFontSize 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  LengthConstant(ctx.HorzBox.font_size)
+  
+---
+inst: PrimitiveSetFont 
+is-primitive: yes 
+params:
+- script : script
+- font_info : font
+- (ctx, valuecmd) : context
+code: |
+  let font_scheme_new = HorzBox.(ctx.font_scheme |> CharBasis.ScriptSchemeMap.add script font_info) in
+    Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), valuecmd)
+  
+---
+inst: PrimitiveGetFont 
+is-primitive: yes 
+params:
+- script : script
+- (ctx, _) : context
+code: |
+  let fontwr = HorzBox.get_font_with_ratio ctx script in
+    make_font_value fontwr
+  
+---
+inst: PrimitiveSetMathFont 
+is-primitive: yes 
+params:
+- mfabbrev : string
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with math_font = mfabbrev; }), valuecmd)
+  
+---
+inst: PrimitiveSetDominantWideScript 
+is-primitive: yes 
+params:
+- script: script
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with dominant_wide_script = script; }), valuecmd)
+  
+---
+inst: PrimitiveGetDominantWideScript 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  make_script_value ctx.HorzBox.dominant_wide_script
+  
+---
+inst: PrimitiveSetDominantNarrowScript 
+is-primitive: yes 
+params:
+- script : script
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with dominant_narrow_script = script; }), valuecmd)
+  
+---
+inst: PrimitiveGetDominantNarrowScript 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  make_script_value ctx.HorzBox.dominant_narrow_script
+  
+---
+inst: PrimitiveSetLangSys 
+is-primitive: yes 
+params:
+- script : script
+- langsys : language_system
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys}), valuecmd)
+  
+---
+inst: PrimitiveGetLangSys 
+is-primitive: yes 
+params:
+- script : script
+- (ctx, _) : context
+code: |
+  let langsys = HorzBox.get_language_system ctx script in
+    make_language_system_value langsys
+  
+---
+inst: PrimitiveSetTextColor 
+is-primitive: yes 
+params:
+- color : color
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with text_color = color; }), valuecmd)
+  
+---
+inst: PrimitiveGetTextColor 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  let color = ctx.HorzBox.text_color in
+    make_color_value color
+  
+---
+inst: PrimitiveSetLeading 
+is-primitive: yes 
+params:
+- len : length
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with leading = len; }), valuecmd)
+  
+---
+inst: PrimitiveGetTextWidth 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  LengthConstant(ctx.HorzBox.paragraph_width)
+  
+---
+inst: PrimitiveSetManualRising 
+is-primitive: yes 
+params:
+- rising : length
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
+  
+---
+inst: PrimitiveSetHyphenPenalty 
+is-primitive: yes 
+params:
+- pnlty : int
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), valuecmd)
+  
+---
+inst: PrimitiveEmbed 
+is-primitive: yes 
+params:
+- str : string
+code: |
+  CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
+  
+---
+inst: PrimitiveGetAxisHeight 
+is-primitive: yes 
+params:
+- (ctx, _) : context
+code: |
+  let fontsize = ctx.HorzBox.font_size in
+  let mfabbrev = ctx.HorzBox.math_font in
+  let hgt = FontInfo.get_axis_height mfabbrev fontsize in
+    LengthConstant(hgt)
+  
+---
+inst: BackendFixedEmpty 
+is-primitive: yes 
+params:
+- wid : length
+code: |
+  Horz([HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))])
+  
+---
+inst: BackendOuterEmpty 
+is-primitive: yes 
+params:
+- widnat : length
+- widshrink : length
+- widstretch : length
+code: |
+  Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
+  
+---
+inst: BackendOuterFrame 
+is-primitive: yes 
+params:
+- pads : paddings
+- valuedeco
+- hblst : horz
+code: |
+  Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
+    pads,
+    make_frame_deco env valuedeco,
+    hblst))])
+  
+---
+inst: BackendInnerFrame 
+is-primitive: yes 
+params:
+- pads : paddings
+- valuedeco
+- hblst : horz
+code: |
+  Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
+    pads,
+    make_frame_deco env valuedeco,
+    hblst))])
+  
+---
+inst: BackendFixedFrame 
+is-primitive: yes 
+params:
+- wid : length
+- pads : paddings
+- hblst : horz
+- valuedeco
+code: | 
+  Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
+    pads, wid,
+    make_frame_deco env valuedeco,
+    hblst))])
+  
+---
+inst: BackendOuterFrameBreakable 
+is-primitive: yes 
+params:
+- pads : paddings
+- (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
+- hblst : horz
+code: | 
+  Horz([HorzBox.HorzFrameBreakable(
+    pads, Length.zero, Length.zero,
+    make_frame_deco env valuedecoS,
+    make_frame_deco env valuedecoH,
+    make_frame_deco env valuedecoM,
+    make_frame_deco env valuedecoT,
+    hblst
+  )])
+  
+---
+inst: BackendInlineGraphics 
+is-primitive: yes 
+params:
+- wid : length
+- hgt : length
+- dpt : length
+- valueg
+code: | 
+  let graphics = make_inline_graphics env valueg in
+    Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+  
+---
+inst: BackendScriptGuard 
+is-primitive: yes 
+params:
+- script : script
+- hblst : horz
+code: |
+  Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
+  
+---
+inst: BackendDiscretionary 
+is-primitive: yes 
+params:
+- pb : int
+- hblst0 : horz
+- hblst1 : horz
+- hblst2 : horz
+code: |
+  Horz(HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+  
+---
+inst: BackendRegisterCrossReference 
+is-primitive: yes 
+params:
+- k : string
+- v : string
+code: |
+  CrossRef.register k v;
+  UnitConstant
+  
+---
+inst: BackendGetCrossReference 
+is-primitive: yes 
+params:
+- k : string
+code: |
+  match CrossRef.get k with
+  | None    -> Constructor("None", UnitConstant)
+  | Some(v) -> Constructor("Some", StringConstant(v))
+
+---
+inst: PrimitiveGetNaturalWidth 
+is-primitive: yes 
+params:
+- hblst : horz
+code: |
+  let (wid, _, _) = LineBreak.get_natural_metrics hblst in
+    LengthConstant(wid)
+  
+---
+inst: PrimitiveGetNaturalLength 
+is-primitive: yes 
+params:
+- vblst : vert
+code: |
+  let imvblst = PageBreak.solidify vblst in
+  let (hgt, dpt) = adjust_to_first_line imvblst in
+    LengthConstant(hgt +% (Length.negate dpt))
+  
+---
+inst: PrimitiveDisplayMessage 
+is-primitive: yes 
+params:
+- str : string
+code: |
+  print_endline str;
+  UnitConstant
+  
+---
+inst: PrimitiveListCons 
+is-primitive: yes 
+params:
+- valuehd
+- valuetl
+code: |
+  ListCons(valuehd, valuetl)
+  
+---
+inst: PrimitiveSame 
+is-primitive: yes 
+params:
+- str1 : string
+- str2 : string
+code: |
+  BooleanConstant(String.equal str1 str2)
+ 
+---
+inst: PrimitiveStringSub 
+is-primitive: yes 
+params:
+- str : string
+- pos : int
+- wid : int
+code: |
+  let resstr =
+  try String.sub str pos wid with
+  | Invalid_argument(s) -> raise (ExecError("illegal index for string-sub"))
+  in
+    StringConstant(resstr)
+
+---
+inst: PrimitiveStringLength 
+is-primitive: yes
+params:
+- str : string
+code: |
+  IntegerConstant(String.length str)
+  
+---
+inst: PrimitiveStringUnexplode 
+is-primitive: yes 
+params:
+- ilst
+code: |
+  let ilst = get_list (fun v -> match v with
+                                | IntegerConstant(i) -> i
+                                | _ -> report_bug_vm "PrimitiveStringUnexplode"
+  ) ilst
+  in
+  let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
+    StringConstant(s)
+  
+---
+inst: PrimitiveRegExpOfString 
+is-primitive: yes 
+params:
+- str : string
+code: |
+  let regexp =
+    try Str.regexp str with
+    | Failure(msg) -> raise (ExecError("regexp-of-string" ^ msg))
+  in
+    RegExpConstant(regexp)
+  
+---
+inst: PrimitiveStringMatch 
+is-primitive: yes 
+params:
+- pat : regexp
+- s : string
+code: |
+  BooleanConstant(Str.string_match pat s 0)
+  
+---
+inst: PrimitiveSplitIntoLines 
+is-primitive: yes 
+params:
+- s : string
+code: |
+  let slst = String.split_on_char '\n' s in
+  let pairlst = slst |> List.map chop_space_indent in
+    (pairlst |> make_list (fun (i, s) ->
+      TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+  
+  
+---
+inst: PrimitiveSplitOnRegExp 
+is-primitive: yes 
+params:
+- sep : regexp
+- str : string
+code: |
+  let slst = Str.split sep str in
+  let pairlst = slst |> List.map chop_space_indent in
+    (pairlst |> make_list (fun (i, s) ->
+      TupleCons(IntegerConstant(i), TupleCons(StringConstant(s), EndOfTuple))))
+  
+  
+---
+inst: PrimitiveArabic 
+is-primitive: yes 
+params:
+- num : int
+code: |
+  StringConstant(string_of_int num)
+  
+---
+inst: PrimitiveFloat 
+is-primitive: yes 
+params:
+- ic1 : int
+code: | 
+  FloatConstant(float_of_int ic1)
+  
+---
+inst: PrimitiveRound 
+is-primitive: yes 
+params:
+- fc1 : float
+code: |
+  IntegerConstant(int_of_float fc1)
+  
+---
+inst: PrimitiveDrawText 
+is-primitive: yes 
+params:
+- pt : point
+- hblst : horz
+code: |
+  let (imhblst, _, _) = LineBreak.natural hblst in
+  let grelem = Graphics.make_text pt imhblst in
+    GraphicsValue(grelem)
+  
+---
+inst: PrimitiveDrawStroke 
+is-primitive: yes 
+params:
+- wid : length
+- color : color
+- pathlst : path_value
+code: |
+  let grelem = Graphics.make_stroke wid color pathlst in
+    GraphicsValue(grelem)
+  
+---
+inst: PrimitiveDrawFill 
+is-primitive: yes 
+params:
+- color : color
+- pathlst : path_value
+code: |
+  let grelem = Graphics.make_fill color pathlst in
+    GraphicsValue(grelem)
+  
+---
+inst: PrimitiveDrawDashedStroke
+is-primitive: yes 
+params:
+- wid : length
+- tup3
+- color : color
+- pathlst : path_value
+code: | 
+  let (len1, len2, len3) = get_tuple3 (fun value ->
+    match value with
+    | LengthConstant(len) -> len
+    | _ -> report_bug_vm "PrimitiveDrawDashedStroke"
+  ) tup3
+  in
+  let grelem = Graphics.make_dashed_stroke wid (len1, len2, len3) color pathlst in
+    GraphicsValue(grelem)
+  
+---
+inst: Times 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl * numr)
+  
+---
+inst: Divides 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  try IntegerConstant(numl / numr) with
+  | Division_by_zero -> raise (ExecError("division by zero"))
+
+---
+inst: Mod 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  try IntegerConstant(numl mod numr) with
+  | Division_by_zero -> raise (ExecError("division by zero"))
+  
+---
+inst: Plus 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl + numr)
+  
+---
+inst: Minus 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl - numr)
+  
+---
+inst: EqualTo 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  BooleanConstant(numl = numr)
+
+---
+inst: GreaterThan 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  BooleanConstant(numl > numr)
+  
+---
+inst: LessThan 
+is-primitive: yes 
+params:
+- numl : int
+- numr : int
+code: |
+  BooleanConstant(numl < numr)
+  
+---
+inst: LogicalAnd 
+is-primitive: yes 
+params:
+- binl : bool
+- binr : bool
+code: |
+  BooleanConstant(binl && binr)
+  
+---
+inst: LogicalOr 
+is-primitive: yes 
+params:
+- binl : bool
+- binr : bool
+code: |
+  BooleanConstant(binl || binr)
+  
+---
+inst: LogicalNot 
+is-primitive: yes 
+params:
+- binl : bool
+code: |
+  BooleanConstant(not binl)
+  
+---
+inst: FloatPlus 
+is-primitive: yes 
+params:
+- flt1 : float
+- flt2 : float
+code: |
+  FloatConstant(flt1 +. flt2)
+  
+---
+inst: FloatMinus 
+is-primitive: yes 
+params:
+- flt1 : float
+- flt2 : float
+code: |
+  FloatConstant(flt1 -. flt2)
+  
+---
+inst: FloatTimes 
+is-primitive: yes 
+params:
+- flt1 : float
+- flt2 : float
+code: |
+  FloatConstant(flt1 *. flt2)
+  
+---
+inst: FloatDivides 
+is-primitive: yes 
+params:
+- flt1 : float
+- flt2 : float
+code: |
+  FloatConstant(flt1 /. flt2)
+  
+---
+inst: FloatSine 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(sin flt1)
+  
+---
+inst: FloatArcSine 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(asin flt1)
+  
+---
+inst: FloatCosine 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(cos flt1)
+  
+---
+inst: FloatArcCosine 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(acos flt1)
+  
+---
+inst: FloatTangent 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(tan flt1)
+  
+---
+inst: FloatArcTangent 
+is-primitive: yes 
+params:
+- flt1 : float
+code: |
+  FloatConstant(atan flt1)
+  
+---
+inst: FloatArcTangent2 
+is-primitive: yes 
+params:
+- flt1 : float
+- flt2 : float
+code: |
+  FloatConstant(atan2 flt1 flt2)
+  
+---
+inst: LengthPlus 
+is-primitive: yes 
+params:
+- len1 : length
+- len2 : length
+code: |
+  LengthConstant(HorzBox.(len1 +% len2))
+
+---
+inst: LengthMinus 
+is-primitive: yes 
+params:
+- len1 : length
+- len2 : length
+code: |
+  LengthConstant(HorzBox.(len1 -% len2))
+  
+---
+inst: LengthTimes 
+is-primitive: yes 
+params:
+- len1 : length
+- flt2 : float
+code: |
+  LengthConstant(HorzBox.(len1 *% flt2))
+  
+---
+inst: LengthDivides 
+is-primitive: yes 
+params:
+- len1 : length
+- len2 : length
+code: |
+  FloatConstant(HorzBox.(len1 /% len2))
+   
+---
+inst: LengthLessThan 
+is-primitive: yes 
+params:
+- len1 : length
+- len2 : length
+code: |
+  BooleanConstant(HorzBox.(len1 <% len2))
+  
+---
+inst: LengthGreaterThan 
+is-primitive: yes 
+params:
+- len1 : length
+- len2 : length
+code: |
+  BooleanConstant(HorzBox.(len2 <% len1))
+
+---
+inst: InsertArgs
+fields:
+- lst : syntactic_value list
+params:
+- func
+code : |
+  exec (func::(List.rev lst) @ stack) env code dump
+
+---
+inst: PrimitiveSetEveryWordBreak
+is-primitive : yes
+params:
+- hblst1 : horz
+- hblst2 : horz
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    before_word_break = hblst1;
+    after_word_break = hblst2;
+  }), valuecmd)
+
+---
+inst: BackendProbeCrossReference
+is-primitive : yes
+params:
+- k : string
+code: |
+  match CrossRef.probe k with
+  | None    -> Constructor("None", UnitConstant)
+  | Some(v) -> Constructor("Some", StringConstant(v))
+

@@ -1,4 +1,5 @@
 
+module Types = Types_
 open LengthInterface
 open HorzBox
 open Types

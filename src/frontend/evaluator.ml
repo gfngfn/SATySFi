@@ -1,4 +1,5 @@
 
+module Types = Types_
 open MyUtil
 open LengthInterface
 open Types
@@ -643,14 +644,21 @@ and interpret env ast =
       let mlst2 = interpret_math env astm2 in
         MathValue([MathLowerLimit(mlst1, mlst2)])
 
-  | BackendMathChar(astmathcls, is_big, aststr) ->
+  | BackendMathChar(astmathcls, aststr) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
-      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(is_big, uchlst))))] in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
         MathValue(mlst)
 
-  | BackendMathCharWithKern(astmathcls, is_big, aststr, astkernfL, astkernfR) ->
+  | BackendMathBigChar(astmathcls, aststr) ->
+      let mathcls = interpret_math_class env astmathcls in
+      let s = interpret_string env aststr in
+      let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(true, uchlst))))] in
+        MathValue(mlst)
+
+  | BackendMathCharWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let valuekernfL = interpret env astkernfL in
@@ -658,7 +666,18 @@ and interpret env ast =
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
       let kernfL = make_math_char_kern_func env valuekernfL in
       let kernfR = make_math_char_kern_func env valuekernfR in
-      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(is_big, uchlst, kernfL, kernfR))))] in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
+        MathValue(mlst)
+
+  | BackendMathBigCharWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
+      let mathcls = interpret_math_class env astmathcls in
+      let s = interpret_string env aststr in
+      let valuekernfL = interpret env astkernfL in
+      let valuekernfR = interpret env astkernfR in
+      let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
+      let kernfL = make_math_char_kern_func env valuekernfL in
+      let kernfR = make_math_char_kern_func env valuekernfR in
+      let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
         MathValue(mlst)
 
   | BackendMathText(astmathcls, astf) ->
@@ -1211,6 +1230,10 @@ and interpret env ast =
         | FuncWithEnvironment(patbrs, env1) ->
             let value2 = interpret env ast2 in
               select_pattern (Range.dummy "Apply") env1 value2 patbrs
+
+        | PrimitiveWithEnvironment(patbrs, env1, _, _) ->
+            let value2 = interpret env ast2 in
+                          select_pattern (Range.dummy "Apply") env1 value2 patbrs
 
         | _ -> report_bug_evaluator "Apply: not a function" ast1 value1
       end
