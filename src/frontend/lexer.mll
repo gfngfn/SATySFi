@@ -53,12 +53,19 @@
 
   let rec increment_line_for_each_break lexbuf str =
     let len = String.length str in
+    let has_break = ref false in
     let rec aux num tail_spaces =
-      if num >= len then tail_spaces else
+      if num >= len then 
+        (if !has_break then tail_spaces else 0)
+      else
         begin
           match String.get str num with
-          | ( '\n' | '\r' ) -> increment_line lexbuf; aux (num + 1) 0
-          | _               -> aux (num + 1) (tail_spaces+1)
+          | ( '\n' | '\r' ) -> 
+              has_break := true; 
+              increment_line lexbuf; 
+              aux (num + 1) 0
+          | _               -> 
+              aux (num + 1) (tail_spaces+1)
         end;
     in
       aux 0 0
