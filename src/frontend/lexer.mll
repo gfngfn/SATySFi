@@ -1,6 +1,7 @@
 {
   open Types
   open Parser
+  open Lexing
 
   exception LexError of Range.t * string
 
@@ -52,19 +53,21 @@
 
   let rec increment_line_for_each_break lexbuf str =
     let len = String.length str in
-    let rec aux num =
-      if num >= len then () else
+    let rec aux num tail_spaces =
+      if num >= len then tail_spaces else
         begin
-          begin
-            match String.get str num with
-            | ( '\n' | '\r' ) -> increment_line lexbuf
-            | _               -> ()
-          end;
-          aux (num + 1)
-        end
+          match String.get str num with
+          | ( '\n' | '\r' ) -> increment_line lexbuf; aux (num + 1) 0
+          | _               -> aux (num + 1) (tail_spaces+1)
+        end;
     in
-      aux 0
+      aux 0 0
 
+  let adjust_bol lexbuf amt =
+    let lcp = lexbuf.lex_curr_p in
+      lexbuf.lex_curr_p <- { lcp with
+      pos_bol = lcp.pos_cnum + amt;
+    }
 
   let initialize state =
     let stack = Stack.create () in
@@ -133,6 +136,7 @@ rule progexpr stack = parse
     }
   | "(" { Stack.push ProgramState stack; LPAREN(get_pos lexbuf) }
   | ")" {
+      Format.printf "rparen from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       let pos = get_pos lexbuf in
       pop lexbuf "too many closing" stack;
       RPAREN(pos)
@@ -266,7 +270,10 @@ rule progexpr stack = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (digit | (nzdigit digit+))                            {
+
+      Format.printf "int %d from %d %d %d %d\n" (int_of_string (Lexing.lexeme lexbuf)) ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
+     INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
   | (((digit | (nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
@@ -285,8 +292,9 @@ and vertexpr stack = parse
       vertexpr stack lexbuf
     }
   | (break | space)* {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      vertexpr stack lexbuf
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
+        vertexpr stack lexbuf
     }
   | ("#" (identifier as varnm)) {
       Stack.push ActiveState stack;
@@ -300,6 +308,7 @@ and vertexpr stack = parse
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("+" (identifier | constructor)) {
+      Format.printf "vert from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       Stack.push ActiveState stack;
       VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
@@ -336,26 +345,30 @@ and horzexpr stack = parse
       horzexpr stack lexbuf
     }
   | ((break | space)* "{") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      Stack.push HorizontalState stack;
-      skip_spaces lexbuf;
-      BHORZGRP(get_pos lexbuf)
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
+        Stack.push HorizontalState stack;
+        skip_spaces lexbuf;
+        BHORZGRP(get_pos lexbuf)
     }
   | ((break | space)* "}") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
       let pos = get_pos lexbuf in
-      pop lexbuf "too many closing" stack;
-      EHORZGRP(pos)
+        pop lexbuf "too many closing" stack;
+        EHORZGRP(pos)
     }
   | ((break | space)* "<") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      Stack.push VerticalState stack;
-      BVERTGRP(get_pos lexbuf)
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
+        Stack.push VerticalState stack;
+        BVERTGRP(get_pos lexbuf)
     }
   | ((break | space)* "|") {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      skip_spaces lexbuf;
-      SEP(get_pos lexbuf)
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
+        skip_spaces lexbuf;
+        SEP(get_pos lexbuf)
     }
   | break {
       increment_line lexbuf;
@@ -367,9 +380,10 @@ and horzexpr stack = parse
       SPACE(get_pos lexbuf)
     }
   | ((break | space)* (item as itemstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      skip_spaces lexbuf;
-      ITEM(get_pos lexbuf, String.length itemstr)
+      let sp = increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf) in
+      let () =  adjust_bol lexbuf (-sp) in
+        skip_spaces lexbuf;
+        ITEM(get_pos lexbuf, String.length itemstr)
     }
   | ("#" (identifier as varnm)) {
       Stack.push ActiveState stack;
@@ -495,6 +509,7 @@ and active stack = parse
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
   | "(" {
+      Format.printf "lparen from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       Stack.push ProgramState stack;
       LPAREN(get_pos lexbuf)
     }
