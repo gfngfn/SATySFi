@@ -4,12 +4,12 @@ SRCROOT=src
 BACKEND=src/backend
 FRONTEND=src/frontend
 CHARDECODER=src/chardecoder
-OCB_FLAGS = -cflags -unsafe-string -cflag -w -cflag -3 \
+OCB_FLAGS = -cflags -w,-3 \
 	-use-ocamlfind -use-menhir \
 	-I $(SRCROOT)/ -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ \
 	-pkgs "str,ppx_deriving.show,core_kernel,uutf,batteries, \
 	menhirLib,yojson,camlimages,camlimages.jpeg,otfm,camlpdf" \
-	-tag thread -yaccflags "--table --explain"
+	-tag bin_annot -tag thread -tag unsafe_string -yaccflags "--table --explain"
 TARGET=satysfi
 OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
