@@ -143,7 +143,6 @@ rule progexpr stack = parse
     }
   | "(" { Stack.push ProgramState stack; LPAREN(get_pos lexbuf) }
   | ")" {
-      Format.printf "rparen from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       let pos = get_pos lexbuf in
       pop lexbuf "too many closing" stack;
       RPAREN(pos)
@@ -277,10 +276,7 @@ rule progexpr stack = parse
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
-  | (digit | (nzdigit digit+))                            {
-
-      Format.printf "int %d from %d %d %d %d\n" (int_of_string (Lexing.lexeme lexbuf)) ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
-     INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
+  | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
   | (((digit | (nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
@@ -315,7 +311,6 @@ and vertexpr stack = parse
         VARINVERT(get_pos lexbuf, mdlnmlst, csnm)
     }
   | ("+" (identifier | constructor)) {
-      Format.printf "vert from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       Stack.push ActiveState stack;
       VERTCMD(get_pos lexbuf, Lexing.lexeme lexbuf)
     }
@@ -516,7 +511,6 @@ and active stack = parse
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
   | "(" {
-      Format.printf "lparen from %d %d %d %d\n" ((Lexing.lexeme_start_p lexbuf).pos_bol) ((Lexing.lexeme_start_p lexbuf).pos_cnum) ((Lexing.lexeme_end_p lexbuf).pos_bol) ((Lexing.lexeme_end_p lexbuf).pos_cnum);
       Stack.push ProgramState stack;
       LPAREN(get_pos lexbuf)
     }
