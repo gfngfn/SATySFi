@@ -67,6 +67,9 @@ def gen_vminstrs
       dest, func, src = app
       puts "            let #{dest} = #{FUNCPREFIX}#{func} #{src} in"
     end
+    if inst["needs-reducef"] then
+      puts "            let reducef = exec_application #{ENVIRONMENT} in"
+    end
     if inst["is-primitive"] then
       puts "            let #{RET} ="
     else

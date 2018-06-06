@@ -18,6 +18,7 @@
 #
 # inst:          Instruction name (essential)
 # is-primitive:  Primitive or pure vm instruction (default: no)
+# needs-reducef: Use `reducef` for evaluating applications
 # suppress-pp:   Use a simple pritty printer (default: no)
 # custom-pp:     Specify custom pritty printer
 # no-ircode:     Suppress code generation for ir.ml (default: no)
@@ -299,11 +300,11 @@ fields:
 - len : int
 code: |
   let rec iter n last st =
-    if n = 0 then
+    if n <= 0 then
       (last, st)
     else
       match st with
-      | value :: stnew -> iter (n-1) (TupleCons(value, last)) stnew
+      | value :: stnew -> iter (n - 1) (TupleCons(value, last)) stnew
       | []             -> report_bug_vm "MakeTuple: stack underflow"
   in
   let (tuple, stack) = iter len EndOfTuple stack in
@@ -769,6 +770,7 @@ code: |
 ---
 inst: BackendTabular
 is-primitive: yes
+needs-reducef : yes
 params:
 - valuetabular
 - valuerulesf
@@ -776,9 +778,9 @@ code: |
   let tabular = get_list (get_list get_cell) valuetabular in
   let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
   let rulesf xs ys =
-    let valueret =
-      exec [valuerulesf; make_length_list ys; make_length_list xs] env [OpApplyT(2)] []
-    in
+    let valuexs = make_length_list xs in
+    let valueys = make_length_list ys in
+    let valueret = reducef valuerulesf [valuexs; valueys] in
       graphics_of_list valueret
   in
     Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
@@ -984,6 +986,7 @@ code: |
 ---
 inst: BackendVertFrame
 is-primitive: yes
+needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
 - pads : paddings
@@ -991,12 +994,13 @@ params:
 - valuek
 code: |
   let valuectxsub =
-    Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }), valuecmd)
+    Context(HorzBox.({ ctx with
+      paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
+    }), valuecmd)
   in
   let vblst =
-    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
-    | Vert(v) -> v
-    | _ -> report_bug_vm "BackendVertFrame"
+    let valuev = reducef valuek [valuectxsub] in
+      get_vert valuev
   in
     Vert(HorzBox.([
       VertTopMargin(true, ctx.paragraph_top);
@@ -1012,6 +1016,7 @@ code: |
 ---
 inst: BackendEmbeddedVertTop
 is-primitive: yes
+needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
 - wid : length
@@ -1021,9 +1026,8 @@ code: |
     Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
   in
   let vblst =
-    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
-    | Vert(v) -> v
-    | _ -> report_bug_vm "BackendEmbeddedVertTop"
+    let valuev = reducef valuek [valuectxsub] in
+      get_vert valuev
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = adjust_to_first_line imvblst in
@@ -1040,6 +1044,7 @@ code: |
 ---
 inst: BackendEmbeddedVertBottom
 is-primitive: yes
+needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
 - wid : length
@@ -1049,9 +1054,8 @@ code: |
     Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
   in
   let vblst =
-    match exec [valuek; valuectxsub] env [OpApplyT(1)] [] with
-    | Vert(v) -> v
-    | _ -> report_bug_vm "BackendEmbeddedVertBottom"
+    let valuev = reducef valuek [valuectxsub] in
+      get_vert valuev
   in
   let imvblst = PageBreak.solidify vblst in
   let (hgt, dpt) = adjust_to_last_line imvblst in
