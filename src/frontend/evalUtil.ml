@@ -143,9 +143,9 @@ let make_color_value color =
 let get_decoset (value : syntactic_value) =
   match value with
   | TupleCons(valuedecoS,
-              TupleCons(valuedecoH,
-                        TupleCons(valuedecoM,
-                                  TupleCons(valuedecoT, EndOfTuple)))) ->
+      TupleCons(valuedecoH,
+        TupleCons(valuedecoM,
+          TupleCons(valuedecoT, EndOfTuple)))) ->
     (valuedecoS, valuedecoH, valuedecoM, valuedecoT)
 
   | _ -> report_bug_value "interpret_decoset" value
@@ -342,4 +342,72 @@ let get_page_size value =
       TupleCons(LengthConstant(pgwid), TupleCons(LengthConstant(pghgt), EndOfTuple))) ->
         HorzBox.UserDefinedPaper(pgwid, pghgt)
 
-  | _ -> report_bug_value "interpret_page" value
+  | _ -> report_bug_value "get_page_size" value
+
+
+let get_regexp (value : syntactic_value) : Str.regexp =
+  match value with
+  | RegExpConstant(regexp) -> regexp
+  | _                      -> report_bug_value "get_regexp" value
+
+
+let get_path_value (value : syntactic_value) : GraphicData.path list =
+  match value with
+  | PathValue(pathlst) -> pathlst
+  | _                  -> report_bug_value "get_path_value" value
+
+
+let get_prepath (value : syntactic_value) : PrePath.t =
+    match value with
+    | PrePathValue(prepath) -> prepath
+    | _                     -> report_bug_value "get_prepath" value
+
+
+let get_math_variant_style value =
+  let rcd =
+    match value with
+    | RecordValue(rcd) -> rcd
+    | _                -> report_bug_value "get_math_variant_style: not a record" value
+  in
+    match
+      ( Assoc.find_opt rcd "italic",
+        Assoc.find_opt rcd "bold-italic",
+        Assoc.find_opt rcd "roman",
+        Assoc.find_opt rcd "bold-roman",
+        Assoc.find_opt rcd "script",
+        Assoc.find_opt rcd "bold-script",
+        Assoc.find_opt rcd "fraktur",
+        Assoc.find_opt rcd "bold-fraktur",
+        Assoc.find_opt rcd "double-struck" )
+    with
+    | ( Some(vcpI),
+        Some(vcpBI),
+        Some(vcpR),
+        Some(vcpBR),
+        Some(vcpS),
+        Some(vcpBS),
+        Some(vcpF),
+        Some(vcpBF),
+        Some(vcpDS) ) ->
+          let uchlstI  = get_uchar_list vcpI  in
+          let uchlstBI = get_uchar_list vcpBI in
+          let uchlstR  = get_uchar_list vcpR  in
+          let uchlstBR = get_uchar_list vcpBR in
+          let uchlstS  = get_uchar_list vcpS  in
+          let uchlstBS = get_uchar_list vcpBS in
+          let uchlstF  = get_uchar_list vcpF  in
+          let uchlstBF = get_uchar_list vcpBF in
+          let uchlstDS = get_uchar_list vcpDS in
+            HorzBox.({
+              math_italic        = uchlstI ;
+              math_bold_italic   = uchlstBI;
+              math_roman         = uchlstR ;
+              math_bold_roman    = uchlstBR;
+              math_script        = uchlstS ;
+              math_bold_script   = uchlstBS;
+              math_fraktur       = uchlstF ;
+              math_bold_fraktur  = uchlstBF;
+              math_double_struck = uchlstDS;
+            })
+
+    | _ -> report_bug_value "get_math_variant_style: missing some fields" value

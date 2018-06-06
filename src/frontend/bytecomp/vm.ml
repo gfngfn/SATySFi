@@ -178,23 +178,6 @@ let make_language_system_value langsys =
     Constructor(label, UnitConstant)
 
 
-let make_color_value color =
-  let open GraphicData in
-    match color with
-    | DeviceGray(gray) ->
-      Constructor("Gray", FloatConstant(gray))
-
-    | DeviceRGB(r, g, b) ->
-      Constructor("RGB", TupleCons(FloatConstant(r),
-                                   TupleCons(FloatConstant(g),
-                                             TupleCons(FloatConstant(b), EndOfTuple))))
-
-    | DeviceCMYK(c, m, y, k) ->
-      Constructor("CMYK", TupleCons(FloatConstant(c),
-                                    TupleCons(FloatConstant(m),
-                                              TupleCons(FloatConstant(y),
-                                                        TupleCons(FloatConstant(k), EndOfTuple)))))
-
 let popn stack n =
   let rec iter st n acc =
     if n = 0 then
@@ -205,6 +188,7 @@ let popn stack n =
       | [] -> report_bug_vm "stack underflow!"
   in
     iter stack n []
+
 
 let rec make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -> point -> unit) =
   (fun pbinfo (xpos, yposbaseline) ->
@@ -220,27 +204,27 @@ let rec make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -
 and get_path env c_pathcomplst c_cycleopt =
   let pathelemlst =
     c_pathcomplst |> List.map (function
-        | CompiledPathLineTo(ptcode) ->
+      | CompiledPathLineTo(ptcode) ->
           let pt = get_point @@ exec [] env ptcode [] in
             GraphicData.LineTo(pt)
 
-        | CompiledPathCubicBezierTo(pt1code, pt2code, ptcode) ->
+      | CompiledPathCubicBezierTo(pt1code, pt2code, ptcode) ->
           let pt1 = get_point @@ exec [] env pt1code [] in
           let pt2 = get_point @@ exec [] env pt2code [] in
           let pt = get_point @@ exec [] env ptcode [] in
             GraphicData.CubicBezierTo(pt1, pt2, pt)
-      )
+    )
   in
   let closingopt =
-    match c_cycleopt with
-    | None -> None
+    c_cycleopt |> option_map (function
+      | CompiledPathLineTo(()) ->
+          GraphicData.LineTo(())
 
-    | Some(CompiledPathLineTo(())) -> Some(GraphicData.LineTo(()))
-
-    | Some(CompiledPathCubicBezierTo(pt1code, pt2code, ())) ->
-      let pt1 = get_point @@ exec [] env pt1code [] in
-      let pt2 = get_point @@ exec [] env pt2code [] in
-        Some(GraphicData.CubicBezierTo(pt1, pt2, ()))
+      | CompiledPathCubicBezierTo(pt1code, pt2code, ()) ->
+          let pt1 = get_point @@ exec [] env pt1code [] in
+          let pt2 = get_point @@ exec [] env pt2code [] in
+            GraphicData.CubicBezierTo(pt1, pt2, ())
+    )
   in
     (pathelemlst, closingopt)
 
@@ -251,21 +235,21 @@ and make_page_content_scheme_func env valuef : HorzBox.page_content_scheme_func 
      let valueret = exec [valuef; valuepbinfo] env [OpApplyT(1)] [] in
        match valueret with
        | RecordValue(asc) ->
-         begin
-           match
-             (Assoc.find_opt asc "text-origin",
-              Assoc.find_opt asc "text-height")
-           with
-           | (Some(vTO), Some(LengthConstant(vTHlen))) ->
-             HorzBox.({
-                 page_content_origin = get_point(vTO);
-                 page_content_height = vTHlen;
-               })
+           begin
+             match
+               (Assoc.find_opt asc "text-origin",
+                Assoc.find_opt asc "text-height")
+             with
+             | (Some(vTO), Some(LengthConstant(vTHlen))) ->
+               HorzBox.({
+                   page_content_origin = get_point(vTO);
+                   page_content_height = vTHlen;
+                 })
 
-           | _ -> report_bug_vm "make_page_scheme_func"
-         end
+             | _ -> report_bug_value "make_page_scheme_func:1" valueret
+           end
 
-       | _ -> report_bug_vm "make_page_scheme_func"
+       | _ -> report_bug_value "make_page_scheme_func:2" valueret
   )
 
 

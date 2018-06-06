@@ -8,6 +8,7 @@ CODE        = "code"
 DUMP        = "dump"
 VMEXEC      = "exec"
 FUNCPREFIX  = "get_"
+RET         = "ret"
 TRANSPRIM = "transform_primitive"
 
 DESTRUCTURING_RULES = {
@@ -67,7 +68,7 @@ def gen_vminstrs
       puts "            let #{dest} = #{FUNCPREFIX}#{func} #{src} in"
     end
     if inst["is-primitive"] then
-      puts "            let ret ="
+      puts "            let #{RET} ="
     else
       puts "            begin"
     end
@@ -75,7 +76,7 @@ def gen_vminstrs
       puts "              #{line}"
     end
     if inst["is-primitive"] then
-      puts "            in #{VMEXEC} (ret :: #{STACK}) #{ENVIRONMENT} #{CODE} #{DUMP}"
+      puts "            in #{VMEXEC} (#{RET} :: #{STACK}) #{ENVIRONMENT} #{CODE} #{DUMP}"
     else
       puts "            end"
     end

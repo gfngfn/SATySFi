@@ -134,9 +134,7 @@ and interpret_point env ast =
 
 and interpret_prepath env ast =
   let value = interpret env ast in
-    match value with
-    | PrePathValue(prepath) -> prepath
-    | _ -> report_bug_reduction "interpret_prepath" ast value
+    get_prepath value
 
 
 and interpret_paddings env ast =
@@ -176,16 +174,6 @@ and interpret_path env pathcomplst cycleopt =
   in
     (pathelemlst, closingopt)
 
-(*
-and graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
-  let rec aux gracc value =
-    match value with
-    | EndOfList                             -> gracc
-    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
-    | _                                     -> report_bug_evaluator_value "make_frame_deco" value
-  in
-    aux Graphics.empty value
-*)
 
 and make_page_break_info pbinfo =
   let asc =
@@ -444,58 +432,8 @@ and interpret env ast =
       let mathcls = interpret_math_class env astmathcls in
       let is_big = false in  (* temporary *)
       let valuercd = interpret env astrcd in
-      let rcd =
-        match valuercd with
-        | RecordValue(rcd) -> rcd
-        | _                -> report_bug_reduction "BackendMathVariantCharDirect: not a record" astrcd valuercd
-      in
-      begin
-        match
-          ( Assoc.find_opt rcd "italic",
-            Assoc.find_opt rcd "bold-italic",
-            Assoc.find_opt rcd "roman",
-            Assoc.find_opt rcd "bold-roman",
-            Assoc.find_opt rcd "script",
-            Assoc.find_opt rcd "bold-script",
-            Assoc.find_opt rcd "fraktur",
-            Assoc.find_opt rcd "bold-fraktur",
-            Assoc.find_opt rcd "double-struck" )
-        with
-        | ( Some(vcpI),
-            Some(vcpBI),
-            Some(vcpR),
-            Some(vcpBR),
-            Some(vcpS),
-            Some(vcpBS),
-            Some(vcpF),
-            Some(vcpBF),
-            Some(vcpDS) ) ->
-              let uchlstI  = get_uchar_list vcpI  in
-              let uchlstBI = get_uchar_list vcpBI in
-              let uchlstR  = get_uchar_list vcpR  in
-              let uchlstBR = get_uchar_list vcpBR in
-              let uchlstS  = get_uchar_list vcpS  in
-              let uchlstBS = get_uchar_list vcpBS in
-              let uchlstF  = get_uchar_list vcpF  in
-              let uchlstBF = get_uchar_list vcpBF in
-              let uchlstDS = get_uchar_list vcpDS in
-              let mvsty =
-                HorzBox.({
-                  math_italic        = uchlstI ;
-                  math_bold_italic   = uchlstBI;
-                  math_roman         = uchlstR ;
-                  math_bold_roman    = uchlstBR;
-                  math_script        = uchlstS ;
-                  math_bold_script   = uchlstBS;
-                  math_fraktur       = uchlstF ;
-                  math_bold_fraktur  = uchlstBF;
-                  math_double_struck = uchlstDS;
-                })
-              in
-                MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
-
-        | _ -> report_bug_reduction "BackendMathVariantCharDirect: missing some field" astrcd valuercd
-      end
+      let mvsty = get_math_variant_style valuercd in
+        MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 
   | BackendMathConcat(astm1, astm2) ->
       let mlst1 = interpret_math env astm1 in
@@ -1660,12 +1598,6 @@ and interpret_regexp (env : environment) (ast : abstract_tree) : Str.regexp =
     get_regexp value
 
 
-and get_regexp (value : syntactic_value) : Str.regexp =
-  match value with
-  | RegExpConstant(regexp) -> regexp
-  | _                      -> report_bug_value "get_regexp" value
-
-
 and interpret_uchar_list (env : environment) (ast : abstract_tree) : Uchar.t list =
   let value = interpret env ast in
     get_uchar_list value
@@ -1673,9 +1605,7 @@ and interpret_uchar_list (env : environment) (ast : abstract_tree) : Uchar.t lis
 
 and interpret_path_value env ast : GraphicData.path list =
   let value = interpret env ast in
-    match value with
-    | PathValue(pathlst) -> pathlst
-    | _                  -> report_bug_reduction "interpret_path_value" ast value
+    get_path_value value
 
 
 and interpret_context (env : environment) (ast : abstract_tree) : input_context =
