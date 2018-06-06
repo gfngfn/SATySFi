@@ -37,11 +37,11 @@ params:
 code: |
   match value1 with
   | RecordValue(asc1) ->
-    begin
-      match Assoc.find_opt asc1 field_nm with
-      | Some(v) -> exec (v::stack) env code dump
-      | None    -> report_bug_vm ("AccessField field " ^ field_nm ^ " not found")
-    end
+      begin
+        match Assoc.find_opt asc1 field_nm with
+        | Some(v) -> exec (v :: stack) env code dump
+        | None    -> report_bug_vm ("AccessField field " ^ field_nm ^ " not found")
+      end
 
   | _ -> report_bug_vm "not a Record"
 
@@ -54,39 +54,39 @@ params:
 code: |
   match f with
   | CompiledFuncWithEnvironment(arity, pargs, framesize, body, env1) ->
-    if arity = n then
-      begin
-       if pargs = [] then
-          exec stack (newframe env1 framesize) body ((env, code)::dump)
-        else
-          let (args, stack) = popn stack n in
-          let allargs = List.rev (pargs @ args) in
-            exec (allargs @ stack) (newframe env1 framesize) body ((env, code)::dump)
-      end
+      if arity = n then
+        begin
+         if pargs = [] then
+            exec stack (newframe env1 framesize) body ((env, code) :: dump)
+          else
+            let (args, stack) = popn stack n in
+            let allargs = List.rev (pargs @ args) in
+              exec (allargs @ stack) (newframe env1 framesize) body ((env, code) :: dump)
+        end
 
-    else if arity > n then
-      let (args, stack) = popn stack n in
-      let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied::stack) env code dump
+      else if arity > n then
+        let (args, stack) = popn stack n in
+        let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
+          exec (applied :: stack) env code dump
 
-    else
-      let (surplus, stack) = popn stack (n-arity) in
-      let (args, stack) = popn stack arity in
-      let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApply(n-arity)::code)::dump)
+      else
+        let (surplus, stack) = popn stack (n - arity) in
+        let (args, stack) = popn stack arity in
+        let allargs = List.rev (pargs @ args) in
+          exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
    | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
      if arity = n then
-       exec stack (newframe env1 framesize) body ((env, code)::dump)
+       exec stack (newframe env1 framesize) body ((env, code) :: dump)
 
      else if arity > n then
        let (args, stack) = popn stack n in
         let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
-          exec (applied::stack) env code dump
+          exec (applied :: stack) env code dump
 
      else
-       let (surplus, stack) = popn stack (n-arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApply(n-arity)::code)::dump)
+       let (surplus, stack) = popn stack (n - arity) in
+         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
    | _ -> report_bug_vm "Apply: not a function"
 
@@ -112,13 +112,13 @@ code: |
     else if arity > n then
       let (args, stack) = popn stack n in
       let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied::stack) env code dump
+        exec (applied :: stack) env code dump
 
     else
       let (surplus, stack) = popn stack (n-arity) in
       let (args, stack) = popn stack arity in
       let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApplyT(n-arity)::code)::dump)
+        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
    | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
      if arity = n then
@@ -127,11 +127,11 @@ code: |
      else if arity > n then
        let (args, stack) = popn stack n in
         let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
-          exec (applied::stack) env code dump
+          exec (applied :: stack) env code dump
 
      else
        let (surplus, stack) = popn stack (n-arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus)::OpApplyT(n-arity)::code)::dump)
+         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
    | _ -> report_bug_vm "ApplyT: not a function"
 
@@ -216,7 +216,8 @@ fields:
 - evid : EvalVarID.t
 - refs : int
 code: |
-  exec ((!loc)::stack) env code dump
+  let v = !loc in
+    exec (v :: stack) env code dump
 
 ---
 inst: LoadLocal
@@ -226,7 +227,8 @@ fields:
 - evid : EvalVarID.t
 - refs : int
 code: |
-  exec ((local_get_value env lv offset)::stack) env code dump
+  let v = local_get_value env lv offset in
+    exec (v :: stack) env code dump
 
 ---
 inst: Dereference
@@ -236,26 +238,30 @@ params:
 code: |
   match valuecont with
   | Location(stid) ->
-     begin
-       match find_location_value (vmenv_global env) stid with
-       | Some(value) -> value
-       | None        -> report_bug_vm "Dereference"
-     end
+      begin
+        match find_location_value (vmenv_global env) stid with
+        | Some(value) -> value
+        | None        -> report_bug_vm "Dereference"
+      end
 
   | _ ->
-    report_bug_vm "Dereference"
+      report_bug_vm "Dereference"
 
 ---
 inst: Dup
 code: |
-  exec ((List.hd stack)::stack) env code dump
+  let v =
+    try List.hd stack with
+    | Invalid_argument(_) -> report_bug_vm "Dup: stack underflow"
+  in
+    exec (v :: stack) env code dump
 
 ---
 inst: Error
 fields:
 - msg : string
 code: |
-  raise (ExecError msg)
+  raise (ExecError(msg))
 
 ---
 inst: MakeConstructor
@@ -264,7 +270,7 @@ fields:
 params:
 - valuecont
 code: |
-  exec (Constructor(ctor_nm, valuecont)::stack) env code dump
+  exec (Constructor(ctor_nm, valuecont) :: stack) env code dump
 
 ---
 inst: MakeRecord
@@ -274,16 +280,18 @@ fields:
 code: |
   let rec collect keys asc st =
     match keys with
-    | [] -> (asc, st)
-    | k::rest ->
+    | [] ->
+        (asc, st)
+
+    | k :: rest ->
         begin
           match st with
-          | v::stnew -> collect rest (Assoc.add asc k v) stnew
-          | _-> report_bug_vm "MakeRecord"
+          | v :: stnew -> collect rest (Assoc.add asc k v) stnew
+          | _          -> report_bug_vm "MakeRecord: stack underflow"
         end
     in
     let (asc, stack) = collect (List.rev keylst) Assoc.empty stack in
-      exec ((RecordValue(asc))::stack) env code dump
+      exec (RecordValue(asc) :: stack) env code dump
 
 ---
 inst: MakeTuple
@@ -294,31 +302,33 @@ code: |
     if n = 0 then
       (last, st)
     else
-      begin match st with
-      | value :: stnew ->
-        iter (n-1) (TupleCons(value, last)) stnew
-      | [] -> report_bug_vm "stack underflow"
-      end
+      match st with
+      | value :: stnew -> iter (n-1) (TupleCons(value, last)) stnew
+      | []             -> report_bug_vm "MakeTuple: stack underflow"
   in
   let (tuple, stack) = iter len EndOfTuple stack in
-    exec (tuple::stack) env code dump
+    exec (tuple :: stack) env code dump
 
 ---
 inst: Pop
 code: |
-  exec (List.tl stack) env code dump
+  let stack =
+    try List.tl stack with
+    | Invalid_argument(_) -> report_bug_vm "Pop: stack underflow"
+  in
+    exec stack env code dump
 
 ---
 inst: Push
 fields:
 - v : syntactic_value
 code: |
-  exec (v::stack) env code dump
+  exec (v :: stack) env code dump
 
 ---
 inst: PushEnv
 code: |
-  exec ((EvaluatedEnvironment(vmenv_global env))::stack) env code dump
+  exec (EvaluatedEnvironment(vmenv_global env) :: stack) env code dump
 
 ---
 inst: CheckStackTopBool
@@ -330,10 +340,8 @@ params:
 - v
 code: |
   match v with
-  | BooleanConstant(b0) when b=b0 ->
-    exec stack env code dump
-  | _ ->
-    exec stack env next dump
+  | BooleanConstant(b0) when b = b0 -> exec stack env code dump
+  | _                               -> exec stack env next dump
 
 ---
 inst: CheckStackTopCtor
@@ -345,10 +353,8 @@ params:
 - v
 code: |
   match v with
-  | Constructor(nm, sub) when nm=ctor_nm ->
-    exec (sub::stack) env code dump
-  | _ ->
-    exec stack env next dump
+  | Constructor(nm, sub) when nm = ctor_nm -> exec (sub :: stack) env code dump
+  | _                                      -> exec stack env next dump
 
 ---
 inst: CheckStackTopEndOfList
@@ -359,10 +365,8 @@ params:
 - v
 code: |
   match v with
-  | EndOfList ->
-    exec stack env code dump
-  | _ ->
-    exec stack env next dump
+  | EndOfList -> exec stack env code dump
+  | _         -> exec stack env next dump
 
 ---
 inst: CheckStackTopInt
@@ -374,10 +378,8 @@ params:
 - v
 code: |
   match v with
-  | IntegerConstant(i0) when i=i0 ->
-    exec stack env code dump
-  | _ ->
-    exec stack env next dump
+  | IntegerConstant(i0) when i=i0 -> exec stack env code dump
+  | _                             -> exec stack env next dump
 
 ---
 inst: CheckStackTopListCons
@@ -388,10 +390,8 @@ params:
 - v
 code: |
   match v with
-  | ListCons(car, cdr) ->
-    exec (car::cdr::stack) env code dump
-  | _ ->
-    exec stack env next dump
+  | ListCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
+  | _                  -> exec stack env next dump
 
 ---
 inst: CheckStackTopStr
@@ -403,10 +403,8 @@ params:
 - v
 code: |
   match v with
-  | StringConstant(s0) when s0=str ->
-    exec stack env code dump
-  | _ ->
-    exec stack env next dump
+  | StringConstant(s0) when s0 = str -> exec stack env code dump
+  | _                                -> exec stack env next dump
 
 ---
 inst: CheckStackTopTupleCons
@@ -417,10 +415,8 @@ params:
 - v
 code: |
   match v with
-  | TupleCons(car, cdr) ->
-    exec (car::cdr::stack) env code dump
-  | _ ->
-    exec stack env next dump
+  | TupleCons(car, cdr) -> exec (car :: cdr :: stack) env code dump
+  | _                   -> exec stack env next dump
 
 ---
 inst: Closure
@@ -429,7 +425,7 @@ fields:
 - framesize : int
 - body : instruction list
 code: |
-  exec (CompiledFuncWithEnvironment(arity, [], framesize, body, env)::stack) env code dump
+  exec (CompiledFuncWithEnvironment(arity, [], framesize, body, env) :: stack) env code dump
 
 ---
 inst: ClosureInputHorz
@@ -437,7 +433,7 @@ fields:
 - body : syntactic_value
 code: |
   let imihclos = get_input_horz_content env body in
-    exec (imihclos::stack) env code dump
+    exec (imihclos :: stack) env code dump
 
 ---
 inst: ClosureInputVert
@@ -445,7 +441,7 @@ fields:
 - body : syntactic_value
 code: |
   let imivclos = get_input_vert_content env body in
-    exec (imivclos::stack) env code dump
+    exec (imivclos :: stack) env code dump
 
 ---
 inst: BindLocationGlobal
@@ -456,7 +452,7 @@ params:
 - valueini
 code: |
   let stid = register_location (vmenv_global env) valueini in
-    loc := Location(stid);
+  loc := Location(stid);
     exec stack env code dump
 
 ---
@@ -469,7 +465,7 @@ params:
 - valueini
 code: |
   let stid = register_location (vmenv_global env) valueini in
-    local_set_value env lv offset (Location(stid));
+  local_set_value env lv offset (Location(stid));
     exec stack env code dump
 
 ---
@@ -483,10 +479,10 @@ params:
 code: |
    match !loc with
    | Location(stid) ->
-      begin
-        update_location (vmenv_global env) stid valuenew;
-        exec (UnitConstant::stack) env code dump
-      end
+       begin
+         update_location (vmenv_global env) stid valuenew;
+         exec (UnitConstant :: stack) env code dump
+       end
 
    | _ -> report_bug_vm "UpdateGlobal"
 
@@ -502,10 +498,10 @@ params:
 code: |
   match local_get_value env lv offset with
   | Location(stid) ->
-     begin
-       update_location (vmenv_global env) stid valuenew;
-       exec (UnitConstant :: stack) env code dump
-     end
+       begin
+         update_location (vmenv_global env) stid valuenew;
+         exec (UnitConstant :: stack) env code dump
+       end
 
   | _ -> report_bug_vm "UpdateLocal"
 
