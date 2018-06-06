@@ -631,13 +631,14 @@ code: |
 ---
 inst: BackendMathParen
 is-primitive: yes
+needs-reducef: yes
 params:
 - valueparenL
 - valueparenR
 - mlst1 : math
 code: |
-  let parenL = make_paren env valueparenL in
-  let parenR = make_paren env valueparenR in
+  let parenL = make_paren reducef valueparenL in
+  let parenR = make_paren reducef valueparenR in
     MathValue([MathParen(parenL, parenR, mlst1)])
 
 ---
@@ -682,28 +683,30 @@ code: |
 ---
 inst: BackendMathCharWithKern
 is-primitive: yes
+needs-reducef: yes
 params:
 - mathcls : math_class
 - uchlst : uchar_list
 - valuekernfL
 - valuekernfR
 code: |
-  let kernfL = make_math_char_kern_func env valuekernfL in
-  let kernfR = make_math_char_kern_func env valuekernfR in
+  let kernfL = make_math_char_kern_func reducef valuekernfL in
+  let kernfR = make_math_char_kern_func reducef valuekernfR in
   let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
     MathValue(mlst)
 
 ---
 inst: BackendMathBigCharWithKern
 is-primitive: yes
+needs-reducef: yes
 params:
 - mathcls : math_class
 - uchlst : uchar_list
 - valuekernfL
 - valuekernfR
 code: |
-  let kernfL = make_math_char_kern_func env valuekernfL in
-  let kernfR = make_math_char_kern_func env valuekernfR in
+  let kernfL = make_math_char_kern_func reducef valuekernfL in
+  let kernfR = make_math_char_kern_func reducef valuekernfR in
   let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
     MathValue(mlst)
 
@@ -821,10 +824,11 @@ code: |
 ---
 inst: BackendHookPageBreak
 is-primitive: yes
+needs-reducef: yes
 params:
 - hookf
 code: |
-  let hookf = make_hook env hookf in
+  let hookf = make_hook reducef hookf in
     Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
 ---
@@ -973,14 +977,15 @@ code: |
 ---
 inst: BackendPageBreaking
 is-primitive: yes
+needs-reducef: yes
 params:
 - pagesize : page_size
-- pagecontf
-- pagepartsf
+- valuepagecontf
+- valuepagepartsf
 - vblst : vert
 code: |
-  let pagecontf = make_page_content_scheme_func env pagecontf in
-  let pagepartsf = make_page_parts_scheme_func env pagepartsf in
+  let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
+  let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
     DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
 ---
@@ -1005,10 +1010,10 @@ code: |
     Vert(HorzBox.([
       VertTopMargin(true, ctx.paragraph_top);
       VertFrame(pads,
-                  make_frame_deco env valuedecoS,
-                  make_frame_deco env valuedecoH,
-                  make_frame_deco env valuedecoM,
-                  make_frame_deco env valuedecoT,
+                  make_frame_deco reducef valuedecoS,
+                  make_frame_deco reducef valuedecoH,
+                  make_frame_deco reducef valuedecoM,
+                  make_frame_deco reducef valuedecoT,
                   ctx.paragraph_width, vblst);
       VertBottomMargin(true, ctx.paragraph_bottom);
   ]))
@@ -1312,6 +1317,7 @@ code: |
 ---
 inst: BackendOuterFrame
 is-primitive: yes
+needs-reducef: yes
 params:
 - pads : paddings
 - valuedeco
@@ -1319,12 +1325,13 @@ params:
 code: |
   Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
     pads,
-    make_frame_deco env valuedeco,
+    make_frame_deco reducef valuedeco,
     hblst))])
 
 ---
 inst: BackendInnerFrame
 is-primitive: yes
+needs-reducef: yes
 params:
 - pads : paddings
 - valuedeco
@@ -1332,12 +1339,13 @@ params:
 code: |
   Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
     pads,
-    make_frame_deco env valuedeco,
+    make_frame_deco reducef valuedeco,
     hblst))])
 
 ---
 inst: BackendFixedFrame
 is-primitive: yes
+needs-reducef: yes
 params:
 - wid : length
 - pads : paddings
@@ -1346,12 +1354,13 @@ params:
 code: |
   Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
     pads, wid,
-    make_frame_deco env valuedeco,
+    make_frame_deco reducef valuedeco,
     hblst))])
 
 ---
 inst: BackendOuterFrameBreakable
 is-primitive: yes
+needs-reducef: yes
 params:
 - pads : paddings
 - (valuedecoS, valuedecoH, valuedecoM, valuedecoT) : decoset
@@ -1359,23 +1368,24 @@ params:
 code: |
   Horz([HorzBox.HorzFrameBreakable(
     pads, Length.zero, Length.zero,
-    make_frame_deco env valuedecoS,
-    make_frame_deco env valuedecoH,
-    make_frame_deco env valuedecoM,
-    make_frame_deco env valuedecoT,
+    make_frame_deco reducef valuedecoS,
+    make_frame_deco reducef valuedecoH,
+    make_frame_deco reducef valuedecoM,
+    make_frame_deco reducef valuedecoT,
     hblst
   )])
 
 ---
 inst: BackendInlineGraphics
 is-primitive: yes
+needs-reducef: yes
 params:
 - wid : length
 - hgt : length
 - dpt : length
 - valueg
 code: |
-  let graphics = make_inline_graphics env valueg in
+  let graphics = make_inline_graphics reducef valueg in
     Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
 ---

@@ -18,72 +18,6 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let make_list (type a) (makef : a -> syntactic_value) (lst : a list) : syntactic_value =
-  List.fold_right (fun x ast -> ListCons(makef x, ast)) lst EndOfList
-
-
-let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
-  let open HorzBox in
-  let wid =
-    hblstlst |> List.fold_left (fun widacc hblst ->
-      let (wid, _, _) = LineBreak.get_natural_metrics hblst in
-       Length.max wid widacc
-    ) Length.zero
-  in
-  let trilst = hblstlst |> List.map (fun hblst -> LineBreak.fit hblst wid) in
-  let imvblst =
-    trilst |> List.fold_left (fun imvbacc (imhblst, hgt, dpt) ->
-      Alist.extend imvbacc (VertLine(hgt, dpt, imhblst))
-    ) Alist.empty |> Alist.to_list
-  in
-    (wid, imvblst)
-
-
-let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
-  let open HorzBox in
-  let rec aux optinit totalhgtinit imvblst =
-    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
-      match (imvb, opt) with
-      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
-          let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
-          let totalhgtafter = totalhgtsub +% pads.paddingB in
-            (optsub, totalhgtafter)
-
-    ) (optinit, totalhgtinit)
-  in
-    match aux None Length.zero imvblst with
-    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
-    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
-
-
-let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
-    let open HorzBox in
-    let rec aux optinit totalhgtinit evvblst =
-      let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
-            match (imvblast, opt) with
-            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-            | (ImVertFrame(pads, _, _, evvblstsub), _) ->
-                let totalhgtbefore = totalhgt +% pads.paddingB in
-                let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
-                let totalhgtafter = totalhgtsub +% pads.paddingT in
-                  (optsub, totalhgtafter)
-
-        ) (optinit, totalhgtinit)
-    in
-      match aux None Length.zero imvblst with
-      | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
-      | (None, totalhgt)      -> (totalhgt, Length.zero)
-
-
 let interpret_list interpretf (env : environment) getf (ast : abstract_tree) =
   let value = interpretf env ast in
     get_list getf value
@@ -99,19 +33,17 @@ let rec reduce_beta envf evid valuel astdef =
     interpret envnew astdef
 
 
-and reduce_beta_list env valuef astarglst =
-  match astarglst with
+and reduce_beta_list valuef valuearglst =
+  match valuearglst with
   | [] ->
       valuef
 
-  | astarg :: astargtail ->
+  | valuearg :: astargtail ->
       begin
         match valuef with
         | FuncWithEnvironment(patbrs, envf) ->
-          (* -- left-to-right evaluation -- *)
-            let valuearg = interpret env astarg in
             let valuefnew = select_pattern (Range.dummy "reduce_beta_list") envf valuearg patbrs in
-              reduce_beta_list env valuefnew astargtail
+              reduce_beta_list valuefnew astargtail
 
         | _ -> report_bug_value "reduce_beta_list" valuef
       end
@@ -174,27 +106,7 @@ and interpret_path env pathcomplst cycleopt =
   in
     (pathelemlst, closingopt)
 
-
-and make_page_break_info pbinfo =
-  let asc =
-    Assoc.of_list [
-      ("page-number", IntegerConstant(pbinfo.HorzBox.current_page_number));
-    ]
-  in
-    RecordValue(asc)
-
-
-and make_page_content_info pcinfo =
-  make_page_break_info pcinfo  (* temporary *)
 (*
-  let asc =
-    Assoc.of_list [
-      ("page-number", IntegerConstant(pcinfo.HorzBox.page_number));
-    ]
-  in
-    RecordValue(asc)
-*)
-
 and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_footer =
   (fun pbinfo ->
     let valuepbinfo = make_page_break_info pbinfo in
@@ -202,131 +114,7 @@ and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_foo
     let vblst = interpret_vert env ast in
       PageBreak.solidify vblst
   )
-
-
-and make_page_content_scheme_func env astf : HorzBox.page_content_scheme_func =
-  let valuef = interpret env astf in
-    (fun pbinfo ->
-      let valuepbinfo = make_page_break_info pbinfo in
-      let ast = Apply(Value(valuef), Value(valuepbinfo)) in
-      let valueret = interpret env ast in
-        match valueret with
-        | RecordValue(asc) ->
-            begin
-              match
-                (Assoc.find_opt asc "text-origin",
-                 Assoc.find_opt asc "text-height")
-              with
-              | (Some(vTO), Some(vTH)) ->
-                  HorzBox.({
-                    page_content_origin = get_point vTO;
-                    page_content_height = get_length vTH;
-                  })
-
-              | _ -> report_bug_value "make_page_scheme_func" valueret
-            end
-
-        | _ -> report_bug_reduction "make_page_scheme_func" ast valueret
-    )
-
-
-and make_page_parts_scheme_func env valuef : HorzBox.page_parts_scheme_func =
-  (fun pcinfo ->
-    let valuepcinfo = make_page_content_info pcinfo in
-    let ast = Apply(Value(valuef), Value(valuepcinfo)) in
-    let valueret = interpret env ast in
-      match valueret with
-      | RecordValue(asc) ->
-          begin
-            match
-              (Assoc.find_opt asc "header-origin",
-               Assoc.find_opt asc "header-content",
-               Assoc.find_opt asc "footer-origin",
-               Assoc.find_opt asc "footer-content")
-            with
-            | (Some(vHO), Some(vHC), Some(vFO), Some(vFC)) ->
-                HorzBox.({
-                  header_origin  = get_point vHO;
-                  header_content = PageBreak.solidify (get_vert vHC);
-                  footer_origin  = get_point vFO;
-                  footer_content = PageBreak.solidify (get_vert vFC);
-                })
-
-            | _ -> report_bug_value "make_page_parts_scheme_func" valueret
-          end
-
-      | _ -> report_bug_reduction "make_page_parts_scheme_func" ast valueret
-  )
-
-
-and make_hook env (asthook : abstract_tree) : (HorzBox.page_break_info -> point -> unit) =
-  let valuehook = interpret env asthook in
-  (fun pbinfo (xpos, yposbaseline) ->
-    let astpt = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple))) in
-    let valuepbinfo = make_page_break_info pbinfo in
-    let ast = Apply(Apply(Value(valuehook), Value(valuepbinfo)), astpt) in
-    let valueret = interpret env ast in
-      match valueret with
-      | UnitConstant -> ()
-      | _            -> report_bug_reduction "make_hook" ast valueret
-  )
-
-
-and make_frame_deco env valuedeco =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
-    let astwid = Value(LengthConstant(wid)) in
-    let asthgt = Value(LengthConstant(hgt)) in
-    let astdpt = Value(LengthConstant(Length.negate dpt)) in
-      (* -- depth values for users are nonnegative -- *)
-    let valueret = reduce_beta_list env valuedeco [astpos; astwid; asthgt; astdpt] in
-      graphics_of_list valueret
-  )
-
-
-and make_paren env valueparenf : HorzBox.paren =
-  (fun hgt dpt hgtaxis fontsize color ->
-    let asthgt      = Value(LengthConstant(hgt)) in
-    let astdpt      = Value(LengthConstant(Length.negate dpt)) in
-      (* -- depth values for users are nonnegative -- *)
-    let asthgtaxis  = Value(LengthConstant(hgtaxis)) in
-    let astfontsize = Value(LengthConstant(fontsize)) in
-    let astcolor    = Value(make_color_value color) in
-    let valueret = reduce_beta_list env valueparenf [asthgt; astdpt; asthgtaxis; astfontsize; astcolor] in
-      match valueret with
-      | TupleCons(valuehorz, TupleCons(valuekernf, EndOfTuple)) ->
-          let hblst = interpret_horz env (Value(valuehorz)) in
-          let kernf = make_math_kern_func env valuekernf in
-            (hblst, kernf)
-
-      | _ ->
-          report_bug_value "make_paren" valueret
-  )
-
-
-and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
-  (fun corrhgt ->
-    let astcorrhgt = Value(LengthConstant(corrhgt)) in
-    let valueret = reduce_beta_list env valuekernf [astcorrhgt] in
-      get_length valueret
-  )
-
-
-and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
-  (fun fontsize ypos ->
-    let astfontsize = Value(LengthConstant(fontsize)) in
-    let astypos     = Value(LengthConstant(ypos)) in
-    let valueret = reduce_beta_list env valuekernf [astfontsize; astypos] in
-      get_length valueret
-  )
-
-and make_inline_graphics env valueg =
-  (fun (xpos, ypos) ->
-    let astpos = Value(TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple))) in
-    let valueret = reduce_beta_list env valueg [astpos] in
-      graphics_of_list valueret
-  )
-
+*)
 
 and interpret_input_horz_content env (ihlst : input_horz_element list) =
   ihlst |> List.map (function
@@ -476,11 +264,12 @@ and interpret env ast =
       end
 
   | BackendMathParen(astparenL, astparenR, astm1) ->
+      let reducef = reduce_beta_list in
       let mlst1 = interpret_math env astm1 in
       let valueparenL = interpret env astparenL in
       let valueparenR = interpret env astparenR in
-      let parenL = make_paren env valueparenL in
-      let parenR = make_paren env valueparenR in
+      let parenL = make_paren reducef valueparenL in
+      let parenR = make_paren reducef valueparenR in
         MathValue([MathParen(parenL, parenR, mlst1)])
 
   | BackendMathUpperLimit(astm1, astm2) ->
@@ -508,24 +297,26 @@ and interpret env ast =
         MathValue(mlst)
 
   | BackendMathCharWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
+      let reducef = reduce_beta_list in
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let valuekernfL = interpret env astkernfL in
       let valuekernfR = interpret env astkernfR in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
-      let kernfL = make_math_char_kern_func env valuekernfL in
-      let kernfR = make_math_char_kern_func env valuekernfR in
+      let kernfL = make_math_char_kern_func reducef valuekernfL in
+      let kernfR = make_math_char_kern_func reducef valuekernfR in
       let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
         MathValue(mlst)
 
   | BackendMathBigCharWithKern(astmathcls, aststr, astkernfL, astkernfR) ->
+      let reducef = reduce_beta_list in
       let mathcls = interpret_math_class env astmathcls in
       let s = interpret_string env aststr in
       let valuekernfL = interpret env astkernfL in
       let valuekernfR = interpret env astkernfR in
       let uchlst = (InternalText.to_uchar_list (InternalText.of_utf8 s)) in
-      let kernfL = make_math_char_kern_func env valuekernfL in
-      let kernfR = make_math_char_kern_func env valuekernfR in
+      let kernfL = make_math_char_kern_func reducef valuekernfL in
+      let kernfR = make_math_char_kern_func reducef valuekernfR in
       let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
         MathValue(mlst)
 
@@ -565,7 +356,7 @@ and interpret env ast =
       let valuerulesf = interpret env astrulesf in
       let rulesf xs ys =
         let valueret =
-          reduce_beta_list env valuerulesf [Value(make_length_list xs); Value(make_length_list ys)]
+          reduce_beta_list valuerulesf [make_length_list xs; make_length_list ys]
         in
         graphics_of_list valueret
       in
@@ -626,7 +417,9 @@ and interpret env ast =
       end
 
   | BackendHookPageBreak(asthook) ->
-      let hookf : HorzBox.page_break_info -> point -> unit = make_hook env asthook in
+      let reducef = reduce_beta_list in
+      let valuehook = interpret env asthook in
+      let hookf = make_hook reducef valuehook in
         Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
 
   | Path(astpt0, pathcomplst, cycleopt) ->
@@ -716,14 +509,17 @@ and interpret env ast =
         Vert(imvblst)
 
   | BackendPageBreaking(astpagesize, astpagecontf, astpagepartsf, astvert) ->
+      let reducef = reduce_beta_list in
       let pagesize = interpret_page_size env astpagesize in
-      let pagecontf = make_page_content_scheme_func env astpagecontf in
+      let valuepagecontf = interpret env astpagecontf in
+      let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
       let valuepagepartsf = interpret env astpagepartsf in
-      let pagepartsf = make_page_parts_scheme_func env valuepagepartsf in
+      let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
       let vblst = interpret_vert env astvert in
         DocumentValue(pagesize, pagecontf, pagepartsf, vblst)
 
   | BackendVertFrame(astctx, astpads, astdecoset, astk) ->
+      let reducef = reduce_beta_list in
       let (ctx, valuecmd) = interpret_context env astctx in
       let valuek = interpret env astk in
       let pads = interpret_paddings env astpads in
@@ -735,10 +531,10 @@ and interpret env ast =
         Vert(HorzBox.([
           VertTopMargin(true, ctx.paragraph_top);
           VertFrame(pads,
-                      make_frame_deco env valuedecoS,
-                      make_frame_deco env valuedecoH,
-                      make_frame_deco env valuedecoM,
-                      make_frame_deco env valuedecoT,
+                      make_frame_deco reducef valuedecoS,
+                      make_frame_deco reducef valuedecoH,
+                      make_frame_deco reducef valuedecoM,
+                      make_frame_deco reducef valuedecoT,
                       ctx.paragraph_width, vblst);
           VertBottomMargin(true, ctx.paragraph_bottom);
         ]))
@@ -927,52 +723,57 @@ and interpret env ast =
         Horz([HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))])
 
   | BackendOuterFrame(astpads, astdeco, asth) ->
+      let reducef = reduce_beta_list in
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env asth in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
           pads,
-          make_frame_deco env valuedeco,
+          make_frame_deco reducef valuedeco,
           hblst))])
 
   | BackendInnerFrame(astpads, astdeco, asth) ->
+      let reducef = reduce_beta_list in
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env asth in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
           pads,
-          make_frame_deco env valuedeco,
+          make_frame_deco reducef valuedeco,
           hblst))])
 
   | BackendFixedFrame(astwid, astpads, astdeco, asth) ->
+      let reducef = reduce_beta_list in
       let wid = interpret_length env astwid in
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env asth in
       let valuedeco = interpret env astdeco in
         Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
           pads, wid,
-          make_frame_deco env valuedeco,
+          make_frame_deco reducef valuedeco,
           hblst))])
 
   | BackendOuterFrameBreakable(astpads, astdecoset, asth) ->
+      let reducef = reduce_beta_list in
       let pads = interpret_paddings env astpads in
       let hblst = interpret_horz env asth in
       let (valuedecoS, valuedecoH, valuedecoM, valuedecoT) = interpret_decoset env astdecoset in
         Horz([HorzBox.HorzFrameBreakable(
           pads, Length.zero, Length.zero,
-          make_frame_deco env valuedecoS,
-          make_frame_deco env valuedecoH,
-          make_frame_deco env valuedecoM,
-          make_frame_deco env valuedecoT,
+          make_frame_deco reducef valuedecoS,
+          make_frame_deco reducef valuedecoH,
+          make_frame_deco reducef valuedecoM,
+          make_frame_deco reducef valuedecoT,
           hblst
         )])
 
   | BackendInlineGraphics(astwid, asthgt, astdpt, astg) ->
+      let reducef = reduce_beta_list in
       let wid = interpret_length env astwid in
       let hgt = interpret_length env asthgt in
       let dpt = interpret_length env astdpt in
       let valueg = interpret env astg in
-      let graphics = make_inline_graphics env valueg in
+      let graphics = make_inline_graphics reducef valueg in
         Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
   | BackendScriptGuard(astscript, asth) ->
@@ -1448,7 +1249,14 @@ and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst 
             match valuecmd with
             | LambdaVertWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid valuectx astdef in
-                let valueret = reduce_beta_list env valuedef astarglst in
+                let valuearglst =
+                  astarglst |> List.fold_left (fun acc astarg ->
+                    let valuearg = interpret env astarg in
+                      Alist.extend acc valuearg
+                  ) Alist.empty |> Alist.to_list
+                    (* -- left-to-right evaluation -- *)
+                in
+                let valueret = reduce_beta_list valuedef valuearglst in
                   get_vert valueret
 
             | _ -> report_bug_reduction "interpret_intermediate_input_vert:1" astcmd valuecmd
@@ -1502,7 +1310,14 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
             match valuecmd with
             | LambdaHorzWithEnvironment(evid, astdef, envf) ->
                 let valuedef = reduce_beta envf evid valuectx astdef in
-                let valueret = reduce_beta_list env valuedef astarglst in
+                let valuearglst =
+                  astarglst |> List.fold_left (fun acc astarg ->
+                    let valuearg = interpret env astarg in
+                      Alist.extend acc valuearg
+                  ) Alist.empty |> Alist.to_list
+                    (* -- left-to-right evaluation -- *)
+                in
+                let valueret = reduce_beta_list valuedef valuearglst in
                 let hblst = get_horz valueret in
                   hblst
 
@@ -1528,25 +1343,6 @@ and interpret_cell env ast : HorzBox.cell =
     get_cell value
 
 
-and get_cell value : HorzBox.cell =
-    match value with
-    | Constructor("NormalCell", TupleCons(valuepads,
-                                  TupleCons(Horz(hblst), EndOfTuple))) ->
-        let pads = get_paddings valuepads in
-          HorzBox.NormalCell(pads, hblst)
-
-    | Constructor("EmptyCell", UnitConstant) -> HorzBox.EmptyCell
-
-    | Constructor("MultiCell", TupleCons(IntegerConstant(nr),
-                                 TupleCons(IntegerConstant(nc),
-                                   TupleCons(valuepads,
-                                     TupleCons(Horz(hblst), EndOfTuple))))) ->
-        let pads = get_paddings valuepads in
-          HorzBox.MultiCell(nr, nc, pads, hblst)
-
-    | _ -> report_bug_value "get_cell" value
-
-
 and interpret_math_class env ast : HorzBox.math_kind =
   let value = interpret env ast in
     get_math_class value
@@ -1567,25 +1363,9 @@ and interpret_script env ast : CharBasis.script =
     get_script value
 
 
-and make_font_value (abbrev, sizer, risingr) =
-  TupleCons(StringConstant(abbrev),
-    TupleCons(FloatConstant(sizer),
-      TupleCons(FloatConstant(risingr), EndOfTuple)))
-
-
 and interpret_language_system env ast : CharBasis.language_system =
   let value = interpret env ast in
     get_language_system value
-
-
-and make_language_system_value langsys =
-  let label =
-    match langsys with
-    | CharBasis.Japanese         -> "Japanese"
-    | CharBasis.English          -> "English"
-    | CharBasis.NoLanguageSystem -> "NoLanguageSystem"
-  in
-    Constructor(label, UnitConstant)
 
 
 and interpret_string (env : environment) (ast : abstract_tree) : string =
@@ -1616,12 +1396,6 @@ and interpret_context (env : environment) (ast : abstract_tree) : input_context 
 and interpret_tuple3 env getf ast =
   let value = interpret env ast in
     get_tuple3 getf value
-
-
-and make_length_list lenlst =
-  List.fold_right (fun l acc ->
-    ListCons(LengthConstant(l), acc)
-  ) lenlst EndOfList
 
 
 and interpret_color env ast : GraphicData.color =
