@@ -312,6 +312,7 @@ and interpret env ast =
         MathValue(mlst)
 
   | BackendMathText(astmathcls, astf) ->
+      let reducef = reduce_beta_list in
       let mathcls = interpret_math_class env astmathcls in
       let valuef = interpret env astf in
       let hblstf ictx =
@@ -319,7 +320,8 @@ and interpret env ast =
           Format.printf "Evaluator> BackendMathText\n";
           Format.printf "%a\n" pp_syntactic_value valuef;
 *)
-          interpret_horz env (Apply(Value(valuef), Value(Context(ictx))))
+        let valueh = reducef valuef [Context(ictx)] in
+          get_horz valueh
       in
         MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
 
@@ -487,7 +489,10 @@ and interpret env ast =
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR) }), valuecmd)
       in
-      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
+      let vblst =
+        let valuev = reducef valuek [valuectxsub] in
+          get_vert valuev
+      in
         Vert(HorzBox.([
           VertTopMargin(true, ctx.paragraph_top);
           VertFrame(pads,
@@ -500,13 +505,17 @@ and interpret env ast =
         ]))
 
   | BackendEmbeddedVertTop(astctx, astlen, astk) ->
+      let reducef = reduce_beta_list in
       let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
-      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
+      let vblst =
+        let valuev = reducef valuek [valuectxsub] in
+          get_vert valuev
+      in
       let imvblst = PageBreak.solidify vblst in
       let (hgt, dpt) = adjust_to_first_line imvblst in
 (*
@@ -519,13 +528,17 @@ and interpret env ast =
         Vert(HorzBox.([VertFixedBreakable(len)]))
 
   | BackendEmbeddedVertBottom(astctx, astlen, astk) ->
+      let reducef = reduce_beta_list in
       let (ctx, valuecmd) = interpret_context env astctx in
       let wid = interpret_length env astlen in
       let valuek = interpret env astk in
       let valuectxsub =
         Context(HorzBox.({ ctx with paragraph_width = wid; }), valuecmd)
       in
-      let vblst = interpret_vert env (Apply(Value(valuek), Value(valuectxsub))) in
+      let vblst =
+        let valuev = reducef valuek [valuectxsub] in
+          get_vert valuev
+      in
       let imvblst = PageBreak.solidify vblst in
       let (hgt, dpt) = adjust_to_last_line imvblst in
 (*
