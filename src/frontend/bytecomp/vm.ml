@@ -7,6 +7,11 @@ open EvalUtil
 
 exception ExecError of string
 
+
+let report_dynamic_error msg =
+  raise (ExecError(msg))
+
+
 type compiled_nom_input_horz_element =
   | CompiledNomInputHorzText     of string
   | CompiledNomInputHorzEmbedded of instruction list

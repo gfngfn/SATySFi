@@ -1,5 +1,6 @@
 
 module Types = Types_
+module Evaluator = Evaluator_
 open Types
 open Display
 
@@ -119,7 +120,7 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : fi
   else
   match ty with
   | (_, BaseType(EnvType)) ->
-      let value = 
+      let value =
         if !is_bytecomp_mode_ref = true then
           Bytecomp.compile_and_exec env ast
         else
@@ -222,7 +223,7 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
 (*
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
         let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)*)
- 
+
     Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
     if type_check_only then ()
     else
@@ -233,7 +234,7 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
             Logging.start_evaluation i;
             reset ();
             let env = unfreeze_environment env_freezed in
-            let valuedoc = 
+            let valuedoc =
               if !is_bytecomp_mode_ref then
                 Bytecomp.compile_and_exec env ast
               else

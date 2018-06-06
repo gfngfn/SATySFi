@@ -29,6 +29,54 @@ def default_false b
   if b == nil then false else b end
 end
 
+def gen_interps
+  YAML.load_documents(ARGF.read) do |inst|
+    if inst["is-primitive"] && !default_false(inst["no-interp"]) then
+      tmpn = 0
+      astargs = []
+      valueidents = []
+      otheridents = []
+
+      inst["params"].each do |param|
+        if param.is_a?(String) then
+          astargs.push "_ast#{tmpn}"
+          valueidents.push [param, "_ast#{tmpn}"]
+          tmpn = tmpn + 1
+        elsif param.is_a?(Hash) then
+          ident = param.keys[0]
+          type = param.values[0]
+          astargs.push "_ast#{tmpn}"
+          otheridents.push [ident, type, "_ast#{tmpn}"]
+          tmpn = tmpn + 1
+        end
+      end if inst["params"]
+
+      puts "  | #{inst["inst"]}(#{astargs.join ', '}) ->"
+      valueidents.each do |pair|
+        ident, astident = pair
+        puts "      let #{ident} = interpret env #{astident} in"
+      end
+      otheridents.each do |tri|
+        ident, type, astident = tri
+        puts "      let #{ident} = #{FUNCPREFIX}#{type} (interpret env #{astident}) in"
+      end
+      puts "      let reducef = reduce_beta_list in" if inst["needs-reducef"]
+      puts "        begin"
+      if inst["separated"] then
+        inst["code-interp"].each_line do |line|
+          puts "          #{line}"
+        end
+      else
+        inst["code"].each_line do |line|
+          puts "          #{line}"
+        end
+      end
+      puts "        end"
+      puts ""
+    end
+  end
+end
+
 def gen_vminstrs
   YAML.load_documents(ARGF.read) do |inst|
     tmpn = 0
@@ -174,6 +222,7 @@ opt.on('--gen-vm') {|v| func = method(:gen_vminstrs) }
 opt.on('--gen-ir') {|v| func = method(:gen_ircases) }
 opt.on('--gen-insttype') {|v| func = method(:gen_insttype) }
 opt.on('--gen-attype') {|v| func = method(:gen_attype) }
+opt.on('--gen-interps') {|v| func = method(:gen_interps) }
 opt.on('--pp-include') {|v| func = method(:pp_include) }
 
 opt.parse!(ARGV)

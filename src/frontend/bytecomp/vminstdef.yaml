@@ -234,6 +234,7 @@ code: |
 ---
 inst: Dereference
 is-primitive: yes
+no-interp: yes
 params:
 - valuecont
 code: |
@@ -835,7 +836,9 @@ code: |
 inst: Path
 suppress-pp : yes
 is-primitive : yes
-no-ircode : yes
+separated: yes
+no-ircode: yes
+no-interp: yes
 fields:
 - c_pathcomplst : ((instruction list) compiled_path_component) list
 - c_cycleopt : (unit compiled_path_component) option
@@ -958,7 +961,7 @@ code: |
 code-interp: |
   match value1 with
   | InputVertWithEnvironment(imivlst, envi) -> interpret_intermediate_input_vert envi valuectx imivlst
-  | _                                       -> report_bug_reduction "VertLex" ast1 value1
+  | _                                       -> report_bug_value "VertLex" value1
 
 ---
 inst: BackendFont
@@ -1288,10 +1291,14 @@ code: |
 ---
 inst: PrimitiveEmbed
 is-primitive: yes
+separated: yes
 params:
 - str : string
 code: |
   CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
+
+code-interp: |
+  InputHorzWithEnvironment([ImInputHorzText(str)], env)
 
 ---
 inst: PrimitiveGetAxisHeight
@@ -1492,7 +1499,7 @@ params:
 code: |
   let resstr =
   try String.sub str pos wid with
-  | Invalid_argument(s) -> raise (ExecError("illegal index for string-sub"))
+  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
   in
     StringConstant(resstr)
 
@@ -1522,7 +1529,7 @@ params:
 code: |
   let regexp =
     try Str.regexp str with
-    | Failure(msg) -> raise (ExecError("regexp-of-string: " ^ msg))
+    | Failure(msg) -> report_dynamic_error ("regexp-of-string: " ^ msg)
   in
     RegExpConstant(regexp)
 
@@ -1644,7 +1651,7 @@ params:
 - numr : int
 code: |
   try IntegerConstant(numl / numr) with
-  | Division_by_zero -> raise (ExecError("division by zero"))
+  | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
 inst: Mod
@@ -1654,7 +1661,7 @@ params:
 - numr : int
 code: |
   try IntegerConstant(numl mod numr) with
-  | Division_by_zero -> raise (ExecError("division by zero"))
+  | Division_by_zero -> report_dynamic_error "division by zero"
 
 ---
 inst: Plus

@@ -19,7 +19,7 @@ RUBY=ruby
 GENCODE=./gen_code.rb
 INSTDEF=$(BYTECOMP)/vminstdef.yaml
 
-all: $(FRONTEND)/types_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
+all: $(FRONTEND)/types_.ml $(FRONTEND)/evaluator_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
 	mkdir -p _build/
 	$(OCB) main.native
 	mv main.native $(TARGET)
@@ -40,6 +40,11 @@ $(BYTECOMP)/ir_.ml: $(BYTECOMP)/ir.ml $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-ir $(INSTDEF) > $(BYTECOMP)/__ir.ml
 	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/ir.ml > $(BYTECOMP)/ir_.ml
 	$(RM)   $(BYTECOMP)/__ir.ml
+
+$(FRONTEND)/evaluator_.ml: $(FRONTEND)/evaluator.ml $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-interps $(INSTDEF) > $(FRONTEND)/__evaluator.ml
+	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/evaluator.ml > $(FRONTEND)/evaluator_.ml
+	$(RM)   $(FRONTEND)/__evaluator.ml
 
 
 install: $(TARGET)
