@@ -106,15 +106,6 @@ and interpret_path env pathcomplst cycleopt =
   in
     (pathelemlst, closingopt)
 
-(*
-and make_header_or_footer env (valuef : syntactic_value) : HorzBox.header_or_footer =
-  (fun pbinfo ->
-    let valuepbinfo = make_page_break_info pbinfo in
-    let ast = Apply(Value(valuef), Value(valuepbinfo)) in
-    let vblst = interpret_vert env ast in
-      PageBreak.solidify vblst
-  )
-*)
 
 and interpret_input_horz_content env (ihlst : input_horz_element list) =
   ihlst |> List.map (function
@@ -360,37 +351,6 @@ and interpret env ast =
         in
         graphics_of_list valueret
       in
-(*
-      (* begin: temporary *)
-      let rulesf xs ys =
-        let (xfirst, xlast) =
-          match (xs, List.rev xs) with
-          | (xfirst :: _, xlast :: _) -> (xfirst, xlast)
-          | _                         -> assert false
-        in
-        let (yfirst, ylast) =
-          match (ys, List.rev ys) with
-          | (yfirst :: _, ylast :: _) -> (yfirst, ylast)
-          | _                         -> assert false
-        in
-        let open GraphicData in
-        let thickness = Length.of_pdf_point 0.5 in
-        let color = DeviceRGB(0., 0., 0.) in
-        let grxs : 'a Graphics.t =
-          xs |> List.fold_left (fun gr x ->
-            Graphics.extend gr
-              (Graphics.make_stroke thickness color
-                [GeneralPath((x, yfirst), [LineTo((x, ylast))], None)])
-          ) Graphics.empty
-        in
-          ys |> List.fold_left (fun gr y ->
-            Graphics.extend gr
-              (Graphics.make_stroke thickness color
-                [GeneralPath((xfirst, y), [LineTo((xlast, y))], None)])
-          ) grxs
-      in
-      (* end: temporary *)
-*)
         Horz(HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
 
   | BackendRegisterPdfImage(aststr, astpageno) ->

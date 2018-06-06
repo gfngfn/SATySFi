@@ -305,8 +305,6 @@ and evaled_vert_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
 
-and header_or_footer = page_break_info -> intermediate_vert_box list
-
 and page_parts_scheme = {
   header_origin  : point;
     [@printer (fun fmt _ -> Format.fprintf fmt "<point>")]
@@ -317,7 +315,7 @@ and page_parts_scheme = {
 }
 
 and page_content_info =
-  page_break_info
+  page_break_info  (* temporary *)
 (*
 {
   page_number : int;
