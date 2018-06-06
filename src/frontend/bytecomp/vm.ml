@@ -194,7 +194,7 @@ let rec make_hook env (valuehook : syntactic_value) : (HorzBox.page_break_info -
   (fun pbinfo (xpos, yposbaseline) ->
      let valuept = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(yposbaseline), EndOfTuple)) in
      let valuepbinfo = make_page_break_info pbinfo in
-     let valueret = exec [valuehook; valuept; valuepbinfo] env [OpApplyT(2)] [] in
+     let valueret = exec_application env valuehook [valuepbinfo; valuept] in
        match valueret with
        | UnitConstant -> ()
        | _            -> report_bug_vm "make_hook"
@@ -232,7 +232,7 @@ and get_path env c_pathcomplst c_cycleopt =
 and make_page_content_scheme_func env valuef : HorzBox.page_content_scheme_func =
   (fun pbinfo ->
      let valuepbinfo = make_page_break_info pbinfo in
-     let valueret = exec [valuef; valuepbinfo] env [OpApplyT(1)] [] in
+     let valueret = exec_application env valuef [valuepbinfo] in
        match valueret with
        | RecordValue(asc) ->
            begin
@@ -256,7 +256,7 @@ and make_page_content_scheme_func env valuef : HorzBox.page_content_scheme_func 
 and make_page_parts_scheme_func env valuef : HorzBox.page_parts_scheme_func =
   (fun pcinfo ->
      let valuepcinfo = make_page_content_info pcinfo in
-     let valueret = exec [valuef; valuepcinfo] env [OpApplyT(1)] [] in
+     let valueret = exec_application env valuef [valuepcinfo] in
        match valueret with
        | RecordValue(asc) ->
          begin
@@ -267,7 +267,7 @@ and make_page_parts_scheme_func env valuef : HorzBox.page_parts_scheme_func =
               Assoc.find_opt asc "footer-content")
            with
            | (Some(vHO), Some(Vert(vHCvert)), Some(vFO), Some(Vert(vFCvert))) ->
-             HorzBox.({
+               HorzBox.({
                  header_origin  = get_point vHO;
                  header_content = PageBreak.solidify vHCvert;
                  footer_origin  = get_point vFO;
@@ -288,7 +288,7 @@ and make_frame_deco env valuedeco =
      let valuehgt = LengthConstant(hgt) in
      let valuedpt = LengthConstant(Length.negate dpt) in
      (* -- depth values for users are nonnegative -- *)
-     let valueret = exec [valuedeco; valuedpt; valuehgt; valuewid; valuepos] env [OpApplyT(4)] [] in
+     let valueret = exec_application env valuedeco [valuepos; valuewid; valuehgt; valuedpt] in
        graphics_of_list valueret
   )
 
@@ -301,23 +301,22 @@ and make_paren env valueparenf : HorzBox.paren =
      let valuehgtaxis  = LengthConstant(hgtaxis) in
      let valuefontsize = LengthConstant(fontsize) in
      let valuecolor    = make_color_value color in
-     let valueret = exec [valueparenf; valuecolor; valuefontsize; valuehgtaxis; valuedpt; valuehgt] env [OpApplyT(5)] [] in
+     let valueret = exec_application env valueparenf [valuehgt; valuedpt; valuehgtaxis; valuefontsize; valuecolor] in
        match valueret with
        | TupleCons(Horz(hblst), TupleCons(valuekernf, EndOfTuple)) ->
-         let kernf = make_math_kern_func env valuekernf in
-           (hblst, kernf)
+           let kernf = make_math_kern_func env valuekernf in
+             (hblst, kernf)
 
        | _ ->
-         report_bug_vm "make_paren"
+           report_bug_vm "make_paren"
   )
 
 
 and make_math_kern_func env valuekernf : HorzBox.math_kern_func =
   (fun corrhgt ->
     let astcorrhgt = LengthConstant(corrhgt) in
-       match exec [valuekernf; astcorrhgt] env [OpApplyT(1)] [] with
-       | LengthConstant(valueret) -> valueret
-       | _ -> report_bug_vm "bad return value"
+    let valueret = exec_application env valuekernf [astcorrhgt] in
+      get_length valueret
   )
 
 
@@ -325,15 +324,14 @@ and make_math_char_kern_func env valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
      let valuefontsize = LengthConstant(fontsize) in
      let valueypos     = LengthConstant(ypos) in
-       match exec [valuekernf; valueypos; valuefontsize] env [OpApplyT(2)] [] with
-       | LengthConstant(valueret) -> valueret
-       | _ -> report_bug_vm "bad return value"
+     let valueret = exec_application env valuekernf [valuefontsize; valueypos] in
+       get_length valueret
   )
 
 and make_inline_graphics env valueg =
   (fun (xpos, ypos) ->
      let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
-     let valueret = exec [valueg; valuepos] env [OpApplyT(1)] [] in
+     let valueret = exec_application env valueg [valuepos] in
        graphics_of_list valueret
   )
 
@@ -342,21 +340,18 @@ and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imi
     imivlst |> List.map (fun imiv ->
         match imiv with
         | CompiledImInputVertEmbedded(code) ->
-          begin
-            match exec [valuectx] env (code) [] with
-            | Vert(valueret) -> valueret
-            | _ -> report_bug_vm "bad return value"
-          end
+            let valueret = exec [valuectx] env (code) [] in
+              get_vert valueret
 
         | CompiledImInputVertContent(ctcode) ->
-          let value = exec [] env ctcode [] in
-            begin
-              match value with
-              | CompiledInputVertWithEnvironment(imivlst, envsub) ->
-                interpret_commands envsub imivlst
+            let value = exec [] env ctcode [] in
+              begin
+                match value with
+                | CompiledInputVertWithEnvironment(imivlst, envsub) ->
+                    interpret_commands envsub imivlst
 
-              | _ -> report_bug_vm "interpret_input_vert_content"
-            end
+                | _ -> report_bug_vm "interpret_input_vert_content"
+              end
 
       ) |> List.concat
   in
@@ -365,38 +360,37 @@ and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imi
 
 
 and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
-  match valuectx with
-  | Context((ctx, valuemcmd)) ->
+  let (ctx, valuemcmd) = get_context valuectx in
     begin
       let rec normalize imihlst =
         imihlst |> List.fold_left (fun acc imih ->
             match imih with
             | CompiledImInputHorzEmbedded(code) ->
-              let nmih = CompiledNomInputHorzEmbedded(code) in
-                Alist.extend acc nmih
+                let nmih = CompiledNomInputHorzEmbedded(code) in
+                  Alist.extend acc nmih
 
             | CompiledImInputHorzText(s2) ->
-              begin
-                match Alist.chop_last acc with
-                | Some(accrest, CompiledNomInputHorzText(s1)) -> (Alist.extend accrest (CompiledNomInputHorzText(s1 ^ s2)))
-                | _                                   -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
-              end
+                begin
+                  match Alist.chop_last acc with
+                  | Some(accrest, CompiledNomInputHorzText(s1)) -> (Alist.extend accrest (CompiledNomInputHorzText(s1 ^ s2)))
+                  | _                                           -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
+                end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
-              let nmih = CompiledNomInputHorzEmbedded(mathcode @ [OpPush(valuemcmd); OpApplyT(2)]) in
-                Alist.extend acc nmih
+                let nmih = CompiledNomInputHorzEmbedded(mathcode @ [OpPush(valuemcmd); OpApplyT(2)]) in
+                  Alist.extend acc nmih
 
             | CompiledImInputHorzContent(ctcode) ->
-              let value = exec [] env ctcode [] in
-                begin
-                  match value with
-                  | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
-                    let nmihlstsub = normalize imihlst in
-                    let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
-                      Alist.extend acc nmih
+                let value = exec [] env ctcode [] in
+                  begin
+                    match value with
+                    | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
+                        let nmihlstsub = normalize imihlst in
+                        let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
+                          Alist.extend acc nmih
 
-                  | _ -> report_bug_vm "interpret_input_horz_content"
-                end
+                    | _ -> report_bug_vm "interpret_input_horz_content"
+                  end
 
           ) Alist.empty |> Alist.to_list
       in
@@ -405,17 +399,14 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
-              begin
-                match exec [valuectx] env code [] with
-                | Horz(valueret) -> valueret
-                | _ -> report_bug_vm "bad return value"
-              end
+                let valueret = exec [valuectx] env code [] in
+                  get_horz valueret
 
             | CompiledNomInputHorzText(s) ->
-              lex_horz_text ctx s
+                lex_horz_text ctx s
 
             | CompiledNomInputHorzContent(nmihlstsub, envsub) ->
-              interpret_commands envsub nmihlstsub
+                interpret_commands envsub nmihlstsub
 
           ) |> List.concat
       in
@@ -424,25 +415,32 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
       let hblst = interpret_commands env nmihlst in
         Horz(hblst)
     end
-  | _ ->
-    report_bug_vm "Context expected"
+
+
+and exec_application (env : vmenv) (vf : syntactic_value) (vargs : syntactic_value list) =
+  let len = List.length vargs in
+    if len = 0 then
+      vf
+    else
+      exec (vf :: (List.rev vargs)) env [OpApplyT(len)] []
+
 
 and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) dump =
   match code with
   | [] ->
-    begin
-      match dump with
-      | (pe, pc) :: rest ->
-        exec stack pe pc rest
+      begin
+        match dump with
+        | (pe, pc) :: rest ->
+            exec stack pe pc rest
 
-      | [] ->
-        begin match stack with
-          | v :: _ -> v
-          | [] -> report_bug_vm "stack underflow!"
-        end
-    end
+        | [] ->
+            begin match stack with
+              | v :: _ -> v
+              | [] -> report_bug_vm "stack underflow!"
+            end
+      end
 
   | c :: code ->
-    (*Format.printf "\nexec ---> %a\n" pp_instruction c;*)
-    match c with
-    (**** include: __vm.ml ****)
+      (*Format.printf "\nexec ---> %a\n" pp_instruction c;*)
+      match c with
+      (**** include: __vm.ml ****)
