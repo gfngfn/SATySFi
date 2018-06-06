@@ -66,13 +66,21 @@ def gen_vminstrs
       dest, func, src = app
       puts "            let #{dest} = #{FUNCPREFIX}#{func} #{src} in"
     end
-
-    puts "          #{VMEXEC} ((" if inst["is-primitive"]
-    puts "            begin"
-    puts "         #{inst["code"]}"
-    puts "            end"
-    puts "          )::#{STACK}) #{ENVIRONMENT} #{CODE} #{DUMP}" if inst["is-primitive"]
-    puts "        | _ -> report_bug_vm \"invalid primitive argument #{inst["inst"]}\"" if inst["params"]
+    if inst["is-primitive"] then
+      puts "            let ret ="
+    else
+      puts "            begin"
+    end
+    inst["code"].each_line do |line|
+      puts "              #{line}"
+    end
+    if inst["is-primitive"] then
+      puts "            in #{VMEXEC} (ret :: #{STACK}) #{ENVIRONMENT} #{CODE} #{DUMP}"
+    else
+      puts "            end"
+    end
+    puts ""
+    puts "        | _ -> report_bug_vm \"invalid argument for Op#{inst["inst"]}\"" if inst["params"]
     puts "      end"
     puts ""
   end
@@ -111,8 +119,9 @@ def gen_ircases
     if inst["is-primitive"] && !default_false(inst["no-ircode"]) then
       params = [*1..inst["params"].length].collect{|n| "p"+n.to_s}
 
-      puts "  | #{inst["inst"]}(#{params.join ', '}) ->"
-      puts "      #{TRANSPRIM} env [#{params.join '; '}] Op#{inst["inst"]}"
+      puts "    | #{inst["inst"]}(#{params.join ', '}) ->"
+      puts "        #{TRANSPRIM} env [#{params.join '; '}] Op#{inst["inst"]}"
+      puts ""
     end
   end
 end

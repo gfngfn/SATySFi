@@ -24,19 +24,19 @@ all: $(FRONTEND)/types_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
 	$(OCB) main.native
 	mv main.native $(TARGET)
 
-$(FRONTEND)/types_.ml: $(FRONTEND)/types.ml $(INSTDEF)
+$(FRONTEND)/types_.ml: $(FRONTEND)/types.ml $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-insttype $(INSTDEF) > $(FRONTEND)/__insttype.ml
 	$(RUBY) $(GENCODE) --gen-attype $(INSTDEF) > $(FRONTEND)/__attype.ml
 	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/types.ml > $(FRONTEND)/types_.ml
 	$(RM)   $(FRONTEND)/__insttype.ml
 	$(RM)   $(FRONTEND)/__attype.ml
 
-$(BYTECOMP)/vm_.ml: $(BYTECOMP)/vm.ml $(INSTDEF)
+$(BYTECOMP)/vm_.ml: $(BYTECOMP)/vm.ml $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-vm $(INSTDEF) > $(BYTECOMP)/__vm.ml
 	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/vm.ml > $(BYTECOMP)/vm_.ml
 	$(RM)   $(BYTECOMP)/__vm.ml
 
-$(BYTECOMP)/ir_.ml: $(BYTECOMP)/ir.ml $(INSTDEF)
+$(BYTECOMP)/ir_.ml: $(BYTECOMP)/ir.ml $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-ir $(INSTDEF) > $(BYTECOMP)/__ir.ml
 	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/ir.ml > $(BYTECOMP)/ir_.ml
 	$(RM)   $(BYTECOMP)/__ir.ml
