@@ -1488,6 +1488,10 @@ code: |
 ---
 inst: PrimitiveSetTextColor
 is-primitive: yes
+name: "set-text-color"
+type: |
+  ~% (tCLR @-> tCTX @-> tCTX)
+
 params:
 - color : color
 - (ctx, valuecmd) : context
@@ -1497,6 +1501,10 @@ code: |
 ---
 inst: PrimitiveGetTextColor
 is-primitive: yes
+name: "get-text-color"
+type: |
+  ~% (tCTX @-> tCLR)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1506,6 +1514,10 @@ code: |
 ---
 inst: PrimitiveSetLeading
 is-primitive: yes
+name: "set-leading"
+type: |
+  ~% (tLN @-> tCTX @-> tCTX)
+
 params:
 - len : length
 - (ctx, valuecmd) : context
@@ -1515,6 +1527,10 @@ code: |
 ---
 inst: PrimitiveGetTextWidth
 is-primitive: yes
+name: "get-text-width"
+type: |
+  ~% (tCTX @-> tLN)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1523,6 +1539,10 @@ code: |
 ---
 inst: PrimitiveSetManualRising
 is-primitive: yes
+name: "set-manual-rising"
+type: |
+  ~% (tLN @-> tCTX @-> tCTX)
+
 params:
 - rising : length
 - (ctx, valuecmd) : context
@@ -1532,6 +1552,10 @@ code: |
 ---
 inst: PrimitiveSetHyphenPenalty
 is-primitive: yes
+name: "set-hyphen-penalty"
+type: |
+  ~% (tI @-> tCTX @-> tCTX)
+
 params:
 - pnlty : int
 - (ctx, valuecmd) : context
@@ -1541,6 +1565,10 @@ code: |
 ---
 inst: PrimitiveEmbed
 is-primitive: yes
+name: "embed-string"
+type: |
+  ~% (tS @-> tIT)
+
 separated: yes
 params:
 - str : string
@@ -1553,6 +1581,10 @@ code-interp: |
 ---
 inst: PrimitiveGetAxisHeight
 is-primitive: yes
+name: "get-axis-height"
+type: |
+  ~% (tCTX @-> tLN)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1564,6 +1596,10 @@ code: |
 ---
 inst: BackendFixedEmpty
 is-primitive: yes
+name: "inline-skip"
+type: |
+  ~% (tLN @-> tIB)
+
 params:
 - wid : length
 code: |
@@ -1572,6 +1608,10 @@ code: |
 ---
 inst: BackendOuterEmpty
 is-primitive: yes
+name: "inline-glue"
+type: |
+  ~% (tLN @-> tLN @-> tLN @-> tIB)
+
 params:
 - widnat : length
 - widshrink : length
@@ -1582,6 +1622,10 @@ code: |
 ---
 inst: BackendOuterFrame
 is-primitive: yes
+name: "inline-frame-outer"
+type: |
+  ~% (tPADS @-> tDECO @-> tIB @-> tIB)
+
 needs-reducef: yes
 params:
 - pads : paddings
@@ -1596,6 +1640,10 @@ code: |
 ---
 inst: BackendInnerFrame
 is-primitive: yes
+name: "inline-frame-inner"
+type: |
+  ~% (tPADS @-> tDECO @-> tIB @-> tIB)
+
 needs-reducef: yes
 params:
 - pads : paddings
@@ -1610,6 +1658,10 @@ code: |
 ---
 inst: BackendFixedFrame
 is-primitive: yes
+name: "inline-frame-fixed"
+type: |
+  ~% (tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)
+
 needs-reducef: yes
 params:
 - wid : length
@@ -1625,6 +1677,10 @@ code: |
 ---
 inst: BackendOuterFrameBreakable
 is-primitive: yes
+name: "inline-frame-breakable"
+type: |
+  ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)
+
 needs-reducef: yes
 params:
 - pads : paddings
@@ -1643,6 +1699,10 @@ code: |
 ---
 inst: BackendInlineGraphics
 is-primitive: yes
+name: "inline-graphics"
+type: |
+  ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB)
+
 needs-reducef: yes
 params:
 - wid : length
@@ -1656,6 +1716,10 @@ code: |
 ---
 inst: BackendScriptGuard
 is-primitive: yes
+name: "script-guard"
+type: |
+  ~% (tSCR @-> tIB @-> tIB)
+
 params:
 - script : script
 - hblst : horz
@@ -1665,6 +1729,10 @@ code: |
 ---
 inst: BackendDiscretionary
 is-primitive: yes
+name: "discretionary"
+type: |
+  ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)
+
 params:
 - pb : int
 - hblst0 : horz
@@ -1676,6 +1744,10 @@ code: |
 ---
 inst: BackendRegisterCrossReference
 is-primitive: yes
+name: "register-cross-reference"
+type: |
+  ~% (tS @-> tS @-> tU)
+
 params:
 - k : string
 - v : string
@@ -1686,6 +1758,10 @@ code: |
 ---
 inst: BackendGetCrossReference
 is-primitive: yes
+name: "get-cross-reference"
+type: |
+  ~% (tS @-> (tOPT tS))
+
 params:
 - k : string
 code: |
@@ -1696,6 +1772,10 @@ code: |
 ---
 inst: PrimitiveGetNaturalWidth
 is-primitive: yes
+name: "get-natural-width"
+type: |
+  ~% (tIB @-> tLN)
+
 params:
 - hblst : horz
 code: |
@@ -1705,6 +1785,10 @@ code: |
 ---
 inst: PrimitiveGetNaturalLength
 is-primitive: yes
+name: "get-natural-length"
+type: |
+  ~% (tBB @-> tLN)
+
 params:
 - vblst : vert
 code: |
@@ -1715,6 +1799,10 @@ code: |
 ---
 inst: PrimitiveDisplayMessage
 is-primitive: yes
+name: "display-message"
+type: |
+  ~% (tS @-> tU)
+
 params:
 - str : string
 code: |
@@ -1733,6 +1821,10 @@ code: |
 ---
 inst: PrimitiveSame
 is-primitive: yes
+name: "string-same"
+type: |
+  ~% (tS @-> tS @-> tB)
+
 params:
 - str1 : string
 - str2 : string
@@ -1742,6 +1834,10 @@ code: |
 ---
 inst: PrimitiveStringSub
 is-primitive: yes
+name: "string-sub"
+type: |
+  ~% (tS @-> tI @-> tI @-> tS)
+
 params:
 - str : string
 - pos : int
@@ -1756,6 +1852,10 @@ code: |
 ---
 inst: PrimitiveStringLength
 is-primitive: yes
+name: "string-length"
+type: |
+  ~% (tS @-> tI)
+
 params:
 - str : string
 code: |
@@ -1764,6 +1864,10 @@ code: |
 ---
 inst: PrimitiveStringUnexplode
 is-primitive: yes
+name: "string-unexplode"
+type: |
+  ~% ((tL tI) @-> tS)
+
 params:
 - valueilst
 code: |
@@ -1774,6 +1878,10 @@ code: |
 ---
 inst: PrimitiveRegExpOfString
 is-primitive: yes
+name: "regexp-of-string"
+type: |
+  ~% (tS @-> tRE)
+
 params:
 - str : string
 code: |
@@ -1786,6 +1894,10 @@ code: |
 ---
 inst: PrimitiveStringMatch
 is-primitive: yes
+name: "string-match"
+type: |
+  ~% (tRE @-> tS @-> tB)
+
 params:
 - pat : regexp
 - s : string
@@ -1795,6 +1907,10 @@ code: |
 ---
 inst: PrimitiveSplitIntoLines
 is-primitive: yes
+name: "split-into-lines"
+type: |
+  ~% (tS @-> (tL (tPROD [tI; tS])))
+
 params:
 - s : string
 code: |
@@ -1806,6 +1922,10 @@ code: |
 ---
 inst: PrimitiveSplitOnRegExp
 is-primitive: yes
+name: "split-on-regexp"
+type: |
+  ~% (tRE @-> tS @-> (tL (tPROD [tI; tS])))
+
 params:
 - sep : regexp
 - str : string
@@ -1818,6 +1938,10 @@ code: |
 ---
 inst: PrimitiveArabic
 is-primitive: yes
+name: "arabic"
+type: |
+  ~% (tI @-> tS)
+
 params:
 - num : int
 code: |
@@ -1826,6 +1950,10 @@ code: |
 ---
 inst: PrimitiveFloat
 is-primitive: yes
+name: "float"
+type: |
+  ~% (tI @-> tFL)
+
 params:
 - ic1 : int
 code: |
@@ -1834,6 +1962,10 @@ code: |
 ---
 inst: PrimitiveRound
 is-primitive: yes
+name: "round"
+type: |
+  ~% (tFL @-> tI)
+
 params:
 - fc1 : float
 code: |
@@ -1842,6 +1974,10 @@ code: |
 ---
 inst: PrimitiveDrawText
 is-primitive: yes
+name: "draw-text"
+type: |
+  ~% (tPT @-> tIB @-> tGR)
+
 params:
 - pt : point
 - hblst : horz
@@ -1853,6 +1989,10 @@ code: |
 ---
 inst: PrimitiveDrawStroke
 is-primitive: yes
+name: "stroke"
+type: |
+  ~% (tLN @-> tCLR @-> tPATH @-> tGR)
+
 params:
 - wid : length
 - color : color
@@ -1864,6 +2004,10 @@ code: |
 ---
 inst: PrimitiveDrawFill
 is-primitive: yes
+name: "fill"
+type: |
+  ~% (tCLR @-> tPATH @-> tGR)
+
 params:
 - color : color
 - pathlst : path_value
@@ -1874,6 +2018,10 @@ code: |
 ---
 inst: PrimitiveDrawDashedStroke
 is-primitive: yes
+name: "dashed-stroke"
+type: |
+  ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)
+
 params:
 - wid : length
 - valuetup3
@@ -1887,6 +2035,10 @@ code: |
 ---
 inst: Times
 is-primitive: yes
+name: "*"
+type: |
+  ~% (tI @-> tI @-> tI)
+
 params:
 - numl : int
 - numr : int
@@ -1896,6 +2048,10 @@ code: |
 ---
 inst: Divides
 is-primitive: yes
+name: "/"
+type: |
+  ~% (tI @-> tI @-> tI)
+
 params:
 - numl : int
 - numr : int
@@ -1906,6 +2062,10 @@ code: |
 ---
 inst: Mod
 is-primitive: yes
+name: "mod"
+type: |
+  ~% (tI @-> tI @-> tI)
+
 params:
 - numl : int
 - numr : int
@@ -1916,6 +2076,10 @@ code: |
 ---
 inst: Plus
 is-primitive: yes
+name: "+"
+type: |
+  ~% (tI @-> tI @-> tI)
+
 params:
 - numl : int
 - numr : int
@@ -1925,6 +2089,10 @@ code: |
 ---
 inst: Minus
 is-primitive: yes
+name: "-"
+type: |
+  ~% (tI @-> tI @-> tI)
+
 params:
 - numl : int
 - numr : int
@@ -1934,6 +2102,10 @@ code: |
 ---
 inst: EqualTo
 is-primitive: yes
+name: "=="
+type: |
+  ~% (tI @-> tI @-> tB)
+
 params:
 - numl : int
 - numr : int
@@ -1943,6 +2115,10 @@ code: |
 ---
 inst: GreaterThan
 is-primitive: yes
+name: ">"
+type: |
+  ~% (tI @-> tI @-> tB)
+
 params:
 - numl : int
 - numr : int
@@ -1952,6 +2128,10 @@ code: |
 ---
 inst: LessThan
 is-primitive: yes
+name: "<"
+type: |
+  ~% (tI @-> tI @-> tB)
+
 params:
 - numl : int
 - numr : int
@@ -1961,6 +2141,10 @@ code: |
 ---
 inst: LogicalAnd
 is-primitive: yes
+name: "&&"
+type: |
+  ~% (tB @-> tB @-> tB)
+
 params:
 - binl : bool
 - binr : bool
@@ -1970,6 +2154,10 @@ code: |
 ---
 inst: LogicalOr
 is-primitive: yes
+name: "||"
+type: |
+  ~% (tB @-> tB @-> tB)
+
 params:
 - binl : bool
 - binr : bool
@@ -1979,6 +2167,10 @@ code: |
 ---
 inst: LogicalNot
 is-primitive: yes
+name: "not"
+type: |
+  ~% (tB @-> tB)
+
 params:
 - binl : bool
 code: |
@@ -1987,6 +2179,10 @@ code: |
 ---
 inst: FloatPlus
 is-primitive: yes
+name: "+."
+type: |
+  ~% (tFL @-> tFL @-> tFL)
+
 params:
 - flt1 : float
 - flt2 : float
@@ -1996,6 +2192,10 @@ code: |
 ---
 inst: FloatMinus
 is-primitive: yes
+name: "-."
+type: |
+  ~% (tFL @-> tFL @-> tFL)
+
 params:
 - flt1 : float
 - flt2 : float
@@ -2005,6 +2205,10 @@ code: |
 ---
 inst: FloatTimes
 is-primitive: yes
+name: "*."
+type: |
+  ~% (tFL @-> tFL @-> tFL)
+
 params:
 - flt1 : float
 - flt2 : float
@@ -2014,6 +2218,10 @@ code: |
 ---
 inst: FloatDivides
 is-primitive: yes
+name: "/."
+type: |
+  ~% (tFL @-> tFL @-> tFL)
+
 params:
 - flt1 : float
 - flt2 : float
@@ -2023,6 +2231,10 @@ code: |
 ---
 inst: FloatSine
 is-primitive: yes
+name: "sin"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2031,6 +2243,10 @@ code: |
 ---
 inst: FloatArcSine
 is-primitive: yes
+name: "asin"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2039,6 +2255,10 @@ code: |
 ---
 inst: FloatCosine
 is-primitive: yes
+name: "cos"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2047,6 +2267,10 @@ code: |
 ---
 inst: FloatArcCosine
 is-primitive: yes
+name: "acos"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2055,6 +2279,10 @@ code: |
 ---
 inst: FloatTangent
 is-primitive: yes
+name: "tan"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2063,6 +2291,10 @@ code: |
 ---
 inst: FloatArcTangent
 is-primitive: yes
+name: "atan"
+type: |
+  ~% (tFL @-> tFL)
+
 params:
 - flt1 : float
 code: |
@@ -2071,6 +2303,10 @@ code: |
 ---
 inst: FloatArcTangent2
 is-primitive: yes
+name: "atan2"
+type: |
+  ~% (tFL @-> tFL @-> tFL)
+
 params:
 - flt1 : float
 - flt2 : float
@@ -2080,6 +2316,10 @@ code: |
 ---
 inst: LengthPlus
 is-primitive: yes
+name: "+'"
+type: |
+  ~% (tLN @-> tLN @-> tLN)
+
 params:
 - len1 : length
 - len2 : length
@@ -2089,6 +2329,10 @@ code: |
 ---
 inst: LengthMinus
 is-primitive: yes
+name: "-'"
+type: |
+  ~% (tLN @-> tLN @-> tLN)
+
 params:
 - len1 : length
 - len2 : length
@@ -2098,6 +2342,10 @@ code: |
 ---
 inst: LengthTimes
 is-primitive: yes
+name: "*'"
+type: |
+  ~% (tLN @-> tFL @-> tLN)
+
 params:
 - len1 : length
 - flt2 : float
@@ -2107,6 +2355,10 @@ code: |
 ---
 inst: LengthDivides
 is-primitive: yes
+name: "/'"
+type: |
+  ~% (tLN @-> tLN @-> tFL)
+
 params:
 - len1 : length
 - len2 : length
@@ -2116,6 +2368,10 @@ code: |
 ---
 inst: LengthLessThan
 is-primitive: yes
+name: "<'"
+type: |
+  ~% (tLN @-> tLN @-> tB)
+
 params:
 - len1 : length
 - len2 : length
@@ -2125,6 +2381,10 @@ code: |
 ---
 inst: LengthGreaterThan
 is-primitive: yes
+name: ">'"
+type: |
+  ~% (tLN @-> tLN @-> tB)
+
 params:
 - len1 : length
 - len2 : length
@@ -2143,6 +2403,10 @@ code : |
 ---
 inst: PrimitiveSetEveryWordBreak
 is-primitive : yes
+name: "set-every-word-break"
+type: |
+  ~% (tIB @-> tIB @-> tCTX @-> tCTX)
+
 params:
 - hblst1 : horz
 - hblst2 : horz
@@ -2156,6 +2420,10 @@ code: |
 ---
 inst: BackendProbeCrossReference
 is-primitive : yes
+name: "probe-cross-reference"
+type: |
+  ~% (tS @-> (tOPT tS))
+
 params:
 - k : string
 code: |
