@@ -1,0 +1,19 @@
+# See editorconfig.org for details
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+
+[*.{ml,mli,mll,mly}]
+indent_style = space
+indent_size = 2
+
+[*.{saty,satyh}]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab

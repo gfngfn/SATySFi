@@ -60,3 +60,7 @@ let-inline ctx \fil =
 
 let-inline ctx \fil-both =
   discretionary 0 inline-nil inline-fil inline-fil
+
+
+let mandatory-break ctx =
+  discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil inline-nil

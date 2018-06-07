@@ -28,8 +28,8 @@ let pass_type_check opt =
   | None ->
       print_endline ("  type check passed.")
 
-  | Some((tyenv, ty)) ->
-      print_endline ("  type check: " ^ (Display.string_of_mono_type tyenv ty))
+  | Some(str) ->
+      print_endline ("  type check passed. (" ^ str ^ ")")
 
 
 let ordinal i =
@@ -67,11 +67,14 @@ let needs_another_trial () =
 
 
 let achieve_count_max () =
-  print_endline ("  some cross references were not solved.")
+  print_endline ("  could not reach to fixpoint when resolving cross references.")
 
 
-let achieve_fixpoint () =
-  print_endline ("  all cross references were solved.")
+let achieve_fixpoint unresolved_crossrefs =
+  if unresolved_crossrefs = [] then
+    print_endline ("  all cross references were solved.")
+  else
+    print_endline ("  some cross references were not solved: " ^ String.concat " " unresolved_crossrefs ^ ".")
 
 
 let end_output file_name_out =
@@ -104,3 +107,7 @@ let begin_to_embed_fonts () =
 let begin_to_write_page () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...")
+
+let warn_cmyk_image file_name =
+  print_endline ("  [Warning]: (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
+  print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.");

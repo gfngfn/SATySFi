@@ -16,30 +16,115 @@ module Math : sig
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
   direct \mathrel : [math] math-cmd
+  direct \mathop : [math] math-cmd
+  direct \mathprefix : [math] math-cmd
+  direct \mathpunct : [math] math-cmd
 
   direct \math-style : [math-char-class; math] math-cmd
   direct \mathrm : [math] math-cmd
+  direct \mathbf : [math] math-cmd
+  direct \mathcal : [math] math-cmd
+  direct \mathfrak : [math] math-cmd
+  direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
 
   direct \paren : [math] math-cmd
   direct \app : [math; math] math-cmd
   direct \angle : [math] math-cmd
   direct \brace : [math] math-cmd
+  direct \sqbracket : [math] math-cmd
+  direct \abs : [math] math-cmd
+  direct \norm : [math] math-cmd
 
   direct \to : [] math-cmd
   direct \pm : [] math-cmd
   direct \infty : [] math-cmd
   direct \ldots : [] math-cmd
   direct \sum : [] math-cmd
+  direct \prod : [] math-cmd
   direct \int : [] math-cmd
   direct \ordd : [] math-cmd
+  direct \partial : [] math-cmd
+  direct \times : [] math-cmd
+  direct \nabla : [] math-cmd
+
+  direct \leq    : [] math-cmd
+  direct \geq    : [] math-cmd
+  direct \in     : [] math-cmd
+  direct \mid : [] math-cmd
+
+  direct \equiv  : [] math-cmd
+  direct \neq    : [] math-cmd
+  direct \simeq  : [] math-cmd
+  direct \sim    : [] math-cmd
+  direct \approx : [] math-cmd
+  direct \propto : [] math-cmd
 
   direct \lim : [] math-cmd
+  direct \max : [] math-cmd
+  direct \min : [] math-cmd
 
-  direct \Gamma : [] math-cmd
-  direct \lambda : [] math-cmd
-  direct \pi : [] math-cmd
-  direct \tau : [] math-cmd
+  direct \wedge : [] math-cmd
+  direct \vee : [] math-cmd
+  direct \Rightarrow : [] math-cmd
+  direct \Leftarrow : [] math-cmd
+  direct \Leftrightarrow : [] math-cmd
+  direct \forall : [] math-cmd
+  direct \exists : [] math-cmd
+
+  direct \because : [] math-cmd
+  direct \therefore : [] math-cmd
+
+
+  direct \Alpha   : [] math-cmd
+  direct \Beta    : [] math-cmd
+  direct \Gamma   : [] math-cmd
+  direct \Delta   : [] math-cmd
+  direct \Epsilon : [] math-cmd
+  direct \Zeta    : [] math-cmd
+  direct \Eta     : [] math-cmd
+  direct \Theta   : [] math-cmd
+  direct \Iota    : [] math-cmd
+  direct \Kappa   : [] math-cmd
+  direct \Lambda  : [] math-cmd
+  direct \Mu      : [] math-cmd
+  direct \Nu      : [] math-cmd
+  direct \Xi      : [] math-cmd
+  direct \Omicron : [] math-cmd
+  direct \Pi      : [] math-cmd
+  direct \Rho     : [] math-cmd
+  direct \Sigma   : [] math-cmd
+  direct \Tau     : [] math-cmd
+  direct \Upsilon : [] math-cmd
+  direct \Phi     : [] math-cmd
+  direct \Chi     : [] math-cmd
+  direct \Psi     : [] math-cmd
+  direct \Omega   : [] math-cmd
+
+  direct \alpha   : [] math-cmd
+  direct \beta    : [] math-cmd
+  direct \gamma   : [] math-cmd
+  direct \delta   : [] math-cmd
+  direct \epsilon : [] math-cmd
+  direct \zeta    : [] math-cmd
+  direct \eta     : [] math-cmd
+  direct \theta   : [] math-cmd
+  direct \iota    : [] math-cmd
+  direct \kappa   : [] math-cmd
+  direct \lambda  : [] math-cmd
+  direct \mu      : [] math-cmd
+  direct \nu      : [] math-cmd
+  direct \xi      : [] math-cmd
+  direct \omicron : [] math-cmd
+  direct \pi      : [] math-cmd
+  direct \rho     : [] math-cmd
+  direct \sigma   : [] math-cmd
+  direct \tau     : [] math-cmd
+  direct \upsilon : [] math-cmd
+  direct \phi     : [] math-cmd
+  direct \chi     : [] math-cmd
+  direct \psi     : [] math-cmd
+  direct \omega   : [] math-cmd
 
   % -- temporary --
   direct \synteq : [] math-cmd
@@ -87,14 +172,27 @@ end = struct
   let-math \mathord = math-group MathOrd MathOrd
   let-math \mathbin = math-group MathBin MathBin
   let-math \mathrel = math-group MathRel MathRel
+  let-math \mathop = math-group MathOp MathOp
+  let-math \mathprefix = math-group MathPrefix MathPrefix
+  let-math \mathpunct = math-group MathPunct MathPunct
+
+  let-math \math-style sty m =
+    math-char-class sty m
+
+  let-math \mathrm m = ${\math-style!(MathRoman){#m}}
+  let-math \mathbf m = ${\math-style!(MathBoldRoman){#m}}
+  let-math \mathcal m = ${\math-style!(MathScript){#m}}
+  let-math \mathfrak m = ${\math-style!(MathFraktur){#m}}
+  let-math \mathbb m = ${\math-style!(MathDoubleStruck){#m}}
+  let-math \bm m = ${\math-style!(MathBoldItalic){#m}}
 
   let-block ctx +math math =
     let ib = embed-math ctx math in
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-  let math-ord-char cp =
-    math-char MathOrd (string-unexplode [cp])
+%  let math-ord-char cp =
+%    math-char MathOrd (string-unexplode [cp])
 
 
   let math-list lst =
@@ -137,26 +235,95 @@ end = struct
         double-struck = s;
       |)
 
+  let-math \alpha    = greek-lowercase 0x1D6FC 0x1D736
+  let-math \beta     = greek-lowercase 0x1D6FD 0x1D737
+  let-math \gamma    = greek-lowercase 0x1D6FE 0x1D738
+  let-math \delta    = greek-lowercase 0x1D6FF 0x1D739
+  let-math \epsilon  = greek-lowercase 0x1D700 0x1D73A
+  let-math \zeta     = greek-lowercase 0x1D701 0x1D73B
+  let-math \eta      = greek-lowercase 0x1D702 0x1D73C
+  let-math \theta    = greek-lowercase 0x1D703 0x1D73D
+  let-math \iota     = greek-lowercase 0x1D704 0x1D73E
+  let-math \kappa    = greek-lowercase 0x1D705 0x1D73F
+  let-math \lambda   = greek-lowercase 0x1D706 0x1D740
+  let-math \mu       = greek-lowercase 0x1D707 0x1D741
+  let-math \nu       = greek-lowercase 0x1D708 0x1D742
+  let-math \xi       = greek-lowercase 0x1D709 0x1D743
+  let-math \omicron  = greek-lowercase 0x1D70A 0x1D744
+  let-math \pi       = greek-lowercase 0x1D70B 0x1D745
+  let-math \rho      = greek-lowercase 0x1D70C 0x1D746
+  let-math \sigma    = greek-lowercase 0x1D70E 0x1D748
+  let-math \tau      = greek-lowercase 0x1D70F 0x1D749
+  let-math \upsilon  = greek-lowercase 0x1D710 0x1D74A
+  let-math \phi      = greek-lowercase 0x1D711 0x1D74B
+  let-math \chi      = greek-lowercase 0x1D712 0x1D74C
+  let-math \psi      = greek-lowercase 0x1D713 0x1D74D
+  let-math \omega    = greek-lowercase 0x1D714 0x1D74E
 
-  let-math \lambda = greek-lowercase 0x1D706 0x1D740
-  let-math \pi     = greek-lowercase 0x1D70B 0x1D745
-  let-math \tau    = greek-lowercase 0x1D70F 0x1D749
-
-  let-math \Gamma = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
-
+  let-math \Alpha    = greek-uppercase 0x1D6E2 0x1D71C 0x0391 0x1D6A8
+  let-math \Beta     = greek-uppercase 0x1D6E3 0x1D71D 0x0392 0x1D6A9
+  let-math \Gamma    = greek-uppercase 0x1D6E4 0x1D71E 0x0393 0x1D6AA
+  let-math \Delta    = greek-uppercase 0x1D6E5 0x1D71F 0x0394 0x1D6AB
+  let-math \Epsilon  = greek-uppercase 0x1D6E6 0x1D720 0x0395 0x1D6AC
+  let-math \Zeta     = greek-uppercase 0x1D6E7 0x1D721 0x0396 0x1D6AD
+  let-math \Eta      = greek-uppercase 0x1D6E8 0x1D722 0x0397 0x1D6AE
+  let-math \Theta    = greek-uppercase 0x1D6E9 0x1D723 0x0398 0x1D6AF
+  let-math \Iota     = greek-uppercase 0x1D6EA 0x1D724 0x0399 0x1D6B0
+  let-math \Kappa    = greek-uppercase 0x1D6EB 0x1D725 0x039A 0x1D6B1
+  let-math \Lambda   = greek-uppercase 0x1D6EC 0x1D726 0x039B 0x1D6B2
+  let-math \Mu       = greek-uppercase 0x1D6ED 0x1D727 0x039C 0x1D6B3
+  let-math \Nu       = greek-uppercase 0x1D6EE 0x1D728 0x039D 0x1D6B4
+  let-math \Xi       = greek-uppercase 0x1D6EF 0x1D729 0x039E 0x1D6B5
+  let-math \Omicron  = greek-uppercase 0x1D6F0 0x1D72A 0x039F 0x1D6B6
+  let-math \Pi       = greek-uppercase 0x1D6F1 0x1D72B 0x03A0 0x1D6B7
+  let-math \Rho      = greek-uppercase 0x1D6F2 0x1D72C 0x03A1 0x1D6B8
+  let-math \Sigma    = greek-uppercase 0x1D6F4 0x1D72E 0x03A3 0x1D6BA
+  let-math \Tau      = greek-uppercase 0x1D6F5 0x1D72F 0x03A4 0x1D6BB
+  let-math \Upsilon  = greek-uppercase 0x1D6F6 0x1D730 0x03A5 0x1D6BC
+  let-math \Phi      = greek-uppercase 0x1D6F7 0x1D731 0x03A6 0x1D6BD
+  let-math \Chi      = greek-uppercase 0x1D6F8 0x1D732 0x03A7 0x1D6BE
+  let-math \Psi      = greek-uppercase 0x1D6F9 0x1D733 0x03A8 0x1D6BF
+  let-math \Omega    = greek-uppercase 0x1D6FA 0x1D734 0x03A9 0x1D6C0
 
   let-math \infty = math-char MathOrd `∞`
   let-math \to    = math-char MathRel `→`
+  let-math \in    = math-char MathRel `∈`
+  let-math \mid   = math-char MathRel `|`
   let-math \pm    = math-char MathBin `±`
+  let-math \times = math-char MathBin `×`
   let-math \vdash = math-char MathRel `⊢`
   let-math \colon-rel = math-char MathRel `:`
-  let-math \equiv = math-char MathRel `≡`
+  let-math \leq    = math-char MathRel `≤`
+  let-math \geq    = math-char MathRel `≥`
+  let-math \equiv  = math-char MathRel `≡`
+  let-math \neq    = math-char MathRel `≠`
+  let-math \simeq  = math-char MathRel `≃`
+  let-math \sim    = math-char MathRel `∼`
+  let-math \approx = math-char MathRel `≈`
+  let-math \propto = math-char MathRel `∝`
+
   let-math \mapsto = math-char MathRel `↦`
   let-math \ldots = math-char MathPunct `…`
 
   let-math \lim = math-char MathOp `lim`
+  let-math \max = math-char MathOp `max`
+  let-math \min = math-char MathOp `min`
+
 
   let-math \sum = math-big-char MathOp `∑`
+  let-math \prod = math-big-char MathOp `∏`
+
+  let-math \wedge = math-char MathBin `∧`
+  let-math \vee   = math-char MathBin `∨`
+  let-math \Rightarrow = math-char MathRel `⇒`
+  let-math \Leftarrow = math-char MathRel `⇐`
+  let-math \Leftrightarrow = math-char MathRel `⇔`
+  let-math \forall = math-char MathOrd `∀`
+  let-math \exists = math-char MathOrd `∃`
+
+  let-math \therefore = math-char MathOrd `∴`
+  let-math \because = math-char MathOrd `∵`
+
 
 %% -- for Latin Modern Math --
   let-math \int =
@@ -173,6 +340,8 @@ end = struct
   let-math \ordd = math-char MathPrefix `d`
 
   let-math \partial = math-char MathPrefix `∂`
+
+  let-math \nabla  = math-char MathPrefix `∇`
 
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
@@ -337,11 +506,12 @@ end = struct
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
     let kerninfo y =
-      let widkern = widparen in
-      let r = 0.7 in
+      let widkern = widparen *' 0.5 in
+      let r = 0.25 in
       let gap = length-abs (y -' hgtaxis) in
-        if halflen *' r <' gap then
-          widkern *' ((gap -' halflen *' r) /' (halflen *' (1. -. r)))
+        let diff = length-min (gap -' halflen *' r) (halflen *' (1. -. r)) in
+        if 0pt <' diff then
+          widkern *' (diff /' (halflen *' (1. -. r)))
         else
           0pt
     in
@@ -567,13 +737,74 @@ let-math \brace =
   let-math \overwrite f x v =
     ${#f \sqbracket{#x \mapsto #v}}
 
-  let-math \math-style sty m =
-    math-char-class sty m
 
-  let-math \mathrm m =
-    ${\math-style!(MathRoman){#m}}
+  let abs-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let-math \bm m =
-    ${\math-style!(MathBoldItalic){#m}}
+  let abs-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 5.0pt in
+    let path (xpos, ypos) =
+      start-path (xpos +' wid *' 0.5, ypos +' hgtaxis +' halflen)
+        |> line-to (xpos +' wid *' 0.5, ypos +' hgtaxis -' halflen)
+        |> close-with-line
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \abs =
+    math-paren abs-left abs-right
+
+
+  let norm-left hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+  let norm-right hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let wid = 7.0pt in
+    let path (xpos, ypos) =
+      unite-path (
+        start-path (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 -' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      ) (
+        start-path (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis +' halflen)
+          |> line-to (xpos +' wid *' 0.5 +' 1.2pt, ypos +' hgtaxis -' halflen)
+          |> close-with-line
+      )
+    in
+    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \norm =
+    math-paren norm-left norm-right
 
 end

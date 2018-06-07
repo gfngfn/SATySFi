@@ -1,0 +1,95 @@
+@require: pervasives
+@require: list
+@require: math
+
+module Term : sig
+  type t
+  val term-object-color : color
+  val term-meta-color : color
+  val var : math -> t
+  val meta : math -> t
+  val letin : t -> t -> t -> t
+  val app : t -> t -> t
+  val abs : t -> t -> t
+  direct \term : [t] math-cmd
+end = struct
+
+  let term-object-color = (RGB(0., 0., 0.5))
+  let term-meta-color = (RGB(0.5, 0., 0.5))
+
+  type t = (| math : math; assoc : int; |)
+
+  let-math \token m =
+    math-color term-object-color (math-char-class MathBoldRoman m)
+
+  let-math \sp =
+    text-in-math MathOrd (fun ctx -> inline-skip (get-font-size ctx *' 0.25))
+
+  let var m =
+    (| math = math-color term-object-color m; assoc = 0; |)
+
+  let meta m =
+    (| math = math-color term-meta-color m; assoc = 0; |)
+
+  let letin x e1 e2 =
+    let mx = x#math in
+    let m1 = e1#math in
+    let m2 = e2#math in
+      (|
+        math = ${\token{let}\sp #mx = #m1 \sp\token{in}\sp #m2};
+        assoc = 0;
+      |)
+
+  let app e1 e2 =
+    let m1 = e1#math in
+    let m2 = e2#math in
+      (|
+        math = ${#m1\sp#m2};
+        assoc = 0;
+      |)
+
+  let abs e1 e2 =
+    let m1 = e1#math in
+    let m2 = e2#math in
+      (|
+        math = ${\lambda#m1.\sp#m2};
+        assoc = 0;
+      |)
+
+  let-math \term tm =
+    tm#math
+
+end
+
+
+let insert-bars mlst =
+  mlst |> List.fold-left-adjacent (fun macc m moptprev _ -> (
+    match moptprev with
+    | None -> m
+    | _    -> ${#macc \mid #m}
+  )) ${}
+
+
+let-block ctx +BNF mnontm mlstlst =
+  let sz = get-font-size ctx in
+  let vpad = sz *' 0.25 in
+  let padsL = (0pt, sz *' 0.5, vpad, vpad) in
+  let padsR = (0pt, 0pt, vpad, vpad) in
+  let celllstlst =
+    mlstlst |> List.fold-lefti (fun i acc mlst -> (
+      let c0 =
+        if i == 0 then
+          NormalCell(padsL, embed-math ctx ${#mnontm \mathrel{::=}})
+        else
+          NormalCell(padsL, inline-fil ++ embed-math ctx ${\mid})
+      in
+      let ib = embed-math ctx (insert-bars mlst) ++ inline-fil in
+      [c0; NormalCell(padsR, ib)] :: acc
+    )) [] |> List.reverse
+  in
+  let ib = tabular celllstlst (fun _ _ -> []) in
+  line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+let-math \synteq = ${\equiv}
+let-math \defsynteq = math-group MathRel MathRel ${:\synteq}
