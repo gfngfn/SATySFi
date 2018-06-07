@@ -1,6 +1,7 @@
 
 module Types = Types_
 module Evaluator = Evaluator_
+module Vm = Vm_
 open Types
 open Display
 
@@ -691,7 +692,9 @@ let error_log_environment suspended =
           NormalLine("at the same time, but these are incompatible.");
         ] additional)
 
-  | Evaluator.EvalError(s) -> report_error Evaluator [ NormalLine(s); ]
+  | Evaluator.EvalError(s)
+  | Vm.ExecError(s)
+      -> report_error Evaluator [ NormalLine(s); ]
 
   | Sys_error(s) -> report_error System [ NormalLine(s); ]
 (*

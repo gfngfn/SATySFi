@@ -64,15 +64,15 @@ and interpret_path env pathcomplst cycleopt =
     )
   in
   let closingopt =
-    match cycleopt with
-    | None -> None
+    cycleopt |> option_map (function
+      | PathLineTo(()) ->
+          GraphicData.LineTo(())
 
-    | Some(PathLineTo(())) -> Some(GraphicData.LineTo(()))
-
-    | Some(PathCubicBezierTo(astpt1, astpt2, ())) ->
-        let pt1 = interpret_point env astpt1 in
-        let pt2 = interpret_point env astpt2 in
-          Some(GraphicData.CubicBezierTo(pt1, pt2, ()))
+      | PathCubicBezierTo(astpt1, astpt2, ()) ->
+          let pt1 = interpret_point env astpt1 in
+          let pt2 = interpret_point env astpt2 in
+            GraphicData.CubicBezierTo(pt1, pt2, ())
+    )
   in
     (pathelemlst, closingopt)
 
