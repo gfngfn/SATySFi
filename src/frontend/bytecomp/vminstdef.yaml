@@ -2177,6 +2177,89 @@ code: |
   BooleanConstant(not binl)
 
 ---
+inst: BitShiftRight
+is-primitive: yes
+name: ">>"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  let bits =
+    try numl lsr numr with
+      | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'" in
+  IntegerConstant(bits)
+
+---
+inst: BitShiftLeft
+is-primitive: yes
+name: "<<"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  let bits =
+    try numl lsl numr with
+      | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'" in
+  IntegerConstant(bits)
+
+---
+inst: BitXor
+is-primitive: yes
+name: "bxor"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl lxor numr)
+
+---
+inst: BitAnd
+is-primitive: yes
+name: "band"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl land numr)
+
+---
+inst: BitOr
+is-primitive: yes
+name: "bor"
+type: |
+  ~% (tI @-> tI @-> tI)
+
+params:
+- numl : int
+- numr : int
+code: |
+  IntegerConstant(numl lor numr)
+
+---
+inst: BitNot
+is-primitive: yes
+name: "bnot"
+type: |
+  ~% (tI @-> tI)
+
+params:
+- num : int
+code: |
+  IntegerConstant(lnot num)
+
+---
 inst: FloatPlus
 is-primitive: yes
 name: "+."
