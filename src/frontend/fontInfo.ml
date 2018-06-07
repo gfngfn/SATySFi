@@ -1,4 +1,5 @@
 
+module Types = Types_
 open MyUtil
 open LengthInterface
 open HorzBox
@@ -180,7 +181,7 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
-          let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
+          let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
           let dptsub = f_skip rawdpt in
@@ -300,7 +301,7 @@ let get_math_constants mathctx =
 type math_kern_scheme =
   | NoMathKern
   | DiscreteMathKern of FontFormat.math_kern
-  | DenseMathKern    of (length -> length)
+  | DenseMathKern    of math_kern_func
 
 
 let no_math_kern = NoMathKern

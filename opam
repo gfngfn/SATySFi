@@ -17,19 +17,21 @@ install: [
 remove: [
   [make "-f" "Makefile" "uninstall" "PREFIX=%{prefix}%"]
 ]
+# Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [
-  "depext"
-  "ocamlfind"
-  "ocamlbuild" {build}
-  "menhir"
-  "ppx_deriving"
-  "uutf"
-  "result"
-  "core_kernel" {>= "v0.10.0"}
   "batteries"
-  "yojson"
 # Issue #46: we temporarily pin camlimages to avoid Graphics-related problems.
 # See https://github.com/ocaml/dune/issues/563 for details.
-  "camlimages" {< "5.0.0"}
+  "camlimages" {>= "5.0.1"}
+  "camlpdf" {= "2.2.1+satysfi"}
+  "core_kernel" {>= "v0.10.0"}
+  "depext"
+  "menhir"
+  "ocamlbuild" {build}
+  "ocamlfind" {build}
+  "otfm" {= "0.3.0+satysfi"}
+  "ppx_deriving"
+  "uutf"
+  "yojson"
 ]
 available: [ ocaml-version >= "4.06.0" ]

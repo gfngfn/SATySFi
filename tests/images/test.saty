@@ -1,0 +1,31 @@
+@require: stdja
+
+let-inline ctx \insert-image w path =
+  let img = load-image path in
+    use-image-by-width img w
+in
+document (|
+  title = {Tests for Images};
+  author = {};
+  show-title = true;
+  show-toc = false;
+|) '<
+     +p{This is a jpeg image in gray scale.
+       \insert-image(5cm)(`satysfi-logo-gray.jpg`);
+     }
+     +p{This is a jpeg image with RGB color model.
+       \insert-image(5cm)(`satysfi-logo-rgb.jpg`);
+     }
+     +p{This is a jpeg image with CMYK color model. (It's broken)
+       \insert-image(5cm)(`satysfi-logo-cmyk.jpg`);
+     }
+    +p{Yet another image in gray scale.
+       \insert-image(5cm)(`lenna-gray.jpg`);
+    }
+    +p{Yet another image in RGB.
+       \insert-image(5cm)(`lenna-rgb.jpg`);
+    }
+    +p{Yet another image in CMYK (broken).
+       \insert-image(5cm)(`lenna-cmyk.jpg`);
+    }
+>

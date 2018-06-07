@@ -34,6 +34,8 @@ let map_value f amap =
 let iter_value f amap =
   AssocMap.iter (fun _ v -> f v) amap
 
+let iter f amap =
+  AssocMap.iter (fun k v -> f k v) amap
 
 let fold_value f init amap =
   AssocMap.fold (fun _ v acc -> f acc v) amap init
@@ -79,3 +81,7 @@ let combine_value amap1 amap2 =
 
 let union amap1 amap2 =
   AssocMap.union (fun k v1 v2 -> Some(v2)) amap1 amap2
+
+let cardinal amap =
+  AssocMap.cardinal amap
+

@@ -28,9 +28,17 @@ Here is a list of minimally required softwares.
 * m4
 * make
 * unzip
-* wget
+* wget or curl
+* ruby
 * [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
 * ocaml 4.06.0 (installed by OPAM)
+
+Also, we must add an external OPAM repo to build. This can be done by the following command.
+
+```sh
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam update
+```
 
 #### Example (Ubuntu)
 
@@ -44,6 +52,8 @@ wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh 
 
 opam switch 4.06.0
 eval `opam config env`
+
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
 ```
 
@@ -54,7 +64,7 @@ opam update
 # Also, install Homebrew.
 
 brew update
-brew install wget opam
+brew install opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
@@ -62,6 +72,8 @@ opam init
 
 opam switch 4.06.0
 eval `opam config env`
+
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
 ```
 
@@ -73,10 +85,7 @@ First, clone this repository and submodules. Then build SATySFi using OPAM.
 # clone
 git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
-git submodule update --init --recursive
 
-# Issue #46: avoid 1.0+beta18 to build core_kernel correctly.
-opam pin add -y jbuilder 1.0+beta17
 # build
 opam pin add satysfi .
 opam install satysfi
@@ -118,3 +127,4 @@ in order to convert `<input files>` (file names separated with spaces) into `<ou
 * `-v`, `--version`: Prints the version.
 * `-o`, `--output`: Specify the name of the output PDF file. if this option is not given explicitly, the name of the output file is the concatenation of the base name of the input file and the extension `.pdf`.
 * `--full-path`: Displays file names with their absolute path when outputting them to stdout.
+* `--type-check-only`: Stops after type checking.
