@@ -23,16 +23,6 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let interpret_list interpretf (env : environment) getf (ast : abstract_tree) =
-  let value = interpretf env ast in
-    get_list getf value
-
-
-let interpret_option interpretf (env : environment) (getf : syntactic_value -> 'a) (ast : abstract_tree) : 'a option =
-  let value = interpretf env ast in
-    get_option getf value
-
-
 let rec reduce_beta envf evid valuel astdef =
   let envnew = add_to_environment envf evid (ref valuel) in
     interpret envnew astdef
@@ -54,34 +44,9 @@ and reduce_beta_list valuef valuearglst =
       end
 
 
-and interpret_vert env ast =
-  let value = interpret env ast in
-    get_vert value
-
-
-and interpret_horz env ast =
-  let value = interpret env ast in
-    get_horz value
-
-
 and interpret_point env ast =
   let value = interpret env ast in
     get_point value
-
-
-and interpret_prepath env ast =
-  let value = interpret env ast in
-    get_prepath value
-
-
-and interpret_paddings env ast =
-  let value = interpret env ast in
-    get_paddings value
-
-
-and interpret_decoset env ast =
-  let value = interpret env ast in
-    get_decoset value
 
 
 and interpret_path env pathcomplst cycleopt =
@@ -190,19 +155,10 @@ and interpret env ast =
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid) ->
-(*
-      let () = PrintForDebug.evalE ("ContentOf(" ^ (EvalVarID.show_direct evid) ^ ")") in  (* for debug *)
-*)
       begin
         match find_in_environment env evid with
         | Some(rfvalue) ->
           let value = !rfvalue in
-(*
-          let () = PrintForDebug.evalE ("  -> " ^ (show_syntactic_value value)) in  (* for debug *)
-*)
-(*
-          Format.printf "Evaluator> ContentOf: %s ---> %s\n" (EvalVarID.show_direct evid) (show_syntactic_value value);
-*)
             value
 
         | None ->
@@ -221,9 +177,6 @@ and interpret env ast =
       FuncWithEnvironment(patbrs, env)
 
   | Apply(ast1, ast2) ->
-(*
-      let () = PrintForDebug.evalE ("Apply(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
-*)
       let value1 = interpret env ast1 in
       begin
         match value1 with
@@ -266,24 +219,12 @@ and interpret env ast =
   | LetMutableIn(evid, astini, astaft) ->
       let valueini = interpret env astini in
       let stid = register_location env valueini in
-(*
-      Format.printf "Evaluator> LetMutableIn; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valueini);  (* for debug *)
-*)
       let envnew = add_to_environment env evid (ref (Location(stid))) in
         interpret envnew astaft
 
   | Sequential(ast1, ast2) ->
-(*
-      let () = PrintForDebug.evalE ("Sequential(" ^ (show_abstract_tree ast1) ^ ", " ^ (show_abstract_tree ast2) ^ ")") in  (* for debug *)
-*)
       let value1 = interpret env ast1 in
-(*
-      let () = PrintForDebug.evalE ("value1 = " ^ (show_syntactic_value value1)) in  (* for debug *)
-*)
       let value2 = interpret env ast2 in
-(*
-      let () = PrintForDebug.evalE ("value2 = " ^ (show_syntactic_value value2)) in  (* for debug *)
-*)
         begin
           match value1 with
           | UnitConstant -> value2
@@ -299,9 +240,6 @@ and interpret env ast =
               match value with
               | Location(stid) ->
                   let valuenew = interpret env astnew in
-(*
-                  Format.printf "Evaluator> Overwrite; %s <- %s\n" (StoreID.show_direct stid) (show_syntactic_value valuenew);  (* for debug *)
-*)
                     begin
                       update_location env stid valuenew;
                       UnitConstant
@@ -473,10 +411,7 @@ and select_pattern (rng : Range.t) (env : environment) (valueobj : syntactic_val
   let iter = select_pattern rng env valueobj in
   match patbrs with
   | [] ->
-(*
-      Format.printf "Evaluator> %a\n" pp_syntactic_value valueobj;
-*)
-      raise (EvalError("no matches (" ^ (Range.to_string rng) ^ ")"))
+      report_dynamic_error ("no matches (" ^ (Range.to_string rng) ^ ")")
 
   | PatternBranch(pat, astto) :: tail ->
       let (b, envnew) = check_pattern_matching env pat valueobj in
@@ -555,21 +490,6 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   trilst |> List.iter (fun (evid, loc, patbrs) ->
-(*
-    Format.printf "Evaluator> letrec %s\n" (EvalVarID.show_direct evid);  (* for debug *)
-*)
     loc := FuncWithEnvironment(patbrs, envnew)
   );
-
-  (* begin: for debug *)
-(*
-  let () =
-    let (valenv, _) = envnew in
-    valenv |> EvalVarIDMap.iter (fun evid loc ->
-      Format.printf "| %s =\n" (EvalVarID.show_direct evid);
-    );
-  in
-*)
-  (* end: for debug *)
-
   envnew
