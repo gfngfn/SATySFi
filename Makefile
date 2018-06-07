@@ -19,7 +19,7 @@ RUBY=ruby
 GENCODE=./gen_code.rb
 INSTDEF=$(BYTECOMP)/vminstdef.yaml
 
-all: $(FRONTEND)/types_.ml $(FRONTEND)/evaluator_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
+all: $(FRONTEND)/types_.ml $(FRONTEND)/evaluator_.ml $(FRONTEND)/primitives_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
 	mkdir -p _build/
 	$(OCB) main.native
 	mv main.native $(TARGET)
@@ -46,6 +46,10 @@ $(FRONTEND)/evaluator_.ml: $(FRONTEND)/evaluator_template.ml $(INSTDEF) $(GENCOD
 	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/evaluator_template.ml > $(FRONTEND)/evaluator_.ml
 	$(RM)   $(FRONTEND)/__evaluator.ml
 
+$(FRONTEND)/primitives_.ml: $(FRONTEND)/primitives_template.ml $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-prims $(INSTDEF) > $(FRONTEND)/__primitives.ml
+	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/primitives_template.ml > $(FRONTEND)/primitives_.ml
+	$(RM)   $(FRONTEND)/__primitives.ml
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)
@@ -87,10 +91,14 @@ uninstall:
 clean:
 	$(OCB) -clean
 	$(RM)  $(FRONTEND)/types_.ml
+	$(RM)  $(FRONTEND)/primitives_.ml
+	$(RM)  $(FRONTEND)/evaluator_.ml
 	$(RM)  $(BYTECOMP)/vm_.ml
 	$(RM)  $(BYTECOMP)/ir_.ml
 	$(RM)  $(FRONTEND)/__insttype.ml
 	$(RM)  $(FRONTEND)/__attype.ml
+	$(RM)  $(FRONTEND)/__primitives.ml
+	$(RM)  $(FRONTEND)/__evaluator.ml
 	$(RM)  $(BYTECOMP)/__vm.ml
 	$(RM)  $(BYTECOMP)/__ir.ml
 

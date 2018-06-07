@@ -4,30 +4,43 @@
 #
 # This is formatted according to the YAML.
 #
-# This file is read by gen_code.rb.
-# gen_code.rb generates OCaml source code and
-# type declarations for types.ml, ir.ml and vm.ml.
-# Final source codes that gen_code.rb generates are
-# types_.ml, ir_.ml and vm_.ml.
+# This file is read by `gen_code.rb`.
+# `gen_code.rb` generates OCaml source code and
+# type declarations for
+#
+# * `types_template.ml`,
+# * `ir_template.ml`,
+# * `evaluator_template.ml`, and
+# * `vm_template.ml`.
+#
+# Final source files that `gen_code.rb` generates are
+#
+# * `types_.ml`,
+# * `ir_.ml`,
+# * `evaluator_.ml`, and
+# * `vm_.ml`.
 #
 # To add a new primitive,
 #   1. Add a new instruction definition to this file.
-#      (is-primitive should be yes.)
+#      (`is-primitive` should be yes.)
 #   2. Add a new entry to primitives.ml.
 #
 #
 # inst:          Instruction name (essential)
 # is-primitive:  Primitive or pure vm instruction (default: no)
-# needs-reducef: Use `reducef` for evaluating applications
+# needs-reducef: Use `reducef` for evaluating applications (default: no)
 # suppress-pp:   Use a simple pritty printer (default: no)
 # custom-pp:     Specify custom pritty printer
-# no-ircode:     Suppress code generation for ir.ml (default: no)
-# fields:        Field list (for 'abstract_tree' type)
+# no-ircode:     Suppress code generation for `ir_.ml` (default: no)
+# no-interp:     Suppress code generation for `evaluator_.ml` (default: !`is-primitive`)
+# name:          Identifier for the primitive
+# type:          Type expression for the primitive
+# fields:        Field list (for `abstract_tree` type)
 # params:        Paramater list
 # code:          Instruction code
-#   (note: If is-primitive is yes, code that pushes to stack and
+#   (note: If `is-primitive` is yes, code that pushes to stack and
 #          go to next instruction will be automatically inserted.
-#          (see gen_code.rb))
+#          (see `gen_code.rb`))
 #
 ---
 inst: AccessField
@@ -524,6 +537,10 @@ code: |
 ---
 inst: Concat
 is-primitive: yes
+name: "^"
+type: |
+  ~% (tS @-> tS @-> tS)
+
 params:
 - value1
 - value2
@@ -537,6 +554,10 @@ code: |
 ---
 inst: PrimitiveSetMathVariantToChar
 is-primitive: yes
+name: "set-math-variant-char"
+type: |
+  ~% (tS @-> tMCCLS @-> tMATHCLS @-> tI @-> tCTX @-> tCTX)
+
 params:
 - s : string
 - mccls : math_char_class
@@ -553,6 +574,10 @@ code: |
 ---
 inst: PrimitiveSetMathCommand
 is-primitive: yes
+name: "set-math-command"
+type: |
+  ~% (tCMD @-> tCTX @-> tCTX)
+
 params:
 - valuecmd
 - (ctx, _) : context
@@ -562,6 +587,10 @@ code: |
 ---
 inst: BackendMathVariantCharDirect
 is-primitive: yes
+name: "math-variant-char"
+type: |
+  ~% (tMATHCLS @-> tMCSTY @-> tMATH)
+
 params:
 - mathcls : math_class
 - valuercd
@@ -573,6 +602,10 @@ code: |
 ---
 inst: BackendMathConcat
 is-primitive: yes
+name: "math-concat"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -582,6 +615,10 @@ code: |
 ---
 inst: BackendMathGroup
 is-primitive: yes
+name: "math-group"
+type: |
+  ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
+
 params:
 - mathcls1 : math_class
 - mathcls2 : math_class
@@ -592,6 +629,10 @@ code: |
 ---
 inst: BackendMathSuperscript
 is-primitive: yes
+name: "math-sup"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -601,6 +642,10 @@ code: |
 ---
 inst: BackendMathSubscript
 is-primitive: yes
+name: "math-sub"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -610,6 +655,10 @@ code: |
 ---
 inst: BackendMathFraction
 is-primitive: yes
+name: "math-frac"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -619,6 +668,10 @@ code: |
 ---
 inst: BackendMathRadical
 is-primitive: yes
+name: "math-radical"
+type: |
+  ~% (tOPT tMATH @-> tMATH @-> tMATH)
+
 params:
 - value1mopt
 - mlst2 : math
@@ -632,6 +685,10 @@ code: |
 ---
 inst: BackendMathParen
 is-primitive: yes
+name: "math-paren"
+type: |
+  ~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)
+
 needs-reducef: yes
 params:
 - valueparenL
@@ -645,6 +702,10 @@ code: |
 ---
 inst: BackendMathUpperLimit
 is-primitive: yes
+name: "math-upper"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -654,6 +715,10 @@ code: |
 ---
 inst: BackendMathLowerLimit
 is-primitive: yes
+name: "math-lower"
+type: |
+  ~% (tMATH @-> tMATH @-> tMATH)
+
 params:
 - mlst1 : math
 - mlst2 : math
@@ -663,17 +728,24 @@ code: |
 ---
 inst: BackendMathChar
 is-primitive: yes
+name: "math-char"
+type: |
+  ~% (tMATHCLS @-> tS @-> tMATH)
+
 params:
 - mathcls : math_class
-- s : string
+- uchlst : uchar_list
 code: |
-  let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
   let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
     MathValue(mlst)
 
 ---
 inst: BackendMathBigChar
 is-primitive: yes
+name: "math-big-char"
+type: |
+  ~% (tMATHCLS @-> tS @-> tMATH)
+
 params:
 - mathcls : math_class
 - uchlst : uchar_list
@@ -684,6 +756,11 @@ code: |
 ---
 inst: BackendMathCharWithKern
 is-primitive: yes
+name: "math-char-with-kern"
+type: |
+  let mckf = tLN @-> tLN @-> tLN in
+    ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
+
 needs-reducef: yes
 params:
 - mathcls : math_class
@@ -699,6 +776,11 @@ code: |
 ---
 inst: BackendMathBigCharWithKern
 is-primitive: yes
+name: "math-big-char-with-kern"
+type: |
+  let mckf = tLN @-> tLN @-> tLN in
+    ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
+
 needs-reducef: yes
 params:
 - mathcls : math_class
@@ -714,6 +796,10 @@ code: |
 ---
 inst: BackendMathText
 is-primitive: yes
+name: "text-in-math"
+type: |
+  ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
+
 needs-reducef: yes
 params:
 - mathcls : math_class
@@ -728,6 +814,10 @@ code: |
 ---
 inst: BackendMathColor
 is-primitive: yes
+name: "math-color"
+type: |
+  ~% (tCLR @-> tMATH @-> tMATH)
+
 params:
 - color : color
 - mlst : math
@@ -737,6 +827,10 @@ code: |
 ---
 inst: BackendMathCharClass
 is-primitive: yes
+name: "math-char-class"
+type: |
+  ~% (tMCCLS @-> tMATH @-> tMATH)
+
 params:
 - mccls : math_char_class
 - mlst : math
@@ -763,6 +857,10 @@ code: |
 ---
 inst: BackendEmbeddedMath
 is-primitive: yes
+name: "embed-math"
+type: |
+  ~% (tCTX @-> tMATH @-> tIB)
+
 params:
 - ictx : context
 - mlst : math
@@ -774,6 +872,10 @@ code: |
 ---
 inst: BackendTabular
 is-primitive: yes
+name: "tabular"
+type: |
+  ~% ((tL (tL tCELL)) @-> tRULESF @-> tIB)
+
 needs-reducef : yes
 params:
 - valuetabular
@@ -792,6 +894,10 @@ code: |
 ---
 inst: BackendRegisterPdfImage
 is-primitive: yes
+name: "load-pdf-image"
+type: |
+  ~% (tS @-> tI @-> tIMG)
+
 params:
 - srcpath : string
 - pageno : int
@@ -802,6 +908,10 @@ code: |
 ---
 inst: BackendRegisterOtherImage
 is-primitive: yes
+name: "load-image"
+type: |
+  ~% (tS @-> tIMG)
+
 params:
 - srcpath : string
 code: |
@@ -811,6 +921,10 @@ code: |
 ---
 inst: BackendUseImageByWidth
 is-primitive: yes
+name: "use-image-by-width"
+type: |
+  ~% (tIMG @-> tLN @-> tIB)
+
 params:
 - valueimg
 - wid : length
@@ -825,6 +939,10 @@ code: |
 ---
 inst: BackendHookPageBreak
 is-primitive: yes
+name: "hook-page-break"
+type: |
+  ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)
+
 needs-reducef: yes
 params:
 - hookf
@@ -851,6 +969,10 @@ code: |
 ---
 inst: PathUnite
 is-primitive: yes
+name: "unite-path"
+type: |
+  ~% (tPATH @-> tPATH @-> tPATH)
+
 params:
 - pathlst1 : path_value
 - pathlst2 : path_value
@@ -860,6 +982,10 @@ code: |
 ---
 inst: PrePathBeginning
 is-primitive: yes
+name: "start-path"
+type: |
+  ~% (tPT @-> tPRP)
+
 params:
 - pt0 : point
 code: |
@@ -868,6 +994,10 @@ code: |
 ---
 inst: PrePathLineTo
 is-primitive: yes
+name: "line-to"
+type: |
+  ~% (tPT @-> tPRP @-> tPRP)
+
 params:
 - pt1 : point
 - prepath : prepath
@@ -877,6 +1007,10 @@ code: |
 ---
 inst: PrePathCubicBezierTo
 is-primitive: yes
+name: "bezier-to"
+type: |
+  ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)
+
 params:
 - ptS : point
 - ptT : point
@@ -888,6 +1022,10 @@ code: |
 ---
 inst: PrePathTerminate
 is-primitive: yes
+name: "terminate-path"
+type: |
+  ~% (tPRP @-> tPATH)
+
 params:
 - prepath : prepath
 code: |
@@ -896,6 +1034,10 @@ code: |
 ---
 inst: PrePathCloseWithLine
 is-primitive: yes
+name: "close-with-line"
+type: |
+  ~% (tPRP @-> tPATH)
+
 params:
 - prepath : prepath
 code: |
@@ -904,6 +1046,10 @@ code: |
 ---
 inst: PrePathCloseWithCubicBezier
 is-primitive: yes
+name: "close-with-bezier"
+type: |
+  ~% (tPT @-> tPT @-> tPRP @-> tPATH)
+
 params:
 - ptS : point
 - ptT : point
@@ -914,6 +1060,10 @@ code: |
 ---
 inst: HorzConcat
 is-primitive: yes
+name: "++"
+type: |
+  ~% (tIB @-> tIB @-> tIB)
+
 params:
 - hblst1 : horz
 - hblst2 : horz
@@ -923,6 +1073,10 @@ code: |
 ---
 inst: VertConcat
 is-primitive: yes
+name: "+++"
+type: |
+  ~% (tBB @-> tBB @-> tBB)
+
 params:
 - vblst1 : vert
 - vblst2 : vert
@@ -932,6 +1086,10 @@ code: |
 ---
 inst: HorzLex
 is-primitive: yes
+name: "read-inline"
+type: |
+  ~% (tCTX @-> tIT @-> tIB)
+
 separated: yes
 params:
 - valuectx
@@ -949,6 +1107,10 @@ code-interp: |
 ---
 inst: VertLex
 is-primitive: yes
+name: "read-block"
+type: |
+  ~% (tCTX @-> tBT @-> tBB)
+
 separated: yes
 params:
 - valuectx
@@ -976,6 +1138,10 @@ code: |
 ---
 inst: BackendLineBreaking
 is-primitive: yes
+name: "line-break"
+type: |
+  ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)
+
 params:
 - is_breakable_top : bool
 - is_breakable_bottom : bool
@@ -988,6 +1154,10 @@ code: |
 ---
 inst: BackendPageBreaking
 is-primitive: yes
+name: "page-break"
+type: |
+  ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+
 needs-reducef: yes
 params:
 - pagesize : page_size
@@ -1002,6 +1172,10 @@ code: |
 ---
 inst: BackendVertFrame
 is-primitive: yes
+name: "block-frame-breakable"
+type: |
+  ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB)
+
 needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
@@ -1032,6 +1206,10 @@ code: |
 ---
 inst: BackendEmbeddedVertTop
 is-primitive: yes
+name: "embed-block-top"
+type: |
+  ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
+
 needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
@@ -1052,6 +1230,10 @@ code: |
 ---
 inst: BackendVertSkip
 is-primitive: yes
+name: "block-skip"
+type: |
+  ~% (tLN @-> tBB)
+
 params:
 - len : length
 code: |
@@ -1060,6 +1242,10 @@ code: |
 ---
 inst: BackendEmbeddedVertBottom
 is-primitive: yes
+name: "embed-block-bottom"
+type: |
+  ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
+
 needs-reducef : yes
 params:
 - (ctx, valuecmd) : context
@@ -1080,6 +1266,10 @@ code: |
 ---
 inst: BackendLineStackTop
 is-primitive: yes
+name: "line-stack-top"
+type: |
+  ~% ((tL tIB) @-> tIB)
+
 params:
 - valuehblstlst
 code: |
@@ -1092,6 +1282,10 @@ code: |
 ---
 inst: BackendLineStackBottom
 is-primitive: yes
+name: "line-stack-bottom"
+type: |
+  ~% ((tL tIB) @-> tIB)
+
 params:
 - valuehblstlst
 code: |
@@ -1104,6 +1298,10 @@ code: |
 ---
 inst: PrimitiveGetInitialContext
 is-primitive: yes
+name: "get-initial-context"
+type: |
+  ~% (tLN @-> tCMD @-> tCTX)
+
 params:
 - txtwid : length
 - valuecmd
@@ -1113,6 +1311,10 @@ code: |
 ---
 inst: PrimitiveSetSpaceRatio
 is-primitive: yes
+name: "set-space-ratio"
+type: |
+  ~% (tFL @-> tCTX @-> tCTX)
+
 params:
 - ratio : float
 - (ctx, valuecmd) : context
@@ -1122,6 +1324,10 @@ code: |
 ---
 inst: PrimitiveSetParagraphMargin
 is-primitive: yes
+name: "set-paragraph-margin"
+type: |
+  ~% (tLN @-> tLN @-> tCTX @-> tCTX)
+
 params:
 - lentop : length
 - lenbottom : length
@@ -1135,6 +1341,10 @@ code: |
 ---
 inst: PrimitiveSetFontSize
 is-primitive: yes
+name: "set-font-size"
+type: |
+  ~% (tLN @-> tCTX @-> tCTX)
+
 params:
 - size : length
 - (ctx, valuecmd) : context
@@ -1144,6 +1354,10 @@ code: |
 ---
 inst: PrimitiveGetFontSize
 is-primitive: yes
+name: "get-font-size"
+type: |
+  ~% (tCTX @-> tLN)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1152,6 +1366,10 @@ code: |
 ---
 inst: PrimitiveSetFont
 is-primitive: yes
+name: "set-font"
+type: |
+  ~% (tSCR @-> tFONT @-> tCTX @-> tCTX)
+
 params:
 - script : script
 - font_info : font
@@ -1163,6 +1381,10 @@ code: |
 ---
 inst: PrimitiveGetFont
 is-primitive: yes
+name: "get-font"
+type: |
+  ~% (tSCR @-> tCTX @-> tFONT)
+
 params:
 - script : script
 - (ctx, _) : context
@@ -1173,6 +1395,10 @@ code: |
 ---
 inst: PrimitiveSetMathFont
 is-primitive: yes
+name: "set-math-font"
+type: |
+  ~% (tS @-> tCTX @-> tCTX)
+
 params:
 - mfabbrev : string
 - (ctx, valuecmd) : context
@@ -1182,6 +1408,10 @@ code: |
 ---
 inst: PrimitiveSetDominantWideScript
 is-primitive: yes
+name: "set-dominant-wide-script"
+type: |
+  ~% (tSCR @-> tCTX @-> tCTX)
+
 params:
 - script: script
 - (ctx, valuecmd) : context
@@ -1191,6 +1421,10 @@ code: |
 ---
 inst: PrimitiveGetDominantWideScript
 is-primitive: yes
+name: "get-dominant-wide-script"
+type: |
+  ~% (tCTX @-> tSCR)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1199,6 +1433,10 @@ code: |
 ---
 inst: PrimitiveSetDominantNarrowScript
 is-primitive: yes
+name: "set-dominant-narrow-script"
+type: |
+  ~% (tSCR @-> tCTX @-> tCTX)
+
 params:
 - script : script
 - (ctx, valuecmd) : context
@@ -1208,6 +1446,10 @@ code: |
 ---
 inst: PrimitiveGetDominantNarrowScript
 is-primitive: yes
+name: "get-dominant-narrow-script"
+type: |
+  ~% (tCTX @-> tSCR)
+
 params:
 - (ctx, _) : context
 code: |
@@ -1216,6 +1458,10 @@ code: |
 ---
 inst: PrimitiveSetLangSys
 is-primitive: yes
+name: "set-language"
+type: |
+  ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)
+
 params:
 - script : script
 - langsys : language_system
@@ -1228,6 +1474,10 @@ code: |
 ---
 inst: PrimitiveGetLangSys
 is-primitive: yes
+name: "get-language"
+type: |
+  ~% (tSCR @-> tCTX @-> tLANG)
+
 params:
 - script : script
 - (ctx, _) : context

@@ -1,5 +1,6 @@
 
 module Types = Types_
+module Primitives = Primitives_
 open MyUtil
 open LengthInterface
 open Types

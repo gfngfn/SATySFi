@@ -29,6 +29,29 @@ def default_false b
   if b == nil then false else b end
 end
 
+def gen_prims
+  YAML.load_documents(ARGF.read) do |inst|
+    if inst["is-primitive"] && inst["name"] != nil then
+      len = inst["params"].length
+      args = []
+      for i in 1..len
+        args.push "_v#{i}"
+      end
+
+      puts "        (\"#{inst["name"]}\","
+
+      puts "          begin"
+      inst["type"].each_line do |line|
+        puts "            #{line}"
+      end
+      puts "          end,"
+
+      puts "          lambda#{len} (fun #{args.join ' '} -> #{inst["inst"]}(#{args.join ', '}))"
+      puts "        );"
+    end
+  end
+end
+
 def gen_interps
   YAML.load_documents(ARGF.read) do |inst|
     if inst["is-primitive"] && !default_false(inst["no-interp"]) then
@@ -223,6 +246,7 @@ opt.on('--gen-ir') {|v| func = method(:gen_ircases) }
 opt.on('--gen-insttype') {|v| func = method(:gen_insttype) }
 opt.on('--gen-attype') {|v| func = method(:gen_attype) }
 opt.on('--gen-interps') {|v| func = method(:gen_interps) }
+opt.on('--gen-prims') {|v| func = method(:gen_prims) }
 opt.on('--pp-include') {|v| func = method(:pp_include) }
 
 opt.parse!(ARGV)
