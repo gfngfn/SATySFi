@@ -2,7 +2,6 @@
 open LengthInterface
 open GraphicData
 
-
 exception ParseErrorDetail of string
 exception IllegalArgumentLength of Range.t * int * int
 
@@ -456,6 +455,87 @@ and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t)
 
 and location = syntactic_value ref
 
+and vmenv = environment * (syntactic_value array) list
+
+and compiled_intermediate_input_horz_element =
+  | CompiledImInputHorzText         of string
+  | CompiledImInputHorzEmbedded     of instruction list
+  | CompiledImInputHorzContent of instruction list 
+  | CompiledImInputHorzEmbeddedMath of instruction list
+
+and compiled_intermediate_input_vert_element =
+  | CompiledImInputVertEmbedded of instruction list
+  | CompiledImInputVertContent  of instruction list
+
+and ir_input_horz_element =
+  | IRInputHorzText         of string
+  | IRInputHorzEmbedded     of ir * ir list
+  | IRInputHorzContent      of ir 
+  | IRInputHorzEmbeddedMath of ir
+
+
+and ir_input_vert_element =
+  | IRInputVertEmbedded of ir * ir list
+  | IRInputVertContent  of ir
+
+and 'a ir_path_component =
+  | IRPathLineTo        of 'a
+  | IRPathCubicBezierTo of ir * ir * 'a
+
+and 'a compiled_path_component =
+  | CompiledPathLineTo of 'a
+  | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
+
+and varloc = 
+  | GlobalVar of location * EvalVarID.t * int ref
+  | LocalVar  of int * int * EvalVarID.t * int ref
+
+and ir =
+  | IRConstant              of syntactic_value
+  | IRTerminal
+  | IRInputHorz             of ir_input_horz_element list
+  | IRInputVert             of ir_input_vert_element list
+  | IRRecord                of Assoc.key list * ir list
+      [@printer (fun fmt _ -> Format.fprintf fmt "IRRecord(...)")]
+  | IRAccessField           of ir * field_name 
+  | IRLetRecIn              of (varloc * ir) list * ir
+  | IRLetNonRecIn           of ir * ir_pattern_tree * ir
+  | IRContentOf             of varloc 
+  | IRIfThenElse            of ir * ir * ir
+  | IRFunction              of int * ir_pattern_tree list * ir
+  | IRApply                 of int * ir * ir list
+  | IRApplyPrimitive        of instruction * int * ir list
+  | IRTuple                 of int * ir list
+  | IRPatternMatch          of Range.t * ir * ir_pattern_branch list
+  | IRNonValueConstructor   of constructor_name * ir
+  | IRLetMutableIn          of varloc * ir * ir
+  | IRSequential            of ir * ir
+  | IRWhileDo               of ir * ir
+  | IROverwrite             of varloc * ir
+  | IRModule                of ir * ir
+  | IRPath                  of ir * ir ir_path_component list * (unit ir_path_component) option
+
+and ir_pattern_branch =
+  | IRPatternBranch      of ir_pattern_tree * ir
+  | IRPatternBranchWhen  of ir_pattern_tree * ir * ir
+
+and ir_pattern_tree =
+  | IRPUnitConstant
+  | IRPBooleanConstant      of bool
+  | IRPIntegerConstant      of int
+  | IRPStringConstant       of string
+  | IRPListCons             of ir_pattern_tree * ir_pattern_tree
+  | IRPEndOfList
+  | IRPTupleCons             of ir_pattern_tree * ir_pattern_tree
+  (*| IRPTupleCons            of int * ir_pattern_tree list*)
+  | IRPEndOfTuple
+  | IRPWildCard
+  | IRPVariable             of varloc
+  | IRPAsVariable           of varloc * ir_pattern_tree
+  | IRPConstructor          of constructor_name * ir_pattern_tree
+
+  (**** include: __insttype.ml ****)
+
 and input_horz_element =
   | InputHorzText         of string
   | InputHorzEmbedded     of abstract_tree * abstract_tree list
@@ -481,6 +561,8 @@ and 'a path_component =
   | PathCubicBezierTo of abstract_tree * abstract_tree * 'a
 
 and syntactic_value =
+  | Nil
+  | SimpleRef             of syntactic_value ref
   | UnitConstant
   | BooleanConstant       of bool
   | IntegerConstant       of int
@@ -494,6 +576,9 @@ and syntactic_value =
   | Constructor           of constructor_name * syntactic_value
 
   | FuncWithEnvironment   of pattern_branch list * environment
+  | PrimitiveWithEnvironment   of pattern_branch list * environment * int * (abstract_tree list -> abstract_tree)
+  | CompiledFuncWithEnvironment of int * syntactic_value list * int * instruction list * vmenv
+  | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
 
   | EvaluatedEnvironment  of environment
 
@@ -509,7 +594,11 @@ and syntactic_value =
   | Location              of StoreID.t
 
   | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
+  | CompiledInputHorzIntermediate    of compiled_intermediate_input_horz_element list
+  | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv 
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
+  | CompiledInputVertIntermediate    of compiled_intermediate_input_vert_element list
+  | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
 
   | Horz                  of HorzBox.horz_box list
   | Vert                  of HorzBox.vert_box list
@@ -533,30 +622,11 @@ and abstract_tree =
   | FinishHeaderFile
   | FinishStruct
   | LengthDescription     of float * length_unit_name
-  | Concat                of abstract_tree * abstract_tree
 (* -- input texts -- *)
   | InputHorz             of input_horz_element list
   | InputVert             of input_vert_element list
 (* -- graphics -- *)
   | Path                        of abstract_tree * (abstract_tree path_component) list * (unit path_component) option
-  | PathUnite                   of abstract_tree * abstract_tree
-  | PrePathBeginning            of abstract_tree
-  | PrePathLineTo               of abstract_tree * abstract_tree
-  | PrePathCubicBezierTo        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrePathTerminate            of abstract_tree
-  | PrePathCloseWithLine        of abstract_tree
-  | PrePathCloseWithCubicBezier of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveDrawStroke         of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveDrawDashedStroke   of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveDrawFill           of abstract_tree * abstract_tree
-(* -- horizontal box list -- *)
-  | HorzConcat            of abstract_tree * abstract_tree
-(* -- vertical box list -- *)
-  | VertConcat            of abstract_tree * abstract_tree
-(* -- list value -- *)
-  | PrimitiveListCons     of abstract_tree * abstract_tree
-(* -- tuple value -- *)
-  | PrimitiveTupleCons    of abstract_tree * abstract_tree
 (* -- record value -- *)
   | Record                of abstract_tree Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "Record(...)")]
@@ -576,132 +646,13 @@ and abstract_tree =
   | Sequential            of abstract_tree * abstract_tree
   | WhileDo               of abstract_tree * abstract_tree
   | Overwrite             of EvalVarID.t * abstract_tree
-  | Dereference           of abstract_tree
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
-(* -- basic primitive operations -- *)
-  | Times                 of abstract_tree * abstract_tree
-  | Divides               of abstract_tree * abstract_tree
-  | Mod                   of abstract_tree * abstract_tree
-  | Plus                  of abstract_tree * abstract_tree
-  | Minus                 of abstract_tree * abstract_tree
-  | BitShiftRight         of abstract_tree * abstract_tree
-  | BitShiftLeft          of abstract_tree * abstract_tree
-  | BitXor                of abstract_tree * abstract_tree
-  | BitAnd                of abstract_tree * abstract_tree
-  | BitOr                 of abstract_tree * abstract_tree
-  | BitNot                of abstract_tree
-  | GreaterThan           of abstract_tree * abstract_tree
-  | LessThan              of abstract_tree * abstract_tree
-  | EqualTo               of abstract_tree * abstract_tree
-  | LogicalAnd            of abstract_tree * abstract_tree
-  | LogicalOr             of abstract_tree * abstract_tree
-  | LogicalNot            of abstract_tree
-  | PrimitiveSame         of abstract_tree * abstract_tree
-  | PrimitiveStringMatch  of abstract_tree * abstract_tree
-  | PrimitiveStringSub    of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveStringLength of abstract_tree
-  | PrimitiveStringUnexplode of abstract_tree
-  | PrimitiveSplitIntoLines  of abstract_tree
-  | PrimitiveSplitOnRegExp   of abstract_tree * abstract_tree
-  | PrimitiveRegExpOfString  of abstract_tree
-  | PrimitiveArabic       of abstract_tree
-  | PrimitiveFloat        of abstract_tree
-  | PrimitiveRound        of abstract_tree
-  | FloatPlus             of abstract_tree * abstract_tree
-  | FloatMinus            of abstract_tree * abstract_tree
-  | FloatTimes            of abstract_tree * abstract_tree
-  | FloatDivides          of abstract_tree * abstract_tree
-  | FloatSine             of abstract_tree
-  | FloatArcSine          of abstract_tree
-  | FloatCosine           of abstract_tree
-  | FloatArcCosine        of abstract_tree
-  | FloatTangent          of abstract_tree
-  | FloatArcTangent       of abstract_tree
-  | FloatArcTangent2      of abstract_tree * abstract_tree
-  | LengthPlus            of abstract_tree * abstract_tree
-  | LengthMinus           of abstract_tree * abstract_tree
-  | LengthTimes           of abstract_tree * abstract_tree
-  | LengthDivides         of abstract_tree * abstract_tree
-  | LengthLessThan        of abstract_tree * abstract_tree
-  | LengthGreaterThan     of abstract_tree * abstract_tree
-(* -- backend primitives -- *)
-  | BackendMathChar             of abstract_tree * bool * abstract_tree
-  | BackendMathCharWithKern     of abstract_tree * bool * abstract_tree * abstract_tree * abstract_tree
-  | BackendMathGroup            of abstract_tree * abstract_tree * abstract_tree
-  | BackendMathConcat           of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-  | BackendMathSuperscript      of abstract_tree * abstract_tree
-  | BackendMathSubscript        of abstract_tree * abstract_tree
-  | BackendMathFraction         of abstract_tree * abstract_tree
-  | BackendMathRadical          of abstract_tree * abstract_tree  (* temporary *)
-  | BackendMathParen            of abstract_tree * abstract_tree * abstract_tree
-  | BackendMathUpperLimit       of abstract_tree * abstract_tree
-  | BackendMathLowerLimit       of abstract_tree * abstract_tree
-  | BackendMathText             of abstract_tree * abstract_tree
-  | BackendMathColor            of abstract_tree * abstract_tree
-  | BackendMathCharClass        of abstract_tree * abstract_tree
-  | BackendMathVariantCharDirect of abstract_tree * abstract_tree
-  | BackendEmbeddedMath         of abstract_tree * abstract_tree
-  | BackendTabular              of abstract_tree * abstract_tree
-  | BackendRegisterPdfImage     of abstract_tree * abstract_tree
-  | BackendRegisterOtherImage   of abstract_tree
-  | BackendUseImageByWidth      of abstract_tree * abstract_tree
-  | BackendHookPageBreak        of abstract_tree
-
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaVert                  of EvalVarID.t * abstract_tree
-
-  | HorzLex                     of abstract_tree * abstract_tree
-  | VertLex                     of abstract_tree * abstract_tree
-  | PrimitiveGetInitialContext  of abstract_tree * abstract_tree
-  | PrimitiveSetSpaceRatio      of abstract_tree * abstract_tree
-  | PrimitiveSetParagraphMargin of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveSetFontSize        of abstract_tree * abstract_tree
-  | PrimitiveGetFontSize        of abstract_tree
-  | PrimitiveSetFont            of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveGetFont            of abstract_tree * abstract_tree
-  | PrimitiveSetMathFont        of abstract_tree * abstract_tree
-  | PrimitiveSetDominantWideScript of abstract_tree * abstract_tree
-  | PrimitiveGetDominantWideScript of abstract_tree
-  | PrimitiveSetDominantNarrowScript of abstract_tree * abstract_tree
-  | PrimitiveGetDominantNarrowScript of abstract_tree
-  | PrimitiveSetLangSys         of abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveGetLangSys         of abstract_tree * abstract_tree
-  | PrimitiveSetTextColor       of abstract_tree * abstract_tree
-  | PrimitiveGetTextColor       of abstract_tree
-  | PrimitiveSetLeading         of abstract_tree * abstract_tree
-  | PrimitiveGetTextWidth       of abstract_tree
-  | PrimitiveSetManualRising    of abstract_tree * abstract_tree
-  | PrimitiveSetHyphenPenalty   of abstract_tree * abstract_tree
-  | PrimitiveEmbed              of abstract_tree
-  | PrimitiveGetNaturalWidth    of abstract_tree
-  | PrimitiveGetNaturalLength   of abstract_tree
-  | PrimitiveDisplayMessage     of abstract_tree
-  | PrimitiveDrawText           of abstract_tree * abstract_tree
-  | PrimitiveSetMathVariantToChar of abstract_tree * abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | PrimitiveSetMathCommand     of abstract_tree * abstract_tree
-  | PrimitiveGetAxisHeight      of abstract_tree
-  | BackendFont                 of abstract_tree * abstract_tree * abstract_tree
-  | BackendLineBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendPageBreaking         of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendFixedEmpty           of abstract_tree
-  | BackendOuterEmpty           of abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrame           of abstract_tree * abstract_tree * abstract_tree
-  | BackendInnerFrame           of abstract_tree * abstract_tree * abstract_tree
-  | BackendFixedFrame           of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendOuterFrameBreakable  of abstract_tree * abstract_tree * abstract_tree
-  | BackendVertFrame            of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendVertSkip             of abstract_tree
-  | BackendEmbeddedVertTop      of abstract_tree * abstract_tree * abstract_tree
-  | BackendEmbeddedVertBottom   of abstract_tree * abstract_tree * abstract_tree
-  | BackendInlineGraphics       of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendLineStackTop         of abstract_tree
-  | BackendLineStackBottom      of abstract_tree
-  | BackendScriptGuard          of abstract_tree * abstract_tree
-  | BackendDiscretionary        of abstract_tree * abstract_tree * abstract_tree * abstract_tree
-  | BackendRegisterCrossReference of abstract_tree * abstract_tree
-  | BackendGetCrossReference      of abstract_tree
+  | PrimitiveTupleCons    of abstract_tree * abstract_tree
+ (**** include: __attype.ml ****)
 
 and pattern_branch =
   | PatternBranch      of pattern_tree * abstract_tree
@@ -1012,7 +963,7 @@ let register_location (env : environment) (value : syntactic_value) : StoreID.t 
   stid
 
 
-let update_location (env :environment) (stid : StoreID.t) (value : syntactic_value) : unit =
+let update_location (env : environment) (stid : StoreID.t) (value : syntactic_value) : unit =
   let (_, stenvref) = env in
   let stenv = !stenvref in
   if StoreIDHashTable.mem stenv stid then

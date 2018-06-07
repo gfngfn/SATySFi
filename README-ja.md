@@ -9,9 +9,9 @@
 
 本ソフトウェアは2017年度IPA未踏事業の1プロジェクトとして支援のもと開発されました。（概要は[こちら](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)）
 
-## Homebrew を使ったインストール方法 (Macユーザ向け)
+## Homebrew を使ったインストール方法 (Mac ユーザ向け)
 
-Homebrewのフォーミュラが用意されています。
+Homebrew のフォーミュラが用意されています。
 
 ```sh
 $ brew install --HEAD nyuichi/satysfi/satysfi
@@ -29,9 +29,17 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * m4
 * make
 * unzip
-* wget
+* wget or curl
+* ruby
 * [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
 * ocaml 4.06.0 （OPAM からインストールします）
+
+また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます。
+
+```sh
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
+opam update
+```
 
 #### 準備例（Ubuntu）
 
@@ -45,6 +53,8 @@ wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh 
 
 opam switch 4.06.0
 eval `opam config env`
+
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
 ```
 
@@ -55,7 +65,7 @@ opam update
 # また，Homebrew もインストールしてください。
 
 brew update
-brew install wget opam
+brew install opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
@@ -63,21 +73,20 @@ opam init
 
 opam switch 4.06.0
 eval `opam config env`
+
+opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
 ```
 
 ### ビルド
 
-まず，このレポジトリとサブモジュールを clone します。その後 OPAM を使って SATySFi をビルドします。
+まず，このリポジトリとサブモジュールを clone します。その後 OPAM を使って SATySFi をビルドします。
 
 ```sh
 # clone
 git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
-git submodule update --init --recursive
 
-# Issue #46: core_kernel を正しくビルドするために 1.0+beta18 を避ける
-opam pin add -y jbuilder 1.0+beta17
 # build
 opam pin add satysfi .
 opam install satysfi
@@ -99,3 +108,4 @@ opam install satysfi
 * `-v`, `--version`: ヴァージョンを表示します。
 * `-o`, `--output`: 出力ファイル名を指定します。省略された場合，入力ファイル名の拡張子を `.pdf` に変えた名前を出力ファイル名とします。
 * `--full-path`: 標準出力に書き込むログに於いて，ファイル名をすべて絶対パスで表示します。
+* `--type-check-only`: 型検査だけをして終了します。

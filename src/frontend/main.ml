@@ -1,4 +1,8 @@
 
+module Types = Types_
+module Primitives = Primitives_
+module Evaluator = Evaluator_
+module Vm = Vm_
 open Types
 open Display
 
@@ -65,6 +69,7 @@ let is_document_file   = is_suffix ".saty"
 let is_header_file     = is_suffix ".satyh"
 let is_standalone_file = is_suffix ".satys"
 
+let is_bytecomp_mode_ref : bool ref = ref false
 
 module FileDependencyGraph = DirectedGraph.Make
   (struct
@@ -106,16 +111,23 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
   end
 
 
-let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
+let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) (type_check_only : bool) : Typeenv.t * environment =
   Logging.begin_to_read_file file_name_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
 (*
   Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
 *)
   Logging.pass_type_check None;
+  if type_check_only then (tyenvnew, env)
+  else
   match ty with
   | (_, BaseType(EnvType)) ->
-      let value = Evaluator.interpret env ast in
+      let value =
+        if !is_bytecomp_mode_ref = true then
+          Bytecomp.compile_and_exec env ast
+        else
+          Evaluator.interpret env ast
+      in
       begin
         match value with
         | EvaluatedEnvironment(envnew) -> (tyenvnew, envnew)
@@ -147,6 +159,12 @@ let initialize (dump_file : file_path) =
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dump_file in
     let (tyenv, env) = Primitives.make_environments () in
+    (
+      if !is_bytecomp_mode_ref  = true then
+        Bytecomp.compile_environment env
+      else
+        ()
+    );
     (tyenv, env, dump_file_exists)
   end
 
@@ -201,14 +219,16 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
 *)
 
 
-let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
+let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) (type_check_only : bool) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
 (*
         Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
-        let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)
-*)
-    Logging.pass_type_check (Some((tyenv, ty)));
+        let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)*)
+
+    Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
+    if type_check_only then ()
+    else
     let env_freezed = freeze_environment env in
       match ty with
       | (_, BaseType(DocumentType)) ->
@@ -216,7 +236,12 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
             Logging.start_evaluation i;
             reset ();
             let env = unfreeze_environment env_freezed in
-            let valuedoc = Evaluator.interpret env ast in
+            let valuedoc =
+              if !is_bytecomp_mode_ref then
+                Bytecomp.compile_and_exec env ast
+              else
+                Evaluator.interpret env ast
+            in
             Logging.end_evaluation ();
             begin
               match valuedoc with
@@ -238,15 +263,15 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
                           Logging.end_output file_path_out;
                         end
 
-                    | CrossRef.CanTerminate ->
+                    | CrossRef.CanTerminate unresolved_crossrefs ->
                         begin
-                          Logging.achieve_fixpoint ();
+                          Logging.achieve_fixpoint unresolved_crossrefs;
                           output_pdf pdf;
                           Logging.end_output file_path_out;
                         end
                   end
 
-              | _ -> failwith "main; not a DocumentValue(...)"
+              | _ -> Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
             end
           in
             aux 1
@@ -668,7 +693,9 @@ let error_log_environment suspended =
           NormalLine("at the same time, but these are incompatible.");
         ] additional)
 
-  | Evaluator.EvalError(s) -> report_error Evaluator [ NormalLine(s); ]
+  | Evaluator.EvalError(s)
+  | Vm.ExecError(s)
+      -> report_error Evaluator [ NormalLine(s); ]
 
   | Sys_error(s) -> report_error System [ NormalLine(s); ]
 (*
@@ -681,6 +708,8 @@ let output_ref : (file_path option) ref = ref None
 let input_ref : (file_path option) ref = ref None
 
 let show_full_path_ref : bool ref = ref false
+
+let type_check_only_ref : bool ref = ref false
 
 let arg_version () =
   begin
@@ -725,14 +754,31 @@ let arg_spec_list curdir =
     ("--version"   , Arg.Unit(arg_version)        , " Print version");
     ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style");
     ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
+    ("--type-check-only", Arg.Set(type_check_only_ref) , "Stops after type checking");
+    ("--bytecomp"  , Arg.Set(is_bytecomp_mode_ref)  , " Use bytecode compiler")
   ]
 
 
 let setup_root_dirs () =
-  let ds =
-    (match Sys.getenv_opt "HOME" with
-    | None    -> []
-    | Some(s) -> [Filename.concat s ".satysfi"]) @ ["/usr/local/share/satysfi"; "/usr/share/satysfi"] in
+  let runtime_dirs =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "SATYSFI_RUNTIME" with
+      | None    -> []
+      | Some(s) -> [s]
+    else
+      ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
+  in
+  let user_dirs =
+    if Sys.os_type = "Win32" then
+      match Sys.getenv_opt "userprofile" with
+      | None    -> []
+      | Some(s) -> [Filename.concat s ".satysfi"]
+    else
+      match Sys.getenv_opt "HOME" with
+      | None    -> []
+      | Some(s) -> [Filename.concat s ".satysfi"]
+  in
+  let ds = user_dirs @ runtime_dirs in
   (if List.length ds = 0 then
     raise NoLibraryRootDesignation);
   Config.initialize ds
@@ -775,11 +821,11 @@ let () =
         FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
           match file_info with
           | DocumentFile(utast) ->
-              eval_document_file tyenv env file_path_in utast output_file dump_file;
+              eval_document_file tyenv env file_path_in utast output_file dump_file !type_check_only_ref;
               (tyenv, env)
 
           | LibraryFile(utast) ->
-              eval_library_file tyenv env file_path_in utast
+              eval_library_file tyenv env file_path_in utast !type_check_only_ref
         ) (tyenv, env) dg |> ignore
 (*
     (* begin: for debug *)

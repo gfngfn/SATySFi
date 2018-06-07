@@ -74,10 +74,10 @@ end = struct
   let font-size-section = 18pt
   let font-size-subsection = 16pt
 
-  let section-top-margin = 4pt
-  let section-bottom-margin = 4pt
-  let section-top-gap = 0pt
-  let section-bottom-gap = 0pt
+  let section-top-margin = 12pt
+  let section-bottom-margin = 12pt
+  let subsection-top-margin = 10pt
+  let subsection-bottom-margin = 10pt
 
   let font-ratio-latin = 1.
   let font-ratio-cjk = 0.88
@@ -221,7 +221,7 @@ end = struct
   let section-heading ctx ib-heading =
     let wid = get-text-width ctx in
     let color = get-text-color ctx in
-      line-break true false (ctx |> set-paragraph-margin section-top-gap section-bottom-gap)
+      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
         ib-heading
 
 
@@ -249,7 +249,7 @@ end = struct
     let page = A4Paper in
     let txtorg = (100pt, 100pt) in
     let txtwid = 390pt in
-    let txthgt = 625pt in
+    let txthgt = 630pt in
     let hdrorg = (40pt, 40pt) in
     let ftrorg = (40pt, 780pt) in
     let hdrwid = 520pt in
@@ -379,7 +379,7 @@ end = struct
 
 
   let quad-indent ctx =
-    inline-skip (get-font-size ctx)
+    inline-skip (get-font-size ctx *' font-ratio-cjk)
 
 
   let-block ctx +p inner =
@@ -428,7 +428,7 @@ end = struct
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
-      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+      line-break true false (ctx |> set-paragraph-margin subsection-top-margin subsection-bottom-margin)
         (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
     in
     let bb-inner = read-block ctx inner in

@@ -1,7 +1,7 @@
 #load "assoc.cmo";;
 #load "stacklist.cmo";;
 #load "range.cmo";;
-#load "types.cmo";;
+#load "types_.cmo";;
 #load "hashTree.cmo";;
 #load "directedGraph.cmo";;
 #load "typeenv.cmo";;

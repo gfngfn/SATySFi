@@ -1,0 +1,19 @@
+S src/**
+B _build/src/**
+
+FLG -unsafe-string
+
+# PKGs in alphabetical order
+PKG batteries
+PKG camlimages
+PKG camlimages.jpeg
+PKG camlpdf
+PKG ctypes  # ctypes is needed by an unused code, src/backend/base85.ml
+PKG batteries
+PKG core_kernel
+PKG menhirLib
+PKG otfm
+PKG ppx_deriving.show
+PKG str
+PKG uutf
+PKG yojson
