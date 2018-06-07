@@ -1875,6 +1875,21 @@ code: |
   IntegerConstant(String.compare str1 str2)
 
 ---
+inst: PrimitiveCharCode
+is-primitive: yes
+name: "char-code"
+type: |
+  ~% (tS @-> tI)
+
+params:
+- str: string
+code: |
+  begin
+    try IntegerConstant(BatUChar.code (BatUTF8.get str 0)) with
+    | Invalid_argument _ -> report_dynamic_error ("Char code of empty string: " ^ str)
+  end
+
+---
 inst: PrimitiveStringUnexplode
 is-primitive: yes
 name: "string-unexplode"
