@@ -1,4 +1,5 @@
 {
+  module Types = Types_
   open Types
   open Parser
 
@@ -81,6 +82,11 @@
 
 
   let split_module_list tokstr =
+    let lst = String.split_on_char '.' tokstr in
+      match List.rev lst with
+      | ident :: mdllstrev -> (List.rev mdllstrev, ident)
+      | []                 -> assert false
+(*
     let rec aux imax i acclst accstr =
       if i >= imax then (List.rev acclst, accstr) else
         match String.get tokstr i with
@@ -88,6 +94,7 @@
         | c   -> aux imax (i + 1) acclst (accstr ^ (String.make 1 c))
     in
       aux (String.length tokstr) 0 [] ""
+*)
 }
 
 let space = [' ' '\t']
@@ -165,7 +172,13 @@ rule progexpr stack = parse
       let quote_range = get_pos lexbuf in
       let quote_length = String.length (Lexing.lexeme lexbuf) in
       let buffer = Buffer.create 256 in
-      literal quote_range quote_length buffer lexbuf
+      literal true quote_range quote_length buffer lexbuf
+    }
+  | ("#" ("`"+ as tok)) {
+      let quote_range = get_pos lexbuf in
+      let quote_length = String.length tok in
+      let buffer = Buffer.create 256 in
+      literal false quote_range quote_length buffer lexbuf
     }
   | ("\\" (identifier | constructor)) {
       let tok = Lexing.lexeme lexbuf in HORZCMD(get_pos lexbuf, tok)
@@ -178,7 +191,6 @@ rule progexpr stack = parse
   | "<-"  { OVERWRITEEQ(get_pos lexbuf) }
   | "|"   { BAR(get_pos lexbuf) }
   | "_"   { WILDCARD(get_pos lexbuf) }
-  | "."   { DOT(get_pos lexbuf) }
   | ":"   { COLON(get_pos lexbuf) }
   | ","   { COMMA(get_pos lexbuf) }
   | "::"  { CONS(get_pos lexbuf) }
@@ -391,13 +403,6 @@ and horzexpr stack = parse
           CHAR(get_pos lexbuf, tok)
         end
     }
-  | ((break | space)* ("`"+ as openqtstr)) {
-      increment_line_for_each_break lexbuf (Lexing.lexeme lexbuf);
-      let quote_range = get_pos lexbuf in
-      let quote_length = String.length (Lexing.lexeme lexbuf) in
-      let buffer = Buffer.create 256 in
-      literal quote_range quote_length buffer lexbuf
-    }
   | "${" {
       Stack.push MathState stack;
       BMATHGRP(get_pos lexbuf)
@@ -449,6 +454,7 @@ and mathexpr stack = parse
       pop lexbuf "too many closing" stack;
       EMATHGRP(pos)
     }
+  | "|" { SEP(get_pos lexbuf) }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
@@ -527,24 +533,35 @@ and active stack = parse
       report_error lexbuf ("unexpected token '" ^ tok ^ "' in an active area")
     }
 
-and literal quote_range quote_length buffer = parse
+and literal omit_pre quote_range quote_length buffer = parse
   | "`"+ {
       let tok = Lexing.lexeme lexbuf in
       let len = String.length tok in
         if len < quote_length then begin
           Buffer.add_string buffer tok;
-          literal quote_range quote_length buffer lexbuf
+          literal omit_pre quote_range quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"
         else
           let pos = Range.unite quote_range (get_pos lexbuf) in
-          LITERAL(pos, Buffer.contents buffer)
+          LITERAL(pos, Buffer.contents buffer, omit_pre, true)
+    }
+  | (("`"+ as tok) "#") {
+      let len = String.length tok in
+        if len < quote_length then begin
+          Buffer.add_string buffer tok;
+          literal omit_pre quote_range quote_length buffer lexbuf
+        end else if len > quote_length then
+          report_error lexbuf "literal area was closed with too many '`'s"
+        else
+          let pos = Range.unite quote_range (get_pos lexbuf) in
+          LITERAL(pos, Buffer.contents buffer, omit_pre, false)
     }
   | break {
       let tok = Lexing.lexeme lexbuf in
       increment_line lexbuf;
       Buffer.add_string buffer tok;
-      literal quote_range quote_length buffer lexbuf
+      literal omit_pre quote_range quote_length buffer lexbuf
     }
   | eof {
       report_error lexbuf "unexpected end of input while reading literal area"
@@ -552,7 +569,7 @@ and literal quote_range quote_length buffer = parse
   | _ {
       let tok = Lexing.lexeme lexbuf in
       Buffer.add_string buffer tok;
-      literal quote_range quote_length buffer lexbuf
+      literal omit_pre quote_range quote_length buffer lexbuf
     }
 
 and comment = parse

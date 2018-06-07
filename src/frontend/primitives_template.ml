@@ -1,4 +1,5 @@
 
+module Types = Types_
 open MyUtil
 open LengthInterface
 open Types
@@ -33,9 +34,7 @@ let tIT           = (~! "itext"   , BaseType(TextRowType) )
 let tBT           = (~! "btext"   , BaseType(TextColType) )
 let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
-(*
-let tFT           = (~! "font"    , BaseType(FontType)    )
-*)
+
 let tCTX          = (~! "context" , BaseType(ContextType) )
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
@@ -212,30 +211,42 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
 
 
 let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
-let lamenv env evid ast = FuncWithEnvironment([PatternBranch(PVariable(evid), ast)], env)
+let lamenv env evid arity ast astf = PrimitiveWithEnvironment([PatternBranch(PVariable(evid), ast)], env, arity, astf)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
 let rec lambda1 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
-    lamenv env evid1 (astf (!- evid1))
+    lamenv env evid1 1 (astf (!- evid1))
+      (fun lst -> match lst with
+                  | [a1] -> astf a1
+                  | _ -> failwith "internal error")
 
 let rec lambda2 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda2-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda2-2)" in
-    lamenv env evid1 (lam evid2 (astf (!- evid1) (!- evid2)))
+    lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
+      (fun lst -> match lst with
+                  | [a1;a2] -> astf a1 a2
+                  | _ -> failwith "internal error")
 
 let rec lambda3 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda3-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
+    lamenv env evid1 3 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3] -> astf a1 a2 a3
+                  | _ -> failwith "internal error")
 
 let rec lambda4 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda4-1)" in
   let evid2 = EvalVarID.fresh "(dummy:lambda4-2)" in
   let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
   let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
+    lamenv env evid1 4 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
+                  | _ -> failwith "internal error")
 
 let rec lambda5 astf env =
   let evid1 = EvalVarID.fresh "(dummy:lambda5-1)" in
@@ -243,7 +254,10 @@ let rec lambda5 astf env =
   let evid3 = EvalVarID.fresh "(dummy:lambda5-3)" in
   let evid4 = EvalVarID.fresh "(dummy:lambda5-4)" in
   let evid5 = EvalVarID.fresh "(dummy:lambda5-5)" in
-    lamenv env evid1 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
+    lamenv env evid1 5 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
+                  | _ -> failwith "internal error")
 
 
 let pdfpt = Length.of_pdf_point
@@ -322,9 +336,9 @@ let default_radical hgt_bar t_bar dpt fontsize color =
   let h1 = fontsize *% 0.3 in
   let h2 = fontsize *% 0.375 in
 
-  let dpt = dpt +% fontsize *% 0.1 in
+  let nonnegdpt = (Length.negate dpt) +% fontsize *% 0.1 in
 
-  let lR = hgt_bar +% dpt in
+  let lR = hgt_bar +% nonnegdpt in
 
   let wid = wM +% w1 +% w2 +% w3 in
   let a1 = (h2 -% h1) /% w1 in
@@ -341,12 +355,12 @@ let default_radical hgt_bar t_bar dpt fontsize color =
       let open GraphicData in
       Graphics.make_fill color [
         GeneralPath((xpos +% wid, ypos +% hgt_bar), [
-          LineTo(xpos +% wM +% w1 +% w2, ypos -% dpt);
-          LineTo(xpos +% wM +% w1      , ypos -% dpt +% h2);
-          LineTo(xpos +% wM            , ypos -% dpt +% h1);
-          LineTo(xpos +% wM            , ypos -% dpt +% h1 +% t1);
-          LineTo(xpos +% wM +% wA      , ypos -% dpt +% hA);
-          LineTo(xpos +% wM +% wA +% wB, ypos -% dpt +% hB);
+          LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
+          LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
+          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1);
+          LineTo(xpos +% wM            , ypos -% nonnegdpt +% h1 +% t1);
+          LineTo(xpos +% wM +% wA      , ypos -% nonnegdpt +% hA);
+          LineTo(xpos +% wM +% wA +% wB, ypos -% nonnegdpt +% hB);
           LineTo(xpos +% wid -% t3     , ypos +% hgt_bar +% t_bar);
           LineTo(xpos +% wid           , ypos +% hgt_bar +% t_bar);
         ], Some(LineTo(())))
@@ -354,7 +368,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
     in
       Graphics.singleton grelem
   in
-    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, dpt, graphics))]
+    [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
 
 
 let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
@@ -504,86 +518,21 @@ let get_initial_context wid =
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
       math_char_class        = MathItalic;
+      before_word_break      = [];
+      after_word_break       = [];
     }
-(*
-let margin = pdfpt 2.
-
-
-let frame_deco_VS =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.Rectangle((xposb, ypos +% dptb), (widb, hgtb -% dptb));
-      ]
-  )
-
-let frame_deco_VH =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% dptb), [
-          HorzBox.LineTo(xposb, ypos +% hgtb);
-          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-        ], None);
-      ]
-  )
-
-let frame_deco_VT =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb, ypos +% dptb);
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-          HorzBox.LineTo(xposb +% widb, ypos +% hgtb);
-        ], None);
-      ]
-  )
-
-let frame_deco_VM =
-  (fun (xpos, ypos) wid hgt dpt ->
-    let xposb = xpos in
-    let hgtb = hgt in
-    let dptb = dpt in
-    let widb = wid in
-    List.append (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb, ypos +% dptb);
-        ], None);
-      ]
-    ) (
-      Graphics.pdfops_of_graphics default_graphics_context HorzBox.DrawStroke [
-        HorzBox.GeneralPath((xposb +% widb, ypos +% hgtb), [
-          HorzBox.LineTo(xposb +% widb, ypos +% dptb);
-        ], None);
-      ]
-    )
-  )
-*)
-(* -- end: constants just for experimental use -- *)
 
 
 let make_environments () =
   let tyenvinit = add_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
-  let (~@) n        = (~! "tv"      , TypeVariable(n)      ) in
+  let (~@) n        = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-
+(*
   let mckf          = tLN @-> tLN @-> tLN in
-
+*)
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 
@@ -592,153 +541,20 @@ let make_environments () =
     let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
     let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
       [
-        ( "+"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Plus(v1, v2))                    );
-        ( "-"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Minus(v1, v2))                   );
-        ( "mod", ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Mod(v1, v2))                     );
-        ( "*"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Times(v1, v2))                   );
-        ( "/"  , ~% (tI @-> tI @-> tI)   , lambda2 (fun v1 v2 -> Divides(v1, v2))                 );
-        ( "^"  , ~% (tS @-> tS @-> tS)   , lambda2 (fun v1 v2 -> Concat(v1, v2))                  );
-        ( "==" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> EqualTo(v1, v2))                 );
+        ( "!"         , ptyderef  , lambda1 (fun v1 -> Dereference(v1)));
+        ( "::"        , ptycons   , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2)));
+        ( "|>"        , ptyappinv , lambda2 (fun vx vf -> Apply(vf, vx)));
+        ("inline-fil" , ~% tIB    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
+        ("inline-nil" , ~% tIB    , (fun _ -> Horz([])));
+        ("block-nil"  , ~% tBB    , (fun _ -> Vert([])));
+        ("clear-page" , ~% tBB    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
+
         ( "<>" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))     );
-        ( ">"  , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> GreaterThan(v1, v2))             );
-        ( "<"  , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LessThan(v1, v2))                );
         ( ">=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))    );
         ( "<=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))) );
-        ( "&&" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalAnd(v1, v2))              );
-        ( "||" , ~% (tB @-> tB @-> tB)   , lambda2 (fun v1 v2 -> LogicalOr(v1, v2))               );
-        ( "not", ~% (tB @-> tB)          , lambda1 (fun v1 -> LogicalNot(v1))                     );
-        ( "!"  , ptyderef                , lambda1 (fun v1 -> Dereference(v1))                    );
-        ( "::" , ptycons                 , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))       );
-        ( "+." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatPlus(v1, v2))               );
-        ( "-." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatMinus(v1, v2))              );
-        ( "*." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatTimes(v1, v2))              );
-        ( "/." , ~% (tFL @-> tFL @-> tFL), lambda2 (fun v1 v2 -> FloatDivides(v1, v2))            );
-        ( "+'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthPlus(v1, v2))              );
-        ( "-'" , ~% (tLN @-> tLN @-> tLN), lambda2 (fun v1 v2 -> LengthMinus(v1, v2))             );
-        ( "*'" , ~% (tLN @-> tFL @-> tLN), lambda2 (fun v1 v2 -> LengthTimes(v1, v2))             );
-        ( "/'" , ~% (tLN @-> tLN @-> tFL), lambda2 (fun v1 v2 -> LengthDivides(v1, v2))           );
-        ( "<'" , ~% (tLN @-> tLN @-> tB) , lambda2 (fun v1 v2 -> LengthLessThan(v1, v2))          );
-        ( ">'" , ~% (tLN @-> tLN @-> tB) , lambda2 (fun v1 v2 -> LengthGreaterThan(v1, v2))       );
-        ( "++" , ~% (tIB @-> tIB @-> tIB), lambda2 (fun vbr1 vbr2 -> HorzConcat(vbr1, vbr2))      );
-        ( "+++", ~% (tBB @-> tBB @-> tBB), lambda2 (fun vbc1 vbc2 -> VertConcat(vbc1, vbc2))      );
-        ( "|>" , ptyappinv               , lambda2 (fun vx vf -> Apply(vf, vx)));
 
-        ( "string-same"  , ~% (tS @-> tS @-> tB)       , lambda2 (fun v1 v2 -> PrimitiveSame(v1, v2)) );
-        ( "string-sub"   , ~% (tS @-> tI @-> tI @-> tS), lambda3 (fun vstr vpos vwid -> PrimitiveStringSub(vstr, vpos, vwid)) );
-        ( "string-length", ~% (tS @-> tI)              , lambda1 (fun vstr -> PrimitiveStringLength(vstr)) );
-        ( "arabic"       , ~% (tI @-> tS)              , lambda1 (fun vnum -> PrimitiveArabic(vnum)) );
-        ( "float"        , ~% (tI @-> tFL)             , lambda1 (fun vi -> PrimitiveFloat(vi)) );
-        ( "round"        , ~% (tFL @-> tI)             , lambda1 (fun vf -> PrimitiveRound(vf)) );
-        ( "sin"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatSine(vf)) );
-        ( "asin"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcSine(vf)) );
-        ( "cos"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatCosine(vf)) );
-        ( "acos"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcCosine(vf)) );
-        ( "tan"          , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatTangent(vf)) );
-        ( "atan"         , ~% (tFL @-> tFL)            , lambda1 (fun vf -> FloatArcTangent(vf)) );
-        ( "atan2"        , ~% (tFL @-> tFL @-> tFL)    , lambda2 (fun vf1 vf2 -> FloatArcTangent2(vf1, vf2)) );
-        ("split-into-lines", ~% (tS @-> (tL (tPROD [tI; tS]))), lambda1 (fun vs -> PrimitiveSplitIntoLines(vs)));
-        ("split-on-regexp", ~% (tRE @-> tS @-> (tL (tPROD [tI; tS]))), lambda2 (fun vpat vs -> PrimitiveSplitOnRegExp(vpat, vs)));
-        ("regexp-of-string", ~% (tS @-> tRE), lambda1 (fun vs -> PrimitiveRegExpOfString(vs)));
-        ("string-match", ~% (tRE @-> tS @-> tB), lambda2 (fun vpat vs -> PrimitiveStringMatch(vpat, vs)));
-        ("string-scan", ~% (tRE @-> tS @-> tOPT (tPROD [tS ; tS])), lambda2 (fun vpat vs -> PrimitiveStringScan(vpat, vs)));
+      (**** include: __primitives.ml ****)
 
-
-        ("line-break"            , ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)                   , lambda4 (fun vb1 vb2 vctx vbr -> BackendLineBreaking(vb1, vb2, vctx, vbr)) );
-        ("page-break"            , ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)  , lambda4 (fun vpgsz vpcf vppf vbb -> BackendPageBreaking(vpgsz, vpcf, vppf, vbb)));
-        ("inline-skip"           , ~% (tLN @-> tIB)                                          , lambda1 (fun vwid -> BackendFixedEmpty(vwid))   );
-        ("inline-glue"           , ~% (tLN @-> tLN @-> tLN @-> tIB)                          , lambda3 (fun vn vp vm -> BackendOuterEmpty(vn, vp, vm)) );
-        ("inline-fil"            , ~% tIB                                                    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
-        ("inline-nil"            , ~% tIB                                                    , (fun _ -> Horz([])));
-        ("inline-frame-outer"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendOuterFrame(vpads, vdeco, vbr)));
-        ("inline-frame-inner"    , ~% (tPADS @-> tDECO @-> tIB @-> tIB)                      , lambda3 (fun vpads vdeco vbr -> BackendInnerFrame(vpads, vdeco, vbr)));
-        ("inline-frame-fixed"    , ~% (tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)              , lambda4 (fun vwid vpads vdeco vbr -> BackendFixedFrame(vwid, vpads, vdeco, vbr)));
-        ("inline-frame-breakable", ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)                   , lambda3 (fun vpads vdecoset vbr -> BackendOuterFrameBreakable(vpads, vdecoset, vbr)));
-(*
-        ("font"                  , ~% (tS @-> tFL @-> tFL @-> tFT)                           , lambda3 (fun vabbrv vszrat vrsrat -> BackendFont(vabbrv, vszrat, vrsrat)));
-*)
-        ("block-nil"             , ~% tBB                                                    , (fun _ -> Vert([])));
-        ("block-frame-breakable" , ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB), lambda4 (fun vctx vpads vdecoset vbc -> BackendVertFrame(vctx, vpads, vdecoset, vbc)));
-        ("block-skip"            , ~% (tLN @-> tBB)                                          , lambda1 (fun vlen -> BackendVertSkip(vlen)));
-        ("clear-page"            , ~% tBB                                                    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
-        ("embed-block-top"       , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertTop(vctx, vlen, vk)));
-        ("embed-block-bottom"    , ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)              , lambda3 (fun vctx vlen vk -> BackendEmbeddedVertBottom(vctx, vlen, vk)));
-        ("line-stack-top"        , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackTop(vlst)));
-        ("line-stack-bottom"     , ~% ((tL tIB) @-> tIB)                                     , lambda1 (fun vlst -> BackendLineStackBottom(vlst)));
-
-        ("read-inline", ~% (tCTX @-> tIT @-> tIB), lambda2 (fun vctx vtr -> HorzLex(vctx, vtr)));
-        ("read-block" , ~% (tCTX @-> tBT @-> tBB), lambda2 (fun vctx vtc -> VertLex(vctx, vtc)));
-
-        ("get-initial-context", ~% (tLN @-> tCMD @-> tCTX)               , lambda2 (fun vwid vcmd -> PrimitiveGetInitialContext(vwid, vcmd)));
-        ("set-space-ratio"    , ~% (tFL @-> tCTX @-> tCTX)               , lambda2 (fun vratio vctx -> PrimitiveSetSpaceRatio(vratio, vctx)));
-        ("set-paragraph-margin", ~% (tLN @-> tLN @-> tCTX @-> tCTX)      , lambda3 (fun vl1 vl2 vctx -> PrimitiveSetParagraphMargin(vl1, vl2, vctx)));
-        ("set-font-size"      , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vsize vctx -> PrimitiveSetFontSize(vsize, vctx)));
-        ("get-font-size"      , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetFontSize(vctx)));
-        ("set-font"           , ~% (tSCR @-> tFONT @-> tCTX @-> tCTX)    , lambda3 (fun vscript vfont vctx -> PrimitiveSetFont(vscript, vfont, vctx)));
-        ("get-font"           , ~% (tSCR @-> tCTX @-> tFONT)             , lambda2 (fun vscript vctx -> PrimitiveGetFont(vscript, vctx)));
-        ("set-language"       , ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)    , lambda3 (fun vscript vlang vctx -> PrimitiveSetLangSys(vscript, vlang, vctx)));
-        ("get-language"       , ~% (tSCR @-> tCTX @-> tLANG)             , lambda2 (fun vscript vctx -> PrimitiveGetLangSys(vscript, vctx)));
-        ("set-math-font"      , ~% (tS @-> tCTX @-> tCTX)                , lambda2 (fun vs vctx -> PrimitiveSetMathFont(vs, vctx)));
-        ("set-dominant-wide-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantWideScript(vscript, vctx)));
-        ("get-dominant-wide-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantWideScript(vctx)));
-        ("set-dominant-narrow-script", ~% (tSCR @-> tCTX @-> tCTX)              , lambda2 (fun vscript vctx -> PrimitiveSetDominantNarrowScript(vscript, vctx)));
-        ("get-dominant-narrow-script", ~% (tCTX @-> tSCR)                       , lambda1 (fun vctx -> PrimitiveGetDominantNarrowScript(vctx)));
-        ("set-text-color"     , ~% (tCLR @-> tCTX @-> tCTX)              , lambda2 (fun vcolor vctx -> PrimitiveSetTextColor(vcolor, vctx)));
-        ("get-text-color"     , ~% (tCTX @-> tCLR)                       , lambda1 (fun vctx -> PrimitiveGetTextColor(vctx)));
-        ("set-leading"        , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetLeading(vlen, vctx)));
-        ("set-manual-rising"  , ~% (tLN @-> tCTX @-> tCTX)               , lambda2 (fun vlen vctx -> PrimitiveSetManualRising(vlen, vctx)));
-        ("set-hyphen-penalty" , ~% (tI @-> tCTX @-> tCTX)                , lambda2 (fun vpnlty vctx -> PrimitiveSetHyphenPenalty(vpnlty, vctx)));
-        ("get-text-width"     , ~% (tCTX @-> tLN)                        , lambda1 (fun vctx -> PrimitiveGetTextWidth(vctx)));
-
-        ("embed-string"       , ~% (tS @-> tIT)                          , lambda1 (fun vstr -> PrimitiveEmbed(vstr)));
-        ("inline-graphics"    , ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB), lambda4 (fun vwid vhgt vdpt vg -> BackendInlineGraphics(vwid, vhgt, vdpt, vg)));
-        ("get-natural-width"  , ~% (tIB @-> tLN)                         , lambda1 (fun vbr -> PrimitiveGetNaturalWidth(vbr)));
-        ("get-natural-length" , ~% (tBB @-> tLN)                         , lambda1 (fun vbb -> PrimitiveGetNaturalLength(vbb)));
-        ("display-message"    , ~% (tS @-> tU)                           , lambda1 (fun vs -> PrimitiveDisplayMessage(vs)));
-
-        ("stroke"                  , ~% (tLN @-> tCLR @-> tPATH @-> tGR)             , lambda3 (fun vwid vclr vpath -> PrimitiveDrawStroke(vwid, vclr, vpath)));
-        ("dashed-stroke"           , ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)   , lambda4 (fun vwid vdash vclr vpath -> PrimitiveDrawDashedStroke(vwid, vdash, vclr, vpath)));
-        ("fill"                    , ~% (tCLR @-> tPATH @-> tGR)                     , lambda2 (fun vclr vpath -> PrimitiveDrawFill(vclr, vpath)));
-        ("draw-text"               , ~% (tPT @-> tIB @-> tGR)                        , lambda2 (fun vpt vbr -> PrimitiveDrawText(vpt, vbr)));
-        ("start-path"              , ~% (tPT @-> tPRP)                               , lambda1 (fun vpt -> PrePathBeginning(vpt)));
-        ("line-to"                 , ~% (tPT @-> tPRP @-> tPRP)                      , lambda2 (fun vpt vprp -> PrePathLineTo(vpt, vprp)));
-        ("bezier-to"               , ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)      , lambda4 (fun vptS vptT vpt1 vprp -> PrePathCubicBezierTo(vptS, vptT, vpt1, vprp)));
-        ("terminate-path"          , ~% (tPRP @-> tPATH)                             , lambda1 (fun vprp -> PrePathTerminate(vprp)));
-        ("close-with-line"         , ~% (tPRP @-> tPATH)                             , lambda1 (fun vprp -> PrePathCloseWithLine(vprp)));
-        ("close-with-bezier"       , ~% (tPT @-> tPT @-> tPRP @-> tPATH)             , lambda3 (fun vptS vptT vprp -> PrePathCloseWithCubicBezier(vptS, vptT, vprp)));
-        ("unite-path"              , ~% (tPATH @-> tPATH @-> tPATH)                  , lambda2 (fun vpath1 vpath2 -> PathUnite(vpath1, vpath2)));
-
-        ("math-char"               , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathChar(vmc, false, vs)));
-        ("math-big-char"           , ~% (tMATHCLS @-> tS @-> tMATH)                  , lambda2 (fun vmc vs -> BackendMathChar(vmc, true, vs)));
-        ("math-char-with-kern"     , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathCharWithKern(vmc, false, vs, vkfL, vkfR)));
-        ("math-big-char-with-kern" , ~% (tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH), lambda4 (fun vmc vs vkfL vkfR -> BackendMathCharWithKern(vmc, true, vs, vkfL, vkfR)));
-        ("math-group"              , ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)  , lambda3 (fun vmc1 vmc2 vm -> BackendMathGroup(vmc1, vmc2, vm)));
-        ("math-sup"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSuperscript(vm1, vm2)));
-        ("math-sub"                , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathSubscript(vm1, vm2)));
-        ("math-frac"               , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathFraction(vm1, vm2)));
-        ("math-radical"            , ~% (tOPT tMATH @-> tMATH @-> tMATH)             , lambda2 (fun vm1 vm2 -> BackendMathRadical(vm1, vm2)));
-        ("math-paren"              , ~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)      , lambda3 (fun vpL vpR vm -> BackendMathParen(vpL, vpR, vm)));
-        ("math-upper"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathUpperLimit(vm1, vm2)));
-        ("math-lower"              , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathLowerLimit(vm1, vm2)));
-        ("math-concat"             , ~% (tMATH @-> tMATH @-> tMATH)                  , lambda2 (fun vm1 vm2 -> BackendMathConcat(vm1, vm2)));
-        ("math-variant-char"       , ~% (tMATHCLS @-> tMCSTY @-> tMATH)              , lambda2 (fun vmc vrcd -> BackendMathVariantCharDirect(vmc, vrcd)));
-            (* TEMPORARY; shold extend more *)
-        ("math-color"              , ~% (tCLR @-> tMATH @-> tMATH)                   , lambda2 (fun vcolor vm -> BackendMathColor(vcolor, vm)));
-        ("math-char-class"         , ~% (tMCCLS @-> tMATH @-> tMATH)                 , lambda2 (fun vmcc vm -> BackendMathCharClass(vmcc, vm)));
-        ("set-math-variant-char"   , ~% (tS @-> tMCCLS @-> tMATHCLS @-> tI @-> tCTX @-> tCTX), lambda5 (fun vs vmcc vmc vcp vctx -> PrimitiveSetMathVariantToChar(vs, vmcc, vmc, vcp, vctx)));
-        ("set-math-command"        , ~% (tCMD @-> tCTX @-> tCTX)                     , lambda2 (fun vcmd vctx -> PrimitiveSetMathCommand(vcmd, vctx)));
-        ("text-in-math"            , ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)      , lambda2 (fun vmc vbrf -> BackendMathText(vmc, vbrf)));
-        ("embed-math"              , ~% (tCTX @-> tMATH @-> tIB)                     , lambda2 (fun vctx vm -> BackendEmbeddedMath(vctx, vm)));
-        ("get-axis-height"         , ~% (tCTX @-> tLN)                               , lambda1 (fun vctx -> PrimitiveGetAxisHeight(vctx)));
-        ("string-unexplode"        , ~% ((tL tI) @-> tS)                             , lambda1 (fun vil -> PrimitiveStringUnexplode(vil)));
-        ("tabular"                 , ~% ((tL (tL tCELL)) @-> tRULESF @-> tIB)        , lambda2 (fun vtblr vrulesf -> BackendTabular(vtblr, vrulesf)));
-        ("load-pdf-image"          , ~% (tS @-> tI @-> tIMG)                         , lambda2 (fun vs vpn -> BackendRegisterPdfImage(vs, vpn)));
-        ("load-image"              , ~% (tS @-> tIMG)                                , lambda1 (fun vs -> BackendRegisterOtherImage(vs)));
-        ("use-image-by-width"      , ~% (tIMG @-> tLN @-> tIB)                       , lambda2 (fun vimg vlen -> BackendUseImageByWidth(vimg, vlen)));
-        ("script-guard"            , ~% (tSCR @-> tIB @-> tIB)                       , lambda2 (fun vscr vh -> BackendScriptGuard(vscr, vh)));
-        ("discretionary"           , ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)         , lambda4 (fun vpb vib0 vib1 vib2 -> BackendDiscretionary(vpb, vib0, vib1, vib2)));
-        ("register-cross-reference", ~% (tS @-> tS @-> tU)                           , lambda2 (fun vk vv -> BackendRegisterCrossReference(vk, vv)));
-        ("get-cross-reference"     , ~% (tS @-> (tOPT tS))                           , lambda1 (fun vk -> BackendGetCrossReference(vk)));
-        ("hook-page-break"         , ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)           , lambda1 (fun vhook -> BackendHookPageBreak(vhook)));
       ]
   in
   let temporary_ast = StringEmpty in

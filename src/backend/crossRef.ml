@@ -14,6 +14,7 @@ module CrossRefHashTable = Hashtbl.Make
   end)
 
 
+let unresolved_crossrefs = ref []
 let changed = ref false
 
 let count = ref 0
@@ -71,7 +72,7 @@ let initialize (srcpath : file_path) : bool =
 
 type answer =
   | NeedsAnotherTrial
-  | CanTerminate
+  | CanTerminate of string list
   | CountMax
 
 
@@ -84,6 +85,7 @@ let needs_another_trial (outpath : file_path) : answer =
       end
     else
       begin
+        unresolved_crossrefs := [];
         changed := false;
         incr count;
         NeedsAnotherTrial
@@ -91,7 +93,7 @@ let needs_another_trial (outpath : file_path) : answer =
   else
     begin
       write_dump_file outpath;
-      CanTerminate
+      CanTerminate (List.sort_uniq String.compare !unresolved_crossrefs)
     end
 
 
@@ -112,5 +114,15 @@ let register (key : string) (value : string) =
         end
 
 
+let probe (key : string) =
+  match CrossRefHashTable.find_opt main_hash_table key with
+  | Some(value) -> Some(value)
+  | None -> None
+
+
 let get (key : string) =
-  CrossRefHashTable.find_opt main_hash_table key
+  match CrossRefHashTable.find_opt main_hash_table key with
+  | Some(value) -> Some(value)
+  | None ->
+      unresolved_crossrefs := key :: !unresolved_crossrefs;
+      None

@@ -1,6 +1,0 @@
-[submodule "external/camlpdf"]
-	path = external/camlpdf
-	url = https://github.com/gfngfn/camlpdf
-[submodule "backend/external/otfm"]
-	path = external/otfm
-	url = https://github.com/gfngfn/otfm.git

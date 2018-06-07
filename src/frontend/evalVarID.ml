@@ -30,3 +30,6 @@ let show_direct (i, varnm) =
 
 let pp fmt evid =
   Format.fprintf fmt "%s" (show_direct evid)
+
+let get_varnm ((_, varnm) : t) = varnm
+

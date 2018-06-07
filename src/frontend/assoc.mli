@@ -17,6 +17,8 @@ val map_value : ('v -> 'w) -> 'v t -> 'w t
 
 val iter_value : ('v -> unit) -> 'v t -> unit
 
+val iter : (key -> 'v -> unit) -> 'v t -> unit
+
 val fold_value : ('a -> 'v -> 'a) -> 'a -> 'v t -> 'a
 
 val to_value_list : 'v t -> 'v list
@@ -36,3 +38,6 @@ val combine_value : 'v t -> 'w t -> ('v * 'w) list
 val intersection : 'v t -> 'v t -> ('v * 'v) list
 
 val union : 'v t -> 'v t -> 'v t
+
+val cardinal : 'v t -> int
+
