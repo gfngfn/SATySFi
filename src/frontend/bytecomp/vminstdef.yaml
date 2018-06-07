@@ -1862,6 +1862,19 @@ code: |
   IntegerConstant(String.length str)
 
 ---
+inst: PrimitiveStringCompare
+is-primitive: yes
+name: "string-compare"
+type: |
+  ~% (tS @-> tS @-> tI)
+
+params:
+- str1 : string
+- str2 : string
+code: |
+  IntegerConstant(String.compare str1 str2)
+
+---
 inst: PrimitiveStringUnexplode
 is-primitive: yes
 name: "string-unexplode"
