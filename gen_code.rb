@@ -30,7 +30,7 @@ def default_false b
 end
 
 def gen_prims
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     if inst["is-primitive"] && inst["name"] != nil then
       len = inst["params"].length
       args = []
@@ -53,7 +53,7 @@ def gen_prims
 end
 
 def gen_interps
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     if inst["is-primitive"] && !default_false(inst["no-interp"]) then
       tmpn = 0
       astargs = []
@@ -101,7 +101,7 @@ def gen_interps
 end
 
 def gen_vminstrs
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     tmpn = 0
     destruct = []
     funcapp = []
@@ -163,7 +163,7 @@ end
 
 def gen_insttype
   puts "and instruction ="
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     if inst["fields"] != nil then
       fieldtypes = inst["fields"].collect{|e| e.values[0]}
       puts "  | Op#{inst["inst"]} of #{fieldtypes.join ' * '}"
@@ -178,7 +178,7 @@ def gen_insttype
 end
 
 def gen_attype
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     if inst["is-primitive"] && !default_false(inst["no-ircode"]) then
       if inst["params"] != nil then
         puts "  | #{inst["inst"]} of #{(["abstract_tree"] * inst["params"].length).join ' * '}"
@@ -190,7 +190,7 @@ def gen_attype
 end
 
 def gen_ircases
-  YAML.load_documents(ARGF.read) do |inst|
+  YAML.load_stream(ARGF.read) do |inst|
     if inst["is-primitive"] && !default_false(inst["no-ircode"]) then
       params = [*1..inst["params"].length].collect{|n| "p"+n.to_s}
 
