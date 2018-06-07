@@ -1,3 +1,4 @@
+module Types = Types_
 open Types
 
 (* string -> string *)
