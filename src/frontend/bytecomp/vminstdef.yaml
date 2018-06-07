@@ -1862,6 +1862,26 @@ code: |
   IntegerConstant(String.length str)
 
 ---
+inst: PrimitiveStringScan
+is-primitive: yes
+name: "string-scan"
+type: |
+  ~% (tRE @-> tS @-> tOPT (tPROD [tS ; tS]))
+
+params:
+- pat : regexp
+- str:    string
+code: |
+  if Str.string_match pat str 0
+  then
+    let matched = Str.matched_string str in
+    let start   = String.length matched in
+    let rest    = String.sub str start (String.length str - start) in
+    Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+  else
+    Constructor("None", UnitConstant)
+
+---
 inst: PrimitiveStringUnexplode
 is-primitive: yes
 name: "string-unexplode"
