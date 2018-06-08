@@ -2,7 +2,6 @@
   module Types = Types_
   open Types
   open Parser
-  open Lexing
 
   exception LexError of Range.t * string
 
@@ -21,12 +20,14 @@
    *
    * Note that the active-block and active-inline transitions are one-way.
    *)
+
   type lexer_state =
-    | ProgramState (* program mode *)
-    | VerticalState (* block mode *)
+    | ProgramState    (* program mode *)
+    | VerticalState   (* block mode *)
     | HorizontalState (* inline mode *)
-    | ActiveState (* active mode *)
-    | MathState (* math mode *)
+    | ActiveState     (* active mode *)
+    | MathState       (* math mode *)
+
 
   let get_pos lexbuf =
     let posS = Lexing.lexeme_start_p lexbuf in
@@ -36,9 +37,11 @@
     let cnumE = posE.Lexing.pos_cnum - posE.Lexing.pos_bol in
       Range.make lnum cnumS cnumE
 
+
   let report_error lexbuf errmsg =
     let rng = get_pos lexbuf in
       raise (LexError(rng, errmsg))
+
 
   let pop lexbuf errmsg stack =
     if Stack.length stack > 1 then
@@ -46,16 +49,18 @@
     else
       report_error lexbuf errmsg
 
+
   let increment_line lexbuf =
     begin
       Lexing.new_line lexbuf;
     end
 
+
   let adjust_bol lexbuf amt =
+    let open Lexing in
     let lcp = lexbuf.lex_curr_p in
-      lexbuf.lex_curr_p <- { lcp with
-      pos_bol = lcp.pos_cnum + amt;
-    }
+      lexbuf.lex_curr_p <- { lcp with pos_bol = lcp.pos_cnum + amt; }
+
 
   let rec increment_line_for_each_break lexbuf str =
     let len = String.length str in
@@ -64,18 +69,19 @@
       if num >= len then tail_spaces else
         begin
           match String.get str num with
-          | ( '\n' | '\r' ) -> 
-              has_break := true; 
-              increment_line lexbuf; 
+          | ( '\n' | '\r' ) ->
+              has_break := true;
+              increment_line lexbuf;
               aux (num + 1) 0
-          | _               -> 
-              aux (num + 1) (tail_spaces+1)
+
+          | _ ->
+              aux (num + 1) (tail_spaces + 1)
         end;
     in
     let amt = aux 0 0 in
       if !has_break then
         adjust_bol lexbuf (-amt)
-      else 
+      else
         ()
 
 
@@ -98,15 +104,7 @@
       match List.rev lst with
       | ident :: mdllstrev -> (List.rev mdllstrev, ident)
       | []                 -> assert false
-(*
-    let rec aux imax i acclst accstr =
-      if i >= imax then (List.rev acclst, accstr) else
-        match String.get tokstr i with
-        | '.' -> aux imax (i + 1) (accstr :: acclst) ""
-        | c   -> aux imax (i + 1) acclst (accstr ^ (String.make 1 c))
-    in
-      aux (String.length tokstr) 0 [] ""
-*)
+
 }
 
 let space = [' ' '\t']
@@ -429,6 +427,7 @@ and horzexpr stack = parse
 
   | _ as c { report_error lexbuf ("illegal token '" ^ (String.make 1 c) ^ "' in an inline text area") }
 
+
 and mathexpr stack = parse
   | space { mathexpr stack lexbuf }
   | break { increment_line lexbuf; mathexpr stack lexbuf }
@@ -498,6 +497,7 @@ and mathexpr stack = parse
 
   | eof { report_error lexbuf "unexpected end of file in a math area" }
 
+
 and active stack = parse
   | "%" {
       comment lexbuf;
@@ -545,6 +545,7 @@ and active stack = parse
       report_error lexbuf ("unexpected token '" ^ tok ^ "' in an active area")
     }
 
+
 and literal omit_pre quote_range quote_length buffer = parse
   | "`"+ {
       let tok = Lexing.lexeme lexbuf in
@@ -584,12 +585,12 @@ and literal omit_pre quote_range quote_length buffer = parse
       literal omit_pre quote_range quote_length buffer lexbuf
     }
 
+
 and comment = parse
-  | break {
-      increment_line lexbuf;
-    }
-  | eof { () }
-  | _ { comment lexbuf }
+  | break { increment_line lexbuf; }
+  | eof   { () }
+  | _     { comment lexbuf }
+
 
 and skip_spaces = parse
   | break {
@@ -604,6 +605,7 @@ and skip_spaces = parse
       skip_spaces lexbuf
     }
   | "" { () }
+
 
 {
   let cut_token stack lexbuf =
