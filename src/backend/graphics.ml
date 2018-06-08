@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 
 let (~%) = Length.to_pdf_point

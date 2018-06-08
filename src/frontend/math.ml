@@ -2,7 +2,7 @@
 module Types = Types_
 open MyUtil
 open LengthInterface
-open GraphicData
+open GraphicBase
 open HorzBox
 open Types
 

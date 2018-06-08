@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 
 type pure_badness = int

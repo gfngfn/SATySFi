@@ -1,6 +1,7 @@
 
 module Types = Types_
 open LengthInterface
+open GraphicBase
 open Types
 
 
@@ -105,39 +106,37 @@ let get_cell value : HorzBox.cell =
     | _ -> report_bug_value "get_cell" value
 
 
-let get_color (value : syntactic_value) : GraphicData.color =
-  let open GraphicData in
-    match value with
-    | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
+let get_color (value : syntactic_value) : color =
+  match value with
+  | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
 
-    | Constructor("RGB", TupleCons(FloatConstant(fltR),
-                                   TupleCons(FloatConstant(fltG),
-                                             TupleCons(FloatConstant(fltB), EndOfTuple)))) -> DeviceRGB(fltR, fltG, fltB)
+  | Constructor("RGB", TupleCons(FloatConstant(fltR),
+                                 TupleCons(FloatConstant(fltG),
+                                           TupleCons(FloatConstant(fltB), EndOfTuple)))) -> DeviceRGB(fltR, fltG, fltB)
 
-    | Constructor("CMYK", TupleCons(FloatConstant(fltC),
-                                    TupleCons(FloatConstant(fltM),
-                                              TupleCons(FloatConstant(fltY),
-                                                        TupleCons(FloatConstant(fltK), EndOfTuple))))) -> DeviceCMYK(fltC, fltM, fltY, fltK)
+  | Constructor("CMYK", TupleCons(FloatConstant(fltC),
+                                  TupleCons(FloatConstant(fltM),
+                                            TupleCons(FloatConstant(fltY),
+                                                      TupleCons(FloatConstant(fltK), EndOfTuple))))) -> DeviceCMYK(fltC, fltM, fltY, fltK)
 
-    | _ -> report_bug_value "interpret_color" value
+  | _ -> report_bug_value "interpret_color" value
 
 
 let make_color_value color =
-  let open GraphicData in
-    match color with
-    | DeviceGray(gray) ->
-        Constructor("Gray", FloatConstant(gray))
+  match color with
+  | DeviceGray(gray) ->
+      Constructor("Gray", FloatConstant(gray))
 
-    | DeviceRGB(r, g, b) ->
-        Constructor("RGB", TupleCons(FloatConstant(r),
-                             TupleCons(FloatConstant(g),
-                               TupleCons(FloatConstant(b), EndOfTuple))))
+  | DeviceRGB(r, g, b) ->
+      Constructor("RGB", TupleCons(FloatConstant(r),
+                           TupleCons(FloatConstant(g),
+                             TupleCons(FloatConstant(b), EndOfTuple))))
 
-    | DeviceCMYK(c, m, y, k) ->
-        Constructor("CMYK", TupleCons(FloatConstant(c),
-                              TupleCons(FloatConstant(m),
-                                TupleCons(FloatConstant(y),
-                                  TupleCons(FloatConstant(k), EndOfTuple)))))
+  | DeviceCMYK(c, m, y, k) ->
+      Constructor("CMYK", TupleCons(FloatConstant(c),
+                            TupleCons(FloatConstant(m),
+                              TupleCons(FloatConstant(y),
+                                TupleCons(FloatConstant(k), EndOfTuple)))))
 
 
 let get_decoset (value : syntactic_value) =
@@ -367,7 +366,7 @@ let get_regexp (value : syntactic_value) : Str.regexp =
   | _                      -> report_bug_value "get_regexp" value
 
 
-let get_path_value (value : syntactic_value) : GraphicData.path list =
+let get_path_value (value : syntactic_value) : path list =
   match value with
   | PathValue(pathlst) -> pathlst
   | _                  -> report_bug_value "get_path_value" value

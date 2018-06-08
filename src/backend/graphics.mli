@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 (*
 val op_cm_translate : point -> Pdfops.t

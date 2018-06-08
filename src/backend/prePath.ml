@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 (* -- pair of the beginning point and the list of reversed path elements -- *)
 type t = point * (point path_element) list

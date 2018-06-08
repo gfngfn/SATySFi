@@ -964,7 +964,7 @@ params:
 - pt0 : point
 code: |
   let (pathelemlst, closingopt) = get_path env c_pathcomplst c_cycleopt in
-    PathValue([GraphicData.GeneralPath(pt0, pathelemlst, closingopt)])
+    PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 
 ---
 inst: PathUnite

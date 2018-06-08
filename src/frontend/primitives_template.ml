@@ -2,6 +2,7 @@
 module Types = Types_
 open MyUtil
 open LengthInterface
+open GraphicBase
 open Types
 
 (* -- type IDs for predefined data types -- *)
@@ -352,7 +353,6 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 
   let graphics (xpos, ypos) =
     let grelem =
-      let open GraphicData in
       Graphics.make_fill color [
         GeneralPath((xpos +% wid, ypos +% hgt_bar), [
           LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
@@ -513,7 +513,7 @@ let get_initial_context wid =
       paragraph_bottom       = pdfpt 18.;
       leading                = pdfpt 18.;
       min_gap_of_lines       = pdfpt 2.;
-      text_color             = GraphicData.DeviceGray(0.);
+      text_color             = DeviceGray(0.);
       manual_rising          = pdfpt 0.;
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
