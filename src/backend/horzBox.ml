@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 
 type pure_badness = int
@@ -206,9 +206,9 @@ type context_main = {
   after_word_break       : horz_box list;
 }
 
-and decoration = point -> length -> length -> length -> (intermediate_horz_box list) Graphics.t
+and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t
 
-and rules_func = length list -> length list -> (intermediate_horz_box list) Graphics.t
+and rules_func = length list -> length list -> (intermediate_horz_box list) GraphicD.t
 
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
@@ -226,7 +226,7 @@ and pure_horz_box =
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
   | PHGFixedTabular   of length * length * length * intermediate_row list * length list * length list * rules_func
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
@@ -245,7 +245,7 @@ and intermediate_horz_box =
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
 
 and evaled_horz_box =
@@ -270,7 +270,7 @@ and evaled_horz_box_main =
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) Graphics.t)
+  | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) GraphicD.t)
   | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]
@@ -425,3 +425,43 @@ let get_string_info ctx script_raw =
       text_color     = ctx.text_color;
       rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
     }
+
+
+let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length * length * length =
+  let (hgt, dpt) =
+    match evhbmain with
+    | EvHorzEmpty
+    | EvHorzHookPageBreak(_, _)
+        -> (Length.zero, Length.zero)
+
+    | EvHorzInlineImage(h, _) -> (h, Length.zero)
+
+    | EvHorzString(_, h, d, _)
+    | EvHorzRising(h, d, _, _)
+    | EvHorzMathGlyph(_, h, d, _)
+    | EvHorzEmbeddedVert(h, d, _)
+    | EvHorzInlineGraphics(h, d, _)
+    | EvHorzInlineTabular(h, d, _, _, _, _)
+    | EvHorzFrame(h, d, _, _)
+         -> (h, d)
+  in
+    (wid, hgt, dpt)
+
+
+let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box list) : length * length * length =
+  imhblst |> List.fold_left (fun (wid, hgt, dpt) imhb ->
+    let (w, h, d) =
+      match imhb with
+      | ImHorz(evhb) -> get_metrics_of_evaled_horz_box evhb
+
+      | ImHorzHookPageBreak(_) -> (Length.zero, Length.zero, Length.zero)
+
+      | ImHorzRising(w, h, d, _, _)
+      | ImHorzFrame(w, h, d, _, _)
+      | ImHorzInlineTabular(w, h, d, _, _, _, _)
+      | ImHorzInlineGraphics(w, h, d, _)
+      | ImHorzEmbeddedVert(w, h, d, _)
+           -> (w, h, d)
+    in
+      (wid +% w, Length.max hgt h, Length.min dpt d)
+  ) (Length.zero, Length.zero, Length.zero)

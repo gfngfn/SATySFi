@@ -2,6 +2,7 @@
 module Types = Types_
 open MyUtil
 open LengthInterface
+open GraphicBase
 open Types
 
 (* -- type IDs for predefined data types -- *)
@@ -272,7 +273,7 @@ let default_math_left_paren hgt dpt hgtaxis fontsize color =
   let widparen = halflen *% 0.375 in
   let wid = widparen +% fontsize *% 0.1 in
   let graphics (xpos, ypos) =
-    Graphics.pdfops_of_stroke (pdfpt 0.5) color [
+    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
         LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
@@ -303,7 +304,7 @@ let default_math_right_paren hgt dpt hgtaxis fontsize color =
   let widparen = halflen *% 0.375 in
   let wid = widparen +% fontsize *% 0.1 in
   let graphics (xpos, ypos) =
-    Graphics.pdfops_of_stroke (pdfpt 0.5) color [
+    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
       GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
         LineTo((xpos +% widparen, ypos +% hgtaxis));
         LineTo((xpos, ypos +% hgtaxis -% halflen));
@@ -352,8 +353,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
 
   let graphics (xpos, ypos) =
     let grelem =
-      let open GraphicData in
-      Graphics.make_fill color [
+      GraphicD.make_fill color [
         GeneralPath((xpos +% wid, ypos +% hgt_bar), [
           LineTo(xpos +% wM +% w1 +% w2, ypos -% nonnegdpt);
           LineTo(xpos +% wM +% w1      , ypos -% nonnegdpt +% h2);
@@ -366,7 +366,7 @@ let default_radical hgt_bar t_bar dpt fontsize color =
         ], Some(LineTo(())))
       ]
     in
-      Graphics.singleton grelem
+      GraphicD.singleton grelem
   in
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
 
@@ -513,7 +513,7 @@ let get_initial_context wid =
       paragraph_bottom       = pdfpt 18.;
       leading                = pdfpt 18.;
       min_gap_of_lines       = pdfpt 2.;
-      text_color             = GraphicData.DeviceGray(0.);
+      text_color             = DeviceGray(0.);
       manual_rising          = pdfpt 0.;
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;

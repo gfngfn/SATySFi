@@ -1,4 +1,8 @@
 
+
+type point = length * length
+
+
 let form-paragraph = line-break true true
 
 
@@ -64,3 +68,12 @@ let-inline ctx \fil-both =
 
 let mandatory-break ctx =
   discretionary 0 (inline-skip (get-text-width ctx *' 2.)) inline-fil inline-nil
+
+
+let destruct-option default opt =
+  match opt with
+  | None    -> default
+  | Some(v) -> v
+
+
+let math-pi = 3.1415926536

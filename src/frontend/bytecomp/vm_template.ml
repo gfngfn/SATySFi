@@ -3,6 +3,7 @@ module Types = Types_
 module Primitives = Primitives_
 open MyUtil
 open LengthInterface
+open GraphicBase
 open Types
 open EvalUtil
 
@@ -92,24 +93,24 @@ let rec get_path env c_pathcomplst c_cycleopt =
     c_pathcomplst |> List.map (function
       | CompiledPathLineTo(ptcode) ->
           let pt = get_point @@ exec [] env ptcode [] in
-            GraphicData.LineTo(pt)
+            LineTo(pt)
 
       | CompiledPathCubicBezierTo(pt1code, pt2code, ptcode) ->
           let pt1 = get_point @@ exec [] env pt1code [] in
           let pt2 = get_point @@ exec [] env pt2code [] in
           let pt = get_point @@ exec [] env ptcode [] in
-            GraphicData.CubicBezierTo(pt1, pt2, pt)
+            CubicBezierTo(pt1, pt2, pt)
     )
   in
   let closingopt =
     c_cycleopt |> option_map (function
       | CompiledPathLineTo(()) ->
-          GraphicData.LineTo(())
+          LineTo(())
 
       | CompiledPathCubicBezierTo(pt1code, pt2code, ()) ->
           let pt1 = get_point @@ exec [] env pt1code [] in
           let pt2 = get_point @@ exec [] env pt2code [] in
-            GraphicData.CubicBezierTo(pt1, pt2, ())
+            CubicBezierTo(pt1, pt2, ())
     )
   in
     (pathelemlst, closingopt)

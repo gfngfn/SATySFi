@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 exception ParseErrorDetail of string
 exception IllegalArgumentLength of Range.t * int * int
@@ -460,7 +460,7 @@ and vmenv = environment * (syntactic_value array) list
 and compiled_intermediate_input_horz_element =
   | CompiledImInputHorzText         of string
   | CompiledImInputHorzEmbedded     of instruction list
-  | CompiledImInputHorzContent of instruction list 
+  | CompiledImInputHorzContent of instruction list
   | CompiledImInputHorzEmbeddedMath of instruction list
 
 and compiled_intermediate_input_vert_element =
@@ -470,7 +470,7 @@ and compiled_intermediate_input_vert_element =
 and ir_input_horz_element =
   | IRInputHorzText         of string
   | IRInputHorzEmbedded     of ir * ir list
-  | IRInputHorzContent      of ir 
+  | IRInputHorzContent      of ir
   | IRInputHorzEmbeddedMath of ir
 
 
@@ -486,7 +486,7 @@ and 'a compiled_path_component =
   | CompiledPathLineTo of 'a
   | CompiledPathCubicBezierTo of instruction list * instruction list * 'a
 
-and varloc = 
+and varloc =
   | GlobalVar of location * EvalVarID.t * int ref
   | LocalVar  of int * int * EvalVarID.t * int ref
 
@@ -497,10 +497,10 @@ and ir =
   | IRInputVert             of ir_input_vert_element list
   | IRRecord                of Assoc.key list * ir list
       [@printer (fun fmt _ -> Format.fprintf fmt "IRRecord(...)")]
-  | IRAccessField           of ir * field_name 
+  | IRAccessField           of ir * field_name
   | IRLetRecIn              of (varloc * ir) list * ir
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
-  | IRContentOf             of varloc 
+  | IRContentOf             of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
@@ -595,7 +595,7 @@ and syntactic_value =
 
   | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
   | CompiledInputHorzIntermediate    of compiled_intermediate_input_horz_element list
-  | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv 
+  | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
   | CompiledInputVertIntermediate    of compiled_intermediate_input_vert_element list
   | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
@@ -603,9 +603,9 @@ and syntactic_value =
   | Horz                  of HorzBox.horz_box list
   | Vert                  of HorzBox.vert_box list
 
-  | PathValue             of GraphicData.path list
+  | PathValue             of path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of (HorzBox.intermediate_horz_box list) Graphics.element
+  | GraphicsValue               of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]

@@ -9,6 +9,7 @@ module Gr : sig
   val poly-line : length * length -> (length * length) list -> path
   val line : length * length -> length * length -> path
   val circle : length * length -> length -> path
+  val text-centering : length * length -> inline-boxes -> graphics
 
 end = struct
 
@@ -84,5 +85,12 @@ end = struct
         |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
         |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
         |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+
+
+  let text-centering pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
+    let wid = xmax -' xmin in
+      shift-graphics (0pt -' wid *' 0.5, 0pt) gr
 
 end
