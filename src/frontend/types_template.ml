@@ -605,7 +605,7 @@ and syntactic_value =
 
   | PathValue             of path list
       [@printer (fun fmt _ -> Format.fprintf fmt "<path>")]
-  | GraphicsValue               of (HorzBox.intermediate_horz_box list) Graphics.element
+  | GraphicsValue               of (HorzBox.intermediate_horz_box list) GraphicD.element
       [@printer (fun fmt _ -> Format.fprintf fmt "<graphics>")]
   | PrePathValue                of PrePath.t
       [@printer (fun fmt _ -> Format.fprintf fmt "<pre-path>")]

@@ -61,14 +61,14 @@ let get_list getf value =
     aux Alist.empty value
 
 
-let graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
+let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
   let rec aux gracc value =
     match value with
     | EndOfList                             -> gracc
-    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
+    | ListCons(GraphicsValue(grelem), tail) -> aux (GraphicD.extend gracc grelem) tail
     | _                                     -> report_bug_value "make_frame_deco" value
   in
-    aux Graphics.empty value
+    aux GraphicD.empty value
 
 
 let get_paddings (value : syntactic_value) =

@@ -2013,7 +2013,7 @@ params:
 - hblst : horz
 code: |
   let (imhblst, _, _) = LineBreak.natural hblst in
-  let grelem = Graphics.make_text pt imhblst in
+  let grelem = GraphicD.make_text pt imhblst in
     GraphicsValue(grelem)
 
 ---
@@ -2028,7 +2028,7 @@ params:
 - color : color
 - pathlst : path_value
 code: |
-  let grelem = Graphics.make_stroke wid color pathlst in
+  let grelem = GraphicD.make_stroke wid color pathlst in
     GraphicsValue(grelem)
 
 ---
@@ -2042,7 +2042,7 @@ params:
 - color : color
 - pathlst : path_value
 code: |
-  let grelem = Graphics.make_fill color pathlst in
+  let grelem = GraphicD.make_fill color pathlst in
     GraphicsValue(grelem)
 
 ---
@@ -2059,7 +2059,7 @@ params:
 - pathlst : path_value
 code: |
   let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
-  let grelem = Graphics.make_dashed_stroke wid (len1, len2, len3) color pathlst in
+  let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
     GraphicsValue(grelem)
 
 ---
