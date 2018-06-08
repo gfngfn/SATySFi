@@ -1844,8 +1844,26 @@ params:
 - wid : int
 code: |
   let resstr =
-  try String.sub str pos wid with
+  try BatUTF8.sub str pos wid with
   | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
+  in
+    StringConstant(resstr)
+
+---
+inst: PrimitiveStringSubBytes
+is-primitive: yes
+name: "string-sub-bytes"
+type: |
+  ~% (tS @-> tI @-> tI @-> tS)
+
+params:
+- str : string
+- pos : int
+- wid : int
+code: |
+  let resstr =
+  try String.sub str pos wid with
+  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
   in
     StringConstant(resstr)
 
@@ -1853,6 +1871,18 @@ code: |
 inst: PrimitiveStringLength
 is-primitive: yes
 name: "string-length"
+type: |
+  ~% (tS @-> tI)
+
+params:
+- str : string
+code: |
+  IntegerConstant(BatUTF8.length str)
+
+---
+inst: PrimitiveStringByteLength
+is-primitive: yes
+name: "string-byte-length"
 type: |
   ~% (tS @-> tI)
 
