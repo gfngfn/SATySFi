@@ -61,6 +61,12 @@ let get_list getf value =
     aux Alist.empty value
 
 
+let get_graphics_element value =
+  match value with
+  | GraphicsValue(grelem) -> grelem
+  | _                     -> report_bug_value "get_graphics_element" value
+
+
 let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
   let rec aux gracc value =
     match value with
@@ -185,6 +191,10 @@ let get_point value =
       TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
 
   | _ -> report_bug_value "get_point" value
+
+
+let make_point_value (x, y) =
+  TupleCons(LengthConstant(x), TupleCons(LengthConstant(y), EndOfTuple))
 
 
 let get_script (value : syntactic_value) =

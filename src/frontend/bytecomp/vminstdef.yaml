@@ -993,6 +993,21 @@ code: |
   PathValue(List.map (shift_path ptshift) pathlst)
 
 ---
+inst: PathGetBoundingBox
+is-primitive: yes
+name: "get-path-bbox"
+type: |
+  ~% (tPATH @-> tPROD [tPT; tPT])
+
+params:
+- pathlst : path_value
+code: |
+  let (ptmin, ptmax) = get_path_list_bbox pathlst in
+    TupleCons(make_point_value ptmin,
+      TupleCons(make_point_value ptmax,
+        EndOfTuple))
+
+---
 inst: PrePathBeginning
 is-primitive: yes
 name: "start-path"
@@ -2074,6 +2089,39 @@ code: |
   let (len1, len2, len3) = get_tuple3 get_length valuetup3 in
   let grelem = GraphicD.make_dashed_stroke wid (len1, len2, len3) color pathlst in
     GraphicsValue(grelem)
+
+---
+inst: PrimitiveShiftGraphics
+is-primitive: yes
+name: "shift-graphics"
+type: |
+  ~% (tPT @-> tGR @-> tGR)
+
+params:
+- vec : point
+- grelem : graphics_element
+code: |
+  GraphicsValue(GraphicD.shift_element vec grelem)
+
+---
+inst: PrimtiveGetGraphicsBBox
+is-primitive: yes
+name: get-graphics-bbox
+type: |
+  ~% (tGR @-> tPROD [tPT; tPT])
+
+params:
+- grelem : graphics_element
+code: |
+  let (ptmin, ptmax) =
+    GraphicD.get_element_bbox (fun (x, y) imhblst ->
+      let (wid, hgt, dpt) = HorzBox.get_metrics_of_intermediate_horz_box_list imhblst in
+        ((x, y +% dpt), (x +% wid, y +% hgt))
+    ) grelem
+  in
+    TupleCons(make_point_value ptmin,
+      TupleCons(make_point_value ptmax,
+        EndOfTuple))
 
 ---
 inst: Times

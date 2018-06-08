@@ -425,3 +425,43 @@ let get_string_info ctx script_raw =
       text_color     = ctx.text_color;
       rising         = ctx.manual_rising +% ctx.font_size *% rising_ratio;
     }
+
+
+let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length * length * length =
+  let (hgt, dpt) =
+    match evhbmain with
+    | EvHorzEmpty
+    | EvHorzHookPageBreak(_, _)
+        -> (Length.zero, Length.zero)
+
+    | EvHorzInlineImage(h, _) -> (h, Length.zero)
+
+    | EvHorzString(_, h, d, _)
+    | EvHorzRising(h, d, _, _)
+    | EvHorzMathGlyph(_, h, d, _)
+    | EvHorzEmbeddedVert(h, d, _)
+    | EvHorzInlineGraphics(h, d, _)
+    | EvHorzInlineTabular(h, d, _, _, _, _)
+    | EvHorzFrame(h, d, _, _)
+         -> (h, d)
+  in
+    (wid, hgt, dpt)
+
+
+let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box list) : length * length * length =
+  imhblst |> List.fold_left (fun (wid, hgt, dpt) imhb ->
+    let (w, h, d) =
+      match imhb with
+      | ImHorz(evhb) -> get_metrics_of_evaled_horz_box evhb
+
+      | ImHorzHookPageBreak(_) -> (Length.zero, Length.zero, Length.zero)
+
+      | ImHorzRising(w, h, d, _, _)
+      | ImHorzFrame(w, h, d, _, _)
+      | ImHorzInlineTabular(w, h, d, _, _, _, _)
+      | ImHorzInlineGraphics(w, h, d, _)
+      | ImHorzEmbeddedVert(w, h, d, _)
+           -> (w, h, d)
+    in
+      (wid +% w, Length.max hgt h, Length.min dpt d)
+  ) (Length.zero, Length.zero, Length.zero)

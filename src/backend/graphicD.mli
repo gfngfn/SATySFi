@@ -15,6 +15,10 @@ val extend : 'a t -> 'a element -> 'a t
 
 val singleton : 'a element -> 'a t
 
+val shift_element : point -> 'a element -> 'a element
+
+val get_element_bbox : (point -> 'a -> point * point) -> 'a element -> point * point
+
 val make_fill : color -> path list -> 'a element
 
 val make_stroke : length -> color -> path list -> 'a element

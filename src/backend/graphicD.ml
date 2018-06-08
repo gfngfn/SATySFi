@@ -92,6 +92,25 @@ let extend = Alist.extend
 let singleton elem = Alist.extend Alist.empty elem
 
 
+let shift_element v grelem =
+  match grelem with
+  | Fill(color, pathlst)                      -> Fill(color, pathlst |> List.map (shift_path v))
+  | Stroke(thkns, color, pathlst)             -> Stroke(thkns, color, pathlst |> List.map (shift_path v))
+  | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
+  | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
+
+
+let get_element_bbox textbboxf grelem =
+  match grelem with
+  | Fill(_, pathlst)
+  | Stroke(_, _, pathlst)
+  | DashedStroke(_, _, _, pathlst)
+      -> get_path_list_bbox pathlst
+           (* -- currently ignores the thickness of the stroke -- *)
+
+  | HorzText(pt, textvalue) -> textbboxf pt textvalue
+
+
 let make_fill (color : color) (pathlst : path list) : 'a element =
   Fill(color, pathlst)
 
