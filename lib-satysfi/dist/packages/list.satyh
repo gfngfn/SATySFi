@@ -5,11 +5,13 @@ module List
     val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val fold-lefti : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
+    val fold-right : ('a -> 'b -> 'b) -> 'b -> 'a list -> 'b
     val filter : ('a -> bool) -> 'a list -> 'a list
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
     val reverse : 'a list -> 'a list
     val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
     val append : 'a list -> 'a list -> 'a list
+    val concat : ('a list) list -> 'a list
   end
 = struct
     let-rec map
@@ -34,6 +36,11 @@ module List
       in
       aux f 0 init xs
 
+
+    let-rec fold-right
+      | f init []        = init
+      | f init (x :: xs) = f x (fold-right f init xs)
+
     let-rec filter
       | _ []        = []
       | p (x :: xs) = if p x then x :: filter p xs else filter p xs
@@ -49,6 +56,10 @@ module List
       match lst1 with
       | []      -> lst2
       | x :: xs -> x :: append xs lst2
+
+    let-rec concat
+      | []       = []
+      | (h :: t) = append h (concat t)
 
     let fold-left-adjacent f init lst =
       let-rec aux leftopt init lst =
