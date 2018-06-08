@@ -980,6 +980,19 @@ code: |
   PathValue(List.append pathlst1 pathlst2)
 
 ---
+inst: PathShift
+is-primitive: yes
+name: "shift-path"
+type: |
+  ~% (tPT @-> tPATH @-> tPATH)
+
+params:
+- ptshift : point
+- pathlst : path_value
+code: |
+  PathValue(List.map (shift_path ptshift) pathlst)
+
+---
 inst: PrePathBeginning
 is-primitive: yes
 name: "start-path"
