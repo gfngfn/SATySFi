@@ -7,7 +7,7 @@ module CD : sig
   val \diagram : [length; length; (|
       obj      : point -> math -> obj;
       draw-obj : obj -> graphics list;
-      draw-arr : math -> obj -> obj -> graphics list;
+      draw-arr : math -> float -> length -> obj -> obj -> graphics list;
     |) -> graphics list] inline-cmd
 end = struct
 
@@ -25,17 +25,16 @@ end = struct
   let wpad = 2pt
     % -- padding width for objects
 
-  let draw-arr ctx m
-    % ?:t-name-opt
-    % ?:len-name-opt
-      (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
+  let draw-arr ctx m t-name len-name (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
 
 %    let t-name = destruct-option 0.5 t-name-opt in
 %    let len-name = destruct-option (get-font-size ctx *' 0.5) len-name-opt in
-    let t-name = 0.5 in
-    let len-name = get-font-size ctx *' 0.5 in
+%    let t-name = 0.5 in
+%    let len-name = get-font-size ctx *' 0.5 in
 
-    let (obj1, obj2) = if not (x1r >' x2r) then (obj1r, obj2r) else (obj2r, obj1r) in
+    let color = get-text-color ctx in
+
+    let (obj1, obj2, reversed) = if not (x1r >' x2r) then (obj1r, obj2r, false) else (obj2r, obj1r, true) in
     let ((x1, y1), gr1) = obj1 in
     let ((x2, y2), gr2) = obj2 in
     % -- now we can suppose x1 <= x2
@@ -73,11 +72,20 @@ end = struct
         in
           (pt1, pt2)
     in
-    let ptm = Geom.div-perp pt1 pt2 0.5 (get-font-size ctx *' 0.5) in
-      [
-        stroke 0.5pt Color.black (Gr.line pt1 pt2);
-        Gr.text-centering ptm (embed-math ctx m);
-      ]
+    let theta = Geom.atan2-point (x2, y2) (x1, y1) in
+    let axishgt = get-axis-height ctx in
+      if not reversed then
+        let (xM, yM) = Geom.div-perp pt2 pt1 (1. -. t-name) len-name in
+        let ptm = (xM, yM -' axishgt) in
+          List.append (Gr.arrow 0.5pt color 6pt 1.5pt pt1 pt2) [
+            (if y1 >' y2 then Gr.text-leftward else Gr.text-rightward) ptm (embed-math ctx m);
+          ]
+      else
+        let (xM, yM) = Geom.div-perp pt1 pt2 (1. -. t-name) len-name in
+        let ptm = (xM, yM -' axishgt) in
+          List.append (Gr.arrow 0.5pt color 6pt 1.5pt pt2 pt1) [
+            (if y2 >' y1 then Gr.text-leftward else Gr.text-rightward) ptm (embed-math ctx m);
+          ]
 
 
   let-inline ctx \diagram wid hgt diagf =

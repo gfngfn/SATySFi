@@ -1,15 +1,21 @@
+@require: pervasives
+@require: geom
 @require: list
 
 module Gr : sig
 
-  val rectangle : length * length -> length * length -> path
-  val rectangle-round       : length -> length * length -> length * length -> path
-  val rectangle-round-left  : length -> length * length -> length * length -> path
-  val rectangle-round-right : length -> length * length -> length * length -> path
-  val poly-line : length * length -> (length * length) list -> path
-  val line : length * length -> length * length -> path
-  val circle : length * length -> length -> path
-  val text-centering : length * length -> inline-boxes -> graphics
+  val rectangle : point -> point -> path
+  val rectangle-round       : length -> point -> point -> path
+  val rectangle-round-left  : length -> point -> point -> path
+  val rectangle-round-right : length -> point -> point -> path
+  val poly-line : point -> point list -> path
+  val polygon : point -> point list -> path
+  val line : point -> point -> path
+  val circle : point -> length -> path
+  val text-centering : point -> inline-boxes -> graphics
+  val text-leftward : point -> inline-boxes -> graphics
+  val text-rightward : point -> inline-boxes -> graphics
+  val arrow : length -> color -> length -> length -> point -> point -> graphics list
 
 end = struct
 
@@ -74,6 +80,12 @@ end = struct
     )) (start-path ptinit) |> terminate-path
 
 
+  let polygon ptinit ptlst =
+    ptlst |> List.fold-left (fun acc pt -> (
+      acc |> line-to pt
+    )) (start-path ptinit) |> terminate-path
+
+
   let line pt1 pt2 =
     start-path pt1 |> line-to pt2 |> terminate-path
 
@@ -92,5 +104,28 @@ end = struct
     let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
     let wid = xmax -' xmin in
       shift-graphics (0pt -' wid *' 0.5, 0pt) gr
+
+
+  let text-rightward =
+    draw-text
+
+
+  let text-leftward pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-graphics-bbox gr in
+    let wid = xmax -' xmin in
+      shift-graphics (0pt -' wid, 0pt) gr
+
+
+  let arrow thkns color lenL lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
+    let theta = Geom.atan2-point pt2 pt1 in
+    let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
+    let phi = theta +. math-pi /. 2. in
+    let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
+    let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
+      [
+        stroke thkns color (line pt1 (cx, cy));
+        fill color (polygon pt2 [(p1, q1); (p2, q2)]);
+      ]
 
 end

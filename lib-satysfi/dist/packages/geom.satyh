@@ -1,8 +1,13 @@
 @require: pervasives
 
 module Geom : sig
+  val atan2-point : point -> point -> float
   val div-perp : point -> point -> float -> length -> point
 end = struct
+
+  let atan2-point (x1, y1) (x2, y2) =
+    atan2 ((y2 -' y1) /' 1pt) ((x2 -' x1) /' 1pt)
+
 
   let div-perp (x1, y1) (x2, y2) t len =
     let cx = x1 *' (1. -. t) +' x2 *' t in

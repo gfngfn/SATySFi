@@ -61,6 +61,7 @@ module Math : sig
   direct \propto : [] math-cmd
 
   direct \lim : [] math-cmd
+  direct \colim : [] math-cmd
   direct \max : [] math-cmd
   direct \min : [] math-cmd
 
@@ -306,6 +307,7 @@ end = struct
   let-math \ldots = math-char MathPunct `…`
 
   let-math \lim = math-char MathOp `lim`
+  let-math \colim = math-char MathOp `colim`
   let-math \max = math-char MathOp `max`
   let-math \min = math-char MathOp `min`
 
@@ -318,6 +320,8 @@ end = struct
   let-math \Rightarrow = math-char MathRel `⇒`
   let-math \Leftarrow = math-char MathRel `⇐`
   let-math \Leftrightarrow = math-char MathRel `⇔`
+  let-math \rightarrow = math-char MathRel `→`
+  let-math \leftarrow = math-char MathRel `←`
   let-math \forall = math-char MathOrd `∀`
   let-math \exists = math-char MathOrd `∃`
 
