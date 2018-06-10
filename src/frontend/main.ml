@@ -59,9 +59,6 @@ let report_error (cat : error_category) (lines : line list) =
   end
 
 
-let is_bytecomp_mode_ref : bool ref = ref false
-
-
 module FileDependencyGraph = DirectedGraph.Make
   (struct
     type t = file_path
@@ -99,16 +96,16 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
   end
 
 
-let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) (type_check_only : bool) : Typeenv.t * environment =
+let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) : Typeenv.t * environment =
   Logging.begin_to_read_file file_name_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
   Logging.pass_type_check None;
-  if type_check_only then (tyenvnew, env)
+  if OptionState.type_check_only () then (tyenvnew, env)
   else
   match ty with
   | (_, BaseType(EnvType)) ->
       let value =
-        if !is_bytecomp_mode_ref = true then
+        if OptionState.bytecomp_mode () then
           Bytecomp.compile_and_exec env ast
         else
           Evaluator.interpret env ast
@@ -141,12 +138,12 @@ let initialize (dump_file : file_path) =
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dump_file in
     let (tyenv, env) = Primitives.make_environments () in
-    (
-      if !is_bytecomp_mode_ref  = true then
+    begin
+      if OptionState.bytecomp_mode () then
         Bytecomp.compile_environment env
       else
         ()
-    );
+    end;
     (tyenv, env, dump_file_exists)
   end
 
@@ -197,11 +194,11 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
   end
 
 
-let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) (type_check_only : bool) =
+let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
     Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
-    if type_check_only then ()
+    if OptionState.type_check_only () then ()
     else
     let env_freezed = freeze_environment env in
       match ty with
@@ -211,7 +208,7 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
             reset ();
             let env = unfreeze_environment env_freezed in
             let valuedoc =
-              if !is_bytecomp_mode_ref then
+              if OptionState.bytecomp_mode () then
                 Bytecomp.compile_and_exec env ast
               else
                 Evaluator.interpret env ast
@@ -648,14 +645,6 @@ let error_log_environment suspended =
   | Sys_error(s) -> report_error System [ NormalLine(s); ]
 
 
-let output_ref : (file_path option) ref = ref None
-
-let input_ref : (file_path option) ref = ref None
-
-let show_full_path_ref : bool ref = ref false
-
-let type_check_only_ref : bool ref = ref false
-
 let arg_version () =
   begin
     print_string (
@@ -681,26 +670,28 @@ let arg_output curdir s =
   let file_path =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
-  output_ref := Some(file_path)
+  OptionState.set_output_file file_path
 
 
 let handle_anonimous_arg (curdir : file_path) (s : file_path) =
   let file_path =
     if Filename.is_relative s then Filename.concat curdir s else s
   in
-  input_ref := Some(file_path)
+  OptionState.set_input_file file_path
 
 
 let arg_spec_list curdir =
   [
-    ("-o"          , Arg.String(arg_output curdir), " Specify output file");
-    ("--output"    , Arg.String(arg_output curdir), " Specify output file");
-    ("-v"          , Arg.Unit(arg_version)        , " Print version");
-    ("--version"   , Arg.Unit(arg_version)        , " Print version");
-    ("--full-path" , Arg.Set(show_full_path_ref)  , " Display paths in full-path style");
+    ("-o"               , Arg.String(arg_output curdir)            , " Specify output file");
+    ("--output"         , Arg.String(arg_output curdir)            , " Specify output file");
+    ("-v"               , Arg.Unit(arg_version)                    , " Print version");
+    ("--version"        , Arg.Unit(arg_version)                    , " Print version");
+    ("--full-path"      , Arg.Unit(OptionState.set_show_full_path) , " Display paths in full-path style");
     ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
-    ("--type-check-only", Arg.Set(type_check_only_ref) , "Stops after type checking");
-    ("--bytecomp"  , Arg.Set(is_bytecomp_mode_ref)  , " Use bytecode compiler")
+    ("-t"               , Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
+    ("--type-check-only", Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
+    ("-b"               , Arg.Unit(OptionState.set_bytecomp_mode)  , " Use bytecode compiler");
+    ("--bytecomp"       , Arg.Unit(OptionState.set_bytecomp_mode)  , " Use bytecode compiler");
   ]
 
 
@@ -735,12 +726,12 @@ let () =
     let curdir = Sys.getcwd () in
     Arg.parse (arg_spec_list curdir) (handle_anonimous_arg curdir) "";
     let input_file =
-      match !input_ref with
+      match OptionState.input_file () with
       | None    -> raise NoInputFileDesignation
       | Some(v) -> v
     in
     let output_file =
-      match !output_ref with
+      match OptionState.output_file () with
       | Some(v) ->
           v
 
@@ -750,7 +741,6 @@ let () =
             | Invalid_argument(_) -> input_file ^ ".pdf"
           end
     in
-    Logging.show_full_path (!show_full_path_ref);
     Logging.target_file output_file;
     let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in
     let (tyenv, env, dump_file_exists) = initialize dump_file in
@@ -766,11 +756,11 @@ let () =
         FileDependencyGraph.backward_bfs_fold (fun (tyenv, env) file_path_in file_info ->
           match file_info with
           | DocumentFile(utast) ->
-              eval_document_file tyenv env file_path_in utast output_file dump_file !type_check_only_ref;
+              eval_document_file tyenv env file_path_in utast output_file dump_file;
               (tyenv, env)
 
           | LibraryFile(utast) ->
-              eval_library_file tyenv env file_path_in utast !type_check_only_ref
+              eval_library_file tyenv env file_path_in utast
         ) (tyenv, env) dg |> ignore
 (*
     (* begin: for debug *)
