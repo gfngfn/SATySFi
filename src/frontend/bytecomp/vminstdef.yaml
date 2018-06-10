@@ -1367,6 +1367,23 @@ code: |
   }), valuecmd)
 
 ---
+inst: PrimitiveSetParagraphMinAscenderAndDescender
+is-primitive: yes
+name: "set-min-paragraph-ascender-and-descender"
+type: |
+  ~% (tLN @-> tLN @-> tCTX @-> tCTX)
+
+params:
+- lenminasc : length
+- lenmindesc : length
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    min_first_line_ascender = lenminasc;
+    min_last_line_descender = lenmindesc;
+  }), valuecmd)
+
+---
 inst: PrimitiveSetFontSize
 is-primitive: yes
 name: "set-font-size"
