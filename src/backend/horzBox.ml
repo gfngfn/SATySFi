@@ -194,6 +194,8 @@ type context_main = {
   paragraph_width        : length;
   paragraph_top          : length;
   paragraph_bottom       : length;
+  min_first_line_ascender : length;
+  min_last_line_descender : length;
   leading                : length;
   min_gap_of_lines       : length;
   text_color             : color;

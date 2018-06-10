@@ -491,11 +491,24 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         (imhblst, hgt_total, dpt_total)
 
 
-let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : length) (margin_bottom : length) (paragraph_width : length) (leading_required : length) (vskip_min : length) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
+type line_break_info = {
+  is_breakable_top    : bool;
+  is_breakable_bottom : bool;
+  margin_top          : length;
+  margin_bottom       : length;
+  paragraph_width     : length;
+  leading_required    : length;
+  vskip_min           : length;
+  min_first_ascender  : length;
+  min_last_descender  : length;
+}
+
+
+let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
   let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
-    let vskipraw = leading_required -% (Length.negate dptprev) -% hgt in
-      if vskipraw <% vskip_min then vskip_min else vskipraw
+    let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
+      if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
   in
 
   let append_framed_lines
@@ -588,21 +601,39 @@ let break_into_lines (is_breakable_top : bool) (is_breakable_bottom : bool) (mar
         Alist.extend acclines (Alist.to_list accline)
   in
 
-  let rec arrange (dptprevopt : length option) (accvlines : vert_box Alist.t) (lines : (lb_pure_box list) list) =
+  let rec arrange (prevopt : (length * length) option) (accvlines : vert_box Alist.t) (lines : (lb_pure_box list) list) =
     match lines with
     | line :: tail ->
-        let (evhblst, hgt, dpt) = determine_widths (Some(paragraph_width)) line in
+        let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
         begin
-          match dptprevopt with
+          match prevopt with
           | None ->
-              arrange (Some(dpt)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
+            (* -- first line -- *)
+              let margin_top =
+                lbinfo.margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
+              in
+              arrange (Some(dpt, margin_top)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
 
-          | Some(dptprev) ->
+          | Some(dptprev, margin_top) ->
               let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
+                arrange (Some(dpt, margin_top)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
         end
 
-    | [] -> VertTopMargin(is_breakable_top, margin_top) :: (Alist.to_list (Alist.extend accvlines (VertBottomMargin(is_breakable_bottom, margin_bottom))))
+    | [] ->
+        let vbtop =
+          match prevopt with
+          | Some(_, margin_top) -> VertTopMargin(lbinfo.is_breakable_top, margin_top)
+          | None                -> VertTopMargin(lbinfo.is_breakable_top, lbinfo.margin_top)
+        in
+        let vbbottom =
+          let margin_bottom =
+            match prevopt with
+            | Some(dpt, _) -> lbinfo.margin_bottom +% (Length.max Length.zero (lbinfo.min_last_descender -% (Length.negate dpt)))
+            | None         -> lbinfo.margin_bottom
+          in
+            VertBottomMargin(lbinfo.is_breakable_bottom, margin_bottom)
+        in
+          vbtop :: (Alist.to_list (Alist.extend accvlines vbbottom))
   in
 
   let acclines = cut Alist.empty Alist.empty lhblst in
@@ -752,7 +783,17 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
             ]
 
       | Some(path) ->
-          break_into_lines is_breakable_top is_breakable_bottom margin_top margin_bottom paragraph_width leading_required vskip_min path lhblst
+          break_into_lines {
+            is_breakable_top;
+            is_breakable_bottom;
+            margin_top;
+            margin_bottom;
+            paragraph_width;
+            leading_required;
+            vskip_min;
+            min_first_ascender = ctx.min_first_line_ascender;
+            min_last_descender = ctx.min_last_line_descender;
+          } path lhblst
   end
 
 
