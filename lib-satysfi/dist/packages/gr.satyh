@@ -15,7 +15,8 @@ module Gr : sig
   val text-centering : point -> inline-boxes -> graphics
   val text-leftward : point -> inline-boxes -> graphics
   val text-rightward : point -> inline-boxes -> graphics
-  val arrow : length -> color -> length -> length -> point -> point -> graphics list
+  val arrow : length -> color -> length -> length -> length -> point -> point -> graphics list
+  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics list
 
 end = struct
 
@@ -117,15 +118,24 @@ end = struct
       shift-graphics (0pt -' wid, 0pt) gr
 
 
-  let arrow thkns color lenL lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
+  let arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
     let theta = Geom.atan2-point pt2 pt1 in
     let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
+    let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
     let phi = theta +. math-pi /. 2. in
     let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
     let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
       [
-        stroke thkns color (line pt1 (cx, cy));
-        fill color (polygon pt2 [(p1, q1); (p2, q2)]);
+        strokef color (line pt1 (mx, my));
+        fill color (polygon pt2 [(p1, q1); (mx, my); (p2, q2)]);
       ]
+
+
+  let arrow thkns =
+    arrow-scheme (stroke thkns)
+
+
+  let dashed-arrow thkns dash =
+    arrow-scheme (dashed-stroke thkns dash)
 
 end

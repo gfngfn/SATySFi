@@ -5,9 +5,10 @@
 module CD : sig
   type obj
   val \diagram : [length; length; (|
-      obj      : point -> math -> obj;
-      draw-obj : obj -> graphics list;
-      draw-arr : math -> float -> length -> obj -> obj -> graphics list;
+      obj             : point -> math -> obj;
+      draw-obj        : obj -> graphics list;
+      draw-arr        : math -> float -> length -> obj -> obj -> graphics list;
+      draw-dashed-arr : math -> float -> length -> obj -> obj -> graphics list;
     |) -> graphics list] inline-cmd
 end = struct
 
@@ -25,7 +26,7 @@ end = struct
   let wpad = 2pt
     % -- padding width for objects
 
-  let draw-arr ctx m t-name len-name (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
+  let draw-arr-scheme arrowf ctx m t-name len-name (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
 
 %    let t-name = destruct-option 0.5 t-name-opt in
 %    let len-name = destruct-option (get-font-size ctx *' 0.5) len-name-opt in
@@ -77,23 +78,32 @@ end = struct
       if not reversed then
         let (xM, yM) = Geom.div-perp pt2 pt1 (1. -. t-name) len-name in
         let ptm = (xM, yM -' axishgt) in
-          List.append (Gr.arrow 0.5pt color 6pt 1.5pt pt1 pt2) [
+          List.append (arrowf color pt1 pt2) [
             (if y1 >' y2 then Gr.text-leftward else Gr.text-rightward) ptm (embed-math ctx m);
           ]
       else
         let (xM, yM) = Geom.div-perp pt1 pt2 (1. -. t-name) len-name in
         let ptm = (xM, yM -' axishgt) in
-          List.append (Gr.arrow 0.5pt color 6pt 1.5pt pt2 pt1) [
+          List.append (arrowf color pt2 pt1) [
             (if y2 >' y1 then Gr.text-leftward else Gr.text-rightward) ptm (embed-math ctx m);
           ]
+
+
+  let draw-arr =
+    draw-arr-scheme (fun color -> Gr.arrow 0.5pt color 6pt 5pt 1.5pt)
+
+
+  let draw-dashed-arr =
+    draw-arr-scheme (fun color -> Gr.dashed-arrow 0.5pt (3pt, 3pt, 0pt) color 6pt 5pt 1.5pt)
 
 
   let-inline ctx \diagram wid hgt diagf =
     let r =
       (|
-        obj      = obj ctx;
-        draw-obj = draw-obj;
-        draw-arr = draw-arr ctx;
+        obj             = obj ctx;
+        draw-obj        = draw-obj;
+        draw-arr        = draw-arr ctx;
+        draw-dashed-arr = draw-dashed-arr ctx;
       |)
     in
       inline-graphics wid hgt 0cm (fun ptorg -> (
