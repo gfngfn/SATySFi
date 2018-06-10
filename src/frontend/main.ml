@@ -257,7 +257,7 @@ let error_log_environment suspended =
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
-        NormalLine("the environment variable 'HOME' is NOT defined.");
+        NormalLine("set appropriate environment variables.");
       ]
 
   | NoInputFileDesignation ->
@@ -271,10 +271,12 @@ let error_log_environment suspended =
         (cycle |> List.map (fun s -> DisplayLine(s)))
       )
 
-  | Config.DistFileNotFound(file_name) ->
-      report_error Interface [
-        NormalLine("package file not found: " ^ file_name);
-      ]
+  | Config.DistFileNotFound(file_name, dirlst) ->
+      report_error Interface (List.append [
+        NormalLine("package file not found:");
+        DisplayLine(file_name);
+        NormalLine("candidate directories for the SATySFi library root:");
+      ] (dirlst |> List.map (fun dir -> DisplayLine(dir))))
 
   | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
