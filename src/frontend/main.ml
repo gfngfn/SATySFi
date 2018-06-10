@@ -29,6 +29,7 @@ type error_category =
   | Interface
   | System
 
+
 let show_error_category = function
   | Lexer       -> "Syntax Error at Lexer"
   | Parser      -> "Syntax Error at Parser"
@@ -58,18 +59,8 @@ let report_error (cat : error_category) (lines : line list) =
   end
 
 
-let is_suffix pfx str =
-  let pfxlen = String.length pfx in
-  let strlen = String.length str in
-    if strlen < pfxlen then false else
-      (compare pfx (String.sub str (strlen - pfxlen) pfxlen)) = 0
-
-
-let is_document_file   = is_suffix ".saty"
-let is_header_file     = is_suffix ".satyh"
-let is_standalone_file = is_suffix ".satys"
-
 let is_bytecomp_mode_ref : bool ref = ref false
+
 
 module FileDependencyGraph = DirectedGraph.Make
   (struct
@@ -99,9 +90,6 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
     FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
       let file_path_sub = make_absolute_path curdir headerelem in
-(*
-      Format.printf "Main> lib: %s ---> %s\n" (Filename.basename file_path_in) (Filename.basename file_path_sub);  (* for debug *)
-*)
       begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
           register_library_file dg file_path_sub
@@ -114,9 +102,6 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
 let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : file_path) (utast : untyped_abstract_tree) (type_check_only : bool) : Typeenv.t * environment =
   Logging.begin_to_read_file file_name_in;
   let (ty, tyenvnew, ast) = Typechecker.main tyenv utast in
-(*
-  Format.printf "%s\n" (show_abstract_tree ast);  (* for debug *)
-*)
   Logging.pass_type_check None;
   if type_check_only then (tyenvnew, env)
   else
@@ -136,9 +121,6 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : fi
 
   | _ -> raise (NotALibraryFile(file_name_in, tyenvnew, ty))
 
-(*
-let libdir_ref : file_path ref = ref ""
-*)
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
@@ -213,19 +195,11 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
       FileDependencyGraph.add_edge dg file_path_in file_path_sub
     )
   end
-(*
-        Format.printf "Main> %a\n" pp_untyped_abstract_tree utast;  (* for debug *)
-        let () = PrintForDebug.mainE "END PARSING" in  (* for debug *)
-*)
 
 
 let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) (type_check_only : bool) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
-(*
-        Format.printf "Main> %a\n" pp_abstract_tree ast;  (* for debug *)
-        let () = PrintForDebug.mainE "END TYPE CHECKING" in  (* for debug *)*)
-
     Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
     if type_check_only then ()
     else
@@ -278,9 +252,6 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
 
       | _  -> raise (NotADocumentFile(file_path_in, tyenv, ty))
 
-(*
-let env_var_lib_root = "SATYSFI_LIB_ROOT"
-*)
 
 let error_log_environment suspended =
   try
@@ -290,15 +261,6 @@ let error_log_environment suspended =
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");
         NormalLine("the environment variable 'HOME' is NOT defined.");
-(*
-        NormalLine("the environment variable '" ^ env_var_lib_root ^ "' is NOT defined;");
-        NormalLine("in order to work SATySFi correctly, for example,");
-        NormalLine("you can add to your '~/.bash_profile' a line of the form:");
-        DisplayLine("export " ^ env_var_lib_root^ "=/path/to/library/root/");
-        NormalLine("and execute:");
-        DisplayLine("$ source ~/.bash_profile");
-        NormalLine("The library root is typically '/usr/local/lib-satysfi/'.")
-*)
       ]
 
   | NoInputFileDesignation ->
@@ -312,13 +274,6 @@ let error_log_environment suspended =
         (cycle |> List.map (fun s -> DisplayLine(s)))
       )
 
-(*
-  | IllegalExtension(s) ->
-      report_error Interface [
-        NormalLine("File '" ^ s ^ "' has illegal filename extension;");
-        NormalLine("maybe you need to use '--doc', or '--header' option.");
-      ]
-*)
   | Config.DistFileNotFound(file_name) ->
       report_error Interface [
         NormalLine("package file not found: " ^ file_name);
@@ -521,14 +476,7 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
       ]
-(*
-  | Typechecker.InvalidArityOfCommand(rng, lenreq, lenreal) ->
-      report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng) ^ ":");
-        NormalLine("this command expects " ^ (string_of_int lenreq) ^ " argument(s),");
-        NormalLine("but here is applied to " ^ (string_of_int lenreal) ^ " argument(s).");
-      ]
-*)
+
   | Typechecker.TooManyArgument(rngcmdapp, tyenv, tycmd) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rngcmdapp) ^ ":");
@@ -698,9 +646,6 @@ let error_log_environment suspended =
       -> report_error Evaluator [ NormalLine(s); ]
 
   | Sys_error(s) -> report_error System [ NormalLine(s); ]
-(*
-  | FontFormat.FontFormatBroken(e)  -> Otfm.pp_error Format.std_formatter e
-*)
 
 
 let output_ref : (file_path option) ref = ref None
