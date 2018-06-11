@@ -189,6 +189,10 @@ module Math : sig
   direct \log : [] math-cmd
   direct \tr : [] math-cmd
   direct \det : [] math-cmd
+  direct \dom : [] math-cmd
+  direct \cod : [] math-cmd
+  direct \Ker : [] math-cmd
+  direct \Im : [] math-cmd
 
   direct \sum : [] math-cmd
   direct \prod : [] math-cmd
@@ -498,6 +502,10 @@ end = struct
   let-math \log = op `log`
   let-math \tr  = op `tr`
   let-math \det = op `det`
+  let-math \dom = op `dom`
+  let-math \cod = op `cod`
+  let-math \Ker = op `Ker`
+  let-math \Im = op `Im`
 
   let-math \sum = bigop `∑`
   let-math \prod = bigop `∏`
