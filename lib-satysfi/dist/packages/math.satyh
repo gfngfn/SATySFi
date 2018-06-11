@@ -1,4 +1,5 @@
 @require: pervasives
+@require: list
 
 module Math : sig
 
@@ -28,54 +29,30 @@ module Math : sig
   direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
 
-  direct \paren : [math] math-cmd
-  direct \app : [math; math] math-cmd
-  direct \angle : [math] math-cmd
-  direct \brace : [math] math-cmd
-  direct \sqbracket : [math] math-cmd
-  direct \abs : [math] math-cmd
-  direct \norm : [math] math-cmd
-
-  direct \to : [] math-cmd
-  direct \pm : [] math-cmd
-  direct \infty : [] math-cmd
-  direct \ldots : [] math-cmd
-  direct \sum : [] math-cmd
-  direct \prod : [] math-cmd
-  direct \int : [] math-cmd
-  direct \ordd : [] math-cmd
-  direct \partial : [] math-cmd
-  direct \times : [] math-cmd
-  direct \nabla : [] math-cmd
-
-  direct \leq    : [] math-cmd
-  direct \geq    : [] math-cmd
-  direct \in     : [] math-cmd
-  direct \mid : [] math-cmd
-
-  direct \equiv  : [] math-cmd
-  direct \neq    : [] math-cmd
-  direct \simeq  : [] math-cmd
-  direct \sim    : [] math-cmd
-  direct \approx : [] math-cmd
-  direct \propto : [] math-cmd
-
-  direct \lim : [] math-cmd
-  direct \colim : [] math-cmd
-  direct \max : [] math-cmd
-  direct \min : [] math-cmd
-
-  direct \wedge : [] math-cmd
-  direct \vee : [] math-cmd
-  direct \Rightarrow : [] math-cmd
-  direct \Leftarrow : [] math-cmd
-  direct \Leftrightarrow : [] math-cmd
-  direct \forall : [] math-cmd
-  direct \exists : [] math-cmd
-
-  direct \because : [] math-cmd
-  direct \therefore : [] math-cmd
-
+  direct \alpha   : [] math-cmd
+  direct \beta    : [] math-cmd
+  direct \gamma   : [] math-cmd
+  direct \delta   : [] math-cmd
+  direct \epsilon : [] math-cmd
+  direct \zeta    : [] math-cmd
+  direct \eta     : [] math-cmd
+  direct \theta   : [] math-cmd
+  direct \iota    : [] math-cmd
+  direct \kappa   : [] math-cmd
+  direct \lambda  : [] math-cmd
+  direct \mu      : [] math-cmd
+  direct \nu      : [] math-cmd
+  direct \xi      : [] math-cmd
+  direct \omicron : [] math-cmd
+  direct \pi      : [] math-cmd
+  direct \rho     : [] math-cmd
+  direct \sigma   : [] math-cmd
+  direct \tau     : [] math-cmd
+  direct \upsilon : [] math-cmd
+  direct \phi     : [] math-cmd
+  direct \chi     : [] math-cmd
+  direct \psi     : [] math-cmd
+  direct \omega   : [] math-cmd
 
   direct \Alpha   : [] math-cmd
   direct \Beta    : [] math-cmd
@@ -102,30 +79,147 @@ module Math : sig
   direct \Psi     : [] math-cmd
   direct \Omega   : [] math-cmd
 
-  direct \alpha   : [] math-cmd
-  direct \beta    : [] math-cmd
-  direct \gamma   : [] math-cmd
-  direct \delta   : [] math-cmd
-  direct \epsilon : [] math-cmd
-  direct \zeta    : [] math-cmd
-  direct \eta     : [] math-cmd
-  direct \theta   : [] math-cmd
-  direct \iota    : [] math-cmd
-  direct \kappa   : [] math-cmd
-  direct \lambda  : [] math-cmd
-  direct \mu      : [] math-cmd
-  direct \nu      : [] math-cmd
-  direct \xi      : [] math-cmd
-  direct \omicron : [] math-cmd
-  direct \pi      : [] math-cmd
-  direct \rho     : [] math-cmd
-  direct \sigma   : [] math-cmd
-  direct \tau     : [] math-cmd
-  direct \upsilon : [] math-cmd
-  direct \phi     : [] math-cmd
-  direct \chi     : [] math-cmd
-  direct \psi     : [] math-cmd
-  direct \omega   : [] math-cmd
+  direct \to : [] math-cmd
+  direct \mid : [] math-cmd
+  direct \pm : [] math-cmd
+  direct \mp : [] math-cmd
+  direct \times : [] math-cmd
+  direct \setminus : [] math-cmd
+  direct \ast : [] math-cmd
+  direct \circ : [] math-cmd
+  direct \bullet : [] math-cmd
+  direct \cap : [] math-cmd
+  direct \cup : [] math-cmd
+  direct \uplus : [] math-cmd
+  direct \sqcap : [] math-cmd
+  direct \sqcup : [] math-cmd
+  direct \wedge : [] math-cmd
+  direct \vee : [] math-cmd
+  direct \oplus : [] math-cmd
+  direct \ominus : [] math-cmd
+  direct \otimes : [] math-cmd
+  direct \oslash : [] math-cmd
+
+  direct \vdash : [] math-cmd
+  direct \nvdash : [] math-cmd
+  direct \dashv : [] math-cmd
+  direct \vDash : [] math-cmd
+  direct \nvDash : [] math-cmd
+  direct \Vdash : [] math-cmd
+  direct \nVdash : [] math-cmd
+
+  direct \colon-rel : [] math-cmd
+
+  direct \leq : [] math-cmd
+  direct \geq : [] math-cmd
+  direct \equiv : [] math-cmd
+  direct \nequiv : [] math-cmd
+  direct \neq : [] math-cmd
+  direct \sim : [] math-cmd
+  direct \nsim : [] math-cmd
+  direct \simeq : [] math-cmd
+  direct \nsimeq : [] math-cmd
+  direct \approx : [] math-cmd
+  direct \propto : [] math-cmd
+  direct \coloneq : [] math-cmd
+  direct \eqcolon : [] math-cmd
+
+  direct \in : [] math-cmd
+  direct \nin : [] math-cmd
+  direct \ni : [] math-cmd
+  direct \nni : [] math-cmd
+  direct \subset : [] math-cmd
+  direct \supset : [] math-cmd
+  direct \nsubset : [] math-cmd
+  direct \nsupset : [] math-cmd
+  direct \subseteq : [] math-cmd
+  direct \supseteq : [] math-cmd
+  direct \nsubseteq : [] math-cmd
+  direct \nsupseteq : [] math-cmd
+  direct \subsetneq : [] math-cmd
+  direct \supsetneq : [] math-cmd
+  direct \sqsubset : [] math-cmd
+  direct \sqsupset : [] math-cmd
+  direct \sqsubseteq : [] math-cmd
+  direct \sqsupseteq : [] math-cmd
+  direct \nsqsubseteq : [] math-cmd
+  direct \nsqsupseteq : [] math-cmd
+  direct \sqsubsetneq : [] math-cmd
+  direct \sqsupsetneq : [] math-cmd
+  direct \prec : [] math-cmd
+  direct \succ : [] math-cmd
+  direct \nprec : [] math-cmd
+  direct \nsucc : [] math-cmd
+  direct \preccurlyeq : [] math-cmd
+  direct \succcurlyeq : [] math-cmd
+  direct \precsim : [] math-cmd
+  direct \succsim : [] math-cmd
+  direct \npreccurlyeq : [] math-cmd
+  direct \nsucccurlyeq : [] math-cmd
+
+  direct \emptyset : [] math-cmd
+  direct \infty : [] math-cmd
+  direct \top : [] math-cmd
+  direct \bot : [] math-cmd
+  direct \therefore : [] math-cmd
+  direct \because : [] math-cmd
+  direct \forall : [] math-cmd
+  direct \exists : [] math-cmd
+  direct \nexists : [] math-cmd
+  direct \bigcirc : [] math-cmd
+
+  direct \ldots : [] math-cmd
+  direct \cdots : [] math-cmd
+  direct \vdots : [] math-cmd
+  direct \ddots : [] math-cmd
+  direct \backddots : [] math-cmd
+
+  direct \lim : [] math-cmd
+  direct \colim : [] math-cmd
+  direct \max : [] math-cmd
+  direct \min : [] math-cmd
+  direct \inf : [] math-cmd
+  direct \sup : [] math-cmd
+  direct \sin : [] math-cmd
+  direct \cos : [] math-cmd
+  direct \tan : [] math-cmd
+  direct \cot : [] math-cmd
+  direct \sec : [] math-cmd
+  direct \csc : [] math-cmd
+  direct \log : [] math-cmd
+  direct \tr : [] math-cmd
+  direct \det : [] math-cmd
+
+  direct \sum : [] math-cmd
+  direct \prod : [] math-cmd
+  direct \coprod : [] math-cmd
+  direct \bigwedge : [] math-cmd
+  direct \bigvee : [] math-cmd
+  direct \bigcap : [] math-cmd
+  direct \bigcup : [] math-cmd
+
+  direct \land : [] math-cmd
+  direct \lor : [] math-cmd
+  direct \Rightarrow : [] math-cmd
+  direct \Leftarrow : [] math-cmd
+  direct \Leftrightarrow : [] math-cmd
+  direct \rightarrow : [] math-cmd
+  direct \leftarrow : [] math-cmd
+  direct \mapsto : [] math-cmd
+
+  direct \int : [] math-cmd
+
+  direct \ordd : [] math-cmd
+  direct \partial : [] math-cmd
+  direct \nabla : [] math-cmd
+
+  direct \paren : [math] math-cmd
+  direct \app : [math; math] math-cmd
+  direct \angle : [math] math-cmd
+  direct \brace : [math] math-cmd
+  direct \sqbracket : [math] math-cmd
+  direct \abs : [math] math-cmd
+  direct \norm : [math] math-cmd
 
   % -- temporary --
   direct \synteq : [] math-cmd
@@ -286,48 +380,145 @@ end = struct
   let-math \Psi      = greek-uppercase 0x1D6F9 0x1D733 0x03A8 0x1D6BF
   let-math \Omega    = greek-uppercase 0x1D6FA 0x1D734 0x03A9 0x1D6C0
 
-  let-math \infty = math-char MathOrd `∞`
-  let-math \to    = math-char MathRel `→`
-  let-math \in    = math-char MathRel `∈`
-  let-math \mid   = math-char MathRel `|`
-  let-math \pm    = math-char MathBin `±`
-  let-math \times = math-char MathBin `×`
-  let-math \vdash = math-char MathRel `⊢`
-  let-math \colon-rel = math-char MathRel `:`
-  let-math \leq    = math-char MathRel `≤`
-  let-math \geq    = math-char MathRel `≥`
-  let-math \equiv  = math-char MathRel `≡`
-  let-math \neq    = math-char MathRel `≠`
-  let-math \simeq  = math-char MathRel `≃`
-  let-math \sim    = math-char MathRel `∼`
-  let-math \approx = math-char MathRel `≈`
-  let-math \propto = math-char MathRel `∝`
+  let ord = math-char MathOrd
+  let bin = math-char MathBin
+  let rel = math-char MathRel
+  let op = math-char MathOp
+  let punct = math-char MathPunct
+  let prefix = math-char MathPrefix
+  let bigop = math-big-char MathOp
 
-  let-math \mapsto = math-char MathRel `↦`
-  let-math \ldots = math-char MathPunct `…`
+  let-math \to    = rel `→`
+  let-math \mid   = rel `|`
+  let-math \pm    = bin `±`
+  let-math \mp    = bin `∓`
+  let-math \times = bin `×`
+  let-math \setminus = bin `∖`
+  let-math \ast = bin `∗`
+  let-math \circ = bin `∘`
+  let-math \bullet = bin `∙`
+  let-math \cap = bin `∩`
+  let-math \cup = bin `∪`
+  let-math \uplus = bin `⊎`
+  let-math \sqcap = bin `⊓`
+  let-math \sqcup = bin `⊔`
+  let-math \wedge = bin `∧`
+  let-math \vee   = bin `∨`
+  let-math \oplus = bin `⊕`
+  let-math \ominus = bin `⊖`
+  let-math \otimes = bin `⊗`
+  let-math \oslash = bin `⊘`
 
-  let-math \lim = math-char MathOp `lim`
-  let-math \colim = math-char MathOp `colim`
-  let-math \max = math-char MathOp `max`
-  let-math \min = math-char MathOp `min`
+  let-math \vdash = rel `⊢`
+  let-math \nvdash = rel `⊬`
+  let-math \dashv = rel `⊣`
+  let-math \vDash = rel `⊨`
+  let-math \nvDash = rel `⊭`
+  let-math \Vdash = rel `⊩`
+  let-math \nVdash = rel `⊮`
 
+  let-math \colon-rel = rel `:`
 
-  let-math \sum = math-big-char MathOp `∑`
-  let-math \prod = math-big-char MathOp `∏`
+  let-math \leq = rel `≤`
+  let-math \geq = rel `≥`
+  let-math \equiv = rel `≡`
+  let-math \nequiv = rel `≢`
+  let-math \neq = rel `≠`
+  let-math \sim = rel `∼`
+  let-math \nsim = rel `≁`
+  let-math \simeq = rel `≃`
+  let-math \nsimeq = rel `≄`
+  let-math \approx = rel `≈`
+  let-math \propto = rel `∝`
+  let-math \coloneq = rel `≔`
+  let-math \eqcolon = rel `≕`
 
-  let-math \wedge = math-char MathBin `∧`
-  let-math \vee   = math-char MathBin `∨`
-  let-math \Rightarrow = math-char MathRel `⇒`
-  let-math \Leftarrow = math-char MathRel `⇐`
-  let-math \Leftrightarrow = math-char MathRel `⇔`
-  let-math \rightarrow = math-char MathRel `→`
-  let-math \leftarrow = math-char MathRel `←`
-  let-math \forall = math-char MathOrd `∀`
-  let-math \exists = math-char MathOrd `∃`
+  let-math \in = rel `∈`
+  let-math \nin = rel `∉`
+  let-math \ni = rel `∋`
+  let-math \nni = rel `∌`
+  let-math \subset = rel `⊂`
+  let-math \supset = rel `⊃`
+  let-math \nsubset = rel `⊄`
+  let-math \nsupset = rel `⊅`
+  let-math \subseteq = rel `⊆`
+  let-math \supseteq = rel `⊇`
+  let-math \nsubseteq = rel `⊈`
+  let-math \nsupseteq = rel `⊉`
+  let-math \subsetneq = rel `⊊`
+  let-math \supsetneq = rel `⊋`
+  let-math \sqsubset = rel `⊏`
+  let-math \sqsupset = rel `⊐`
+  let-math \sqsubseteq = rel `⊑`
+  let-math \sqsupseteq = rel `⊒`
+  let-math \nsqsubseteq = rel `⋢`
+  let-math \nsqsupseteq = rel `⋣`
+  let-math \sqsubsetneq = rel `⋤`
+  let-math \sqsupsetneq = rel `⋥`
+  let-math \prec = rel `≺`
+  let-math \succ = rel`≻`
+  let-math \nprec = rel `⊀`
+  let-math \nsucc = rel `⊁`
+  let-math \preccurlyeq = rel`≼`
+  let-math \succcurlyeq = rel `≽`
+  let-math \precsim = rel `≾`
+  let-math \succsim = rel `≿`
+  let-math \npreccurlyeq = rel `⋠`
+  let-math \nsucccurlyeq = rel `⋡`
 
-  let-math \therefore = math-char MathOrd `∴`
-  let-math \because = math-char MathOrd `∵`
+  let-math \emptyset = ord `∅`
+  let-math \infty = ord `∞`
+  let-math \top = ord `⊤`
+  let-math \bot = ord `⊥`
+  let-math \therefore = ord `∴`
+  let-math \because = ord `∵`
+  let-math \forall = ord `∀`
+  let-math \exists = ord `∃`
+  let-math \nexists = ord `∄`
+  let-math \bigcirc = ord `◯`
 
+  let-math \ldots = punct `…`
+  let-math \cdots = punct `⋯`
+  let-math \vdots = ord `⋮`
+  let-math \ddots = ord `⋱`
+  let-math \backddots = ord `⋰`
+
+  let-math \lim = op `lim`
+  let-math \colim = op `colim`
+  let-math \max = op `max`
+  let-math \min = op `min`
+  let-math \inf = op `inf`
+  let-math \sup = op `sup`
+  let-math \sin = op `sin`
+  let-math \cos = op `cos`
+  let-math \tan = op `tan`
+  let-math \cot = op `cot`
+  let-math \sec = op `sec`
+  let-math \csc = op `csc`
+  let-math \log = op `log`
+  let-math \tr  = op `tr`
+  let-math \det = op `det`
+
+  let-math \sum = bigop `∑`
+  let-math \prod = bigop `∏`
+  let-math \coprod = bigop `∐`
+  let-math \bigwedge = bigop `⋀`
+  let-math \bigvee = bigop `⋁`
+  let-math \bigcap = bigop `⋂`
+  let-math \bigcup = bigop `⋃`
+
+  let-math \land = rel `∧`
+  let-math \lor  = rel `∨`
+  let-math \Rightarrow = rel `⇒`
+  let-math \Leftarrow = rel `⇐`
+  let-math \Leftrightarrow = rel `⇔`
+  let-math \rightarrow = rel `→`
+  let-math \leftarrow = rel `←`
+  let-math \mapsto = rel `↦`
+
+  let-math \ordd = prefix `d`
+  let-math \partial = prefix `∂`
+  let-math \nabla  = prefix `∇`
 
 %% -- for Latin Modern Math --
   let-math \int =
@@ -340,12 +531,6 @@ end = struct
 %    let kernfL _ _ = 0pt in
 %    let kernfR fontsize ypos = fontsize *' 0.2 in
 %      math-big-char-with-kern MathOp `∫` kernfL kernfR
-
-  let-math \ordd = math-char MathPrefix `d`
-
-  let-math \partial = math-char MathPrefix `∂`
-
-  let-math \nabla  = math-char MathPrefix `∇`
 
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
