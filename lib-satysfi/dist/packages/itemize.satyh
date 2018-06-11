@@ -4,6 +4,7 @@
 module Itemize : sig
 
   direct +listing : [itemize] block-cmd
+  direct \listing : [itemize] inline-cmd
 
 end = struct
 
@@ -42,5 +43,10 @@ end = struct
   let-block ctx +listing (Item(_, itmzlst)) =
     let bclst = List.map (item ctx 0) itmzlst in
       block-nil +++> bclst
+
+
+  let-inline ctx \listing item =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+listing(item);>)
 
 end
