@@ -77,3 +77,7 @@ let destruct-option default opt =
 
 
 let math-pi = 3.1415926536
+
+
+let increment r =
+  r <- !r + 1
