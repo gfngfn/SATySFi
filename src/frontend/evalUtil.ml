@@ -173,13 +173,13 @@ let make_font_value (abbrev, sizer, risingr) =
       TupleCons(FloatConstant(risingr), EndOfTuple)))
 
 
-let get_vert value =
+let get_vert value : HorzBox.vert_box list =
   match value with
-  | Vert(imvblst) -> imvblst
-  | _             -> report_bug_value "get_vert" value
+  | Vert(vblst) -> vblst
+  | _           -> report_bug_value "get_vert" value
 
 
-let get_horz value =
+let get_horz value : HorzBox.horz_box list =
   match value with
   | Horz(hblst) -> hblst
   | _           -> report_bug_value "get_horz" value
@@ -603,48 +603,3 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Alist.empty |> Alist.to_list
   in
     (wid, imvblst)
-
-
-let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
-  let open HorzBox in
-  let rec aux optinit totalhgtinit imvblst =
-    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
-      match (imvb, opt) with
-      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
-          let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
-          let totalhgtafter = totalhgtsub +% pads.paddingB in
-            (optsub, totalhgtafter)
-
-    ) (optinit, totalhgtinit)
-  in
-    match aux None Length.zero imvblst with
-    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
-    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
-
-
-let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
-    let open HorzBox in
-    let rec aux optinit totalhgtinit evvblst =
-      let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
-            match (imvblast, opt) with
-            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-            | (ImVertFrame(pads, _, _, evvblstsub), _) ->
-                let totalhgtbefore = totalhgt +% pads.paddingB in
-                let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
-                let totalhgtafter = totalhgtsub +% pads.paddingT in
-                  (optsub, totalhgtafter)
-
-        ) (optinit, totalhgtinit)
-    in
-      match aux None Length.zero imvblst with
-      | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
-      | (None, totalhgt)      -> (totalhgt, Length.zero)

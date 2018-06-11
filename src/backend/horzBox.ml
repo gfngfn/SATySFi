@@ -238,6 +238,7 @@ and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
+  | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * horz_box list
 
