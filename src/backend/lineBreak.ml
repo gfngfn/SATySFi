@@ -519,9 +519,17 @@ type line_either =
 
 let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
-  let calculate_vertical_skip (dptprev : length) (hgt : length) : length =
-    let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
-      if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
+  let calculate_vertical_skip (dptoptprev : length option) (hgt : length) : vert_box list =
+    match dptoptprev with
+    | Some(dptprev) ->
+        let vskipraw = lbinfo.leading_required -% (Length.negate dptprev) -% hgt in
+        let vskip =
+          if vskipraw <% lbinfo.vskip_min then lbinfo.vskip_min else vskipraw
+        in
+          [VertFixedBreakable(vskip)]
+
+    | None ->
+        []
   in
 
   let append_framed_lines
@@ -663,7 +671,7 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   (*  --
       arrange: inserts vertical spaces between lines and top/bottom margins
       -- *)
-  let rec arrange (prevopt : (length * length) option) (accvlines : vert_box Alist.t) (lines : line_either list) =
+  let rec arrange (prevopt : (length option * length) option) (accvlines : vert_box Alist.t) (lines : line_either list) =
     match lines with
     | PureLine(line) :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
@@ -674,11 +682,11 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
               let margin_top =
                 lbinfo.margin_top +% (Length.max Length.zero (lbinfo.min_first_ascender -% hgt))
               in
-              arrange (Some(dpt, margin_top)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
+              arrange (Some(Some(dpt), margin_top)) (Alist.extend Alist.empty (VertLine(hgt, dpt, evhblst))) tail
 
-          | Some(dptprev, margin_top) ->
-              let vskip = calculate_vertical_skip dptprev hgt in
-                arrange (Some(dpt, margin_top)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
+          | Some(dptoptprev, margin_top) ->
+              let vblstskip = calculate_vertical_skip dptoptprev hgt in
+                arrange (Some(Some(dpt), margin_top)) (Alist.append accvlines (List.append vblstskip [VertLine(hgt, dpt, evhblst)])) tail
         end
 
     | AlreadyVert(_, vblst) :: tail ->
@@ -686,11 +694,11 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           match prevopt with
           | None ->
             (* -- first line -- *)
-              let opt = Some(Length.zero, lbinfo.margin_top) in  (* maybe not appropriate *)
+              let opt = Some(None, lbinfo.margin_top) in
                 arrange opt (Alist.append accvlines vblst) tail
 
           | Some(_, margin_top) ->
-              let opt = Some(Length.zero, margin_top) in  (* maybe not appropriate *)
+              let opt = Some(None, margin_top) in
                 arrange opt (Alist.append accvlines vblst) tail
         end
 
@@ -703,8 +711,8 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
         let vbbottom =
           let margin_bottom =
             match prevopt with
-            | Some(dpt, _) -> lbinfo.margin_bottom +% (Length.max Length.zero (lbinfo.min_last_descender -% (Length.negate dpt)))
-            | None         -> lbinfo.margin_bottom
+            | Some(Some(dpt), _)   -> lbinfo.margin_bottom +% (Length.max Length.zero (lbinfo.min_last_descender -% (Length.negate dpt)))
+            | Some(None, _) | None -> lbinfo.margin_bottom
           in
             VertBottomMargin(lbinfo.is_breakable_bottom, margin_bottom)
         in
