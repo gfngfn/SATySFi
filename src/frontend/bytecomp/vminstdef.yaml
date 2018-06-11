@@ -1341,13 +1341,19 @@ inst: PrimitiveSetSpaceRatio
 is-primitive: yes
 name: "set-space-ratio"
 type: |
-  ~% (tFL @-> tCTX @-> tCTX)
+  ~% (tFL @-> tFL @-> tFL @-> tCTX @-> tCTX)
 
 params:
-- ratio : float
+- ratio_natural : float
+- ratio_shrink : float
+- ratio_stretch : float
 - (ctx, valuecmd) : context
 code: |
-  Context(HorzBox.({ ctx with space_natural = ratio; }), valuecmd)
+  Context(HorzBox.({ ctx with
+    space_natural = max 0. ratio_natural;
+    space_shrink  = max 0. ratio_shrink;
+    space_stretch = max 0. ratio_stretch;
+  }), valuecmd)
 
 ---
 inst: PrimitiveSetParagraphMargin
