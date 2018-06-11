@@ -1154,6 +1154,20 @@ code-interp: |
   | _                                       -> report_bug_value "VertLex" value1
 
 ---
+inst: PrimitiveEmbeddedVertBreakable
+is-primitive: yes
+name: "embed-block-breakable"
+type: |
+  ~% (tCTX @-> tBB @-> tIB)
+
+params:
+- (ctx, _) : context
+- vblst : vert
+code: |
+  let wid = ctx.HorzBox.paragraph_width in
+    Horz([HorzEmbeddedVertBreakable(wid, vblst)])
+
+---
 inst: BackendFont
 is-primitive: yes
 params:

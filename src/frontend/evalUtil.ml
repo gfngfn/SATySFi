@@ -173,13 +173,13 @@ let make_font_value (abbrev, sizer, risingr) =
       TupleCons(FloatConstant(risingr), EndOfTuple)))
 
 
-let get_vert value =
+let get_vert value : HorzBox.vert_box list =
   match value with
-  | Vert(imvblst) -> imvblst
-  | _             -> report_bug_value "get_vert" value
+  | Vert(vblst) -> vblst
+  | _           -> report_bug_value "get_vert" value
 
 
-let get_horz value =
+let get_horz value : HorzBox.horz_box list =
   match value with
   | Horz(hblst) -> hblst
   | _           -> report_bug_value "get_horz" value
