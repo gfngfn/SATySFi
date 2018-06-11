@@ -503,6 +503,10 @@ type line_break_info = {
   min_last_descender  : length;
 }
 
+type line_either =
+  | PureLine    of lb_pure_box list
+  | AlreadyVert of vert_box list
+
 
 let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
 
@@ -512,17 +516,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
   in
 
   let append_framed_lines
-        (lines_in_frame : (lb_pure_box list) list)
-        (acclines_before : (lb_pure_box list) Alist.t)
+        (lines_in_frame : line_either list)
+        (acclines_before : line_either Alist.t)
         (accline_before : lb_pure_box Alist.t)
         (decoS : decoration) (decoH : decoration) (decoM : decoration) (decoT : decoration)
         (pads : paddings)
-        : (lb_pure_box list) Alist.t * lb_pure_box Alist.t =
+        : line_either Alist.t * lb_pure_box Alist.t =
     let rec aux
           (first : (lb_pure_box Alist.t) option)
           (last : (lb_pure_box Alist.t) option)
-          (acclines : (lb_pure_box list) Alist.t)
-          (lines : (lb_pure_box list) list)
+          (acclines : line_either Alist.t)
+          (lines : line_either list)
         =
       match lines with
       | [] ->
@@ -532,38 +536,54 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
             | None          -> (acclines, Alist.empty)
           end
 
-      | line :: [] ->  (* -- last line -- *)
+      | PureLine(line) :: [] ->
           let metr_sub = get_total_metrics line in
           let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
-            | Some(accline) ->
+            | Some(accline) ->  (* -- single line -- *)
                 aux None (Some(Alist.extend accline (LBOuterFrame(metr_total, decoS, line)))) acclines []
-            | None ->
+
+            | None ->  (* -- last line -- *)
                 aux None (Some(Alist.extend Alist.empty (LBOuterFrame(metr_total, decoT, line)))) acclines []
           end
 
-      | line :: tail ->
+      | PureLine(line) :: tail ->
           let metr_sub = get_total_metrics line in
           let metr_total = append_vert_padding metr_sub pads in
           begin
             match first with
-            | Some(accline) ->
-                aux None None (Alist.extend acclines (Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, line))))) tail
+            | Some(accline) ->  (* -- first line -- *)
+                let acclinesnew =
+                  Alist.extend acclines
+                    (PureLine(Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, line)))))
+                in
+                  aux None None acclinesnew tail
+
             | None ->
-                aux None None (Alist.extend acclines (LBOuterFrame(metr_total, decoM, line) :: [])) tail
+                let acclinesnew =
+                  Alist.extend acclines
+                    (PureLine(LBOuterFrame(metr_total, decoM, line) :: []))
+                in
+                  aux None None acclinesnew tail
           end
+
+      | AlreadyVert(_) :: tail ->
+          failwith "not implemented yet"
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
   in
 
-  let rec cut (acclines : (lb_pure_box list) Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : (lb_pure_box list) Alist.t =
+  (* --
+     cut: cuts inline box list into lines based on the break point list `path`
+     -- *)
+  let rec cut (acclines : line_either Alist.t) (accline : lb_pure_box Alist.t) (lhblst : lb_box list) : line_either Alist.t =
     match lhblst with
     | LBDiscretionary(_, dscrid, lphblst0, lphblst1, lphblst2) :: tail ->
         if List.mem dscrid path then
           let acclinesub = Alist.append accline lphblst1 in
           let acclinefresh = Alist.of_list lphblst2 in
-            cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
+            cut (Alist.extend acclines (PureLine(Alist.to_list acclinesub))) acclinefresh tail
         else
           let acclinenew = Alist.append accline lphblst0 in
             cut acclines acclinenew tail
@@ -584,8 +604,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
 *)
               let acclinesub = Alist.append accline lphblst1 in
               let acclinefresh = Alist.of_list lphblst2 in
-                cut (Alist.extend acclines (Alist.to_list acclinesub)) acclinefresh tail
+                cut (Alist.extend acclines (PureLine(Alist.to_list acclinesub))) acclinefresh tail
         end
+
+    | LBEmbeddedVertBreakable(dscrid, vblst) :: tail ->
+        if not (List.mem dscrid path) then
+          assert false
+        else
+          let acclinesnew =
+            Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) (AlreadyVert(vblst))
+          in
+            cut acclinesnew Alist.empty tail
 
     | LBPure(lphb) :: tail ->
         cut acclines (Alist.extend accline lphb) tail
@@ -598,12 +627,16 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           cut acclinesnew acclinenew tail
 
     | [] ->
-        Alist.extend acclines (Alist.to_list accline)
+        Alist.extend acclines (PureLine(Alist.to_list accline))
   in
 
-  let rec arrange (prevopt : (length * length) option) (accvlines : vert_box Alist.t) (lines : (lb_pure_box list) list) =
+
+  (*  --
+      arrange: inserts vertical spaces between lines and top/bottom margins
+      -- *)
+  let rec arrange (prevopt : (length * length) option) (accvlines : vert_box Alist.t) (lines : line_either list) =
     match lines with
-    | line :: tail ->
+    | PureLine(line) :: tail ->
         let (evhblst, hgt, dpt) = determine_widths (Some(lbinfo.paragraph_width)) line in
         begin
           match prevopt with
@@ -617,6 +650,18 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
           | Some(dptprev, margin_top) ->
               let vskip = calculate_vertical_skip dptprev hgt in
                 arrange (Some(dpt, margin_top)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
+        end
+
+    | AlreadyVert(vblst) :: tail ->
+        begin
+          match prevopt with
+          | None ->
+              let opt = Some(Length.zero, lbinfo.margin_top) in  (* doubtful *)
+              arrange opt (Alist.append accvlines vblst) tail
+
+          | Some(_, margin_top) ->
+              let opt = Some(Length.zero, margin_top) in  (* doubtful  *)
+              arrange opt (Alist.append accvlines vblst) tail
         end
 
     | [] ->
@@ -743,6 +788,11 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
             wmap |> WidthMap.add dscrid widinfo2
           ) wmapall
         in
+          aux iterdepth wmapnew tail
+
+    | LBEmbeddedVertBreakable(dscrid, _) :: tail ->
+        let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
+        let wmapnew = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
           aux iterdepth wmapnew tail
 
     | LBPure(lphb) :: tail ->
