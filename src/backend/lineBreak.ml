@@ -163,6 +163,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let dscrid = DiscretionaryID.fresh () in
           aux (Alist.extend lbeacc (LB(LBDiscretionary(pnlty, dscrid, lphblst0, lphblst1, lphblst2)))) tail
 
+    | HorzEmbeddedVertBreakable(wid, vblst) :: tail ->
+        let dscrid = DiscretionaryID.fresh () in
+          aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vblst)))) tail
+
     | HorzPure(phb) :: tail ->
         let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure phb in
           aux (Alist.extend lbeacc lbe) tail
@@ -189,6 +193,11 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
     | HorzDiscretionary(pnlty, hblst0, _, _) :: tail ->
         let lphblst0 = aux Alist.empty hblst0 in
           aux (Alist.append lbpeacc lphblst0) tail
+
+    | HorzEmbeddedVertBreakable(wid, vblst) :: tail ->
+        let imvblst = PageBreak.solidify vblst in
+        let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
+          aux (Alist.extend lbpeacc (PLB(LBEmbeddedVert(wid, hgt, dpt, imvblst)))) tail
 
     | HorzPure(phb) :: tail ->
         let lbpe = convert_pure_box_for_line_breaking_pure convert_list_for_line_breaking_pure phb in
@@ -505,7 +514,7 @@ type line_break_info = {
 
 type line_either =
   | PureLine    of lb_pure_box list
-  | AlreadyVert of vert_box list
+  | AlreadyVert of length * vert_box list
 
 
 let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) (lhblst : lb_box list) : vert_box list =
@@ -563,13 +572,33 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
             | None ->
                 let acclinesnew =
                   Alist.extend acclines
-                    (PureLine(LBOuterFrame(metr_total, decoM, line) :: []))
+                    (PureLine([LBOuterFrame(metr_total, decoM, line)]))
                 in
                   aux None None acclinesnew tail
           end
 
-      | AlreadyVert(_) :: tail ->
-          failwith "not implemented yet"
+      | AlreadyVert(wid, vblst) :: tail ->
+          let imvblst = PageBreak.solidify vblst in
+          let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
+          let metr_sub = (natural wid, hgt, dpt) in
+          let metr_total = append_vert_padding metr_sub pads in
+          let inner = [LBEmbeddedVert(wid, hgt, dpt, imvblst)] in
+          begin
+            match first with
+            | Some(accline) ->  (* -- first line -- *)
+                let acclinesnew =
+                  Alist.extend acclines
+                    (PureLine(Alist.to_list (Alist.extend accline (LBOuterFrame(metr_total, decoH, inner)))))
+                in
+                  aux None None acclinesnew tail
+
+            | None ->
+                let acclinesnew =
+                  Alist.extend acclines
+                    (PureLine([LBOuterFrame(metr_total, decoM, inner)]))
+                in
+                  aux None None acclinesnew tail
+          end
     in
       aux (Some(accline_before)) None acclines_before lines_in_frame
   in
@@ -607,12 +636,12 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                 cut (Alist.extend acclines (PureLine(Alist.to_list acclinesub))) acclinefresh tail
         end
 
-    | LBEmbeddedVertBreakable(dscrid, vblst) :: tail ->
+    | LBEmbeddedVertBreakable(dscrid, wid, vblst) :: tail ->
         if not (List.mem dscrid path) then
           assert false
         else
           let acclinesnew =
-            Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) (AlreadyVert(vblst))
+            Alist.extend (Alist.extend acclines (PureLine(Alist.to_list accline))) (AlreadyVert(wid, vblst))
           in
             cut acclinesnew Alist.empty tail
 
@@ -652,16 +681,17 @@ let break_into_lines (lbinfo : line_break_info) (path : DiscretionaryID.t list) 
                 arrange (Some(dpt, margin_top)) (Alist.append accvlines [VertFixedBreakable(vskip); VertLine(hgt, dpt, evhblst)]) tail
         end
 
-    | AlreadyVert(vblst) :: tail ->
+    | AlreadyVert(_, vblst) :: tail ->
         begin
           match prevopt with
           | None ->
-              let opt = Some(Length.zero, lbinfo.margin_top) in  (* doubtful *)
-              arrange opt (Alist.append accvlines vblst) tail
+            (* -- first line -- *)
+              let opt = Some(Length.zero, lbinfo.margin_top) in  (* maybe not appropriate *)
+                arrange opt (Alist.append accvlines vblst) tail
 
           | Some(_, margin_top) ->
-              let opt = Some(Length.zero, margin_top) in  (* doubtful  *)
-              arrange opt (Alist.append accvlines vblst) tail
+              let opt = Some(Length.zero, margin_top) in  (* maybe not appropriate *)
+                arrange opt (Alist.append accvlines vblst) tail
         end
 
     | [] ->
@@ -790,7 +820,7 @@ let main (is_breakable_top : bool) (is_breakable_bottom : bool) (margin_top : le
         in
           aux iterdepth wmapnew tail
 
-    | LBEmbeddedVertBreakable(dscrid, _) :: tail ->
+    | LBEmbeddedVertBreakable(dscrid, _, _) :: tail ->
         let (_, _) = update_graph wmap dscrid widinfo_zero 0 () in
         let wmapnew = WidthMap.empty |> WidthMap.add dscrid widinfo_zero in
           aux iterdepth wmapnew tail

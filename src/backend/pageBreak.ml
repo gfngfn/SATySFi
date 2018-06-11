@@ -228,6 +228,50 @@ let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_conte
   let pbvblst = normalize vblst in
     aux 1 pdfinit pbvblst
 
+
+let adjust_to_first_line (imvblst : intermediate_vert_box list) =
+  let rec aux optinit totalhgtinit imvblst =
+    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
+      match (imvb, opt) with
+      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
+      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+
+      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
+          let totalhgtbefore = totalhgt +% pads.paddingT in
+          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
+          let totalhgtafter = totalhgtsub +% pads.paddingB in
+            (optsub, totalhgtafter)
+
+    ) (optinit, totalhgtinit)
+  in
+    match aux None Length.zero imvblst with
+    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
+    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
+
+
+let adjust_to_last_line (imvblst : intermediate_vert_box list) =
+  let rec aux optinit totalhgtinit evvblst =
+    let evvblstrev = List.rev evvblst in
+      evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
+        match (imvblast, opt) with
+        | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
+        | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
+        | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
+
+        | (ImVertFrame(pads, _, _, evvblstsub), _) ->
+            let totalhgtbefore = totalhgt +% pads.paddingB in
+            let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
+            let totalhgtafter = totalhgtsub +% pads.paddingT in
+              (optsub, totalhgtafter)
+
+      ) (optinit, totalhgtinit)
+  in
+    match aux None Length.zero imvblst with
+    | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
+    | (None, totalhgt)      -> (totalhgt, Length.zero)
+
+
 (*
 let penalty_break_space = 100
 let penalty_soft_hyphen = 1000

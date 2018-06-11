@@ -1252,7 +1252,7 @@ code: |
       get_vert valuev
   in
   let imvblst = PageBreak.solidify vblst in
-  let (hgt, dpt) = adjust_to_first_line imvblst in
+  let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
     Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
@@ -1288,7 +1288,7 @@ code: |
       get_vert valuev
   in
   let imvblst = PageBreak.solidify vblst in
-  let (hgt, dpt) = adjust_to_last_line imvblst in
+  let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
     Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
@@ -1304,7 +1304,7 @@ code: |
   let hblstlst = get_list get_horz valuehblstlst in
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
-  let (hgt, dpt) = adjust_to_first_line imvblst in
+  let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
     Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
@@ -1320,7 +1320,7 @@ code: |
   let hblstlst = get_list get_horz valuehblstlst in
   let (wid, vblst) = make_line_stack hblstlst in
   let imvblst = PageBreak.solidify vblst in
-  let (hgt, dpt) = adjust_to_last_line imvblst in
+  let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
     Horz(HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
 
 ---
@@ -1844,7 +1844,7 @@ params:
 - vblst : vert
 code: |
   let imvblst = PageBreak.solidify vblst in
-  let (hgt, dpt) = adjust_to_first_line imvblst in
+  let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
     LengthConstant(hgt +% (Length.negate dpt))
 
 ---
