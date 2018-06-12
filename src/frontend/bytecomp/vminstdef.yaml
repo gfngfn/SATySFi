@@ -600,6 +600,62 @@ code: |
     MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
 
 ---
+inst: BackendGetLeftMathClass
+is-primitive: yes
+name: "get-left-math-class"
+type: |
+  ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
+
+params:
+- ictx : context
+- mathlst : math
+code: |
+  match mathlst with
+  | [] ->
+      Constructor("None", UnitConstant)
+
+  | math :: _ ->
+      let mathcls = Math.get_left_math_kind ictx math in
+        make_math_class_option_value mathcls
+
+---
+inst: BackendGetRightMathClass
+is-primitive: yes
+name: "get-right-math-class"
+type: |
+  ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
+
+params:
+- ictx : context
+- mathlst : math
+code: |
+  match List.rev mathlst with
+  | [] ->
+      Constructor("None", UnitConstant)
+
+  | math :: _ ->
+      let mathcls = Math.get_right_math_kind ictx math in
+        make_math_class_option_value mathcls
+
+---
+inst: BackendSpaceBetweenMaths
+is-primitive: yes
+name: "space-between-maths"
+type: |
+  ~% (tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
+
+params:
+- ictx : context
+- mathlst1 : math
+- mathlst2 : math
+code: |
+  let mathctx = MathContext.make ictx in
+  let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
+    match hbspaceopt with
+    | None          -> Constructor("None", UnitConstant)
+    | Some(hbspace) -> Constructor("Some", Horz([hbspace]))
+
+---
 inst: BackendMathConcat
 is-primitive: yes
 name: "math-concat"

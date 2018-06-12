@@ -876,8 +876,8 @@ end = struct
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-let-math \brace =
-  math-paren brace-left brace-right
+  let-math \brace =
+    math-paren brace-left brace-right
 
 
   let bracket-left hgt dpt hgtaxis fontsize color =
@@ -906,6 +906,7 @@ let-math \brace =
     let widparen = w0 +' w1 +' w2 in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
+
   let bracket-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
@@ -932,11 +933,9 @@ let-math \brace =
     let graphics point = [ fill color (path point); ] in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
+
   let-math \sqbracket =
     math-paren bracket-left bracket-right
-
-  let-math \overwrite f x v =
-    ${#f \sqbracket{#x \mapsto #v}}
 
 
   let abs-left hgt dpt hgtaxis fontsize color =

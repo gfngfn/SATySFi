@@ -268,16 +268,38 @@ let get_math_char_class (value : syntactic_value) =
 
 
 let get_math_class (value : syntactic_value) =
-  match value with
-  | Constructor("MathOrd"   , UnitConstant) -> HorzBox.MathOrdinary
-  | Constructor("MathBin"   , UnitConstant) -> HorzBox.MathBinary
-  | Constructor("MathRel"   , UnitConstant) -> HorzBox.MathRelation
-  | Constructor("MathOp"    , UnitConstant) -> HorzBox.MathOperator
-  | Constructor("MathPunct" , UnitConstant) -> HorzBox.MathPunct
-  | Constructor("MathOpen"  , UnitConstant) -> HorzBox.MathOpen
-  | Constructor("MathClose" , UnitConstant) -> HorzBox.MathClose
-  | Constructor("MathPrefix", UnitConstant) -> HorzBox.MathPrefix
-  | _                                       -> report_bug_value "get_math_class" value
+  let open HorzBox in
+    match value with
+    | Constructor("MathOrd"   , UnitConstant) -> MathOrdinary
+    | Constructor("MathBin"   , UnitConstant) -> MathBinary
+    | Constructor("MathRel"   , UnitConstant) -> MathRelation
+    | Constructor("MathOp"    , UnitConstant) -> MathOperator
+    | Constructor("MathPunct" , UnitConstant) -> MathPunct
+    | Constructor("MathOpen"  , UnitConstant) -> MathOpen
+    | Constructor("MathClose" , UnitConstant) -> MathClose
+    | Constructor("MathPrefix", UnitConstant) -> MathPrefix
+    | Constructor("MathInner" , UnitConstant) -> MathInner
+    | _                                       -> report_bug_value "get_math_class" value
+
+
+let make_math_class_option_value (mathcls : HorzBox.math_kind) =
+  let open HorzBox in
+    let labelopt =
+      match mathcls with
+      | MathOrdinary -> Some("MathOrd")
+      | MathBinary   -> Some("MathBin")
+      | MathRelation -> Some("MathRel")
+      | MathOperator -> Some("MathOp")
+      | MathPunct    -> Some("MathPunct")
+      | MathOpen     -> Some("MathOpen")
+      | MathClose    -> Some("MathClose")
+      | MathPrefix   -> Some("MathPrefix")
+      | MathInner    -> Some("MathInner")
+      | MathEnd      -> None
+    in
+    match labelopt with
+    | None ->        Constructor("None", UnitConstant)
+    | Some(label) -> Constructor("Some", Constructor(label, UnitConstant))
 
 
 let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a option =

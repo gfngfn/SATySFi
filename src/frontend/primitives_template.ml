@@ -187,6 +187,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
 
   |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
