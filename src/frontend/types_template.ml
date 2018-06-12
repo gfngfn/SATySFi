@@ -983,7 +983,7 @@ module MathContext
     val make : input_context -> t
     val context_for_text : t -> input_context
     val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : t -> string -> HorzBox.math_variant_value
+    val convert_math_variant_char : input_context -> string -> HorzBox.math_variant_value
     val color : t -> color
     val set_color : color -> t -> t
     val enter_script : t -> t
@@ -1019,21 +1019,14 @@ module MathContext
           context_for_text  = ictx;
         }
 
-    let convert_math_variant_char (mctx : t) (s : string) =
-      let (ctx, _) = mctx.context_for_text in
+    let convert_math_variant_char ((ctx, _) : input_context) (s : string) =
       let mcclsmap = ctx.HorzBox.math_variant_char_map in
       let mccls = ctx.HorzBox.math_char_class in
         match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (s, mccls) with
         | Some(mvvalue) ->
-(*
-            Format.printf "HorzBox> convert_math_variant_char: found\n";  (* for debug *)
-*)
             mvvalue
 
         | None ->
-(*
-            Format.printf "HorzBox> convert_math_variant_char: NOT found\n";  (* for debug *)
-*)
             let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
               (HorzBox.MathOrdinary, HorzBox.MathVariantToChar(false, uchlst))
 

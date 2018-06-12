@@ -6,6 +6,7 @@ type state = {
   mutable bytecomp_mode   : bool;
   mutable show_full_path  : bool;
   mutable debug_show_bbox : bool;
+  mutable debug_show_space : bool;
 }
 
 
@@ -16,6 +17,7 @@ let state = {
   bytecomp_mode   = false;
   show_full_path  = false;
   debug_show_bbox = false;
+  debug_show_space = false;
 }
 
 let set_input_file srcpath = state.input_file <- Some(srcpath)
@@ -35,3 +37,6 @@ let show_full_path ()     = state.show_full_path
 
 let set_debug_show_bbox () = state.debug_show_bbox <- true
 let debug_show_bbox ()     = state.debug_show_bbox
+
+let set_debug_show_space () = state.debug_show_space <- true
+let debug_show_space ()     = state.debug_show_space

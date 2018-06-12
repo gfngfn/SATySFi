@@ -5,6 +5,8 @@ module Math : sig
 
   direct \math : [math] inline-cmd
   direct +math : [math] block-cmd
+  direct \eqn : [math] inline-cmd
+  direct +align : [(math list) list] block-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
@@ -12,7 +14,7 @@ module Math : sig
   direct \upper : [math; math] math-cmd
   direct \math-skip : [length] math-cmd
   direct \math-color : [color; math] math-cmd
-  val concat : math -> math list -> math
+  val join : math -> math list -> math
 
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
@@ -230,12 +232,11 @@ module Math : sig
   direct \derive : [math; math] math-cmd
   direct \tyjd : [math; math; math] math-cmd
   direct \and-also : [] math-cmd
-  direct \overwrite : [math; math; math] math-cmd
   direct \tmabstyped : [math; math; math] math-cmd
 
 end = struct
 
-  let concat msep mlst =
+  let join msep mlst =
     match
       mlst |> List.fold-left (fun maccopt m -> (
         match maccopt with
@@ -262,7 +263,7 @@ end = struct
     text-in-math MathOrd (fun ctx -> read-inline ctx it)
 
   let-math \math-skip len =
-    text-in-math MathOrd (fun ctx -> inline-skip len)
+    text-in-math MathOrd (fun _ -> inline-skip len)
 
   let-math \math-color color m =
     math-color color m
@@ -290,8 +291,42 @@ end = struct
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-%  let math-ord-char cp =
-%    math-char MathOrd (string-unexplode [cp])
+
+  let-inline ctx \eqn math =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math(math);>)
+
+
+  let-block ctx +align mlstlst =
+    let vlen = 4pt in
+    let celllstlst =
+      mlstlst |> List.map (fun mlst -> (
+        mlst |> List.mapi-adjacent (fun index m _ mnextopt -> (
+          let ibm = embed-math ctx m in
+          let ib =
+            match mnextopt with
+            | None ->
+                ibm
+
+            | Some(mnext) ->
+                let ibspaceopt = space-between-maths ctx m mnext in
+                ( match ibspaceopt with
+                  | None          -> ibm
+                  | Some(ibspace) -> ibm ++ ibspace
+                )
+          in
+          let ib =
+            if index mod 2 == 0 then
+              inline-fil ++ ib
+            else
+              ib ++ inline-fil
+          in
+            NormalCell((0pt, 0pt, vlen, vlen), ib)
+        ))
+      ))
+    in
+      line-break true true ctx (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+        % temporary
 
 
   let math-list lst =
@@ -876,8 +911,8 @@ end = struct
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-let-math \brace =
-  math-paren brace-left brace-right
+  let-math \brace =
+    math-paren brace-left brace-right
 
 
   let bracket-left hgt dpt hgtaxis fontsize color =
@@ -906,6 +941,7 @@ let-math \brace =
     let widparen = w0 +' w1 +' w2 in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
+
   let bracket-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
@@ -932,11 +968,9 @@ let-math \brace =
     let graphics point = [ fill color (path point); ] in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
+
   let-math \sqbracket =
     math-paren bracket-left bracket-right
-
-  let-math \overwrite f x v =
-    ${#f \sqbracket{#x \mapsto #v}}
 
 
   let abs-left hgt dpt hgtaxis fontsize color =

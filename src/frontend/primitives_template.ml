@@ -187,6 +187,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
 
   |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
@@ -522,6 +523,12 @@ let get_initial_context wid =
       math_char_class        = MathItalic;
       before_word_break      = [];
       after_word_break       = [];
+      space_math_bin         = (0.25, 0.08, 0.16);
+      space_math_rel         = (0.375, 0.12, 0.24);
+      space_math_op          = (0.125, 0.04, 0.08);
+      space_math_punct       = (0.125, 0.04, 0.08);
+      space_math_inner       = (0.125, 0.04, 0.08);
+      space_math_prefix      = (0.125, 0.04, 0.08);
     }
 
 
@@ -532,9 +539,6 @@ let make_environments () =
   let (~@) n        = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-(*
-  let mckf          = tLN @-> tLN @-> tLN in
-*)
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
 

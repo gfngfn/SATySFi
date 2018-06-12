@@ -13,10 +13,10 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     match evhbmain with
     | EvHorzEmpty ->
         let opaccnew =
-(*
-          (GraphicD.pdfops_test_box (GraphicData.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.)) |> Alist.append
-*)
-          opacc
+          if OptionState.debug_show_space () then
+            Alist.append opacc (GraphicD.pdfops_test_box (GraphicBase.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.))
+          else
+            opacc
         in
           (xpos +% wid, opaccnew)
 
