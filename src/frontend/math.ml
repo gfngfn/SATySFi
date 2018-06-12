@@ -983,40 +983,16 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hblst = horz_of_low_math mathctxnew mkprevfirst MathEnd lmI in
               let hbspaceopt = space_between_math_kinds mathctxnew mkprev corr lkI.left_math_kind in
                 (hblst, hbspaceopt, rkI.right_math_kind)
-(*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblst
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblst
-              in
-                aux hbaccnew rkI.right_math_kind corrnext lmmaintail
-*)
 
           | LowMathPure(mk, wid, hgt, dpt, lma, _, rk) ->
               let hblstpure = horz_of_low_math_element lma in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr mk in
                 (hblstpure, hbspaceopt, mk)
-(*
-            let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstpure
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstpure
-              in
-                aux hbaccnew mk corrnext lmmaintail
-*)
 
           | LowMathGroup(mkL, mkR, lmC) ->
               let hblstC = horz_of_low_math mathctx MathEnd MathClose lmC in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr mkL in
                 (hblstC, hbspaceopt, mkR)
-(*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstC
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstC
-              in
-                aux hbaccnew mkR NoSpace lmmaintail
-*)
 
           | LowMathSuperscript(h_supbl, lmB, lmS) ->
               let (_, _, _, lkB, rkB) = lmB in
@@ -1035,20 +1011,9 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbkern = fixed_empty kern in
               let hblstsup =
                 List.concat [hblstB; [hbkern]; raise_horz h_supbl hblstS]
-      (*
-                List.concat [hblstB; raise_horz h_supbl hblstS]
-      *)
               in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsup, hbspaceopt, rkB.right_math_kind)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsup
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsup
-              in
-                aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
-      *)
 
           | LowMathSubscript(d_subbl, lmB, lmS) ->
               let (_, _, _, lkB, rkB) = lmB in
@@ -1073,14 +1038,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsub, hbspaceopt, rkB.right_math_kind)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
-      *)
 
           | LowMathSubSuperscript(h_supbl, d_subbl, lmB, lmS, lmT) ->
               let (_, _, _, lkB, rkB) = lmB in
@@ -1123,14 +1080,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
                   List.concat (List.append hblstlst [[hbsupplement]])
               in
                 (hblstappended, hbspaceopt, rkB.right_math_kind)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstappended
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstappended
-              in
-                aux hbaccnew rkB.right_math_kind SpaceAfterScript lmmaintail
-      *)
 
           | LowMathFraction(h_numerbl, d_denombl, lmN, lmD) ->
               let hblstN = horz_of_low_math mathctx MathEnd MathEnd lmN in
@@ -1154,15 +1103,7 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hbbar = horz_fraction_bar mathctx w_frac in
               let hblstsub = List.concat [raise_horz h_numerbl hblstNret; [hbback; hbbar; hbback]; raise_horz d_denombl hblstDret] in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
-                (hblstsub, hbspaceopt, MathOrdinary)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew MathOrdinary NoSpace lmmaintail
-      *)
+                (hblstsub, hbspaceopt, MathInner)
 
           | LowMathRadical(hblstrad, h_bar, t_bar, lmC) ->
               let hblstC = horz_of_low_math mathctx MathEnd MathEnd lmC in
@@ -1179,14 +1120,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hblstsub = List.append hblstrad (hbbar :: hbback :: hblstC) in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathInner in
                 (hblstsub, hbspaceopt, MathInner)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew MathInner NoSpace lmmaintail
-      *)
 
           | LowMathRadicalWithDegree(h_bar, t_bar, h_degbl, lmD, lmC) ->
               failwith "unsupported; LowMathRadicalWithDegree"  (* temporary *)
@@ -1204,14 +1137,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
                 (hblstsub, hbspaceopt, MathClose)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew MathClose NoSpace lmmaintail
-      *)
 
           | LowMathUpperLimit(h_upbl, lmB, lmU) ->
               let (_, _, _, lkB, rkB) = lmB in
@@ -1235,14 +1160,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsub, hbspaceopt, rkB.right_math_kind)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew rkB.right_math_kind NoSpace lmmaintail
-      *)
 
           | LowMathLowerLimit(d_lowbl, lmB, lmL) ->
               let (_, _, _, lkB, rkB) = lmB in
@@ -1266,14 +1183,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr lkB.left_math_kind in
                 (hblstsub, hbspaceopt, rkB.right_math_kind)
-      (*
-              let hbaccnew =
-                match hbspaceopt with
-                | None          -> Alist.append hbacc hblstsub
-                | Some(hbspace) -> Alist.append (Alist.extend hbacc hbspace) hblstsub
-              in
-                aux hbaccnew rkB.right_math_kind NoSpace lmmaintail
-      *)
         in
         let hbaccnew =
           match hbspaceopt with
