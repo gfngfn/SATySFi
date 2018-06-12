@@ -690,6 +690,7 @@ let arg_spec_list curdir =
     ("--version"        , Arg.Unit(arg_version)                    , " Print version");
     ("--full-path"      , Arg.Unit(OptionState.set_show_full_path) , " Display paths in full-path style");
     ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
+    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Output boxes for spaces");
     ("-t"               , Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
     ("--type-check-only", Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
     ("-b"               , Arg.Unit(OptionState.set_bytecomp_mode)  , " Use bytecode compiler");
