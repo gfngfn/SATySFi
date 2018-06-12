@@ -6,6 +6,8 @@ module Math : sig
   direct \math : [math] inline-cmd
   direct +math : [math] block-cmd
   direct \eqn : [math] inline-cmd
+  direct +math-list : [math list] block-cmd
+  direct \math-list : [math list] inline-cmd
   direct +align : [(math list) list] block-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
@@ -206,12 +208,54 @@ module Math : sig
 
   direct \land : [] math-cmd
   direct \lor : [] math-cmd
-  direct \Rightarrow : [] math-cmd
+
   direct \Leftarrow : [] math-cmd
+  direct \Rightarrow : [] math-cmd
   direct \Leftrightarrow : [] math-cmd
-  direct \rightarrow : [] math-cmd
+  direct \Uparrow : [] math-cmd
+  direct \Downarrow : [] math-cmd
+  direct \Updownarrow : [] math-cmd
+  direct \nRightarrow : [] math-cmd
+  direct \nLeftarrow : [] math-cmd
+  direct \nLeftrightarrow : [] math-cmd
   direct \leftarrow : [] math-cmd
+  direct \rightarrow : [] math-cmd
+  direct \uparrow : [] math-cmd
+  direct \downarrow : [] math-cmd
+  direct \updownarrow : [] math-cmd
+  direct \nwarrow : [] math-cmd
+  direct \nearrow : [] math-cmd
+  direct \searrow : [] math-cmd
+  direct \swarrow : [] math-cmd
+  direct \nleftarrow : [] math-cmd
+  direct \nrightarrow : [] math-cmd
+  direct \nleftrightarrow : [] math-cmd
   direct \mapsto : [] math-cmd
+  direct \hookleftarrow : [] math-cmd
+  direct \hookrightarrow : [] math-cmd
+  direct \rightarrowtail : [] math-cmd
+  direct \leftarrowtail : [] math-cmd
+  direct \twoheadleftarrow : [] math-cmd
+  direct \twoheadrightarrow : [] math-cmd
+  direct \twoheaduparrow : [] math-cmd
+  direct \twoheaddownarrow : [] math-cmd
+  direct \leftharpoonup : [] math-cmd
+  direct \leftharpoondown : [] math-cmd
+  direct \rightharpoonup : [] math-cmd
+  direct \rightharpoondown : [] math-cmd
+  direct \rightleftharpoons : [] math-cmd
+  direct \upharpoonright : [] math-cmd
+  direct \upharpoonleft : [] math-cmd
+  direct \downharpoonright : [] math-cmd
+  direct \downharpoonleft : [] math-cmd
+  direct \longleftarrow : [] math-cmd
+  direct \longrightarrow : [] math-cmd
+  direct \longleftrightarrow : [] math-cmd
+  direct \Longleftarrow : [] math-cmd
+  direct \Longrightarrow : [] math-cmd
+  direct \Longleftrightarrow : [] math-cmd
+  direct \circlearrowleft : [] math-cmd
+  direct \circlearrowright : [] math-cmd
 
   direct \int : [] math-cmd
 
@@ -229,7 +273,6 @@ module Math : sig
 
   % -- temporary --
   direct \synteq : [] math-cmd
-  direct \derive : [math; math] math-cmd
   direct \tyjd : [math; math; math] math-cmd
   direct \and-also : [] math-cmd
   direct \tmabstyped : [math; math; math] math-cmd
@@ -295,6 +338,23 @@ end = struct
   let-inline ctx \eqn math =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+math(math);>)
+
+
+  let-block ctx +math-list mlst =
+    let ib-fil =
+      discretionary 100 inline-fil inline-fil inline-fil
+    in
+    let ib =
+      mlst |> List.fold-left (fun ibacc m -> (
+        ibacc ++ embed-math ctx m ++ ib-fil
+      )) ib-fil
+    in
+      line-break true true (ctx |> set-min-gap-of-lines 12pt) ib
+
+
+  let-inline ctx \math-list mlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math-list(mlst);>)
 
 
   let-block ctx +align mlstlst =
@@ -552,12 +612,54 @@ end = struct
 
   let-math \land = rel `∧`
   let-math \lor  = rel `∨`
-  let-math \Rightarrow = rel `⇒`
+
   let-math \Leftarrow = rel `⇐`
+  let-math \Rightarrow = rel `⇒`
   let-math \Leftrightarrow = rel `⇔`
-  let-math \rightarrow = rel `→`
+  let-math \Uparrow = rel `⇑`
+  let-math \Downarrow = rel `⇓`
+  let-math \Updownarrow = rel `⇕`
+  let-math \nRightarrow = rel `⇍`
+  let-math \nLeftarrow = rel `⇏`
+  let-math \nLeftrightarrow = rel `⇎`
   let-math \leftarrow = rel `←`
+  let-math \rightarrow = rel `→`
+  let-math \uparrow = rel `↑`
+  let-math \downarrow = rel `↓`
+  let-math \updownarrow = rel `↕`
+  let-math \nwarrow = rel `↖`
+  let-math \nearrow = rel `↗`
+  let-math \searrow = rel `↘`
+  let-math \swarrow = rel `↙`
+  let-math \nleftarrow = rel `↚`
+  let-math \nrightarrow = rel `↛`
+  let-math \nleftrightarrow = rel `↮`
   let-math \mapsto = rel `↦`
+  let-math \hookleftarrow = rel `↩`
+  let-math \hookrightarrow = rel `↪`
+  let-math \rightarrowtail = rel `↢`
+  let-math \leftarrowtail = rel `↣`
+  let-math \twoheadleftarrow = rel `↞`
+  let-math \twoheadrightarrow = rel `↠`
+  let-math \twoheaduparrow = rel `↟`
+  let-math \twoheaddownarrow = rel `↡`
+  let-math \leftharpoonup = rel `↼`
+  let-math \leftharpoondown = rel `↽`
+  let-math \rightharpoonup = rel `⇀`
+  let-math \rightharpoondown = rel `⇁`
+  let-math \rightleftharpoons = rel `⇌`
+  let-math \upharpoonright = rel `↾`
+  let-math \upharpoonleft = rel `↿`
+  let-math \downharpoonright = rel `⇂`
+  let-math \downharpoonleft = rel `⇃`
+  let-math \longleftarrow = rel `⟵`
+  let-math \longrightarrow = rel `⟶`
+  let-math \longleftrightarrow = rel `⟷`
+  let-math \Longleftarrow = rel `⟸`
+  let-math \Longrightarrow = rel `⟹`
+  let-math \Longleftrightarrow = rel `⟺`
+  let-math \circlearrowleft = rel `↺`
+  let-math \circlearrowright = rel `↻`
 
   let-math \ordd = prefix `d`
   let-math \partial = prefix `∂`
@@ -577,30 +679,6 @@ end = struct
 
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
-
-  let rectangle (x, y) w h =
-    start-path (x, y)
-      |> line-to (x +' w, y)
-      |> line-to (x +' w, y +' h)
-      |> line-to (x, y +' h)
-      |> close-with-line
-
-  let math-deriv m1 m2 =
-    text-in-math MathOrd (fun ctx -> (
-      let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
-      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
-      let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
-      let thickness = 0.5pt in
-      let gap = 2pt in
-      let bar =
-        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
-          [ fill (Gray(0.)) (rectangle (x, y) w thickness); ]
-        )
-      in
-        line-stack-bottom [ib1; bar; ib2]
-    ))
-
-  let-math \derive = math-deriv
 
   let-math \and-also = math-space
 
