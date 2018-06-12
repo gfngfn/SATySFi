@@ -59,18 +59,6 @@ let newframe_recycle env preenv size =
         (global, (Array.make size Nil) :: local)
 
 
-let get_input_horz_content env (value : syntactic_value) =
-  match value with
-  | CompiledInputHorzIntermediate(imihlist) -> CompiledInputHorzWithEnvironment(imihlist, env)
-  | _                                       -> report_bug_vm "bad stack top item"
-
-
-let get_input_vert_content env (value : syntactic_value) =
-  match value with
-  | CompiledInputVertIntermediate(imivlist) -> CompiledInputVertWithEnvironment(imivlist, env)
-  | _                                       -> report_bug_vm "bad stack top item"
-
-
 let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_box list =
   let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s_utf8) in
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
@@ -116,6 +104,50 @@ let rec get_path env c_pathcomplst c_cycleopt =
     (pathelemlst, closingopt)
 
 
+and exec_input_horz_content env ihlst =
+  let imihlist = ihlst |> List.map (function
+    | CompiledInputHorzText(s) ->
+        CompiledImInputHorzText(s)
+
+    | CompiledInputHorzEmbedded(code) ->
+        CompiledImInputHorzEmbedded(code)
+
+    | CompiledInputHorzEmbeddedMath(code) ->
+        CompiledImInputHorzEmbeddedMath(code)
+
+    | CompiledInputHorzContent(code) ->
+        let value = exec [] env code [] in
+        begin
+          match value with
+          | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
+              CompiledImInputHorzContent(imihlst, envsub)
+
+          | _ -> report_bug_vm "exec_input_horz_content"
+        end
+
+  ) in
+    CompiledInputHorzWithEnvironment(imihlist, env)
+
+
+and exec_input_vert_content env ivlst =
+  let imivlst = ivlst |> List.map (function
+    | CompiledInputVertEmbedded(code) ->
+        CompiledImInputVertEmbedded(code)
+
+    | CompiledInputVertContent(code) ->
+        let value = exec [] env code [] in
+        begin
+          match value with
+          | CompiledInputVertWithEnvironment(imivlst, envsub) ->
+              CompiledImInputVertContent(imivlst, envsub)
+
+          | _ -> report_bug_vm "exec_input_vert_content"
+        end
+
+  ) in
+    CompiledInputVertWithEnvironment(imivlst, env)
+
+
 and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
@@ -124,15 +156,8 @@ and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imi
             let valueret = exec [valuectx] env (code) [] in
               get_vert valueret
 
-        | CompiledImInputVertContent(ctcode) ->
-            let value = exec [] env ctcode [] in
-              begin
-                match value with
-                | CompiledInputVertWithEnvironment(imivlst, envsub) ->
-                    interpret_commands envsub imivlst
-
-                | _ -> report_bug_vm "interpret_input_vert_content"
-              end
+        | CompiledImInputVertContent(imivlstsub, envsub) ->
+            interpret_commands envsub imivlstsub
 
       ) |> List.concat
   in
@@ -161,17 +186,10 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
                 let nmih = CompiledNomInputHorzEmbedded(mathcode @ [OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 
-            | CompiledImInputHorzContent(ctcode) ->
-                let value = exec [] env ctcode [] in
-                  begin
-                    match value with
-                    | CompiledInputHorzWithEnvironment(imihlst, envsub) ->
-                        let nmihlstsub = normalize imihlst in
-                        let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
-                          Alist.extend acc nmih
-
-                    | _ -> report_bug_vm "interpret_input_horz_content"
-                  end
+            | CompiledImInputHorzContent(imihlst, envsub) ->
+                let nmihlstsub = normalize imihlst in
+                let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
+                  Alist.extend acc nmih
 
           ) Alist.empty |> Alist.to_list
       in

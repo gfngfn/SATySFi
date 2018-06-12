@@ -445,17 +445,17 @@ code: |
 ---
 inst: ClosureInputHorz
 fields:
-- body : syntactic_value
+- imihlst : compiled_input_horz_element list
 code: |
-  let imihclos = get_input_horz_content env body in
+  let imihclos = exec_input_horz_content env imihlst in
     exec (imihclos :: stack) env code dump
 
 ---
 inst: ClosureInputVert
 fields:
-- body : syntactic_value
+- imivlst : compiled_input_vert_element list
 code: |
-  let imivclos = get_input_vert_content env body in
+  let imivclos = exec_input_vert_content env imivlst in
     exec (imivclos :: stack) env code dump
 
 ---
