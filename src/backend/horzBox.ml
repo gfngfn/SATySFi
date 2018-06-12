@@ -206,6 +206,12 @@ type context_main = {
   math_char_class        : math_char_class;
   before_word_break      : horz_box list;
   after_word_break       : horz_box list;
+  space_math_bin         : float * float * float;
+  space_math_rel         : float * float * float;
+  space_math_op          : float * float * float;
+  space_math_punct       : float * float * float;
+  space_math_inner       : float * float * float;
+  space_math_prefix      : float * float * float;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t

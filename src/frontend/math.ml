@@ -293,31 +293,33 @@ let normalize_math_kind mkprev mknext mkraw =
       mkraw
 
 
-let space_ord_bin fontsize =
-  Some(outer_empty (fontsize *% 0.25) Length.zero Length.zero)
-    (* temporary; should be variable *)
+let space_ord_bin ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_bin in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
 
-let space_ord_rel fontsize =
-  Some(outer_empty (fontsize *% 0.375) Length.zero Length.zero)
-    (* temporary; should be variable *)
+let space_ord_rel ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_rel in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
 
-let space_ord_inner fontsize =
-  Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
-    (* temporary; should be variable *)
+let space_ord_inner ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_inner in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
 
-let space_punct fontsize =
-  space_ord_rel fontsize  (* temporary *)
+let space_punct ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_punct in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
-let space_ord_op fontsize =
-  space_ord_inner fontsize  (* temporary *)
+let space_ord_op ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_op in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
 
-let space_ord_prefix fontsize =
-  Some(outer_empty (fontsize *% 0.125) Length.zero Length.zero)
-    (* temporary; should be variable *)
+let space_ord_prefix ctx fontsize =
+  let (r_natural, r_shrink, r_stretch) = ctx.HorzBox.space_math_prefix in
+    Some(outer_empty (fontsize *% r_natural) (fontsize *% r_shrink) (fontsize *% r_stretch))
 
 
 let space_after_script mathctx =
@@ -335,6 +337,7 @@ let space_after_script mathctx =
 
 let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr : space_correction) (mk : math_kind) : horz_box option =
   let is_in_script = not (MathContext.is_in_base_level mathctx) in
+  let ctx = MathContext.context_main mathctx in
   let fontsize = FontInfo.actual_math_font_size mathctx in
   if is_in_script then
     match (mkprev, mk) with
@@ -343,13 +346,13 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
     | (MathOperator, MathOperator)
     | (MathClose   , MathOperator)
     | (MathInner   , MathOperator)
-        -> space_ord_op fontsize
+        -> space_ord_op ctx fontsize
 
     | _ -> None
   else
       match (mkprev, mk) with
       | (MathPunct   , _           )
-        -> space_punct fontsize
+        -> space_punct ctx fontsize
 
       | (MathInner   , MathOrdinary)
       | (MathInner   , MathOpen    )
@@ -358,7 +361,7 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
       | (MathOrdinary, MathInner   )
       | (MathPrefix  , MathInner   )
       | (MathClose   , MathInner   )
-        -> space_ord_inner fontsize
+        -> space_ord_inner ctx fontsize
 
       | (_           , MathClose   )
         ->
@@ -387,7 +390,7 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
       | (MathOrdinary, MathBinary  )
       | (MathClose   , MathBinary  )
       | (MathInner   , MathBinary  )
-        -> space_ord_bin fontsize
+        -> space_ord_bin ctx fontsize
 
       | (MathRelation, MathOrdinary)
       | (MathRelation, MathOperator)
@@ -398,7 +401,7 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
       | (MathOperator, MathRelation)
       | (MathInner   , MathRelation)
       | (MathClose   , MathRelation)
-        -> space_ord_rel fontsize
+        -> space_ord_rel ctx fontsize
 
       | (MathOperator, MathOrdinary)
       | (MathOperator, MathOperator)
@@ -407,11 +410,11 @@ let space_between_math_kinds (mathctx : math_context) (mkprev : math_kind) (corr
       | (MathOrdinary, MathOperator)
       | (MathClose   , MathOperator)
       | (MathInner   , MathOperator)
-        -> space_ord_op fontsize
+        -> space_ord_op ctx fontsize
 
       | (MathOrdinary, MathPrefix  )
       | (MathInner   , MathPrefix  )
-        -> space_ord_prefix fontsize
+        -> space_ord_prefix ctx fontsize
 
       | (_           , MathEnd     )
       | (MathEnd     , _           )
@@ -480,50 +483,50 @@ let get_right_kern lmmain hgt dpt =
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
 
-let get_math_kind_of_math_element mathctx = function
+let get_math_kind_of_math_element (ctx : input_context) = function
   | MathElement(mk, _)              -> mk
-  | MathVariantChar(s)              -> let (mk, _) = MathContext.convert_math_variant_char mathctx s in mk
+  | MathVariantChar(s)              -> let (mk, _) = MathContext.convert_math_variant_char ctx s in mk
   | MathVariantCharDirect(mk, _, _) -> mk
 
 
-let rec get_left_math_kind mathctx = function
-  | MathPure(me)                   -> get_math_kind_of_math_element mathctx me
+let rec get_left_math_kind (ctx : input_context) = function
+  | MathPure(me)                   -> get_math_kind_of_math_element ctx me
   | MathGroup(mkL, _, _)           -> mkL
   | MathSuperscript([], _)         -> MathEnd
-  | MathSuperscript(mathB :: _, _) -> get_left_math_kind mathctx mathB
+  | MathSuperscript(mathB :: _, _) -> get_left_math_kind ctx mathB
   | MathSubscript([], _)           -> MathEnd
-  | MathSubscript(mathB :: _, _)   -> get_left_math_kind mathctx mathB
+  | MathSubscript(mathB :: _, _)   -> get_left_math_kind ctx mathB
   | MathFraction(_, _)             -> MathInner
   | MathRadical(_)                 -> MathInner
   | MathRadicalWithDegree(_, _)    -> MathInner
   | MathParen(_, _, _)             -> MathOpen
-  | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind mathctx mathB
+  | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
   | MathLowerLimit([], _)          -> MathEnd
-  | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind mathctx mathB
+  | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
   | MathUpperLimit([], _)          -> MathEnd
   | MathChangeContext(_, [])       -> MathEnd
-  | MathChangeContext(_, m :: _)   -> get_left_math_kind mathctx m
+  | MathChangeContext(_, m :: _)   -> get_left_math_kind ctx m
 
 
-let rec get_right_math_kind mathctx math =
+let rec get_right_math_kind (ctx : input_context) math =
   try
     match math with
-    | MathPure(me)                 -> get_math_kind_of_math_element mathctx me
+    | MathPure(me)                 -> get_math_kind_of_math_element ctx me
     | MathGroup(_, mkR, _)         -> mkR
     | MathSuperscript([], _)       -> MathEnd
-    | MathSuperscript(mathlst, _)  -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathSuperscript(mathlst, _)  -> get_right_math_kind ctx (List.hd (List.rev mathlst))
     | MathSubscript([], _)         -> MathEnd
-    | MathSubscript(mathlst, _)    -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathSubscript(mathlst, _)    -> get_right_math_kind ctx (List.hd (List.rev mathlst))
     | MathFraction(_, _)           -> MathInner
     | MathRadical(_)               -> MathInner
     | MathRadicalWithDegree(_, _)  -> MathInner
     | MathParen(_, _, _)           -> MathClose
     | MathLowerLimit([], _)        -> MathEnd
-    | MathLowerLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathLowerLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
     | MathUpperLimit([], _)        -> MathEnd
-    | MathUpperLimit(mathlst, _)   -> get_right_math_kind mathctx (List.hd (List.rev mathlst))
+    | MathUpperLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
     | MathChangeContext(_, [])     -> MathEnd
-    | MathChangeContext(_, mlst)   -> get_right_math_kind mathctx (List.hd (List.rev mlst))
+    | MathChangeContext(_, mlst)   -> get_right_math_kind ctx (List.hd (List.rev mlst))
   with
   | Invalid_argument(_) -> assert false
 
@@ -713,7 +716,7 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathVariantChar(s) ->
-      let (mkrawv, mvvaluemain) = MathContext.convert_math_variant_char mathctx s in
+      let (mkrawv, mvvaluemain) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) s in
       let mk = normalize_math_kind mkprev mknext mkrawv in
       begin
         match mvvaluemain with
@@ -724,13 +727,10 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
             convert_math_char_with_kern mathctx is_big uchlst mk mckernfL mckernfR
       end
 
-  | MathVariantCharDirect(mkraw, is_big, mvsty) ->  (* TEMPORARY; should extend more *)
+  | MathVariantCharDirect(mkraw, is_big, mvsty) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
       let mccls = MathContext.math_char_class mathctx in
       let uchlst =
-(*
-        let () = Format.printf "Math> %a\n" pp_math_char_class mccls in  (* for debug *)
-*)
         match mccls with
         | MathItalic       -> mvsty.math_italic
         | MathBoldItalic   -> mvsty.math_bold_italic
@@ -741,7 +741,6 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathFraktur      -> mvsty.math_fraktur
         | MathBoldFraktur  -> mvsty.math_bold_fraktur
         | MathDoubleStruck -> mvsty.math_double_struck
-            (* TEMPORARY; should extend more *)
       in
         convert_math_char mathctx is_big uchlst mk
 
@@ -757,15 +756,15 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
 and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math_kind) (mlst : math list) : low_math =
   let optres =
     mlst |> list_fold_adjacent (fun opt math mathprevopt mathnextopt ->
-      let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind mathctx mathprev in
-      let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind mathctx mathnext in
+      let mkprev = match mathprevopt with None -> mkfirst | Some(mathprev) -> get_right_math_kind (MathContext.context_for_text mathctx) mathprev in
+      let mknext = match mathnextopt with None -> mklast  | Some(mathnext) -> get_left_math_kind (MathContext.context_for_text mathctx) mathnext in
         (* -- get the rightward math class of the previous, and the leftward math class of the next -- *)
       let (lmmain, hgt, dpt) = convert_to_low_single mkprev mknext mathctx math in
       let rk = get_right_kern lmmain hgt dpt in
       let lk = get_left_kern lmmain hgt dpt in
-      match opt with
-      | None                                        -> Some((hgt, dpt, lk, rk, lmmain :: []))
-      | Some((hgtprev, dptprev, lkfirst, _, lmacc)) -> Some((Length.max hgt hgtprev, Length.min dpt dptprev, lkfirst, rk, lmmain :: lmacc))
+        match opt with
+        | None                                        -> Some((hgt, dpt, lk, rk, Alist.extend Alist.empty lmmain))
+        | Some((hgtprev, dptprev, lkfirst, _, lmacc)) -> Some((Length.max hgt hgtprev, Length.min dpt dptprev, lkfirst, rk, Alist.extend lmacc lmmain))
     ) None
   in
   match optres with
@@ -775,7 +774,7 @@ and convert_to_low (mathctx : math_context) (mkfirst : math_kind) (mklast : math
         ([], Length.zero, Length.zero, lk, rk)
 
   | Some((hgt, dpt, lkfirst, rklast, lmmainacc)) ->
-      (List.rev lmmainacc, hgt, dpt, lkfirst, rklast)
+      (Alist.to_list lmmainacc, hgt, dpt, lkfirst, rklast)
 
 
 and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : math_context) (math : math) : low_math_main * length * length =
