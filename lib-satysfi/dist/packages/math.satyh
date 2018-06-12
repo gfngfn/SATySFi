@@ -5,6 +5,7 @@ module Math : sig
 
   direct \math : [math] inline-cmd
   direct +math : [math] block-cmd
+  direct \eqn : [math] inline-cmd
   direct +align : [(math list) list] block-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
@@ -290,11 +291,17 @@ end = struct
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
+
+  let-inline ctx \eqn math =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math(math);>)
+
+
   let-block ctx +align mlstlst =
     let vlen = 4pt in
     let celllstlst =
       mlstlst |> List.map (fun mlst -> (
-        mlst |> List.map-adjacent (fun m mprevopt mnextopt -> (
+        mlst |> List.mapi-adjacent (fun index m _ mnextopt -> (
           let ibm = embed-math ctx m in
           let ib =
             match mnextopt with
@@ -309,9 +316,10 @@ end = struct
                 )
           in
           let ib =
-            match mprevopt with
-            | None    -> inline-fil ++ ib
-            | Some(_) -> ib ++ inline-fil
+            if index mod 2 == 0 then
+              inline-fil ++ ib
+            else
+              ib ++ inline-fil
           in
             NormalCell((0pt, 0pt, vlen, vlen), ib)
         ))

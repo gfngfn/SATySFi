@@ -1,0 +1,36 @@
+@require: math
+
+let insert-bars mlst =
+  Math.join ${\mid} mlst
+
+%  mlst |> List.fold-left-adjacent (fun macc m moptprev _ -> (
+%    match moptprev with
+%    | None -> m
+%    | _    -> ${#macc \mid #m}
+%  )) ${}
+
+
+let-block ctx +BNF mnontm mlstlst =
+  let sz = get-font-size ctx in
+  let vpad = sz *' 0.25 in
+  let padsL = (0pt, sz *' 0.5, vpad, vpad) in
+  let padsR = (0pt, 0pt, vpad, vpad) in
+  let celllstlst =
+    mlstlst |> List.fold-lefti (fun i acc mlst -> (
+      let c0 =
+        if i == 0 then
+          NormalCell(padsL, embed-math ctx ${#mnontm \mathrel{::=}})
+        else
+          NormalCell(padsL, inline-fil ++ embed-math ctx ${\mid})
+      in
+      let ib = embed-math ctx (insert-bars mlst) ++ inline-fil in
+      [c0; NormalCell(padsR, ib)] :: acc
+    )) [] |> List.reverse
+  in
+  let ib = tabular celllstlst (fun _ _ -> []) in
+  line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+
+
+let-inline ctx \BNF mnontm mlstlst =
+  inline-fil ++
+    embed-block-breakable ctx (read-block ctx '<+BNF(mnontm)(mlstlst);>)
