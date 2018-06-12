@@ -5,6 +5,7 @@ module Math : sig
 
   direct \math : [math] inline-cmd
   direct +math : [math] block-cmd
+  direct +align : [(math list) list] block-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
@@ -12,7 +13,7 @@ module Math : sig
   direct \upper : [math; math] math-cmd
   direct \math-skip : [length] math-cmd
   direct \math-color : [color; math] math-cmd
-  val concat : math -> math list -> math
+  val join : math -> math list -> math
 
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
@@ -230,12 +231,11 @@ module Math : sig
   direct \derive : [math; math] math-cmd
   direct \tyjd : [math; math; math] math-cmd
   direct \and-also : [] math-cmd
-  direct \overwrite : [math; math; math] math-cmd
   direct \tmabstyped : [math; math; math] math-cmd
 
 end = struct
 
-  let concat msep mlst =
+  let join msep mlst =
     match
       mlst |> List.fold-left (fun maccopt m -> (
         match maccopt with
@@ -262,7 +262,7 @@ end = struct
     text-in-math MathOrd (fun ctx -> read-inline ctx it)
 
   let-math \math-skip len =
-    text-in-math MathOrd (fun ctx -> inline-skip len)
+    text-in-math MathOrd (fun _ -> inline-skip len)
 
   let-math \math-color color m =
     math-color color m
@@ -290,8 +290,35 @@ end = struct
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-%  let math-ord-char cp =
-%    math-char MathOrd (string-unexplode [cp])
+  let-block ctx +align mlstlst =
+    let vlen = 4pt in
+    let celllstlst =
+      mlstlst |> List.map (fun mlst -> (
+        mlst |> List.map-adjacent (fun m mprevopt mnextopt -> (
+          let ibm = embed-math ctx m in
+          let ib =
+            match mnextopt with
+            | None ->
+                ibm
+
+            | Some(mnext) ->
+                let ibspaceopt = space-between-maths ctx m mnext in
+                ( match ibspaceopt with
+                  | None          -> ibm
+                  | Some(ibspace) -> ibm ++ ibspace
+                )
+          in
+          let ib =
+            match mprevopt with
+            | None    -> inline-fil ++ ib
+            | Some(_) -> ib ++ inline-fil
+          in
+            NormalCell((0pt, 0pt, vlen, vlen), ib)
+        ))
+      ))
+    in
+      line-break true true ctx (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+        % temporary
 
 
   let math-list lst =
