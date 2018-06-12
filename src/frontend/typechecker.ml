@@ -394,7 +394,13 @@ let rec typecheck
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
         | None ->
-            raise (UndefinedVariable(rng, mdlnmlst, varnm))
+            begin match Typeenv.find_candidate tyenv mdlnmlst varnm rng with
+            | None ->
+              raise (UndefinedVariable(rng, mdlnmlst, varnm))
+            | Some(candidates) ->
+              Format.printf "Did you mean %s?\n" (List.hd candidates);
+              raise (UndefinedVariable(rng, mdlnmlst, varnm))
+            end
 
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in

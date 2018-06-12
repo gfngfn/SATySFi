@@ -145,6 +145,27 @@ let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) :
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
+let edit_distance s1 s2 = 
+  let len1 = String.length s1 in
+  let len2 = String.length s2 in
+  let d = Array.make_matrix (len1+1) (len2+1) 0 in
+  begin
+    for i = 0 to len1 do
+      d.(i).(0) <- i
+    done;
+    for j = 0 to len2 do
+      d.(0).(j) <- j
+    done;
+    for i = 1 to len1 do
+      for j = 1 to len2 do
+        let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 3 in
+          d.(i).(j) <-  min (min (d.(i-1).(j)+3) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
+      done
+    done;
+    d.(len1).(len2)
+  end
+
+
 (* PUBLIC *)
 let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : (poly_type * EvalVarID.t) option =
   let open OptionMonad in
@@ -172,6 +193,33 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
           return (ptysig, evid)
     )
 
+
+(* PUBLIC *)
+let find_candidate (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list option =
+  let open OptionMonad in
+  let nmtoid = tyenv.name_to_id_map in
+  let mtr = tyenv.main_tree in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let addrlast =
+    mdlnmlst |> List.map (fun nm ->
+      match nmtoid |> ModuleNameMap.find_opt nm with
+      | None        -> raise (UndefinedModuleName(rng, nm))
+      | Some(mdlid) -> mdlid
+    )
+  in
+  let addrstr = String.concat "" (List.map (fun m -> ModuleID.extract_name m ^ ".") addrlast) in  (* for debug *)
+    ModuleTree.search_backward mtr addrlst addrlast (fun (vdmap, _, _, sigopt) ->
+      let (cand, _) = VarMap.fold (fun k _ (cand, minscore) ->
+        let score = edit_distance varnm k in
+        if score < minscore then
+          ([k], score)
+        else if score = minscore then
+          (k::cand, minscore)
+        else
+          (cand, minscore)
+      ) vdmap ([], 1000) in
+      return cand
+    )
 
 let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
   let open OptionMonad in
