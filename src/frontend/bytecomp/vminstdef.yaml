@@ -1407,6 +1407,21 @@ code: |
   Context(Primitives.get_initial_context txtwid, valuecmd)
 
 ---
+inst: PrimitiveSetMinGapOfLines
+is-primitive: yes
+name: "set-min-gap-of-lines"
+type: |
+  ~% (tLN @-> tCTX @-> tCTX)
+
+params:
+- lengap : length
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    min_gap_of_lines = Length.max Length.zero lengap;
+  }), valuecmd)
+
+---
 inst: PrimitiveSetSpaceRatio
 is-primitive: yes
 name: "set-space-ratio"
