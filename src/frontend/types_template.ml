@@ -457,15 +457,25 @@ and location = syntactic_value ref
 
 and vmenv = environment * (syntactic_value array) list
 
+and compiled_input_horz_element =
+  | CompiledInputHorzText         of string
+  | CompiledInputHorzEmbedded     of instruction list
+  | CompiledInputHorzContent      of instruction list
+  | CompiledInputHorzEmbeddedMath of instruction list
+
 and compiled_intermediate_input_horz_element =
   | CompiledImInputHorzText         of string
   | CompiledImInputHorzEmbedded     of instruction list
-  | CompiledImInputHorzContent of instruction list
+  | CompiledImInputHorzContent of compiled_intermediate_input_horz_element list * vmenv
   | CompiledImInputHorzEmbeddedMath of instruction list
+
+and compiled_input_vert_element =
+  | CompiledInputVertEmbedded of instruction list
+  | CompiledInputVertContent  of instruction list
 
 and compiled_intermediate_input_vert_element =
   | CompiledImInputVertEmbedded of instruction list
-  | CompiledImInputVertContent  of instruction list
+  | CompiledImInputVertContent  of compiled_intermediate_input_vert_element list * vmenv
 
 and ir_input_horz_element =
   | IRInputHorzText         of string
@@ -594,10 +604,9 @@ and syntactic_value =
   | Location              of StoreID.t
 
   | InputHorzWithEnvironment of intermediate_input_horz_element list * environment
-  | CompiledInputHorzIntermediate    of compiled_intermediate_input_horz_element list
   | CompiledInputHorzWithEnvironment    of compiled_intermediate_input_horz_element list * vmenv
+
   | InputVertWithEnvironment of intermediate_input_vert_element list * environment
-  | CompiledInputVertIntermediate    of compiled_intermediate_input_vert_element list
   | CompiledInputVertWithEnvironment    of compiled_intermediate_input_vert_element list * vmenv
 
   | Horz                  of HorzBox.horz_box list
