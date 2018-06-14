@@ -1031,11 +1031,9 @@ module MathContext
       let mkmap = ctx.math_class_map in
         match mkmap |> MathClassMap.find_opt s with
         | Some(uchlstaft, mk) ->
-            Format.printf "Types> '%s': found\n" s;  (* for debug *)
             (mk, uchlstaft)
 
         | None ->
-            Format.printf "Types> '%s': NOT found\n" s;  (* for debug *)
             let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
             let uchlstaft =
               uchlst |> List.map (fun uch ->
@@ -1044,7 +1042,6 @@ module MathContext
                 | None         -> uch
               )
             in
-            Format.printf "Types> ---> %s\n" (InternalText.to_utf8 (InternalText.of_uchar_list uchlstaft));
               (MathOrdinary, uchlstaft)
 
     let context_for_text (mctx : t) =
