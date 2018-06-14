@@ -556,20 +556,28 @@ inst: PrimitiveSetMathVariantToChar
 is-primitive: yes
 name: "set-math-variant-char"
 type: |
-  ~% (tS @-> tMCCLS @-> tMATHCLS @-> tI @-> tCTX @-> tCTX)
+  ~% (tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
 
 params:
-- s : string
 - mccls : math_char_class
-- mathcls : math_class
-- uchlst : uchar_list
-- (ctx, v) : context
+- cpfrom : int
+- cpto : int
+- (ctx, valuecmd) : context
 code: |
-  let mvvalue = (mathcls, HorzBox.MathVariantToChar(false, uchlst)) in
+  let uchfrom = Uchar.of_int cpfrom in
+  let uchto = Uchar.of_int cpto in
   let mcclsmap = ctx.HorzBox.math_variant_char_map in
     Context(HorzBox.({ ctx with
-      math_variant_char_map = mcclsmap |> MathVariantCharMap.add (s, mccls) mvvalue;
-    }), v)
+      math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
+    }), valuecmd)
+
+#---
+#inst: PrimitiveConvertStringForMath
+#is-primitive: yes
+#name: "convert-string-for-math"
+#type: |
+#  ~% (tCTX @-> tMCCLS @-> tS @->)
+
 
 ---
 inst: PrimitiveSetMathCommand

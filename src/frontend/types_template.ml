@@ -708,12 +708,8 @@ and math_element =
       (* --
          (1) math class
          (2) whether it is a big operator
-         (3) Unicode code point for Italic
-         (4) Unicode code point for bold Italic
-         (5) Unicode code point for Roman
-         (6) Unicode code point for bold Roman
+         (3) Unicode code point for all math_char_class
          -- *)
-      (* TEMPORARY; should extend more *)
 
 and math_context_change =
   | MathChangeColor         of color
@@ -992,7 +988,7 @@ module MathContext
     val make : input_context -> t
     val context_for_text : t -> input_context
     val context_main : t -> HorzBox.context_main
-    val convert_math_variant_char : input_context -> string -> HorzBox.math_variant_value
+    val convert_math_variant_char : input_context -> string -> HorzBox.math_kind * Uchar.t list
     val color : t -> color
     val set_color : color -> t -> t
     val enter_script : t -> t
@@ -1029,15 +1025,27 @@ module MathContext
         }
 
     let convert_math_variant_char ((ctx, _) : input_context) (s : string) =
-      let mcclsmap = ctx.HorzBox.math_variant_char_map in
-      let mccls = ctx.HorzBox.math_char_class in
-        match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (s, mccls) with
-        | Some(mvvalue) ->
-            mvvalue
+      let open HorzBox in
+      let mcclsmap = ctx.math_variant_char_map in
+      let mccls = ctx.math_char_class in
+      let mkmap = ctx.math_class_map in
+        match mkmap |> MathClassMap.find_opt s with
+        | Some(uchlstaft, mk) ->
+            Format.printf "Types> '%s': found\n" s;  (* for debug *)
+            (mk, uchlstaft)
 
         | None ->
+            Format.printf "Types> '%s': NOT found\n" s;  (* for debug *)
             let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
-              (HorzBox.MathOrdinary, HorzBox.MathVariantToChar(false, uchlst))
+            let uchlstaft =
+              uchlst |> List.map (fun uch ->
+                match mcclsmap |> HorzBox.MathVariantCharMap.find_opt (uch, mccls) with
+                | Some(uchaft) -> uchaft
+                | None         -> uch
+              )
+            in
+            Format.printf "Types> ---> %s\n" (InternalText.to_utf8 (InternalText.of_uchar_list uchlstaft));
+              (MathOrdinary, uchlstaft)
 
     let context_for_text (mctx : t) =
       mctx.context_for_text

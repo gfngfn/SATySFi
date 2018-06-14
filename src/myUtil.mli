@@ -1,7 +1,9 @@
 
-val ascii_capital_of_index : int -> string
+val uchar_of_char : char -> Uchar.t
 
-val ascii_small_of_index : int -> string
+val ascii_capital_of_index : int -> Uchar.t
+
+val ascii_small_of_index : int -> Uchar.t
 
 val range : int -> int -> int list
 
@@ -27,7 +29,7 @@ module ResultMonad : sig
   val return : 'a -> ('a, 'b) result
   val err : 'b -> ('a, 'b) result
 end
- 
+
 
 val ( += ) : int ref -> int -> unit
 

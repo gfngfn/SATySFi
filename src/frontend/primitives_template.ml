@@ -372,109 +372,120 @@ let default_radical hgt_bar t_bar dpt fontsize color =
     [HorzPure(PHGFixedGraphics(wid, hgt_bar +% t_bar, nonnegdpt, graphics))]
 
 
-let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVariantCharMap.t =
-  let open HorzBox in
-  let code_point cp = MathVariantToChar(false, [Uchar.of_int cp]) in
+let code_point cp = Uchar.of_int cp
 
-  List.fold_left (fun map (s, mccls, mk, mvvmain) -> map |> MathVariantCharMap.add (s, mccls) (mk, mvvmain)) MathVariantCharMap.empty
+
+let default_math_variant_char_map : Uchar.t HorzBox.MathVariantCharMap.t =
+  let open HorzBox in
+
+  List.fold_left (fun map (uchfrom, mccls, uchto) ->
+    map |> MathVariantCharMap.add (uchfrom, mccls) uchto
+  ) MathVariantCharMap.empty
     (List.concat [
 
     (* -- Latin capital letter to its normal italic -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathItalic, MathOrdinary, code_point (0x1D434 + i)));
+        (ascii_capital_of_index i, MathItalic, code_point (0x1D434 + i)));
     (* -- Latin small letter to its normal italic -- *)
       (List.append (range 0 6) (range 8 25)) |> List.map (fun i ->
-        (ascii_small_of_index i, MathItalic, MathOrdinary, code_point (0x1D44E + i)));
-      [("h", MathItalic, MathOrdinary, code_point 0x210E)];
+        (ascii_small_of_index i, MathItalic, code_point (0x1D44E + i)));
+      [(uchar_of_char 'h', MathItalic, code_point 0x210E)];
 
     (* -- Latin capital letter to its bold italic -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D468 + i)));
+        (ascii_capital_of_index i, MathBoldItalic, code_point (0x1D468 + i)));
     (* -- Latin small letter to its bold italic -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldItalic, MathOrdinary, code_point (0x1D482 + i)));
+        (ascii_small_of_index i, MathBoldItalic, code_point (0x1D482 + i)));
 
     (* -- Latin capital letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathRoman, MathOrdinary, code_point (Char.code 'A' + i)));
+        (ascii_capital_of_index i, MathRoman, code_point (Char.code 'A' + i)));
     (* -- Latin small letter to its roman -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathRoman, MathOrdinary, code_point (Char.code 'a' + i)));
+        (ascii_small_of_index i, MathRoman, code_point (Char.code 'a' + i)));
 
     (* -- Latin capital letter to its bold romain -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldRoman, MathOrdinary, code_point (0x1D400 + i)));
+        (ascii_capital_of_index i, MathBoldRoman, code_point (0x1D400 + i)));
     (* -- Latin small letter to its bold roman -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldRoman, MathOrdinary, code_point (0x1D41A + i)));
+        (ascii_small_of_index i, MathBoldRoman, code_point (0x1D41A + i)));
 
     (* -- Latin capital letter to its script -- *)
       [[0]; [2; 3]; [6]; [9; 10]; range 13 16; range 18 25] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathScript, MathOrdinary, code_point (0x1D49C + i)));
+        (ascii_capital_of_index i, MathScript, code_point (0x1D49C + i)));
       [
-        ("B", MathScript, MathOrdinary, code_point 0x212C);
-        ("E", MathScript, MathOrdinary, code_point 0x2130);
-        ("F", MathScript, MathOrdinary, code_point 0x2131);
-        ("H", MathScript, MathOrdinary, code_point 0x210B);
-        ("I", MathScript, MathOrdinary, code_point 0x2110);
-        ("L", MathScript, MathOrdinary, code_point 0x2112);
-        ("M", MathScript, MathOrdinary, code_point 0x2133);
-        ("R", MathScript, MathOrdinary, code_point 0x211B);
+        (uchar_of_char 'B', MathScript, code_point 0x212C);
+        (uchar_of_char 'E', MathScript, code_point 0x2130);
+        (uchar_of_char 'F', MathScript, code_point 0x2131);
+        (uchar_of_char 'H', MathScript, code_point 0x210B);
+        (uchar_of_char 'I', MathScript, code_point 0x2110);
+        (uchar_of_char 'L', MathScript, code_point 0x2112);
+        (uchar_of_char 'M', MathScript, code_point 0x2133);
+        (uchar_of_char 'R', MathScript, code_point 0x211B);
       ];
     (* -- Latin small letter to its script -- *)
       [range 0 3; [5]; range 7 13; range 15 25] |> List.concat |> List.map (fun i ->
-        (ascii_small_of_index i, MathScript, MathOrdinary, code_point (0x1D4B6 + i)));
+        (ascii_small_of_index i, MathScript, code_point (0x1D4B6 + i)));
       [
-        ("e", MathScript, MathOrdinary, code_point 0x212F);
-        ("g", MathScript, MathOrdinary, code_point 0x210A);
-        ("o", MathScript, MathOrdinary, code_point 0x2134);
+        (uchar_of_char 'e', MathScript, code_point 0x212F);
+        (uchar_of_char 'g', MathScript, code_point 0x210A);
+        (uchar_of_char 'o', MathScript, code_point 0x2134);
       ];
 
     (* -- Latin capital letter to its bold script -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldScript, MathOrdinary, code_point (0x1D4D0 + i)));
+        (ascii_capital_of_index i, MathBoldScript, code_point (0x1D4D0 + i)));
     (* -- Latin small letter to its bold script -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldScript, MathOrdinary, code_point (0x1D4EA + i)));
+        (ascii_small_of_index i, MathBoldScript, code_point (0x1D4EA + i)));
 
     (* -- Latin capital letter to its Fraktur -- *)
       [[0; 1]; range 3 6; range 9 16; range 18 24] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathFraktur, MathOrdinary, code_point (0x1D504 + i)));
+        (ascii_capital_of_index i, MathFraktur, code_point (0x1D504 + i)));
       [
-        ("C", MathFraktur, MathOrdinary, code_point 0x212D);
-        ("H", MathFraktur, MathOrdinary, code_point 0x210C);
-        ("I", MathFraktur, MathOrdinary, code_point 0x2111);
-        ("R", MathFraktur, MathOrdinary, code_point 0x211C);
-        ("Z", MathFraktur, MathOrdinary, code_point 0x2128);
+        (uchar_of_char 'C', MathFraktur, code_point 0x212D);
+        (uchar_of_char 'H', MathFraktur, code_point 0x210C);
+        (uchar_of_char 'I', MathFraktur, code_point 0x2111);
+        (uchar_of_char 'R', MathFraktur, code_point 0x211C);
+        (uchar_of_char 'Z', MathFraktur, code_point 0x2128);
       ];
     (* -- Latin small letter to its Fraktur -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathFraktur, MathOrdinary, code_point (0x1D51E + i)));
+        (ascii_small_of_index i, MathFraktur, code_point (0x1D51E + i)));
 
     (* -- Latin capital letter to its bold Fraktur -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_capital_of_index i, MathBoldFraktur, MathOrdinary, code_point (0x1D56C + i)));
+        (ascii_capital_of_index i, MathBoldFraktur, code_point (0x1D56C + i)));
     (* -- Latin small letter to its bold Fraktur -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathBoldFraktur, MathOrdinary, code_point (0x1D586 + i)));
+        (ascii_small_of_index i, MathBoldFraktur, code_point (0x1D586 + i)));
 
     (* -- Latin capital letter to its double struck -- *)
       [[0; 1]; range 3 6; range 8 12; [14]; range 18 24] |> List.concat |> List.map (fun i ->
-        (ascii_capital_of_index i, MathDoubleStruck, MathOrdinary, code_point (0x1D538 + i)));
+        (ascii_capital_of_index i, MathDoubleStruck, code_point (0x1D538 + i)));
       [
-        ("C", MathDoubleStruck, MathOrdinary, code_point 0x2102);
-        ("H", MathDoubleStruck, MathOrdinary, code_point 0x210D);
-        ("N", MathDoubleStruck, MathOrdinary, code_point 0x2115);
-        ("P", MathDoubleStruck, MathOrdinary, code_point 0x2119);
-        ("Q", MathDoubleStruck, MathOrdinary, code_point 0x211A);
-        ("R", MathDoubleStruck, MathOrdinary, code_point 0x211D);
-        ("Z", MathDoubleStruck, MathOrdinary, code_point 0x2124);
+        (uchar_of_char 'C', MathDoubleStruck, code_point 0x2102);
+        (uchar_of_char 'H', MathDoubleStruck, code_point 0x210D);
+        (uchar_of_char 'N', MathDoubleStruck, code_point 0x2115);
+        (uchar_of_char 'P', MathDoubleStruck, code_point 0x2119);
+        (uchar_of_char 'Q', MathDoubleStruck, code_point 0x211A);
+        (uchar_of_char 'R', MathDoubleStruck, code_point 0x211D);
+        (uchar_of_char 'Z', MathDoubleStruck, code_point 0x2124);
       ];
     (* -- Latin small letter to its double struck -- *)
       (range 0 25) |> List.map (fun i ->
-        (ascii_small_of_index i, MathDoubleStruck, MathOrdinary, code_point (0x1D552 + i)));
+        (ascii_small_of_index i, MathDoubleStruck, code_point (0x1D552 + i)));
 
-    (* -- invariant ascii symbols -- *)
+    ])
+
+
+let default_math_class_map =
+  let open HorzBox in
+    List.fold_left (fun map (s, cp, mk) ->
+      map |> MathClassMap.add s ([code_point cp], mk)
+    ) MathClassMap.empty
       [
         ("=", Char.code '=', MathRelation);
         ("<", Char.code '<', MathRelation);
@@ -485,9 +496,7 @@ let default_math_variant_char_map : (HorzBox.math_variant_value) HorzBox.MathVar
         ("|", Char.code '|', MathBinary  );
         ("/", Char.code '/', MathOrdinary);
         (",", Char.code ',', MathPunct   );
-      ] |> List.map (fun (s, cp, mk) ->
-        (s, MathItalic, mk, code_point cp)); (* temporary *)
-    ])
+      ]
 
 
 let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
@@ -520,6 +529,7 @@ let get_initial_context wid =
       manual_rising          = pdfpt 0.;
       badness_space          = 100;
       math_variant_char_map  = default_math_variant_char_map;
+      math_class_map         = default_math_class_map;
       math_char_class        = MathItalic;
       before_word_break      = [];
       after_word_break       = [];
