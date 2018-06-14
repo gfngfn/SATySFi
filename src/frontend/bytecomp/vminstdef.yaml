@@ -571,13 +571,21 @@ code: |
       math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) uchto;
     }), valuecmd)
 
-#---
-#inst: PrimitiveConvertStringForMath
-#is-primitive: yes
-#name: "convert-string-for-math"
-#type: |
-#  ~% (tCTX @-> tMCCLS @-> tS @->)
+---
+inst: PrimitiveConvertStringForMath
+is-primitive: yes
+name: "convert-string-for-math"
+type: |
+  ~% (tCTX @-> tMCCLS @-> tS @-> tS)
 
+params:
+- (ctx, valuecmd) : context
+- mccls : math_char_class
+- s : string
+code:
+  let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
+  let (_, uchlst) = MathContext.convert_math_variant_char (ctx, valuecmd) s in
+    StringConstant(InternalText.to_utf8 (InternalText.of_uchar_list uchlst))
 
 ---
 inst: PrimitiveSetMathCommand

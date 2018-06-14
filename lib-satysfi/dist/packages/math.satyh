@@ -33,6 +33,11 @@ module Math : sig
   direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
 
+  direct \math-style-token : [math-char-class; string] math-cmd
+  direct \mathit-token : [string] math-cmd
+  direct \mathrm-token : [string] math-cmd
+  direct \mathbf-token : [string] math-cmd
+
   direct \alpha   : [] math-cmd
   direct \beta    : [] math-cmd
   direct \gamma   : [] math-cmd
@@ -329,6 +334,18 @@ end = struct
   let-math \mathbb m = ${\math-style!(MathDoubleStruck){#m}}
   let-math \bm m = ${\math-style!(MathBoldItalic){#m}}
 
+
+  let-math \math-style-token sty s =
+    text-in-math MathOrd (fun ctx -> (
+    let sm = convert-string-for-math ctx sty s in
+      embed-math ctx (math-char MathOrd sm)
+    ))
+
+  let-math \mathit-token s = ${\math-style-token!(MathItalic)!(s)}
+  let-math \mathrm-token s = ${\math-style-token!(MathRoman)!(s)}
+  let-math \mathbf-token s = ${\math-style-token!(MathBoldRoman)!(s)}
+
+
   let-block ctx +math math =
     let ib = embed-math ctx math in
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
@@ -576,8 +593,8 @@ end = struct
   let-math \nexists = ord `∄`
   let-math \bigcirc = ord `◯`
 
-  let-math \ldots = punct `…`
-  let-math \cdots = punct `⋯`
+  let-math \ldots = ord `…`
+  let-math \cdots = ord `⋯`
   let-math \vdots = ord `⋮`
   let-math \ddots = ord `⋱`
   let-math \backddots = ord `⋰`
