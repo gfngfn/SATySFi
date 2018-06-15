@@ -47,20 +47,20 @@
   let end_struct (rng : Range.t) : untyped_abstract_tree = (rng, UTFinishStruct)
 
 
-  let rec curry_lambda_abstract (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
+  let rec curry_lambda_abstract (optargacc : (Range.t * var_name) Alist.t) (rng : Range.t) (utarglst : untyped_argument list) (utastdef : untyped_abstract_tree) =
     match utarglst with
     | [] ->
         utastdef
 
     | UTPatternArgument(argpat) :: utargtail ->
-        (rng, UTFunction([UTPatternBranch(argpat, curry_lambda_abstract rng utargtail utastdef)]))
+        (rng, UTFunction(Alist.to_list optargacc, [UTPatternBranch(argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef)]))
 
     | UTOptionalArgument(rngvar, varnm) :: utargtail ->
-        (rng, UTLambdaOptional(rngvar, varnm, curry_lambda_abstract rng utargtail utastdef))
+        curry_lambda_abstract (Alist.extend optargacc (rngvar, varnm)) rng utargtail utastdef
 
 
   let curry_lambda_abstract_pattern (rng : Range.t) (argpatlst : untyped_pattern_tree list) =
-    curry_lambda_abstract rng (argpatlst |> List.map (fun argpat -> UTPatternArgument(argpat)))
+    curry_lambda_abstract Alist.empty rng (argpatlst |> List.map (fun argpat -> UTPatternArgument(argpat)))
 
 
   let rec stringify_literal ltrl =
@@ -181,7 +181,7 @@
 
 
   let make_let_expression_of_pattern (lettok : Range.t) ((mntyopt, pat, utarglst, utast1) : untyped_let_binding) (utast2 : untyped_abstract_tree) =
-    let curried = curry_lambda_abstract (get_range pat) utarglst utast1 in
+    let curried = curry_lambda_abstract Alist.empty (get_range pat) utarglst utast1 in
     make_standard (Tok lettok) (Ranged utast2) (UTLetNonRecIn(mntyopt, pat, curried, utast2))
 
 
@@ -291,7 +291,7 @@
         let varnm = numbered_var_name i in
         let accnew = Alist.extend acc (Range.dummy "make_function_for_parallel:2", UTContentOf([], varnm)) in
         let patvar = (Range.dummy "make_function_for_parallel:3", UTPVariable(varnm)) in
-          (Range.dummy "make_function_for_parallel:4", UTFunction([UTPatternBranch(patvar, aux accnew (i + 1))]))
+          (Range.dummy "make_function_for_parallel:4", UTFunction([], [UTPatternBranch(patvar, aux accnew (i + 1))]))
     in
       aux Alist.empty 0
 
@@ -578,7 +578,7 @@ nxhorzdec:
       let (rngcs, _) = hcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs cmdarglst utast in
+      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
         (None, hcmdtok, (rng, UTLambdaHorz(rngctxvar, ctxvarnm, curried)))
       }
   | hcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -597,7 +597,7 @@ nxvertdec:
       let (rngcs, _) = vcmdtok in
       let (rngctxvar, ctxvarnm) = ctxvartok in
       let rng = make_range (Tok rngctxvar) (Ranged utast) in
-      let curried = curry_lambda_abstract rngcs cmdarglst utast in
+      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
         (None, vcmdtok, (rng, UTLambdaVert(rngctxvar, ctxvarnm, curried)))
       }
   | vcmdtok=VERTCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
@@ -848,13 +848,15 @@ variants: /* -> untyped_variant_cons */
   | CONSTRUCTOR                         { let (rng, constrnm) = $1 in (rng, constrnm, (Range.dummy "dec-constructor-unit2", MTypeName([], [], "unit"))) :: [] }
 ;
 txfunc: /* -> manual_type */
-  | mntydom=txprod; ARROW; mntycod=txfunc {
-        make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mntydom, mntycod))
-      }
-  | mntydom=txprod; OPTIONALTYPE; ARROW; mntycod=txfunc {
-        make_standard (Ranged mntydom) (Ranged mntycod) (MOptFuncType(mntydom, mntycod))
+  | mntydominfo=txfuncopts; ARROW; mntycod=txfunc {
+        let (mntyopts, mntydom) = mntydominfo in
+          make_standard (Ranged mntydom) (Ranged mntycod) (MFuncType(mntyopts, mntydom, mntycod))
       }
   | mnty=txprod { mnty }
+;
+txfuncopts:
+  | mntyhead=txprod; OPTIONALTYPE; ARROW; tail=txfuncopts { let (mntytail, mntydom) = tail in (mntyhead :: mntytail, mntydom) }
+  | mntydom=txprod                                        { ([], mntydom) }
 ;
 txprod:
   | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
