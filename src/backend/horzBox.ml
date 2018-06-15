@@ -170,9 +170,12 @@ let pp_math_variant_style =
 
 module MathVariantCharMap = Map.Make
   (struct
-    type t = string * math_char_class
+    type t = Uchar.t * math_char_class
     let compare = Pervasives.compare
   end)
+
+
+module MathClassMap = Map.Make(String)
 
 
 type context_main = {
@@ -201,8 +204,10 @@ type context_main = {
   text_color             : color;
   manual_rising          : length;
   badness_space          : pure_badness;
-  math_variant_char_map  : math_variant_value MathVariantCharMap.t;
-    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
+  math_variant_char_map  : Uchar.t MathVariantCharMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
+  math_class_map         : (Uchar.t list * math_kind) MathClassMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
   math_char_class        : math_char_class;
   before_word_break      : horz_box list;
   after_word_break       : horz_box list;
@@ -348,6 +353,11 @@ and math_variant_value = math_kind * math_variant_value_main
 and math_variant_value_main =
   | MathVariantToChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
+      (* --
+         (1) whether it is big or not
+         (2) contents
+         -- *)
+
   | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 

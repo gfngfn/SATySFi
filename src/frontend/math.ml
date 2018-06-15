@@ -716,8 +716,11 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         (mk, wid, hgt, dpt, LowMathEmbeddedHorz(hblst), no_left_kern hgt dpt mk, no_right_kern hgt dpt mk)
 
   | MathVariantChar(s) ->
-      let (mkrawv, mvvaluemain) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) s in
+      let (mkrawv, uchlst) = MathContext.convert_math_variant_char (MathContext.context_for_text mathctx) s in
       let mk = normalize_math_kind mkprev mknext mkrawv in
+      let is_big = false in
+        convert_math_char mathctx is_big uchlst mk
+(*
       begin
         match mvvaluemain with
         | MathVariantToChar(is_big, uchlst) ->
@@ -726,6 +729,7 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
         | MathVariantToCharWithKern(is_big, uchlst, mckernfL, mckernfR) ->
             convert_math_char_with_kern mathctx is_big uchlst mk mckernfL mckernfR
       end
+*)
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
