@@ -1,5 +1,6 @@
 @require: pervasives
 @require: list
+@require: gr
 
 module Math : sig
 
@@ -272,6 +273,7 @@ module Math : sig
   direct \app : [math; math] math-cmd
   direct \angle : [math] math-cmd
   direct \brace : [math] math-cmd
+  direct \setsep : [math; math] math-cmd
   direct \sqbracket : [math] math-cmd
   direct \abs : [math] math-cmd
   direct \norm : [math] math-cmd
@@ -1010,6 +1012,20 @@ end = struct
     math-paren brace-left brace-right
 
 
+  let bar-middle hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let halfwid = fontsize *' 0.5 in
+    let graphics (x, y) =
+      [ stroke 0.5pt color (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen)); ]
+    in
+    let kerninfo _ = 0pt in
+      (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \setsep m1 m2 =
+    math-paren-with-middle brace-left brace-right bar-middle [m1; m2]
+
+
   let bracket-left hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
@@ -1080,6 +1096,7 @@ end = struct
     let kerninfo _ = 0pt in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
+
   let abs-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 5.0pt in
@@ -1114,6 +1131,7 @@ end = struct
     let graphics point = [ stroke 0.5pt color (path point); ] in
     let kerninfo _ = 0pt in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
 
   let norm-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in

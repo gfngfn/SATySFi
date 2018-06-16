@@ -356,6 +356,9 @@ let get_math value : math list =
     | _               -> report_bug_value "get_math" value
 
 
+let get_math_list = get_list get_math
+
+
 let get_bool value : bool =
   match value with
   | BooleanConstant(bc) -> bc
