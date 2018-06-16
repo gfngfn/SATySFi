@@ -3,6 +3,8 @@ module List
 : sig
     val map : ('a -> 'b) -> 'a list -> 'b list
     val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
+    val iter : ('a -> unit) -> 'a list -> unit
+    val iteri : (int -> 'a -> unit) -> 'a list -> unit
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val fold-lefti : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val fold-right : ('a -> 'b -> 'b) -> 'b -> 'a list -> 'b
@@ -23,12 +25,25 @@ module List
       | f (x :: xs) = (f x) :: map f xs
 
 
-    let mapi f xs =
+    let mapi =
       let-rec aux
-        | f i []        = []
-        | f i (x :: xs) = (f i x) :: aux f (i + 1) xs
+        | i f []        = []
+        | i f (x :: xs) = (f i x) :: aux (i + 1) f xs
       in
-      aux f 0 xs
+      aux 0
+
+
+    let-rec iter
+      | f []        = ()
+      | f (x :: xs) = f x before iter f xs
+
+
+    let iteri =
+      let-rec aux
+        | i f []        = ()
+        | i f (x :: xs) = f i x before aux (i + 1) f xs
+      in
+      aux 0
 
 
     let-rec fold-left
@@ -36,12 +51,12 @@ module List
       | f init (x :: xs) = fold-left f (f init x) xs
 
 
-    let fold-lefti f init xs =
+    let fold-lefti =
       let-rec aux
-        | f i init []        = init
-        | f i init (x :: xs) = aux f (i + 1) (f i init x) xs
+        | i f init []        = init
+        | i f init (x :: xs) = aux (i + 1) f (f i init x) xs
       in
-      aux f 0 init xs
+      aux 0
 
 
     let-rec fold-right
