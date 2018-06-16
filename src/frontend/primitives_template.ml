@@ -47,7 +47,7 @@ let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
-let (@->) dom cod = (~! "func"    , FuncType(dom, cod)    )
+let (@->) dom cod = (~! "func"    , FuncType(ref [], dom, cod))
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))

@@ -161,8 +161,7 @@ type manual_type = Range.t * manual_type_main
 and manual_type_main =
   | MTypeName        of (manual_type list) * module_name list * type_name
   | MTypeParam       of var_name
-  | MFuncType        of manual_type * manual_type
-  | MOptFuncType     of manual_type * manual_type
+  | MFuncType        of manual_type list * manual_type * manual_type
   | MProductType     of manual_type list
   | MRecordType      of manual_type Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "MRecordType(...)")]
@@ -234,8 +233,7 @@ let base_type_hash_table =
 type mono_type = Range.t * mono_type_main
 and mono_type_main =
   | BaseType        of base_type
-  | FuncType        of mono_type * mono_type
-  | OptFuncType     of mono_type * mono_type
+  | FuncType        of (mono_type list) ref * mono_type * mono_type
   | ListType        of mono_type
   | RefType         of mono_type
   | ProductType     of mono_type list
@@ -321,7 +319,9 @@ and untyped_abstract_tree_main =
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
+(*
   | UTLambdaOptional       of Range.t * var_name * untyped_abstract_tree
+*)
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
@@ -352,7 +352,7 @@ and untyped_abstract_tree_main =
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
   | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of untyped_pattern_branch list (* Range.t * var_name * untyped_abstract_tree *)
+  | UTFunction             of (Range.t * var_name) list * untyped_pattern_branch list
   | UTFinishHeaderFile
   | UTFinishStruct
 (* -- pattern match -- *)
@@ -725,6 +725,7 @@ and math =
   | MathRadicalWithDegree of math list * math list
   | MathRadical           of HorzBox.radical * math list
   | MathParen             of HorzBox.paren * HorzBox.paren * math list
+  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
 [@@deriving show { with_path = false; }]
@@ -775,8 +776,7 @@ let rec normalize_mono_type ty =
     | BaseType(_)                       -> ty
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
-    | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(iter tydom, iter tycod))
+    | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
     | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
@@ -800,8 +800,7 @@ let rec erase_range_of_type (ty : mono_type) =
     match tymain with
     | BaseType(_)                       -> tymain
     | TypeVariable(_)                   -> tymain
-    | FuncType(tydom, tycod)            -> FuncType(iter tydom, iter tycod)
-    | OptFuncType(tydom, tycod)         -> OptFuncType(iter tydom, iter tycod)
+    | FuncType(tyoptsr, tydom, tycod)   -> FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod)
     | ProductType(tylist)               -> ProductType(List.map iter tylist)
     | RecordType(tyasc)                 -> RecordType(Assoc.map_value iter tyasc)
     | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
@@ -855,8 +854,7 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
                     end
               end
         end
-    | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
-    | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(aux tydom, aux tycod))
+    | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map aux (!tyoptsr)), aux tydom, aux tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, tyreal))
@@ -899,8 +897,7 @@ let generalize (lev : FreeID.level) (ty : mono_type) =
                     ty
                   end
         end
-    | FuncType(tydom, tycod)            -> (rng, FuncType(iter tydom, iter tycod))
-    | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(iter tydom, iter tycod))
+    | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
@@ -1165,33 +1162,35 @@ let rec string_of_mono_type_basic tystr =
     | SynonymType(tyarglist, tyid, tyreal) ->
         (string_of_type_argument_list_basic tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (string_of_mono_type_basic tyreal) ^ ")"
 
-    | FuncType(tydom, tycod) ->
-        let strdom = string_of_mono_type_basic tydom in
-        let strcod = string_of_mono_type_basic tycod in
-          begin match tydom with
-          | (_, FuncType(_, _))
-          | (_, OptFuncType(_, _))
-              -> "(" ^ strdom ^ ")"
-          | _ -> strdom
-          end ^ " ->" ^ qstn ^ " " ^ strcod
+    | FuncType(tyoptsr, tydom, tycod) ->
+        let stropts =
+          !tyoptsr |> List.map (fun ((_, tymain) as ty) ->
+            let s = string_of_mono_type_basic ty in
+              match tymain with
+              | FuncType(_, _, _)
+              | ProductType(_)
+              | VariantType(_ :: _, _)
+                   -> "(" ^ s ^ ")? -> "
 
-    | OptFuncType(tydom, tycod) ->
+              | _ -> s ^ "? -> "
+          )
+        in
         let strdom = string_of_mono_type_basic tydom in
         let strcod = string_of_mono_type_basic tycod in
+          (String.concat "" stropts) ^
           begin match tydom with
-          | (_, FuncType(_, _))
-          | (_, OptFuncType(_, _))
-              -> "(" ^ strdom ^ ")"
-          | _ -> strdom
-          end ^ "? ->" ^ qstn ^ " " ^ strcod
+          | (_, FuncType(_, _, _)) -> "(" ^ strdom ^ ")"
+          | _                      -> strdom
+          end ^ " ->" ^ qstn ^ " " ^ strcod
 
     | ListType(tycont) ->
         let strcont = string_of_mono_type_basic tycont in
         let (_, tycontmain) = tycont in
           begin match tycontmain with
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
           | ProductType(_)
+          | ListType(_)
+          | RefType(_)
           | VariantType(_ :: _, _)
 (*          | TypeSynonym(_ :: _, _, _) *)
               -> "(" ^ strcont ^ ")"
@@ -1202,12 +1201,14 @@ let rec string_of_mono_type_basic tystr =
         let strcont = string_of_mono_type_basic tycont in
         let (_, tycontmain) = tycont in
           begin match tycontmain with
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
           | ProductType(_)
+          | ListType(_)
+          | RefType(_)
           | VariantType(_ :: _, _)
 (*          | TypeSynonym(_ :: _, _, _) *)
               -> "(" ^ strcont ^ ")"
+
           | _ -> strcont
           end ^ " ref" ^ qstn
 
@@ -1252,8 +1253,7 @@ and string_of_type_argument_list_basic tyarglist =
       let (_, headmain) = head in
         begin
           match headmain with
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
           | ProductType(_)
             (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
           | ListType(_)
@@ -1273,8 +1273,7 @@ and string_of_mono_type_list_basic tylist =
         begin
           match headmain with
           | ProductType(_)
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
               -> "(" ^ strhd ^ ")"
           | _ -> strhd
         end
@@ -1285,8 +1284,7 @@ and string_of_mono_type_list_basic tylist =
         begin
           match headmain with
           | ProductType(_)
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
               -> "(" ^ strhd ^ ")"
           | _ -> strhd
         end ^ " * " ^ strtl
@@ -1298,14 +1296,14 @@ and string_of_poly_type_basic (Poly(ty)) =
 
 and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
 
-
+(*
 let rec string_of_manual_type (_, mtymain) =
   let iter = string_of_manual_type in
   let iter_cmd = string_of_manual_command_argument_type in
   match mtymain with
   | MTypeName(mtylst, mdlnmlst, tynm) -> (String.concat " " (List.map iter mtylst)) ^ " " ^ (String.concat "." (List.append mdlnmlst [tynm]))
   | MTypeParam(tpnm)          -> "'" ^ tpnm
-  | MFuncType(mtydom, mtycod) -> (iter mtydom) ^ " -> " ^ (iter mtycod)
+  | MFuncType(mtyopts, mtydom, mtycod) -> (String.concat "" (List.map iter mtyopts)) (iter mtydom) ^ " -> " ^ (iter mtycod)
   | MOptFuncType(mtydom, mtycod) -> "(" ^ (iter mtydom) ^ ")? -> " ^ (iter mtycod)
   | MProductType(mtylst)      -> (String.concat " * " (List.map iter mtylst))
   | MRecordType(mtyasc)       -> "(|" ^ (String.concat "; " (List.map (fun (fldnm, mty) -> fldnm ^ " : " ^ (iter mty)) (Assoc.to_list mtyasc))) ^ "|)"
@@ -1317,3 +1315,4 @@ let rec string_of_manual_type (_, mtymain) =
 and string_of_manual_command_argument_type = function
   | MMandatoryArgumentType(mnty) -> string_of_manual_type mnty
   | MOptionalArgumentType(mnty)  -> "(" ^ (string_of_manual_type mnty) ^ ")?"
+*)

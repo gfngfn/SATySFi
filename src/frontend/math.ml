@@ -112,6 +112,14 @@ type low_math_main =
          (3) inner contents
          -- *)
 
+  | LowMathParenWithMiddle of low_paren * low_paren * low_paren * (low_math list)
+      (* --
+         (1) graphical specification of the left parenthesis
+         (2) graphical specification of the right parenthesis
+         (3) graphical specification of the middle sign
+         (4) list of inner contents
+         -- *)
+
   | LowMathUpperLimit of length * low_math * low_math
       (* --
          (1) baseline height of the upper script
@@ -461,7 +469,11 @@ let get_left_kern lmmain hgt dpt =
   | LowMathFraction(_, _, _, _)                -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
-  | LowMathParen(lpL, _, _)                    -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
+
+  | LowMathParen(lpL, _, _)
+  | LowMathParenWithMiddle(lpL, _, _, _)
+      -> make_left_paren_kern lpL.lp_height lpL.lp_depth lpL.lp_math_kern_scheme
+
   | LowMathUpperLimit(_, (_, _, _, lk, _), _)  -> lk
   | LowMathLowerLimit(_, (_, _, _, lk, _), _)  -> lk
 
@@ -478,7 +490,11 @@ let get_right_kern lmmain hgt dpt =
   | LowMathFraction(_, _, _, _)                -> nokernf MathInner
   | LowMathRadical(_)                          -> nokernf MathInner
   | LowMathRadicalWithDegree(_, _, _, _, _)    -> nokernf MathInner
-  | LowMathParen(_, lpR, _)                    -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
+
+  | LowMathParen(_, lpR, _)
+  | LowMathParenWithMiddle(_, lpR, _, _)
+      -> make_right_paren_kern lpR.lp_height lpR.lp_depth lpR.lp_math_kern_scheme
+
   | LowMathUpperLimit(_, (_, _, _, _, rk), _)  -> rk
   | LowMathLowerLimit(_, (_, _, _, _, rk), _)  -> rk
 
@@ -500,6 +516,7 @@ let rec get_left_math_kind (ctx : input_context) = function
   | MathRadical(_)                 -> MathInner
   | MathRadicalWithDegree(_, _)    -> MathInner
   | MathParen(_, _, _)             -> MathOpen
+  | MathParenWithMiddle(_, _, _, _) -> MathOpen
   | MathLowerLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
   | MathLowerLimit([], _)          -> MathEnd
   | MathUpperLimit(mathB :: _, _)  -> get_left_math_kind ctx mathB
@@ -521,6 +538,7 @@ let rec get_right_math_kind (ctx : input_context) math =
     | MathRadical(_)               -> MathInner
     | MathRadicalWithDegree(_, _)  -> MathInner
     | MathParen(_, _, _)           -> MathClose
+    | MathParenWithMiddle(_, _, _, _) -> MathClose
     | MathLowerLimit([], _)        -> MathEnd
     | MathLowerLimit(mathlst, _)   -> get_right_math_kind ctx (List.hd (List.rev mathlst))
     | MathUpperLimit([], _)        -> MathEnd
@@ -887,6 +905,26 @@ and convert_to_low_single (mkprev : math_kind) (mknext : math_kind) (mathctx : m
       let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
         (LowMathParen(lpL, lpR, lmC), h_whole, d_whole)
 
+  | MathParenWithMiddle(parenL, parenR, middle, mlstlst) ->
+      let lmlst = List.map (convert_to_low mathctx MathOpen MathClose) mlstlst in
+      let (hC, dC) =
+        lmlst |> List.fold_left (fun (hacc, dacc) lm ->
+          let (_, h, d, _, _) = lm in (Length.max hacc h, Length.min dacc d)
+        ) (Length.zero, Length.zero)
+      in
+      let (hblstparenL, mkernsL) = make_paren mathctx parenL hC dC in
+      let (hblstparenR, mkernsR) = make_paren mathctx parenR hC dC in
+      let (hblstmiddle, _) = make_paren mathctx middle hC dC in
+      let (_, hL, dL)   = LineBreak.get_natural_metrics hblstparenL in
+      let (_, hR, dR) = LineBreak.get_natural_metrics hblstparenR in
+      let (_, hM, dM) = LineBreak.get_natural_metrics hblstmiddle in
+      let h_whole = [hL; hR; hM] |> List.fold_left Length.max hC in
+      let d_whole = [dL; dR; dM] |> List.fold_left Length.min dC in
+      let lpL = { lp_main = hblstparenL; lp_height = hL; lp_depth = dL; lp_math_kern_scheme = mkernsL; } in
+      let lpR = { lp_main = hblstparenR; lp_height = hR; lp_depth = dR; lp_math_kern_scheme = mkernsR; } in
+      let lpM = { lp_main = hblstmiddle; lp_height = hM; lp_depth = dM; lp_math_kern_scheme = FontInfo.no_math_kern; } in
+        (LowMathParenWithMiddle(lpL, lpR, lpM, lmlst), h_whole, d_whole)
+
   | MathUpperLimit(mlstB, mlstU) ->
       let lmB = convert_to_low mathctx mkprev mknext mlstB in
       let lmU = convert_to_low (MathContext.enter_script mathctx) MathEnd MathEnd mlstU in
@@ -1130,15 +1168,30 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
 
           | LowMathParen(lpL, lpR, lmE) ->
               let hblstparenL = lpL.lp_main in
-      (*
-              let mkernsL = lpL.lp_math_kern_scheme in
-      *)
               let hblstparenR = lpR.lp_main in
-      (*
-              let mkernsR = lpR.lp_math_kern_scheme in
-      *)
               let hblstE = horz_of_low_math mathctx MathOpen MathClose lmE in
               let hblstsub = List.concat [hblstparenL; hblstE; hblstparenR] in
+              let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
+                (hblstsub, hbspaceopt, MathClose)
+
+          | LowMathParenWithMiddle(lpL, lpR, lpM, lmlst) ->
+              let hblstparenL = lpL.lp_main in
+              let hblstparenR = lpR.lp_main in
+              let hblstmiddle = lpM.lp_main in
+              let hblstlst = List.map (horz_of_low_math mathctx MathOpen MathClose) lmlst in
+              let hblstC =
+                let opt =
+                  hblstlst |> List.fold_left (fun hblstaccopt hblst ->
+                    match hblstaccopt with
+                    | None           -> Some(Alist.extend Alist.empty hblst)
+                    | Some(hblstacc) -> Some(Alist.extend (Alist.extend hblstacc hblstmiddle) hblst)
+                  ) None
+                in
+                  match opt with
+                  | None           -> []
+                  | Some(hblstacc) -> hblstacc |> Alist.to_list |> List.concat
+              in
+              let hblstsub = List.concat [hblstparenL; hblstC; hblstparenR] in
               let hbspaceopt = space_between_math_kinds mathctx mkprev corr MathOpen in
                 (hblstsub, hbspaceopt, MathClose)
 

@@ -772,6 +772,25 @@ code: |
     MathValue([MathParen(parenL, parenR, mlst1)])
 
 ---
+inst: BackendMathParenWithMiddle
+is-primitive: yes
+name: "math-paren-with-middle"
+type: |
+  ~% (tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
+
+needs-reducef: yes
+params:
+- valueparenL
+- valueparenR
+- valuemiddle
+- mlstlst : math_list
+code: |
+  let parenL = make_paren reducef valueparenL in
+  let parenR = make_paren reducef valueparenR in
+  let middle = make_paren reducef valuemiddle in
+    MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
+
+---
 inst: BackendMathUpperLimit
 is-primitive: yes
 name: "math-upper"
