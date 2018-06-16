@@ -725,6 +725,7 @@ and math =
   | MathRadicalWithDegree of math list * math list
   | MathRadical           of HorzBox.radical * math list
   | MathParen             of HorzBox.paren * HorzBox.paren * math list
+  | MathParenWithMiddle   of HorzBox.paren * HorzBox.paren * HorzBox.paren * (math list) list
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
 [@@deriving show { with_path = false; }]
