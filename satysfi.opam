@@ -67,6 +67,7 @@ depends: [
   "ocamlfind" {build}
   "otfm" {= "0.3.2+satysfi"}
   "ppx_deriving"
+  "re" {build}
   "uutf"
   "yojson"
 ]

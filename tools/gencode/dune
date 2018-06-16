@@ -1,0 +1,5 @@
+(executable
+ (name gencode)
+ (libraries core_kernel re)
+ ;; (preprocess (pps (ppx_driver.runner)))
+ )
