@@ -1721,6 +1721,19 @@ code: |
   Context(HorzBox.({ ctx with manual_rising = rising; }), valuecmd)
 
 ---
+inst: PrimitiveRaise
+is-primitive: yes
+name: "raise-inline"
+type: |
+  ~% (tLN @-> tIB @-> tIB)
+
+params:
+- rising : length
+- hblst : horz
+code: |
+  Horz(HorzBox.([HorzPure(PHGRising(rising, hblst))]))
+
+---
 inst: PrimitiveSetHyphenPenalty
 is-primitive: yes
 name: "set-hyphen-penalty"
@@ -1941,17 +1954,19 @@ code: |
   | Some(v) -> Constructor("Some", StringConstant(v))
 
 ---
-inst: PrimitiveGetNaturalWidth
+inst: PrimitiveGetNaturalMetrics
 is-primitive: yes
-name: "get-natural-width"
+name: "get-natural-metrics"
 type: |
-  ~% (tIB @-> tLN)
+  ~% (tIB @-> tPROD [tLN; tLN; tLN])
 
 params:
 - hblst : horz
 code: |
-  let (wid, _, _) = LineBreak.get_natural_metrics hblst in
-    LengthConstant(wid)
+  let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+    TupleCons(LengthConstant(wid),
+      TupleCons(LengthConstant(hgt),
+        TupleCons(LengthConstant(Length.negate dpt), EndOfTuple)))
 
 ---
 inst: PrimitiveGetNaturalLength
