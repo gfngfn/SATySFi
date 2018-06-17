@@ -382,7 +382,7 @@ end = struct
     let ib =
       mlst |> List.fold-left (fun ibacc m -> (
         ibacc ++ embed-math ctx m ++ ib-fil
-      )) ib-fil
+      )) inline-fil
     in
       line-break true true (ctx |> set-min-gap-of-lines 12pt) ib
 
