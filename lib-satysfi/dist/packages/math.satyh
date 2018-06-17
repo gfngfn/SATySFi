@@ -273,10 +273,26 @@ module Math : sig
   direct \app : [math; math] math-cmd
   direct \angle : [math] math-cmd
   direct \brace : [math] math-cmd
-  direct \setsep : [math; math] math-cmd
   direct \sqbracket : [math] math-cmd
   direct \abs : [math] math-cmd
   direct \norm : [math] math-cmd
+  direct \set : [math] math-cmd
+  direct \setsep : [math; math] math-cmd
+  direct \cases : [(math * inline-text) list] math-cmd
+
+  val paren-left : paren
+  val paren-right : paren
+  val angle-left : paren
+  val angle-right : paren
+  val brace-left : paren
+  val brace-right : paren
+  val bracket-left : paren
+  val bracket-right : paren
+  val abs-left : paren
+  val abs-right : paren
+  val norm-left : paren
+  val norm-right : paren
+  val empty-paren : paren
 
   % -- temporary --
   direct \synteq : [] math-cmd
@@ -1084,6 +1100,9 @@ end = struct
     math-paren bracket-left bracket-right
 
 
+  let empty-paren _ _ _ _ _ = (inline-nil, (fun _ -> 0pt))
+
+
   let abs-left hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 5.0pt in
@@ -1154,5 +1173,32 @@ end = struct
 
   let-math \norm =
     math-paren norm-left norm-right
+
+
+  let-math \set m =
+    ${\brace{#m}}
+
+
+  let-math \cases lst =
+    let m-inner =
+      text-in-math MathInner (fun ctx -> (
+        let size = get-font-size ctx in
+        let pads = (0pt, 0pt, size *' 0.25, size *' 0.25) in
+        let celllstlst =
+          lst |> List.map (fun (m, it) -> (
+            let ib1 = embed-math ctx m ++ inline-fil in
+            let ib2 = inline-skip size ++ read-inline ctx it ++ inline-fil in
+              [NormalCell(pads, ib1); NormalCell(pads, ib2)]
+          ))
+        in
+        let ib = tabular celllstlst (fun _ _ -> []) in
+        let (_, hgt, dpt) = get-natural-metrics ib in
+        let hgtaxis = get-axis-height ctx in
+          raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
+
+      ))
+    in
+      math-paren brace-left empty-paren m-inner
+
 
 end

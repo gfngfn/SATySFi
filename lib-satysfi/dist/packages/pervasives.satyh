@@ -2,6 +2,13 @@
 
 type point = length * length
 
+type paren = length -> length -> length -> length -> color -> inline-boxes * (length -> length)
+
+
+let get-natural-width ib =
+  let (wid, _, _) = get-natural-metrics ib in
+    wid
+
 
 let form-paragraph = line-break true true
 
