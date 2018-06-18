@@ -412,7 +412,7 @@
 %token <Range.t * int> PRIMES
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
-%token <Range.t> LETREC LETNONREC DEFEQ LETAND IN
+%token <Range.t> LETREC LETNONREC DEFEQ LETAND IN OPEN
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
@@ -537,6 +537,10 @@ nxtoplevel:
   | top=TYPE; variantdec=nxvariantdec; subseq=nxtopsubseq                    { make_variant_declaration top variantdec subseq }
   | top=MODULE; mdlnmtok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; subseq=nxtopsubseq                      { make_module top mdlnmtok sigopt strct subseq }
+  | top=OPEN; mdlnmtok=CONSTRUCTOR; subseq=nxtopsubseq {
+      let (rng, mdlnm) = mdlnmtok in
+        make_standard (Tok top) (Ranged subseq) (UTOpenIn(rng, mdlnm, subseq))
+    }
 ;
 nxtopsubseq:
   | utast=nxtoplevel     { utast }
@@ -550,6 +554,8 @@ nxsigopt:
 nxsigelem:
   | TYPE; tyvarlst=xpltyvars; tytok=VAR; clst=constrnts         { let (_, tynm) = tytok in (SigType(kind_type_arguments tyvarlst clst, tynm)) }
   | VAL; vartok=VAR; COLON; mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
+  | VAL; LPAREN; vartok=binop; RPAREN; COLON;
+                            mnty=txfunc; clst=constrnts         { let (_, varnm) = vartok in (SigValue(varnm, mnty, clst)) }
   | VAL; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = hcmdtok in (SigValue(csnm, mnty, clst)) }
   | VAL; vcmdtok=VERTCMD; COLON; mnty=txfunc; clst=constrnts    { let (_, csnm) = vcmdtok in (SigValue(csnm, mnty, clst)) }
   | DIRECT; hcmdtok=HORZCMD; COLON; mnty=txfunc; clst=constrnts { let (_, csnm) = hcmdtok in (SigDirect(csnm, mnty, clst)) }
@@ -572,6 +578,10 @@ nxstruct:
   | top=TYPE; varntdec=nxvariantdec; tail=nxstruct                   { make_variant_declaration top varntdec tail }
   | top=MODULE; tok=CONSTRUCTOR; sigopt=nxsigopt;
       DEFEQ; STRUCT; strct=nxstruct; tail=nxstruct                   { make_module top tok sigopt strct tail }
+  | top=OPEN; mdlnmtok=CONSTRUCTOR; tail=nxstruct {
+      let (rng, mdlnm) = mdlnmtok in
+        make_standard (Tok top) (Ranged tail) (UTOpenIn(rng, mdlnm, tail))
+    }
 ;
 nxhorzdec:
   | ctxvartok=VAR; hcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
@@ -688,6 +698,10 @@ nxletsub:
   | tok=LETNONREC; nonrecdec=nxnonrecdec; IN; utast=nxlet                { make_let_expression_of_pattern tok nonrecdec utast }
   | tok=LETMUTABLE; var=VAR; OVERWRITEEQ; utast1=nxlet; IN; utast2=nxlet { make_let_mutable_expression tok var utast1 utast2 }
   | tok=LETMATH; dec=nxmathdec; IN; utast=nxlet                          { make_let_expression tok dec utast }
+  | tok=OPEN; mdlnmtok=CONSTRUCTOR; IN; utast=nxlet {
+      let (rng, mdlnm) = mdlnmtok in
+        make_standard (Tok tok) (Ranged utast) (UTOpenIn(rng, mdlnm, utast))
+    }
   | utast=nxwhl { utast }
 ;
 nxwhl:

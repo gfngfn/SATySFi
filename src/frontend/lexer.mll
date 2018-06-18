@@ -274,6 +274,7 @@ rule progexpr stack = parse
           | "block-cmd"         -> VERTCMDTYPE(pos)
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
+          | "open"              -> OPEN(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
