@@ -418,10 +418,10 @@
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
 %token <Range.t> LETHORZ LETVERT LETMATH
-%token <Range.t> DEREF
 %token <Range.t> IF THEN ELSE
 %token <Range.t * Types_.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
 %token <Range.t * Types_.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
+%token <Range.t * Types_.var_name> UNOP_EXCLAM
 %token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
@@ -433,7 +433,7 @@
 %token <Range.t> BLIST LISTPUNCT ELIST CONS BRECORD ERECORD ACCESS
 %token <Range.t> WHILE DO
 %token <Range.t> HORZCMDTYPE VERTCMDTYPE MATHCMDTYPE
-%token <Range.t> OPTIONAL OMISSION OPTIONALTYPE
+%token <Range.t> OPTIONAL OMISSION OPTIONALTYPE OPTIONALARROW
 (*
 %token <Range.t> NEWGLOBALHASH OVERWRITEGLOBALHASH RENEWGLOBALHASH
 *)
@@ -790,6 +790,7 @@ nxrtimes:
 nxun:
   | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
   | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "not")), utast2)) }
+  | unop=UNOP_EXCLAM; utast2=nxbot   { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
   | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
   | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
   | utast=nxapp                      { utast }
@@ -800,7 +801,6 @@ nxapp:
       let (rng, constrnm) = constr in
         make_standard (Ranged utast1) (Tok rng)
           (UTApply(utast1, (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))))) }
-  | tok=DEREF; utast2=nxbot { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "!")), utast2)) }
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
         make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm)) }
@@ -874,8 +874,8 @@ txfunc: /* -> manual_type */
   | mnty=txprod { mnty }
 ;
 txfuncopts:
-  | mntyhead=txprod; OPTIONALTYPE; ARROW; tail=txfuncopts { let (mntytail, mntydom) = tail in (mntyhead :: mntytail, mntydom) }
-  | mntydom=txprod                                        { ([], mntydom) }
+  | mntyhead=txprod; OPTIONALARROW; tail=txfuncopts { let (mntytail, mntydom) = tail in (mntyhead :: mntytail, mntydom) }
+  | mntydom=txprod                                  { ([], mntydom) }
 ;
 txprod:
   | mnty=txapppre; EXACT_TIMES; mntyprod=txprodsub {
@@ -1007,6 +1007,7 @@ pattuple: /* -> untyped_pattern_tree */
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
 ;
 binop:
+  | UNOP_EXCLAM
   | BINOP_TIMES
   | BINOP_DIVIDES
   | BINOP_HAT
