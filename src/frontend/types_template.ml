@@ -353,6 +353,7 @@ and untyped_abstract_tree_main =
   | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTFunction             of (Range.t * var_name) list * untyped_pattern_branch list
+  | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTFinishStruct
 (* -- pattern match -- *)

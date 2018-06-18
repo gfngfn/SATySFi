@@ -16,6 +16,10 @@ let form-paragraph = line-break true true
 let kern len = inline-skip (0pt -' len)
 
 
+let-inline ctx \hskip len =
+  inline-skip len
+
+
 let-inline ctx \SATySFi =
   let size = get-font-size ctx in
   let f = read-inline ctx in
