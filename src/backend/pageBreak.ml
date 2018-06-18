@@ -44,16 +44,22 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         int_of_float (hgtdiff /% (Length.of_pdf_point 0.1))
   in
 
+  let omit_clear_page_element pbvblst =
+    match pbvblst with
+    | PBClearPage :: pbvbtail -> pbvbtail
+    | _                       -> pbvblst
+  in
+
   let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) : evaled_vert_box Alist.t * (pb_vert_box list) option * length * pure_badness =
     match pbvblst with
     | PBVertLine(hgt, dpt, imhblst) :: imvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
-          (* -- if getting worse, output the accumulated non-discardable lines 'evvbacc' as a page -- *)
-(*
-            let () = PrintForDebug.pagebreakE ("CL " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-*)
+          (* --
+             if getting worse, outputs the accumulated non-discardable lines 'evvbacc' as a page.
+             note that the line checked last will be left in the processing list.
+             -- *)
             (evvbacc, Some(pbvblst), hgttotalnew, vpb)
           else
             let evhblst = PageInfo.embed_page_info pbinfo imhblst in
@@ -64,10 +70,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let hgttotalnew = hgttotal +% vskip in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
-(*
-            let () = PrintForDebug.pagebreakE ("CB " ^ (Length.show hgttotal) ^ " ===> " ^ (Length.show hgttotalnew) ^ "\n") in  (* for debug *)
-*)
-            (evvbacc, Some(pbvbtail), hgttotalnew, vpb)
+            (evvbacc, Some(omit_clear_page_element pbvbtail), hgttotalnew, vpb)
           else
             let evvbaccdiscardablenew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
               aux true vpb evvbacc evvbaccdiscardablenew hgttotalnew pbvbtail
@@ -125,12 +128,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     (Alist.to_list evvbacc, restopt)
 
 
+(* --
+   normalize:
+     squashes bottom/top margins into spaces.
+   -- *)
 let normalize (vblst : vert_box list) : pb_vert_box list =
-(*
-  Format.printf "PageBreak> [";
-  imvblst |> List.iter (fun imvb -> Format.printf "%a;@ " pp_intermediate_vert_box imvb);
-  Format.printf "]@,";
-*)
+
   let rec aux pbvbacc vblst =
     match vblst with
     | []
@@ -174,7 +177,8 @@ let normalize (vblst : vert_box list) : pb_vert_box list =
 
     | VertFrame(pads, decoS, decoH, decoM, decoT, wid, vblstsub) :: vbtail ->
         let pbvblstsub = aux Alist.empty vblstsub in
-          aux (Alist.extend pbvbacc (PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub))) vbtail
+        let pbvb = PBVertFrame(Beginning, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) in
+          aux (Alist.extend pbvbacc pbvb) vbtail
 
     | VertClearPage :: vbtail ->
         aux (Alist.extend pbvbacc PBClearPage) vbtail
