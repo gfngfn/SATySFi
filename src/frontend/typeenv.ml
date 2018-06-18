@@ -173,6 +173,50 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
     )
 
 
+let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
+  let open OptionMonad in
+  let mtr = tyenv.main_tree in
+  let nmtoid = tyenv.name_to_id_map in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtropt =
+    nmtoid |> ModuleNameMap.find_opt mdlnm >>= fun mdlid ->
+    ModuleTree.search_backward mtr addrlst [mdlid] (fun (vdmapC, tdmapC, cdmapC, sigopt) ->
+      match sigopt with
+      | Some((tdmapsig, vtmapsig)) ->
+        (* -- if the opened module has a signature -- *)
+          ModuleTree.update mtr addrlst (update_td (fun tdmapU ->
+            TyNameMap.fold (fun tynm tydef tdmapU -> tdmapU |> TyNameMap.add tynm tydef) tdmapsig tdmapU
+          )) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt (fun vdmapU ->
+            VarMap.fold (fun varnm pty vdmapU ->
+              match vdmapC |> VarMap.find_opt varnm with
+              | None ->
+                  assert false
+                    (* -- signature must be less genral than its corresponding implementation -- *)
+
+              | Some((_, evid)) ->
+                  vdmapU |> VarMap.add varnm (pty, evid)
+            ) vtmapsig vdmapU
+          ))
+
+      | None ->
+        (* -- if the opened module does NOT have a signature -- *)
+          ModuleTree.update mtr addrlst (update_td (fun tdmapU ->
+            TyNameMap.fold (fun tynm tydef tdmapU -> tdmapU |> TyNameMap.add tynm tydef) tdmapC tdmapU
+          )) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt (fun vdmapU ->
+            VarMap.fold (fun varnm vardef vdmapU -> vdmapU |> VarMap.add varnm vardef) vdmapC vdmapU
+          ))
+    )
+  in
+    match mtropt with
+    | None ->
+        raise (UndefinedModuleName(rng, mdlnm))
+
+    | Some(mtrnew) ->
+        { tyenv with main_tree = mtrnew; }
+
+
 let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
   let open OptionMonad in
   let mtr = tyenv.main_tree in

@@ -423,6 +423,10 @@ let rec typecheck
         (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(EnvType)))
       end
 
+  | UTOpenIn(rngtok, mdlnm, utast1) ->
+      let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
+        typecheck_iter tyenvnew utast1
+
   | UTContentOf(mdlnmlst, varnm) ->
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
