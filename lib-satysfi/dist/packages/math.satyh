@@ -10,6 +10,7 @@ module Math : sig
   direct +math-list : [math list] block-cmd
   direct \math-list : [math list] inline-cmd
   direct +align : [(math list) list] block-cmd
+  direct \align : [(math list) list] inline-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
@@ -532,6 +533,11 @@ end = struct
     in
       line-break true true ctx (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
         % temporary
+
+
+  let-inline ctx \align mlstlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+align(mlstlst);>)
 
 
   let math-list lst =
