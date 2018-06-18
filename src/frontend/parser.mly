@@ -413,6 +413,7 @@
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LETREC LETNONREC DEFEQ LETAND IN OPEN
+%token <Range.t * Types_.module_name> OPENMODULE
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
@@ -829,6 +830,10 @@ nxbot:
   | opn=BRECORD; rcd=nxrecord; cls=ERECORD       { make_standard (Tok opn) (Tok cls) (UTRecord(rcd)) }
   | opn=BPATH; path=path; cls=EPATH              { make_standard (Tok opn) (Tok cls) path }
   | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP  { make_standard (Tok opn) (Tok cls) (extract_main utast) }
+  | opn=OPENMODULE; utast=nxlet; cls=RPAREN {
+      let (rng, mdlnm) = opn in
+        make_standard (Tok rng) (Tok cls) (UTOpenIn(rng, mdlnm, utast))
+    }
 ;
 path: (* untyped_abstract_tree_main *)
   | ast=nxbot; sub=pathsub { let (pathcomplst, utcycleopt) = sub in UTPath(ast, pathcomplst, utcycleopt) }
