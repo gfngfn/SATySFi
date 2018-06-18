@@ -184,29 +184,24 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
       match sigopt with
       | Some((tdmapsig, vtmapsig)) ->
         (* -- if the opened module has a signature -- *)
-          ModuleTree.update mtr addrlst (update_td (fun tdmapU ->
-            TyNameMap.fold (fun tynm tydef tdmapU -> tdmapU |> TyNameMap.add tynm tydef) tdmapsig tdmapU
-          )) >>= fun mtr ->
-          ModuleTree.update mtr addrlst (update_vt (fun vdmapU ->
+          ModuleTree.update mtr addrlst (update_td (TyNameMap.fold TyNameMap.add tdmapsig)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt @@
             VarMap.fold (fun varnm pty vdmapU ->
               match vdmapC |> VarMap.find_opt varnm with
               | None ->
                   assert false
-                    (* -- signature must be less genral than its corresponding implementation -- *)
+                    (* -- signature must be less general than its corresponding implementation -- *)
 
               | Some((_, evid)) ->
                   vdmapU |> VarMap.add varnm (pty, evid)
-            ) vtmapsig vdmapU
-          ))
+            ) vtmapsig
+          )
 
       | None ->
         (* -- if the opened module does NOT have a signature -- *)
-          ModuleTree.update mtr addrlst (update_td (fun tdmapU ->
-            TyNameMap.fold (fun tynm tydef tdmapU -> tdmapU |> TyNameMap.add tynm tydef) tdmapC tdmapU
-          )) >>= fun mtr ->
-          ModuleTree.update mtr addrlst (update_vt (fun vdmapU ->
-            VarMap.fold (fun varnm vardef vdmapU -> vdmapU |> VarMap.add varnm vardef) vdmapC vdmapU
-          ))
+          ModuleTree.update mtr addrlst (update_td (TyNameMap.fold TyNameMap.add tdmapC)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt (VarMap.fold VarMap.add vdmapC)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_cd (ConstrMap.fold ConstrMap.add cdmapC))
     )
   in
     match mtropt with
