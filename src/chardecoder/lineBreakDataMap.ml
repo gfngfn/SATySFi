@@ -319,7 +319,7 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
 
 let append_break_opportunity (uchlst : Uchar.t list) =
 
-  let alw_last = PreventBreak in
+  let alw_last = AllowBreak in
     (* temporary; should take the adjacent embedded command into consideration *)
 
   let should_prevent_break triacc bilst =
