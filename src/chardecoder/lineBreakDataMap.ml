@@ -124,70 +124,6 @@ let find uch =
   with Not_found -> XX  (* temporary *)
 
 
-(* --
-  append line break class to uchar, and then eliminate every INBR character
-  if it is adjacent to a character of a nonspacing script (e.g. han ideographic, kana, etc.)
--- *)
-(*
-let append_property (uchlst : Uchar.t list) =
-
-  let is_in_nonspacing_class (_, lbc) =
-    match lbc with
-    | ( ID | CJ | IN | SA | IDNS | JLOP | JLCP ) -> true
-    | _                                          -> false
-  in
-
-  let bispace = (Uchar.of_int 32, SP) in  (* -- space character -- *)
-
-  let rec trim_break prevopt bilst =
-    let aux = trim_break in
-    match bilst with
-    | [] ->
-        begin
-          match prevopt with
-          | None                     -> []
-          | Some(((_, INBR), biacc)) -> List.rev (bispace :: biacc)
-                                          (* temporary; should take the adjacent embedded command into consideration *)
-          | Some((biprev, biacc))    -> List.rev (biprev :: biacc)
-        end
-
-    | (_, INBR) :: bitail ->
-        begin
-          match prevopt with
-          | None ->
-              aux (Some((bispace, []))) bitail
-                (* -- replaces the forefront INBR character with a space -- *)
-          | Some((biprev, biacc)) ->
-              if is_in_nonspacing_class biprev then
-                aux prevopt bitail
-                  (* -- ignores a INBR character after a character of a nonspacing class -- *)
-              else
-                aux (Some((bispace, biprev :: biacc))) bitail
-                  (* -- replaces the INBR character with a space -- *)
-        end
-
-    | bihead :: bitail ->
-        begin
-          match prevopt with
-          | None ->
-              aux (Some(bihead, [])) bitail
-
-          | Some(((_, INBR), biacc)) ->
-              if is_in_nonspacing_class bihead then
-                aux (Some(bihead, biacc)) bitail
-                  (* -- ignores a INBR character before a character of a nonspacing class -- *)
-              else
-                aux (Some(bihead, bispace :: biacc)) bitail
-                  (* -- replaces the INBR character with a space -- *)
-
-          | Some((biprev, biacc)) -> aux (Some((bihead, biprev :: biacc))) bitail
-        end
-  in
-
-  let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
-    trim_break None bilst
-*)
-
 let set lbclst = LBRESet(lbclst)
 let notof lbclst = LBRENotOf(lbclst)
 let exact lbc = set [lbc]
@@ -374,11 +310,7 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
         let replopt = find_first_match normalization_rule proj_bi proj_bi (bihead :: (Alist.to_list_rev biacc)) bitail in
           match replopt with
           | None       -> normalize (Alist.extend biacc bihead) bitail
-          | Some(repl) ->
-(*
-              let () = PrintForDebug.lbcE "" in  (* for debug *)
-*)
-                normalize (Alist.append biacc repl) bitail
+          | Some(repl) -> normalize (Alist.append biacc repl) bitail
   in
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
@@ -404,25 +336,15 @@ let append_break_opportunity (uchlst : Uchar.t list) =
 
     | (uch, lbc) :: bitail ->
         begin
-(*
-          PrintForDebug.lbc (InternalText.to_utf8 (InternalText.of_uchar uch));  (* for debug *)
-          PrintForDebug.lbc (" " ^ (show_lb_class lbc));  (* for debug *)
-*)
           match bitail with
           | [] ->
               begin
-(*
-                PrintForDebug.lbcE "";  (* for debug *)
-*)
                 Alist.to_list (Alist.extend triacc (uch, lbc, alw_last))
               end
 
           | _ :: _ ->
               begin
                 let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
-(*
-                PrintForDebug.lbcE "";  (* for debug *)
-*)
                 let alw = if b then PreventBreak else AllowBreak in
                   aux (Alist.extend triacc (uch, lbc, alw)) bitail
               end
