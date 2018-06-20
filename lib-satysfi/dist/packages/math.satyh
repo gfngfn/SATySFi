@@ -1125,6 +1125,9 @@ end = struct
     let t4 = fontsize *' 0.025 in
 
     let halflen = half-length hgt dpt hgtaxis fontsize in
+%    let h-straight =  halflen *' 0.8 -' fontsize *' 0.25 in
+%    let r = 1.25 *. (halflen /' fontsize) in
+%    let w-straight = h-straight *' (0.15 /. r) in
     let h-straight =  halflen *' 0.9 -' fontsize *' 0.3 in
     let w-straight = h-straight *' 0.15 in
     let w1 = fontsize *' 0.0125 in
