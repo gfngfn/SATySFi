@@ -222,7 +222,8 @@ let make_fraction fracacc =
    'lookup_patterns':
      determines hyphen pattern of the given word.
      this implemenmtation is currently very inefficient. -- *)
-let lookup_patterns (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t list) list =
+let lookup_patterns (lmin : int) (rmin : int) (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t list) list =
+  let len = List.length uchlst in
   let clst = uchlst |> List.map (fun uch -> (uch, ref 0)) in
   let () =
     patlst |> List.iter (fun (beginning, pairlst, final) ->
@@ -231,32 +232,33 @@ let lookup_patterns (patlst : pattern list) (uchlst : Uchar.t list) : (Uchar.t l
       | ArbitraryBeginning(num) -> match_every num pairlst clst
     )
   in
-  let (acc, fracaccopt) =
-    clst |> List.fold_left (fun (acc, fracaccopt) (uch, numref) ->
-      if (!numref) mod 2 = 1 then
+  let (_, acc, fracaccopt) =
+    clst |> List.fold_left (fun (i, acc, fracaccopt) (uch, numref) ->
+      if (!numref) mod 2 = 1 && i + 1 >= lmin && len - (i + 1) >= rmin then
+      (* -- if able to break the word with hyphen immediately after the current position -- *)
         let fracacc =
           match fracaccopt with
           | Some(fracacc) -> fracacc
           | None          -> Alist.empty
         in
           let sfrac = make_fraction (Alist.extend fracacc uch) in
-            (Alist.extend acc sfrac, None)
+            (i + 1, Alist.extend acc sfrac, None)
       else
         match fracaccopt with
-        | Some(fracacc) -> (acc, Some(Alist.extend fracacc uch))
-        | None          -> (acc, Some(Alist.extend Alist.empty uch))
-    ) (Alist.empty, None)
+        | Some(fracacc) -> (i + 1, acc, Some(Alist.extend fracacc uch))
+        | None          -> (i + 1, acc, Some(Alist.extend Alist.empty uch))
+    ) (0, Alist.empty, None)
   in
     match fracaccopt with
     | Some(fracacc) -> Alist.extend acc (make_fraction fracacc) |> Alist.to_list
     | None          -> acc |> Alist.to_list
 
 
-let lookup ((excpmap, patlst) : t) (uchlst : Uchar.t list) : answer =
+let lookup (lmin : int) (rmin : int) ((excpmap, patlst) : t) (uchlst : Uchar.t list) : answer =
   let fraclst =
     match excpmap |> ExceptionMap.find_opt (InternalText.to_utf8 (InternalText.of_uchar_list uchlst)) with
     | Some(sfraclst) -> sfraclst |> List.map (fun sfrac -> InternalText.to_uchar_list (InternalText.of_utf8 sfrac))
-    | None           -> lookup_patterns patlst uchlst
+    | None           -> lookup_patterns lmin rmin patlst uchlst
   in
   match fraclst with
   | frac :: [] -> Single(frac)

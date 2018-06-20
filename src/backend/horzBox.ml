@@ -217,6 +217,8 @@ type context_main = {
   space_math_punct       : float * float * float;
   space_math_inner       : float * float * float;
   space_math_prefix      : float * float * float;
+  left_hyphen_min        : int;
+  right_hyphen_min       : int;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t

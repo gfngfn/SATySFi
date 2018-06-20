@@ -539,6 +539,8 @@ let get_initial_context wid =
       space_math_punct       = (0.125, 0.04, 0.08);
       space_math_inner       = (0.125, 0.04, 0.08);
       space_math_prefix      = (0.125, 0.04, 0.08);
+      left_hyphen_min        = 3;
+      right_hyphen_min       = 2;
     }
 
 

@@ -177,7 +177,7 @@ let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) 
 (*
   let lbhyphenf = soft_hyphen ctx script in
 *)
-    match LoadHyph.lookup ctx.hyphen_dictionary uchlst with
+    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchlst with
     | LoadHyph.Single(uchlst) ->
         [LBPure(make_string_atom hsinfo uchlst)]
 
