@@ -571,7 +571,7 @@ let make_environments () =
         ( ">=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))    );
         ( "<=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))) );
 
-      (**** include: __primitives.ml ****)
+#include "__primitives.gen.ml"
 
       ]
   in

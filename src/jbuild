@@ -1,0 +1,59 @@
+;;; -*- mode: lisp -*-
+(executable
+ ((name main)
+  (public_name satysfi)
+  (flags (-w -3 -bin-annot -thread -unsafe-string))
+  (libraries (str
+              batteries
+              camlimages
+              camlimages.jpeg
+              camlpdf
+              core_kernel
+              menhirLib
+              otfm
+              uutf
+              yojson
+              ))
+  (preprocess (pps (ppx_deriving.show)))
+  ))
+
+;; dune requires all the .ml/.mli files to be in the same directory as the jbuild.
+;; https://github.com/ocaml/dune/issues/109
+(copy_files# backend/*.{ml,mli})
+(copy_files# chardecoder/*.{ml,mli})
+(copy_files  chardecoder/*.{mll,mly})
+(copy_files# frontend/*.{ml,mli})
+(copy_files  frontend/*.{mll,mly})
+(copy_files# frontend/bytecomp/*.{ml,mli})
+
+(ocamllex
+ (lexer dataLexer))
+
+(menhir
+ ((modules (parser dataParser))
+  (flags (--table --explain))))
+
+(rule
+ ((targets (types_.ml))
+  (deps    (types_.cppo.ml __insttype.gen.ml __attype.gen.ml))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))
+
+(rule
+ ((targets (vm_.ml))
+  (deps    (vm_.cppo.ml __vm.gen.ml))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))
+
+(rule
+ ((targets (ir_.ml))
+  (deps    (ir_.cppo.ml __ir.gen.ml))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))
+
+(rule
+ ((targets (evaluator_.ml))
+  (deps    (evaluator_.cppo.ml __evaluator.gen.ml))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))
+
+(rule
+ ((targets (primitives_.ml))
+  (deps    (primitives_.cppo.ml __primitives.gen.ml))
+  (action  (run ${bin:cppo} ${<} -o ${@}))))

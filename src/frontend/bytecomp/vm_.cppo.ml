@@ -242,4 +242,4 @@ and exec (stack : syntactic_value list) (env : vmenv) (code : instruction list) 
   | c :: code ->
       (*Format.printf "\nexec ---> %a\n" pp_instruction c;*)
       match c with
-      (**** include: __vm.ml ****)
+#include "__vm.gen.ml"

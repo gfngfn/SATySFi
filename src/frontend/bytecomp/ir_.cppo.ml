@@ -454,4 +454,4 @@ and transform (env : frame) ast : (ir * frame) =
         let (iraft, env) = transform env astaft in
           (IRModule(irmdl, iraft), env)
 
-(**** include: __ir.ml ****)
+#include "__ir.gen.ml"
