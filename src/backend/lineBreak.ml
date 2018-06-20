@@ -80,10 +80,10 @@ let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info
     (lphblstnew, widinfonew)
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (phb : pure_horz_box) : a =
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (alw : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
-      chunkf (ConvertText.to_chunks ctx uchlst)
+      chunkf (ConvertText.to_chunks ctx uchlst alw)
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, otxt) ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
@@ -141,13 +141,48 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
 let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pure_either =
   let puref p = PLB(p) in
   let chunkf c = PTextChunks(c) in
-    convert_pure_box_for_line_breaking_scheme listf puref chunkf phb
+    convert_pure_box_for_line_breaking_scheme listf puref chunkf CharBasis.PreventBreak phb
 
 
-let convert_pure_box_for_line_breaking listf (phb : pure_horz_box) : lb_either =
+let convert_pure_box_for_line_breaking listf alw (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
   let chunkf c = TextChunks(c) in
-    convert_pure_box_for_line_breaking_scheme listf puref chunkf phb
+    convert_pure_box_for_line_breaking_scheme listf puref chunkf alw phb
+
+
+let can_break_before tail =
+  match tail with
+  | [] ->
+      false
+
+  | hb :: _ ->
+      begin
+        match hb with
+        | HorzDiscretionary(_)
+        | HorzEmbeddedVertBreakable(_)
+            -> false
+
+        | HorzScriptGuard(_)
+        | HorzFrameBreakable(_)
+            -> true
+
+        | HorzPure(phb) ->
+            begin
+              match phb with
+              | PHCInnerString(_)
+              | PHGFixedFrame(_)
+              | PHGInnerFrame(_)
+              | PHGOuterFrame(_)
+              | PHGEmbeddedVert(_)
+              | PHGFixedGraphics(_)
+              | PHGFixedTabular(_)
+              | PHGFixedImage(_)
+                  -> true
+
+              | _ -> false
+            end
+
+      end
 
 
 let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list =
@@ -168,7 +203,8 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
           aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vblst)))) tail
 
     | HorzPure(phb) :: tail ->
-        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure phb in
+        let alw = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
+        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alw phb in
           aux (Alist.extend lbeacc lbe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->

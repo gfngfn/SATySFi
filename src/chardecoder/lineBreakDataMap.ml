@@ -317,10 +317,7 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
     normalize Alist.empty bilst
 
 
-let append_break_opportunity (uchlst : Uchar.t list) =
-
-  let alw_last = AllowBreak in
-    (* temporary; should take the adjacent embedded command into consideration *)
+let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportunity) =
 
   let should_prevent_break triacc bilst =
     let alwopt = find_first_match line_break_rule proj_tri proj_bi triacc bilst in
