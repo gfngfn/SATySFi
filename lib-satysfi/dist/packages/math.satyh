@@ -425,6 +425,9 @@ end = struct
     | Some(macc) -> macc
 
 
+  let margin-ratio = 1.
+
+
   let-inline ctx \math fml =
       script-guard Latin (embed-math ctx fml)
 
@@ -480,22 +483,32 @@ end = struct
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-
   let-inline ctx \eqn math =
     inline-fil ++
       embed-block-breakable ctx (read-block ctx '<+math(math);>)
 
 
   let-block ctx +math-list mlst =
+    let mingap = get-font-size ctx *' 2. in
     let ib-fil =
-      discretionary 100 inline-fil inline-fil inline-fil
+      discretionary 100 (inline-skip mingap ++ inline-fil) inline-fil inline-fil
     in
     let ib =
-      mlst |> List.fold-left (fun ibacc m -> (
-        ibacc ++ embed-math ctx m ++ ib-fil
+      mlst |> List.fold-left-adjacent (fun ibacc m _ optnext -> (
+        let ib-after =
+          match optnext with
+          | None    -> inline-fil
+          | Some(_) -> ib-fil
+        in
+          ibacc ++ embed-math ctx m ++ ib-after
       )) inline-fil
     in
-      line-break true true (ctx |> set-min-gap-of-lines 12pt) ib
+    let margin = get-font-size ctx *' margin-ratio in
+    let ctx =
+      ctx |> set-min-gap-of-lines 12pt
+          |> set-paragraph-margin margin margin
+    in
+      line-break true true ctx ib
 
 
   let-inline ctx \math-list mlst =
@@ -531,7 +544,9 @@ end = struct
         ))
       ))
     in
-      line-break true true ctx (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+    let margin = get-font-size ctx *' margin-ratio in
+      line-break true true (ctx |> set-paragraph-margin margin margin)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
         % temporary
 
 

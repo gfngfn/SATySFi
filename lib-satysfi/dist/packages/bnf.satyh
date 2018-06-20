@@ -30,7 +30,7 @@ end = struct
   let-block ctx +BNF mnontm mlstlst =
     let celllstlst = tabular-of-math ctx mnontm mlstlst in
     let ib = tabular celllstlst (fun _ _ -> []) in
-    let vp = get-font-size ctx *' 1.5 in
+    let vp = get-font-size ctx *' 1. in
       line-break true true (ctx |> set-paragraph-margin vp vp)
         (inline-fil ++ ib ++ inline-fil)
 
