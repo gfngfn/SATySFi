@@ -1442,6 +1442,23 @@ code: |
   Context(Primitives.get_initial_context txtwid, valuecmd)
 
 ---
+inst: PrimitiveSetHyphenMin
+is-primitive: yes
+name: "set-hyphen-min"
+type: |
+  ~% (tI @-> tI @-> tCTX @-> tCTX)
+
+params:
+- lmin : int
+- rmin : int
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    left_hyphen_min = max 0 lmin;
+    right_hyphen_min = max 0 rmin;
+  }), valuecmd)
+
+---
 inst: PrimitiveSetMinGapOfLines
 is-primitive: yes
 name: "set-min-gap-of-lines"
