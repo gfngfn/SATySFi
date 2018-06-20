@@ -387,6 +387,8 @@ module Math : sig
   direct \sqbracket : [math] math-cmd
   direct \abs : [math] math-cmd
   direct \norm : [math] math-cmd
+  direct \floor : [math] math-cmd
+  direct \ceil : [math] math-cmd
   direct \set : [math] math-cmd
   direct \setsep : [math; math] math-cmd
   direct \cases : [(math * inline-text) list] math-cmd
@@ -397,8 +399,12 @@ module Math : sig
   val angle-right : paren
   val brace-left : paren
   val brace-right : paren
-  val bracket-left : paren
-  val bracket-right : paren
+  val sqbracket-left : paren
+  val sqbracket-right : paren
+  val floor-left : paren
+  val floor-right : paren
+  val ceil-left : paren
+  val ceil-right : paren
   val abs-left : paren
   val abs-right : paren
   val norm-left : paren
@@ -1283,62 +1289,96 @@ end = struct
     math-paren-with-middle brace-left brace-right bar-middle [m1; m2]
 
 
-  let bracket-left hgt dpt hgtaxis fontsize color =
-    let halflen = half-length hgt dpt hgtaxis fontsize in
+  let bracket-metrics fontsize halflen =
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.05 +' halflen *' 0.005 in
     let w2 = halflen *' 0.3 in
     let t = fontsize *' 0.03 in
+      (w0, w1, w2, t)
+
+
+  let bracket-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  let floor-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop)
+        |> close-with-line
+
+
+  let ceil-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x1, ybot)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  let bracket-left pathf hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let path (xpos, ypos) =
       let x0 = xpos +' w0 in
       let x1 = x0 +' w1 in
       let x2 = x1 +' w2 in
-      let ytop = ypos +' hgtaxis +' halflen in
-      let ybot = ypos +' hgtaxis -' halflen in
-        start-path (x2, ytop)
-          |> line-to (x0, ytop)
-          |> line-to (x0, ybot)
-          |> line-to (x2, ybot)
-          |> line-to (x2, ybot +' t)
-          |> line-to (x1, ybot +' t)
-          |> line-to (x1, ytop -' t)
-          |> line-to (x2, ytop -' t)
-          |> close-with-line
+        pathf x0 x1 x2 t ypos hgtaxis halflen
     in
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
 
-  let bracket-right hgt dpt hgtaxis fontsize color =
+  let bracket-right pathf hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
-    let w0 = fontsize *' 0.1 in
-    let w1 = fontsize *' 0.05 +' halflen *' 0.005 in
-    let w2 = halflen *' 0.3 in
-    let t = fontsize *' 0.03 in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let widparen = w0 +' w1 +' w2 in
     let path (xpos, ypos) =
       let x0 = xpos +' widparen -' w0 in
       let x1 = x0 -' w1 in
       let x2 = x1 -' w2 in
-      let ytop = ypos +' hgtaxis +' halflen in
-      let ybot = ypos +' hgtaxis -' halflen in
-        start-path (x2, ytop)
-          |> line-to (x0, ytop)
-          |> line-to (x0, ybot)
-          |> line-to (x2, ybot)
-          |> line-to (x2, ybot +' t)
-          |> line-to (x1, ybot +' t)
-          |> line-to (x1, ytop -' t)
-          |> line-to (x2, ytop -' t)
-          |> close-with-line
+        pathf x0 x1 x2 t ypos hgtaxis halflen
     in
     let graphics point = [ fill color (path point); ] in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
 
+  let sqbracket-left = bracket-left bracket-path
+  let sqbracket-right = bracket-right bracket-path
   let-math \sqbracket =
-    math-paren bracket-left bracket-right
+    math-paren sqbracket-left sqbracket-right
+
+
+  let floor-left = bracket-left floor-path
+  let floor-right = bracket-right floor-path
+  let-math \floor =
+    math-paren floor-left floor-right
+
+
+  let ceil-left = bracket-left ceil-path
+  let ceil-right = bracket-right ceil-path
+  let-math \ceil =
+    math-paren ceil-left ceil-right
 
 
   let empty-paren _ _ _ _ _ = (inline-nil, (fun _ -> 0pt))
