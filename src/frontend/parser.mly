@@ -790,13 +790,12 @@ nxrtimes:
 nxun:
   | tok=EXACT_MINUS; utast2=nxapp    { binary_operator (Range.dummy "zero-of-unary-minus", UTIntegerConstant(0)) (tok, "-") utast2 }
   | tok=LNOT; utast2=nxapp           { make_standard (Tok tok) (Ranged utast2) (UTApply((tok, UTContentOf([], "not")), utast2)) }
-  | unop=UNOP_EXCLAM; utast2=nxbot   { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
   | constr=CONSTRUCTOR; utast2=nxbot { make_standard (Ranged constr) (Ranged utast2) (UTConstructor(extract_name constr, utast2)) }
   | constr=CONSTRUCTOR               { let (rng, constrnm) = constr in (rng, UTConstructor(constrnm, (Range.dummy "constructor-unitvalue", UTUnitConstant))) }
   | utast=nxapp                      { utast }
 ;
 nxapp:
-  | utast1=nxapp; utast2=nxbot { make_standard (Ranged utast1) (Ranged utast2) (UTApply(utast1, utast2)) }
+  | utast1=nxapp; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApply(utast1, utast2)) }
   | utast1=nxapp; constr=CONSTRUCTOR {
       let (rng, constrnm) = constr in
         make_standard (Ranged utast1) (Tok rng)
@@ -804,10 +803,13 @@ nxapp:
   | pre=COMMAND; hcmd=hcmd {
       let (rng, mdlnmlst, csnm) = hcmd in
         make_standard (Tok pre) (Tok rng) (UTContentOf(mdlnmlst, csnm)) }
-  | utast1=nxapp; OPTIONAL; utast2=nxbot { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
+  | utast1=nxapp; OPTIONAL; utast2=nxunsub { make_standard (Ranged utast1) (Ranged utast2) (UTApplyOptional(utast1, utast2)) }
   | utast1=nxapp; tok=OMISSION { make_standard (Ranged utast1) (Tok tok) (UTApplyOmission(utast1)) }
-  | utast=nxbot { utast }
+  | utast=nxunsub { utast }
 ;
+nxunsub:
+  | unop=UNOP_EXCLAM; utast2=nxbot   { let (rng, varnm) = unop in make_standard (Tok rng) (Ranged utast2) (UTApply((rng, UTContentOf([], varnm)), utast2)) }
+  | utast=nxbot { utast }
 nxbot:
   | utast=nxbot; ACCESS; var=VAR { make_standard (Ranged utast) (Ranged var) (UTAccessField(utast, extract_name var)) }
   | var=VAR                      { let (rng, varnm) = var in (rng, UTContentOf([], varnm)) }
