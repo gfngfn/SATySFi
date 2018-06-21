@@ -1,9 +1,16 @@
 @require: pervasives
+@require: list
+@require: gr
 
 module Math : sig
 
   direct \math : [math] inline-cmd
   direct +math : [math] block-cmd
+  direct \eqn : [math] inline-cmd
+  direct +math-list : [math list] block-cmd
+  direct \math-list : [math list] inline-cmd
+  direct +align : [(math list) list] block-cmd
+  direct \align : [(math list) list] inline-cmd
   direct \text : [inline-text] math-cmd
   direct \frac : [math; math] math-cmd
   direct \sqrt : [math] math-cmd
@@ -11,7 +18,7 @@ module Math : sig
   direct \upper : [math; math] math-cmd
   direct \math-skip : [length] math-cmd
   direct \math-color : [color; math] math-cmd
-  val concat : math -> math list -> math
+  val join : math -> math list -> math
 
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
@@ -28,79 +35,10 @@ module Math : sig
   direct \mathbb : [math] math-cmd
   direct \bm : [math] math-cmd
 
-  direct \paren : [math] math-cmd
-  direct \app : [math; math] math-cmd
-  direct \angle : [math] math-cmd
-  direct \brace : [math] math-cmd
-  direct \sqbracket : [math] math-cmd
-  direct \abs : [math] math-cmd
-  direct \norm : [math] math-cmd
-
-  direct \to : [] math-cmd
-  direct \pm : [] math-cmd
-  direct \infty : [] math-cmd
-  direct \ldots : [] math-cmd
-  direct \sum : [] math-cmd
-  direct \prod : [] math-cmd
-  direct \int : [] math-cmd
-  direct \ordd : [] math-cmd
-  direct \partial : [] math-cmd
-  direct \times : [] math-cmd
-  direct \nabla : [] math-cmd
-
-  direct \leq    : [] math-cmd
-  direct \geq    : [] math-cmd
-  direct \in     : [] math-cmd
-  direct \mid : [] math-cmd
-
-  direct \equiv  : [] math-cmd
-  direct \neq    : [] math-cmd
-  direct \simeq  : [] math-cmd
-  direct \sim    : [] math-cmd
-  direct \approx : [] math-cmd
-  direct \propto : [] math-cmd
-
-  direct \lim : [] math-cmd
-  direct \colim : [] math-cmd
-  direct \max : [] math-cmd
-  direct \min : [] math-cmd
-
-  direct \wedge : [] math-cmd
-  direct \vee : [] math-cmd
-  direct \Rightarrow : [] math-cmd
-  direct \Leftarrow : [] math-cmd
-  direct \Leftrightarrow : [] math-cmd
-  direct \forall : [] math-cmd
-  direct \exists : [] math-cmd
-
-  direct \because : [] math-cmd
-  direct \therefore : [] math-cmd
-
-
-  direct \Alpha   : [] math-cmd
-  direct \Beta    : [] math-cmd
-  direct \Gamma   : [] math-cmd
-  direct \Delta   : [] math-cmd
-  direct \Epsilon : [] math-cmd
-  direct \Zeta    : [] math-cmd
-  direct \Eta     : [] math-cmd
-  direct \Theta   : [] math-cmd
-  direct \Iota    : [] math-cmd
-  direct \Kappa   : [] math-cmd
-  direct \Lambda  : [] math-cmd
-  direct \Mu      : [] math-cmd
-  direct \Nu      : [] math-cmd
-  direct \Xi      : [] math-cmd
-  direct \Omicron : [] math-cmd
-  direct \Pi      : [] math-cmd
-  direct \Rho     : [] math-cmd
-  direct \Sigma   : [] math-cmd
-  direct \Tau     : [] math-cmd
-  direct \Upsilon : [] math-cmd
-  direct \Phi     : [] math-cmd
-  direct \Chi     : [] math-cmd
-  direct \Psi     : [] math-cmd
-  direct \Omega   : [] math-cmd
+  direct \math-style-token : [math-char-class; string] math-cmd
+  direct \mathit-token : [string] math-cmd
+  direct \mathrm-token : [string] math-cmd
+  direct \mathbf-token : [string] math-cmd
 
   direct \alpha   : [] math-cmd
   direct \beta    : [] math-cmd
@@ -127,17 +65,361 @@ module Math : sig
   direct \psi     : [] math-cmd
   direct \omega   : [] math-cmd
 
+  direct \Alpha   : [] math-cmd
+  direct \Beta    : [] math-cmd
+  direct \Gamma   : [] math-cmd
+  direct \Delta   : [] math-cmd
+  direct \Epsilon : [] math-cmd
+  direct \Zeta    : [] math-cmd
+  direct \Eta     : [] math-cmd
+  direct \Theta   : [] math-cmd
+  direct \Iota    : [] math-cmd
+  direct \Kappa   : [] math-cmd
+  direct \Lambda  : [] math-cmd
+  direct \Mu      : [] math-cmd
+  direct \Nu      : [] math-cmd
+  direct \Xi      : [] math-cmd
+  direct \Omicron : [] math-cmd
+  direct \Pi      : [] math-cmd
+  direct \Rho     : [] math-cmd
+  direct \Sigma   : [] math-cmd
+  direct \Tau     : [] math-cmd
+  direct \Upsilon : [] math-cmd
+  direct \Phi     : [] math-cmd
+  direct \Chi     : [] math-cmd
+  direct \Psi     : [] math-cmd
+  direct \Omega   : [] math-cmd
+
+  direct \to : [] math-cmd
+  direct \pm : [] math-cmd
+  direct \mp : [] math-cmd
+  direct \times : [] math-cmd
+  direct \setminus : [] math-cmd
+  direct \ast : [] math-cmd
+  direct \circ : [] math-cmd
+  direct \bullet : [] math-cmd
+  direct \cap : [] math-cmd
+  direct \cup : [] math-cmd
+  direct \uplus : [] math-cmd
+  direct \sqcap : [] math-cmd
+  direct \sqcup : [] math-cmd
+  direct \wedge : [] math-cmd
+  direct \vee : [] math-cmd
+  direct \oplus : [] math-cmd
+  direct \ominus : [] math-cmd
+  direct \otimes : [] math-cmd
+  direct \oslash : [] math-cmd
+
+  direct \vdash : [] math-cmd
+  direct \nvdash : [] math-cmd
+  direct \dashv : [] math-cmd
+  direct \vDash : [] math-cmd
+  direct \nvDash : [] math-cmd
+  direct \Vdash : [] math-cmd
+  direct \nVdash : [] math-cmd
+
+  direct \colon-rel : [] math-cmd
+
+  direct \leq : [] math-cmd
+  direct \geq : [] math-cmd
+  direct \equiv : [] math-cmd
+  direct \nequiv : [] math-cmd
+  direct \neq : [] math-cmd
+  direct \sim : [] math-cmd
+  direct \nsim : [] math-cmd
+  direct \simeq : [] math-cmd
+  direct \nsimeq : [] math-cmd
+  direct \approx : [] math-cmd
+  direct \propto : [] math-cmd
+  direct \coloneq : [] math-cmd
+  direct \eqcolon : [] math-cmd
+
+  direct \in : [] math-cmd
+  direct \nin : [] math-cmd
+  direct \ni : [] math-cmd
+  direct \nni : [] math-cmd
+  direct \subset : [] math-cmd
+  direct \supset : [] math-cmd
+  direct \nsubset : [] math-cmd
+  direct \nsupset : [] math-cmd
+  direct \subseteq : [] math-cmd
+  direct \supseteq : [] math-cmd
+  direct \nsubseteq : [] math-cmd
+  direct \nsupseteq : [] math-cmd
+  direct \subsetneq : [] math-cmd
+  direct \supsetneq : [] math-cmd
+  direct \sqsubset : [] math-cmd
+  direct \sqsupset : [] math-cmd
+  direct \sqsubseteq : [] math-cmd
+  direct \sqsupseteq : [] math-cmd
+  direct \nsqsubseteq : [] math-cmd
+  direct \nsqsupseteq : [] math-cmd
+  direct \sqsubsetneq : [] math-cmd
+  direct \sqsupsetneq : [] math-cmd
+  direct \prec : [] math-cmd
+  direct \succ : [] math-cmd
+  direct \nprec : [] math-cmd
+  direct \nsucc : [] math-cmd
+  direct \preccurlyeq : [] math-cmd
+  direct \succcurlyeq : [] math-cmd
+  direct \precsim : [] math-cmd
+  direct \succsim : [] math-cmd
+  direct \npreccurlyeq : [] math-cmd
+  direct \nsucccurlyeq : [] math-cmd
+
+  direct \emptyset : [] math-cmd
+  direct \infty : [] math-cmd
+  direct \top : [] math-cmd
+  direct \bot : [] math-cmd
+  direct \therefore : [] math-cmd
+  direct \because : [] math-cmd
+  direct \forall : [] math-cmd
+  direct \exists : [] math-cmd
+  direct \nexists : [] math-cmd
+  direct \bigcirc : [] math-cmd
+
+  direct \ldots : [] math-cmd
+  direct \cdots : [] math-cmd
+  direct \vdots : [] math-cmd
+  direct \ddots : [] math-cmd
+  direct \backddots : [] math-cmd
+
+  direct \lim : [] math-cmd
+  direct \colim : [] math-cmd
+  direct \max : [] math-cmd
+  direct \min : [] math-cmd
+  direct \inf : [] math-cmd
+  direct \sup : [] math-cmd
+  direct \sin : [] math-cmd
+  direct \cos : [] math-cmd
+  direct \tan : [] math-cmd
+  direct \cot : [] math-cmd
+  direct \sec : [] math-cmd
+  direct \csc : [] math-cmd
+  direct \log : [] math-cmd
+  direct \tr : [] math-cmd
+  direct \det : [] math-cmd
+  direct \dom : [] math-cmd
+  direct \cod : [] math-cmd
+  direct \Ker : [] math-cmd
+  direct \Im : [] math-cmd
+
+  direct \sum : [] math-cmd
+  direct \prod : [] math-cmd
+  direct \coprod : [] math-cmd
+  direct \bigwedge : [] math-cmd
+  direct \bigvee : [] math-cmd
+  direct \bigcap : [] math-cmd
+  direct \bigcup : [] math-cmd
+
+  direct \land : [] math-cmd
+  direct \lor : [] math-cmd
+
+  direct \Leftarrow : [] math-cmd
+  direct \Rightarrow : [] math-cmd
+  direct \Leftrightarrow : [] math-cmd
+  direct \Uparrow : [] math-cmd
+  direct \Downarrow : [] math-cmd
+  direct \Updownarrow : [] math-cmd
+  direct \nRightarrow : [] math-cmd
+  direct \nLeftarrow : [] math-cmd
+  direct \nLeftrightarrow : [] math-cmd
+  direct \leftarrow : [] math-cmd
+  direct \rightarrow : [] math-cmd
+  direct \uparrow : [] math-cmd
+  direct \downarrow : [] math-cmd
+  direct \updownarrow : [] math-cmd
+  direct \nwarrow : [] math-cmd
+  direct \nearrow : [] math-cmd
+  direct \searrow : [] math-cmd
+  direct \swarrow : [] math-cmd
+  direct \nleftarrow : [] math-cmd
+  direct \nrightarrow : [] math-cmd
+  direct \nleftrightarrow : [] math-cmd
+  direct \mapsto : [] math-cmd
+  direct \hookleftarrow : [] math-cmd
+  direct \hookrightarrow : [] math-cmd
+  direct \rightarrowtail : [] math-cmd
+  direct \leftarrowtail : [] math-cmd
+  direct \twoheadleftarrow : [] math-cmd
+  direct \twoheadrightarrow : [] math-cmd
+  direct \twoheaduparrow : [] math-cmd
+  direct \twoheaddownarrow : [] math-cmd
+  direct \leftharpoonup : [] math-cmd
+  direct \leftharpoondown : [] math-cmd
+  direct \rightharpoonup : [] math-cmd
+  direct \rightharpoondown : [] math-cmd
+  direct \rightleftharpoons : [] math-cmd
+  direct \upharpoonright : [] math-cmd
+  direct \upharpoonleft : [] math-cmd
+  direct \downharpoonright : [] math-cmd
+  direct \downharpoonleft : [] math-cmd
+  direct \longleftarrow : [] math-cmd
+  direct \longrightarrow : [] math-cmd
+  direct \longleftrightarrow : [] math-cmd
+  direct \Longleftarrow : [] math-cmd
+  direct \Longrightarrow : [] math-cmd
+  direct \Longleftrightarrow : [] math-cmd
+  direct \circlearrowleft : [] math-cmd
+  direct \circlearrowright : [] math-cmd
+
+  direct \between : [] math-cmd
+  direct \pitchfork : [] math-cmd
+  direct \intercal : [] math-cmd
+  direct \ll : [] math-cmd
+  direct \gg : [] math-cmd
+  direct \lll : [] math-cmd
+  direct \ggg : [] math-cmd
+  direct \leqq : [] math-cmd
+  direct \geqq : [] math-cmd
+  direct \lneqq : [] math-cmd
+  direct \gneqq : [] math-cmd
+  direct \lnsim : [] math-cmd
+  direct \gnsim : [] math-cmd
+  direct \precnsim : [] math-cmd
+  direct \succnsim : [] math-cmd
+  direct \Subset : [] math-cmd
+  direct \Supset : [] math-cmd
+  direct \Cap : [] math-cmd
+  direct \Cup : [] math-cmd
+  direct \lhd : [] math-cmd
+  direct \rhd : [] math-cmd
+  direct \unlhd : [] math-cmd
+  direct \unrhd : [] math-cmd
+  direct \triangleleft : [] math-cmd
+  direct \triangleright : [] math-cmd
+  direct \trianglelefteq : [] math-cmd
+  direct \trianglerighteq : [] math-cmd
+  direct \backsim : [] math-cmd
+  direct \backsimeq : [] math-cmd
+  direct \eqcirc : [] math-cmd
+  direct \cong : [] math-cmd
+  direct \simneq : [] math-cmd
+  direct \ncong : [] math-cmd
+  direct \approx : [] math-cmd
+  direct \napprox : [] math-cmd
+  direct \approxeq : [] math-cmd
+  direct \curlyeqprec : [] math-cmd
+  direct \curlyeqsucc : [] math-cmd
+  direct \lessdot : [] math-cmd
+  direct \gtrdot : [] math-cmd
+  direct \lesssim : [] math-cmd
+  direct \gtrsim : [] math-cmd
+  direct \nlesssim : [] math-cmd
+  direct \ngtrsim : [] math-cmd
+  direct \lessgtr : [] math-cmd
+  direct \gtrless : [] math-cmd
+  direct \nlessgtr : [] math-cmd
+  direct \ngtrless : [] math-cmd
+  direct \ntriangleleft : [] math-cmd
+  direct \ntriangleright : [] math-cmd
+  direct \ntrianglelefteq : [] math-cmd
+  direct \ntrianglerighteq : [] math-cmd
+  direct \lesseqgtr : [] math-cmd
+  direct \gtreqless : [] math-cmd
+  direct \nless : [] math-cmd
+  direct \ngtr : [] math-cmd
+  direct \nleq : [] math-cmd
+  direct \ngeq : [] math-cmd
+  direct \asymp : [] math-cmd
+  direct \nasymp : [] math-cmd
+  direct \circeq : [] math-cmd
+  direct \Bumpeq : [] math-cmd
+  direct \bumpeq : [] math-cmd
+  direct \doteq : [] math-cmd
+  direct \doteqdot : [] math-cmd
+  direct \fallingdotseq : [] math-cmd
+  direct \risingdotseq : [] math-cmd
+  direct \mid : [] math-cmd
+  direct \nmid : [] math-cmd
+  direct \parallel : [] math-cmd
+  direct \nparallel : [] math-cmd
+  direct \Vvdash : [] math-cmd
+  direct \VDash : [] math-cmd
+  direct \coloncoloneq : [] math-cmd
+  direct \leqslant : [] math-cmd
+  direct \geqslant : [] math-cmd
+  direct \dashV : [] math-cmd
+  direct \Dashv : [] math-cmd
+  direct \DashV : [] math-cmd
+  direct \preceq : [] math-cmd
+  direct \succeq : [] math-cmd
+
+  direct \amalg : [] math-cmd
+  direct \dotplus : [] math-cmd
+  direct \divideontimes : [] math-cmd
+  direct \odot : [] math-cmd
+  direct \circledcirc : [] math-cmd
+  direct \circledast : [] math-cmd
+%  direct \circledeq : [] math-cmd
+  direct \circleddash : [] math-cmd
+  direct \boxplus : [] math-cmd
+  direct \boxminus : [] math-cmd
+  direct \boxtimes : [] math-cmd
+  direct \boxdot : [] math-cmd
+  direct \curlyvee : [] math-cmd
+  direct \curlywedge : [] math-cmd
+  direct \Join : [] math-cmd
+  direct \ltimes : [] math-cmd
+  direct \rtimes : [] math-cmd
+  direct \leftthreetimes : [] math-cmd
+  direct \rightthreetimes : [] math-cmd
+  direct \wr : [] math-cmd
+  direct \centerdot : [] math-cmd
+
+  direct \diamond : [] math-cmd
+  direct \star : [] math-cmd
+  direct \complement : [] math-cmd
+  direct \angle : [] math-cmd
+  direct \measuredangle : [] math-cmd
+  direct \sphericalangle : [] math-cmd
+
+  direct \int : [] math-cmd
+
+  direct \ordd : [] math-cmd
+  direct \partial : [] math-cmd
+  direct \nabla : [] math-cmd
+
+  direct \paren : [math] math-cmd
+  direct \app : [math; math] math-cmd
+  direct \angle-bracket : [math] math-cmd
+  direct \brace : [math] math-cmd
+  direct \sqbracket : [math] math-cmd
+  direct \abs : [math] math-cmd
+  direct \norm : [math] math-cmd
+  direct \floor : [math] math-cmd
+  direct \ceil : [math] math-cmd
+  direct \set : [math] math-cmd
+  direct \setsep : [math; math] math-cmd
+  direct \cases : [(math * inline-text) list] math-cmd
+
+  val paren-left : paren
+  val paren-right : paren
+  val angle-left : paren
+  val angle-right : paren
+  val brace-left : paren
+  val brace-right : paren
+  val sqbracket-left : paren
+  val sqbracket-right : paren
+  val floor-left : paren
+  val floor-right : paren
+  val ceil-left : paren
+  val ceil-right : paren
+  val abs-left : paren
+  val abs-right : paren
+  val norm-left : paren
+  val norm-right : paren
+  val empty-paren : paren
+
   % -- temporary --
   direct \synteq : [] math-cmd
-  direct \derive : [math; math] math-cmd
   direct \tyjd : [math; math; math] math-cmd
   direct \and-also : [] math-cmd
-  direct \overwrite : [math; math; math] math-cmd
   direct \tmabstyped : [math; math; math] math-cmd
 
 end = struct
 
-  let concat msep mlst =
+  let join msep mlst =
     match
       mlst |> List.fold-left (fun maccopt m -> (
         match maccopt with
@@ -147,6 +429,9 @@ end = struct
     with
     | None       -> ${}
     | Some(macc) -> macc
+
+
+  let margin-ratio = 1.
 
 
   let-inline ctx \math fml =
@@ -164,7 +449,7 @@ end = struct
     text-in-math MathOrd (fun ctx -> read-inline ctx it)
 
   let-math \math-skip len =
-    text-in-math MathOrd (fun ctx -> inline-skip len)
+    text-in-math MathOrd (fun _ -> inline-skip len)
 
   let-math \math-color color m =
     math-color color m
@@ -187,13 +472,93 @@ end = struct
   let-math \mathbb m = ${\math-style!(MathDoubleStruck){#m}}
   let-math \bm m = ${\math-style!(MathBoldItalic){#m}}
 
+
+  let-math \math-style-token sty s =
+    text-in-math MathOrd (fun ctx -> (
+    let sm = convert-string-for-math ctx sty s in
+      embed-math ctx (math-char MathOrd sm)
+    ))
+
+  let-math \mathit-token s = ${\math-style-token!(MathItalic)!(s)}
+  let-math \mathrm-token s = ${\math-style-token!(MathRoman)!(s)}
+  let-math \mathbf-token s = ${\math-style-token!(MathBoldRoman)!(s)}
+
+
   let-block ctx +math math =
     let ib = embed-math ctx math in
       line-break true true ctx (inline-fil ++ ib ++ inline-fil)
 
 
-%  let math-ord-char cp =
-%    math-char MathOrd (string-unexplode [cp])
+  let-inline ctx \eqn math =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math(math);>)
+
+
+  let-block ctx +math-list mlst =
+    let mingap = get-font-size ctx *' 2. in
+    let ib-fil =
+      discretionary 100 (inline-skip mingap ++ inline-fil) inline-fil inline-fil
+    in
+    let ib =
+      mlst |> List.fold-left-adjacent (fun ibacc m _ optnext -> (
+        let ib-after =
+          match optnext with
+          | None    -> inline-fil
+          | Some(_) -> ib-fil
+        in
+          ibacc ++ embed-math ctx m ++ ib-after
+      )) inline-fil
+    in
+    let margin = get-font-size ctx *' margin-ratio in
+    let ctx =
+      ctx |> set-min-gap-of-lines 12pt
+          |> set-paragraph-margin margin margin
+    in
+      line-break true true ctx ib
+
+
+  let-inline ctx \math-list mlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+math-list(mlst);>)
+
+
+  let-block ctx +align mlstlst =
+    let vlen = 4pt in
+    let celllstlst =
+      mlstlst |> List.map (fun mlst -> (
+        mlst |> List.mapi-adjacent (fun index m _ mnextopt -> (
+          let ibm = embed-math ctx m in
+          let ib =
+            match mnextopt with
+            | None ->
+                ibm
+
+            | Some(mnext) ->
+                let ibspaceopt = space-between-maths ctx m mnext in
+                ( match ibspaceopt with
+                  | None          -> ibm
+                  | Some(ibspace) -> ibm ++ ibspace
+                )
+          in
+          let ib =
+            if index mod 2 == 0 then
+              inline-fil ++ ib
+            else
+              ib ++ inline-fil
+          in
+            NormalCell((0pt, 0pt, vlen, vlen), ib)
+        ))
+      ))
+    in
+    let margin = get-font-size ctx *' margin-ratio in
+      line-break true true (ctx |> set-paragraph-margin margin margin)
+        (inline-fil ++ (tabular celllstlst (fun _ _ -> [])) ++ inline-fil)
+        % temporary
+
+
+  let-inline ctx \align mlstlst =
+    inline-fil ++
+      embed-block-breakable ctx (read-block ctx '<+align(mlstlst);>)
 
 
   let math-list lst =
@@ -286,48 +651,301 @@ end = struct
   let-math \Psi      = greek-uppercase 0x1D6F9 0x1D733 0x03A8 0x1D6BF
   let-math \Omega    = greek-uppercase 0x1D6FA 0x1D734 0x03A9 0x1D6C0
 
-  let-math \infty = math-char MathOrd `∞`
-  let-math \to    = math-char MathRel `→`
-  let-math \in    = math-char MathRel `∈`
-  let-math \mid   = math-char MathRel `|`
-  let-math \pm    = math-char MathBin `±`
-  let-math \times = math-char MathBin `×`
-  let-math \vdash = math-char MathRel `⊢`
-  let-math \colon-rel = math-char MathRel `:`
-  let-math \leq    = math-char MathRel `≤`
-  let-math \geq    = math-char MathRel `≥`
-  let-math \equiv  = math-char MathRel `≡`
-  let-math \neq    = math-char MathRel `≠`
-  let-math \simeq  = math-char MathRel `≃`
-  let-math \sim    = math-char MathRel `∼`
-  let-math \approx = math-char MathRel `≈`
-  let-math \propto = math-char MathRel `∝`
+  let ord = math-char MathOrd
+  let bin = math-char MathBin
+  let rel = math-char MathRel
+  let op = math-char MathOp
+  let punct = math-char MathPunct
+  let prefix = math-char MathPrefix
+  let bigop = math-big-char MathOp
 
-  let-math \mapsto = math-char MathRel `↦`
-  let-math \ldots = math-char MathPunct `…`
+  let-math \to    = rel `→`
+  let-math \pm    = bin `±`
+  let-math \mp    = bin `∓`
+  let-math \times = bin `×`
+  let-math \setminus = bin `∖`
+  let-math \ast = bin `∗`
+  let-math \circ = bin `∘`
+  let-math \bullet = bin `∙`
+  let-math \cap = bin `∩`
+  let-math \cup = bin `∪`
+  let-math \uplus = bin `⊎`
+  let-math \sqcap = bin `⊓`
+  let-math \sqcup = bin `⊔`
+  let-math \wedge = bin `∧`
+  let-math \vee   = bin `∨`
+  let-math \oplus = bin `⊕`
+  let-math \ominus = bin `⊖`
+  let-math \otimes = bin `⊗`
+  let-math \oslash = bin `⊘`
 
-  let-math \lim = math-char MathOp `lim`
-  let-math \colim = math-char MathOp `colim`
-  let-math \max = math-char MathOp `max`
-  let-math \min = math-char MathOp `min`
+  let-math \vdash = rel `⊢`
+  let-math \nvdash = rel `⊬`
+  let-math \dashv = rel `⊣`
+  let-math \vDash = rel `⊨`
+  let-math \nvDash = rel `⊭`
+  let-math \Vdash = rel `⊩`
+  let-math \nVdash = rel `⊮`
 
+  let-math \colon-rel = rel `:`
 
-  let-math \sum = math-big-char MathOp `∑`
-  let-math \prod = math-big-char MathOp `∏`
+  let-math \leq = rel `≤`
+  let-math \geq = rel `≥`
+  let-math \equiv = rel `≡`
+  let-math \nequiv = rel `≢`
+  let-math \neq = rel `≠`
+  let-math \sim = rel `∼`
+  let-math \nsim = rel `≁`
+  let-math \simeq = rel `≃`
+  let-math \nsimeq = rel `≄`
+  let-math \approx = rel `≈`
+  let-math \propto = rel `∝`
+  let-math \coloneq = rel `≔`
+  let-math \eqcolon = rel `≕`
 
-  let-math \wedge = math-char MathBin `∧`
-  let-math \vee   = math-char MathBin `∨`
-  let-math \Rightarrow = math-char MathRel `⇒`
-  let-math \Leftarrow = math-char MathRel `⇐`
-  let-math \Leftrightarrow = math-char MathRel `⇔`
-  let-math \rightarrow = math-char MathRel `→`
-  let-math \leftarrow = math-char MathRel `←`
-  let-math \forall = math-char MathOrd `∀`
-  let-math \exists = math-char MathOrd `∃`
+  let-math \in = rel `∈`
+  let-math \nin = rel `∉`
+  let-math \ni = rel `∋`
+  let-math \nni = rel `∌`
+  let-math \subset = rel `⊂`
+  let-math \supset = rel `⊃`
+  let-math \nsubset = rel `⊄`
+  let-math \nsupset = rel `⊅`
+  let-math \subseteq = rel `⊆`
+  let-math \supseteq = rel `⊇`
+  let-math \nsubseteq = rel `⊈`
+  let-math \nsupseteq = rel `⊉`
+  let-math \subsetneq = rel `⊊`
+  let-math \supsetneq = rel `⊋`
+  let-math \sqsubset = rel `⊏`
+  let-math \sqsupset = rel `⊐`
+  let-math \sqsubseteq = rel `⊑`
+  let-math \sqsupseteq = rel `⊒`
+  let-math \nsqsubseteq = rel `⋢`
+  let-math \nsqsupseteq = rel `⋣`
+  let-math \sqsubsetneq = rel `⋤`
+  let-math \sqsupsetneq = rel `⋥`
+  let-math \prec = rel `≺`
+  let-math \succ = rel`≻`
+  let-math \nprec = rel `⊀`
+  let-math \nsucc = rel `⊁`
+  let-math \preccurlyeq = rel`≼`
+  let-math \succcurlyeq = rel `≽`
+  let-math \precsim = rel `≾`
+  let-math \succsim = rel `≿`
+  let-math \npreccurlyeq = rel `⋠`
+  let-math \nsucccurlyeq = rel `⋡`
 
-  let-math \therefore = math-char MathOrd `∴`
-  let-math \because = math-char MathOrd `∵`
+  let-math \emptyset = ord `∅`
+  let-math \infty = ord `∞`
+  let-math \top = ord `⊤`
+  let-math \bot = ord `⊥`
+  let-math \therefore = ord `∴`
+  let-math \because = ord `∵`
+  let-math \forall = ord `∀`
+  let-math \exists = ord `∃`
+  let-math \nexists = ord `∄`
+  let-math \bigcirc = ord `◯`
 
+  let-math \ldots = ord `…`
+  let-math \cdots = ord `⋯`
+  let-math \vdots = ord `⋮`
+  let-math \ddots = ord `⋱`
+  let-math \backddots = ord `⋰`
+
+  let-math \lim = op `lim`
+  let-math \colim = op `colim`
+  let-math \max = op `max`
+  let-math \min = op `min`
+  let-math \inf = op `inf`
+  let-math \sup = op `sup`
+  let-math \sin = op `sin`
+  let-math \cos = op `cos`
+  let-math \tan = op `tan`
+  let-math \cot = op `cot`
+  let-math \sec = op `sec`
+  let-math \csc = op `csc`
+  let-math \log = op `log`
+  let-math \tr  = op `tr`
+  let-math \det = op `det`
+  let-math \dom = op `dom`
+  let-math \cod = op `cod`
+  let-math \Ker = op `Ker`
+  let-math \Im = op `Im`
+
+  let-math \sum = bigop `∑`
+  let-math \prod = bigop `∏`
+  let-math \coprod = bigop `∐`
+  let-math \bigwedge = bigop `⋀`
+  let-math \bigvee = bigop `⋁`
+  let-math \bigcap = bigop `⋂`
+  let-math \bigcup = bigop `⋃`
+
+  let-math \land = rel `∧`
+  let-math \lor  = rel `∨`
+
+  let-math \Leftarrow = rel `⇐`
+  let-math \Rightarrow = rel `⇒`
+  let-math \Leftrightarrow = rel `⇔`
+  let-math \Uparrow = rel `⇑`
+  let-math \Downarrow = rel `⇓`
+  let-math \Updownarrow = rel `⇕`
+  let-math \nRightarrow = rel `⇍`
+  let-math \nLeftarrow = rel `⇏`
+  let-math \nLeftrightarrow = rel `⇎`
+  let-math \leftarrow = rel `←`
+  let-math \rightarrow = rel `→`
+  let-math \uparrow = rel `↑`
+  let-math \downarrow = rel `↓`
+  let-math \updownarrow = rel `↕`
+  let-math \nwarrow = rel `↖`
+  let-math \nearrow = rel `↗`
+  let-math \searrow = rel `↘`
+  let-math \swarrow = rel `↙`
+  let-math \nleftarrow = rel `↚`
+  let-math \nrightarrow = rel `↛`
+  let-math \nleftrightarrow = rel `↮`
+  let-math \mapsto = rel `↦`
+  let-math \hookleftarrow = rel `↩`
+  let-math \hookrightarrow = rel `↪`
+  let-math \rightarrowtail = rel `↢`
+  let-math \leftarrowtail = rel `↣`
+  let-math \twoheadleftarrow = rel `↞`
+  let-math \twoheadrightarrow = rel `↠`
+  let-math \twoheaduparrow = rel `↟`
+  let-math \twoheaddownarrow = rel `↡`
+  let-math \leftharpoonup = rel `↼`
+  let-math \leftharpoondown = rel `↽`
+  let-math \rightharpoonup = rel `⇀`
+  let-math \rightharpoondown = rel `⇁`
+  let-math \rightleftharpoons = rel `⇌`
+  let-math \upharpoonright = rel `↾`
+  let-math \upharpoonleft = rel `↿`
+  let-math \downharpoonright = rel `⇂`
+  let-math \downharpoonleft = rel `⇃`
+  let-math \longleftarrow = rel `⟵`
+  let-math \longrightarrow = rel `⟶`
+  let-math \longleftrightarrow = rel `⟷`
+  let-math \Longleftarrow = rel `⟸`
+  let-math \Longrightarrow = rel `⟹`
+  let-math \Longleftrightarrow = rel `⟺`
+  let-math \circlearrowleft = rel `↺`
+  let-math \circlearrowright = rel `↻`
+
+  let-math \between = rel `≬`
+  let-math \pitchfork = rel `⋔`
+  let-math \intercal = rel `⊺`
+  let-math \ll = rel `≪`
+  let-math \gg = rel `≫`
+  let-math \lll = rel `⋘`
+  let-math \ggg = rel `⋙`
+  let-math \leqq = rel `≦`
+  let-math \geqq = rel `≧`
+  let-math \lneqq = rel `≨`
+  let-math \gneqq = rel `≩`
+  let-math \lnsim = rel `⋦`
+  let-math \gnsim = rel `⋧`
+  let-math \precnsim = rel `⋨`
+  let-math \succnsim = rel `⋩`
+  let-math \Subset = rel `⋐`
+  let-math \Supset = rel `⋑`
+  let-math \Cap = bin `⋒`
+  let-math \Cup = bin `⋓`
+  let-math \lhd = rel `⊲`
+  let-math \rhd = rel `⊳`
+  let-math \unlhd = rel `⊴`
+  let-math \unrhd = rel `⊵`
+  let-math \triangleleft = rel `⊲`
+  let-math \triangleright = rel `⊳`
+  let-math \trianglelefteq = rel `⊴`
+  let-math \trianglerighteq = rel `⊵`
+  let-math \backsim = rel `∽`
+  let-math \backsimeq = rel `⋍`
+  let-math \eqcirc = rel `≖`
+  let-math \cong = rel `≅`
+  let-math \simneq = rel `≆`
+  let-math \ncong = rel `≇`
+  let-math \approx = rel `≈`
+  let-math \napprox = rel `≉`
+  let-math \approxeq = rel `≊`
+  let-math \curlyeqprec = rel `⋞`
+  let-math \curlyeqsucc = rel `⋟`
+  let-math \lessdot = rel `⋖`
+  let-math \gtrdot = rel `⋗`
+  let-math \lesssim = rel `≲`
+  let-math \gtrsim = rel `≳`
+  let-math \nlesssim = rel `≴`
+  let-math \ngtrsim = rel `≵`
+  let-math \lessgtr = rel `≶`
+  let-math \gtrless = rel `≷`
+  let-math \nlessgtr = rel `≸`
+  let-math \ngtrless = rel `≹`
+  let-math \ntriangleleft = rel `⋪`
+  let-math \ntriangleright = rel `⋫`
+  let-math \ntrianglelefteq = rel `⋬`
+  let-math \ntrianglerighteq = rel `⋭`
+  let-math \lesseqgtr = rel `⋚`
+  let-math \gtreqless = rel `⋛`
+  let-math \nless = rel `≮`
+  let-math \ngtr = rel `≯`
+  let-math \nleq = rel `≰`
+  let-math \ngeq = rel `≱`
+  let-math \asymp = rel `≍`
+  let-math \nasymp = rel `≭`
+  let-math \circeq = rel `≗`
+  let-math \Bumpeq = rel `≎`
+  let-math \bumpeq = rel `≏`
+  let-math \doteq = rel `≐`
+  let-math \doteqdot = rel `≑`
+  let-math \fallingdotseq = rel `≒`
+  let-math \risingdotseq = rel `≓`
+  let-math \mid = rel `∣`
+  let-math \nmid = rel `∤`
+  let-math \parallel = rel `∥`
+  let-math \nparallel = rel `∦`
+  let-math \Vvdash = rel `⊪`
+  let-math \VDash = rel `⊫`
+  let-math \coloncoloneq = rel `⩴`
+  let-math \leqslant = rel `⩽`
+  let-math \geqslant = rel `⩾`
+  let-math \dashV = rel `⫣`
+  let-math \Dashv = rel `⫤`
+  let-math \DashV = rel `⫥`
+  let-math \preceq = rel `⪯`
+  let-math \succeq = rel `⪰`
+
+  let-math \amalg = bin `⨿`
+  let-math \dotplus = bin `∔`
+  let-math \divideontimes = bin `⋇`
+  let-math \odot = bin `⊙`
+  let-math \circledcirc = bin `⊚`
+  let-math \circledast = bin `⊛`
+%  let-math \circledeq = bin `⊜`
+  let-math \circleddash = bin `⊝`
+  let-math \boxplus = bin `⊞`
+  let-math \boxminus = bin `⊟`
+  let-math \boxtimes = bin `⊠`
+  let-math \boxdot = bin `⊡`
+  let-math \curlyvee = bin `⋎`
+  let-math \curlywedge = bin `⋏`
+  let-math \Join = bin `⋈`
+  let-math \ltimes = bin `⋉`
+  let-math \rtimes = bin `⋊`
+  let-math \leftthreetimes = bin `⋋`
+  let-math \rightthreetimes = bin `⋌`
+  let-math \wr = bin `≀`
+  let-math \centerdot = bin `⋅`
+
+  let-math \diamond = ord `⋄`
+  let-math \star = ord `⋆`
+  let-math \complement = ord `∁`
+  let-math \angle = ord `∠`
+  let-math \measuredangle = ord `∡`
+  let-math \sphericalangle = rel `∢`
+
+  let-math \ordd = prefix `d`
+  let-math \partial = prefix `∂`
+  let-math \nabla  = prefix `∇`
 
 %% -- for Latin Modern Math --
   let-math \int =
@@ -341,38 +959,8 @@ end = struct
 %    let kernfR fontsize ypos = fontsize *' 0.2 in
 %      math-big-char-with-kern MathOp `∫` kernfL kernfR
 
-  let-math \ordd = math-char MathPrefix `d`
-
-  let-math \partial = math-char MathPrefix `∂`
-
-  let-math \nabla  = math-char MathPrefix `∇`
-
   let math-space =
     text-in-math MathOrd (fun ctx -> inline-skip 30pt)
-
-  let rectangle (x, y) w h =
-    start-path (x, y)
-      |> line-to (x +' w, y)
-      |> line-to (x +' w, y +' h)
-      |> line-to (x, y +' h)
-      |> close-with-line
-
-  let math-deriv m1 m2 =
-    text-in-math MathOrd (fun ctx -> (
-      let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
-      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
-      let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
-      let thickness = 0.5pt in
-      let gap = 2pt in
-      let bar =
-        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
-          [ fill (Gray(0.)) (rectangle (x, y) w thickness); ]
-        )
-      in
-        line-stack-bottom [ib1; bar; ib2]
-    ))
-
-  let-math \derive = math-deriv
 
   let-math \and-also = math-space
 
@@ -442,7 +1030,7 @@ end = struct
     in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let-math \angle =
+  let-math \angle-bracket =
     math-paren angle-left angle-right
 
   let paren-left hgt dpt hgtaxis fontsize color =
@@ -450,6 +1038,7 @@ end = struct
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
     let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.1 in
     let t1 = fontsize *' 0.025 in
     let t2 = fontsize *' 0.025 in
 
@@ -476,13 +1065,14 @@ end = struct
     in
     let graphics point = [ fill color (path point); ] in
     let kerninfo _ = 0pt in
-      (inline-graphics (w0 +' w1 +' w2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics (w0 +' w1 +' w2 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
   let paren-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let w0 = fontsize *' 0.1 in
     let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
     let w2 = halflen *' 0.25 in %temporary
+    let w-extra = fontsize *' 0.1 in
     let t1 = 0pt -' fontsize *' 0.025 in
     let t2 = fontsize *' 0.025 in
 
@@ -496,9 +1086,9 @@ end = struct
 
     let path (xpos, ypos) =
       let ycenter = ypos +' hgtaxis in
-      let x0 = xpos +' w2 +' w1 in
-      let x1 = xpos +' w2 in
-      let x2 = xpos in
+      let x0 = xpos +' w-extra +' w2 +' w1 in
+      let x1 = xpos +' w-extra +' w2 in
+      let x2 = xpos +' w-extra in
       start-path (x2, ycenter +' halflen)
         |> bezier-to (x2 -' p1, ycenter +' halflen -' q1) (x0, ycenter +' qA) (x0, ycenter)
         |> bezier-to (x0, ycenter -' qA) (x2 -' p1, ycenter -' halflen +' q1) (x2, ycenter -' halflen)
@@ -508,7 +1098,7 @@ end = struct
         |> close-with-line
     in
     let graphics point = [ fill color (path point); ] in
-    let widparen = w0 +' w1 +' w2 in
+    let widparen = w0 +' w1 +' w2 +' w-extra in
     let kerninfo y =
       let widkern = widparen *' 0.5 in
       let r = 0.25 in
@@ -541,6 +1131,7 @@ end = struct
     let w2 = fontsize *' 0.02 in
     let w5 = fontsize *' 0.01 in
     let w6 = fontsize *' 0.015 in
+    let w-extra = fontsize *' 0.1 in
 
     let x0 = fontsize *' 0.125 in
     let x1 = fontsize *' 0.25 in
@@ -601,7 +1192,7 @@ end = struct
     in
     let graphics point = [ fill color (path point); ] in
     let kerninfo _ = 0pt in
-      (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+      (inline-graphics (x4 +' w-extra) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   let brace-right hgt dpt hgtaxis fontsize color =
@@ -616,24 +1207,25 @@ end = struct
     let w2 = fontsize *' 0.02 in
     let w5 = fontsize *' 0.01 in
     let w6 = fontsize *' 0.015 in
+    let w-extra = fontsize *' 0.1 in
 
-    let x0 = fontsize *' 0.125 in
-    let x1 = fontsize *' 0.25 in
+    let x0 = w-extra +' fontsize *' 0.125 in
+    let x1 = w-extra +' fontsize *' 0.25 in
     let x2 = x1 -' w-straight in
     let x3 = x2 +' fontsize *' 0.2 in
     let x4 = x3 +' fontsize *' 0.01 in
     let x5 = x2 +' fontsize *' 0.0625 in
     let x6 = x5 +' w-straight in
-    let x7 = fontsize *' 0.225 in
+    let x7 = w-extra +' fontsize *' 0.225 in
 
-    let p0 = fontsize *' 0.2 in
+    let p0 = w-extra +' fontsize *' 0.2 in
     let p1 = x1 +' w1 in
     let p2 = x2 -' w2 in
     let p3 = x3 -' fontsize *' 0.1 in
     let p4 = x4 -' fontsize *' 0.09 in
     let p5 = x5 -' w5 in
     let p6 = x6 +' w6 in
-    let p7 = fontsize *' 0.3 in
+    let p7 = w-extra +' fontsize *' 0.3 in
 
     let y0 = t0 in
     let y1 = fontsize *' 0.125 in
@@ -655,8 +1247,8 @@ end = struct
 
     let path (xpos, ypos) =
       let ycenter = ypos +' hgtaxis in
-      let fP (x, y) = (xpos +' x4 -' x, ycenter +' y) in
-      let fN (x, y) = (xpos +' x4 -' x, ycenter -' y) in
+      let fP (x, y) = (xpos +' x4 -' x +' w-extra, ycenter +' y) in
+      let fN (x, y) = (xpos +' x4 -' x +' w-extra, ycenter -' y) in
         start-path   (fP (x0, y0))
           |> bezier-to (fP (p0, q0)) (fP (p1, q1)) (fP (x1, y1))
           |> line-to (fP (x2, y2))
@@ -679,67 +1271,117 @@ end = struct
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
-let-math \brace =
-  math-paren brace-left brace-right
+  let-math \brace =
+    math-paren brace-left brace-right
 
 
-  let bracket-left hgt dpt hgtaxis fontsize color =
+  let bar-middle hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
+    let halfwid = fontsize *' 0.5 in
+    let graphics (x, y) =
+      [ stroke 0.5pt color (Gr.line (x +' halfwid, y +' hgtaxis -' halflen) (x +' halfwid, y +' hgtaxis +' halflen)); ]
+    in
+    let kerninfo _ = 0pt in
+      (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
+  let-math \setsep m1 m2 =
+    math-paren-with-middle brace-left brace-right bar-middle [m1; m2]
+
+
+  let bracket-metrics fontsize halflen =
     let w0 = fontsize *' 0.1 in
-    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
+    let w1 = fontsize *' 0.05 +' halflen *' 0.005 in
     let w2 = halflen *' 0.3 in
-    let t = fontsize *' 0.05 in
+    let t = fontsize *' 0.03 in
+      (w0, w1, w2, t)
+
+
+  let bracket-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  let floor-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x2, ybot)
+        |> line-to (x2, ybot +' t)
+        |> line-to (x1, ybot +' t)
+        |> line-to (x1, ytop)
+        |> close-with-line
+
+
+  let ceil-path x0 x1 x2 t ypos hgtaxis halflen =
+    let ytop = ypos +' hgtaxis +' halflen in
+    let ybot = ypos +' hgtaxis -' halflen in
+      start-path (x2, ytop)
+        |> line-to (x0, ytop)
+        |> line-to (x0, ybot)
+        |> line-to (x1, ybot)
+        |> line-to (x1, ytop -' t)
+        |> line-to (x2, ytop -' t)
+        |> close-with-line
+
+
+  let bracket-left pathf hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let path (xpos, ypos) =
       let x0 = xpos +' w0 in
       let x1 = x0 +' w1 in
       let x2 = x1 +' w2 in
-      let ytop = ypos +' hgtaxis +' halflen in
-      let ybot = ypos +' hgtaxis -' halflen in
-        start-path (x2, ytop +' t)
-          |> line-to (x0, ytop +' t)
-          |> line-to (x0, ybot -' t)
-          |> line-to (x2, ybot -' t)
-          |> line-to (x2, ybot)
-          |> line-to (x1, ybot)
-          |> line-to (x1, ytop)
-          |> line-to (x2, ytop)
-          |> close-with-line
+        pathf x0 x1 x2 t ypos hgtaxis halflen
     in
     let graphics point = [ fill color (path point); ] in
     let widparen = w0 +' w1 +' w2 in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
-  let bracket-right hgt dpt hgtaxis fontsize color =
+
+  let bracket-right pathf hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
-    let w0 = fontsize *' 0.1 in
-    let w1 = fontsize *' 0.075 +' halflen *' 0.01 in
-    let w2 = halflen *' 0.3 in
-    let t = fontsize *' 0.05 in
+    let (w0, w1, w2, t) = bracket-metrics fontsize halflen in
     let widparen = w0 +' w1 +' w2 in
     let path (xpos, ypos) =
-      let x0 = xpos +' widparen in
+      let x0 = xpos +' widparen -' w0 in
       let x1 = x0 -' w1 in
       let x2 = x1 -' w2 in
-      let ytop = ypos +' hgtaxis +' halflen in
-      let ybot = ypos +' hgtaxis -' halflen in
-        start-path (x2, ytop +' t)
-          |> line-to (x0, ytop +' t)
-          |> line-to (x0, ybot -' t)
-          |> line-to (x2, ybot -' t)
-          |> line-to (x2, ybot)
-          |> line-to (x1, ybot)
-          |> line-to (x1, ytop)
-          |> line-to (x2, ytop)
-          |> close-with-line
+        pathf x0 x1 x2 t ypos hgtaxis halflen
     in
     let graphics point = [ fill color (path point); ] in
       (inline-graphics widparen (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, (fun _ -> 0pt))
 
-  let-math \sqbracket =
-    math-paren bracket-left bracket-right
 
-  let-math \overwrite f x v =
-    ${#f \sqbracket{#x \mapsto #v}}
+  let sqbracket-left = bracket-left bracket-path
+  let sqbracket-right = bracket-right bracket-path
+  let-math \sqbracket =
+    math-paren sqbracket-left sqbracket-right
+
+
+  let floor-left = bracket-left floor-path
+  let floor-right = bracket-right floor-path
+  let-math \floor =
+    math-paren floor-left floor-right
+
+
+  let ceil-left = bracket-left ceil-path
+  let ceil-right = bracket-right ceil-path
+  let-math \ceil =
+    math-paren ceil-left ceil-right
+
+
+  let empty-paren _ _ _ _ _ = (inline-nil, (fun _ -> 0pt))
 
 
   let abs-left hgt dpt hgtaxis fontsize color =
@@ -753,6 +1395,7 @@ let-math \brace =
     let graphics point = [ stroke 0.5pt color (path point); ] in
     let kerninfo _ = 0pt in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
 
   let abs-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -789,6 +1432,7 @@ let-math \brace =
     let kerninfo _ = 0pt in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
+
   let norm-right hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let wid = 7.0pt in
@@ -810,5 +1454,32 @@ let-math \brace =
 
   let-math \norm =
     math-paren norm-left norm-right
+
+
+  let-math \set m =
+    ${\brace{#m}}
+
+
+  let-math \cases lst =
+    let m-inner =
+      text-in-math MathInner (fun ctx -> (
+        let size = get-font-size ctx in
+        let pads = (0pt, 0pt, size *' 0.25, size *' 0.25) in
+        let celllstlst =
+          lst |> List.map (fun (m, it) -> (
+            let ib1 = embed-math ctx m ++ inline-fil in
+            let ib2 = inline-skip size ++ read-inline ctx it ++ inline-fil in
+              [NormalCell(pads, ib1); NormalCell(pads, ib2)]
+          ))
+        in
+        let ib = tabular celllstlst (fun _ _ -> []) in
+        let (_, hgt, dpt) = get-natural-metrics ib in
+        let hgtaxis = get-axis-height ctx in
+          raise-inline (hgtaxis -' (hgt +' dpt) *' 0.5) ib
+
+      ))
+    in
+      math-paren brace-left empty-paren m-inner
+
 
 end

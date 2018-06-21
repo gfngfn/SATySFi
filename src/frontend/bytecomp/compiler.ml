@@ -34,40 +34,40 @@ and emit_appop arity cont inc_ctx =
 
 
 and compile_input_horz_content (ihlst : ir_input_horz_element list) =
-  let imihlist =
+  let compiled_ihlist =
     ihlst |> List.map (function
       | IRInputHorzText(s) ->
-          CompiledImInputHorzText(s)
+          CompiledInputHorzText(s)
 
       | IRInputHorzEmbedded(ircmd, irarglist) ->
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
           let compiled = compile_list irarglist cmdcode in
-            CompiledImInputHorzEmbedded(compiled)
+            CompiledInputHorzEmbedded(compiled)
 
       | IRInputHorzEmbeddedMath(irmath) ->
-          CompiledImInputHorzEmbeddedMath(compile irmath [])
+          CompiledInputHorzEmbeddedMath(compile irmath [])
 
       | IRInputHorzContent(ir) ->
-          CompiledImInputHorzContent(compile ir [])
+          CompiledInputHorzContent(compile ir [])
     )
   in
-    CompiledInputHorzIntermediate(imihlist)
+    compiled_ihlist
 
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
-  let imivlist =
+  let compiled_ivlist =
     ivlst |> List.map (function
       | IRInputVertEmbedded(ircmd, irarglist) ->
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
           let compiled = compile_list irarglist cmdcode in
-            CompiledImInputVertEmbedded(compiled)
+            CompiledInputVertEmbedded(compiled)
 
       | IRInputVertContent(ir) ->
-          CompiledImInputVertContent(compile ir [])
+          CompiledInputVertContent(compile ir [])
     )
   in
-    CompiledInputVertIntermediate(imivlist)
+    compiled_ivlist
 
 and compile_path pathcomplst (cycleopt : unit ir_path_component option) =
   let c_pathcomplst =

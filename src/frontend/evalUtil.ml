@@ -173,13 +173,13 @@ let make_font_value (abbrev, sizer, risingr) =
       TupleCons(FloatConstant(risingr), EndOfTuple)))
 
 
-let get_vert value =
+let get_vert value : HorzBox.vert_box list =
   match value with
-  | Vert(imvblst) -> imvblst
-  | _             -> report_bug_value "get_vert" value
+  | Vert(vblst) -> vblst
+  | _           -> report_bug_value "get_vert" value
 
 
-let get_horz value =
+let get_horz value : HorzBox.horz_box list =
   match value with
   | Horz(hblst) -> hblst
   | _           -> report_bug_value "get_horz" value
@@ -268,16 +268,38 @@ let get_math_char_class (value : syntactic_value) =
 
 
 let get_math_class (value : syntactic_value) =
-  match value with
-  | Constructor("MathOrd"   , UnitConstant) -> HorzBox.MathOrdinary
-  | Constructor("MathBin"   , UnitConstant) -> HorzBox.MathBinary
-  | Constructor("MathRel"   , UnitConstant) -> HorzBox.MathRelation
-  | Constructor("MathOp"    , UnitConstant) -> HorzBox.MathOperator
-  | Constructor("MathPunct" , UnitConstant) -> HorzBox.MathPunct
-  | Constructor("MathOpen"  , UnitConstant) -> HorzBox.MathOpen
-  | Constructor("MathClose" , UnitConstant) -> HorzBox.MathClose
-  | Constructor("MathPrefix", UnitConstant) -> HorzBox.MathPrefix
-  | _                                       -> report_bug_value "get_math_class" value
+  let open HorzBox in
+    match value with
+    | Constructor("MathOrd"   , UnitConstant) -> MathOrdinary
+    | Constructor("MathBin"   , UnitConstant) -> MathBinary
+    | Constructor("MathRel"   , UnitConstant) -> MathRelation
+    | Constructor("MathOp"    , UnitConstant) -> MathOperator
+    | Constructor("MathPunct" , UnitConstant) -> MathPunct
+    | Constructor("MathOpen"  , UnitConstant) -> MathOpen
+    | Constructor("MathClose" , UnitConstant) -> MathClose
+    | Constructor("MathPrefix", UnitConstant) -> MathPrefix
+    | Constructor("MathInner" , UnitConstant) -> MathInner
+    | _                                       -> report_bug_value "get_math_class" value
+
+
+let make_math_class_option_value (mathcls : HorzBox.math_kind) =
+  let open HorzBox in
+    let labelopt =
+      match mathcls with
+      | MathOrdinary -> Some("MathOrd")
+      | MathBinary   -> Some("MathBin")
+      | MathRelation -> Some("MathRel")
+      | MathOperator -> Some("MathOp")
+      | MathPunct    -> Some("MathPunct")
+      | MathOpen     -> Some("MathOpen")
+      | MathClose    -> Some("MathClose")
+      | MathPrefix   -> Some("MathPrefix")
+      | MathInner    -> Some("MathInner")
+      | MathEnd      -> None
+    in
+    match labelopt with
+    | None ->        Constructor("None", UnitConstant)
+    | Some(label) -> Constructor("Some", Constructor(label, UnitConstant))
 
 
 let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a option =
@@ -332,6 +354,9 @@ let get_math value : math list =
     match value with
     | MathValue(mlst) -> mlst
     | _               -> report_bug_value "get_math" value
+
+
+let get_math_list = get_list get_math
 
 
 let get_bool value : bool =
@@ -603,48 +628,3 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Alist.empty |> Alist.to_list
   in
     (wid, imvblst)
-
-
-let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
-  let open HorzBox in
-  let rec aux optinit totalhgtinit imvblst =
-    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
-      match (imvb, opt) with
-      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
-          let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
-          let totalhgtafter = totalhgtsub +% pads.paddingB in
-            (optsub, totalhgtafter)
-
-    ) (optinit, totalhgtinit)
-  in
-    match aux None Length.zero imvblst with
-    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
-    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
-
-
-let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
-    let open HorzBox in
-    let rec aux optinit totalhgtinit evvblst =
-      let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
-            match (imvblast, opt) with
-            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-            | (ImVertFrame(pads, _, _, evvblstsub), _) ->
-                let totalhgtbefore = totalhgt +% pads.paddingB in
-                let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
-                let totalhgtafter = totalhgtsub +% pads.paddingT in
-                  (optsub, totalhgtafter)
-
-        ) (optinit, totalhgtinit)
-    in
-      match aux None Length.zero imvblst with
-      | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
-      | (None, totalhgt)      -> (totalhgt, Length.zero)

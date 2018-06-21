@@ -2,11 +2,22 @@
 
 type point = length * length
 
+type paren = length -> length -> length -> length -> color -> inline-boxes * (length -> length)
+
+
+let get-natural-width ib =
+  let (wid, _, _) = get-natural-metrics ib in
+    wid
+
 
 let form-paragraph = line-break true true
 
 
 let kern len = inline-skip (0pt -' len)
+
+
+let-inline ctx \hskip len =
+  inline-skip len
 
 
 let-inline ctx \SATySFi =
@@ -77,3 +88,7 @@ let destruct-option default opt =
 
 
 let math-pi = 3.1415926536
+
+
+let increment r =
+  r <- !r + 1

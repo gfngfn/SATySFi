@@ -24,6 +24,9 @@ let-math \valfalse = math-color synt-color ${\token!{false}}
 let-math \valit m =
   ${\text!{\{}#m\text!{\}}}
 
+let-math \valbt m =
+  ${\angle{#m}}
+
 let-math \wildcard = ${\synt-color{\_}}
 
 let-math \patas p x =
@@ -32,7 +35,7 @@ let-math \patas p x =
 let-math \constrapp m1 m2 = ${#m1 \math-skip!(4pt) #m2}
 
 let-math \tuple mlst =
-  let inner = Math.concat ${,} mlst in
+  let inner = Math.join ${,} mlst in
     math-color synt-color ${\paren{\math-skip!(2pt)#inner\math-skip!(1pt)}}
 
 let-math \exprfunc p =
@@ -51,5 +54,5 @@ let-math \valB m =
   ${\synt-color{\angle{#m}}}
 
 let-math \BNF nontm mlst =
-  let defs = Math.concat ${\|} mlst in
+  let defs = Math.join ${\|} mlst in
     ${#nontm \mathrel{: : =} #defs}

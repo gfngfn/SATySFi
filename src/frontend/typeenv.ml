@@ -221,6 +221,45 @@ let find_candidate (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) 
       return cand
     )
 
+let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
+  let open OptionMonad in
+  let mtr = tyenv.main_tree in
+  let nmtoid = tyenv.name_to_id_map in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtropt =
+    nmtoid |> ModuleNameMap.find_opt mdlnm >>= fun mdlid ->
+    ModuleTree.search_backward mtr addrlst [mdlid] (fun (vdmapC, tdmapC, cdmapC, sigopt) ->
+      match sigopt with
+      | Some((tdmapsig, vtmapsig)) ->
+        (* -- if the opened module has a signature -- *)
+          ModuleTree.update mtr addrlst (update_td (TyNameMap.fold TyNameMap.add tdmapsig)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt @@
+            VarMap.fold (fun varnm pty vdmapU ->
+              match vdmapC |> VarMap.find_opt varnm with
+              | None ->
+                  assert false
+                    (* -- signature must be less general than its corresponding implementation -- *)
+
+              | Some((_, evid)) ->
+                  vdmapU |> VarMap.add varnm (pty, evid)
+            ) vtmapsig
+          )
+
+      | None ->
+        (* -- if the opened module does NOT have a signature -- *)
+          ModuleTree.update mtr addrlst (update_td (TyNameMap.fold TyNameMap.add tdmapC)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_vt (VarMap.fold VarMap.add vdmapC)) >>= fun mtr ->
+          ModuleTree.update mtr addrlst (update_cd (ConstrMap.fold ConstrMap.add cdmapC))
+    )
+  in
+    match mtropt with
+    | None ->
+        raise (UndefinedModuleName(rng, mdlnm))
+
+    | Some(mtrnew) ->
+        { tyenv with main_tree = mtrnew; }
+
+
 let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
   let open OptionMonad in
   let mtr = tyenv.main_tree in
@@ -409,8 +448,7 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
                 end
           end
 
-      | FuncType(tydom, tycod)            -> (rng, FuncType(aux tydom, aux tycod))
-      | OptFuncType(tydom, tycod)         -> (rng, OptFuncType(aux tydom, aux tycod))
+      | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map aux (!tyoptsr)), aux tydom, aux tycod))
       | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
       | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
       | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
@@ -421,9 +459,6 @@ let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t li
       | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
       | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
       | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
-(*
-      | VertDetailedCommandType(tylist)   -> (rng, VertDetailedCommandType(List.map aux tylist))  (* will be deprecated *)
-*)
   in
   begin
     pre tyarglist bidlist;
@@ -441,8 +476,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
     let tymainnew =
       match mntymain with
 
-      | MFuncType(mntydom, mntycod)      -> FuncType(aux mntydom, aux mntycod)
-      | MOptFuncType(mntydom, mntycod)   -> OptFuncType(aux mntydom, aux mntycod)
+      | MFuncType(mntyopts, mntydom, mntycod) -> FuncType(ref (List.map aux mntyopts), aux mntydom, aux mntycod)
       | MProductType(mntylist)           -> ProductType(List.map aux mntylist)
       | MRecordType(mnasc)               -> RecordType(Assoc.map_value aux mnasc)
 
@@ -704,8 +738,7 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
       let iter = add_dependency tynm1 in
         match mtymain with
         | MTypeParam(varnm)           -> ()
-        | MFuncType(mtydom, mtycod)   -> begin iter mtydom; iter mtycod; end
-        | MOptFuncType(mtydom, mtycod) -> begin iter mtydom; iter mtycod; end
+        | MFuncType(mntyopts, mtydom, mtycod) -> begin List.iter iter mntyopts; iter mtydom; iter mtycod; end
         | MProductType(mtylist)       -> List.iter iter mtylist
         | MRecordType(mtyasc)         -> Assoc.iter_value iter mtyasc
         | MHorzCommandType(mncmdargtylist) -> List.iter (lift_manual_common iter) mncmdargtylist
@@ -820,7 +853,18 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
 
   let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
-    let aux_list tylistcomb = tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true in
+
+    let aux_list tylistcomb =
+      tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true
+    in
+
+    let rec aux_opt_list tyopts1 tyopts2 =
+      match (tyopts1, tyopts2) with
+      | (_, [])                          -> true
+      | ([], _ :: _)                     -> false
+      | (ty1 :: tytail1, ty2 :: tytail2) -> if aux ty1 ty2 then aux_opt_list tytail1 tytail2 else false
+    in
+
     match (tymain1, tymain2) with
     | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
     | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
@@ -887,12 +931,8 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
         if binc then tvref := Link(ty1) else ();
         binc
 
-    | (FuncType(tyd1, tyc1), FuncType(tyd2, tyc2)) ->
-        (aux tyd1 tyd2) && (aux tyc1 tyc2)
-          (* -- both domain and codomain are covariant -- *)
-
-    | (OptFuncType(tyd1, tyc1), OptFuncType(tyd2, tyc2)) ->
-        (aux tyd1 tyd2) && (aux tyc1 tyc2)
+    | (FuncType(tyopts1r, tyd1, tyc1), FuncType(tyopts2r, tyd2, tyc2)) ->
+        (aux_opt_list (!tyopts1r) (!tyopts2r)) && (aux tyd1 tyd2) && (aux tyc1 tyc2)
           (* -- both domain and codomain are covariant -- *)
 
     | (HorzCommandType(catyl1), HorzCommandType(catyl2))
@@ -1012,7 +1052,9 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
       | SigDirect(csnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGD " ^ csnm) in (* for debug *)
+(*
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
+*)
           let tysigI = fix_manual_type_free qtfbl tyenvforsigI (FreeID.succ_level lev) mty constrntcons in
           let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in

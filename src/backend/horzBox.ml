@@ -170,9 +170,12 @@ let pp_math_variant_style =
 
 module MathVariantCharMap = Map.Make
   (struct
-    type t = string * math_char_class
+    type t = Uchar.t * math_char_class
     let compare = Pervasives.compare
   end)
+
+
+module MathClassMap = Map.Make(String)
 
 
 type context_main = {
@@ -194,16 +197,28 @@ type context_main = {
   paragraph_width        : length;
   paragraph_top          : length;
   paragraph_bottom       : length;
+  min_first_line_ascender : length;
+  min_last_line_descender : length;
   leading                : length;
   min_gap_of_lines       : length;
   text_color             : color;
   manual_rising          : length;
   badness_space          : pure_badness;
-  math_variant_char_map  : math_variant_value MathVariantCharMap.t;
-    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
+  math_variant_char_map  : Uchar.t MathVariantCharMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
+  math_class_map         : (Uchar.t list * math_kind) MathClassMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<math-class-map>")]
   math_char_class        : math_char_class;
   before_word_break      : horz_box list;
   after_word_break       : horz_box list;
+  space_math_bin         : float * float * float;
+  space_math_rel         : float * float * float;
+  space_math_op          : float * float * float;
+  space_math_punct       : float * float * float;
+  space_math_inner       : float * float * float;
+  space_math_prefix      : float * float * float;
+  left_hyphen_min        : int;
+  right_hyphen_min       : int;
 }
 
 and decoration = point -> length -> length -> length -> (intermediate_horz_box list) GraphicD.t
@@ -236,6 +251,7 @@ and horz_box =
   | HorzPure           of pure_horz_box
   | HorzDiscretionary  of pure_badness * horz_box list * horz_box list * horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
+  | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * horz_box list
 
@@ -339,6 +355,11 @@ and math_variant_value = math_kind * math_variant_value_main
 and math_variant_value_main =
   | MathVariantToChar         of bool * Uchar.t list
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char>")]
+      (* --
+         (1) whether it is big or not
+         (2) contents
+         -- *)
+
   | MathVariantToCharWithKern of bool * Uchar.t list * math_char_kern_func * math_char_kern_func
       [@printer (fun fmt _ -> Format.fprintf fmt "<to-char'>")]
 

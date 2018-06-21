@@ -29,6 +29,23 @@ let print_for_debug_typecheck msg =
   ()
 
 
+let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) =
+  let (tyenvnew, tyacc, evidacc) =
+    optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
+      let evid = EvalVarID.fresh varnm in
+      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+      let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+      let tyenvnew = Typeenv.add tyenv varnm (Poly(Primitives.option_type beta), evid) in
+        (tyenvnew, Alist.extend tyacc beta, Alist.extend evidacc evid)
+    ) (tyenv, Alist.empty, Alist.empty)
+  in
+    (Alist.to_list tyacc, Alist.to_list evidacc, tyenvnew)
+
+
+let append_optional_ids (evidlst : EvalVarID.t list) (ast : abstract_tree) =
+  List.fold_right (fun evid ast -> Function([PatternBranch(PVariable(evid), ast)])) evidlst ast
+
+
 let rec is_nonexpansive_expression e =
   let iter = is_nonexpansive_expression in
     match e with
@@ -95,27 +112,28 @@ let apply_tree_of_list astfunc astlst =
 
 (* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
 let flatten_type (ty : mono_type) : command_argument_type list * mono_type =
-(*
-  Printf.printf "TypeChecker> %s\n" (string_of_mono_type_basic ty);  (* for debug *)
-*)
   let rec aux acc ty =
     let (rng, tymain) = normalize_mono_type ty in
       match tymain with
-      | FuncType(tydom, tycod)    -> aux (Alist.extend acc (MandatoryArgumentType(tydom))) tycod
-      | OptFuncType(tydom, tycod) -> aux (Alist.extend acc (OptionalArgumentType(tydom))) tycod
-      | _                         -> (Alist.to_list acc, ty)
+      | FuncType(tyoptsr, tydom, tycod) ->
+          let accnew =
+            Alist.append acc (List.append (List.map (fun ty -> OptionalArgumentType(ty)) (!tyoptsr)) [MandatoryArgumentType(tydom)])
+          in
+            aux accnew tycod
+
+      | _ -> (Alist.to_list acc, ty)
   in
     aux Alist.empty ty
-(*
-  Printf.printf "  ===> %s\n" (string_of_mono_type_basic tyret);
-*)
 
 
 let eliminate_optionals (ty : mono_type) (e : abstract_tree) : mono_type * abstract_tree =
   let rec aux ty e =
     match ty with
-    | (_, OptFuncType(_, tycod)) -> aux tycod (Apply(e, Value(Constructor("None", UnitConstant))))
-    | _                          -> (ty, e)
+    | (rng, FuncType({contents = _ :: tyopttail}, tydom, tycod)) ->
+        aux (rng, FuncType({contents = tyopttail}, tydom, tycod)) (Apply(e, Value(Constructor("None", UnitConstant))))
+
+    | _ ->
+        (ty, e)
   in
   aux ty e
 
@@ -149,8 +167,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
               in
                 false
       end
-  | FuncType(tydom, tycod)         -> iter tydom || iter tycod
-  | OptFuncType(tydom, tycod)      -> iter tydom || iter tycod
+  | FuncType(tyoptsr, tydom, tycod) -> iter_list (!tyoptsr) || iter tydom || iter tycod
   | ProductType(tylist)            -> iter_list tylist
   | ListType(tysub)                -> iter tysub
   | RefType(tysub)                 -> iter tysub
@@ -173,10 +190,10 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
-    | (FuncType(tydom1, tycod1), FuncType(tydom2, tycod2))
-    | (OptFuncType(tydom1, tycod1), OptFuncType(tydom2, tycod2))
+    | (FuncType(tyopts1r, tydom1, tycod1), FuncType(tyopts2r, tydom2, tycod2))
       ->
         begin
+          unify_options tyopts1r tyopts2r;
           unify_sub tydom1 tydom2;
           unify_sub tycod1 tycod2;
         end
@@ -328,6 +345,22 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
       | _ -> raise InternalContradictionError
 
 
+and unify_options tyopts1r tyopts2r =
+  let rec aux tyopts1 tyopts2 =
+    match (tyopts1, tyopts2) with
+    | (_, []) ->
+        tyopts2r := tyopts1
+
+    | ([], _) ->
+        tyopts1r := tyopts2
+
+    | (ty1 :: tytail1, ty2 :: tytail2) ->
+        unify_sub ty1 ty2;
+        aux tytail1 tytail2
+  in
+    aux (!tyopts1r) (!tyopts2r)
+
+
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   let () = print_for_debug_typecheck ("    ####UNIFY " ^ (string_of_mono_type_basic ty1) ^ " = " ^ (string_of_mono_type_basic ty2)) in  (* for debug *)
   try
@@ -389,6 +422,10 @@ let rec typecheck
         final_tyenv := tyenv;
         (FinishHeaderFile, (Range.dummy "finish-header-file", BaseType(EnvType)))
       end
+
+  | UTOpenIn(rngtok, mdlnm, utast1) ->
+      let tyenvnew = Typeenv.open_module tyenv rngtok mdlnm in
+        typecheck_iter tyenvnew utast1
 
   | UTContentOf(mdlnmlst, varnm) ->
       begin
@@ -465,7 +502,7 @@ let rec typecheck
       let (cmdargtylist, tyret) = flatten_type tyF in
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (eF, (rng, MathCommandType(cmdargtylist)))
-
+(*
   | UTLambdaOptional(varrng, varnmctx, utast1) ->
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
@@ -473,7 +510,7 @@ let rec typecheck
       let ty = overwrite_range_of_type (Primitives.option_type beta) rng in
       let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(ty), evid)) utast1 in
         (Function([PatternBranch(PVariable(evid), e1)]), (rng, OptFuncType(beta, ty1)))
-
+*)
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
@@ -484,7 +521,7 @@ let rec typecheck
       let eret = Apply(e1sub, e2) in
       begin
         match ty1sub with
-        | (_, FuncType(tydom, tycod)) ->
+        | (_, FuncType(_, tydom, tycod)) ->
             let () = unify tydom ty2 in
 (*
             let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
@@ -496,7 +533,7 @@ let rec typecheck
         | _ ->
             let tvid = FreeID.fresh UniversalKind qtfbl lev () in
             let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-            let () = unify ty1sub (get_range utast1, FuncType(ty2, beta)) in
+            let () = unify ty1sub (get_range utast1, FuncType(ref [], ty2, beta)) in
 (*
             let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
 *)
@@ -508,16 +545,19 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       begin
         match ty1 with
-        | (_, OptFuncType(tydom, tycod)) ->
-            let () = unify tydom ty2 in
-            let tycodnew = overwrite_range_of_type tycod rng in
-              (Apply(e1, NonValueConstructor("Some", e2)), tycodnew)
+        | (_, FuncType({contents = tyopt :: tyopttail}, tydom, tycod)) ->
+            let () = unify tyopt ty2 in
+            let tynew = (rng, FuncType(ref tyopttail, tydom, tycod)) in
+              (Apply(e1, NonValueConstructor("Some", e2)), tynew)
 
         | _ ->
-            let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-            let () = unify ty1 (get_range utast1, OptFuncType(ty2, beta)) in
-              (Apply(e1, NonValueConstructor("Some", e2)), beta)
+            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta1 = (rng, TypeVariable(ref (Free(tvid1)))) in
+            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta2 = (rng, TypeVariable(ref (Free(tvid2)))) in
+            let () = unify ty1 (get_range utast1, FuncType(ref [ty2], beta1, beta2)) in
+              (Apply(e1, NonValueConstructor("Some", e2)), (rng, FuncType(ref [], beta1, beta2)))
+                (* doubtful *)
       end
 
   | UTApplyOmission(utast1) ->
@@ -525,25 +565,29 @@ let rec typecheck
       let eret = Apply(e1, Value(Constructor("None", UnitConstant))) in
       begin
         match ty1 with
-        | (_, OptFuncType(_, tycod)) ->
+        | (_, FuncType({contents = _ :: tyopttail}, _, tycod)) ->
             (eret, tycod)
 
         | _ ->
-            let tviddom = FreeID.fresh UniversalKind qtfbl lev () in
-            let betadom = (rng, TypeVariable(ref (Free(tviddom)))) in
-            let tvidcod = FreeID.fresh UniversalKind qtfbl lev () in
-            let betacod = (rng, TypeVariable(ref (Free(tvidcod)))) in
-            let () = unify ty1 (get_range utast1, OptFuncType(betadom, betacod)) in
-              (eret, betacod)
+            let tvid0 = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta0 = (rng, TypeVariable(ref (Free(tvid0)))) in
+            let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta1 = (rng, TypeVariable(ref (Free(tvid1)))) in
+            let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
+            let beta2 = (rng, TypeVariable(ref (Free(tvid2)))) in
+            let () = unify ty1 (get_range utast1, FuncType(ref [beta0], beta1, beta2)) in
+              (eret, (rng, FuncType(ref [], beta1, beta2)))
       end
 
-  | UTFunction(utpatbrs) ->
+  | UTFunction(optargs, utpatbrs) ->
+      let (tyopts, evids, tyenvnew) = add_optionals_to_type_environment tyenv qtfbl lev optargs in
       let tvidO = FreeID.fresh UniversalKind qtfbl lev () in
       let betaO = (Range.dummy "UTFunction:dom", TypeVariable(ref (Free(tvidO)))) in
       let tvidR = FreeID.fresh UniversalKind qtfbl lev () in
       let betaR = (Range.dummy "UTFunction:cod", TypeVariable(ref (Free(tvidR)))) in
-      let (patbrs, _) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs betaO betaR in
-        (Function(patbrs), (rng, FuncType(betaO, betaR)))
+      let (patbrs, _) = typecheck_pattern_branch_list qtfbl lev tyenvnew utpatbrs betaO betaR in
+      let e = append_optional_ids evids (Function(patbrs)) in
+        (e, (rng, FuncType(ref tyopts, betaO, betaR)))
 (*
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (varrng, TypeVariable(ref (Free(tvid)))) in

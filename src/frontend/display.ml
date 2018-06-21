@@ -150,46 +150,46 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
                                              ^ " (= " ^ (iter tyreal) ^ ")"
 
-    | FuncType(tydom, tycod) ->
+    | FuncType(tyoptsr, ((_, tydommain) as tydom), tycod) ->
+        let stropts =
+          !tyoptsr |> List.map (fun ((_, tymain) as ty) ->
+            let s = iter ty in
+              match tymain with
+              | FuncType(_, _, _) -> "(" ^ s ^ ") ?-> "
+              | _                 -> s ^ " ?-> "
+          )
+        in
         let strdom = iter tydom in
         let strcod = iter tycod in
+          (String.concat "" stropts) ^
           begin
-            match tydom with
-            | (_, FuncType(_, _))
-            | (_, OptFuncType(_, _))
-                -> "(" ^ strdom ^ ")"
-            | _ -> strdom
+            match tydommain with
+            | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
+            | _                 -> strdom
           end ^ " -> " ^ strcod
 
-    | OptFuncType(tydom, tycod) ->
-        let strdom = iter tydom in
-        let strcod = iter tycod in
-          begin
-            match tydom with
-            | (_, FuncType(_, _))
-            | (_, OptFuncType(_, _))
-                -> "(" ^ strdom ^ ")"
-            | _ -> strdom
-          end ^ "? -> " ^ strcod
-
-    | ListType(tycont) ->
+    | ListType((_, tycontmain) as tycont) ->
         let strcont = iter tycont in
           begin
-            match tycont with
-            | (_, FuncType(_, _))
-            | (_, OptFuncType(_, _))
-            | (_, ProductType(_))
+            match tycontmain with
+            | FuncType(_, _, _)
+            | ProductType(_)
+            | ListType(_)
+            | RefType(_)
+            | VariantType(_ :: _, _)
                 -> "(" ^ strcont ^ ")"
             | _ -> strcont
           end ^ " list"
 
-    | RefType(tycont) ->
+    | RefType((_, tycontmain) as tycont) ->
         let strcont = iter tycont in
           begin
-            match tycont with
-            | (_, FuncType(_, _))
-            | (_, OptFuncType(_, _))
-            | (_, ProductType(_))
+            match tycontmain with
+            | FuncType(_, _, _)
+            | ProductType(_)
+            | ListType(_)
+            | RefType(_)
+            | VariantType(_ :: _, _)
                 -> "(" ^ strcont ^ ")"
             | _ -> strcont
           end ^ " ref"
@@ -212,14 +212,15 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
 
 
 and string_of_command_argument_type tyenv current_ht = function
-  | MandatoryArgumentType(ty) -> string_of_mono_type_sub tyenv current_ht ty
-  | OptionalArgumentType(ty)  ->
+  | MandatoryArgumentType(ty) ->
+      string_of_mono_type_sub tyenv current_ht ty
+
+  | OptionalArgumentType((_, tymain) as ty)  ->
       let strty = string_of_mono_type_sub tyenv current_ht ty in
       begin
-        match ty with
-        | (_, ProductType(_))
-        | (_, FuncType(_))
-        | (_, OptFuncType(_))
+        match tymain with
+        | ProductType(_)
+        | FuncType(_, _, _)
           -> "(" ^ strty ^  ")?"
 
         | _ -> strty ^ "?"
@@ -237,8 +238,7 @@ and string_of_type_argument_list tyenv current_ht tyarglist =
         let (_, headmain) = head in
           begin
             match headmain with
-            | FuncType(_, _)
-            | OptFuncType(_, _)
+            | FuncType(_, _, _)
             | ProductType(_)
            (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
             | ListType(_)
@@ -261,8 +261,7 @@ and string_of_mono_type_list tyenv current_ht tylist =
         begin
           match headmain with
           | ProductType(_)
-          | FuncType(_, _)
-          | OptFuncType(_, _)
+          | FuncType(_, _, _)
               -> "(" ^ strhead ^ ")"
           | _ -> strhead
         end ^

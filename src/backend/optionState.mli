@@ -16,3 +16,6 @@ val show_full_path : unit -> bool
 
 val set_debug_show_bbox : unit -> unit
 val debug_show_bbox : unit -> bool
+
+val set_debug_show_space : unit -> unit
+val debug_show_space : unit -> bool

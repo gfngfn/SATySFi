@@ -3,63 +3,89 @@ module List
 : sig
     val map : ('a -> 'b) -> 'a list -> 'b list
     val mapi : (int -> 'a -> 'b) -> 'a list -> 'b list
+    val iter : ('a -> unit) -> 'a list -> unit
+    val iteri : (int -> 'a -> unit) -> 'a list -> unit
     val fold-left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val fold-lefti : (int -> 'a -> 'b -> 'a) -> 'a -> 'b list -> 'a
     val fold-right : ('a -> 'b -> 'b) -> 'b -> 'a list -> 'b
     val filter : ('a -> bool) -> 'a list -> 'a list
     val assoc : ('a -> 'a -> bool) -> 'a -> ('a * 'b) list -> 'b option
     val reverse : 'a list -> 'a list
-    val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
     val append : 'a list -> 'a list -> 'a list
     val concat : ('a list) list -> 'a list
+    val fold-left-adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
+    val map-adjacent : ('a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
+    val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
+    val length : 'a list -> int
   end
 = struct
+
     let-rec map
       | f []        = []
       | f (x :: xs) = (f x) :: map f xs
 
-    let mapi f xs =
+
+    let mapi =
       let-rec aux
-        | f i []        = []
-        | f i (x :: xs) = (f i x) :: aux f (i + 1) xs
+        | i f []        = []
+        | i f (x :: xs) = (f i x) :: aux (i + 1) f xs
       in
-      aux f 0 xs
+      aux 0
+
+
+    let-rec iter
+      | f []        = ()
+      | f (x :: xs) = f x before iter f xs
+
+
+    let iteri =
+      let-rec aux
+        | i f []        = ()
+        | i f (x :: xs) = f i x before aux (i + 1) f xs
+      in
+      aux 0
+
 
     let-rec fold-left
       | f init []        = init
       | f init (x :: xs) = fold-left f (f init x) xs
 
-    let fold-lefti f init xs =
+
+    let fold-lefti =
       let-rec aux
-        | f i init []        = init
-        | f i init (x :: xs) = aux f (i + 1) (f i init x) xs
+        | i f init []        = init
+        | i f init (x :: xs) = aux (i + 1) f (f i init x) xs
       in
-      aux f 0 init xs
+      aux 0
 
 
     let-rec fold-right
       | f init []        = init
       | f init (x :: xs) = f x (fold-right f init xs)
 
+
     let-rec filter
       | _ []        = []
       | p (x :: xs) = if p x then x :: filter p xs else filter p xs
+
 
     let-rec assoc
       | _ _ []              = None
       | eq a ((x, y) :: xs) = if eq a x then Some(y) else assoc eq a xs
 
+
     let reverse lst =
       fold-left (fun acc x -> x :: acc) [] lst
+
 
     let-rec append lst1 lst2 =
       match lst1 with
       | []      -> lst2
       | x :: xs -> x :: append xs lst2
 
-    let-rec concat
-      | []       = []
-      | (h :: t) = append h (concat t)
+
+    let concat = fold-right append []
+
 
     let fold-left-adjacent f init lst =
       let-rec aux leftopt init lst =
@@ -76,5 +102,22 @@ module List
             aux (Some(head)) initnew tail
       in
       aux None init lst
+
+    let map-adjacent f lst =
+        lst |> fold-left-adjacent (fun acc x leftopt rightopt -> (
+          f x leftopt rightopt :: acc
+        )) [] |> reverse
+
+
+    let mapi-adjacent f lst =
+      let (_, acc) =
+        lst |> fold-left-adjacent (fun (i, acc) x leftopt rightopt -> (
+          (i + 1, f i x leftopt rightopt :: acc)
+        )) (0, [])
+      in
+        reverse acc
+
+
+    let length = fold-right (fun _ i -> i + 1) 0
 
   end

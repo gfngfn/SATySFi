@@ -32,6 +32,8 @@ val find : t -> (module_name list) -> var_name -> Range.t -> (poly_type * EvalVa
 
 val find_candidate : t -> (module_name list) -> var_name -> Range.t -> var_name list option
 
+val open_module : t -> Range.t -> module_name -> t
+
 val enter_new_module : t -> module_name -> t
 
 val leave_module : t -> t

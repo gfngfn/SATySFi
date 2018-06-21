@@ -122,7 +122,7 @@ let constructor = (capital (digit | latin | "-")*)
 let symbol = ( [' '-'@'] | ['['-'`'] | ['{'-'~'] )
 let opsymbol = ( '+' | '-' | '*' | '/' | '^' | '&' | '|' | '!' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | '?' )
 let str = [^ ' ' '\t' '\n' '\r' '@' '`' '\\' '{' '}' '<' '>' '%' '|' '*' '$' '#' ';']
-let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '\'' | '.' | ',' | '?' | '`' )
+let mathsymbol = ( '+' | '-' | '*' | '/' | ':' | '=' | '<' | '>' | '~' | '.' | ',' | '?' | '`' )
 
 rule progexpr stack = parse
   | "%" {
@@ -220,9 +220,10 @@ rule progexpr stack = parse
   | ("|" opsymbol+) { BINOP_BAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("^" opsymbol*) { BINOP_HAT(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | "?"  { OPTIONALTYPE(get_pos lexbuf) }
+  | "?->" { OPTIONALARROW(get_pos lexbuf) }
   | "?:" { OPTIONAL(get_pos lexbuf) }
   | "?*" { OMISSION(get_pos lexbuf) }
-  | "!" { DEREF(get_pos lexbuf) }
+  | ("!" opsymbol*) { UNOP_EXCLAM(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("'" (identifier as xpltyvarnm)) { TYPEVAR(get_pos lexbuf, xpltyvarnm) }
 
   | ((constructor ".")+ identifier) {
@@ -274,9 +275,11 @@ rule progexpr stack = parse
           | "block-cmd"         -> VERTCMDTYPE(pos)
           | "math-cmd"          -> MATHCMDTYPE(pos)
           | "command"           -> COMMAND(pos)
+          | "open"              -> OPEN(pos)
           | _                   -> VAR(pos, tokstr)
       }
   | constructor { CONSTRUCTOR(get_pos lexbuf, Lexing.lexeme lexbuf) }
+  | ((constructor as mdlnm) ".(") { Stack.push ProgramState stack; OPENMODULE(get_pos lexbuf, mdlnm) }
   | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
@@ -468,6 +471,7 @@ and mathexpr stack = parse
   | "|" { SEP(get_pos lexbuf) }
   | "^" { SUPERSCRIPT(get_pos lexbuf) }
   | "_" { SUBSCRIPT(get_pos lexbuf) }
+  | "'"+ { let n = String.length (Lexing.lexeme lexbuf) in PRIMES(get_pos lexbuf, n) }
   | mathsymbol+     { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | (latin | digit) { MATHCHAR(get_pos lexbuf, Lexing.lexeme lexbuf) }
   | ("#" (identifier as varnm)) {
