@@ -1,10 +1,14 @@
 
+let uchar_of_char ch =
+  Uchar.of_int (Char.code ch)
+
+
 let ascii_capital_of_index i =
-  String.make 1 (Char.chr ((Char.code 'A') + i))
+  Uchar.of_int ((Char.code 'A') + i)
 
 
 let ascii_small_of_index i =
-  String.make 1 (Char.chr ((Char.code 'a') + i))
+  Uchar.of_int ((Char.code 'a') + i)
 
 
 let rec range i j =

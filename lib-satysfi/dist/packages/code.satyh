@@ -63,10 +63,10 @@ end = struct
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
+      let ctx = ctx |> set-font Latin (`lmmono`, 1., 0.) in
       let charwid = get-natural-width (read-inline ctx {0}) in
       let ctx-code =
-        ctx |> set-font Latin (`lmmono`, 1., 0.)
-            |> set-space-ratio (charwid /' fontsize)
+        ctx |> set-space-ratio (charwid /' fontsize) 0. 0.
             |> set-text-color txtcolor
       in
 

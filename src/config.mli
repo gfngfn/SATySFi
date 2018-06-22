@@ -1,5 +1,5 @@
 
-exception DistFileNotFound of string
+exception DistFileNotFound of string * string list
 
 val initialize : string list -> unit
 

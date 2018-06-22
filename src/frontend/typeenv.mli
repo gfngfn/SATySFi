@@ -30,6 +30,8 @@ val add : t -> var_name -> (poly_type * EvalVarID.t) -> t
 
 val find : t -> (module_name list) -> var_name -> Range.t -> (poly_type * EvalVarID.t) option
 
+val open_module : t -> Range.t -> module_name -> t
+
 val enter_new_module : t -> module_name -> t
 
 val leave_module : t -> t
@@ -37,6 +39,8 @@ val leave_module : t -> t
 val add_mutual_cons : t -> FreeID.level -> untyped_mutual_variant_cons -> t
 
 val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
+
+val enumerate_constructors : quantifiability -> t -> FreeID.level -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
 
 val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraints -> mono_type
 

@@ -1,0 +1,22 @@
+
+module Option
+: sig
+    val map : ('a -> 'b) -> 'a option -> 'b option
+    val from : 'a -> 'a option -> 'a
+    val bind : 'a option -> ('a -> 'b option) -> 'b option
+  end
+= struct
+
+    let-rec map
+      | f (None)    = None
+      | f (Some(v)) = Some(f v)
+
+    let-rec from
+      | a (None)    = a
+      | _ (Some(a)) = a
+
+    let-rec bind
+      | (None)    f = None
+      | (Some(v)) f = f v
+
+  end

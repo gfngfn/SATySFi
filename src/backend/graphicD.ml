@@ -1,6 +1,6 @@
 
 open LengthInterface
-open GraphicData
+open GraphicBase
 
 
 let (~%) = Length.to_pdf_point
@@ -63,10 +63,6 @@ let op_j = function
   | MiterJoin -> Pdfops.Op_j(0)
   | RoundJoin -> Pdfops.Op_j(1)
   | BevelJoin -> Pdfops.Op_j(2)
-
-let op_d = function
-  | SolidLine              -> Pdfops.Op_d([], 0.)
-  | DashedLine(d1, d2, d0) -> Pdfops.Op_d([~% d1; ~% d2], ~% d0)
 *)
 
 let pdfop_of_text_color = function
@@ -94,6 +90,25 @@ let extend = Alist.extend
 
 
 let singleton elem = Alist.extend Alist.empty elem
+
+
+let shift_element v grelem =
+  match grelem with
+  | Fill(color, pathlst)                      -> Fill(color, pathlst |> List.map (shift_path v))
+  | Stroke(thkns, color, pathlst)             -> Stroke(thkns, color, pathlst |> List.map (shift_path v))
+  | DashedStroke(thkns, dash, color, pathlst) -> DashedStroke(thkns, dash, color, pathlst |> List.map (shift_path v))
+  | HorzText(pt, textvalue)                   -> HorzText(pt +@% v, textvalue)
+
+
+let get_element_bbox textbboxf grelem =
+  match grelem with
+  | Fill(_, pathlst)
+  | Stroke(_, _, pathlst)
+  | DashedStroke(_, _, _, pathlst)
+      -> get_path_list_bbox pathlst
+           (* -- currently ignores the thickness of the stroke -- *)
+
+  | HorzText(pt, textvalue) -> textbboxf pt textvalue
 
 
 let make_fill (color : color) (pathlst : path list) : 'a element =
@@ -138,40 +153,6 @@ let pdfops_of_path (path : path) : Pdfops.t list =
 let pdfops_of_path_list (pathlst : path list) : Pdfops.t list =
   pathlst |> List.map pdfops_of_path |> List.concat
 
-(*
-let pdfops_of_graphics (gstate : graphics_state) (gcmd : graphics_command) (pathlst : path list) : Pdfops.t list =
-  let ops_path = pdfops_of_path_list pathlst in
-  let op_stroke_color =
-    match gstate.stroke_color with
-    | DeviceRGB(r, g, b)     -> op_RG (r, g, b)
-    | DeviceCMYK(c, m, y, k) -> op_K (c, m, y, k)
-    | DeviceGray(gray)       -> op_G gray
-  in
-  let op_fill_color =
-    match gstate.fill_color with
-    | DeviceRGB(r, g, b)     -> op_rg (r, g, b)
-    | DeviceCMYK(c, m, y, k) -> op_k (c, m, y, k)
-    | DeviceGray(gray)       -> op_g gray
-  in
-  let ops_state =
-    [
-      op_w gstate.line_width;
-      op_J gstate.line_cap;
-      op_j gstate.line_join;
-      op_d gstate.line_dash;
-      op_M gstate.miter_limit;
-    ]
-  in
-  let drawop =
-    match gcmd with
-    | DrawStroke        -> op_S
-    | DrawFillByNonzero -> op_f
-    | DrawFillByEvenOdd -> op_f'
-    | DrawBothByNonzero -> op_B
-    | DrawBothByEvenOdd -> op_B'
-  in
-    List.concat [[op_q]; [op_stroke_color]; [op_fill_color]; ops_state; ops_path; [drawop; op_Q]]
-*)
 
 let pdfop_of_stroke_color stroke_color =
   match stroke_color with

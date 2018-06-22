@@ -9,8 +9,8 @@ open LineBreakBox
 type chunk_info = context_main * script * line_break_class
 
 
-let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
-  let trilst = LineBreakDataMap.append_break_opportunity uchlst in
+let to_chunk_main_list ctx uchlst alw : line_break_chunk_main list =
+  let trilst = LineBreakDataMap.append_break_opportunity uchlst alw in
   let scrlst = ScriptDataMap.divide_by_script ctx trilst in
 (*
   (* begin: for debug *)
@@ -44,8 +44,8 @@ let to_chunk_main_list ctx uchlst : line_break_chunk_main list =
   scrlst
 
 
-let to_chunks ctx uchlst : line_break_chunk list =
-  let scrlstsp = to_chunk_main_list ctx uchlst in
+let to_chunks ctx uchlst alw : line_break_chunk list =
+  let scrlstsp = to_chunk_main_list ctx uchlst alw in
     scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
 
 
@@ -177,7 +177,7 @@ let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) 
 (*
   let lbhyphenf = soft_hyphen ctx script in
 *)
-    match LoadHyph.lookup ctx.hyphen_dictionary uchlst with
+    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchlst with
     | LoadHyph.Single(uchlst) ->
         [LBPure(make_string_atom hsinfo uchlst)]
 
