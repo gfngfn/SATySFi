@@ -40,6 +40,8 @@ val add_mutual_cons : t -> FreeID.level -> untyped_mutual_variant_cons -> t
 
 val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name -> (mono_type list * TypeID.t * mono_type) option
 
+val enumerate_constructors : quantifiability -> t -> FreeID.level -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
+
 val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraints -> mono_type
 
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option

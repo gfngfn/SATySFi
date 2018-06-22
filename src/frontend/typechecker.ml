@@ -597,6 +597,7 @@ let rec typecheck
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
       let (patbrs, tyP) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
+      let () = Exhchecker.main rng patbrs tyO qtfbl lev tyenv in
         (PatternMatch(rng, eO, patbrs), tyP)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->

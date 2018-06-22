@@ -286,12 +286,12 @@
     let rec aux acc i =
       if i = numofargs then
         let utastprod = make_product_expression (Alist.to_list acc) in
-          (Range.dummy "make_function_for_parallel:1", UTPatternMatch(utastprod, patbrs))
+          (rngfull, UTPatternMatch(utastprod, patbrs))
       else
         let varnm = numbered_var_name i in
         let accnew = Alist.extend acc (Range.dummy "make_function_for_parallel:2", UTContentOf([], varnm)) in
         let patvar = (Range.dummy "make_function_for_parallel:3", UTPVariable(varnm)) in
-          (Range.dummy "make_function_for_parallel:4", UTFunction([], [UTPatternBranch(patvar, aux accnew (i + 1))]))
+          (rngfull, UTFunction([], [UTPatternBranch(patvar, aux accnew (i + 1))]))
     in
       aux Alist.empty 0
 
@@ -657,7 +657,11 @@ nxrecdecsub:
 nxrecdec:
   | vartok=defedvar; argpart=recdecargpart; DEFEQ; utastdef=nxlet; dec=nxrecdecsub {
         let (mntyopt, argpatlst) = argpart in
-          make_letrec_binding mntyopt vartok argpatlst utastdef dec
+        let is_all_var = argpatlst |> List.for_all (function (_, UTPVariable(_)) -> true | (_, UTPWildCard) -> true | _ -> false) in
+          if is_all_var then
+            make_letrec_binding mntyopt vartok argpatlst utastdef dec
+          else
+            make_letrec_binding_from_pattern mntyopt vartok (UTLetRecPatternBranch(argpatlst, utastdef) :: []) dec
       }
   | vartok=defedvar; argpart=recdecargpart; DEFEQ; utastdef=nxlet; BAR; tail=nxrecdecpar; dec=nxrecdecsub {
         let (mntyopt, argpatlst) = argpart in
