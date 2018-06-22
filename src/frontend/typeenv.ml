@@ -136,26 +136,29 @@ let update_so (sof : signature option -> signature option) ((vdmap, tdmap, cdmap
   (vdmap, tdmap, cdmap, sof sigopt)
 
 
-let edit_distance s1 s2 = 
+let edit_distance s1 s2 mindist = 
   let len1 = String.length s1 in
   let len2 = String.length s2 in
-  let d = Array.make_matrix (len1+1) (len2+1) 0 in
-  begin
-    for i = 0 to len1 do
-      d.(i).(0) <- i
-    done;
-    for j = 0 to len2 do
-      d.(0).(j) <- j
-    done;
-    for i = 1 to len1 do
-      for j = 1 to len2 do
-        let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 1 in
-          d.(i).(j) <-  min (min (d.(i-1).(j)+1) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
-      done
-    done;
-    (*Format.printf "%s %s => %d\n" s1 s2 (d.(len1).(len2));*)
-    d.(len1).(len2)
-  end
+  if abs (len1 - len2) > mindist then 
+    mindist + 1 
+  else
+    let d = Array.make_matrix (len1+1) (len2+1) 0 in
+    begin
+      for i = 0 to len1 do
+        d.(i).(0) <- i
+      done;
+      for j = 0 to len2 do
+        d.(0).(j) <- j
+      done;
+      for i = 1 to len1 do
+        for j = 1 to len2 do
+          let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 1 in
+            d.(i).(j) <-  min (min (d.(i-1).(j)+1) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
+        done
+      done;
+      (*Format.printf "%s %s => %d\n" s1 s2 (d.(len1).(len2));*)
+      d.(len1).(len2)
+    end
 
 let initial_candidates nm =
   let maxdist =
@@ -169,10 +172,10 @@ let initial_candidates nm =
 
 let get_candidates_cont foldf map nm acc =
   foldf (fun k _ (cand, mindist) ->
-    let score = edit_distance nm k in
-    if score < mindist then
-      ([k], score)
-    else if score = mindist then
+    let dist = edit_distance nm k mindist in
+    if dist < mindist then
+      ([k], dist)
+    else if dist = mindist then
       (k::cand, mindist)
     else
       (cand, mindist)
@@ -185,7 +188,7 @@ let get_candidates_last pair =
   fst pair
 
 let get_candidates foldf map nm =
-  get_candidates_last @@  get_candidates_cont foldf map nm (initial_candidates nm)
+  get_candidates_last @@  get_candidates_first foldf map nm
 
 
 (* PUBLIC *)
