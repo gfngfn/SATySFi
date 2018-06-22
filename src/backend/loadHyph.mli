@@ -21,4 +21,4 @@ val empty : t
 
 val main : file_path -> t
 
-val lookup : t -> Uchar.t list -> answer
+val lookup : int -> int -> t -> Uchar.t list -> answer

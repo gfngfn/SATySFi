@@ -1,6 +1,7 @@
 
 module Types = Types_
 open LengthInterface
+open GraphicBase
 open Types
 
 
@@ -60,14 +61,20 @@ let get_list getf value =
     aux Alist.empty value
 
 
-let graphics_of_list value : (HorzBox.intermediate_horz_box list) Graphics.t =
+let get_graphics_element value =
+  match value with
+  | GraphicsValue(grelem) -> grelem
+  | _                     -> report_bug_value "get_graphics_element" value
+
+
+let graphics_of_list value : (HorzBox.intermediate_horz_box list) GraphicD.t =
   let rec aux gracc value =
     match value with
     | EndOfList                             -> gracc
-    | ListCons(GraphicsValue(grelem), tail) -> aux (Graphics.extend gracc grelem) tail
+    | ListCons(GraphicsValue(grelem), tail) -> aux (GraphicD.extend gracc grelem) tail
     | _                                     -> report_bug_value "make_frame_deco" value
   in
-    aux Graphics.empty value
+    aux GraphicD.empty value
 
 
 let get_paddings (value : syntactic_value) =
@@ -105,39 +112,37 @@ let get_cell value : HorzBox.cell =
     | _ -> report_bug_value "get_cell" value
 
 
-let get_color (value : syntactic_value) : GraphicData.color =
-  let open GraphicData in
-    match value with
-    | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
+let get_color (value : syntactic_value) : color =
+  match value with
+  | Constructor("Gray", FloatConstant(gray)) -> DeviceGray(gray)
 
-    | Constructor("RGB", TupleCons(FloatConstant(fltR),
-                                   TupleCons(FloatConstant(fltG),
-                                             TupleCons(FloatConstant(fltB), EndOfTuple)))) -> DeviceRGB(fltR, fltG, fltB)
+  | Constructor("RGB", TupleCons(FloatConstant(fltR),
+                                 TupleCons(FloatConstant(fltG),
+                                           TupleCons(FloatConstant(fltB), EndOfTuple)))) -> DeviceRGB(fltR, fltG, fltB)
 
-    | Constructor("CMYK", TupleCons(FloatConstant(fltC),
-                                    TupleCons(FloatConstant(fltM),
-                                              TupleCons(FloatConstant(fltY),
-                                                        TupleCons(FloatConstant(fltK), EndOfTuple))))) -> DeviceCMYK(fltC, fltM, fltY, fltK)
+  | Constructor("CMYK", TupleCons(FloatConstant(fltC),
+                                  TupleCons(FloatConstant(fltM),
+                                            TupleCons(FloatConstant(fltY),
+                                                      TupleCons(FloatConstant(fltK), EndOfTuple))))) -> DeviceCMYK(fltC, fltM, fltY, fltK)
 
-    | _ -> report_bug_value "interpret_color" value
+  | _ -> report_bug_value "interpret_color" value
 
 
 let make_color_value color =
-  let open GraphicData in
-    match color with
-    | DeviceGray(gray) ->
-        Constructor("Gray", FloatConstant(gray))
+  match color with
+  | DeviceGray(gray) ->
+      Constructor("Gray", FloatConstant(gray))
 
-    | DeviceRGB(r, g, b) ->
-        Constructor("RGB", TupleCons(FloatConstant(r),
-                             TupleCons(FloatConstant(g),
-                               TupleCons(FloatConstant(b), EndOfTuple))))
+  | DeviceRGB(r, g, b) ->
+      Constructor("RGB", TupleCons(FloatConstant(r),
+                           TupleCons(FloatConstant(g),
+                             TupleCons(FloatConstant(b), EndOfTuple))))
 
-    | DeviceCMYK(c, m, y, k) ->
-        Constructor("CMYK", TupleCons(FloatConstant(c),
-                              TupleCons(FloatConstant(m),
-                                TupleCons(FloatConstant(y),
-                                  TupleCons(FloatConstant(k), EndOfTuple)))))
+  | DeviceCMYK(c, m, y, k) ->
+      Constructor("CMYK", TupleCons(FloatConstant(c),
+                            TupleCons(FloatConstant(m),
+                              TupleCons(FloatConstant(y),
+                                TupleCons(FloatConstant(k), EndOfTuple)))))
 
 
 let get_decoset (value : syntactic_value) =
@@ -168,13 +173,13 @@ let make_font_value (abbrev, sizer, risingr) =
       TupleCons(FloatConstant(risingr), EndOfTuple)))
 
 
-let get_vert value =
+let get_vert value : HorzBox.vert_box list =
   match value with
-  | Vert(imvblst) -> imvblst
-  | _             -> report_bug_value "get_vert" value
+  | Vert(vblst) -> vblst
+  | _           -> report_bug_value "get_vert" value
 
 
-let get_horz value =
+let get_horz value : HorzBox.horz_box list =
   match value with
   | Horz(hblst) -> hblst
   | _           -> report_bug_value "get_horz" value
@@ -186,6 +191,10 @@ let get_point value =
       TupleCons(LengthConstant(leny), EndOfTuple)) -> (lenx, leny)
 
   | _ -> report_bug_value "get_point" value
+
+
+let make_point_value (x, y) =
+  TupleCons(LengthConstant(x), TupleCons(LengthConstant(y), EndOfTuple))
 
 
 let get_script (value : syntactic_value) =
@@ -259,16 +268,38 @@ let get_math_char_class (value : syntactic_value) =
 
 
 let get_math_class (value : syntactic_value) =
-  match value with
-  | Constructor("MathOrd"   , UnitConstant) -> HorzBox.MathOrdinary
-  | Constructor("MathBin"   , UnitConstant) -> HorzBox.MathBinary
-  | Constructor("MathRel"   , UnitConstant) -> HorzBox.MathRelation
-  | Constructor("MathOp"    , UnitConstant) -> HorzBox.MathOperator
-  | Constructor("MathPunct" , UnitConstant) -> HorzBox.MathPunct
-  | Constructor("MathOpen"  , UnitConstant) -> HorzBox.MathOpen
-  | Constructor("MathClose" , UnitConstant) -> HorzBox.MathClose
-  | Constructor("MathPrefix", UnitConstant) -> HorzBox.MathPrefix
-  | _                                       -> report_bug_value "get_math_class" value
+  let open HorzBox in
+    match value with
+    | Constructor("MathOrd"   , UnitConstant) -> MathOrdinary
+    | Constructor("MathBin"   , UnitConstant) -> MathBinary
+    | Constructor("MathRel"   , UnitConstant) -> MathRelation
+    | Constructor("MathOp"    , UnitConstant) -> MathOperator
+    | Constructor("MathPunct" , UnitConstant) -> MathPunct
+    | Constructor("MathOpen"  , UnitConstant) -> MathOpen
+    | Constructor("MathClose" , UnitConstant) -> MathClose
+    | Constructor("MathPrefix", UnitConstant) -> MathPrefix
+    | Constructor("MathInner" , UnitConstant) -> MathInner
+    | _                                       -> report_bug_value "get_math_class" value
+
+
+let make_math_class_option_value (mathcls : HorzBox.math_kind) =
+  let open HorzBox in
+    let labelopt =
+      match mathcls with
+      | MathOrdinary -> Some("MathOrd")
+      | MathBinary   -> Some("MathBin")
+      | MathRelation -> Some("MathRel")
+      | MathOperator -> Some("MathOp")
+      | MathPunct    -> Some("MathPunct")
+      | MathOpen     -> Some("MathOpen")
+      | MathClose    -> Some("MathClose")
+      | MathPrefix   -> Some("MathPrefix")
+      | MathInner    -> Some("MathInner")
+      | MathEnd      -> None
+    in
+    match labelopt with
+    | None ->        Constructor("None", UnitConstant)
+    | Some(label) -> Constructor("Some", Constructor(label, UnitConstant))
 
 
 let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a option =
@@ -325,6 +356,9 @@ let get_math value : math list =
     | _               -> report_bug_value "get_math" value
 
 
+let get_math_list = get_list get_math
+
+
 let get_bool value : bool =
   match value with
   | BooleanConstant(bc) -> bc
@@ -367,7 +401,7 @@ let get_regexp (value : syntactic_value) : Str.regexp =
   | _                      -> report_bug_value "get_regexp" value
 
 
-let get_path_value (value : syntactic_value) : GraphicData.path list =
+let get_path_value (value : syntactic_value) : path list =
   match value with
   | PathValue(pathlst) -> pathlst
   | _                  -> report_bug_value "get_path_value" value
@@ -594,48 +628,3 @@ let make_line_stack (hblstlst : (HorzBox.horz_box list) list) =
     ) Alist.empty |> Alist.to_list
   in
     (wid, imvblst)
-
-
-let adjust_to_first_line (imvblst : HorzBox.intermediate_vert_box list) =
-  let open HorzBox in
-  let rec aux optinit totalhgtinit imvblst =
-    imvblst |> List.fold_left (fun (opt, totalhgt) imvb ->
-      match (imvb, opt) with
-      | (ImVertLine(hgt, dpt, _), None)  -> (Some(totalhgt +% hgt), totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% hgt +% (Length.negate dpt))
-      | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-      | (ImVertFrame(pads, _, _, imvblstsub), _) ->
-          let totalhgtbefore = totalhgt +% pads.paddingT in
-          let (optsub, totalhgtsub) = aux opt totalhgtbefore imvblstsub in
-          let totalhgtafter = totalhgtsub +% pads.paddingB in
-            (optsub, totalhgtafter)
-
-    ) (optinit, totalhgtinit)
-  in
-    match aux None Length.zero imvblst with
-    | (Some(hgt), totalhgt) -> (hgt, Length.negate (totalhgt -% hgt))
-    | (None, totalhgt)      -> (Length.zero, Length.negate totalhgt)
-
-
-let adjust_to_last_line (imvblst : HorzBox.intermediate_vert_box list) =
-    let open HorzBox in
-    let rec aux optinit totalhgtinit evvblst =
-      let evvblstrev = List.rev evvblst in
-        evvblstrev |> List.fold_left (fun (opt, totalhgt) imvblast ->
-            match (imvblast, opt) with
-            | (ImVertLine(hgt, dpt, _), None)  -> (Some((Length.negate totalhgt) +% dpt), totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertLine(hgt, dpt, _), _)     -> (opt, totalhgt +% (Length.negate dpt) +% hgt)
-            | (ImVertFixedEmpty(vskip), _)     -> (opt, totalhgt +% vskip)
-
-            | (ImVertFrame(pads, _, _, evvblstsub), _) ->
-                let totalhgtbefore = totalhgt +% pads.paddingB in
-                let (optsub, totalhgtsub) = aux opt totalhgtbefore evvblstsub in
-                let totalhgtafter = totalhgtsub +% pads.paddingT in
-                  (optsub, totalhgtafter)
-
-        ) (optinit, totalhgtinit)
-    in
-      match aux None Length.zero imvblst with
-      | (Some(dpt), totalhgt) -> (totalhgt +% dpt, dpt)
-      | (None, totalhgt)      -> (totalhgt, Length.zero)

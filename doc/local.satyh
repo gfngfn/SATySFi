@@ -4,11 +4,23 @@
 @import: vdecoset
 @import: decoset
 
-let ( --> ) m1 m2 =
-  ${\paren{#m1 \to #m2}}
+
+type type-syntax =
+  | TypeName        of inline-text
+  | TypeConstructor of inline-text * (type-syntax list)
+  | FuncType        of type-syntax * type-syntax
+
+
+let ( --> ) ty1 ty2 =
+  FuncType(ty1, ty2)
+%  ${\paren{#m1 \to #m2}}
 
 let type-name name =
-  text-in-math MathOrd (fun ctx -> read-inline ctx name)
+  TypeName(name)
+%  text-in-math MathOrd (fun ctx -> read-inline ctx name)
+
+let type-constructor name tylst =
+  TypeConstructor(name, tylst)
 
 
 let tU = type-name {unit}
@@ -25,7 +37,7 @@ let tPADS = type-name {paddings}
 let tDECO = type-name {deco}
 let tDECOSET = type-name {deco-set}
 let tCTX = type-name {context}
-let tIGR = type-name {inline-graphics}
+let tGR = type-name {graphics}
 let tDOC = type-name {document}
 let tSCR = type-name {script}
 let tIMG = type-name {image}
@@ -42,9 +54,36 @@ let tMKERNF = type-name {math-kern-func}
 let tMCSTY = type-name {math-char-style}
 let tPAREN = type-name {paren}
 let tMCCLS = type-name {math-char-class}
-let tLIST m =
-  let token = type-name {list} in
-    ${\paren{#m}\math-skip!(4pt)#token}
+let tLIST ty = type-constructor {list} [ty]
+%  let token = type-name {list} in
+%    ${\paren{#m}\math-skip!(4pt)#token}
+
+
+let-rec math-of-type ty =
+  match ty with
+  | TypeName(it) ->
+      text-in-math MathOrd (fun ctx -> read-inline ctx it)
+
+  | TypeConstructor(it, tylst) ->
+      let mlst =
+        tylst |> List.map (fun ty -> (
+          let m = math-of-type ty in
+            match ty with
+            | TypeName(_) -> m
+            | _           -> ${\paren{#m}}
+        ))
+      in
+        Math.join ${\math-skip!(4pt)} (List.append mlst [text-in-math MathOrd (fun ctx -> read-inline ctx it)])
+
+  | FuncType(ty1, ty2) ->
+      let m1 = math-of-type ty1 in
+      let m2 = math-of-type ty2 in
+      let m1 =
+        match ty1 with
+        | FuncType(_, _) -> ${\paren{#m1}}
+        | _              -> m1
+      in
+      ${#m1\to#m2}
 
 
 let-block ctx +centered-image wid srcpath =
@@ -70,7 +109,7 @@ let command-scheme ctx ib-name ty inner =
   let ib-colon = read-inline ctx {\ :\ } in
   let indent = (ctx |> get-font-size) *' 2. in
   let ib-inner = read-inline ctx inner in
-  let m-ty = embed-math ctx ty in
+  let m-ty = embed-math ctx (math-of-type ty) in
     line-break true false (ctx |> set-paragraph-margin gap-paragraph gap-command)
       (ib-name ++ ib-colon ++ m-ty ++ inline-fil)
   +++
@@ -120,7 +159,7 @@ let-block ctx +type ty inner =
     block-frame-breakable ctx (indent, 0pt, 0pt, 0pt) VDecoSet.empty
         (fun ctx ->
           form-paragraph (ctx |> set-paragraph-margin 0pt 0pt)
-            (inline-skip (0pt -' indent) ++ embed-math ctx ty ++ quad ++ ib-inner ++ inline-fil)
+            (inline-skip (0pt -' indent) ++ embed-math ctx (math-of-type ty) ++ quad ++ ib-inner ++ inline-fil)
         )
 
 
