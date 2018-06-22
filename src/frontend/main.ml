@@ -156,7 +156,6 @@ let initialize (dump_file : file_path) =
   begin
     FreeID.initialize ();
     BoundID.initialize ();
-    TypeID.initialize ();
     Typeenv.initialize_id ();
     EvalVarID.initialize ();
     StoreID.initialize ();

@@ -44,6 +44,8 @@ val find_constructor : quantifiability -> t -> FreeID.level -> constructor_name 
 
 val find_constructor_candidates : quantifiability -> t -> FreeID.level -> constructor_name -> constructor_name list
 
+val enumerate_constructors : quantifiability -> t -> FreeID.level -> TypeID.t -> (constructor_name * (mono_type list -> mono_type)) list
+
 val fix_manual_type_free : quantifiability -> t -> FreeID.level -> manual_type -> constraints -> mono_type
 
 val find_type_id : t -> module_name list -> type_name -> Range.t -> TypeID.t option

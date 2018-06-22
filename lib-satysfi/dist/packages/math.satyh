@@ -524,6 +524,7 @@ end = struct
 
   let-block ctx +align mlstlst =
     let vlen = 4pt in
+    let lengap = get-font-size ctx *' 2. in
     let celllstlst =
       mlstlst |> List.map (fun mlst -> (
         mlst |> List.mapi-adjacent (fun index m _ mnextopt -> (
@@ -544,7 +545,9 @@ end = struct
             if index mod 2 == 0 then
               inline-fil ++ ib
             else
-              ib ++ inline-fil
+              match mnextopt with
+              | None    -> ib ++ inline-fil
+              | Some(_) -> ib ++ inline-fil ++ inline-skip lengap
           in
             NormalCell((0pt, 0pt, vlen, vlen), ib)
         ))

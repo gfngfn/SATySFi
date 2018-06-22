@@ -736,6 +736,29 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     let ty = instantiate_type_scheme tyarglist bidlist pty in
     return (tyarglist, tyid, ty)
 
+let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t) 
+    : (constructor_name * (mono_type list -> mono_type)) list =
+  let open OptionMonad in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+  let constrs =
+    ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) ->
+      let constrs = ConstrMap.fold (fun constrnm dfn acc ->
+        let (tyid, (bidlist, pty)) = dfn in
+          if TypeID.equal typeid tyid then
+            (constrnm, (fun tyarglist -> instantiate_type_scheme tyarglist bidlist pty))::acc
+          else
+            acc
+        ) cdmap []
+      in
+      match constrs with
+      | [] -> None
+      | _ -> Some(constrs))
+  in
+  match constrs with
+  | Some(lst) -> lst
+  | None      -> []
+
 
 let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : constructor_name list =
   let open OptionMonad in
