@@ -1,17 +1,7 @@
 
 
-let show_full_path_ref = ref false
-
-
-let show_full_path b =
-  show_full_path_ref := b
-
-
 let show_path s =
-  if !show_full_path_ref then
-    s
-  else
-    Filename.basename s
+  if OptionState.show_full_path () then s else Filename.basename s
 
 
 let begin_to_read_file file_name_in =

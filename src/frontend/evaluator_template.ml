@@ -3,6 +3,7 @@ module Types = Types_
 module Primitives = Primitives_
 open MyUtil
 open LengthInterface
+open GraphicBase
 open Types
 open EvalUtil
 
@@ -55,24 +56,24 @@ and interpret_path env pathcomplst cycleopt =
     pathcomplst |> List.map (function
       | PathLineTo(astpt) ->
           let pt = interpret_point env astpt in
-            GraphicData.LineTo(pt)
+            LineTo(pt)
 
       | PathCubicBezierTo(astpt1, astpt2, astpt) ->
           let pt1 = interpret_point env astpt1 in
           let pt2 = interpret_point env astpt2 in
           let pt = interpret_point env astpt in
-            GraphicData.CubicBezierTo(pt1, pt2, pt)
+            CubicBezierTo(pt1, pt2, pt)
     )
   in
   let closingopt =
     cycleopt |> option_map (function
       | PathLineTo(()) ->
-          GraphicData.LineTo(())
+          LineTo(())
 
       | PathCubicBezierTo(astpt1, astpt2, ()) ->
           let pt1 = interpret_point env astpt1 in
           let pt2 = interpret_point env astpt2 in
-            GraphicData.CubicBezierTo(pt1, pt2, ())
+            CubicBezierTo(pt1, pt2, ())
     )
   in
     (pathelemlst, closingopt)
@@ -304,7 +305,7 @@ and interpret env ast =
   | Path(astpt0, pathcomplst, cycleopt) ->
       let pt0 = interpret_point env astpt0 in
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
-        PathValue([GraphicData.GeneralPath(pt0, pathelemlst, closingopt)])
+        PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 
 (**** include: __evaluator.ml ****)
 

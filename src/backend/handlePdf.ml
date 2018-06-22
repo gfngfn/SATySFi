@@ -13,10 +13,10 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
     match evhbmain with
     | EvHorzEmpty ->
         let opaccnew =
-(*
-          (Graphics.pdfops_test_box (GraphicData.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.)) |> Alist.append
-*)
-          opacc
+          if OptionState.debug_show_space () then
+            Alist.append opacc (GraphicD.pdfops_test_box (GraphicBase.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.))
+          else
+            opacc
         in
           (xpos +% wid, opaccnew)
 
@@ -25,7 +25,7 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
         in
-        let opaccinit = Alist.append opacc (Graphics.to_pdfops gr_background (pdfops_of_intermediate_horz_box_list pbinfo)) in
+        let opaccinit = Alist.append opacc (GraphicD.to_pdfops gr_background (pdfops_of_intermediate_horz_box_list pbinfo)) in
         let (xposnew, opaccsub) =
           imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline)
         in
@@ -37,11 +37,11 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let ops =
           let opsmain =
-            Graphics.pdfops_of_text (xpos, yposbaseline)
+            GraphicD.pdfops_of_text (xpos, yposbaseline)
               hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt
           in
           if OptionState.debug_show_bbox () then
-            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+            List.append (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
           else
             opsmain
         in
@@ -52,11 +52,11 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let ops =
           let opsmain =
-            Graphics.pdfops_of_text (xpos, yposbaseline)
+            GraphicD.pdfops_of_text (xpos, yposbaseline)
               Length.zero tag msinfo.math_font_size msinfo.math_color otxt
           in
           if OptionState.debug_show_bbox () then
-            List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+            List.append (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
           else
             opsmain
         in
@@ -70,7 +70,7 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let opaccnew =
 (*
           if OptionState.debug_show_bbox () then
-            Alist.append opaccsub (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+            Alist.append opaccsub (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
           else
 *)
             opaccsub
@@ -88,7 +88,7 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let opaccsub = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
         let opaccnew =
           if OptionState.debug_show_bbox () then
-            Alist.append opaccsub (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+            Alist.append opaccsub (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
           else
             opaccsub
         in
@@ -121,9 +121,9 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
 (*
-          List.append (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
+          List.append (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt Length.zero)
 *)
-          (Graphics.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
+          (GraphicD.pdfops_of_image (xpos, yposbaseline) xratio yratio tag)
         in
         let opaccnew = Alist.append opacc ops_image in
           (xpos +% wid, opaccnew)
@@ -149,7 +149,7 @@ and ops_of_evaled_tabular (pbinfo : page_break_info) point evtabular =
               in
               let opaccnew =
 (*
-                (Graphics.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
+                (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) |> Alist.append
 *)
                   opaccsub
               in
@@ -162,7 +162,7 @@ and ops_of_evaled_tabular (pbinfo : page_break_info) point evtabular =
               in
               let opaccnew =
 (*
-                (Graphics.pdfops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
+                (GraphicD.pdfops_test_frame (xpos, yposbaseline) widcell hgt dpt) |> Alist.append
 *)
                   opaccsub
               in
@@ -228,7 +228,7 @@ and pdfops_of_intermediate_horz_box_list (pbinfo : page_break_info) ((xpos, ypos
 
 
 and pdfops_of_graphics (pbinfo : page_break_info) gr =
-  Graphics.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)
+  GraphicD.to_pdfops gr (pdfops_of_intermediate_horz_box_list pbinfo)
 
 
 type contents = Pdfops.t Alist.t
