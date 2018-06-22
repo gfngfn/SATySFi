@@ -5,8 +5,8 @@ open MyUtil
 open Types
 open Display
 
-exception UndefinedVariable     of Range.t * module_name list * var_name
-exception UndefinedConstructor  of Range.t * var_name
+exception UndefinedVariable     of Range.t * module_name list * var_name * var_name list
+exception UndefinedConstructor  of Range.t * var_name * var_name list
 exception InclusionError        of Typeenv.t * mono_type * mono_type
 exception ContradictionError    of Typeenv.t * mono_type * mono_type
 exception UnknownUnitOfLength   of Range.t * length_unit_name
@@ -431,13 +431,7 @@ let rec typecheck
       begin
         match Typeenv.find tyenv mdlnmlst varnm rng with
         | None ->
-            begin match Typeenv.find_candidate tyenv mdlnmlst varnm rng with
-            | None ->
-              raise (UndefinedVariable(rng, mdlnmlst, varnm))
-            | Some(candidates) ->
-              Format.printf "Did you mean %s?\n" (List.hd candidates);
-              raise (UndefinedVariable(rng, mdlnmlst, varnm))
-            end
+            raise (UndefinedVariable(rng, mdlnmlst, varnm, Typeenv.find_candidates tyenv mdlnmlst varnm rng))
 
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
@@ -449,7 +443,7 @@ let rec typecheck
   | UTConstructor(constrnm, utast1) ->
       begin
         match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-        | None -> raise (UndefinedConstructor(rng, constrnm))
+        | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
         | Some((tyarglist, tyid, tyc)) ->
             let () = print_for_debug_typecheck ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
             let (e1, ty1) = typecheck_iter tyenv utast1 in
@@ -1220,7 +1214,7 @@ and typecheck_pattern
     | UTPConstructor(constrnm, utpat1) ->
         begin
           match Typeenv.find_constructor qtfbl tyenv lev constrnm with
-          | None -> raise (UndefinedConstructor(rng, constrnm))
+          | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
           | Some((tyarglist, tyid, tyc)) ->
               let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
               let (epat1, typat1, tyenv1) = iter utpat1 in

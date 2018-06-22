@@ -100,14 +100,14 @@ type t =
 
 
 exception IllegalNumberOfTypeArguments    of Range.t * type_name * int * int
-exception UndefinedTypeName               of Range.t * module_name list * type_name
-exception UndefinedTypeArgument           of Range.t * var_name
+exception UndefinedTypeName               of Range.t * module_name list * type_name * type_name list
+exception UndefinedTypeArgument           of Range.t * var_name * var_name list
 exception CyclicTypeDefinition            of (Range.t * type_name) list
 exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
-exception UndefinedModuleName             of Range.t * module_name
+exception UndefinedModuleName             of Range.t * module_name * module_name list
 (*
 exception UndefinedModuleNameList         of module_name list
 *)
@@ -136,15 +136,6 @@ let update_so (sof : signature option -> signature option) ((vdmap, tdmap, cdmap
   (vdmap, tdmap, cdmap, sof sigopt)
 
 
-(* PUBLIC *)
-let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
-  let addrlst = Alist.to_list tyenv.current_address in
-  let mtr = tyenv.main_tree in
-  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
-  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
-  | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
-
-
 let edit_distance s1 s2 = 
   let len1 = String.length s1 in
   let len2 = String.length s2 in
@@ -158,12 +149,52 @@ let edit_distance s1 s2 =
     done;
     for i = 1 to len1 do
       for j = 1 to len2 do
-        let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 3 in
-          d.(i).(j) <-  min (min (d.(i-1).(j)+3) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
+        let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 1 in
+          d.(i).(j) <-  min (min (d.(i-1).(j)+1) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
       done
     done;
+    (*Format.printf "%s %s => %d\n" s1 s2 (d.(len1).(len2));*)
     d.(len1).(len2)
   end
+
+let initial_candidates nm =
+  let maxdist =
+    match String.length nm with
+    | 1 | 2 -> 0
+    | 3 | 4 -> 1
+    | 5 | 6 -> 2
+    | _     -> 3
+  in
+    ([], maxdist)
+
+let get_candidates_cont foldf map nm acc =
+  foldf (fun k _ (cand, mindist) ->
+    let score = edit_distance nm k in
+    if score < mindist then
+      ([k], score)
+    else if score = mindist then
+      (k::cand, mindist)
+    else
+      (cand, mindist)
+  ) map acc
+
+let get_candidates_first foldf map nm =
+  get_candidates_cont foldf map nm (initial_candidates nm)
+
+let get_candidates_last pair =
+  fst pair
+
+let get_candidates foldf map nm =
+  get_candidates_last @@  get_candidates_cont foldf map nm (initial_candidates nm)
+
+
+(* PUBLIC *)
+let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) : t =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+  match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
+  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
+  | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 (* PUBLIC *)
@@ -175,7 +206,7 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
   let addrlast =
     mdlnmlst |> List.map (fun nm ->
       match nmtoid |> ModuleNameMap.find_opt nm with
-      | None        -> raise (UndefinedModuleName(rng, nm))
+      | None        -> raise (UndefinedModuleName(rng, nm, get_candidates ModuleNameMap.fold nmtoid nm))
       | Some(mdlid) -> mdlid
     )
   in
@@ -193,9 +224,8 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
           return (ptysig, evid)
     )
 
-
 (* PUBLIC *)
-let find_candidate (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list option =
+let find_candidates (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list =
   let open OptionMonad in
   let nmtoid = tyenv.name_to_id_map in
   let mtr = tyenv.main_tree in
@@ -203,23 +233,14 @@ let find_candidate (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) 
   let addrlast =
     mdlnmlst |> List.map (fun nm ->
       match nmtoid |> ModuleNameMap.find_opt nm with
-      | None        -> raise (UndefinedModuleName(rng, nm))
+      | None        -> assert false
       | Some(mdlid) -> mdlid
     )
   in
-  let addrstr = String.concat "" (List.map (fun m -> ModuleID.extract_name m ^ ".") addrlast) in  (* for debug *)
-    ModuleTree.search_backward mtr addrlst addrlast (fun (vdmap, _, _, sigopt) ->
-      let (cand, _) = VarMap.fold (fun k _ (cand, minscore) ->
-        let score = edit_distance varnm k in
-        if score < minscore then
-          ([k], score)
-        else if score = minscore then
-          (k::cand, minscore)
-        else
-          (cand, minscore)
-      ) vdmap ([], 1000) in
-      return cand
-    )
+    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst addrlast (fun acc (vdmap, _, _, sigopt) ->
+      get_candidates_cont VarMap.fold vdmap varnm acc
+    ) (initial_candidates varnm)
+
 
 let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
   let open OptionMonad in
@@ -254,7 +275,7 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
   in
     match mtropt with
     | None ->
-        raise (UndefinedModuleName(rng, mdlnm))
+        raise (UndefinedModuleName(rng, mdlnm, get_candidates ModuleNameMap.fold nmtoid mdlnm))
 
     | Some(mtrnew) ->
         { tyenv with main_tree = mtrnew; }
@@ -300,6 +321,7 @@ module MapList
     val add : ('a, 'b) t -> 'a -> 'b -> unit
     val find_opt : ('a, 'b) t -> 'a -> 'b option
     val to_list : ('a, 'b) t -> ('a * 'b) list
+    val fold : ('a -> 'b -> 'c -> 'c) -> ('a, 'b) t -> 'c -> 'c
   end
 = struct
     type ('a, 'b) t = (('a * 'b) Alist.t) ref
@@ -311,6 +333,8 @@ module MapList
     let find_opt mapl k = List.assoc_opt k (Alist.to_list (!mapl))
 
     let to_list mapl = Alist.to_list (!mapl)
+
+    let fold f mapl init = Alist.fold_left (fun acc (k, v) -> f k v acc) init (!mapl)
 
   end
 
@@ -372,7 +396,7 @@ let find_type_definition_for_outer (tyenv : t) (mdlnmlst : module_name list) (ty
     mdlnmlst |> List.map (fun mdlnm ->
       match nmtoid |> ModuleNameMap.find_opt mdlnm with
       | Some(mdlid) -> mdlid
-      | None        -> raise (UndefinedModuleName(rng, mdlnm))
+      | None        -> raise (UndefinedModuleName(rng, mdlnm, get_candidates ModuleNameMap.fold nmtoid mdlnm))
     )
   in
   let straddr = String.concat "." (addrlst |> List.map ModuleID.extract_name) in (* for debug *)
@@ -386,6 +410,28 @@ let find_type_definition_for_outer (tyenv : t) (mdlnmlst : module_name list) (ty
           let () = print_for_debug_variantenv ("FTD " ^ straddr ^ ", " ^ tynm ^ " -> signature found") in (* for debug *)
           TyNameMap.find_opt tynm tdmapsig
     )
+
+
+let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : type_name list =
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+  let nmtoid = tyenv.name_to_id_map in
+  let mdlidlst =
+    mdlnmlst |> List.map (fun mdlnm ->
+      match nmtoid |> ModuleNameMap.find_opt mdlnm with
+      | Some(mdlid) -> mdlid
+      | None        -> assert false
+    )
+  in
+  let base_type_candidates = get_candidates_first Hashtbl.fold base_type_hash_table tynm in
+    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst mdlidlst (fun acc (_, tdmap, _, sigopt) ->
+      match sigopt with
+      | None ->
+          get_candidates_cont TyNameMap.fold tdmap tynm acc
+
+      | Some((tdmapsig, _)) ->
+          get_candidates_cont TyNameMap.fold tdmapsig tynm acc
+    ) base_type_candidates
 
 
 (* PUBLIC *)
@@ -503,7 +549,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
           let tyarglist = List.map aux mntyarglist in
           let find_in_variant_environment () =
             match find_type_definition_for_outer tyenv mdlnmlst tynm rng with
-            | None -> raise (UndefinedTypeName(rng, mdlnmlst, tynm))
+            | None -> raise (UndefinedTypeName(rng, mdlnmlst, tynm, find_type_definition_candidates_for_outer tyenv mdlnmlst tynm rng))
 
             | Some((tyid, Data(lenexp))) ->
                 if lenexp <> len then error tynm lenexp len else
@@ -549,7 +595,7 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
               | StrictMode(tyargmaplist) ->
                   begin
                     match MapList.find_opt tyargmaplist tyargnm with
-                    | None        -> raise (UndefinedTypeArgument(rng, tyargnm))
+                    | None        -> raise (UndefinedTypeArgument(rng, tyargnm, get_candidates MapList.fold tyargmaplist tyargnm))
                     | Some(tvref) -> TypeVariable(tvref)
                   end
 
@@ -689,6 +735,15 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     in
     let ty = instantiate_type_scheme tyarglist bidlist pty in
     return (tyarglist, tyid, ty)
+
+
+let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : constructor_name list =
+  let open OptionMonad in
+  let addrlst = Alist.to_list tyenv.current_address in
+  let mtr = tyenv.main_tree in
+    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst [] (fun acc (_, _, cdmap, _) -> 
+      get_candidates_cont ConstrMap.fold cdmap constrnm acc
+    ) (initial_candidates constrnm)
 
 
 let get_moduled_var_name (tyenv : t) (varnm : var_name) =

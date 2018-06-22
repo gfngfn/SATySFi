@@ -20,6 +20,8 @@ exception NotADocumentFile of file_path * Typeenv.t * mono_type
 type line =
   | NormalLine  of string
   | DisplayLine of string
+  | NormalLineOption  of string option
+  | DisplayLineOption of string option
 
 type error_category =
   | Lexer
@@ -43,20 +45,42 @@ let report_error (cat : error_category) (lines : line list) =
   let rec aux lst =
     match lst with
     | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline ("    " ^ s) ; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("      " ^ s); aux tail end
+    | NormalLine(s) :: tail
+    | NormalLineOption(Some(s)) :: tail  
+      -> begin print_endline ("    " ^ s) ; aux tail end
+    | DisplayLine(s) :: tail
+    | DisplayLineOption(Some(s)) :: tail 
+      -> begin print_endline ("      " ^ s); aux tail end
+    | _ :: tail -> aux tail
   in
   let first lst =
     match lst with
     | []                     -> ()
-    | NormalLine(s) :: tail  -> begin print_endline s; aux tail end
-    | DisplayLine(s) :: tail -> begin print_endline ("\n      " ^ s); aux tail end
+    | NormalLine(s) :: tail
+    | NormalLineOption(Some(s)) :: tail
+      -> begin print_endline s; aux tail end
+    | DisplayLine(s) :: tail
+    | DisplayLineOption(Some(s)) :: tail 
+      -> begin print_endline ("\n      " ^ s); aux tail end
+    | _ :: tail -> aux tail
   in
   begin
     print_string ("! [" ^ (show_error_category cat) ^ "] ");
     first lines;
     exit 1;
   end
+
+let make_candidates_message (candidates : string list) =
+  let add_quote s = "'" ^ s ^ "'" in
+  let rec aux lst =
+    match List.rev lst with
+    | []        -> ""
+    | s :: []   -> add_quote s
+    | s :: rest  -> (String.concat ", " (List.map add_quote (List.rev rest))) ^ " or " ^ (add_quote s)
+  in
+  match candidates with
+  | [] -> None
+  | _  -> Some("Did you mean " ^ (aux candidates) ^ "?")
 
 
 module FileDependencyGraph = DirectedGraph.Make
@@ -463,17 +487,19 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
 
-  | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm) ->
+  | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
       let s = String.concat "." (List.append mdlnmlst [varnm]) in
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined variable '" ^ s ^ "'.");
+        NormalLineOption(make_candidates_message candidates);
       ]
 
-  | Typechecker.UndefinedConstructor(rng, constrnm) ->
+  | Typechecker.UndefinedConstructor(rng, constrnm, candidates) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined constructor '" ^ constrnm ^ "'.");
+        NormalLineOption(make_candidates_message candidates);
       ]
 
   | Typechecker.TooManyArgument(rngcmdapp, tyenv, tycmd) ->
@@ -542,23 +568,26 @@ let error_log_environment suspended =
         NormalLine("but it has " ^ (string_of_int lenerr) ^ " type argument(s) here.");
       ]
 
-  | Typeenv.UndefinedTypeName(rng, mdlnmlst, tynm) ->
+  | Typeenv.UndefinedTypeName(rng, mdlnmlst, tynm, candidates) ->
       let s = String.concat "." (List.append mdlnmlst [tynm]) in
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type name '" ^ s ^ "'");
+        NormalLineOption(make_candidates_message candidates);
       ]
 
-  | Typeenv.UndefinedModuleName(rng, mdlnm) ->
+  | Typeenv.UndefinedModuleName(rng, mdlnm, candidates) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined module name '" ^ mdlnm ^ "'");
+        NormalLineOption(make_candidates_message candidates);
       ]
 
-  | Typeenv.UndefinedTypeArgument(rng, tyargnm) ->
+  | Typeenv.UndefinedTypeArgument(rng, tyargnm, candidates) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("undefined type argument '" ^ tyargnm ^ "'");
+        NormalLineOption(make_candidates_message candidates);
       ]
 
   | Typeenv.CyclicTypeDefinition(reslist) ->
