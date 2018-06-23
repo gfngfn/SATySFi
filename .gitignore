@@ -36,5 +36,4 @@ satysfi
 *.satysfi-aux
 external/
 *.install
-*.gen.ml
 .merlin
