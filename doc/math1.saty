@@ -41,7 +41,7 @@ document (|
 
     texts contained in formulae: ${\frac{\text!{Hoge}}{2} + \sqrt{\text!{Piyo}}},
 
-    % tuple: ${\angle{x, y, z}}.
+    tuple: ${\angle{x, y, z}}.
   }
   +math (
     let int1 = ${\int_0^a} in
