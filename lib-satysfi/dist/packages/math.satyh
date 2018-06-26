@@ -5,8 +5,8 @@
 module Math : sig
 
   direct \math : [math] inline-cmd
-  direct +math : [math] block-cmd
-  direct \eqn : [math] inline-cmd
+  direct +math : [inline-text?; math] block-cmd
+  direct \eqn : [inline-text?; math] inline-cmd
   direct +math-list : [math list] block-cmd
   direct \math-list : [math list] inline-cmd
   direct +align : [(math list) list] block-cmd
@@ -484,14 +484,20 @@ end = struct
   let-math \mathbf-token s = ${\math-style-token!(MathBoldRoman)!(s)}
 
 
-  let-block ctx +math math =
+  let math-scheme ctx tagopt math =
     let ib = embed-math ctx math in
-      line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+      match tagopt with
+      | None      -> line-break true true ctx (inline-fil ++ ib ++ inline-fil)
+      | Some(tag) -> line-break true true ctx (inline-fil ++ ib ++ inline-fil ++ read-inline ctx tag)
 
 
-  let-inline ctx \eqn math =
+  let-block ctx +math ?:tagopt math =
+    math-scheme ctx tagopt math
+
+
+  let-inline ctx \eqn ?:tagopt math =
     inline-fil ++
-      embed-block-breakable ctx (read-block ctx '<+math(math);>)
+      embed-block-breakable ctx (math-scheme ctx tagopt math)
 
 
   let-block ctx +math-list mlst =
