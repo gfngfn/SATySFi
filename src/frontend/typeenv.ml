@@ -268,8 +268,8 @@ module MapList
 
 
 type type_argument_mode =
-  | StrictMode of (type_argument_name, type_variable_info ref) MapList.t
-  | FreeMode   of (type_argument_name, type_variable_info ref) MapList.t
+  | StrictMode of (type_argument_name, poly_type_variable_info ref) MapList.t
+  | FreeMode   of (type_argument_name, poly_type_variable_info ref) MapList.t
       (* --
         StrictMode : case where all type arguments should be declared; e.g. for type definitions
         FreeMode   : case where type arguments do not need to be declared; e.g. for type annotations
@@ -353,9 +353,9 @@ let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
 
 
 let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
-
+(*
   let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
-
+*)
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
@@ -364,19 +364,19 @@ let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme)
 
 
 let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t list) (Poly(ty) : poly_type) =
-
+(*
   let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
-
-  let bid_to_type_ht : (type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+*)
+  let bid_to_type_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
 
   let rec pre tyargs bids =
     match (tyargs, bids) with
     | ([], [])                             -> ()
     | (tyarg :: tyargtail, bid :: bidtail) ->
-        let tvref = ref (Link(tyarg)) in
+        let tvref = ref (MonoLink(tyarg)) in
         begin
           print_for_debug_variantenv ("I-add '#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)); (* for debug *)
-          BoundIDHashtbl.add bid_to_type_ht bid tvref;
+          BoundIDHashTable.add bid_to_type_ht bid tvref;
           pre tyargtail bidtail;
         end
     | (_, _)                                -> assert false
@@ -422,7 +422,7 @@ let rec type_argument_length tyargcons = List.length tyargcons
 
 
 let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
-  let rec aux mnty =
+  let rec aux (mnty : manual_type) : poly_type =
     let (rng, mntymain) = mnty in
     let error tynm lenexp lenerr = raise (IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr)) in
     let tymainnew =
@@ -528,15 +528,17 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
   in
   let ty = aux mnty in
   match tyargmode with
-  | ( StrictMode(tyargmaplist)
-    | FreeMode(tyargmaplist) ) ->
+  | StrictMode(tyargmaplist)
+  | FreeMode(tyargmaplist)
+      ->
         let bidlist =
           (MapList.to_list tyargmaplist) |> List.map (fun (_, tvref) ->
             match !tvref with
-            | Free(tvid) ->
-                let bid = BoundID.fresh (FreeID.get_kind tvid) () in
+            | PolyFree(tvid) ->
+                let kd = FreeID.get_kind tvid in
+                let bid = BoundID.fresh kd () in
                 begin
-                  tvref := Bound(bid);
+                  tvref := PolyBound(bid);
                   bid
                 end
             | _ -> assert false
@@ -642,7 +644,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     let ty = instantiate_type_scheme tyarglist bidlist pty in
     return (tyarglist, tyid, ty)
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t) 
+let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t)
     : (constructor_name * (mono_type list -> mono_type)) list =
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
