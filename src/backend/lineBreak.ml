@@ -6,13 +6,13 @@ open LineBreakBox
 
 
 type lb_either =
-  | TextChunks  of line_break_chunk list
+  | TextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | LB          of lb_box
   | ScriptGuard of CharBasis.script * lb_box list
 
 
 type lb_pure_either =
-  | PTextChunks  of line_break_chunk list
+  | PTextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | PLB          of lb_pure_box
   | PScriptGuard of CharBasis.script * lb_pure_box list
 
@@ -80,7 +80,29 @@ let append_horz_padding_pure (lphblst : lb_pure_box list) (widinfo : length_info
     (lphblstnew, widinfonew)
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : line_break_chunk list -> a) (alw : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
+let append_chunks (chunkacc : line_break_chunk Alist.t) (alwmid : CharBasis.break_opportunity) (chunklst : line_break_chunk list) =
+  match Alist.chop_last chunkacc with
+  | None ->
+      Alist.append Alist.empty chunklst
+
+  | Some(accsub, (ctx, chunkmain)) ->
+      begin
+        match chunkmain with
+        | Space
+        | UnbreakableSpace
+            -> Alist.append chunkacc chunklst
+
+        | IdeographicChunk(script, lbc, uch, _) ->
+            let chunknew = (ctx, IdeographicChunk(script, lbc, uch, alwmid)) in
+              Alist.append (Alist.extend accsub chunknew) chunklst
+
+        | AlphabeticChunk(script, lbc1, lbc2, uchlst, _) ->
+            let chunknew = (ctx, AlphabeticChunk(script, lbc1, lbc2, uchlst, alwmid)) in
+              Alist.append (Alist.extend accsub chunknew) chunklst
+      end
+
+
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alw : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
       chunkf (ConvertText.to_chunks ctx uchlst alw)
@@ -140,13 +162,13 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
 
 let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pure_either =
   let puref p = PLB(p) in
-  let chunkf c = PTextChunks(c) in
+  let chunkf (alwfirst, c) = PTextChunks(alwfirst, c) in
     convert_pure_box_for_line_breaking_scheme listf puref chunkf CharBasis.PreventBreak phb
 
 
 let convert_pure_box_for_line_breaking listf alw (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
-  let chunkf c = TextChunks(c) in
+  let chunkf (alwfirst, c) = TextChunks(alwfirst, c) in
     convert_pure_box_for_line_breaking_scheme listf puref chunkf alw phb
 
 
@@ -269,14 +291,14 @@ and normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
               Alist.to_list (Alist.append lhbacc lhblst)
         end
 
-    | TextChunks(chunklst) :: lbeithertail ->
+    | TextChunks(alwfirst, chunklst) :: lbeithertail ->
         begin
           match optprev with
           | None ->
               aux lhbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbeithertail
 
           | Some((scriptB, chunkacc)) ->
-              aux lhbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbeithertail
+              aux lhbacc (Some((scriptB, append_chunks chunkacc alwfirst chunklst))) lbeithertail
         end
 
     | ScriptGuard(scriptG, lhblstG) :: lbeithertail ->
@@ -322,14 +344,14 @@ and normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
               Alist.to_list (Alist.append lphbacc lphblst)
         end
 
-    | PTextChunks(chunklst) :: lbpetail ->
+    | PTextChunks(alwfirst, chunklst) :: lbpetail ->
         begin
           match chunkaccopt with
           | None ->
               aux lphbacc (Some((CharBasis.OtherScript, Alist.of_list chunklst))) lbpetail
 
           | Some((scriptB, chunkacc)) ->
-              aux lphbacc (Some((scriptB, Alist.append chunkacc chunklst))) lbpetail
+              aux lphbacc (Some((scriptB, append_chunks chunkacc alwfirst chunklst))) lbpetail
         end
 
     | PLB(lphb) :: lbpetail ->
