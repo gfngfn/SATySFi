@@ -25,7 +25,7 @@ let-math \valit m =
   ${\text!{\{}#m\text!{\}}}
 
 let-math \valbt m =
-  ${\angle{#m}}
+  ${\angle-bracket{#m}}
 
 let-math \wildcard = ${\synt-color{\_}}
 
@@ -51,7 +51,7 @@ let-math \exprabsB x e =
   ${\synt-color{\lambda^{\mathrm{B}}}#x\token!{.\ }#e}
 
 let-math \valB m =
-  ${\synt-color{\angle{#m}}}
+  ${\synt-color{\angle-bracket{#m}}}
 
 let-math \BNF nontm mlst =
   let defs = Math.join ${\|} mlst in
