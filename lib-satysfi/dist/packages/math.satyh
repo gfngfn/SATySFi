@@ -757,7 +757,7 @@ end = struct
   let-math \bigcirc = ord `◯`
 
   let-math \ldots = ord `…`
-  let-math \cdots = ord `⋯`
+  let-math \cdots = math-char MathInner `⋯`
   let-math \vdots = ord `⋮`
   let-math \ddots = ord `⋱`
   let-math \backddots = ord `⋰`

@@ -348,7 +348,13 @@ let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportuni
         end
   in
   let bilstinit = append_property uchlst in
-    aux Alist.empty bilstinit
+
+  let alw_first =
+    let b_first = should_prevent_break [] bilstinit in
+      if b_first then PreventBreak else AllowBreak
+  in
+  let lst = aux Alist.empty bilstinit in
+    (alw_first, lst)
 
 
 (*
