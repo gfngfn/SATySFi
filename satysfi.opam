@@ -1,6 +1,6 @@
 opam-version: "1.2"
 name: "satysfi"
-version: ""
+version: "0.0.1"
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
@@ -27,7 +27,7 @@ depends: [
   "core_kernel" {>= "v0.10.0"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"
-  "jbuilder" {build}
+  "dune" {build}
   "menhir"
   "ocamlfind" {build}
   "otfm" {= "0.3.0+satysfi"}
