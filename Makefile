@@ -5,51 +5,52 @@ BACKEND=src/backend
 FRONTEND=src/frontend
 CHARDECODER=src/chardecoder
 BYTECOMP=$(FRONTEND)/bytecomp
-OCB_FLAGS = -cflags -w,-3 \
-	-use-ocamlfind -use-menhir \
-	-I $(SRCROOT)/ -I $(FRONTEND)/ -I $(BACKEND)/ -I $(CHARDECODER)/ -I $(BYTECOMP) \
-	-pkgs "str,ppx_deriving.show,core_kernel,uutf,batteries, \
-	menhirLib,yojson,camlimages,camlimages.jpeg,otfm,camlpdf" \
-	-tag bin_annot -tag thread -tag unsafe_string -yaccflags "--table --explain"
 TARGET=satysfi
-OCB = ocamlbuild $(OCB_FLAGS)
 BINDIR=$(PREFIX)/bin
 RM=rm -f
 RUBY=ruby
 GENCODE=./gen_code.rb
+DUNE=jbuilder
 INSTDEF=$(BYTECOMP)/vminstdef.yaml
+INSTTYPE_GEN=$(FRONTEND)/__insttype.gen.ml
+ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
+VM_GEN=$(BYTECOMP)/__vm.gen.ml
+IR_GEN=$(BYTECOMP)/__ir.gen.ml
+EVAL_GEN=$(FRONTEND)/__evaluator.gen.ml
+PRIM_GEN=$(FRONTEND)/__primitives.gen.ml
+GENS= \
+  $(INSTTYPE_GEN) \
+  $(ATTYPE_GEN) \
+  $(VM_GEN) \
+  $(IR_GEN) \
+  $(EVAL_GEN) \
+  $(PRIM_GEN)
 
-all: $(FRONTEND)/types_.ml $(FRONTEND)/evaluator_.ml $(FRONTEND)/primitives_.ml $(BYTECOMP)/vm_.ml $(BYTECOMP)/ir_.ml
-	mkdir -p _build/
-	$(OCB) main.native
-	mv main.native $(TARGET)
+.PHONY: all gen install lib uninstall clean
 
-$(FRONTEND)/types_.ml: $(FRONTEND)/types_template.ml $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-insttype $(INSTDEF) > $(FRONTEND)/__insttype.ml
-	$(RUBY) $(GENCODE) --gen-attype $(INSTDEF) > $(FRONTEND)/__attype.ml
-	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/types_template.ml > $(FRONTEND)/types_.ml
-	$(RM)   $(FRONTEND)/__insttype.ml
-	$(RM)   $(FRONTEND)/__attype.ml
+all: gen
+	$(DUNE) build
+	cp _build/install/default/bin/$(TARGET) .
 
-$(BYTECOMP)/vm_.ml: $(BYTECOMP)/vm_template.ml $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-vm $(INSTDEF) > $(BYTECOMP)/__vm.ml
-	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/vm_template.ml > $(BYTECOMP)/vm_.ml
-	$(RM)   $(BYTECOMP)/__vm.ml
+gen: $(GENS)
 
-$(BYTECOMP)/ir_.ml: $(BYTECOMP)/ir_template.ml $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-ir $(INSTDEF) > $(BYTECOMP)/__ir.ml
-	$(RUBY) $(GENCODE) --pp-include $(BYTECOMP)/ir_template.ml > $(BYTECOMP)/ir_.ml
-	$(RM)   $(BYTECOMP)/__ir.ml
+$(ATTYPE_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-attype $(INSTDEF) > $@
 
-$(FRONTEND)/evaluator_.ml: $(FRONTEND)/evaluator_template.ml $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-interps $(INSTDEF) > $(FRONTEND)/__evaluator.ml
-	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/evaluator_template.ml > $(FRONTEND)/evaluator_.ml
-	$(RM)   $(FRONTEND)/__evaluator.ml
+$(INSTTYPE_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-insttype $(INSTDEF) > $@
 
-$(FRONTEND)/primitives_.ml: $(FRONTEND)/primitives_template.ml $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-prims $(INSTDEF) > $(FRONTEND)/__primitives.ml
-	$(RUBY) $(GENCODE) --pp-include $(FRONTEND)/primitives_template.ml > $(FRONTEND)/primitives_.ml
-	$(RM)   $(FRONTEND)/__primitives.ml
+$(VM_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-vm $(INSTDEF) > $@
+
+$(IR_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-ir $(INSTDEF) > $@
+
+$(EVAL_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-interps $(INSTDEF) > $@
+
+$(PRIM_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-prims $(INSTDEF) > $@
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)
@@ -89,21 +90,5 @@ uninstall:
 	rm -rf $(LIBDIR)
 
 clean:
-	$(OCB) -clean
-	$(RM)  $(FRONTEND)/types_.ml
-	$(RM)  $(FRONTEND)/primitives_.ml
-	$(RM)  $(FRONTEND)/evaluator_.ml
-	$(RM)  $(BYTECOMP)/vm_.ml
-	$(RM)  $(BYTECOMP)/ir_.ml
-	$(RM)  $(FRONTEND)/__insttype.ml
-	$(RM)  $(FRONTEND)/__attype.ml
-	$(RM)  $(FRONTEND)/__primitives.ml
-	$(RM)  $(FRONTEND)/__evaluator.ml
-	$(RM)  $(BYTECOMP)/__vm.ml
-	$(RM)  $(BYTECOMP)/__ir.ml
-
-
-#clean-sub:
-#	rm -f $(FRONTEND)/lexer.ml $(FRONTEND)/parser.mli $(FRONTEND)/parser.ml $(FRONTEND)/*.cmi $(FRONTEND)/*.cmx $(FRONTEND)/*.o
-#
-.PHONY: clean
+	$(DUNE) clean
+	$(RM) $(GENS)

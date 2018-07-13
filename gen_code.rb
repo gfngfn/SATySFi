@@ -201,42 +201,6 @@ def gen_ircases
   end
 end
 
-def pp_include
-  srcpath = Pathname.new(ARGV[0])
-
-  puts "(***********************************************************)"
-  puts "(*                                                         *)"
-  puts "(*                                                         *)"
-  puts "(*                                                         *)"
-  puts "(*                   AUTO-GENERATED FILE                   *)"
-  puts "(*                      DO NOT MODIFY                      *)"
-  puts "(*                                                         *)"
-  puts "(*                                                         *)"
-  puts "(*                                                         *)"
-  puts "(***********************************************************)"
-
-  ARGF.each_line do |line|
-    match = line.match(/\(\*\*\*\*.*include *: *(.*) *\*\*\*\*\)/)
-    if match then
-       inspath = Pathname.new(match[1].strip)
-       if inspath.absolute? then
-         openpath = inspath
-       else
-         openpath = srcpath.dirname.join(inspath.basename)
-       end
-
-       File.open(openpath) do |file|
-         file.each_line do |line|
-           puts line
-         end
-       end
-    else
-      puts line
-    end
-  end
-end
-
-
 opt = OptionParser.new
 
 func = nil
@@ -247,7 +211,6 @@ opt.on('--gen-insttype') {|v| func = method(:gen_insttype) }
 opt.on('--gen-attype') {|v| func = method(:gen_attype) }
 opt.on('--gen-interps') {|v| func = method(:gen_interps) }
 opt.on('--gen-prims') {|v| func = method(:gen_prims) }
-opt.on('--pp-include') {|v| func = method(:pp_include) }
 
 opt.parse!(ARGV)
 

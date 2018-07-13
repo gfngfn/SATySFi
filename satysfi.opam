@@ -1,4 +1,6 @@
 opam-version: "1.2"
+name: "satysfi"
+version: ""
 maintainer: "gfngfn"
 authors: [
   "gfngfn"
@@ -23,9 +25,10 @@ depends: [
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.2.1+satysfi"}
   "core_kernel" {>= "v0.10.0"}
+  "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"
+  "jbuilder" {build}
   "menhir"
-  "ocamlbuild" {build}
   "ocamlfind" {build}
   "otfm" {= "0.3.0+satysfi"}
   "ppx_deriving"
