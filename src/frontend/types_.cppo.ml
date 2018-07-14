@@ -237,7 +237,7 @@ and 'a type_main =
   | ListType        of 'a typ
   | RefType         of 'a typ
   | ProductType     of ('a typ) list
-  | TypeVariable    of 'a ref
+  | TypeVariable    of 'a
   | SynonymType     of ('a typ) list * TypeID.t * 'a typ
   | VariantType     of ('a typ) list * TypeID.t
   | RecordType      of ('a typ) Assoc.t
@@ -256,23 +256,23 @@ and 'a kind =
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordKind(...)")]
 
 and mono_type_variable_info =
-  | MonoFree of (mono_type_variable_info kind) FreeID_.t_
-  | MonoLink of mono_type_variable_info typ
+  | MonoFree of mono_kind FreeID_.t_
+  | MonoLink of mono_type
 
 and poly_type_variable_info =
-  | PolyFree  of (mono_type_variable_info kind) FreeID_.t_
+  | PolyFree  of mono_type_variable_info ref
   | PolyBound of (poly_type_variable_info kind) BoundID_.t_
 
-[@@deriving show]
+and mono_type = (mono_type_variable_info ref) typ
 
-type mono_type = mono_type_variable_info typ
-
-type poly_type =
+and poly_type =
   | Poly of poly_type_variable_info typ
 
-type mono_kind = mono_type_variable_info kind
+and mono_kind = (mono_type_variable_info ref) kind
 
-type poly_kind = poly_type_variable_info kind
+and poly_kind = poly_type_variable_info kind
+[@@deriving show]
+
 
 
 module FreeID =
@@ -800,7 +800,7 @@ let normalize_kind kd =
   | RecordKind(tyasc) -> RecordKind(Assoc.map_value normalize_mono_type tyasc)
 
 
-let rec erase_range_of_type (ty : mono_type) =
+let rec erase_range_of_type (ty : mono_type) : mono_type =
   let iter = erase_range_of_type in
   let tymainnew =
     let (_, tymain) = normalize_mono_type ty in
@@ -842,16 +842,14 @@ module FreeIDHashTable = Hashtbl.Make(
   end)
 
 
-let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : poly_type) : mono_type =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  let rec aux (rng, tymain) =
-    match tymain with
-    | TypeVariable(tvref) ->
+let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
+  let aux = instantiate_aux bid_ht lev qtfbl in
+    match ptymain with
+    | TypeVariable(ptvi) ->
         begin
-          match !tvref with
-          | PolyFree(tvid) ->
-              let tvrefnew = ref (MonoFree(tvid)) in
-              (rng, TypeVariable(tvrefnew))
+          match ptvi with
+          | PolyFree(tvref) ->
+              (rng, TypeVariable(tvref))
 
           | PolyBound(bid) ->
               begin
@@ -861,12 +859,12 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
 
                 | None ->
                     let kd = BoundID.get_kind bid in
-                    let kdfree = instantiate_kind kd in
+                    let kdfree = instantiate_kind_aux bid_ht lev qtfbl kd in
                     let tvid = FreeID.fresh kdfree qtfbl lev () in
-                    let tvrefnew = ref (MonoFree(tvid)) in
+                    let tvref = ref (MonoFree(tvid)) in
                     begin
-                      BoundIDHashTable.add bid_ht bid tvrefnew;
-                      (rng, TypeVariable(tvrefnew))
+                      BoundIDHashTable.add bid_ht bid tvref;
+                      (rng, TypeVariable(tvref))
                     end
               end
         end
@@ -882,12 +880,21 @@ let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(ty)) : pol
     | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
 
-  and instantiate_kind (kd : poly_kind) : mono_kind =
+
+and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
     match kd with
     | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value aux tyasc)
-  in
-    aux ty
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value (instantiate_aux bid_ht lev qtfbl) tyasc)
+
+
+let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
+  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  instantiate_aux bid_ht lev qtfbl pty
+
+
+let instantiate_kind (lev : FreeID.level) (qtfbl : quantifiability) (pkd : poly_kind) : mono_kind =
+  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
 let generalize (lev : FreeID.level) (ty : mono_type) : poly_type =
@@ -900,19 +907,18 @@ let generalize (lev : FreeID.level) (ty : mono_type) : poly_type =
               iter tyl
 
           | MonoFree(tvid) ->
-              let tvrefgen =
+              let ptvi =
                 if not (FreeID.is_quantifiable tvid) then
-                  ref (PolyFree(tvid))
+                  PolyFree(tvref)
+                else if not (FreeID.less_than lev (FreeID.get_level tvid)) then
+                  PolyFree(tvref)
                 else
-                  if not (FreeID.less_than lev (FreeID.get_level tvid)) then
-                    ref (PolyFree(tvid))
-                  else
-                    let kd = FreeID.get_kind tvid in
-                    let kdgen = generalize_kind kd in
-                    let bid = BoundID.fresh kdgen () in
-                      ref (PolyBound(bid))
+                  let kd = FreeID.get_kind tvid in
+                  let kdgen = generalize_kind kd in
+                  let bid = BoundID.fresh kdgen () in
+                    PolyBound(bid)
               in
-                (rng, TypeVariable(tvrefgen))
+                (rng, TypeVariable(ptvi))
         end
 
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
@@ -1234,8 +1240,8 @@ let rec string_of_type_basic tvf tystr : string =
     | ProductType(tylist) ->
         string_of_type_list_basic tvf tylist
 
-    | TypeVariable(tvref) ->
-        tvf qstn !tvref
+    | TypeVariable(tvi) ->
+        tvf qstn tvi
 
     | RecordType(asc) ->
         string_of_record_type iter asc
@@ -1305,20 +1311,27 @@ and string_of_type_list_basic tvf tylist =
 
 let rec string_of_mono_type_basic ty =
   let tvf qstn tvref =
-    match tvref with
+    match !tvref with
     | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
     | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
   in
     string_of_type_basic tvf ty
 
 
-let rec string_of_poly_type_basic (Poly(ty)) =
-  let tvf qstn tvref =
-    match tvref with
-    | PolyBound(bid) -> "'#" ^ (BoundID.show_direct (string_of_kind (fun ty -> string_of_poly_type_basic (Poly(ty)))) bid) ^ qstn
-    | PolyFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+let rec string_of_poly_type_basic (Poly(pty)) =
+  let ptvf qstn ptvi =
+    match ptvi with
+    | PolyBound(bid) ->
+        "'#" ^ (BoundID.show_direct (string_of_kind (fun ty -> string_of_poly_type_basic (Poly(ty)))) bid) ^ qstn
+
+    | PolyFree(tvref) ->
+        begin
+          match !tvref with
+          | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+          | MonoLink(ty)   -> string_of_mono_type_basic ty
+        end
   in
-    string_of_type_basic tvf ty
+    string_of_type_basic ptvf pty
 
 
 and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd
