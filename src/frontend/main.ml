@@ -592,8 +592,10 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation of value '" ^ varnm ^ "' has type");
         DisplayLine(Display.string_of_poly_type tyenv1 pty1);
+        DisplayLine(string_of_poly_type_basic pty1);  (* FOR DEBUG *)
         NormalLine("which is inconsistent with the type required by the signature");
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
+        DisplayLine(string_of_poly_type_basic pty2);  (* FOR DEBUG *)
       ]
 
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->

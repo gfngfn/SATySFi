@@ -114,8 +114,11 @@ let apply_tree_of_list astfunc astlst =
 (* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
 let flatten_type (ty : mono_type) : ((mono_type_variable_info ref) command_argument_type) list * mono_type =
   let rec aux acc ty =
-    let (rng, tymain) = normalize_mono_type ty in
+    let (rng, tymain) = ty in
       match tymain with
+      | TypeVariable({contents= MonoLink(tylink)}) ->
+          aux acc tylink
+
       | FuncType(tyoptsr, tydom, tycod) ->
           let accnew =
             Alist.append acc (List.append (List.map (fun ty -> OptionalArgumentType(ty)) (!tyoptsr)) [MandatoryArgumentType(tydom)])
@@ -367,7 +370,9 @@ and unify_options tyopts1r tyopts2r =
 
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
+(*
   let () = print_endline ("    ####UNIFY " ^ (string_of_mono_type_basic ty1) ^ " = " ^ (string_of_mono_type_basic ty2)) in  (* for debug *)
+*)
   try
     unify_sub ty1 ty2
   with
@@ -441,7 +446,9 @@ let rec typecheck
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
+(*
             let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+*)
                 (ContentOf(rng, evid), tyres)
       end
 
@@ -760,7 +767,7 @@ let rec typecheck
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
       let betaF = (rng, TypeVariable(ref (MonoFree(tvidF)))) in
-      let tvid1 = FreeID.fresh (normalize_kind (RecordKind(Assoc.of_list [(fldnm, betaF)]))) qtfbl lev () in
+      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
       let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
       let () = unify beta1 ty1 in
         (AccessField(e1, fldnm), betaF)

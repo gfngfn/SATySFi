@@ -602,7 +602,7 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
   let () =
     constrnts |> List.iter (fun (param, mkd) ->
       let kd = fix_manual_kind_general NoDependency tyenv lev freef typaramf mkd in
-      let tvid = FreeID.fresh (normalize_kind kd) qtfbl lev () in
+      let tvid = FreeID.fresh kd qtfbl lev () in
       let tvref = ref (MonoFree(tvid)) in
         MapList.add tyargmaplist param tvref
     )
@@ -930,6 +930,9 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
     | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
 
+    | (TypeVariable(PolyFree({contents= MonoLink(tylink1)})), _) -> aux (lift_poly tylink1 |> (function Poly(pty) -> pty)) ty2
+    | (_, TypeVariable(PolyFree({contents= MonoLink(tylink2)}))) -> aux ty1 (lift_poly tylink2 |> (function Poly(pty) -> pty))
+
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         begin
           match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
@@ -1048,7 +1051,7 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (UniversalKind, _)                       -> false
     | (RecordKind(tyasc1), RecordKind(tyasc2)) ->
         begin
-          tyasc2 |> Assoc.fold (fun b k ty2 ->
+          tyasc2 |> Assoc.fold (fun b k pty2 ->
             match Assoc.find_opt tyasc1 k with
             | Some(pty1) -> b && (aux pty1 pty2)
             | None       -> false
@@ -1115,7 +1118,6 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
             | Some((ptyimp, _)) ->
                 let b = reflects ptysigI ptyimp in
-                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                     iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew

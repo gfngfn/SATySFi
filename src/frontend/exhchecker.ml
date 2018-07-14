@@ -13,7 +13,7 @@ type type_element =
   | ETuple
   | EWildCard
 
-and pattern_instance = 
+and pattern_instance =
   | IUnitConstant
   | IIntegerConstant of int
   | IBooleanConstant of bool
@@ -23,7 +23,7 @@ and pattern_instance =
   | IConstructor     of string * pattern_instance * mono_type
   | ITupleCons       of pattern_instance list
   | IWildCard
- 
+
 and expand_type =
   | ExpandListCons
   | ExpandConstructor of string * mono_type
@@ -86,7 +86,7 @@ let is_all_wildcard mat =
   ) (List.hd mat)
 
 let flatten_tuple tup =
-  let rec iter ast acc = 
+  let rec iter ast acc =
     match ast with
     | PTupleCons(hd, PEndOfTuple) -> List.rev (hd::acc)
     | PTupleCons(hd, tl)          -> iter tl (hd::acc)
@@ -94,7 +94,7 @@ let flatten_tuple tup =
   in
     iter tup []
 
-let instance_of_element ele = 
+let instance_of_element ele =
   match ele with
   | EUnitConstant           -> IUnitConstant
   | EBooleanConstant(b)     -> IBooleanConstant(b)
@@ -159,19 +159,19 @@ let expand_mat mat i epat ty =
   in
   let rec sub epat pat =
     match (epat, pat) with
-    | (ExpandListCons, PListCons(h, t))-> 
+    | (ExpandListCons, PListCons(h, t))->
       [[h]; [t]]
 
     | (ExpandListCons, PWildCard) ->
       [[PWildCard]; [PWildCard]]
 
-    | (ExpandConstructor(_, _), PConstructor(_, innerpat)) -> 
+    | (ExpandConstructor(_, _), PConstructor(_, innerpat)) ->
       [[innerpat]]
 
     | (ExpandConstructor(_, _), PWildCard) ->
       [[PWildCard]]
 
-    | (ExpandTuple(_), PTupleCons(h, t)) -> 
+    | (ExpandTuple(_), PTupleCons(h, t)) ->
       let ftup = flatten_tuple (PTupleCons(h, t)) in
         List.map (fun pat -> [pat]) ftup
 
@@ -195,7 +195,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
     let (nmat, ninfo, nomatch) =
       List.fold_left (fun (cols, info, no_match) col ->
         let (newcol, newinfo, no_m) = (fold_left3 (fun (col, info, no_m) p q i ->
-          let needs_append = 
+          let needs_append =
             match ele, p with
             | EListCons, PListCons(_, _)
             | EEndOfList, PEndOfList
@@ -217,11 +217,11 @@ let rec get_specialized_mat mat patinfo ele tylst =
               -> false
           in
             match needs_append, i with
-            | true, (n, PatternBranch(_, _)) -> 
+            | true, (n, PatternBranch(_, _)) ->
                 (q::col, i::info, false)
-            | true, (n, PatternBranchWhen(_, _, _)) -> 
+            | true, (n, PatternBranchWhen(_, _, _)) ->
                 (q::col, i::info, no_m)
-            | false, _ -> 
+            | false, _ ->
                 (col, info, no_m)
 
           ) ([], [], true) fst col patinfo
@@ -232,12 +232,12 @@ let rec get_specialized_mat mat patinfo ele tylst =
     | EListCons, (_, ListType(lty))::_ ->
         let expnd = ExpandListCons in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
-          (expand_mat nmat 0 expnd tylst, ninfo, lty::tylst, expnd, nomatch) 
+          (expand_mat nmat 0 expnd tylst, ninfo, lty::tylst, expnd, nomatch)
 
     | EConstructor(nm, ity), (_, VariantType(_, _))::rest ->
         let expnd = ExpandConstructor(nm, ity) in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
-          (expand_mat nmat 0 expnd tylst, ninfo, ity::rest, expnd, nomatch) 
+          (expand_mat nmat 0 expnd tylst, ninfo, ity::rest, expnd, nomatch)
 
     | ETuple, (_, ProductType(ptylst))::rest ->
         let expnd = ExpandTuple(List.length ptylst) in
@@ -250,7 +250,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
               (List.tl nmat, ninfo, List.tl tylst, NoExpand, nomatch)
         | [] -> ([], [], [], NoExpand, true)
         end
-      
+
 
 let unit_sig    = ElementSet.of_list [EUnitConstant]
 let bool_sig    = ElementSet.of_list [EBooleanConstant(true); EBooleanConstant(false)]
@@ -276,10 +276,11 @@ let make_string_sig col =
 
 let make_variant_sig qtfbl lev tyenv tyarglst tyid =
   let constrs = Typeenv.enumerate_constructors qtfbl tyenv lev tyid in
-  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) -> EConstructor(nm, normalize_mono_type (tyf tyarglst))))
+  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) -> EConstructor(nm, (tyf tyarglst))))
 
 let rec complete_sig col qtfbl lev tyenv ty =
   match snd ty with
+  | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col qtfbl lev tyenv tylink
   | BaseType(UnitType)          -> unit_sig
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
@@ -320,7 +321,7 @@ let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
   let patinfo_extract patinfo =
     patinfo |> List.map (fun (n, _) -> n) in
   let patinfo_until_match patinfo =
-    fst @@ List.fold_left (fun (acc, fin) (n, patbr) -> 
+    fst @@ List.fold_left (fun (acc, fin) (n, patbr) ->
       match fin, patbr with
       | false, PatternBranch(_, _) -> (n::acc, true)
       | false, PatternBranchWhen(_, _, _) -> (n::acc, false)
@@ -343,7 +344,7 @@ let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
           | false, _ ->
               let (nonexh, nonexh_guard, used) = exhcheck_mat stylst smat spatinfo qtfbl lev tyenv in
                 ((List.map (fold_instance expnd ele) nonexh) @ a_nonexh,
-                  (List.map (fold_instance expnd ele) nonexh_guard) @ a_nonexh_guard, 
+                  (List.map (fold_instance expnd ele) nonexh_guard) @ a_nonexh_guard,
                     IntSet.union used a_used)
           end) set ([], [], IntSet.empty)
     in (List.rev nonexh, List.rev nonexh_guard, used)
@@ -361,8 +362,8 @@ let non_empty lst =
   | [] -> false
   | _ -> true
 
-let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type) 
-    (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) : unit = 
+let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
+    (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) : unit =
   let patbrs = patbrs |> List.map (fun patbr ->
     match patbr with
     | PatternBranch(p, a) -> PatternBranch(normalize_pat p, a)
@@ -375,21 +376,19 @@ let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
   )] in
   let patid = one_to_n (List.length patbrs) in
   let patinfo = List.combine patid patbrs in
-  let nom_ty = normalize_mono_type ty in
-    let (nonexh, nonexh_guard, used) = exhcheck_mat [nom_ty] mat patinfo qtfbl lev tyenv in
+    let (nonexh, nonexh_guard, used) = exhcheck_mat [ty] mat patinfo qtfbl lev tyenv in
     let unused = IntSet.diff (IntSet.of_list patid) used in
     if (non_empty nonexh) || (non_empty nonexh_guard) || not (IntSet.is_empty unused) then
       begin
         Format.printf "! [Warning about pattern-matching] at %s\n" (Range.to_string rng);
-        nonexh |> List.iter (function [ins] -> 
-          Format.printf "    non-exhaustive: %s\n" (string_of_instance ins) 
+        nonexh |> List.iter (function [ins] ->
+          Format.printf "    non-exhaustive: %s\n" (string_of_instance ins)
           | _ -> ());
-        nonexh_guard |> List.iter (function [ins] -> 
-          Format.printf "    non-exhaustive(guarded clause may match): %s\n" (string_of_instance ins) 
+        nonexh_guard |> List.iter (function [ins] ->
+          Format.printf "    non-exhaustive(guarded clause may match): %s\n" (string_of_instance ins)
           | _ -> ());
         IntSet.iter (fun id -> Format.printf "    pattern #%d is unused\n" id) unused;
         Format.printf "\n";
       end
     else
       ()
-

@@ -38,7 +38,9 @@ let show_type_variable (type a) (f : a typ -> string) (name : string) (kd : a ki
   | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
 
 
-type general_id = FreeID of FreeID.t | BoundID of BoundID.t
+type general_id =
+  | NomID   of nom_kind FreeID_.t_
+  | BoundID of BoundID.t
 
 
 module GeneralIDHashTable_ = Hashtbl.Make(
@@ -47,7 +49,7 @@ module GeneralIDHashTable_ = Hashtbl.Make(
 
     let equal gid1 gid2 =
       match (gid1, gid2) with
-      | (FreeID(tvid1), FreeID(tvid2)) -> FreeID.equal tvid1 tvid2
+      | (NomID(tvid1), NomID(tvid2))   -> FreeID.equal tvid1 tvid2
       | (BoundID(bid1), BoundID(bid2)) -> BoundID.eq bid1 bid2
       | (_, _)                         -> false
 
@@ -260,23 +262,29 @@ and string_of_mono_type_list tvf tyenv current_ht tylist =
         end
 
 
-let rec tvf_mono current_ht tyenv tvref =
-  match !tvref with
-  | MonoFree(tvid) ->
-      let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
+let rec tvf_nom current_ht tyenv tvi =
+  match tvi with
+  | NomFree(tvid) ->
+      let num = GeneralIDHashTable.intern_number current_ht (NomID(tvid)) in
       let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
-        show_type_variable (string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht) s (FreeID.get_kind tvid)
-
-  | MonoLink(ty) ->
-      assert false
-        (* -- links should be omitted by 'normalize_mono_type' -- *)
+        show_type_variable (string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht) s (FreeID.get_kind tvid)
 
 
 let rec tvf_poly current_ht tyenv ptvi =
   match ptvi with
   | PolyFree(tvref) ->
-      tvf_mono current_ht tyenv tvref
-        (* doubtful *)
+      begin
+        match !tvref with
+        | MonoFree(tvid) ->
+            let tvid = FreeID.map_kind normalize_kind tvid in
+            let num = GeneralIDHashTable.intern_number current_ht (NomID(tvid)) in
+            let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
+              show_type_variable (string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht) s (FreeID.get_kind tvid)
+
+        | MonoLink(ty) ->
+            let tyn = normalize_mono_type ty in
+              "(" ^ (string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht tyn) ^ ")"
+      end
 
   | PolyBound(bid) ->
       let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
@@ -289,7 +297,7 @@ let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
     let tyn = normalize_mono_type ty in
-      string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht tyn
+      string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht tyn
   end
 
 
@@ -299,7 +307,7 @@ let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono
     let current_ht = GeneralIDHashTable.create 32 in
     let tyn1 = normalize_mono_type ty1 in
     let tyn2 = normalize_mono_type ty2 in
-    let strf = string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht in
+    let strf = string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht in
     let strty1 = strf tyn1 in
     let strty2 = strf tyn2 in
       (strty1, strty2)

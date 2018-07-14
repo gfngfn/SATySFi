@@ -64,6 +64,7 @@ module FreeID_
     val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
     val get_kind : 'a t_ -> 'a
     val set_kind : 'a t_ -> 'a -> 'a t_
+    val map_kind : ('a -> 'b) -> 'a t_ -> 'b t_
     val show_direct : ('a -> string) -> 'a t_ -> string
     val show_direct_level : level -> string
   end
@@ -108,6 +109,8 @@ module FreeID_
     let get_kind (_, kd, _, _) = kd
 
     let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
+
+    let map_kind f (idmain, kd, qtfbl, lev) = (idmain, f kd, qtfbl, lev)
 
     let show_direct f (idmain, kd, qtfbl, lev) =
       match qtfbl with
@@ -273,6 +276,14 @@ and mono_kind = (mono_type_variable_info ref) kind
 and poly_kind = poly_type_variable_info kind
 [@@deriving show]
 
+
+type nom_type_variable_info =
+  | NomFree of nom_kind FreeID_.t_
+
+and nom_kind = nom_type_variable_info kind
+
+and nom_type = nom_type_variable_info typ
+[@@deriving show]
 
 
 module FreeID =
@@ -770,20 +781,20 @@ let lift_manual_common f = function
 
 
 (* -- 'normalize_type': eliminates 'Link(_)' -- *)
-let rec normalize_mono_type ty =
+let rec normalize_mono_type (ty : mono_type) : nom_type =
   let iter = normalize_mono_type in
   let (rng, tymain) = ty in
     match tymain with
     | TypeVariable(tvinforef) ->
         begin
           match !tvinforef with
-          | MonoFree(_)      -> ty
+          | MonoFree(tvid)   -> (rng, TypeVariable(NomFree(FreeID.map_kind normalize_kind tvid)))
           | MonoLink(tylink) -> iter tylink
         end
 
     | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
     | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | BaseType(_)                       -> ty
+    | BaseType(bt)                      -> (rng, BaseType(bt))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
@@ -794,31 +805,35 @@ let rec normalize_mono_type ty =
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
 
 
-let normalize_kind kd =
+and normalize_kind (kd : mono_kind) : nom_kind =
   match kd with
-  | UniversalKind     -> kd
+  | UniversalKind     -> UniversalKind
   | RecordKind(tyasc) -> RecordKind(Assoc.map_value normalize_mono_type tyasc)
 
 
 let rec erase_range_of_type (ty : mono_type) : mono_type =
   let iter = erase_range_of_type in
-  let tymainnew =
-    let (_, tymain) = normalize_mono_type ty in
+  let rng = Range.dummy "erased" in
+  let (_, tymain) = ty in
     match tymain with
-    | BaseType(_)                       -> tymain
-    | TypeVariable(_)                   -> tymain
-    | FuncType(tyoptsr, tydom, tycod)   -> FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod)
-    | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | RecordType(tyasc)                 -> RecordType(Assoc.map_value iter tyasc)
-    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
-    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
-    | ListType(tycont)                  -> ListType(iter tycont)
-    | RefType(tycont)                   -> RefType(iter tycont)
-    | HorzCommandType(tylist)           -> HorzCommandType(List.map (lift_argument_type iter) tylist)
-    | VertCommandType(tylist)           -> VertCommandType(List.map (lift_argument_type iter) tylist)
-    | MathCommandType(tylist)           -> MathCommandType(List.map (lift_argument_type iter) tylist)
-  in
-    (Range.dummy "erased", tymainnew)
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoFree(tvid) -> tvref := MonoFree(FreeID.map_kind erase_range_of_kind tvid); (rng, tymain)
+          | MonoLink(ty)   -> erase_range_of_type ty
+        end
+
+    | BaseType(_)                       -> (rng, tymain)
+    | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | ListType(tycont)                  -> (rng, ListType(iter tycont))
+    | RefType(tycont)                   -> (rng, RefType(iter tycont))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
 
 
 and erase_range_of_kind (kd : 'a kind) =
