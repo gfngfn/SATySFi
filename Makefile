@@ -75,15 +75,27 @@ lib:
 # -- downloads fonts --
 	mkdir -p temp/
 	if [ -x "$$(command -v curl)" ]; then \
-	  curl -R -o temp/lm2.004otf.zip http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip; \
-	  curl -R -o temp/latinmodern-math-1959.zip http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip; \
+	  curl -L -R -o temp/lm2.004otf.zip http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip; \
+	  curl -L -R -o temp/latinmodern-math-1959.zip http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip; \
+	  curl -L -R -o temp/junicode-1.002.zip http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip; \
+	  curl -L -R -o temp/IPAexfont00301.zip https://oscdl.ipa.go.jp/IPAexfont/IPAexfont00301.zip; \
 	else \
 	  wget -N http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip -P temp/; \
 	  wget -N http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip -P temp/; \
+	  wget -N http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip -P temp/; \
+	  wget -N https://oscdl.ipa.go.jp/IPAexfont/IPAexfont00301.zip -P temp/; \
         fi
 	unzip -o temp/lm2.004otf.zip -d lib-satysfi/dist/fonts/
 	unzip -o temp/latinmodern-math-1959.zip -d temp/
 	cp temp/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
+	unzip -o temp/junicode-1.002.zip -d temp/
+	cp temp/Junicode.ttf lib-satysfi/dist/fonts/
+	cp temp/Junicode-Bold.ttf lib-satysfi/dist/fonts/
+	cp temp/Junicode-Italic.ttf lib-satysfi/dist/fonts/
+	cp temp/Junicode-BoldItalic.ttf lib-satysfi/dist/fonts/
+	unzip -o temp/IPAexfont00301.zip -d temp/
+	cp temp/IPAexfont00301/ipaexg.ttf lib-satysfi/dist/fonts/
+	cp temp/IPAexfont00301/ipaexm.ttf lib-satysfi/dist/fonts/
 
 uninstall:
 	rm -rf $(BINDIR)/$(TARGET)
