@@ -6,6 +6,8 @@ env:
   - OCAML_VERSION=4.06
 sudo: required
 install:
+  - sudo apt-get install fonts-ipaexfont-mincho fonts-ipaexfont-gothic fonts-lmodern fonts-junicode texlive-fonts-recommended texlive-fonts-extra
+  - bash -xv .travis/install-dist.sh
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
