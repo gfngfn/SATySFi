@@ -1867,8 +1867,8 @@ needs-reducef: yes
 params:
 - wid : length
 - pads : paddings
-- hblst : horz
 - valuedeco
+- hblst : horz
 code: |
   Horz([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
     pads, wid,
