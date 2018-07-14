@@ -3,6 +3,10 @@
 @require: proof
 @import: tabular
 
+let-math \overwrite mf ma mb =
+  ${#mf\sqbracket{#ma \mapsto #mb}}
+in
+
 document (|
   title  = {Math Test};
   author = {Takashi SUWA};
@@ -41,7 +45,7 @@ document (|
 
     texts contained in formulae: ${\frac{\text!{Hoge}}{2} + \sqrt{\text!{Piyo}}},
 
-    tuple: ${\angle{x, y, z}}.
+    tuple: ${\angle-bracket{x, y, z}}.
   }
   +math (
     let int1 = ${\int_0^a} in
