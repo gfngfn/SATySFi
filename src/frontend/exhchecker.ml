@@ -9,7 +9,7 @@ type type_element =
   | EStringConstant  of string
   | EListCons
   | EEndOfList
-  | EConstructor     of string * mono_type
+  | EConstructor     of string * nom_type
   | ETuple
   | EWildCard
 
@@ -20,13 +20,13 @@ and pattern_instance =
   | IStringConstant  of string
   | IListCons        of pattern_instance * pattern_instance
   | IEndOfList
-  | IConstructor     of string * pattern_instance * mono_type
+  | IConstructor     of string * pattern_instance * nom_type
   | ITupleCons       of pattern_instance list
   | IWildCard
 
 and expand_type =
   | ExpandListCons
-  | ExpandConstructor of string * mono_type
+  | ExpandConstructor of string * nom_type
   | ExpandTuple       of int
   | NoExpand
 [@@deriving show]
@@ -274,13 +274,16 @@ let make_string_sig col =
     | _                                         -> acc
   ) [EWildCard] col)
 
-let make_variant_sig qtfbl lev tyenv tyarglst tyid =
+let make_variant_sig qtfbl lev tyenv (tyarglst : nom_type list) tyid =
   let constrs = Typeenv.enumerate_constructors qtfbl tyenv lev tyid in
-  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) -> EConstructor(nm, (tyf tyarglst))))
+  ElementSet.of_list (constrs |> List.map (fun (nm, tyf) ->
+    EConstructor(nm, normalize_mono_type (tyf (List.map unnormalize tyarglst)))))
 
-let rec complete_sig col qtfbl lev tyenv ty =
+let rec complete_sig col qtfbl lev tyenv (ty : nom_type) =
   match snd ty with
+(*
   | TypeVariable({contents= MonoLink(tylink)}) -> complete_sig col qtfbl lev tyenv tylink
+*)
   | BaseType(UnitType)          -> unit_sig
   | BaseType(BoolType)          -> bool_sig
   | BaseType(IntType)           -> make_int_sig col
@@ -376,7 +379,7 @@ let main (rng : Range.t) (patbrs : pattern_branch list) (ty : mono_type)
   )] in
   let patid = one_to_n (List.length patbrs) in
   let patinfo = List.combine patid patbrs in
-    let (nonexh, nonexh_guard, used) = exhcheck_mat [ty] mat patinfo qtfbl lev tyenv in
+    let (nonexh, nonexh_guard, used) = exhcheck_mat [normalize_mono_type ty] mat patinfo qtfbl lev tyenv in
     let unused = IntSet.diff (IntSet.of_list patid) used in
     if (non_empty nonexh) || (non_empty nonexh_guard) || not (IntSet.is_empty unused) then
       begin

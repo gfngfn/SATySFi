@@ -264,7 +264,7 @@ and string_of_mono_type_list tvf tyenv current_ht tylist =
 
 let rec tvf_nom current_ht tyenv tvi =
   match tvi with
-  | NomFree(tvid) ->
+  | NomFree(tvid, _) ->
       let num = GeneralIDHashTable.intern_number current_ht (NomID(tvid)) in
       let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
         show_type_variable (string_of_mono_type_sub (tvf_nom current_ht tyenv) tyenv current_ht) s (FreeID.get_kind tvid)

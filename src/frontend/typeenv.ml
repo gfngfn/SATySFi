@@ -981,7 +981,6 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               end
         end
 
-(*
     | (RecordType(tyasc1), TypeVariable(PolyFree({contents= MonoFree(tvid2)} as tvref))) ->
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
@@ -989,19 +988,27 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
           | UniversalKind      -> true
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc1 tyasc2
         in
-        if binc then tvref := MonoLink(ty1) else ();
-        binc
+        if binc then
+          match unlift_poly ty1 with
+          | None      -> false
+          | Some(ty1) -> tvref := MonoLink(ty1); true
+        else
+          false
 
-    | (_, TypeVariable({contents= Free(tvid2)} as tvref)) ->
+    | (_, TypeVariable(PolyFree({contents= MonoFree(tvid2)} as tvref))) ->
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
           match kd2 with
           | UniversalKind -> true
           | RecordKind(_) -> false
         in
-        if binc then tvref := Link(ty1) else ();
-        binc
-*)
+        if binc then
+          match unlift_poly ty1 with
+          | None      -> false
+          | Some(ty1) -> tvref := MonoLink(ty1); true
+        else
+          false
+
     | (FuncType(tyopts1r, tyd1, tyc1), FuncType(tyopts2r, tyd2, tyc2)) ->
         (aux_opt_list (!tyopts1r) (!tyopts2r)) && (aux tyd1 tyd2) && (aux tyc1 tyc2)
           (* -- both domain and codomain are covariant -- *)
