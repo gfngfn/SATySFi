@@ -6,8 +6,7 @@ env:
   - OCAML_VERSION=4.06
 sudo: required
 install:
-  - sudo apt-get install fonts-ipaexfont-mincho fonts-ipaexfont-gothic fonts-lmodern fonts-junicode texlive-fonts-recommended texlive-fonts-extra
-  - bash -xv .travis/install-dist.sh
+  - if [[ "$TRAVIS_OS_NAME" == linux ]]; then bash -xv .travis/install-dist.sh; fi
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
@@ -17,4 +16,4 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - make all
-  - make -C doc primitives.pdf lang.pdf SATYSFI=../satysfi
+  - if [[ "$TRAVIS_OS_NAME" == linux ]]; then make -C doc primitives.pdf lang.pdf SATYSFI=../satysfi; fi

@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -ue
 
+sudo apt-get install \
+  fonts-ipaexfont-mincho \
+  fonts-ipaexfont-gothic \
+  fonts-lmodern \
+  fonts-junicode \
+  texlive-fonts-recommended \
+  texlive-fonts-extra
+
 RUNTIME="$HOME/.satysfi"
 
 mkdir -p "$RUNTIME"
