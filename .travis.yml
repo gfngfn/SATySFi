@@ -15,3 +15,4 @@ install:
   - opam install -y --deps-only satysfi
 script:
   - make all
+  - make -C doc primitives.pdf lang.pdf SATYSFI=../satysfi
