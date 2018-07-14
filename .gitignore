@@ -19,11 +19,6 @@ obsolete/*.txt
 bin/
 old/
 test/
-lexer.ml
-parser.ml
-parser.mli
-parser.output
-lexer_hand.ml
 *.png
 _build/
 temp/
@@ -40,4 +35,6 @@ satysfi
 *.jpg
 *.satysfi-aux
 external/
-*_.ml
+*.install
+*.gen.ml
+.merlin

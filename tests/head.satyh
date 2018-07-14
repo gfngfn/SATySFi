@@ -1,5 +1,6 @@
 @require: list
 @require: math
+@require: proof
 
 let form-paragraph = line-break true true
 
@@ -221,7 +222,7 @@ let-block ctx +section title inner =
     bc-title +++ bc-inner
 
 let-inline ctx \expand-spaces inner =
-  let ctx-inner = set-space-ratio 1.0 ctx in
+  let ctx-inner = set-space-ratio 1.0 0.08 0.16 ctx in
     read-inline ctx-inner inner
 
 %let-block-detailed ctx +px inner =
@@ -542,7 +543,7 @@ let-block ctx +code code =
     let charwid = get-natural-width (read-inline ctx {0}) in
     let ctx-code =
       ctx |> set-latin-font font-latin-mono
-          |> set-space-ratio (charwid /' fontsize)
+          |> set-space-ratio (charwid /' fontsize) 0.08 0.16
     in
 
     let lst = split-into-lines code in

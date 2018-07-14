@@ -397,23 +397,23 @@ let title-deco =
            (inline-fil ++ read-inline ctx title)
          else
            (read-inline ctx title ++ inline-fil)
-       in
-%       let () = display-message `insert` in
-       let (bb-float-boxes, acc) =
-         (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
-           let (pn, bb) = elem in
-             if pn < pageno then
-               let bbs =
-                 line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
-                   (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
-                     % 'ctx' is a dummy context
-               in
-                 (bbacc +++ bbs, acc)
-             else
-               (bbacc, elem :: acc)
-         )) (block-nil, [])
-       in
-       let () = ref-float-boxes <- acc in
+        in
+%        let () = display-message `insert` in
+        let (bb-float-boxes, acc) =
+          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+            let (pn, bb) = elem in
+              if pn < pageno then
+                let bbs =
+                  line-break true true (ctx |> set-paragraph-margin 0pt 12pt)
+                    (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
+                      % 'ctx' is a dummy context
+                in
+                  (bbacc +++ bbs, acc)
+              else
+                (bbacc, elem :: acc)
+          )) (block-nil, [])
+        in
+        let () = ref-float-boxes <- acc in
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin header-line-margin-top header-line-margin-bottom)
               ((inline-graphics hdrwid thickness 0pt

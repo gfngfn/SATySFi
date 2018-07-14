@@ -307,7 +307,7 @@ and interpret env ast =
       let (pathelemlst, closingopt) = interpret_path env pathcomplst cycleopt in
         PathValue([GeneralPath(pt0, pathelemlst, closingopt)])
 
-(**** include: __evaluator.ml ****)
+#include "__evaluator.gen.ml"
 
 
 and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
