@@ -184,14 +184,14 @@ document (|
         +p{
           画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
           \figure ?:(`fig:logo`){\SATySFi;のロゴ}<
-            +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
+            +image-frame{\insert-image(7cm)(`../logo/satysfi-logo.jpg`);}
           >
         }
       >)(```
         +p{
           画像が挿入できる証拠として，ロゴを図\ref(`fig:logo`);に掲げておこう。
           \figure ?:(`fig:logo`){\SATySFi;のロゴ}<
-            +image-frame{\insert-image(7cm)(`satysfi-logo.jpg`);}
+            +image-frame{\insert-image(7cm)(`../logo/satysfi-logo.jpg`);}
           >
         }
       ```);
