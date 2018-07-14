@@ -92,3 +92,4 @@ uninstall:
 clean:
 	$(DUNE) clean
 	$(RM) $(GENS)
+	$(RM) satysfi
