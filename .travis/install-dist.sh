@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -ue
 
+sudo apt-get update
 sudo apt-get install \
   fonts-ipaexfont-mincho \
   fonts-ipaexfont-gothic \
