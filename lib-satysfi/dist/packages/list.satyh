@@ -26,12 +26,12 @@ module List
       | f (x :: xs) = (f x) :: map f xs
 
 
-    let mapi =
+    let mapi f =
       let-rec aux
         | i f []        = []
         | i f (x :: xs) = (f i x) :: aux (i + 1) f xs
       in
-      aux 0
+      aux 0 f
 
 
     let-rec iter
@@ -39,12 +39,12 @@ module List
       | f (x :: xs) = f x before iter f xs
 
 
-    let iteri =
+    let iteri f =
       let-rec aux
         | i f []        = ()
         | i f (x :: xs) = f i x before aux (i + 1) f xs
       in
-      aux 0
+      aux 0 f
 
 
     let-rec fold-left
@@ -52,12 +52,12 @@ module List
       | f init (x :: xs) = fold-left f (f init x) xs
 
 
-    let fold-lefti =
+    let fold-lefti f =
       let-rec aux
         | i f init []        = init
         | i f init (x :: xs) = aux (i + 1) f (f i init x) xs
       in
-      aux 0
+      aux 0 f
 
 
     let-rec fold-right
@@ -85,10 +85,10 @@ module List
       | x :: xs -> x :: append xs lst2
 
 
-    let concat = fold-right append []
+    let concat lst = fold-right append [] lst
 
 
-    let fold-left-adjacent f init lst =
+    let fold-left-adjacent f =
       let-rec aux leftopt init lst =
         match lst with
         | [] ->
@@ -102,7 +102,7 @@ module List
             let initnew = f init head leftopt (Some(right)) in
             aux (Some(head)) initnew tail
       in
-      aux None init lst
+      aux None
 
 
     let map-adjacent f lst =
@@ -120,16 +120,16 @@ module List
         reverse acc
 
 
-    let length =
-      fold-right (fun _ i -> i + 1) 0
+    let length lst =
+      fold-right (fun _ i -> i + 1) 0 lst
 
 
-    let nth =
+    let nth lst =
       let-rec aux i n xs =
         match xs with
         | []           -> None
         | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
       in
-        aux 0
+        aux 0 lst
 
   end
