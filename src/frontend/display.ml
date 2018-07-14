@@ -2,7 +2,7 @@ module Types = Types_
 open Types
 
 
-let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
+let string_of_record_type (type a) (f : a typ -> string) (asc : (a typ) Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -12,7 +12,7 @@ let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
     "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let string_of_kind (f : mono_type -> string) (kdstr : kind) =
+let string_of_kind (type a) (f : a typ -> string) (kdstr : a kind) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -32,10 +32,10 @@ let rec variable_name_of_number (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
+let show_type_variable (type a) (f : a typ -> string) (name : string) (kd : a kind) =
   match kd with
   | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f (normalize_kind kd)) ^ ")"
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
 
 
 type general_id = FreeID of FreeID.t | BoundID of BoundID.t
@@ -93,33 +93,21 @@ module GeneralIDHashTable
   end
 
 
-let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : mono_type) =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_cmd  = string_of_command_argument_type tyenv current_ht in
-  let iter_args = string_of_type_argument_list tyenv current_ht in
-  let iter_list = string_of_mono_type_list tyenv current_ht in
+let rec string_of_mono_type_sub (tvf : 'a -> string) (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : 'a typ) =
+  let iter = string_of_mono_type_sub tvf tyenv current_ht in
+  let iter_cmd  = string_of_command_argument_type tvf tyenv current_ht in
+  let iter_args = string_of_type_argument_list tvf tyenv current_ht in
+  let iter_list = string_of_mono_type_list tvf tyenv current_ht in
     match tymain with
 
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | Link(tyl)  ->
-            (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' and 'normalize_kind' -- *)
-              assert false
+    | TypeVariable(tvi) -> tvf tvi
+(*
 (*
               "${" ^ iter tyl ^ "}"  (* TEMPORARY *)
 *)
 
           | Bound(bid) ->
-              let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
-              let s = "'#" ^ (variable_name_of_number num) in
-                show_type_variable iter s (BoundID.get_kind bid)
-
-          | Free(tvid) ->
-              let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
-              let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
-                show_type_variable iter s (FreeID.get_kind tvid)
-        end
+*)
 
     | BaseType(EnvType)     -> "env"  (* -- unused -- *)
     | BaseType(UnitType)    -> "unit"
@@ -211,12 +199,12 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
 
 
-and string_of_command_argument_type tyenv current_ht = function
+and string_of_command_argument_type tvf tyenv current_ht = function
   | MandatoryArgumentType(ty) ->
-      string_of_mono_type_sub tyenv current_ht ty
+      string_of_mono_type_sub tvf tyenv current_ht ty
 
   | OptionalArgumentType((_, tymain) as ty)  ->
-      let strty = string_of_mono_type_sub tyenv current_ht ty in
+      let strty = string_of_mono_type_sub tvf tyenv current_ht ty in
       begin
         match tymain with
         | ProductType(_)
@@ -227,9 +215,9 @@ and string_of_command_argument_type tyenv current_ht = function
       end
 
 
-and string_of_type_argument_list tyenv current_ht tyarglist =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_args = string_of_type_argument_list tyenv current_ht in
+and string_of_type_argument_list tvf tyenv current_ht tyarglist =
+  let iter = string_of_mono_type_sub tvf tyenv current_ht in
+  let iter_args = string_of_type_argument_list tvf tyenv current_ht in
     match tyarglist with
     | []           -> ""
     | head :: tail ->
@@ -249,9 +237,9 @@ and string_of_type_argument_list tyenv current_ht tyarglist =
           end ^ " " ^ strtl
 
 
-and string_of_mono_type_list tyenv current_ht tylist =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_list = string_of_mono_type_list tyenv current_ht in
+and string_of_mono_type_list tvf tyenv current_ht tylist =
+  let iter = string_of_mono_type_sub tvf tyenv current_ht in
+  let iter_list = string_of_mono_type_list tvf tyenv current_ht in
     match tylist with
     | []           -> ""
     | head :: tail ->
@@ -272,12 +260,36 @@ and string_of_mono_type_list tyenv current_ht tylist =
         end
 
 
+let rec tvf_mono current_ht tyenv tvref =
+  match !tvref with
+  | MonoFree(tvid) ->
+      let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
+      let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
+        show_type_variable (string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht) s (FreeID.get_kind tvid)
+
+  | MonoLink(ty) ->
+      assert false
+        (* -- links should be omitted by 'normalize_mono_type' -- *)
+
+
+let rec tvf_poly current_ht tyenv ptvi =
+  match ptvi with
+  | PolyFree(tvref) ->
+      tvf_mono current_ht tyenv tvref
+        (* doubtful *)
+
+  | PolyBound(bid) ->
+      let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
+      let s = "'#" ^ (variable_name_of_number num) in
+        show_type_variable (string_of_mono_type_sub (tvf_poly current_ht tyenv) tyenv current_ht) s (BoundID.get_kind bid)
+
+
 let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
     let tyn = normalize_mono_type ty in
-      string_of_mono_type_sub tyenv current_ht tyn
+      string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht tyn
   end
 
 
@@ -287,15 +299,19 @@ let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono
     let current_ht = GeneralIDHashTable.create 32 in
     let tyn1 = normalize_mono_type ty1 in
     let tyn2 = normalize_mono_type ty2 in
-    let strty1 = string_of_mono_type_sub tyenv current_ht tyn1 in
-    let strty2 = string_of_mono_type_sub tyenv current_ht tyn2 in
+    let strf = string_of_mono_type_sub (tvf_mono current_ht tyenv) tyenv current_ht in
+    let strty1 = strf tyn1 in
+    let strty2 = strf tyn2 in
       (strty1, strty2)
   end
 
 
-let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
-  let tyn = normalize_mono_type ty in
-  string_of_mono_type tyenv tyn (* temporary *)
+let string_of_poly_type (tyenv : Typeenv.t) (Poly(pty) : poly_type) =
+  begin
+    GeneralIDHashTable.initialize ();
+    let current_ht = GeneralIDHashTable.create 32 in
+    string_of_mono_type_sub (tvf_poly current_ht tyenv) tyenv current_ht pty
+  end
 
 
 (* -- following are all for debug -- *)

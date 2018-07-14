@@ -897,7 +897,8 @@ let instantiate_kind (lev : FreeID.level) (qtfbl : quantifiability) (pkd : poly_
   instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
-let generalize (lev : FreeID.level) (ty : mono_type) : poly_type =
+let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
+  let tvidht = FreeIDHashTable.create 32 in
   let rec iter (rng, tymain) =
     match tymain with
     | TypeVariable(tvref) ->
@@ -908,15 +909,21 @@ let generalize (lev : FreeID.level) (ty : mono_type) : poly_type =
 
           | MonoFree(tvid) ->
               let ptvi =
-                if not (FreeID.is_quantifiable tvid) then
-                  PolyFree(tvref)
-                else if not (FreeID.less_than lev (FreeID.get_level tvid)) then
+                if p tvid then
                   PolyFree(tvref)
                 else
-                  let kd = FreeID.get_kind tvid in
-                  let kdgen = generalize_kind kd in
-                  let bid = BoundID.fresh kdgen () in
-                    PolyBound(bid)
+                  begin
+                    match FreeIDHashTable.find_opt tvidht tvid with
+                    | Some(bid) ->
+                        PolyBound(bid)
+
+                    | None ->
+                        let kd = FreeID.get_kind tvid in
+                        let kdgen = generalize_kind kd in
+                        let bid = BoundID.fresh kdgen () in
+                        FreeIDHashTable.add tvidht tvid bid;
+                        PolyBound(bid)
+                  end
               in
                 (rng, TypeVariable(ptvi))
         end
@@ -939,6 +946,14 @@ let generalize (lev : FreeID.level) (ty : mono_type) : poly_type =
     | RecordKind(tyasc) -> RecordKind(Assoc.map_value iter tyasc)
   in
     Poly(iter ty)
+
+
+let generalize (lev : FreeID.level) =
+  lift_poly_general (fun tvid -> not (FreeID.is_quantifiable tvid) || not (FreeID.less_than lev (FreeID.get_level tvid)))
+
+
+let lift_poly =
+  lift_poly_general (fun _ -> true)
 
 (*
 let copy_environment (env : environment) : environment =

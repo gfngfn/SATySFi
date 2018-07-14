@@ -363,28 +363,11 @@ let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme)
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let instantiate_type_scheme (type a) (freef : Range.t -> mono_type_variable_info ref -> a typ) (tyarglist : (a typ) list) (bidlist : BoundID.t list) (Poly(pty) : poly_type) : a typ =
+let instantiate_type_scheme (type a) (freef : Range.t -> mono_type_variable_info ref -> a typ) (pairlst : (a typ * BoundID.t) list) (Poly(pty) : poly_type) : a typ =
 (*
   let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
 *)
   let bid_to_type_ht : (a typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-
-  let rec pre (tyargs : (a typ) list) (bids : BoundID.t list) =
-    match (tyargs, bids) with
-    | ([], []) ->
-        ()
-
-    | (tyarg :: tyargtail, bid :: bidtail) ->
-        begin
-(*
-          print_for_debug_variantenv ("I-add '#" ^ (BoundID.show_direct string_of_poly_kind bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)); (* for debug *)
-*)
-          BoundIDHashTable.add bid_to_type_ht bid tyarg;
-          pre tyargtail bidtail;
-        end
-
-    | (_, _) -> assert false
-  in
 
   let rec aux ((rng, ptymain) : poly_type_variable_info typ) : a typ =
 (*
@@ -418,7 +401,7 @@ let instantiate_type_scheme (type a) (freef : Range.t -> mono_type_variable_info
       | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
   in
   begin
-    pre tyarglist bidlist;
+    pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
     aux pty
   end
 
@@ -468,11 +451,18 @@ let rec fix_manual_type_general (type a) (dpmode : dependency_mode) (tyenv : t) 
                     VariantType(List.map aux mntyarglist, tyid)
 
             | Some((tyid, Alias(bidlist, ptyscheme))) ->
-                let lenexp = List.length bidlist in
-                  if lenexp <> len then error tynm lenexp len else
-                    let tyreal = instantiate_type_scheme freef tyarglist bidlist ptyscheme in
+                begin
+                  try
+                    let pairlst = List.combine tyarglist bidlist in
+                    let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
                     let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
                       SynonymType(tyarglist, tyid, tyreal)
+                  with
+                  | Invalid_argument(_) ->
+                      let lenexp = List.length bidlist in
+                        error tynm lenexp len
+                end
+
           in
           begin
             match dpmode with
@@ -488,27 +478,27 @@ let rec fix_manual_type_general (type a) (dpmode : dependency_mode) (tyenv : t) 
                             VariantType(tyarglist, tyid)
 
                     | SynonymVertex(_, tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
-                        let lenexp = type_argument_length tyargcons in
-                          if len <> lenexp then error tynm lenexp len else
-                            let tyreal = instantiate_type_scheme freef tyarglist bidlist ptyscheme in
-                              SynonymType(tyarglist, tyid, tyreal)
+                        begin
+                          try
+                            let pairlst = List.combine tyarglist bidlist in
+                              let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
+                                SynonymType(tyarglist, tyid, tyreal)
+                          with
+                          | Invalid_argument(_) ->
+                              let lenexp = type_argument_length tyargcons in
+                                error tynm lenexp len
+                        end
 
-                    | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
+                    | SynonymVertex(_, _, _, _, {contents= None}) ->
+                        assert false
 
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
                 end
           end
 
-      | MTypeParam(tyargnm) -> typaramf rng tyargnm
-(*
-            begin
-              match tyargmode with
-              | StrictMode(bidmaplist) ->
-
-              | FreeMode(tyargmaplist) ->
-            end
-*)
+      | MTypeParam(tyargnm) ->
+          typaramf rng tyargnm
     in
       (rng, ptymainnew)
 
@@ -667,15 +657,17 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
   let open OptionMonad in
     ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) -> ConstrMap.find_opt constrnm cdmap) >>= fun dfn ->
     let (tyid, (bidlist, pty)) = dfn in
-    let tyarglist : mono_type list =
+    let pairlst =
       bidlist |> List.map (fun bid ->
         let kd = BoundID.get_kind bid in
         let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
-          (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid))))
+        let ty = (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid)))) in
+        (ty, bid)
       )
     in
-    let ty = instantiate_type_scheme freef tyarglist bidlist pty in
-    return (tyarglist, tyid, ty)
+    let ty = instantiate_type_scheme freef pairlst pty in
+    let tyarglst = pairlst |> List.map (fun (ty, _) -> ty) in
+      return (tyarglst, tyid, ty)
 
 
 let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t)
@@ -691,14 +683,14 @@ let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : Free
       let constrs = ConstrMap.fold (fun constrnm dfn acc ->
         let (tyid, (bidlist, pty)) = dfn in
           if TypeID.equal typeid tyid then
-            (constrnm, (fun tyarglist -> instantiate_type_scheme freef tyarglist bidlist pty))::acc
+            (constrnm, (fun tyarglist -> instantiate_type_scheme freef (List.combine tyarglist bidlist) pty)) :: acc
           else
             acc
         ) cdmap []
       in
       match constrs with
       | [] -> None
-      | _ -> Some(constrs))
+      | _  -> Some(constrs))
   in
   match constrs with
   | Some(lst) -> lst
@@ -856,18 +848,73 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
+let rec poly_type_equal ((_, ptymain1) : poly_type_variable_info typ) ((_, ptymain2) : poly_type_variable_info typ) =
+  let iter = poly_type_equal in
+  let combine p lst1 lst2 =
+    try let lst = List.combine lst1 lst2 in p lst with Invalid_argument(_) -> false
+  in
+  let iter_list lst =
+    lst |> List.fold_left (fun b (pty1, pty2) -> b && iter pty1 pty2) true
+  in
+    match (ptymain1, ptymain2) with
+    | (BaseType(bt1), BaseType(bt2)) ->
+        bt1 = bt2
+
+    | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
+        BoundID.eq bid1 bid2
+
+    | (TypeVariable(PolyFree(_)), TypeVariable(PolyFree(_))) ->
+        false  (* -- does not handle free variables -- *)
+
+    | (FuncType(tyoptsr1, ty1d, ty1c), FuncType(tyoptsr2, ty2d, ty2c)) ->
+        (combine iter_list !tyoptsr1 !tyoptsr2) && iter ty1d ty2d && iter ty1c ty2c
+
+    | (ProductType(tylst1), ProductType(tylst2)) ->
+        combine iter_list tylst1 tylst2
+
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        (Assoc.domain_same tyasc1 tyasc2) && iter_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (ListType(ty1sub), ListType(ty2sub))
+    | (RefType(ty1sub), RefType(ty2sub)) ->
+        iter ty1sub ty2sub
+
+    | (VariantType(tylst1, tyid1), VariantType(tylst2, tyid2)) ->
+        TypeID.equal tyid1 tyid2 && (combine iter_list tylst1 tylst2)
+
+    | (HorzCommandType(catyl1), HorzCommandType(catyl2))
+    | (VertCommandType(catyl1), VertCommandType(catyl2))
+    | (MathCommandType(catyl1), MathCommandType(catyl2))
+        ->
+        begin
+          try
+            List.fold_left2 (fun b caty1 caty2 ->
+              match (caty1, caty2) with
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2))
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) )
+                  -> b && iter ty1 ty2
+              | _ -> false
+            ) true catyl1 catyl2
+          with
+          | Invalid_argument(_) -> false
+        end
+
+    | _ -> false
+
+
 (* -- 'reflects pty1 pty2' returns whether 'pty2' is more general than 'pty1' -- *)
-let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
+let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
 (*
   let current_ht : BoundID.t BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
     (* -- hash table mapping bound IDs in 'pty2' to bound IDs in 'pty1' -- *)
 *)
-  let current_bid_to_ty : ('a * poly_type_variable_info) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  let current_bid_to_ty : (poly_type_variable_info typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
     (* -- hash table mapping bound IDs in 'pty2' to types -- *)
 
-  let rec aux ((_, tymain1) as ty1) ((_, tymain2) as ty2) =
+  let rec aux ((_, tymain1) as ty1 : poly_type_variable_info typ) ((_, tymain2) as ty2 : poly_type_variable_info typ) =
+(*
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
-
+*)
     let aux_list tylistcomb =
       tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true
     in
@@ -882,58 +929,64 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     match (tymain1, tymain2) with
     | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
     | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
-(*
-    | (TypeVariable({contents= Link(tysub1)}), _)          -> aux tysub1 ty2
-    | (_, TypeVariable({contents= Link(tysub2)}))          -> aux ty1 tysub2
-*)
+
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         begin
           match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
-          | Some(((_, TypeVariable({contents= Bound(bid1old)})), _)) ->
-              BoundID.eq bid1 bid1old
-
-          | Some(_) ->
-              false
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
 
           | None ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tyref2); true end
+                begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
               else
                 false
         end
 
-    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref2)) ->
-        let kd2 = BoundID.get_kind bid2 in
-        let binc =
-          match kd2 with
-          | UniversalKind      -> true
-          | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
-        in
-          if not binc then false else
-            begin
-              match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
-              | None              -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
-              | Some((ty1old, _)) -> aux ty1 ty1old
-            end
-              (* -- valid substitution of bound type variables -- *)
-
-    | (_, TypeVariable({contents= Bound(bid2)} as tvref2)) ->
-        let kd2 = BoundID.get_kind bid2 in
+    | (RecordType(tyasc1), TypeVariable(PolyBound(bid2))) ->
         begin
-          match kd2 with
-          | UniversalKind -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
-          | RecordKind(_) -> false
-        end
-          (* -- valid substitution of bound type variables -- *)
+          match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
 
-    | (RecordType(tyasc1), TypeVariable({contents= Free(tvid2)} as tvref)) ->
+          | None ->
+              let kd2 = BoundID.get_kind bid2 in
+              let binc =
+                match kd2 with
+                | UniversalKind      -> true
+                | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
+              in
+              if not binc then false else
+                begin
+                  BoundIDHashTable.add current_bid_to_ty bid2 ty1;
+                  true
+                end
+        end
+
+    | (_, TypeVariable(PolyBound(bid2))) ->
+        begin
+          match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
+
+          | None ->
+              let kd2 = BoundID.get_kind bid2 in
+              begin
+                match kd2 with
+                | UniversalKind -> begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
+                | RecordKind(_) -> false
+              end
+        end
+
+(*
+    | (RecordType(tyasc1), TypeVariable(PolyFree({contents= MonoFree(tvid2)} as tvref))) ->
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
           match kd2 with
           | UniversalKind      -> true
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc1 tyasc2
         in
-        if binc then tvref := Link(ty1) else ();
+        if binc then tvref := MonoLink(ty1) else ();
         binc
 
     | (_, TypeVariable({contents= Free(tvid2)} as tvref)) ->
@@ -945,7 +998,7 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
         in
         if binc then tvref := Link(ty1) else ();
         binc
-
+*)
     | (FuncType(tyopts1r, tyd1, tyc1), FuncType(tyopts2r, tyd2, tyc2)) ->
         (aux_opt_list (!tyopts1r) (!tyopts2r)) && (aux tyd1 tyd2) && (aux tyc1 tyc2)
           (* -- both domain and codomain are covariant -- *)
@@ -989,7 +1042,7 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | _                                    -> false
 
 
-  and is_stronger_kind (kd1 : kind) (kd2 : kind) =
+  and is_stronger_kind (kd1 : poly_kind) (kd2 : poly_kind) =
     match (kd1, kd2) with
     | (_, UniversalKind)                       -> true
     | (UniversalKind, _)                       -> false
@@ -997,19 +1050,24 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
         begin
           tyasc2 |> Assoc.fold (fun b k ty2 ->
             match Assoc.find_opt tyasc1 k with
-            | Some(ty1) -> b && (aux ty1 ty2)
-            | None      -> false
+            | Some(pty1) -> b && (aux pty1 pty2)
+            | None       -> false
           ) true
         end
   in
-  let b = aux ty1 ty2 in
+  let b = aux pty1 pty2 in
+(*
   begin
     if b then
-        current_bid_to_ty |> BoundIDHashtbl.iter (fun bid (ty, tyref) ->
-          tyref := Link(ty)
-        )
+      let pairlst =
+        BoundIDHashTable.fold (fun bid ty acc ->
+          Alist.extend acc (ty, bid)
+        ) current_bid_to_ty Alist.empty |> Alist.to_list
+      in
+      instantiate
     else ()
   end;
+*)
   b
 
 
