@@ -9,9 +9,12 @@ install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
+  - opam install -y ocp-indent
   - opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
   - opam update
   - opam pin add -y --no-action satysfi .
   - opam install -y --deps-only satysfi
 script:
+  - find src -name '*.ml' -o -name '*.mli' | xargs ocp-indent -i
+  - git diff --quiet
   - make all
