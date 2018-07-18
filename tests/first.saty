@@ -189,7 +189,7 @@ document (|
     }
   >);
   +math (${
-    \derive{A \and-also \derive{B \and-also C}{D}}{E}
+    \derive{| A | \derive{|B | C|}{D} |}{E}
   });
   +p {
     A table

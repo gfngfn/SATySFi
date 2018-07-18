@@ -283,9 +283,9 @@ rule progexpr stack = parse
   | (digit | (nzdigit digit+))                            { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | (("0x" | "0X") hex+)                                  { INTCONST(get_pos lexbuf, int_of_string (Lexing.lexeme lexbuf)) }
   | ((digit+ "." digit*) | ("." digit+))                  { FLOATCONST(get_pos lexbuf, float_of_string (Lexing.lexeme lexbuf)) }
-  | (((digit | (nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
-  | (((digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
-  | ((("." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | (((("-"? digit) | ("-"? nzdigit digit+)) as i) (identifier as unitnm))  { LENGTHCONST(get_pos lexbuf, float_of_int (int_of_string i), unitnm) }
+  | ((("-"? digit+ "." digit*) as flt) (identifier as unitnm))       { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
+  | ((("-"? "." digit+) as flt) (identifier as unitnm))              { LENGTHCONST(get_pos lexbuf, float_of_string flt, unitnm) }
   | eof {
       if Stack.length stack = 1 then EOI else
         report_error lexbuf "text input ended while reading a program area"

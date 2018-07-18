@@ -17,6 +17,7 @@ module List
     val map-adjacent : ('a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val mapi-adjacent : (int -> 'a -> 'a option -> 'a option -> 'b) -> 'a list -> 'b list
     val length : 'a list -> int
+    val nth : int -> 'a list -> 'a option
   end
 = struct
 
@@ -103,6 +104,7 @@ module List
       in
       aux None init lst
 
+
     let map-adjacent f lst =
         lst |> fold-left-adjacent (fun acc x leftopt rightopt -> (
           f x leftopt rightopt :: acc
@@ -118,6 +120,16 @@ module List
         reverse acc
 
 
-    let length = fold-right (fun _ i -> i + 1) 0
+    let length =
+      fold-right (fun _ i -> i + 1) 0
+
+
+    let nth =
+      let-rec aux i n xs =
+        match xs with
+        | []           -> None
+        | head :: tail -> if n == i then Some(head) else aux (i + 1) n tail
+      in
+        aux 0
 
   end

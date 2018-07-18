@@ -544,8 +544,7 @@ and ir_pattern_tree =
   | IRPVariable             of varloc
   | IRPAsVariable           of varloc * ir_pattern_tree
   | IRPConstructor          of constructor_name * ir_pattern_tree
-
-  (**** include: __insttype.ml ****)
+#include "__insttype.gen.ml"
 
 and input_horz_element =
   | InputHorzText         of string
@@ -662,7 +661,7 @@ and abstract_tree =
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaVert                  of EvalVarID.t * abstract_tree
   | PrimitiveTupleCons    of abstract_tree * abstract_tree
- (**** include: __attype.ml ****)
+#include "__attype.gen.ml"
 
 and pattern_branch =
   | PatternBranch      of pattern_tree * abstract_tree

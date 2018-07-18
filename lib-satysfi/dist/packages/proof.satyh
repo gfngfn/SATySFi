@@ -3,6 +3,7 @@
 module Proof : sig
 
   direct \derive : [math list; math] math-cmd
+  direct \derive-multi : [length; math list; math] math-cmd
 
 end = struct
 
@@ -14,18 +15,32 @@ end = struct
     if len1 <' len2 then len2 else len1
 
 
-  let derive mlst1 m2 =
-    let m1 =
-      mlst1 |> List.fold-left-adjacent (fun macc m prevopt _ -> (
-        match prevopt with
-        | None    -> m
-        | Some(_) -> ${#macc\math-space!(30pt)#m}
-      )) ${}
+  let derive widopt mlst1 m2 =
+    let ib-space =
+      match widopt with
+      | None    -> inline-skip 30pt
+      | Some(_) -> discretionary 100 (inline-skip 30pt) inline-fil inline-fil
     in
-    text-in-math MathOrd (fun ctx -> (
-      let ib1 = inline-fil ++ (embed-math ctx m1) ++ inline-fil in
+    text-in-math MathInner (fun ctx -> (
+      let ibacc1 =
+        (mlst1 |> List.fold-left-adjacent (fun ibacc1 m prevopt _ -> (
+          let ibm = embed-math ctx m in
+            match prevopt with
+            | None    -> inline-fil ++ ibm
+            | Some(_) -> ibacc1 ++ ib-space ++ ibm
+        )) inline-nil) ++ inline-fil
+      in
+      let ib1 =
+        match widopt with
+        | None      -> ibacc1
+        | Some(wid) -> embed-block-bottom ctx wid (fun ctx -> line-break true true ctx ibacc1)
+      in
       let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
-      let w = length-max (get-natural-width ib1) (get-natural-width ib2) in
+      let w =
+        match widopt with
+        | None      -> length-max (get-natural-width ib1) (get-natural-width ib2)
+        | Some(wid) -> length-max wid (get-natural-width ib2)
+      in
       let color = get-text-color ctx in
       let thickness = 0.5pt in
       let gap = 2pt in
@@ -38,6 +53,8 @@ end = struct
     ))
 
 
-  let-math \derive = derive
+  let-math \derive = derive None
+
+  let-math \derive-multi w = derive (Some(w))
 
 end
