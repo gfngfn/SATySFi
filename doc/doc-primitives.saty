@@ -216,7 +216,7 @@ document (|
         パディング指定\code{${p}}，装飾4つ組指定\code{${ds}}，
         内容\code{${ib}}の，途中で行分割可能なフレームを返す．
       }
-      +commands [`embed-block-top`; `embed-block-bottom`] (tCTX --> (tL --> (tCTX --> tBB) --> tIB)) {
+      +commands [`embed-block-top`; `embed-block-bottom`] (tCTX --> (tL --> ((tCTX --> tBB) --> tIB))) {
         \code{embed-block-top ${ctx} ${l} ${k}}
         で文脈\code{${ctx}}をテキスト幅に関して\code{${l}}に変更して
         継続\code{${k}}に渡し，
@@ -257,7 +257,7 @@ document (|
         高さ0のブロックボックス列．より正確には，任意のブロックボックス列\code{${bb}}に対して
         \code{${bb}}と\code{${bb} +++ block-nil}が全く等価に振舞うようになっている．
       }
-      +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> (tCTX --> tBB) --> tBB))) {
+      +command (`block-frame-breakable`) (tCTX --> (tPADS --> (tDECOSET --> ((tCTX --> tBB) --> tBB)))) {
         \code{block-frame-breakable ${ctx} ${pads} ${ds} ${k}}は
         文脈\code{${ctx}}をテキスト幅に関して\code{${pads}}を用いて変更して
         継続\code{${k}}に渡し，その結果のブロックボックス列を装飾\code{${ds}}のフレームで囲んだものを返す．
@@ -351,13 +351,13 @@ document (|
       +command (`text-in-math`) (tMATHCLS --> ((tCTX --> tIB) --> tMATH)) {
         数式中にインラインボックス列を埋め込む．
       }
-      +command (`math-variant-char`) (tMATHCLS --> tMCSTY --> tMATH) {
+      +command (`math-variant-char`) (tMATHCLS --> (tMCSTY --> tMATH)) {
         数式文字クラス指定（イタリック，ボールドローマン，スクリプトなど）に応じて変化する文字を定義する．
       }
       +command (`math-color`) (tCLR --> (tMATH --> tMATH)) {
         数式の文字色を変更する．
       }
-      +command (`math-char-class`) (tMCCLS --> tMATH --> tMATH) {
+      +command (`math-char-class`) (tMCCLS --> (tMATH --> tMATH)) {
         数式文字クラスを変更する．
       }
     >
