@@ -136,13 +136,13 @@ let update_so (sof : signature option -> signature option) ((vdmap, tdmap, cdmap
   (vdmap, tdmap, cdmap, sof sigopt)
 
 
-let edit_distance s1 s2 mindist = 
+let edit_distance s1 s2 mindist =
   let len1 = String.length s1 in
   let len2 = String.length s2 in
-  if abs (len1 - len2) > mindist then 
-    mindist + 1 
+  if abs (len1 - len2) > mindist then
+    mindist + 1
   else
-    let d = Array.make_matrix (len1+1) (len2+1) 0 in
+    let d = Array.make_matrix (len1 + 1) (len2 + 1) 0 in
     begin
       for i = 0 to len1 do
         d.(i).(0) <- i
@@ -152,8 +152,8 @@ let edit_distance s1 s2 mindist =
       done;
       for i = 1 to len1 do
         for j = 1 to len2 do
-          let replace = if (String.get s1 (i-1)) = (String.get s2 (j-1)) then 0 else 1 in
-            d.(i).(j) <-  min (min (d.(i-1).(j)+1) (d.(i).(j-1)+1)) (d.(i-1).(j-1)+replace)
+          let replace = if Char.equal (String.get s1 (i - 1)) (String.get s2 (j - 1)) then 0 else 1 in
+            d.(i).(j) <-  min (min (d.(i - 1).(j) + 1) (d.(i).(j - 1) + 1)) (d.(i - 1).(j - 1) + replace)
         done
       done;
       (*Format.printf "%s %s => %d\n" s1 s2 (d.(len1).(len2));*)
@@ -739,7 +739,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     let ty = instantiate_type_scheme tyarglist bidlist pty in
     return (tyarglist, tyid, ty)
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t) 
+let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t)
     : (constructor_name * (mono_type list -> mono_type)) list =
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
@@ -767,7 +767,7 @@ let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev :
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
-    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst [] (fun acc (_, _, cdmap, _) -> 
+    get_candidates_last @@ ModuleTree.fold_backward mtr addrlst [] (fun acc (_, _, cdmap, _) ->
       get_candidates_cont ConstrMap.fold cdmap constrnm acc
     ) (initial_candidates constrnm)
 
