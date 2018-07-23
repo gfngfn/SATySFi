@@ -16,6 +16,8 @@ module type S =
     val add_stage : 'a t -> key list -> key -> 'a -> ('a t) option
 
     val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
+    
+    val fold_backward : 'a t -> key list -> key list -> ('b -> 'a -> 'b) -> 'b -> 'b
   end
 
 

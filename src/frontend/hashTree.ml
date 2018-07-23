@@ -11,6 +11,7 @@ module type S =
     val update : 'a t -> key list -> ('a -> 'a) -> ('a t) option
     val add_stage : 'a t -> key list -> key -> 'a -> ('a t) option
     val search_backward : 'a t -> key list -> key list -> ('a -> 'b option) -> 'b option
+    val fold_backward : 'a t -> key list -> key list -> ('b -> 'a -> 'b) -> 'b -> 'b
   end
 
 
@@ -103,5 +104,26 @@ module Make (Key : Map.OrderedType) =
                 find_stage hshtr addrlast >>= fun xsub ->
                 findf xsub
           end
+
+
+    let rec fold_backward (Stage(_, imap) as hshtr : 'a t) (addr : key list) (addrlast : key list) (foldf : 'b -> 'a -> 'b) (acc : 'b) : 'b =
+      let open OptionMonad in
+      let result =
+        match addr with
+        | [] ->
+            find_stage hshtr addrlast >>= fun xsub ->
+            return (foldf acc xsub)
+
+        | k :: tail ->
+            InternalMap.find_opt k imap >>= fun hshtrnext ->
+            let res = fold_backward hshtrnext tail addrlast foldf acc in
+            match find_stage hshtr addrlast with
+            | Some(xsub) -> return (foldf res xsub)
+            | None       -> return (res)
+        in
+        match result with
+        | None    -> acc
+        | Some(x) -> x
+    
 
   end
