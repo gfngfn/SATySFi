@@ -234,7 +234,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, lty::tylst, expnd, nomatch)
 
-    | EConstructor(nm, ity), (_, VariantType(_, _))::rest ->
+    | EConstructor(nm, ity), (_, DataType(_, _))::rest ->
         let expnd = ExpandConstructor(nm, ity) in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in
           (expand_mat nmat 0 expnd tylst, ninfo, ity::rest, expnd, nomatch)
@@ -290,9 +290,15 @@ let rec complete_sig col qtfbl lev tyenv (ty : nom_type) =
   | BaseType(StringType)        -> make_string_sig col
   | ListType(_)                 -> list_sig
   | ProductType(_)              -> product_sig
-  | SynonymType(_, _, aty)      -> complete_sig col qtfbl lev tyenv aty
-  | VariantType(tyarglst, tyid) -> make_variant_sig qtfbl lev tyenv tyarglst tyid
-  | _                           -> generic_sig
+  | DataType(tyarglst, tyid) ->
+      if is_alias tyid then
+        let pty = get_actual_type tyid (assert false) (* tyarglst *) in  (* TEMPORARY *)
+        let nty = normalize_mono_type (assert false) (* (unlift_poly pty) *) in  (* TEMPORARY *)
+        complete_sig col qtfbl lev tyenv nty
+      else
+        make_variant_sig qtfbl lev tyenv tyarglst tyid
+
+  | _ -> generic_sig
 
 let tuplize_instance n ilst =
   let (top, btm) = split_n ilst n in

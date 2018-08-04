@@ -25,22 +25,44 @@ type header_element =
 
 
 module TypeID : sig
-  type t
+  type 'a t
     [@@deriving show]
   val initialize : unit -> unit
-  val fresh : type_name -> t
-  val extract_name : t -> type_name
-  val equal : t -> t -> bool
-  val show_direct : t -> string
+  val fresh : type_name -> 'a -> 'a t
+  val extract_name : 'a t -> type_name
+  val extract_body : 'a t -> 'a
+  val equal : 'a t -> 'a t -> bool
+  val show_direct : 'a t -> string
 end = struct
-  type t = int * type_name
+
+  type 'a t = {
+    body   : 'a;
+    number : int;
+    name   : type_name;
+  }
     [@@deriving show]
+
   let current_id = ref 0
-  let initialize () = begin current_id := 0; end
-  let fresh tynm = begin incr current_id; (!current_id, tynm) end
-  let extract_name (_, tynm) = tynm
-  let equal (n1, _) (n2, _) = (n1 = n2)
-  let show_direct (n, tynm) = (string_of_int n) ^ "(" ^ tynm ^ ")"
+
+  let initialize () =
+    current_id := 0
+
+  let fresh tynm x =
+    incr current_id;
+    { body = x; number = !current_id; name = tynm; }
+
+  let extract_name tyid =
+    tyid.name
+
+  let extract_body tyid =
+    tyid.body
+
+  let equal tyid1 tyid2 =
+    (tyid1.number = tyid2.number)
+
+  let show_direct tyid =
+    (string_of_int tyid.number) ^ "(" ^ tyid.name ^ ")"
+
 end
 
 
@@ -241,8 +263,7 @@ and 'a type_main =
   | RefType         of 'a typ
   | ProductType     of ('a typ) list
   | TypeVariable    of 'a
-  | SynonymType     of ('a typ) list * TypeID.t * 'a typ
-  | VariantType     of ('a typ) list * TypeID.t
+  | DataType        of ('a typ) list * type_id
   | RecordType      of ('a typ) Assoc.t
       [@printer (fun fmt _ -> Format.fprintf fmt "RecordType(...)")]
   | HorzCommandType of ('a command_argument_type) list
@@ -274,8 +295,16 @@ and poly_type =
 and mono_kind = (mono_type_variable_info ref) kind
 
 and poly_kind = poly_type_variable_info kind
-[@@deriving show]
 
+and type_scheme = (poly_kind BoundID_.t_) list * poly_type
+
+and type_definition =
+  | Data  of int
+  | Alias of type_scheme
+
+and type_id = ((type_definition option) ref) TypeID.t
+
+[@@deriving show]
 
 type nom_type_variable_info =
   | NomFree of nom_kind FreeID_.t_ * mono_type_variable_info ref
@@ -792,8 +821,7 @@ let rec normalize_mono_type (ty : mono_type) : nom_type =
           | MonoLink(tylink) -> iter tylink
         end
 
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
+    | DataType(tylist, tyid)            -> (rng, DataType(List.map iter tylist, tyid))
     | BaseType(bt)                      -> (rng, BaseType(bt))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
@@ -817,8 +845,7 @@ let rec unnormalize (ty : nom_type) : mono_type =
   let tymainu =
     match tymain with
     | TypeVariable(NomFree(_, tvref))   -> TypeVariable(tvref)
-    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
-    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
+    | DataType(tylist, tyid)            -> DataType(List.map iter tylist, tyid)
     | BaseType(bt)                      -> BaseType(bt)
     | ListType(tycont)                  -> ListType(iter tycont)
     | RefType(tycont)                   -> RefType(iter tycont)
@@ -848,8 +875,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | DataType(tylist, tyid)            -> (rng, DataType(List.map iter tylist, tyid))
     | ListType(tycont)                  -> (rng, ListType(iter tycont))
     | RefType(tycont)                   -> (rng, RefType(iter tycont))
     | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
@@ -878,37 +904,34 @@ module FreeIDHashTable = Hashtbl.Make(
   end)
 
 
-let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
-  let aux = instantiate_aux bid_ht lev qtfbl in
+let rec instantiate_aux (tvff : mono_type_variable_info ref -> 'a) (tvfbn : Range.t -> BoundID.t -> 'a typ) (bid_ht : ('a typ) BoundIDHashTable.t) (rng, ptymain) : 'a typ =
+
+  let aux = instantiate_aux tvff tvfbn bid_ht in
     match ptymain with
     | TypeVariable(ptvi) ->
         begin
           match ptvi with
           | PolyFree(tvref) ->
-              (rng, TypeVariable(tvref))
+              let tv = tvff tvref in
+              (rng, TypeVariable(tv))
 
           | PolyBound(bid) ->
               begin
                 match BoundIDHashTable.find_opt bid_ht bid with
-                | Some(tvrefnew) ->
-                    (rng, TypeVariable(tvrefnew))
+                | Some(tyto) ->
+                    tyto
 
                 | None ->
-                    let kd = BoundID.get_kind bid in
-                    let kdfree = instantiate_kind_aux bid_ht lev qtfbl kd in
-                    let tvid = FreeID.fresh kdfree qtfbl lev () in
-                    let tvref = ref (MonoFree(tvid)) in
-                    begin
-                      BoundIDHashTable.add bid_ht bid tvref;
-                      (rng, TypeVariable(tvref))
-                    end
+                    let tyto = tvfbn rng bid in
+                    BoundIDHashTable.add bid_ht bid tyto;
+                    tyto
               end
         end
+
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map aux (!tyoptsr)), aux tydom, aux tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | DataType(tylist, tyid)            -> (rng, DataType(List.map aux tylist, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
@@ -917,20 +940,61 @@ let rec instantiate_aux bid_ht lev qtfbl (rng, ptymain) =
     | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
 
 
-and instantiate_kind_aux bid_ht lev qtfbl (kd : poly_kind) : mono_kind =
+and instantiate_kind_aux tvff tvfbn bid_ht (kd : poly_kind) =
     match kd with
     | UniversalKind     -> UniversalKind
-    | RecordKind(tyasc) -> RecordKind(Assoc.map_value (instantiate_aux bid_ht lev qtfbl) tyasc)
+    | RecordKind(tyasc) -> RecordKind(Assoc.map_value (instantiate_aux tvff tvfbn bid_ht) tyasc)
+
+
+let tvff_mono tvref = tvref
+
+
+let rec tvfbn_mono qtfbl lev bid_ht rng bid =
+  let kd = BoundID.get_kind bid in
+  let kdfree = instantiate_kind_aux tvff_mono (tvfbn_mono qtfbl lev bid_ht) bid_ht kd in
+  let tvid = FreeID.fresh kdfree qtfbl lev () in
+  (rng, TypeVariable(ref (MonoFree(tvid))))
 
 
 let instantiate (lev : FreeID.level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type) : mono_type =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_aux bid_ht lev qtfbl pty
+  let bid_ht : mono_type BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  instantiate_aux tvff_mono (tvfbn_mono qtfbl lev bid_ht) bid_ht pty
 
 
 let instantiate_kind (lev : FreeID.level) (qtfbl : quantifiability) (pkd : poly_kind) : mono_kind =
-  let bid_ht : (mono_type_variable_info ref) BoundIDHashTable.t = BoundIDHashTable.create 32 in
-  instantiate_kind_aux bid_ht lev qtfbl pkd
+  let bid_ht : mono_type BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  instantiate_kind_aux tvff_mono (tvfbn_mono qtfbl lev bid_ht) bid_ht pkd
+
+
+let subst_poly (Poly(pty) : poly_type) (pairlst : (BoundID.t * poly_type_variable_info typ) list) =
+  let bid_ht : (poly_type_variable_info typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
+  pairlst |> List.iter (fun (bid, pty) ->
+    BoundIDHashTable.add bid_ht bid pty
+  );
+  let tvff tvref = PolyFree(tvref) in
+  let tvfbn _ = assert false in
+  instantiate_aux tvff tvfbn bid_ht pty
+
+
+let is_alias tyid =
+  match !(TypeID.extract_body tyid) with
+  | Some(Alias(_)) -> true
+  | _              -> false
+
+
+let get_actual_type tyid tylst =
+  match !(TypeID.extract_body tyid) with
+  | Some(Alias(bidlist, pty)) ->
+      begin
+        try
+          let pairlst = List.combine bidlist tylst in
+          subst_poly pty pairlst
+        with
+        | Invalid_argument(_) -> assert false
+      end
+
+  | _ -> assert false
+
 
 
 let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
@@ -967,8 +1031,7 @@ let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value iter tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
+    | DataType(tylist, tyid)            -> (rng, DataType(List.map iter tylist, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
     | BaseType(bty)                     -> (rng, BaseType(bty))
@@ -1011,8 +1074,7 @@ let unlift_poly (pty : poly_type_variable_info typ) : mono_type option =
       | RecordType(ptyasc)              -> RecordType(Assoc.map_value aux ptyasc)
       | ListType(ptysub)                -> ListType(aux ptysub)
       | RefType(ptysub)                 -> RefType(aux ptysub)
-      | VariantType(ptylst, tyid)       -> VariantType(List.map aux ptylst, tyid)
-      | SynonymType(ptylst, tyid, ptya) -> SynonymType(List.map aux ptylst, tyid, aux ptya)
+      | DataType(ptylst, tyid)          -> DataType(List.map aux ptylst, tyid)
       | HorzCommandType(catyl)          -> HorzCommandType(List.map aux_cmd catyl)
       | VertCommandType(catyl)          -> VertCommandType(List.map aux_cmd catyl)
       | MathCommandType(catyl)          -> MathCommandType(List.map aux_cmd catyl)
@@ -1026,7 +1088,6 @@ let unlift_poly (pty : poly_type_variable_info typ) : mono_type option =
   in
     try Some(aux pty) with
     | Exit -> None
-
 
 (*
 let copy_environment (env : environment) : environment =
@@ -1269,12 +1330,12 @@ let rec string_of_type_basic tvf tystr : string =
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
 
-    | VariantType(tyarglist, tyid) ->
+    | DataType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
-
+(*
     | SynonymType(tyarglist, tyid, tyreal) ->
         (string_of_type_argument_list_basic tvf tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (iter tyreal) ^ ")"
-
+*)
     | FuncType(tyoptsr, tydom, tycod) ->
         let stropts =
           !tyoptsr |> List.map (fun ((_, tymain) as ty) ->
@@ -1282,7 +1343,7 @@ let rec string_of_type_basic tvf tystr : string =
               match tymain with
               | FuncType(_, _, _)
               | ProductType(_)
-              | VariantType(_ :: _, _)
+              | DataType(_ :: _, _)
                    -> "(" ^ s ^ ")? -> "
 
               | _ -> s ^ "? -> "
@@ -1304,8 +1365,7 @@ let rec string_of_type_basic tvf tystr : string =
           | ProductType(_)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
-(*          | TypeSynonym(_ :: _, _, _) *)
+          | DataType(_ :: _, _)
               -> "(" ^ strcont ^ ")"
           | _ -> strcont
           end ^ " list" ^ qstn
@@ -1318,8 +1378,7 @@ let rec string_of_type_basic tvf tystr : string =
           | ProductType(_)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
-(*          | TypeSynonym(_ :: _, _, _) *)
+          | DataType(_ :: _, _)
               -> "(" ^ strcont ^ ")"
 
           | _ -> strcont
@@ -1363,10 +1422,9 @@ and string_of_type_argument_list_basic tvf tyarglist =
           match headmain with
           | FuncType(_, _, _)
           | ProductType(_)
-            (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
           | ListType(_)
           | RefType(_)
-          | VariantType(_ :: _, _)
+          | DataType(_ :: _, _)
               -> "(" ^ strhd ^ ")"
           | _ -> strhd
         end ^ " " ^ strtl

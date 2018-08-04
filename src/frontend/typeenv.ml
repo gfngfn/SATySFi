@@ -73,15 +73,9 @@ type var_to_type_map = poly_type VarMap.t
 
 type var_to_vardef_map = (poly_type * EvalVarID.t) VarMap.t
 
-type type_scheme = BoundID.t list * poly_type
+type typename_to_typedef_map = type_id TyNameMap.t
 
-type type_definition =
-  | Data  of int
-  | Alias of type_scheme
-
-type typename_to_typedef_map = (TypeID.t * type_definition) TyNameMap.t
-
-type constructor_to_def_map = (TypeID.t * type_scheme) ConstrMap.t
+type constructor_to_def_map = (type_id * type_scheme) ConstrMap.t
 
 type signature = typename_to_typedef_map * var_to_type_map
 
@@ -107,6 +101,7 @@ exception MultipleTypeDefinition          of Range.t * Range.t * type_name
 exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
+exception NotMatchingTypeDefinition       of Range.t * type_id * int * int
 exception UndefinedModuleName             of Range.t * module_name * module_name list
 
 
@@ -347,8 +342,8 @@ module DependencyGraph = DirectedGraph.Make
 
 
 type vertex_label =
-  | VariantVertex of Range.t * TypeID.t * untyped_type_argument list * untyped_constructor_dec list
-  | SynonymVertex of Range.t * TypeID.t * untyped_type_argument list * manual_type * (type_scheme option) ref
+  | VariantVertex of Range.t * type_id * untyped_type_argument list * untyped_constructor_dec list
+  | SynonymVertex of Range.t * type_id * untyped_type_argument list * manual_type * (type_scheme option) ref
 
 
 let extract_range_in_vertex_label vtxlabel =
@@ -362,15 +357,15 @@ type dependency_mode =
   | DependentMode of vertex_label DependencyGraph.t
 
 
-let add_type_definition (tyenv : t) (tynm : type_name) ((tyid, dfn) : TypeID.t * type_definition) : t =
+let add_type_definition (tyenv : t) (tynm : type_name) (tyid : type_id) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
-    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
+    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm tyid)) with
     | None         -> assert false
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let find_type_definition_for_inner (tyenv : t) (tynm : type_name) : (TypeID.t * type_definition) option =
+let find_type_definition_for_inner (tyenv : t) (tynm : type_name) : type_id option =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     ModuleTree.search_backward mtr addrlst [] (fun (_, tdmap, _, _) ->
@@ -378,7 +373,7 @@ let find_type_definition_for_inner (tyenv : t) (tynm : type_name) : (TypeID.t * 
     )
 
 
-let find_type_definition_for_outer (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : (TypeID.t * type_definition) option =
+let find_type_definition_for_outer (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : type_id option =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
   let nmtoid = tyenv.name_to_id_map in
@@ -422,18 +417,16 @@ let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_nam
 
 
 (* PUBLIC *)
-let find_type_id (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : TypeID.t option =
-  let open OptionMonad in
-  find_type_definition_for_outer tyenv mdlnmlst tynm rng >>= fun (tyid, _) ->
-  return tyid
+let find_type_id (tyenv : t) (mdlnmlst : module_name list) (tynm : type_name) (rng : Range.t) : type_id option =
+  find_type_definition_for_outer tyenv mdlnmlst tynm rng
 
 
 (* PUBLIC *)
-let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
+let find_type_name (_ : t) (tyid : type_id) : type_name =
   TypeID.extract_name tyid
 
 
-let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
+let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : type_id) (tyenv : t) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
@@ -463,8 +456,7 @@ let instantiate_type_scheme (type a) (freef : Range.t -> mono_type_variable_info
     | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map aux (!tyoptsr)), aux tydom, aux tycod))
     | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
     | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | DataType(tylist, tyid)            -> (rng, DataType(List.map aux tylist, tyid))
     | ListType(tysub)                   -> (rng, ListType(aux tysub))
     | RefType(tysub)                    -> (rng, RefType(aux tysub))
     | BaseType(bt)                      -> (rng, BaseType(bt))
@@ -517,24 +509,27 @@ let rec fix_manual_type_general (type a) (dpmode : dependency_mode) (tyenv : t) 
             | None ->
                 raise (UndefinedTypeName(rng, mdlnmlst, tynm, find_type_definition_candidates_for_outer tyenv mdlnmlst tynm rng))
 
-            | Some((tyid, Data(lenexp))) ->
-                if lenexp <> len then error tynm lenexp len else
-                  let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
-                    VariantType(List.map aux mntyarglist, tyid)
-
-            | Some((tyid, Alias(bidlist, ptyscheme))) ->
+            | Some(tyid) ->
                 begin
-                  try
-                    let pairlst = List.combine tyarglist bidlist in
-                    let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
-                    let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
-                      SynonymType(tyarglist, tyid, tyreal)
-                  with
-                  | Invalid_argument(_) ->
-                      let lenexp = List.length bidlist in
-                        error tynm lenexp len
-                end
+                  match !(TypeID.extract_body tyid) with
+                  | None ->
+                      assert false
 
+                  | Some(Data(lenexp)) ->
+                      if lenexp <> len then error tynm lenexp len else
+                        let () = print_for_debug_variantenv ("FV " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
+                        DataType(List.map aux mntyarglist, tyid)
+
+                  | Some(Alias(bidlist, ptyscheme)) ->
+                      let lenexp = List.length bidlist in
+                      if lenexp <> len then error tynm lenexp len else
+(*
+                      let pairlst = List.combine tyarglist bidlist in
+                      let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
+*)
+                        let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
+                        DataType(tyarglist, tyid)
+                end
           in
           begin
             match dpmode with
@@ -548,20 +543,17 @@ let rec fix_manual_type_general (type a) (dpmode : dependency_mode) (tyenv : t) 
 
                     | VariantVertex(_, tyid, tyargcons, utvarntcons) ->
                         let lenexp = List.length tyargcons in
-                          if len <> lenexp then error tynm lenexp len else
-                            VariantType(tyarglist, tyid)
+                        if len <> lenexp then error tynm lenexp len else
+                          DataType(tyarglist, tyid)
 
                     | SynonymVertex(_, tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
-                        begin
-                          try
+                        let lenexp = List.length tyargcons in
+                        if len <> lenexp then error tynm lenexp len else
+(*
                             let pairlst = List.combine tyarglist bidlist in
-                              let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
-                                SynonymType(tyarglist, tyid, tyreal)
-                          with
-                          | Invalid_argument(_) ->
-                              let lenexp = List.length tyargcons in
-                                error tynm lenexp len
-                        end
+                            let tyreal = instantiate_type_scheme freef pairlst ptyscheme in
+*)
+                          DataType(tyarglist, tyid)
 
                     | SynonymVertex(_, _, _, _, {contents= None}) ->
                         assert false
@@ -661,10 +653,10 @@ let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
     ty
 
 
-let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) (tyenv : t) : t =
+let register_type (tynm : type_name) (tyid : type_id) (tyenv : t) : t =
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
-    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
+    match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm tyid)) with
     | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
@@ -678,17 +670,22 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
 
       | VariantVertex(_, tyid, tyargcons, _) ->
           let len = List.length tyargcons in
-            register_type tynm tyid (Data(len)) tyenv
+          let optref = TypeID.extract_body tyid in
+          optref := Some(Data(len));
+          register_type tynm tyid tyenv
 
       | SynonymVertex(_, tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
-          register_type tynm tyid (Alias(bidlist, ptyscheme)) tyenv
+          let optref = TypeID.extract_body tyid in
+          optref := Some(Alias(bidlist, ptyscheme));
+          register_type tynm tyid tyenv
 
-      | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
+      | SynonymVertex(_, _, _, _, {contents= None}) ->
+          assert false
     with
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
 
-let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * type_id * mono_type) option =
   let freef rng tvref =
     (rng, TypeVariable(tvref))
   in
@@ -710,7 +707,7 @@ let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.lev
       return (tyarglst, tyid, ty)
 
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t)
+let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : type_id)
     : (constructor_name * (mono_type list -> mono_type)) list =
   let freef rng tvref =
     (rng, TypeVariable(tvref))
@@ -762,14 +759,17 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
   let rec add_each_type_as_vertex mutvarntcons =
     let iter = add_each_type_as_vertex in
     match mutvarntcons with
-    | UTEndOfMutualVariant -> ()
+    | UTEndOfMutualVariant ->
+        ()
+
     | UTMutualVariantCons(tyargcons, tynmrng, tynm, utvarntcons, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
           let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
-            raise (MultipleTypeDefinition(rng, tynmrng, tynm))
+          raise (MultipleTypeDefinition(rng, tynmrng, tynm))
         else
           let () = print_for_debug_variantenv ("AddV " ^ tynm) in (* for debug *)
-          let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
+          let lenexp = List.length tyargcons in
+          let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) (ref (Some(Data(lenexp)))) in
           begin
             DependencyGraph.add_vertex dg tynm (VariantVertex(tynmrng, tyid, tyargcons, utvarntcons));
             iter tailcons;
@@ -778,10 +778,10 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
     | UTMutualSynonymCons(tyargcons, tynmrng, tynm, mnty, tailcons) ->
         if DependencyGraph.mem_vertex tynm dg then
           let rng = extract_range_in_vertex_label (DependencyGraph.get_vertex dg tynm) in
-            raise (MultipleTypeDefinition(rng, tynmrng, tynm))
+          raise (MultipleTypeDefinition(rng, tynmrng, tynm))
         else
           let () = print_for_debug_variantenv ("AddS " ^ tynm) in (* for debug *)
-          let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) in
+          let tyid = TypeID.fresh (get_moduled_var_name tyenv tynm) (ref None) in
           begin
             DependencyGraph.add_vertex dg tynm (SynonymVertex(tynmrng, tyid, tyargcons, mnty, ref None));
             iter tailcons;
@@ -861,9 +861,8 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
         | (rng, constrnm, mnty) :: tailcons ->
             let tysch = fix_manual_type (DependentMode(dg)) acctyenv lev tyargcons mnty in
               match find_type_definition_for_inner acctyenv tynm with
-              | None            -> assert false
-              | Some((tyid, _)) ->
-                  iter (add_constructor constrnm tysch tyid acctyenv) tailcons
+              | None       -> assert false
+              | Some(tyid) -> iter (add_constructor constrnm tysch tyid acctyenv) tailcons
     in
       DependencyGraph.fold_vertex (fun tynm label tyenv ->
         match label with
@@ -885,10 +884,10 @@ let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped
   end
 
 
-let add_type_to_signature (sigopt : signature option) (tynm : type_name) (tyid : TypeID.t) (len : int) : signature option =
+let add_type_to_signature (sigopt : signature option) (tynm : type_name) (tyid : type_id) : signature option =
   match sigopt with
-  | None                 -> Some((TyNameMap.add tynm (tyid, Data(len)) TyNameMap.empty, VarMap.empty))
-  | Some((tdmap, vtmap)) -> Some((TyNameMap.add tynm (tyid, Data(len)) tdmap, vtmap))
+  | None                 -> Some((TyNameMap.add tynm tyid TyNameMap.empty, VarMap.empty))
+  | Some((tdmap, vtmap)) -> Some((TyNameMap.add tynm tyid tdmap, vtmap))
 
 
 let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : poly_type) : signature option =
@@ -928,7 +927,7 @@ let rec poly_type_equal ((_, ptymain1) : poly_type_variable_info typ) ((_, ptyma
     | (RefType(ty1sub), RefType(ty2sub)) ->
         iter ty1sub ty2sub
 
-    | (VariantType(tylst1, tyid1), VariantType(tylst2, tyid2)) ->
+    | (DataType(tylst1, tyid1), DataType(tylst2, tyid2)) ->
         TypeID.equal tyid1 tyid2 && (combine iter_list tylst1 tylst2)
 
     | (HorzCommandType(catyl1), HorzCommandType(catyl2))
@@ -976,8 +975,8 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     in
 
     match (tymain1, tymain2) with
-    | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
-    | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
+    | (DataType(tyl1, tyid1), _)  when is_alias tyid1 -> aux (get_actual_type tyid1 tyl1) ty2
+    | (_, DataType(tyl2, tyid2))  when is_alias tyid2 -> aux ty1 (get_actual_type tyid2 tyl2)
 
     | (TypeVariable(PolyFree({contents= MonoLink(tylink1)})), _) -> aux (lift_poly tylink1 |> (function Poly(pty) -> pty)) ty2
     | (_, TypeVariable(PolyFree({contents= MonoLink(tylink2)}))) -> aux ty1 (lift_poly tylink2 |> (function Poly(pty) -> pty))
@@ -1089,7 +1088,7 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
     | (RecordType(tyasc1), RecordType(tyasc2)) ->
         (Assoc.domain_same tyasc1 tyasc2) && aux_list (Assoc.combine_value tyasc1 tyasc2)
 
-    | (VariantType(tyl1, tyid1), VariantType(tyl2, tyid2)) ->
+    | (DataType(tyl1, tyid1), DataType(tyl2, tyid2)) ->
         begin
           try (TypeID.equal tyid1 tyid2) && (aux_list (List.combine tyl1 tyl2)) with
           | Invalid_argument(_) -> false
@@ -1144,13 +1143,32 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
             | None ->
                 raise (NotProvidingTypeImplementation(rng, tynm))
 
-            | Some((tyid, dfn)) ->
-                let tyenvforsigInew = add_type_definition tyenvforsigI tynm (tyid, dfn) in
-                let len = List.length tyargcons in (* temporary; should check whether len is valid as to dfn *)
-                let tyidout = TypeID.fresh (get_moduled_type_name tyenv tynm) in
-                let sigoptaccnew = add_type_to_signature sigoptacc tynm tyidout len in
+            | Some(tyid) ->
+                let tyenvforsigInew = add_type_definition tyenvforsigI tynm tyid in
+                let len = List.length tyargcons in
+                let () =
+                  (* -- checks whether number of type parameter is
+                        consistent with that of implementation -- *)
+                  match !(TypeID.extract_body tyid) with
+                  | None ->
+                      assert false
+
+                  | Some(Data(lenexp)) ->
+                      if len = lenexp then () else
+                        raise (NotMatchingTypeDefinition(rng, tyid, len, lenexp))
+
+                  | Some(Alias(bidlist, _)) ->
+                      let lenexp = List.length bidlist in
+                      if len = lenexp then () else
+                        raise (NotMatchingTypeDefinition(rng, tyid, len, lenexp))
+                in
+                let tyidout =
+                  (* -- type ID for outer -- *)
+                  TypeID.fresh (get_moduled_type_name tyenv tynm) (ref (Some(Data(len))))
+                in
+                let sigoptaccnew = add_type_to_signature sigoptacc tynm tyidout in
                 let tyenvforsigOnew =
-                  let tyenvsub = add_type_definition tyenvforsigO tynm (tyid, dfn) in
+                  let tyenvsub = add_type_definition tyenvforsigO tynm tyidout in
                   let addrlst = Alist.to_list tyenvsub.current_address in
                   let mtr = tyenvsub.main_tree in
                   match ModuleTree.update mtr addrlst (update_so (fun _ -> sigoptaccnew)) with
@@ -1200,10 +1218,10 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
             | Some((ptyimp, evidimp)) ->
                 let b = reflects ptysigI ptyimp in
-                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc csnm ptysigO in
                   let tyenvaccnew =
+                    (* -- updates the outermost type environment -- *)
                     let mtr = tyenvacc.main_tree in
                     match ModuleTree.update mtr [] (update_vt (VarMap.add csnm (ptysigO, evidimp))) with
                     | None         -> assert false
@@ -1244,7 +1262,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
 module Raw =
   struct
-    let fresh_type_id = TypeID.fresh
+    let fresh_type_id tynm dfn = TypeID.fresh tynm (ref (Some(dfn)))
     let add_constructor = add_constructor
     let register_type = register_type
   end

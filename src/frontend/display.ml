@@ -135,11 +135,18 @@ let rec string_of_mono_type_sub (tvf : 'a -> string) (tyenv : Typeenv.t) (curren
     | BaseType(MathType)     -> "math"
     | BaseType(RegExpType)   -> "regexp"
 
-    | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
-
+    | DataType(tyarglist, tyid) ->
+        let s = (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid) in
+        begin
+          match !(TypeID.extract_body tyid) with
+          | None -> assert false
+          | Some(Data(_))             -> s
+          | Some(Alias(bidlist, pty)) -> s  (* temporary *)
+        end
+(*
     | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
                                              ^ " (= " ^ (iter tyreal) ^ ")"
-
+*)
     | FuncType(tyoptsr, ((_, tydommain) as tydom), tycod) ->
         let stropts =
           !tyoptsr |> List.map (fun ((_, tymain) as ty) ->
@@ -166,7 +173,7 @@ let rec string_of_mono_type_sub (tvf : 'a -> string) (tyenv : Typeenv.t) (curren
             | ProductType(_)
             | ListType(_)
             | RefType(_)
-            | VariantType(_ :: _, _)
+            | DataType(_ :: _, _)
                 -> "(" ^ strcont ^ ")"
             | _ -> strcont
           end ^ " list"
@@ -179,7 +186,7 @@ let rec string_of_mono_type_sub (tvf : 'a -> string) (tyenv : Typeenv.t) (curren
             | ProductType(_)
             | ListType(_)
             | RefType(_)
-            | VariantType(_ :: _, _)
+            | DataType(_ :: _, _)
                 -> "(" ^ strcont ^ ")"
             | _ -> strcont
           end ^ " ref"
@@ -230,10 +237,9 @@ and string_of_type_argument_list tvf tyenv current_ht tyarglist =
             match headmain with
             | FuncType(_, _, _)
             | ProductType(_)
-           (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
             | ListType(_)
             | RefType(_)
-            | VariantType(_ :: _, _)
+            | DataType(_ :: _, _)
                 -> "(" ^ strhd ^ ")"
             | _ -> strhd
           end ^ " " ^ strtl

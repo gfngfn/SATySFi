@@ -6,21 +6,16 @@ open GraphicBase
 open Types
 
 (* -- type IDs for predefined data types -- *)
-let tyid_option   = Typeenv.Raw.fresh_type_id "option"
-let tyid_itemize  = Typeenv.Raw.fresh_type_id "itemize"
-let tyid_color    = Typeenv.Raw.fresh_type_id "color"
-let tyid_script   = Typeenv.Raw.fresh_type_id "script"
-let tyid_language = Typeenv.Raw.fresh_type_id "language"
-let tyid_page     = Typeenv.Raw.fresh_type_id "page"
-let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class"
-let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class"
-let tyid_cell     = Typeenv.Raw.fresh_type_id "cell"
-let tyid_image    = Typeenv.Raw.fresh_type_id "image"
-
-(* -- type IDs for alias types -- *)
-let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
-let tyid_decoset  = Typeenv.Raw.fresh_type_id "deco-set"
-let tyid_igraf    = Typeenv.Raw.fresh_type_id "inline-graphics"
+let tyid_option   = Typeenv.Raw.fresh_type_id "option" (Data(1))
+let tyid_itemize  = Typeenv.Raw.fresh_type_id "itemize" (Data(0))
+let tyid_color    = Typeenv.Raw.fresh_type_id "color" (Data(0))
+let tyid_script   = Typeenv.Raw.fresh_type_id "script" (Data(0))
+let tyid_language = Typeenv.Raw.fresh_type_id "language" (Data(0))
+let tyid_page     = Typeenv.Raw.fresh_type_id "page" (Data(0))
+let tyid_mathcls  = Typeenv.Raw.fresh_type_id "math-class" (Data(0))
+let tyid_mccls    = Typeenv.Raw.fresh_type_id "math-char-class" (Data(0))
+let tyid_cell     = Typeenv.Raw.fresh_type_id "cell" (Data(0))
+let tyid_image    = Typeenv.Raw.fresh_type_id "image" (Data(0))
 
 let ( ~! ) = Range.dummy
 
@@ -50,15 +45,15 @@ let tPROD tylst   = (~! "product" , ProductType(tylst)    )
 let (@->) dom cod = (~! "func"    , FuncType(ref [], dom, cod))
 
 (* -- predefined data types -- *)
-let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
-let tITMZ ()      = (~! "itemize" , VariantType([], tyid_itemize) )
-let tSCR          = (~! "script"  , VariantType([], tyid_script)  )
-let tLANG         = (~! "language", VariantType([], tyid_language))
-let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
-let tPG           = (~! "page"    , VariantType([], tyid_page)    )
-let tMATHCLS      = (~! "mathcls" , VariantType([], tyid_mathcls) )
-let tMCCLS        = (~! "mccls"   , VariantType([], tyid_mccls)   )
-let tCELL         = (~! "cell"    , VariantType([], tyid_cell)    )
+let tOPT ty       = (~! "option"  , DataType([ty], tyid_option))
+let tITMZ ()      = (~! "itemize" , DataType([], tyid_itemize) )
+let tSCR          = (~! "script"  , DataType([], tyid_script)  )
+let tLANG         = (~! "language", DataType([], tyid_language))
+let tCLR          = (~! "color"   , DataType([], tyid_color)   )
+let tPG           = (~! "page"    , DataType([], tyid_page)    )
+let tMATHCLS      = (~! "mathcls" , DataType([], tyid_mathcls) )
+let tMCCLS        = (~! "mccls"   , DataType([], tyid_mccls)   )
+let tCELL         = (~! "cell"    , DataType([], tyid_cell)    )
 
 (* -- predefined alias types -- *)
 let tFONT         = tPROD [tS; tFL; tFL]
@@ -66,14 +61,19 @@ let tPT           = tPROD [tLN; tLN]
 let tDASH         = tPROD [tLN; tLN; tLN]
 let tPADS         = tPROD [tLN; tLN; tLN; tLN]
 
+(* -- type IDs for alias types -- *)
+
 let tDECO_raw = tPT @-> tLN @-> tLN @-> tLN @-> (tL tGR)
-let tDECO = (~! "deco", SynonymType([], tyid_deco, tDECO_raw))
+let tyid_deco = Typeenv.Raw.fresh_type_id "deco" (Alias([], Poly(tDECO_raw)))
+let tDECO = (~! "deco", DataType([], tyid_deco))
 
 let tDECOSET_raw = tPROD [tDECO; tDECO; tDECO; tDECO]
-let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
+let tyid_decoset = Typeenv.Raw.fresh_type_id "deco-set" (Alias([], Poly(tDECOSET_raw)))
+let tDECOSET = (~! "deco-set", DataType([], tyid_decoset))
 
 let tIGR_raw = tPT @-> (tL tGR)
-let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
+let tyid_igraf = Typeenv.Raw.fresh_type_id "inline-graphics" (Alias([], Poly(tIGR_raw)))
+let tIGR = (~! "igraf", DataType([], tyid_igraf))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 
@@ -144,30 +144,30 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
-  |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
+  |> Typeenv.Raw.register_type "option" tyid_option
   |> Typeenv.Raw.add_constructor "None" ([bid], Poly(tU)) tyid_option
   |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
 
-  |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "itemize" tyid_itemize
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
 
-  |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "color" tyid_color
   |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
   |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
   |> Typeenv.Raw.add_constructor "CMYK" ([], Poly(tPROD [tFL; tFL; tFL; tFL])) tyid_color
 
-  |> Typeenv.Raw.register_type "script" tyid_script (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "script" tyid_script
   |> Typeenv.Raw.add_constructor "HanIdeographic" ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "Kana"           ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "Latin"          ([], Poly(tU)) tyid_script
   |> Typeenv.Raw.add_constructor "OtherScript"    ([], Poly(tU)) tyid_script
 
-  |> Typeenv.Raw.register_type "language" tyid_language (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "language" tyid_language
   |> Typeenv.Raw.add_constructor "English"          ([], Poly(tU)) tyid_language
   |> Typeenv.Raw.add_constructor "Japanese"         ([], Poly(tU)) tyid_language
   |> Typeenv.Raw.add_constructor "NoLanguageSystem" ([], Poly(tU)) tyid_language
 
-  |> Typeenv.Raw.register_type "page" tyid_page (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "page" tyid_page
   |> Typeenv.Raw.add_constructor "A0Paper"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "A1Paper"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "A2Paper"          ([], Poly(tU)) tyid_page
@@ -178,7 +178,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
 
-  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "math-class" tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
@@ -189,7 +189,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
   |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
 
-  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls
   |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
@@ -200,16 +200,16 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
   |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
 
-  |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
+  |> Typeenv.Raw.register_type "cell" tyid_cell
   |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
   |> Typeenv.Raw.add_constructor "EmptyCell"  ([], Poly(tU))                         tyid_cell
   |> Typeenv.Raw.add_constructor "MultiCell"  ([], Poly(tPROD [tI; tI; tPADS; tIB])) tyid_cell
 
-  |> Typeenv.Raw.register_type "deco" tyid_deco (Typeenv.Alias(([], Poly(tDECO_raw))))
+  |> Typeenv.Raw.register_type "deco" tyid_deco
 
-  |> Typeenv.Raw.register_type "deco-set" tyid_decoset (Typeenv.Alias(([], Poly(tDECOSET_raw))))
+  |> Typeenv.Raw.register_type "deco-set" tyid_decoset
 
-  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
+  |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf
 
 
 let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])

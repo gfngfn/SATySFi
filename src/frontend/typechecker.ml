@@ -177,8 +177,7 @@ let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
   | ProductType(tylist)            -> iter_list tylist
   | ListType(tysub)                -> iter tysub
   | RefType(tysub)                 -> iter tysub
-  | VariantType(tylist, _)         -> iter_list tylist
-  | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
+  | DataType(tylist, _)            -> iter_list tylist
   | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
   | BaseType(_)                    -> false
   | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -237,7 +236,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
         else
           unify_list (Assoc.combine_value tyasc1 tyasc2)
 
-    | (VariantType(tyarglist1, tyid1), VariantType(tyarglist2, tyid2))
+    | (DataType(tyarglist1, tyid1), DataType(tyarglist2, tyid2))
         when tyid1 = tyid2 ->
         begin
           try
@@ -457,10 +456,10 @@ let rec typecheck
         match Typeenv.find_constructor qtfbl tyenv lev constrnm with
         | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
         | Some((tyarglist, tyid, tyc)) ->
-            let () = print_for_debug_typecheck ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+            let () = print_for_debug_typecheck ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, DataType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
             let (e1, ty1) = typecheck_iter tyenv utast1 in
             let () = unify ty1 tyc in
-            let tyres = (rng, VariantType(tyarglist, tyid)) in
+            let tyres = (rng, DataType(tyarglist, tyid)) in
               (NonValueConstructor(constrnm, e1), tyres)
       end
 
@@ -1232,7 +1231,7 @@ and typecheck_pattern
               let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
               let (epat1, typat1, tyenv1) = iter utpat1 in
               let () = unify tyc typat1 in
-                (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
+                (PConstructor(constrnm, epat1), (rng, DataType(tyarglist, tyid)), tyenv1)
         end
 
 
