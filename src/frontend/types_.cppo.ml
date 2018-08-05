@@ -77,6 +77,7 @@ module OptionRowVarID
     val initialize : unit -> unit
     val fresh : level -> t
     val equal : t -> t -> bool
+    val get_level : t -> level
   end
 = struct
     type t = {
@@ -96,6 +97,9 @@ module OptionRowVarID
     let fresh lev =
       incr current_number;
       {level = lev; number = !current_number; }
+
+    let get_level orv =
+      orv.level
   end
 
 
@@ -1017,7 +1021,7 @@ let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) :
   instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
-let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
+let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type =
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter (rng, tymain) =
     match tymain with
@@ -1029,7 +1033,7 @@ let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
 
           | MonoFree(tvid) ->
               let ptvi =
-                if p tvid then
+                if not (ptv tvid) then
                   PolyFree(tvref)
                 else
                   begin
@@ -1069,17 +1073,86 @@ let lift_poly_general (p : FreeID.t -> bool) (ty : mono_type) : poly_type =
     match optrow with
     | OptionRowEmpty             -> OptionRowEmpty
     | OptionRowCons(ty, tail)    -> OptionRowCons(iter ty, generalize_option_row tail)
-    | OptionRowVariable(orviref) -> OptionRowVariable(PolyORFree(orviref))
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORFree(orv) ->
+              if porv orv then
+                OptionRowEmpty
+              else
+                OptionRowVariable(PolyORFree(orviref))
+
+          | MonoORLink(optraw) ->
+              generalize_option_row optrow
+        end
   in
     Poly(iter ty)
 
 
+let check_level lev (ty : mono_type) =
+  let rec iter (_, tymain) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoLink(ty) -> iter ty
+          | MonoFree(tvid) -> Level.less_than lev (FreeID.get_level tvid)
+        end
+
+    | ProductType(tylst)             -> List.for_all iter tylst
+    | RecordType(tyasc)              -> Assoc.fold_value (fun b ty -> b && iter ty) true tyasc
+    | FuncType(optrow, tydom, tycod) -> iter_or optrow && iter tydom && iter tycod
+    | RefType(tycont)                -> iter tycont
+    | BaseType(_)                    -> true
+    | ListType(tycont)               -> iter tycont
+    | VariantType(tylst, _)          -> List.for_all iter tylst
+    | SynonymType(tylst, _, tyact)   -> List.for_all iter tylst && iter tyact
+
+    | HorzCommandType(cmdargtylst)
+    | VertCommandType(cmdargtylst)
+    | MathCommandType(cmdargtylst)
+      ->
+        List.for_all iter_cmd cmdargtylst
+
+  and iter_cmd = function
+    | MandatoryArgumentType(ty) -> iter ty
+    | OptionalArgumentType(ty)  -> iter ty
+
+  and iter_or = function
+    | OptionRowEmpty -> true
+
+    | OptionRowCons(ty, tail) -> iter ty && iter_or tail
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORFree(orv)    -> Level.less_than lev (OptionRowVarID.get_level orv)
+          | MonoORLink(optrow) -> iter_or optrow
+        end
+
+  in
+  iter ty
+
+
 let generalize (lev : level) =
-  lift_poly_general (fun tvid -> not (FreeID.is_quantifiable tvid) || not (Level.less_than lev (FreeID.get_level tvid)))
+  let ptv tvid =
+    let bkd =
+      let kd = FreeID.get_kind tvid in
+      match kd with
+      | UniversalKind   -> true
+      | RecordKind(asc) -> Assoc.fold_value (fun b ty -> b && (check_level lev ty)) true asc
+    in
+    FreeID.is_quantifiable tvid && Level.less_than lev (FreeID.get_level tvid) && bkd
+  in
+  let porv orv =
+    not (Level.less_than lev (OptionRowVarID.get_level orv))
+  in
+  lift_poly_general ptv porv
 
 
 let lift_poly =
-  lift_poly_general (fun _ -> true)
+  lift_poly_general (fun _ -> false) (fun _ -> false)
 
 
 let rec unlift_aux pty =
@@ -1343,8 +1416,8 @@ let string_of_kind (type a) (type b) (f : (a, b) typ -> string) (kdstr : (a, b) 
     | RecordKind(asc) -> "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let rec string_of_type_basic tvf tystr : string =
-  let iter = string_of_type_basic tvf in
+let rec string_of_type_basic tvf orvf tystr : string =
+  let iter = string_of_type_basic tvf orvf in
   let (rng, tymain) = tystr in
   let qstn = if Range.is_dummy rng then "%" else "" in
     match tymain with
@@ -1372,13 +1445,13 @@ let rec string_of_type_basic tvf tystr : string =
     | BaseType(RegExpType)   -> "regexp" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
-        (string_of_type_argument_list_basic tvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
+        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
 
     | SynonymType(tyarglist, tyid, tyreal) ->
-        (string_of_type_argument_list_basic tvf tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (iter tyreal) ^ ")"
+        (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) ^ "@ (= " ^ (iter tyreal) ^ ")"
 
     | FuncType(optrow, tydom, tycod) ->
-        let stropts = string_of_option_row_basic tvf optrow in
+        let stropts = string_of_option_row_basic tvf orvf optrow in
         let strdom = iter tydom in
         let strcod = iter tycod in
           stropts ^
@@ -1417,7 +1490,7 @@ let rec string_of_type_basic tvf tystr : string =
           end ^ " ref" ^ qstn
 
     | ProductType(tylist) ->
-        string_of_type_list_basic tvf tylist
+        string_of_type_list_basic tvf orvf tylist
 
     | TypeVariable(tvi) ->
         tvf qstn tvi
@@ -1426,25 +1499,25 @@ let rec string_of_type_basic tvf tystr : string =
         string_of_record_type iter asc
 
     | HorzCommandType(tylist) ->
-        let slist = List.map (string_of_command_argument_type tvf) tylist in
+        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
         "[" ^ (String.concat "; " slist) ^ "] horz-command"
 
     | VertCommandType(tylist)   ->
-        let slist = List.map (string_of_command_argument_type tvf) tylist in
+        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
         "[" ^ (String.concat "; " slist) ^ "] vert-command"
 
     | MathCommandType(tylist)   ->
-        let slist = List.map (string_of_command_argument_type tvf) tylist in
+        let slist = List.map (string_of_command_argument_type tvf orvf) tylist in
         "[" ^ (String.concat "; " slist) ^ "] math-command"
 
 
-and string_of_option_row_basic tvf = function
+and string_of_option_row_basic tvf orvf = function
   | OptionRowEmpty -> ""
 
-  | OptionRowVariable(_) -> "..."  (* TEMPORARY *)
+  | OptionRowVariable(orvi) -> orvf orvi
 
   | OptionRowCons(ty, tail) ->
-      let strtysub = string_of_type_basic tvf ty in
+      let strtysub = string_of_type_basic tvf orvf ty in
       let strty =
         let (_, tymain) = ty in
         match tymain with
@@ -1457,20 +1530,20 @@ and string_of_option_row_basic tvf = function
 
         | _ -> strtysub
       in
-      strty ^ "?-> " ^ (string_of_option_row_basic tvf tail)
+      strty ^ "?-> " ^ (string_of_option_row_basic tvf orvf tail)
 
 
-and string_of_command_argument_type tvf = function
-  | MandatoryArgumentType(ty) -> string_of_type_basic tvf ty
-  | OptionalArgumentType(ty)  -> "(" ^ (string_of_type_basic tvf ty) ^ ")?"
+and string_of_command_argument_type tvf orvf = function
+  | MandatoryArgumentType(ty) -> string_of_type_basic tvf orvf ty
+  | OptionalArgumentType(ty)  -> "(" ^ (string_of_type_basic tvf orvf ty) ^ ")?"
 
 
-and string_of_type_argument_list_basic tvf tyarglist =
+and string_of_type_argument_list_basic tvf orvf tyarglist =
   match tyarglist with
   | []           -> ""
   | head :: tail ->
-      let strhd = string_of_type_basic tvf head in
-      let strtl = string_of_type_argument_list_basic tvf tail in
+      let strhd = string_of_type_basic tvf orvf head in
+      let strtl = string_of_type_argument_list_basic tvf orvf tail in
       let (_, headmain) = head in
         begin
           match headmain with
@@ -1485,11 +1558,11 @@ and string_of_type_argument_list_basic tvf tyarglist =
         end ^ " " ^ strtl
 
 
-and string_of_type_list_basic tvf tylist =
+and string_of_type_list_basic tvf orvf tylist =
   match tylist with
   | []           -> ""
   | head :: []   ->
-      let strhd = string_of_type_basic tvf head in
+      let strhd = string_of_type_basic tvf orvf head in
       let (_, headmain) = head in
         begin
           match headmain with
@@ -1499,8 +1572,8 @@ and string_of_type_list_basic tvf tylist =
           | _ -> strhd
         end
   | head :: tail ->
-      let strhd = string_of_type_basic tvf head in
-      let strtl = string_of_type_list_basic tvf tail in
+      let strhd = string_of_type_basic tvf orvf head in
+      let strtl = string_of_type_list_basic tvf orvf tail in
       let (_, headmain) = head in
         begin
           match headmain with
@@ -1510,29 +1583,36 @@ and string_of_type_list_basic tvf tylist =
           | _ -> strhd
         end ^ " * " ^ strtl
 
-let rec string_of_mono_type_basic ty =
-  let tvf qstn tvref =
-    match !tvref with
-    | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
-    | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
-  in
-    string_of_type_basic tvf ty
+
+let rec tvf_mono qstn tvref =
+  match !tvref with
+  | MonoLink(tyl)  -> "$(" ^ (string_of_mono_type_basic tyl) ^ ")"
+  | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
+
+
+and orvf_mono orvref =
+  match !orvref with
+  | MonoORFree(orv)    -> "...?-> "
+  | MonoORLink(optrow) -> string_of_option_row_basic tvf_mono orvf_mono optrow
+
+
+and string_of_mono_type_basic ty =
+    string_of_type_basic tvf_mono orvf_mono ty
 
 
 let rec string_of_poly_type_basic (Poly(pty)) =
-  let ptvf qstn ptvi =
+  let tvf_poly qstn ptvi =
     match ptvi with
     | PolyBound(bid) ->
         "'#" ^ (BoundID.show_direct (string_of_kind (fun ty -> string_of_poly_type_basic (Poly(ty)))) bid) ^ qstn
 
-    | PolyFree(tvref) ->
-        begin
-          match !tvref with
-          | MonoFree(tvid) -> "'" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ qstn
-          | MonoLink(ty)   -> string_of_mono_type_basic ty
-        end
+    | PolyFree(tvref) -> tvf_mono qstn tvref
   in
-    string_of_type_basic ptvf pty
+  let ortvf orvi =
+    match orvi with
+    | PolyORFree(orvref) -> orvf_mono orvref
+  in
+    string_of_type_basic tvf_poly ortvf pty
 
 
 and string_of_kind_basic kd = string_of_kind string_of_mono_type_basic kd

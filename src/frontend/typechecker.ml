@@ -208,8 +208,18 @@ let rec occurs (tvid : FreeID.t) (ty : mono_type) =
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+
+  (* begin: for debug *)
+  let () =
+    match (tymain1, tymain2) with
+    | (TypeVariable({contents = MonoLink(_)}), _) -> ()
+    | (_, TypeVariable({contents = MonoLink(_)})) -> ()
+    | _ -> print_endline ("    | unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2))
+  in
+  (* end: for debug *)
+
   let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
-  let () = print_for_debug_typecheck ("    | unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
+
     match (tymain1, tymain2) with
 
     | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
@@ -494,9 +504,9 @@ let rec typecheck
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
-(*
+
             let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
-*)
+
                 (ContentOf(rng, evid), tyres)
       end
 
@@ -608,9 +618,9 @@ let rec typecheck
 
         | _ ->
             let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (rng, TypeVariable(ref (MonoFree(tvid1)))) in
+            let beta1 = (Range.dummy "UTApplyOptional:dom", TypeVariable(ref (MonoFree(tvid1)))) in
             let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (rng, TypeVariable(ref (MonoFree(tvid2)))) in
+            let beta2 = (Range.dummy "UTApplyOptional:cod", TypeVariable(ref (MonoFree(tvid2)))) in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             let () = unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2)) in
@@ -1358,9 +1368,9 @@ and make_type_environment_by_letrec
     | []                              -> (tyenv, tvtylst_forall)
     | (varnm, tvty, evid) :: tvtytail ->
         let prety = tvty in
-          let () = print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
+          let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
           let pty = (generalize lev (erase_range_of_type prety)) in
-          let () = print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+          let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
           let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
             make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid)) tyenv_before_let tvtytail tvtylst_forall_new
   in
