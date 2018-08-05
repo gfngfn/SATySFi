@@ -47,7 +47,7 @@ let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
-let (@->) dom cod = (~! "func"    , FuncType(ref [], dom, cod))
+let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
@@ -212,7 +212,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
+let lam evid ast = Function([], [PatternBranch(PVariable(evid), ast)])
 let lamenv env evid arity ast astf = PrimitiveWithEnvironment([PatternBranch(PVariable(evid), ast)], env, arity, astf)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 

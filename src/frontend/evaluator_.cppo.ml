@@ -38,7 +38,7 @@ and reduce_beta_list valuef valuearglst =
   | valuearg :: astargtail ->
       begin
         match valuef with
-        | FuncWithEnvironment(patbrs, envf) ->
+        | FuncWithEnvironment(_, patbrs, envf) ->
             let valuefnew = select_pattern (Range.dummy "reduce_beta_list") envf valuearg patbrs in
               reduce_beta_list valuefnew astargtail
 
@@ -175,14 +175,20 @@ and interpret env ast =
       let value1 = interpret env ast1 in
         select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
-  | Function(patbrs) ->
-      FuncWithEnvironment(patbrs, env)
+  | Function(evids, patbrs) ->
+      let envor =
+        evids |> List.fold_left (fun env evid ->
+          let loc = ref (Constructor("None", UnitConstant)) in
+          add_to_environment env evid loc
+        ) env
+      in
+      FuncWithEnvironment(evids, patbrs, envor)
 
   | Apply(ast1, ast2) ->
       let value1 = interpret env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(patbrs, env1) ->
+        | FuncWithEnvironment(_, patbrs, env1) ->
             let value2 = interpret env ast2 in
               select_pattern (Range.dummy "Apply") env1 value2 patbrs
 
@@ -191,6 +197,29 @@ and interpret env ast =
                           select_pattern (Range.dummy "Apply") env1 value2 patbrs
 
         | _ -> report_bug_reduction "Apply: not a function" ast1 value1
+      end
+
+  | ApplyOptional(ast1, ast2) ->
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+            let value2 = interpret env ast2 in
+            let loc = ref (Constructor("Some", value2)) in
+            let env1new = add_to_environment env1 evid loc in
+            FuncWithEnvironment(evids, patbrs, env1new)
+
+        | _ -> report_bug_reduction "ApplyOptional: not a function with optional parameter" ast1 value1
+      end
+
+  | ApplyOmission(ast1) ->
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+            FuncWithEnvironment(evids, patbrs, env1)
+
+        | _ -> report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
       end
 
   | IfThenElse(astb, ast1, ast2) ->
@@ -492,6 +521,6 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
     )
   in
   trilst |> List.iter (fun (evid, loc, patbrs) ->
-    loc := FuncWithEnvironment(patbrs, envnew)
+    loc := FuncWithEnvironment([], patbrs, envnew)
   );
   envnew

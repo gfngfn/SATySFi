@@ -3,9 +3,9 @@ module Types = Types_
 open Types
 open LengthInterface
 
-val option_type : 'a typ -> 'a typ
+val option_type : ('a, 'b) typ -> ('a, 'b) typ
 
-val itemize_type : unit -> 'a typ
+val itemize_type : unit -> ('a, 'b) typ
 
 val get_initial_context : length -> HorzBox.context_main
 

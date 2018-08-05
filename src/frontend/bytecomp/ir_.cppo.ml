@@ -117,12 +117,12 @@ and transform_list env astlst =
   map_with_env transform env astlst
 
 
-and transform_primitive env astlst op =
+and transform_primitive (env : frame) (astlst : abstract_tree list) (op : instruction) : ir * frame =
   let (irargs, env) = transform_list env astlst in
     (IRApplyPrimitive(op, List.length astlst, irargs), env)
 
 
-and transform_patsel env (patbrs : pattern_branch list) =
+and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_branch list * frame =
   let before_size = env.size in
   let max_size = ref before_size in
   let (irpatsel, envnew) =
@@ -151,7 +151,7 @@ and transform_pattern_list env patlst =
   map_with_env transform_pattern env patlst
 
 
-and transform_pattern env (pat : pattern_tree) =
+and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * frame =
   let return b = (b, env) in
     match pat with
     | PIntegerConstant(pnc) -> return (IRPIntegerConstant(pnc))
@@ -203,7 +203,7 @@ and newlevel (env : frame) =
   { env with level = env.level+1; size = 0; }
 
 
-and add_to_environment (env : frame) evid =
+and add_to_environment (env : frame) (evid : EvalVarID.t) : frame * varloc =
   let (var, newglobal) =
     if env.level = 0 then
       let loc = (ref Nil) in
@@ -227,7 +227,7 @@ and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
   | None                              -> None
 
 
-and add_letrec_bindings_to_environment env (recbinds : letrec_binding list) =
+and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding list) : (varloc * pattern_branch list) list * frame =
   recbinds @|> env @|> map_with_env (fun env recbind ->
     let LetRecBinding(evid, patbrs) = recbind in
     let (env, var) = add_to_environment env evid in
@@ -235,11 +235,11 @@ and add_letrec_bindings_to_environment env (recbinds : letrec_binding list) =
   )
 
 
-and flatten_function astfun =
+and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree list =
   let rec iter ast acc =
     match ast with
-    | Function([PatternBranch(pat, body)]) -> iter body (Alist.extend acc pat)
-    | _                                     -> (ast, Alist.to_list acc)
+    | Function([], [PatternBranch(pat, body)]) -> iter body (Alist.extend acc pat)
+    | _                                        -> (ast, Alist.to_list acc)
   in
     iter astfun Alist.empty
 
@@ -327,10 +327,10 @@ and transform (env : frame) ast : (ir * frame) =
           (IRPath(irpt0, pathelemlst, closingopt), env)
 
     | LambdaVert(evid, astdef) ->
-        transform env (Function [(PatternBranch ((PVariable evid), astdef))])
+        transform env (Function([], [(PatternBranch ((PVariable(evid)), astdef))]))
 
     | LambdaHorz(evid, astdef) ->
-        transform env (Function [(PatternBranch ((PVariable evid), astdef))])
+        transform env (Function([], [(PatternBranch ((PVariable(evid)), astdef))]))
 
     | PrimitiveTupleCons(asthd, asttl) ->
         transform_tuple env ast
@@ -352,7 +352,7 @@ and transform (env : frame) ast : (ir * frame) =
         let varir_lst =
           pairs |> List.map (fun pair ->
             let (var, patbrs) = pair in
-            let (ir, _) = transform env (Function(patbrs)) in
+            let (ir, _) = transform env (Function([], patbrs)) in
               (var, ir)
           )
         in
@@ -365,12 +365,15 @@ and transform (env : frame) ast : (ir * frame) =
         let (ir2, env) = transform env ast2 in
           (IRLetNonRecIn(ir1, irpat, ir2), env)
 
-    | Function(patbrs) ->
+    | Function([], patbrs) ->
         let (body, args) = flatten_function ast in
         let funenv = newlevel env in
         let (irargs, funenv) = transform_pattern_list funenv args in
         let (irbody, funenv) = transform funenv body in
           (IRFunction(funenv.size, irargs, irbody), env)
+
+    | Function(_ :: _, _) ->
+        failwith "Function with optional arguments: remains to be implemented."
 
     | Apply(ast1, ast2) ->
         let (callee, args) = flatten_application ast in
@@ -384,6 +387,12 @@ and transform (env : frame) ast : (ir * frame) =
               let (irargs, env) = transform_list env args in
                 (IRApply(List.length irargs, ircallee, irargs), env)
           end
+
+    | ApplyOptional(ast1, ast2) ->
+        failwith "ApplyOptional: remains to be implemented."
+
+    | ApplyOmission(ast1) ->
+        failwith "ApplyOmission: remains to be implemented."
 
     | IfThenElse(astb, ast1, ast2) ->
         let (irb, env) = transform env astb in
