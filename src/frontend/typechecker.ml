@@ -377,7 +377,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 and unify_option_row optrow1 optrow2 =
   match (optrow1, optrow2) with
   | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
-  | (_, OptionRowVariable({contents = MonoORLink(optrow1)})) -> unify_option_row optrow1 optrow2
+  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
 
   | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
       unify_sub ty1 ty2;
