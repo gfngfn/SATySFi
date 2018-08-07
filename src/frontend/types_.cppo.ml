@@ -78,6 +78,8 @@ module OptionRowVarID
     val fresh : level -> t
     val equal : t -> t -> bool
     val get_level : t -> level
+    val set_level : t -> level -> t
+    val show_direct : t -> string
   end
 = struct
     type t = {
@@ -100,6 +102,12 @@ module OptionRowVarID
 
     let get_level orv =
       orv.level
+
+    let set_level orv lev =
+      { level = lev; number = orv.number; }
+
+    let show_direct orv =
+      "$" ^ (string_of_int orv.number) ^ "[" ^ (Level.show orv.level) ^ "]"
   end
 
 
@@ -1592,7 +1600,7 @@ let rec tvf_mono qstn tvref =
 
 and orvf_mono orvref =
   match !orvref with
-  | MonoORFree(orv)    -> "...?-> "
+  | MonoORFree(orv)    -> (OptionRowVarID.show_direct orv) ^ "?-> "
   | MonoORLink(optrow) -> string_of_option_row_basic tvf_mono orvf_mono optrow
 
 

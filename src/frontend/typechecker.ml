@@ -96,6 +96,10 @@ let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typ
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = (generalize lev (erase_range_of_type ty)) in
+(*
+    let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ string_of_mono_type_basic ty) in  (* for debug *)
+    let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ string_of_poly_type_basic pty) in  (* for debug *)
+*)
       Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
@@ -158,10 +162,12 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
 
   let lev = FreeID.get_level tvid in
 
-  let rec iter (_, tymain) =
+  let rec iter ty =
 (*
     let () = print_endline ("==== occurs " ^ FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid ^ " in " ^ string_of_mono_type_basic ty) in  (* for debug *)
 *)
+    let (_, tymain) = ty in
+
     match tymain with
     | TypeVariable(tvref) ->
         begin
@@ -182,17 +188,113 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
                   else
                     ()
                 in
-                match FreeID.get_kind tvidx with
-                | UniversalKind     -> false
-                | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
+                begin
+                  match FreeID.get_kind tvidx with
+                  | UniversalKind     -> false
+                  | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
+                end
         end
 
-    | FuncType(optrow, tydom, tycod) -> iter_or optrow || iter tydom || iter tycod
+    | FuncType(optrow, tydom, tycod) ->
+        let b0 = iter_or optrow in
+        let b1 = iter tydom in
+        let b2 = iter tycod in
+        b0 || b1 || b2
+
     | ProductType(tylist)            -> iter_list tylist
     | ListType(tysub)                -> iter tysub
     | RefType(tysub)                 -> iter tysub
     | VariantType(tylist, _)         -> iter_list tylist
-    | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
+    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
+    | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | BaseType(_)                    -> false
+    | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+
+  and iter_list tylst =
+    List.exists iter tylst
+
+  and iter_cmd_list cmdargtylist =
+    List.exists (function
+      | MandatoryArgumentType(ty) -> iter ty
+      | OptionalArgumentType(ty)  -> iter ty
+    ) cmdargtylist
+
+  and iter_or optrow =
+    match optrow with
+    | OptionRowEmpty ->
+        false
+
+    | OptionRowCons(ty, tail) ->
+        let b1 = iter ty in
+        let b2 = iter_or tail in
+        b1 || b2
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORLink(optrow) ->
+              iter_or optrow
+
+          | MonoORFree(orvx) ->
+(*
+              let () = print_endline ("==== occursOR " ^ (OptionRowVarID.show_direct orvx) ^ " &&&& " ^ (Level.show lev)) in  (* for debug *)
+*)
+              let levx = OptionRowVarID.get_level orvx in
+              let () =
+                (* -- update level -- *)
+                if Level.less_than lev levx then
+                  orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                else
+                  ()
+              in
+              false
+        end
+
+  in
+  iter ty
+
+
+let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
+
+  let lev = OptionRowVarID.get_level orv in
+
+  let rec iter (_, tymain) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoLink(tyl) ->
+              iter tyl
+
+          | MonoFree(tvidx) ->
+              let levx = FreeID.get_level tvidx in
+              let () =
+                (* -- update level -- *)
+                if Level.less_than lev levx then
+                  tvref := MonoFree(FreeID.set_level tvidx lev)
+                else
+                  ()
+              in
+              begin
+                match FreeID.get_kind tvidx with
+                | UniversalKind     -> false
+                | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
+              end
+        end
+
+    | FuncType(optrow, tydom, tycod) ->
+        let b0 = iter_or optrow in
+        let b1 = iter tydom in
+        let b2 = iter tycod in
+        b0 || b1 || b2
+
+    | ProductType(tylist)            -> iter_list tylist
+    | ListType(tysub)                -> iter tysub
+    | RefType(tysub)                 -> iter tysub
+    | VariantType(tylist, _)         -> iter_list tylist
+    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
     | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
     | BaseType(_)                    -> false
     | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
@@ -209,11 +311,37 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
     ) cmdargtylist
 
   and iter_or = function
-    | OptionRowCons(ty, tail)               -> iter ty && iter_or tail
-    | OptionRowEmpty | OptionRowVariable(_) -> false
+    | OptionRowEmpty ->
+        false
+
+    | OptionRowCons(ty, tail) ->
+        let b1 = iter ty in
+        let b2 = iter_or tail in
+        b1 || b2
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORLink(optrow) ->
+              iter_or optrow
+
+          | MonoORFree(orvx) ->
+              if OptionRowVarID.equal orv orvx then
+                true
+              else
+                let levx = OptionRowVarID.get_level orvx in
+                let () =
+                  (* -- update level -- *)
+                  if Level.less_than lev levx then
+                    orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                  else
+                    ()
+                in
+                false
+        end
 
   in
-  iter ty
+  iter_or optrow
 
 
 let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
@@ -223,7 +351,7 @@ let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
         ()
 
     | RecordKind(tyasc) ->
-        let b = Assoc.fold_value (fun b ty -> b || occurs tvid ty) false tyasc in
+        let b = Assoc.fold_value (fun bacc ty -> let b = occurs tvid ty in bacc || b) false tyasc in
         if b then raise InternalInclusionError else ()
   in
   FreeID.set_kind tvid kd
@@ -317,9 +445,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
           ()
-        else if occurs tvid1 ty2 || occurs tvid2 ty1 then
-          raise InternalInclusionError
         else
+          let b1 = occurs tvid1 ty2 in
+          let b2 = occurs tvid2 ty1 in
+          if b1 || b2 then
+            raise InternalInclusionError
+          else
           let (tvid1q, tvid2q) =
             if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
               (tvid1, tvid2)
@@ -424,11 +555,17 @@ and unify_option_row optrow1 optrow2 =
       if OptionRowVarID.equal orv1 orv2 then () else
         orviref1 := MonoORLink(optrow2)
 
-  | (OptionRowVariable({contents = MonoORFree(_)} as orviref1), _) ->
-      orviref1 := MonoORLink(optrow2)
+  | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), _) ->
+      if occurs_optional_row orv1 optrow2 then
+        raise InternalInclusionError
+      else
+        orviref1 := MonoORLink(optrow2)
 
-  | (_, OptionRowVariable({contents = MonoORFree(_)} as orviref2)) ->
-      orviref2 := MonoORLink(optrow1)
+  | (_, OptionRowVariable({contents = MonoORFree(orv2)} as orviref2)) ->
+      if occurs_optional_row orv2 optrow1 then
+        raise InternalInclusionError
+      else
+        orviref2 := MonoORLink(optrow1)
 
   | (OptionRowEmpty, OptionRowCons(_, _))
   | (OptionRowCons(_, _), OptionRowEmpty)
