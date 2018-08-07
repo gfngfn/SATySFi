@@ -109,8 +109,10 @@ let apply_tree_of_list astfunc astlst =
 let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
 
   let rec aux_or = function
-    | OptionRowCons(ty, tail)               -> OptionalArgumentType(ty) :: aux_or tail
-    | OptionRowEmpty | OptionRowVariable(_) -> []
+    | OptionRowEmpty                                     -> []
+    | OptionRowVariable({contents = MonoORFree(_)})      -> []
+    | OptionRowVariable({contents = MonoORLink(optrow)}) -> aux_or optrow
+    | OptionRowCons(ty, tail)                            -> OptionalArgumentType(ty) :: aux_or tail
   in
 
   let rec aux acc ty =
