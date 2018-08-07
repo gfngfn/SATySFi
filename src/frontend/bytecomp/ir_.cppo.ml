@@ -4,6 +4,7 @@ open MyUtil
 open LengthInterface
 open Types
 
+
 let report_bug_ir msg =
   Format.printf "[Bug]@ %s:" msg;
   failwith ("bug: " ^ msg)
@@ -35,7 +36,7 @@ let map_with_env f env lst =
     iter env lst Alist.empty
 
 
-let rec transform_input_horz_content env (ihlst : input_horz_element list) =
+let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element list) : ir_input_horz_element list * frame =
   ihlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputHorzText(s) ->
@@ -56,7 +57,7 @@ let rec transform_input_horz_content env (ihlst : input_horz_element list) =
   )
 
 
-and transform_input_vert_content env (ivlst : input_vert_element list) =
+and transform_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
     | InputVertEmbedded(astcmd, astarglst) ->
@@ -101,7 +102,7 @@ and transform_path env pathcomplst cycleopt =
     (irpathcomplst, ircycleopt, env)
 
 
-and transform_ast (env : environment) ast =
+and transform_ast (env : environment) (ast : abstract_tree) : ir * environment =
   let (genv, _) = env in
   let initvars =
     EvalVarIDMap.fold (fun k v acc ->
@@ -113,7 +114,7 @@ and transform_ast (env : environment) ast =
     (ir, frame.global)
 
 
-and transform_list env astlst =
+and transform_list (env : frame) (astlst : abstract_tree list) : ir list * frame =
   map_with_env transform env astlst
 
 
@@ -147,7 +148,7 @@ and transform_patsel (env : frame) (patbrs : pattern_branch list) : ir_pattern_b
     (irpatsel, { envnew with size = !max_size; })
 
 
-and transform_pattern_list env patlst =
+and transform_pattern_list (env : frame) (patlst : pattern_tree list) : ir_pattern_tree list * frame =
   map_with_env transform_pattern env patlst
 
 
@@ -199,14 +200,14 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
           (IRPConstructor(cnm1, bsub), env)
 
 
-and newlevel (env : frame) =
-  { env with level = env.level+1; size = 0; }
+and new_level (env : frame) =
+  { env with level = env.level + 1; size = 0; }
 
 
 and add_to_environment (env : frame) (evid : EvalVarID.t) : frame * varloc =
   let (var, newglobal) =
     if env.level = 0 then
-      let loc = (ref Nil) in
+      let loc = ref Nil in
         (GlobalVar(loc, evid, ref 0), Types.add_to_environment env.global evid loc)
     else
       (LocalVar(env.level, env.size, evid, ref 0), env.global)
@@ -270,7 +271,7 @@ and transform_tuple env ast =
     (IRTuple(len, iritems), envnew)
 
 
-and check_primitive env ast =
+and check_primitive (env : frame) (ast : abstract_tree) : (int * (abstract_tree list -> abstract_tree)) option =
   match ast with
   | ContentOf(_, evid) ->
       begin
@@ -288,14 +289,17 @@ and check_primitive env ast =
   | _ -> None
 
 
-and transform (env : frame) ast : (ir * frame) =
+and transform (env : frame) (ast : abstract_tree) : ir * frame =
   let return ir = (ir, env) in
     match ast with
-    | Value(v) -> return (IRConstant(v))
+    | Value(v) ->
+        return (IRConstant(v))
 
-    | FinishHeaderFile -> return IRTerminal
+    | FinishHeaderFile ->
+        return IRTerminal
 
-    | FinishStruct -> return IRTerminal
+    | FinishStruct ->
+        return IRTerminal
 
     | InputHorz(ihlst) ->
         let (imihlst, env) = transform_input_horz_content env ihlst in
@@ -341,10 +345,10 @@ and transform (env : frame) ast : (ir * frame) =
         begin
           match find_in_environment env evid with
           | Some(var) ->
-            return (IRContentOf(var))
+              return (IRContentOf(var))
 
           | None ->
-            report_bug_ir_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
+              report_bug_ir_ast ("ContentOf: variable '" ^ (EvalVarID.show_direct evid) ^ "' (at " ^ (Range.to_string rng) ^ ") not found") ast
         end
 
     | LetRecIn(recbinds, ast2) ->
@@ -367,7 +371,7 @@ and transform (env : frame) ast : (ir * frame) =
 
     | Function([], patbrs) ->
         let (body, args) = flatten_function ast in
-        let funenv = newlevel env in
+        let funenv = new_level env in
         let (irargs, funenv) = transform_pattern_list funenv args in
         let (irbody, funenv) = transform funenv body in
           (IRFunction(funenv.size, irargs, irbody), env)
@@ -375,7 +379,7 @@ and transform (env : frame) ast : (ir * frame) =
     | Function(_ :: _, _) ->
         failwith "Function with optional arguments: remains to be implemented."
 
-    | Apply(ast1, ast2) ->
+    | Apply(_, _) ->
         let (callee, args) = flatten_application ast in
           begin
             match check_primitive env callee with

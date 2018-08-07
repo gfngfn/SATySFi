@@ -20,7 +20,7 @@ type compiled_nom_input_horz_element =
   | CompiledNomInputHorzContent  of compiled_nom_input_horz_element list * vmenv
 
 
-let local_get_value env lv off =
+let local_get_value (env : vmenv) (lv : int) (off : int) : syntactic_value =
   let (_, frames) = env in
     if lv = 0 then
       (List.hd frames).(off)
@@ -28,7 +28,7 @@ let local_get_value env lv off =
       (List.nth frames lv).(off)
 
 
-let local_set_value env lv off value =
+let local_set_value (env : vmenv) (lv : int) (off : int) (value : syntactic_value) : unit =
   let (_, frames) = env in
     if lv = 0 then
       (List.hd frames).(off) <- value
@@ -36,17 +36,17 @@ let local_set_value env lv off value =
       (List.nth frames lv).(off) <- value
 
 
-let vmenv_global env =
+let vmenv_global (env : vmenv) : environment =
   let (global, _) = env in
     global
 
 
-let newframe env size =
+let newframe (env : vmenv) (size : int) : vmenv =
   let (global, local) = env in
     (global, (Array.make size Nil) :: local)
 
 
-let newframe_recycle env preenv size =
+let newframe_recycle (env : vmenv) (preenv : vmenv) (size : int) : vmenv =
   let (global, local) = env in
     match preenv with
     | (_, prefrm :: _) ->
@@ -70,8 +70,8 @@ let popn stack n =
       (acc, st)
     else
       match st with
-      | x :: xs -> iter xs (n-1) (x::acc)
-      | [] -> report_bug_vm "stack underflow!"
+      | x :: xs -> iter xs (n - 1) (x :: acc)
+      | []      -> report_bug_vm "stack underflow!"
   in
     iter stack n []
 
@@ -194,7 +194,7 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
           ) Alist.empty |> Alist.to_list
       in
 
-      let rec interpret_commands env (nmihlst : compiled_nom_input_horz_element list) : HorzBox.horz_box list =
+      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_input_horz_element list) : HorzBox.horz_box list =
         nmihlst |> List.map (fun nmih ->
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
