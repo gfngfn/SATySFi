@@ -98,7 +98,7 @@ module OptionRowVarID
 
     let fresh lev =
       incr current_number;
-      {level = lev; number = !current_number; }
+      { level = lev; number = !current_number; }
 
     let get_level orv =
       orv.level

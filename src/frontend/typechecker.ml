@@ -22,13 +22,6 @@ exception InternalInclusionError
 exception InternalContradictionError
 
 
-let print_for_debug_typecheck msg =
-(*
-  print_endline msg;
-*)
-  ()
-
-
 let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
@@ -47,11 +40,6 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (
   in
     (optrow, Alist.to_list evidacc, tyenvnew)
 
-
-(*
-let append_optional_ids (evidlst : EvalVarID.t list) (ast : abstract_tree) =
-  List.fold_right (fun evid ast -> Function([PatternBranch(PVariable(evid), ast)])) evidlst ast
-*)
 
 let rec is_nonexpansive_expression e =
   let iter = is_nonexpansive_expression in
@@ -96,10 +84,6 @@ let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typ
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = (generalize lev (erase_range_of_type ty)) in
-(*
-    let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ string_of_mono_type_basic ty) in  (* for debug *)
-    let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ string_of_poly_type_basic pty) in  (* for debug *)
-*)
       Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
@@ -145,37 +129,18 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
   in
     aux Alist.empty ty
 
-(*
-let eliminate_optionals (ty : mono_type) (e : abstract_tree) : mono_type * abstract_tree =
-  let rec aux ty e =
-    match ty with
-    | (rng, FuncType({contents = _ :: tyopttail}, tydom, tycod)) ->
-        aux (rng, FuncType({contents = tyopttail}, tydom, tycod)) (Apply(e, Value(Constructor("None", UnitConstant))))
-
-    | _ ->
-        (ty, e)
-  in
-  aux ty e
-*)
 
 let occurs (tvid : FreeID.t) (ty : mono_type) =
 
   let lev = FreeID.get_level tvid in
 
-  let rec iter ty =
-(*
-    let () = print_endline ("==== occurs " ^ FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid ^ " in " ^ string_of_mono_type_basic ty) in  (* for debug *)
-*)
-    let (_, tymain) = ty in
+  let rec iter (_, tymain) =
 
     match tymain with
     | TypeVariable(tvref) ->
         begin
           match !tvref with
           | MonoLink(tyl)   -> iter tyl
-  (*
-          | Bound(_)    -> false
-  *)
           | MonoFree(tvidx) ->
               if FreeID.equal tvidx tvid then
                 true
@@ -238,9 +203,6 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
               iter_or optrow
 
           | MonoORFree(orvx) ->
-(*
-              let () = print_endline ("==== occursOR " ^ (OptionRowVarID.show_direct orvx) ^ " &&&& " ^ (Level.show lev)) in  (* for debug *)
-*)
               let levx = OptionRowVarID.get_level orvx in
               let () =
                 (* -- update level -- *)
@@ -436,12 +398,6 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (_, TypeVariable({contents= MonoLink(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
 
-(*
-    | ( (TypeVariable({contents= Bound(_)}), _)
-      | (_, TypeVariable({contents= Bound(_)})) ) ->
-          failwith ("unify_sub: bound type variable in " ^ (string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
-*)
-
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
           ()
@@ -467,19 +423,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               else
                 (tvid1q, tvid2q)
           in
-          let () =
-            begin
-              tvref1 := MonoFree(tvid1l);
-              tvref2 := MonoFree(tvid2l);
-            end
-          in
+          tvref1 := MonoFree(tvid1l);
+          tvref2 := MonoFree(tvid2l);
           let (oldtvref, newtvref, newtvid, newty) =
             if Range.is_dummy rng1 then (tvref1, tvref2, tvid2l, ty2) else (tvref2, tvref1, tvid1l, ty1)
           in
-                let _ = print_for_debug_typecheck                                                                 (* for debug *)
-                  ("        substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvref)))     (* for debug *)
-                   ^ " with " ^ (string_of_mono_type_basic newty)) in                                             (* for debug *)
-          let () = ( oldtvref := MonoLink(newty) ) in
+          oldtvref := MonoLink(newty);
           let kd1 = FreeID.get_kind tvid1l in
           let kd2 = FreeID.get_kind tvid2l in
           let (eqnlst, kdunion) =
@@ -491,10 +440,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 let kdunion = RecordKind(Assoc.union asc1 asc2) in
                   (Assoc.intersection asc1 asc2, kdunion)
           in
-          begin
-            unify_list eqnlst;
-            newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
-          end
+          unify_list eqnlst;
+          newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
+          ()
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in
@@ -510,18 +458,14 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               raise InternalContradictionError
             else
               let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                    let _ = print_for_debug_typecheck                             (* for debug *)
-                      ("        substituteVR " ^ (string_of_mono_type_basic ty1)      (* for debug *)
-                       ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
               let eqnlst =
                 match kd1 with
                 | UniversalKind      -> []
                 | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
               in
-              begin
-                unify_list eqnlst;
-                tvref1 := MonoLink(newty2);
-              end
+              unify_list eqnlst;
+              tvref1 := MonoLink(newty2);
+              ()
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
           let chk = occurs tvid1 ty2 in
@@ -529,10 +473,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               raise InternalInclusionError
             else
               let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                      let _ = print_for_debug_typecheck                             (* for debug *)
-                        ("        substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
-                         ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
-                tvref1 := MonoLink(newty2)
+              tvref1 := MonoLink(newty2)
 
       | (_, TypeVariable(_)) -> unify_sub ty2 ty1
 
@@ -541,15 +482,15 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
 and unify_option_row optrow1 optrow2 =
   match (optrow1, optrow2) with
-  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
-  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
-
   | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
       unify_sub ty1 ty2;
       unify_option_row tail1 tail2
 
   | (OptionRowEmpty, OptionRowEmpty) ->
       ()
+
+  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
+  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
 
   | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), OptionRowVariable({contents = MonoORFree(orv2)})) ->
       if OptionRowVarID.equal orv1 orv2 then () else
@@ -572,26 +513,8 @@ and unify_option_row optrow1 optrow2 =
     ->
       raise InternalContradictionError
 
-(*
-  let rec aux tyopts1 tyopts2 =
-    match (tyopts1, tyopts2) with
-    | (_, []) ->
-        tyopts2r := tyopts1
-
-    | ([], _) ->
-        tyopts1r := tyopts2
-
-    | (ty1 :: tytail1, ty2 :: tytail2) ->
-        unify_sub ty1 ty2;
-        aux tytail1 tytail2
-  in
-    aux (!tyopts1r) (!tyopts2r)
-*)
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
-(*
-  let () = print_endline ("    ####UNIFY " ^ (string_of_mono_type_basic ty1) ^ " = " ^ (string_of_mono_type_basic ty2)) in  (* for debug *)
-*)
   try
     unify_sub ty1 ty2
   with
@@ -676,7 +599,9 @@ let rec typecheck
         match Typeenv.find_constructor qtfbl tyenv lev constrnm with
         | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
         | Some((tyarglist, tyid, tyc)) ->
-            let () = print_for_debug_typecheck ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+(*
+            let () = print_endline ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+*)
             let (e1, ty1) = typecheck_iter tyenv utast1 in
             let () = unify ty1 tyc in
             let tyres = (rng, VariantType(tyarglist, tyid)) in
@@ -727,30 +652,15 @@ let rec typecheck
       let (cmdargtylist, tyret) = flatten_type tyF in
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (eF, (rng, MathCommandType(cmdargtylist)))
-(*
-  | UTLambdaOptional(varrng, varnmctx, utast1) ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnmctx in
-      let ty = overwrite_range_of_type (Primitives.option_type beta) rng in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(ty), evid)) utast1 in
-        (Function([PatternBranch(PVariable(evid), e1)]), (rng, OptFuncType(beta, ty1)))
-*)
+
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-(*
-      let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain))) in (* for debug *)
-*)
       let eret = Apply(e1, e2) in
       begin
         match ty1 with
         | (_, FuncType(_, tydom, tycod)) ->
             let () = unify tydom ty2 in
-(*
-            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
-                                               ^ (string_of_mono_type_basic tycod)) in        (* for debug *)
-*)
             let tycodnew = overwrite_range_of_type tycod rng in
               (eret, tycodnew)
 
@@ -760,10 +670,7 @@ let rec typecheck
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             let () = unify ty1 (get_range utast1, FuncType(optrow, ty2, beta)) in
-(*
-            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
-*)
-                (eret, beta)
+              (eret, beta)
       end
 
   | UTApplyOptional(utast1, utast2) ->
@@ -1430,7 +1337,9 @@ and typecheck_pattern
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
         let evid = EvalVarID.fresh varnm in
-        let () = print_for_debug_typecheck ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
+(*
+        let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
+*)
           (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
@@ -1453,7 +1362,9 @@ and typecheck_pattern
           match Typeenv.find_constructor qtfbl tyenv lev constrnm with
           | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
           | Some((tyarglist, tyid, tyc)) ->
-              let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+(*
+              let () = print_endline ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+*)
               let (epat1, typat1, tyenv1) = iter utpat1 in
               let () = unify tyc typat1 in
                 (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
@@ -1476,7 +1387,9 @@ and make_type_environment_by_letrec
           let rng = get_range astdef in
           let beta = (rng, TypeVariable(tvref)) in
           let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
-          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
+(*
+          let () = print_endline ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
+*)
           let evid = EvalVarID.fresh varnm in
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(pbeta), evid)) tailcons in
             (tyenvfinal, ((varnm, beta, evid) :: tvtylst))
@@ -1549,7 +1462,9 @@ and make_type_environment_by_letrec
 
 and make_type_environment_by_let_mutable (lev : level) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI) = typecheck Unquantifiable lev tyenv utastI in
-  let () = print_for_debug_typecheck ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
+(*
+  let () = print_endline ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
+*)
   let evid = EvalVarID.fresh varnm in
   let tyenvI = Typeenv.add tyenv varnm (lift_poly (varrng, RefType(tyI)), evid) in
     (tyenvI, evid, eI, tyI)
