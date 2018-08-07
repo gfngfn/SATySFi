@@ -328,14 +328,6 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (pathelemlst, closingopt, env) = transform_path env pathcomplst cycleopt in
           (IRPath(irpt0, pathelemlst, closingopt), env)
 
-(*
-    | LambdaVert(evid, astdef) ->
-        transform env (Function([], PatternBranch(PVariable(evid), astdef)))
-
-    | LambdaHorz(evid, astdef) ->
-        transform env (Function([], PatternBranch(PVariable(evid), astdef)))
-*)
-
     | PrimitiveTupleCons(asthd, asttl) ->
         transform_tuple env ast
 
@@ -381,9 +373,6 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (irarg, funenv) = transform_pattern funenv arg in
         let (irbody, funenv) = transform funenv body in
           (IROptFunction(funenv.size, vars, irarg, irbody), env)
-(*
-        failwith "Function with optional arguments: remains to be implemented."
-*)
 
     | Function(_, PatternBranchWhen(_, _, _)) ->
         assert false
@@ -392,20 +381,23 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (callee, args) = flatten_application ast in
           begin
             match check_primitive env callee with
-            | Some((arity, astf)) when arity = List.length args ->
-              transform env (astf args)
+            | Some((arity, astf))  when arity = List.length args ->
+                transform env (astf args)
 
             | _ ->
-              let (ircallee, env) = transform env callee in
-              let (irargs, env) = transform_list env args in
-                (IRApply(List.length irargs, ircallee, irargs), env)
-          end
+                let (ircallee, env) = transform env callee in
+                let (irargs, env) = transform_list env args in
+                  (IRApply(List.length irargs, ircallee, irargs), env)
+            end
 
     | ApplyOptional(ast1, ast2) ->
-        failwith "ApplyOptional: remains to be implemented."
+        let (ir1, env) = transform env ast1 in
+        let (ir2, env) = transform env ast2 in
+          (IRApplyOptional(ir1, ir2), env)
 
     | ApplyOmission(ast1) ->
-        failwith "ApplyOmission: remains to be implemented."
+        let (ir1, env) = transform env ast1 in
+          (IRApplyOmission(ir1), env)
 
     | IfThenElse(astb, ast1, ast2) ->
         let (irb, env) = transform env astb in

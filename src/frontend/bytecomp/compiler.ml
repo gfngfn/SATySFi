@@ -159,6 +159,12 @@ and compile (ir : ir) (cont : instruction list) =
   | IRApplyPrimitive(op, arity, irargs) ->
       compile_list irargs (op :: cont)
 
+  | IRApplyOptional(ir1, ir2) ->
+      failwith "IRApplyOptional: remains to be implemented"
+
+  | IRApplyOmission(ir1) ->
+      failwith "IRApplyOmission: remains to be implemented"
+
   | IRTuple(len, iritems) ->
       compile_list iritems (OpMakeTuple(len) :: cont)
 

@@ -591,6 +591,8 @@ and ir =
   | IROptFunction           of int * varloc list * ir_pattern_tree * ir
   | IRApply                 of int * ir * ir list
   | IRApplyPrimitive        of instruction * int * ir list
+  | IRApplyOptional         of ir * ir
+  | IRApplyOmission         of ir
   | IRTuple                 of int * ir list
   | IRPatternMatch          of Range.t * ir * ir_pattern_branch list
   | IRNonValueConstructor   of constructor_name * ir
