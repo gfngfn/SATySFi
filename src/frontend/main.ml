@@ -560,6 +560,12 @@ let error_log_environment suspended =
         NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
       ]
 
+  | Typechecker.MultipleFieldInRecord(rng, fldnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng));
+        NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

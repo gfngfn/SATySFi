@@ -17,6 +17,7 @@ exception MultiplePatternVariable of Range.t * Range.t * var_name
 exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * Typeenv.t * mono_type
+exception MultipleFieldInRecord          of Range.t * field_name
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -971,20 +972,20 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
       ept
   in
 
-  let pathcompacc =
+  let pathcomplst =
     utpathcomplst |> List.fold_left (fun acc utpathcomp ->
       match utpathcomp with
       | UTPathLineTo(utastpt) ->
           let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
           let () = unify_ tyenv typt (Range.dummy "typecheck-path-L", point_type_main) in
-            PathLineTo(ept) :: acc
+            Alist.extend acc (PathLineTo(ept))
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
           let ept1 = typecheck_anchor_point utastpt1 in
           let ept2 = typecheck_anchor_point utastpt2 in
           let ept = typecheck_anchor_point utastpt in
-            PathCubicBezierTo(ept1, ept2, ept) :: acc
-    ) []
+            Alist.extend acc (PathCubicBezierTo(ept1, ept2, ept))
+    ) Alist.empty |> Alist.to_list
   in
   let cycleopt =
     utcycleopt |> option_map (function
@@ -996,14 +997,14 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
             PathCubicBezierTo(ept1, ept2, ())
     )
   in
-    (List.rev pathcompacc, cycleopt)
+    (pathcomplst, cycleopt)
 
 
-and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =
-  let rec aux (acc : input_vert_element list) (lst : untyped_input_vert_element list) =
-    match lst with
+and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
+  let rec aux acc utivlst =
+    match utivlst with
     | [] ->
-        List.rev acc
+        Alist.to_list acc
 
     | (_, UTInputVertEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
         let (ecmd, tycmd) = typecheck qtfbl lev tyenv utastcmd in
@@ -1023,7 +1024,7 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level)
               let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
-                aux (InputVertEmbedded(eabs) :: acc) tail
+                aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
 
           | _ -> assert false
         end
@@ -1031,16 +1032,17 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level)
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
         let () = unify_ tyenv ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType)) in
-          aux (InputVertContent(e0) :: acc) tail
+          aux (Alist.extend acc (InputVertContent(e0))) tail
   in
-    aux [] utivlst
+    aux Alist.empty utivlst
 
 
 
-and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
-  let rec aux (acc : input_horz_element Alist.t) (lst : untyped_input_horz_element list) =
-    match lst with
-    | [] -> Alist.to_list acc
+and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
+  let rec aux acc utihlst =
+    match utihlst with
+    | [] ->
+        Alist.to_list acc
 
     | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
         let rngcmdapp =
@@ -1064,7 +1066,7 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level)
 
           | MathCommandType(_) ->
               let (rngcmd, _) = utastcmd in
-              raise (MathCommandInHorz(rngcmd))
+                raise (MathCommandInHorz(rngcmd))
 
           | _ -> assert false
         end
@@ -1089,19 +1091,16 @@ and typecheck_record
     (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t)
     (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
 =
-  let rec aux
-      (tyenv : Typeenv.t) (lst : (field_name * untyped_abstract_tree) list)
-      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * mono_type) list)
-  =
-    match lst with
-    | []                       -> (List.rev accelst, List.rev acctylst)
-    | (fldnmX, utastX) :: tail ->
+  let (easc, tyasc) =
+    flutlst |> List.fold_left (fun (easc, tyasc) (fldnmX, utastX) ->
+      if Assoc.mem fldnmX easc then
+        raise (MultipleFieldInRecord(rng, fldnmX))
+      else
         let (eX, tyX) = typecheck qtfbl lev tyenv utastX in
-          aux tyenv tail ((fldnmX, eX) :: accelst) ((fldnmX, tyX) :: acctylst)
+          (Assoc.add easc fldnmX eX, Assoc.add tyasc fldnmX tyX)
+    ) (Assoc.empty, Assoc.empty)
   in
-  let (elst, tylst) = aux tyenv flutlst [] [] in
-  let tylstfinal = List.map (fun (fldnm, ty) -> (fldnm, ty)) tylst in
-    (Record(Assoc.of_list elst), (rng, RecordType(Assoc.of_list tylstfinal)))
+    (Record(easc), (rng, RecordType(tyasc)))
 
 
 and typecheck_itemize (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
