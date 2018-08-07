@@ -724,15 +724,6 @@ let rec typecheck
       let (patbr, typat, ty1) = typecheck_pattern_branch qtfbl lev tyenvnew utpatbr in
       let e = Function(evids, patbr) in
         (e, (rng, FuncType(optrow, typat, ty1)))
-(*
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnm in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnm (Poly(beta), evid)) utast1 in
-        let tydom = beta in
-        let tycod = ty1 in
-          (LambdaAbstract(evid, e1), (rng, FuncType(tydom, tycod)))
-*)
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
@@ -756,9 +747,6 @@ let rec typecheck
       in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
         (LetNonRecIn(pat, e1, e2), ty2)
-(*
-      failwith "let nonrec"
-*)
 
   | UTLetRecIn(utrecbinds, utast2) ->
       let (tyenvnew, _, recbinds) = make_type_environment_by_letrec qtfbl lev tyenv utrecbinds in
@@ -807,51 +795,6 @@ let rec typecheck
       let (eC, tyC) = typecheck_iter tyenv utastC in
       let () = unify tyC (get_range utastC, BaseType(UnitType)) in
         (WhileDo(eB, eC), (rng, BaseType(UnitType)))
-
-(*
-(* ---- final reference ---- *)
-
-  | UTDeclareGlobalHash(utastK, utastI) ->
-      let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = (unify tyK (get_range utastK, BaseType(StringType))) in
-      let (eI, tyI) = typecheck_iter tyenv utastI in
-      let () = unify tyI (get_range utastI, BaseType(StringType)) in
-        (DeclareGlobalHash(eK, eI), (rng, BaseType(UnitType)))
-
-  | UTOverwriteGlobalHash(utastK, utastN) ->
-      let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = unify tyK (get_range utastK, BaseType(StringType)) in
-      let (eN, tyN) = typecheck_iter tyenv utastN in
-      let () = unify tyN (get_range utastN, BaseType(StringType)) in
-        (OverwriteGlobalHash(eK, eN), (rng, BaseType(UnitType)))
-
-  | UTReferenceFinal(utast1) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (rng, BaseType(StringType)) in
-        (ReferenceFinal(e1), (rng, BaseType(StringType)))
-
-(* ---- class/id option ---- *)
-
-  | UTApplyClassAndID(utastcls, utastid, utast1) ->
-      let dr = Range.dummy "ut-apply-class-and-id" in
-      let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let (ecls, _) = typecheck_iter tyenv utastcls in
-      let (eid, _)  = typecheck_iter tyenv utastid in
-      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
-        (ApplyClassAndID(evidcls, evidid, ecls, eid, e1), ty1)
-
-  | UTClassAndIDRegion(utast1) ->
-      let dr = Range.dummy "ut-class-and-id-region" in
-      let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
-        (e1, ty1)
-*)
 
 (* ---- lightweight itemize ---- *)
 
@@ -1005,41 +948,6 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
           match tycmdmain with
           | MathCommandType(cmdargtylstreq) ->
               let eapp = typecheck_command_arguments ecmd tycmd rng qtfbl lev tyenv utcmdarglst cmdargtylstreq in
-(*
-              let trilst =
-                utmatharglst |> List.map (function
-                  | UTMMandatoryArgument((rngA, _) as utastA) ->
-                      let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                        (rngA, eA, MandatoryArgumentType(tyA))
-
-                  | UTMOptionalArgument((rngA, _) as utastA) ->
-                      let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                        (rngA, NonValueConstructor("Some", eA), OptionalArgumentType(tyA))
-
-                  | UTMOmission(rngomit) ->
-                      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-                      let beta = (rngomit, TypeVariable(ref (Free(tvid)))) in
-                        (rngomit, Value(Constructor("None", UnitConstant)), OptionalArgumentType(beta))
-                ) in
-              let cmdargtylist = trilst |> List.map (fun (_, _, cmdargty) -> cmdargty) in
-              let () = unify_command_argument_types cmdargtylist cmdargtylistreq in
-              let elstarg = trilst |> List.map (fun (_, e, _) -> e) in
-*)
-(*
-                try
-                  List.iter2 (fun caty catyreq ->
-                    match (caty, catyreq) with
-                    | (MandatoryArgumentType(ty), MandatoryArgumentType(tyreq)) -> unify_ tyenv ty tyreq
-                    | (OptionalArgumentType(ty) , OptionalArgumentType(tyreq) ) -> unify_ tyenv ty tyreq
-                    | _                                                         -> assert false  (* TEMPORARY *)
-                  ) cmdargtylist cmdargtylistreq
-                with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length cmdargtylistreq in
-                    let lenreal = List.length cmdargtylist in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
                 eapp
 
           | HorzCommandType(_) ->
@@ -1115,37 +1023,6 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level)
               let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
-(*
-              let trilst =
-                List.map (function
-                | UTMandatoryArgument(utastA) ->
-                    let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                      (eA, MandatoryArgumentType(tyA))
-
-                | UTOptionalArgument(utastA) ->
-                    let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                      (NonValueConstructor("Some", eA), OptionalArgumentType(tyA))
-
-                | UTOmission(rngomit) ->
-                    let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-                    let beta = (rngomit, TypeVariable(ref (Free(tvid)))) in
-                      (Value(Constructor("None", UnitConstant)), OptionalArgumentType(beta))
-
-                ) utcmdarglst
-              in
-              let tylstarg = etylst |> List.map (fun (e, ty) -> ty) in
-              let () = unify_command_argument_types tyenv  in
-              let elstarg = etylst |> List.map (fun (e, ty) -> e) in
-*)
-(*
-              let () =
-                try List.iter2 (unify_ tyenv) tylstarg tylstreq with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length tylstreq in
-                    let lenreal = List.length tylstarg in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
                 aux (InputVertEmbedded(eabs) :: acc) tail
 
           | _ -> assert false
@@ -1183,18 +1060,6 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level)
               let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
-(*
-              let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
-              let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
-              let earglst = etylst |> List.map (fun (e, ty) -> e) in
-              let () =
-                try List.iter2 (unify_ tyenv) tyarglst tylstreq with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length tylstreq in
-                    let lenreal = List.length tyarglst in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
                 aux (Alist.extend acc (InputHorzEmbedded(eabs))) tail
 
           | MathCommandType(_) ->

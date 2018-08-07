@@ -361,25 +361,7 @@ and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst 
       match imiv with
       | ImInputVertEmbedded(astabs) ->
           let valuevert = interpret env (Apply(astabs, Value(valuectx))) in
-          get_vert valuevert
-(*
-          begin
-            match valuecmd with
-            | LambdaVertWithEnvironment(evid, astdef, env1) ->
-                let valuedef = reduce_beta [] env1 evid valuectx astdef in
-                let valuearglst =
-                  astarglst |> List.fold_left (fun acc astarg ->
-                    let valuearg = interpret env astarg in
-                      Alist.extend acc valuearg
-                  ) Alist.empty |> Alist.to_list
-                    (* -- left-to-right evaluation -- *)
-                in
-                let valueret = reduce_beta_list valuedef valuearglst in
-                  get_vert valueret
-
-            | _ -> report_bug_reduction "interpret_intermediate_input_vert:1" astcmd valuecmd
-          end
-*)
+            get_vert valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
           interpret_commands envsub imivlstsub
@@ -426,25 +408,6 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
       | NomInputHorzEmbedded(astabs) ->
           let valuehorz = interpret env (Apply(astabs, Value(valuectx))) in
             get_horz valuehorz
-(*
-          begin
-            match valuecmd with
-            | LambdaHorzWithEnvironment(evid, astdef, env1) ->
-                let valuedef = reduce_beta [] env1 evid valuectx astdef in
-                let valuearglst =
-                  astarglst |> List.fold_left (fun acc astarg ->
-                    let valuearg = interpret env astarg in
-                      Alist.extend acc valuearg
-                  ) Alist.empty |> Alist.to_list
-                    (* -- left-to-right evaluation -- *)
-                in
-                let valueret = reduce_beta_list valuedef valuearglst in
-                let hblst = get_horz valueret in
-                  hblst
-
-            | _ -> report_bug_reduction "interpret_input_horz" astcmd valuecmd
-          end
-*)
 
       | NomInputHorzThunk(ast) ->
           let valuehorz = interpret env ast in

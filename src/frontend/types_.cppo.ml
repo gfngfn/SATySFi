@@ -696,10 +696,6 @@ and syntactic_value =
   | MathValue                   of math list
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
-(*
-  | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
-  | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
-*)
   | Context                     of input_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
@@ -737,10 +733,6 @@ and abstract_tree =
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
-(*
-  | LambdaHorz                  of EvalVarID.t * abstract_tree
-  | LambdaVert                  of EvalVarID.t * abstract_tree
-*)
   | PrimitiveTupleCons    of abstract_tree * abstract_tree
 #include "__attype.gen.ml"
 
