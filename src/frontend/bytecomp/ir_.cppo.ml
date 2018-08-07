@@ -173,11 +173,11 @@ and transform_pattern (env : frame) (pat : pattern_tree) : ir_pattern_tree * fra
     | PWildCard     -> return IRPWildCard
 
     | PVariable(evid) ->
-        let (env, var) = add_to_environment env evid  in
+        let (var, env) = add_to_environment env evid  in
           (IRPVariable(var), env)
 
     | PAsVariable(evid, psub) ->
-        let (env, var) = add_to_environment env evid  in
+        let (var, env) = add_to_environment env evid  in
         let (bsub, env) = transform_pattern env psub in
           (IRPAsVariable(var, bsub), env)
 
@@ -204,7 +204,7 @@ and new_level (env : frame) =
   { env with level = env.level + 1; size = 0; }
 
 
-and add_to_environment (env : frame) (evid : EvalVarID.t) : frame * varloc =
+and add_to_environment (env : frame) (evid : EvalVarID.t) : varloc * frame =
   let (var, newglobal) =
     if env.level = 0 then
       let loc = ref Nil in
@@ -218,7 +218,7 @@ and add_to_environment (env : frame) (evid : EvalVarID.t) : frame * varloc =
     | GlobalVar(_, _, _)          -> var
   in
   let newvars = env.vars |> EvalVarIDMap.add evid var in
-    ({ env with global = newglobal; vars = newvars; size = env.size + 1; }, locvar)
+    (locvar, { env with global = newglobal; vars = newvars; size = env.size + 1; })
 
 
 and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
@@ -231,7 +231,7 @@ and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
 and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding list) : (varloc * pattern_branch list) list * frame =
   recbinds @|> env @|> map_with_env (fun env recbind ->
     let LetRecBinding(evid, patbrs) = recbind in
-    let (env, var) = add_to_environment env evid in
+    let (var, env) = add_to_environment env evid in
       ((var, patbrs), env)
   )
 
@@ -369,14 +369,15 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (ir2, env) = transform env ast2 in
           (IRLetNonRecIn(ir1, irpat, ir2), env)
 
-    | Function([], patbrs) ->
+    | Function([], _) ->
         let (body, args) = flatten_function ast in
         let funenv = new_level env in
         let (irargs, funenv) = transform_pattern_list funenv args in
         let (irbody, funenv) = transform funenv body in
           (IRFunction(funenv.size, irargs, irbody), env)
 
-    | Function(_ :: _, _) ->
+    | Function((_ :: _) as evids, patbrs) ->
+        let (vars, funenv) = map_with_env add_to_environment (new_level env) evids in
         failwith "Function with optional arguments: remains to be implemented."
 
     | Apply(_, _) ->
@@ -426,7 +427,7 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
 
     | LetMutableIn(evid, astini, astaft) ->
         let (irini, env) = transform env astini in
-        let (env, var) = add_to_environment env evid in
+        let (var, env) = add_to_environment env evid in
         let (iraft, env) = transform env astaft in
           (IRLetMutableIn(var, irini, iraft), env)
 

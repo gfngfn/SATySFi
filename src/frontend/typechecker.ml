@@ -724,13 +724,13 @@ let rec typecheck
               (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
 
-  | UTFunction(optargs, utpatbrs) ->
+  | UTFunction(optargs, utpatbr) ->
       let (optrow, evids, tyenvnew) = add_optionals_to_type_environment tyenv qtfbl lev optargs in
       let tvidO = FreeID.fresh UniversalKind qtfbl lev () in
       let betaO = (Range.dummy "UTFunction:dom", TypeVariable(ref (MonoFree(tvidO)))) in
       let tvidR = FreeID.fresh UniversalKind qtfbl lev () in
       let betaR = (Range.dummy "UTFunction:cod", TypeVariable(ref (MonoFree(tvidR)))) in
-      let (patbrs, _) = typecheck_pattern_branch_list qtfbl lev tyenvnew utpatbrs betaO betaR in
+      let patbrs = typecheck_pattern_branch_list qtfbl lev tyenvnew [utpatbr] betaO betaR in
       let e = Function(evids, patbrs) in
         (e, (rng, FuncType(optrow, betaO, betaR)))
 (*
@@ -747,9 +747,9 @@ let rec typecheck
       let (eO, tyO) = typecheck_iter tyenv utastO in
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (MonoFree(tvid)))) in
-      let (patbrs, tyP) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
+      let patbrs = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
       let () = Exhchecker.main rng patbrs tyO qtfbl lev tyenv in
-        (PatternMatch(rng, eO, patbrs), tyP)
+        (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
       let (pat, tyP, patvarmap) = typecheck_pattern qtfbl (Level.succ lev) tyenv utpat in
@@ -1268,11 +1268,13 @@ and typecheck_itemize_list
 
 and typecheck_pattern_branch_list
     (qtfbl : quantifiability) (lev : level)
-    (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) =
-  let iter = typecheck_pattern_branch_list qtfbl lev in
+    (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
+
   let unify = unify_ tyenv in
+
+  let rec iter (patbracc : pattern_branch Alist.t) (utpatbrs : untyped_pattern_branch list) =
     match utpatbrs with
-    | [] -> ([], tyres)
+    | [] -> Alist.to_list patbracc
 
     | UTPatternBranch(utpat, utast1) :: tail ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
@@ -1280,8 +1282,7 @@ and typecheck_pattern_branch_list
         let tyenvpat = add_pattern_var_mono tyenv patvarmap in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
-        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
-          (PatternBranch(epat, e1) :: patbrtail, tytail)
+          iter (Alist.extend patbracc (PatternBranch(epat, e1))) tail
 
     | UTPatternBranchWhen(utpat, utastB, utast1) :: tail ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
@@ -1291,8 +1292,10 @@ and typecheck_pattern_branch_list
         let () = unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
         let () = unify ty1 tyres in
-        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
-          (PatternBranchWhen(epat, eB, e1) :: patbrtail, tytail)
+          iter (Alist.extend patbracc (PatternBranchWhen(epat, eB, e1))) tail
+
+  in
+  iter Alist.empty utpatbrs
 
 
 and typecheck_pattern

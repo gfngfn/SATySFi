@@ -53,7 +53,7 @@
         utastdef
 
     | UTPatternArgument(argpat) :: utargtail ->
-        (rng, UTFunction(Alist.to_list optargacc, [UTPatternBranch(argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef)]))
+        (rng, UTFunction(Alist.to_list optargacc, UTPatternBranch(argpat, curry_lambda_abstract Alist.empty rng utargtail utastdef)))
 
     | UTOptionalArgument(rngvar, varnm) :: utargtail ->
         curry_lambda_abstract (Alist.extend optargacc (rngvar, varnm)) rng utargtail utastdef
@@ -291,7 +291,7 @@
         let varnm = numbered_var_name i in
         let accnew = Alist.extend acc (Range.dummy "make_function_for_parallel:2", UTContentOf([], varnm)) in
         let patvar = (Range.dummy "make_function_for_parallel:3", UTPVariable(varnm)) in
-          (rngfull, UTFunction([], [UTPatternBranch(patvar, aux accnew (i + 1))]))
+          (rngfull, UTFunction([], UTPatternBranch(patvar, aux accnew (i + 1))))
     in
       aux Alist.empty 0
 

@@ -440,7 +440,7 @@ and untyped_abstract_tree_main =
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
   | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (Range.t * var_name) list * untyped_pattern_branch list
+  | UTFunction             of (Range.t * var_name) list * untyped_pattern_branch
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTFinishStruct
