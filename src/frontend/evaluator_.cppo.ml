@@ -26,37 +26,26 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let rec reduce_beta evids env1 evid valuel astdef =
-  let env1 =
-    evids |> List.fold_left (fun env evid ->
-      let loc = ref (Constructor("None", UnitConstant)) in
-      add_to_environment env evid loc
-    ) env1
-  in
-  let envnew = add_to_environment env1 evid (ref valuel) in
-    interpret envnew astdef
+let rec reduce_beta value1 value2 =
+  match value1 with
+  | FuncWithEnvironment(evids, patbr, env1) ->
+      let env1 =
+        evids |> List.fold_left (fun env evid ->
+          let loc = ref (Constructor("None", UnitConstant)) in
+          add_to_environment env evid loc
+        ) env1
+      in
+        select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+
+  | PrimitiveWithEnvironment(patbr, env1, _, _) ->
+      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+
+  | _ ->
+      report_bug_value "reduce_beta: not a function" value1
 
 
-and reduce_beta_list valuef valuearglst =
-  match valuearglst with
-  | [] ->
-      valuef
-
-  | valuearg :: astargtail ->
-      begin
-        match valuef with
-        | FuncWithEnvironment(evids, patbr, env1) ->
-            let env1 =
-              evids |> List.fold_left (fun env evid ->
-                let loc = ref (Constructor("None", UnitConstant)) in
-                  add_to_environment env evid loc
-              ) env1
-            in
-            let valuefnew = select_pattern (Range.dummy "reduce_beta_list") env1 valuearg [patbr] in
-              reduce_beta_list valuefnew astargtail
-
-        | _ -> report_bug_value "reduce_beta_list" valuef
-      end
+and reduce_beta_list value1 valueargs =
+  List.fold_left reduce_beta value1 valueargs
 
 
 and interpret_point env ast =
@@ -195,24 +184,8 @@ and interpret env ast =
 
   | Apply(ast1, ast2) ->
       let value1 = interpret env ast1 in
-      begin
-        match value1 with
-        | FuncWithEnvironment(evids, patbr, env1) ->
-            let env1 =
-              evids |> List.fold_left (fun env evid ->
-                let loc = ref (Constructor("None", UnitConstant)) in
-                add_to_environment env evid loc
-              ) env1
-            in
-            let value2 = interpret env ast2 in
-              select_pattern (Range.dummy "Apply") env1 value2 [patbr]
-
-        | PrimitiveWithEnvironment(patbr, env1, _, _) ->
-            let value2 = interpret env ast2 in
-              select_pattern (Range.dummy "Apply") env1 value2 [patbr]
-
-        | _ -> report_bug_reduction "Apply: not a function" ast1 value1
-      end
+      let value2 = interpret env ast2 in
+        reduce_beta value1 value2
 
   | ApplyOptional(ast1, ast2) ->
       let value1 = interpret env ast1 in
