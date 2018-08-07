@@ -154,9 +154,14 @@ let eliminate_optionals (ty : mono_type) (e : abstract_tree) : mono_type * abstr
   aux ty e
 *)
 
-let rec occurs (tvid : FreeID.t) (ty : mono_type) =
+let occurs (tvid : FreeID.t) (ty : mono_type) =
+
+  let lev = FreeID.get_level tvid in
 
   let rec iter (_, tymain) =
+(*
+    let () = print_endline ("==== occurs " ^ FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid ^ " in " ^ string_of_mono_type_basic ty) in  (* for debug *)
+*)
     match tymain with
     | TypeVariable(tvref) ->
         begin
@@ -166,8 +171,9 @@ let rec occurs (tvid : FreeID.t) (ty : mono_type) =
           | Bound(_)    -> false
   *)
           | MonoFree(tvidx) ->
-              if FreeID.equal tvidx tvid then true else
-                let lev = FreeID.get_level tvid in
+              if FreeID.equal tvidx tvid then
+                true
+              else
                 let levx = FreeID.get_level tvidx in
                 let () =
                   (* -- update level -- *)
@@ -176,8 +182,11 @@ let rec occurs (tvid : FreeID.t) (ty : mono_type) =
                   else
                     ()
                 in
-                  false
+                match FreeID.get_kind tvidx with
+                | UniversalKind     -> false
+                | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
         end
+
     | FuncType(optrow, tydom, tycod) -> iter_or optrow || iter tydom || iter tycod
     | ProductType(tylist)            -> iter_list tylist
     | ListType(tysub)                -> iter tysub
@@ -207,8 +216,21 @@ let rec occurs (tvid : FreeID.t) (ty : mono_type) =
   iter ty
 
 
-let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
+  let () =
+    match kd with
+    | UniversalKind ->
+        ()
 
+    | RecordKind(tyasc) ->
+        let b = Assoc.fold_value (fun b ty -> b || occurs tvid ty) false tyasc in
+        if b then raise InternalInclusionError else ()
+  in
+  FreeID.set_kind tvid kd
+
+
+let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+(*
   (* begin: for debug *)
   let () =
     match (tymain1, tymain2) with
@@ -217,7 +239,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | _ -> print_endline ("    | unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2))
   in
   (* end: for debug *)
-
+*)
   let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
 
     match (tymain1, tymain2) with
@@ -295,6 +317,8 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
           ()
+        else if occurs tvid1 ty2 || occurs tvid2 ty1 then
+          raise InternalInclusionError
         else
           let (tvid1q, tvid2q) =
             if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
@@ -338,7 +362,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           in
           begin
             unify_list eqnlst;
-            newtvref := MonoFree(FreeID.set_kind newtvid kdunion);
+            newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
           end
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
@@ -504,9 +528,9 @@ let rec typecheck
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
-
+(*
             let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
-
+*)
                 (ContentOf(rng, evid), tyres)
       end
 
@@ -1368,9 +1392,13 @@ and make_type_environment_by_letrec
     | []                              -> (tyenv, tvtylst_forall)
     | (varnm, tvty, evid) :: tvtytail ->
         let prety = tvty in
+(*
           let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
+*)
           let pty = (generalize lev (erase_range_of_type prety)) in
+(*
           let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+*)
           let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
             make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid)) tyenv_before_let tvtytail tvtylst_forall_new
   in
