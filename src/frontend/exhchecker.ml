@@ -290,8 +290,8 @@ let make_int_sig col =
 let make_string_sig col =
   ElementSet.of_list (List.fold_left (fun acc p ->
     match p with
-    | PStringConstant(Value(StringEmpty))       -> EStringConstant("")::acc
-    | PStringConstant(Value(StringConstant(s))) -> EStringConstant(s)::acc
+    | PStringConstant(Value(StringEmpty))       -> EStringConstant("") :: acc
+    | PStringConstant(Value(StringConstant(s))) -> EStringConstant(s) :: acc
     | _                                         -> acc
   ) [EWildCard] col)
 
@@ -339,7 +339,7 @@ let rec exhcheck_mat tylst mat patinfo qtfbl lev tyenv =
     | ExpandListCons            -> reduce_list_instance ins
     | ExpandConstructor(nm, ty) -> reduce_instance nm ty ins
     | ExpandTuple(arity)        -> tuplize_instance arity ins
-    | NoExpand                  -> (instance_of_element ele)::ins
+    | NoExpand                  -> (instance_of_element ele) :: ins
   in
   let patinfo_extract patinfo =
     patinfo |> List.map (fun (n, _) -> n)
