@@ -245,7 +245,7 @@ let rec get_specialized_mat mat patinfo ele tylst =
     in
       (List.rev nmat, List.rev ninfo, nomatch)
   in
-    match (ele, tylst) with
+    match (ele, tylst |> List.map unlink) with
     | (EListCons, (_, ListType(lty)) :: _) ->
         let expnd = ExpandListCons in
         let (nmat, ninfo, nomatch) = iter (List.hd mat) mat in

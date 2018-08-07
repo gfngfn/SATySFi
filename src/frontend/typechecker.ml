@@ -22,12 +22,6 @@ exception InternalInclusionError
 exception InternalContradictionError
 
 
-let unlink ((_, tymain) as ty) =
-  match tymain with
-  | TypeVariable({contents = MonoLink(ty)}) -> ty
-  | _                                       -> ty
-
-
 let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->

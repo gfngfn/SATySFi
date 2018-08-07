@@ -909,6 +909,12 @@ let rec unnormalize (ty : nom_type) : mono_type =
   (rng, tymainu)
 *)
 
+let rec unlink ((_, tymain) as ty) =
+  match tymain with
+  | TypeVariable({contents = MonoLink(ty)}) -> unlink ty
+  | _                                       -> ty
+
+
 let rec erase_range_of_type (ty : mono_type) : mono_type =
   let iter = erase_range_of_type in
   let rng = Range.dummy "erased" in
