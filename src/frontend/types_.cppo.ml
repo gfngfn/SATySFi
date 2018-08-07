@@ -426,7 +426,7 @@ and untyped_abstract_tree_main =
   | UTLetRecIn             of untyped_letrec_binding list * untyped_abstract_tree
   | UTLetNonRecIn          of manual_type option * untyped_pattern_tree * untyped_abstract_tree * untyped_abstract_tree
   | UTIfThenElse           of untyped_abstract_tree * untyped_abstract_tree * untyped_abstract_tree
-  | UTFunction             of (Range.t * var_name) list * untyped_pattern_branch
+  | UTFunction             of (Range.t * var_name) list * untyped_pattern_tree * untyped_abstract_tree
   | UTOpenIn               of Range.t * module_name * untyped_abstract_tree
   | UTFinishHeaderFile
   | UTFinishStruct
@@ -523,7 +523,7 @@ type untyped_let_binding = manual_type option * untyped_pattern_tree * untyped_a
 (* ---- typed ---- *)
 
 type letrec_binding =
-  | LetRecBinding of EvalVarID.t * pattern_branch list
+  | LetRecBinding of EvalVarID.t * pattern_branch
 
 and environment = location EvalVarIDMap.t * (syntactic_value StoreIDHashTable.t) ref
   [@printer (fun fmt _ -> Format.fprintf fmt "<env>")]
@@ -554,13 +554,13 @@ and compiled_intermediate_input_vert_element =
 
 and ir_input_horz_element =
   | IRInputHorzText         of string
-  | IRInputHorzEmbedded     of ir * ir list
+  | IRInputHorzEmbedded     of ir
   | IRInputHorzContent      of ir
   | IRInputHorzEmbeddedMath of ir
 
 
 and ir_input_vert_element =
-  | IRInputVertEmbedded of ir * ir list
+  | IRInputVertEmbedded of ir
   | IRInputVertContent  of ir
 
 and 'a ir_path_component =
@@ -588,6 +588,7 @@ and ir =
   | IRContentOf             of varloc
   | IRIfThenElse            of ir * ir * ir
   | IRFunction              of int * ir_pattern_tree list * ir
+  | IROptFunction           of int * varloc list * ir_pattern_tree * ir
   | IRApply                 of int * ir * ir list
   | IRApplyPrimitive        of instruction * int * ir list
   | IRTuple                 of int * ir list
@@ -622,22 +623,22 @@ and ir_pattern_tree =
 
 and input_horz_element =
   | InputHorzText         of string
-  | InputHorzEmbedded     of abstract_tree * abstract_tree list
+  | InputHorzEmbedded     of abstract_tree
   | InputHorzContent      of abstract_tree
   | InputHorzEmbeddedMath of abstract_tree
 
 and intermediate_input_horz_element =
   | ImInputHorzText         of string
-  | ImInputHorzEmbedded     of abstract_tree * abstract_tree list
+  | ImInputHorzEmbedded     of abstract_tree
   | ImInputHorzContent      of intermediate_input_horz_element list * environment
   | ImInputHorzEmbeddedMath of abstract_tree
 
 and intermediate_input_vert_element =
-  | ImInputVertEmbedded of abstract_tree * abstract_tree list
+  | ImInputVertEmbedded of abstract_tree
   | ImInputVertContent  of intermediate_input_vert_element list * environment
 
 and input_vert_element =
-  | InputVertEmbedded of abstract_tree * abstract_tree list
+  | InputVertEmbedded of abstract_tree
   | InputVertContent  of abstract_tree
 
 and 'a path_component =
@@ -659,8 +660,8 @@ and syntactic_value =
 
   | Constructor           of constructor_name * syntactic_value
 
-  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch list * environment
-  | PrimitiveWithEnvironment   of pattern_branch list * environment * int * (abstract_tree list -> abstract_tree)
+  | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
+  | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
   | CompiledFuncWithEnvironment of int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
 
@@ -695,8 +696,10 @@ and syntactic_value =
   | MathValue                   of math list
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
+(*
   | LambdaHorzWithEnvironment   of EvalVarID.t * abstract_tree * environment
   | LambdaVertWithEnvironment   of EvalVarID.t * abstract_tree * environment
+*)
   | Context                     of input_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
@@ -719,7 +722,7 @@ and abstract_tree =
   | LetNonRecIn           of pattern_tree * abstract_tree * abstract_tree
   | ContentOf             of Range.t * EvalVarID.t
   | IfThenElse            of abstract_tree * abstract_tree * abstract_tree
-  | Function              of EvalVarID.t list * pattern_branch list
+  | Function              of EvalVarID.t list * pattern_branch
   | Apply                 of abstract_tree * abstract_tree
   | ApplyOptional         of abstract_tree * abstract_tree
   | ApplyOmission         of abstract_tree
@@ -734,8 +737,10 @@ and abstract_tree =
 (* -- module system -- *)
   | Module                of abstract_tree * abstract_tree
   | BackendMathList             of abstract_tree list
+(*
   | LambdaHorz                  of EvalVarID.t * abstract_tree
   | LambdaVert                  of EvalVarID.t * abstract_tree
+*)
   | PrimitiveTupleCons    of abstract_tree * abstract_tree
 #include "__attype.gen.ml"
 
@@ -1139,7 +1144,7 @@ let unlift_option_row poptrow =
   | Exit -> None
 
 
-let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) =
+let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) : environment =
   let (valenv, stenvref) = env in
     (valenv |> EvalVarIDMap.add evid rfast, stenvref)
 

@@ -39,10 +39,13 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
       | IRInputHorzText(s) ->
           CompiledInputHorzText(s)
 
-      | IRInputHorzEmbedded(ircmd, irarglist) ->
+      | IRInputHorzEmbedded(irapp) ->
+          let compiled = compile irapp [] in
+(*
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
           let compiled = compile_list irarglist cmdcode in
+*)
             CompiledInputHorzEmbedded(compiled)
 
       | IRInputHorzEmbeddedMath(irmath) ->
@@ -57,10 +60,13 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   let compiled_ivlist =
     ivlst |> List.map (function
-      | IRInputVertEmbedded(ircmd, irarglist) ->
+      | IRInputVertEmbedded(irapp) ->
+          let compiled = compile irapp [] in
+(*
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
           let compiled = compile_list irarglist cmdcode in
+*)
             CompiledInputVertEmbedded(compiled)
 
       | IRInputVertContent(ir) ->
@@ -143,6 +149,9 @@ and compile (ir : ir) (cont : instruction list) =
           OpClosure(List.length irpatlst, 0, optcode) :: cont
         else
           OpClosure(List.length irpatlst, framesize, optcode) :: cont
+
+  | IROptFunction(framesize, vars, irpat, irbody) ->
+      failwith "IROptFunction: remains to be implemented"
 
   | IRApply(arity, ircallee, irargs) ->
       compile_list irargs @@ (compile ircallee @@ emit_appop (List.length irargs) cont false)

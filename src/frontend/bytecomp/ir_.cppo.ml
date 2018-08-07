@@ -42,10 +42,9 @@ let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element l
     | InputHorzText(s) ->
         (IRInputHorzText(s), env)
 
-    | InputHorzEmbedded(astcmd, astarglst) ->
-        let (ircmd, env) = transform env astcmd in
-        let (irarglst, env) = transform_list env astarglst in
-          (IRInputHorzEmbedded(ircmd, irarglst), env)
+    | InputHorzEmbedded(astapp) ->
+        let (irapp, env) = transform env astapp in
+          (IRInputHorzEmbedded(irapp), env)
 
     | InputHorzEmbeddedMath(astmath) ->
         let (irmath, env) = transform env astmath in
@@ -60,10 +59,9 @@ let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element l
 and transform_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astcmd, astarglst) ->
-        let (ircmd, env) = transform env astcmd in
-        let (irarglst, env) = transform_list env astarglst in
-          (IRInputVertEmbedded(ircmd, irarglst), env)
+    | InputVertEmbedded(astapp) ->
+        let (irapp, env) = transform env astapp in
+          (IRInputVertEmbedded(irapp), env)
 
     | InputVertContent(ast) ->
         let (ir, env) = transform env ast in
@@ -228,19 +226,19 @@ and find_in_environment (env : frame) (evid : EvalVarID.t) : varloc option =
   | None                              -> None
 
 
-and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding list) : (varloc * pattern_branch list) list * frame =
+and add_letrec_bindings_to_environment (env : frame) (recbinds : letrec_binding list) : (varloc * pattern_branch) list * frame =
   recbinds @|> env @|> map_with_env (fun env recbind ->
-    let LetRecBinding(evid, patbrs) = recbind in
+    let LetRecBinding(evid, patbr) = recbind in
     let (var, env) = add_to_environment env evid in
-      ((var, patbrs), env)
+      ((var, patbr), env)
   )
 
 
 and flatten_function (astfun : abstract_tree) : abstract_tree * pattern_tree list =
   let rec iter ast acc =
     match ast with
-    | Function([], [PatternBranch(pat, body)]) -> iter body (Alist.extend acc pat)
-    | _                                        -> (ast, Alist.to_list acc)
+    | Function([], PatternBranch(pat, body)) -> iter body (Alist.extend acc pat)
+    | _                                      -> (ast, Alist.to_list acc)
   in
     iter astfun Alist.empty
 
@@ -330,11 +328,13 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (pathelemlst, closingopt, env) = transform_path env pathcomplst cycleopt in
           (IRPath(irpt0, pathelemlst, closingopt), env)
 
+(*
     | LambdaVert(evid, astdef) ->
-        transform env (Function([], [(PatternBranch ((PVariable(evid)), astdef))]))
+        transform env (Function([], PatternBranch(PVariable(evid), astdef)))
 
     | LambdaHorz(evid, astdef) ->
-        transform env (Function([], [(PatternBranch ((PVariable(evid)), astdef))]))
+        transform env (Function([], PatternBranch(PVariable(evid), astdef)))
+*)
 
     | PrimitiveTupleCons(asthd, asttl) ->
         transform_tuple env ast
@@ -355,8 +355,8 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (pairs, env) = add_letrec_bindings_to_environment env recbinds in
         let varir_lst =
           pairs |> List.map (fun pair ->
-            let (var, patbrs) = pair in
-            let (ir, _) = transform env (Function([], patbrs)) in
+            let (var, patbr) = pair in
+            let (ir, _) = transform env (Function([], patbr)) in
               (var, ir)
           )
         in
@@ -376,9 +376,17 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let (irbody, funenv) = transform funenv body in
           (IRFunction(funenv.size, irargs, irbody), env)
 
-    | Function((_ :: _) as evids, patbrs) ->
+    | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
         let (vars, funenv) = map_with_env add_to_environment (new_level env) evids in
+        let (irarg, funenv) = transform_pattern funenv arg in
+        let (irbody, funenv) = transform funenv body in
+          (IROptFunction(funenv.size, vars, irarg, irbody), env)
+(*
         failwith "Function with optional arguments: remains to be implemented."
+*)
+
+    | Function(_, PatternBranchWhen(_, _, _)) ->
+        assert false
 
     | Apply(_, _) ->
         let (callee, args) = flatten_application ast in
