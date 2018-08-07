@@ -341,17 +341,6 @@ and mono_option_row = (mono_type_variable_info ref, mono_option_row_variable_inf
 
 type mono_command_argument_type = (mono_type_variable_info ref, mono_option_row_variable_info ref) command_argument_type
 
-(*
-type nom_type_variable_info =
-  | NomFree of nom_kind FreeID_.t_ * mono_type_variable_info ref
-
-and nom_kind = nom_type_variable_info kind
-
-and nom_type = nom_type_variable_info typ
-[@@deriving show]
-
-type nom_option_row = nom_type_variable_info option_row
-*)
 
 module FreeID =
   struct
@@ -407,9 +396,6 @@ and untyped_abstract_tree_main =
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
   | UTConcat               of untyped_abstract_tree * untyped_abstract_tree
-(*
-  | UTLambdaOptional       of Range.t * var_name * untyped_abstract_tree
-*)
   | UTLambdaHorz           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaVert           of Range.t * var_name * untyped_abstract_tree
   | UTLambdaMath           of untyped_abstract_tree
@@ -828,11 +814,6 @@ type output_unit =
   | OShallow
 *)
 
-(*
-let poly_extend (fmono : mono_type -> mono_type) : (poly_type -> poly_type) =
-  (fun (Poly(ty)) -> Poly(fmono ty))
-*)
-
 let get_range (rng, _) = rng
 
 
@@ -848,66 +829,6 @@ let lift_manual_common f = function
   | MMandatoryArgumentType(mnty) -> f mnty
   | MOptionalArgumentType(mnty)  -> f mnty
 
-(*
-(* -- 'normalize_type': eliminates 'Link(_)' -- *)
-let rec normalize_mono_type (ty : mono_type) : nom_type =
-  let iter = normalize_mono_type in
-  let (rng, tymain) = ty in
-    match tymain with
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | MonoFree(tvid)   -> (rng, TypeVariable(NomFree(FreeID.map_kind normalize_kind tvid, tvref)))
-          | MonoLink(tylink) -> iter tylink
-        end
-
-    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map iter tylist, tyid))
-    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map iter tylist, tyid, iter tyreal))
-    | BaseType(bt)                      -> (rng, BaseType(bt))
-    | ListType(tycont)                  -> (rng, ListType(iter tycont))
-    | RefType(tycont)                   -> (rng, RefType(iter tycont))
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(normalize_option_row optrow, iter tydom, iter tycod))
-    | ProductType(tylist)               -> (rng, ProductType(List.map iter tylist))
-    | RecordType(tyassoc)               -> (rng, RecordType(Assoc.map_value iter tyassoc))
-    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type iter) tylist))
-    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type iter) tylist))
-    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type iter) tylist))
-
-
-and normalize_kind (kd : mono_kind) : nom_kind =
-  match kd with
-  | UniversalKind     -> UniversalKind
-  | RecordKind(tyasc) -> RecordKind(Assoc.map_value normalize_mono_type tyasc)
-
-
-and normalize_option_row (optrow : mono_option_row) : nom_option_row =
-  match optrow with
-  | OptionRowEmpty          -> OptionRowEmpty
-  | OptionRowCons(ty, tail) -> OptionRowCons(normalize_mono_type ty, normalize_option_row tail)
-  | OptionRowVariable({contents = OptionRowLink(optrow)}) -> normalize_option_row optrow
-  | OptionRowVariable(orref)                              -> OptionRowVariable(orref)
-
-
-let rec unnormalize (ty : nom_type) : mono_type =
-  let iter = unnormalize in
-  let (rng, tymain) = ty in
-  let tymainu =
-    match tymain with
-    | TypeVariable(NomFree(_, tvref))   -> TypeVariable(tvref)
-    | VariantType(tylist, tyid)         -> VariantType(List.map iter tylist, tyid)
-    | SynonymType(tylist, tyid, tyreal) -> SynonymType(List.map iter tylist, tyid, iter tyreal)
-    | BaseType(bt)                      -> BaseType(bt)
-    | ListType(tycont)                  -> ListType(iter tycont)
-    | RefType(tycont)                   -> RefType(iter tycont)
-    | FuncType(tyoptsr, tydom, tycod)   -> FuncType(ref (List.map iter (!tyoptsr)), iter tydom, iter tycod)
-    | ProductType(tylist)               -> ProductType(List.map iter tylist)
-    | RecordType(tyassoc)               -> RecordType(Assoc.map_value iter tyassoc)
-    | HorzCommandType(tylist)           -> HorzCommandType(List.map (lift_argument_type iter) tylist)
-    | VertCommandType(tylist)           -> VertCommandType(List.map (lift_argument_type iter) tylist)
-    | MathCommandType(tylist)           -> MathCommandType(List.map (lift_argument_type iter) tylist)
-  in
-  (rng, tymainu)
-*)
 
 let rec unlink ((_, tymain) as ty) =
   match tymain with
@@ -1217,37 +1138,9 @@ let unlift_option_row poptrow =
   try Some(unlift_aux_or poptrow) with
   | Exit -> None
 
-(*
-let copy_environment (env : environment) : environment =
-  let (valenv, stenv) = env in
-    (Hashtbl.copy valenv, stenv)
-*)
-
-(*
-let replicate_store (env : environment) : environment =
-  let (valenv, stenv) = env in
-  let stenvnew = StoreIDHashTable.copy stenv in
-(*
-  let stenvnew = StoreIDHashTable.create 32 in
-  StoreIDHashTable.iter (fun stid value -> StoreIDHashTable.add stenvnew stid value) stenv;
-*)
-(*
-  Format.printf "Types> ==== REPLICATE ====\n";
-  StoreIDHashTable.iter (fun stid value ->
-    Format.printf "| %s %a\n" (StoreID.show_direct stid) pp_syntactic_value value) stenv;
-  Format.printf "Types> ==== END REPLICATE ====\n";
-
-  Format.printf "Types> ==== VALENV ====\n";
-  EvalVarIDMap.iter (fun evid loc ->
-    Format.printf "| %s\n" (EvalVarID.show_direct evid)) valenv;
-  Format.printf "Types> ==== END VALENV ====\n";
-*)
-    (valenv, stenvnew)
-*)
 
 let add_to_environment (env : environment) (evid : EvalVarID.t) (rfast : location) =
   let (valenv, stenvref) = env in
-    (*  Format.printf "Types> add %s \n" (EvalVarID.show_direct evid); *)
     (valenv |> EvalVarIDMap.add evid rfast, stenvref)
 
 
@@ -1260,9 +1153,6 @@ let register_location (env : environment) (value : syntactic_value) : StoreID.t 
   let (_, stenvref) = env in
   let stid = StoreID.fresh () in
   StoreIDHashTable.add (!stenvref) stid value;
-(*
-  Format.printf "Types> Assign %s <--- %a\n" (StoreID.show_direct stid) pp_syntactic_value value;  (* for debug *)
-*)
   stid
 
 
@@ -1400,11 +1290,6 @@ module MathContext
 
 type math_context = MathContext.t
 
-(*
-(* !!!! ---- global variable ---- !!!! *)
-
-let global_hash_env : (string, location) Hashtbl.t = Hashtbl.create 32
-*)
 
 (* -- following are all for debugging -- *)
 
@@ -1445,9 +1330,6 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(TextColType) -> "block-text" ^ qstn
     | BaseType(BoxRowType)  -> "inline-boxes" ^ qstn
     | BaseType(BoxColType)  -> "block-boxes" ^ qstn
-(*
-    | BaseType(FontType)    -> "font" ^ qstn
-*)
     | BaseType(ContextType) -> "context" ^ qstn
     | BaseType(PrePathType) -> "pre-path" ^ qstn
     | BaseType(PathType)    -> "path" ^ qstn
