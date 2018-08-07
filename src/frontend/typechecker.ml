@@ -22,6 +22,12 @@ exception InternalInclusionError
 exception InternalContradictionError
 
 
+let unlink ((_, tymain) as ty) =
+  match tymain with
+  | TypeVariable({contents = MonoLink(ty)}) -> ty
+  | _                                       -> ty
+
+
 let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
@@ -660,13 +666,13 @@ let rec typecheck
       let (e2, ty2) = typecheck_iter tyenv utast2 in
       let eret = Apply(e1, e2) in
       begin
-        match ty1 with
+        match unlink ty1 with
         | (_, FuncType(_, tydom, tycod)) ->
             let () = unify tydom ty2 in
             let tycodnew = overwrite_range_of_type tycod rng in
               (eret, tycodnew)
 
-        | _ ->
+        | ty1 ->
             let tvid = FreeID.fresh UniversalKind qtfbl lev () in
             let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
             let orv = OptionRowVarID.fresh lev in
