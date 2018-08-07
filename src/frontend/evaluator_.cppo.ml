@@ -152,12 +152,6 @@ and interpret env ast =
       in
         LengthConstant(len)
 
-(*
-  | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
-
-  | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
-*)
-
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid) ->
@@ -208,7 +202,8 @@ and interpret env ast =
             let env1 = add_to_environment env1 evid (ref (Constructor("None", UnitConstant))) in
             FuncWithEnvironment(evids, patbrs, env1)
 
-        | _ -> report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
+        | _ ->
+            report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
       end
 
   | IfThenElse(astb, ast1, ast2) ->
@@ -231,7 +226,8 @@ and interpret env ast =
               | Some(v) -> v
             end
 
-        | _ -> report_bug_reduction "AccessField: not a Record" ast1 value1
+        | _ ->
+            report_bug_reduction "AccessField: not a Record" ast1 value1
       end
 
 (* ---- imperatives ---- *)
