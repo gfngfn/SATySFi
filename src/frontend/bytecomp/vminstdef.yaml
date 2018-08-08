@@ -198,7 +198,8 @@ code: |
         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
       in
       let body = OpPush(Constructor("Some", v)) :: bindop :: body in
-        CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
+      let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+        exec (fnew :: stack) env code dump
 
   | _ ->
       report_bug_vm_value "ApplyOptional: not a function with optional arguments" f
@@ -217,7 +218,8 @@ code: |
         | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
       in
       let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
-        CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
+      let fnew = CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1) in
+        exec (fnew :: stack) env code dump
 
   | _ ->
       report_bug_vm_value "ApplyOmission: not a function with optional arguments" f

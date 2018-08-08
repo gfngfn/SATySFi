@@ -379,15 +379,15 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         assert false
 
     | Apply(_, _) ->
-        let (callee, args) = flatten_application ast in
+        let (astcallee, astargs) = flatten_application ast in
           begin
-            match check_primitive env callee with
-            | Some((arity, astf))  when arity = List.length args ->
-                transform env (astf args)
+            match check_primitive env astcallee with
+            | Some((arity, astf))  when arity = List.length astargs ->
+                transform env (astf astargs)
 
             | _ ->
-                let (ircallee, env) = transform env callee in
-                let (irargs, env) = transform_list env args in
+                let (ircallee, env) = transform env astcallee in
+                let (irargs, env) = transform_list env astargs in
                   (IRApply(List.length irargs, ircallee, irargs), env)
             end
 
