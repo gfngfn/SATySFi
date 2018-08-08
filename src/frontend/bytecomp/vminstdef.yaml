@@ -133,39 +133,39 @@ code: |
             OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
         ) body
       in
-    if arity = n then
-      begin
-       if pargs = [] then
-          exec stack (newframe env1 framesize) body dump
-        else
-          let (args, stack) = popn stack n in
-          let allargs = List.rev (pargs @ args) in
-            exec (allargs @ stack) (newframe env1 framesize) body dump
-      end
+      if arity = n then
+        begin
+         if pargs = [] then
+            exec stack (newframe env1 framesize) body dump
+          else
+            let (args, stack) = popn stack n in
+            let allargs = List.rev (pargs @ args) in
+              exec (allargs @ stack) (newframe env1 framesize) body dump
+        end
 
-    else if arity > n then
-      let (args, stack) = popn stack n in
-      let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
-        exec (applied :: stack) env code dump
-
-    else
-      let (surplus, stack) = popn stack (n-arity) in
-      let (args, stack) = popn stack arity in
-      let allargs = List.rev (pargs @ args) in
-        exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
-
-   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
-     if arity = n then
-       exec stack (newframe env1 framesize) body dump
-
-     else if arity > n then
-       let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+      else if arity > n then
+        let (args, stack) = popn stack n in
+        let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
           exec (applied :: stack) env code dump
 
-     else
-       let (surplus, stack) = popn stack (n-arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
+      else
+        let (surplus, stack) = popn stack (n-arity) in
+        let (args, stack) = popn stack arity in
+        let allargs = List.rev (pargs @ args) in
+          exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
+
+   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+       if arity = n then
+         exec stack (newframe env1 framesize) body dump
+
+       else if arity > n then
+         let (args, stack) = popn stack n in
+          let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+            exec (applied :: stack) env code dump
+
+       else
+         let (surplus, stack) = popn stack (n-arity) in
+           exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
    | _ -> report_bug_vm "ApplyT: not a function"
 
