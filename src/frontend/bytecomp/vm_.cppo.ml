@@ -153,7 +153,7 @@ and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imi
     imivlst |> List.map (fun imiv ->
         match imiv with
         | CompiledImInputVertEmbedded(code) ->
-            let valueret = exec [valuectx] env (code) [] in
+            let valueret = exec [valuectx] env code [] in
               get_vert valueret
 
         | CompiledImInputVertContent(imivlstsub, envsub) ->

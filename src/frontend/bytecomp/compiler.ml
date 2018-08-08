@@ -39,8 +39,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
       | IRInputHorzText(s) ->
           CompiledInputHorzText(s)
 
-      | IRInputHorzEmbedded(irapp) ->
-          let compiled = compile irapp [] in
+      | IRInputHorzEmbedded(irabs) ->
+          let compiled = compile irabs [] in
 (*
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
@@ -60,8 +60,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   let compiled_ivlist =
     ivlst |> List.map (function
-      | IRInputVertEmbedded(irapp) ->
-          let compiled = compile irapp [] in
+      | IRInputVertEmbedded(irabs) ->
+          let compiled = compile irabs [] in
 (*
           let appcode = emit_appop (List.length irarglist) [] true in
           let cmdcode = compile ircmd appcode in
@@ -222,7 +222,7 @@ and compile (ir : ir) (cont : instruction list) =
         compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
 
 
-and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) cont =
+and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =
     if cond then a :: b else b
   in
@@ -247,7 +247,7 @@ and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) cont =
     iter (List.rev patbrs) [OpError("no matches (" ^ (Range.to_string rng) ^ ")")] 0
 
 
-and compile_patlist patlist cont =
+and compile_patlist (patlist : ir_pattern_tree list) (cont : instruction list) : instruction list =
   let next = [OpError("no matches")] in
   let rec iter patlist cont =
     match patlist with
@@ -258,7 +258,7 @@ and compile_patlist patlist cont =
     iter patlist cont
 
 
-and compile_patcheck (pat : ir_pattern_tree) next cont =
+and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : instruction list) : instruction list =
   let return inst = inst :: cont in
     match pat with
     | IRPIntegerConstant(pnc) -> return (OpCheckStackTopInt(pnc, next))
@@ -270,14 +270,14 @@ and compile_patcheck (pat : ir_pattern_tree) next cont =
     | IRPVariable(var) ->
         begin
           match var with
-          | GlobalVar(loc, evid, refs) -> return (OpBindGlobal(loc, evid, !refs))
+          | GlobalVar(loc, evid, refs)    -> return (OpBindGlobal(loc, evid, !refs))
           | LocalVar(lv, off, evid, refs) -> return (OpBindLocal(lv, off, evid, !refs))
         end
 
     | IRPAsVariable(var, psub) ->
         let bindop =
           match var with
-          | GlobalVar(loc, evid, refs) -> OpBindGlobal(loc, evid, !refs)
+          | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
           | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
         in
         let code = compile_patcheck psub next cont in
