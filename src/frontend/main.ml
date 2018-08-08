@@ -107,7 +107,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
     Logging.begin_to_parse_file file_path_in;
     let curdir = Filename.dirname file_path_in in
     let file_in = open_in file_path_in in
-    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
       let file_path_sub = make_absolute_path curdir headerelem in
@@ -204,7 +204,7 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
     Logging.begin_to_parse_file file_path_in;
     let file_in = open_in file_path_in in
     let curdir = Filename.dirname file_path_in in
-    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     header |> List.iter (fun headerelem ->
       let file_path_sub = make_absolute_path curdir headerelem in
