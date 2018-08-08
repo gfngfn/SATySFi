@@ -47,11 +47,11 @@ let tRE           = (~! "regexp"  , BaseType(RegExpType)  )
 let tL ty         = (~! "list"    , ListType(ty)          )
 let tR ty         = (~! "ref"     , RefType(ty)           )
 let tPROD tylst   = (~! "product" , ProductType(tylst)    )
-let (@->) dom cod = (~! "func"    , FuncType(ref [], dom, cod))
+let (@->) dom cod = (~! "func"    , FuncType(OptionRowEmpty, dom, cod))
 
 (* -- predefined data types -- *)
 let tOPT ty       = (~! "option"  , VariantType([ty], tyid_option))
-let tITMZ         = (~! "itemize" , VariantType([], tyid_itemize) )
+let tITMZ ()      = (~! "itemize" , VariantType([], tyid_itemize) )
 let tSCR          = (~! "script"  , VariantType([], tyid_script)  )
 let tLANG         = (~! "language", VariantType([], tyid_language))
 let tCLR          = (~! "color"   , VariantType([], tyid_color)   )
@@ -135,13 +135,13 @@ let tRULESF = (tL tLN) @-> (tL tLN) @-> (tL tGR)
 
 let option_type = tOPT
 
-let itemize_type = tITMZ
+let itemize_type () = tITMZ ()
 
 
 let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = BoundID.fresh UniversalKind () in
-  let typaram = (dr, TypeVariable(ref (Bound(bid)))) in
+  let typaram = (dr, TypeVariable(PolyBound(bid))) in
 
   tyenvmid
   |> Typeenv.Raw.register_type "option" tyid_option (Typeenv.Data(1))
@@ -149,7 +149,7 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "Some" ([bid], Poly(typaram)) tyid_option
 
   |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL tITMZ])) tyid_itemize
+  |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
 
   |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
@@ -212,50 +212,52 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "inline-graphics" tyid_igraf (Typeenv.Alias(([], Poly(tIGR_raw))))
 
 
-let lam evid ast = Function([PatternBranch(PVariable(evid), ast)])
-let lamenv env evid arity ast astf = PrimitiveWithEnvironment([PatternBranch(PVariable(evid), ast)], env, arity, astf)
+let lam evid ast = Function([], PatternBranch(PVariable(evid), ast))
+let lamenv env evid arity ast astf = PrimitiveWithEnvironment(PatternBranch(PVariable(evid), ast), env, arity, astf)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
+let dr = Range.dummy "dummy:lambda"
+
 let rec lambda1 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda1-1)") in
     lamenv env evid1 1 (astf (!- evid1))
       (fun lst -> match lst with
                   | [a1] -> astf a1
                   | _ -> failwith "internal error")
 
 let rec lambda2 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda2-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda2-2)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda2-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda2-2)") in
     lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
       (fun lst -> match lst with
                   | [a1;a2] -> astf a1 a2
                   | _ -> failwith "internal error")
 
 let rec lambda3 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda3-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda3-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda3-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda3-3)") in
     lamenv env evid1 3 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
       (fun lst -> match lst with
                   | [a1;a2;a3] -> astf a1 a2 a3
                   | _ -> failwith "internal error")
 
 let rec lambda4 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda4-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda4-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
-  let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda4-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda4-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda4-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda4-4)") in
     lamenv env evid1 4 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
       (fun lst -> match lst with
                   | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
                   | _ -> failwith "internal error")
 
 let rec lambda5 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda5-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda5-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda5-3)" in
-  let evid4 = EvalVarID.fresh "(dummy:lambda5-4)" in
-  let evid5 = EvalVarID.fresh "(dummy:lambda5-5)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda5-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda5-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda5-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda5-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda5-5)") in
     lamenv env evid1 5 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
       (fun lst -> match lst with
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
@@ -551,8 +553,8 @@ let make_environments () =
   let (~@) n        = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
   let (~%) ty       = Poly(ty) in
-  let tv1 = (let bid1 = BoundID.fresh UniversalKind () in ref (Bound(bid1))) in
-  let tv2 = (let bid2 = BoundID.fresh UniversalKind () in ref (Bound(bid2))) in
+  let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
+  let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
 
   let table : (var_name * poly_type * (environment -> syntactic_value)) list =
     let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
@@ -578,7 +580,7 @@ let make_environments () =
   let temporary_ast = StringEmpty in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
-      let evid = EvalVarID.fresh varnm in
+      let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
       let envnew = add_to_environment env evid loc in

@@ -46,10 +46,10 @@ let report_error (cat : error_category) (lines : line list) =
     match lst with
     | []                     -> ()
     | NormalLine(s) :: tail
-    | NormalLineOption(Some(s)) :: tail  
+    | NormalLineOption(Some(s)) :: tail
       -> begin print_endline ("    " ^ s) ; aux tail end
     | DisplayLine(s) :: tail
-    | DisplayLineOption(Some(s)) :: tail 
+    | DisplayLineOption(Some(s)) :: tail
       -> begin print_endline ("      " ^ s); aux tail end
     | _ :: tail -> aux tail
   in
@@ -60,7 +60,7 @@ let report_error (cat : error_category) (lines : line list) =
     | NormalLineOption(Some(s)) :: tail
       -> begin print_endline s; aux tail end
     | DisplayLine(s) :: tail
-    | DisplayLineOption(Some(s)) :: tail 
+    | DisplayLineOption(Some(s)) :: tail
       -> begin print_endline ("\n      " ^ s); aux tail end
     | _ :: tail -> aux tail
   in
@@ -107,7 +107,7 @@ let rec register_library_file (dg : file_info FileDependencyGraph.t) (file_path_
     Logging.begin_to_parse_file file_path_in;
     let curdir = Filename.dirname file_path_in in
     let file_in = open_in file_path_in in
-    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (LibraryFile(utast));
     header |> List.iter (fun headerelem ->
       let file_path_sub = make_absolute_path curdir headerelem in
@@ -204,7 +204,7 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
     Logging.begin_to_parse_file file_path_in;
     let file_in = open_in file_path_in in
     let curdir = Filename.dirname file_path_in in
-    let (header, utast) = ParserInterface.process (Lexing.from_channel file_in) in
+    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     header |> List.iter (fun headerelem ->
       let file_path_sub = make_absolute_path curdir headerelem in
@@ -560,6 +560,21 @@ let error_log_environment suspended =
         NormalLine("pattern variable '" ^ varnm ^ "' is bound more than once.");
       ]
 
+  | Typechecker.MultipleFieldInRecord(rng, fldnm) ->
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
+      ]
+
+  | Typechecker.ApplicationOfNonFunction(rng, tyenv, ty) ->
+      let strty = string_of_mono_type tyenv ty in
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this expression has type");
+        DisplayLine(strty);
+        NormalLine("and thus it cannot be applied to arguments.");
+      ]
+
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
       report_error Typechecker [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
@@ -621,8 +636,14 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation of value '" ^ varnm ^ "' has type");
         DisplayLine(Display.string_of_poly_type tyenv1 pty1);
+(*
+        DisplayLine(string_of_poly_type_basic pty1);  (* FOR DEBUG *)
+*)
         NormalLine("which is inconsistent with the type required by the signature");
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
+(*
+        DisplayLine(string_of_poly_type_basic pty2);  (* FOR DEBUG *)
+*)
       ]
 
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
@@ -678,7 +699,7 @@ let error_log_environment suspended =
 let arg_version () =
   begin
     print_string (
-        "  SATySFi version 0.0.1\n"
+        "  SATySFi version 0.0.2\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"

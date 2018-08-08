@@ -39,10 +39,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
       | IRInputHorzText(s) ->
           CompiledInputHorzText(s)
 
-      | IRInputHorzEmbedded(ircmd, irarglist) ->
-          let appcode = emit_appop (List.length irarglist) [] true in
-          let cmdcode = compile ircmd appcode in
-          let compiled = compile_list irarglist cmdcode in
+      | IRInputHorzEmbedded(irabs) ->
+          let compiled = compile irabs [] in
             CompiledInputHorzEmbedded(compiled)
 
       | IRInputHorzEmbeddedMath(irmath) ->
@@ -57,10 +55,8 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 and compile_input_vert_content (ivlst : ir_input_vert_element list) =
   let compiled_ivlist =
     ivlst |> List.map (function
-      | IRInputVertEmbedded(ircmd, irarglist) ->
-          let appcode = emit_appop (List.length irarglist) [] true in
-          let cmdcode = compile ircmd appcode in
-          let compiled = compile_list irarglist cmdcode in
+      | IRInputVertEmbedded(irabs) ->
+          let compiled = compile irabs [] in
             CompiledInputVertEmbedded(compiled)
 
       | IRInputVertContent(ir) ->
@@ -135,20 +131,27 @@ and compile (ir : ir) (cont : instruction list) =
   | IRLetNonRecIn(ir1, irpat, ir2) ->
       compile ir1 @@ compile_patsel (Range.dummy "LetNonRecIn") [IRPatternBranch(irpat, ir2)] cont
 
-  | IRFunction(framesize, irpatlst, irbody) ->
+  | IRFunction(framesize, optvars, irpatlst, irbody) ->
       let body = compile irbody [] in
       let patlst = compile_patlist irpatlst body in
       let (optcode, n) = optimize_func_prologue patlst in
         if framesize - n = 0 then
-          OpClosure(List.length irpatlst, 0, optcode) :: cont
+          OpClosure(optvars, List.length irpatlst, 0, optcode) :: cont
         else
-          OpClosure(List.length irpatlst, framesize, optcode) :: cont
+          OpClosure(optvars, List.length irpatlst, framesize, optcode) :: cont
 
   | IRApply(arity, ircallee, irargs) ->
-      compile_list irargs @@ (compile ircallee @@ emit_appop (List.length irargs) cont false)
+      let n = List.length irargs in
+      compile ircallee @@ (compile_list irargs @@ OpForward(n) :: emit_appop n cont false)
 
   | IRApplyPrimitive(op, arity, irargs) ->
       compile_list irargs (op :: cont)
+
+  | IRApplyOptional(ircallee, iroptarg) ->
+      compile ircallee @@ (compile iroptarg @@ OpApplyOptional :: cont)
+
+  | IRApplyOmission(irabs) ->
+      compile irabs @@ OpApplyOmission :: cont
 
   | IRTuple(len, iritems) ->
       compile_list iritems (OpMakeTuple(len) :: cont)
@@ -207,7 +210,7 @@ and compile (ir : ir) (cont : instruction list) =
         compile irpt0 (OpPath(pathelemlst, closingopt) :: cont)
 
 
-and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) cont =
+and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) (cont : instruction list) : instruction list =
   let consif cond a b =
     if cond then a :: b else b
   in
@@ -232,7 +235,7 @@ and compile_patsel (rng : Range.t) (patbrs : ir_pattern_branch list) cont =
     iter (List.rev patbrs) [OpError("no matches (" ^ (Range.to_string rng) ^ ")")] 0
 
 
-and compile_patlist patlist cont =
+and compile_patlist (patlist : ir_pattern_tree list) (cont : instruction list) : instruction list =
   let next = [OpError("no matches")] in
   let rec iter patlist cont =
     match patlist with
@@ -243,7 +246,7 @@ and compile_patlist patlist cont =
     iter patlist cont
 
 
-and compile_patcheck (pat : ir_pattern_tree) next cont =
+and compile_patcheck (pat : ir_pattern_tree) (next : instruction list) (cont : instruction list) : instruction list =
   let return inst = inst :: cont in
     match pat with
     | IRPIntegerConstant(pnc) -> return (OpCheckStackTopInt(pnc, next))
@@ -255,14 +258,14 @@ and compile_patcheck (pat : ir_pattern_tree) next cont =
     | IRPVariable(var) ->
         begin
           match var with
-          | GlobalVar(loc, evid, refs) -> return (OpBindGlobal(loc, evid, !refs))
+          | GlobalVar(loc, evid, refs)    -> return (OpBindGlobal(loc, evid, !refs))
           | LocalVar(lv, off, evid, refs) -> return (OpBindLocal(lv, off, evid, !refs))
         end
 
     | IRPAsVariable(var, psub) ->
         let bindop =
           match var with
-          | GlobalVar(loc, evid, refs) -> OpBindGlobal(loc, evid, !refs)
+          | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
           | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
         in
         let code = compile_patcheck psub next cont in

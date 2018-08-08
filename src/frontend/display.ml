@@ -2,7 +2,7 @@ module Types = Types_
 open Types
 
 
-let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
+let string_of_record_type (type a) (type b) (f : (a, b) typ -> string) (asc : ((a, b) typ) Assoc.t) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -12,7 +12,7 @@ let string_of_record_type (f : mono_type -> string) (asc : mono_type Assoc.t) =
     "(|" ^ (aux (Assoc.to_list asc)) ^ "|)"
 
 
-let string_of_kind (f : mono_type -> string) (kdstr : kind) =
+let string_of_kind (type a) (type b) (f : (a, b) typ -> string) (kdstr : (a, b) kind) =
   let rec aux lst =
     match lst with
     | []                     -> " -- "
@@ -32,13 +32,15 @@ let rec variable_name_of_number (n : int) =
   ) ^ (String.make 1 (Char.chr ((Char.code 'a') + n mod 26)))
 
 
-let show_type_variable (f : mono_type -> string) (name : string) (kd : kind) =
+let show_type_variable (type a) (type b) (f : (a, b) typ -> string) (name : string) (kd : (a, b) kind) =
   match kd with
   | UniversalKind   -> name
-  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f (normalize_kind kd)) ^ ")"
+  | RecordKind(asc) -> "(" ^ name ^ " <: " ^ (string_of_kind f kd) ^ ")"
 
 
-type general_id = FreeID of FreeID.t | BoundID of BoundID.t
+type general_id =
+  | FreeID  of mono_kind FreeID_.t_
+  | BoundID of BoundID.t
 
 
 module GeneralIDHashTable_ = Hashtbl.Make(
@@ -93,33 +95,29 @@ module GeneralIDHashTable
   end
 
 
-let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) ((_, tymain) : mono_type) =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_cmd  = string_of_command_argument_type tyenv current_ht in
-  let iter_args = string_of_type_argument_list tyenv current_ht in
-  let iter_list = string_of_mono_type_list tyenv current_ht in
+type paren_level =
+  | Outmost
+  | DomainSide
+  | ProductElement
+  | Single
+
+
+let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv : Typeenv.t) (current_ht : int GeneralIDHashTable.t) (plev : paren_level) ((_, tymain) : ('a, 'b) typ) =
+  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
+  let iter_cmd  = string_of_command_argument_type tvf ortvf tyenv current_ht in
+  let iter_args = string_of_type_argument_list tvf ortvf tyenv current_ht in
+  let iter_prod = string_of_product tvf ortvf tyenv current_ht in
+  let iter_or = string_of_option_row tvf ortvf tyenv current_ht in
     match tymain with
 
-    | TypeVariable(tvref) ->
-        begin
-          match !tvref with
-          | Link(tyl)  ->
-            (* -- 'Link(_)' must be eliminated by 'normalize_mono_type' and 'normalize_kind' -- *)
-              assert false
+    | TypeVariable(tvi) -> tvf plev tvi
+(*
 (*
               "${" ^ iter tyl ^ "}"  (* TEMPORARY *)
 *)
 
           | Bound(bid) ->
-              let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
-              let s = "'#" ^ (variable_name_of_number num) in
-                show_type_variable iter s (BoundID.get_kind bid)
-
-          | Free(tvid) ->
-              let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
-              let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
-                show_type_variable iter s (FreeID.get_kind tvid)
-        end
+*)
 
     | BaseType(EnvType)     -> "env"  (* -- unused -- *)
     | BaseType(UnitType)    -> "unit"
@@ -145,58 +143,64 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
     | BaseType(MathType)     -> "math"
     | BaseType(RegExpType)   -> "regexp"
 
-    | VariantType(tyarglist, tyid) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
+    | VariantType(tyarglist, tyid) ->
+        let s = (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid) in
+        begin
+          match (tyarglist, plev) with
+          | (_ :: _, Single) -> "(" ^ s ^ ")"
+          | _                 -> s
+        end
 
-    | SynonymType(tyarglist, tyid, tyreal) -> (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
-                                             ^ " (= " ^ (iter tyreal) ^ ")"
-
-    | FuncType(tyoptsr, ((_, tydommain) as tydom), tycod) ->
-        let stropts =
-          !tyoptsr |> List.map (fun ((_, tymain) as ty) ->
-            let s = iter ty in
-              match tymain with
-              | FuncType(_, _, _) -> "(" ^ s ^ ") ?-> "
-              | _                 -> s ^ " ?-> "
-          )
+    | SynonymType(tyarglist, tyid, tyreal) ->
+        let s =
+          (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid)
+          ^ " (= " ^ (iter Single tyreal) ^ ")"
         in
-        let strdom = iter tydom in
-        let strcod = iter tycod in
-          (String.concat "" stropts) ^
+        begin
+          match (tyarglist, plev) with
+          | (_ :: _, Single) -> "(" ^ s ^ ")"
+          | _                -> s
+        end
+
+    | FuncType(optrow, ((_, tydommain) as tydom), tycod) ->
+        let stropts = iter_or optrow in
+        let strdom = iter DomainSide tydom in
+        let strcod = iter Outmost tycod in
+        let s = stropts ^ strdom ^ " -> " ^ strcod in
+        begin
+          match plev with
+          | Single | ProductElement | DomainSide -> "(" ^ s ^ ")"
+          | _                                    -> s
+        end
+
+    | ListType(tycont) ->
+        let strcont = iter Single tycont in
+        let s = strcont ^ " list" in
+        begin
+          match plev with
+          | Single -> "(" ^ s ^ ")"
+          | _      -> s
+        end
+
+    | RefType(tycont) ->
+        let strcont = iter Single tycont in
+        let s = strcont ^ " ref" in
           begin
-            match tydommain with
-            | FuncType(_, _, _) -> "(" ^ strdom ^ ")"
-            | _                 -> strdom
-          end ^ " -> " ^ strcod
+            match plev with
+            | Single -> "(" ^ s ^ ")"
+            | _      -> s
+          end
 
-    | ListType((_, tycontmain) as tycont) ->
-        let strcont = iter tycont in
-          begin
-            match tycontmain with
-            | FuncType(_, _, _)
-            | ProductType(_)
-            | ListType(_)
-            | RefType(_)
-            | VariantType(_ :: _, _)
-                -> "(" ^ strcont ^ ")"
-            | _ -> strcont
-          end ^ " list"
+    | ProductType(tylist) ->
+        let s = iter_prod tylist in
+        begin
+          match plev with
+          | Single | ProductElement -> "(" ^ s ^ ")"
+          | _                       -> s
+        end
 
-    | RefType((_, tycontmain) as tycont) ->
-        let strcont = iter tycont in
-          begin
-            match tycontmain with
-            | FuncType(_, _, _)
-            | ProductType(_)
-            | ListType(_)
-            | RefType(_)
-            | VariantType(_ :: _, _)
-                -> "(" ^ strcont ^ ")"
-            | _ -> strcont
-          end ^ " ref"
-
-    | ProductType(tylist) -> iter_list tylist
-
-    | RecordType(asc) -> string_of_record_type iter asc
+    | RecordType(asc) ->
+        string_of_record_type (iter Outmost) asc
 
     | HorzCommandType(cmdargtylist) ->
         let slist = List.map iter_cmd cmdargtylist in
@@ -211,60 +215,49 @@ let rec string_of_mono_type_sub (tyenv : Typeenv.t) (current_ht : int GeneralIDH
         "[" ^ (String.concat "; " slist) ^ "] math-cmd"
 
 
-and string_of_command_argument_type tyenv current_ht = function
+and string_of_option_row tvf ortvf tyenv current_ht = function
+  | OptionRowEmpty -> ""
+
+  | OptionRowVariable(orvi) -> ortvf orvi
+
+  | OptionRowCons(ty, tail) ->
+      let s = string_of_mono_type_sub tvf ortvf tyenv current_ht DomainSide ty in
+      s ^ "?-> " ^ (string_of_option_row tvf ortvf tyenv current_ht tail)
+
+
+and string_of_command_argument_type tvf ortvf tyenv current_ht cmdargty =
+  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
+  match cmdargty with
   | MandatoryArgumentType(ty) ->
-      string_of_mono_type_sub tyenv current_ht ty
+      iter Outmost ty
 
-  | OptionalArgumentType((_, tymain) as ty)  ->
-      let strty = string_of_mono_type_sub tyenv current_ht ty in
-      begin
-        match tymain with
-        | ProductType(_)
-        | FuncType(_, _, _)
-          -> "(" ^ strty ^  ")?"
-
-        | _ -> strty ^ "?"
-      end
+  | OptionalArgumentType(ty)  ->
+      let strty = iter Outmost ty in
+      strty ^ "?"
 
 
-and string_of_type_argument_list tyenv current_ht tyarglist =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_args = string_of_type_argument_list tyenv current_ht in
+and string_of_type_argument_list tvf ortvf tyenv current_ht tyarglist =
+  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
+  let iter_args = string_of_type_argument_list tvf ortvf tyenv current_ht in
     match tyarglist with
-    | []           -> ""
+    | [] ->
+        ""
+
     | head :: tail ->
-        let strhd = iter head in
+        let strhd = iter Single head in
         let strtl = iter_args tail in
-        let (_, headmain) = head in
-          begin
-            match headmain with
-            | FuncType(_, _, _)
-            | ProductType(_)
-           (* | TypeSynonym(_ :: _, _, _) *) (* temporary *)
-            | ListType(_)
-            | RefType(_)
-            | VariantType(_ :: _, _)
-                -> "(" ^ strhd ^ ")"
-            | _ -> strhd
-          end ^ " " ^ strtl
+        strhd ^ " " ^ strtl
 
 
-and string_of_mono_type_list tyenv current_ht tylist =
-  let iter = string_of_mono_type_sub tyenv current_ht in
-  let iter_list = string_of_mono_type_list tyenv current_ht in
+and string_of_product tvf ortvf tyenv current_ht tylist =
+  let iter = string_of_mono_type_sub tvf ortvf tyenv current_ht in
+  let iter_list = string_of_product tvf ortvf tyenv current_ht in
     match tylist with
     | []           -> ""
     | head :: tail ->
-        let strhead = iter head in
+        let strhead = iter ProductElement head in
         let strtail = iter_list tail in
-        let (_, headmain) = head in
-        begin
-          match headmain with
-          | ProductType(_)
-          | FuncType(_, _, _)
-              -> "(" ^ strhead ^ ")"
-          | _ -> strhead
-        end ^
+        strhead ^
         begin
           match tail with
           | [] -> ""
@@ -272,12 +265,47 @@ and string_of_mono_type_list tyenv current_ht tylist =
         end
 
 
+let rec tvf_mono current_ht tyenv plev tvi =
+  let iter = string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht in
+  match !tvi with
+  | MonoFree(tvid) ->
+      let num = GeneralIDHashTable.intern_number current_ht (FreeID(tvid)) in
+      let s = (if FreeID.is_quantifiable tvid then "'" else "'_") ^ (variable_name_of_number num) in
+        show_type_variable (iter Outmost) s (FreeID.get_kind tvid)
+
+  | MonoLink(ty) ->
+      iter plev ty
+
+
+and ortvf_mono current_ht tyenv orvi =
+  match !orvi with
+  | MonoORFree(_)      -> "...?-> "
+  | MonoORLink(optrow) -> string_of_option_row (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht optrow
+
+
+let rec tvf_poly current_ht tyenv plev ptvi =
+  let iter_poly = string_of_mono_type_sub (tvf_poly current_ht tyenv) (ortvf_poly current_ht tyenv) tyenv current_ht in
+  match ptvi with
+  | PolyFree(tvref) ->
+      tvf_mono current_ht tyenv plev tvref
+
+  | PolyBound(bid) ->
+      let num = GeneralIDHashTable.intern_number current_ht (BoundID(bid)) in
+      let s = "'#" ^ (variable_name_of_number num) in
+        show_type_variable (iter_poly Outmost) s (BoundID.get_kind bid)
+
+
+and ortvf_poly current_ht tyenv porvi =
+  match porvi with
+  | PolyORFree(orviref) ->
+      ortvf_mono current_ht tyenv orviref
+
+
 let string_of_mono_type (tyenv : Typeenv.t) (ty : mono_type) =
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
-    let tyn = normalize_mono_type ty in
-      string_of_mono_type_sub tyenv current_ht tyn
+      string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht Outmost ty
   end
 
 
@@ -285,17 +313,19 @@ let string_of_mono_type_double (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono
   begin
     GeneralIDHashTable.initialize ();
     let current_ht = GeneralIDHashTable.create 32 in
-    let tyn1 = normalize_mono_type ty1 in
-    let tyn2 = normalize_mono_type ty2 in
-    let strty1 = string_of_mono_type_sub tyenv current_ht tyn1 in
-    let strty2 = string_of_mono_type_sub tyenv current_ht tyn2 in
+    let strf = string_of_mono_type_sub (tvf_mono current_ht tyenv) (ortvf_mono current_ht tyenv) tyenv current_ht Outmost in
+    let strty1 = strf ty1 in
+    let strty2 = strf ty2 in
       (strty1, strty2)
   end
 
 
-let string_of_poly_type (tyenv : Typeenv.t) (Poly(ty) : poly_type) =
-  let tyn = normalize_mono_type ty in
-  string_of_mono_type tyenv tyn (* temporary *)
+let string_of_poly_type (tyenv : Typeenv.t) (Poly(pty) : poly_type) =
+  begin
+    GeneralIDHashTable.initialize ();
+    let current_ht = GeneralIDHashTable.create 32 in
+    string_of_mono_type_sub (tvf_poly current_ht tyenv) (ortvf_poly current_ht tyenv) tyenv current_ht Outmost pty
+  end
 
 
 (* -- following are all for debug -- *)

@@ -108,9 +108,7 @@ exception NotProvidingValueImplementation of Range.t * var_name
 exception NotProvidingTypeImplementation  of Range.t * type_name
 exception NotMatchingInterface            of Range.t * var_name * t * poly_type * t * poly_type
 exception UndefinedModuleName             of Range.t * module_name * module_name list
-(*
-exception UndefinedModuleNameList         of module_name list
-*)
+
 
 let empty : t =
   {
@@ -156,9 +154,9 @@ let edit_distance s1 s2 mindist =
             d.(i).(j) <-  min (min (d.(i - 1).(j) + 1) (d.(i).(j - 1) + 1)) (d.(i - 1).(j - 1) + replace)
         done
       done;
-      (*Format.printf "%s %s => %d\n" s1 s2 (d.(len1).(len2));*)
       d.(len1).(len2)
     end
+
 
 let initial_candidates nm =
   let maxdist =
@@ -170,25 +168,29 @@ let initial_candidates nm =
   in
     ([], maxdist)
 
+
 let get_candidates_cont foldf map nm acc =
   foldf (fun k _ (cand, mindist) ->
     let dist = edit_distance nm k mindist in
     if dist < mindist then
       ([k], dist)
     else if dist = mindist then
-      (k::cand, mindist)
+      (k :: cand, mindist)
     else
       (cand, mindist)
   ) map acc
 
+
 let get_candidates_first foldf map nm =
   get_candidates_cont foldf map nm (initial_candidates nm)
+
 
 let get_candidates_last pair =
   fst pair
 
+
 let get_candidates foldf map nm =
-  get_candidates_last @@  get_candidates_first foldf map nm
+  get_candidates_last @@ get_candidates_first foldf map nm
 
 
 (* PUBLIC *)
@@ -196,7 +198,7 @@ let add (tyenv : t) (varnm : var_name) ((pty, evid) : poly_type * EvalVarID.t) :
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
   match ModuleTree.update mtr addrlst (update_vt (VarMap.add varnm (pty, evid))) with
-  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
+  | None         -> assert false
   | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -226,6 +228,7 @@ let find (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Ran
           VarMap.find_opt varnm vdmap >>= fun (_, evid) ->
           return (ptysig, evid)
     )
+
 
 (* PUBLIC *)
 let find_candidates (tyenv : t) (mdlnmlst : module_name list) (varnm : var_name) (rng : Range.t) : var_name list =
@@ -277,11 +280,8 @@ let open_module (tyenv : t) (rng : Range.t) (mdlnm : module_name) =
     )
   in
     match mtropt with
-    | None ->
-        raise (UndefinedModuleName(rng, mdlnm, get_candidates ModuleNameMap.fold nmtoid mdlnm))
-
-    | Some(mtrnew) ->
-        { tyenv with main_tree = mtrnew; }
+    | None         -> raise (UndefinedModuleName(rng, mdlnm, get_candidates ModuleNameMap.fold nmtoid mdlnm))
+    | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
 let find_for_inner (tyenv : t) (varnm : var_name) : (poly_type * EvalVarID.t) option =
@@ -301,16 +301,12 @@ let enter_new_module (tyenv : t) (mdlnm : module_name) : t =
     | None         -> assert false
     | Some(mtrnew) -> { tyenv with current_address = addrnew; main_tree = mtrnew; }
 
-(*
-let enter_module_by_id ((addr, nmtoid, mtr) : t) (mdlid : ModuleID.t) : t =
-  let addrnew = List.append addr [mdlid] in
-  let mtrnew = ModuleTree.add_stage mtr addr mdlid (VarMap.empty, TyNameMap.empty, ConstrMap.empty, None) in
-    (addrnew, nmtoid, mtrnew)
-*)
 
 let leave_module (tyenv : t) : t =
   match Alist.chop_last tyenv.current_address with
-  | None                      -> assert false
+  | None ->
+      assert false
+
   | Some((addr_outer, mdlid)) ->
       let mdlnm = ModuleID.extract_name mdlid in
       let nmtoidnew = ModuleNameMap.add mdlnm mdlid tyenv.name_to_id_map in
@@ -342,15 +338,6 @@ module MapList
   end
 
 
-type type_argument_mode =
-  | StrictMode of (type_argument_name, type_variable_info ref) MapList.t
-  | FreeMode   of (type_argument_name, type_variable_info ref) MapList.t
-      (* --
-        StrictMode : case where all type arguments should be declared; e.g. for type definitions
-        FreeMode   : case where type arguments do not need to be declared; e.g. for type annotations
-      -- *)
-
-
 module DependencyGraph = DirectedGraph.Make
   (struct
     type t = type_name
@@ -379,7 +366,7 @@ let add_type_definition (tyenv : t) (tynm : type_name) ((tyid, dfn) : TypeID.t *
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_td (TyNameMap.add tynm (tyid, dfn))) with
-    | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
+    | None         -> assert false
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
@@ -429,11 +416,8 @@ let find_type_definition_candidates_for_outer (tyenv : t) (mdlnmlst : module_nam
   let base_type_candidates = get_candidates_first Hashtbl.fold base_type_hash_table tynm in
     get_candidates_last @@ ModuleTree.fold_backward mtr addrlst mdlidlst (fun acc (_, tdmap, _, sigopt) ->
       match sigopt with
-      | None ->
-          get_candidates_cont TyNameMap.fold tdmap tynm acc
-
-      | Some((tdmapsig, _)) ->
-          get_candidates_cont TyNameMap.fold tdmapsig tynm acc
+      | None                -> get_candidates_cont TyNameMap.fold tdmap tynm acc
+      | Some((tdmapsig, _)) -> get_candidates_cont TyNameMap.fold tdmapsig tynm acc
     ) base_type_candidates
 
 
@@ -450,82 +434,67 @@ let find_type_name (_ : t) (tyid : TypeID.t) : type_name =
 
 
 let add_constructor (constrnm : constructor_name) ((bidlist, pty) : type_scheme) (tyid : TypeID.t) (tyenv : t) : t =
-
-  let () = print_for_debug_variantenv ("C-add " ^ constrnm ^ " of [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_poly_type_basic pty)) in (* for debug *)
-
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
     match ModuleTree.update mtr addrlst (update_cd (ConstrMap.add constrnm (tyid, (bidlist, pty)))) with
-    | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
+    | None         -> assert false
     | Some(mtrnew) -> { tyenv with main_tree = mtrnew; }
 
 
-let instantiate_type_scheme (tyarglist : mono_type list) (bidlist : BoundID.t list) (Poly(ty) : poly_type) =
+let instantiate_type_scheme (type a) (type b) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (pairlst : ((a, b) typ * BoundID.t) list) (Poly(pty) : poly_type) : (a, b) typ =
+  let bid_to_type_ht : ((a, b) typ) BoundIDHashTable.t = BoundIDHashTable.create 32 in
 
-  let () = print_for_debug_variantenv ("I-input [" ^ (List.fold_left (fun s bid -> "'#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " " ^ s) "" bidlist) ^ "] " ^ (string_of_mono_type_basic ty)) in (* for debug *)
-
-  let bid_to_type_ht : (type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
-
-  let rec pre tyargs bids =
-    match (tyargs, bids) with
-    | ([], [])                             -> ()
-    | (tyarg :: tyargtail, bid :: bidtail) ->
-        let tvref = ref (Link(tyarg)) in
+  let rec aux ((rng, ptymain) : poly_type_body) : (a, b) typ =
+    match ptymain with
+    | TypeVariable(ptvi) ->
         begin
-          print_for_debug_variantenv ("I-add '#" ^ (BoundID.show_direct (string_of_kind string_of_mono_type_basic) bid) ^ " -> " ^ (string_of_mono_type_basic tyarg)); (* for debug *)
-          BoundIDHashtbl.add bid_to_type_ht bid tvref;
-          pre tyargtail bidtail;
+          match ptvi with
+          | PolyFree(tvref) ->
+              freef rng tvref
+
+          | PolyBound(bid) ->
+              begin
+                match BoundIDHashTable.find_opt bid_to_type_ht bid with
+                | None        -> assert false
+                | Some(tysub) -> tysub
+              end
         end
-    | (_, _)                                -> assert false
-  in
 
-  let rec aux (rng, tymain) =
-    let () = print_for_debug_variantenv ("aux " ^ (string_of_mono_type_basic (rng, tymain))) in (* for debug *)
-      match tymain with
-      | TypeVariable(tvref) ->
-          begin
-            match !tvref with
-            | Link(tysub) -> aux tysub
-            | Free(tvid)  -> (rng, tymain)
-            | Bound(bid)  ->
-                begin
-                  try
-                    let tvrefsubst = BoundIDHashtbl.find bid_to_type_ht bid in
-                      (rng, TypeVariable(tvrefsubst))
-                  with
-                  | Not_found -> assert false
-                end
-          end
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(aux_or optrow, aux tydom, aux tycod))
+    | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
+    | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
+    | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
+    | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
+    | ListType(tysub)                   -> (rng, ListType(aux tysub))
+    | RefType(tysub)                    -> (rng, RefType(aux tysub))
+    | BaseType(bt)                      -> (rng, BaseType(bt))
+    | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
+    | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
+    | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
 
-      | FuncType(tyoptsr, tydom, tycod)   -> (rng, FuncType(ref (List.map aux (!tyoptsr)), aux tydom, aux tycod))
-      | ProductType(tylist)               -> (rng, ProductType(List.map aux tylist))
-      | RecordType(tyasc)                 -> (rng, RecordType(Assoc.map_value aux tyasc))
-      | SynonymType(tylist, tyid, tyreal) -> (rng, SynonymType(List.map aux tylist, tyid, aux tyreal))
-      | VariantType(tylist, tyid)         -> (rng, VariantType(List.map aux tylist, tyid))
-      | ListType(tysub)                   -> (rng, ListType(aux tysub))
-      | RefType(tysub)                    -> (rng, RefType(aux tysub))
-      | BaseType(_)                       -> (rng, tymain)
-      | HorzCommandType(tylist)           -> (rng, HorzCommandType(List.map (lift_argument_type aux) tylist))
-      | VertCommandType(tylist)           -> (rng, VertCommandType(List.map (lift_argument_type aux) tylist))
-      | MathCommandType(tylist)           -> (rng, MathCommandType(List.map (lift_argument_type aux) tylist))
+  and aux_or optrow =
+    match optrow with
+    | OptionRowEmpty                         -> OptionRowEmpty
+    | OptionRowCons(ty, tail)                -> OptionRowCons(aux ty, aux_or tail)
+    | OptionRowVariable(PolyORFree(orviref)) -> orfreef orviref
   in
   begin
-    pre tyarglist bidlist;
-    aux ty
+    pairlst |> List.iter (fun (tyarg, bid) -> BoundIDHashTable.add bid_to_type_ht bid tyarg);
+    aux pty
   end
 
 
-let rec type_argument_length tyargcons = List.length tyargcons
+let rec fix_manual_type_general (type a) (type b) (dpmode : dependency_mode) (tyenv : t) (lev : level) (freef : Range.t -> mono_type_variable_info ref -> (a, b) typ) (orfreef : mono_option_row_variable_info ref -> (a, b) option_row) (typaramf : Range.t -> string -> (a, b) type_main) (mnty : manual_type) : (a, b) typ =
 
-
-let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargmode : type_argument_mode) (mnty : manual_type) =
-  let rec aux mnty =
+  let rec aux (mnty : manual_type) : (a, b) typ =
     let (rng, mntymain) = mnty in
-    let error tynm lenexp lenerr = raise (IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr)) in
-    let tymainnew =
+    let error tynm lenexp lenerr =
+      raise (IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr))
+    in
+    let ptymainnew =
       match mntymain with
 
-      | MFuncType(mntyopts, mntydom, mntycod) -> FuncType(ref (List.map aux mntyopts), aux mntydom, aux mntycod)
+      | MFuncType(mntyopts, mntydom, mntycod) -> FuncType(aux_or mntyopts, aux mntydom, aux mntycod)
       | MProductType(mntylist)           -> ProductType(List.map aux mntylist)
       | MRecordType(mnasc)               -> RecordType(Assoc.map_value aux mnasc)
 
@@ -552,7 +521,8 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
           let tyarglist = List.map aux mntyarglist in
           let find_in_variant_environment () =
             match find_type_definition_for_outer tyenv mdlnmlst tynm rng with
-            | None -> raise (UndefinedTypeName(rng, mdlnmlst, tynm, find_type_definition_candidates_for_outer tyenv mdlnmlst tynm rng))
+            | None ->
+                raise (UndefinedTypeName(rng, mdlnmlst, tynm, find_type_definition_candidates_for_outer tyenv mdlnmlst tynm rng))
 
             | Some((tyid, Data(lenexp))) ->
                 if lenexp <> len then error tynm lenexp len else
@@ -560,32 +530,48 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
                     VariantType(List.map aux mntyarglist, tyid)
 
             | Some((tyid, Alias(bidlist, ptyscheme))) ->
-                let lenexp = List.length bidlist in
-                  if lenexp <> len then error tynm lenexp len else
-                    let tyreal = instantiate_type_scheme tyarglist bidlist ptyscheme in
+                begin
+                  try
+                    let pairlst = List.combine tyarglist bidlist in
+                    let tyreal = instantiate_type_scheme freef orfreef pairlst ptyscheme in
                     let () = print_for_debug_variantenv ("FS " ^ tynm ^ " -> " ^ TypeID.show_direct tyid) in (* for debug *)
                       SynonymType(tyarglist, tyid, tyreal)
+                  with
+                  | Invalid_argument(_) ->
+                      let lenexp = List.length bidlist in
+                        error tynm lenexp len
+                end
+
           in
           begin
             match dpmode with
-            | NoDependency -> find_in_variant_environment ()
+            | NoDependency ->
+                find_in_variant_environment ()
+
             | DependentMode(dg) ->
                 begin
                   try
                     match DependencyGraph.find_vertex dg tynm with
 
                     | VariantVertex(_, tyid, tyargcons, utvarntcons) ->
-                        let lenexp = type_argument_length tyargcons in
+                        let lenexp = List.length tyargcons in
                           if len <> lenexp then error tynm lenexp len else
                             VariantType(tyarglist, tyid)
 
                     | SynonymVertex(_, tyid, tyargcons, mnty, {contents= Some(bidlist, ptyscheme)}) ->
-                        let lenexp = type_argument_length tyargcons in
-                          if len <> lenexp then error tynm lenexp len else
-                            let tyreal = instantiate_type_scheme tyarglist bidlist ptyscheme in
-                              SynonymType(tyarglist, tyid, tyreal)
+                        begin
+                          try
+                            let pairlst = List.combine tyarglist bidlist in
+                              let tyreal = instantiate_type_scheme freef orfreef pairlst ptyscheme in
+                                SynonymType(tyarglist, tyid, tyreal)
+                          with
+                          | Invalid_argument(_) ->
+                              let lenexp = List.length tyargcons in
+                                error tynm lenexp len
+                        end
 
-                    | SynonymVertex(_, _, _, _, {contents= None}) -> assert false
+                    | SynonymVertex(_, _, _, _, {contents= None}) ->
+                        assert false
 
                   with
                   | DependencyGraph.UndefinedSourceVertex -> find_in_variant_environment ()
@@ -593,108 +579,104 @@ let rec fix_manual_type_general (dpmode : dependency_mode) (tyenv : t) (lev : Fr
           end
 
       | MTypeParam(tyargnm) ->
-            begin
-              match tyargmode with
-              | StrictMode(tyargmaplist) ->
-                  begin
-                    match MapList.find_opt tyargmaplist tyargnm with
-                    | None        -> raise (UndefinedTypeArgument(rng, tyargnm, get_candidates MapList.fold tyargmaplist tyargnm))
-                    | Some(tvref) -> TypeVariable(tvref)
-                  end
+          typaramf rng tyargnm
 
-              | FreeMode(tyargmaplist) ->
-                  begin
-                    match MapList.find_opt tyargmaplist tyargnm with
-                    | Some(tvref) -> TypeVariable(tvref)
-                    | None ->
-                        let tvid = FreeID.fresh UniversalKind Quantifiable lev () in
-                        let tvref = ref (Free(tvid)) in
-                        begin
-                          MapList.add tyargmaplist tyargnm tvref;
-                          TypeVariable(tvref)
-                        end
-                  end
-            end
     in
-    (rng, tymainnew)
+      (rng, ptymainnew)
+
 
   and aux_cmd = function
     | MMandatoryArgumentType(mnty) -> MandatoryArgumentType(aux mnty)
     | MOptionalArgumentType(mnty)  -> OptionalArgumentType(aux mnty)
 
+  and aux_or mntyopts =
+    List.fold_right (fun mnty acc ->
+      OptionRowCons(aux mnty, acc)
+    ) mntyopts OptionRowEmpty
+
   in
-  let ty = aux mnty in
-  match tyargmode with
-  | ( StrictMode(tyargmaplist)
-    | FreeMode(tyargmaplist) ) ->
-        let bidlist =
-          (MapList.to_list tyargmaplist) |> List.map (fun (_, tvref) ->
-            match !tvref with
-            | Free(tvid) ->
-                let bid = BoundID.fresh (FreeID.get_kind tvid) () in
-                begin
-                  tvref := Bound(bid);
-                  bid
-                end
-            | _ -> assert false
-          )
-        in
-        (bidlist, Poly(ty))
+  aux mnty
 
 
-and fix_manual_kind_general (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargmode : type_argument_mode) (mnkd : manual_kind) : kind =
+and fix_manual_kind_general (dpmode : dependency_mode) (tyenv : t) (lev : level) freef orfreef typaramf (mnkd : manual_kind) =
   match mnkd with
   | MUniversalKind       -> UniversalKind
-  | MRecordKind(mntyasc) ->
-      let aux asc =
-        let (_, Poly(ty)) = fix_manual_type_general dpmode tyenv lev tyargmode asc in
-          ty
-      in
-         RecordKind(Assoc.map_value aux mntyasc)
+  | MRecordKind(mntyasc) -> RecordKind(Assoc.map_value (fix_manual_type_general dpmode tyenv lev freef orfreef typaramf) mntyasc)
 
 
-let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : FreeID.level) (tyargcons : untyped_type_argument list) (mnty : manual_type) =
-  let tyargmaplist = MapList.create () in
+let fix_manual_type (dpmode : dependency_mode) (tyenv : t) (lev : level) (tyargcons : untyped_type_argument list) (mnty : manual_type) : BoundID.t list * poly_type =
+  let bidmaplist = MapList.create () in
+  let freef rng tvref =
+    (rng, TypeVariable(PolyFree(tvref)))
+  in
+  let orfreef orviref =
+    OptionRowVariable(PolyORFree(orviref))
+  in
+  let typaramf rng param =
+    match MapList.find_opt bidmaplist param with
+    | None      -> raise (UndefinedTypeArgument(rng, param, get_candidates MapList.fold bidmaplist param))
+    | Some(bid) -> TypeVariable(PolyBound(bid))
+  in
   let rec aux cons =
     match cons with
-    | []                             -> ()
+    | [] ->
+        ()
+
     | (_, tyargnm, mnkd) :: tailcons ->
-       let kd = fix_manual_kind_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnkd in
+       let kd = fix_manual_kind_general dpmode tyenv lev freef orfreef typaramf mnkd in
+(*
        let () = print_for_debug_variantenv ("FMT " ^ tyargnm ^ " :: " ^ (string_of_kind string_of_mono_type_basic kd)) in (* for debug *)
-       let tvid = FreeID.fresh (normalize_kind kd) Quantifiable lev () in
+*)
+       let bid = BoundID.fresh kd () in
        begin
-         MapList.add tyargmaplist tyargnm (ref (Free(tvid)));
+         MapList.add bidmaplist tyargnm bid;
          aux tailcons
        end
   in
   begin
     aux tyargcons;
-    fix_manual_type_general dpmode tyenv lev (StrictMode(tyargmaplist)) mnty
+    let pty = fix_manual_type_general dpmode tyenv lev freef orfreef typaramf mnty in
+    let bidlist = MapList.to_list bidmaplist |> List.map (fun (_, bid) -> bid) in
+    (bidlist, Poly(pty))
   end
 
 
 (* PUBLIC *)
-let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (mnty : manual_type) (constrnts : constraints) =
+let fix_manual_type_free (qtfbl : quantifiability) (tyenv : t) (lev : level) (mnty : manual_type) (constrnts : constraints) : mono_type =
 
-  let tyargmaplist = MapList.create () in
+  let tyargmaplist : (string, mono_type_variable_info ref) MapList.t = MapList.create () in
+
+  let freef rng tvref =
+    (rng, TypeVariable(tvref))
+  in
+  let orfreef orviref =
+    OptionRowVariable(orviref)
+  in
+  let typaramf rng param =
+    match MapList.find_opt tyargmaplist param with
+    | Some(tvref) ->
+        TypeVariable(tvref)
+
+    | None ->
+        let tvid = FreeID.fresh UniversalKind qtfbl lev () in
+        let tvref = ref (MonoFree(tvid)) in
+        begin
+          MapList.add tyargmaplist param tvref;
+          TypeVariable(tvref)
+        end
+  in
 
   let () =
-    constrnts |> List.iter (fun (tyargnm, mkd) ->
-      let kd = fix_manual_kind_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mkd in
-      let tvid = FreeID.fresh (normalize_kind kd) qtfbl lev () in
-      let tvref = ref (Free(tvid)) in
-        MapList.add tyargmaplist tyargnm tvref
+    constrnts |> List.iter (fun (param, mkd) ->
+      let kd = fix_manual_kind_general NoDependency tyenv lev freef orfreef typaramf mkd in
+      let tvid = FreeID.fresh kd qtfbl lev () in
+      let tvref = ref (MonoFree(tvid)) in
+        MapList.add tyargmaplist param tvref
     )
   in
 
-  let (bidlist, ptyin) = fix_manual_type_general NoDependency tyenv lev (FreeMode(tyargmaplist)) mnty in
-  let tyarglist =
-    bidlist |> List.map (fun bid ->
-      let tvid = FreeID.fresh (normalize_kind (BoundID.get_kind bid)) qtfbl lev () in
-        (Range.dummy "fix_manual_type_free", TypeVariable(ref (Free(tvid))))
-    )
-  in
-    instantiate_type_scheme tyarglist bidlist ptyin
+  let ty = fix_manual_type_general NoDependency tyenv lev freef orfreef typaramf mnty in
+    ty
 
 
 let register_type (tynm : type_name) (tyid : TypeID.t) (dfn : type_definition) (tyenv : t) : t =
@@ -713,7 +695,7 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
       match DependencyGraph.find_vertex dg tynm with
 
       | VariantVertex(_, tyid, tyargcons, _) ->
-          let len = type_argument_length tyargcons in
+          let len = List.length tyargcons in
             register_type tynm tyid (Data(len)) tyenv
 
       | SynonymVertex(_, tyid, _, _, {contents= Some((bidlist, ptyscheme))}) ->
@@ -724,46 +706,62 @@ let register_type_from_vertex (dg : vertex_label DependencyGraph.t) (tyenv : t) 
     | DependencyGraph.UndefinedSourceVertex -> failwith ("'" ^ tynm ^ "' not defined")
 
 
-let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
-  let open OptionMonad in
+let rec find_constructor (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : (mono_type list * TypeID.t * mono_type) option =
+  let freef rng tvref =
+    (rng, TypeVariable(tvref))
+  in
+  let orfreef orviref =
+    OptionRowVariable(orviref)
+  in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
+  let open OptionMonad in
     ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) -> ConstrMap.find_opt constrnm cdmap) >>= fun dfn ->
     let (tyid, (bidlist, pty)) = dfn in
-    let tyarglist =
+    let pairlst =
       bidlist |> List.map (fun bid ->
-        let tvid = FreeID.fresh (normalize_kind (BoundID.get_kind bid)) qtfbl lev () in
-          (Range.dummy "tc-constructor", TypeVariable(ref (Free(tvid))))
+        let kd = BoundID.get_kind bid in
+        let tvid = FreeID.fresh (instantiate_kind lev qtfbl kd) qtfbl lev () in
+        let ty = (Range.dummy "tc-constructor", TypeVariable(ref (MonoFree(tvid)))) in
+        (ty, bid)
       )
     in
-    let ty = instantiate_type_scheme tyarglist bidlist pty in
-    return (tyarglist, tyid, ty)
+    let ty = instantiate_type_scheme freef orfreef pairlst pty in
+    let tyarglst = pairlst |> List.map (fun (ty, _) -> ty) in
+      return (tyarglst, tyid, ty)
 
-let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (typeid : TypeID.t)
+
+let rec enumerate_constructors (qtfbl : quantifiability) (tyenv : t) (lev : level) (typeid : TypeID.t)
     : (constructor_name * (mono_type list -> mono_type)) list =
-  let open OptionMonad in
+  let freef rng tvref =
+    (rng, TypeVariable(tvref))
+  in
+  let orfreef orviref =
+    OptionRowVariable(orviref)
+  in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
+  let open OptionMonad in
   let constrs =
     ModuleTree.search_backward mtr addrlst [] (fun (_, _, cdmap, _) ->
       let constrs = ConstrMap.fold (fun constrnm dfn acc ->
         let (tyid, (bidlist, pty)) = dfn in
           if TypeID.equal typeid tyid then
-            (constrnm, (fun tyarglist -> instantiate_type_scheme tyarglist bidlist pty))::acc
+            (constrnm, (fun tyarglist -> instantiate_type_scheme freef orfreef (List.combine tyarglist bidlist) pty)) :: acc
           else
             acc
         ) cdmap []
       in
       match constrs with
       | [] -> None
-      | _ -> Some(constrs))
+      | _  -> Some(constrs))
   in
   match constrs with
   | Some(lst) -> lst
   | None      -> []
 
 
-let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : FreeID.level) (constrnm : constructor_name) : constructor_name list =
+let rec find_constructor_candidates (qtfbl : quantifiability) (tyenv : t) (lev : level) (constrnm : constructor_name) : constructor_name list =
   let open OptionMonad in
   let addrlst = Alist.to_list tyenv.current_address in
   let mtr = tyenv.main_tree in
@@ -781,7 +779,7 @@ let get_moduled_type_name (tyenv : t) (tynm : type_name) =
 
 
 (* PUBLIC *)
-let rec add_mutual_cons (tyenv : t) (lev : FreeID.level) (mutvarntcons : untyped_mutual_variant_cons) =
+let rec add_mutual_cons (tyenv : t) (lev : level) (mutvarntcons : untyped_mutual_variant_cons) =
 
   let dg = DependencyGraph.create 32 in
 
@@ -923,97 +921,174 @@ let add_val_to_signature (sigopt : signature option) (varnm : var_name) (pty : p
   | Some(tdmap, vtmap) -> Some(tdmap, VarMap.add varnm pty vtmap)
 
 
+let rec poly_type_equal (pty1 : poly_type_body) (pty2 : poly_type_body) =
+
+  let combine p lst1 lst2 =
+    try let lst = List.combine lst1 lst2 in p lst with Invalid_argument(_) -> false
+  in
+
+  let rec iter ((_, ptymain1) : poly_type_body) ((_, ptymain2) : poly_type_body) =
+    match (ptymain1, ptymain2) with
+    | (BaseType(bt1), BaseType(bt2)) ->
+        bt1 = bt2
+
+    | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
+        BoundID.eq bid1 bid2
+
+    | (TypeVariable(PolyFree(_)), TypeVariable(PolyFree(_))) ->
+        false  (* -- does not handle free variables -- *)
+
+    | (FuncType(optrow1, ty1d, ty1c), FuncType(optrow2, ty2d, ty2c)) ->
+        (iter_or optrow1 optrow2) && iter ty1d ty2d && iter ty1c ty2c
+
+    | (ProductType(tylst1), ProductType(tylst2)) ->
+        combine iter_list tylst1 tylst2
+
+    | (RecordType(tyasc1), RecordType(tyasc2)) ->
+        (Assoc.domain_same tyasc1 tyasc2) && iter_list (Assoc.combine_value tyasc1 tyasc2)
+
+    | (ListType(ty1sub), ListType(ty2sub))
+    | (RefType(ty1sub), RefType(ty2sub)) ->
+        iter ty1sub ty2sub
+
+    | (VariantType(tylst1, tyid1), VariantType(tylst2, tyid2)) ->
+        TypeID.equal tyid1 tyid2 && (combine iter_list tylst1 tylst2)
+
+    | (HorzCommandType(catyl1), HorzCommandType(catyl2))
+    | (VertCommandType(catyl1), VertCommandType(catyl2))
+    | (MathCommandType(catyl1), MathCommandType(catyl2))
+        ->
+        begin
+          try
+            List.fold_left2 (fun b caty1 caty2 ->
+              match (caty1, caty2) with
+              | (MandatoryArgumentType(ty1), MandatoryArgumentType(ty2))
+              | (OptionalArgumentType(ty1) , OptionalArgumentType(ty2) )
+                  -> b && iter ty1 ty2
+              | _ -> false
+            ) true catyl1 catyl2
+          with
+          | Invalid_argument(_) -> false
+        end
+
+    | _ -> false
+
+  and iter_list lst =
+    lst |> List.fold_left (fun b (pty1, pty2) -> b && iter pty1 pty2) true
+
+  and iter_or optrow1 optrow2 =
+    match (optrow1, optrow2) with
+    | (OptionRowEmpty, OptionRowEmpty)                       -> true
+    | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) -> iter ty1 ty2 && iter_or tail1 tail2
+    | (OptionRowVariable(_), OptionRowVariable(_))           -> false  (* -- does not handle free variables -- *)
+    | _                                                      -> false
+
+  in
+  iter pty1 pty2
+
+
 (* -- 'reflects pty1 pty2' returns whether 'pty2' is more general than 'pty1' -- *)
-let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
+let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
 (*
   let current_ht : BoundID.t BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
     (* -- hash table mapping bound IDs in 'pty2' to bound IDs in 'pty1' -- *)
 *)
-  let current_bid_to_ty : (mono_type * type_variable_info ref) BoundIDHashtbl.t = BoundIDHashtbl.create 32 in
+  let current_bid_to_ty : poly_type_body BoundIDHashTable.t = BoundIDHashTable.create 32 in
     (* -- hash table mapping bound IDs in 'pty2' to types -- *)
 
-  let rec aux ((_, tymain1) as ty1 : mono_type) ((_, tymain2) as ty2 : mono_type) =
+  let rec aux ((_, tymain1) as ty1 : poly_type_body) ((_, tymain2) as ty2 : poly_type_body) =
+(*
     let () = print_for_debug_variantenv ("reflects " ^ (string_of_mono_type_basic ty1) ^ " << " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
-
+*)
     let aux_list tylistcomb =
       tylistcomb |> List.fold_left (fun b (ty1, ty2) -> b && aux ty1 ty2) true
-    in
-
-    let rec aux_opt_list tyopts1 tyopts2 =
-      match (tyopts1, tyopts2) with
-      | (_, [])                          -> true
-      | ([], _ :: _)                     -> false
-      | (ty1 :: tytail1, ty2 :: tytail2) -> if aux ty1 ty2 then aux_opt_list tytail1 tytail2 else false
     in
 
     match (tymain1, tymain2) with
     | (SynonymType(tyl1, tyid1, tyreal1), _)               -> aux tyreal1 ty2
     | (_, SynonymType(tyl2, tyid2, tyreal2))               -> aux ty1 tyreal2
-    | (TypeVariable({contents= Link(tysub1)}), _)          -> aux tysub1 ty2
-    | (_, TypeVariable({contents= Link(tysub2)}))          -> aux ty1 tysub2
 
-    | (TypeVariable({contents= Bound(bid1)}), TypeVariable({contents= Bound(bid2)} as tyref2)) ->
+    | (TypeVariable(PolyFree({contents= MonoLink(tylink1)})), _) -> aux (lift_poly tylink1 |> (function Poly(pty) -> pty)) ty2
+    | (_, TypeVariable(PolyFree({contents= MonoLink(tylink2)}))) -> aux ty1 (lift_poly tylink2 |> (function Poly(pty) -> pty))
+
+    | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         begin
-          match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
-          | Some(((_, TypeVariable({contents= Bound(bid1old)})), _)) ->
-              BoundID.eq bid1 bid1old
-
-          | Some(_) ->
-              false
+          match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
 
           | None ->
               if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tyref2); true end
+                begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
               else
                 false
         end
 
-    | (RecordType(tyasc1), TypeVariable({contents= Bound(bid2)} as tvref2)) ->
-        let kd2 = BoundID.get_kind bid2 in
-        let binc =
-          match kd2 with
-          | UniversalKind      -> true
-          | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
-        in
-          if not binc then false else
-            begin
-              match BoundIDHashtbl.find_opt current_bid_to_ty bid2 with
-              | None              -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
-              | Some((ty1old, _)) -> aux ty1 ty1old
-            end
-              (* -- valid substitution of bound type variables -- *)
-
-    | (_, TypeVariable({contents= Bound(bid2)} as tvref2)) ->
-        let kd2 = BoundID.get_kind bid2 in
+    | (RecordType(tyasc1), TypeVariable(PolyBound(bid2))) ->
         begin
-          match kd2 with
-          | UniversalKind -> begin BoundIDHashtbl.add current_bid_to_ty bid2 (ty1, tvref2); true end
-          | RecordKind(_) -> false
-        end
-          (* -- valid substitution of bound type variables -- *)
+          match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
 
-    | (RecordType(tyasc1), TypeVariable({contents= Free(tvid2)} as tvref)) ->
+          | None ->
+              let kd2 = BoundID.get_kind bid2 in
+              let binc =
+                match kd2 with
+                | UniversalKind      -> true
+                | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
+              in
+              if not binc then false else
+                begin
+                  BoundIDHashTable.add current_bid_to_ty bid2 ty1;
+                  true
+                end
+        end
+
+    | (_, TypeVariable(PolyBound(bid2))) ->
+        begin
+          match BoundIDHashTable.find_opt current_bid_to_ty bid2 with
+          | Some(tyold) ->
+              poly_type_equal ty1 tyold
+
+          | None ->
+              let kd2 = BoundID.get_kind bid2 in
+              begin
+                match kd2 with
+                | UniversalKind -> begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
+                | RecordKind(_) -> false
+              end
+        end
+
+    | (RecordType(tyasc1), TypeVariable(PolyFree({contents= MonoFree(tvid2)} as tvref))) ->
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
           match kd2 with
           | UniversalKind      -> true
           | RecordKind(tyasc2) -> Assoc.domain_included tyasc1 tyasc2
         in
-        if binc then tvref := Link(ty1) else ();
-        binc
+        if binc then
+          match unlift_poly ty1 with
+          | None      -> false
+          | Some(ty1) -> tvref := MonoLink(ty1); true
+        else
+          false
 
-    | (_, TypeVariable({contents= Free(tvid2)} as tvref)) ->
+    | (_, TypeVariable(PolyFree({contents= MonoFree(tvid2)} as tvref))) ->
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
           match kd2 with
           | UniversalKind -> true
           | RecordKind(_) -> false
         in
-        if binc then tvref := Link(ty1) else ();
-        binc
+        if binc then
+          match unlift_poly ty1 with
+          | None      -> false
+          | Some(ty1) -> tvref := MonoLink(ty1); true
+        else
+          false
 
-    | (FuncType(tyopts1r, tyd1, tyc1), FuncType(tyopts2r, tyd2, tyc2)) ->
-        (aux_opt_list (!tyopts1r) (!tyopts2r)) && (aux tyd1 tyd2) && (aux tyc1 tyc2)
+    | (FuncType(optrow1, tyd1, tyc1), FuncType(optrow2, tyd2, tyc2)) ->
+        (aux_or optrow1 optrow2) && (aux tyd1 tyd2) && (aux tyc1 tyc2)
           (* -- both domain and codomain are covariant -- *)
 
     | (HorzCommandType(catyl1), HorzCommandType(catyl2))
@@ -1054,32 +1129,57 @@ let reflects (Poly(ty1) : poly_type) (Poly(ty2) : poly_type) : bool =
     | (BaseType(bsty1), BaseType(bsty2))   -> bsty1 = bsty2
     | _                                    -> false
 
+  and aux_or optrow1 optrow2 =
+    match (optrow1, optrow2) with
+    | (_, OptionRowEmpty) ->
+        true
 
-  and is_stronger_kind (kd1 : kind) (kd2 : kind) =
+    | (OptionRowEmpty, OptionRowCons(_)) ->
+        false
+
+    | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
+        if aux ty1 ty2 then aux_or tail1 tail2 else false
+
+    | (_, OptionRowVariable(PolyORFree(orviref))) ->
+        begin
+          match unlift_option_row optrow1 with
+          | None          -> false
+          | Some(optrow1) -> orviref := MonoORLink(optrow1); true
+        end
+
+    | (OptionRowVariable(_), _) ->
+        false
+
+  and is_stronger_kind (kd1 : poly_kind) (kd2 : poly_kind) =
     match (kd1, kd2) with
     | (_, UniversalKind)                       -> true
     | (UniversalKind, _)                       -> false
     | (RecordKind(tyasc1), RecordKind(tyasc2)) ->
         begin
-          tyasc2 |> Assoc.fold (fun b k ty2 ->
+          tyasc2 |> Assoc.fold (fun b k pty2 ->
             match Assoc.find_opt tyasc1 k with
-            | Some(ty1) -> b && (aux ty1 ty2)
-            | None      -> false
+            | Some(pty1) -> b && (aux pty1 pty2)
+            | None       -> false
           ) true
         end
   in
-  let b = aux ty1 ty2 in
+  let b = aux pty1 pty2 in
+(*
   begin
     if b then
-        current_bid_to_ty |> BoundIDHashtbl.iter (fun bid (ty, tyref) ->
-          tyref := Link(ty)
-        )
+      let pairlst =
+        BoundIDHashTable.fold (fun bid ty acc ->
+          Alist.extend acc (ty, bid)
+        ) current_bid_to_ty Alist.empty |> Alist.to_list
+      in
+      instantiate
     else ()
   end;
+*)
   b
 
 
-let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
+let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : t) (tyenvprev : t) (msigopt : manual_signature option) =
 
   let rec read_manual_signature (tyenvacc : t) (tyenvforsigI : t) (tyenvforsigO : t) (msig : manual_signature) (sigoptacc : signature option) =
     let iter = read_manual_signature in
@@ -1095,7 +1195,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
             | Some((tyid, dfn)) ->
                 let tyenvforsigInew = add_type_definition tyenvforsigI tynm (tyid, dfn) in
-                let len = type_argument_length tyargcons in (* temporary; should check whether len is valid as to dfn *)
+                let len = List.length tyargcons in (* temporary; should check whether len is valid as to dfn *)
                 let tyidout = TypeID.fresh (get_moduled_type_name tyenv tynm) in
                 let sigoptaccnew = add_type_to_signature sigoptacc tynm tyidout len in
                 let tyenvforsigOnew =
@@ -1103,7 +1203,7 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
                   let addrlst = Alist.to_list tyenvsub.current_address in
                   let mtr = tyenvsub.main_tree in
                   match ModuleTree.update mtr addrlst (update_so (fun _ -> sigoptaccnew)) with
-                  | None         -> assert false  (* raise (UndefinedModuleNameList(addrlst |> List.map ModuleID.extract_name)) *)
+                  | None         -> assert false
                   | Some(mtrnew) -> { tyenvsub with main_tree = mtrnew; }
                 in
                   iter tyenvacc tyenvforsigInew tyenvforsigOnew tail sigoptaccnew
@@ -1111,11 +1211,11 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
       | SigValue(varnm, mty, constrntcons) :: tail ->
           let () = print_for_debug_variantenv ("SIGV " ^ varnm) in (* for debug *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (FreeID.succ_level lev) mty constrntcons in
+          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (FreeID.succ_level lev) mty constrntcons in
+          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
           let ptysigO = generalize lev tysigO in
-          let () = print_for_debug_variantenv ("LEVEL " ^ (FreeID.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
+          let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
             match find_for_inner tyenv varnm with
             | None ->
@@ -1123,7 +1223,6 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 
             | Some((ptyimp, _)) ->
                 let b = reflects ptysigI ptyimp in
-                  (* -- 'reflects pty1 pty2' may change 'pty2' -- *)
                 if b then
                   let sigoptaccnew = add_val_to_signature sigoptacc varnm ptysigO in
                     iter tyenvacc tyenvforsigI tyenvforsigO tail sigoptaccnew
@@ -1136,13 +1235,13 @@ let sigcheck (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tye
 (*
           let () = print_for_debug_variantenv ("D-OK0 " ^ (string_of_manual_type mty)) in (* for debug *)
 *)
-          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (FreeID.succ_level lev) mty constrntcons in
+          let tysigI = fix_manual_type_free qtfbl tyenvforsigI (Level.succ lev) mty constrntcons in
           let () = print_for_debug_variantenv "D-OK1" in (* for debug *)
           let ptysigI = generalize lev tysigI in
-          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (FreeID.succ_level lev) mty constrntcons in
+          let tysigO = fix_manual_type_free qtfbl tyenvforsigO (Level.succ lev) mty constrntcons in
           let () = print_for_debug_variantenv "D-OK2" in (* for debug *)
           let ptysigO = generalize lev tysigO in
-          let () = print_for_debug_variantenv ("LEVEL " ^ (FreeID.show_direct_level lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
+          let () = print_for_debug_variantenv ("LEVEL " ^ (Level.show lev) ^ "; " ^ (string_of_mono_type_basic tysigI) ^ " ----> " ^ (string_of_poly_type_basic ptysigI)) in (* for debug *)
           begin
             match find_for_inner tyenv csnm with
             | None ->

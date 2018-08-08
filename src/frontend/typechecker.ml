@@ -17,33 +17,34 @@ exception MultiplePatternVariable of Range.t * Range.t * var_name
 exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * Typeenv.t * mono_type
+exception MultipleFieldInRecord          of Range.t * field_name
+exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError
 
 
-let print_for_debug_typecheck msg =
-(*
-  print_endline msg;
-*)
-  ()
+let abstraction evid ast =
+  Function([], PatternBranch(PVariable(evid), ast))
 
 
-let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) =
+let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
-      let evid = EvalVarID.fresh varnm in
+      let evid = EvalVarID.fresh (rng, varnm) in
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+      let tvref = ref (MonoFree(tvid)) in
+      let beta = (rng, TypeVariable(PolyFree(tvref))) in
       let tyenvnew = Typeenv.add tyenv varnm (Poly(Primitives.option_type beta), evid) in
-        (tyenvnew, Alist.extend tyacc beta, Alist.extend evidacc evid)
+        (tyenvnew, Alist.extend tyacc (rng, TypeVariable(tvref)), Alist.extend evidacc evid)
     ) (tyenv, Alist.empty, Alist.empty)
   in
-    (Alist.to_list tyacc, Alist.to_list evidacc, tyenvnew)
-
-
-let append_optional_ids (evidlst : EvalVarID.t list) (ast : abstract_tree) =
-  List.fold_right (fun evid ast -> Function([PatternBranch(PVariable(evid), ast)])) evidlst ast
+  let optrow =
+    List.fold_right (fun ty acc ->
+      OptionRowCons(ty, acc)
+    ) (Alist.to_list tyacc) OptionRowEmpty
+  in
+    (optrow, Alist.to_list evidacc, tyenvnew)
 
 
 let rec is_nonexpansive_expression e =
@@ -81,14 +82,14 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 
 let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = poly_extend erase_range_of_type (Poly(ty)) in
+    let pty = lift_poly (erase_range_of_type ty) in
       Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
-    let pty = poly_extend erase_range_of_type (generalize lev ty) in
+    let pty = (generalize lev (erase_range_of_type ty)) in
       Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
@@ -111,13 +112,24 @@ let apply_tree_of_list astfunc astlst =
 
 
 (* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
-let flatten_type (ty : mono_type) : command_argument_type list * mono_type =
+let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type =
+
+  let rec aux_or = function
+    | OptionRowEmpty                                     -> []
+    | OptionRowVariable({contents = MonoORFree(_)})      -> []
+    | OptionRowVariable({contents = MonoORLink(optrow)}) -> aux_or optrow
+    | OptionRowCons(ty, tail)                            -> OptionalArgumentType(ty) :: aux_or tail
+  in
+
   let rec aux acc ty =
-    let (rng, tymain) = normalize_mono_type ty in
+    let (rng, tymain) = ty in
       match tymain with
-      | FuncType(tyoptsr, tydom, tycod) ->
+      | TypeVariable({contents= MonoLink(tylink)}) ->
+          aux acc tylink
+
+      | FuncType(optrow, tydom, tycod) ->
           let accnew =
-            Alist.append acc (List.append (List.map (fun ty -> OptionalArgumentType(ty)) (!tyoptsr)) [MandatoryArgumentType(tydom)])
+            Alist.append acc (List.append (aux_or optrow) [MandatoryArgumentType(tydom)])
           in
             aux accnew tycod
 
@@ -126,63 +138,208 @@ let flatten_type (ty : mono_type) : command_argument_type list * mono_type =
     aux Alist.empty ty
 
 
-let eliminate_optionals (ty : mono_type) (e : abstract_tree) : mono_type * abstract_tree =
-  let rec aux ty e =
-    match ty with
-    | (rng, FuncType({contents = _ :: tyopttail}, tydom, tycod)) ->
-        aux (rng, FuncType({contents = tyopttail}, tydom, tycod)) (Apply(e, Value(Constructor("None", UnitConstant))))
+let occurs (tvid : FreeID.t) (ty : mono_type) =
 
-    | _ ->
-        (ty, e)
-  in
-  aux ty e
+  let lev = FreeID.get_level tvid in
 
+  let rec iter (_, tymain) =
 
-let rec occurs (tvid : FreeID.t) ((_, tymain) : mono_type) =
-  let iter = occurs tvid in
-  let iter_list = List.fold_left (fun b ty -> b || iter ty) false in
-  let iter_cmd_list =
-    List.fold_left (fun b caty ->
-      match caty with
-      | MandatoryArgumentType(ty) -> b || iter ty
-      | OptionalArgumentType(ty)  -> b || iter ty
-    ) false
-  in
-  match tymain with
-  | TypeVariable(tvref) ->
-      begin
-        match !tvref with
-        | Link(tyl)   -> iter tyl
-        | Bound(_)    -> false
-        | Free(tvidx) ->
-            if FreeID.equal tvidx tvid then true else
-              let lev = FreeID.get_level tvid in
-              let levx = FreeID.get_level tvidx in
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoLink(tyl)   -> iter tyl
+          | MonoFree(tvidx) ->
+              if FreeID.equal tvidx tvid then
+                true
+              else
+                let levx = FreeID.get_level tvidx in
+                let () =
+                  (* -- update level -- *)
+                  if Level.less_than lev levx then
+                    tvref := MonoFree(FreeID.set_level tvidx lev)
+                  else
+                    ()
+                in
+                begin
+                  match FreeID.get_kind tvidx with
+                  | UniversalKind     -> false
+                  | RecordKind(tyasc) -> Assoc.fold_value (fun b ty -> b || iter ty) false tyasc
+                end
+        end
+
+    | FuncType(optrow, tydom, tycod) ->
+        let b0 = iter_or optrow in
+        let b1 = iter tydom in
+        let b2 = iter tycod in
+        b0 || b1 || b2
+
+    | ProductType(tylist)            -> iter_list tylist
+    | ListType(tysub)                -> iter tysub
+    | RefType(tysub)                 -> iter tysub
+    | VariantType(tylist, _)         -> iter_list tylist
+    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
+    | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | BaseType(_)                    -> false
+    | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+
+  and iter_list tylst =
+    List.exists iter tylst
+
+  and iter_cmd_list cmdargtylist =
+    List.exists (function
+      | MandatoryArgumentType(ty) -> iter ty
+      | OptionalArgumentType(ty)  -> iter ty
+    ) cmdargtylist
+
+  and iter_or optrow =
+    match optrow with
+    | OptionRowEmpty ->
+        false
+
+    | OptionRowCons(ty, tail) ->
+        let b1 = iter ty in
+        let b2 = iter_or tail in
+        b1 || b2
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORLink(optrow) ->
+              iter_or optrow
+
+          | MonoORFree(orvx) ->
+              let levx = OptionRowVarID.get_level orvx in
               let () =
                 (* -- update level -- *)
-                if FreeID.less_than lev levx then
-                  tvref := Free(FreeID.set_level tvidx lev)
+                if Level.less_than lev levx then
+                  orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
                 else
                   ()
               in
+              false
+        end
+
+  in
+  iter ty
+
+
+let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
+
+  let lev = OptionRowVarID.get_level orv in
+
+  let rec iter (_, tymain) =
+    match tymain with
+    | TypeVariable(tvref) ->
+        begin
+          match !tvref with
+          | MonoLink(tyl) ->
+              iter tyl
+
+          | MonoFree(tvidx) ->
+              let levx = FreeID.get_level tvidx in
+              let () =
+                (* -- update level -- *)
+                if Level.less_than lev levx then
+                  tvref := MonoFree(FreeID.set_level tvidx lev)
+                else
+                  ()
+              in
+              begin
+                match FreeID.get_kind tvidx with
+                | UniversalKind     -> false
+                | RecordKind(tyasc) -> Assoc.fold_value (fun bacc ty -> let b = iter ty in bacc || b) false tyasc
+              end
+        end
+
+    | FuncType(optrow, tydom, tycod) ->
+        let b0 = iter_or optrow in
+        let b1 = iter tydom in
+        let b2 = iter tycod in
+        b0 || b1 || b2
+
+    | ProductType(tylist)            -> iter_list tylist
+    | ListType(tysub)                -> iter tysub
+    | RefType(tysub)                 -> iter tysub
+    | VariantType(tylist, _)         -> iter_list tylist
+    | SynonymType(tylist, _, tyact)  -> let b = iter_list tylist in let ba = iter tyact in b || ba
+    | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
+    | BaseType(_)                    -> false
+    | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+    | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+
+  and iter_list tylst =
+    List.exists iter tylst
+
+  and iter_cmd_list cmdargtylist =
+    List.exists (function
+      | MandatoryArgumentType(ty) -> iter ty
+      | OptionalArgumentType(ty)  -> iter ty
+    ) cmdargtylist
+
+  and iter_or = function
+    | OptionRowEmpty ->
+        false
+
+    | OptionRowCons(ty, tail) ->
+        let b1 = iter ty in
+        let b2 = iter_or tail in
+        b1 || b2
+
+    | OptionRowVariable(orviref) ->
+        begin
+          match !orviref with
+          | MonoORLink(optrow) ->
+              iter_or optrow
+
+          | MonoORFree(orvx) ->
+              if OptionRowVarID.equal orv orvx then
+                true
+              else
+                let levx = OptionRowVarID.get_level orvx in
+                let () =
+                  (* -- update level -- *)
+                  if Level.less_than lev levx then
+                    orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                  else
+                    ()
+                in
                 false
-      end
-  | FuncType(tyoptsr, tydom, tycod) -> iter_list (!tyoptsr) || iter tydom || iter tycod
-  | ProductType(tylist)            -> iter_list tylist
-  | ListType(tysub)                -> iter tysub
-  | RefType(tysub)                 -> iter tysub
-  | VariantType(tylist, _)         -> iter_list tylist
-  | SynonymType(tylist, _, tyreal) -> iter_list tylist || iter tyreal
-  | RecordType(tyasc)              -> iter_list (Assoc.to_value_list tyasc)
-  | BaseType(_)                    -> false
-  | HorzCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-  | VertCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
-  | MathCommandType(cmdargtylist)  -> iter_cmd_list cmdargtylist
+        end
+
+  in
+  iter_or optrow
+
+
+let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
+  let () =
+    match kd with
+    | UniversalKind ->
+        ()
+
+    | RecordKind(tyasc) ->
+        let b = Assoc.fold_value (fun bacc ty -> let b = occurs tvid ty in bacc || b) false tyasc in
+        if b then raise InternalInclusionError else ()
+  in
+  FreeID.set_kind tvid kd
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
+(*
+  (* begin: for debug *)
+  let () =
+    match (tymain1, tymain2) with
+    | (TypeVariable({contents = MonoLink(_)}), _) -> ()
+    | (_, TypeVariable({contents = MonoLink(_)})) -> ()
+    | _ -> print_endline ("    | unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2))
+  in
+  (* end: for debug *)
+*)
   let unify_list = List.iter (fun (t1, t2) -> unify_sub t1 t2) in
-  let () = print_for_debug_typecheck ("    | unify " ^ (string_of_mono_type_basic ty1) ^ " == " ^ (string_of_mono_type_basic ty2)) in (* for debug *)
+
     match (tymain1, tymain2) with
 
     | (SynonymType(_, _, tyreal1), _) -> unify_sub tyreal1 ty2
@@ -190,10 +347,10 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
-    | (FuncType(tyopts1r, tydom1, tycod1), FuncType(tyopts2r, tydom2, tycod2))
+    | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2))
       ->
         begin
-          unify_options tyopts1r tyopts2r;
+          unify_option_row optrow1 optrow2;
           unify_sub tydom1 tydom2;
           unify_sub tycod1 tycod2;
         end
@@ -245,18 +402,19 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
 
-    | (TypeVariable({contents= Link(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
+    | (TypeVariable({contents= MonoLink(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
 
-    | (_, TypeVariable({contents= Link(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
+    | (_, TypeVariable({contents= MonoLink(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
 
-    | ( (TypeVariable({contents= Bound(_)}), _)
-      | (_, TypeVariable({contents= Bound(_)})) ) ->
-          failwith ("unify_sub: bound type variable in " ^ (string_of_mono_type_basic ty1) ^ " (" ^ (Range.to_string rng1) ^ ")" ^ " or " ^ (string_of_mono_type_basic ty2) ^ " (" ^ (Range.to_string rng2) ^ ")")
-
-    | (TypeVariable({contents= Free(tvid1)} as tvref1), TypeVariable({contents= Free(tvid2)} as tvref2)) ->
+    | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
         if FreeID.equal tvid1 tvid2 then
           ()
         else
+          let b1 = occurs tvid1 ty2 in
+          let b2 = occurs tvid2 ty1 in
+          if b1 || b2 then
+            raise InternalInclusionError
+          else
           let (tvid1q, tvid2q) =
             if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
               (tvid1, tvid2)
@@ -266,26 +424,19 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           let (tvid1l, tvid2l) =
             let lev1 = FreeID.get_level tvid1q in
             let lev2 = FreeID.get_level tvid2q in
-              if FreeID.less_than lev1 lev2 then
+              if Level.less_than lev1 lev2 then
                 (tvid1q, FreeID.set_level tvid2q lev1)
-              else if FreeID.less_than lev2 lev1 then
+              else if Level.less_than lev2 lev1 then
                 (FreeID.set_level tvid1q lev2, tvid2q)
               else
                 (tvid1q, tvid2q)
           in
-          let () =
-            begin
-              tvref1 := Free(tvid1l);
-              tvref2 := Free(tvid2l);
-            end
-          in
+          tvref1 := MonoFree(tvid1l);
+          tvref2 := MonoFree(tvid2l);
           let (oldtvref, newtvref, newtvid, newty) =
             if Range.is_dummy rng1 then (tvref1, tvref2, tvid2l, ty2) else (tvref2, tvref1, tvid1l, ty1)
           in
-                let _ = print_for_debug_typecheck                                                                 (* for debug *)
-                  ("        substituteVV " ^ (string_of_mono_type_basic (Range.dummy "", TypeVariable(oldtvref)))     (* for debug *)
-                   ^ " with " ^ (string_of_mono_type_basic newty)) in                                             (* for debug *)
-          let () = ( oldtvref := Link(newty) ) in
+          oldtvref := MonoLink(newty);
           let kd1 = FreeID.get_kind tvid1l in
           let kd2 = FreeID.get_kind tvid2l in
           let (eqnlst, kdunion) =
@@ -297,12 +448,11 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 let kdunion = RecordKind(Assoc.union asc1 asc2) in
                   (Assoc.intersection asc1 asc2, kdunion)
           in
-          begin
-            unify_list eqnlst;
-            newtvref := Free(FreeID.set_kind newtvid kdunion);
-          end
+          unify_list eqnlst;
+          newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
+          ()
 
-      | (TypeVariable({contents= Free(tvid1)} as tvref1), RecordType(tyasc2)) ->
+      | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in
           let binc =
             match kd1 with
@@ -316,53 +466,63 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               raise InternalContradictionError
             else
               let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                    let _ = print_for_debug_typecheck                             (* for debug *)
-                      ("        substituteVR " ^ (string_of_mono_type_basic ty1)      (* for debug *)
-                       ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
               let eqnlst =
                 match kd1 with
                 | UniversalKind      -> []
                 | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
               in
-              begin
-                unify_list eqnlst;
-                tvref1 := Link(newty2);
-              end
+              unify_list eqnlst;
+              tvref1 := MonoLink(newty2);
+              ()
 
-      | (TypeVariable({contents= Free(tvid1)} as tvref1), _) ->
+      | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
           let chk = occurs tvid1 ty2 in
             if chk then
               raise InternalInclusionError
             else
               let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-                      let _ = print_for_debug_typecheck                             (* for debug *)
-                        ("        substituteVX " ^ (string_of_mono_type_basic ty1)      (* for debug *)
-                         ^ " with " ^ (string_of_mono_type_basic newty2)) in        (* for debug *)
-                tvref1 := Link(newty2)
+              tvref1 := MonoLink(newty2)
 
       | (_, TypeVariable(_)) -> unify_sub ty2 ty1
 
       | _ -> raise InternalContradictionError
 
 
-and unify_options tyopts1r tyopts2r =
-  let rec aux tyopts1 tyopts2 =
-    match (tyopts1, tyopts2) with
-    | (_, []) ->
-        tyopts2r := tyopts1
+and unify_option_row optrow1 optrow2 =
+  match (optrow1, optrow2) with
+  | (OptionRowCons(ty1, tail1), OptionRowCons(ty2, tail2)) ->
+      unify_sub ty1 ty2;
+      unify_option_row tail1 tail2
 
-    | ([], _) ->
-        tyopts1r := tyopts2
+  | (OptionRowEmpty, OptionRowEmpty) ->
+      ()
 
-    | (ty1 :: tytail1, ty2 :: tytail2) ->
-        unify_sub ty1 ty2;
-        aux tytail1 tytail2
-  in
-    aux (!tyopts1r) (!tyopts2r)
+  | (OptionRowVariable({contents = MonoORLink(optrow1)}), _) -> unify_option_row optrow1 optrow2
+  | (_, OptionRowVariable({contents = MonoORLink(optrow2)})) -> unify_option_row optrow1 optrow2
+
+  | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), OptionRowVariable({contents = MonoORFree(orv2)})) ->
+      if OptionRowVarID.equal orv1 orv2 then () else
+        orviref1 := MonoORLink(optrow2)
+
+  | (OptionRowVariable({contents = MonoORFree(orv1)} as orviref1), _) ->
+      if occurs_optional_row orv1 optrow2 then
+        raise InternalInclusionError
+      else
+        orviref1 := MonoORLink(optrow2)
+
+  | (_, OptionRowVariable({contents = MonoORFree(orv2)} as orviref2)) ->
+      if occurs_optional_row orv2 optrow1 then
+        raise InternalInclusionError
+      else
+        orviref2 := MonoORLink(optrow1)
+
+  | (OptionRowEmpty, OptionRowCons(_, _))
+  | (OptionRowCons(_, _), OptionRowEmpty)
+    ->
+      raise InternalContradictionError
 
 
 let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
-  let () = print_for_debug_typecheck ("    ####UNIFY " ^ (string_of_mono_type_basic ty1) ^ " = " ^ (string_of_mono_type_basic ty2)) in  (* for debug *)
   try
     unify_sub ty1 ty2
   with
@@ -374,7 +534,7 @@ let final_tyenv    : Typeenv.t ref = ref (Typeenv.empty)
 
 
 let rec typecheck
-    (qtfbl : quantifiability) (lev : FreeID.level)
+    (qtfbl : quantifiability) (lev : level)
     (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) =
   let typecheck_iter ?l:(l = lev) ?q:(q = qtfbl) t u = typecheck q l t u in
   let unify = unify_ tyenv in
@@ -436,7 +596,9 @@ let rec typecheck
         | Some((pty, evid)) ->
             let tyfree = instantiate lev qtfbl pty in
             let tyres = overwrite_range_of_type tyfree rng in
-            let () = print_for_debug_typecheck ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+(*
+            let () = print_endline ("\n#Content " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty) ^ " = " ^ (string_of_mono_type_basic tyres) ^ "\n  (" ^ (Range.to_string rng) ^ ")") in (* for debug *)
+*)
                 (ContentOf(rng, evid), tyres)
       end
 
@@ -445,7 +607,9 @@ let rec typecheck
         match Typeenv.find_constructor qtfbl tyenv lev constrnm with
         | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
         | Some((tyarglist, tyid, tyc)) ->
-            let () = print_for_debug_typecheck ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+(*
+            let () = print_endline ("\n#Constructor " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc) ^ " in ... " ^ (string_of_mono_type_basic (rng, VariantType([], tyid))) ^ "(" ^ (Typeenv.find_type_name tyenv tyid) ^ ")") in (* for debug *)
+*)
             let (e1, ty1) = typecheck_iter tyenv utast1 in
             let () = unify ty1 tyc in
             let tyres = (rng, VariantType(tyarglist, tyid)) in
@@ -474,135 +638,110 @@ let rec typecheck
         (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
   | UTLambdaHorz(varrng, varnmctx, utast1) ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnmctx in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
+      let evid = EvalVarID.fresh (varrng, varnmctx) in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-horz-return", BaseType(BoxRowType)) in
-        (LambdaHorz(evid, e1), (rng, HorzCommandType(cmdargtylist)))
+        (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
 
   | UTLambdaVert(varrng, varnmctx, utast1) ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnmctx in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(beta), evid)) utast1 in
+      let evid = EvalVarID.fresh (varrng, varnmctx) in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
-        (LambdaVert(evid, e1), (rng, VertCommandType(cmdargtylist)))
+        (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
 
   | UTLambdaMath(utastF) ->
       let (eF, tyF) = typecheck_iter tyenv utastF in
       let (cmdargtylist, tyret) = flatten_type tyF in
       let () = unify tyret (Range.dummy "lambda-math-return", BaseType(MathType)) in
         (eF, (rng, MathCommandType(cmdargtylist)))
-(*
-  | UTLambdaOptional(varrng, varnmctx, utast1) ->
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnmctx in
-      let ty = overwrite_range_of_type (Primitives.option_type beta) rng in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(ty), evid)) utast1 in
-        (Function([PatternBranch(PVariable(evid), e1)]), (rng, OptFuncType(beta, ty1)))
-*)
+
   | UTApply(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
-(*
-      let _ = print_for_debug_typecheck ("#Apply " ^ (string_of_utast (rng, utastmain))) in (* for debug *)
-*)
-      let (ty1sub, e1sub) = eliminate_optionals ty1 e1 in
-      let eret = Apply(e1sub, e2) in
+      let eret = Apply(e1, e2) in
       begin
-        match ty1sub with
+        match unlink ty1 with
         | (_, FuncType(_, tydom, tycod)) ->
             let () = unify tydom ty2 in
-(*
-            let _ = print_for_debug_typecheck ("1 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " (* for debug *)
-                                               ^ (string_of_mono_type_basic tycod)) in        (* for debug *)
-*)
             let tycodnew = overwrite_range_of_type tycod rng in
               (eret, tycodnew)
 
-        | _ ->
+        | (_, TypeVariable(_)) as ty1 ->
             let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-            let () = unify ty1sub (get_range utast1, FuncType(ref [], ty2, beta)) in
-(*
-            let _ = print_for_debug_typecheck ("2 " ^ (string_of_ast (Apply(e1, e2))) ^ " : " ^ (string_of_mono_type_basic beta) ^ " = " ^ (string_of_mono_type_basic beta)) in (* for debug *)
-*)
-                (eret, beta)
+            let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+            let orv = OptionRowVarID.fresh lev in
+            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let () = unify ty1 (get_range utast1, FuncType(optrow, ty2, beta)) in
+              (eret, beta)
+
+        | ty1 ->
+            let (rng1, _) = utast1 in
+            raise (ApplicationOfNonFunction(rng1, tyenv, ty1))
       end
 
   | UTApplyOptional(utast1, utast2) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let (e2, ty2) = typecheck_iter tyenv utast2 in
+      let eret = ApplyOptional(e1, e2) in
       begin
         match ty1 with
-        | (_, FuncType({contents = tyopt :: tyopttail}, tydom, tycod)) ->
+        | (_, FuncType(OptionRowCons(tyopt, optrow), tydom, tycod)) ->
             let () = unify tyopt ty2 in
-            let tynew = (rng, FuncType(ref tyopttail, tydom, tycod)) in
-              (Apply(e1, NonValueConstructor("Some", e2)), tynew)
+            let tynew = (rng, FuncType(optrow, tydom, tycod)) in
+              (eret, tynew)
 
         | _ ->
             let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (rng, TypeVariable(ref (Free(tvid1)))) in
+            let beta1 = (Range.dummy "UTApplyOptional:dom", TypeVariable(ref (MonoFree(tvid1)))) in
             let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (rng, TypeVariable(ref (Free(tvid2)))) in
-            let () = unify ty1 (get_range utast1, FuncType(ref [ty2], beta1, beta2)) in
-              (Apply(e1, NonValueConstructor("Some", e2)), (rng, FuncType(ref [], beta1, beta2)))
-                (* doubtful *)
+            let beta2 = (Range.dummy "UTApplyOptional:cod", TypeVariable(ref (MonoFree(tvid2)))) in
+            let orv = OptionRowVarID.fresh lev in
+            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let () = unify ty1 (get_range utast1, FuncType(OptionRowCons(ty2, optrow), beta1, beta2)) in
+              (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
 
   | UTApplyOmission(utast1) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let eret = Apply(e1, Value(Constructor("None", UnitConstant))) in
+      let eret = ApplyOmission(e1) in
       begin
         match ty1 with
-        | (_, FuncType({contents = _ :: tyopttail}, _, tycod)) ->
-            (eret, tycod)
+        | (_, FuncType(OptionRowCons(_, optrow), tydom, tycod)) ->
+            (eret, (rng, FuncType(optrow, tydom, tycod)))
 
         | _ ->
             let tvid0 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta0 = (rng, TypeVariable(ref (Free(tvid0)))) in
+            let beta0 = (rng, TypeVariable(ref (MonoFree(tvid0)))) in
             let tvid1 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta1 = (rng, TypeVariable(ref (Free(tvid1)))) in
+            let beta1 = (rng, TypeVariable(ref (MonoFree(tvid1)))) in
             let tvid2 = FreeID.fresh UniversalKind qtfbl lev () in
-            let beta2 = (rng, TypeVariable(ref (Free(tvid2)))) in
-            let () = unify ty1 (get_range utast1, FuncType(ref [beta0], beta1, beta2)) in
-              (eret, (rng, FuncType(ref [], beta1, beta2)))
+            let beta2 = (rng, TypeVariable(ref (MonoFree(tvid2)))) in
+            let orv = OptionRowVarID.fresh lev in
+            let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
+            let () = unify ty1 (get_range utast1, FuncType(OptionRowCons(beta0, optrow), beta1, beta2)) in
+              (eret, (rng, FuncType(optrow, beta1, beta2)))
       end
 
-  | UTFunction(optargs, utpatbrs) ->
-      let (tyopts, evids, tyenvnew) = add_optionals_to_type_environment tyenv qtfbl lev optargs in
-      let tvidO = FreeID.fresh UniversalKind qtfbl lev () in
-      let betaO = (Range.dummy "UTFunction:dom", TypeVariable(ref (Free(tvidO)))) in
-      let tvidR = FreeID.fresh UniversalKind qtfbl lev () in
-      let betaR = (Range.dummy "UTFunction:cod", TypeVariable(ref (Free(tvidR)))) in
-      let (patbrs, _) = typecheck_pattern_branch_list qtfbl lev tyenvnew utpatbrs betaO betaR in
-      let e = append_optional_ids evids (Function(patbrs)) in
-        (e, (rng, FuncType(ref tyopts, betaO, betaR)))
-(*
-      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (varrng, TypeVariable(ref (Free(tvid)))) in
-      let evid = EvalVarID.fresh varnm in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnm (Poly(beta), evid)) utast1 in
-        let tydom = beta in
-        let tycod = ty1 in
-          (LambdaAbstract(evid, e1), (rng, FuncType(tydom, tycod)))
-*)
+  | UTFunction(optargs, pat, utast1) ->
+      let utpatbr = UTPatternBranch(pat, utast1) in
+      let (optrow, evids, tyenvnew) = add_optionals_to_type_environment tyenv qtfbl lev optargs in
+      let (patbr, typat, ty1) = typecheck_pattern_branch qtfbl lev tyenvnew utpatbr in
+      let e = Function(evids, patbr) in
+        (e, (rng, FuncType(optrow, typat, ty1)))
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let (eO, tyO) = typecheck_iter tyenv utastO in
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (Free(tvid)))) in
-      let (patbrs, tyP) = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
+      let beta = (Range.dummy "ut-pattern-match", TypeVariable(ref (MonoFree(tvid)))) in
+      let patbrs = typecheck_pattern_branch_list qtfbl lev tyenv utpatbrs tyO beta in
       let () = Exhchecker.main rng patbrs tyO qtfbl lev tyenv in
-        (PatternMatch(rng, eO, patbrs), tyP)
+        (PatternMatch(rng, eO, patbrs), beta)
 
   | UTLetNonRecIn(mntyopt, utpat, utast1, utast2) ->
-      let (pat, tyP, patvarmap) = typecheck_pattern qtfbl (FreeID.succ_level lev) tyenv utpat in
-      let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenv utast1 in
+      let (pat, tyP, patvarmap) = typecheck_pattern qtfbl (Level.succ lev) tyenv utpat in
+      let (e1, ty1) = typecheck qtfbl (Level.succ lev) tyenv utast1 in
       let () = unify ty1 tyP in
       let tyenvnew =
         if is_nonexpansive_expression e1 then
@@ -614,9 +753,6 @@ let rec typecheck
       in
       let (e2, ty2) = typecheck_iter tyenvnew utast2 in
         (LetNonRecIn(pat, e1, e2), ty2)
-(*
-      failwith "let nonrec"
-*)
 
   | UTLetRecIn(utrecbinds, utast2) ->
       let (tyenvnew, _, recbinds) = make_type_environment_by_letrec qtfbl lev tyenv utrecbinds in
@@ -666,56 +802,11 @@ let rec typecheck
       let () = unify tyC (get_range utastC, BaseType(UnitType)) in
         (WhileDo(eB, eC), (rng, BaseType(UnitType)))
 
-(*
-(* ---- final reference ---- *)
-
-  | UTDeclareGlobalHash(utastK, utastI) ->
-      let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = (unify tyK (get_range utastK, BaseType(StringType))) in
-      let (eI, tyI) = typecheck_iter tyenv utastI in
-      let () = unify tyI (get_range utastI, BaseType(StringType)) in
-        (DeclareGlobalHash(eK, eI), (rng, BaseType(UnitType)))
-
-  | UTOverwriteGlobalHash(utastK, utastN) ->
-      let (eK, tyK) = typecheck_iter tyenv utastK in
-      let () = unify tyK (get_range utastK, BaseType(StringType)) in
-      let (eN, tyN) = typecheck_iter tyenv utastN in
-      let () = unify tyN (get_range utastN, BaseType(StringType)) in
-        (OverwriteGlobalHash(eK, eN), (rng, BaseType(UnitType)))
-
-  | UTReferenceFinal(utast1) ->
-      let (e1, ty1) = typecheck_iter tyenv utast1 in
-      let () = unify ty1 (rng, BaseType(StringType)) in
-        (ReferenceFinal(e1), (rng, BaseType(StringType)))
-
-(* ---- class/id option ---- *)
-
-  | UTApplyClassAndID(utastcls, utastid, utast1) ->
-      let dr = Range.dummy "ut-apply-class-and-id" in
-      let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let (ecls, _) = typecheck_iter tyenv utastcls in
-      let (eid, _)  = typecheck_iter tyenv utastid in
-      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
-        (ApplyClassAndID(evidcls, evidid, ecls, eid, e1), ty1)
-
-  | UTClassAndIDRegion(utast1) ->
-      let dr = Range.dummy "ut-class-and-id-region" in
-      let evidcls = EvalVarID.for_class_name in
-      let tyenvmid = Typeenv.add tyenv "class-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidcls) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let evidid = EvalVarID.for_id_name in
-      let tyenvnew = Typeenv.add tyenvmid "id-name" (Poly((dr, VariantType([(dr, BaseType(StringType))], Typeenv.find_type_id tyenv "maybe"))), evidid) in (* temporary; `find_type_id` is vulnerable to the re-definition of a type named 'maybe' *)
-      let (e1, ty1) = typecheck_iter tyenvnew utast1 in
-        (e1, ty1)
-*)
-
 (* ---- lightweight itemize ---- *)
 
   | UTItemize(utitmz) ->
       let eitmz = typecheck_itemize qtfbl lev tyenv utitmz in
-      let ty = overwrite_range_of_type Primitives.itemize_type rng in
+      let ty = overwrite_range_of_type (Primitives.itemize_type ()) rng in
         (eitmz, ty)
 
 (* ---- list ---- *)
@@ -729,7 +820,7 @@ let rec typecheck
 
   | UTEndOfList ->
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-      let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+      let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
         (Value(EndOfList), (rng, ListType(beta)))
 
 (* ---- tuple ---- *)
@@ -754,9 +845,9 @@ let rec typecheck
   | UTAccessField(utast1, fldnm) ->
       let (e1, ty1) = typecheck_iter tyenv utast1 in
       let tvidF = FreeID.fresh UniversalKind qtfbl lev () in
-      let betaF = (rng, TypeVariable(ref (Free(tvidF)))) in
-      let tvid1 = FreeID.fresh (normalize_kind (RecordKind(Assoc.of_list [(fldnm, betaF)]))) qtfbl lev () in
-      let beta1 = (get_range utast1, TypeVariable(ref (Free(tvid1)))) in
+      let betaF = (rng, TypeVariable(ref (MonoFree(tvidF)))) in
+      let tvid1 = FreeID.fresh (RecordKind(Assoc.of_list [(fldnm, betaF)])) qtfbl lev () in
+      let beta1 = (get_range utast1, TypeVariable(ref (MonoFree(tvid1)))) in
       let () = unify beta1 ty1 in
         (AccessField(e1, fldnm), betaF)
 
@@ -797,48 +888,42 @@ let rec typecheck
         (HorzLex(ectx, ev), (rng, BaseType(BoxColType)))
 
 
-and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) qtfbl lev tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : command_argument_type list) : abstract_tree list =
+and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) qtfbl lev tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =
   let rec aux eacc utcmdarglst cmdargtylst =
     match (utcmdarglst, cmdargtylst) with
     | ([], _) ->
-        let eaccnew =
-          cmdargtylst |> List.fold_left (fun eacc cmdargty ->
-            match cmdargty with
-            | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tyenv, tycmd, ty))
-            | OptionalArgumentType(_)   -> Alist.extend eacc (Value(Constructor("None", UnitConstant)))
-          ) eacc
-        in
-          Alist.to_list eaccnew
+        cmdargtylst |> List.iter (function
+        | MandatoryArgumentType(ty) -> raise (NeedsMoreArgument(rngcmdapp, tyenv, tycmd, ty))
+        | OptionalArgumentType(_)   -> ()
+        );
+      eacc
 
     | (_ :: _, []) ->
         raise (TooManyArgument(rngcmdapp, tyenv, tycmd))
 
     | (UTMandatoryArgument(_) :: _, OptionalArgumentType(_) :: cmdargtytail) ->
-        let enone = Value(Constructor("None", UnitConstant)) in
-          aux (Alist.extend eacc enone) utcmdarglst cmdargtytail
+          aux eacc utcmdarglst cmdargtytail
 
     | (UTMandatoryArgument(utastA) :: utcmdargtail, MandatoryArgumentType(tyreq) :: cmdargtytail) ->
         let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
         let () = unify_ tyenv tyA tyreq in
-          aux (Alist.extend eacc eA) utcmdargtail cmdargtytail
+          aux (Apply(eacc, eA)) utcmdargtail cmdargtytail
 
     | (UTOptionalArgument(utastA) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
         let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
         let () = unify_ tyenv tyA tyreq in
-        let esome = NonValueConstructor("Some", eA) in
-          aux (Alist.extend eacc esome) utcmdargtail cmdargtytail
+          aux (ApplyOptional(eacc, eA)) utcmdargtail cmdargtytail
 
     | (UTOptionalArgument((rngA, _)) :: _, MandatoryArgumentType(_) :: _) ->
         raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
 
     | (UTOmission(_) :: utcmdargtail, OptionalArgumentType(tyreq) :: cmdargtytail) ->
-        let enone = Value(Constructor("None", UnitConstant)) in
-          aux (Alist.extend eacc enone) utcmdargtail cmdargtytail
+          aux (ApplyOmission(eacc)) utcmdargtail cmdargtytail
 
     | (UTOmission(rngA) :: _, MandatoryArgumentType(_) :: _) ->
         raise (InvalidOptionalCommandArgument(tyenv, tycmd, rngA))
   in
-  aux Alist.empty utcmdarglst cmdargtylst
+    aux ecmd utcmdarglst cmdargtylst
 
 
 and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract_tree =
@@ -868,43 +953,8 @@ and typecheck_math qtfbl lev tyenv ((rng, utmathmain) : untyped_math) : abstract
         begin
           match tycmdmain with
           | MathCommandType(cmdargtylstreq) ->
-              let elstarg = typecheck_command_arguments tycmd rng qtfbl lev tyenv utcmdarglst cmdargtylstreq in
-(*
-              let trilst =
-                utmatharglst |> List.map (function
-                  | UTMMandatoryArgument((rngA, _) as utastA) ->
-                      let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                        (rngA, eA, MandatoryArgumentType(tyA))
-
-                  | UTMOptionalArgument((rngA, _) as utastA) ->
-                      let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                        (rngA, NonValueConstructor("Some", eA), OptionalArgumentType(tyA))
-
-                  | UTMOmission(rngomit) ->
-                      let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-                      let beta = (rngomit, TypeVariable(ref (Free(tvid)))) in
-                        (rngomit, Value(Constructor("None", UnitConstant)), OptionalArgumentType(beta))
-                ) in
-              let cmdargtylist = trilst |> List.map (fun (_, _, cmdargty) -> cmdargty) in
-              let () = unify_command_argument_types cmdargtylist cmdargtylistreq in
-              let elstarg = trilst |> List.map (fun (_, e, _) -> e) in
-*)
-(*
-                try
-                  List.iter2 (fun caty catyreq ->
-                    match (caty, catyreq) with
-                    | (MandatoryArgumentType(ty), MandatoryArgumentType(tyreq)) -> unify_ tyenv ty tyreq
-                    | (OptionalArgumentType(ty) , OptionalArgumentType(tyreq) ) -> unify_ tyenv ty tyreq
-                    | _                                                         -> assert false  (* TEMPORARY *)
-                  ) cmdargtylist cmdargtylistreq
-                with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length cmdargtylistreq in
-                    let lenreal = List.length cmdargtylist in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
-                apply_tree_of_list ecmd elstarg
+              let eapp = typecheck_command_arguments ecmd tycmd rng qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+                eapp
 
           | HorzCommandType(_) ->
               let (rngcmd, _) = utastcmd in
@@ -927,20 +977,20 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
       ept
   in
 
-  let pathcompacc =
+  let pathcomplst =
     utpathcomplst |> List.fold_left (fun acc utpathcomp ->
       match utpathcomp with
       | UTPathLineTo(utastpt) ->
           let (ept, typt) = typecheck qtfbl lev tyenv utastpt in
           let () = unify_ tyenv typt (Range.dummy "typecheck-path-L", point_type_main) in
-            PathLineTo(ept) :: acc
+            Alist.extend acc (PathLineTo(ept))
 
       | UTPathCubicBezierTo(utastpt1, utastpt2, utastpt) ->
           let ept1 = typecheck_anchor_point utastpt1 in
           let ept2 = typecheck_anchor_point utastpt2 in
           let ept = typecheck_anchor_point utastpt in
-            PathCubicBezierTo(ept1, ept2, ept) :: acc
-    ) []
+            Alist.extend acc (PathCubicBezierTo(ept1, ept2, ept))
+    ) Alist.empty |> Alist.to_list
   in
   let cycleopt =
     utcycleopt |> option_map (function
@@ -952,14 +1002,14 @@ and typecheck_path qtfbl lev tyenv (utpathcomplst : (untyped_abstract_tree untyp
             PathCubicBezierTo(ept1, ept2, ())
     )
   in
-    (List.rev pathcompacc, cycleopt)
+    (pathcomplst, cycleopt)
 
 
-and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) =
-  let rec aux (acc : input_vert_element list) (lst : untyped_input_vert_element list) =
-    match lst with
+and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utivlst : untyped_input_vert_element list) : input_vert_element list =
+  let rec aux acc utivlst =
+    match utivlst with
     | [] ->
-        List.rev acc
+        Alist.to_list acc
 
     | (_, UTInputVertEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
         let (ecmd, tycmd) = typecheck qtfbl lev tyenv utastcmd in
@@ -975,39 +1025,11 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
                 | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
                 | UTOmission(rng) :: _               -> Range.unite rngcmd rng
               in
-              let elstarg = typecheck_command_arguments tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
-(*
-              let trilst =
-                List.map (function
-                | UTMandatoryArgument(utastA) ->
-                    let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                      (eA, MandatoryArgumentType(tyA))
-
-                | UTOptionalArgument(utastA) ->
-                    let (eA, tyA) = typecheck qtfbl lev tyenv utastA in
-                      (NonValueConstructor("Some", eA), OptionalArgumentType(tyA))
-
-                | UTOmission(rngomit) ->
-                    let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-                    let beta = (rngomit, TypeVariable(ref (Free(tvid)))) in
-                      (Value(Constructor("None", UnitConstant)), OptionalArgumentType(beta))
-
-                ) utcmdarglst
-              in
-              let tylstarg = etylst |> List.map (fun (e, ty) -> ty) in
-              let () = unify_command_argument_types tyenv  in
-              let elstarg = etylst |> List.map (fun (e, ty) -> e) in
-*)
-(*
-              let () =
-                try List.iter2 (unify_ tyenv) tylstarg tylstreq with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length tylstreq in
-                    let lenreal = List.length tylstarg in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
-                aux (InputVertEmbedded(ecmd, elstarg) :: acc) tail
+              let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
+              let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
+              let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+              let eabs = abstraction evid eapp in
+                aux (Alist.extend acc (InputVertEmbedded(eabs))) tail
 
           | _ -> assert false
         end
@@ -1015,16 +1037,17 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
     | (_, UTInputVertContent(utast0)) :: tail ->
         let (e0, ty0) = typecheck qtfbl lev tyenv utast0 in
         let () = unify_ tyenv ty0 (Range.dummy "UTInputVertContent", BaseType(TextColType)) in
-          aux (InputVertContent(e0) :: acc) tail
+          aux (Alist.extend acc (InputVertContent(e0))) tail
   in
-    aux [] utivlst
+    aux Alist.empty utivlst
 
 
 
-and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) =
-  let rec aux (acc : input_horz_element Alist.t) (lst : untyped_input_horz_element list) =
-    match lst with
-    | [] -> Alist.to_list acc
+and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utihlst : untyped_input_horz_element list) : input_horz_element list =
+  let rec aux acc utihlst =
+    match utihlst with
+    | [] ->
+        Alist.to_list acc
 
     | (_, UTInputHorzEmbedded((rngcmd, _) as utastcmd, utcmdarglst)) :: tail ->
         let rngcmdapp =
@@ -1040,24 +1063,15 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
           match tycmdmain with
 
           | HorzCommandType(cmdargtylstreq) ->
-              let elstarg = typecheck_command_arguments tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
-(*
-              let etylst = List.map (typecheck qtfbl lev tyenv) utastarglst in
-              let tyarglst = etylst |> List.map (fun (e, ty) -> ty) in
-              let earglst = etylst |> List.map (fun (e, ty) -> e) in
-              let () =
-                try List.iter2 (unify_ tyenv) tyarglst tylstreq with
-                | Invalid_argument(_) ->
-                    let lenreq  = List.length tylstreq in
-                    let lenreal = List.length tyarglst in
-                    raise (InvalidArityOfCommand(rng, lenreq, lenreal))
-              in
-*)
-                aux (Alist.extend acc (InputHorzEmbedded(ecmd, elstarg))) tail
+              let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
+              let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
+              let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
+              let eabs = abstraction evid eapp in
+                aux (Alist.extend acc (InputHorzEmbedded(eabs))) tail
 
           | MathCommandType(_) ->
               let (rngcmd, _) = utastcmd in
-              raise (MathCommandInHorz(rngcmd))
+                raise (MathCommandInHorz(rngcmd))
 
           | _ -> assert false
         end
@@ -1079,25 +1093,22 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : FreeID
 
 
 and typecheck_record
-    (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t)
+    (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t)
     (flutlst : (field_name * untyped_abstract_tree) list) (rng : Range.t)
 =
-  let rec aux
-      (tyenv : Typeenv.t) (lst : (field_name * untyped_abstract_tree) list)
-      (accelst : (field_name * abstract_tree) list) (acctylst : (field_name * mono_type) list)
-  =
-    match lst with
-    | []                       -> (List.rev accelst, List.rev acctylst)
-    | (fldnmX, utastX) :: tail ->
+  let (easc, tyasc) =
+    flutlst |> List.fold_left (fun (easc, tyasc) (fldnmX, utastX) ->
+      if Assoc.mem fldnmX easc then
+        raise (MultipleFieldInRecord(rng, fldnmX))
+      else
         let (eX, tyX) = typecheck qtfbl lev tyenv utastX in
-          aux tyenv tail ((fldnmX, eX) :: accelst) ((fldnmX, tyX) :: acctylst)
+          (Assoc.add easc fldnmX eX, Assoc.add tyasc fldnmX tyX)
+    ) (Assoc.empty, Assoc.empty)
   in
-  let (elst, tylst) = aux tyenv flutlst [] [] in
-  let tylstfinal = List.map (fun (fldnm, ty) -> (fldnm, ty)) tylst in
-    (Record(Assoc.of_list elst), (rng, RecordType(Assoc.of_list tylstfinal)))
+    (Record(easc), (rng, RecordType(tyasc)))
 
 
-and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
+and typecheck_itemize (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (UTItem(utast1, utitmzlst)) =
   let (e1, ty1) = typecheck qtfbl lev tyenv utast1 in
   let () = unify_ tyenv ty1 (Range.dummy "typecheck_itemize_string", BaseType(TextRowType)) in
   let elst = typecheck_itemize_list qtfbl lev tyenv utitmzlst in
@@ -1105,7 +1116,7 @@ and typecheck_itemize (qtfbl : quantifiability) (lev : FreeID.level) (tyenv : Ty
 
 
 and typecheck_itemize_list
-    (qtfbl : quantifiability) (lev : FreeID.level)
+    (qtfbl : quantifiability) (lev : level)
     (tyenv : Typeenv.t) (utitmzlst : untyped_itemize list) =
   match utitmzlst with
   | []                  -> Value(EndOfList)
@@ -1115,37 +1126,46 @@ and typecheck_itemize_list
         PrimitiveListCons(ehd, etl)
 
 
-and typecheck_pattern_branch_list
-    (qtfbl : quantifiability) (lev : FreeID.level)
-    (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) =
-  let iter = typecheck_pattern_branch_list qtfbl lev in
-  let unify = unify_ tyenv in
-    match utpatbrs with
-    | [] -> ([], tyres)
-
-    | UTPatternBranch(utpat, utast1) :: tail ->
+and typecheck_pattern_branch (qtfbl : quantifiability) (lev : level) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : pattern_branch * mono_type * mono_type =
+  match utpatbr with
+    | UTPatternBranch(utpat, utast1) ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
-        let () = unify typat tyobj in
         let tyenvpat = add_pattern_var_mono tyenv patvarmap in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
-        let () = unify ty1 tyres in
-        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
-          (PatternBranch(epat, e1) :: patbrtail, tytail)
+          (PatternBranch(epat, e1), typat, ty1)
 
-    | UTPatternBranchWhen(utpat, utastB, utast1) :: tail ->
+    | UTPatternBranchWhen(utpat, utastB, utast1) ->
         let (epat, typat, patvarmap) = typecheck_pattern qtfbl lev tyenv utpat in
-        let () = unify typat tyobj in
         let tyenvpat = add_pattern_var_mono tyenv patvarmap in
         let (eB, tyB) = typecheck qtfbl lev tyenvpat utastB in
-        let () = unify tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
+        let () = unify_ tyenvpat tyB (Range.dummy "pattern-match-cons-when", BaseType(BoolType)) in
         let (e1, ty1) = typecheck qtfbl lev tyenvpat utast1 in
+          (PatternBranchWhen(epat, eB, e1), typat, ty1)
+
+
+and typecheck_pattern_branch_list
+    (qtfbl : quantifiability) (lev : level)
+    (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : pattern_branch list =
+
+  let unify = unify_ tyenv in
+
+  let rec iter (patbracc : pattern_branch Alist.t) (utpatbrs : untyped_pattern_branch list) =
+    match utpatbrs with
+    | [] ->
+        Alist.to_list patbracc
+
+    | utpatbr :: tail ->
+        let (patbr, typat, ty1) = typecheck_pattern_branch qtfbl lev tyenv utpatbr in
+        let () = unify typat tyobj in
         let () = unify ty1 tyres in
-        let (patbrtail, tytail) = iter tyenv tail tyobj tyres in
-          (PatternBranchWhen(epat, eB, e1) :: patbrtail, tytail)
+          iter (Alist.extend patbracc patbr) tail
+
+  in
+  iter Alist.empty utpatbrs
 
 
 and typecheck_pattern
-    (qtfbl : quantifiability) (lev : FreeID.level)
+    (qtfbl : quantifiability) (lev : level)
     (tyenv : Typeenv.t)
     ((rng, utpatmain) : untyped_pattern_tree) : pattern_tree * mono_type * pattern_var_map =
   let iter = typecheck_pattern qtfbl lev tyenv in
@@ -1169,7 +1189,7 @@ and typecheck_pattern
 
     | UTPEndOfList ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
           (PEndOfList, (rng, ListType(beta)), PatternVarMap.empty)
 
     | UTPTupleCons(utpat1, utpat2) ->
@@ -1187,19 +1207,21 @@ and typecheck_pattern
 
     | UTPWildCard ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
           (PWildCard, beta, PatternVarMap.empty)
 
     | UTPVariable(varnm) ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
-        let evid = EvalVarID.fresh varnm in
-        let () = print_for_debug_typecheck ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
+        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
+        let evid = EvalVarID.fresh (rng, varnm) in
+(*
+        let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
+*)
           (PVariable(evid), beta, PatternVarMap.empty |> PatternVarMap.add varnm (rng, evid, beta))
 
     | UTPAsVariable(varnm, utpat1) ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
-        let beta = (rng, TypeVariable(ref (Free(tvid)))) in
+        let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
         let (epat1, typat1, patvarmap1) = iter utpat1 in
         begin
           match PatternVarMap.find_opt varnm patvarmap1 with
@@ -1208,7 +1230,7 @@ and typecheck_pattern
               raise (MultiplePatternVariable(rngsub, rng, varnm))
 
           | None ->
-              let evid = EvalVarID.fresh varnm in
+              let evid = EvalVarID.fresh (rng, varnm) in
                 (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
         end
 
@@ -1217,7 +1239,9 @@ and typecheck_pattern
           match Typeenv.find_constructor qtfbl tyenv lev constrnm with
           | None -> raise (UndefinedConstructor(rng, constrnm, Typeenv.find_constructor_candidates qtfbl tyenv lev constrnm))
           | Some((tyarglist, tyid, tyc)) ->
-              let () = print_for_debug_typecheck ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+(*
+              let () = print_endline ("P-find " ^ constrnm ^ " of " ^ (string_of_mono_type_basic tyc)) in (* for debug *)
+*)
               let (epat1, typat1, tyenv1) = iter utpat1 in
               let () = unify tyc typat1 in
                 (PConstructor(constrnm, epat1), (rng, VariantType(tyarglist, tyid)), tyenv1)
@@ -1225,7 +1249,7 @@ and typecheck_pattern
 
 
 and make_type_environment_by_letrec
-    (qtfbl : quantifiability) (lev : FreeID.level)
+    (qtfbl : quantifiability) (lev : level)
     (tyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) =
 
   let rec add_mutual_variables (acctyenv : Typeenv.t) (utrecbinds : untyped_letrec_binding list) : (Typeenv.t * (var_name * mono_type * EvalVarID.t) list) =
@@ -1234,17 +1258,22 @@ and make_type_environment_by_letrec
       | [] ->
           (acctyenv, [])
 
-      | UTLetRecBinding(_, varnm, astdef) :: tailcons ->
-          let tvid = FreeID.fresh UniversalKind qtfbl (FreeID.succ_level lev) () in
-          let beta = (get_range astdef, TypeVariable(ref (Free(tvid)))) in
-          let _ = print_for_debug_typecheck ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
-          let evid = EvalVarID.fresh varnm in
-          let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(beta), evid)) tailcons in
+      | UTLetRecBinding(_, varrng, varnm, astdef) :: tailcons ->
+          let tvid = FreeID.fresh UniversalKind qtfbl (Level.succ lev) () in
+          let tvref = ref (MonoFree(tvid)) in
+          let rng = get_range astdef in
+          let beta = (rng, TypeVariable(tvref)) in
+          let pbeta = (rng, TypeVariable(PolyFree(tvref))) in
+(*
+          let () = print_endline ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
+*)
+          let evid = EvalVarID.fresh (varrng, varnm) in
+          let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(pbeta), evid)) tailcons in
             (tyenvfinal, ((varnm, beta, evid) :: tvtylst))
   in
 
   let rec typecheck_mutual_contents
-      (lev : FreeID.level)
+      (lev : level)
       (tyenvforrec : Typeenv.t) (utrecbinds : untyped_letrec_binding list) (tvtylst : (var_name * mono_type * EvalVarID.t) list)
       (acctvtylstout : (var_name * mono_type * EvalVarID.t) list)
   =
@@ -1253,8 +1282,8 @@ and make_type_environment_by_letrec
     match (utrecbinds, tvtylst) with
     | ([], []) -> (tyenvforrec, [], List.rev acctvtylstout)
 
-    | (UTLetRecBinding(mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
-        let (e1, ty1) = typecheck qtfbl (FreeID.succ_level lev) tyenvforrec utast1 in
+    | (UTLetRecBinding(mntyopt, _, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
+        let (e1, ty1) = typecheck qtfbl (Level.succ lev) tyenvforrec utast1 in
         begin
           match mntyopt with
           | None ->
@@ -1264,8 +1293,8 @@ and make_type_environment_by_letrec
               in
               begin
                 match e1 with
-                | Function(patbrs1) -> (tyenvfinal, LetRecBinding(evid, patbrs1) :: recbindtail, tvtylstoutfinal)
-                | _                 -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
+                | Function([], patbr1) -> (tyenvfinal, LetRecBinding(evid, patbr1) :: recbindtail, tvtylstoutfinal)
+                | _                    -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
               end
 
           | Some(mnty) ->
@@ -1277,8 +1306,8 @@ and make_type_environment_by_letrec
               in
               begin
                 match e1 with
-                | Function(patbrs1) -> (tyenvfinal, LetRecBinding(evid, patbrs1) :: recbindtail, tvtylstoutfinal)
-                | _                 -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
+                | Function([], patbr1) -> (tyenvfinal, LetRecBinding(evid, patbr1) :: recbindtail, tvtylstoutfinal)
+                | _                    -> let (rng1, _) = utast1 in raise (BreaksValueRestriction(rng1))
               end
         end
 
@@ -1290,9 +1319,13 @@ and make_type_environment_by_letrec
     | []                              -> (tyenv, tvtylst_forall)
     | (varnm, tvty, evid) :: tvtytail ->
         let prety = tvty in
-          let () = print_for_debug_typecheck ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
-          let pty = poly_extend erase_range_of_type (generalize lev prety) in
-          let () = print_for_debug_typecheck ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+(*
+          let () = print_endline ("#Generalize1 " ^ varnm ^ " : " ^ (string_of_mono_type_basic prety)) in  (* for debug *)
+*)
+          let pty = (generalize lev (erase_range_of_type prety)) in
+(*
+          let () = print_endline ("#Generalize2 " ^ varnm ^ " : " ^ (string_of_poly_type_basic pty)) in (* for debug *)
+*)
           let tvtylst_forall_new = (varnm, pty, evid) :: tvtylst_forall in
             make_forall_type_mutual (Typeenv.add tyenv varnm (pty, evid)) tyenv_before_let tvtytail tvtylst_forall_new
   in
@@ -1304,11 +1337,13 @@ and make_type_environment_by_letrec
     (tyenv_forall, tvtylst_forall, mutletcons)
 
 
-and make_type_environment_by_let_mutable (lev : FreeID.level) (tyenv : Typeenv.t) varrng varnm utastI =
+and make_type_environment_by_let_mutable (lev : level) (tyenv : Typeenv.t) varrng varnm utastI =
   let (eI, tyI) = typecheck Unquantifiable lev tyenv utastI in
-  let () = print_for_debug_typecheck ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
-  let evid = EvalVarID.fresh varnm in
-  let tyenvI = Typeenv.add tyenv varnm (Poly((varrng, RefType(tyI))), evid) in
+(*
+  let () = print_endline ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
+*)
+  let evid = EvalVarID.fresh (varrng, varnm) in
+  let tyenvI = Typeenv.add tyenv varnm (lift_poly (varrng, RefType(tyI)), evid) in
     (tyenvI, evid, eI, tyI)
 
 
@@ -1316,6 +1351,6 @@ let main (tyenv : Typeenv.t) (utast : untyped_abstract_tree) =
   begin
     final_tyenv := tyenv;
     (* Format.printf "%a" pp_untyped_abstract_tree utast; *)
-    let (e, ty) = typecheck Quantifiable FreeID.bottom_level tyenv utast in
+    let (e, ty) = typecheck Quantifiable Level.bottom tyenv utast in
       (ty, !final_tyenv, e)
   end

@@ -12,4 +12,4 @@ val to_string : t -> string
 
 val unite : t -> t -> t
 
-val make : int -> int -> int -> t
+val make : string -> int -> int -> int -> t

@@ -29,13 +29,17 @@
     | MathState       (* math mode *)
 
 
+  let file_name_ref = ref ""
+
+
   let get_pos lexbuf =
     let posS = Lexing.lexeme_start_p lexbuf in
     let posE = Lexing.lexeme_end_p lexbuf in
+    let fname = !file_name_ref (* posS.Lexing.pos_fname *) in
     let lnum = posS.Lexing.pos_lnum in
     let cnumS = posS.Lexing.pos_cnum - posS.Lexing.pos_bol in
     let cnumE = posE.Lexing.pos_cnum - posE.Lexing.pos_bol in
-      Range.make lnum cnumS cnumE
+      Range.make fname lnum cnumS cnumE
 
 
   let report_error lexbuf errmsg =
@@ -91,11 +95,13 @@
     stack
 
 
-  let reset_to_progexpr () =
+  let reset_to_progexpr fname =
+    file_name_ref := fname;
     initialize ProgramState
 
 
-  let reset_to_vertexpr () =
+  let reset_to_vertexpr fname =
+    file_name_ref := fname;
     initialize VerticalState
 
 

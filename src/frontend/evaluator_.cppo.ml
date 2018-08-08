@@ -16,7 +16,8 @@ let report_dynamic_error msg =
 
 type nom_input_horz_element =
   | NomInputHorzText     of string
-  | NomInputHorzEmbedded of abstract_tree * abstract_tree list
+  | NomInputHorzEmbedded of abstract_tree
+  | NomInputHorzThunk    of abstract_tree
   | NomInputHorzContent  of nom_input_horz_element list * environment
 
 
@@ -25,25 +26,26 @@ let lex_horz_text (ctx : HorzBox.context_main) (s_utf8 : string) : HorzBox.horz_
     HorzBox.([HorzPure(PHCInnerString(ctx, uchlst))])
 
 
-let rec reduce_beta envf evid valuel astdef =
-  let envnew = add_to_environment envf evid (ref valuel) in
-    interpret envnew astdef
+let rec reduce_beta value1 value2 =
+  match value1 with
+  | FuncWithEnvironment(evids, patbr, env1) ->
+      let env1 =
+        evids |> List.fold_left (fun env evid ->
+          let loc = ref (Constructor("None", UnitConstant)) in
+          add_to_environment env evid loc
+        ) env1
+      in
+        select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+
+  | PrimitiveWithEnvironment(patbr, env1, _, _) ->
+      select_pattern (Range.dummy "Apply") env1 value2 [patbr]
+
+  | _ ->
+      report_bug_value "reduce_beta: not a function" value1
 
 
-and reduce_beta_list valuef valuearglst =
-  match valuearglst with
-  | [] ->
-      valuef
-
-  | valuearg :: astargtail ->
-      begin
-        match valuef with
-        | FuncWithEnvironment(patbrs, envf) ->
-            let valuefnew = select_pattern (Range.dummy "reduce_beta_list") envf valuearg patbrs in
-              reduce_beta_list valuefnew astargtail
-
-        | _ -> report_bug_value "reduce_beta_list" valuef
-      end
+and reduce_beta_list value1 valueargs =
+  List.fold_left reduce_beta value1 valueargs
 
 
 and interpret_point env ast =
@@ -84,8 +86,8 @@ and interpret_input_horz_content env (ihlst : input_horz_element list) =
     | InputHorzText(s) ->
         ImInputHorzText(s)
 
-    | InputHorzEmbedded(astcmd, astarglst) ->
-        ImInputHorzEmbedded(astcmd, astarglst)
+    | InputHorzEmbedded(astabs) ->
+        ImInputHorzEmbedded(astabs)
 
     | InputHorzEmbeddedMath(astmath) ->
         ImInputHorzEmbeddedMath(astmath)
@@ -103,8 +105,8 @@ and interpret_input_horz_content env (ihlst : input_horz_element list) =
 
 and interpret_input_vert_content env (ivlst : input_vert_element list) =
   ivlst |> List.map (function
-    | InputVertEmbedded(astcmd, astarglst) ->
-        ImInputVertEmbedded(astcmd, astarglst)
+    | InputVertEmbedded(astabs) ->
+        ImInputVertEmbedded(astabs)
 
     | InputVertContent(ast) ->
         let value = interpret env ast in
@@ -150,10 +152,6 @@ and interpret env ast =
       in
         LengthConstant(len)
 
-  | LambdaVert(evid, astdef) -> LambdaVertWithEnvironment(evid, astdef, env)
-
-  | LambdaHorz(evid, astdef) -> LambdaHorzWithEnvironment(evid, astdef, env)
-
 (* -- fundamentals -- *)
 
   | ContentOf(rng, evid) ->
@@ -175,22 +173,37 @@ and interpret env ast =
       let value1 = interpret env ast1 in
         select_pattern (Range.dummy "LetNonRecIn") env value1 [PatternBranch(pat, ast2)]
 
-  | Function(patbrs) ->
-      FuncWithEnvironment(patbrs, env)
+  | Function(evids, patbrs) ->
+      FuncWithEnvironment(evids, patbrs, env)
 
   | Apply(ast1, ast2) ->
       let value1 = interpret env ast1 in
+      let value2 = interpret env ast2 in
+        reduce_beta value1 value2
+
+  | ApplyOptional(ast1, ast2) ->
+      let value1 = interpret env ast1 in
       begin
         match value1 with
-        | FuncWithEnvironment(patbrs, env1) ->
+        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
             let value2 = interpret env ast2 in
-              select_pattern (Range.dummy "Apply") env1 value2 patbrs
+            let loc = ref (Constructor("Some", value2)) in
+            let env1 = add_to_environment env1 evid loc in
+            FuncWithEnvironment(evids, patbrs, env1)
 
-        | PrimitiveWithEnvironment(patbrs, env1, _, _) ->
-            let value2 = interpret env ast2 in
-                          select_pattern (Range.dummy "Apply") env1 value2 patbrs
+        | _ -> report_bug_reduction "ApplyOptional: not a function with optional parameter" ast1 value1
+      end
 
-        | _ -> report_bug_reduction "Apply: not a function" ast1 value1
+  | ApplyOmission(ast1) ->
+      let value1 = interpret env ast1 in
+      begin
+        match value1 with
+        | FuncWithEnvironment(evid :: evids, patbrs, env1) ->
+            let env1 = add_to_environment env1 evid (ref (Constructor("None", UnitConstant))) in
+            FuncWithEnvironment(evids, patbrs, env1)
+
+        | _ ->
+            report_bug_reduction "ApplyOmission: not a function with optional parameter" ast1 value1
       end
 
   | IfThenElse(astb, ast1, ast2) ->
@@ -213,7 +226,8 @@ and interpret env ast =
               | Some(v) -> v
             end
 
-        | _ -> report_bug_reduction "AccessField: not a Record" ast1 value1
+        | _ ->
+            report_bug_reduction "AccessField: not a Record" ast1 value1
       end
 
 (* ---- imperatives ---- *)
@@ -314,24 +328,9 @@ and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst 
   let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
     imivlst |> List.map (fun imiv ->
       match imiv with
-      | ImInputVertEmbedded(astcmd, astarglst) ->
-          let valuecmd = interpret env astcmd in
-          begin
-            match valuecmd with
-            | LambdaVertWithEnvironment(evid, astdef, envf) ->
-                let valuedef = reduce_beta envf evid valuectx astdef in
-                let valuearglst =
-                  astarglst |> List.fold_left (fun acc astarg ->
-                    let valuearg = interpret env astarg in
-                      Alist.extend acc valuearg
-                  ) Alist.empty |> Alist.to_list
-                    (* -- left-to-right evaluation -- *)
-                in
-                let valueret = reduce_beta_list valuedef valuearglst in
-                  get_vert valueret
-
-            | _ -> report_bug_reduction "interpret_intermediate_input_vert:1" astcmd valuecmd
-          end
+      | ImInputVertEmbedded(astabs) ->
+          let valuevert = interpret env (Apply(astabs, Value(valuectx))) in
+            get_vert valuevert
 
       | ImInputVertContent(imivlstsub, envsub) ->
           interpret_commands envsub imivlstsub
@@ -349,8 +348,8 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
   let rec normalize (imihlst : intermediate_input_horz_element list) =
     imihlst |> List.fold_left (fun acc imih ->
       match imih with
-      | ImInputHorzEmbedded(astcmd, astarglst) ->
-          let nmih = NomInputHorzEmbedded(astcmd, astarglst) in
+      | ImInputHorzEmbedded(astabs) ->
+          let nmih = NomInputHorzEmbedded(astabs) in
             Alist.extend acc nmih
 
       | ImInputHorzText(s2) ->
@@ -361,7 +360,7 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
           end
 
       | ImInputHorzEmbeddedMath(astmath) ->
-          let nmih = NomInputHorzEmbedded(Value(valuemcmd), [astmath]) in
+          let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
             Alist.extend acc nmih
 
       | ImInputHorzContent(imihlstsub, envsub) ->
@@ -375,25 +374,13 @@ and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_
   let rec interpret_commands env (nmihlst : nom_input_horz_element list) : HorzBox.horz_box list =
     nmihlst |> List.map (fun nmih ->
       match nmih with
-      | NomInputHorzEmbedded(astcmd, astarglst) ->
-          let valuecmd = interpret env astcmd in
-          begin
-            match valuecmd with
-            | LambdaHorzWithEnvironment(evid, astdef, envf) ->
-                let valuedef = reduce_beta envf evid valuectx astdef in
-                let valuearglst =
-                  astarglst |> List.fold_left (fun acc astarg ->
-                    let valuearg = interpret env astarg in
-                      Alist.extend acc valuearg
-                  ) Alist.empty |> Alist.to_list
-                    (* -- left-to-right evaluation -- *)
-                in
-                let valueret = reduce_beta_list valuedef valuearglst in
-                let hblst = get_horz valueret in
-                  hblst
+      | NomInputHorzEmbedded(astabs) ->
+          let valuehorz = interpret env (Apply(astabs, Value(valuectx))) in
+            get_horz valuehorz
 
-            | _ -> report_bug_reduction "interpret_input_horz" astcmd valuecmd
-          end
+      | NomInputHorzThunk(ast) ->
+          let valuehorz = interpret env ast in
+            get_horz valuehorz
 
       | NomInputHorzText(s) ->
           lex_horz_text ctx s
@@ -481,9 +468,9 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (valueobj : 
 
 and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
   let trilst =
-    recbinds |> List.map (function LetRecBinding(evid, patbrs) ->
+    recbinds |> List.map (function LetRecBinding(evid, patbr) ->
       let loc = ref StringEmpty in
-      (evid, loc, patbrs)
+      (evid, loc, patbr)
     )
   in
   let envnew =
@@ -491,7 +478,7 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
       add_to_environment envacc evid loc
     )
   in
-  trilst |> List.iter (fun (evid, loc, patbrs) ->
-    loc := FuncWithEnvironment(patbrs, envnew)
+  trilst |> List.iter (fun (evid, loc, patbr) ->
+    loc := FuncWithEnvironment([], patbr, envnew)
   );
   envnew

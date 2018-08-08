@@ -1,14 +1,15 @@
 @require: gr
 @require: color
 @require: geom
+@require: option
 
 module CD : sig
   type obj
   val \diagram : [length; length; (|
       obj             : point -> math -> obj;
       draw-obj        : obj -> graphics list;
-      draw-arr        : math -> float -> length -> obj -> obj -> graphics list;
-      draw-dashed-arr : math -> float -> length -> obj -> obj -> graphics list;
+      draw-arr        : math -> float?-> length ?-> obj -> obj -> graphics list;
+      draw-dashed-arr : math -> float?-> length ?-> obj -> obj -> graphics list;
     |) -> graphics list] inline-cmd
 end = struct
 
@@ -26,10 +27,10 @@ end = struct
   let wpad = 2pt
     % -- padding width for objects
 
-  let draw-arr-scheme arrowf ctx m t-name len-name (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
+  let draw-arr-scheme arrowf ctx m ?:t-name-opt ?:len-name-opt (((x1r, _), _) as obj1r) (((x2r, _), _) as obj2r) =
 
-%    let t-name = destruct-option 0.5 t-name-opt in
-%    let len-name = destruct-option (get-font-size ctx *' 0.5) len-name-opt in
+    let t-name = Option.from 0.5 t-name-opt in
+    let len-name = Option.from (get-font-size ctx *' 0.5) len-name-opt in
 %    let t-name = 0.5 in
 %    let len-name = get-font-size ctx *' 0.5 in
 

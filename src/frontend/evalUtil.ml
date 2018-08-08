@@ -10,6 +10,12 @@ let report_bug_vm msg =
   failwith ("bug: " ^ msg)
 
 
+let report_bug_vm_value msg value =
+  Format.printf "[Bug]@ %s:" msg;
+  Format.printf "%a" pp_syntactic_value value;
+  failwith ("bug: " ^ msg)
+
+
 let report_bug_ast msg ast =
   Format.printf "[Bug]@ %s:" msg;
   Format.printf "%a" pp_abstract_tree ast;

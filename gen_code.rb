@@ -174,7 +174,7 @@ def gen_insttype
     puts "      [@printer (fun fmt _ -> Format.fprintf fmt \"Op#{inst["inst"]}(...)\")]" if inst["suppress-pp"]
     puts "      [@printer (#{inst["custom-pp"]})]" if inst["custom-pp"]
   end
-  puts "  [@@deriving show]"
+  puts "  [@@deriving show { with_path = false; }]"
 end
 
 def gen_attype
