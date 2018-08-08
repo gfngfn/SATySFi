@@ -18,6 +18,7 @@ exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * Typeenv.t * mono_type
 exception MultipleFieldInRecord          of Range.t * field_name
+exception ApplicationOfNonFunction       of Range.t * Typeenv.t * mono_type
 
 exception InternalInclusionError
 exception InternalContradictionError
@@ -667,13 +668,17 @@ let rec typecheck
             let tycodnew = overwrite_range_of_type tycod rng in
               (eret, tycodnew)
 
-        | ty1 ->
+        | (_, TypeVariable(_)) as ty1 ->
             let tvid = FreeID.fresh UniversalKind qtfbl lev () in
             let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
             let orv = OptionRowVarID.fresh lev in
             let optrow = OptionRowVariable(ref (MonoORFree(orv))) in
             let () = unify ty1 (get_range utast1, FuncType(optrow, ty2, beta)) in
               (eret, beta)
+
+        | ty1 ->
+            let (rng1, _) = utast1 in
+            raise (ApplicationOfNonFunction(rng1, tyenv, ty1))
       end
 
   | UTApplyOptional(utast1, utast2) ->

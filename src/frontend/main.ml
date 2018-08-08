@@ -562,8 +562,17 @@ let error_log_environment suspended =
 
   | Typechecker.MultipleFieldInRecord(rng, fldnm) ->
       report_error Typechecker [
-        NormalLine("at " ^ (Range.to_string rng));
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("this record expression has more than one field for '" ^ fldnm ^ "'.");
+      ]
+
+  | Typechecker.ApplicationOfNonFunction(rng, tyenv, ty) ->
+      let strty = string_of_mono_type tyenv ty in
+      report_error Typechecker [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("this expression has type");
+        DisplayLine(strty);
+        NormalLine("and thus it cannot be applied to arguments.");
       ]
 
   | Typeenv.IllegalNumberOfTypeArguments(rng, tynm, lenexp, lenerr) ->
