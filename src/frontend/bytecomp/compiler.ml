@@ -41,11 +41,6 @@ and compile_input_horz_content (ihlst : ir_input_horz_element list) =
 
       | IRInputHorzEmbedded(irabs) ->
           let compiled = compile irabs [] in
-(*
-          let appcode = emit_appop (List.length irarglist) [] true in
-          let cmdcode = compile ircmd appcode in
-          let compiled = compile_list irarglist cmdcode in
-*)
             CompiledInputHorzEmbedded(compiled)
 
       | IRInputHorzEmbeddedMath(irmath) ->
@@ -62,11 +57,6 @@ and compile_input_vert_content (ivlst : ir_input_vert_element list) =
     ivlst |> List.map (function
       | IRInputVertEmbedded(irabs) ->
           let compiled = compile irabs [] in
-(*
-          let appcode = emit_appop (List.length irarglist) [] true in
-          let cmdcode = compile ircmd appcode in
-          let compiled = compile_list irarglist cmdcode in
-*)
             CompiledInputVertEmbedded(compiled)
 
       | IRInputVertContent(ir) ->
@@ -159,15 +149,9 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRApplyOptional(ircallee, iroptarg) ->
       compile ircallee @@ (compile iroptarg @@ OpApplyOptional :: cont)
-(*
-      failwith "IRApplyOptional: remains to be implemented"
-*)
 
   | IRApplyOmission(irabs) ->
       compile irabs @@ OpApplyOmission :: cont
-(*
-      failwith "IRApplyOmission: remains to be implemented"
-*)
 
   | IRTuple(len, iritems) ->
       compile_list iritems (OpMakeTuple(len) :: cont)
