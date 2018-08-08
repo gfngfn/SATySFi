@@ -664,7 +664,7 @@ and syntactic_value =
 
   | FuncWithEnvironment   of EvalVarID.t list * pattern_branch * environment
   | PrimitiveWithEnvironment   of pattern_branch * environment * int * (abstract_tree list -> abstract_tree)
-  | CompiledFuncWithEnvironment of int * syntactic_value list * int * instruction list * vmenv
+  | CompiledFuncWithEnvironment of varloc list * int * syntactic_value list * int * instruction list * vmenv
   | CompiledPrimitiveWithEnvironment of int * syntactic_value list * int * instruction list * vmenv * (abstract_tree list -> abstract_tree)
 
   | EvaluatedEnvironment  of environment

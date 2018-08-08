@@ -23,7 +23,7 @@ let compile_environment env =
         | PrimitiveWithEnvironment(parbr, env1, arity, astf) ->
           begin
             match compile_and_exec env (Function([], parbr)) with
-            | CompiledFuncWithEnvironment(_, _, framesize, body, env1) ->
+            | CompiledFuncWithEnvironment([], _, _, framesize, body, env1) ->
               loc := CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf)
             | _ -> ()
           end

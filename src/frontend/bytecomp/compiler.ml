@@ -150,8 +150,14 @@ and compile (ir : ir) (cont : instruction list) =
         else
           OpClosure(List.length irpatlst, framesize, optcode) :: cont
 
-  | IROptFunction(framesize, vars, irpat, irbody) ->
+  | IROptFunction(framesize, optvars, irpat, irbody) ->
+      let body = compile irbody [] in
+      let patlst = compile_patlist [irpat] body in
+      let (optcode, n) = optimize_func_prologue patlst in
+        OpOptClosure(optvars, 1, framesize, optcode) :: cont
+(*
       failwith "IROptFunction: remains to be implemented"
+*)
 
   | IRApply(arity, ircallee, irargs) ->
       compile_list irargs @@ (compile ircallee @@ emit_appop (List.length irargs) cont false)
@@ -159,11 +165,17 @@ and compile (ir : ir) (cont : instruction list) =
   | IRApplyPrimitive(op, arity, irargs) ->
       compile_list irargs (op :: cont)
 
-  | IRApplyOptional(ir1, ir2) ->
+  | IRApplyOptional(irabs, iroptarg) ->
+      compile iroptarg @@ (compile iroptarg @@ OpApplyOptional :: cont)
+(*
       failwith "IRApplyOptional: remains to be implemented"
+*)
 
-  | IRApplyOmission(ir1) ->
+  | IRApplyOmission(irabs) ->
+      compile irabs @@ OpApplyOmission :: cont
+(*
       failwith "IRApplyOmission: remains to be implemented"
+*)
 
   | IRTuple(len, iritems) ->
       compile_list iritems (OpMakeTuple(len) :: cont)

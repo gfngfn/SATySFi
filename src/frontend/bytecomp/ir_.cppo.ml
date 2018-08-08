@@ -42,9 +42,9 @@ let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element l
     | InputHorzText(s) ->
         (IRInputHorzText(s), env)
 
-    | InputHorzEmbedded(astapp) ->
-        let (irapp, env) = transform env astapp in
-          (IRInputHorzEmbedded(irapp), env)
+    | InputHorzEmbedded(astabs) ->
+        let (irabs, env) = transform env astabs in
+          (IRInputHorzEmbedded(irabs), env)
 
     | InputHorzEmbeddedMath(astmath) ->
         let (irmath, env) = transform env astmath in
@@ -59,9 +59,9 @@ let rec transform_input_horz_content (env : frame) (ihlst : input_horz_element l
 and transform_input_vert_content (env : frame) (ivlst : input_vert_element list) : ir_input_vert_element list * frame =
   ivlst @|> env @|> map_with_env (fun env elem ->
     match elem with
-    | InputVertEmbedded(astapp) ->
-        let (irapp, env) = transform env astapp in
-          (IRInputVertEmbedded(irapp), env)
+    | InputVertEmbedded(astabs) ->
+        let (irabs, env) = transform env astabs in
+          (IRInputVertEmbedded(irabs), env)
 
     | InputVertContent(ast) ->
         let (ir, env) = transform env ast in

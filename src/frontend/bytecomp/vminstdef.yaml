@@ -67,7 +67,17 @@ params:
 - f
 code: |
   match f with
-  | CompiledFuncWithEnvironment(arity, pargs, framesize, body, env1) ->
+  | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+      let body =
+        optvars |> List.fold_left (fun acc optvar ->
+          let bindop =
+            match optvar with
+            | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
+            | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
+          in
+            OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+        ) body
+      in
       if arity = n then
         begin
          if pargs = [] then
@@ -80,7 +90,7 @@ code: |
 
       else if arity > n then
         let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
+        let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
           exec (applied :: stack) env code dump
 
       else
@@ -89,18 +99,18 @@ code: |
         let allargs = List.rev (pargs @ args) in
           exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
-   | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
-     if arity = n then
-       exec stack (newframe env1 framesize) body ((env, code) :: dump)
+  | CompiledPrimitiveWithEnvironment(arity, [], framesize, body, env1, astf) ->
+      if arity = n then
+        exec stack (newframe env1 framesize) body ((env, code) :: dump)
 
-     else if arity > n then
-       let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
-          exec (applied :: stack) env code dump
+      else if arity > n then
+        let (args, stack) = popn stack n in
+         let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
+           exec (applied :: stack) env code dump
 
-     else
-       let (surplus, stack) = popn stack (n - arity) in
-         exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
+      else
+        let (surplus, stack) = popn stack (n - arity) in
+          exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
    | _ -> report_bug_vm "Apply: not a function"
 
@@ -112,7 +122,17 @@ params:
 - f
 code: |
   match f with
-  | CompiledFuncWithEnvironment(arity, pargs, framesize, body, env1) ->
+  | CompiledFuncWithEnvironment(optvars, arity, pargs, framesize, body, env1) ->
+      let body =
+        optvars |> List.fold_left (fun acc optvar ->
+          let bindop =
+            match optvar with
+            | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
+            | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
+          in
+            OpPush(Constructor("None", UnitConstant)) :: bindop :: acc
+        ) body
+      in
     if arity = n then
       begin
        if pargs = [] then
@@ -125,7 +145,7 @@ code: |
 
     else if arity > n then
       let (args, stack) = popn stack n in
-      let applied = CompiledFuncWithEnvironment(arity - n, pargs @ args, framesize, body, env1) in
+      let applied = CompiledFuncWithEnvironment([], arity - n, pargs @ args, framesize, body, env1) in
         exec (applied :: stack) env code dump
 
     else
@@ -140,7 +160,7 @@ code: |
 
      else if arity > n then
        let (args, stack) = popn stack n in
-        let applied = CompiledFuncWithEnvironment(arity - n, args, framesize, body, env1) in
+        let applied = CompiledFuncWithEnvironment([], arity - n, args, framesize, body, env1) in
           exec (applied :: stack) env code dump
 
      else
@@ -148,6 +168,45 @@ code: |
          exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
    | _ -> report_bug_vm "ApplyT: not a function"
+
+---
+inst: ApplyOptional
+fields:
+params:
+- f
+- v
+code: |
+  match f with
+  | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+      let bindop =
+        match var with
+        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
+        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
+      in
+      let body = OpPush(Constructor("Some", v)) :: bindop :: body in
+        CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
+
+  | _ ->
+      report_bug_vm "ApplyOptional: not a function with optional arguments"
+
+---
+inst: ApplyOmission
+fields:
+params:
+- f
+code: |
+  match f with
+  | CompiledFuncWithEnvironment(var :: vars, arity, pargs, framesize, body, env1) ->
+      let bindop =
+        match var with
+        | GlobalVar(loc, evid, refs)    -> OpBindGlobal(loc, evid, !refs)
+        | LocalVar(lv, off, evid, refs) -> OpBindLocal(lv, off, evid, !refs)
+      in
+      let body = OpPush(Constructor("None", UnitConstant)) :: bindop :: body in
+        CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
+
+  | _ ->
+      report_bug_vm "ApplyOmission: not a function with optional arguments"
 
 ---
 inst: BindGlobal
@@ -440,7 +499,17 @@ fields:
 - framesize : int
 - body : instruction list
 code: |
-  exec (CompiledFuncWithEnvironment(arity, [], framesize, body, env) :: stack) env code dump
+  exec (CompiledFuncWithEnvironment([], arity, [], framesize, body, env) :: stack) env code dump
+
+---
+inst: OptClosure
+fields:
+- optvars : varloc list
+- arity : int
+- framesize : int
+- body : instruction list
+code: |
+  exec (CompiledFuncWithEnvironment(optvars, arity, [], framesize, body, env) :: stack) env code dump
 
 ---
 inst: ClosureInputHorz
