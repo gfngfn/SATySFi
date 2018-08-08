@@ -60,6 +60,18 @@ code: |
   | _ -> report_bug_vm "not a Record"
 
 ---
+inst: Forward
+fields:
+- n : int
+code: |
+  let (vs, stack) = popn stack n in
+  match stack with
+  | v0 :: stack ->
+      exec (v0 :: List.rev_append vs stack) env code dump
+  | _ ->
+      report_bug_vm "Swap: stack underflow"
+
+---
 inst: Apply
 fields:
 - n : int
@@ -112,7 +124,8 @@ code: |
         let (surplus, stack) = popn stack (n - arity) in
           exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApply(n - arity) :: code) :: dump)
 
-   | _ -> report_bug_vm "Apply: not a function"
+   | _ ->
+       report_bug_vm_value "Apply: not a function" f
 
 ---
 inst: ApplyT
@@ -149,7 +162,7 @@ code: |
           exec (applied :: stack) env code dump
 
       else
-        let (surplus, stack) = popn stack (n-arity) in
+        let (surplus, stack) = popn stack (n - arity) in
         let (args, stack) = popn stack arity in
         let allargs = List.rev (pargs @ args) in
           exec (allargs @ stack) (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
@@ -167,7 +180,8 @@ code: |
          let (surplus, stack) = popn stack (n-arity) in
            exec stack (newframe env1 framesize) body ((env, OpInsertArgs(surplus) :: OpApplyT(n - arity) :: code) :: dump)
 
-   | _ -> report_bug_vm "ApplyT: not a function"
+   | _ ->
+       report_bug_vm_value "ApplyT: not a function" f
 
 ---
 inst: ApplyOptional
@@ -187,7 +201,7 @@ code: |
         CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
 
   | _ ->
-      report_bug_vm "ApplyOptional: not a function with optional arguments"
+      report_bug_vm_value "ApplyOptional: not a function with optional arguments" f
 
 ---
 inst: ApplyOmission
@@ -206,7 +220,7 @@ code: |
         CompiledFuncWithEnvironment(vars, arity, pargs, framesize, body, env1)
 
   | _ ->
-      report_bug_vm "ApplyOmission: not a function with optional arguments"
+      report_bug_vm_value "ApplyOmission: not a function with optional arguments" f
 
 ---
 inst: BindGlobal
@@ -494,15 +508,6 @@ code: |
 
 ---
 inst: Closure
-fields:
-- arity : int
-- framesize : int
-- body : instruction list
-code: |
-  exec (CompiledFuncWithEnvironment([], arity, [], framesize, body, env) :: stack) env code dump
-
----
-inst: OptClosure
 fields:
 - optvars : varloc list
 - arity : int

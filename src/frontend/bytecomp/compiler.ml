@@ -141,32 +141,24 @@ and compile (ir : ir) (cont : instruction list) =
   | IRLetNonRecIn(ir1, irpat, ir2) ->
       compile ir1 @@ compile_patsel (Range.dummy "LetNonRecIn") [IRPatternBranch(irpat, ir2)] cont
 
-  | IRFunction(framesize, irpatlst, irbody) ->
+  | IRFunction(framesize, optvars, irpatlst, irbody) ->
       let body = compile irbody [] in
       let patlst = compile_patlist irpatlst body in
       let (optcode, n) = optimize_func_prologue patlst in
         if framesize - n = 0 then
-          OpClosure(List.length irpatlst, 0, optcode) :: cont
+          OpClosure(optvars, List.length irpatlst, 0, optcode) :: cont
         else
-          OpClosure(List.length irpatlst, framesize, optcode) :: cont
-
-  | IROptFunction(framesize, optvars, irpat, irbody) ->
-      let body = compile irbody [] in
-      let patlst = compile_patlist [irpat] body in
-      let (optcode, n) = optimize_func_prologue patlst in
-        OpOptClosure(optvars, 1, framesize, optcode) :: cont
-(*
-      failwith "IROptFunction: remains to be implemented"
-*)
+          OpClosure(optvars, List.length irpatlst, framesize, optcode) :: cont
 
   | IRApply(arity, ircallee, irargs) ->
-      compile_list irargs @@ (compile ircallee @@ emit_appop (List.length irargs) cont false)
+      let n = List.length irargs in
+      compile ircallee @@ (compile_list irargs @@ OpForward(n) :: emit_appop n cont false)
 
   | IRApplyPrimitive(op, arity, irargs) ->
       compile_list irargs (op :: cont)
 
-  | IRApplyOptional(irabs, iroptarg) ->
-      compile iroptarg @@ (compile iroptarg @@ OpApplyOptional :: cont)
+  | IRApplyOptional(ircallee, iroptarg) ->
+      compile ircallee @@ (compile iroptarg @@ OpApplyOptional :: cont)
 (*
       failwith "IRApplyOptional: remains to be implemented"
 *)

@@ -587,8 +587,7 @@ and ir =
   | IRLetNonRecIn           of ir * ir_pattern_tree * ir
   | IRContentOf             of varloc
   | IRIfThenElse            of ir * ir * ir
-  | IRFunction              of int * ir_pattern_tree list * ir
-  | IROptFunction           of int * varloc list * ir_pattern_tree * ir
+  | IRFunction              of int * varloc list * ir_pattern_tree list * ir
   | IRApply                 of int * ir * ir list
   | IRApplyPrimitive        of instruction * int * ir list
   | IRApplyOptional         of ir * ir

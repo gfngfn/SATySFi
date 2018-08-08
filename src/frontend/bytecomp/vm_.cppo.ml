@@ -17,6 +17,7 @@ let report_dynamic_error msg =
 type compiled_nom_input_horz_element =
   | CompiledNomInputHorzText     of string
   | CompiledNomInputHorzEmbedded of instruction list
+  | CompiledNomInputHorzThunk    of instruction list
   | CompiledNomInputHorzContent  of compiled_nom_input_horz_element list * vmenv
 
 
@@ -183,7 +184,7 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
-                let nmih = CompiledNomInputHorzEmbedded(mathcode @ [OpPush(valuemcmd); OpApplyT(2)]) in
+                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 
             | CompiledImInputHorzContent(imihlst, envsub) ->
@@ -199,6 +200,10 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
             match nmih with
             | CompiledNomInputHorzEmbedded(code) ->
                 let valueret = exec [valuectx] env (List.append code [OpApplyT(1)]) [] in
+                  get_horz valueret
+
+            | CompiledNomInputHorzThunk(code) ->
+                let valueret = exec [] env code [] in
                   get_horz valueret
 
             | CompiledNomInputHorzText(s) ->

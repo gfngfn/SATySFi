@@ -366,13 +366,14 @@ and transform (env : frame) (ast : abstract_tree) : ir * frame =
         let funenv = new_level env in
         let (irargs, funenv) = transform_pattern_list funenv args in
         let (irbody, funenv) = transform funenv body in
-          (IRFunction(funenv.size, irargs, irbody), env)
+          (IRFunction(funenv.size, [], irargs, irbody), env)
 
     | Function((_ :: _) as evids, PatternBranch(arg, body)) ->
-        let (vars, funenv) = map_with_env add_to_environment (new_level env) evids in
+        let funenv = new_level env in
+        let (optvars, funenv) = map_with_env add_to_environment funenv evids in
         let (irarg, funenv) = transform_pattern funenv arg in
         let (irbody, funenv) = transform funenv body in
-          (IROptFunction(funenv.size, vars, irarg, irbody), env)
+          (IRFunction(funenv.size, optvars, [irarg], irbody), env)
 
     | Function(_, PatternBranchWhen(_, _, _)) ->
         assert false
