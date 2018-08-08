@@ -184,7 +184,7 @@ and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imi
                 end
 
             | CompiledImInputHorzEmbeddedMath(mathcode) ->
-                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuemcmd); OpApplyT(2)]) in
+                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuectx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
                   Alist.extend acc nmih
 
             | CompiledImInputHorzContent(imihlst, envsub) ->

@@ -69,7 +69,7 @@ code: |
   | v0 :: stack ->
       exec (v0 :: List.rev_append vs stack) env code dump
   | _ ->
-      report_bug_vm "Swap: stack underflow"
+      report_bug_vm "Forward: stack underflow"
 
 ---
 inst: Apply
@@ -244,10 +244,14 @@ fields:
 - evid : EvalVarID.t
 - refs : int
 params:
-- v
 code: |
-  local_set_value env lv offset v;
-  exec stack env code dump
+  match stack with
+  | v :: stack ->
+      local_set_value env lv offset v;
+      exec stack env code dump
+
+  | _ ->
+      report_bug_vm ("BindLocal(" ^ (EvalVarID.show_direct evid) ^ ")")
 
 ---
 inst: BindClosuresRec
