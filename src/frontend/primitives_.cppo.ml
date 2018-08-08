@@ -216,46 +216,48 @@ let lam evid ast = Function([], PatternBranch(PVariable(evid), ast))
 let lamenv env evid arity ast astf = PrimitiveWithEnvironment(PatternBranch(PVariable(evid), ast), env, arity, astf)
 let ( !- ) evid = ContentOf(Range.dummy "temporary", evid)
 
+let dr = Range.dummy "dummy:lambda"
+
 let rec lambda1 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda1-1)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda1-1)") in
     lamenv env evid1 1 (astf (!- evid1))
       (fun lst -> match lst with
                   | [a1] -> astf a1
                   | _ -> failwith "internal error")
 
 let rec lambda2 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda2-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda2-2)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda2-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda2-2)") in
     lamenv env evid1 2 (lam evid2 (astf (!- evid1) (!- evid2)))
       (fun lst -> match lst with
                   | [a1;a2] -> astf a1 a2
                   | _ -> failwith "internal error")
 
 let rec lambda3 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda3-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda3-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda3-3)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda3-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda3-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda3-3)") in
     lamenv env evid1 3 (lam evid2 (lam evid3 (astf (!- evid1) (!- evid2) (!- evid3))))
       (fun lst -> match lst with
                   | [a1;a2;a3] -> astf a1 a2 a3
                   | _ -> failwith "internal error")
 
 let rec lambda4 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda4-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda4-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda4-3)" in
-  let evid4 = EvalVarID.fresh "(dummy:lambda4-4)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda4-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda4-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda4-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda4-4)") in
     lamenv env evid1 4 (lam evid2 (lam evid3 (lam evid4 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4)))))
       (fun lst -> match lst with
                   | [a1;a2;a3;a4] -> astf a1 a2 a3 a4
                   | _ -> failwith "internal error")
 
 let rec lambda5 astf env =
-  let evid1 = EvalVarID.fresh "(dummy:lambda5-1)" in
-  let evid2 = EvalVarID.fresh "(dummy:lambda5-2)" in
-  let evid3 = EvalVarID.fresh "(dummy:lambda5-3)" in
-  let evid4 = EvalVarID.fresh "(dummy:lambda5-4)" in
-  let evid5 = EvalVarID.fresh "(dummy:lambda5-5)" in
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda5-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda5-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda5-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda5-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda5-5)") in
     lamenv env evid1 5 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5))))))
       (fun lst -> match lst with
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
@@ -578,7 +580,7 @@ let make_environments () =
   let temporary_ast = StringEmpty in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
-      let evid = EvalVarID.fresh varnm in
+      let evid = EvalVarID.fresh (dr, varnm) in
       let loc = ref temporary_ast in
       let tyenvnew = Typeenv.add tyenv varnm (pty, evid) in
       let envnew = add_to_environment env evid loc in

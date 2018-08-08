@@ -206,7 +206,7 @@
   =
     let (varrng, varnm) = vartok in
     let curried = curry_lambda_abstract_pattern varrng argpatlst utastdef in
-      (UTLetRecBinding(mntyopt, varnm, curried)) :: tailcons
+      (UTLetRecBinding(mntyopt, varrng, varnm, curried)) :: tailcons
 
 
   let get_range_of_arguments (patlst : untyped_pattern_tree list) : Range.t =
@@ -302,11 +302,11 @@
       (tailcons : untyped_letrec_binding list)
   : untyped_letrec_binding list
   =
-    let (_, varnm) = vartok in
+    let (varrng, varnm) = vartok in
     let (patbrs, numofargs) = unite_into_pattern_branch_list recpatbrs in
     let rngfull = get_range_of_pattern_branch_list recpatbrs in
     let abs = make_function_for_parallel rngfull numofargs patbrs in
-      (UTLetRecBinding(mntyopt, varnm, abs)) :: tailcons
+      (UTLetRecBinding(mntyopt, varrng, varnm, abs)) :: tailcons
 
 
   let kind_type_arguments (uktyargs : untyped_unkinded_type_argument list) (constrntcons : constraints) : untyped_type_argument list =

@@ -1,5 +1,9 @@
 
-type t = int * string
+type t = {
+  number : int;
+  name   : string;
+  range  : Range.t;
+}
 
 
 let current_id = ref 0
@@ -9,27 +13,27 @@ let initialize () =
   current_id := 0
 
 
-let fresh varnm =
+let fresh (rng, varnm) =
   begin
     incr current_id;
-    (!current_id, varnm)
+    { number = !current_id; name = varnm; range = rng; }
   end
 
 
-let equal (i1, _) (i2, _) =
-  (i1 = i2)
+let equal evid1 evid2 =
+  (evid1.number = evid2.number)
 
 
-let compare (i1, _) (i2, _) =
-  Pervasives.compare i1 i2
+let compare evid1 evid2 =
+  Pervasives.compare evid1.number evid2.number
 
 
-let show_direct (i, varnm) =
-  "<" ^ (string_of_int i) ^ "|" ^ varnm ^ ">"
+let show_direct evid =
+  "<" ^ (string_of_int evid.number) ^ "|" ^ evid.name ^ "|" ^ (Range.to_string evid.range) ^ ">"
 
 
 let pp fmt evid =
   Format.fprintf fmt "%s" (show_direct evid)
 
-let get_varnm ((_, varnm) : t) = varnm
 
+let get_varnm (evid : t) = evid.name

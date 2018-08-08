@@ -30,7 +30,7 @@ let abstraction evid ast =
 let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (Range.t * var_name) list) : mono_option_row * EvalVarID.t list * Typeenv.t =
   let (tyenvnew, tyacc, evidacc) =
     optargs |> List.fold_left (fun (tyenv, tyacc, evidacc) (rng, varnm) ->
-      let evid = EvalVarID.fresh varnm in
+      let evid = EvalVarID.fresh (rng, varnm) in
       let tvid = FreeID.fresh UniversalKind qtfbl lev () in
       let tvref = ref (MonoFree(tvid)) in
       let beta = (rng, TypeVariable(PolyFree(tvref))) in
@@ -637,14 +637,14 @@ let rec typecheck
         (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
   | UTLambdaHorz(varrng, varnmctx, utast1) ->
-      let evid = EvalVarID.fresh varnmctx in
+      let evid = EvalVarID.fresh (varrng, varnmctx) in
       let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-horz-return", BaseType(BoxRowType)) in
         (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
 
   | UTLambdaVert(varrng, varnmctx, utast1) ->
-      let evid = EvalVarID.fresh varnmctx in
+      let evid = EvalVarID.fresh (varrng, varnmctx) in
       let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
       let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
@@ -1020,7 +1020,7 @@ and typecheck_input_vert (rng : Range.t) (qtfbl : quantifiability) (lev : level)
                 | UTOptionalArgument((rng, _)) :: _  -> Range.unite rngcmd rng
                 | UTOmission(rng) :: _               -> Range.unite rngcmd rng
               in
-              let evid = EvalVarID.fresh "%ctx-vert" in
+              let evid = EvalVarID.fresh (Range.dummy "ctx-vert", "%ctx-vert") in
               let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-vert", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
@@ -1058,7 +1058,7 @@ and typecheck_input_horz (rng : Range.t) (qtfbl : quantifiability) (lev : level)
           match tycmdmain with
 
           | HorzCommandType(cmdargtylstreq) ->
-              let evid = EvalVarID.fresh "%ctx-horz" in
+              let evid = EvalVarID.fresh (Range.dummy "ctx-horz", "%ctx-horz") in
               let ecmdctx = Apply(ecmd, ContentOf(Range.dummy "ctx-horz", evid)) in
               let eapp = typecheck_command_arguments ecmdctx tycmd rngcmdapp qtfbl lev tyenv utcmdarglst cmdargtylstreq in
               let eabs = abstraction evid eapp in
@@ -1208,7 +1208,7 @@ and typecheck_pattern
     | UTPVariable(varnm) ->
         let tvid = FreeID.fresh UniversalKind qtfbl lev () in
         let beta = (rng, TypeVariable(ref (MonoFree(tvid)))) in
-        let evid = EvalVarID.fresh varnm in
+        let evid = EvalVarID.fresh (rng, varnm) in
 (*
         let () = print_endline ("\n#PAdd " ^ varnm ^ " : " ^ (string_of_mono_type_basic beta)) in  (* for debug *)
 *)
@@ -1225,7 +1225,7 @@ and typecheck_pattern
               raise (MultiplePatternVariable(rngsub, rng, varnm))
 
           | None ->
-              let evid = EvalVarID.fresh varnm in
+              let evid = EvalVarID.fresh (rng, varnm) in
                 (PAsVariable(evid, epat1), typat1, patvarmap1 |> PatternVarMap.add varnm (rng, evid, beta))
         end
 
@@ -1253,7 +1253,7 @@ and make_type_environment_by_letrec
       | [] ->
           (acctyenv, [])
 
-      | UTLetRecBinding(_, varnm, astdef) :: tailcons ->
+      | UTLetRecBinding(_, varrng, varnm, astdef) :: tailcons ->
           let tvid = FreeID.fresh UniversalKind qtfbl (Level.succ lev) () in
           let tvref = ref (MonoFree(tvid)) in
           let rng = get_range astdef in
@@ -1262,7 +1262,7 @@ and make_type_environment_by_letrec
 (*
           let () = print_endline ("#AddMutualVar " ^ varnm ^ " : '" ^ (FreeID.show_direct (string_of_kind string_of_mono_type_basic) tvid) ^ " :: U") in (* for debug *)
 *)
-          let evid = EvalVarID.fresh varnm in
+          let evid = EvalVarID.fresh (varrng, varnm) in
           let (tyenvfinal, tvtylst) = iter (Typeenv.add acctyenv varnm (Poly(pbeta), evid)) tailcons in
             (tyenvfinal, ((varnm, beta, evid) :: tvtylst))
   in
@@ -1277,7 +1277,7 @@ and make_type_environment_by_letrec
     match (utrecbinds, tvtylst) with
     | ([], []) -> (tyenvforrec, [], List.rev acctvtylstout)
 
-    | (UTLetRecBinding(mntyopt, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
+    | (UTLetRecBinding(mntyopt, _, varnm, utast1) :: tailcons, (_, beta, evid) :: tvtytail) ->
         let (e1, ty1) = typecheck qtfbl (Level.succ lev) tyenvforrec utast1 in
         begin
           match mntyopt with
@@ -1337,7 +1337,7 @@ and make_type_environment_by_let_mutable (lev : level) (tyenv : Typeenv.t) varrn
 (*
   let () = print_endline ("#AddMutable " ^ varnm ^ " : " ^ (string_of_mono_type_basic (varrng, RefType(tyI)))) in (* for debug *)
 *)
-  let evid = EvalVarID.fresh varnm in
+  let evid = EvalVarID.fresh (varrng, varnm) in
   let tyenvI = Typeenv.add tyenv varnm (lift_poly (varrng, RefType(tyI)), evid) in
     (tyenvI, evid, eI, tyI)
 

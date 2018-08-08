@@ -3,7 +3,7 @@ type t
 
 val initialize : unit -> unit
 
-val fresh : string -> t
+val fresh : Range.t * string -> t
 
 val equal : t -> t -> bool
 

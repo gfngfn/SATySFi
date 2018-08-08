@@ -358,7 +358,7 @@ module BoundID =
 (* ---- untyped ---- *)
 
 type untyped_letrec_binding =
-  UTLetRecBinding of manual_type option * var_name * untyped_abstract_tree
+  UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 and untyped_input_horz_element_main =
