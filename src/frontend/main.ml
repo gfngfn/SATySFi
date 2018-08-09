@@ -245,32 +245,28 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
                   begin
                     match CrossRef.needs_another_trial file_path_dump with
                     | CrossRef.NeedsAnotherTrial ->
-                        begin
-                          Logging.needs_another_trial ();
-                          aux (i + 1);
-                        end
+                        Logging.needs_another_trial ();
+                        aux (i + 1);
 
                     | CrossRef.CountMax ->
-                        begin
-                          Logging.achieve_count_max ();
-                          output_pdf pdf;
-                          Logging.end_output file_path_out;
-                        end
+                        Logging.achieve_count_max ();
+                        output_pdf pdf;
+                        Logging.end_output file_path_out;
 
                     | CrossRef.CanTerminate unresolved_crossrefs ->
-                        begin
-                          Logging.achieve_fixpoint unresolved_crossrefs;
-                          output_pdf pdf;
-                          Logging.end_output file_path_out;
-                        end
+                        Logging.achieve_fixpoint unresolved_crossrefs;
+                        output_pdf pdf;
+                        Logging.end_output file_path_out;
                   end
 
-              | _ -> Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
+              | _ ->
+                  Format.printf "valuedoc: %a\n" pp_syntactic_value valuedoc; failwith "main; not a DocumentValue(...)"
             end
           in
-            aux 1
+          aux 1
 
-      | _  -> raise (NotADocumentFile(file_path_in, tyenv, ty))
+      | _ ->
+          raise (NotADocumentFile(file_path_in, tyenv, ty))
 
 
 let error_log_environment suspended =
@@ -636,14 +632,8 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("The implementation of value '" ^ varnm ^ "' has type");
         DisplayLine(Display.string_of_poly_type tyenv1 pty1);
-(*
-        DisplayLine(string_of_poly_type_basic pty1);  (* FOR DEBUG *)
-*)
         NormalLine("which is inconsistent with the type required by the signature");
         DisplayLine(Display.string_of_poly_type tyenv2 pty2);
-(*
-        DisplayLine(string_of_poly_type_basic pty2);  (* FOR DEBUG *)
-*)
       ]
 
   | Typechecker.ContradictionError(tyenv, ((rng1, _) as ty1), ((rng2, _) as ty2)) ->
@@ -693,7 +683,8 @@ let error_log_environment suspended =
   | Vm.ExecError(s)
       -> report_error Evaluator [ NormalLine(s); ]
 
-  | Sys_error(s) -> report_error System [ NormalLine(s); ]
+  | Sys_error(s) ->
+      report_error System [ NormalLine(s); ]
 
 
 let arg_version () =
@@ -733,17 +724,17 @@ let handle_anonimous_arg (curdir : file_path) (s : file_path) =
 
 let arg_spec_list curdir =
   [
-    ("-o"               , Arg.String(arg_output curdir)            , " Specify output file");
-    ("--output"         , Arg.String(arg_output curdir)            , " Specify output file");
-    ("-v"               , Arg.Unit(arg_version)                    , " Print version");
-    ("--version"        , Arg.Unit(arg_version)                    , " Print version");
-    ("--full-path"      , Arg.Unit(OptionState.set_show_full_path) , " Display paths in full-path style");
-    ("--debug-show-bbox", Arg.Unit(OptionState.set_debug_show_bbox), " Output bounding boxes for glyphs");
-    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Output boxes for spaces");
-    ("-t"               , Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
-    ("--type-check-only", Arg.Unit(OptionState.set_type_check_only), " Stops after type checking");
-    ("-b"               , Arg.Unit(OptionState.set_bytecomp_mode)  , " Use bytecode compiler");
-    ("--bytecomp"       , Arg.Unit(OptionState.set_bytecomp_mode)  , " Use bytecode compiler");
+    ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"              );
+    ("--output"          , Arg.String(arg_output curdir)             , " Specify output file"              );
+    ("-v"                , Arg.Unit(arg_version)                     , " Prints version"                   );
+    ("--version"         , Arg.Unit(arg_version)                     , " Prints version"                   );
+    ("--full-path"       , Arg.Unit(OptionState.set_show_full_path)  , " Displays paths in full-path style");
+    ("--debug-show-bbox" , Arg.Unit(OptionState.set_debug_show_bbox) , " Outputs bounding boxes for glyphs");
+    ("--debug-show-space", Arg.Unit(OptionState.set_debug_show_space), " Outputs boxes for spaces"         );
+    ("-t"                , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"        );
+    ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"        );
+    ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
+    ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
   ]
 
 
@@ -766,10 +757,10 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [Filename.concat s ".satysfi"]
   in
-  let ds = user_dirs @ runtime_dirs in
-  (if List.length ds = 0 then
-    raise NoLibraryRootDesignation);
-  Config.initialize ds
+  let ds = List.append user_dirs runtime_dirs in
+    match ds with
+    | []     -> raise NoLibraryRootDesignation
+    | _ :: _ -> Config.initialize ds
 
 
 let () =
@@ -814,17 +805,4 @@ let () =
           | LibraryFile(utast) ->
               eval_library_file tyenv env file_path_in utast
         ) (tyenv, env) dg |> ignore
-(*
-    (* begin: for debug *)
-    Format.printf "Main> ==== ====\n";
-    let () =
-      let (valenv, _) = env in
-      EvalVarIDMap.iter (fun evid _ -> Format.printf "Main> %s\n" (EvalVarID.show_direct evid)) valenv
-    in
-    Format.printf "Main> ==== ====\n";
-    (* end: for debug *)
-*)
-(*
-    main tyenv env input_list output dumpfile
-*)
   )
