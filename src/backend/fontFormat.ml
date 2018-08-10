@@ -425,7 +425,7 @@ let get_ligature_table (submap : subset_map) (d : Otfm.decoder) : LigatureTable.
       (* temporary; should depend on the current language system *)
     Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
     pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
-    () |> Otfm.gsub feature (fun () _ -> ()) (fun () _ -> ()) (fun () (gid, liginfolst) ->
+    () |> Otfm.gsub feature ~lig:(fun () (gid, liginfolst) ->
       let liginfolst =
         liginfolst |> List.map (fun (tail, ligature) -> LigatureTable.{ tail; ligature; })
       in
@@ -548,16 +548,17 @@ let get_kerning_table (d : Otfm.decoder) =
       (* temporary; should depend on the current language system *)
     Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
     pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "kern") `Missing_feature >>= fun feature ->
-    () |> Otfm.gpos feature (fun () (gid1, pairposlst) ->
-      pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
-        match valrcd1.Otfm.x_advance with
-        | None      -> ()
-        | Some(xa1) -> kerntbl |> KerningTable.add gid1 gid2 xa1
+    () |> Otfm.gpos feature
+      ~pair1:(fun () (gid1, pairposlst) ->
+        pairposlst |> List.iter (fun (gid2, valrcd1, valrcd2) ->
+          match valrcd1.Otfm.x_advance with
+          | None      -> ()
+          | Some(xa1) -> kerntbl |> KerningTable.add gid1 gid2 xa1
+        )
       )
-    )
-    (fun clsdeflst1 clsdeflst2 () sublst ->
-      kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
-    ) >>= fun () -> Ok()
+      ~pair2:(fun clsdeflst1 clsdeflst2 () sublst ->
+        kerntbl |> KerningTable.add_by_class clsdeflst1 clsdeflst2 sublst;
+      ) >>= fun () -> Ok()
   in
   match res with
   | Ok() ->
@@ -572,6 +573,89 @@ let get_kerning_table (d : Otfm.decoder) =
 *)
             kerntbl
       | _                        -> (* raise_err e *) kerntbl  (* temporary *)
+
+
+let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
+  PerMille(int_of_float ((float_of_int (w * 1000)) /. (float_of_int units_per_em)))
+
+
+module GSet = Set.Make
+  (struct
+    type t = original_glyph_id
+    let compare = Pervasives.compare
+  end)
+
+
+module GMap = Map.Make
+  (struct
+    type t = original_glyph_id
+    let compare = Pervasives.compare
+  end)
+
+
+type mark_class = int
+
+type anchor_point = per_mille * per_mille
+
+
+module MarkTable
+: sig
+    type t
+    val create : unit -> t
+    val add : int -> int -> (Otfm.glyph_id * Otfm.mark_record) list -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
+    val find_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
+  end
+= struct
+
+    type mark_to_base_entry = {
+      class_count : int;
+      mark_map    : (mark_class * anchor_point) GMap.t;
+      base_map    : (anchor_point array) GMap.t;
+    }
+
+    type t = {
+      mutable mark_to_base_table : mark_to_base_entry list;
+    }
+
+
+    let create () =
+      { mark_to_base_table = []; }
+
+
+    let add units_per_em class_count markassoc baseassoc mktbl =
+      let pmf = per_mille_raw units_per_em in
+      let mark_map =
+        markassoc |> List.fold_left (fun map (gidmark, (i, (x, y, _))) ->
+          map |> GMap.add gidmark (i, (pmf x, pmf y))
+        ) GMap.empty
+      in
+      let base_map =
+        baseassoc |> List.fold_left (fun map (gidbase, arr) ->
+          map |> GMap.add gidbase (arr |> Array.map (fun (x, y, _) -> (pmf x, pmf y)))
+        ) GMap.empty
+      in
+      let entry = { class_count; mark_map; base_map; } in
+      mktbl.mark_to_base_table <- entry :: mktbl.mark_to_base_table
+
+
+    let find_opt (gidbase, gidmark) mktbl =
+      let rec aux lst =
+        match lst with
+        | [] ->
+            None
+
+        | entry :: tail ->
+            let baseopt = entry.base_map |> GMap.find_opt gidbase in
+            let markopt = entry.mark_map |> GMap.find_opt gidmark in
+            begin
+              match (baseopt, markopt) with
+              | (None, _) | (_, None)        -> aux tail
+              | (Some(arr), Some(i, ptmark)) -> Some((arr.(i), ptmark))
+            end
+      in
+      aux mktbl.mark_to_base_table
+
+  end
 
 
 type decoder = {
@@ -829,10 +913,6 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         add_element_of_composite_glyph dcdr gidorg;
         let gid = intern_gid dcdr gidorg in
         return gid
-
-
-let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
-  PerMille(int_of_float ((float_of_int (w * 1000)) /. (float_of_int units_per_em)))
 
 
 let per_mille (dcdr : decoder) (w : design_units) : per_mille =
@@ -1735,8 +1815,7 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =
         | (None, [])            -> opt
         | (None, gidorgto :: _) -> if gidorgfrom = gidorg then Some(gidorgto) else opt
       in
-      let skip opt _ = opt in
-      let res = Otfm.gsub feature_ssty f_single f_alt skip None in
+      let res = Otfm.gsub feature_ssty ~single:f_single ~alt:f_alt None in
       match res with
       | Error(oerr)          -> gid  (* temporary; maybe should emit an error *)
       | Ok(None)             -> gid
