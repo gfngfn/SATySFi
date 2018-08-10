@@ -17,17 +17,6 @@ exception FailToLoadFontOwingToSystem of file_path * string
 exception BrokenFont                  of file_path * string
 exception CannotFindUnicodeCmap       of file_path
 
-(*
-type cid_system_info
-
-type font_registration =
-  | CIDFontType0Registration   of cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
-  | CIDFontType2OTRegistration of cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
-  | CIDFontType2TTRegistration of cid_system_info * bool
-      (* -- last boolean: true iff it should embed /W information -- *)
-*)
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -37,53 +26,19 @@ type cmap =
 (*
   | CMapFile       of (string resource) ref  (* temporary;*)
 *)
-(*
-module Type1 : sig
-  type font
-  val of_decoder : decoder -> int -> int -> font
-  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
-end
-
-module TrueType : sig
-  type font
-  val of_decoder : decoder -> int -> int -> font
-  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
-end
-*)
 
 module Type0 : sig
   type font
   val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
 end
 
-(*
-module CIDFontType0 : sig
-  type font
-  val of_decoder : decoder -> cid_system_info -> font
-end
-
-module CIDFontType2 : sig
-  type font
-  val of_decoder : decoder -> cid_system_info -> bool -> font
-end
-
-type cid_font =
-  | CIDFontType0 of CIDFontType0.font
-  | CIDFontType2 of CIDFontType2.font
-*)
 type font =
-(*
-  | Type1    of Type1.font
-  | TrueType of TrueType.font
-*)
   | Type0    of Type0.font
 
 val get_decoder_single : string -> file_path -> (decoder * font) option
-(*
-val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
-val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
-*)
+
 val get_glyph_metrics : decoder -> glyph_id -> metrics
+
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list

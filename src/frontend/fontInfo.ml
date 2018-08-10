@@ -365,8 +365,8 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
           (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
 
 
-let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
-  match fontdfn with
+let make_dictionary (pdf : Pdf.t) (font : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
+  match font with
 (*
   | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
   | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
