@@ -11,4 +11,8 @@ exception UnexpectedYOJSONKey             of file_path * font_abbrev * string
 exception UnexpectedYOJSONValue           of file_path * font_abbrev * string * string
 exception MissingRequiredYOJSONKey        of file_path * font_abbrev * string
 
-val main : file_path -> (font_abbrev * file_path) list
+type data =
+  | Single     of file_path
+  | Collection of file_path * int
+
+val main : file_path -> (font_abbrev * data) list

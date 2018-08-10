@@ -10,6 +10,7 @@ open Config
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
 exception NotASingleFont        of font_abbrev * file_path
+exception NotATTCElement        of font_abbrev * file_path * int
 exception NotASingleMathFont    of font_abbrev * file_path
 
 type tag = string
@@ -22,14 +23,16 @@ type font_definition = {
 }
 
 type font_store =
-  | Unused of file_path
-  | Loaded of font_definition
+  | UnusedSingle of file_path
+  | UnusedTTC    of file_path * int
+  | Loaded       of font_definition
 
 
 module FontAbbrevHashTable
 : sig
     val initialize : unit -> unit
-    val add : font_abbrev -> file_path -> unit
+    val add_single : font_abbrev -> file_path -> unit
+    val add_ttc : font_abbrev -> file_path -> int -> unit
     val fold : (font_abbrev -> font_definition -> 'a -> 'a) -> 'a -> 'a
     val find_opt : font_abbrev -> font_definition option
   end
@@ -57,15 +60,20 @@ module FontAbbrevHashTable
       "/F" ^ (string_of_int !current_tag_number)
 
 
-    let add abbrev srcpath =
-      Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
+    let add_single abbrev srcpath =
+      Ht.add abbrev_to_definition_hash_table abbrev (ref (UnusedSingle(srcpath)))
+
+
+    let add_ttc abbrev srcpath i =
+      Ht.add abbrev_to_definition_hash_table abbrev (ref (UnusedTTC(srcpath, i)))
 
 
     let fold (f : font_abbrev -> font_definition -> 'a -> 'a) init =
       Ht.fold (fun abbrev storeref acc ->
         match !storeref with
-        | Unused(_)   -> acc  (* -- ignores unused fonts -- *)
-        | Loaded(dfn) -> f abbrev dfn acc
+        | UnusedSingle(_) -> acc  (* -- ignores unused fonts -- *)
+        | UnusedTTC(_, _) -> acc
+        | Loaded(dfn)     -> f abbrev dfn acc
       ) abbrev_to_definition_hash_table init
 
 
@@ -73,14 +81,30 @@ module FontAbbrevHashTable
       let open OptionMonad in
         Ht.find_opt abbrev_to_definition_hash_table abbrev >>= fun storeref ->
         match !storeref with
-        | Unused(srcpath) ->
-          (* -- if this is the first access to the font -- *)
+        | UnusedSingle(srcpath) ->
+          (* -- if this is the first access to the single font -- *)
             let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
             begin
               match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) srcpath with
               | None ->
                 (* -- if the font file is a TrueTypeCollection -- *)
                   raise (NotASingleFont(abbrev, srcpath))
+
+              | Some((dcdr, font)) ->
+                  let tag = generate_tag () in
+                  let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
+                  let store = Loaded(dfn) in
+                  storeref := store;
+                  return dfn
+            end
+
+        | UnusedTTC(srcpath, i) ->
+          (* -- if this is the first access to the TrueTypeCollection -- *)
+            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            begin
+              match FontFormat.get_decoder_ttc (abbrev ^ "-Composite") (* temporary *) srcpath i with
+              | None ->
+                  raise (NotATTCElement(abbrev, srcpath, i))
 
               | Some((dcdr, font)) ->
                   let tag = generate_tag () in
@@ -392,9 +416,17 @@ let initialize () =
   ScriptDataMap.set_from_file filename_S filename_EAW;
   LineBreakDataMap.set_from_file (resolve_dist_path "dist/unidata/LineBreak.txt");
   let font_hash = LoadFont.main "fonts.satysfi-hash" in
-  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+  font_hash |> List.iter (fun (abbrev, data) ->
+    match data with
+    | LoadFont.Single(srcpath)        -> FontAbbrevHashTable.add_single abbrev srcpath
+    | LoadFont.Collection(srcpath, i) -> FontAbbrevHashTable.add_ttc abbrev srcpath i
+  );
   let math_font_hash = LoadFont.main "mathfonts.satysfi-hash" in
-  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
+  math_font_hash |> List.iter (fun (mfabbrev, data) ->
+    match data with
+    | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath
+    | LoadFont.Collection(srcpath, i) -> failwith "TTC math font; remains to be implemented."
+  );
 
 
 (* -- following are operations about handling glyphs -- *)
