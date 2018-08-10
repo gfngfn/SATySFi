@@ -6,31 +6,13 @@ open HorzBox
 open Types
 open Config
 
+
 exception InvalidFontAbbrev     of font_abbrev
 exception InvalidMathFontAbbrev of math_font_abbrev
 exception NotASingleFont        of font_abbrev * file_path
 exception NotASingleMathFont    of font_abbrev * file_path
 
 type tag = string
-
-
-let get_latin1_width_list (dcdr : FontFormat.decoder) =
-
-  let rec range acc firstchar lastchar =
-    if firstchar > lastchar then List.rev acc else
-      range (firstchar :: acc) (firstchar + 1) lastchar
-  in
-
-  let ucharlst = (range [] 0 255) |> List.map Uchar.of_int in
-  let gidoptlst = ucharlst |> List.map (FontFormat.get_glyph_id dcdr) in
-  let gidlst = gidoptlst |> list_some in
-  let widlst =
-    gidlst |> List.map (fun gid ->
-      let (w, _, _) = FontFormat.get_glyph_metrics dcdr gid in
-        (gid, w)
-    )
-  in
-    widlst
 
 
 let get_font (dcdr : FontFormat.decoder) (fontreg : FontFormat.font_registration) (fontname : string) : FontFormat.font =
@@ -76,20 +58,20 @@ module FontAbbrevHashTable
 
     let current_tag_number = ref 0
 
+
     let initialize () =
-      begin
-        Ht.clear abbrev_to_definition_hash_table;
-        current_tag_number := 0;
-      end
+      Ht.clear abbrev_to_definition_hash_table;
+      current_tag_number := 0
+
 
     let generate_tag () =
-      begin
-        incr current_tag_number;
-        "/F" ^ (string_of_int !current_tag_number)
-      end
+      incr current_tag_number;
+      "/F" ^ (string_of_int !current_tag_number)
+
 
     let add abbrev srcpath =
       Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
+
 
     let fold (f : font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) init =
       Ht.fold (fun abbrev storeref acc ->
@@ -98,7 +80,8 @@ module FontAbbrevHashTable
         | Loaded(dfn) -> f abbrev dfn acc
       ) abbrev_to_definition_hash_table init
 
-    let find_opt (abbrev : font_abbrev) =
+
+    let find_opt (abbrev : font_abbrev) : font_definition option =
       let open OptionMonad in
         Ht.find_opt abbrev_to_definition_hash_table abbrev >>= fun storeref ->
         match !storeref with
@@ -108,6 +91,7 @@ module FontAbbrevHashTable
             begin
               match FontFormat.get_decoder_single srcpath with
               | None ->
+                (* -- if the font file is a TrueTypeCollection -- *)
                   raise (NotASingleFont(abbrev, srcpath))
 
               | Some((dcdr, fontreg)) ->
@@ -214,20 +198,20 @@ module MathFontAbbrevHashTable
 
     let current_tag_number = ref 0
 
+
     let initialize () =
-      begin
-        Ht.clear abbrev_to_definition_hash_table;
-        current_tag_number := 0;
-      end
+      Ht.clear abbrev_to_definition_hash_table;
+      current_tag_number := 0
+
 
     let generate_tag () =
-      begin
-        incr current_tag_number;
-        "/M" ^ (string_of_int !current_tag_number)
-      end
+      incr current_tag_number;
+      "/M" ^ (string_of_int !current_tag_number)
+
 
     let add mfabbrev srcpath =
       Ht.add abbrev_to_definition_hash_table mfabbrev (ref (UnusedMath(srcpath)))
+
 
     let fold f init =
       Ht.fold (fun mfabbrev storeref acc ->
@@ -236,33 +220,31 @@ module MathFontAbbrevHashTable
         | LoadedMath(mfdfn) -> f mfabbrev mfdfn acc
       ) abbrev_to_definition_hash_table init
 
-    let find_opt (mfabbrev : math_font_abbrev) =
-      match Ht.find_opt abbrev_to_definition_hash_table mfabbrev with
-      | None ->
-          None
 
-      | Some(storeref) ->
-          begin
-            match !storeref with
-            | UnusedMath(srcpath) ->
-              (* -- if this is the first access to the math font -- *)
-                let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
-                begin
-                  match FontFormat.get_math_decoder srcpath with
-                  | None ->
-                      raise (NotASingleMathFont(mfabbrev, srcpath))
+    let find_opt (mfabbrev : math_font_abbrev) : math_font_definition option =
+      let open OptionMonad in
+        Ht.find_opt abbrev_to_definition_hash_table mfabbrev >>= fun storeref ->
+        match !storeref with
+        | UnusedMath(srcpath) ->
+          (* -- if this is the first access to the math font -- *)
+            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            begin
+              match FontFormat.get_math_decoder srcpath with
+              | None ->
+                (* -- if the font file is a TrueTypeCollection -- *)
+                  raise (NotASingleMathFont(mfabbrev, srcpath))
 
-                  | Some((md, fontreg)) ->
-                      let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
-                      let tag = generate_tag () in
-                      let mfdfn = (tag, font, md) in
-                      storeref := LoadedMath(mfdfn);
-                      Some(mfdfn)
-                end
+              | Some((md, fontreg)) ->
+                  let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
+                  let tag = generate_tag () in
+                  let mfdfn = (tag, font, md) in
+                  storeref := LoadedMath(mfdfn);
+                  return mfdfn
+            end
 
-            | LoadedMath(mfdfn) ->
-                Some(mfdfn)
-          end
+        | LoadedMath(mfdfn) ->
+            return mfdfn
+
   end
 
 
