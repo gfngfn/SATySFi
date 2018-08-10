@@ -31,7 +31,11 @@ let get_font (dcdr : FontFormat.decoder) (fontreg : FontFormat.font_registration
         (FontFormat.cid_font_type_2 cidty2font fontname cmap)
 
 
-type font_definition = tag * FontFormat.font * FontFormat.decoder
+type font_definition = {
+  font_tag : tag;
+  font     : FontFormat.font;
+  decoder  : FontFormat.decoder;
+}
 
 type font_store =
   | Unused of file_path
@@ -73,7 +77,7 @@ module FontAbbrevHashTable
       Ht.add abbrev_to_definition_hash_table abbrev (ref (Unused(srcpath)))
 
 
-    let fold (f : font_abbrev -> tag * FontFormat.font * FontFormat.decoder -> 'a -> 'a) init =
+    let fold (f : font_abbrev -> font_definition -> 'a -> 'a) init =
       Ht.fold (fun abbrev storeref acc ->
         match !storeref with
         | Unused(_)   -> acc  (* -- ignores unused fonts -- *)
@@ -97,7 +101,7 @@ module FontAbbrevHashTable
               | Some((dcdr, fontreg)) ->
                   let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
                   let tag = generate_tag () in
-                  let dfn = (tag, font, dcdr) in
+                  let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
                   let store = Loaded(dfn) in
                   storeref := store;
                   return dfn
@@ -111,8 +115,8 @@ module FontAbbrevHashTable
 
 let get_font_tag (abbrev : font_abbrev) : tag =
   match FontAbbrevHashTable.find_opt abbrev with
-  | None              -> raise (InvalidFontAbbrev(abbrev))
-  | Some((tag, _, _)) -> tag
+  | None      -> raise (InvalidFontAbbrev(abbrev))
+  | Some(dfn) -> dfn.font_tag
 
 
 let raw_length_to_skip_length (fontsize : length) (FontFormat.PerMille(rawlen) : FontFormat.per_mille) =
@@ -158,8 +162,11 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
   let font_abbrev = hsinfo.font_abbrev in
   let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
     match FontAbbrevHashTable.find_opt font_abbrev with
-    | None               -> raise (InvalidFontAbbrev(font_abbrev))
-    | Some((_, _, dcdr)) ->
+    | None ->
+        raise (InvalidFontAbbrev(font_abbrev))
+
+    | Some(dfn) ->
+          let dcdr = dfn.decoder in
           let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
           let gidlst = list_some gidoptlst in
             (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
@@ -171,7 +178,11 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
             (otxt, wid, Length.max (hgtsub +% rising) Length.zero, Length.min (dptsub +% rising) Length.zero)
 
 
-type math_font_definition = tag * FontFormat.font * FontFormat.math_decoder
+type math_font_definition = {
+  math_font_tag : tag;
+  math_font     : FontFormat.font;
+  math_decoder  : FontFormat.math_decoder;
+}
 
 type math_font_store =
   | UnusedMath of file_path
@@ -237,7 +248,7 @@ module MathFontAbbrevHashTable
               | Some((md, fontreg)) ->
                   let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
                   let tag = generate_tag () in
-                  let mfdfn = (tag, font, md) in
+                  let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
                   storeref := LoadedMath(mfdfn);
                   return mfdfn
             end
@@ -250,8 +261,8 @@ module MathFontAbbrevHashTable
 
 let find_math_decoder_exn mfabbrev =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
-  | None             -> raise (InvalidMathFontAbbrev(mfabbrev))
-  | Some((_, _, md)) -> md
+  | None        -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some(mfdfn) -> mfdfn.math_decoder
 
 
 let actual_math_font_size mathctx =
@@ -268,8 +279,8 @@ let get_math_string_info mathctx : math_string_info =
 
 let get_math_tag mfabbrev =
   match MathFontAbbrevHashTable.find_opt mfabbrev with
-  | None              -> raise (InvalidMathFontAbbrev(mfabbrev))
-  | Some((tag, _, _)) -> tag
+  | None        -> raise (InvalidMathFontAbbrev(mfabbrev))
+  | Some(mfdfn) -> mfdfn.math_font_tag
 
 
 let get_math_constants mathctx =
@@ -296,8 +307,8 @@ let get_axis_height (mfabbrev : math_font_abbrev) (fontsize : length) : length =
   | None ->
       raise (InvalidMathFontAbbrev(mfabbrev))
 
-  | Some((_, _, md)) ->
-      let ratio = FontFormat.get_axis_height_ratio md in
+  | Some(mfdfn) ->
+      let ratio = FontFormat.get_axis_height_ratio mfdfn.math_decoder in
         fontsize *% ratio
 
 (* --
@@ -312,7 +323,8 @@ let get_math_kern (mathctx : math_context) (mkern : math_kern_scheme) (corrhgt :
     | None ->
         raise (InvalidMathFontAbbrev(mfabbrev))
 
-    | Some((_, _, md)) ->
+    | Some(mfdfn) ->
+        let md = mfdfn.math_decoder in
         begin
           match mkern with
           | NoMathKern              -> Length.zero
@@ -327,7 +339,8 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
     | None ->
         raise (InvalidFontAbbrev(mfabbrev))
 
-    | Some((_, _, md)) ->
+    | Some(mfdfn) ->
+        let md = mfdfn.math_decoder in
         let gidlst =
           uchlst |> List.map (fun uch ->
             let gidraw = FontFormat.get_math_glyph_id md uch in
@@ -381,13 +394,17 @@ let make_dictionary (pdf : Pdf.t) (fontdfn : FontFormat.font) (dcdr : FontFormat
 
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
-    [] |> FontAbbrevHashTable.fold (fun _ tuple acc ->
-      let (tag, fontdfn, dcdr) = tuple in
-      let obj = make_dictionary pdf fontdfn dcdr in
+    [] |> FontAbbrevHashTable.fold (fun _ dfn acc ->
+      let tag = dfn.font_tag in
+      let font = dfn.font in
+      let dcdr = dfn.decoder in
+      let obj = make_dictionary pdf font dcdr in
         (tag, obj) :: acc
-    ) |> MathFontAbbrevHashTable.fold (fun _ mftuple acc ->
-      let (tag, fontdfn, md) = mftuple in
-      let obj = make_dictionary pdf fontdfn (FontFormat.math_base_font md) in
+    ) |> MathFontAbbrevHashTable.fold (fun _ mfdfn acc ->
+      let tag = mfdfn.math_font_tag in
+      let font = mfdfn.math_font in
+      let md = mfdfn.math_decoder in
+      let obj = make_dictionary pdf font (FontFormat.math_base_font md) in
         (tag, obj) :: acc
     )
   in
