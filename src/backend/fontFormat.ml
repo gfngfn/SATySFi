@@ -1412,11 +1412,27 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
     }
 
 
-let get_decoder_single (srcpath : file_path) : (decoder * font_registration) option =
+let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) : font =
+  let cmap = PredefinedCMap("Identity-H") in
+  match fontreg with
+  | CIDFontType0Registration(cidsysinfo, embedW) ->
+      let cidty0font = CIDFontType0.of_decoder dcdr cidsysinfo in
+        (cid_font_type_0 cidty0font fontname cmap)
+
+  | CIDFontType2TTRegistration(cidsysinfo, embedW) ->
+      let cidty2font = CIDFontType2.of_decoder dcdr cidsysinfo true in
+        (cid_font_type_2 cidty2font fontname cmap)
+
+  | CIDFontType2OTRegistration(cidsysinfo, embedW) ->
+      let cidty2font = CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
+        (cid_font_type_2 cidty2font fontname cmap)
+
+
+let get_decoder_single (fontname : string) (srcpath : file_path) : (decoder * font) option =
   match get_main_decoder_single srcpath with
   | Error(oerr)            -> raise_err srcpath oerr "get_decoder_single"
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
+  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
 let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registration) option =
@@ -1609,9 +1625,9 @@ let assoc_to_map f gidassoc =
   ) MathInfoMap.empty
 
 
-let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) option =
+let get_math_decoder (fontname : string) (srcpath : file_path) : (math_decoder * font) option =
   let open OptionMonad in
-  (get_decoder_single srcpath) >>= fun (dcdr, fontreg) ->
+  get_decoder_single fontname srcpath >>= fun (dcdr, font) ->
   let d = dcdr.main in
     match Otfm.math d with
     | Error(oerr) ->
@@ -1659,7 +1675,7 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
             script_style_info          = sstyopt;
           }
         in
-        Some((md, fontreg))
+        Some((md, font))
 
 
 let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =

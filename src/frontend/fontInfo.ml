@@ -15,22 +15,6 @@ exception NotASingleMathFont    of font_abbrev * file_path
 type tag = string
 
 
-let get_font (dcdr : FontFormat.decoder) (fontreg : FontFormat.font_registration) (fontname : string) : FontFormat.font =
-  let cmap = FontFormat.PredefinedCMap("Identity-H") in
-  match fontreg with
-  | FontFormat.CIDFontType0Registration(cidsysinfo, embedW) ->
-      let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
-        (FontFormat.cid_font_type_0 cidty0font fontname cmap)
-
-  | FontFormat.CIDFontType2TTRegistration(cidsysinfo, embedW) ->
-      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
-        (FontFormat.cid_font_type_2 cidty2font fontname cmap)
-
-  | FontFormat.CIDFontType2OTRegistration(cidsysinfo, embedW) ->
-      let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
-        (FontFormat.cid_font_type_2 cidty2font fontname cmap)
-
-
 type font_definition = {
   font_tag : tag;
   font     : FontFormat.font;
@@ -93,13 +77,12 @@ module FontAbbrevHashTable
           (* -- if this is the first access to the font -- *)
             let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
             begin
-              match FontFormat.get_decoder_single srcpath with
+              match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) srcpath with
               | None ->
                 (* -- if the font file is a TrueTypeCollection -- *)
                   raise (NotASingleFont(abbrev, srcpath))
 
-              | Some((dcdr, fontreg)) ->
-                  let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
+              | Some((dcdr, font)) ->
                   let tag = generate_tag () in
                   let dfn = { font_tag = tag; font = font; decoder = dcdr; } in
                   let store = Loaded(dfn) in
@@ -240,13 +223,12 @@ module MathFontAbbrevHashTable
           (* -- if this is the first access to the math font -- *)
             let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
             begin
-              match FontFormat.get_math_decoder srcpath with
+              match FontFormat.get_math_decoder (mfabbrev ^ "-Composite-Math") (* temporary *) srcpath with
               | None ->
                 (* -- if the font file is a TrueTypeCollection -- *)
                   raise (NotASingleMathFont(mfabbrev, srcpath))
 
-              | Some((md, fontreg)) ->
-                  let font = get_font (FontFormat.math_base_font md) fontreg (mfabbrev ^ "-Composite-Math") (* temporary *) in
+              | Some((md, font)) ->
                   let tag = generate_tag () in
                   let mfdfn = { math_font_tag = tag; math_font = font; math_decoder = md; } in
                   storeref := LoadedMath(mfdfn);
@@ -412,32 +394,16 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 
 
 let initialize () =
-
-  begin
-    FontAbbrevHashTable.initialize ();
-    MathFontAbbrevHashTable.initialize ();
-(*
-    PrintForDebug.initfontE "!!ScriptDataMap";
-*)
-    let filename_S   = resolve_dist_path "dist/unidata/Scripts.txt" in
-    let filename_EAW = resolve_dist_path "dist/unidata/EastAsianWidth.txt" in
-    ScriptDataMap.set_from_file filename_S filename_EAW;
-(*
-    PrintForDebug.initfontE "!!LineBreakDataMap";
-*)
-    LineBreakDataMap.set_from_file (resolve_dist_path "dist/unidata/LineBreak.txt");
-(*
-    PrintForDebug.initfontE "!!begin initialize";  (* for debug *)
-*)
-    let font_hash = LoadFont.main "fonts.satysfi-hash" in
-    List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
-
-    let math_font_hash = LoadFont.main "mathfonts.satysfi-hash" in
-    List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
-(*
-    PrintForDebug.initfontE "!!end initialize"  (* for debug *)
-*)
-  end
+  FontAbbrevHashTable.initialize ();
+  MathFontAbbrevHashTable.initialize ();
+  let filename_S   = resolve_dist_path "dist/unidata/Scripts.txt" in
+  let filename_EAW = resolve_dist_path "dist/unidata/EastAsianWidth.txt" in
+  ScriptDataMap.set_from_file filename_S filename_EAW;
+  LineBreakDataMap.set_from_file (resolve_dist_path "dist/unidata/LineBreak.txt");
+  let font_hash = LoadFont.main "fonts.satysfi-hash" in
+  List.iter (fun (abbrev, srcpath) -> FontAbbrevHashTable.add abbrev srcpath) font_hash;
+  let math_font_hash = LoadFont.main "mathfonts.satysfi-hash" in
+  List.iter (fun (mfabbrev, srcfile) -> MathFontAbbrevHashTable.add mfabbrev srcfile) math_font_hash;
 
 
 (* -- following are operations about handling glyphs -- *)
