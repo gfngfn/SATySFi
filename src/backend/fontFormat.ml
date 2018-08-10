@@ -313,30 +313,45 @@ type ligature_matching =
 
 module LigatureTable
 : sig
+    type single = {
+      tail     : original_glyph_id list;
+      ligature : original_glyph_id;
+    }
     type t
     val create : subset_map -> int -> t
-    val add : original_glyph_id -> (original_glyph_id list * original_glyph_id) list -> t -> unit
+    val add : original_glyph_id -> single list -> t -> unit
     val fold_rev : (original_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
     val match_prefix : original_glyph_id list -> t -> ligature_matching
   end
 = struct
 
-    type entry = (original_glyph_id list * original_glyph_id) list
-      (* -- pairs of the tail GID array and the GID of the resulting ligature -- *)
+    type single = {
+      tail     : original_glyph_id list;
+      ligature : original_glyph_id;
+    }
+      (* -- pair of the tail GID array and the GID of the resulting ligature -- *)
 
-    type t = subset_map * entry GHt.t * (original_glyph_id list) GHt.t
+    type t = {
+      subset_map  : subset_map;
+      entry_table : (single list) GHt.t;
+      rev_table   : (original_glyph_id list) GHt.t;
+    }
 
 
     let create submap n =
       let htmain = GHt.create n in
       let htrev = GHt.create n in
-      (submap, htmain, htrev)
+      { subset_map = submap; entry_table = htmain; rev_table = htrev; }
 
 
-    let add gidorg liginfolst (submap, htmain, htrev) =
+    let add gidorg liginfolst ligtbl =
+      let htmain = ligtbl.entry_table in
+      let htrev = ligtbl.rev_table in
       begin
         GHt.add htmain gidorg liginfolst;
-        liginfolst |> List.iter (fun (gidorgtail, gidorglig) ->
+        liginfolst |> List.iter (fun single ->
+          let gidorgtail = single.tail in
+          let gidorglig = single.ligature in
           match GHt.find_opt htrev gidorglig with
           | None ->
               GHt.add htrev gidorglig (gidorg :: gidorgtail)
@@ -350,7 +365,8 @@ module LigatureTable
       end
 
 
-    let fold_rev f init (_, _, htrev) =
+    let fold_rev f init ligtbl =
+      let htrev = ligtbl.rev_table in
       GHt.fold (fun gidorg gidorglst acc -> f gidorg gidorglst acc) htrev init
 
 
@@ -360,18 +376,22 @@ module LigatureTable
       | (head1 :: tail1, head2 :: tail2)  when head1 = head2 -> prefix tail1 tail2
       | _                                                    -> None
 
+
     let rec lookup liginfolst gidorglst =
       match liginfolst with
       | [] ->
           NoMatch
 
-      | (gidorgtail, gidorglig) :: liginfotail ->
+      | single :: liginfotail ->
+          let gidorgtail = single.tail in
+          let gidorglig = single.ligature in
           match prefix gidorgtail gidorglst with
           | None             -> lookup liginfotail gidorglst
           | Some(gidorgrest) -> MatchExactly(gidorglig, gidorgrest)
 
 
-    let match_prefix gidorglst (_, mainht, _) =
+    let match_prefix gidorglst ligtbl =
+      let mainht = ligtbl.entry_table in
       match gidorglst with
       | [] ->
           NoMatch
@@ -406,6 +426,9 @@ let get_ligature_table (submap : subset_map) (d : Otfm.decoder) : LigatureTable.
     Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
     pickup featurelst (fun gf -> Otfm.gsub_feature_tag gf = "liga") `Missing_feature >>= fun feature ->
     () |> Otfm.gsub feature (fun () _ -> ()) (fun () _ -> ()) (fun () (gid, liginfolst) ->
+      let liginfolst =
+        liginfolst |> List.map (fun (tail, ligature) -> LigatureTable.{ tail; ligature; })
+      in
       ligtbl |> LigatureTable.add gid liginfolst) >>= fun () ->
     Ok()
   in
