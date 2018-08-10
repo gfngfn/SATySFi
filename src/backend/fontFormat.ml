@@ -17,10 +17,6 @@ type metrics = per_mille * per_mille * per_mille
 
 type indirect = int
 
-(*
-let gid x = x  (* for debug *)
-*)
-
 exception FailToLoadFontOwingToSize   of file_path
 exception FailToLoadFontOwingToSystem of file_path * string
 exception BrokenFont                  of file_path * string
@@ -69,9 +65,7 @@ type cid_system_info = {
     supplement : int;
   }
 
-(*
-let adobe_japan1   = { registry = "Adobe"; ordering = "Japan1"  ; supplement = 6; }
-*)
+
 let adobe_identity = { registry = "Adobe"; ordering = "Identity"; supplement = 0; }
 
 
@@ -93,7 +87,7 @@ let extract_registration d =
           begin
             match cffinfo.Otfm.cid_info with
             | None ->
-                (* -- if not a CID-keyed font -- *)
+              (* -- if not a CID-keyed font -- *)
                 return adobe_identity
 
             | Some(cidinfo) ->
@@ -173,9 +167,6 @@ module SubsetMap
     val create : int -> t
     val create_dummy : unit -> t
     val intern : original_glyph_id -> t -> subset_glyph_id
-(*
-    val find_rev_opt : glyph_id -> t -> original_glyph_id option
-*)
     val to_list : t -> (original_glyph_id list) option
   end
 = struct
@@ -216,11 +207,6 @@ module SubsetMap
                 store := alst;
                 gidsub
           end
-
-(*
-    let find_rev_opt (SubsetGlyphID(_, gidsub)) (_, _, _, revht) =
-      GHt.find_opt revht gidsub
-*)
 
     let to_list submap =
       match submap with
@@ -547,9 +533,6 @@ let get_kerning_table (d : Otfm.decoder) =
   in
   match res with
   | Ok() ->
-(*
-      let () = PrintForDebug.kernE "'GPOS' exists" in  (* for debug *)
-*)
         kerntbl
 
   | Error(e) ->
@@ -649,16 +632,9 @@ type font_descriptor = {
     descent      : per_mille;
     stemv        : float;
     font_data    : (Otfm.decoder resource) ref;
-    (* temporary; should contain more fields *)
+      (* temporary; should contain more fields *)
   }
 
-(*
-let to_base85_pdf_bytes (d : Otfm.decoder) : string * Pdfio.bytes =
-  match Otfm.decoder_src d with
-  | `String(s) ->
-      let s85 = Base85.encode s in
-        ("/ASCII85Decode", Pdfio.bytes_of_string s85)
-*)
 
 let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
   let src_offset_ref = ref 0 in
@@ -711,7 +687,7 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
             | Ok(s)    -> s
           end
   in
-  let (filter, bt) = (* to_base85_pdf_bytes d *) to_flate_pdf_bytes data in
+  let (filter, bt) = to_flate_pdf_bytes data in
   let len = Pdfio.bytes_size bt in
   let contents = [
       ("/Length", Pdf.Integer(len));
@@ -744,7 +720,7 @@ let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) 
     ) None
   in
     match cmapres with
-    | Error(e)      -> raise_err srcpath e (Printf.sprintf "get_glyph_id_main (cp = %d)" cp)
+    | Error(e)      -> raise_err srcpath e (Printf.sprintf "get_glyph_id_main (cp = U+%04X)" cp)
     | Ok(opt)       -> opt
 
 
@@ -878,20 +854,6 @@ let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : p
     | Ok(Some((adv, lsb))) -> per_mille dcdr adv
 
 
-
-(*
-let get_truetype_widths_list (dcdr : decoder) (firstchar : int) (lastchar : int) : int list =
-  let rec range acc m n =
-    if m > n then List.rev acc else
-      range (m :: acc) (m + 1) n
-  in
-    (range [] firstchar lastchar) |> List.map (fun charcode ->
-      get_glyph_id_main dcdr.file_path dcdr.cmap_subtable (Uchar.of_int charcode) |> function
-        | None      -> 0
-        | Some(gid) -> get_glyph_advance_width dcdr gid
-    )
-*)
-
 let of_per_mille = function
   | PerMille(x) -> Pdf.Integer(x)
 
@@ -933,7 +895,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
         descent      = per_mille dcdr rcdhhea.Otfm.hhea_descender;
         stemv        = 0.;    (* temporary; should be gotten from decoder *)
         font_data    = ref (Data(d));
-        (* temporary; should contain more fields *)
+          (* temporary; should contain more fields *)
       }
 
 
@@ -949,6 +911,7 @@ type embedding =
   | FontFile
   | FontFile2
   | FontFile3 of string
+
 
 let font_file_info_of_embedding embedding =
   match embedding with
@@ -1062,7 +1025,7 @@ module CIDFontType0
         font_descriptor : font_descriptor;
         dw              : design_units option;  (* represented by units defined by head.unitsPerEm *)
         dw2             : (int * int) option;
-        (* temporary; should contain more fields; /W2 *)
+          (* temporary; should contain more fields; /W2 *)
       }
       (* --
          Doesn't have to contain information about /W entry;
@@ -1082,9 +1045,11 @@ module CIDFontType0
         }
   end
 
+
 type cid_to_gid_map =
   | CIDToGIDIdentity
   | CIDToGIDStream   of (string resource) ref  (* temporary *)
+
 
 module CIDFontType2
 = struct
@@ -1096,7 +1061,7 @@ module CIDFontType2
         dw2              : (int * int) option;
         cid_to_gid_map   : cid_to_gid_map;
         is_pure_truetype : bool;
-        (* temporary; should contain more fields; /W2 *)
+          (* temporary; should contain more fields; /W2 *)
       }
       (* --
          Doesn't have to contain information about /W entry;
@@ -1117,6 +1082,7 @@ module CIDFontType2
           cid_to_gid_map   = CIDToGIDIdentity;  (* temporary *)
         }
   end
+
 
 type cid_font =
   | CIDFontType0 of CIDFontType0.font
@@ -1174,9 +1140,6 @@ module ToUnicodeCMap
             Printf.bprintf buf "%d beginbfchar" num;
             GHt.iter (fun gid uchlst ->
               let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
-(*
-              Format.printf "FontFormat> GID %04X -> %s\n" gid dst;  (* for debug *)
-*)
               Printf.bprintf buf "<%04X><%s>" gid dst
             ) ht;
             Printf.bprintf buf "endbfchar ";
@@ -1184,12 +1147,7 @@ module ToUnicodeCMap
       ) touccmap;
       let strmain = Buffer.contents buf in
       let res = prefix ^ strmain ^ postfix in
-(*
-      Format.printf "FontFormat> result:\n";  (* for debug *)
-      Format.printf "%s" res;  (* for debug *)
-*)
       res
-
 
   end
 
@@ -1203,7 +1161,7 @@ module Type0
       }
 
 
-    let of_cid_font cidfont fontname cmap toucopt =
+    let of_cid_font cidfont fontname cmap =
       {
         base_font        = fontname;
         encoding         = cmap;
@@ -1220,7 +1178,7 @@ module Type0
           ("/Type"       , Pdf.Name("/FontDescriptor"));
           ("/FontName"   , Pdf.Name("/" ^ base_font));
           ("/Flags"      , Pdf.Integer(4));  (* temporary; should be variable *)
-          ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);  (* temporary; should be variable *)
+          ("/FontBBox"   , pdfobject_of_bbox fontdescr.font_bbox);
           ("/ItalicAngle", Pdf.Real(fontdescr.italic_angle));
           ("/Ascent"     , of_per_mille fontdescr.ascent);
           ("/Descent"    , of_per_mille fontdescr.descent);
@@ -1318,7 +1276,7 @@ module Type0
           ("/DW"            , of_per_mille_opt pmoptdw);
           ("/W"             , objwarr);
           ("/DW2"           , of_per_mille_pair_opt pmpairoptdw2);
-          (* temporary; should add more; /W2 *)
+            (* temporary; should add more; /W2 *)
         ]
       in
       let irdescend = Pdf.addobj pdf objdescend in
@@ -1400,19 +1358,13 @@ type font =
 (*  | TrueType of TrueType.font *)
   | Type0    of Type0.font
 
-(*
-let type1 ty1font = Type1(ty1font)
-
-let true_type trtyfont = TrueType(trtyfont)
-*)
 
 let cid_font_type_0 cidty0font fontname cmap =
-  let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
-    Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap toucopt)
+  Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap)
+
 
 let cid_font_type_2 cidty2font fontname cmap =
-  let toucopt = None in  (* temporary; /ToUnicode; maybe should be variable *)
-    Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap toucopt)
+  Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap)
 
 
 let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
@@ -1426,7 +1378,7 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   in
   let ligtbl = get_ligature_table submap d in
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
-  let bboxtbl = GlyphBBoxTable.create 256 in (* temporary; initial size of hash tables *)
+  let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
@@ -1455,8 +1407,8 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
       glyph_bbox_table    = bboxtbl;
       charstring_info     = csinfo;
       units_per_em        = units_per_em;
-      default_ascent      = per_mille_raw units_per_em ascent;  (* -- by the unit defined in the font -- *)
-      default_descent     = per_mille_raw units_per_em descent; (* -- by the unit defined in the font -- *)
+      default_ascent      = per_mille_raw units_per_em ascent;
+      default_descent     = per_mille_raw units_per_em descent;
     }
 
 
@@ -1682,14 +1634,6 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
           mathraw.Otfm.math_variants.Otfm.horiz_glyph_assoc
             |> assoc_to_map (fun mgconstr -> mgconstr.Otfm.math_glyph_variant_record_list)
         in
-(*
-        let mbboxtbl = MathBBoxTable.create 256 (* temporary *) in
-        let csinfo =
-          match Otfm.cff d with
-          | Error(_)    -> None
-          | Ok(cffinfo) -> Some(cffinfo.Otfm.charstring_info)
-        in
-*)
         let sstyopt =
           let ( >>= ) = result_bind in
           let res =
@@ -1712,10 +1656,6 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
             math_vertical_variants     = mvertvarmap;
             math_horizontal_variants   = mhorzvarmap;
             math_kern_info             = mkimap;
-(*
-            math_bbox_table            = mbboxtbl;
-            math_charstring_info       = csinfo;
-*)
             script_style_info          = sstyopt;
           }
         in
@@ -1725,9 +1665,7 @@ let get_math_decoder (srcpath : file_path) : (math_decoder * font_registration) 
 let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =
   match md.script_style_info with
   | None ->
-(*
-      Format.printf "FontFormat> no ssty table\n";  (* for debug *)
-*)
+    (* -- if the font does NOT have 'ssty' feature table -- *)
       gid
 
   | Some(feature_ssty) ->
@@ -1757,9 +1695,8 @@ let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
   | None ->
-(*
-      let () = Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch) in  (* for debug *)
-*)
+      Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch);
+        (* temporary; should emit a warning in a more sophisticated manner *)
       SubsetGlyphID(0, 0)
 
   | Some(gid) -> gid
@@ -1767,9 +1704,6 @@ let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
 
 let get_math_script_variant (md : math_decoder) (gid : glyph_id) =
   let gidssty = get_script_style_id md gid in
-(*
-    Format.printf "FontFormat> ssty %d ---> %d\n" gidorg gidssty;  (* for debug *)
-*)
     gidssty
 
 

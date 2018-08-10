@@ -8,10 +8,6 @@ type per_mille =
 
 type metrics = per_mille * per_mille * per_mille
 
-(*
-val gid : glyph_id -> int  (* for debug *)
-*)
-
 val hex_of_glyph_id : glyph_id -> string
 
 type decoder
@@ -81,20 +77,11 @@ type font =
 *)
   | Type0    of Type0.font
 
-(*
-val type1 : Type1.font -> font
-val true_type : TrueType.font -> font
-*)
 val cid_font_type_0 : CIDFontType0.font -> string -> cmap -> font
 val cid_font_type_2 : CIDFontType2.font -> string -> cmap -> font
 
 val get_glyph_metrics : decoder -> glyph_id -> metrics
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
-
-(*
-val adobe_japan1 : cid_system_info
-*)
-val adobe_identity : cid_system_info
 
 val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
 

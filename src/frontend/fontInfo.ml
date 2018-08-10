@@ -33,15 +33,17 @@ let get_latin1_width_list (dcdr : FontFormat.decoder) =
     widlst
 
 
-let get_font dcdr fontreg fontname =
+let get_font (dcdr : FontFormat.decoder) (fontreg : FontFormat.font_registration) (fontname : string) : FontFormat.font =
   let cmap = FontFormat.PredefinedCMap("Identity-H") in
   match fontreg with
   | FontFormat.CIDFontType0Registration(cidsysinfo, embedW) ->
       let cidty0font = FontFormat.CIDFontType0.of_decoder dcdr cidsysinfo in
         (FontFormat.cid_font_type_0 cidty0font fontname cmap)
+
   | FontFormat.CIDFontType2TTRegistration(cidsysinfo, embedW) ->
       let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true in
         (FontFormat.cid_font_type_2 cidty2font fontname cmap)
+
   | FontFormat.CIDFontType2OTRegistration(cidsysinfo, embedW) ->
       let cidty2font = FontFormat.CIDFontType2.of_decoder dcdr cidsysinfo true (* temporary *) in
         (FontFormat.cid_font_type_2 cidty2font fontname cmap)
@@ -97,33 +99,29 @@ module FontAbbrevHashTable
       ) abbrev_to_definition_hash_table init
 
     let find_opt (abbrev : font_abbrev) =
-      match Ht.find_opt abbrev_to_definition_hash_table abbrev with
-      | None ->
-          None
+      let open OptionMonad in
+        Ht.find_opt abbrev_to_definition_hash_table abbrev >>= fun storeref ->
+        match !storeref with
+        | Unused(srcpath) ->
+          (* -- if this is the first access to the font -- *)
+            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            begin
+              match FontFormat.get_decoder_single srcpath with
+              | None ->
+                  raise (NotASingleFont(abbrev, srcpath))
 
-      | Some(storeref) ->
-          let store = !storeref in
-          begin
-            match store with
-            | Unused(srcpath) ->
-                let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
-                (* -- if this is the first access to the font -- *)
-                begin
-                  match FontFormat.get_decoder_single srcpath with
-                  | None ->
-                      raise (NotASingleFont(abbrev, srcpath))
+              | Some((dcdr, fontreg)) ->
+                  let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
+                  let tag = generate_tag () in
+                  let dfn = (tag, font, dcdr) in
+                  let store = Loaded(dfn) in
+                  storeref := store;
+                  return dfn
+            end
 
-                  | Some((dcdr, fontreg)) ->
-                      let font = get_font dcdr fontreg (abbrev ^ "-Composite") (* temporary *) in
-                      let tag = generate_tag () in
-                      let dfn = (tag, font, dcdr) in
-                      let store = Loaded(dfn) in
-                      storeref := store;
-                      Some(dfn)
-                end
+        | Loaded(dfn) ->
+            return dfn
 
-            | Loaded(dfn) -> Some(dfn)
-          end
   end
 
 
