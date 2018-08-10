@@ -27,15 +27,13 @@ type cmap =
   | CMapFile       of (string resource) ref  (* temporary;*)
 *)
 
-module Type0 : sig
-  type font
-  val to_pdfdict : Pdf.t -> font -> decoder -> Pdf.pdfobject
-end
+type font
 
-type font =
-  | Type0    of Type0.font
+val make_dictionary : Pdf.t -> font -> decoder -> Pdf.pdfobject
 
 val get_decoder_single : string -> file_path -> (decoder * font) option
+
+val get_decoder_ttc : string -> file_path -> int -> (decoder * font) option
 
 val get_glyph_metrics : decoder -> glyph_id -> metrics
 

@@ -365,28 +365,19 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
           (otxt, f_skip rawwid, f_skip rawhgt, f_skip rawdpt, mic, rawmkiopt)
 
 
-let make_dictionary (pdf : Pdf.t) (font : FontFormat.font) (dcdr : FontFormat.decoder) : Pdf.pdfobject =
-  match font with
-(*
-  | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
-  | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
-*)
-  | FontFormat.Type0(ty0font)     -> FontFormat.Type0.to_pdfdict pdf ty0font dcdr
-
-
 let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
   let keyval =
     [] |> FontAbbrevHashTable.fold (fun _ dfn acc ->
       let tag = dfn.font_tag in
       let font = dfn.font in
       let dcdr = dfn.decoder in
-      let obj = make_dictionary pdf font dcdr in
+      let obj = FontFormat.make_dictionary pdf font dcdr in
         (tag, obj) :: acc
     ) |> MathFontAbbrevHashTable.fold (fun _ mfdfn acc ->
       let tag = mfdfn.math_font_tag in
       let font = mfdfn.math_font in
       let md = mfdfn.math_decoder in
-      let obj = make_dictionary pdf font (FontFormat.math_base_font md) in
+      let obj = FontFormat.make_dictionary pdf font (FontFormat.math_base_font md) in
         (tag, obj) :: acc
     )
   in

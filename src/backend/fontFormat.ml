@@ -82,29 +82,27 @@ let extract_registration d =
   let open ResultMonad in
     Otfm.flavour d >>= function
     | Otfm.CFF ->
-        begin
-          Otfm.cff d >>= fun cffinfo ->
-          begin
-            match cffinfo.Otfm.cid_info with
-            | None ->
-              (* -- if not a CID-keyed font -- *)
-                return adobe_identity
+        Otfm.cff d >>= fun cffinfo ->
+        let cidsysinfo =
+          match cffinfo.Otfm.cid_info with
+          | None ->
+            (* -- if not a CID-keyed font -- *)
+              adobe_identity
 
-            | Some(cidinfo) ->
-                return {
-                  registry   = cidinfo.Otfm.registry;
-                  ordering   = cidinfo.Otfm.ordering;
-                  supplement = cidinfo.Otfm.supplement;
-                }
-          end >>= fun cidsysinfo ->
-          return (Some((d, CIDFontType0Registration(cidsysinfo, true))))
-        end
+          | Some(cidinfo) ->
+              {
+                registry   = cidinfo.Otfm.registry;
+                ordering   = cidinfo.Otfm.ordering;
+                supplement = cidinfo.Otfm.supplement;
+              }
+        in
+        return (d, CIDFontType0Registration(cidsysinfo, true))
 
     | Otfm.TTF_OT ->
-        return (Some((d, CIDFontType2OTRegistration(adobe_identity, true))))
+        return (d, CIDFontType2OTRegistration(adobe_identity, true))
 
     | Otfm.TTF_true ->
-        return (Some((d, CIDFontType2TTRegistration(adobe_identity, true))))
+        return (d, CIDFontType2TTRegistration(adobe_identity, true))
 
 
 let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registration) option) ok =
@@ -112,7 +110,7 @@ let get_main_decoder_single (src : file_path) : ((Otfm.decoder * font_registrati
   let open ResultMonad in
     Otfm.decoder (`String(s)) >>= function
     | Otfm.TrueTypeCollection(_) -> return None
-    | Otfm.SingleDecoder(d)      -> extract_registration d
+    | Otfm.SingleDecoder(d)      -> extract_registration d >>= fun pair -> return (Some(pair))
 
 
 let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_registration) option) ok =
@@ -123,9 +121,16 @@ let get_main_decoder_ttc (src : file_path) (i : int) : ((Otfm.decoder * font_reg
         return None
 
     | Otfm.TrueTypeCollection(ttc) ->
-        let ttcelem = List.nth ttc i in
-        Otfm.decoder_of_ttc_element ttcelem >>= fun d ->
-        extract_registration d
+        begin
+          match List.nth_opt ttc i with
+          | None ->
+              return None
+
+          | Some(ttcelem) ->
+              Otfm.decoder_of_ttc_element ttcelem >>= fun d ->
+              extract_registration d >>= fun pair ->
+              return (Some(pair))
+        end
 
 
 module UHt = Hashtbl.Make
@@ -1359,12 +1364,13 @@ type font =
   | Type0    of Type0.font
 
 
-let cid_font_type_0 cidty0font fontname cmap =
-  Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap)
-
-
-let cid_font_type_2 cidty2font fontname cmap =
-  Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap)
+let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject =
+  match font with
+(*
+  | FontFormat.Type1(ty1font)     -> FontFormat.Type1.to_pdfdict pdf ty1font dcdr
+  | FontFormat.TrueType(trtyfont) -> FontFormat.TrueType.to_pdfdict pdf trtyfont dcdr
+*)
+  | Type0(ty0font) -> Type0.to_pdfdict pdf ty0font dcdr
 
 
 let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
@@ -1412,6 +1418,14 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
     }
 
 
+let cid_font_type_0 cidty0font fontname cmap =
+  Type0(Type0.of_cid_font (CIDFontType0(cidty0font)) fontname cmap)
+
+
+let cid_font_type_2 cidty2font fontname cmap =
+  Type0(Type0.of_cid_font (CIDFontType2(cidty2font)) fontname cmap)
+
+
 let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) : font =
   let cmap = PredefinedCMap("Identity-H") in
   match fontreg with
@@ -1435,11 +1449,11 @@ let get_decoder_single (fontname : string) (srcpath : file_path) : (decoder * fo
   | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
-let get_decoder_ttc (srcpath :file_path) (i : int) : (decoder * font_registration) option =
+let get_decoder_ttc (fontname : string) (srcpath :file_path) (i : int) : (decoder * font) option =
   match get_main_decoder_ttc srcpath i with
   | Error(oerr)            -> raise_err srcpath oerr "get_decoder_ttc"
   | Ok(None)               -> None
-  | Ok(Some((d, fontreg))) -> Some((make_decoder srcpath d, fontreg))
+  | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
 let convert_to_ligatures (dcdr : decoder) (gidlst : glyph_id list) : glyph_id list =
