@@ -12,35 +12,6 @@ type chunk_info = context_main * script * line_break_class
 let to_chunk_main_list ctx uchlst alw : break_opportunity * line_break_chunk_main list =
   let (alwfirst, trilst) = LineBreakDataMap.append_break_opportunity uchlst alw in
   let scrlst = ScriptDataMap.divide_by_script ctx trilst in
-(*
-  (* begin: for debug *)
-  let () =
-    trilst |> List.iter (fun (uch, lbc, alw) ->
-      let sc = InternalText.to_utf8 (InternalText.of_uchar uch) in
-      let sl = (* match lbc with CharBasis.AL -> "@" | _ -> "^" *) "" in
-        match alw with
-        | CharBasis.AllowBreak   -> PrintForDebug.lexhorz (sc ^ sl ^ "/")
-        | CharBasis.PreventBreak -> PrintForDebug.lexhorz (sc ^ sl ^ ".")
-    ); PrintForDebug.lexhorzE "" in
-  let () =
-    scrlst |> List.iter (function
-      | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw) ->
-          let sa = match alw with AllowBreak -> "" | PreventBreak -> "*" in
-          PrintForDebug.lexhorz ("[Alph] " ^ (CharBasis.show_script script) ^ sa ^ " ");
-          let s = uchlst |> List.map (fun uch -> InternalText.to_utf8 (InternalText.of_uchar uch)) |> String.concat "" in
-          PrintForDebug.lexhorzE s
-      | Space ->
-          PrintForDebug.lexhorzE "[Space]"
-      | UnbreakableSpace ->
-          PrintForDebug.lexhorzE "[UnbreakableSpace]"
-      | IdeographicChunk(script, lbc, uch, alw) ->
-          let sa = match alw with AllowBreak -> "" | PreventBreak -> "*" in
-          PrintForDebug.lexhorz ("[Ideo] " ^ (CharBasis.show_script script) ^ sa ^ " ");
-          PrintForDebug.lexhorzE (InternalText.to_utf8 (InternalText.of_uchar uch))
-    )
-  in
-  (* end: for debug *)
-*)
   (alwfirst, scrlst)
 
 
@@ -145,12 +116,6 @@ let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
-(*
-let soft_hyphen ctx script () : lb_box =
-  let lphb_hyphen = inner_string_pure ctx script [Uchar.of_char '-'] in
-  let dscrid = DiscretionaryID.fresh () in
-    LBDiscretionary(ctx.hyphen_badness, dscrid, [], [lphb_hyphen], [])
-*)
 
 let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
   let rec aux acc revprefix suffix =
@@ -177,9 +142,6 @@ let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
 let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_box list =
   let hsinfo = get_string_info ctx script in
-(*
-  let lbhyphenf = soft_hyphen ctx script in
-*)
     match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchseglst with
     | LoadHyph.Single(uchseglst) ->
         [LBPure(make_string_atom hsinfo uchseglst)]
@@ -198,15 +160,7 @@ let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segme
           ) Alist.empty |> Alist.to_list
         in
         [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
-(*
-        uchlstlst |> list_fold_adjacent (fun lbacc uchlst _ optnext ->
-          let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
-          let lbfrac = LBPure(LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))) in
-            match optnext with
-            | None    -> Alist.extend lbacc lbfrac
-            | Some(_) -> Alist.extend (Alist.extend lbacc lbfrac) (lbhyphenf ())
-        ) Alist.empty |> Alist.to_list
-*)
+
 
 let discretionary_if_breakable alw badns lphb () =
   match alw with
@@ -268,9 +222,6 @@ let space_between_chunks info1 alw info2 : lb_box list =
     | None       -> [discretionary_if_breakable alw badns (adjacent_space ctx1 ctx2) ()]
     | Some(lphb) -> [discretionary_if_breakable alw badns lphb ()]
 
-(*
-  LBPure(fixed_string ctx script [Uchar.of_int (Char.code 'A')])
-*)
 
 let space_between_chunks_pure info1 info2 : lb_pure_box list =
   let (ctx1, script1, lbc1) = info1 in
