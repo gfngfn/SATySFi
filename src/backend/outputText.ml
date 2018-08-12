@@ -9,35 +9,21 @@ type style =
   | Hex
   [@@deriving show]
 
-type t = style * element list
-  [@@deriving show]
+type t = style * element Alist.t
 
 let pp fmt _ =
   Format.fprintf fmt "<output-text>"
 
-(*
-let empty_literal_style = (Literal, [])
 
-
-let append_uchar (sty, otxtmain) uch =
-  let data =
-    match sty with
-    | Literal -> InternalText.to_utf8 (InternalText.of_uchar uch)
-    | Hex     -> InternalText.to_utf16be_hex (InternalText.of_uchar uch)
-  in
-      (* temporary; inefficient conversion *)
-    (sty, Data(data) :: otxtmain)
-*)
-
-let empty_hex_style = (Hex, [])
+let empty_hex_style = (Hex, Alist.empty)
 
 
 let append_kern (sty, otxtmain) rawwid =
-  (sty, Kern(rawwid) :: otxtmain)
+  (sty, Alist.extend otxtmain (Kern(rawwid)))
 
-let append_glyph_id (sty, otxtmain) gid =
+let append_glyph_synthesis (sty, otxtmain) (gid, markinfolst) =
   let data = FontFormat.hex_of_glyph_id gid in
-    (sty, Data(data) :: otxtmain)
+    (sty, Alist.extend otxtmain (Data(data)))
 
 
 let to_TJ_argument (sty, otxtmain) =
@@ -47,7 +33,7 @@ let to_TJ_argument (sty, otxtmain) =
     | Hex     -> (fun x -> Pdf.StringHex(x))
   in
   let lst =
-    otxtmain |> List.rev |> List.map (function
+    otxtmain |> Alist.to_list |> List.map (function
       | Data(data)   -> pdfstr data
       | Kern(rawwid) -> Pdf.Integer(-rawwid)
     )

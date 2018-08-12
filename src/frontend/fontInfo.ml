@@ -130,7 +130,7 @@ let raw_length_to_skip_length (fontsize : length) (FontFormat.PerMille(rawlen) :
   fontsize *% ((float_of_int rawlen) /. 1000.)
 
 
-let ( @>> ) = OutputText.append_glyph_id
+let ( @>> ) = OutputText.append_glyph_synthesis
 let ( @*> ) = OutputText.append_kern
 
 
@@ -139,24 +139,25 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
   let gsynlst = FontFormat.convert_to_ligatures dcdr (gidlst |> List.map (fun gid -> (gid, []))) (* temporary *) in
 
   let (_, otxt, rawwid, rawhgt, rawdpt) =
-    gsynlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) (gid, markinfolst) ->
+    gsynlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gsyn ->
+      let (gid, _) = gsyn in
       let (FontFormat.PerMille(w), FontFormat.PerMille(h), FontFormat.PerMille(d)) = metricsf gid in
       let (tjsaccnew, waccnew) =
         match gidprevopt with
         | None ->
-            (otxtacc @>> gid, wacc + w)
+            (otxtacc @>> gsyn, wacc + w)
 
         | Some(gidprev) ->
             begin
               match FontFormat.find_kerning dcdr gidprev gid with
               | None ->
-                  (otxtacc @>> gid, wacc + w)
+                  (otxtacc @>> gsyn, wacc + w)
 
               | Some(FontFormat.PerMille(wkern)) ->
 (*
                   PrintForDebug.kernE (Printf.sprintf "Use KERN (%d, %d) = %d" (FontFormat.gid gidprev) (FontFormat.gid gid) wkern);  (* for debug *)
 *)
-                  ((otxtacc @*> wkern) @>> gid, wacc + w + wkern)
+                  ((otxtacc @*> wkern) @>> gsyn, wacc + w + wkern)
                     (* -- kerning value is negative if two characters are supposed to be closer -- *)
             end
       in
