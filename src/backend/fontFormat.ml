@@ -430,7 +430,7 @@ let ( -@ ) (PerMille(x1), PerMille(y1)) (PerMille(x2), PerMille(y2)) =
 type per_mille_vector = per_mille * per_mille
 
 type mark_info =
-  | Mark of glyph_id * per_mille_vector
+  | Mark of glyph_id * per_mille * per_mille_vector
 
 type glyph_synthesis = glyph_id * mark_info list
 
@@ -745,6 +745,120 @@ type decoder = {
   default_descent     : per_mille;
 }
 
+
+let per_mille (dcdr : decoder) (w : design_units) : per_mille =
+  per_mille_raw dcdr.units_per_em w
+
+
+let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
+(*
+  match dcdr.subset_map |> SubsetMap.find_rev_opt gid with
+  | None         -> assert false
+  | Some(gidorg) -> gidorg
+*)
+  let SubsetGlyphID(gidorg, _) = gid in
+  gidorg
+
+
+let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
+    : ((design_units * design_units * design_units * design_units) option) ok =
+  let d = dcdr.main in
+  let open ResultMonad in
+  Otfm.loca d gidorg >>= function
+  | None ->
+      return None
+
+  | Some(gloc) ->
+      Otfm.glyf d gloc >>= fun (_, rawbbox) ->
+      return (Some(rawbbox))
+
+
+let bbox_zero =
+  (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
+
+
+let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
+  let f = per_mille dcdr in
+  match get_glyph_raw_bbox dcdr gidorg with
+(*
+  | Error(`Missing_required_table(t))
+                     when t = Otfm.Tag.loca ->
+*)
+  | Error(e) ->
+      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
+
+  | Ok(None) ->
+      bbox_zero
+
+  | Ok(Some(bbox_raw)) ->
+      let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
+        (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+
+
+let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : per_mille =
+  let d = dcdr.main in
+  let hmtxres =
+    None |> Otfm.hmtx d (fun accopt gidorg adv lsb ->
+      match accopt with
+      | Some(_) -> accopt
+      | None    -> if gidorg = gidorgkey then Some((adv, lsb)) else None
+    )
+  in
+    match hmtxres with
+    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
+    | Ok(None)             -> PerMille(0)
+    | Ok(Some((adv, lsb))) -> per_mille dcdr adv
+
+
+let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
+  match dcdr.charstring_info with
+  | None ->
+    (* -- if the font is TrueType OT -- *)
+      get_ttf_bbox dcdr gidorg
+
+  | Some(csinfo) ->
+    (* -- if the font is CFF OT -- *)
+      begin
+        match Otfm.charstring_absolute csinfo gidorg with
+        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
+        | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
+        | Ok(Some(pathlst)) ->
+            begin
+              match Otfm.charstring_bbox pathlst with
+              | None ->
+                  bbox_zero
+
+              | Some(bbox_raw) ->
+                  let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
+                  let f = per_mille dcdr in
+                    (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+            end
+      end
+
+
+(* PUBLIC *)
+let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
+  let bboxtbl = dcdr.glyph_bbox_table in
+  let gidorg = get_original_gid dcdr gid in
+  let (wid, (_, ymin, _, ymax)) =
+    match bboxtbl |> GlyphBBoxTable.find_opt gidorg with
+    | Some(pair) ->
+        pair
+
+    | None ->
+        let wid = get_glyph_advance_width dcdr gidorg in
+        let bbox = get_bbox dcdr gidorg in
+        let pair = (wid, bbox) in
+        begin
+          bboxtbl |> GlyphBBoxTable.add gidorg pair;
+          pair
+        end
+  in
+  let hgt = ymax in
+  let dpt = ymin in
+    (wid, hgt, dpt)
+
+
 type 'a resource =
   | Data           of 'a
   | EmbeddedStream of int
@@ -773,16 +887,6 @@ type font_stretch =
   | UltraCondensedStretch | ExtraCondensedStretch | CondensedStretch | SemiCondensedStetch
   | NormalStretch
   | SemiExpandedStretch | ExpandedStretch | ExtraExpandedStretch | UltraExpandedStretch
-
-
-let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
-(*
-  match dcdr.subset_map |> SubsetMap.find_rev_opt gid with
-  | None         -> assert false
-  | Some(gidorg) -> gidorg
-*)
-  let SubsetGlyphID(gidorg, _) = gid in
-  gidorg
 
 
 let intern_gid (dcdr : decoder) (gidorg : original_glyph_id) : glyph_id =
@@ -985,9 +1089,6 @@ let get_glyph_id (dcdr : decoder) (uch : Uchar.t) : glyph_id option =
         return gid
 
 
-let per_mille (dcdr : decoder) (w : design_units) : per_mille =
-  per_mille_raw dcdr.units_per_em w
-
 (*
 let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : original_glyph_id)
     : ((((bool * design_units * design_units) list) list * (design_units * design_units * design_units * design_units)) option) ok =
@@ -1003,34 +1104,6 @@ let get_glyph_raw_contour_list_and_bounding_box (dcdr : decoder) (gidorg : origi
           (* temporary; does not deal with composite glyphs *)
       | (`Simple(precntrlst), bbox) -> return (Some((precntrlst, bbox)))
 *)
-
-let get_glyph_raw_bbox (dcdr : decoder) (gidorg : original_glyph_id)
-    : ((design_units * design_units * design_units * design_units) option) ok =
-  let d = dcdr.main in
-  let open ResultMonad in
-  Otfm.loca d gidorg >>= function
-  | None ->
-      return None
-
-  | Some(gloc) ->
-      Otfm.glyf d gloc >>= fun (_, rawbbox) ->
-      return (Some(rawbbox))
-
-
-let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : per_mille =
-  let d = dcdr.main in
-  let hmtxres =
-    None |> Otfm.hmtx d (fun accopt gidorg adv lsb ->
-      match accopt with
-      | Some(_) -> accopt
-      | None    -> if gidorg = gidorgkey then Some((adv, lsb)) else None
-    )
-  in
-    match hmtxres with
-    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
-    | Ok(None)             -> PerMille(0)
-    | Ok(Some((adv, lsb))) -> per_mille dcdr adv
-
 
 let of_per_mille = function
   | PerMille(x) -> Pdf.Integer(x)
@@ -1648,7 +1721,10 @@ let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_
 
     | Match(gidorglig, markorginfolst, segorgrest) ->
         let markinfolst =
-          markorginfolst |> List.map (fun (gidorg, v) -> (Mark(intf gidorg, v)))
+          markorginfolst |> List.map (fun (gidorg, v) ->
+            let (w, _, _) = get_glyph_metrics dcdr (intf gidorg) in
+              Mark(intf gidorg, w, v)
+          )
         in
         aux (Alist.extend acc (intf gidorglig, markinfolst)) segorgrest
   in
@@ -1696,78 +1772,6 @@ type math_decoder =
     math_kern_info             : math_kern_info MathInfoMap.t;
     script_style_info          : Otfm.gsub_feature option;
   }
-
-
-let bbox_zero =
-  (PerMille(0), PerMille(0), PerMille(0), PerMille(0))
-
-
-let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
-  let f = per_mille dcdr in
-  match get_glyph_raw_bbox dcdr gidorg with
-(*
-  | Error(`Missing_required_table(t))
-                     when t = Otfm.Tag.loca ->
-*)
-  | Error(e) ->
-      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
-
-  | Ok(None) ->
-      bbox_zero
-
-  | Ok(Some(bbox_raw)) ->
-      let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
-        (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
-
-
-
-let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
-  match dcdr.charstring_info with
-  | None ->
-    (* -- if the font is TrueType OT -- *)
-      get_ttf_bbox dcdr gidorg
-
-  | Some(csinfo) ->
-    (* -- if the font is CFF OT -- *)
-      begin
-        match Otfm.charstring_absolute csinfo gidorg with
-        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
-        | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
-        | Ok(Some(pathlst)) ->
-            begin
-              match Otfm.charstring_bbox pathlst with
-              | None ->
-                  bbox_zero
-
-              | Some(bbox_raw) ->
-                  let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
-                  let f = per_mille dcdr in
-                    (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
-            end
-      end
-
-
-(* PUBLIC *)
-let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
-  let bboxtbl = dcdr.glyph_bbox_table in
-  let gidorg = get_original_gid dcdr gid in
-  let (wid, (_, ymin, _, ymax)) =
-    match bboxtbl |> GlyphBBoxTable.find_opt gidorg with
-    | Some(pair) ->
-        pair
-
-    | None ->
-        let wid = get_glyph_advance_width dcdr gidorg in
-        let bbox = get_bbox dcdr gidorg in
-        let pair = (wid, bbox) in
-        begin
-          bboxtbl |> GlyphBBoxTable.add gidorg pair;
-          pair
-        end
-  in
-  let hgt = ymax in
-  let dpt = ymin in
-    (wid, hgt, dpt)
 
 
 let math_base_font (md : math_decoder) : decoder =

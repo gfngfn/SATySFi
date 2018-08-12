@@ -9,7 +9,7 @@ type per_mille =
   | PerMille of int
 
 type mark_info =
-  | Mark of glyph_id * (per_mille * per_mille)
+  | Mark of glyph_id * per_mille * (per_mille * per_mille)
 
 type glyph_synthesis = glyph_id * mark_info list
 
