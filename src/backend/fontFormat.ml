@@ -159,10 +159,9 @@ type glyph_id_pair = {
 type glyph_id =
   | SubsetGlyphID of original_glyph_id * subset_glyph_id
 
-type glyph_segment = {
-  base  : glyph_id;
-  marks : glyph_id list;
-}
+type original_glyph_segment = original_glyph_id * original_glyph_id list
+
+type glyph_segment = glyph_id * glyph_id list
 
 
 let hex_of_glyph_id ((SubsetGlyphID(_, gidsub)) : glyph_id) =
@@ -312,7 +311,7 @@ module GlyphBBoxTable
 
 
 type ligature_matching =
-  | MatchExactly of original_glyph_id * original_glyph_id list
+  | MatchExactly of original_glyph_id * original_glyph_segment list
   | NoMatch
 
 
@@ -326,7 +325,7 @@ module LigatureTable
     val create : subset_map -> int -> t
     val add : original_glyph_id -> single list -> t -> unit
     val fold_rev : (original_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
-    val match_prefix : original_glyph_id list -> t -> ligature_matching
+    val match_prefix : original_glyph_segment list -> t -> ligature_matching
   end
 = struct
 
@@ -375,14 +374,15 @@ module LigatureTable
       GHt.fold (fun gidorg gidorglst acc -> f gidorg gidorglst acc) htrev init
 
 
-    let rec prefix lst1 lst2 =
-      match (lst1, lst2) with
-      | ([], _)                                              -> Some(lst2)
-      | (head1 :: tail1, head2 :: tail2)  when head1 = head2 -> prefix tail1 tail2
-      | _                                                    -> None
+    let rec prefix (lst1 : original_glyph_id list) (seglst2 : original_glyph_segment list) =
+      match (lst1, seglst2) with
+      | ([], _)                                                    -> Some(seglst2)
+      | (head1 :: tail1, (head2, []) :: tail2)  when head1 = head2 -> prefix tail1 tail2
+          (* temporary; should refer to MarkToLig attachment table *)
+      | _                                                          -> None
 
 
-    let rec lookup liginfolst gidorglst =
+    let rec lookup liginfolst (segorglst : original_glyph_segment list) =
       match liginfolst with
       | [] ->
           NoMatch
@@ -390,22 +390,32 @@ module LigatureTable
       | single :: liginfotail ->
           let gidorgtail = single.tail in
           let gidorglig = single.ligature in
-          match prefix gidorgtail gidorglst with
-          | None             -> lookup liginfotail gidorglst
-          | Some(gidorgrest) -> MatchExactly(gidorglig, gidorgrest)
+          begin
+            match prefix gidorgtail segorglst with
+            | None             -> lookup liginfotail segorglst
+            | Some(orgsegrest) -> MatchExactly(gidorglig, orgsegrest)
+          end
 
 
-    let match_prefix gidorglst ligtbl =
+    let match_prefix (segorglst : original_glyph_segment list) ligtbl =
       let mainht = ligtbl.entry_table in
-      match gidorglst with
+      match segorglst with
       | [] ->
           NoMatch
 
-      | gidorgfst :: gidorgtail ->
+      | (gidorgfst, gomarks) :: segorgtail ->
           begin
-            match GHt.find_opt mainht gidorgfst with
-            | Some(liginfolst) -> lookup liginfolst gidorgtail
-            | None             -> NoMatch
+            match gomarks with
+            | _ :: _ ->
+                NoMatch
+                  (* temporary; should refer to MarkToLig table *)
+
+            | [] ->
+                begin
+                  match GHt.find_opt mainht gidorgfst with
+                  | Some(liginfolst) -> lookup liginfolst segorgtail
+                  | None             -> NoMatch
+                end
           end
 end
 
@@ -1594,23 +1604,27 @@ let get_decoder_ttc (fontname : string) (srcpath :file_path) (i : int) : (decode
   | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
-let convert_to_ligatures (dcdr : decoder) (gidlst : glyph_id list) : glyph_id list =
+let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_segment list =
   let ligtbl = dcdr.ligature_table in
   let intf = intern_gid dcdr in
-  let rec aux acc gidorglst =
-    match gidorglst with
+  let intsegf (gobase, gomarks) = (intf gobase, List.map intf gomarks) in
+  let orgf = get_original_gid dcdr in
+  let orgsegf (base, marks) = (orgf base, List.map orgf marks) in
+
+  let rec aux acc segorglst =
+    match segorglst with
     | [] ->
         Alist.to_list acc
 
-    | go :: gos ->
+    | so :: sos ->
         begin
-          match ligtbl |> LigatureTable.match_prefix gidorglst with
-          | NoMatch                             -> aux (Alist.extend acc (intf go)) gos
-          | MatchExactly(gidorglig, gidorgrest) -> aux (Alist.extend acc (intf gidorglig)) gidorgrest
+          match ligtbl |> LigatureTable.match_prefix segorglst with
+          | NoMatch                             -> aux (Alist.extend acc (intsegf so)) sos
+          | MatchExactly(gidorglig, segorgrest) -> aux (Alist.extend acc (intf gidorglig, [])) segorgrest
         end
   in
-  let gidorglst = gidlst |> List.map (get_original_gid dcdr) in
-  aux Alist.empty gidorglst
+  let segorglst = seglst |> List.map orgsegf in
+  aux Alist.empty segorglst
 
 
 let find_kerning (dcdr : decoder) (gidprev : glyph_id) (gid : glyph_id) : per_mille option =

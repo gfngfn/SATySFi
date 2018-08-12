@@ -3,6 +3,8 @@ type file_path = string
 
 type glyph_id
 
+type glyph_segment = glyph_id * glyph_id list
+
 type per_mille =
   | PerMille of int
 
@@ -39,7 +41,7 @@ val get_glyph_metrics : decoder -> glyph_id -> metrics
 
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
-val convert_to_ligatures : decoder -> glyph_id list -> glyph_id list
+val convert_to_ligatures : decoder -> glyph_segment list -> glyph_segment list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 
