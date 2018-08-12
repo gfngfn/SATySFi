@@ -13,7 +13,9 @@ type tag = string
 
 val initialize : unit -> unit
 
-val get_metrics_of_word : horz_string_info -> Uchar.t list -> OutputText.t * length * length * length
+type uchar_segment = Uchar.t * Uchar.t list
+
+val get_metrics_of_word : horz_string_info -> uchar_segment list -> OutputText.t * length * length * length
 
 val get_math_char_info : math_context -> bool -> bool -> Uchar.t list -> OutputText.t * length * length * length * length * FontFormat.math_kern_info option
 

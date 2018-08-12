@@ -142,7 +142,8 @@ let unbreakable_space ctx : lb_box =
 
 let inner_string_pure (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+  let uchseglst = uchlst |> List.map (fun uch -> (uch, [])) in  (* temporary; empty marks *)
+  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 (*
@@ -170,7 +171,8 @@ let generate_separation_list (uchlstlst : (Uchar.t list) list) : (Uchar.t list *
 
 
 let make_string_atom (hsinfo : horz_string_info) (uchlst : Uchar.t list) : lb_pure_box =
-  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchlst in
+  let uchseglst = uchlst |> List.map (fun uch -> (uch, [])) in  (* temporary; empty marks *)
+  let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 

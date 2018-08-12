@@ -164,6 +164,9 @@ type original_glyph_segment = original_glyph_id * original_glyph_id list
 type glyph_segment = glyph_id * glyph_id list
 
 
+let notdef = SubsetGlyphID(0, 0)
+
+
 let hex_of_glyph_id ((SubsetGlyphID(_, gidsub)) : glyph_id) =
   let b0 = gidsub / 256 in
   let b1 = gidsub mod 256 in

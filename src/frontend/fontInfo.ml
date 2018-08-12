@@ -134,9 +134,7 @@ let ( @>> ) otxt (wpm, gsyn) = OutputText.append_glyph_synthesis otxt wpm gsyn
 let ( @*> ) = OutputText.append_kern
 
 
-let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * FontFormat.metrics =
-
-  let gsynlst = FontFormat.convert_to_ligatures dcdr (gidlst |> List.map (fun gid -> (gid, []))) (* temporary *) in
+let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcdr : FontFormat.decoder) (gsynlst : FontFormat.glyph_synthesis list) : FontFormat.glyph_id list * OutputText.t * FontFormat.metrics =
 
   let (_, otxt, rawwid, rawhgt, rawdpt) =
     gsynlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) gsyn ->
@@ -168,7 +166,21 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
     (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
-let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =
+type uchar_segment = Uchar.t * Uchar.t list
+
+
+let get_glyph_id dcdr uch =
+  match FontFormat.get_glyph_id dcdr uch with
+  | None ->
+      Format.printf "FontFormat> No glyph is associated with U+%04X.\n" (Uchar.to_int uch);
+        (* temporary; should emit a warning in a more sophisticated manner *)
+      FontFormat.notdef
+
+  | Some(gid) ->
+      gid
+
+
+let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : OutputText.t * length * length * length =
   let font_abbrev = hsinfo.font_abbrev in
   let f_skip = raw_length_to_skip_length hsinfo.text_font_size in
     match FontAbbrevHashTable.find_opt font_abbrev with
@@ -177,10 +189,15 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : Ou
 
     | Some(dfn) ->
           let dcdr = dfn.decoder in
-          let gidoptlst = uchlst |> List.map (FontFormat.get_glyph_id dcdr) in
-          let gidlst = list_some gidoptlst in
-            (* needs reconsideration; maybe should return GID 0 for code points which is not covered by the font *)
-          let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gidlst in
+          let gseglst =
+            uchseglst |> List.map (fun (ubase, umarks) ->
+              let gbase = get_glyph_id dcdr ubase in
+              let gmarks = List.map (get_glyph_id dcdr) umarks in
+              (gbase, gmarks)
+            )
+          in
+          let gsynlst = FontFormat.convert_to_ligatures dcdr gseglst in
+          let (_, otxt, (rawwid, rawhgt, rawdpt)) = convert_gid_list (FontFormat.get_glyph_metrics dcdr) dcdr gsynlst in
           let wid = f_skip rawwid in
           let hgtsub = f_skip rawhgt in
           let dptsub = f_skip rawdpt in
@@ -359,6 +376,7 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
               else
                 FontFormat.get_math_script_variant md gidraw
             in
+            let gid =
               if is_in_display && is_big then
                 match FontFormat.get_math_vertical_variants md gidsub with
                 | [] -> gidsub
@@ -373,6 +391,8 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
                       (* -- somewhat ad-hoc; uses the second smallest as the glyph for display style -- *)
               else
                 gidsub
+            in
+            (gid, [])  (* temporary; empty marks *)
           )
         in
         let (gidligedlst, otxt, (rawwid, rawhgt, rawdpt)) =

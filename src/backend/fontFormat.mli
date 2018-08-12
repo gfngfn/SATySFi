@@ -3,6 +3,8 @@ type file_path = string
 
 type glyph_id
 
+val notdef : glyph_id
+
 type glyph_segment = glyph_id * glyph_id list
 
 type per_mille =
