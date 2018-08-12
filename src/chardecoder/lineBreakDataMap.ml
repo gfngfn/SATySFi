@@ -338,7 +338,6 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
     bilst |> List.fold_left (fun (acc, segrcdopt) (uch, lbc) ->
       match lbc with
       | CM ->
-          Format.printf "LineBreakDataMap> U+%04X : CM\n" (Uchar.to_int uch);  (* for debug *)
           begin
             match segrcdopt with
             | None ->

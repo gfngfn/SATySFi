@@ -539,12 +539,10 @@ module LigatureTable
                 begin
                   match mktbl |> MarkTable.find_opt (gobase, gomark) with
                   | None ->
-                      Format.printf "FontFormat> CANNOT attach a diacritical mark\n";  (* for debug *)
                     (* if the diacritical mark cannot attach to the base *)
                       Match(gobase, [], segorgtail)
 
                   | Some(vB, vM) ->
-                      Format.printf "FontFormat> CAN attach a diacritical mark\n";  (* for debug *)
                       Match(gobase, [(gomark, vB -@ vM)], segorgtail)
                 end
 

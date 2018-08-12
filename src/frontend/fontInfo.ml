@@ -191,7 +191,6 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment l
             uchseglst |> List.map (fun (ubase, umarks) ->
               let gbase = get_glyph_id dcdr ubase in
               let gmarks = List.map (get_glyph_id dcdr) umarks in
-              if umarks = [] then () else Format.printf "FontInfo> head of marks = U+%04X\n" (Uchar.to_int (List.hd umarks));  (* for debug *)
               (gbase, gmarks)
             )
           in

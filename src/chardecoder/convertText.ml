@@ -142,7 +142,6 @@ let unbreakable_space ctx : lb_box =
 
 let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
-  Format.printf "ConvertText> no diacritical marks? -> %B\n" (List.for_all (fun (_, x) -> x = []) uchseglst);
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
@@ -171,7 +170,6 @@ let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar
 
 
 let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : lb_pure_box =
-  Format.printf "ConvertText> no diacritical marks? -> %B\n" (List.for_all (fun (_, x) -> x = []) uchseglst);
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
