@@ -3,6 +3,7 @@ module Types = Types_
 open MyUtil
 open LengthInterface
 open HorzBox
+open CharBasis
 open Types
 open Config
 
@@ -164,9 +165,6 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
     ) (None, OutputText.empty_hex_style, 0, 0, 0)
   in
     (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
-
-
-type uchar_segment = Uchar.t * Uchar.t list
 
 
 let get_glyph_id dcdr uch =

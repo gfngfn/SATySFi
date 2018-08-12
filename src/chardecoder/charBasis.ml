@@ -1,4 +1,6 @@
 
+type uchar_segment = Uchar.t * Uchar.t list
+
 type code_point = int
 
 type code_point_kind =
@@ -222,4 +224,4 @@ let rec show_lregexp lregexp =
   ) |> String.concat " "
 
 
-type line_break_element = Uchar.t * line_break_class * break_opportunity
+type line_break_element = uchar_segment * line_break_class * break_opportunity

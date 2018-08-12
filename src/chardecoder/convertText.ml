@@ -140,9 +140,8 @@ let unbreakable_space ctx : lb_box =
     LBPure(pure_space ctx)
 
 
-let inner_string_pure (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_pure_box =
+let inner_string_pure (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_pure_box =
   let hsinfo = get_string_info ctx script in
-  let uchseglst = uchlst |> List.map (fun uch -> (uch, [])) in  (* temporary; empty marks *)
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
@@ -153,50 +152,49 @@ let soft_hyphen ctx script () : lb_box =
     LBDiscretionary(ctx.hyphen_badness, dscrid, [], [lphb_hyphen], [])
 *)
 
-let generate_separation_list (uchlstlst : (Uchar.t list) list) : (Uchar.t list * Uchar.t list) list =
-  let rec aux (acc : (Uchar.t list * Uchar.t list) Alist.t) (revprefix : Uchar.t Alist.t) (suffix : (Uchar.t list) list) =
+let generate_separation_list (uchseglstlst : (uchar_segment list) list) : (uchar_segment list * uchar_segment list) list =
+  let rec aux acc revprefix suffix =
     match suffix with
     | [] ->
         Alist.to_list acc
 
-    | uchlst :: [] ->
+    | uchseglst :: [] ->
         Alist.to_list acc
 
-    | uchlst :: suffixnew ->
-        let revprefixnew = Alist.append revprefix uchlst in
+    | uchseglst :: suffixnew ->
+        let revprefixnew = Alist.append revprefix uchseglst in
         let accnew = Alist.extend acc (Alist.to_list revprefixnew, List.concat suffixnew) in
           aux accnew revprefixnew suffixnew
   in
-    aux Alist.empty Alist.empty uchlstlst
+    aux Alist.empty Alist.empty uchseglstlst
 
 
-let make_string_atom (hsinfo : horz_string_info) (uchlst : Uchar.t list) : lb_pure_box =
-  let uchseglst = uchlst |> List.map (fun uch -> (uch, [])) in  (* temporary; empty marks *)
+let make_string_atom (hsinfo : horz_string_info) (uchseglst : uchar_segment list) : lb_pure_box =
   let (otxt, wid, hgt, dpt) = FontInfo.get_metrics_of_word hsinfo uchseglst in
     LBAtom((natural wid, hgt, dpt), EvHorzString(hsinfo, hgt, dpt, otxt))
 
 
 (* -- 'inner_string': makes an alphabetic word or a CJK character -- *)
-let inner_string (ctx : context_main) (script : script) (uchlst : Uchar.t list) : lb_box list =
+let inner_string (ctx : context_main) (script : script) (uchseglst : uchar_segment list) : lb_box list =
   let hsinfo = get_string_info ctx script in
 (*
   let lbhyphenf = soft_hyphen ctx script in
 *)
-    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchlst with
-    | LoadHyph.Single(uchlst) ->
-        [LBPure(make_string_atom hsinfo uchlst)]
+    match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchseglst with
+    | LoadHyph.Single(uchseglst) ->
+        [LBPure(make_string_atom hsinfo uchseglst)]
 
-    | LoadHyph.Fractions(uchlstlst) ->
-        let uchlst0 = List.concat uchlstlst in
-        let lphb0 = make_string_atom hsinfo uchlst0 in
-        let lphb_hyphen = inner_string_pure ctx script [Uchar.of_char '-'] in
-        let seplst = generate_separation_list uchlstlst in
+    | LoadHyph.Fractions(uchseglstlst) ->
+        let uchseglst0 = List.concat uchseglstlst in
+        let lphb0 = make_string_atom hsinfo uchseglst0 in
+        let lphb_hyphen = inner_string_pure ctx script [(Uchar.of_char '-', [])] in  (* temporary; should be variable *)
+        let seplst = generate_separation_list uchseglstlst in
         let dscrlst =
-          seplst |> List.fold_left (fun dscracc (uchlstP, uchlstS) ->
-            let lphbP = make_string_atom hsinfo uchlstP in
-            let lphbS = make_string_atom hsinfo uchlstS in
+          seplst |> List.fold_left (fun dscracc (uchseglstP, uchseglstS) ->
+            let lphbP = make_string_atom hsinfo uchseglstP in
+            let lphbS = make_string_atom hsinfo uchseglstS in
             let dscrid = DiscretionaryID.fresh () in
-            Alist.extend dscracc (dscrid, [lphbP; lphb_hyphen], [lphbS])
+              Alist.extend dscracc (dscrid, [lphbP; lphb_hyphen], [lphbS])
           ) Alist.empty |> Alist.to_list
         in
         [LBDiscretionaryList(ctx.hyphen_badness, [lphb0], dscrlst)]
@@ -354,9 +352,9 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
           | UnbreakableSpace ->
               (AccNone, [unbreakable_space ctx])
 
-          | AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alwnext) ->
+          | AlphabeticChunk(script, lbcfirst, lbclast, uchseglst, alwnext) ->
               let opt = AccSome(((ctx, script, lbclast), alwnext)) in
-              let lhblststr = inner_string ctx script uchlst in
+              let lhblststr = inner_string ctx script uchseglst in
               begin
                 match optprev with
                 | AccInitial ->
@@ -372,9 +370,9 @@ let chunks_to_boxes (lphbf : horz_box list -> lb_pure_box list) (script_before :
                     (opt, List.append autospace lhblststr)
               end
 
-          | IdeographicChunk(script, lbc, uch, alwnext) ->
+          | IdeographicChunk(script, lbc, uchseg, alwnext) ->
               let opt = AccSome((ctx, script, lbc), alwnext) in
-              let lhblststr = ideographic_single ctx script lbc [uch] in
+              let lhblststr = ideographic_single ctx script lbc [uchseg] in
               begin
                 match optprev with
                 | AccNone ->

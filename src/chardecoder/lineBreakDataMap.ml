@@ -136,8 +136,11 @@ let nonspaced = set [ID; CJ; IN; SA; JLOP; JLCP; JLNS; JLMD; JLFS; JLCM; JLPL; J
 let bispace = (Uchar.of_int 32, SP)  (* -- space character -- *)
 
 
+type 'a rule = line_break_regexp * 'a * line_break_regexp
+
+
 (* -- the rules for normalizing texts about spaces, break letters, etc. -- *)
-let normalization_rule =
+let normalization_rule : (((Uchar.t * line_break_class) list) rule) list =
   [
   (* -- ignore spaces or break letters *)
     ([nonspaced; set [SP; INBR]], [], [spaced]);
@@ -149,7 +152,7 @@ let normalization_rule =
 
 
 (* -- the rules for inserting line break opportunities based on [UAX#14 Section 6] -- *)
-let line_break_rule =
+let line_break_rule : (break_opportunity rule) list =
     [
     (* -- LB7 -- *)
       ([], PreventBreak, [exact SP]);
@@ -231,7 +234,7 @@ let line_break_rule =
 
 
 (* -- a naive, greedy regexp matching (it suffices to use greedy one) -- *)
-let match_prefix (type a) (getf : a -> line_break_class) (trilst : a list) (lregexp : line_break_regexp) =
+let match_prefix (type a) (getf : a -> line_break_class) (trilst : a list) (lregexp : line_break_regexp) : bool =
   let rec cut trilst lregexp =
     match lregexp with
     | [] -> Some(trilst)
@@ -265,7 +268,7 @@ let match_prefix (type a) (getf : a -> line_break_class) (trilst : a list) (lreg
     | Some(_) -> true
 
 
-let match_postfix  getf trilst lregexp =
+let match_postfix (type a) (getf : a -> line_break_class) (trilst : a list) (lregexp : line_break_regexp) : bool =
   let rec reverse lregexp =
     let lregexpsub =
       lregexp |> List.map (function
@@ -278,10 +281,12 @@ let match_postfix  getf trilst lregexp =
     match_prefix getf trilst (reverse lregexp)
 
 
-let find_first_match rules proj1 proj2 acc lst =
+let find_first_match (type a) (type b) (type c) (rules : (a rule) list) (proj1 : b -> line_break_class) (proj2 : c -> line_break_class) (acc : b list) (lst : c list) : a option =
   rules |> List.fold_left (fun resopt (lregexp1, rescand, lregexp2) ->
     match resopt with
-    | Some(_) -> resopt
+    | Some(_) ->
+        resopt
+
     | None ->
         let b1 = match_postfix proj1 acc lregexp1 in
         let b2 = match_prefix proj2 lst lregexp2 in
@@ -304,56 +309,161 @@ let append_property (uchlst : Uchar.t list) : (Uchar.t * line_break_class) list 
 
   let rec normalize biacc bilst =
     match bilst with
-    | [] -> Alist.to_list biacc
+    | [] ->
+        Alist.to_list biacc
 
     | bihead :: bitail ->
         let replopt = find_first_match normalization_rule proj_bi proj_bi (bihead :: (Alist.to_list_rev biacc)) bitail in
+        begin
           match replopt with
           | None       -> normalize (Alist.extend biacc bihead) bitail
           | Some(repl) -> normalize (Alist.append biacc repl) bitail
+        end
   in
 
   let bilst = uchlst |> List.map (fun uch -> (uch, find uch)) in
     normalize Alist.empty bilst
 
 
-let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportunity) =
+type segment_record = {
+  base             : Uchar.t;
+  marks            : Uchar.t Alist.t;
+  line_break_class : line_break_class;
+  end_with_ZWJ     : bool;
+}
 
-  let should_prevent_break triacc bilst =
-    let alwopt = find_first_match line_break_rule proj_tri proj_bi triacc bilst in
+
+let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segment_record list =
+  let (acc, segrcdopt) =
+    bilst |> List.fold_left (fun (acc, segrcdopt) (uch, lbc) ->
+      match lbc with
+      | CM ->
+          begin
+            match segrcdopt with
+            | None ->
+              (* -- if the CM occurs the beginning of the text,
+                    or follows an SP/INBR/ZW or an invalid CM/ZWJ -- *)
+                let segrcd =
+                  {
+                    base             = uch;
+                    marks            = Alist.empty;
+                    line_break_class = AL;  (* invalid CM is treated as if it were AL [LB10] *)
+                    end_with_ZWJ     = false;
+                  }
+                in
+                (Alist.extend acc segrcd, None)
+
+            | Some(segrcd) ->
+                (acc, Some({ segrcd with marks = Alist.extend segrcd.marks uch; end_with_ZWJ = false; }))
+          end
+
+      | ZWJ ->
+          begin
+            match segrcdopt with
+            | None ->
+              (* -- if the ZWJ occurs the beginning of the text,
+                    or follows an SP/BK/CR/LF/NL/ZW or an invalid CM/ZWJ -- *)
+                let segrcd =
+                  {
+                    base             = uch;
+                    marks            = Alist.empty;
+                    line_break_class = AL;
+                    end_with_ZWJ     = true;
+                  }
+                in
+                (Alist.extend acc segrcd, None)
+
+            | Some(segrcd) ->
+                (acc, Some({ segrcd with marks = Alist.extend segrcd.marks uch; end_with_ZWJ = true; }))
+          end
+
+      | INBR | SP | ZW ->
+          let segrcd =
+            {
+              base             = uch;
+              marks            = Alist.empty;
+              line_break_class = lbc;
+              end_with_ZWJ     = false;
+            }
+          in
+          begin
+            match segrcdopt with
+            | None ->
+                (Alist.extend acc segrcd, None)
+
+            | Some(segrcdprev) ->
+                (Alist.extend (Alist.extend acc segrcdprev) segrcd, None)
+          end
+
+      | _ ->
+          let segrcd =
+            {
+              base             = uch;
+              marks            = Alist.empty;
+              line_break_class = lbc;
+              end_with_ZWJ     = false;
+            }
+          in
+          begin
+            match segrcdopt with
+            | None ->
+                (Alist.extend acc segrcd, None)
+
+            | Some(segrcdprev) ->
+                (Alist.extend acc segrcdprev, Some(segrcd))
+          end
+    ) (Alist.empty, None)
+  in
+  match segrcdopt with
+  | None         -> acc |> Alist.to_list
+  | Some(segrcd) -> (Alist.extend acc segrcd) |> Alist.to_list
+
+
+let proj_segrcd segrcd = segrcd.line_break_class
+
+
+let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_element list =
+
+  let should_prevent_break (trirev : line_break_element list) segrcdlst =
+    let alwopt = find_first_match line_break_rule proj_tri proj_segrcd trirev segrcdlst in
       match alwopt with
       | None               -> false
       | Some(PreventBreak) -> true
       | Some(AllowBreak)   -> false
   in
 
-  let rec aux triacc bilst =
-    match bilst with
-    | [] -> []
+  let rec aux triacc segrcdlst =
+    match segrcdlst with
+    | [] ->
+        []
 
-    | (uch, lbc) :: bitail ->
+    | segrcd :: bitail ->
+        let uchseg = (segrcd.base, segrcd.marks |> Alist.to_list) in
+        let lbc = segrcd.line_break_class in
         begin
           match bitail with
           | [] ->
-              begin
-                Alist.to_list (Alist.extend triacc (uch, lbc, alw_last))
-              end
+              Alist.to_list (Alist.extend triacc (uchseg, lbc, alw_last))
 
           | _ :: _ ->
-              begin
-                let b = should_prevent_break ((uch, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
-                let alw = if b then PreventBreak else AllowBreak in
-                  aux (Alist.extend triacc (uch, lbc, alw)) bitail
-              end
+              let alw =
+                if segrcd.end_with_ZWJ then
+                  PreventBreak
+                else
+                  let b = should_prevent_break ((uchseg, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
+                  if b then PreventBreak else AllowBreak
+              in
+                aux (Alist.extend triacc (uchseg, lbc, alw)) bitail
         end
   in
-  let bilstinit = append_property uchlst in
+  let bilst = append_property uchlst in
+  let segrcdlst = cut_into_segment_record bilst in
 
   let alw_first =
-    let b_first = should_prevent_break [] bilstinit in
+    let b_first = should_prevent_break [] segrcdlst in
       if b_first then PreventBreak else AllowBreak
   in
-  let lst = aux Alist.empty bilstinit in
+  let lst = aux Alist.empty segrcdlst in
     (alw_first, lst)
 
 

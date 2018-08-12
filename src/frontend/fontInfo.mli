@@ -2,6 +2,7 @@
 module Types = Types_
 open LengthInterface
 open HorzBox
+open CharBasis
 open Types
 
 exception InvalidFontAbbrev     of font_abbrev
@@ -12,8 +13,6 @@ exception NotASingleMathFont    of font_abbrev * file_path
 type tag = string
 
 val initialize : unit -> unit
-
-type uchar_segment = Uchar.t * Uchar.t list
 
 val get_metrics_of_word : horz_string_info -> uchar_segment list -> OutputText.t * length * length * length
 
