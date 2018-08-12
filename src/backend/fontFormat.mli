@@ -8,6 +8,11 @@ type glyph_segment = glyph_id * glyph_id list
 type per_mille =
   | PerMille of int
 
+type mark_info =
+  | Mark of glyph_id * (per_mille * per_mille)
+
+type glyph_synthesis = glyph_id * mark_info list
+
 type metrics = per_mille * per_mille * per_mille
 
 val hex_of_glyph_id : glyph_id -> string
@@ -41,7 +46,7 @@ val get_glyph_metrics : decoder -> glyph_id -> metrics
 
 val get_glyph_id : decoder -> Uchar.t -> glyph_id option
 
-val convert_to_ligatures : decoder -> glyph_segment list -> glyph_segment list
+val convert_to_ligatures : decoder -> glyph_segment list -> glyph_synthesis list
 
 val find_kerning : decoder -> glyph_id -> glyph_id -> per_mille option
 

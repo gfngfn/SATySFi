@@ -136,10 +136,10 @@ let ( @*> ) = OutputText.append_kern
 
 let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcdr : FontFormat.decoder) (gidlst : FontFormat.glyph_id list) : FontFormat.glyph_id list * OutputText.t * FontFormat.metrics =
 
-  let seglst = FontFormat.convert_to_ligatures dcdr (gidlst |> List.map (fun gid -> (gid, []))) (* temporary *) in
+  let gsynlst = FontFormat.convert_to_ligatures dcdr (gidlst |> List.map (fun gid -> (gid, []))) (* temporary *) in
 
   let (_, otxt, rawwid, rawhgt, rawdpt) =
-    seglst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) (gid, _) ->
+    gsynlst |> List.fold_left (fun (gidprevopt, otxtacc, wacc, hacc, dacc) (gid, markinfolst) ->
       let (FontFormat.PerMille(w), FontFormat.PerMille(h), FontFormat.PerMille(d)) = metricsf gid in
       let (tjsaccnew, waccnew) =
         match gidprevopt with
@@ -163,7 +163,7 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
         (Some(gid), tjsaccnew, waccnew, max hacc h, min dacc d)
     ) (None, OutputText.empty_hex_style, 0, 0, 0)
   in
-    (seglst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
+    (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
 let get_metrics_of_word (hsinfo : horz_string_info) (uchlst : Uchar.t list) : OutputText.t * length * length * length =

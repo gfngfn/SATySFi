@@ -310,9 +310,133 @@ module GlyphBBoxTable
   end
 
 
+let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
+  PerMille(int_of_float ((float_of_int (w * 1000)) /. (float_of_int units_per_em)))
+
+
+module GSet = Set.Make
+  (struct
+    type t = original_glyph_id
+    let compare = Pervasives.compare
+  end)
+
+
+module GMap = Map.Make
+  (struct
+    type t = original_glyph_id
+    let compare = Pervasives.compare
+  end)
+
+
+type mark_class = int
+
+type anchor_point = per_mille * per_mille
+
+
+module MarkTable
+: sig
+    type t
+    val create : unit -> t
+    val add : int -> int -> (Otfm.glyph_id * Otfm.mark_record) list -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
+    val find_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
+  end
+= struct
+
+    type mark_to_base_entry = {
+      class_count : int;
+      mark_map    : (mark_class * anchor_point) GMap.t;
+      base_map    : (anchor_point array) GMap.t;
+    }
+
+    type t = {
+      mutable mark_to_base_table : mark_to_base_entry list;
+    }
+
+
+    let create () =
+      { mark_to_base_table = []; }
+
+
+    let add units_per_em class_count markassoc baseassoc mktbl =
+      let pmf = per_mille_raw units_per_em in
+      let mark_map =
+        markassoc |> List.fold_left (fun map (gidmark, (i, (x, y, _))) ->
+          map |> GMap.add gidmark (i, (pmf x, pmf y))
+        ) GMap.empty
+      in
+      let base_map =
+        baseassoc |> List.fold_left (fun map (gidbase, arr) ->
+          map |> GMap.add gidbase (arr |> Array.map (fun (x, y, _) -> (pmf x, pmf y)))
+        ) GMap.empty
+      in
+      let entry = { class_count; mark_map; base_map; } in
+      mktbl.mark_to_base_table <- entry :: mktbl.mark_to_base_table
+
+
+    let find_opt (gidbase, gidmark) mktbl =
+      let rec aux lst =
+        match lst with
+        | [] ->
+            None
+
+        | entry :: tail ->
+            let baseopt = entry.base_map |> GMap.find_opt gidbase in
+            let markopt = entry.mark_map |> GMap.find_opt gidmark in
+            begin
+              match (baseopt, markopt) with
+              | (None, _) | (_, None)        -> aux tail
+              | (Some(arr), Some(i, ptmark)) -> Some((arr.(i), ptmark))
+            end
+      in
+      aux mktbl.mark_to_base_table
+
+  end
+
+
+type error = [ Otfm.error | `Missing_script | `Missing_feature ]
+
+
+let result_bind x f =
+  match x with
+  | Ok(v)    -> f v
+  | Error(e) -> Error(e :> error)
+
+
+let get_mark_table srcpath units_per_em d =
+  let mktbl = MarkTable.create () in
+  let res =
+    let (>>=) = result_bind in
+    Otfm.gpos_script d >>= fun scriptlst ->
+    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
+      (* temporary; should depend on the script *)
+    Otfm.gpos_langsys script >>= fun (langsys, _) ->
+      (* temporary; should depend on the current language system *)
+    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "mark") `Missing_feature >>= fun feature ->
+    () |> Otfm.gpos feature ~markbase1:(fun clscnt () markassoc baseassoc ->
+      MarkTable.add units_per_em clscnt markassoc baseassoc mktbl
+    ) >>= fun () ->
+    Ok()
+  in
+  match res with
+  | Error(#Otfm.error as oerr) -> raise_err srcpath oerr "get_mark_table"
+  | _                          -> mktbl
+
+
+let ( -@ ) (PerMille(x1), PerMille(y1)) (PerMille(x2), PerMille(y2)) =
+  (PerMille(x1 - x2), PerMille(y1 - y2))
+
+
+type per_mille_vector = per_mille * per_mille
+
+type mark_info =
+  | Mark of glyph_id * per_mille_vector
+
+type glyph_synthesis = glyph_id * mark_info list
+
 type ligature_matching =
-  | MatchExactly of original_glyph_id * original_glyph_segment list
-  | NoMatch
+  | Match    of original_glyph_id * (original_glyph_id * per_mille_vector) list * original_glyph_segment list
+  | ReachEnd
 
 
 module LigatureTable
@@ -325,7 +449,7 @@ module LigatureTable
     val create : subset_map -> int -> t
     val add : original_glyph_id -> single list -> t -> unit
     val fold_rev : (original_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
-    val match_prefix : original_glyph_segment list -> t -> ligature_matching
+    val match_prefix : original_glyph_segment list -> MarkTable.t -> t -> ligature_matching
   end
 = struct
 
@@ -385,7 +509,7 @@ module LigatureTable
     let rec lookup liginfolst (segorglst : original_glyph_segment list) =
       match liginfolst with
       | [] ->
-          NoMatch
+          None
 
       | single :: liginfotail ->
           let gidorgtail = single.tail in
@@ -393,40 +517,47 @@ module LigatureTable
           begin
             match prefix gidorgtail segorglst with
             | None             -> lookup liginfotail segorglst
-            | Some(orgsegrest) -> MatchExactly(gidorglig, orgsegrest)
+            | Some(orgsegrest) -> Some((gidorglig), orgsegrest)
           end
 
 
-    let match_prefix (segorglst : original_glyph_segment list) ligtbl =
+    let match_prefix (segorglst : original_glyph_segment list) (mktbl : MarkTable.t) (ligtbl : t) =
       let mainht = ligtbl.entry_table in
       match segorglst with
       | [] ->
-          NoMatch
+          ReachEnd
 
-      | (gidorgfst, gomarks) :: segorgtail ->
+      | (gobase, gomarks) :: segorgtail ->
           begin
             match gomarks with
-            | _ :: _ ->
-                NoMatch
-                  (* temporary; should refer to MarkToLig table *)
+            | gomark :: _ ->
+              (* temporary; should refer to MarkToMark table
+                 in order to handle diacritical marks after the first one *)
+                begin
+                  match mktbl |> MarkTable.find_opt (gobase, gomark) with
+                  | None ->
+                    (* if the diacritical mark cannot attach to the base *)
+                      Match(gobase, [], segorgtail)
+
+                  | Some(vB, vM) ->
+                      Match(gobase, [(gomark, vM -@ vB)], segorgtail)
+                end
 
             | [] ->
                 begin
-                  match GHt.find_opt mainht gidorgfst with
-                  | Some(liginfolst) -> lookup liginfolst segorgtail
-                  | None             -> NoMatch
+                  match GHt.find_opt mainht gobase with
+                  | None ->
+                      Match(gobase, [], segorgtail)
+
+                  | Some(liginfolst) ->
+                      begin
+                        match lookup liginfolst segorgtail with
+                        | None                      -> Match(gobase, [], segorgtail)
+                        | Some((golig, segorgrest)) -> Match(golig, [], segorgrest)  (* temporary *)
+                      end
                 end
           end
 end
-
-
-type error = [ Otfm.error | `Missing_script | `Missing_feature ]
-
-
-let result_bind x f =
-  match x with
-  | Ok(v)    -> f v
-  | Error(e) -> Error(e :> error)
 
 
 let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : LigatureTable.t =
@@ -594,110 +725,6 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
         | `Missing_feature         -> kerntbl
         | #Otfm.error as oerr      -> raise_err srcpath oerr "get_kerning_table"
       end
-
-
-let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
-  PerMille(int_of_float ((float_of_int (w * 1000)) /. (float_of_int units_per_em)))
-
-
-module GSet = Set.Make
-  (struct
-    type t = original_glyph_id
-    let compare = Pervasives.compare
-  end)
-
-
-module GMap = Map.Make
-  (struct
-    type t = original_glyph_id
-    let compare = Pervasives.compare
-  end)
-
-
-type mark_class = int
-
-type anchor_point = per_mille * per_mille
-
-
-module MarkTable
-: sig
-    type t
-    val create : unit -> t
-    val add : int -> int -> (Otfm.glyph_id * Otfm.mark_record) list -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
-    val find_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
-  end
-= struct
-
-    type mark_to_base_entry = {
-      class_count : int;
-      mark_map    : (mark_class * anchor_point) GMap.t;
-      base_map    : (anchor_point array) GMap.t;
-    }
-
-    type t = {
-      mutable mark_to_base_table : mark_to_base_entry list;
-    }
-
-
-    let create () =
-      { mark_to_base_table = []; }
-
-
-    let add units_per_em class_count markassoc baseassoc mktbl =
-      let pmf = per_mille_raw units_per_em in
-      let mark_map =
-        markassoc |> List.fold_left (fun map (gidmark, (i, (x, y, _))) ->
-          map |> GMap.add gidmark (i, (pmf x, pmf y))
-        ) GMap.empty
-      in
-      let base_map =
-        baseassoc |> List.fold_left (fun map (gidbase, arr) ->
-          map |> GMap.add gidbase (arr |> Array.map (fun (x, y, _) -> (pmf x, pmf y)))
-        ) GMap.empty
-      in
-      let entry = { class_count; mark_map; base_map; } in
-      mktbl.mark_to_base_table <- entry :: mktbl.mark_to_base_table
-
-
-    let find_opt (gidbase, gidmark) mktbl =
-      let rec aux lst =
-        match lst with
-        | [] ->
-            None
-
-        | entry :: tail ->
-            let baseopt = entry.base_map |> GMap.find_opt gidbase in
-            let markopt = entry.mark_map |> GMap.find_opt gidmark in
-            begin
-              match (baseopt, markopt) with
-              | (None, _) | (_, None)        -> aux tail
-              | (Some(arr), Some(i, ptmark)) -> Some((arr.(i), ptmark))
-            end
-      in
-      aux mktbl.mark_to_base_table
-
-  end
-
-
-let get_mark_table srcpath units_per_em d =
-  let mktbl = MarkTable.create () in
-  let res =
-    let (>>=) = result_bind in
-    Otfm.gpos_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
-      (* temporary; should depend on the script *)
-    Otfm.gpos_langsys script >>= fun (langsys, _) ->
-      (* temporary; should depend on the current language system *)
-    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
-    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "mark") `Missing_feature >>= fun feature ->
-    () |> Otfm.gpos feature ~markbase1:(fun clscnt () markassoc baseassoc ->
-      MarkTable.add units_per_em clscnt markassoc baseassoc mktbl
-    ) >>= fun () ->
-    Ok()
-  in
-  match res with
-  | Error(#Otfm.error as oerr) -> raise_err srcpath oerr "get_mark_table"
-  | _                          -> mktbl
 
 
 type decoder = {
@@ -1604,24 +1631,26 @@ let get_decoder_ttc (fontname : string) (srcpath :file_path) (i : int) : (decode
   | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
-let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_segment list =
+let convert_to_ligatures (dcdr : decoder) (seglst : glyph_segment list) : glyph_synthesis list =
   let ligtbl = dcdr.ligature_table in
+  let mktbl = dcdr.mark_table in
   let intf = intern_gid dcdr in
+(*
   let intsegf (gobase, gomarks) = (intf gobase, List.map intf gomarks) in
+*)
   let orgf = get_original_gid dcdr in
   let orgsegf (base, marks) = (orgf base, List.map orgf marks) in
 
   let rec aux acc segorglst =
-    match segorglst with
-    | [] ->
+    match ligtbl |> LigatureTable.match_prefix segorglst mktbl with
+    | ReachEnd ->
         Alist.to_list acc
 
-    | so :: sos ->
-        begin
-          match ligtbl |> LigatureTable.match_prefix segorglst with
-          | NoMatch                             -> aux (Alist.extend acc (intsegf so)) sos
-          | MatchExactly(gidorglig, segorgrest) -> aux (Alist.extend acc (intf gidorglig, [])) segorgrest
-        end
+    | Match(gidorglig, markorginfolst, segorgrest) ->
+        let markinfolst =
+          markorginfolst |> List.map (fun (gidorg, v) -> (Mark(intf gidorg, v)))
+        in
+        aux (Alist.extend acc (intf gidorglig, markinfolst)) segorgrest
   in
   let segorglst = seglst |> List.map orgsegf in
   aux Alist.empty segorglst
