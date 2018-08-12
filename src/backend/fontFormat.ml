@@ -159,6 +159,11 @@ type glyph_id_pair = {
 type glyph_id =
   | SubsetGlyphID of original_glyph_id * subset_glyph_id
 
+type glyph_segment = {
+  base  : glyph_id;
+  marks : glyph_id list;
+}
+
 
 let hex_of_glyph_id ((SubsetGlyphID(_, gidsub)) : glyph_id) =
   let b0 = gidsub / 256 in
@@ -414,7 +419,7 @@ let result_bind x f =
   | Error(e) -> Error(e :> error)
 
 
-let get_ligature_table (submap : subset_map) (d : Otfm.decoder) : LigatureTable.t =
+let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : LigatureTable.t =
   let ligtbl = LigatureTable.create submap 32 (* temporary; size of the hash table *) in
   let res =
     let (>>=) = result_bind in
@@ -433,12 +438,18 @@ let get_ligature_table (submap : subset_map) (d : Otfm.decoder) : LigatureTable.
     Ok()
   in
   match res with
-  | Ok(())   -> ligtbl
+  | Ok(()) ->
+      ligtbl
+
   | Error(e) ->
-      match e with
-      | `Missing_required_table(tag)
-          when tag = Otfm.Tag.gsub -> ligtbl
-      | _                          -> (* raise_err e *) ligtbl  (* temporary *)
+      begin
+        match e with
+        | `Missing_required_table(tag)
+            when tag = Otfm.Tag.gsub -> ligtbl
+        | `Missing_script            -> ligtbl
+        | `Missing_feature           -> ligtbl
+        | #Otfm.error as oerr        -> raise_err srcpath oerr "get_ligature_table"
+      end
 
 
 module KerningTable
@@ -528,7 +539,7 @@ module KerningTable
   end
 
 
-let get_kerning_table (d : Otfm.decoder) =
+let get_kerning_table srcpath (d : Otfm.decoder) =
   let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
   let _ =
     () |> Otfm.kern d (fun () kinfo ->
@@ -561,18 +572,18 @@ let get_kerning_table (d : Otfm.decoder) =
       ) >>= fun () -> Ok()
   in
   match res with
-  | Ok() ->
+  | Ok(()) ->
         kerntbl
 
   | Error(e) ->
-      match e with
-      | `Missing_required_table(t)
-          when t = Otfm.Tag.gpos ->
-(*
-            let () = PrintForDebug.kernE "'GPOS' missing" in  (* for debug *)
-*)
-            kerntbl
-      | _                        -> (* raise_err e *) kerntbl  (* temporary *)
+      begin
+        match e with
+        | `Missing_required_table(t)
+            when t = Otfm.Tag.gpos -> kerntbl
+        | `Missing_script          -> kerntbl
+        | `Missing_feature         -> kerntbl
+        | #Otfm.error as oerr      -> raise_err srcpath oerr "get_kerning_table"
+      end
 
 
 let per_mille_raw (units_per_em : int) (w : design_units) : per_mille =
@@ -658,6 +669,27 @@ module MarkTable
   end
 
 
+let get_mark_table srcpath units_per_em d =
+  let mktbl = MarkTable.create () in
+  let res =
+    let (>>=) = result_bind in
+    Otfm.gpos_script d >>= fun scriptlst ->
+    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
+      (* temporary; should depend on the script *)
+    Otfm.gpos_langsys script >>= fun (langsys, _) ->
+      (* temporary; should depend on the current language system *)
+    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "mark") `Missing_feature >>= fun feature ->
+    () |> Otfm.gpos feature ~markbase1:(fun clscnt () markassoc baseassoc ->
+      MarkTable.add units_per_em clscnt markassoc baseassoc mktbl
+    ) >>= fun () ->
+    Ok()
+  in
+  match res with
+  | Error(#Otfm.error as oerr) -> raise_err srcpath oerr "get_mark_table"
+  | _                          -> mktbl
+
+
 type decoder = {
   file_path           : file_path;
   main                : Otfm.decoder;
@@ -669,6 +701,7 @@ type decoder = {
   glyph_bbox_table    : GlyphBBoxTable.t;
   kerning_table       : KerningTable.t;
   ligature_table      : LigatureTable.t;
+  mark_table          : MarkTable.t;
   charstring_info     : Otfm.charstring_info option;
   units_per_em        : int;
   default_ascent      : per_mille;
@@ -1478,14 +1511,12 @@ let make_dictionary (pdf : Pdf.t) (font : font) (dcdr : decoder) : Pdf.pdfobject
 
 let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let cmapsubtbl = get_cmap_subtable srcpath d in
-  let kerntbl = get_kerning_table d in
   let submap =
     match Otfm.flavour d with
     | Error(e)                        -> raise_err srcpath e "make_decoder"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
     | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
   in
-  let ligtbl = get_ligature_table submap d in
   let gidtbl = GlyphIDTable.create submap 256 in  (* temporary; initial size of hash tables *)
   let bboxtbl = GlyphBBoxTable.create 256 in  (* temporary; initial size of hash tables *)
   let (rcdhhea, ascent, descent) =
@@ -1498,6 +1529,9 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
     | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
     | Error(e)    -> raise_err srcpath e "make_decoder (head)"
   in
+  let kerntbl = get_kerning_table srcpath d in
+  let ligtbl = get_ligature_table srcpath submap d in
+  let mktbl = get_mark_table srcpath units_per_em d in
   let csinfo =
     match Otfm.cff d with
     | Error(_)    -> None
@@ -1511,6 +1545,7 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
       hhea_record         = rcdhhea;
       kerning_table       = kerntbl;
       ligature_table      = ligtbl;
+      mark_table          = mktbl;
       subset_map          = submap;
       glyph_id_table      = gidtbl;
       glyph_bbox_table    = bboxtbl;
