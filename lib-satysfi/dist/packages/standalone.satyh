@@ -1,0 +1,22 @@
+
+let-inline ctx \math m =
+  embed-math ctx m
+
+let standalone bt =
+  let ctx =
+    get-initial-context 440pt (command \math)
+      |> set-dominant-narrow-script Latin
+  in
+  let bb = read-block ctx bt in
+  page-break A4Paper
+    (fun _ -> (|
+      text-origin = (80pt, 100pt);
+      text-height = 630pt;
+    |))
+    (fun _ -> (|
+      header-origin  = (0pt, 0pt);
+      header-content = block-nil;
+      footer-origin  = (0pt, 0pt);
+      footer-content = block-nil;
+    |))
+    bb
