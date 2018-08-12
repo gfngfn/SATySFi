@@ -26,7 +26,7 @@ let append_glyph_synthesis otxt (FontFormat.PerMille(w)) (gid, markinfolst) =
       otxt
 
   | _ :: _ ->
-      let otxt = Alist.extend otxt (Kern(w)) in
+      let otxt = Alist.extend otxt (Kern(-w)) in
       let otxt =
         markinfolst |> List.fold_left (fun otxt (FontFormat.Mark(gidmark, FontFormat.PerMille(wmark), v)) ->
           let (FontFormat.PerMille(x), FontFormat.PerMille(y)) = v in
@@ -34,7 +34,7 @@ let append_glyph_synthesis otxt (FontFormat.PerMille(w)) (gid, markinfolst) =
           Alist.extend otxt (Raise((x, y), wmark, data))
         ) otxt
       in
-      let otxt = Alist.extend otxt (Kern(-w)) in
+      let otxt = Alist.extend otxt (Kern(w)) in
       otxt
 
 

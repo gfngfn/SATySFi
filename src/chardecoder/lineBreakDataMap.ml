@@ -338,6 +338,7 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
     bilst |> List.fold_left (fun (acc, segrcdopt) (uch, lbc) ->
       match lbc with
       | CM ->
+          Format.printf "LineBreakDataMap> U+%04X : CM\n" (Uchar.to_int uch);  (* for debug *)
           begin
             match segrcdopt with
             | None ->
@@ -353,8 +354,8 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
                 in
                 (Alist.extend acc segrcd, None)
 
-            | Some(segrcd) ->
-                (acc, Some({ segrcd with marks = Alist.extend segrcd.marks uch; end_with_ZWJ = false; }))
+            | Some(segrcdprev) ->
+                (acc, Some({ segrcdprev with marks = Alist.extend segrcdprev.marks uch; end_with_ZWJ = false; }))
           end
 
       | ZWJ ->
@@ -373,8 +374,8 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
                 in
                 (Alist.extend acc segrcd, None)
 
-            | Some(segrcd) ->
-                (acc, Some({ segrcd with marks = Alist.extend segrcd.marks uch; end_with_ZWJ = true; }))
+            | Some(segrcdprev) ->
+                (acc, Some({ segrcdprev with marks = Alist.extend segrcdprev.marks uch; end_with_ZWJ = true; }))
           end
 
       | INBR | SP | ZW ->
@@ -407,7 +408,7 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
           begin
             match segrcdopt with
             | None ->
-                (Alist.extend acc segrcd, None)
+                (acc, Some(segrcd))
 
             | Some(segrcdprev) ->
                 (Alist.extend acc segrcdprev, Some(segrcd))

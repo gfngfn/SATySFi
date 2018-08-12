@@ -201,7 +201,7 @@ let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : len
       let optxt = op_TJ (Pdf.Array(pdfobjs)) in
         match hopt with
         | None ->
-            Alist.extend acc optxt
+            Alist.append acc [op_Ts rising; optxt]
 
         | Some(FontFormat.PerMille(h)) ->
             let r = fontsize *% (float_of_int h *. 0.001) in
