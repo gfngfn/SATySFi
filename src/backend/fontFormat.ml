@@ -335,15 +335,19 @@ type mark_class = int
 
 type anchor_point = per_mille * per_mille
 
+type mark_assoc = (Otfm.glyph_id * Otfm.mark_record) list
+
 
 module MarkTable
 : sig
     type t
     val create : unit -> t
-    val add_base : int -> int -> (Otfm.glyph_id * Otfm.mark_record) list -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
-    val add_ligature : int -> int -> (Otfm.glyph_id * Otfm.mark_record) list -> (Otfm.glyph_id * Otfm.ligature_attach) list -> t -> unit
-    val find_single_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
+    val add_base : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
+    val add_ligature : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.ligature_attach) list -> t -> unit
+    val add_mark_to_mark : int -> int -> mark_assoc -> (Otfm.glyph_id * Otfm.base_record) list -> t -> unit
+    val find_base_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
     val find_ligature_opt : int -> original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
+    val find_mark_to_mark_opt : original_glyph_id * original_glyph_id -> t -> (anchor_point * anchor_point) option
   end
 = struct
 
@@ -408,7 +412,10 @@ module MarkTable
       mktbl.mark_to_ligature_table <- entry :: mktbl.mark_to_ligature_table
 
 
-    let find_single_opt (gidbase, gidmark) mktbl =
+    let add_mark_to_mark = add_base
+
+
+    let find_base_opt (gidbase, gidmark) mktbl =
       let rec aux lst =
         match lst with
         | [] ->
@@ -448,6 +455,9 @@ module MarkTable
       in
       aux mktbl.mark_to_ligature_table
 
+
+    let find_mark_to_mark_opt = find_base_opt
+
   end
 
 
@@ -463,31 +473,54 @@ let result_bind x f =
 let get_mark_table srcpath units_per_em d =
   let mktbl = MarkTable.create () in
   let res =
-    let (>>=) = result_bind in
+    let open ResultMonad in
     Otfm.gpos_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
+    match scriptlst |> List.find_opt (fun gs -> Otfm.gpos_script_tag gs = "latn") with
       (* temporary; should depend on the script *)
-    Otfm.gpos_langsys script >>= fun (langsys, _) ->
-      (* temporary; should depend on the current language system *)
-    Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
-    pickup featurelst (fun gf -> Otfm.gpos_feature_tag gf = "mark") `Missing_feature >>= fun feature_mark ->
-    () |> Otfm.gpos feature_mark
-        ~markbase1:(fun clscnt () markassoc baseassoc ->
-          MarkTable.add_base units_per_em clscnt markassoc baseassoc mktbl
-        )
-        ~marklig1:(fun clscnt () markassoc ligassoc ->
-          MarkTable.add_ligature units_per_em clscnt markassoc ligassoc mktbl
-        )
-    >>= fun () ->
-    Ok()
+    | None ->
+        return ()
+
+    | Some(script) ->
+        Otfm.gpos_langsys script >>= fun (langsys, _) ->
+          (* temporary; should depend on the current language system *)
+        Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
+        begin
+          match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mark") with
+          | None ->
+              return ()
+
+          | Some(feature_mark) ->
+              () |> Otfm.gpos feature_mark
+                  ~markbase1:(fun clscnt () markassoc baseassoc ->
+                    MarkTable.add_base units_per_em clscnt markassoc baseassoc mktbl
+                  )
+                  ~marklig1:(fun clscnt () markassoc ligassoc ->
+                    MarkTable.add_ligature units_per_em clscnt markassoc ligassoc mktbl
+                  )
+        end >>= fun () ->
+        begin
+          match featurelst |> List.find_opt (fun gf -> Otfm.gpos_feature_tag gf = "mkmk") with
+          | None ->
+              return ()
+
+          | Some(feature_mkmk) ->
+              () |> Otfm.gpos feature_mkmk
+                  ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
+                    MarkTable.add_mark_to_mark units_per_em clscnt mark1assoc mark2assoc mktbl
+                  )
+        end
   in
   match res with
-  | Error(#Otfm.error as oerr) -> raise_err srcpath oerr "get_mark_table"
-  | _                          -> mktbl
+  | Error(oerr) -> raise_err srcpath oerr "get_mark_table"
+  | _           -> mktbl
 
 
 let ( -@ ) (PerMille(x1), PerMille(y1)) (PerMille(x2), PerMille(y2)) =
   (PerMille(x1 - x2), PerMille(y1 - y2))
+
+
+let ( +@ ) (PerMille(x1), PerMille(y1)) (PerMille(x2), PerMille(y2)) =
+  (PerMille(x1 + x2), PerMille(y1 + y2))
 
 
 type per_mille_vector = per_mille * per_mille
@@ -561,18 +594,66 @@ module LigatureTable
       GHt.fold (fun gidorg gidorglst acc -> f gidorg gidorglst acc) htrev init
 
 
-    let attach_marks mktbl markbasef (* markmarkf *) gobase gomarks =
-      match gomarks with
-      | [] ->
-          Some([])
+    (* --
+       'backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark' returns:
 
-      | gomark :: _ ->
-          begin
-            match markbasef (gobase, gomark) mktbl with
-            | None           -> None
-            | Some((vL, vM)) -> Some([(gomark, vL -@ vM)])
-          end
-            (* temporary; should refer to MarkToMark *)
+       - 'Some(p)' if 'gomark' can be attached at the position 'p'
+          to 'gobase', to which every mark in 'markpairacc' is already attached.
+
+       - 'None' otherwise.
+
+       -- *)
+    let backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark =
+      let rec aux markpairacc =
+        match Alist.chop_last markpairacc with
+        | None ->
+            begin
+              match markbasef (gobase, gomark) mktbl with
+              | None           -> None
+              | Some((vB, vM)) -> Some(vB -@ vM)
+            end
+
+        | Some((rest, (gomarklast, pM2))) ->
+            begin
+              match MarkTable.find_mark_to_mark_opt (gomarklast, gomark) mktbl with
+              | None             -> aux rest
+              | Some((vM2, vM1)) -> Some(vM2 -@ vM1 +@ pM2)
+            end
+      in
+        aux markpairacc
+
+
+    (* --
+       'attach_marks mktbl markbasef gobase gomarks' returns:
+
+       - 'Some([(gm1, p1), ..., (gmN, pN)])' if every 'gmI' in 'gomarks'
+         can be attached to 'gobase' at the position 'p'.
+
+       - 'None' otherwise.
+
+       -- *)
+    let attach_marks is_ligature mktbl markbasef gobase gomarks =
+      let rec aux markpairacc gomarks =
+        match gomarks with
+        | [] ->
+            Some(Alist.to_list markpairacc)
+
+        | gomark :: gomarktail ->
+            begin
+              match backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark with
+              | None ->
+                  begin
+                    if is_ligature then () else
+                      Format.printf "FontFormat> combining diacritical mark of GID %d cannot be attached to GID %d\n" gomark gobase
+                        (* temporary; should warn in a more sophisticated manner *)
+                  end;
+                  None
+
+              | Some(p) ->
+                  aux (Alist.extend markpairacc (gomark, p)) gomarktail
+            end
+      in
+      aux Alist.empty gomarks
 
 
     (* --
@@ -592,7 +673,7 @@ module LigatureTable
         | (i, gomarks) :: tail ->
             let markbasef = MarkTable.find_ligature_opt i in
             begin
-              match attach_marks mktbl markbasef golig gomarks with
+              match attach_marks true mktbl markbasef golig gomarks with
               | None              -> None
               | Some(markinfolst) -> aux (Alist.append acc markinfolst) tail
             end
@@ -666,17 +747,17 @@ module LigatureTable
       | (gobase, gomarks) :: segorgtail ->
           begin
             match gomarks with
-            | gomark :: _ ->
+            | _ :: _ ->
               (* temporary; should refer to MarkToMark table
                  in order to handle diacritical marks after the first one *)
                 begin
-                  match mktbl |> MarkTable.find_single_opt (gobase, gomark) with
+                  match attach_marks false mktbl MarkTable.find_base_opt gobase gomarks with
                   | None ->
-                    (* if the diacritical mark cannot attach to the base *)
+                    (* if the diacritical marks cannot attach to the base *)
                       Match(gobase, [], segorgtail)
 
-                  | Some(vB, vM) ->
-                      Match(gobase, [(gomark, vB -@ vM)], segorgtail)
+                  | Some(markpairs) ->
+                      Match(gobase, markpairs, segorgtail)
                 end
 
             | [] ->
