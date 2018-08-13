@@ -63,7 +63,7 @@ let set_from_file filename_S filename_EAW =
   end
 
 
-let find ctx uch =
+let find (ctx : context_main) ((uch, _) : uchar_segment) =
   try
     (!script_map_ref) |> BatIMap.find (Uchar.to_int uch)
                       |> normalize_script ctx
@@ -72,15 +72,15 @@ let find ctx uch =
 
 let divide_by_script (ctx : context_main) (trilst : line_break_element list) : LineBreakBox.line_break_chunk_main list =
 
-  let ideographic script lbc uch alw =
-    IdeographicChunk(script, lbc, uch, alw)
+  let ideographic script lbc uchseg alw =
+    IdeographicChunk(script, lbc, uchseg, alw)
   in
 
-  let preword script lbcfirst lbclast uchlst alw =
-    AlphabeticChunk(script, lbcfirst, lbclast, uchlst, alw)
+  let preword script lbcfirst lbclast uchseglst alw =
+    AlphabeticChunk(script, lbcfirst, lbclast, uchseglst, alw)
   in
 
-  let rec aux resacc (scraccopt : (line_break_class * script * line_break_class * Uchar.t list) option) trilst =
+  let rec aux resacc (scraccopt : (line_break_class * script * line_break_class * uchar_segment list) option) trilst =
     match trilst with
     | [] ->
         begin
@@ -88,8 +88,8 @@ let divide_by_script (ctx : context_main) (trilst : line_break_element list) : L
           | None ->
               Alist.to_list resacc
 
-          | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
-              let chunk = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
+          | Some((lbcfirst, scriptprev, lbcprev, uchsegacc)) ->
+              let chunk = preword scriptprev lbcfirst lbcprev (List.rev uchsegacc) PreventBreak in
               Alist.to_list (Alist.extend resacc chunk)
         end
 
@@ -104,25 +104,25 @@ let divide_by_script (ctx : context_main) (trilst : line_break_element list) : L
           | None ->
               aux (Alist.extend resacc chunkspace) None tritail
 
-          | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
-              let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
+          | Some((lbcfirst, scriptprev, lbcprev, uchsegacc)) ->
+              let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchsegacc) PreventBreak in
                 aux (Alist.append resacc [chunkprev; chunkspace]) None tritail
         end
 
-    | (uch, lbc, alw) :: tritail ->
-        let script = find ctx uch in
+    | (uchseg, lbc, alw) :: tritail ->
+        let script = find ctx uchseg in
         if is_ideographic_class lbc then
         (* temporary; whether 'AI' is ideographic or not should depend on the context *)
         (* -- if the spotted character is ideographic -- *)
           begin
             match scraccopt with
             | None ->
-                let chunkideo = ideographic script lbc uch alw in
+                let chunkideo = ideographic script lbc uchseg alw in
                   aux (Alist.extend resacc chunkideo) None tritail
 
             | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
               (* -- if there accumulate some characters before the spotted character -- *)
-                let chunkideo = ideographic script lbc uch alw in
+                let chunkideo = ideographic script lbc uchseg alw in
                 let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
                   aux (Alist.append resacc [chunkprev; chunkideo]) None tritail
           end
@@ -134,16 +134,16 @@ let divide_by_script (ctx : context_main) (trilst : line_break_element list) : L
                 begin
                   match scraccopt with
                   | None ->
-                      let chunk = preword script lbc lbc [uch] AllowBreak in
+                      let chunk = preword script lbc lbc [uchseg] AllowBreak in
                         aux (Alist.extend resacc chunk) None tritail
 
-                  | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
+                  | Some((lbcfirst, scriptprev, lbcprev, uchsegacc)) ->
                       if script_equal scriptprev script then
-                        let chunk = preword script lbcfirst lbc (List.rev (uch :: uchacc)) AllowBreak in
+                        let chunk = preword script lbcfirst lbc (List.rev (uchseg :: uchsegacc)) AllowBreak in
                           aux (Alist.extend resacc chunk) None tritail
                       else
-                        let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
-                        let chunk = preword script lbc lbc [uch] AllowBreak in
+                        let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchsegacc) PreventBreak in
+                        let chunk = preword script lbc lbc [uchseg] AllowBreak in
                           aux (Alist.append resacc [chunkprev; chunk]) None tritail
                 end
 
@@ -151,17 +151,16 @@ let divide_by_script (ctx : context_main) (trilst : line_break_element list) : L
               begin
                 match scraccopt with
                 | None ->
-                    aux resacc (Some((lbc, script, lbc, [uch]))) tritail
+                    aux resacc (Some((lbc, script, lbc, [uchseg]))) tritail
 
-                | Some((lbcfirst, scriptprev, lbcprev, uchacc)) ->
+                | Some((lbcfirst, scriptprev, lbcprev, uchsegacc)) ->
                     if script_equal scriptprev script then
-                      aux resacc (Some((lbcfirst, script, lbc, uch :: uchacc))) tritail
+                      aux resacc (Some((lbcfirst, script, lbc, uchseg :: uchsegacc))) tritail
                     else
-                      let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchacc) PreventBreak in
-                        aux (Alist.extend resacc chunkprev) (Some((lbc, script, lbc, [uch]))) tritail
+                      let chunkprev = preword scriptprev lbcfirst lbcprev (List.rev uchsegacc) PreventBreak in
+                        aux (Alist.extend resacc chunkprev) (Some((lbc, script, lbc, [uchseg]))) tritail
               end
           end
   in
 
-  let scrlst = aux Alist.empty None trilst in
-    scrlst
+  aux Alist.empty None trilst

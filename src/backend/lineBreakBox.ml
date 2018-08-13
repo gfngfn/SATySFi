@@ -58,7 +58,7 @@ let natural wid =
 
 
 type line_break_chunk_main =
-  | AlphabeticChunk  of script * line_break_class * line_break_class * Uchar.t list * break_opportunity
+  | AlphabeticChunk  of script * line_break_class * line_break_class * uchar_segment list * break_opportunity
       (* --
          (1) script
          (2) line break class for the previous chunk
@@ -68,7 +68,7 @@ type line_break_chunk_main =
          -- *)
   | Space
   | UnbreakableSpace
-  | IdeographicChunk of script * line_break_class * Uchar.t * break_opportunity
+  | IdeographicChunk of script * line_break_class * uchar_segment * break_opportunity
       (* --
          (1) script
          (2) line break class

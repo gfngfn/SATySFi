@@ -30,7 +30,7 @@ depends: [
   "dune" {build}
   "menhir"
   "ocamlfind" {build}
-  "otfm" {= "0.3.0+satysfi"}
+  "otfm" {= "0.3.2+satysfi"}
   "ppx_deriving"
   "uutf"
   "yojson"

@@ -12,5 +12,6 @@
   "Junicode-b": <Single: {"src-dist": "Junicode-Bold.ttf"}>,
   "Junicode-it": <Single: {"src-dist": "Junicode-Italic.ttf"}>,
   "HiraKakuProN-W2": <Single: {"src-dist": "HiraKakuProN-W2.otf"}>,
-  "HiraKakuProN-W5": <Single: {"src-dist": "HiraKakuProN-W5.otf"}>
+  "HiraKakuProN-W5": <Single: {"src-dist": "HiraKakuProN-W5.otf"}>,
+  "Menlo": <Collection: {"src-dist": "Menlo.ttc", "index": 1}>
 }
