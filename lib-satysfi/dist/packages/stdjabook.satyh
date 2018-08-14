@@ -31,6 +31,7 @@ module StdJaBook : sig
   direct +section : [string?; inline-text; block-text] block-cmd
   direct +subsection : [string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
+  direct \footnote : [inline-text] inline-cmd
 
 end = struct
 
@@ -302,6 +303,10 @@ let title-deco =
       inline-fil ++ (repeat-inline n ib)
 
 
+  let-mutable footnote-ref <- 0
+  let-mutable first-footnote <- true
+
+
   let document record inner =
     % -- constants --
     let title = record#title in
@@ -315,6 +320,10 @@ let title-deco =
     let hdrwid = 520pt in
     let ftrwid = 520pt in
     let thickness = header-line-thickness in
+
+    let () =
+      register-cross-reference `changed` `F`
+    in
 
     let ctx-doc = get-standard-context txtwid in
 
@@ -378,6 +387,7 @@ let title-deco =
 
     % -- page settings --
     let pagecontf pbinfo =
+      let () = first-footnote <- true in
       let hgtfb = height-of-float-boxes pbinfo#page-number in
       let (txtorgx, txtorgy) = txtorg in
       (|
@@ -532,7 +542,81 @@ let title-deco =
     in
       read-inline ctx-emph inner
 
-end
+
+  let generate-footnote-label n =
+    `footnote:` ^ (arabic n)
+
+
+  let promote-another-trial () =
+    register-cross-reference `changed` `T`
+
+
+  let-inline ctx \footnote it =
+    let () = footnote-ref <- !footnote-ref + 1 in
+    let num = !footnote-ref in
+    let label = generate-footnote-label num in
+    let it-num = embed-string (arabic num) in
+    let size = get-font-size ctx in
+    let ib-num =
+      let ctx =
+        ctx |> set-font-size (size *' 0.75)
+            |> set-manual-rising (size *' 0.25)
+      in
+        read-inline ctx {\*#it-num;}
+    in
+    let (bb-before, top-margin) =
+      match get-cross-reference label with
+      | Some(`T`) ->
+          let () = display-message (`'` ^ label ^ `': T`) in  % for debug
+          let bar-top-margin = size in
+          let bar-bottom-margin = 2pt in
+          let wid = get-text-width ctx in
+          let ib =
+            inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
+              [ stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y)); ]
+            )
+          in
+          (line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib, 0pt)
+
+      | _ ->
+          let () = display-message (`'` ^ label ^ `': F`) in  % for debug
+          (block-skip 0pt, size *' 0.5)
+    in
+    let bb =
+      let ctx =
+        ctx |> set-font-size (size *' 0.9)
+            |> set-leading (size *' 1.2)
+            |> set-paragraph-margin top-margin (size *' 0.5)
+          %temporary
+      in
+        line-break false false ctx (read-inline ctx {#it-num; #it;} ++ inline-fil)
+    in
+    let pads = (0pt, 0pt, 0pt, 0pt) in
+    let deco _ _ _ _ = [] in
+      inline-frame-inner pads deco
+        (add-footnote (bb-before +++ bb) ++ ib-num
+          ++ hook-page-break (fun _ _ -> (
+            let () =
+              if !first-footnote then
+                match get-cross-reference label with
+                | Some(`T`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                      register-cross-reference label `T`
+              else
+                match get-cross-reference label with
+                | Some(`F`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                      register-cross-reference label `F`
+            in
+            first-footnote <- false)))
+
+  end
 
 
 let document = StdJaBook.document

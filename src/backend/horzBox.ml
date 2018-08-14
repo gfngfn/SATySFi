@@ -246,6 +246,7 @@ and pure_horz_box =
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
   | PHGHookPageBreak  of (page_break_info -> point -> unit)
+  | PHGFootnote       of intermediate_vert_box list
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -263,6 +264,7 @@ and intermediate_horz_box =
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
+  | ImHorzFootnote       of intermediate_vert_box list
 
 and evaled_horz_box =
   length * evaled_horz_box_main
@@ -317,6 +319,11 @@ and intermediate_vert_box =
 and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
+      (* --
+         (1) height of the contents
+         (2) depth of the contents (nonpositive)
+         (3) contents
+         -- *)
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
@@ -469,13 +476,24 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     (wid, hgt, dpt)
 
 
+let rec get_height_of_evaled_vert_box_list evvblst =
+  evvblst |> List.fold_left (fun l evvb ->
+    match evvb with
+    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
+    | EvVertFixedEmpty(len)               -> l +% len
+    | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
+  ) Length.zero
+
+
 let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box list) : length * length * length =
   imhblst |> List.fold_left (fun (wid, hgt, dpt) imhb ->
     let (w, h, d) =
       match imhb with
       | ImHorz(evhb) -> get_metrics_of_evaled_horz_box evhb
 
-      | ImHorzHookPageBreak(_) -> (Length.zero, Length.zero, Length.zero)
+      | ImHorzHookPageBreak(_)
+      | ImHorzFootnote(_)
+          -> (Length.zero, Length.zero, Length.zero)
 
       | ImHorzRising(w, h, d, _, _)
       | ImHorzFrame(w, h, d, _, _)

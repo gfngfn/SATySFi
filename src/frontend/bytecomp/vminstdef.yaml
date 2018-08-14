@@ -1417,6 +1417,19 @@ code: |
   ]))
 
 ---
+inst: BackendAddFootnote
+is-primitive: yes
+name: "add-footnote"
+type: |
+  ~% (tBB @-> tIB)
+
+params:
+- vblst : vert
+code: |
+  let imvblst = PageBreak.solidify vblst in
+    Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+
+---
 inst: BackendEmbeddedVertTop
 is-primitive: yes
 name: "embed-block-top"

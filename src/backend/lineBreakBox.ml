@@ -16,6 +16,7 @@ type lb_pure_box =
   | LBFixedTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | LBFixedImage    of length * length * ImageInfo.key
   | LBHookPageBreak of (page_break_info -> point -> unit)
+  | LBFootnote      of intermediate_vert_box list
 
 type lb_box =
   | LBPure           of lb_pure_box
