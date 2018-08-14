@@ -247,7 +247,7 @@ let get_paper_height (paper : Pdfpaper.t) : length =
     Length.of_pdf_point pdfpt
 
 
-let page_of_evaled_vert_box_list (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstpage : evaled_vert_box list) : page =
+let make_page (pagesize : page_size) (pbinfo : page_break_info) (pagecontsch : page_content_scheme) (evvblstbody : evaled_vert_box list) (evvblstfootnote : evaled_vert_box list) : page =
   let paper =
     match pagesize with
     | A0Paper                -> Pdfpaper.a0
@@ -262,8 +262,18 @@ let page_of_evaled_vert_box_list (pagesize : page_size) (pbinfo : page_break_inf
   in
   let paper_height = get_paper_height paper in
 
-  let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
-  let (_, opaccpage) = ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblstpage in
+  let (_, opaccbody) =
+    let pt_init = invert_coordinate paper_height pagecontsch.page_content_origin in
+    ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblstbody
+  in
+  let (_, opaccfootnote) =
+    let hgtfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
+    let (xorg, yorg) = pagecontsch.page_content_origin in
+    let hgtreq = pagecontsch.page_content_height in
+    let pt_init = invert_coordinate paper_height (xorg, yorg +% hgtreq -% hgtfootnote) in
+    ops_of_evaled_vert_box_list pbinfo pt_init Alist.empty evvblstfootnote
+  in
+  let opaccpage = Alist.cat opaccbody opaccfootnote in
     Page(paper, pagecontsch, opaccpage, pbinfo)
 
 

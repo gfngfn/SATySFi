@@ -476,6 +476,15 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     (wid, hgt, dpt)
 
 
+let rec get_height_of_evaled_vert_box_list evvblst =
+  evvblst |> List.fold_left (fun l evvb ->
+    match evvb with
+    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
+    | EvVertFixedEmpty(len)               -> l +% len
+    | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
+  ) Length.zero
+
+
 let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box list) : length * length * length =
   imhblst |> List.fold_left (fun (wid, hgt, dpt) imhb ->
     let (w, h, d) =

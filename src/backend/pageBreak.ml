@@ -33,15 +33,6 @@ type pb_answer = {
 }
 
 
-let rec get_height_of_evaled_vert_box_list evvblst =
-  evvblst |> List.fold_left (fun l evvb ->
-    match evvb with
-    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
-    | EvVertFixedEmpty(len)               -> l +% len
-    | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
-  ) Length.zero
-
-
 let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
@@ -303,7 +294,7 @@ let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_conte
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
     let (evvblstpage, footnote, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
 
-    let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
+    let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
       match restopt with
       | None              -> pdfaccnew
