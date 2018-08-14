@@ -3,26 +3,6 @@
 open LengthInterface
 open HorzBox
 
-(* for test *)
-let print_evaled_vert_box evvb =
-  ()
-(*
-  match evvb with
-  | EvVertLine(_, _, evhblst) ->
-      begin
-        Format.printf "@[(vert@ " ;
-        evhblst |> List.iter (function
-          | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (Length.show wid)
-          | EvHorzFixedBoxAtom(wid, FixedEmpty(_))       -> Format.printf "@[(fixed-empty@ %s)@]@ " (Length.show wid)
-          | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (Length.show wid)
-        ) ;
-        Format.printf ")@]@ " ;
-      end
-  | EvVertFixedEmpty(vskip) ->
-      begin
-        Format.printf "@[(vskip@ %s)@]@ " (Length.show vskip) ;
-      end
-*)
 
 type frame_breaking =
   | Beginning
@@ -36,7 +16,7 @@ type pb_vert_box =
   | PBClearPage
 
 
-let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
+let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -52,7 +32,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
   let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) : evaled_vert_box Alist.t * (pb_vert_box list) option * length * pure_badness =
     match pbvblst with
-    | PBVertLine(hgt, dpt, imhblst) :: imvbtail ->
+    | PBVertLine(hgt, dpt, imhblst) :: pbvbtail ->
         let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
@@ -64,7 +44,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           else
             let evhblst = PageInfo.embed_page_info pbinfo imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
-              aux true vpb evvbaccnew Alist.empty hgttotalnew imvbtail
+              aux true vpb evvbaccnew Alist.empty hgttotalnew pbvbtail
 
     | PBVertFixedBreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
@@ -118,9 +98,6 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         end
 
     | [] ->
-(*
-        let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
-*)
         (evvbacc, None, hgttotal, vpbprev)
   in
   let vpbinit = 100000 in
@@ -208,10 +185,6 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
 
 let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
-(*
-  let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length vblst))) in  (* for debug *)
-  let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_vert_box) vblst in  (* for debug *)
-*)
   let pdfinit = HandlePdf.create_empty_pdf file_name_out in
 
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
@@ -221,10 +194,6 @@ let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_conte
 
     let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
-(*
-    let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
-    let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
-*)
       match restopt with
       | None              -> pdfaccnew
       | Some(imvblstrest) -> aux (pageno + 1) pdfaccnew imvblstrest
