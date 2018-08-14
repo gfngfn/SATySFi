@@ -31,7 +31,10 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBFixedGraphics(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
   | LBFixedImage(wid, hgt, _)                 -> (natural wid, hgt, Length.zero)
-  | LBHookPageBreak(_)                        -> (widinfo_zero, Length.zero, Length.zero)
+
+  | LBHookPageBreak(_)
+  | LBFootnote(_)
+      -> (widinfo_zero, Length.zero, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -158,6 +161,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
 
   | PHGHookPageBreak(hookf) ->
       puref (LBHookPageBreak(hookf))
+
+  | PHGFootnote(imvblst) ->
+      puref (LBFootnote(imvblst))
 
 
 let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pure_either =
@@ -532,6 +538,9 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
     | LBHookPageBreak(hookf) ->
         ImHorzHookPageBreak(hookf)
+
+    | LBFootnote(imvblst) ->
+        ImHorzFootnote(imvblst)
   in
       let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 (*

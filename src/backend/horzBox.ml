@@ -246,6 +246,7 @@ and pure_horz_box =
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
   | PHGHookPageBreak  of (page_break_info -> point -> unit)
+  | PHGFootnote       of intermediate_vert_box list
 
 and horz_box =
   | HorzPure           of pure_horz_box
@@ -318,6 +319,11 @@ and intermediate_vert_box =
 and evaled_vert_box =
   | EvVertLine       of length * length * evaled_horz_box list
       [@printer (fun fmt _ -> Format.fprintf fmt "EvLine")]
+      (* --
+         (1) height of the contents
+         (2) depth of the contents (nonpositive)
+         (3) contents
+         -- *)
   | EvVertFixedEmpty of length
       [@printer (fun fmt _ -> Format.fprintf fmt "EvEmpty")]
   | EvVertFrame      of paddings * page_break_info * decoration * length * evaled_vert_box list
@@ -476,7 +482,9 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
       match imhb with
       | ImHorz(evhb) -> get_metrics_of_evaled_horz_box evhb
 
-      | ImHorzHookPageBreak(_) -> (Length.zero, Length.zero, Length.zero)
+      | ImHorzHookPageBreak(_)
+      | ImHorzFootnote(_)
+          -> (Length.zero, Length.zero, Length.zero)
 
       | ImHorzRising(w, h, d, _, _)
       | ImHorzFrame(w, h, d, _, _)
