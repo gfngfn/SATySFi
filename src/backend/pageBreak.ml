@@ -16,22 +16,24 @@ type pb_vert_box =
   | PBClearPage
 
 type pb_accumulator = {
-  breakable    : bool;
-  badness      : pure_badness;
-  solid        : evaled_vert_box Alist.t;
-  discardable  : evaled_vert_box Alist.t;
-  total_height : length;
+  breakable      : bool;
+  badness        : pure_badness;
+  solid_body     : evaled_vert_box Alist.t;
+  solid_footnote : evaled_vert_box Alist.t;
+  discardable    : evaled_vert_box Alist.t;
+  total_height   : length;
 }
 
 type pb_answer = {
   body         : evaled_vert_box list;
+  footnote     : evaled_vert_box Alist.t;
   rest         : (pb_vert_box list) option;
   last_height  : length;
   last_badness : pure_badness;
 }
 
 
-let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * (pb_vert_box list) option =
+let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -48,7 +50,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
   let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer =
     let bprev = prev.breakable in
     let vpbprev = prev.badness in
-    let evvbacc = prev.solid in
+    let evvbacc = prev.solid_body in
+    let footnote = prev.solid_footnote in
     let evvbaccdiscardable = prev.discardable in
     let hgttotal = prev.total_height in
     match pbvblst with
@@ -62,6 +65,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
              -- *)
             {
               body = Alist.to_list evvbacc;
+              footnote = footnote;
               rest = Some(pbvblst);
               last_height = hgttotalnew;
               last_badness = vpb;
@@ -72,7 +76,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             aux {
               breakable = true;
               badness = vpb;
-              solid = evvbaccnew;
+              solid_body = evvbaccnew;
+              solid_footnote = footnote;
               discardable = Alist.empty;
               total_height = hgttotalnew;
             } pbvbtail
@@ -83,6 +88,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           if (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
             {
               body = Alist.to_list evvbacc;
+              footnote = footnote;
               rest = Some(omit_clear_page_element pbvbtail);
               last_height = hgttotalnew;
               last_badness = vpb;
@@ -92,7 +98,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
             aux {
               breakable = true;
               badness = vpb;
-              solid = evvbacc;
+              solid_body = evvbacc;
+              solid_footnote = footnote;
               discardable = evvbaccdiscardablenew;
               total_height = hgttotalnew;
             } pbvbtail
@@ -102,8 +109,9 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
         let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip)) in
         aux {
           breakable = false;
-          badness = vpbprev;
-          solid = evvbaccnew;
+          badness = vpbprev;  (* doubtful *)
+          solid_body = evvbaccnew;
+          solid_footnote = footnote;
           discardable = Alist.empty;
           total_height = hgttotalnew;
         } pbvbtail
@@ -111,6 +119,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | PBClearPage :: pbvbtail ->
         {
           body = Alist.to_list evvbacc;
+          footnote = footnote;
           rest = Some(pbvbtail);
           last_height = hgttotal;
           last_badness = 0;
@@ -122,10 +131,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           aux {
             breakable = false;
             badness = vpbprev;
-            solid = Alist.empty;
+            solid_body = Alist.empty;
+            solid_footnote = footnote;
             discardable = Alist.empty;
             total_height = hgttotalbefore;
           } pbvblstsub
+            (* -- propagates total height and footnotes, but does NOT propagate body -- *)
         in
         let hgttotalafter = ans.last_height +% pads.paddingB in
         begin
@@ -143,7 +154,8 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               aux {
                 breakable = true;
                 badness = ans.last_badness;
-                solid = evvbaccnew;
+                solid_body = evvbaccnew;
+                solid_footnote = ans.footnote;
                 discardable = Alist.empty;
                 total_height = hgttotalafter;
               } pbvbtail
@@ -161,6 +173,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
               {
                 body = Alist.to_list evvbaccret;
+                footnote = footnote;
                 rest = pbvbrest;
                 last_height = hgttotalafter;
                 last_badness = ans.last_badness;
@@ -170,6 +183,7 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | [] ->
         {
           body = Alist.to_list evvbacc;
+          footnote = footnote;
           rest = None;
           last_height = hgttotal;
           last_badness = vpbprev;
@@ -180,12 +194,13 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     aux {
       breakable = false;
       badness = vpbinit;
-      solid = Alist.empty;
+      solid_body = Alist.empty;
+      solid_footnote = Alist.empty;
       discardable = Alist.empty;
       total_height = Length.zero;
     } pbvblst
   in
-    (ans.body, ans.rest)
+    (ans.body, Alist.to_list ans.footnote, ans.rest)
 
 
 (* --
@@ -273,7 +288,7 @@ let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_conte
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
     let pbinfo = { current_page_number = pageno; } in
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let (evvblstpage, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
+    let (evvblstpage, footnote, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
 
     let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
