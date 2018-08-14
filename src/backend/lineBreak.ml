@@ -482,6 +482,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
       | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
       | ImHorzHookPageBreak(_)                   -> wacc
+      | ImHorzFootnote(_)                        -> wacc
     ) Length.zero
   in
 

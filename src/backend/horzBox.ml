@@ -263,6 +263,7 @@ and intermediate_horz_box =
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
   | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
+  | ImHorzFootnote       of intermediate_vert_box list
 
 and evaled_horz_box =
   length * evaled_horz_box_main

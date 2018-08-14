@@ -33,6 +33,15 @@ type pb_answer = {
 }
 
 
+let rec get_height_of_evaled_vert_box_list evvblst =
+  evvblst |> List.fold_left (fun l evvb ->
+    match evvb with
+    | EvVertLine(hgt, dpt, _)             -> l +% hgt +% (Length.negate dpt)
+    | EvVertFixedEmpty(len)               -> l +% len
+    | EvVertFrame(pads, _, _, _, evvblst) -> l +% pads.paddingB +% pads.paddingL +% get_height_of_evaled_vert_box_list evvblst
+  ) Length.zero
+
+
 let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
@@ -56,7 +65,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     let hgttotal = prev.total_height in
     match pbvblst with
     | PBVertLine(hgt, dpt, imhblst) :: pbvbtail ->
-        let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
+        let hgtline = hgt +% (Length.negate dpt) in
+        let (evhblst, imvblstlstfootnote) = PageInfo.embed_page_info pbinfo imhblst in
+        let (evvblstfootnote, _) = PageInfo.embed_page_info_vert pbinfo (List.concat imvblstlstfootnote) in
+          (* -- ignores footnote designation in footnote -- *)
+        let hgtnewfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
+        let hgttotalnew = hgttotal +% hgtline +% hgtnewfootnote in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
           (* --
@@ -71,13 +85,12 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
               last_badness = vpb;
             }
           else
-            let evhblst = PageInfo.embed_page_info pbinfo imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
             aux {
               breakable = true;
               badness = vpb;
               solid_body = evvbaccnew;
-              solid_footnote = footnote;
+              solid_footnote = Alist.append footnote evvblstfootnote;
               discardable = Alist.empty;
               total_height = hgttotalnew;
             } pbvbtail
