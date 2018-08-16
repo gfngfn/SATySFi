@@ -698,6 +698,7 @@ and syntactic_value =
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | Context                     of input_context
+  | TextModeContext             of TextBackend.text_mode_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
 and abstract_tree =
@@ -804,14 +805,7 @@ and math =
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
 [@@deriving show { with_path = false; }]
-(*
-type output_unit =
-  | OString             of string
-  | OBreakAndIndent
-  | OSoftBreakAndIndent
-  | ODeepen
-  | OShallow
-*)
+
 
 let get_range (rng, _) = rng
 
