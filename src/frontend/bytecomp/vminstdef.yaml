@@ -1314,12 +1314,12 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_intermediate_input_horz envi valuectx imihlst
+  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
   | _                                               -> report_bug_vm "HorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_intermediate_input_horz envi valuectx imihlst
+  | InputHorzWithEnvironment(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
   | _                                       -> report_bug_value "HorzLex" value1
 
 ---
@@ -1335,13 +1335,54 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_intermediate_input_vert envi valuectx imivlst
+  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
   | _                                               -> report_bug_vm "VertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_intermediate_input_vert envi valuectx imivlst
+  | InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
   | _                                       -> report_bug_value "VertLex" value1
+
+inst: TextHorzLex
+is-text-mode-primitive: yes
+name: "stringify-inline"
+type: |
+  ~% (tTCTX @-> tIT @-> tS)
+
+separated: yes
+params:
+- valuetctx
+- value1
+code: |
+  match value1 with
+  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                               -> report_bug_vm "TextHorzLex"
+
+code-interp: |
+  match value1 with
+  | InputHorzWithEnvironment(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                       -> report_bug_value "TextHorzLex" value1
+
+---
+inst: TextVertLex
+is-text-mode-primitive: yes
+name: "stringify-block"
+type: |
+  ~% (tTCTX @-> tBT @-> ts)
+
+separated: yes
+params:
+- valuetctx
+- value1
+code: |
+  match value1 with
+  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                               -> report_bug_vm "TextVertLex"
+
+code-interp: |
+  match value1 with
+  | InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                       -> report_bug_value "TextVertLex" value1
 
 ---
 inst: PrimitiveEmbeddedVertBreakable

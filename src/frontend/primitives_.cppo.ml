@@ -37,6 +37,7 @@ let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
 
 let tCTX          = (~! "context" , BaseType(ContextType) )
+let tTCTX         = (~! "text-info", BaseType(TextInfoType))
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
 let tDOC          = (~! "document", BaseType(DocumentType))
@@ -522,7 +523,9 @@ let pdf_mode_table =
 
 let text_mode_table =
   List.append general_table
-    []  (* temporary *)
+    [
+#include "__primitives_text_mode.gen.ml"
+    ]
 
 
 let make_environments table =

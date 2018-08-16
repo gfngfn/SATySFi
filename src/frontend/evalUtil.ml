@@ -350,6 +350,12 @@ let get_context (value : syntactic_value) : input_context =
   | _             -> report_bug_value "get_context" value
 
 
+let get_text_mode_context (value : syntactic_value) : TextBackend.text_mode_context =
+  match value with
+  | TextModeContext(tctx) -> tctx
+  | _                     -> report_bug_value "get_text_mode_context" value
+
+
 let get_length (value : syntactic_value) : length =
   match value with
   | LengthConstant(len) -> len

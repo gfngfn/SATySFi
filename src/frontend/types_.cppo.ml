@@ -250,6 +250,7 @@ type base_type =
   | DocumentType
   | MathType
   | RegExpType
+  | TextInfoType
 [@@deriving show]
 
 
@@ -275,6 +276,7 @@ let base_type_hash_table =
       ("document"    , DocumentType);
       ("math"        , MathType    );
       ("regexp"      , RegExpType  );
+      ("text-info"   , TextInfoType);
     ];
     ht
   end
@@ -1332,6 +1334,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
+    | BaseType(TextInfoType) -> "text-info" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn
