@@ -138,7 +138,7 @@ let option_type = tOPT
 let itemize_type () = tITMZ ()
 
 
-let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
@@ -151,6 +151,10 @@ let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
 
+
+let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+
+  tyenvmid
   |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
   |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
@@ -483,37 +487,53 @@ let get_pdf_mode_initial_context wid =
     }
 
 
-let make_pdf_mode_environments () =
-  let tyenvinit = add_pdf_mode_default_types Typeenv.empty in
-  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+let (~%) ty = Poly(ty)
 
+
+let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
   let (~@) n = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
-  let (~%) ty = Poly(ty) in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
+  let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
+  let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
+  let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
+    [
+      ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
+      ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
+      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx))                  );
+      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
+      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
+      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));
+    ]
 
-  let table : (var_name * poly_type * (environment -> syntactic_value)) list =
-    let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
-    let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
-    let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
-      [
-        ( "!"         , ptyderef  , lambda1 (fun v1 -> Dereference(v1)));
-        ( "::"        , ptycons   , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2)));
-        ( "|>"        , ptyappinv , lambda2 (fun vx vf -> Apply(vf, vx)));
-        ("inline-fil" , ~% tIB    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
-        ("inline-nil" , ~% tIB    , (fun _ -> Horz([])));
-        ("block-nil"  , ~% tBB    , (fun _ -> Vert([])));
-        ("clear-page" , ~% tBB    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
 
-        ( "<>" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))     );
-        ( ">=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))    );
-        ( "<=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))) );
+let pdf_mode_table =
+  List.append general_table
+    [
+      ("inline-fil", ~% tIB, (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
+      ("inline-nil", ~% tIB, (fun _ -> Horz([]))                               );
+      ("block-nil" , ~% tBB, (fun _ -> Vert([]))                               );
+      ("clear-page", ~% tBB, (fun _ -> Vert(HorzBox.([VertClearPage])))        );
 
 #include "__primitives.gen.ml"
+    ]
 
-      ]
+
+let text_mode_table =
+  List.append general_table
+    []  (* temporary *)
+
+
+let make_environments table =
+  let tyenvinit =
+    Typeenv.empty
+    |> add_general_default_types
+    |> add_pdf_mode_default_types
   in
+  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+
+
   let temporary_ast = StringEmpty in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
@@ -529,3 +549,11 @@ let make_pdf_mode_environments () =
   default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
       (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)
+
+
+let make_pdf_mode_environments () =
+  make_environments pdf_mode_table
+
+
+let make_text_mode_environments () =
+  make_environments text_mode_table
