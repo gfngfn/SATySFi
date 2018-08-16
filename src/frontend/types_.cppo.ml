@@ -791,6 +791,7 @@ and math_context_change =
 
 and math =
   | MathPure              of math_element
+  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
   | MathChangeContext     of math_context_change * math list
   | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
   | MathSubscript         of math list * math list
