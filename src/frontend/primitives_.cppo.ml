@@ -138,7 +138,7 @@ let option_type = tOPT
 let itemize_type () = tITMZ ()
 
 
-let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
@@ -266,69 +266,6 @@ let rec lambda5 astf env =
 
 let pdfpt = Length.of_pdf_point
 
-
-(*
-let default_math_left_paren hgt dpt hgtaxis fontsize color =
-  let open HorzBox in
-  let lenappend = fontsize *% 0.1 in
-  let minhalflen = fontsize *% 0.5 in
-  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
-  let widparen = halflen *% 0.375 in
-  let wid = widparen +% fontsize *% 0.1 in
-  let graphics (xpos, ypos) =
-    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
-      GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
-        LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
-      ], None);
-    ]
-  in
-  let kerninfo y =
-    let widkern = widparen in
-    let r = 0. in
-    let gap = Length.abs (y -% hgtaxis) in
-    let topdfpt = Length.to_pdf_point in  (* for debug *)
-    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-      if halflen *% r <% gap then
-        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
-      else
-        Length.zero
-  in
-  let hgtparen = hgtaxis +% halflen in
-  let dptparen = hgtaxis -% halflen in
-    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
-
-
-let default_math_right_paren hgt dpt hgtaxis fontsize color =
-  let open HorzBox in
-  let lenappend = fontsize *% 0.1 in
-  let minhalflen = fontsize *% 0.5 in
-  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
-  let widparen = halflen *% 0.375 in
-  let wid = widparen +% fontsize *% 0.1 in
-  let graphics (xpos, ypos) =
-    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
-      GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos +% widparen, ypos +% hgtaxis));
-        LineTo((xpos, ypos +% hgtaxis -% halflen));
-      ], None);
-    ]
-  in
-  let kerninfo y =
-    let widkern = widparen in
-    let r = 0. in
-    let gap = Length.abs (y -% hgtaxis) in
-    let topdfpt = Length.to_pdf_point in  (* for debug *)
-    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-      if halflen *% r <% gap then
-        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
-      else
-        Length.zero
-  in
-  let hgtparen = hgtaxis +% halflen in
-  let dptparen = hgtaxis -% halflen in
-    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
-*)
 
 let default_radical hgt_bar t_bar dpt fontsize color =
   let open HorzBox in
@@ -505,7 +442,7 @@ let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
 
 let default_hyphen_dictionary = ref LoadHyph.empty
 
-let get_initial_context wid =
+let get_pdf_mode_initial_context wid =
   let open HorzBox in
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
@@ -546,13 +483,13 @@ let get_initial_context wid =
     }
 
 
-let make_environments () =
-  let tyenvinit = add_default_types Typeenv.empty in
+let make_pdf_mode_environments () =
+  let tyenvinit = add_pdf_mode_default_types Typeenv.empty in
   let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
 
-  let (~@) n        = (~! "tv", TypeVariable(n)) in
+  let (~@) n = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
-  let (~%) ty       = Poly(ty) in
+  let (~%) ty = Poly(ty) in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
 

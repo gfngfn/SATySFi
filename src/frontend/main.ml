@@ -160,7 +160,7 @@ let initialize (dump_file : file_path) =
     EvalVarID.initialize ();
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dump_file in
-    let (tyenv, env) = Primitives.make_environments () in
+    let (tyenv, env) = Primitives.make_pdf_mode_environments () in
     begin
       if OptionState.bytecomp_mode () then
         Bytecomp.compile_environment env

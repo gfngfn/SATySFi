@@ -1549,7 +1549,8 @@ params:
 - txtwid : length
 - valuecmd
 code: |
-  Context(Primitives.get_initial_context txtwid, valuecmd)
+  let ctx = Primitives.get_pdf_mode_initial_context txtwid in
+    Context(ctx, valuecmd)
 
 ---
 inst: PrimitiveSetHyphenMin
