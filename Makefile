@@ -55,7 +55,7 @@ $(PRIM_PDF_GEN): $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-pdf-mode-prims $(INSTDEF) > $@
 
 $(PRIM_TEXT_GEN): $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-pdf-mode-prims $(INSTDEF) > $@
+	$(RUBY) $(GENCODE) --gen-text-mode-prims $(INSTDEF) > $@
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)

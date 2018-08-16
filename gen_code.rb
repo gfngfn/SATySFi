@@ -31,7 +31,7 @@ end
 
 def gen_prims tag
   YAML.load_stream(ARGF.read) do |inst|
-    if inst[tag] && inst["name"] != nil then
+    if default_false(inst[tag]) && inst["name"] != nil then
       len = inst["params"].length
       args = []
       for i in 1..len

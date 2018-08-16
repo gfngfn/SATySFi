@@ -1343,6 +1343,7 @@ code-interp: |
   | InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
   | _                                       -> report_bug_value "VertLex" value1
 
+---
 inst: TextHorzLex
 is-text-mode-primitive: yes
 name: "stringify-inline"
@@ -1368,7 +1369,7 @@ inst: TextVertLex
 is-text-mode-primitive: yes
 name: "stringify-block"
 type: |
-  ~% (tTCTX @-> tBT @-> ts)
+  ~% (tTCTX @-> tBT @-> tS)
 
 separated: yes
 params:
@@ -1383,6 +1384,38 @@ code-interp: |
   match value1 with
   | InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
   | _                                       -> report_bug_value "TextVertLex" value1
+
+---
+inst: TextDeepenIndent
+is-text-mode-primitive: yes
+name: "deepen-indent"
+type: |
+  ~% (tI @-> tTCTX @-> tTCTX)
+
+params:
+- i : int
+- tctx : text_mode_context
+code: |
+  let tctx = tctx |> TextBackend.deepen_indent i in
+    TextModeContext(tctx)
+
+---
+inst: TextGetInitialTextModeContext
+is-text-mode-primitive: yes
+name: "get-initial-text-info"
+params:
+- value1
+type: |
+  ~% (tU @-> tTCTX)
+
+code: |
+  match value1 with
+  | UnitConstant ->
+      let tctx = TextBackend.get_initial_text_mode_context () in
+        TextModeContext(tctx)
+
+  | _ ->
+      report_bug_value "TextGetInitialTextModeContext" value1
 
 ---
 inst: PrimitiveEmbeddedVertBreakable

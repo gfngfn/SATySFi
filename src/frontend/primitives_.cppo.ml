@@ -548,13 +548,13 @@ let make_environments table =
     ) (tyenvinit, envinit, Alist.empty)
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
-  default_font_scheme_ref := SetDefaultFont.main ();
-  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
-      (* temporary; should depend on the current language -- *)
     (tyenvfinal, envfinal)
 
 
 let make_pdf_mode_environments () =
+  default_font_scheme_ref := SetDefaultFont.main ();
+  default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
+    (* temporary; should depend on the current language -- *)
   make_environments pdf_mode_table
 
 
