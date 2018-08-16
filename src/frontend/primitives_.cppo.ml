@@ -516,7 +516,7 @@ let pdf_mode_table =
       ("block-nil" , ~% tBB, (fun _ -> Vert([]))                               );
       ("clear-page", ~% tBB, (fun _ -> Vert(HorzBox.([VertClearPage])))        );
 
-#include "__primitives.gen.ml"
+#include "__primitives_pdf_mode.gen.ml"
     ]
 
 

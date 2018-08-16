@@ -57,5 +57,5 @@
 
 (rule
  (targets primitives_.ml)
- (deps    (:src primitives_.cppo.ml) __primitives.gen.ml)
+ (deps    (:src primitives_.cppo.ml) __primitives_pdf_mode.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
