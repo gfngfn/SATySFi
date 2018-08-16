@@ -41,9 +41,25 @@ let rec first_match uchlst elst =
       end
 
 
+let uchar_line_feed = Uchar.of_int 0x0A
+let uchar_space = Uchar.of_int 0x20
+
+let spaces i =
+  List.init i (fun _ -> uchar_space)
+
+
+let insert_indent i uchlst =
+  uchlst |> List.fold_left (fun acc uch ->
+    if Uchar.equal uch uchar_line_feed then
+      Alist.append (Alist.extend acc uchar_line_feed) (spaces i)
+    else
+      Alist.extend acc uch
+  ) Alist.empty |> Alist.to_list
+
+
 let stringify uchlst tctx =
   let elst = tctx.escape_list in
-  let rec aux acc uchlst =
+  let rec escape acc uchlst =
     match uchlst with
     | [] ->
         Alist.to_list acc
@@ -51,8 +67,9 @@ let stringify uchlst tctx =
     | uchhead :: uchtail ->
         begin
           match first_match uchlst elst with
-          | Some((ulto, uchrest)) -> aux (Alist.append acc ulto) uchrest
-          | None                  -> aux (Alist.extend acc uchhead) uchtail
+          | Some((ulto, uchrest)) -> escape (Alist.append acc ulto) uchrest
+          | None                  -> escape (Alist.extend acc uchhead) uchtail
         end
   in
-    aux Alist.empty uchlst
+  let uchlst = escape Alist.empty uchlst in
+  insert_indent tctx.indent uchlst
