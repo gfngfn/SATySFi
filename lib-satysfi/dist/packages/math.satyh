@@ -666,7 +666,23 @@ end = struct
   let op = math-char MathOp
   let punct = math-char MathPunct
   let prefix = math-char MathPrefix
-  let bigop = math-big-char MathOp
+
+  let vop-scheme charf s =
+    let mop = charf MathOp s in
+      math-pull-in-scripts MathOp MathOp
+        (fun moptS moptT -> (
+          let m =
+            match moptS with
+            | None     -> mop
+            | Some(mS) -> math-lower mop mS
+          in
+            match moptT with
+            | None     -> m
+            | Some(mT) -> math-upper m mT
+        ))
+
+  let bigop = vop-scheme math-big-char
+  let vop = vop-scheme math-char
 
   let-math \to    = rel `→`
   let-math \pm    = bin `±`
@@ -762,12 +778,12 @@ end = struct
   let-math \ddots = ord `⋱`
   let-math \backddots = ord `⋰`
 
-  let-math \lim = op `lim`
-  let-math \colim = op `colim`
-  let-math \max = op `max`
-  let-math \min = op `min`
-  let-math \inf = op `inf`
-  let-math \sup = op `sup`
+  let-math \lim = vop `lim`
+  let-math \colim = vop `colim`
+  let-math \max = vop `max`
+  let-math \min = vop `min`
+  let-math \inf = vop `inf`
+  let-math \sup = vop `sup`
   let-math \sin = op `sin`
   let-math \cos = op `cos`
   let-math \tan = op `tan`
