@@ -897,6 +897,23 @@ code: |
   MathValue([MathLowerLimit(mlst1, mlst2)])
 
 ---
+inst: BackendMathPullInScripts
+is-primitive: yes
+name: "math-pull-in-scripts"
+type: |
+  ~% (tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
+
+params:
+- mathcls1 : math_class
+- mathcls2 : math_class
+- valuef
+needs-reducef: yes
+code: |
+  let mlstf = make_pull_in_scripts reducef valuef in
+  let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
+    MathValue(mlst)
+
+---
 inst: BackendMathChar
 is-primitive: yes
 name: "math-char"
