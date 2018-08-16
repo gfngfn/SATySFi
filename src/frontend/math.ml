@@ -74,8 +74,8 @@ type low_math_main =
 
   | LowMathSubSuperscript of length * length * low_math * low_math * low_math
       (* --
-         (1) baselin height of the superscript
-         (2) baselin height of the subscript
+         (1) baseline height of the superscript
+         (2) baseline height of the subscript
          (3) base contents
          (4) superscript contents
          (5) subscript contents
@@ -274,29 +274,6 @@ let normalize_math_kind mkprev mknext mkraw =
         else
           MathBinary
 
-(*
-      begin
-        match (mkprev, mknext) with
-        | (MathOrdinary, MathOrdinary)
-        | (MathInner   , MathInner   )
-        | (MathInner   , MathOrdinary)
-        | (MathOrdinary, MathInner   )
-
-        | (MathClose   , MathOrdinary)
-        | (MathClose   , MathInner   )
-
-        | (MathOrdinary, MathOpen    )
-        | (MathInner   , MathOpen    )
-
-        | (MathClose   , MathOpen    )
-          -> MathBinary
-
-        | _ ->
-            Format.printf "Math> normalize (%a, %a)\n" pp_math_kind mkprev pp_math_kind mknext;  (*for debug *)
-            MathOrdinary
-      end
-*)
-
   | MathRelation ->
       mkraw
 
@@ -336,9 +313,6 @@ let space_after_script mathctx =
     None
   else
     let mc = FontInfo.get_math_constants mathctx in
-(*
-    Format.printf "Math> space_after_script = %f\n" mc.FontFormat.space_after_script;  (* for debug *)
-*)
     Some(outer_empty (fontsize *% mc.FontFormat.space_after_script) Length.zero Length.zero)
       (* temporary; should have variable stretchability and shrinkability *)
 
@@ -738,16 +712,6 @@ let rec convert_math_element (mathctx : math_context) (mkprev : math_kind) (mkne
       let mk = normalize_math_kind mkprev mknext mkrawv in
       let is_big = false in
         convert_math_char mathctx is_big uchlst mk
-(*
-      begin
-        match mvvaluemain with
-        | MathVariantToChar(is_big, uchlst) ->
-            convert_math_char mathctx is_big uchlst mk
-
-        | MathVariantToCharWithKern(is_big, uchlst, mckernfL, mckernfR) ->
-            convert_math_char_with_kern mathctx is_big uchlst mk mckernfL mckernfR
-      end
-*)
 
   | MathVariantCharDirect(mkraw, is_big, mvsty) ->
       let mk = normalize_math_kind mkprev mknext mkraw in
@@ -973,14 +937,7 @@ let horz_fraction_bar mathctx wid =
 
 
 let calculate_kern mathctx (mkernsch : FontInfo.math_kern_scheme) (corrhgt : length) : length =
-(*
-  Format.printf "Math> corrB = %f\n" (Length.to_pdf_point corrhgt);  (* for debug *)
-*)
-  let len = FontInfo.get_math_kern mathctx mkernsch corrhgt in
-(*
-  Format.printf "Math> kern = %f\n" (Length.to_pdf_point len);  (* for debug *)
-*)
-  len
+  FontInfo.get_math_kern mathctx mkernsch corrhgt
 
 
 let raise_horz r hblst =
@@ -1046,9 +1003,6 @@ let rec horz_of_low_math (mathctx : math_context) (mkprevfirst : math_kind) (mkl
               let l_kernbase = calculate_kern mathctx rkB.kernTR l_base in
               let l_kernsup  = calculate_kern (MathContext.enter_script mathctx) lkS.kernBL l_sup in
               let l_italic   = rkB.italics_correction in
-      (*
-              Format.printf "Math> l_italic = %f, l_kernbase = %f, l_kernsup = %f\n" (Length.to_pdf_point l_italic) (Length.to_pdf_point l_kernbase) (Length.to_pdf_point l_kernsup);
-      *)
               let kern = l_italic +% l_kernbase +% l_kernsup in
               let hbkern = fixed_empty kern in
               let hblstsup =
@@ -1274,20 +1228,3 @@ let space_between_maths (mathctx : math_context) (mathlst1 : math list) (mathlst
 
   | _ ->
       None
-
-
-
-
-
-
-(*
-(* for tests *)
-let () =
-  let mathinfo = { math_font_abbrev = "euler"; math_font_size = Length.of_pdf_point 12.; } in
-  let md = FontFormat.get_math_decoder "/usr/local/lib-satysfi/dist/fonts/euler.otf" in
-  let mlst = [MathSuperscript([MathPure(MathOrdinary, MathChar(mathinfo, Uchar.of_char 'P'))], [MathPure(MathOrdinary, MathChar(mathinfo, Uchar.of_char 'A'))])] in
-  let lm = convert_to_low 0 mlst in
-  let hblst = horz_of_low_math 0 mathinfo md lm in
-  List.iter (fun hb -> Format.printf "%a@ " pp_horz_box hb) hblst;
-  print_endline "";
-*)
