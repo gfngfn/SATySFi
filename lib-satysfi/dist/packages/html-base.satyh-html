@@ -1,0 +1,25 @@
+@require: option
+@require: list
+
+module HTMLBase : sig
+
+  val tag : (string * string) list?-> bool?-> int?-> text-info -> string -> (text-info -> string) -> string
+
+end = struct
+
+  let make-props props =
+    props |> List.fold-left (fun sacc (k, v) -> (
+      sacc ^ #` `# ^ k ^ `="` ^ v ^ `"`
+    )) ` `
+
+
+  let tag ?:propsopt ?:bropt ?:indentopt tinfo s sf =
+    let props = Option.from [] propsopt in
+    let br = Option.from true bropt in
+    let indent = Option.from 2 indentopt in
+    let tinfo-inner = tinfo |> deepen-indent indent in
+      `<` ^ s ^ (make-props props) ^ `>` ^ (if br then break tinfo-inner else ` `)
+        ^ (sf tinfo-inner)
+        ^ (if br then break tinfo else ` `) ^ `</ ` ^ s ^ `>`
+
+end
