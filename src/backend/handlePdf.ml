@@ -293,6 +293,7 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
     }
   in
   let pagenew = Annotation.add_annotations pdf pagenew in
+  let () = Nameddest.notify_new_page pbinfo.current_page_number in
     PDF(pdf, Alist.extend pageacc pagenew, flnm)
 
 
@@ -324,4 +325,5 @@ let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
   in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in
   let pdfout = Pdfpage.add_root irpageroot [] pdfsub in
+  let pdfout = Nameddest.add_locations pdfout in
     Pdfwrite.pdf_to_file pdfout flnm

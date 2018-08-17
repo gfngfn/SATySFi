@@ -27,3 +27,6 @@ let add_annotations pdf page =
     Pdfannot.add_annotation pdf page (of_annotation annot)) page !annot_acc in
   let () = annot_acc := [] in
     page
+
+
+

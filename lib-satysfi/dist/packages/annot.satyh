@@ -1,10 +1,20 @@
 @require: pervasives
+@require: gr
+@require: color
 
 
 let link-uri-deco uri =
   let deco (x, y) wid hgt dpt =
     let () = display-message (`link: `# ^ uri) in
-    let () = register-hyperlink uri x y wid hgt dpt in
+    let () = register-link-to-uri uri (x, y) wid hgt dpt in
+      []
+  in
+    (deco, deco, deco, deco)
+
+
+let link-location-deco name =
+  let deco (x, y) wid hgt dpt =
+    let () = register-link-to-location name (x, y) wid hgt dpt in
       []
   in
     (deco, deco, deco, deco)
@@ -14,3 +24,19 @@ let-inline ctx \href uri inner =
   let pads-code = (1pt, 1pt, 1pt, 1pt) in
   let link-code = link-uri-deco uri in
     inline-frame-breakable pads-code link-code (read-inline ctx inner)
+
+
+let register-block-location-deco key =
+  let strokef = stroke 2pt Color.red in
+  let decoS (x, y) w h d =
+    let () = register-location key  (x, y +' h) in
+        [strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));]
+  in
+  let decoH (x, y) w h d =
+    let () = register-location key  (x, y -' d) in
+      []
+  in
+  let decoM _ _ _ _ = [] in
+  let decoT _ _ _ _ = [] in
+    (decoS, decoH, decoM, decoT)
+

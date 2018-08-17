@@ -4,6 +4,7 @@
 @require: list
 @require: math
 @require: color
+@require: annot
 
 module StdJaBook : sig
 
@@ -48,13 +49,15 @@ end = struct
 
 
   let-inline ctx \ref key =
+    let pads-code = (1pt, 1pt, 1pt, 1pt) in
+    let link-code = link-location-deco key in
     let opt = get-cross-reference (key ^ `:num`) in
     let it =
       match opt with
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      read-inline ctx it
+      inline-frame-breakable pads-code link-code (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -142,9 +145,14 @@ end = struct
       | None        -> ()
     in
     let it-num = embed-string s-num in
+    let d =
+      match labelopt with
+      | Some(label) -> register-block-location-deco label
+      | None        ->
+        let d (_, _) _ _ _ = [] in (d, d, d, d)
+    in
     let bb-inner =
-      let d (_, _) _ _ _ = [] in
-      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) d (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
       ))

@@ -1,6 +1,7 @@
 
 type t =
   | Goto of Pdfdest.t
+  | GotoName of string
   | Uri  of string
 
 
