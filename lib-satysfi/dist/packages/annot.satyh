@@ -1,0 +1,16 @@
+@require: pervasives
+
+
+let link-uri-deco uri =
+  let deco (x, y) wid hgt dpt =
+    let () = display-message (`link: `# ^ uri) in
+    let () = register-hyperlink uri x y wid hgt dpt in
+      []
+  in
+    (deco, deco, deco, deco)
+
+
+let-inline ctx \href uri inner =
+  let pads-code = (1pt, 1pt, 1pt, 1pt) in
+  let link-code = link-uri-deco uri in
+    inline-frame-breakable pads-code link-code (read-inline ctx inner)
