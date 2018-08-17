@@ -263,6 +263,33 @@ let rec lambda5 astf env =
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
                   | _ -> failwith "internal error")
 
+let rec lambda6 astf env =
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda6-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda6-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda6-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda6-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda6-5)") in
+  let evid6 = EvalVarID.fresh (dr, "(dummy:lambda6-6)") in
+    lamenv env evid1 6 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (lam evid6 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5) (!- evid6)))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5;a6] -> astf a1 a2 a3 a4 a5 a6
+                  | _ -> failwith "internal error")
+
+let rec lambda7 astf env =
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda7-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda7-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda7-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda7-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda7-5)") in
+  let evid6 = EvalVarID.fresh (dr, "(dummy:lambda7-6)") in
+  let evid7 = EvalVarID.fresh (dr, "(dummy:lambda7-7)") in
+    lamenv env evid1 7 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (lam evid6 (lam evid7 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5) (!- evid6) (!- evid7))))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5;a6;a7] -> astf a1 a2 a3 a4 a5 a6 a7
+                  | _ -> failwith "internal error")
+
+
+
 
 let pdfpt = Length.of_pdf_point
 

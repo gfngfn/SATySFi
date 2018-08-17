@@ -292,6 +292,7 @@ let write_page (Page(paper, pagecontsch, opaccpage, pbinfo) : page) (pagepartsf 
         Pdfpage.content = [pdfobjstream];
     }
   in
+  let pagenew = Annotation.add_annotations pdf pagenew in
     PDF(pdf, Alist.extend pageacc pagenew, flnm)
 
 

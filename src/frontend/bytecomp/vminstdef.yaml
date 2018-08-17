@@ -2776,3 +2776,23 @@ code: |
   match CrossRef.probe k with
   | None    -> Constructor("None", UnitConstant)
   | Some(v) -> Constructor("Some", StringConstant(v))
+
+---
+inst: BackendRegisterHyperlink
+is-primitive : yes
+name: "register-hyperlink"
+type: |
+  ~% (tS @-> tLN @-> tLN @-> tLN @-> tLN @-> tLN @-> tU)
+
+params:
+- uri : string
+- x : length
+- y : length
+- wid : length
+- hgt : length
+- dpt : length
+code: |
+  Format.printf "uri: %s wid: %f hgt: %f\n"
+    uri (Length.to_pdf_point wid) (Length.to_pdf_point hgt);
+  Annotation.register_annotation (Annotation.Link(Action.Uri(uri), x, y, wid, hgt, dpt));
+  UnitConstant
