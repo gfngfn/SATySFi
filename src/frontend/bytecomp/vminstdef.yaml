@@ -1400,6 +1400,20 @@ code: |
     TextModeContext(tctx)
 
 ---
+inst: TextBreak
+is-text-mode-primitive: yes
+name: "break"
+params:
+- tctx : text_mode_context
+type: |
+  ~% (tTCTX @-> tS)
+
+code: |
+  let i = TextBackend.get_indent tctx in
+  let s = "\n" ^ (String.make i ' ') in
+    StringConstant(s)
+
+---
 inst: TextGetInitialTextModeContext
 is-text-mode-primitive: yes
 name: "get-initial-text-info"

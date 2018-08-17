@@ -17,6 +17,10 @@ let deepen_indent i tctx =
   { tctx with indent = tctx.indent + (max i 0); }
 
 
+let get_indent tctx =
+  tctx.indent
+
+
 let set_escape_list elst tctx =
   { tctx with escape_list = elst; }
 
