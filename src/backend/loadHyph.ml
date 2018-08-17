@@ -1,7 +1,6 @@
 
 open MyUtil
 open CharBasis
-open Config
 
 
 type dir_path = string
@@ -160,7 +159,7 @@ let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) 
 
 
 let main (filename : file_path) : t =
-  let srcpath = resolve_dist_path (Filename.concat "dist/hyph" filename) in
+  let srcpath = Config.resolve_dist_file (Filename.concat "dist/hyph" filename) in
     try
       let json = Yojson.Safe.from_file srcpath in
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)

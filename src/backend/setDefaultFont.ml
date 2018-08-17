@@ -1,7 +1,6 @@
 
 open MyUtil
 open CharBasis
-open Config
 
 type dir_path    = string
 type file_path   = string
@@ -84,7 +83,7 @@ let read_assoc srcpath assoc =
 
 
 let main () : (font_abbrev * float * float) ScriptSchemeMap.t =
-  let srcpath = resolve_dist_path "dist/hash/default-font.satysfi-hash" in
+  let srcpath = Config.resolve_dist_file "dist/hash/default-font.satysfi-hash" in
     try
       let json = Yojson.Safe.from_file srcpath in
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)

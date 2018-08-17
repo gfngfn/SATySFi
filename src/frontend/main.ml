@@ -99,8 +99,13 @@ type file_info =
 
 
 let make_absolute_path curdir headerelem =
+  let extcands =
+    match OptionState.get_mode () with
+    | None      -> [".satyh"; ".satyg"]
+    | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
+  in
   match headerelem with
-  | HeaderRequire(s) -> Config.resolve_dist_path (Filename.concat "dist/packages" s ^ ".satyh")
+  | HeaderRequire(s) -> Config.resolve_dist_package (Filename.concat "dist/packages" s) extcands
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
@@ -338,12 +343,12 @@ let error_log_environment suspended =
         (cycle |> List.map (fun s -> DisplayLine(s)))
       )
 
-  | Config.DistFileNotFound(file_name, dirlst) ->
+  | Config.DistFileNotFound(file_name, pathcands) ->
       report_error Interface (List.append [
         NormalLine("package file not found:");
         DisplayLine(file_name);
-        NormalLine("candidate directories for the SATySFi library root:");
-      ] (dirlst |> List.map (fun dir -> DisplayLine(dir))))
+        NormalLine("candidate paths:");
+      ] (pathcands |> List.map (fun pathcand -> DisplayLine(pathcand))))
 
   | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [

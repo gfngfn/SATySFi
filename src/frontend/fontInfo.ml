@@ -5,7 +5,6 @@ open LengthInterface
 open HorzBox
 open CharBasis
 open Types
-open Config
 
 
 exception InvalidFontAbbrev     of font_abbrev
@@ -84,7 +83,7 @@ module FontAbbrevHashTable
         match !storeref with
         | UnusedSingle(srcpath) ->
           (* -- if this is the first access to the single font -- *)
-            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
             begin
               match FontFormat.get_decoder_single (abbrev ^ "-Composite") (* temporary *) srcpath with
               | None ->
@@ -101,7 +100,7 @@ module FontAbbrevHashTable
 
         | UnusedTTC(srcpath, i) ->
           (* -- if this is the first access to the TrueTypeCollection -- *)
-            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
             begin
               match FontFormat.get_decoder_ttc (abbrev ^ "-Composite") (* temporary *) srcpath i with
               | None ->
@@ -263,7 +262,7 @@ module MathFontAbbrevHashTable
         match !storeref with
         | UnusedMath(srcpath) ->
           (* -- if this is the first access to the math font -- *)
-            let srcpath = resolve_dist_path (Filename.concat "dist/fonts" srcpath) in
+            let srcpath = Config.resolve_dist_file (Filename.concat "dist/fonts" srcpath) in
             begin
               match FontFormat.get_math_decoder (mfabbrev ^ "-Composite-Math") (* temporary *) srcpath with
               | None ->
@@ -432,10 +431,10 @@ let get_font_dictionary (pdf : Pdf.t) : Pdf.pdfobject =
 let initialize () =
   FontAbbrevHashTable.initialize ();
   MathFontAbbrevHashTable.initialize ();
-  let filename_S   = resolve_dist_path "dist/unidata/Scripts.txt" in
-  let filename_EAW = resolve_dist_path "dist/unidata/EastAsianWidth.txt" in
+  let filename_S   = Config.resolve_dist_file "dist/unidata/Scripts.txt" in
+  let filename_EAW = Config.resolve_dist_file "dist/unidata/EastAsianWidth.txt" in
   ScriptDataMap.set_from_file filename_S filename_EAW;
-  LineBreakDataMap.set_from_file (resolve_dist_path "dist/unidata/LineBreak.txt");
+  LineBreakDataMap.set_from_file (Config.resolve_dist_file "dist/unidata/LineBreak.txt");
   let font_hash = LoadFont.main "fonts.satysfi-hash" in
   font_hash |> List.iter (fun (abbrev, data) ->
     match data with
