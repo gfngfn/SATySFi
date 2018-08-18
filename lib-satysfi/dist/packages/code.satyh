@@ -8,6 +8,7 @@ module Code : sig
   direct +code : [string] block-cmd
   direct +console : [string] block-cmd
   direct \code : [string] inline-cmd
+  direct \console : [string] inline-cmd
   direct \d-code : [string] inline-cmd
 
 end = struct
@@ -106,13 +107,18 @@ end = struct
     code-scheme decoset-code Color.black ctx code
 
 
+  let-inline ctx \d-code code =
+    inline-fil ++ embed-block-breakable ctx
+      (read-block ctx '<+code(code);>)
+
+
   let-block ctx +console code =
     code-scheme decoset-console Color.white ctx code
 
 
-  let-inline ctx \d-code code =
+  let-inline ctx \console code =
     inline-fil ++ embed-block-breakable ctx
-      (read-block ctx '<+code(code);>)
+      (read-block ctx '<+console(code);>)
 
 
   let-inline ctx \code code =
