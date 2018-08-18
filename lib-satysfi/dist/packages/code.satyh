@@ -7,6 +7,8 @@ module Code : sig
 
   direct +code : [string] block-cmd
   direct +console : [string] block-cmd
+  direct \code : [string] inline-cmd
+  direct \d-code : [string] inline-cmd
 
 end = struct
 
@@ -59,11 +61,15 @@ end = struct
       (deco, deco, deco, deco)
 
 
+  let set-code-font ctx =
+    ctx |> set-font Latin (`lmmono`, 1., 0.)
+
+
   let code-scheme decoset txtcolor ctx code =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
-      let ctx = ctx |> set-font Latin (`lmmono`, 1., 0.) in
+      let ctx = ctx |> set-code-font in
       let charwid = get-natural-width (read-inline ctx {0}) in
       let ctx-code =
         ctx |> set-space-ratio (charwid /' fontsize) 0. 0.
@@ -102,5 +108,15 @@ end = struct
 
   let-block ctx +console code =
     code-scheme decoset-console Color.white ctx code
+
+
+  let-inline ctx \d-code code =
+    inline-fil ++ embed-block-breakable ctx
+      (read-block ctx '<+code(code);>)
+
+
+  let-inline ctx \code code =
+    script-guard Latin
+      (read-inline (ctx |> set-code-font) (embed-string code))
 
 end
