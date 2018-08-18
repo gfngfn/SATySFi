@@ -2789,7 +2789,6 @@ params:
 - p : point
 
 code: |
-  Format.printf "register-location: %s\n" name;
   Nameddest.register_location name p;
   UnitConstant
 

@@ -15,7 +15,7 @@ let name_from_hashtbl key =
   match Hashtbl.find_opt name_hash_table key with
   | Some(name) -> name
   | None ->
-      let name = ("dest_for_link:" ^ (string_of_int !name_id)) in
+      let name = ("nameddest:" ^ (string_of_int !name_id)) in
       incr name_id;
       Hashtbl.add name_hash_table key name;
       name
@@ -30,6 +30,7 @@ let notify_new_page pageno =
   let lst = List.fold_left (fun acc (nm, loc) -> (nm, loc, pageno) :: acc)
                         !named_dest_acc !pending_dest_acc
   in
+    pending_dest_acc := [];
     named_dest_acc := lst
 
 
@@ -61,4 +62,3 @@ let add_locations pdf =
 
 let get_location key =
   name_from_hashtbl key
-

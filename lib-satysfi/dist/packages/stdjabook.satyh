@@ -49,14 +49,15 @@ end = struct
 
 
   let-inline ctx \ref key =
-    let pads-code = (1pt, 1pt, 1pt, 1pt) in
-    let link-code = link-location-deco key in
+    let pads-code = (0pt, 0pt, 0pt, 0pt) in
+    let link-code = link-to-location-decoset key in
     let opt = get-cross-reference (key ^ `:num`) in
     let it =
       match opt with
       | None    -> {?}
       | Some(s) -> embed-string s
     in
+        let () = display-message (`ref: ` ^ key) in
       inline-frame-breakable pads-code link-code (read-inline ctx it)
 
 
@@ -147,7 +148,7 @@ end = struct
     let it-num = embed-string s-num in
     let d =
       match labelopt with
-      | Some(label) -> register-block-location-deco label
+      | Some(label) -> register-location-decoset label
       | None        ->
         let d (_, _) _ _ _ = [] in (d, d, d, d)
     in
@@ -360,24 +361,28 @@ let title-deco =
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (ib-title ++ ib-middle ++ ib-page)
+                    (inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-location-decoset label)
+                      (ib-title ++ ib-middle ++ ib-page))
 
           | TOCElementSubsection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
+                let ib-indent = inline-skip toc-subsection-indent in
                 let ib-title =
-                  inline-skip toc-subsection-indent
-                    ++ read-inline ctx-doc {#it-num;. #title;}
-                      ++ inline-skip 3pt
+                  read-inline ctx-doc {#it-num;. #title;}
+                    ++ inline-skip 3pt
                 in
                 let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
                 let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
+                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-indent)
+                    -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
                     if w <' 0pt then inline-fil else
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (ib-title ++ ib-middle ++ ib-page)
+                    (ib-indent
+                      ++ (inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-location-decoset label)
+                          (ib-title ++ ib-middle ++ ib-page)))
 
           )) block-nil
         in
@@ -489,7 +494,12 @@ let title-deco =
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
-    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
+    let bb-title =
+      block-frame-breakable ctx (0pt, 0pt, 0pt, 0pt) (register-location-decoset label) (fun ctx -> (
+        let () = display-message (`section: ` ^ label) in
+        (section-heading ctx
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
+    in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
 
@@ -508,7 +518,8 @@ let title-deco =
     let ib-title = read-inline ctx-title title in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+        (inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (register-location-decoset label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
