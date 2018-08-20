@@ -6,4 +6,3 @@ type t =
 
 
 val pdfobject_of_action : t -> Pdf.pdfobject
- 

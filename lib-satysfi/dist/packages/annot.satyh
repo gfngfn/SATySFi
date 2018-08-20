@@ -3,33 +3,28 @@
 @require: gr
 
 
-let link-to-uri-decoset uri =
-  let deco (x, y) wid hgt dpt =
-    let () = display-message (`link: `# ^ uri) in
-    let () = register-link-to-uri uri (x, y) wid hgt dpt in
-      []
+let link-to-uri-frame uri =
+  let deco (x, y) w h d =
+    let () = register-link-to-uri uri (x, y) w h d in []
   in
     (deco, deco, deco, deco)
 
 
-let link-to-location-decoset name =
-  let deco (x, y) wid hgt dpt =
-    let () = register-link-to-location name (x, y) wid hgt dpt in
-      []
+let link-to-location-frame name =
+  let deco (x, y) w h d =
+    let () = register-link-to-location name (x, y) w h d in []
   in
     (deco, deco, deco, deco)
 
 
 let-inline ctx \href uri inner =
-  let pads-code = (1pt, 1pt, 1pt, 1pt) in
-  let link-code = link-to-uri-decoset uri in
-    inline-frame-breakable pads-code link-code (read-inline ctx inner)
+  inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri) (read-inline ctx inner)
 
 
-let register-location-decoset key =
+let register-location-frame key =
   let strokef = stroke 2pt Color.red in
   let decoR (x, y) w h d =
-    let () = register-location key  (x, y +' h) in [strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));]
+    let () = register-location key (x, y +' h) in [strokef (Gr.rectangle (x, y -' d) (x +' w, y +' h));]
   in
   let decoI _ _ _ _ = [] in
     (decoR, decoR, decoI, decoI)

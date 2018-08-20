@@ -54,7 +54,7 @@ let add_locations pdf =
             (Pdf.Indirect (Pdf.addobj pdf named_dest_dict))
         in
           let newcatnum = Pdf.addobj pdf catalog in
-            { pdf with 
+            { pdf with
               Pdf.root = newcatnum;
               Pdf.trailerdict = Pdf.add_dict_entry
                 pdf.Pdf.trailerdict "/Root" (Pdf.Indirect newcatnum) }
