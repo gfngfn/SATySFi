@@ -61,7 +61,7 @@ end = struct
         let bb-parent =
           block-nil +++> [
 %            line-break true false (ctx |> set-paragraph-margin item-gap 0pt) inline-fil;
-            block-frame-breakable ctx pads decos (fun ctx ->
+            block-frame-breakable (ctx |> set-paragraph-margin item-gap item-gap) pads decos (fun ctx ->
               form-paragraph ctx
                 (inline-skip (0pt -' bullet-width) ++ ib-bullet
                   ++ read-inline ctx parent ++ inline-fil)
