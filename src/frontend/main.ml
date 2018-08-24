@@ -1,8 +1,4 @@
 
-module Types = Types_
-module Primitives = Primitives_
-module Evaluator = Evaluator_
-module Vm = Vm_
 open Types
 open Display
 

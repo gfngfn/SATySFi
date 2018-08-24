@@ -1,4 +1,3 @@
-module Types = Types_
 open Types
 
 type t

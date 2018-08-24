@@ -1,6 +1,3 @@
-module Types = Types_
-module Ir = Ir_
-module Vm = Vm_
 
 open MyUtil
 open LengthInterface
