@@ -26,7 +26,7 @@ end = struct
 
 
   let-inline ctx \tabular lstf =
-    let pads = (5pt, 5pt, 2pt, 10pt) in
+    let pads = (5pt, 5pt, 2pt, 2pt) in
     let cellf ropt it =
       let (alignL, alignR) = make-alignments ropt in
         NormalCell(pads, alignL ++ read-inline ctx it ++ alignR)
