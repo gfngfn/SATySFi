@@ -636,6 +636,7 @@ code: |
 ---
 inst: PrimitiveSetMathVariantToChar
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "set-math-variant-char"
 type: |
   ~% (tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
@@ -685,6 +686,7 @@ code: |
 ---
 inst: BackendMathVariantCharDirect
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-variant-char"
 type: |
   ~% (tMATHCLS @-> tMCSTY @-> tMATH)
@@ -700,6 +702,7 @@ code: |
 ---
 inst: BackendGetLeftMathClass
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "get-left-math-class"
 type: |
   ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
@@ -719,6 +722,7 @@ code: |
 ---
 inst: BackendGetRightMathClass
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "get-right-math-class"
 type: |
   ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
@@ -756,6 +760,7 @@ code: |
 ---
 inst: BackendMathConcat
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-concat"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -769,6 +774,7 @@ code: |
 ---
 inst: BackendMathGroup
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-group"
 type: |
   ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
@@ -783,6 +789,7 @@ code: |
 ---
 inst: BackendMathSuperscript
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-sup"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -796,6 +803,7 @@ code: |
 ---
 inst: BackendMathSubscript
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-sub"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -809,6 +817,7 @@ code: |
 ---
 inst: BackendMathFraction
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-frac"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -822,6 +831,7 @@ code: |
 ---
 inst: BackendMathRadical
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-radical"
 type: |
   ~% (tOPT tMATH @-> tMATH @-> tMATH)
@@ -839,6 +849,7 @@ code: |
 ---
 inst: BackendMathParen
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-paren"
 type: |
   ~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)
@@ -856,6 +867,7 @@ code: |
 ---
 inst: BackendMathParenWithMiddle
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-paren-with-middle"
 type: |
   ~% (tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
@@ -875,6 +887,7 @@ code: |
 ---
 inst: BackendMathUpperLimit
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-upper"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -888,6 +901,7 @@ code: |
 ---
 inst: BackendMathLowerLimit
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-lower"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -901,6 +915,7 @@ code: |
 ---
 inst: BackendMathPullInScripts
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-pull-in-scripts"
 type: |
   ~% (tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
@@ -918,6 +933,7 @@ code: |
 ---
 inst: BackendMathChar
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char"
 type: |
   ~% (tMATHCLS @-> tS @-> tMATH)
@@ -932,6 +948,7 @@ code: |
 ---
 inst: BackendMathBigChar
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-big-char"
 type: |
   ~% (tMATHCLS @-> tS @-> tMATH)
@@ -946,6 +963,7 @@ code: |
 ---
 inst: BackendMathCharWithKern
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char-with-kern"
 type: |
   let mckf = tLN @-> tLN @-> tLN in
@@ -966,6 +984,7 @@ code: |
 ---
 inst: BackendMathBigCharWithKern
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-big-char-with-kern"
 type: |
   let mckf = tLN @-> tLN @-> tLN in
@@ -1004,6 +1023,7 @@ code: |
 ---
 inst: BackendMathColor
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-color"
 type: |
   ~% (tCLR @-> tMATH @-> tMATH)
@@ -1017,6 +1037,7 @@ code: |
 ---
 inst: BackendMathCharClass
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char-class"
 type: |
   ~% (tMCCLS @-> tMATH @-> tMATH)
