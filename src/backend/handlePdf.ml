@@ -8,13 +8,18 @@ type t =
   | PDF of Pdf.t * Pdfpage.t Alist.t * file_path
 
 
+let color_show_space = GraphicBase.DeviceRGB(0., 0., 1.)
+let color_show_bbox = GraphicBase.DeviceRGB(1.0, 0.5, 0.5)
+
+
 let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, opacc) (evhb : evaled_horz_box) =
   let (wid, evhbmain) = evhb in
     match evhbmain with
     | EvHorzEmpty ->
         let opaccnew =
           if OptionState.debug_show_space () then
-            Alist.append opacc (GraphicD.pdfops_test_box (GraphicBase.DeviceRGB(0., 0., 1.)) (xpos, yposbaseline) wid (Length.of_pdf_point 2.))
+            let opsgr = GraphicD.pdfops_test_box color_show_space (xpos, yposbaseline) wid (Length.of_pdf_point 2.) in
+              Alist.append opacc opsgr
           else
             opacc
         in
@@ -25,7 +30,8 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
           deco (xpos, yposbaseline) wid hgt_frame dpt_frame
             (* -- depth values are nonpositive -- *)
         in
-        let opaccinit = Alist.append opacc (GraphicD.to_pdfops gr_background (pdfops_of_intermediate_horz_box_list pbinfo)) in
+        let opsgr = GraphicD.to_pdfops gr_background (pdfops_of_intermediate_horz_box_list pbinfo) in
+        let opaccinit = Alist.append opacc opsgr in
         let (xposnew, opaccsub) =
           imhblst @|> (xpos, opaccinit) @|> List.fold_left (ops_of_evaled_horz_box pbinfo yposbaseline)
         in
@@ -41,7 +47,8 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
               hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt
           in
           if OptionState.debug_show_bbox () then
-            List.append (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+            let opsgr = GraphicD.pdfops_test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
+              List.append opsgr opsmain
           else
             opsmain
         in
@@ -56,7 +63,8 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
               Length.zero tag msinfo.math_font_size msinfo.math_color otxt
           in
           if OptionState.debug_show_bbox () then
-            List.append (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt) opsmain
+            let opsgr = GraphicD.pdfops_test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
+              List.append opsgr opsmain
           else
             opsmain
         in
@@ -88,7 +96,8 @@ let rec ops_of_evaled_horz_box (pbinfo : page_break_info) yposbaseline (xpos, op
         let opaccsub = Alist.append opacc (pdfops_of_graphics pbinfo gr) in
         let opaccnew =
           if OptionState.debug_show_bbox () then
-            Alist.append opaccsub (GraphicD.pdfops_test_frame (xpos, yposbaseline) wid hgt dpt)
+            let opsgr = GraphicD.pdfops_test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
+              Alist.append opaccsub opsgr
           else
             opaccsub
         in

@@ -258,10 +258,10 @@ let pdfops_test_box color (xpos, ypos) wid hgt =
 
 
 (* -- 'pdfops_test_frame': output bounding box of horizontal elements for debugging -- *)
-let pdfops_test_frame (xpos, yposbaseline) wid hgt dpt =
+let pdfops_test_frame color (xpos, yposbaseline) wid hgt dpt =
   [
     op_q;
-    op_RG (1.0, 0.5, 0.5);
+    pdfop_of_stroke_color color;
     op_w (Length.of_pdf_point 0.1);
     op_m (xpos, yposbaseline);
     op_l (xpos +% wid, yposbaseline);

@@ -33,6 +33,6 @@ val pdfops_of_image : point -> float -> float -> string -> Pdfops.t list
 
 val pdfops_test_box : color -> point -> length -> length -> Pdfops.t list
 
-val pdfops_test_frame : point -> length -> length -> length -> Pdfops.t list
+val pdfops_test_frame : color -> point -> length -> length -> length -> Pdfops.t list
 
 val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list
