@@ -11,17 +11,35 @@ type t =
 
 type 'o op_funcs = {
   graphics   : (intermediate_horz_box list) GraphicD.t -> (point -> intermediate_horz_box list -> 'o list) -> 'o list;
-  text       : point -> length -> string -> length -> color -> OutputText.t -> 'o list;
-  image      : point -> float -> float -> string -> 'o list;
+  text       : horz_string_info -> point -> OutputText.t -> 'o list;
+  math       : math_string_info -> point -> OutputText.t -> 'o list;
+  image      : ImageInfo.key -> point -> length -> length -> 'o list;
   test_box   : color -> point -> length -> length -> 'o list;
   test_frame : color -> point -> length -> length -> length -> 'o list;
 }
 
 
+let pdfops_of_text hsinfo pt otxt =
+  let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
+    GraphicD.pdfops_of_text pt tag hsinfo.text_font_size hsinfo.text_color otxt
+
+
+let pdfops_of_math msinfo pt otxt =
+  let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
+    GraphicD.pdfops_of_text pt tag msinfo.math_font_size msinfo.math_color otxt
+
+
+let pdfops_of_image imgkey pt wid hgt =
+  let tag = ImageInfo.get_tag imgkey in
+  let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
+    GraphicD.pdfops_of_image pt xratio yratio tag
+
+
 let fs_pdf = {
   graphics   = GraphicD.to_pdfops;
-  text       = GraphicD.pdfops_of_text;
-  image      = GraphicD.pdfops_of_image;
+  text       = pdfops_of_text;
+  math       = pdfops_of_math;
+  image      = pdfops_of_image;
   test_box   = GraphicD.pdfops_test_box;
   test_frame = GraphicD.pdfops_test_frame;
 }
@@ -59,11 +77,9 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           (xposnew, opaccnew)
 
     | EvHorzString(hsinfo, hgt, dpt, otxt) ->
-        let tag = FontInfo.get_font_tag hsinfo.font_abbrev in
         let ops =
           let opsmain =
-            fs.text (xpos, yposbaseline)
-              hsinfo.rising tag hsinfo.text_font_size hsinfo.text_color otxt
+              fs.text hsinfo (xpos, yposbaseline +% hsinfo.rising) otxt
           in
           if OptionState.debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
@@ -75,11 +91,9 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           (xpos +% wid, opaccnew)
 
     | EvHorzMathGlyph(msinfo, hgt, dpt, otxt) ->
-        let tag = FontInfo.get_math_tag msinfo.math_font_abbrev in
         let ops =
           let opsmain =
-            fs.text (xpos, yposbaseline)
-              Length.zero tag msinfo.math_font_size msinfo.math_color otxt
+            fs.math msinfo (xpos, yposbaseline) otxt
           in
           if OptionState.debug_show_bbox () then
             let opsgr = fs.test_frame color_show_bbox (xpos, yposbaseline) wid hgt dpt in
@@ -146,10 +160,8 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
           (xpos +% wid, opaccnew)
 
     | EvHorzInlineImage(hgt, imgkey) ->
-        let tag = ImageInfo.get_tag imgkey in
-        let (xratio, yratio) = ImageInfo.get_ratio imgkey wid hgt in
         let ops_image =
-          fs.image (xpos, yposbaseline) xratio yratio tag
+          fs.image imgkey (xpos, yposbaseline) wid hgt
         in
         let opaccnew = Alist.append opacc ops_image in
           (xpos +% wid, opaccnew)

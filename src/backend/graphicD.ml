@@ -195,17 +195,17 @@ let pdfops_of_fill (fill_color : color) (pathlst : path list) : Pdfops.t list =
     List.concat [[op_q; op_fill_color]; ops_path; [op_draw; op_Q]]
 
 
-let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.t) =
+let pdfops_of_text (pt : point) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.t) =
   let pdfopstxt =
     (OutputText.to_TJ_arguments otxt) |> List.fold_left (fun acc (hopt, pdfobjs) ->
       let optxt = op_TJ (Pdf.Array(pdfobjs)) in
         match hopt with
         | None ->
-            Alist.append acc [op_Ts rising; optxt]
+            Alist.append acc [op_Ts Length.zero; optxt]
 
         | Some(FontFormat.PerMille(h)) ->
             let r = fontsize *% (float_of_int h *. 0.001) in
-              Alist.append acc [op_Ts (rising +% r); optxt]
+              Alist.append acc [op_Ts r; optxt]
 
     ) Alist.empty |> Alist.to_list
   in
@@ -217,7 +217,6 @@ let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : len
       op_BT;
       op_Tm_translate pt;
       op_Tf tag fontsize;
-      op_Ts rising;
     ];
     pdfopstxt;
     [
