@@ -150,8 +150,8 @@ let normalization_rule : (((Uchar.t * line_break_class) list) rule) list =
   (* -- preserve spaces between nonspaced characters -- *)
     ([nonspaced; exact SP], [bispace], [nonspaced]);
   (* -- ignore spaces before and after a nonspaced characters -- *)
-    ([nonspaced; exact SP], [], []);
-    ([exact SP], [], [nonspaced]);
+    ([nonspaced; set [SP; INBR]], [], []);
+    ([set [SP; INBR]], [], [nonspaced]);
   (* -- convert breaks into spaces -- *)
     ([exact INBR], [bispace], []);
   ]
