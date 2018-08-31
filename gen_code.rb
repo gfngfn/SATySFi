@@ -29,9 +29,9 @@ def default_false b
   if b == nil then false else b end
 end
 
-def gen_prims
+def gen_prims tag
   YAML.load_stream(ARGF.read) do |inst|
-    if inst["is-primitive"] && inst["name"] != nil then
+    if default_false(inst[tag]) && inst["name"] != nil then
       len = inst["params"].length
       args = []
       for i in 1..len
@@ -52,9 +52,17 @@ def gen_prims
   end
 end
 
+def gen_pdf_mode_prims
+  gen_prims("is-pdf-mode-primitive")
+end
+
+def gen_text_mode_prims
+  gen_prims("is-text-mode-primitive")
+end
+
 def gen_interps
   YAML.load_stream(ARGF.read) do |inst|
-    if inst["is-primitive"] && !default_false(inst["no-interp"]) then
+    if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) && !default_false(inst["no-interp"]) then
       tmpn = 0
       astargs = []
       valueidents = []
@@ -141,7 +149,7 @@ def gen_vminstrs
     if inst["needs-reducef"] then
       puts "            let reducef = exec_application #{ENVIRONMENT} in"
     end
-    if inst["is-primitive"] then
+    if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) then
       puts "            let #{RET} ="
     else
       puts "            begin"
@@ -149,7 +157,7 @@ def gen_vminstrs
     inst["code"].each_line do |line|
       puts "              #{line}"
     end
-    if inst["is-primitive"] then
+    if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) then
       puts "            in #{VMEXEC} (#{RET} :: #{STACK}) #{ENVIRONMENT} #{CODE} #{DUMP}"
     else
       puts "            end"
@@ -179,7 +187,7 @@ end
 
 def gen_attype
   YAML.load_stream(ARGF.read) do |inst|
-    if inst["is-primitive"] && !default_false(inst["no-ircode"]) then
+    if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) && !default_false(inst["no-ircode"]) then
       if inst["params"] != nil then
         puts "  | #{inst["inst"]} of #{(["abstract_tree"] * inst["params"].length).join ' * '}"
       else
@@ -191,7 +199,7 @@ end
 
 def gen_ircases
   YAML.load_stream(ARGF.read) do |inst|
-    if inst["is-primitive"] && !default_false(inst["no-ircode"]) then
+    if (inst["is-pdf-mode-primitive"] || inst["is-text-mode-primitive"]) && !default_false(inst["no-ircode"]) then
       params = [*1..inst["params"].length].collect{|n| "p"+n.to_s}
 
       puts "    | #{inst["inst"]}(#{params.join ', '}) ->"
@@ -210,7 +218,8 @@ opt.on('--gen-ir') {|v| func = method(:gen_ircases) }
 opt.on('--gen-insttype') {|v| func = method(:gen_insttype) }
 opt.on('--gen-attype') {|v| func = method(:gen_attype) }
 opt.on('--gen-interps') {|v| func = method(:gen_interps) }
-opt.on('--gen-prims') {|v| func = method(:gen_prims) }
+opt.on('--gen-pdf-mode-prims') {|v| func = method(:gen_pdf_mode_prims) }
+opt.on('--gen-text-mode-prims') {|v| func = method(:gen_text_mode_prims) }
 
 opt.parse!(ARGV)
 

@@ -20,6 +20,14 @@ let-inline ctx \hskip len =
   inline-skip len
 
 
+let no-break ib =
+  inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) ib
+
+
+let-inline ctx \no-break inner =
+  no-break (read-inline ctx inner)
+
+
 let-inline ctx \SATySFi =
   let size = get-font-size ctx in
   let f = read-inline ctx in
@@ -27,7 +35,7 @@ let-inline ctx \SATySFi =
   let ib =
     f {SAT} ++ kern (size *' 0.15) ++ fd {Y} ++ f {SF} ++ kern (size *' 0.05) ++ fd {I}
   in
-    script-guard Latin ib
+    script-guard Latin (no-break ib)
 
 
 let-inline ctx \LaTeX =
@@ -40,8 +48,11 @@ let-inline ctx \LaTeX =
   let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
                |> read-inline
   in
+  let ib =
     f {L} ++ kern (size *' 0.2) ++ fA {A}
       ++ f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+  in
+    script-guard Latin (no-break ib)
 
 
 let-inline ctx \TeX =
@@ -50,7 +61,10 @@ let-inline ctx \TeX =
   let fE = ctx |> set-manual-rising (0pt -' (size *' 0.25))
                |> read-inline
   in
+  let ib =
     f {T} ++ kern (size *' 0.125) ++ fE {E} ++ f {X}
+  in
+    script-guard Latin (no-break ib)
 
 
 let length-max len1 len2 =
@@ -63,10 +77,6 @@ let length-min len1 len2 =
 
 let length-abs len =
   if len <' 0pt then 0pt -' len else len
-
-
-let-inline ctx \no-break inner =
-  inline-frame-outer (0pt, 0pt, 0pt, 0pt) (fun _ _ _ _ -> []) (read-inline ctx inner)
 
 
 let-inline ctx \fil =

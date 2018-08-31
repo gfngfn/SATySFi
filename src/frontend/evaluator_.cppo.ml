@@ -324,7 +324,84 @@ and interpret env ast =
 #include "__evaluator.gen.ml"
 
 
-and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
+and interpret_text_mode_intermediate_input_vert env (valuetctx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
+  let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
+    imivlst |> List.map (fun imiv ->
+      match imiv with
+      | ImInputVertEmbedded(astabs) ->
+          let valuevert = interpret env (Apply(astabs, Value(valuetctx))) in
+            get_string valuevert
+
+      | ImInputVertContent(imivlstsub, envsub) ->
+          interpret_commands envsub imivlstsub
+
+    ) |> String.concat ""
+  in
+  let s = interpret_commands env imivlst in
+    StringConstant(s)
+
+
+and interpret_text_mode_intermediate_input_horz (env : environment) (valuetctx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
+
+  let tctx = get_text_mode_context valuetctx in
+
+  let rec normalize (imihlst : intermediate_input_horz_element list) =
+    imihlst |> List.fold_left (fun acc imih ->
+      match imih with
+      | ImInputHorzEmbedded(astabs) ->
+          let nmih = NomInputHorzEmbedded(astabs) in
+            Alist.extend acc nmih
+
+      | ImInputHorzText(s2) ->
+          begin
+            match Alist.chop_last acc with
+            | Some(accrest, NomInputHorzText(s1)) -> (Alist.extend accrest (NomInputHorzText(s1 ^ s2)))
+            | _                                   -> (Alist.extend acc (NomInputHorzText(s2)))
+          end
+
+      | ImInputHorzEmbeddedMath(astmath) ->
+          failwith "Evaluator_> math; remains to be supported."
+(*
+          let nmih = NomInputHorzThunk(Apply(Apply(Value(valuemcmd), Value(valuectx)), astmath)) in
+            Alist.extend acc nmih
+*)
+
+      | ImInputHorzContent(imihlstsub, envsub) ->
+          let nmihlstsub = normalize imihlstsub in
+          let nmih = NomInputHorzContent(nmihlstsub, envsub) in
+            Alist.extend acc nmih
+
+    ) Alist.empty |> Alist.to_list
+  in
+
+  let rec interpret_commands env (nmihlst : nom_input_horz_element list) : string =
+    nmihlst |> List.map (fun nmih ->
+      match nmih with
+      | NomInputHorzEmbedded(astabs) ->
+          let valueret = interpret env (Apply(astabs, Value(valuetctx))) in
+            get_string valueret
+
+      | NomInputHorzThunk(ast) ->
+          let valueret = interpret env ast in
+            get_string valueret
+
+      | NomInputHorzText(s) ->
+          let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+          let uchlstret = tctx |> TextBackend.stringify uchlst in
+            InternalText.to_utf8 (InternalText.of_uchar_list uchlstret)
+
+      | NomInputHorzContent(nmihlstsub, envsub) ->
+          interpret_commands envsub nmihlstsub
+
+    ) |> String.concat ""
+  in
+
+  let nmihlst = normalize imihlst in
+  let s = interpret_commands env nmihlst in
+    StringConstant(s)
+
+
+and interpret_pdf_mode_intermediate_input_vert env (valuectx : syntactic_value) (imivlst : intermediate_input_vert_element list) : syntactic_value =
   let rec interpret_commands env (imivlst : intermediate_input_vert_element list) =
     imivlst |> List.map (fun imiv ->
       match imiv with
@@ -341,7 +418,7 @@ and interpret_intermediate_input_vert env (valuectx : syntactic_value) (imivlst 
     Vert(imvblst)
 
 
-and interpret_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
+and interpret_pdf_mode_intermediate_input_horz (env : environment) (valuectx : syntactic_value) (imihlst : intermediate_input_horz_element list) : syntactic_value =
 
   let (ctx, valuemcmd) = get_context valuectx in
 

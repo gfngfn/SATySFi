@@ -1,0 +1,77 @@
+@require: color
+@require: gr
+
+
+module FootnoteScheme : sig
+
+  val start-page : unit -> unit
+  val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
+
+end = struct
+
+  let-mutable footnote-ref <- 0
+  let-mutable first-footnote <- true
+
+
+  let start-page () =
+    first-footnote <- true
+
+
+  let generate-footnote-label n =
+    `footnote:` ^ (arabic n)
+
+
+  let promote-another-trial () =
+    register-cross-reference `changed` `T`
+
+
+  let main ctx ibf bbf =
+    let () = footnote-ref <- !footnote-ref + 1 in
+    let num = !footnote-ref in
+    let label = generate-footnote-label num in
+    let it-num = embed-string (arabic num) in
+    let size = get-font-size ctx in
+    let ib-num = ibf num in
+    let bb = bbf num in
+    let bb-before =
+      match get-cross-reference label with
+      | Some(`T`) ->
+          let () = display-message (`'` ^ label ^ `': T`) in  % for debug
+          let bar-top-margin = size in
+          let bar-bottom-margin = size *' 0.125 in
+          let wid = get-text-width ctx in
+          let ib =
+            inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
+              [ stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y)); ]
+            )
+          in
+          line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib
+
+      | _ ->
+          let () = display-message (`'` ^ label ^ `': F`) in  % for debug
+          block-skip (size *' 0.5)
+    in
+      no-break
+        (add-footnote (bb-before +++ bb) ++ ib-num
+          ++ hook-page-break (fun _ _ -> (
+            let () =
+              if !first-footnote then
+                match get-cross-reference label with
+                | Some(`T`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                      register-cross-reference label `T`
+              else
+                match get-cross-reference label with
+                | Some(`F`) ->
+                    ()
+
+                | _ ->
+                    let () = promote-another-trial () in
+                      register-cross-reference label `F`
+            in
+            first-footnote <- false)))
+
+end

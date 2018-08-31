@@ -1,4 +1,4 @@
-open Config
+
 open MyUtil
 
 type file_path = string
@@ -95,10 +95,7 @@ let read_assoc (srcpath : file_path) assoc =
 
 
 let main (filename : file_path) =
-(*
-  Format.printf "LoadFont> main %s\n" filename;  (* for debug *)
-*)
-  let srcpath = resolve_dist_path (Filename.concat "dist/hash" filename) in
+  let srcpath = Config.resolve_dist_file (Filename.concat "dist/hash" filename) in
     try
       let json = Yojson.Safe.from_file srcpath in
           (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)

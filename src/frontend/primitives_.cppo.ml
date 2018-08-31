@@ -37,6 +37,7 @@ let tIB           = (~! "iboxes"  , BaseType(BoxRowType)  )
 let tBB           = (~! "bboxes"  , BaseType(BoxColType)  )
 
 let tCTX          = (~! "context" , BaseType(ContextType) )
+let tTCTX         = (~! "text-info", BaseType(TextInfoType))
 let tPATH         = (~! "path"    , BaseType(PathType)    )
 let tPRP          = (~! "pre-path", BaseType(PrePathType) )
 let tDOC          = (~! "document", BaseType(DocumentType))
@@ -138,7 +139,7 @@ let option_type = tOPT
 let itemize_type () = tITMZ ()
 
 
-let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+let add_general_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   let dr = Range.dummy "add_default_types" in
   let bid = BoundID.fresh UniversalKind () in
   let typaram = (dr, TypeVariable(PolyBound(bid))) in
@@ -151,6 +152,32 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.register_type "itemize" tyid_itemize (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Item" ([], Poly(tPROD [tIT; tL (tITMZ ())])) tyid_itemize
 
+  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathPunct"  ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
+  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
+
+  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
+  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
+  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
+
+
+let add_pdf_mode_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
+
+  tyenvmid
   |> Typeenv.Raw.register_type "color" tyid_color (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "Gray" ([], Poly(tFL)) tyid_color
   |> Typeenv.Raw.add_constructor "RGB"  ([], Poly(tPROD [tFL; tFL; tFL])) tyid_color
@@ -177,28 +204,6 @@ let add_default_types (tyenvmid : Typeenv.t) : Typeenv.t =
   |> Typeenv.Raw.add_constructor "USLetter"         ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "USLegal"          ([], Poly(tU)) tyid_page
   |> Typeenv.Raw.add_constructor "UserDefinedPaper" ([], Poly(tPROD [tLN; tLN])) tyid_page
-
-  |> Typeenv.Raw.register_type "math-class" tyid_mathcls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathOrd"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathBin"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathRel"    ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOp"     ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPunct"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathOpen"   ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathClose"  ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathPrefix" ([], Poly(tU)) tyid_mathcls
-  |> Typeenv.Raw.add_constructor "MathInner"  ([], Poly(tU)) tyid_mathcls
-
-  |> Typeenv.Raw.register_type "math-char-class" tyid_mccls (Typeenv.Data(0))
-  |> Typeenv.Raw.add_constructor "MathItalic"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldItalic"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathRoman"        ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldRoman"    ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathScript"       ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldScript"   ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathFraktur"      ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathBoldFraktur"  ([], Poly(tU)) tyid_mccls
-  |> Typeenv.Raw.add_constructor "MathDoubleStruck" ([], Poly(tU)) tyid_mccls
 
   |> Typeenv.Raw.register_type "cell" tyid_cell (Typeenv.Data(0))
   |> Typeenv.Raw.add_constructor "NormalCell" ([], Poly(tPROD [tPADS; tIB]))         tyid_cell
@@ -266,69 +271,6 @@ let rec lambda5 astf env =
 
 let pdfpt = Length.of_pdf_point
 
-
-(*
-let default_math_left_paren hgt dpt hgtaxis fontsize color =
-  let open HorzBox in
-  let lenappend = fontsize *% 0.1 in
-  let minhalflen = fontsize *% 0.5 in
-  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
-  let widparen = halflen *% 0.375 in
-  let wid = widparen +% fontsize *% 0.1 in
-  let graphics (xpos, ypos) =
-    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
-      GeneralPath((xpos +% wid, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos +% wid -% widparen, ypos +% hgtaxis));
-        LineTo((xpos +% wid, ypos +% hgtaxis -% halflen));
-      ], None);
-    ]
-  in
-  let kerninfo y =
-    let widkern = widparen in
-    let r = 0. in
-    let gap = Length.abs (y -% hgtaxis) in
-    let topdfpt = Length.to_pdf_point in  (* for debug *)
-    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-      if halflen *% r <% gap then
-        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
-      else
-        Length.zero
-  in
-  let hgtparen = hgtaxis +% halflen in
-  let dptparen = hgtaxis -% halflen in
-    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
-
-
-let default_math_right_paren hgt dpt hgtaxis fontsize color =
-  let open HorzBox in
-  let lenappend = fontsize *% 0.1 in
-  let minhalflen = fontsize *% 0.5 in
-  let halflen = Length.max minhalflen ((Length.max (hgt -% hgtaxis) (hgtaxis -% dpt)) +% lenappend) in
-  let widparen = halflen *% 0.375 in
-  let wid = widparen +% fontsize *% 0.1 in
-  let graphics (xpos, ypos) =
-    GraphicD.pdfops_of_stroke (pdfpt 0.5) color [
-      GeneralPath((xpos, ypos +% hgtaxis +% halflen), [
-        LineTo((xpos +% widparen, ypos +% hgtaxis));
-        LineTo((xpos, ypos +% hgtaxis -% halflen));
-      ], None);
-    ]
-  in
-  let kerninfo y =
-    let widkern = widparen in
-    let r = 0. in
-    let gap = Length.abs (y -% hgtaxis) in
-    let topdfpt = Length.to_pdf_point in  (* for debug *)
-    let () = Printf.printf "Primitives> y = %f, hgtaxis = %f\n" (topdfpt y) (topdfpt hgtaxis) in  (* for debug *)
-      if halflen *% r <% gap then
-        widkern *% ((gap -% halflen *% r) /% (halflen *% (1. -. r)))
-      else
-        Length.zero
-  in
-  let hgtparen = hgtaxis +% halflen in
-  let dptparen = hgtaxis -% halflen in
-    ([HorzPure(PHGFixedGraphics(wid, hgtparen, dptparen, graphics))], kerninfo)
-*)
 
 let default_radical hgt_bar t_bar dpt fontsize color =
   let open HorzBox in
@@ -505,7 +447,7 @@ let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
 
 let default_hyphen_dictionary = ref LoadHyph.empty
 
-let get_initial_context wid =
+let get_pdf_mode_initial_context wid =
   let open HorzBox in
     {
       hyphen_dictionary      = !default_hyphen_dictionary;
@@ -546,37 +488,55 @@ let get_initial_context wid =
     }
 
 
-let make_environments () =
-  let tyenvinit = add_default_types Typeenv.empty in
-  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+let (~%) ty = Poly(ty)
 
-  let (~@) n        = (~! "tv", TypeVariable(n)) in
+
+let general_table : (var_name * poly_type * (environment -> syntactic_value)) list =
+  let (~@) n = (~! "tv", TypeVariable(n)) in
   let (-%) n ptysub = ptysub in
-  let (~%) ty       = Poly(ty) in
   let tv1 = (let bid1 = BoundID.fresh UniversalKind () in PolyBound(bid1)) in
   let tv2 = (let bid2 = BoundID.fresh UniversalKind () in PolyBound(bid2)) in
+  let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
+  let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
+  let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
+    [
+      ( "!"  , ptyderef             , lambda1 (fun v1 -> Dereference(v1))                   );
+      ( "::" , ptycons              , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2))      );
+      ( "|>" , ptyappinv            , lambda2 (fun vx vf -> Apply(vf, vx))                  );
+      ( "<>" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))    );
+      ( ">=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))   );
+      ( "<=" , ~% (tI @-> tI @-> tB), lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))));
+    ]
 
-  let table : (var_name * poly_type * (environment -> syntactic_value)) list =
-    let ptyderef  = tv1 -% (~% ((tR (~@ tv1)) @-> (~@ tv1))) in
-    let ptycons   = tv2 -% (~% ((~@ tv2) @-> (tL (~@ tv2)) @-> (tL (~@ tv2)))) in
-    let ptyappinv = tv1 -% (tv2 -% (~% ((~@ tv1) @-> ((~@ tv1) @-> (~@ tv2)) @-> (~@ tv2)))) in
-      [
-        ( "!"         , ptyderef  , lambda1 (fun v1 -> Dereference(v1)));
-        ( "::"        , ptycons   , lambda2 (fun v1 v2 -> PrimitiveListCons(v1, v2)));
-        ( "|>"        , ptyappinv , lambda2 (fun vx vf -> Apply(vf, vx)));
-        ("inline-fil" , ~% tIB    , (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
-        ("inline-nil" , ~% tIB    , (fun _ -> Horz([])));
-        ("block-nil"  , ~% tBB    , (fun _ -> Vert([])));
-        ("clear-page" , ~% tBB    , (fun _ -> Vert(HorzBox.([VertClearPage]))));
 
-        ( "<>" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(EqualTo(v1, v2)))     );
-        ( ">=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(LessThan(v1, v2)))    );
-        ( "<=" , ~% (tI @-> tI @-> tB)   , lambda2 (fun v1 v2 -> LogicalNot(GreaterThan(v1, v2))) );
+let pdf_mode_table =
+  List.append general_table
+    [
+      ("inline-fil", ~% tIB, (fun _ -> Horz(HorzBox.([HorzPure(PHSOuterFil)]))));
+      ("inline-nil", ~% tIB, (fun _ -> Horz([]))                               );
+      ("block-nil" , ~% tBB, (fun _ -> Vert([]))                               );
+      ("clear-page", ~% tBB, (fun _ -> Vert(HorzBox.([VertClearPage])))        );
 
-#include "__primitives.gen.ml"
+#include "__primitives_pdf_mode.gen.ml"
+    ]
 
-      ]
+
+let text_mode_table =
+  List.append general_table
+    [
+#include "__primitives_text_mode.gen.ml"
+    ]
+
+
+let make_environments table =
+  let tyenvinit =
+    Typeenv.empty
+    |> add_general_default_types
+    |> add_pdf_mode_default_types
   in
+  let envinit : environment = (EvalVarIDMap.empty, ref (StoreIDHashTable.create 128)) in
+
+
   let temporary_ast = StringEmpty in
   let (tyenvfinal, envfinal, locacc) =
     table |> List.fold_left (fun (tyenv, env, acc) (varnm, pty, deff) ->
@@ -588,7 +548,15 @@ let make_environments () =
     ) (tyenvinit, envinit, Alist.empty)
   in
   locacc |> Alist.to_list |> List.iter (fun (loc, deff) -> loc := deff envfinal);
+    (tyenvfinal, envfinal)
+
+
+let make_pdf_mode_environments () =
   default_font_scheme_ref := SetDefaultFont.main ();
   default_hyphen_dictionary := LoadHyph.main "english.satysfi-hyph";
-      (* temporary; should depend on the current language -- *)
-    (tyenvfinal, envfinal)
+    (* temporary; should depend on the current language -- *)
+  make_environments pdf_mode_table
+
+
+let make_text_mode_environments () =
+  make_environments text_mode_table

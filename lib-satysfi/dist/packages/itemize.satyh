@@ -1,10 +1,12 @@
+@require: pervasives
 @require: list
+@require: option
 @require: gr
 
 module Itemize : sig
 
-  direct +listing : [itemize] block-cmd
-  direct \listing : [itemize] inline-cmd
+  direct +listing : [bool?; itemize] block-cmd
+  direct \listing : [bool?; itemize] inline-cmd
   direct +enumerate : [itemize] block-cmd
   direct \enumerate : [itemize] inline-cmd
 
@@ -28,31 +30,67 @@ end = struct
   let-rec listing-item : context -> int -> itemize -> block-boxes
     | ctx depth (Item(parent, children)) =
         let color = get-text-color ctx in
-        let br-bullet = (inline-graphics 8pt 8pt 0pt (bullet color)) ++ (inline-skip 8pt) in
-        let bullet-width = get-natural-width br-bullet in
+        let ib-bullet = inline-graphics 8pt 8pt 0pt (bullet color) ++ inline-skip 8pt in
+        let bullet-width = get-natural-width ib-bullet in
         let parent-indent = item-indent *' (float depth) in
-        let br-parent =
+        let ib-parent =
           embed-block-top ctx ((get-text-width ctx) -' parent-indent -' bullet-width) (fun ctx ->
             form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
               (read-inline ctx parent ++ inline-fil)
           )
         in
-        let bc-parent =
+        let bb-parent =
           form-paragraph (ctx |> set-paragraph-margin item-gap item-gap)
-            ((inline-skip parent-indent) ++ br-bullet ++ br-parent)
+            ((inline-skip parent-indent) ++ ib-bullet ++ ib-parent)
         in
-        let bclst-children = List.map (listing-item ctx (depth + 1)) children in
-          bc-parent +++> bclst-children
+        let bblst-children = List.map (listing-item ctx (depth + 1)) children in
+          bb-parent +++> bblst-children
 
 
-  let-block ctx +listing (Item(_, itmzlst)) =
-    let bclst = List.map (listing-item ctx 0) itmzlst in
-      block-skip item-gap-top +++ (block-nil +++> bclst)
+  let-rec listing-item-breakable
+    | ctx depth (Item(parent, children)) =
+        let color = get-text-color ctx in
+        let ib-bullet = inline-graphics 8pt 8pt 0pt (bullet color) ++ inline-skip 8pt in
+        let bullet-width = get-natural-width ib-bullet in
+        let parent-indent = item-indent *' (float depth) in
+        let pads = (parent-indent +' bullet-width, 0pt, 0pt, 0pt) in
+        let decos =
+          let deco _ _ _ _ = [] in
+            (deco, deco, deco, deco)
+        in
+        let bb-parent =
+          block-nil +++> [
+%            line-break true false (ctx |> set-paragraph-margin item-gap 0pt) inline-fil;
+            block-frame-breakable (ctx |> set-paragraph-margin item-gap item-gap) pads decos (fun ctx ->
+              form-paragraph ctx
+                (inline-skip (0pt -' bullet-width) ++ ib-bullet
+                  ++ read-inline ctx parent ++ inline-fil)
+            );
+%            line-break true false (ctx |> set-paragraph-margin 0pt item-gap) inline-fil;
+          ]
+        in
+        let bblst-children = List.map (listing-item ctx (depth + 1)) children in
+          bb-parent +++> bblst-children
 
 
-  let-inline ctx \listing item =
-    inline-fil ++
-      embed-block-breakable ctx (read-block ctx '<+listing(item);>)
+  let listing break ctx (Item(_, itmzlst)) =
+    if break then
+      let bblst = List.map (listing-item-breakable ctx 0) itmzlst in
+        block-skip item-gap-top +++ (block-nil +++> bblst)
+    else
+      let bblst = List.map (listing-item ctx 0) itmzlst in
+        block-skip item-gap-top +++ (block-nil +++> bblst)
+
+
+  let-block ctx +listing ?:breakopt item =
+    let break = Option.from false breakopt in
+      listing break ctx item
+
+
+  let-inline ctx \listing ?:breakopt item =
+    let break = Option.from false breakopt in
+      inline-fil ++
+        embed-block-breakable ctx (listing break ctx item)
 
 
   let-rec enumerate-item : int -> context -> int -> itemize -> block-boxes

@@ -395,8 +395,8 @@ module Math : sig
 
   val paren-left : paren
   val paren-right : paren
-  val angle-left : paren
-  val angle-right : paren
+  val angle-left : length -> paren
+  val angle-right : length -> paren
   val brace-left : paren
   val brace-right : paren
   val sqbracket-left : paren
@@ -410,6 +410,8 @@ module Math : sig
   val norm-left : paren
   val norm-right : paren
   val empty-paren : paren
+  val bar-middle : paren
+  val slash-middle : paren
 
   % -- temporary --
   direct \synteq : [] math-cmd
@@ -1011,7 +1013,7 @@ end = struct
     let lenappend = fontsize *' 0.1 in
       length-max minhalflen ((length-max (hgt -' hgtaxis) (hgtaxis +' dpt)) +' lenappend)
 
-  let angle-left hgt dpt hgtaxis fontsize color =
+  let angle-left thk hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -1021,7 +1023,7 @@ end = struct
         |> line-to (xpos +' wid, ypos +' hgtaxis -' halflen)
         |> terminate-path
     in
-    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let graphics point = [ stroke thk color (path point); ] in
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
@@ -1033,7 +1035,7 @@ end = struct
     in
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
-  let angle-right hgt dpt hgtaxis fontsize color =
+  let angle-right thk hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
     let widparen = halflen *' 0.375 in
     let wid = widparen +' fontsize *' 0.1 in
@@ -1043,7 +1045,7 @@ end = struct
         |> line-to (xpos, ypos +' hgtaxis -' halflen)
         |> terminate-path
     in
-    let graphics point = [ stroke 0.5pt color (path point); ] in
+    let graphics point = [ stroke thk color (path point); ] in
     let kerninfo y =
       let widkern = widparen in
       let r = 0. in
@@ -1056,7 +1058,7 @@ end = struct
       (inline-graphics wid (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
   let-math \angle-bracket =
-    math-paren angle-left angle-right
+    math-paren (angle-left 0.5pt) (angle-right 0.5pt)
 
   let paren-left hgt dpt hgtaxis fontsize color =
     let halflen = half-length hgt dpt hgtaxis fontsize in
@@ -1296,6 +1298,53 @@ end = struct
       (inline-graphics x4 (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
+  let brace-left-long hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+
+    let t0B = fontsize *' 0.05 in
+    let t1A = fontsize *' 0.05 in
+    let t1B = fontsize *' 0.025 in
+    let t2A = halflen *' 0.1 in
+    let t2B = halflen *' 0.15 in
+    let t3A = fontsize *' 0.05 in
+
+    let (x0, y0) = (fontsize *' 0.005, fontsize *' 0.005) in
+    let (p0B, q0B) = (x0 +' t0B, y0) in
+
+    let (x1, y1) = (fontsize *' 0.2, fontsize *' 0.2) in
+    let (p1A, q1A) = (x1, y1 -' t1A) in
+    let (p1B, q1B) = (x1, y1 +' t1B) in
+
+    let theta = atan2 (x1 /' 1pt) (halflen /' 1pt) in
+
+    let (x2, y2) = (fontsize *' 0.175, halflen *' 0.5) in
+
+    let (p2A, q2A) = (x2 +' t2A *' (sin theta), y2 -' t2A *' (cos theta)) in
+    let (p2B, q2B) = (x2 -' t2B *' (sin theta), y2 +' t2B *' (cos theta)) in
+
+    let (x3, y3) = (fontsize *' 0.15, halflen -' fontsize *' 0.2) in
+
+    let (p3A, q3A) = (x3, y3 -' t3A) in
+
+    let path (xpos, ypos) =
+      let ycenter = ypos +' hgtaxis in
+      let fP (x, y) = (xpos +' x, ycenter +' y) in
+      let fN (x, y) = (xpos +' x, ycenter -' y) in
+%        start-path (fP (x0, y0))
+%          |> bezier-to (fP (p0B, q0B)) (fP (p1A, q1A)) (fP (x1, y1))
+%          |> bezier-to (fP (p1B, q1B)) (fP (p2A, q2A)) (fP (x2, y2))
+%          |> close-with-line
+        Gr.poly-line (fP (x0, y0)) [
+          fP (p0B, q0B); fP (p1A, q1A); fP (x1, y1);
+          fP (p1B, q1B); fP (p2A, q2A); fP (x2, y2);
+          fP (p2B, q2B); fP (p3A, q3A); fP (x3, y3);
+        ]
+    in
+    let graphics point = [ fill color (path point); ] in
+    let kerninfo _ = 0pt in
+      (inline-graphics (x2) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
+
+
   let-math \brace =
     math-paren brace-left brace-right
 
@@ -1312,6 +1361,16 @@ end = struct
 
   let-math \setsep m1 m2 =
     math-paren-with-middle brace-left brace-right bar-middle [m1; m2]
+
+
+  let slash-middle hgt dpt hgtaxis fontsize color =
+    let halflen = half-length hgt dpt hgtaxis fontsize in
+    let halfwid = halflen *' 0.5 in
+    let graphics (x, y) =
+      [ stroke 0.5pt color (Gr.line (x, y +' hgtaxis -' halflen) (x +' halfwid *' 2., y +' hgtaxis +' halflen)); ]
+    in
+    let kerninfo _ = 0pt in
+      (inline-graphics (halfwid *' 2.) (hgtaxis +' halflen) (halflen -' hgtaxis) graphics, kerninfo)
 
 
   let bracket-metrics fontsize halflen =
