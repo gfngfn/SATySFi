@@ -142,11 +142,17 @@ type 'a rule = line_break_regexp * 'a * line_break_regexp
 (* -- the rules for normalizing texts about spaces, break letters, etc. -- *)
 let normalization_rule : (((Uchar.t * line_break_class) list) rule) list =
   [
-  (* -- ignore spaces or break letters *)
+  (* -- ignore spaces or breaks between a nonspaced character and spaced one -- *)
     ([nonspaced; set [SP; INBR]], [], [spaced]);
     ([spaced; set [SP; INBR]], [], [nonspaced]);
-  (* -- ignore break letters between nonspaced characters -- *)
+  (* -- ignore breaks between nonspaced characters -- *)
     ([nonspaced; exact INBR], [], [nonspaced]);
+  (* -- preserve spaces between nonspaced characters -- *)
+    ([nonspaced; exact SP], [bispace], [nonspaced]);
+  (* -- ignore spaces before and after a nonspaced characters -- *)
+    ([nonspaced; exact SP], [], []);
+    ([exact SP], [], [nonspaced]);
+  (* -- convert breaks into spaces -- *)
     ([exact INBR], [bispace], []);
   ]
 
