@@ -1,0 +1,489 @@
+\documentclass[a4paper]{memoir}
+\usepackage{palatino}
+\usepackage{microtype}
+\usepackage{graphics}
+\usepackage[plainpages=false,pdfpagelabels,pdfborder=0 0 0]{hyperref}
+\usepackage{upquote}
+\newcommand{\smallgap}{\vspace{4mm}}
+\newcommand{\cpdf}{\texttt{cpdf}}
+\addtolength{\textwidth}{20mm}
+\makeindex
+\begin{document}
+\frontmatter
+\thispagestyle{empty}
+
+\begin{flushright}
+
+{\sffamily \bfseries \Huge An Introduction to PDF with CamlPDF}
+
+\vspace{4mm}{{\LARGE John Whitington}\\ \today}
+
+\vfill
+
+\includegraphics{logo.pdf}
+
+\vspace{2mm}
+{\sffamily \bfseries \LARGE Coherent Graphics Ltd}
+
+\end{flushright}
+
+\clearpage
+
+\thispagestyle{empty}
+\noindent For bug reports, feature requests and comments, email\\ \texttt{contact@coherentgraphics.co.uk}
+
+\vspace*{\fill}
+\noindent\copyright 2010-2013 Coherent Graphics Limited. All rights reserved.
+
+\smallgap 
+\noindent Adobe, Acrobat, Adobe PDF, Adobe Reader and PostScript are
+registered trademarks of Adobe Systems Incorporated.
+
+% Letter
+\cleardoublepage
+% \tableofcontents
+
+\mainmatter
+
+\chapterstyle{hangnum}
+\pagestyle{ruled}
+\section*{A First Program}
+You will require \texttt{ocamlfind} to be installed on your system. It comes with any modern installation of OCaml.
+
+To build \textsf{CamlPDF}, navigate to the source directory and type
+\begin{framed}
+\verb!make!
+\end{framed}
+
+\noindent You can then install \textsf{CamlPDF}:
+\begin{framed}
+\verb!make install!
+\end{framed}
+
+\noindent As an alternative, you may use the \texttt{OPAM} package manager, if you have it installed:
+\begin{framed}
+\verb!opam install camlpdf!
+\end{framed}
+
+\noindent To build the examples, navigate to the examples folder and type
+\begin{framed}
+\verb!make!
+\end{framed}
+\noindent Now run a simple example to build the file \verb!hello.pdf!
+\begin{framed}
+\verb!./pdfhello!
+\end{framed}
+\noindent Now we can enter the top level:
+\begin{framed}
+\begin{verbatim}
+ocaml
+        Objective Caml
+# #use "topfind";;
+- : unit = ()
+Findlib has been successfully loaded. Additional directives:
+  #require "package";;      to load a package
+  #list;;                   to list the available packages
+  #camlp4o;;                to load camlp4 (standard syntax)
+  #camlp4r;;                to load camlp4 (revised syntax)
+  #predicates "p,q,...";;   to set these predicates
+  Topfind.reset();;         to force that packages will be
+reloaded
+  #thread;;                 to enable threads
+
+- : unit = ()
+# #require "camlpdf";;
+/Users/john/.opam/4.00.1/lib/ocaml/unix.cma: loaded
+/Users/john/.opam/4.00.1/lib/ocaml/bigarray.cma: loaded
+/Users/john/.opam/4.00.1/lib/camlpdf: added to search path
+/Users/john/.opam/4.00.1/lib/camlpdf/camlpdf.cma: loaded
+
+#
+\end{verbatim}
+\end{framed}
+\noindent The \textsf{Pdfread} module allows us to load PDF files into memory. The raw PDF data is parsed into a structured OCaml value of type \textsf{Pdf.pdfdoc}:
+\begin{framed}
+\begin{verbatim}
+# let pdf = Pdfread.pdf_of_file None None "hello.pdf";;
+val pdf : Pdf.t =
+  {Pdf.major = 1; Pdf.minor = 1; Pdf.root = 2;
+   Pdf.objects =
+    {Pdf.maxobjnum = 4; Pdf.parse = Some <fun>;
+     Pdf.pdfobjects = <abstr>;
+     Pdf.object_stream_ids = <abstr>};
+   Pdf.trailerdict =
+    Pdf.Dictionary
+     [("/Root", Pdf.Indirect 2);
+      ("/ID",
+       Pdf.Array
+        [Pdf.String "?W???`??w\r?\001??٫";
+         Pdf.String "?W???`??w\r?\001??٫"]);
+      ("/Size", Pdf.Integer 4)]}
+\end{verbatim}
+\end{framed}
+\noindent Looking at the parts of the \textsf{Pdf.t} record type:
+\begin{itemize}
+\item \textsf{Pdf.major} and \textsf{Pdf.minor} - the parts of the PDF version number. Here, PDF Version 1.1
+\item \textsf{Pdf.root} - the object number of the 'root object' of the PDF (A PDF is a directed graph of objects, indexed by number)
+\item \textsf{Pdf.objects} - the PDF objects
+\item \textsf{Pdf.trailerdict} - the trailer dictionary. This is a distinguished PDF object containing a number of commonly used per-file items. \textsf{Pdf.trailerdict} has type \textsf{Pdf.pdfobject}, which represents all possible PDF data.
+\end{itemize}
+
+\section*{Diversion: A Look at hello.pdf}
+Here is the contents of the file \texttt{hello.pdf}, as you might see it in a text editor, annotated with some explanatory comments.
+\begin{framed}
+\noindent\small\verb!%PDF-1.1! \textit{Header}\\
+\noindent\small\verb!%%$^@!\\
+\noindent\small\verb!1 0 obj! \textit{Object 1\ldots}\\
+\noindent\small\verb!<< /Type /Pages /Kids [ 3 0 R ] /Count 1 >>! \textit{\ldots which is the catalogue of pages}\\
+\noindent\small\verb!endobj!\\
+\noindent\small\verb!2 0 obj! \textit{This object is a stream, which is a dictionary plus some binary data}\\
+\noindent\small\verb!<< /Length 102 >>!\\
+\noindent\small\verb!stream! \textit{Usually compressed, but plain here for ease of reading}\\
+\noindent\small\verb!1.000000 0.000000 0.000000 1.000000 50.000000 770.000000 cm!\\
+\noindent\small\verb$BT /F0 36.000000 Tf (Hello, World!) Tj ET $\textit{The page content, a bit like PostScript}\\
+\noindent\small\verb!endstream!\\
+\noindent\small\verb!endobj!\\
+\noindent\small\verb!3 0 obj! \textit{The page object, }\\
+\noindent\small\verb!<< /Type /Page!\\
+\noindent\small\verb!   /Parent 1 0 R! \textit{The syntax "1 0 R" means a reference to Object 1}\\ 
+\noindent\small\verb!   /Resources!\\
+\noindent\small\verb!      << /Font! \textit{The font dictionary}\\
+\noindent\small\verb!            << /F0!\\
+\noindent\small\verb!              << /Type /Font /Subtype /Type1 /BaseFont /Times-Italic >>!\\
+\noindent\small\verb!            >> >>!\\
+\noindent\small\verb!   /MediaBox [ 0.000000 0.000000 595.275591 841.889764 ]! \textit{The page dimensions}\\
+\noindent\small\verb!   /Rotate 0!\\
+\noindent\small\verb!   /Contents [ 2 0 R ] >>! \textit{Reference to contents in object 2}\\
+\noindent\small\verb!endobj!\\
+\noindent\small\verb!4 0 obj!\\
+\noindent\small\verb!<< /Type /Catalog /Pages 1 0 R >>! \textit{The root object}\\
+\noindent\small\verb!endobj!\\
+\noindent\small\verb!xref! \textit{The cross-reference table, listing the byte offsets of each object for random access.}\\
+\noindent\small\verb!0 5 !\\
+\noindent\small\verb!0000000000 65535 f !\\
+\noindent\small\verb!0000000015 00000 n !\\
+\noindent\small\verb!0000000074 00000 n !\\
+\noindent\small\verb!0000000227 00000 n !\\
+\noindent\small\verb!0000000449 00000 n !\\
+\noindent\small\verb!trailer! \textit{The trailer dictionary}\\
+\noindent\small\verb!<< /Size 5 /Root 4 0 R /ID [ (ñ:.]ZzÆ¢ßÙÇE) (ñ:.?ZzÆ¢ßÙÇE) ] >>!\\
+\noindent\small\verb!startxref!\\
+\noindent\small\verb!498! \textit{The trailer}\\
+\noindent\small\verb!%%EOF!\\
+\end{framed}
+\section*{Saving the Document}
+The \textsf{Pdf.t} data type is a record of mutable values. Let's change the PDF Version number and write the file.
+\begin{framed}
+\begin{verbatim}
+# pdf.Pdf.minor <- 2;;
+- : unit = ()
+# Pdfwrite.pdf_to_file pdf "hello2.pdf";;
+- : unit = ()
+\end{verbatim}
+\end{framed}
+\section*{Next Steps}
+The objects in a PDF document are of type \textsf{Pdf.pdfobject}:
+\begin{framed}
+\noindent\verb!type stream =! \textit{Stream data. Either in memory or still in the file}\\
+\verb!  | Got of Utility.bytestream!\\
+\verb!  | ToGet of Pdfio.input * int * int! \textit{input, offset, length}\\
+\verb!!\\
+\verb!type pdfobject =!\\
+\verb!  | Null!\\
+\verb!  | Boolean of bool!\\
+\verb!  | Integer of int!\\
+\verb!  | Real of float!\\
+\verb!  | String of string!\\
+\verb!  | Name of string!\\
+\verb!  | Array of pdfobject list!\\
+\verb!  | Dictionary of (string * pdfobject) list!\\
+\verb!  | Stream of (pdfobject * stream) ref! \textit{Stream data (see above)}\\
+\verb!  | Indirect of int! \textit{A reference to another object}\\
+\end{framed}
+
+\noindent For instance the PDF object in the file:
+
+\begin{framed}
+\begin{verbatim}
+3 0 obj
+<< /Type /Page
+   /Parent 1 0 R
+   /MediaBox [ 0.000000 0.000000 595.275591 841.889764 ]
+   /Rotate 0
+   /Contents [ 2 0 R ]
+>>
+end
+\end{verbatim}
+\end{framed}
+
+\noindent is represented as object number 3 with the Pdf.t instance:
+\begin{framed}
+\small\begin{verbatim}
+Dictionary
+  ["/Type", Name "/Page";
+   "/Parent", Indirect 1;
+   "/MediaBox",
+       Array [Real 0.; Real 0.; Real 595.275591; Real 841.889764];
+   "/Rotate", Integer 0;
+   "/Contents", Array [Indirect 2]]
+\end{verbatim}
+\end{framed}
+
+\section*{Working with Pages}
+Introduce a command to show the current document, using whatever command opens (or updates) a PDF view on your system:
+\begin{framed}
+\noindent\verb!let show pdf =!\\
+\verb!  Pdfwrite.pdf_to_file pdf "temp.pdf";!\\
+\verb!  ignore (Sys.command "open temp.pdf");;! \textit{Customize here}\\
+\end{framed}
+
+\noindent The \textsf{Pdfpage} module deals with PDF pages. We can get the list of pages from a document:
+\begin{framed}
+\small\begin{verbatim}
+# let pages = Pdfpage.pages_of_pagetree pdf;;
+val pages : Pdfpage.t list =
+  [{Pdfpage.content = [Pdf.Indirect 4];
+    Pdfpage.mediabox =
+     Pdf.Array
+      [Pdf.Integer 0; Pdf.Integer 0; Pdf.Real 595.275590551;
+       Pdf.Real 841.88976378];
+    Pdfpage.resources =
+     Pdf.Dictionary
+      [("/Font",
+        Pdf.Dictionary
+         [("/F0",
+           Pdf.Dictionary
+            [("/Type", Pdf.Name "/Font");
+             ("/Subtype", Pdf.Name "/Type1");
+             ("/BaseFont", Pdf.Name "/Times-Italic")])])];
+    Pdfpage.rotate =
+      Pdfpage.Rotate0; Pdfpage.rest = Pdf.Dictionary []}]
+\end{verbatim}
+\end{framed}
+\noindent Each page is a record containing five things:
+\begin{itemize}
+\item \textsf{Pdfpage.content} An ordered list of pdf objects representing the one or more streams containing the graphical data for the page.
+\item \textsf{Pdfpage.mediabox} The page dimensions
+\item \textsf{Pdfpage.resources} The resources dictionary for a page, which contains the fonts, colour spaces and so on for the page.
+\item \textsf{Pdfpage.rotate} The viewing rotation for the page.
+\item \textsf{Pdfpage.rest} The rest of the page dictionary (i.e that which has not been separated into the items above).
+\end{itemize}
+Let's change the viewing rotation to 90 degrees:
+\begin{framed}
+\small\begin{verbatim}
+# let page = {(List.hd pages) with Pdfpage.rotate = Pdfpage.Rotate90};;
+val page : Pdfpage.t = ...
+# let pdf = Pdfpage.change_pages false pdf [page];;
+val pdf : Pdf.t = ...
+# show pdf;;
+- : unit
+\end{verbatim}
+\end{framed}
+\noindent Now change the rotation back: we're going to work with graphics next, and the viewing roation would confuse:
+\begin{framed}
+\small\begin{verbatim}
+# let page = List.hd pages;;
+val page : Pdfpage.t = ...
+# let pdf = Pdfpage.change_pages false pdf [page];;
+val pdf : Pdf.t = ...
+# show pdf;;
+- : unit
+\end{verbatim}
+\end{framed}
+\section*{Graphics and Text}
+The \textsf{Pdfops} module represents the graphical content of each page, which is formed of PostScript-like operators which draw the page. Let's get the operator list from the page:
+\begin{framed}
+\small\begin{verbatim}
+# let ops =
+    Pdfops.parse_operators
+      pdf page.Pdfpage.resources page.Pdfpage.content;;
+val ops : Pdfops.t list =
+  [Pdfops.Op_cm
+    {Transform.a = 1.; Transform.b = 0.;
+     Transform.c = 0.; Transform.d = 1.;
+     Transform.e = 50.; Transform.f = 770.};
+   Pdfops.Op_BT;
+   Pdfops.Op_Tf ("/F0", 36.);
+   Pdfops.Op_Tj "Hello, World!";
+   Pdfops.Op_ET]
+\end{verbatim}
+\end{framed}
+\noindent The \textsf{Op\_cm} operator alters the graphics matrix to position the text. \textsf{Op\_BT} and \textsf{Op\_ET} mark the beginning and end of a text section. \textsf{Op\_Tf} chooses 36pt Times Italic (which is font \textsf{F0} in the page's font dictionary in its resources) and \textsf{Op\_Tj} paints the text.
+
+Let's add operators to underline the text -- \textsf{Op\_m} to move, \textsf{Op\_l} to draw a line and \textsf{Op\_S} to stroke the path. We calculate the width of the underline using the \textsf{Pdfstandard14} and \texttt{Pdftext} modules to get the raw width of the string in millipoints, adjusting for font size and converting to points.
+
+\begin{framed}
+\small\begin{verbatim}
+# let width =
+    Pdfstandard14.textwidth false Pdftext.TimesItalic "Hello, World!";;
+val width : int = 5555
+
+# let actual_width = float width *. 36. /. 1000.;;
+val actual_width : float = 199.98
+
+# let ops' =
+    ops @
+      [Pdfops.Op_m (0., 0.);
+       Pdfops.Op_l (actual_width, 0.);
+       Pdfops.Op_S];;
+val ops' : Pdfops.t list = ...
+\end{verbatim}
+\end{framed}
+
+\noindent and make the new content stream:
+
+\begin{framed}
+\small\begin{verbatim}
+# let stream = Pdfops.stream_of_ops ops';;
+val stream : Pdf.pdfobject =
+  Pdf.Stream
+   {contents =
+     (Pdf.Dictionary [("/Length", Pdf.Integer 72)], Pdf.Got <abstr>)}
+\end{verbatim}
+\end{framed}
+
+\noindent and add it to the page, and replace the page in the PDF.
+
+\begin{framed}
+\small\begin{verbatim}
+# let page' = {page with Pdfpage.content = [stream]};;
+val page' : Pdfpage.t = ...
+
+# let pdf = Pdfpage.change_pages false pdf [page'];;
+val pdf : Pdf.t = ...
+\end{verbatim}
+\end{framed}
+
+\noindent and show it:
+
+\begin{framed}
+\small\begin{verbatim}
+# show pdf;;
+- : unit ()
+\end{verbatim}
+\end{framed}
+
+\section*{Next Steps}
+
+\noindent CamlPDF is a large piece of software. A good way to get to know it is to study the examples shipped with \textsf{CamlPDF}:
+\smallgap
+
+{\centering\small
+\begin{tabular}{ll}
+\texttt{pdfhello.ml} & Build a "Hello, World!" PDF from scratch\\
+\texttt{pdfdecomp.ml} & Command line utility to decompress a PDF\\
+\texttt{pdfmerge.ml} & Command line utility to merge PDF files\\
+\texttt{pdfdraft.ml} & Command line utility to make draft documents\\
+\texttt{pdftest.ml} & Reads and interprets a file to test CamlPDF's major functionality\\
+\texttt{pdfencrypt.ml} & Command line utility to encrypt a PDF file\\
+\end{tabular}
+}
+
+
+\smallgap
+
+\noindent Summary of \textsf{CamlPDF} modules:
+
+\smallgap
+
+{\centering\small
+\begin{tabular}{lp{10cm}l}
+  \textbf{Module} & \textbf{Description} \\
+Pdfutil &
+General Functions. & \\
+Pdfio &
+Generic Input/Ouput from/to channels, strings, files etc. & \\
+Pdftransform &
+Affine Transformations in Two Dimensions &  \\
+Pdfunits &
+Units and Unit Conversion & \\
+Pdfpaper &
+Media Sizes & \\
+Pdf &
+Representing PDF Files in Memory & \\
+Pdfcrypt &
+Decrypting PDF files & \\
+Pdfflate &
+Interface to miniz.c via Zlib-like functions. & \\
+Pdfcodec &
+Encoding and Decoding PDF Streams & \\
+Pdfwrite &
+Writing PDF Files & \\
+Pdfgenlex &
+A very fast lexer for very basic tokens. & \\
+Pdfread &
+Reading PDF Files & \\
+Pdfjpeg &
+PDF Jpeg Support & \\
+Pdfops &
+Parsing PDF Graphics Streams & \\
+Pdfdest &
+Destinations & \\
+Pdfmarks &
+Bookmarks & \\
+Pdfpagelabels &
+Page Labels & \\
+Pdfpage &
+Page-level functionality & \\
+Pdfannot &
+Annotations & \\
+Pdffun &
+Parsing and Evaluating PDF Functions. & \\
+Pdfspace &
+Colour Spaces & \\
+Pdfimage &
+Extract Images. & \\
+Pdfafm &
+Parse Adobe Font Metrics files & \\
+Pdfafmdata &
+AFM Data for the standard 14 fonts & \\ 
+Pdfglyphlist &
+Glyph Lists & \\
+Pdftext &
+Parsing fonts and extracting text from content streams and PDF strings & \\
+Pdfstandard14 &
+Standard PDF Fonts & \\
+Pdfgraphics &
+Structured Graphics. & \\
+Pdfshapes &
+Basic Shapes & \\
+Pdfdate &
+Representing and Parsing PDF Dates & \\
+Pdfocg &
+Optional Content Groups. & \\
+Pdfcff &
+Convert a CFF Type 1 Font to a Type 3 Font. & \\
+Pdftype1 &
+Convert an PostScript Type 1 Font to a Type 3 Font. & \\
+Pdftruetype &
+Convert a TrueType font to a Type 3 Font. & \\
+Pdftype0 &
+Type 0 font support & \\
+Pdfmerge &
+Merge PDF files, optionally rotating some pages. 
+ \end{tabular}
+}
+
+\smallgap
+\noindent The HTML documentation for CamlPDF is built in \texttt{doc/html/camlpdf} when \textsf{CamlPDF} is built.
+
+\smallgap
+
+\section*{Further Reading}
+The author's book is a suitable introduction to the PDF file format:\\
+\url{http://shop.oreilly.com/product/0636920021483.do}
+
+\vspace{4mm}
+
+\noindent For any serious work, you will need the PDF Reference Manual\\
+\url{http://www.adobe.com/devnet/acrobat/pdfs/PDF32000_2008.pdf}
+
+\vspace{4mm}
+
+\noindent For an introduction to OCaml, the author's book is available:\\
+\url{http://ocaml-book.com} or at Amazon.com
+
+\backmatter
+\printindex
+\end{document}
+

@@ -1,0 +1,15 @@
+*~
+*.o
+*.cmi
+*.cmo
+*.cmx
+*.annot
+._bcdi/
+._d/
+._ncdi/
+camlpdf.a
+camlpdf.cma
+camlpdf.cmxa
+dllcamlpdf_stubs.so
+doc/
+libcamlpdf_stubs.a

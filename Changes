@@ -1,0 +1,44 @@
+2.2 (patchlevel 1, September 2017)
+
+o Code for adding annotations (thanks @waclena)
+o Indirect encryption dictionaries
+o Workaround for Adobe "Error 21" on re-saving encrypted files
+o Fix reading of null objects in streams
+
+2.2 (2017)
+
+o Keeps was_linearized flag with every loaded PDF
+
+2.1 (November 2014)
+
+Technical
+
+o Excised linearization. We recommend qpdflib / qpdf for this task now.
+o Encryption now performed by fast C routines, replacing the OCaml ones
+o Faster parsing of delayed object streams on large files
+o New implementation of Pdf.page_reference_numbers. More robust
+o Faster parsing by using better primitive operations for I/O
+o Tighter spacing of output in Pdfwrite leading to smaller files
+o Fixed pdf_of_pages not to produce duplicate page objects when multiple parts
+of the output pdf come from the same input pdf
+o Pdfpagelabels bug fixes, especially to alphabetic labels
+o Read StemV etc. values from the AFM header directly
+o Object streams may be written uncompressed for manual inspection
+o Recrypting overhauled. Now a first class citizen.
+
+1.7 (30th August 2013)
+
+Technical
+
+o Support for writing with object streams
+o AES256ISO encryption support
+o More compact writing of files
+o Support for reading many malformed files
+
+Other
+
+o Now under a standard LGPL license
+o Has no dependencies
+o First import into git for use with GitHub for open development
+o Support for ocamlfind
+
