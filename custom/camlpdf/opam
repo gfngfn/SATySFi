@@ -1,0 +1,14 @@
+opam-version: "1.2"
+maintainer: "Takuma Ishikawa <nekketsuuu@gmail.com>"
+version: "2.2.1+satysfi"
+authors: [
+  "John Whitington"
+  "gfngfn"
+]
+homepage: "https://github.com/gfngfn/camlpdf"
+bug-reports: "https://github.com/gfngfn/camlpdf/issues"
+dev-repo: "https://github.com/gfngfn/camlpdf.git"
+build: [[make]]
+install: [[make "install"]]
+remove: [["ocamlfind" "remove" "camlpdf"]]
+depends: ["ocamlfind"]

@@ -33,13 +33,6 @@ Here is a list of minimally required softwares.
 * [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
 * ocaml 4.06.0 (installed by OPAM)
 
-Also, we must add an external OPAM repo to build. This can be done by the following command.
-
-```sh
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
-```
-
 #### Example (Ubuntu)
 
 ```sh
@@ -52,9 +45,6 @@ wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh 
 
 opam switch 4.06.0
 eval `opam config env`
-
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
 ```
 
 #### Example (OS X Mavericks or later)
@@ -72,14 +62,11 @@ opam init
 
 opam switch 4.06.0
 eval `opam config env`
-
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
 ```
 
 ### Build
 
-First, clone this repository and submodules. Then build SATySFi using OPAM.
+SATySFi is built using OPAM.
 
 ```sh
 # clone
@@ -87,6 +74,8 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 
 # build
+opam pin add otfm custom/otfm
+opam pin add camlpdf custom/camlpdf
 opam pin add satysfi .
 opam install satysfi
 ```

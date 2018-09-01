@@ -9,8 +9,8 @@ install:
   - wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/master/.travis-ocaml.sh
   - bash -ex .travis-ocaml.sh
   - eval `opam config env`
-  - opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-  - opam update
+  - opam pin add -y otfm custom/otfm
+  - opam pin add -y camlpdf custom/camlpdf
   - opam pin add -y --no-action satysfi .
   - opam install -y --deps-only satysfi
 script:

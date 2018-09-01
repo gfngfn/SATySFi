@@ -34,13 +34,6 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
 * ocaml 4.06.0 （OPAM からインストールします）
 
-また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます。
-
-```sh
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
-```
-
 #### 準備例（Ubuntu）
 
 ```sh
@@ -53,9 +46,6 @@ wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh 
 
 opam switch 4.06.0
 eval `opam config env`
-
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
 ```
 
 #### 準備例（OS X Mavericks 以降）
@@ -73,14 +63,11 @@ opam init
 
 opam switch 4.06.0
 eval `opam config env`
-
-opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
-opam update
 ```
 
 ### ビルド
 
-まず，このリポジトリとサブモジュールを clone します。その後 OPAM を使って SATySFi をビルドします。
+OPAM を使って SATySFi をビルドします。
 
 ```sh
 # clone
@@ -88,6 +75,8 @@ git clone https://github.com/gfngfn/SATySFi.git
 cd SATySFi
 
 # build
+opam pin add otfm custom/otfm
+opam pin add camlpdf custom/camlpdf
 opam pin add satysfi .
 opam install satysfi
 ```

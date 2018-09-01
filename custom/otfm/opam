@@ -5,6 +5,7 @@ authors: [
   "Daniel Bünzli <daniel.buenzl i@erratique.ch>"
   "Takashi Suwa"
 ]
+version: "0.3.0+satysfi"
 doc: "http://erratique.ch/software/otfm/doc/Otfm"
 dev-repo: "http://erratique.ch/repos/otfm.git"
 bug-reports: "https://github.com/dbuenzli/otfm/issues"
@@ -14,7 +15,7 @@ available: [ ocaml-version >= "4.01.0" ]
 depends: [
  "ocamlfind" {build}
  "ocamlbuild" {build}
- "topkg" {build & >= 0.9.0}
+ "topkg" {build & >= "0.9.0"}
  "result"
  "uchar"
  "uutf" {>= "1.0.0"}
