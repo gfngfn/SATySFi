@@ -1,0 +1,3 @@
+PKG result uchar uutf
+S src
+B _build/**
