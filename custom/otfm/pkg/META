@@ -1,0 +1,7 @@
+version = "%%VERSION%%"
+description = "OpenType font decoder for OCaml"
+requires = "result uutf"
+archive(byte) = "otfm.cma"
+archive(native) = "otfm.cmxa"
+plugin(byte) = "otfm.cma"
+plugin(native) = "otfm.cmxs"
