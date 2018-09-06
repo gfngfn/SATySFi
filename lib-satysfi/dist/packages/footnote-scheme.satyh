@@ -13,6 +13,9 @@ end = struct
   let-mutable first-footnote <- true
 
 
+  let bar-ratio = 0.5
+
+
   let start-page () =
     first-footnote <- true
 
@@ -39,11 +42,11 @@ end = struct
           let () = display-message (`'` ^ label ^ `': T`) in  % for debug
           let bar-top-margin = size in
           let bar-bottom-margin = size *' 0.125 in
-          let wid = get-text-width ctx in
+          let wid = get-text-width ctx *' bar-ratio in
           let ib =
             inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
               [ stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y)); ]
-            )
+            ) ++ inline-fil
           in
           line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib
 
