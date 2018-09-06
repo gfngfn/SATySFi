@@ -124,7 +124,9 @@ let rec ops_of_evaled_horz_box (fs : 'o op_funcs) (pbinfo : page_break_info) ypo
 
     | EvHorzInlineGraphics(hgt, dpt, graphics) ->
         let gr =
-          graphics (xpos, yposbaseline)
+          match graphics with
+          | ImGraphicsFixed(grff)    -> grff (xpos, yposbaseline)
+          | ImGraphicsVariable(grvf) -> grvf wid (xpos, yposbaseline)
         in
         let opsgr = pdfops_of_graphics fs pbinfo gr in
         let opaccsub = Alist.append opacc opsgr in
