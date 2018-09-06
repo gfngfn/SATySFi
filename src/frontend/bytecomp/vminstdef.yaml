@@ -2138,6 +2138,22 @@ code: |
     Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
 ---
+inst: BackendInlineGraphicsOuter
+is-pdf-mode-primitive: yes
+name: "inline-graphics-outer"
+type: |
+  ~% (tLN @-> tLN @-> tIGRO @-> tIB)
+
+needs-reducef: yes
+params:
+- hgt : length
+- dpt : length
+- valueg
+code: |
+  let graphics = make_inline_graphics_outer reducef valueg in
+    Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+
+---
 inst: BackendScriptGuard
 is-pdf-mode-primitive: yes
 name: "script-guard"
