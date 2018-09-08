@@ -2,8 +2,8 @@
 
 module Proof : sig
 
-  direct \derive : [math list; math] math-cmd
-  direct \derive-multi : [length; math list; math] math-cmd
+  direct \derive : [math?; math list; math] math-cmd
+  direct \derive-multi : [math?; length; math list; math] math-cmd
 
 end = struct
 
@@ -15,7 +15,7 @@ end = struct
     if len1 <' len2 then len2 else len1
 
 
-  let derive widopt mlst1 m2 =
+  let derive nameopt widopt mlst1 m2 =
     let ib-space =
       match widopt with
       | None    -> inline-skip 30pt
@@ -44,17 +44,32 @@ end = struct
       let color = get-text-color ctx in
       let thickness = 0.5pt in
       let gap = 2pt in
+      let (glnamef, wname) =
+        match nameopt with
+        | None ->
+            ((fun _ -> []), 0pt)
+
+        | Some(name) ->
+            let ib = embed-math ctx name in
+            let (wname, _, _) = get-natural-metrics ib in
+              ((fun pt -> [Gr.text-rightward pt ib]), wname)
+      in
       let bar =
-        inline-graphics w (thickness +' gap) gap (fun (x, y) ->
-          [ fill color (Gr.rectangle (x, y) (x +' w, y +' thickness)); ]
-        )
+          inline-graphics w (thickness +' gap) gap (fun (x, y) ->
+            List.append
+              [ fill color (Gr.rectangle (x, y) (x +' w, y +' thickness)); ]
+              (glnamef (x +' w, y -' (get-axis-height ctx)))
+          )
       in
         line-stack-bottom [ib1; bar; ib2]
+          ++ inline-skip wname
     ))
 
 
-  let-math \derive = derive None
+  let-math \derive ?:nameopt mlst m =
+    derive nameopt None mlst m
 
-  let-math \derive-multi w = derive (Some(w))
+  let-math \derive-multi ?:nameopt w =
+    derive nameopt (Some(w))
 
 end
