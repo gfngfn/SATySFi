@@ -444,6 +444,9 @@ and mathexpr stack = parse
       comment lexbuf;
       mathexpr stack lexbuf
     }
+  | "?:" {
+      OPTIONAL(get_pos lexbuf)
+    }
   | "!{" {
       Stack.push HorizontalState stack;
       skip_spaces lexbuf;
