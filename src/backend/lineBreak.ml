@@ -32,6 +32,16 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
   | LBFixedImage(wid, hgt, _)                 -> (natural wid, hgt, Length.zero)
 
+  | LBOuterFilGraphics(hgt, dpt, _) ->
+      let widinfo =
+        {
+          natural     = Length.zero;
+          shrinkable  = Length.zero;
+          stretchable = Fils(1);
+        }
+      in
+        (widinfo, hgt, dpt)
+
   | LBHookPageBreak(_)
   | LBFootnote(_)
       -> (widinfo_zero, Length.zero, Length.zero)
@@ -152,6 +162,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
 
   | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
+
+  | PHGOuterFilGraphics(hgt, dpt, graphics) ->
+      puref (LBOuterFilGraphics(hgt, dpt, graphics))
 
   | PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
       puref (LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))
@@ -528,7 +541,10 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
 
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
-        ImHorzInlineGraphics(wid, hgt, dpt, graphics)
+        ImHorzInlineGraphics(wid, hgt, dpt, ImGraphicsFixed(graphics))
+
+    | LBOuterFilGraphics(hgt, dpt, graphics) ->
+        ImHorzInlineGraphics(widperfil, hgt, dpt, ImGraphicsVariable(graphics))
 
     | LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
         ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf)

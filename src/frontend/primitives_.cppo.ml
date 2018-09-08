@@ -21,6 +21,7 @@ let tyid_image    = Typeenv.Raw.fresh_type_id "image"
 let tyid_deco     = Typeenv.Raw.fresh_type_id "deco"
 let tyid_decoset  = Typeenv.Raw.fresh_type_id "deco-set"
 let tyid_igraf    = Typeenv.Raw.fresh_type_id "inline-graphics"
+let tyid_igrafo   = Typeenv.Raw.fresh_type_id "inline-graphics-outer"
 
 let ( ~! ) = Range.dummy
 
@@ -75,6 +76,9 @@ let tDECOSET = (~! "deco-set", SynonymType([], tyid_decoset, tDECOSET_raw))
 
 let tIGR_raw = tPT @-> (tL tGR)
 let tIGR = (~! "igraf", SynonymType([], tyid_igraf, tIGR_raw))
+
+let tIGRO_raw = tLN @-> tPT @-> (tL tGR)
+let tIGRO = (~! "igrafo", SynonymType([], tyid_igrafo, tIGRO_raw))
 
 let tPAREN = tLN @-> tLN @-> tLN @-> tLN @-> tCLR @-> tPROD [tIB; tLN @-> tLN]
 

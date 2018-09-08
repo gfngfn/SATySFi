@@ -225,6 +225,10 @@ and decoration = point -> length -> length -> length -> (intermediate_horz_box l
 
 and rules_func = length list -> length list -> (intermediate_horz_box list) GraphicD.t
 
+and fixed_graphics = point -> (intermediate_horz_box list) GraphicD.t
+
+and outer_fil_graphics = length -> point -> (intermediate_horz_box list) GraphicD.t
+
 and pure_horz_box =
 (* -- spaces inserted before text processing -- *)
   | PHSOuterEmpty     of length * length * length
@@ -241,7 +245,8 @@ and pure_horz_box =
   | PHGInnerFrame     of paddings * decoration * horz_box list
   | PHGOuterFrame     of paddings * decoration * horz_box list
   | PHGEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | PHGFixedGraphics  of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
+  | PHGFixedGraphics  of length * length * length * fixed_graphics
+  | PHGOuterFilGraphics of length * length * outer_fil_graphics
   | PHGFixedTabular   of length * length * length * intermediate_row list * length list * length list * rules_func
   | PHGFixedImage     of length * length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "@[PHGFixedImage(...)@]")]
@@ -256,13 +261,17 @@ and horz_box =
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
   | HorzScriptGuard    of CharBasis.script * horz_box list
 
+and intermediate_graphics =
+  | ImGraphicsFixed    of fixed_graphics
+  | ImGraphicsVariable of outer_fil_graphics
+
 and intermediate_horz_box =
   | ImHorz               of evaled_horz_box
   | ImHorzRising         of length * length * length * length * intermediate_horz_box list
   | ImHorzFrame          of length * length * length * decoration * intermediate_horz_box list
   | ImHorzInlineTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | ImHorzEmbeddedVert   of length * length * length * intermediate_vert_box list
-  | ImHorzInlineGraphics of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
+  | ImHorzInlineGraphics of length * length * length * intermediate_graphics
   | ImHorzHookPageBreak  of (page_break_info -> point -> unit)
   | ImHorzFootnote       of intermediate_vert_box list
 
@@ -288,7 +297,7 @@ and evaled_horz_box_main =
   | EvHorzEmpty
   | EvHorzFrame          of length * length * decoration * evaled_horz_box list
   | EvHorzEmbeddedVert   of length * length * evaled_vert_box list
-  | EvHorzInlineGraphics of length * length * (point -> (intermediate_horz_box list) GraphicD.t)
+  | EvHorzInlineGraphics of length * length * intermediate_graphics
   | EvHorzInlineTabular  of length * length * evaled_row list * length list * length list * rules_func
   | EvHorzInlineImage    of length * ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "EvHorzInlineImage(...)")]

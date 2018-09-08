@@ -626,10 +626,19 @@ let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
   )
 
 
-let make_inline_graphics reducef valueg =
+let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
      let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
      let valueret = reducef valueg [valuepos] in
+       graphics_of_list valueret
+  )
+
+
+let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
+  (fun wid (xpos, ypos) ->
+     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+     let valuewid = LengthConstant(wid) in
+     let valueret = reducef valueg [valuewid; valuepos] in
        graphics_of_list valueret
   )
 
