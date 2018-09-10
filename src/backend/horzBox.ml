@@ -203,7 +203,7 @@ type context_main = {
   min_gap_of_lines       : length;
   text_color             : color;
   manual_rising          : length;
-  badness_space          : pure_badness;
+  space_badness          : pure_badness;
   math_variant_char_map  : Uchar.t MathVariantCharMap.t;
     [@printer (fun fmt _ -> Format.fprintf fmt "<math-variant-char-map>")]
   math_class_map         : (Uchar.t list * math_kind) MathClassMap.t;

@@ -104,7 +104,7 @@ let breakable_space lphbf ctx () : lb_box =
   let dscrid = DiscretionaryID.fresh () in
   let lphb1 = lphbf ctx.before_word_break in
   let lphb2 = lphbf ctx.after_word_break in
-    LBDiscretionary(ctx.badness_space, dscrid, [pure_space ctx], lphb1, lphb2)
+    LBDiscretionary(ctx.space_badness, dscrid, [pure_space ctx], lphb1, lphb2)
 
 
 let unbreakable_space ctx : lb_box =
@@ -202,7 +202,7 @@ let pure_space_between_classes (ctx1, script1, lbc1) (ctx2, script2, lbc2) =
 let space_between_chunks info1 alw info2 : lb_box list =
   let (ctx1, script1, lbc1) = info1 in
   let (ctx2, script2, lbc2) = info2 in
-  let badns = max ctx1.badness_space ctx2.badness_space in
+  let badns = max ctx1.space_badness ctx2.space_badness in
   if not (script_equal script1 script2) then
     let size = Length.max ctx1.font_size ctx2.font_size in
       match pure_space_between_scripts size script1 lbc1 script2 lbc2 with

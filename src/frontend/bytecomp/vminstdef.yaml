@@ -2947,8 +2947,23 @@ code : |
   exec (func :: (List.rev_append lst stack)) env code dump
 
 ---
+inst: PrimitiveSetWordBreakPenalty
+is-pdf-mode-primitive: yes
+name: "set-word-break-penalty"
+type: |
+  ~% (tI @-> tCTX @-> tCTX)
+
+params:
+- pnlty : int
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.{ ctx with
+    space_badness = pnlty;
+  }, valuecmd)
+
+---
 inst: PrimitiveSetEveryWordBreak
-is-pdf-mode-primitive : yes
+is-pdf-mode-primitive: yes
 name: "set-every-word-break"
 type: |
   ~% (tIB @-> tIB @-> tCTX @-> tCTX)
@@ -2962,6 +2977,20 @@ code: |
     before_word_break = hblst1;
     after_word_break = hblst2;
   }), valuecmd)
+
+---
+inst: PrimitiveGetEveryWordBreak
+is-pdf-mode-primitive: yes
+name: "get-every-word-break"
+type: |
+  ~% (tCTX @-> tPROD [tIB; tIB])
+
+params:
+- (ctx, _) : context
+code: |
+  let hblst1 = ctx.HorzBox.before_word_break in
+  let hblst2 = ctx.HorzBox.after_word_break in
+    TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
 
 ---
 inst: BackendProbeCrossReference
