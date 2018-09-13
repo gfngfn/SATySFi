@@ -2,8 +2,8 @@
 
 module Proof : sig
 
-  direct \derive : [math?; math list; math] math-cmd
-  direct \derive-multi : [math?; length; math list; math] math-cmd
+  direct \derive : [math?; bool?; math list; math] math-cmd
+  direct \derive-multi : [math?; bool?; length; math list; math] math-cmd
 
 end = struct
 
@@ -15,7 +15,7 @@ end = struct
     if len1 <' len2 then len2 else len1
 
 
-  let derive nameopt widopt mlst1 m2 =
+  let derive nameopt bopt widopt mlst1 m2 =
     let ib-space =
       match widopt with
       | None    -> inline-skip 30pt
@@ -52,6 +52,12 @@ end = struct
         | Some(name) ->
             let ib = embed-math ctx name in
             let (wname, _, _) = get-natural-metrics ib in
+            let wname =
+              match bopt with
+              | None        -> wname
+              | Some(false) -> wname
+              | Some(true)  -> 0pt
+            in
               ((fun pt -> [Gr.text-rightward pt ib]), wname)
       in
       let bar =
@@ -66,10 +72,10 @@ end = struct
     ))
 
 
-  let-math \derive ?:nameopt mlst m =
-    derive nameopt None mlst m
+  let-math \derive ?:nameopt ?:bopt mlst m =
+    derive nameopt bopt None mlst m
 
-  let-math \derive-multi ?:nameopt w =
-    derive nameopt (Some(w))
+  let-math \derive-multi ?:nameopt ?:bopt w =
+    derive nameopt bopt (Some(w))
 
 end
