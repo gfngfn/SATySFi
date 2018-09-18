@@ -147,10 +147,15 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
           match ans.rest with
           | None ->
               let evvbaccnew =
-                let decosub =
+                let (decosub, pads) =
+(*
                   match midway with
-                  | Midway    -> decoT
-                  | Beginning -> decoS
+                  | Midway    -> (decoT, { pads with paddingT = Length.zero; })
+                  | Beginning -> (decoS, pads)
+*)
+                  match midway with
+                  | Midway    -> (decoT, pads)
+                  | Beginning -> (decoS, pads)
                 in
                   Alist.extend (Alist.cat evvbacc evvbaccdiscardable)
                     (EvVertFrame(pads, pbinfo, decosub, wid, ans.body))
@@ -166,10 +171,15 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
 
           | Some(pbvbrestsub) ->
               let evvbaccret =
-                let decosub =
+                let (decosub, pads) =
+(*
                   match midway with
-                  | Midway    -> decoM
-                  | Beginning -> decoH
+                  | Midway    -> (decoM, { pads with paddingT = Length.zero; paddingB = Length.zero; })
+                  | Beginning -> (decoH, { pads with paddingB = Length.zero; })
+*)
+                  match midway with
+                  | Midway    -> (decoM, pads)
+                  | Beginning -> (decoH, pads)
                 in
                   Alist.extend (Alist.cat evvbacc evvbaccdiscardable)
                     (EvVertFrame(pads, pbinfo, decosub, wid, ans.body))
