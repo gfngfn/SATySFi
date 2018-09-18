@@ -1,4 +1,4 @@
-opam-version: "1.2"
+opam-version: "2.0"
 name: "satysfi"
 version: "0.0.2"
 maintainer: "gfngfn"
@@ -6,12 +6,28 @@ authors: [
   "gfngfn"
 ]
 homepage: "https://github.com/gfngfn/SATySFi"
-dev-repo: "https://github.com/gfngfn/SATySFi.git"
+dev-repo: "git+https://github.com/gfngfn/SATySFi.git"
 bug-reports: "https://github.com/gfngfn/SATySFi/issues"
+extra-source "lm2.004otf.zip" {
+  archive: "http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
+  checksum: [
+    "sha256=5b0236051d3728be6616f1b274e3b910473875b5a3ef9382f0ef00384ddb161b"
+    "sha512=c63068c86590e768498ef5f68a17a737aa40981432d8f6366c29760ea032a603ddd3d748d348ab259beba77966c292f9382b1fe9eb7a78af0926c6abc71f6f81"
+  ]
+}
+extra-source "latinmodern-math-1959.zip" {
+  archive: "http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
+  checksum: [
+    "sha256=aaaa060b4ffc091461e875efb9498b9abfa7c7a48f38eb33882868839903a4f8"
+    "sha512=b4fb4b575107b56eee0fed7971b09d334d4b162842675cf5f5ff7cb12e08099fb00755c81ddc1f04138f87b216592299028906165e2cec43521c6ca61b466d4c"
+  ]
+}
 build: [
-  ["echo" "\"begin to build SATySFi\""]
+  ["mkdir" "-p" "temp"]
+  ["unzip" "lm2.004otf.zip" "*.otf" "-d" "lib-satysfi/dist/fonts/"]
+  ["unzip" "latinmodern-math-1959.zip" "*.otf" "-d" "temp/"]
+  ["cp" "temp/latinmodern-math-1959/otf/latinmodern-math.otf" "lib-satysfi/dist/fonts/"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%"]
-  [make "-f" "Makefile" "lib" "PREFIX=%{prefix}%"]
 ]
 install: [
   [make "-f" "Makefile" "install" "PREFIX=%{prefix}%"]
@@ -21,6 +37,7 @@ remove: [
 ]
 # Packages whose version suffix is "+satysfi" are distributed on satysfi-external-repo.
 depends: [
+  "ocaml" {>= "4.06.0"}
   "batteries"
   "camlimages" {>= "5.0.1"}
   "camlpdf" {= "2.2.1+satysfi"}
@@ -35,4 +52,3 @@ depends: [
   "uutf"
   "yojson"
 ]
-available: [ ocaml-version >= "4.06.0" ]
