@@ -30,7 +30,7 @@ Here is a list of minimally required softwares.
 * unzip
 * wget or curl
 * ruby
-* [opam](https://opam.ocaml.org/) 1.2 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
+* [opam](https://opam.ocaml.org/) 2.0 (Installation instructions are [here](https://opam.ocaml.org/doc/Install.html).)
 * ocaml 4.06.0 (installed by OPAM)
 
 Also, we must add an external OPAM repo to build. This can be done by the following command.
@@ -44,13 +44,14 @@ opam update
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git m4 unzip wget
+sudo apt-get install build-essential git m4 unzip curl
+
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
 # The following command will ask if you allow OPAM to modify some files (e.g. ~/.bash_profile).
 # Be sure to read its instructions. Otherwise, some environment variables won't be set.
-wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
+opam init --comp 4.06.0
 
-opam switch 4.06.0
 eval `opam config env`
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
@@ -68,9 +69,8 @@ brew install opam
 
 # The following command will ask if OPAM modifies some files.
 # Be sure to read their instructions. Otherwise, some environment variables won't be set.
-opam init
+opam init --comp 4.06.0
 
-opam switch 4.06.0
 eval `opam config env`
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
