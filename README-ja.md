@@ -53,7 +53,7 @@ sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.
 # 必ず説明を読み，環境変数を適切に設定してください。
 opam init --comp 4.06.0
 
-eval `opam config env`
+eval $(opam env)
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
@@ -72,7 +72,7 @@ brew install opam
 # 必ず説明を読み，環境変数を適切に設定してください。
 opam init --comp 4.06.0
 
-eval `opam config env`
+eval $(opam env)
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
