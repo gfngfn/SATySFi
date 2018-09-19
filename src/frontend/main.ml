@@ -745,7 +745,7 @@ let setup_root_dirs () =
       | None    -> []
       | Some(s) -> [s]
     else
-      ["/usr/local/share/satysfi"; "/usr/share/satysfi"]
+      [Filename.concat (Filename.dirname Sys.executable_name) "../share/satysfi"; "/usr/local/share/satysfi"; "/usr/share/satysfi"]
   in
   let user_dirs =
     if Sys.os_type = "Win32" then
