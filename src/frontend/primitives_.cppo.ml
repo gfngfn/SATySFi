@@ -272,6 +272,18 @@ let rec lambda5 astf env =
                   | [a1;a2;a3;a4;a5] -> astf a1 a2 a3 a4 a5
                   | _ -> failwith "internal error")
 
+let rec lambda6 astf env =
+  let evid1 = EvalVarID.fresh (dr, "(dummy:lambda6-1)") in
+  let evid2 = EvalVarID.fresh (dr, "(dummy:lambda6-2)") in
+  let evid3 = EvalVarID.fresh (dr, "(dummy:lambda6-3)") in
+  let evid4 = EvalVarID.fresh (dr, "(dummy:lambda6-4)") in
+  let evid5 = EvalVarID.fresh (dr, "(dummy:lambda6-5)") in
+  let evid6 = EvalVarID.fresh (dr, "(dummy:lambda6-6)") in
+    lamenv env evid1 6 (lam evid2 (lam evid3 (lam evid4 (lam evid5 (lam evid6 (astf (!- evid1) (!- evid2) (!- evid3) (!- evid4) (!- evid5) (!- evid6)))))))
+      (fun lst -> match lst with
+                  | [a1;a2;a3;a4;a5;a6] -> astf a1 a2 a3 a4 a5 a6
+                  | _ -> failwith "internal error")
+
 
 let pdfpt = Length.of_pdf_point
 
@@ -451,6 +463,17 @@ let default_font_scheme_ref = ref CharBasis.ScriptSchemeMap.empty
 
 let default_hyphen_dictionary = ref LoadHyph.empty
 
+
+let default_script_space_map =
+  let space_latin_cjk = (0.24, 0.08, 0.16) in
+  let open CharBasis in
+    ScriptSpaceMap.empty
+      |> ScriptSpaceMap.add (Latin, HiraganaOrKatakana) space_latin_cjk
+      |> ScriptSpaceMap.add (HiraganaOrKatakana, Latin) space_latin_cjk
+      |> ScriptSpaceMap.add (Latin, HanIdeographic) space_latin_cjk
+      |> ScriptSpaceMap.add (HanIdeographic, Latin) space_latin_cjk
+
+
 let get_pdf_mode_initial_context wid =
   let open HorzBox in
     {
@@ -462,6 +485,7 @@ let get_pdf_mode_initial_context wid =
       dominant_wide_script   = CharBasis.OtherScript;
       dominant_narrow_script = CharBasis.OtherScript;
       langsys_scheme         = CharBasis.ScriptSchemeMap.empty;
+      script_space_map       = default_script_space_map;
       space_natural          = 0.33;
       space_shrink           = 0.08;
       space_stretch          = 0.16;

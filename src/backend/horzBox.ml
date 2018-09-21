@@ -190,6 +190,8 @@ type context_main = {
   math_font              : math_font_abbrev;
   dominant_wide_script   : CharBasis.script;
   dominant_narrow_script : CharBasis.script;
+  script_space_map       : (float * float * float) CharBasis.ScriptSpaceMap.t;
+    [@printer (fun fmt _ -> Format.fprintf fmt "<map>")]
   space_natural          : float;
   space_shrink           : float;
   space_stretch          : float;

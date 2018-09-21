@@ -27,10 +27,28 @@ let half_kern (hsinfo : horz_string_info) : lb_pure_box =
   LBAtom((natural (hsinfo.text_font_size *% -0.5), Length.zero, Length.zero), EvHorzEmpty)
 
 
-let pure_space_between_scripts size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
+let pure_space_between_scripts ctx1 ctx2 size (script1 : script) (lbc1 : line_break_class) (script2 : script) (lbc2 : line_break_class) =
   if is_open_punctuation lbc1 || is_close_punctuation lbc2 then
     None
   else
+    match
+      (ctx1.script_space_map |> ScriptSpaceMap.find_opt (script1, script2),
+       ctx2.script_space_map |> ScriptSpaceMap.find_opt (script1, script2))
+    with
+    | (None, None) ->
+        None
+
+    | (Some(tuple), None)
+    | (None, Some(tuple)) ->
+        let (r0, r1, r2) = tuple in
+          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
+
+    | (Some(tuple1), Some(tuple2)) ->
+        let (r10, r11, r12) = tuple1 in
+        let (r20, r21, r22) = tuple2 in
+        let (r0, r1, r2) = (max r10 r20, max r11 r21, max r12 r22) in
+          Some(LBAtom((natural (size *% r0), size *% r1, size *% r2), EvHorzEmpty))
+(*
     match (script1, script2) with
     | (HanIdeographic    , Latin             )
     | (Latin             , HanIdeographic    )
@@ -40,7 +58,7 @@ let pure_space_between_scripts size (script1 : script) (lbc1 : line_break_class)
         Some(LBAtom((natural (size *% 0.24), size *% 0.08, size *% 0.16), EvHorzEmpty))
           (* temporary; shold refer to the context for spacing information between two scripts *)
     | _ -> None
-
+*)
 
 let space_width_info ctx : length_info =
   let size = ctx.font_size in
@@ -205,7 +223,7 @@ let space_between_chunks info1 alw info2 : lb_box list =
   let badns = max ctx1.space_badness ctx2.space_badness in
   if not (script_equal script1 script2) then
     let size = Length.max ctx1.font_size ctx2.font_size in
-      match pure_space_between_scripts size script1 lbc1 script2 lbc2 with
+      match pure_space_between_scripts ctx1 ctx2 size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
           [discretionary_if_breakable alw badns lphb ()]
 
@@ -228,7 +246,7 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
   let (ctx2, script2, lbc2) = info2 in
   if not (script_equal script1 script2) then
     let size = Length.max ctx1.font_size ctx2.font_size in
-      match pure_space_between_scripts size script1 lbc1 script2 lbc2 with
+      match pure_space_between_scripts ctx1 ctx2 size script1 lbc1 script2 lbc2 with
       | Some(lphb) ->
           [lphb]
 

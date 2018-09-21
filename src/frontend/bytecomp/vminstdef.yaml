@@ -1715,6 +1715,49 @@ code: |
   }), valuecmd)
 
 ---
+inst: PrimitiveSetSpaceRatioBetweenScripts
+is-pdf-mode-primitive: yes
+name: "set-space-ratio-between-scripts"
+type: |
+  ~% (tFL @-> tFL @-> tFL @-> tSCR @-> tSCR @-> tCTX @-> tCTX)
+
+params:
+- ratio_natural : float
+- ratio_shrink : float
+- ratio_stretch : float
+- script1 : script
+- script2 : script
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    script_space_map =
+      ctx.script_space_map |> CharBasis.ScriptSpaceMap.add
+        (script1, script2)
+        (max 0. ratio_natural, max 0. ratio_shrink, max 0. ratio_stretch)
+  }), valuecmd)
+
+---
+inst: PrimitiveGetSpaceRatioBetweenScripts
+is-pdf-mode-primitive: yes
+name: "get-space-ratio-between-scripts"
+type: |
+  ~% (tCTX @-> tSCR @-> tSCR @-> tOPT (tPROD [tFL; tFL; tFL]))
+
+params:
+- (ctx, _) : context
+- script1 : script
+- script2 : script
+code: |
+  match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script2) with
+  | None ->
+      Constructor("None", UnitConstant)
+
+  | Some((r0, r1, r2)) ->
+      Constructor("Some", TupleCons(FloatConstant(r0),
+                            TupleCons(FloatConstant(r1),
+                              TupleCons(FloatConstant(r2), EndOfTuple))))
+
+---
 inst: PrimitiveSetParagraphMargin
 is-pdf-mode-primitive: yes
 name: "set-paragraph-margin"
