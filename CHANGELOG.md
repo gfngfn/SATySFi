@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Does NOT insert spacing between different scripts when the line breaking class of the posterior charcter is CL, CP, QU, NS, JLCP, JLNS, JLCM, or JLFS
+
+# Changed
+- Supports the application of math commands to optional arguments
 
 ## [0.0.2] - 2018-08-09
 ### Fixed

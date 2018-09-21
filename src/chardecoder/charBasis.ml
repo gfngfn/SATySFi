@@ -128,7 +128,7 @@ let is_open_punctuation = function
 
 
 let is_close_punctuation = function
-  | CL | CP | QU | JLCP
+  | CL | CP | QU | NS | JLCP | JLNS | JLCM | JLFS
       -> true
   | _ -> false
 
