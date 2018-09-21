@@ -19,6 +19,7 @@ module Math : sig
   direct \math-skip : [length] math-cmd
   direct \math-color : [color; math] math-cmd
   val join : math -> math list -> math
+  val half-length : length -> length -> length -> length -> length
 
   direct \mathord : [math] math-cmd
   direct \mathbin : [math] math-cmd
