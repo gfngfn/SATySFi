@@ -17,7 +17,7 @@ end = struct
 
   let item-indent = 16pt
   let item-gap = 10pt
-  let item-gap-top = 6pt
+  let item-gap-outer = 6pt
 
 
   let bullet color (x, y) =
@@ -69,17 +69,17 @@ end = struct
 %            line-break true false (ctx |> set-paragraph-margin 0pt item-gap) inline-fil;
           ]
         in
-        let bblst-children = List.map (listing-item ctx (depth + 1)) children in
+        let bblst-children = List.map (listing-item-breakable ctx (depth + 1)) children in
           bb-parent +++> bblst-children
 
 
   let listing break ctx (Item(_, itmzlst)) =
     if break then
       let bblst = List.map (listing-item-breakable ctx 0) itmzlst in
-        block-skip item-gap-top +++ (block-nil +++> bblst)
+        block-skip item-gap-outer +++ (block-nil +++> bblst) +++ block-skip item-gap-outer
     else
       let bblst = List.map (listing-item ctx 0) itmzlst in
-        block-skip item-gap-top +++ (block-nil +++> bblst)
+        block-skip item-gap-outer +++ (block-nil +++> bblst) +++ block-skip item-gap-outer
 
 
   let-block ctx +listing ?:breakopt item =
@@ -112,13 +112,19 @@ end = struct
             ((inline-skip parent-indent) ++ ib-index ++ ib-parent)
 
 
-  let-block ctx +enumerate (Item(_, itmzlst)) =
+  let enumerate ctx (Item(_, itmzlst)) =
     let bblst = List.mapi (fun i -> enumerate-item (i + 1) ctx 0) itmzlst in
-      block-skip item-gap-top +++ (block-nil +++> bblst)
+    block-nil +++> bblst
+
+
+  let-block ctx +enumerate item =
+    enumerate ctx item
 
 
   let-inline ctx \enumerate item =
+    let bb = enumerate ctx item in
     inline-fil ++
-      embed-block-breakable ctx (read-block ctx '<+enumerate(item);>)
+      embed-block-breakable ctx
+        (block-skip item-gap-outer +++ bb +++ block-skip item-gap-outer)
 
 end
