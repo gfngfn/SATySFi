@@ -2478,6 +2478,20 @@ code: |
   StringConstant(string_of_int num)
 
 ---
+inst: PrimitiveShowFloat
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "show-float"
+type: |
+  ~% (tFL @-> tS)
+
+params:
+- fl : float
+code: |
+  StringConstant(string_of_float fl)
+
+
+---
 inst: PrimitiveFloat
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes
