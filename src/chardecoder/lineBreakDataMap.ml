@@ -428,7 +428,7 @@ let cut_into_segment_record (bilst : (Uchar.t * line_break_class) list) : segmen
 let proj_segrcd segrcd = segrcd.line_break_class
 
 
-let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_element list =
+let append_break_opportunity (uchlst : Uchar.t list) (alwlast : break_opportunity) : break_opportunity * line_break_element list =
 
   let should_prevent_break (trirev : line_break_element list) segrcdlst =
     let alwopt = find_first_match line_break_rule proj_tri proj_segrcd trirev segrcdlst in
@@ -449,7 +449,23 @@ let append_break_opportunity (uchlst : Uchar.t list) (alw_last : break_opportuni
         begin
           match bitail with
           | [] ->
-              Alist.to_list (Alist.extend triacc (uchseg, lbc, alw_last))
+              let alw =
+                match alwlast with
+                | PreventBreak ->
+                    PreventBreak
+
+                | AllowBreak ->
+(*
+                    PreventBreak
+*)
+                    if segrcd.end_with_ZWJ then
+                      PreventBreak
+                    else
+                      let b = should_prevent_break ((uchseg, lbc, PreventBreak (* dummy *)) :: (Alist.to_list_rev triacc)) bitail in
+                      if b then PreventBreak else AllowBreak
+
+              in
+              Alist.to_list (Alist.extend triacc (uchseg, lbc, alw))
 
           | _ :: _ ->
               let alw =

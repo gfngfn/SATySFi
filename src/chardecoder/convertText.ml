@@ -9,14 +9,14 @@ open LineBreakBox
 type chunk_info = context_main * script * line_break_class
 
 
-let to_chunk_main_list ctx uchlst alw : break_opportunity * line_break_chunk_main list =
-  let (alwfirst, trilst) = LineBreakDataMap.append_break_opportunity uchlst alw in
+let to_chunk_main_list ctx uchlst alwlast : break_opportunity * line_break_chunk_main list =
+  let (alwfirst, trilst) = LineBreakDataMap.append_break_opportunity uchlst alwlast in
   let scrlst = ScriptDataMap.divide_by_script ctx trilst in
   (alwfirst, scrlst)
 
 
-let to_chunks ctx uchlst alw : break_opportunity * line_break_chunk list =
-  let (alwfirst, scrlstsp) = to_chunk_main_list ctx uchlst alw in
+let to_chunks ctx uchlst alwlast : break_opportunity * line_break_chunk list =
+  let (alwfirst, scrlstsp) = to_chunk_main_list ctx uchlst alwlast in
   let chunklst =
     scrlstsp |> List.map (fun chunkmain -> (ctx, chunkmain))
   in

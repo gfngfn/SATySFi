@@ -115,10 +115,10 @@ let append_chunks (chunkacc : line_break_chunk Alist.t) (alwmid : CharBasis.brea
       end
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alw : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alwlast : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
-      chunkf (ConvertText.to_chunks ctx uchlst alw)
+      chunkf (ConvertText.to_chunks ctx uchlst alwlast)
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, otxt) ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
@@ -185,10 +185,10 @@ let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pur
     convert_pure_box_for_line_breaking_scheme listf puref chunkf CharBasis.PreventBreak phb
 
 
-let convert_pure_box_for_line_breaking listf alw (phb : pure_horz_box) : lb_either =
+let convert_pure_box_for_line_breaking listf alwlast (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
   let chunkf (alwfirst, c) = TextChunks(alwfirst, c) in
-    convert_pure_box_for_line_breaking_scheme listf puref chunkf alw phb
+  convert_pure_box_for_line_breaking_scheme listf puref chunkf alwlast phb
 
 
 let can_break_before tail =
@@ -244,8 +244,8 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
           aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vblst)))) tail
 
     | HorzPure(phb) :: tail ->
-        let alw = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
-        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alw phb in
+        let alwlast = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
+        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alwlast phb in
           aux (Alist.extend lbeacc lbe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
