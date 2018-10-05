@@ -34,5 +34,6 @@ depends: [
   "ppx_deriving"
   "uutf"
   "yojson"
+  "omd"
 ]
 available: [ ocaml-version >= "4.06.0" ]

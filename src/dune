@@ -12,6 +12,7 @@
             otfm
             uutf
             yojson
+            omd
             )
  (preprocess (pps
               ppx_deriving.show
