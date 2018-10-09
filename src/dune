@@ -23,6 +23,7 @@
 ;; https://github.com/ocaml/dune/issues/109
 (copy_files# backend/*.{ml,mli})
 (copy_files# text-mode/*.{ml,mli})
+(copy_files# md/*.{ml,mli})
 (copy_files# chardecoder/*.{ml,mli})
 (copy_files  chardecoder/*.{mll,mly})
 (copy_files# frontend/*.{ml,mli})

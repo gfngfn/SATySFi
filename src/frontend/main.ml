@@ -7,6 +7,35 @@ open Types
 open Display
 
 
+let _ =  (* TEMPORARY *)
+  let cmdrcd =
+    let open DecodeMD in
+    {
+      paragraph          = ([], "+p");
+      hr                 = ([], "+hr");
+      h1                 = ([], "+h1");
+      h2                 = ([], "+h2");
+      h3                 = ([], "+h3");
+      h4                 = ([], "+h4");
+      h5                 = ([], "+h5");
+      h6                 = ([], "+h6");
+      ul_inline          = ([], "+ul");
+      ul_block           = ([], "+ulb");
+      ol_inline          = ([], "+ol");
+      ol_block           = ([], "+olb");
+      code_block_map     = CodeNameMap.empty;
+      code_block_default = ([], "\\code");
+
+      emph               = ([], "\\emph");
+      bold               = ([], "\\bold");
+      hard_break         = ([], "\\br");
+      code_map           = CodeNameMap.empty;
+      code_default       = ([], "+code");
+    }
+  in
+  DecodeMD.decode cmdrcd "the quick brown fox"
+
+
 type file_path = string
 
 

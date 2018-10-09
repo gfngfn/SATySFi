@@ -1,7 +1,12 @@
 
+open Types_
+
+
+type section_level =
+  | H1 | H2 | H3 | H4 | H5 | H6
 
 type block_element =
-  | Section of inline * block
+  | Section of section_level * inline * block
   | Paragraph of inline
   | UlBlock of block list
   | UlInline of inline list
@@ -128,21 +133,185 @@ let normalize_section nomf (md : Omd.t) =
       (midrcd.pre_contents, Alist.to_list mainacc)
 
 
-let normalize_h3 md =
-  let (pre, inner) = normalize_section (function Omd.H3(heading) -> Some(heading) | _ -> None) md in
-  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(heading, make_block mdsub)))
+let normalize_h seclev nomf subf md =
+  let (pre, inner) = normalize_section nomf md in
+  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
 
 
-let normalize_h2 md =
-  let (pre, inner) = normalize_section (function Omd.H2(heading) -> Some(heading) | _ -> None) md in
-  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(heading, normalize_h3 mdsub)))
+let normalize_h6 = normalize_h H6 (function Omd.H6(heading) -> Some(heading) | _ -> None) make_block
+let normalize_h5 = normalize_h H5 (function Omd.H5(heading) -> Some(heading) | _ -> None) normalize_h6
+let normalize_h4 = normalize_h H4 (function Omd.H4(heading) -> Some(heading) | _ -> None) normalize_h5
+let normalize_h3 = normalize_h H3 (function Omd.H3(heading) -> Some(heading) | _ -> None) normalize_h4
+let normalize_h2 = normalize_h H2 (function Omd.H2(heading) -> Some(heading) | _ -> None) normalize_h3
+let normalize_h1 = normalize_h H1 (function Omd.H1(heading) -> Some(heading) | _ -> None) normalize_h2
 
 
-let normalize_h1 md =
-  let (pre, inner) = normalize_section (function Omd.H1(heading) -> Some(heading) | _ -> None) md in
-  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(heading, normalize_h2 mdsub)))
+module CodeNameMap = Map.Make(String)
 
 
-let decode s =
+type command = module_name list * var_name
+
+type command_record = {
+  paragraph          : command;
+  hr                 : command;
+  h1                 : command;
+  h2                 : command;
+  h3                 : command;
+  h4                 : command;
+  h5                 : command;
+  h6                 : command;
+  ul_inline          : command;
+  ul_block           : command;
+  ol_inline          : command;
+  ol_block           : command;
+  code_block_map     : command CodeNameMap.t;
+  code_block_default : command;
+
+  emph               : command;
+  bold               : command;
+  hard_break         : command;
+  code_map           : command CodeNameMap.t;
+  code_default       : command;
+}
+
+
+let dummy_range = Range.dummy "decodeMD"
+
+
+let make_list_tree utastlst =
+  List.fold_right (fun utast utasttail ->
+    (dummy_range, UTListCons(utast, utasttail))
+  ) utastlst (dummy_range, UTEndOfList)
+
+
+let make_inline_application ((mdlnmlst, cmdnm) : command) (utasts : untyped_abstract_tree list) =
+  let utastcmd = (dummy_range, UTContentOf(mdlnmlst, cmdnm)) in
+  [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+
+
+let make_block_application ((mdlnmlst, cmdnm) : command) (utasts : untyped_abstract_tree list) =
+  let utastcmd = (dummy_range, UTContentOf(mdlnmlst, cmdnm)) in
+  [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
+
+
+let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element) : untyped_input_horz_element list =
+  match ilne with
+  | Text(s) ->
+      [(dummy_range, UTInputHorzText(s))]
+
+  | Emph(iln) ->
+      let utastarg = convert_inline cmdrcd iln in
+      make_inline_application cmdrcd.emph [utastarg]
+
+  | Bold(iln) ->
+      let utastarg = convert_inline cmdrcd iln in
+      make_inline_application cmdrcd.bold [utastarg]
+
+
+  | Code(name, s) ->
+      let cmd =
+        match cmdrcd.code_map |> CodeNameMap.find_opt name with
+        | None ->
+            Format.printf "Warning: unknown name '%s' for inline code" name;
+              (* -- temporary; should warn in a more sophisticated manner -- *)
+            cmdrcd.code_default
+
+        | Some(cmd) ->
+            cmd
+      in
+      let utastarg = (dummy_range, UTStringConstant(s)) in
+      make_inline_application cmd [utastarg]
+
+  | Br ->
+      make_inline_application cmdrcd.hard_break []
+
+  | InlineRaw(s) ->
+      [(dummy_range, UTInputHorzText(s))]
+
+
+and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_tree =
+  let ibacc =
+    iln |> List.fold_left (fun ibacc ilne ->
+      Alist.append ibacc (convert_inline_element cmdrcd ilne)
+    ) Alist.empty
+  in
+  let utih = Alist.to_list ibacc in
+  (dummy_range, UTInputHorz(utih))
+
+
+let rec convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
+  match blke with
+  | Paragraph(iln) ->
+      let utastarg = convert_inline cmdrcd iln in
+      make_block_application cmdrcd.paragraph [utastarg]
+
+  | Section(seclev, iln, blk) ->
+      let utastarg1 = convert_inline cmdrcd iln in
+      let utastarg2 = convert_block cmdrcd blk in
+      let cmd =
+        match seclev with
+        | H1 -> cmdrcd.h1
+        | H2 -> cmdrcd.h2
+        | H3 -> cmdrcd.h3
+        | H4 -> cmdrcd.h4
+        | H5 -> cmdrcd.h5
+        | H6 -> cmdrcd.h6
+      in
+      make_block_application cmd [utastarg1; utastarg2]
+
+  | Hr ->
+      make_block_application cmdrcd.hr []
+
+  | OlInline(ilns) ->
+      let utastlst = List.map (convert_inline cmdrcd) ilns in
+      let utastarg = make_list_tree utastlst in
+      make_block_application cmdrcd.ol_inline [utastarg]
+
+  | OlBlock(blks) ->
+      let utastlst = List.map (convert_block cmdrcd) blks in
+      let utastarg = make_list_tree utastlst in
+      make_block_application cmdrcd.ol_block [utastarg]
+
+  | UlInline(ilns) ->
+      let utastlst = List.map (convert_inline cmdrcd) ilns in
+      let utastarg = make_list_tree utastlst in
+      make_block_application cmdrcd.ul_inline [utastarg]
+
+  | UlBlock(blks) ->
+      let utastlst = List.map (convert_block cmdrcd) blks in
+      let utastarg = make_list_tree utastlst in
+      make_block_application cmdrcd.ul_block [utastarg]
+
+  | CodeBlock(name, s) ->
+      let utastarg = (dummy_range, UTStringConstant(s)) in
+      let cmd =
+        match cmdrcd.code_block_map |> CodeNameMap.find_opt name with
+        | None ->
+            Format.printf "unknown name '%s' for code block\n" name;
+              (* temporary; should warn in a more sophisticated manner *)
+            cmdrcd.code_block_default
+
+        | Some(cmd) ->
+            cmd
+      in
+      make_block_application cmd [utastarg]
+
+  | BlockRaw(s) ->
+      let cmd = cmdrcd.paragraph in  (* temporary; maybe should use another command 'cmdrcd.err_block' *)
+      make_block_application cmd [(dummy_range, UTStringConstant(s))]
+
+
+and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
+  let bbacc =
+    blk |> List.fold_left (fun bbacc blke ->
+      Alist.append bbacc (convert_block_element cmdrcd blke)
+    ) Alist.empty
+  in
+  let utiv = Alist.to_list bbacc in
+  (dummy_range, UTInputVert(utiv))
+
+
+let decode (cmdrcd : command_record) (s : string) : untyped_abstract_tree =
   let md = Omd.of_string s in
-    normalize_h1 md
+  let blk = normalize_h1 md in
+  convert_block cmdrcd blk
