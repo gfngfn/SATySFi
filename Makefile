@@ -17,14 +17,16 @@ ATTYPE_GEN=$(FRONTEND)/__attype.gen.ml
 VM_GEN=$(BYTECOMP)/__vm.gen.ml
 IR_GEN=$(BYTECOMP)/__ir.gen.ml
 EVAL_GEN=$(FRONTEND)/__evaluator.gen.ml
-PRIM_GEN=$(FRONTEND)/__primitives.gen.ml
+PRIM_PDF_GEN=$(FRONTEND)/__primitives_pdf_mode.gen.ml
+PRIM_TEXT_GEN=$(FRONTEND)/__primitives_text_mode.gen.ml
 GENS= \
   $(INSTTYPE_GEN) \
   $(ATTYPE_GEN) \
   $(VM_GEN) \
   $(IR_GEN) \
   $(EVAL_GEN) \
-  $(PRIM_GEN)
+  $(PRIM_PDF_GEN) \
+  $(PRIM_TEXT_GEN)
 
 .PHONY: all gen install lib uninstall clean
 
@@ -49,8 +51,11 @@ $(IR_GEN): $(INSTDEF) $(GENCODE)
 $(EVAL_GEN): $(INSTDEF) $(GENCODE)
 	$(RUBY) $(GENCODE) --gen-interps $(INSTDEF) > $@
 
-$(PRIM_GEN): $(INSTDEF) $(GENCODE)
-	$(RUBY) $(GENCODE) --gen-prims $(INSTDEF) > $@
+$(PRIM_PDF_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-pdf-mode-prims $(INSTDEF) > $@
+
+$(PRIM_TEXT_GEN): $(INSTDEF) $(GENCODE)
+	$(RUBY) $(GENCODE) --gen-text-mode-prims $(INSTDEF) > $@
 
 install: $(TARGET)
 	mkdir -p $(BINDIR)

@@ -22,23 +22,24 @@
 #
 # To add a new primitive,
 #   1. Add a new instruction definition to this file.
-#      (`is-primitive` should be yes.)
+#      (`is-pdf-mode-primitive` or `is-text-mode-primitive` should be yes.)
 #   2. Add a new entry to primitives.ml.
 #
 #
 # inst:          Instruction name (essential)
-# is-primitive:  Primitive or pure vm instruction (default: no)
+# is-pdf-mode-primitive:  Primitive for generating PDFs or not (default: no)
+# is-text-mode-primitive: Primitive for generating texts or not (default: no)
 # needs-reducef: Use `reducef` for evaluating applications (default: no)
 # suppress-pp:   Use a simple pritty printer (default: no)
 # custom-pp:     Specify custom pritty printer
 # no-ircode:     Suppress code generation for `ir_.ml` (default: no)
-# no-interp:     Suppress code generation for `evaluator_.ml` (default: !`is-primitive`)
+# no-interp:     Suppress code generation for `evaluator_.ml` (default: !`is-pdf-mode-primitive`)
 # name:          Identifier for the primitive
 # type:          Type expression for the primitive
 # fields:        Field list (for `abstract_tree` type)
 # params:        Paramater list
 # code:          Instruction code
-#   (note: If `is-primitive` is yes, code that pushes to stack and
+#   (note: If `is-pdf-mode-primitive` or `is-text-mode-primitive` is yes, code that pushes to stack and
 #          go to next instruction will be automatically inserted.
 #          (see `gen_code.rb`))
 #
@@ -325,7 +326,7 @@ code: |
 
 ---
 inst: Dereference
-is-primitive: yes
+is-pdf-mode-primitive: yes
 no-interp: yes
 params:
 - valuecont
@@ -616,7 +617,8 @@ code: |
 
 ---
 inst: Concat
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "^"
 type: |
   ~% (tS @-> tS @-> tS)
@@ -633,7 +635,8 @@ code: |
 
 ---
 inst: PrimitiveSetMathVariantToChar
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "set-math-variant-char"
 type: |
   ~% (tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
@@ -653,7 +656,7 @@ code: |
 
 ---
 inst: PrimitiveConvertStringForMath
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "convert-string-for-math"
 type: |
   ~% (tCTX @-> tMCCLS @-> tS @-> tS)
@@ -669,7 +672,7 @@ code:
 
 ---
 inst: PrimitiveSetMathCommand
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-math-command"
 type: |
   ~% (tCMD @-> tCTX @-> tCTX)
@@ -682,7 +685,8 @@ code: |
 
 ---
 inst: BackendMathVariantCharDirect
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-variant-char"
 type: |
   ~% (tMATHCLS @-> tMCSTY @-> tMATH)
@@ -697,7 +701,8 @@ code: |
 
 ---
 inst: BackendGetLeftMathClass
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "get-left-math-class"
 type: |
   ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
@@ -716,7 +721,8 @@ code: |
 
 ---
 inst: BackendGetRightMathClass
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "get-right-math-class"
 type: |
   ~% (tCTX @-> tMATH @-> tOPT tMATHCLS)
@@ -735,7 +741,7 @@ code: |
 
 ---
 inst: BackendSpaceBetweenMaths
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "space-between-maths"
 type: |
   ~% (tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
@@ -753,7 +759,8 @@ code: |
 
 ---
 inst: BackendMathConcat
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-concat"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -766,7 +773,8 @@ code: |
 
 ---
 inst: BackendMathGroup
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-group"
 type: |
   ~% (tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
@@ -780,7 +788,8 @@ code: |
 
 ---
 inst: BackendMathSuperscript
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-sup"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -793,7 +802,8 @@ code: |
 
 ---
 inst: BackendMathSubscript
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-sub"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -806,7 +816,8 @@ code: |
 
 ---
 inst: BackendMathFraction
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-frac"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -819,7 +830,8 @@ code: |
 
 ---
 inst: BackendMathRadical
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-radical"
 type: |
   ~% (tOPT tMATH @-> tMATH @-> tMATH)
@@ -836,7 +848,8 @@ code: |
 
 ---
 inst: BackendMathParen
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-paren"
 type: |
   ~% (tPAREN @-> tPAREN @-> tMATH @-> tMATH)
@@ -853,7 +866,8 @@ code: |
 
 ---
 inst: BackendMathParenWithMiddle
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-paren-with-middle"
 type: |
   ~% (tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
@@ -872,7 +886,8 @@ code: |
 
 ---
 inst: BackendMathUpperLimit
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-upper"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -885,7 +900,8 @@ code: |
 
 ---
 inst: BackendMathLowerLimit
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-lower"
 type: |
   ~% (tMATH @-> tMATH @-> tMATH)
@@ -897,8 +913,27 @@ code: |
   MathValue([MathLowerLimit(mlst1, mlst2)])
 
 ---
+inst: BackendMathPullInScripts
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "math-pull-in-scripts"
+type: |
+  ~% (tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
+
+params:
+- mathcls1 : math_class
+- mathcls2 : math_class
+- valuef
+needs-reducef: yes
+code: |
+  let mlstf = make_pull_in_scripts reducef valuef in
+  let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
+    MathValue(mlst)
+
+---
 inst: BackendMathChar
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char"
 type: |
   ~% (tMATHCLS @-> tS @-> tMATH)
@@ -912,7 +947,8 @@ code: |
 
 ---
 inst: BackendMathBigChar
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-big-char"
 type: |
   ~% (tMATHCLS @-> tS @-> tMATH)
@@ -926,7 +962,8 @@ code: |
 
 ---
 inst: BackendMathCharWithKern
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char-with-kern"
 type: |
   let mckf = tLN @-> tLN @-> tLN in
@@ -946,7 +983,8 @@ code: |
 
 ---
 inst: BackendMathBigCharWithKern
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-big-char-with-kern"
 type: |
   let mckf = tLN @-> tLN @-> tLN in
@@ -966,7 +1004,7 @@ code: |
 
 ---
 inst: BackendMathText
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "text-in-math"
 type: |
   ~% (tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
@@ -984,7 +1022,8 @@ code: |
 
 ---
 inst: BackendMathColor
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-color"
 type: |
   ~% (tCLR @-> tMATH @-> tMATH)
@@ -997,7 +1036,8 @@ code: |
 
 ---
 inst: BackendMathCharClass
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "math-char-class"
 type: |
   ~% (tMCCLS @-> tMATH @-> tMATH)
@@ -1027,7 +1067,7 @@ code: |
 
 ---
 inst: BackendEmbeddedMath
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "embed-math"
 type: |
   ~% (tCTX @-> tMATH @-> tIB)
@@ -1042,7 +1082,7 @@ code: |
 
 ---
 inst: BackendTabular
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "tabular"
 type: |
   ~% ((tL (tL tCELL)) @-> tRULESF @-> tIB)
@@ -1064,7 +1104,7 @@ code: |
 
 ---
 inst: BackendRegisterPdfImage
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "load-pdf-image"
 type: |
   ~% (tS @-> tI @-> tIMG)
@@ -1078,7 +1118,7 @@ code: |
 
 ---
 inst: BackendRegisterOtherImage
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "load-image"
 type: |
   ~% (tS @-> tIMG)
@@ -1091,7 +1131,7 @@ code: |
 
 ---
 inst: BackendUseImageByWidth
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "use-image-by-width"
 type: |
   ~% (tIMG @-> tLN @-> tIB)
@@ -1109,7 +1149,7 @@ code: |
 
 ---
 inst: BackendHookPageBreak
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "hook-page-break"
 type: |
   ~% ((tPBINFO @-> tPT @-> tU) @-> tIB)
@@ -1124,7 +1164,7 @@ code: |
 ---
 inst: Path
 suppress-pp : yes
-is-primitive : yes
+is-pdf-mode-primitive : yes
 separated: yes
 no-ircode: yes
 no-interp: yes
@@ -1139,7 +1179,7 @@ code: |
 
 ---
 inst: PathUnite
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "unite-path"
 type: |
   ~% (tPATH @-> tPATH @-> tPATH)
@@ -1152,7 +1192,7 @@ code: |
 
 ---
 inst: PathShift
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "shift-path"
 type: |
   ~% (tPT @-> tPATH @-> tPATH)
@@ -1165,7 +1205,7 @@ code: |
 
 ---
 inst: PathGetBoundingBox
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-path-bbox"
 type: |
   ~% (tPATH @-> tPROD [tPT; tPT])
@@ -1180,7 +1220,7 @@ code: |
 
 ---
 inst: PrePathBeginning
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "start-path"
 type: |
   ~% (tPT @-> tPRP)
@@ -1192,7 +1232,7 @@ code: |
 
 ---
 inst: PrePathLineTo
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "line-to"
 type: |
   ~% (tPT @-> tPRP @-> tPRP)
@@ -1205,7 +1245,7 @@ code: |
 
 ---
 inst: PrePathCubicBezierTo
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "bezier-to"
 type: |
   ~% (tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)
@@ -1220,7 +1260,7 @@ code: |
 
 ---
 inst: PrePathTerminate
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "terminate-path"
 type: |
   ~% (tPRP @-> tPATH)
@@ -1232,7 +1272,7 @@ code: |
 
 ---
 inst: PrePathCloseWithLine
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "close-with-line"
 type: |
   ~% (tPRP @-> tPATH)
@@ -1244,7 +1284,7 @@ code: |
 
 ---
 inst: PrePathCloseWithCubicBezier
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "close-with-bezier"
 type: |
   ~% (tPT @-> tPT @-> tPRP @-> tPATH)
@@ -1258,7 +1298,7 @@ code: |
 
 ---
 inst: HorzConcat
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "++"
 type: |
   ~% (tIB @-> tIB @-> tIB)
@@ -1271,7 +1311,7 @@ code: |
 
 ---
 inst: VertConcat
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "+++"
 type: |
   ~% (tBB @-> tBB @-> tBB)
@@ -1284,7 +1324,7 @@ code: |
 
 ---
 inst: HorzLex
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "read-inline"
 type: |
   ~% (tCTX @-> tIT @-> tIB)
@@ -1295,17 +1335,17 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_intermediate_input_horz envi valuectx imihlst
+  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
   | _                                               -> report_bug_vm "HorzLex"
 
 code-interp: |
   match value1 with
-  | InputHorzWithEnvironment(imihlst, envi) -> interpret_intermediate_input_horz envi valuectx imihlst
+  | InputHorzWithEnvironment(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
   | _                                       -> report_bug_value "HorzLex" value1
 
 ---
 inst: VertLex
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "read-block"
 type: |
   ~% (tCTX @-> tBT @-> tBB)
@@ -1316,17 +1356,105 @@ params:
 - value1
 code: |
   match value1 with
-  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_intermediate_input_vert envi valuectx imivlst
+  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
   | _                                               -> report_bug_vm "VertLex"
 
 code-interp: |
   match value1 with
-  | InputVertWithEnvironment(imivlst, envi) -> interpret_intermediate_input_vert envi valuectx imivlst
+  | InputVertWithEnvironment(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
   | _                                       -> report_bug_value "VertLex" value1
 
 ---
+inst: TextHorzLex
+is-text-mode-primitive: yes
+name: "stringify-inline"
+type: |
+  ~% (tTCTX @-> tIT @-> tS)
+
+separated: yes
+params:
+- valuetctx
+- value1
+code: |
+  match value1 with
+  | CompiledInputHorzWithEnvironment(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                               -> report_bug_vm "TextHorzLex"
+
+code-interp: |
+  match value1 with
+  | InputHorzWithEnvironment(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
+  | _                                       -> report_bug_value "TextHorzLex" value1
+
+---
+inst: TextVertLex
+is-text-mode-primitive: yes
+name: "stringify-block"
+type: |
+  ~% (tTCTX @-> tBT @-> tS)
+
+separated: yes
+params:
+- valuetctx
+- value1
+code: |
+  match value1 with
+  | CompiledInputVertWithEnvironment(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                               -> report_bug_vm "TextVertLex"
+
+code-interp: |
+  match value1 with
+  | InputVertWithEnvironment(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
+  | _                                       -> report_bug_value "TextVertLex" value1
+
+---
+inst: TextDeepenIndent
+is-text-mode-primitive: yes
+name: "deepen-indent"
+type: |
+  ~% (tI @-> tTCTX @-> tTCTX)
+
+params:
+- i : int
+- tctx : text_mode_context
+code: |
+  let tctx = tctx |> TextBackend.deepen_indent i in
+    TextModeContext(tctx)
+
+---
+inst: TextBreak
+is-text-mode-primitive: yes
+name: "break"
+params:
+- tctx : text_mode_context
+type: |
+  ~% (tTCTX @-> tS)
+
+code: |
+  let i = TextBackend.get_indent tctx in
+  let s = "\n" ^ (String.make i ' ') in
+    StringConstant(s)
+
+---
+inst: TextGetInitialTextModeContext
+is-text-mode-primitive: yes
+name: "get-initial-text-info"
+params:
+- value1
+type: |
+  ~% (tU @-> tTCTX)
+
+code: |
+  match value1 with
+  | UnitConstant ->
+      let tctx = TextBackend.get_initial_text_mode_context () in
+        TextModeContext(tctx)
+
+  | _ ->
+      report_bug_value "TextGetInitialTextModeContext" value1
+
+---
 inst: PrimitiveEmbeddedVertBreakable
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "embed-block-breakable"
 type: |
   ~% (tCTX @-> tBB @-> tIB)
@@ -1340,7 +1468,7 @@ code: |
 
 ---
 inst: BackendFont
-is-primitive: yes
+is-pdf-mode-primitive: yes
 params:
 - abbrev : string
 - size_ratio : float
@@ -1350,7 +1478,7 @@ code: |
 
 ---
 inst: BackendLineBreaking
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "line-break"
 type: |
   ~% (tB @-> tB @-> tCTX @-> tIB @-> tBB)
@@ -1366,7 +1494,7 @@ code: |
 
 ---
 inst: BackendPageBreaking
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "page-break"
 type: |
   ~% (tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
@@ -1384,7 +1512,7 @@ code: |
 
 ---
 inst: BackendVertFrame
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "block-frame-breakable"
 type: |
   ~% (tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB)
@@ -1417,8 +1545,21 @@ code: |
   ]))
 
 ---
+inst: BackendAddFootnote
+is-pdf-mode-primitive: yes
+name: "add-footnote"
+type: |
+  ~% (tBB @-> tIB)
+
+params:
+- vblst : vert
+code: |
+  let imvblst = PageBreak.solidify vblst in
+    Horz(HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+
+---
 inst: BackendEmbeddedVertTop
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "embed-block-top"
 type: |
   ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
@@ -1442,7 +1583,7 @@ code: |
 
 ---
 inst: BackendVertSkip
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "block-skip"
 type: |
   ~% (tLN @-> tBB)
@@ -1454,7 +1595,7 @@ code: |
 
 ---
 inst: BackendEmbeddedVertBottom
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "embed-block-bottom"
 type: |
   ~% (tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
@@ -1478,7 +1619,7 @@ code: |
 
 ---
 inst: BackendLineStackTop
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "line-stack-top"
 type: |
   ~% ((tL tIB) @-> tIB)
@@ -1494,7 +1635,7 @@ code: |
 
 ---
 inst: BackendLineStackBottom
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "line-stack-bottom"
 type: |
   ~% ((tL tIB) @-> tIB)
@@ -1510,7 +1651,7 @@ code: |
 
 ---
 inst: PrimitiveGetInitialContext
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-initial-context"
 type: |
   ~% (tLN @-> tCMD @-> tCTX)
@@ -1519,11 +1660,12 @@ params:
 - txtwid : length
 - valuecmd
 code: |
-  Context(Primitives.get_initial_context txtwid, valuecmd)
+  let ctx = Primitives.get_pdf_mode_initial_context txtwid in
+    Context(ctx, valuecmd)
 
 ---
 inst: PrimitiveSetHyphenMin
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-hyphen-min"
 type: |
   ~% (tI @-> tI @-> tCTX @-> tCTX)
@@ -1540,7 +1682,7 @@ code: |
 
 ---
 inst: PrimitiveSetMinGapOfLines
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-min-gap-of-lines"
 type: |
   ~% (tLN @-> tCTX @-> tCTX)
@@ -1555,7 +1697,7 @@ code: |
 
 ---
 inst: PrimitiveSetSpaceRatio
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-space-ratio"
 type: |
   ~% (tFL @-> tFL @-> tFL @-> tCTX @-> tCTX)
@@ -1573,8 +1715,51 @@ code: |
   }), valuecmd)
 
 ---
+inst: PrimitiveSetSpaceRatioBetweenScripts
+is-pdf-mode-primitive: yes
+name: "set-space-ratio-between-scripts"
+type: |
+  ~% (tFL @-> tFL @-> tFL @-> tSCR @-> tSCR @-> tCTX @-> tCTX)
+
+params:
+- ratio_natural : float
+- ratio_shrink : float
+- ratio_stretch : float
+- script1 : script
+- script2 : script
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.({ ctx with
+    script_space_map =
+      ctx.script_space_map |> CharBasis.ScriptSpaceMap.add
+        (script1, script2)
+        (max 0. ratio_natural, max 0. ratio_shrink, max 0. ratio_stretch)
+  }), valuecmd)
+
+---
+inst: PrimitiveGetSpaceRatioBetweenScripts
+is-pdf-mode-primitive: yes
+name: "get-space-ratio-between-scripts"
+type: |
+  ~% (tCTX @-> tSCR @-> tSCR @-> tOPT (tPROD [tFL; tFL; tFL]))
+
+params:
+- (ctx, _) : context
+- script1 : script
+- script2 : script
+code: |
+  match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script2) with
+  | None ->
+      Constructor("None", UnitConstant)
+
+  | Some((r0, r1, r2)) ->
+      Constructor("Some", TupleCons(FloatConstant(r0),
+                            TupleCons(FloatConstant(r1),
+                              TupleCons(FloatConstant(r2), EndOfTuple))))
+
+---
 inst: PrimitiveSetParagraphMargin
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-paragraph-margin"
 type: |
   ~% (tLN @-> tLN @-> tCTX @-> tCTX)
@@ -1591,7 +1776,7 @@ code: |
 
 ---
 inst: PrimitiveSetParagraphMinAscenderAndDescender
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-min-paragraph-ascender-and-descender"
 type: |
   ~% (tLN @-> tLN @-> tCTX @-> tCTX)
@@ -1608,7 +1793,7 @@ code: |
 
 ---
 inst: PrimitiveSetFontSize
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-font-size"
 type: |
   ~% (tLN @-> tCTX @-> tCTX)
@@ -1621,7 +1806,7 @@ code: |
 
 ---
 inst: PrimitiveGetFontSize
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-font-size"
 type: |
   ~% (tCTX @-> tLN)
@@ -1633,7 +1818,7 @@ code: |
 
 ---
 inst: PrimitiveSetFont
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-font"
 type: |
   ~% (tSCR @-> tFONT @-> tCTX @-> tCTX)
@@ -1648,7 +1833,7 @@ code: |
 
 ---
 inst: PrimitiveGetFont
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-font"
 type: |
   ~% (tSCR @-> tCTX @-> tFONT)
@@ -1662,7 +1847,7 @@ code: |
 
 ---
 inst: PrimitiveSetMathFont
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-math-font"
 type: |
   ~% (tS @-> tCTX @-> tCTX)
@@ -1675,7 +1860,7 @@ code: |
 
 ---
 inst: PrimitiveSetDominantWideScript
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-dominant-wide-script"
 type: |
   ~% (tSCR @-> tCTX @-> tCTX)
@@ -1688,7 +1873,7 @@ code: |
 
 ---
 inst: PrimitiveGetDominantWideScript
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-dominant-wide-script"
 type: |
   ~% (tCTX @-> tSCR)
@@ -1700,7 +1885,7 @@ code: |
 
 ---
 inst: PrimitiveSetDominantNarrowScript
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-dominant-narrow-script"
 type: |
   ~% (tSCR @-> tCTX @-> tCTX)
@@ -1713,7 +1898,7 @@ code: |
 
 ---
 inst: PrimitiveGetDominantNarrowScript
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-dominant-narrow-script"
 type: |
   ~% (tCTX @-> tSCR)
@@ -1725,7 +1910,7 @@ code: |
 
 ---
 inst: PrimitiveSetLangSys
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-language"
 type: |
   ~% (tSCR @-> tLANG @-> tCTX @-> tCTX)
@@ -1741,7 +1926,7 @@ code: |
 
 ---
 inst: PrimitiveGetLangSys
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-language"
 type: |
   ~% (tSCR @-> tCTX @-> tLANG)
@@ -1755,7 +1940,7 @@ code: |
 
 ---
 inst: PrimitiveSetTextColor
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-text-color"
 type: |
   ~% (tCLR @-> tCTX @-> tCTX)
@@ -1768,7 +1953,7 @@ code: |
 
 ---
 inst: PrimitiveGetTextColor
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-text-color"
 type: |
   ~% (tCTX @-> tCLR)
@@ -1781,7 +1966,7 @@ code: |
 
 ---
 inst: PrimitiveSetLeading
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-leading"
 type: |
   ~% (tLN @-> tCTX @-> tCTX)
@@ -1794,7 +1979,7 @@ code: |
 
 ---
 inst: PrimitiveGetTextWidth
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-text-width"
 type: |
   ~% (tCTX @-> tLN)
@@ -1806,7 +1991,7 @@ code: |
 
 ---
 inst: PrimitiveSetManualRising
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-manual-rising"
 type: |
   ~% (tLN @-> tCTX @-> tCTX)
@@ -1819,7 +2004,7 @@ code: |
 
 ---
 inst: PrimitiveRaise
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "raise-inline"
 type: |
   ~% (tLN @-> tIB @-> tIB)
@@ -1832,7 +2017,7 @@ code: |
 
 ---
 inst: PrimitiveSetHyphenPenalty
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "set-hyphen-penalty"
 type: |
   ~% (tI @-> tCTX @-> tCTX)
@@ -1845,7 +2030,8 @@ code: |
 
 ---
 inst: PrimitiveEmbed
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "embed-string"
 type: |
   ~% (tS @-> tIT)
@@ -1861,7 +2047,7 @@ code-interp: |
 
 ---
 inst: PrimitiveGetAxisHeight
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-axis-height"
 type: |
   ~% (tCTX @-> tLN)
@@ -1876,7 +2062,7 @@ code: |
 
 ---
 inst: BackendFixedEmpty
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-skip"
 type: |
   ~% (tLN @-> tIB)
@@ -1888,7 +2074,7 @@ code: |
 
 ---
 inst: BackendOuterEmpty
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-glue"
 type: |
   ~% (tLN @-> tLN @-> tLN @-> tIB)
@@ -1902,7 +2088,7 @@ code: |
 
 ---
 inst: BackendOuterFrame
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-frame-outer"
 type: |
   ~% (tPADS @-> tDECO @-> tIB @-> tIB)
@@ -1920,7 +2106,7 @@ code: |
 
 ---
 inst: BackendInnerFrame
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-frame-inner"
 type: |
   ~% (tPADS @-> tDECO @-> tIB @-> tIB)
@@ -1938,7 +2124,7 @@ code: |
 
 ---
 inst: BackendFixedFrame
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-frame-fixed"
 type: |
   ~% (tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)
@@ -1957,7 +2143,7 @@ code: |
 
 ---
 inst: BackendOuterFrameBreakable
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-frame-breakable"
 type: |
   ~% (tPADS @-> tDECOSET @-> tIB @-> tIB)
@@ -1979,7 +2165,7 @@ code: |
 
 ---
 inst: BackendInlineGraphics
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "inline-graphics"
 type: |
   ~% (tLN @-> tLN @-> tLN @-> tIGR @-> tIB)
@@ -1995,8 +2181,24 @@ code: |
     Horz(HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
 
 ---
+inst: BackendInlineGraphicsOuter
+is-pdf-mode-primitive: yes
+name: "inline-graphics-outer"
+type: |
+  ~% (tLN @-> tLN @-> tIGRO @-> tIB)
+
+needs-reducef: yes
+params:
+- hgt : length
+- dpt : length
+- valueg
+code: |
+  let graphics = make_inline_graphics_outer reducef valueg in
+    Horz(HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+
+---
 inst: BackendScriptGuard
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "script-guard"
 type: |
   ~% (tSCR @-> tIB @-> tIB)
@@ -2009,7 +2211,7 @@ code: |
 
 ---
 inst: BackendDiscretionary
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "discretionary"
 type: |
   ~% (tI @-> tIB @-> tIB @-> tIB @-> tIB)
@@ -2024,7 +2226,8 @@ code: |
 
 ---
 inst: BackendRegisterCrossReference
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "register-cross-reference"
 type: |
   ~% (tS @-> tS @-> tU)
@@ -2038,7 +2241,8 @@ code: |
 
 ---
 inst: BackendGetCrossReference
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "get-cross-reference"
 type: |
   ~% (tS @-> (tOPT tS))
@@ -2052,7 +2256,7 @@ code: |
 
 ---
 inst: PrimitiveGetNaturalMetrics
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-natural-metrics"
 type: |
   ~% (tIB @-> tPROD [tLN; tLN; tLN])
@@ -2067,7 +2271,7 @@ code: |
 
 ---
 inst: PrimitiveGetNaturalLength
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "get-natural-length"
 type: |
   ~% (tBB @-> tLN)
@@ -2081,7 +2285,8 @@ code: |
 
 ---
 inst: PrimitiveDisplayMessage
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "display-message"
 type: |
   ~% (tS @-> tU)
@@ -2094,7 +2299,8 @@ code: |
 
 ---
 inst: PrimitiveListCons
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 params:
 - valuehd
 - valuetl
@@ -2103,7 +2309,8 @@ code: |
 
 ---
 inst: PrimitiveSame
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-same"
 type: |
   ~% (tS @-> tS @-> tB)
@@ -2116,7 +2323,8 @@ code: |
 
 ---
 inst: PrimitiveStringSub
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-sub"
 type: |
   ~% (tS @-> tI @-> tI @-> tS)
@@ -2134,7 +2342,8 @@ code: |
 
 ---
 inst: PrimitiveStringSubBytes
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-sub-bytes"
 type: |
   ~% (tS @-> tI @-> tI @-> tS)
@@ -2152,7 +2361,8 @@ code: |
 
 ---
 inst: PrimitiveStringLength
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-length"
 type: |
   ~% (tS @-> tI)
@@ -2164,7 +2374,8 @@ code: |
 
 ---
 inst: PrimitiveStringByteLength
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-byte-length"
 type: |
   ~% (tS @-> tI)
@@ -2176,7 +2387,8 @@ code: |
 
 ---
 inst: PrimitiveStringUnexplode
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-unexplode"
 type: |
   ~% ((tL tI) @-> tS)
@@ -2190,7 +2402,8 @@ code: |
 
 ---
 inst: PrimitiveRegExpOfString
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "regexp-of-string"
 type: |
   ~% (tS @-> tRE)
@@ -2206,7 +2419,8 @@ code: |
 
 ---
 inst: PrimitiveStringMatch
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "string-match"
 type: |
   ~% (tRE @-> tS @-> tB)
@@ -2219,7 +2433,8 @@ code: |
 
 ---
 inst: PrimitiveSplitIntoLines
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "split-into-lines"
 type: |
   ~% (tS @-> (tL (tPROD [tI; tS])))
@@ -2234,7 +2449,8 @@ code: |
 
 ---
 inst: PrimitiveSplitOnRegExp
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "split-on-regexp"
 type: |
   ~% (tRE @-> tS @-> (tL (tPROD [tI; tS])))
@@ -2250,7 +2466,8 @@ code: |
 
 ---
 inst: PrimitiveArabic
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "arabic"
 type: |
   ~% (tI @-> tS)
@@ -2261,8 +2478,23 @@ code: |
   StringConstant(string_of_int num)
 
 ---
+inst: PrimitiveShowFloat
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "show-float"
+type: |
+  ~% (tFL @-> tS)
+
+params:
+- fl : float
+code: |
+  StringConstant(string_of_float fl)
+
+
+---
 inst: PrimitiveFloat
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "float"
 type: |
   ~% (tI @-> tFL)
@@ -2274,7 +2506,8 @@ code: |
 
 ---
 inst: PrimitiveRound
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "round"
 type: |
   ~% (tFL @-> tI)
@@ -2286,7 +2519,7 @@ code: |
 
 ---
 inst: PrimitiveDrawText
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "draw-text"
 type: |
   ~% (tPT @-> tIB @-> tGR)
@@ -2301,7 +2534,7 @@ code: |
 
 ---
 inst: PrimitiveDrawStroke
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "stroke"
 type: |
   ~% (tLN @-> tCLR @-> tPATH @-> tGR)
@@ -2316,7 +2549,7 @@ code: |
 
 ---
 inst: PrimitiveDrawFill
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "fill"
 type: |
   ~% (tCLR @-> tPATH @-> tGR)
@@ -2330,7 +2563,7 @@ code: |
 
 ---
 inst: PrimitiveDrawDashedStroke
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "dashed-stroke"
 type: |
   ~% (tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)
@@ -2347,7 +2580,7 @@ code: |
 
 ---
 inst: PrimitiveShiftGraphics
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "shift-graphics"
 type: |
   ~% (tPT @-> tGR @-> tGR)
@@ -2360,7 +2593,7 @@ code: |
 
 ---
 inst: PrimtiveGetGraphicsBBox
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: get-graphics-bbox
 type: |
   ~% (tGR @-> tPROD [tPT; tPT])
@@ -2380,7 +2613,8 @@ code: |
 
 ---
 inst: Times
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "*"
 type: |
   ~% (tI @-> tI @-> tI)
@@ -2393,7 +2627,8 @@ code: |
 
 ---
 inst: Divides
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "/"
 type: |
   ~% (tI @-> tI @-> tI)
@@ -2407,7 +2642,8 @@ code: |
 
 ---
 inst: Mod
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "mod"
 type: |
   ~% (tI @-> tI @-> tI)
@@ -2421,7 +2657,8 @@ code: |
 
 ---
 inst: Plus
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "+"
 type: |
   ~% (tI @-> tI @-> tI)
@@ -2434,7 +2671,8 @@ code: |
 
 ---
 inst: Minus
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "-"
 type: |
   ~% (tI @-> tI @-> tI)
@@ -2447,7 +2685,8 @@ code: |
 
 ---
 inst: EqualTo
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "=="
 type: |
   ~% (tI @-> tI @-> tB)
@@ -2460,7 +2699,8 @@ code: |
 
 ---
 inst: GreaterThan
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: ">"
 type: |
   ~% (tI @-> tI @-> tB)
@@ -2473,7 +2713,8 @@ code: |
 
 ---
 inst: LessThan
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "<"
 type: |
   ~% (tI @-> tI @-> tB)
@@ -2486,7 +2727,8 @@ code: |
 
 ---
 inst: LogicalAnd
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "&&"
 type: |
   ~% (tB @-> tB @-> tB)
@@ -2499,7 +2741,8 @@ code: |
 
 ---
 inst: LogicalOr
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "||"
 type: |
   ~% (tB @-> tB @-> tB)
@@ -2512,7 +2755,8 @@ code: |
 
 ---
 inst: LogicalNot
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "not"
 type: |
   ~% (tB @-> tB)
@@ -2524,7 +2768,8 @@ code: |
 
 ---
 inst: FloatPlus
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "+."
 type: |
   ~% (tFL @-> tFL @-> tFL)
@@ -2537,7 +2782,8 @@ code: |
 
 ---
 inst: FloatMinus
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "-."
 type: |
   ~% (tFL @-> tFL @-> tFL)
@@ -2550,7 +2796,8 @@ code: |
 
 ---
 inst: FloatTimes
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "*."
 type: |
   ~% (tFL @-> tFL @-> tFL)
@@ -2563,7 +2810,8 @@ code: |
 
 ---
 inst: FloatDivides
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "/."
 type: |
   ~% (tFL @-> tFL @-> tFL)
@@ -2576,7 +2824,8 @@ code: |
 
 ---
 inst: FloatSine
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "sin"
 type: |
   ~% (tFL @-> tFL)
@@ -2588,7 +2837,8 @@ code: |
 
 ---
 inst: FloatArcSine
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "asin"
 type: |
   ~% (tFL @-> tFL)
@@ -2600,7 +2850,8 @@ code: |
 
 ---
 inst: FloatCosine
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "cos"
 type: |
   ~% (tFL @-> tFL)
@@ -2612,7 +2863,8 @@ code: |
 
 ---
 inst: FloatArcCosine
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "acos"
 type: |
   ~% (tFL @-> tFL)
@@ -2624,7 +2876,8 @@ code: |
 
 ---
 inst: FloatTangent
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "tan"
 type: |
   ~% (tFL @-> tFL)
@@ -2636,7 +2889,8 @@ code: |
 
 ---
 inst: FloatArcTangent
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "atan"
 type: |
   ~% (tFL @-> tFL)
@@ -2648,7 +2902,8 @@ code: |
 
 ---
 inst: FloatArcTangent2
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "atan2"
 type: |
   ~% (tFL @-> tFL @-> tFL)
@@ -2661,7 +2916,7 @@ code: |
 
 ---
 inst: LengthPlus
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "+'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2674,7 +2929,7 @@ code: |
 
 ---
 inst: LengthMinus
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "-'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2687,7 +2942,7 @@ code: |
 
 ---
 inst: LengthTimes
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "*'"
 type: |
   ~% (tLN @-> tFL @-> tLN)
@@ -2700,7 +2955,7 @@ code: |
 
 ---
 inst: LengthDivides
-is-primitive: yes
+is-pdf-mode-primitive: yes
 name: "/'"
 type: |
   ~% (tLN @-> tLN @-> tFL)
@@ -2713,7 +2968,8 @@ code: |
 
 ---
 inst: LengthLessThan
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "<'"
 type: |
   ~% (tLN @-> tLN @-> tB)
@@ -2726,7 +2982,8 @@ code: |
 
 ---
 inst: LengthGreaterThan
-is-primitive: yes
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: ">'"
 type: |
   ~% (tLN @-> tLN @-> tB)
@@ -2747,8 +3004,23 @@ code : |
   exec (func :: (List.rev_append lst stack)) env code dump
 
 ---
+inst: PrimitiveSetWordBreakPenalty
+is-pdf-mode-primitive: yes
+name: "set-word-break-penalty"
+type: |
+  ~% (tI @-> tCTX @-> tCTX)
+
+params:
+- pnlty : int
+- (ctx, valuecmd) : context
+code: |
+  Context(HorzBox.{ ctx with
+    space_badness = pnlty;
+  }, valuecmd)
+
+---
 inst: PrimitiveSetEveryWordBreak
-is-primitive : yes
+is-pdf-mode-primitive: yes
 name: "set-every-word-break"
 type: |
   ~% (tIB @-> tIB @-> tCTX @-> tCTX)
@@ -2764,8 +3036,22 @@ code: |
   }), valuecmd)
 
 ---
+inst: PrimitiveGetEveryWordBreak
+is-pdf-mode-primitive: yes
+name: "get-every-word-break"
+type: |
+  ~% (tCTX @-> tPROD [tIB; tIB])
+
+params:
+- (ctx, _) : context
+code: |
+  let hblst1 = ctx.HorzBox.before_word_break in
+  let hblst2 = ctx.HorzBox.after_word_break in
+    TupleCons(Horz(hblst1), TupleCons(Horz(hblst2), EndOfTuple))
+
+---
 inst: BackendProbeCrossReference
-is-primitive : yes
+is-pdf-mode-primitive : yes
 name: "probe-cross-reference"
 type: |
   ~% (tS @-> (tOPT tS))

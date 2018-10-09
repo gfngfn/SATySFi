@@ -31,7 +31,20 @@ let get_metrics (lphb : lb_pure_box) : metrics =
   | LBFixedGraphics(wid, hgt, dpt, _)         -> (natural wid, hgt, dpt)
   | LBFixedTabular(wid, hgt, dpt, _, _, _, _) -> (natural wid, hgt, dpt)
   | LBFixedImage(wid, hgt, _)                 -> (natural wid, hgt, Length.zero)
-  | LBHookPageBreak(_)                        -> (widinfo_zero, Length.zero, Length.zero)
+
+  | LBOuterFilGraphics(hgt, dpt, _) ->
+      let widinfo =
+        {
+          natural     = Length.zero;
+          shrinkable  = Length.zero;
+          stretchable = Fils(1);
+        }
+      in
+        (widinfo, hgt, dpt)
+
+  | LBHookPageBreak(_)
+  | LBFootnote(_)
+      -> (widinfo_zero, Length.zero, Length.zero)
 
 
 let get_total_metrics (lphblst : lb_pure_box list) : metrics =
@@ -102,10 +115,10 @@ let append_chunks (chunkacc : line_break_chunk Alist.t) (alwmid : CharBasis.brea
       end
 
 
-let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alw : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
+let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list -> lb_pure_box list) (puref : lb_pure_box -> a) (chunkf : CharBasis.break_opportunity * line_break_chunk list -> a) (alwlast : CharBasis.break_opportunity) (phb : pure_horz_box) : a =
   match phb with
   | PHCInnerString(ctx, uchlst) ->
-      chunkf (ConvertText.to_chunks ctx uchlst alw)
+      chunkf (ConvertText.to_chunks ctx uchlst alwlast)
 
   | PHCInnerMathGlyph(mathinfo, wid, hgt, dpt, otxt) ->
       puref (LBAtom((natural wid, hgt, dpt), EvHorzMathGlyph(mathinfo, hgt, dpt, otxt)))
@@ -150,6 +163,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGFixedGraphics(wid, hgt, dpt, graphics) ->
       puref (LBFixedGraphics(wid, hgt, dpt, graphics))
 
+  | PHGOuterFilGraphics(hgt, dpt, graphics) ->
+      puref (LBOuterFilGraphics(hgt, dpt, graphics))
+
   | PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
       puref (LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))
 
@@ -159,6 +175,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGHookPageBreak(hookf) ->
       puref (LBHookPageBreak(hookf))
 
+  | PHGFootnote(imvblst) ->
+      puref (LBFootnote(imvblst))
+
 
 let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pure_either =
   let puref p = PLB(p) in
@@ -166,10 +185,10 @@ let convert_pure_box_for_line_breaking_pure listf (phb : pure_horz_box) : lb_pur
     convert_pure_box_for_line_breaking_scheme listf puref chunkf CharBasis.PreventBreak phb
 
 
-let convert_pure_box_for_line_breaking listf alw (phb : pure_horz_box) : lb_either =
+let convert_pure_box_for_line_breaking listf alwlast (phb : pure_horz_box) : lb_either =
   let puref p = LB(LBPure(p)) in
   let chunkf (alwfirst, c) = TextChunks(alwfirst, c) in
-    convert_pure_box_for_line_breaking_scheme listf puref chunkf alw phb
+  convert_pure_box_for_line_breaking_scheme listf puref chunkf alwlast phb
 
 
 let can_break_before tail =
@@ -225,8 +244,8 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
           aux (Alist.extend lbeacc (LB(LBEmbeddedVertBreakable(dscrid, wid, vblst)))) tail
 
     | HorzPure(phb) :: tail ->
-        let alw = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
-        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alw phb in
+        let alwlast = if can_break_before tail then CharBasis.AllowBreak else CharBasis.PreventBreak in
+        let lbe = convert_pure_box_for_line_breaking convert_list_for_line_breaking_pure alwlast phb in
           aux (Alist.extend lbeacc lbe) tail
 
     | HorzFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, hblst) :: tail ->
@@ -482,6 +501,7 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
       | ImHorzInlineGraphics(w, _, _, _)         -> wacc +% w
       | ImHorzEmbeddedVert(w, _, _, _)           -> wacc +% w
       | ImHorzHookPageBreak(_)                   -> wacc
+      | ImHorzFootnote(_)                        -> wacc
     ) Length.zero
   in
 
@@ -521,7 +541,10 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
         ImHorzEmbeddedVert(wid, hgt, dpt, imvblst)
 
     | LBFixedGraphics(wid, hgt, dpt, graphics) ->
-        ImHorzInlineGraphics(wid, hgt, dpt, graphics)
+        ImHorzInlineGraphics(wid, hgt, dpt, ImGraphicsFixed(graphics))
+
+    | LBOuterFilGraphics(hgt, dpt, graphics) ->
+        ImHorzInlineGraphics(widperfil, hgt, dpt, ImGraphicsVariable(graphics))
 
     | LBFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf) ->
         ImHorzInlineTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf)
@@ -531,6 +554,9 @@ let rec determine_widths (widreqopt : length option) (lphblst : lb_pure_box list
 
     | LBHookPageBreak(hookf) ->
         ImHorzHookPageBreak(hookf)
+
+    | LBFootnote(imvblst) ->
+        ImHorzFootnote(imvblst)
   in
       let imhblst = lphblst |> List.map (main_conversion ratios widperfil) in
 (*

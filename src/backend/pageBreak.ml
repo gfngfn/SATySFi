@@ -3,26 +3,6 @@
 open LengthInterface
 open HorzBox
 
-(* for test *)
-let print_evaled_vert_box evvb =
-  ()
-(*
-  match evvb with
-  | EvVertLine(_, _, evhblst) ->
-      begin
-        Format.printf "@[(vert@ " ;
-        evhblst |> List.iter (function
-          | EvHorzFixedBoxAtom(wid, FixedString(_, str)) -> Format.printf "@[(fixed@ \"%s\"@ :@ %s)@]@ " str (Length.show wid)
-          | EvHorzFixedBoxAtom(wid, FixedEmpty(_))       -> Format.printf "@[(fixed-empty@ %s)@]@ " (Length.show wid)
-          | EvHorzOuterBoxAtom(wid, _)                   -> Format.printf "@[(outer@ :@ %s)@]@ " (Length.show wid)
-        ) ;
-        Format.printf ")@]@ " ;
-      end
-  | EvVertFixedEmpty(vskip) ->
-      begin
-        Format.printf "@[(vskip@ %s)@]@ " (Length.show vskip) ;
-      end
-*)
 
 type frame_breaking =
   | Beginning
@@ -35,8 +15,25 @@ type pb_vert_box =
   | PBVertFrame            of frame_breaking * paddings * decoration * decoration * decoration * decoration * length * pb_vert_box list
   | PBClearPage
 
+type pb_accumulator = {
+  breakable      : bool;
+  badness        : pure_badness;
+  solid_body     : evaled_vert_box Alist.t;
+  solid_footnote : evaled_vert_box Alist.t;
+  discardable    : evaled_vert_box Alist.t;
+  total_height   : length;
+}
 
-let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * pb_vert_box list option =
+type pb_answer = {
+  body         : evaled_vert_box list;
+  footnote     : evaled_vert_box Alist.t;
+  rest         : (pb_vert_box list) option;
+  last_height  : length;
+  last_badness : pure_badness;
+}
+
+
+let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst : pb_vert_box list) : evaled_vert_box list * evaled_vert_box list * (pb_vert_box list) option =
 
   let calculate_badness_of_page_break hgttotal =
     let hgtdiff = area_height -% hgttotal in
@@ -50,82 +47,174 @@ let chop_single_page (pbinfo : page_break_info) (area_height : length) (pbvblst 
     | _                       -> pbvblst
   in
 
-  let rec aux (bprev : bool) (vpbprev : pure_badness) (evvbacc : evaled_vert_box Alist.t) (evvbaccdiscardable : evaled_vert_box Alist.t) (hgttotal : length) (pbvblst : pb_vert_box list) : evaled_vert_box Alist.t * (pb_vert_box list) option * length * pure_badness =
+  let rec aux (prev : pb_accumulator) (pbvblst : pb_vert_box list) : pb_answer =
+    let bprev = prev.breakable in
+    let vpbprev = prev.badness in
+    let evvbacc = prev.solid_body in
+    let footnote = prev.solid_footnote in
+    let evvbaccdiscardable = prev.discardable in
+    let hgttotal = prev.total_height in
     match pbvblst with
-    | PBVertLine(hgt, dpt, imhblst) :: imvbtail ->
-        let hgttotalnew = hgttotal +% hgt +% (Length.negate dpt) in
+    | PBVertLine(hgt, dpt, imhblst) :: pbvbtail ->
+        let hgtline = hgt +% (Length.negate dpt) in
+        let (evhblst, imvblstlstfootnote) = PageInfo.embed_page_info pbinfo imhblst in
+        let (evvblstfootnote, _) = PageInfo.embed_page_info_vert pbinfo (List.concat imvblstlstfootnote) in
+          (* -- ignores footnote designation in footnote -- *)
+        let hgtnewfootnote = get_height_of_evaled_vert_box_list evvblstfootnote in
+        let hgttotalnew = hgttotal +% hgtline +% hgtnewfootnote in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if bprev && (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
           (* --
              if getting worse, outputs the accumulated non-discardable lines 'evvbacc' as a page.
              note that the line checked last will be left in the processing list.
              -- *)
-            (evvbacc, Some(pbvblst), hgttotalnew, vpb)
+            {
+              body = Alist.to_list evvbacc;
+              footnote = footnote;
+              rest = Some(pbvblst);
+              last_height = hgttotalnew;
+              last_badness = vpb;
+            }
           else
-            let evhblst = PageInfo.embed_page_info pbinfo imhblst in
             let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertLine(hgt, dpt, evhblst)) in
-              aux true vpb evvbaccnew Alist.empty hgttotalnew imvbtail
+            aux {
+              breakable = true;
+              badness = vpb;
+              solid_body = evvbaccnew;
+              solid_footnote = Alist.append footnote evvblstfootnote;
+              discardable = Alist.empty;
+              total_height = hgttotalnew;
+            } pbvbtail
 
     | PBVertFixedBreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
         let vpb = calculate_badness_of_page_break hgttotalnew in
           if (vpb >= vpbprev) && (hgttotal <% hgttotalnew) then
-            (evvbacc, Some(omit_clear_page_element pbvbtail), hgttotalnew, vpb)
+            {
+              body = Alist.to_list evvbacc;
+              footnote = footnote;
+              rest = Some(omit_clear_page_element pbvbtail);
+              last_height = hgttotalnew;
+              last_badness = vpb;
+            }
           else
             let evvbaccdiscardablenew = Alist.extend evvbaccdiscardable (EvVertFixedEmpty(vskip)) in
-              aux true vpb evvbacc evvbaccdiscardablenew hgttotalnew pbvbtail
+            aux {
+              breakable = true;
+              badness = vpb;
+              solid_body = evvbacc;
+              solid_footnote = footnote;
+              discardable = evvbaccdiscardablenew;
+              total_height = hgttotalnew;
+            } pbvbtail
 
     | PBVertFixedUnbreakable(vskip) :: pbvbtail ->
         let hgttotalnew = hgttotal +% vskip in
         let evvbaccnew = Alist.extend (Alist.cat evvbacc evvbaccdiscardable) (EvVertFixedEmpty(vskip)) in
-          aux false vpbprev evvbaccnew Alist.empty hgttotalnew pbvbtail
+        aux {
+          breakable = false;
+          badness = vpbprev;  (* doubtful *)
+          solid_body = evvbaccnew;
+          solid_footnote = footnote;
+          discardable = Alist.empty;
+          total_height = hgttotalnew;
+        } pbvbtail
 
     | PBClearPage :: pbvbtail ->
-        (evvbacc, Some(pbvbtail), hgttotal, 0)
+        {
+          body = Alist.to_list evvbacc;
+          footnote = footnote;
+          rest = Some(pbvbtail);
+          last_height = hgttotal;
+          last_badness = 0;
+        }
 
     | PBVertFrame(midway, pads, decoS, decoH, decoM, decoT, wid, pbvblstsub) :: pbvbtail ->
         let hgttotalbefore = hgttotal +% pads.paddingT in
-        let (evvbaccsub, restsubopt, hgttotalsub, vpbsub) =
-          aux false vpbprev Alist.empty Alist.empty hgttotalbefore pbvblstsub
+        let ans =
+          aux {
+            breakable = false;
+            badness = vpbprev;
+            solid_body = Alist.empty;
+            solid_footnote = footnote;
+            discardable = Alist.empty;
+            total_height = hgttotalbefore;
+          } pbvblstsub
+            (* -- propagates total height and footnotes, but does NOT propagate body -- *)
         in
-        let hgttotalafter = hgttotalsub +% pads.paddingB in
+        let hgttotalafter = ans.last_height +% pads.paddingB in
         begin
-          match restsubopt with
+          match ans.rest with
           | None ->
               let evvbaccnew =
-                let decosub =
+                let (decosub, pads) =
+(*
                   match midway with
-                  | Midway    -> decoT
-                  | Beginning -> decoS
+                  | Midway    -> (decoT, { pads with paddingT = Length.zero; })
+                  | Beginning -> (decoS, pads)
+*)
+                  match midway with
+                  | Midway    -> (decoT, pads)
+                  | Beginning -> (decoS, pads)
                 in
                   Alist.extend (Alist.cat evvbacc evvbaccdiscardable)
-                    (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list evvbaccsub))
+                    (EvVertFrame(pads, pbinfo, decosub, wid, ans.body))
               in
-              aux true vpbsub evvbaccnew Alist.empty hgttotalafter pbvbtail
+              aux {
+                breakable = true;
+                badness = ans.last_badness;
+                solid_body = evvbaccnew;
+                solid_footnote = ans.footnote;
+                discardable = Alist.empty;
+                total_height = hgttotalafter;
+              } pbvbtail
 
           | Some(pbvbrestsub) ->
               let evvbaccret =
-                let decosub =
+                let (decosub, pads) =
+(*
                   match midway with
-                  | Midway    -> decoM
-                  | Beginning -> decoH
+                  | Midway    -> (decoM, { pads with paddingT = Length.zero; paddingB = Length.zero; })
+                  | Beginning -> (decoH, { pads with paddingB = Length.zero; })
+*)
+                  match midway with
+                  | Midway    -> (decoM, pads)
+                  | Beginning -> (decoH, pads)
                 in
                   Alist.extend (Alist.cat evvbacc evvbaccdiscardable)
-                    (EvVertFrame(pads, pbinfo, decosub, wid, Alist.to_list evvbaccsub))
+                    (EvVertFrame(pads, pbinfo, decosub, wid, ans.body))
               in
               let pbvbrest = Some(PBVertFrame(Midway, pads, decoS, decoH, decoM, decoT, wid, pbvbrestsub) :: pbvbtail) in
-                (evvbaccret, pbvbrest, hgttotalafter, vpbsub)
+              {
+                body = Alist.to_list evvbaccret;
+                footnote = footnote;
+                rest = pbvbrest;
+                last_height = hgttotalafter;
+                last_badness = ans.last_badness;
+              }
         end
 
     | [] ->
-(*
-        let () = PrintForDebug.pagebreakE ("CE " ^ (Length.show hgttotal) ^ " ===> None\n") in  (* for debug *)
-*)
-        (evvbacc, None, hgttotal, vpbprev)
+        {
+          body = Alist.to_list evvbacc;
+          footnote = footnote;
+          rest = None;
+          last_height = hgttotal;
+          last_badness = vpbprev;
+        }
   in
   let vpbinit = 100000 in
-  let (evvbacc, restopt, _, _) = aux false vpbinit Alist.empty Alist.empty Length.zero pbvblst in
-    (Alist.to_list evvbacc, restopt)
+  let ans =
+    aux {
+      breakable = false;
+      badness = vpbinit;
+      solid_body = Alist.empty;
+      solid_footnote = Alist.empty;
+      discardable = Alist.empty;
+      total_height = Length.zero;
+    } pbvblst
+  in
+    (ans.body, Alist.to_list ans.footnote, ans.rest)
 
 
 (* --
@@ -208,23 +297,15 @@ let solidify (vblst : vert_box list) : intermediate_vert_box list =
 
 let main (file_name_out : string) (pagesize : page_size) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
-(*
-  let () = PrintForDebug.pagebreakE ("PageBreak.main: accept data of length " ^ (string_of_int (List.length vblst))) in  (* for debug *)
-  let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_vert_box) vblst in  (* for debug *)
-*)
   let pdfinit = HandlePdf.create_empty_pdf file_name_out in
 
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
     let pbinfo = { current_page_number = pageno; } in
     let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let (evvblstpage, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
+    let (evvblstpage, footnote, restopt) = chop_single_page pbinfo pagecontsch.page_content_height pbvblst in
 
-    let page = HandlePdf.page_of_evaled_vert_box_list pagesize pbinfo pagecontsch evvblstpage in
+    let page = HandlePdf.make_page pagesize pbinfo pagecontsch evvblstpage footnote in
     let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
-(*
-    let () = PrintForDebug.pagebreakE ("PageBreak.main: write contents of length " ^ (string_of_int (List.length evvblstpage))) in  (* for debug *)
-    let () = List.iter (Format.fprintf PrintForDebug.pagebreakF "%a,@ " pp_evaled_vert_box) evvblstpage in  (* for debug *)
-*)
       match restopt with
       | None              -> pdfaccnew
       | Some(imvblstrest) -> aux (pageno + 1) pdfaccnew imvblstrest

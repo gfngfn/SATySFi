@@ -21,6 +21,7 @@
 ;; dune requires all the .ml/.mli files to be in the same directory as the jbuild.
 ;; https://github.com/ocaml/dune/issues/109
 (copy_files# backend/*.{ml,mli})
+(copy_files# text-mode/*.{ml,mli})
 (copy_files# chardecoder/*.{ml,mli})
 (copy_files  chardecoder/*.{mll,mly})
 (copy_files# frontend/*.{ml,mli})
@@ -56,5 +57,5 @@
 
 (rule
  (targets primitives_.ml)
- (deps    (:src primitives_.cppo.ml) __primitives.gen.ml)
+ (deps    (:src primitives_.cppo.ml) __primitives_pdf_mode.gen.ml __primitives_text_mode.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
