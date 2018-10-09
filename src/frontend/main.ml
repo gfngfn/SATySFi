@@ -754,7 +754,7 @@ let error_log_environment suspended =
 let arg_version () =
   begin
     print_string (
-        "  SATySFi version 0.0.2\n"
+        "  SATySFi version 0.0.3\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
