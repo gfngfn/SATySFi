@@ -3,6 +3,8 @@ exception Error of Range.t
 
 module I = Parser.MenhirInterpreter
 
+open Lexing
+
 
 let k_success utast =
   utast
@@ -23,6 +25,7 @@ let k_fail chkpt =
 
 let process fname lexbuf =
   (* print_endline "parserInterface.process";  (* for debug *) *)
-  let stack = Lexer.reset_to_progexpr fname in
+  let stack = Lexer.reset_to_progexpr () in
+  let () = lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_fname = fname } in
   let supplier = I.lexer_lexbuf_to_supplier (Lexer.cut_token stack) lexbuf in
     I.loop_handle k_success k_fail supplier (Parser.Incremental.main lexbuf.Lexing.lex_curr_p)
