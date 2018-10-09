@@ -2,16 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
-and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.3] - 2018-10-09
 ### Fixed
-- Does NOT insert spacing between different scripts when the line breaking class of the posterior charcter is CL, CP, QU, NS, JLCP, JLNS, JLCM, or JLFS
+- Does NOT insert spacing between different scripts when the [line breaking class](http://unicode.org/reports/tr14/) of the posterior charcter is CL, CP, QU, NS, JLCP, JLNS, JLCM, or JLFS.
 
-# Changed
-- Supports the application of math commands to optional arguments
-- Add `set-space-ratio-between-scripts` and `get-space-ratio-between-scripts`
+# Added
+- Supports the application of math commands to optional arguments.
+- Provides primitives `set-space-ratio-between-scripts` and `get-space-ratio-between-scripts`.
 
 ## [0.0.2] - 2018-08-09
 ### Fixed
