@@ -8,18 +8,18 @@
   "h4": "+unspecified",
   "h5": "+unspecified",
   "h6": "+unspecified",
-  "ul_inline": "+listing",
-  "ul_block": "+unspecified",
-  "ol_inline": "+enumerate",
-  "ol_block": "",
-  "code_block_map": [
+  "ul-inline": "+listing",
+  "ul-block": "+unspecified",
+  "ol-inline": "+enumerate",
+  "ol-block": "",
+  "code-block": [
   ],
-  "code_block_default": "+code",
+  "code-block-default": "+code",
 
   "emph": "\\emph",
   "bold": "\\emph",
-  "hard_break": "\\unspecified",
-  "code_map": [
+  "hard-break": "\\unspecified",
+  "code": [
   ],
-  "code_default": "\\code"
+  "code-default": "\\code"
 }

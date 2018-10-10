@@ -18,12 +18,15 @@ let cut_module_names (exn : exn) (s : string) : string list * string =
 
 
 let get_command_main exn (prefix : char) (s : string) =
-  if Char.equal (String.get s 0) prefix then
-    let stail = (String.sub s 1 (String.length s - 1)) in
-    let (mdlnms, varnm) = cut_module_names exn stail in
-    (mdlnms, "+" ^ varnm)
-  else
-    raise exn
+  try
+    if Char.equal (String.get s 0) prefix then
+      let stail = (String.sub s 1 (String.length s - 1)) in
+      let (mdlnms, varnm) = cut_module_names exn stail in
+      (mdlnms, "+" ^ varnm)
+    else
+      raise exn
+  with
+  | Invalid_argument(_) -> raise exn
 
 
 let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : assoc) =
