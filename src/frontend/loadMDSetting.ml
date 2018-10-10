@@ -22,7 +22,7 @@ let get_command_main exn (prefix : char) (s : string) =
     if Char.equal (String.get s 0) prefix then
       let stail = (String.sub s 1 (String.length s - 1)) in
       let (mdlnms, varnm) = cut_module_names exn stail in
-      (mdlnms, "+" ^ varnm)
+      (mdlnms, (String.make 1 prefix) ^ varnm)
     else
       raise exn
   with
