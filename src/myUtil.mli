@@ -1,4 +1,6 @@
 
+type file_path = string
+
 val uchar_of_char : char -> Uchar.t
 
 val ascii_capital_of_index : int -> Uchar.t
@@ -36,3 +38,5 @@ val ( += ) : int ref -> int -> unit
 val ( @|> ) : 'a -> ('a -> 'b) -> 'b
 
 val first_some : ('a -> 'b option) -> 'a list -> 'b option
+
+val string_of_file : file_path -> string

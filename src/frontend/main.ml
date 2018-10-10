@@ -6,7 +6,7 @@ module Vm = Vm_
 open Types
 open Display
 
-
+(*
 let _ =  (* TEMPORARY *)
   let cmdrcd =
     let open DecodeMD in
@@ -38,7 +38,7 @@ let _ =  (* TEMPORARY *)
 let _ =  (* TEMPORARY *)
   let open LoadMDSetting in
   ()
-
+ *)
 
 type file_path = string
 
@@ -131,14 +131,18 @@ type file_info =
   | LibraryFile  of untyped_abstract_tree
 
 
-let make_absolute_path curdir headerelem =
+let make_absolute_path_required package =
   let extcands =
     match OptionState.get_mode () with
     | None      -> [".satyh"; ".satyg"]
     | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
   in
+  Config.resolve_dist_package (Filename.concat "dist/packages" package) extcands
+
+
+let make_absolute_path curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> Config.resolve_dist_package (Filename.concat "dist/packages" s) extcands
+  | HeaderRequire(s) -> make_absolute_path_required s
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
@@ -258,10 +262,28 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
       let file_path_sub = make_absolute_path curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub;
+          register_library_file dg file_path_sub
       end;
       FileDependencyGraph.add_edge dg file_path_in file_path_sub
     )
+  end
+
+
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (file_path_in : file_path) : unit =
+  begin
+    Logging.begin_to_parse_file file_path_in;
+    let (cmdrcd, depends) = LoadMDSetting.main setting in
+    let data = MyUtil.string_of_file file_path_in in
+    let utast = DecodeMD.decode cmdrcd data in
+    FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+    depends |> List.iter (fun package ->
+      let file_path_sub = make_absolute_path_required package in
+      begin
+      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+        register_library_file dg file_path_sub
+      end;
+      FileDependencyGraph.add_edge dg file_path_in file_path_sub
+    );
   end
 
 
@@ -824,6 +846,10 @@ let text_mode s =
     OptionState.set_text_mode slst
 
 
+let input_markdown setting =
+  OptionState.set_input_kind (OptionState.Markdown(setting))
+
+
 let arg_spec_list curdir =
   [
     ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"              );
@@ -838,6 +864,7 @@ let arg_spec_list curdir =
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                    );
+    ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"    );
   ]
 
 
@@ -896,7 +923,14 @@ let () =
     Logging.dump_file dump_file_exists dump_file;
 
     let dg = FileDependencyGraph.create 32 in
-    register_document_file dg input_file;
+    begin
+      match OptionState.get_input_kind () with
+      | OptionState.SATySFi ->
+          register_document_file dg input_file
+
+      | OptionState.Markdown(setting) ->
+          register_markdown_file dg setting input_file
+    end;
     match FileDependencyGraph.find_cycle dg with
     | Some(cycle) ->
         raise (CyclicFileDependency(cycle))

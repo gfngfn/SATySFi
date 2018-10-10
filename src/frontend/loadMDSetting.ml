@@ -67,6 +67,7 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
     assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code")) "code"
           |> make_code_name_map srcpath '\\'
   in
+  let cmdrcd =
     {
       paragraph          = assoc |> block "paragraph";
       hr                 = assoc |> block "hr";
@@ -89,13 +90,26 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
     }
+  in
+  let depends =
+    let json =
+      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "depends")) "depends"
+    in
+    match json with
+    | `List(jsons) ->
+        jsons |> List.map (function `String(s) -> s | json -> raise (InvalidYOJSON(srcpath, "not a string: " ^ (Yojson.Safe.to_string json))))
+
+    | _ ->
+        raise (InvalidYOJSON(srcpath, "not a list: " ^ (Yojson.Safe.to_string json)))
+  in
+  (cmdrcd, depends)
 
 
 let exception_for_multiple srcpath k =
   MultipleDesignation(srcpath, k)
 
 
-let main (key : string) : DecodeMD.command_record =
+let main (key : string) : DecodeMD.command_record * string list =
   let srcpath = Config.resolve_dist_file (Filename.concat "dist/md" (key ^ ".satysfi-md")) in
     try
       let json = Yojson.Safe.from_file srcpath in

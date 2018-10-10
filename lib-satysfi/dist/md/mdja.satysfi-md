@@ -1,0 +1,25 @@
+{
+  "depends": ["stdjabook", "itemize", "code"],
+  "paragraph": "+p",
+  "hr": "+unspecified",
+  "h1": "+chapter",
+  "h2": "+section",
+  "h3": "+subsection",
+  "h4": "+unspecified",
+  "h5": "+unspecified",
+  "h6": "+unspecified",
+  "ul_inline": "+listing",
+  "ul_block": "+unspecified",
+  "ol_inline": "+enumerate",
+  "ol_block": "",
+  "code_block_map": [
+  ],
+  "code_block_default": "+code",
+
+  "emph": "\\emph",
+  "bold": "\\emph",
+  "hard_break": "\\unspecified",
+  "code_map": [
+  ],
+  "code_default": "\\code"
+}
