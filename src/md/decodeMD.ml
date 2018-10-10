@@ -4,7 +4,7 @@ open Types_
 
 type section_level =
   | H1 | H2 | H3 | H4 | H5 | H6
-[@@deriving show]
+[@@deriving show { with_path = false; }]
 
 type block_element =
   | Section of section_level * inline * block
@@ -14,7 +14,7 @@ type block_element =
   | OlBlock of block list
   | OlInline of inline list
   | CodeBlock of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(%s, %s)" name s)]
+      [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(\"%s\",@ \"%s\")" name s)]
   | Hr
   | BlockRaw of string
 
@@ -25,13 +25,13 @@ and inline_element =
   | Emph of inline
   | Bold of inline
   | Code of Omd.name * string
-      [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(%s, %s)" name s)]
+      [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
   | InlineRaw of string
 
 
 and inline = inline_element list
-[@@deriving show]
+[@@deriving show { with_path = false; }]
 
 type middle_record =
   {
