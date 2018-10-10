@@ -35,6 +35,10 @@ let _ =  (* TEMPORARY *)
   in
   DecodeMD.decode cmdrcd "the quick brown fox"
 
+let _ =  (* TEMPORARY *)
+  let open LoadMDSetting in
+  ()
+
 
 type file_path = string
 
