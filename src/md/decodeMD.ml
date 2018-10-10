@@ -214,14 +214,17 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
 
   | Code(name, s) ->
       let cmd =
-        match cmdrcd.code_map |> CodeNameMap.find_opt name with
-        | None ->
-            Format.printf "! Warning: unknown name '%s' for inline code\n" name;
-              (* -- temporary; should warn in a more sophisticated manner -- *)
-            cmdrcd.code_default
+        if String.equal name "" then
+          cmdrcd.code_default
+        else
+          match cmdrcd.code_map |> CodeNameMap.find_opt name with
+          | None ->
+              Format.printf "! Warning: unknown name '%s' for inline code\n" name;
+                (* -- temporary; should warn in a more sophisticated manner -- *)
+              cmdrcd.code_default
 
-        | Some(cmd) ->
-            cmd
+          | Some(cmd) ->
+              cmd
       in
       let utastarg = (dummy_range, UTStringConstant(s)) in
       make_inline_application cmd [utastarg]
@@ -289,14 +292,17 @@ let rec convert_block_element (cmdrcd : command_record) (blke : block_element) :
   | CodeBlock(name, s) ->
       let utastarg = (dummy_range, UTStringConstant(s)) in
       let cmd =
-        match cmdrcd.code_block_map |> CodeNameMap.find_opt name with
-        | None ->
-            Format.printf "unknown name '%s' for code block\n" name;
-              (* temporary; should warn in a more sophisticated manner *)
-            cmdrcd.code_block_default
+        if String.equal name "" then
+          cmdrcd.code_block_default
+        else
+          match cmdrcd.code_block_map |> CodeNameMap.find_opt name with
+          | None ->
+              Format.printf "! Warning: unknown name '%s' for code block\n" name;
+                (* temporary; should warn in a more sophisticated manner *)
+              cmdrcd.code_block_default
 
-        | Some(cmd) ->
-            cmd
+          | Some(cmd) ->
+              cmd
       in
       make_block_application cmd [utastarg]
 
