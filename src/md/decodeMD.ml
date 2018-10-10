@@ -298,7 +298,7 @@ let rec convert_block_element (cmdrcd : command_record) (blke : block_element) :
 
   | BlockRaw(s) ->
       let cmd = cmdrcd.paragraph in  (* temporary; maybe should use another command 'cmdrcd.err_block' *)
-      make_block_application cmd [(dummy_range, UTStringConstant(s))]
+      make_block_application cmd [(dummy_range, UTInputHorz[(dummy_range, UTInputHorzText(s))])]
 
 
 and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tree =
