@@ -156,6 +156,9 @@ module CodeNameMap = Map.Make(String)
 type command = module_name list * var_name
 
 type command_record = {
+  document           : command;
+  header_default     : string;
+
   paragraph          : command;
   hr                 : command;
   h1                 : command;
@@ -321,8 +324,23 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
   (dummy_range, UTInputVert(utiv))
 
 
-let decode (cmdrcd : command_record) (s : string) : untyped_abstract_tree =
+let decode (cmdrcd : command_record) (s : string) =
+  let utastdoccmd =
+    let (mdlnms, varnm) = cmdrcd.document in
+    (dummy_range, UTContentOf(mdlnms, varnm))
+  in
   let md = Omd.of_string s in
+  let (strheader, md) =
+    match md with
+    | Omd.Html_comment(s) :: md ->
+        (s, md)
+
+    | _ ->
+        (cmdrcd.header_default, md)
+  in
+  let lexbuf = Lexing.from_string strheader in
+  let (_, utasthead) = ParserInterface.process "(markdown)" lexbuf in
   let blk = normalize_h1 md in
   Format.printf "BLOCK: %a\n" pp_block blk;  (* TEMPORARY *)
-  convert_block cmdrcd blk
+  let utastbody = convert_block cmdrcd blk in
+  (dummy_range, UTApply((dummy_range, UTApply(utastdoccmd, utasthead)), utastbody))

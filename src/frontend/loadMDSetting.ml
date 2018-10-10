@@ -62,6 +62,15 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
   let open DecodeMD in
   let block = get_command srcpath '+' in
   let inline = get_command srcpath '\\' in
+  let name k assoc =
+    let json =
+      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k
+    in
+    let exn = InvalidValueForKey(srcpath, k) in
+    match json with
+    | `String(name) -> cut_module_names exn name
+    | _             -> raise exn
+  in
   let code_block assoc =
     assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code-block")) "code-block"
           |> make_code_name_map srcpath '+'
@@ -70,8 +79,19 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
     assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code")) "code"
           |> make_code_name_map srcpath '\\'
   in
+  let string k assoc =
+    let json =
+      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k
+    in
+    match json with
+    | `String(s) -> s
+    | _          -> raise (InvalidValueForKey(srcpath, k))
+  in
   let cmdrcd =
     {
+      document           = assoc |> name "document";
+      header_default     = assoc |> string "header-default";
+
       paragraph          = assoc |> block "paragraph";
       hr                 = assoc |> block "hr";
       h1                 = assoc |> block "h1";

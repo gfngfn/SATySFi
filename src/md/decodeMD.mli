@@ -6,6 +6,9 @@ module CodeNameMap : Map.S with type key = string
 type command = module_name list * var_name
 
 type command_record = {
+  document           : command;
+  header_default     : string;
+
   paragraph          : command;
   hr                 : command;
   h1                 : command;
