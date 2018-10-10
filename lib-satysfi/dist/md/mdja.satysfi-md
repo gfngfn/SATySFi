@@ -1,5 +1,5 @@
 {
-  "depends": ["stdjabook", "itemize", "code"],
+  "depends": ["stdjareport", "itemize", "code"],
   "paragraph": "+p",
   "hr": "+unspecified",
   "h1": "+chapter",
@@ -11,7 +11,7 @@
   "ul-inline": "+listing",
   "ul-block": "+unspecified",
   "ol-inline": "+enumerate",
-  "ol-block": "",
+  "ol-block": "+unspecified",
   "code-block": [
   ],
   "code-block-default": "+code",

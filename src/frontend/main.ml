@@ -275,6 +275,7 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
     let (cmdrcd, depends) = LoadMDSetting.main setting in
     let data = MyUtil.string_of_file file_path_in in
     let utast = DecodeMD.decode cmdrcd data in
+    let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* TEMPORARY *)
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     depends |> List.iter (fun package ->
       let file_path_sub = make_absolute_path_required package in
