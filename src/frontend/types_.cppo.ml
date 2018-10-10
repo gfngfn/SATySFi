@@ -363,8 +363,11 @@ type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
 and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
+  [@printer (fun fmt (_, utihmain) -> Format.fprintf fmt "%a" pp_untyped_input_horz_element_main utihmain)]
+
 and untyped_input_horz_element_main =
   | UTInputHorzText         of string
+      [@printer (fun fmt s -> Format.fprintf fmt "T:%s" s)]
   | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
@@ -385,15 +388,15 @@ and untyped_abstract_tree =
 and untyped_abstract_tree_main =
 (* -- basic value -- *)
   | UTUnitConstant
-      [@printer (fun fmt () -> Format.fprintf fmt "()")]
+      [@printer (fun fmt () -> Format.fprintf fmt "U:()")]
   | UTBooleanConstant      of bool
   | UTIntegerConstant      of int
   | UTFloatConstant        of float
   | UTLengthDescription    of float * length_unit_name
-      [@printer (fun fmt (fl, lun) -> Format.fprintf fmt "%f%s" fl lun)]
+      [@printer (fun fmt (fl, lun) -> Format.fprintf fmt "L:%f%s" fl lun)]
   | UTStringEmpty
   | UTStringConstant       of string
-      [@printer (fun fmt s -> Format.fprintf fmt "\"%s\"" s)]
+      [@printer (fun fmt s -> Format.fprintf fmt "S:\"%s\"" s)]
 (* -- inputs -- *)
   | UTInputHorz            of untyped_input_horz_element list
   | UTInputVert            of untyped_input_vert_element list
