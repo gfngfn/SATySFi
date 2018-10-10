@@ -1,7 +1,7 @@
 
 open Types_
 
-module CodeNameMap : Map.S
+module CodeNameMap : Map.S with type key = string
 
 type command = module_name list * var_name
 

@@ -7,7 +7,8 @@ type file_path = string
 
 exception MultipleDesignation of file_path * string
 exception InvalidYOJSON       of file_path * string
-exception InvalidEntry        of file_path * string
+exception MissingRequiredKey  of file_path * string
+exception InvalidValueForKey  of file_path * string
 
 
 let cut_module_names (exn : exn) (s : string) : string list * string =
@@ -16,27 +17,56 @@ let cut_module_names (exn : exn) (s : string) : string list * string =
   | _                  -> raise exn
 
 
-let get_command (exnf : string -> exn) (prefix : char) (k : string) (assoc : assoc) =
-  let exn = exnf k in
-  let json = assoc |> MyYojsonUtil.find exn k in
+let get_command_main exn (prefix : char) (s : string) =
+  if Char.equal (String.get s 0) prefix then
+    let stail = (String.sub s 1 (String.length s - 1)) in
+    let (mdlnms, varnm) = cut_module_names exn stail in
+    (mdlnms, "+" ^ varnm)
+  else
+    raise exn
+
+
+let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : assoc) =
+  let json = assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k in
+  let exn = InvalidValueForKey(srcpath, k) in
   match json with
-  | `String(s) ->
-      if Char.equal (String.get s 0) prefix then
-        let stail = (String.sub s 1 (String.length s - 1)) in
-        let (mdlnms, varnm) = cut_module_names exn stail in
-        (mdlnms, "+" ^ varnm)
-      else
-        raise exn
+  | `String(s) -> get_command_main exn prefix s
+  | _          -> raise exn
+
+
+let make_code_name_map (srcpath : file_path) (prefix : char) (json : Yojson.Safe.json) : (string list * string) DecodeMD.CodeNameMap.t =
+  let open DecodeMD in
+  match json with
+  | `List(pairs) ->
+      pairs |> List.fold_left (fun accmap json ->
+        match json with
+        | `Tuple(`String(name) :: `String(s) :: []) ->
+            if accmap |> CodeNameMap.mem name then
+              raise (MultipleDesignation(srcpath, name))
+            else
+              let cmd = get_command_main (InvalidValueForKey(srcpath, name)) prefix s in
+              accmap |> CodeNameMap.add name cmd
+
+        | _ ->
+            raise (InvalidYOJSON(srcpath, "not a pair: " ^ (Yojson.Safe.to_string json)))
+      ) CodeNameMap.empty
 
   | _ ->
-      raise exn
+      raise (InvalidYOJSON(srcpath, "not a list: " ^ (Yojson.Safe.to_string json)))
 
 
 let read_assoc (srcpath : file_path) (assoc : assoc) =
   let open DecodeMD in
-  let exnf k = InvalidEntry(srcpath, k) in
-  let block = get_command exnf '+' in
-  let inline = get_command exnf '\\' in
+  let block = get_command srcpath '+' in
+  let inline = get_command srcpath '\\' in
+  let code_block assoc =
+    assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code-block")) "code-block"
+          |> make_code_name_map srcpath '+'
+  in
+  let code assoc =
+    assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code")) "code"
+          |> make_code_name_map srcpath '\\'
+  in
     {
       paragraph          = assoc |> block "paragraph";
       hr                 = assoc |> block "hr";
@@ -50,14 +80,14 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
       ul_block           = assoc |> block "ul-block";
       ol_inline          = assoc |> block "ol-inline";
       ol_block           = assoc |> block "ol-block";
-      code_block_map     = CodeNameMap.empty;
+      code_block_map     = assoc |> code_block;
       code_block_default = assoc |> block "code-block-default";
 
       emph               = assoc |> inline "emph";
       bold               = assoc |> inline "bold";
       hard_break         = assoc |> inline "hard-break";
-      code_map           = CodeNameMap.empty;
-      code_default       = assoc |> inline "code-inline-default";
+      code_map           = assoc |> code;
+      code_default       = assoc |> inline "code-default";
     }
 
 
@@ -65,7 +95,7 @@ let exception_for_multiple srcpath k =
   MultipleDesignation(srcpath, k)
 
 
-let main (key : string) =
+let main (key : string) : DecodeMD.command_record =
   let srcpath = Config.resolve_dist_file (Filename.concat "dist/md" (key ^ ".satysfi-md")) in
     try
       let json = Yojson.Safe.from_file srcpath in
