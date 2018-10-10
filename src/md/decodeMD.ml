@@ -4,6 +4,7 @@ open Types_
 
 type section_level =
   | H1 | H2 | H3 | H4 | H5 | H6
+[@@deriving show]
 
 type block_element =
   | Section of section_level * inline * block
@@ -13,6 +14,7 @@ type block_element =
   | OlBlock of block list
   | OlInline of inline list
   | CodeBlock of Omd.name * string
+      [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(%s, %s)" name s)]
   | Hr
   | BlockRaw of string
 
@@ -23,11 +25,13 @@ and inline_element =
   | Emph of inline
   | Bold of inline
   | Code of Omd.name * string
+      [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(%s, %s)" name s)]
   | Br
   | InlineRaw of string
 
 
 and inline = inline_element list
+[@@deriving show]
 
 type middle_record =
   {
@@ -314,4 +318,5 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
 let decode (cmdrcd : command_record) (s : string) : untyped_abstract_tree =
   let md = Omd.of_string s in
   let blk = normalize_h1 md in
+  Format.printf "BLOCK: %a\n" pp_block blk;  (* TEMPORARY *)
   convert_block cmdrcd blk
