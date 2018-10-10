@@ -1,5 +1,7 @@
 {
   "depends": ["stdjareport", "itemize", "code"],
+  "document": "StdJaReport.document",
+  "header-default": "(| title = {}; author = {}; |)",
   "paragraph": "+p",
   "hr": "+unspecified",
   "h1": "+chapter",
