@@ -359,6 +359,10 @@ module BoundID =
 
 (* ---- untyped ---- *)
 
+let pp_sep fmt () =
+  Format.fprintf fmt ";@ "
+
+
 type untyped_letrec_binding =
   UTLetRecBinding of manual_type option * Range.t * var_name * untyped_abstract_tree
 
@@ -367,14 +371,18 @@ and untyped_input_horz_element = Range.t * untyped_input_horz_element_main
 
 and untyped_input_horz_element_main =
   | UTInputHorzText         of string
-      [@printer (fun fmt s -> Format.fprintf fmt "T:%s" s)]
+      [@printer (fun fmt s -> Format.fprintf fmt "IT:%s" s)]
   | UTInputHorzEmbedded     of untyped_abstract_tree * untyped_command_argument list
+      [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "IC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputHorzContent      of untyped_abstract_tree
   | UTInputHorzEmbeddedMath of untyped_abstract_tree
 
 and untyped_input_vert_element = Range.t * untyped_input_vert_element_main
+  [@printer (fun fmt (_, utivmain) -> Format.fprintf fmt "%a" pp_untyped_input_vert_element_main utivmain)]
+
 and untyped_input_vert_element_main =
   | UTInputVertEmbedded of untyped_abstract_tree * untyped_command_argument list
+      [@printer (fun fmt (utast, lst) -> Format.fprintf fmt "BC:%a %a" pp_untyped_abstract_tree utast (Format.pp_print_list ~pp_sep pp_untyped_command_argument) lst)]
   | UTInputVertContent  of untyped_abstract_tree
 
 and 'a untyped_path_component =

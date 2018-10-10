@@ -212,7 +212,7 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let cmd =
         match cmdrcd.code_map |> CodeNameMap.find_opt name with
         | None ->
-            Format.printf "Warning: unknown name '%s' for inline code" name;
+            Format.printf "! Warning: unknown name '%s' for inline code\n" name;
               (* -- temporary; should warn in a more sophisticated manner -- *)
             cmdrcd.code_default
 
