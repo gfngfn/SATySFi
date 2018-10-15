@@ -27,5 +27,5 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 
   [Unreleased]: https://github.com/gfngfn/SATySFi/compare/v0.0.3...HEAD
-  [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.1...v0.0.3
+  [0.0.3]: https://github.com/gfngfn/SATySFi/compare/v0.0.2...v0.0.3
   [0.0.2]: https://github.com/gfngfn/SATySFi/compare/v0.0.1...v0.0.2
