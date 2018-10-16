@@ -571,6 +571,12 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
 
+  | LoadMDSetting.MissingRequiredKey(srcpath, key) ->
+      report_error System [
+        NormalLine("in " ^ srcpath ^ ":");
+        NormalLine("missing required key '" ^ key ^ "'.");
+      ]
+
   | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
       let s = String.concat "." (List.append mdlnmlst [varnm]) in
       report_error Typechecker [
