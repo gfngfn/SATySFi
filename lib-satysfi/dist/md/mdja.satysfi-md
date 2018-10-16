@@ -15,6 +15,7 @@
   "ol-inline": "+ol",
   "ol-block": "+ol-block",
   "code-block": [
+    ("console", "+console")
   ],
   "code-block-default": "+code",
   "blockquote": "+quote",

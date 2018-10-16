@@ -19,6 +19,7 @@ module MDJa : sig
   direct +ul : [inline-text list] block-cmd
   direct +ol : [inline-text list] block-cmd
   direct +code : [string] block-cmd
+  direct +console : [string] block-cmd
   direct +quote : [block-text] block-cmd
   direct +error : [string] block-cmd
 
@@ -193,6 +194,9 @@ end = struct
   let-block +code s =
     '<+Code.code(s);>
 
+
+  let-block +console s =
+    '<+Code.console(s);>
 
   let-block ctx +quote it =
     let qsize = get-quad-size ctx in
