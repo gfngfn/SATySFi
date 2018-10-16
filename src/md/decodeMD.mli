@@ -23,12 +23,15 @@ type command_record = {
   ol_block           : command;
   code_block_map     : command CodeNameMap.t;
   code_block_default : command;
+  blockquote         : command;
+  err_block          : command;
 
   emph               : command;
   bold               : command;
   hard_break         : command;
   code_map           : command CodeNameMap.t;
   code_default       : command;
+  err_inline         : command;
 }
 
 val decode : command_record -> string -> untyped_abstract_tree

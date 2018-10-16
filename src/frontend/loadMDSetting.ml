@@ -106,12 +106,15 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
       ol_block           = assoc |> block "ol-block";
       code_block_map     = assoc |> code_block;
       code_block_default = assoc |> block "code-block-default";
+      blockquote         = assoc |> block "blockquote";
+      err_block          = assoc |> block "err-block";
 
       emph               = assoc |> inline "emph";
       bold               = assoc |> inline "bold";
       hard_break         = assoc |> inline "hard-break";
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
+      err_inline         = assoc |> inline "err-inline";
     }
   in
   let depends =

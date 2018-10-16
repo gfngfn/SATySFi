@@ -13,6 +13,7 @@ type block_element =
   | UlInline of inline list
   | OlBlock of block list
   | OlInline of inline list
+  | Blockquote of block
   | CodeBlock of Omd.name * string
       [@printer (fun fmt (name, s) -> Format.fprintf fmt "CodeBlock(\"%s\",@ \"%s\")" name s)]
   | Hr
@@ -69,6 +70,32 @@ let rec make_block_element (mde : Omd.element) : block_element =
   | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
       -> assert false  (* -- should be omitted by 'normalize_section' -- *)
 
+  | Omd.Text(_)
+  | Omd.Emph(_)
+  | Omd.Bold(_)
+  | Omd.Code(_)
+  | Omd.Br
+  | Omd.NL
+  | Omd.Url(_)
+  | Omd.Ref(_)
+  | Omd.Img(_)
+  | Omd.Img_ref(_)
+  | Omd.Raw(_)
+  | Omd.Html(_)
+      ->
+        Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
+          (* temporary; should warn in a more sophisticated manner *)
+        Paragraph(make_inline [mde])
+
+  | Omd.Html_block(_) ->
+      failwith ("HTML block; remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.Html_comment(_) ->
+      failwith ("HTML comment; remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.X(_) ->
+      failwith ("extension; remains to be supported: " ^ Omd.to_text [mde])
+
   | Omd.Paragraph(md)       -> Paragraph(make_inline md)
   | Omd.Ul(mds)             -> UlInline(List.map make_inline mds)
   | Omd.Ulp(mds)            -> UlBlock(List.map make_block mds)
@@ -76,8 +103,11 @@ let rec make_block_element (mde : Omd.element) : block_element =
   | Omd.Olp(mds)            -> OlBlock(List.map make_block mds)
   | Omd.Code_block(name, s) -> CodeBlock(name, s)
   | Omd.Hr                  -> Hr
+  | Omd.Blockquote(md)      -> Blockquote(make_block md)
+  | Omd.Raw_block(s)        -> BlockRaw(s)
+(*
   | _                       -> BlockRaw(Omd.to_text [mde])
-
+ *)
 
 and make_block (md : Omd.t) : block =
   md |> List.map make_block_element
@@ -173,12 +203,15 @@ type command_record = {
   ol_block           : command;
   code_block_map     : command CodeNameMap.t;
   code_block_default : command;
+  blockquote         : command;
+  err_block          : command;
 
   emph               : command;
   bold               : command;
   hard_break         : command;
   code_map           : command CodeNameMap.t;
   code_default       : command;
+  err_inline         : command;
 }
 
 
@@ -236,7 +269,8 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       make_inline_application cmdrcd.hard_break []
 
   | InlineRaw(s) ->
-      [(dummy_range, UTInputHorzText(s))]
+      let utastarg = (dummy_range, UTStringConstant(s)) in
+      make_inline_application cmdrcd.err_inline [utastarg]
 
 
 and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_tree =
@@ -309,8 +343,12 @@ let rec convert_block_element (cmdrcd : command_record) (blke : block_element) :
       in
       make_block_application cmd [utastarg]
 
+  | Blockquote(blk) ->
+      let utastarg = convert_block cmdrcd blk in
+      make_block_application cmdrcd.blockquote [utastarg]
+
   | BlockRaw(s) ->
-      let cmd = cmdrcd.paragraph in  (* temporary; maybe should use another command 'cmdrcd.err_block' *)
+      let cmd = cmdrcd.err_block in
       make_block_application cmd [(dummy_range, UTInputHorz[(dummy_range, UTInputHorzText(s))])]
 
 
