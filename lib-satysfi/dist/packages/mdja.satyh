@@ -37,10 +37,12 @@ end = struct
   let text-height = 630pt
   let footer-origin = (40pt, 780pt)
 
+  let skip-before-content = 20pt
+
   let font-size-main = 12pt
-  let font-size-title = 28pt
-  let font-size-h1 = 24pt
-  let font-size-h2 = 20pt
+  let font-size-title = 20pt
+  let font-size-h1 = 18pt
+  let font-size-h2 = 16pt
 
   let font-ratio-cjk = 0.88
 
@@ -116,7 +118,11 @@ end = struct
       |)
     in
     page-break paper pagecontf pagepartsf
-      (bb-title +++ bb-author +++ bb-main)
+      (List.fold-left (+++) block-nil [
+        bb-title; bb-author;
+        block-skip skip-before-content;
+        bb-main;
+      ])
 
 
   let increment-counter counter counter-children =
