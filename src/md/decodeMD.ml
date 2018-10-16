@@ -118,8 +118,11 @@ let rec make_block_of_element (mde : Omd.element) =
 
   | Omd.Br
   | Omd.NL
-  | Omd.Html_comment(_)
       -> empty
+
+  | Omd.Html_comment(s) ->
+      Format.printf "  [Comment] %s@," s;  (* TEMPORARY *)
+      empty
 
   | Omd.Html_block(_) ->
       failwith ("HTML block; remains to be supported: " ^ Omd.to_text [mde])
@@ -400,6 +403,16 @@ let decode (cmdrcd : command_record) (s : string) =
   let (strheader, md) =
     match md with
     | Omd.Html_comment(s) :: md ->
+        let len = String.length s in
+        let s =
+          if len < 8 then
+            assert false
+          else
+            String.sub s 4 (len - 8)
+        in
+(*
+        Format.printf "  [Header] %s@," s;  (* for debug *)
+ *)
         (s, md)
 
     | _ ->
