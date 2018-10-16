@@ -65,7 +65,9 @@ and make_inline (md : Omd.t) : inline =
   md |> List.map make_inline_element
 
 
-let rec make_block_element (mde : Omd.element) : block_element =
+let rec make_block_of_element (mde : Omd.element) =
+  let single blke = [blke] in
+  let empty = [] in
   match mde with
   | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
       -> assert false  (* -- should be omitted by 'normalize_section' -- *)
@@ -74,8 +76,6 @@ let rec make_block_element (mde : Omd.element) : block_element =
   | Omd.Emph(_)
   | Omd.Bold(_)
   | Omd.Code(_)
-  | Omd.Br
-  | Omd.NL
   | Omd.Url(_)
   | Omd.Ref(_)
   | Omd.Img(_)
@@ -85,32 +85,32 @@ let rec make_block_element (mde : Omd.element) : block_element =
       ->
         Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
           (* temporary; should warn in a more sophisticated manner *)
-        Paragraph(make_inline [mde])
+        single @@ Paragraph(make_inline [mde])
+
+  | Omd.Br
+  | Omd.NL
+  | Omd.Html_comment(_)
+      -> empty
 
   | Omd.Html_block(_) ->
       failwith ("HTML block; remains to be supported: " ^ Omd.to_text [mde])
 
-  | Omd.Html_comment(_) ->
-      failwith ("HTML comment; remains to be supported: " ^ Omd.to_text [mde])
-
   | Omd.X(_) ->
       failwith ("extension; remains to be supported: " ^ Omd.to_text [mde])
 
-  | Omd.Paragraph(md)       -> Paragraph(make_inline md)
-  | Omd.Ul(mds)             -> UlInline(List.map make_inline mds)
-  | Omd.Ulp(mds)            -> UlBlock(List.map make_block mds)
-  | Omd.Ol(mds)             -> OlInline(List.map make_inline mds)
-  | Omd.Olp(mds)            -> OlBlock(List.map make_block mds)
-  | Omd.Code_block(name, s) -> CodeBlock(name, s)
-  | Omd.Hr                  -> Hr
-  | Omd.Blockquote(md)      -> Blockquote(make_block md)
-  | Omd.Raw_block(s)        -> BlockRaw(s)
-(*
-  | _                       -> BlockRaw(Omd.to_text [mde])
- *)
+  | Omd.Paragraph(md)       -> single @@ Paragraph(make_inline md)
+  | Omd.Ul(mds)             -> single @@ UlInline(List.map make_inline mds)
+  | Omd.Ulp(mds)            -> single @@ UlBlock(List.map make_block mds)
+  | Omd.Ol(mds)             -> single @@ OlInline(List.map make_inline mds)
+  | Omd.Olp(mds)            -> single @@ OlBlock(List.map make_block mds)
+  | Omd.Code_block(name, s) -> single @@ CodeBlock(name, s)
+  | Omd.Hr                  -> single @@ Hr
+  | Omd.Blockquote(md)      -> single @@ Blockquote(make_block md)
+  | Omd.Raw_block(s)        -> single @@ BlockRaw(s)
+
 
 and make_block (md : Omd.t) : block =
-  md |> List.map make_block_element
+  md |> List.map make_block_of_element |> List.concat
 
 
 let finish_section (midrcd : middle_record) : (inline * Omd.t) Alist.t =

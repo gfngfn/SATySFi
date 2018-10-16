@@ -17,11 +17,14 @@
   "code-block": [
   ],
   "code-block-default": "+code",
+  "blockquote": "+quote",
+  "err-block": "+error",
 
   "emph": "\\emph",
   "bold": "\\emph",
   "hard-break": "\\unspecified",
   "code": [
   ],
-  "code-default": "\\code"
+  "code-default": "\\code",
+  "err-inline": "\\error"
 }
