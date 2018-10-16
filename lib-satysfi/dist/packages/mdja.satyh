@@ -1,3 +1,4 @@
+@require: pervasives
 @require: code
 @require: math
 @require: itemize
@@ -24,6 +25,8 @@ module MDJa : sig
   direct \code : [string] inline-cmd
   direct \emph : [inline-text] inline-cmd
   direct \bold : [inline-text] inline-cmd
+  direct \hard-break : [] inline-cmd
+  direct \error : [string] inline-cmd
 end = struct
 
 
@@ -220,6 +223,10 @@ end = struct
 
   let-inline \code s =
     {\Code.code(s);}
+
+
+  let-inline ctx \hard-break =
+    mandatory-break ctx
 
 
   let-inline ctx \error s =
