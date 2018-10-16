@@ -26,6 +26,7 @@ module MDJa : sig
   direct \code : [string] inline-cmd
   direct \emph : [inline-text] inline-cmd
   direct \bold : [inline-text] inline-cmd
+  direct \link : [string; inline-text] inline-cmd
   direct \hard-break : [] inline-cmd
   direct \error : [string] inline-cmd
 end = struct
@@ -49,6 +50,7 @@ end = struct
   let font-latin-roman  = (`Junicode`   , 1., 0.)
   let font-latin-italic = (`Junicode-it`, 1., 0.)
   let font-latin-sans   = (`lmsans`     , 1., 0.)
+  let font-latin-mono   = (`lmmono`     , 1., 0.)
 
   let font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
   let font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
@@ -182,7 +184,7 @@ end = struct
 
 
   let-block ctx +p it =
-    let indent-size = get-quad-size ctx in
+    let indent-size = 0pt in % get-quad-size ctx in
     line-break true true ctx
       (inline-skip indent-size ++ read-inline ctx it ++ inline-fil)
 
@@ -206,8 +208,8 @@ end = struct
 
   let-block ctx +quote it =
     let qsize = get-quad-size ctx in
-    let pads = (qsize *' 2., 0pt, 0pt, 0pt) in
-    let decoset = VDecoSet.empty in
+    let pads = (qsize, 0pt, 0pt, 0pt) in
+    let decoset = VDecoSet.quote-round 6pt 4pt (Gray(0.75)) in
     block-frame-breakable ctx pads decoset
       (fun ctx -> read-block ctx it)
 
@@ -233,6 +235,18 @@ end = struct
 
   let-inline \code s =
     {\Code.code(s);}
+
+
+  let-inline ctx \url s =
+    let ctx =
+      ctx |> set-latin-font font-latin-mono
+          |> set-cjk-font font-cjk-gothic
+    in
+    read-inline ctx (embed-string s)
+
+
+  let-inline \link s it =
+    {#it;(\url(s);)}
 
 
   let-inline ctx \hard-break =

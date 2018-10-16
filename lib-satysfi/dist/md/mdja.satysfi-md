@@ -27,5 +27,6 @@
   "code": [
   ],
   "code-default": "\\code",
+  "url": "\\link",
   "err-inline": "\\error"
 }
