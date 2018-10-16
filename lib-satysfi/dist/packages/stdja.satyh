@@ -7,12 +7,15 @@
 
 module StdJa : sig
 
-  val document : 'a -> block-text -> document
+  val document : 'a -> 'b ?-> block-text -> document
     constraint 'a :: (|
       title : inline-text;
       author : inline-text;
       show-toc : bool;
       show-title : bool;
+    |)
+    constraint 'b :: (|
+      show-pages : bool;
     |)
 
   val font-latin-italic : string * float * float
@@ -229,7 +232,7 @@ let title-deco =
     | Some(s) -> s
 
 
-  let document record inner =
+  let document record ?:recordopt inner =
     % -- constants --
     let title = record#title in
     let author = record#author in
@@ -242,6 +245,11 @@ let title-deco =
     let hdrwid = 520pt in
     let ftrwid = 520pt in
     let thickness = 0.5pt in
+    let show-pages =
+      match recordopt with
+      | None -> true
+      | Some(flags) -> flags#show-pages
+    in
 
     let ctx-doc = get-standard-context txtwid in
 
@@ -329,10 +337,13 @@ let title-deco =
             +++ bb-float-boxes
       in
       let footer =
-        let ctx = get-standard-context ftrwid in
-        let it-pageno = embed-string (arabic pbinfo#page-number) in
-          line-break true true ctx
-            (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+        if show-pages then
+          let ctx = get-standard-context ftrwid in
+          let it-pageno = embed-string (arabic pbinfo#page-number) in
+            line-break true true ctx
+              (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+        else
+          block-nil
       in
         (|
           header-origin  = hdrorg;
