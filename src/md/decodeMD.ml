@@ -408,6 +408,8 @@ let decode (cmdrcd : command_record) (s : string) =
   let lexbuf = Lexing.from_string strheader in
   let (_, utasthead) = ParserInterface.process "(markdown)" lexbuf in
   let blk = normalize_h1 md in
-  Format.printf "BLOCK: %a\n" pp_block blk;  (* TEMPORARY *)
+(*
+  Format.printf "BLOCK: %a\n" pp_block blk;  (* for debug *)
+ *)
   let utastbody = convert_block cmdrcd blk in
   (dummy_range, UTApply((dummy_range, UTApply(utastdoccmd, utasthead)), utastbody))

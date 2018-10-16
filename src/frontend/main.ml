@@ -6,39 +6,6 @@ module Vm = Vm_
 open Types
 open Display
 
-(*
-let _ =  (* TEMPORARY *)
-  let cmdrcd =
-    let open DecodeMD in
-    {
-      paragraph          = ([], "+p");
-      hr                 = ([], "+hr");
-      h1                 = ([], "+h1");
-      h2                 = ([], "+h2");
-      h3                 = ([], "+h3");
-      h4                 = ([], "+h4");
-      h5                 = ([], "+h5");
-      h6                 = ([], "+h6");
-      ul_inline          = ([], "+ul");
-      ul_block           = ([], "+ulb");
-      ol_inline          = ([], "+ol");
-      ol_block           = ([], "+olb");
-      code_block_map     = CodeNameMap.empty;
-      code_block_default = ([], "\\code");
-
-      emph               = ([], "\\emph");
-      bold               = ([], "\\bold");
-      hard_break         = ([], "\\br");
-      code_map           = CodeNameMap.empty;
-      code_default       = ([], "+code");
-    }
-  in
-  DecodeMD.decode cmdrcd "the quick brown fox"
-
-let _ =  (* TEMPORARY *)
-  let open LoadMDSetting in
-  ()
- *)
 
 type file_path = string
 
@@ -275,7 +242,9 @@ let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : str
     let (cmdrcd, depends) = LoadMDSetting.main setting in
     let data = MyUtil.string_of_file file_path_in in
     let utast = DecodeMD.decode cmdrcd data in
-    let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* TEMPORARY *)
+(*
+    let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
+ *)
     FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
     depends |> List.iter (fun package ->
       let file_path_sub = make_absolute_path_required package in
