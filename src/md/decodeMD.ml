@@ -28,6 +28,7 @@ and inline_element =
   | Code of Omd.name * string
       [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
+  | Url of string * inline * string
   | InlineRaw of string
 
 
@@ -81,11 +82,12 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Br            -> single @@ Br
   | Omd.NL            -> single @@ Br
 
-  | Omd.Url(_)
+  | Omd.Url(href, md, title) -> single @@ Url(href, make_inline md, title)
+
   | Omd.Ref(_)
   | Omd.Img(_)
   | Omd.Img_ref(_)
-      -> failwith ("remains to be supported: " ^ Omd.to_text [mde])
+      -> failwith ("Ref, Img, Img_ref; remains to be supported: " ^ Omd.to_text [mde])
 
   | Omd.Raw(s)        -> single @@ InlineRaw(s)
 
@@ -243,6 +245,7 @@ type command_record = {
   hard_break         : command;
   code_map           : command CodeNameMap.t;
   code_default       : command;
+  url                : command;
   err_inline         : command;
 }
 
@@ -299,6 +302,11 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
 
   | Br ->
       make_inline_application cmdrcd.hard_break []
+
+  | Url(href, iln, title) ->
+      let utastarg1 = (dummy_range, UTStringConstant(href)) in
+      let utastarg2 = convert_inline cmdrcd iln in
+      make_inline_application cmdrcd.url [utastarg1; utastarg2]
 
   | InlineRaw(s) ->
       let utastarg = (dummy_range, UTStringConstant(s)) in

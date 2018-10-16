@@ -31,6 +31,7 @@ type command_record = {
   hard_break         : command;
   code_map           : command CodeNameMap.t;
   code_default       : command;
+  url                : command;
   err_inline         : command;
 }
 

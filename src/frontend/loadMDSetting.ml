@@ -114,6 +114,7 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
       hard_break         = assoc |> inline "hard-break";
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
+      url                = assoc |> inline "url";
       err_inline         = assoc |> inline "err-inline";
     }
   in
