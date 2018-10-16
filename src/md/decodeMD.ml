@@ -47,22 +47,51 @@ type accumulator =
   | Middle    of middle_record
 
 
-let rec make_inline_element (mde : Omd.element) : inline_element =
+let rec make_inline_of_element (mde : Omd.element) =
+  let single ilne = [ilne] in
+  let empty = [] in
   match mde with
   | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
       -> assert false  (* -- should be omitted by 'normalize_section' -- *)
 
-  | Omd.Text(s)       -> Text(s)
-  | Omd.Emph(md)      -> Emph(make_inline md)
-  | Omd.Bold(md)      -> Bold(make_inline md)
-  | Omd.Code(name, s) -> Code(name, s)
-  | Omd.Br            -> Br
-  | _                 -> InlineRaw(Omd.to_text [mde])
-    (* temporary; should support more kinds of constructs *)
+  | Omd.Paragraph(_)
+  | Omd.Code_block(_)
+  | Omd.Html_block(_)
+  | Omd.Blockquote(_)
+  | Omd.Hr
+  | Omd.Ul(_)
+  | Omd.Ulp(_)
+  | Omd.Ol(_)
+  | Omd.Olp(_)
+  | Omd.Raw_block(_)
+      -> failwith ("block occurs; inline expected: " ^ Omd.to_text [mde])
+
+  | Omd.Html_comment(_) -> empty
+
+  | Omd.Html(_) ->
+      failwith ("HTML; remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.X(_) ->
+      failwith ("extension; remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.Text(s)       -> single @@ Text(s)
+  | Omd.Emph(md)      -> single @@ Emph(make_inline md)
+  | Omd.Bold(md)      -> single @@ Bold(make_inline md)
+  | Omd.Code(name, s) -> single @@ Code(name, s)
+  | Omd.Br            -> single @@ Br
+  | Omd.NL            -> single @@ Br
+
+  | Omd.Url(_)
+  | Omd.Ref(_)
+  | Omd.Img(_)
+  | Omd.Img_ref(_)
+      -> failwith ("remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.Raw(s)        -> single @@ InlineRaw(s)
 
 
 and make_inline (md : Omd.t) : inline =
-  md |> List.map make_inline_element
+  md |> List.map make_inline_of_element |> List.concat
 
 
 let rec make_block_of_element (mde : Omd.element) =
