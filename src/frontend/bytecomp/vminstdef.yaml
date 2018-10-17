@@ -3065,7 +3065,7 @@ code: |
 
 ---
 inst: BackendRegisterLocation
-is-primitive : yes
+is-pdf-mode-primitive: yes
 name: "register-location"
 type: |
   ~% (tS @-> tPT @-> tU)
@@ -3080,7 +3080,7 @@ code: |
 
 ---
 inst: BackendRegisterLinkToUri
-is-primitive : yes
+is-pdf-mode-primitive: yes
 name: "register-link-to-uri"
 type: |
   ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tU)
@@ -3097,7 +3097,7 @@ code: |
 
 ---
 inst: BackendRegisterLinkToLocation
-is-primitive : yes
+is-pdf-mode-primitive: yes
 name: "register-link-to-location"
 type: |
   ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tU)

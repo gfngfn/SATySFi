@@ -5,6 +5,13 @@
 @require: proof
 @import: local
 
+let f x =
+  match x with
+  | [] -> 1
+  | _ :: [] -> 2
+  | [] :: [] -> 3
+in
+
 document (|
   title = {\SATySFi;概説};
   author = {Takashi SUWA};
