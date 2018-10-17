@@ -60,7 +60,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (link-to-location-frame key) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -70,7 +70,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (link-to-location-frame key) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
 
 
   let font-size-normal  = 12pt
@@ -150,7 +150,7 @@ end = struct
     let it-num = embed-string s-num in
     let d =
       match labelopt with
-      | Some(label) -> register-location-frame label
+      | Some(label) -> Annot.register-location-frame label
       | None        ->
         let d (_, _) _ _ _ = [] in (d, d, d, d)
     in
@@ -367,7 +367,7 @@ let title-deco =
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (inline-frame-breakable no-pads (link-to-location-frame label) (ib-title ++ ib-middle ++ ib-page))
+                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None) (ib-title ++ ib-middle ++ ib-page))
 
           | TOCElementSubsection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
@@ -385,7 +385,7 @@ let title-deco =
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (ib-indent ++ (inline-frame-breakable no-pads (link-to-location-frame label) (ib-title ++ ib-middle ++ ib-page)))
+                    (ib-indent ++ (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None) (ib-title ++ ib-middle ++ ib-page)))
 
           )) block-nil
         in
@@ -499,8 +499,7 @@ let title-deco =
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
-      block-frame-breakable ctx no-pads (register-location-frame label) (fun ctx -> (
-        let () = display-message (`section: ` ^ label) in
+      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         (section-heading ctx
           (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
     in
@@ -522,7 +521,7 @@ let title-deco =
     let ib-title = read-inline ctx-title title in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (inline-frame-breakable no-pads (register-location-frame label)
+        (inline-frame-breakable no-pads (Annot.register-location-frame label)
           (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in

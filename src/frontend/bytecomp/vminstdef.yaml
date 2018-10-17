@@ -3064,9 +3064,9 @@ code: |
   | Some(v) -> Constructor("Some", StringConstant(v))
 
 ---
-inst: BackendRegisterLocation
+inst: BackendRegisterDestination
 is-pdf-mode-primitive: yes
-name: "register-location"
+name: "register-destination"
 type: |
   ~% (tS @-> tPT @-> tU)
 
@@ -3075,7 +3075,7 @@ params:
 - p : point
 
 code: |
-  Nameddest.register_location name p;
+  NamedDest.register name p;
   UnitConstant
 
 ---
@@ -3083,7 +3083,7 @@ inst: BackendRegisterLinkToUri
 is-pdf-mode-primitive: yes
 name: "register-link-to-uri"
 type: |
-  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tU)
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tLN @-> (tOPT tCLR) @-> tU)
 
 params:
 - uri : string
@@ -3091,8 +3091,12 @@ params:
 - wid : length
 - hgt : length
 - dpt : length
+- border : length
+- coloropt
+
 code: |
-  Annotation.register_annotation (Annotation.Link(Action.Uri(uri), x, y, wid, hgt, dpt));
+  let coloropt = get_option get_color coloropt in
+  Annotation.register (Annotation.Link(Action.Uri(uri))) (x, y, wid, hgt, dpt) border coloropt;
   UnitConstant
 
 ---
@@ -3100,7 +3104,7 @@ inst: BackendRegisterLinkToLocation
 is-pdf-mode-primitive: yes
 name: "register-link-to-location"
 type: |
-  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tU)
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tLN @-> (tOPT tCLR) @-> tU)
 
 params:
 - name : string
@@ -3108,8 +3112,11 @@ params:
 - wid : length
 - hgt : length
 - dpt : length
+- border : length
+- coloropt
 
 code: |
-  let destname = Nameddest.get_location name in
-  Annotation.register_annotation (Annotation.Link(Action.GotoName(destname), x, y, wid, hgt, dpt));
+  let coloropt = get_option get_color coloropt in
+  let destname = NamedDest.get name in
+  Annotation.register (Annotation.Link(Action.GotoName(destname))) (x, y, wid, hgt, dpt) border coloropt;
   UnitConstant

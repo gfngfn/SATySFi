@@ -5,7 +5,6 @@ open Length
 let name_id = ref 0
 
 let named_dest_acc = ref []
-
 let pending_dest_acc = ref []
 
 let name_hash_table : (string, string) Hashtbl.t = Hashtbl.create 64
@@ -15,26 +14,30 @@ let name_from_hashtbl key =
   match Hashtbl.find_opt name_hash_table key with
   | Some(name) -> name
   | None ->
-      let name = ("nameddest:" ^ (string_of_int !name_id)) in
+      let name = ("nameddest" ^ (string_of_int !name_id)) in
       incr name_id;
       Hashtbl.add name_hash_table key name;
       name
 
 
-let register_location key loc =
+let register key loc =
   let name = name_from_hashtbl key in
   pending_dest_acc := (name, loc) :: !pending_dest_acc
 
 
-let notify_new_page pageno =
+let get key =
+  name_from_hashtbl key
+
+
+let notify_pagebreak pageno =
   let lst = List.fold_left (fun acc (nm, loc) -> (nm, loc, pageno) :: acc)
-                        !named_dest_acc !pending_dest_acc
+              !named_dest_acc !pending_dest_acc
   in
     pending_dest_acc := [];
     named_dest_acc := lst
 
 
-let add_locations pdf =
+let add_to_pdf pdf =
   let named_dest_dict = Pdf.Dictionary
       (List.map (fun (nm, (x, y), pageno) ->
           match Pdfpage.page_object_number pdf pageno with
@@ -60,5 +63,3 @@ let add_locations pdf =
                 pdf.Pdf.trailerdict "/Root" (Pdf.Indirect newcatnum) }
 
 
-let get_location key =
-  name_from_hashtbl key

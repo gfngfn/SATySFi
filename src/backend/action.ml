@@ -13,5 +13,3 @@ let pdfobject_of_action = function
       Pdf.Dictionary ["/Type", Pdf.Name "/Action"; "/S", Pdf.Name "/GoTo"; "/D", Pdf.Name ("/" ^ destname)]
   | Uri(uri) ->
     Pdf.Dictionary ["/Type", Pdf.Name "/Action"; "/S", Pdf.Name "/URI"; "/URI", Pdf.String uri]
-
-
