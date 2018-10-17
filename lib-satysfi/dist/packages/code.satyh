@@ -1,3 +1,4 @@
+@require: pervasives
 @require: list
 @require: color
 @require: gr
@@ -5,8 +6,12 @@
 
 module Code : sig
 
+  val scheme : deco-set -> color -> context -> string -> block-boxes
   direct +code : [string] block-cmd
   direct +console : [string] block-cmd
+  direct \code : [string] inline-cmd
+  direct \console : [string] inline-cmd
+  direct \d-code : [string] inline-cmd
 
 end = struct
 
@@ -59,11 +64,16 @@ end = struct
       (deco, deco, deco, deco)
 
 
-  let code-scheme decoset txtcolor ctx code =
+  let set-code-font ctx =
+    ctx |> set-font Latin (`lmmono`, 1., 0.)
+        |> set-hyphen-penalty 100000
+
+
+  let scheme decoset txtcolor ctx code =
     let pads = (5pt, 5pt, 5pt, 5pt) in
     block-frame-breakable ctx pads decoset (fun ctx -> (
       let fontsize = get-font-size ctx in
-      let ctx = ctx |> set-font Latin (`lmmono`, 1., 0.) in
+      let ctx = ctx |> set-code-font in
       let charwid = get-natural-width (read-inline ctx {0}) in
       let ctx-code =
         ctx |> set-space-ratio (charwid /' fontsize) 0. 0.
@@ -97,10 +107,25 @@ end = struct
 
 
   let-block ctx +code code =
-    code-scheme decoset-code Color.black ctx code
+    scheme decoset-code Color.black ctx code
+
+
+  let-inline ctx \d-code code =
+    inline-fil ++ embed-block-breakable ctx
+      (read-block ctx '<+code(code);>)
 
 
   let-block ctx +console code =
-    code-scheme decoset-console Color.white ctx code
+    scheme decoset-console Color.white ctx code
+
+
+  let-inline ctx \console code =
+    inline-fil ++ embed-block-breakable ctx
+      (read-block ctx '<+console(code);>)
+
+
+  let-inline ctx \code code =
+    script-guard Latin
+      (read-inline (ctx |> set-code-font) (embed-string code))
 
 end

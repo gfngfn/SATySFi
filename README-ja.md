@@ -31,7 +31,7 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * unzip
 * wget or curl
 * ruby
-* [opam](https://opam.ocaml.org/) 1.2 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
+* [opam](https://opam.ocaml.org/) 2.0 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
 * ocaml 4.06.0 （OPAM からインストールします）
 
 また，ビルドには外部 OPAM リポジトリの追加が必要です。これは以下のコマンドでできます。
@@ -45,14 +45,15 @@ opam update
 
 ```sh
 sudo apt-get update
-sudo apt-get install build-essential git m4 unzip wget
+sudo apt-get install build-essential git m4 unzip curl
+
+sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
 # 以下のコマンドは OPAM がファイルに追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
-wget https://raw.github.com/ocaml/opam/master/shell/opam_installer.sh -O - | sh -s /usr/local/bin
+opam init --comp 4.06.0
 
-opam switch 4.06.0
-eval `opam config env`
+eval $(opam env)
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update
@@ -69,10 +70,9 @@ brew install opam
 
 # 以下のコマンドは OPAM が（~/.bash_profile などの）ファイルに環境変数に関する設定を追記してもよいか聞いてきます。
 # 必ず説明を読み，環境変数を適切に設定してください。
-opam init
+opam init --comp 4.06.0
 
-opam switch 4.06.0
-eval `opam config env`
+eval $(opam env)
 
 opam repository add satysfi-external https://github.com/gfngfn/satysfi-external-repo.git
 opam update

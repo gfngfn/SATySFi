@@ -250,6 +250,7 @@ type base_type =
   | DocumentType
   | MathType
   | RegExpType
+  | TextInfoType
 [@@deriving show]
 
 
@@ -275,6 +276,7 @@ let base_type_hash_table =
       ("document"    , DocumentType);
       ("math"        , MathType    );
       ("regexp"      , RegExpType  );
+      ("text-info"   , TextInfoType);
     ];
     ht
   end
@@ -698,6 +700,7 @@ and syntactic_value =
   | ImageKey                    of ImageInfo.key
       [@printer (fun fmt _ -> Format.fprintf fmt "<image-key>")]
   | Context                     of input_context
+  | TextModeContext             of TextBackend.text_mode_context
   | DocumentValue               of HorzBox.page_size * HorzBox.page_content_scheme_func * HorzBox.page_parts_scheme_func * HorzBox.vert_box list
 
 and abstract_tree =
@@ -791,6 +794,7 @@ and math_context_change =
 
 and math =
   | MathPure              of math_element
+  | MathPullInScripts     of HorzBox.math_kind * HorzBox.math_kind * ((math list) option -> (math list) option -> math list)
   | MathChangeContext     of math_context_change * math list
   | MathGroup             of HorzBox.math_kind * HorzBox.math_kind * math list
   | MathSubscript         of math list * math list
@@ -803,14 +807,7 @@ and math =
   | MathUpperLimit        of math list * math list
   | MathLowerLimit        of math list * math list
 [@@deriving show { with_path = false; }]
-(*
-type output_unit =
-  | OString             of string
-  | OBreakAndIndent
-  | OSoftBreakAndIndent
-  | ODeepen
-  | OShallow
-*)
+
 
 let get_range (rng, _) = rng
 
@@ -1337,6 +1334,7 @@ let rec string_of_type_basic tvf orvf tystr : string =
     | BaseType(DocumentType) -> "document" ^ qstn
     | BaseType(MathType)     -> "math" ^ qstn
     | BaseType(RegExpType)   -> "regexp" ^ qstn
+    | BaseType(TextInfoType) -> "text-info" ^ qstn
 
     | VariantType(tyarglist, tyid) ->
         (string_of_type_argument_list_basic tvf orvf tyarglist) ^ (TypeID.show_direct tyid) (* temporary *) ^ "@" ^ qstn

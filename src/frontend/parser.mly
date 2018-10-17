@@ -623,10 +623,10 @@ nxvertdec:
       }
 ;
 nxmathdec:
-  | mcmdtok=HORZCMD; argpatlst=argpats; DEFEQ; utast=nxlet {
+  | mcmdtok=HORZCMD; cmdarglst=list(arg); DEFEQ; utast=nxlet {
       let (rngcs, _) = mcmdtok in
       let rng = make_range (Tok rngcs) (Ranged utast) in
-      let curried = curry_lambda_abstract_pattern rngcs argpatlst utast in
+      let curried = curry_lambda_abstract Alist.empty rngcs cmdarglst utast in
         (None, mcmdtok, (rng, UTLambdaMath(curried)))
       }
 ;
@@ -1130,10 +1130,31 @@ mathbot:
   | tok=VARINMATH { let (rng, mdlnmlst, varnm) = tok in (rng, UTMEmbed((rng, UTContentOf(mdlnmlst, varnm)))) }
 ;
 matharg:
-  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP { let (_, utastmain) = utast in UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain) }
-  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP     { let (_, utastmain) = utast in UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain) }
-  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP   { let (_, utastmain) = utast in UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain) }
-  | utcmdarg=narg                               { utcmdarg }
+  | opn=BMATHGRP; utast=mathblock; cls=EMATHGRP {
+        let (_, utastmain) = utast in
+          UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
+      }
+  | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP {
+        let (_, utastmain) = utast in
+          UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
+      }
+  | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP {
+        let (_, utastmain) = utast in
+          UTMandatoryArgument(make_standard (Tok opn) (Tok cls) utastmain)
+      }
+  | opt=OPTIONAL; BMATHGRP; utast=mathblock; cls=EMATHGRP {
+        let (_, utastmain) = utast in
+          UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
+      }
+  | opt=OPTIONAL; BHORZGRP; utast=sxsep; cls=EHORZGRP {
+        let (_, utastmain) = utast in
+          UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
+      }
+  | opt=OPTIONAL; BVERTGRP; utast=vxblock; cls=EVERTGRP {
+        let (_, utastmain) = utast in
+          UTOptionalArgument(make_standard (Tok opt) (Tok cls) utastmain)
+      }
+  | utcmdarg=narg { utcmdarg }
 ;
 sxblock:
   | ih=ih { let rng = make_range_from_list ih in (rng, UTInputHorz(ih)) }

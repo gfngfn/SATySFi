@@ -12,10 +12,12 @@ type lb_pure_box =
   | LBOuterFrame    of metrics * decoration * lb_pure_box list
   | LBFixedFrame    of length * length * length * decoration * lb_pure_box list
   | LBEmbeddedVert  of length * length * length * intermediate_vert_box list
-  | LBFixedGraphics of length * length * length * (point -> (intermediate_horz_box list) GraphicD.t)
+  | LBFixedGraphics of length * length * length * fixed_graphics
+  | LBOuterFilGraphics of length * length * outer_fil_graphics
   | LBFixedTabular  of length * length * length * intermediate_row list * length list * length list * rules_func
   | LBFixedImage    of length * length * ImageInfo.key
   | LBHookPageBreak of (page_break_info -> point -> unit)
+  | LBFootnote      of intermediate_vert_box list
 
 type lb_box =
   | LBPure           of lb_pure_box
@@ -58,7 +60,7 @@ let natural wid =
 
 
 type line_break_chunk_main =
-  | AlphabeticChunk  of script * line_break_class * line_break_class * Uchar.t list * break_opportunity
+  | AlphabeticChunk  of script * line_break_class * line_break_class * uchar_segment list * break_opportunity
       (* --
          (1) script
          (2) line break class for the previous chunk
@@ -68,7 +70,7 @@ type line_break_chunk_main =
          -- *)
   | Space
   | UnbreakableSpace
-  | IdeographicChunk of script * line_break_class * Uchar.t * break_opportunity
+  | IdeographicChunk of script * line_break_class * uchar_segment * break_opportunity
       (* --
          (1) script
          (2) line break class

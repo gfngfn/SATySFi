@@ -4,17 +4,15 @@
 @require: list
 @require: math
 @require: color
-@require: annot
 @require: footnote-scheme
 
-module StdJaBook : sig
+
+module StdJaReport : sig
 
   val document : 'a -> block-text -> document
     constraint 'a :: (|
       title : inline-text;
       author : inline-text;
-      show-toc : bool;
-      show-title : bool;
     |)
 
   val font-latin-roman  : string * float * float
@@ -29,10 +27,10 @@ module StdJaBook : sig
   direct \ref-page : [string] inline-cmd
   direct \figure : [string?; inline-text; block-text] inline-cmd
   direct +p : [inline-text] block-cmd
-  direct +pn : [inline-text] block-cmd
   direct +section : [string?; inline-text; block-text] block-cmd
   direct +subsection : [string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
+  direct \dfn : [inline-text] inline-cmd
   direct \footnote : [inline-text] inline-cmd
 
 end = struct
@@ -50,9 +48,6 @@ end = struct
       ))
 
 
-  let no-pads = (0pt, 0pt, 0pt, 0pt)
-
-
   let-inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
     let it =
@@ -60,7 +55,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (link-to-location-frame key) (read-inline ctx it)
+      read-inline ctx it
 
 
   let-inline ctx \ref-page key =
@@ -70,27 +65,17 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (link-to-location-frame key) (read-inline ctx it)
+      read-inline ctx it
 
 
   let font-size-normal  = 12pt
-  let font-size-title   = 32pt
+  let font-size-title   = 18pt
   let font-size-author  = 16pt
   let font-size-section = 18pt
   let font-size-subsection = 16pt
 
   let section-top-margin = 20pt
   let section-bottom-margin = 12pt
-  let section-top-padding = 6pt
-  let section-bottom-padding = 7pt
-  let section-line-sep = 4pt
-  let section-line-thickness1 = 2pt
-  let section-line-thickness2 = 1pt
-  let title-line-margin = 4pt
-  let title-line-thickness = 1pt
-  let header-line-thickness = 0.5pt
-  let header-line-margin-top = 2pt
-  let header-line-margin-bottom = 6pt
 
   let font-ratio-latin = 1.
   let font-ratio-cjk = 0.88
@@ -148,14 +133,9 @@ end = struct
       | None        -> ()
     in
     let it-num = embed-string s-num in
-    let d =
-      match labelopt with
-      | Some(label) -> register-location-frame label
-      | None        ->
-        let d (_, _) _ _ _ = [] in (d, d, d, d)
-    in
     let bb-inner =
-      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) d (fun ctx -> (
+      let d (_, _) _ _ _ = [] in
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
       ))
@@ -164,86 +144,6 @@ end = struct
 %        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
         ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
       ))
-
-
-let title-deco =
-    let pads = (5pt, 5pt, 10pt, 10pt) in
-    let deco (x, y) wid hgt dpt =
-      let path1 =
-        let cx = 14pt in
-        let cy = 8pt in
-        let xL = x in
-        let xR = x +' wid in
-        let yT = y +' hgt in
-        let yB = y -' dpt in
-          start-path (xL, yT)
-            |> line-to (xR, yT)
-            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-            |> line-to (xL, yB)
-            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
-      in
-      let path2 =
-        let cx = 12pt in
-        let cy = 8pt in
-        let gapx = 3pt in
-        let gapy = 5pt in
-        let xL = x +' gapx in
-        let xR = x +' wid -' gapx in
-        let yT = y +' hgt -' gapy in
-        let yB = y -' dpt +' gapy in
-          start-path (xL, yT)
-            |> line-to (xR, yT)
-            |> bezier-to (xR +' cx, yT -' cy) (xR +' cx, yB +' cy) (xR, yB)
-            |> line-to (xL, yB)
-            |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
-      in
-        [
-          stroke 3pt Color.black path1;
-          stroke 1pt Color.black path2;
-        ]
-    in
-      (deco, deco, deco, deco)
-
-
-  let-block ctx +make-title it-title it-author =
-    let pads = (20pt, 20pt, 10pt, 10pt) in
-    block-frame-breakable ctx pads title-deco (fun ctx -> (
-      let ctx-title =
-        ctx |> set-font-size font-size-title
-            |> set-font Latin font-latin-roman
-      in
-      let ctx-author =
-        ctx |> set-font-size font-size-author
-            |> set-font Latin font-latin-roman
-      in
-      let ib-title = read-inline ctx-title it-title in
-      let ib-line =
-        let thk = title-line-thickness in
-        let wid = get-text-width ctx in
-        let path (x, y) =
-          start-path (x, y +' thk *' 0.5)
-            |> line-to (x +' wid, y +' thk *' 0.5)
-            |> terminate-path
-        in
-        inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk Color.black (path pt); ]
-        ))
-      in
-      let ib-author = read-inline ctx-author it-author in
-      let bb-title =
-%        if get-text-width ctx <' get-natural-width ib-title then
-%          form-paragraph ctx-title (ib-title ++ inline-fil)
-%        else
-          form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
-            (inline-fil ++ ib-title ++ inline-fil)
-      in
-      let bb-line =
-        form-paragraph (ctx |> set-paragraph-margin title-line-margin title-line-margin)
-          (ib-line ++ inline-fil)
-      in
-      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
-        bb-title +++ bb-line +++ bb-author
-    ))
 
 
   let make-section-title ctx =
@@ -274,43 +174,15 @@ let title-deco =
 
 
   let section-heading ctx ib-heading =
-    let wid = get-text-width ctx in
-    let h = section-line-sep in
-    let th1 = section-line-thickness1 in
-    let th2 = section-line-thickness2 in
-    let color = get-text-color ctx in
-      line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th2 color (Gr.line (x, y) (x +' wid, y));
-        ]))
-    +++
-      line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
+    line-break true false
+      (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
         ib-heading
-    +++
-      line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
-        (inline-graphics wid h 0pt (fun (x, y) -> [
-          stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h));
-          stroke th1 color (Gr.line (x, y) (x +' wid, y));
-        ]))
 
 
   let-inline ctx \dummy it =
     let ib = read-inline (ctx |> set-text-color Color.white) it in
     let w = get-natural-width ib in
       ib ++ inline-skip (0pt -' w)
-
-
-  let-rec repeat-inline n ib =
-    if n <= 0 then inline-nil else
-      ib ++ (repeat-inline (n - 1) ib)
-
-
-  let make-dots-line ctx w =
-    let ib = read-inline ctx {.} ++ inline-skip 1pt in
-    let wdot = get-natural-width ib in
-    let n = round (w /' wdot) in
-      inline-fil ++ (repeat-inline n ib)
 
 
   let document record inner =
@@ -325,7 +197,6 @@ let title-deco =
     let ftrorg = (40pt, 780pt) in
     let hdrwid = 520pt in
     let ftrwid = 520pt in
-    let thickness = header-line-thickness in
 
     let () =
       register-cross-reference `changed` `F`
@@ -335,62 +206,25 @@ let title-deco =
 
     % -- title --
     let bb-title =
-      if record#show-title then
-        read-block ctx-doc '<+make-title(title)(author);>
-      else
-        block-nil
+      let bb-title-main =
+        let ctx =
+          ctx-doc |> set-font-size font-size-title
+        in
+          line-break false false ctx
+            (inline-fil ++ read-inline ctx title ++ inline-fil)
+      in
+      let bb-author =
+        let ctx =
+          ctx-doc |> set-font-size font-size-author
+        in
+          line-break false false ctx
+            (inline-fil ++ read-inline ctx author ++ inline-fil)
+      in
+        bb-title-main +++ bb-author
     in
 
     % -- main --
     let bb-main = read-block ctx-doc inner in
-
-    % -- table of contents --
-    let toc-subsection-indent = 20pt in
-    let bb-toc =
-      if not record#show-toc then
-        block-nil
-      else
-        let ib-toc-title =
-          read-inline (make-section-title ctx-doc) {目次} ++ inline-fil
-        in
-        let bb-toc-main =
-          (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
-            match tocelem with
-            | TOCElementSection(label, title) ->
-                let it-num = embed-string (get-cross-reference-number label) in
-                let it-page = embed-string (get-cross-reference-page label) in
-                let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
-                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
-                let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
-                    if w <' 0pt then inline-fil else
-                      make-dots-line ctx-doc w
-                in
-                  bbacc +++ line-break true true ctx-doc
-                    (inline-frame-breakable no-pads (link-to-location-frame label) (ib-title ++ ib-middle ++ ib-page))
-
-          | TOCElementSubsection(label, title) ->
-                let it-num = embed-string (get-cross-reference-number label) in
-                let it-page = embed-string (get-cross-reference-page label) in
-                let ib-indent = inline-skip toc-subsection-indent in
-                let ib-title =
-                  read-inline ctx-doc {#it-num;. #title;}
-                    ++ inline-skip 3pt
-                in
-                let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
-                let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (get-natural-width ib-indent)
-                    -' (get-natural-width ib-title) -' (get-natural-width ib-page) in
-                    if w <' 0pt then inline-fil else
-                      make-dots-line ctx-doc w
-                in
-                  bbacc +++ line-break true true ctx-doc
-                    (ib-indent ++ (inline-frame-breakable no-pads (link-to-location-frame label) (ib-title ++ ib-middle ++ ib-page)))
-
-          )) block-nil
-        in
-          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main
-    in
 
     % -- page settings --
     let pagecontf pbinfo =
@@ -431,11 +265,7 @@ let title-deco =
           )) (block-nil, [])
         in
         let () = ref-float-boxes <- acc in
-          line-break true true ctx ib-text
-            +++ line-break true true (ctx |> set-paragraph-margin header-line-margin-top header-line-margin-bottom)
-              ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
-            +++ bb-float-boxes
+          bb-float-boxes
       in
       let footer =
         let ctx = get-standard-context ftrwid in
@@ -450,7 +280,7 @@ let title-deco =
           footer-content = footer;
         |)
     in
-      page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main)
+      page-break page pagecontf pagepartsf (bb-title +++ bb-main)
 
 
   let-mutable needs-indentation-ref <- true
@@ -460,7 +290,7 @@ let title-deco =
 
 
   let quad-indent ctx =
-    inline-skip (get-font-size ctx)
+    inline-skip (get-font-size ctx *' font-ratio-cjk)
 
 
   let-block ctx +p inner =
@@ -470,40 +300,30 @@ let title-deco =
           false
     in
     let ib-inner = read-inline ctx inner in
-    let br-parag =
+    let ib-parag =
       if needs-indentation then
         (quad-indent ctx) ++ ib-inner ++ inline-fil
       else
         ib-inner ++ inline-fil
     in
-      form-paragraph ctx br-parag
-
-
-  let-block ctx +pn inner =
-    let () = needs-indentation-ref <- true in
-    let ib-inner = read-inline ctx inner in
-      form-paragraph ctx (ib-inner ++ inline-fil)
+      form-paragraph ctx ib-parag
 
 
   let section-scheme ctx label title inner =
     let ctx-title = make-section-title ctx in
-    let () = num-section <- !num-section + 1 in
+    let () = increment num-section in
     let () = num-subsection <- 0 in
-    let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) in
-    let () = register-cross-reference (label ^ `:num`) s-num in
+    let () = register-cross-reference (`section:` ^ label ^ `:num`) s-num in
     let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
-        ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
+        ++ hook-page-break (fun pbinfo _ -> (
+             let pageno = pbinfo#page-number in
+               register-cross-reference (`section:` ^ label ^ `:page`) (arabic pageno)))
     in
     let ib-title = read-inline ctx-title title in
-    let bb-title =
-      block-frame-breakable ctx no-pads (register-location-frame label) (fun ctx -> (
-        let () = display-message (`section: ` ^ label) in
-        (section-heading ctx
-          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
-    in
+    let bb-title = section-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)) in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
 
@@ -522,8 +342,7 @@ let title-deco =
     let ib-title = read-inline ctx-title title in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (inline-frame-breakable no-pads (register-location-frame label)
-          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
@@ -548,12 +367,14 @@ let title-deco =
 
 
   let-inline ctx \emph inner =
-    let ctx-emph =
-      ctx |> set-font Latin font-latin-italic
+    let ctx =
+      ctx |> set-font Latin font-latin-sans
           |> set-cjk-font font-cjk-gothic
-          |> set-text-color (CMYK(1., 0., 0., 0.))
     in
-      read-inline ctx-emph inner
+      read-inline ctx inner
+
+
+  let-inline \dfn inner = {\emph{#inner;}}
 
 
   let-inline ctx \footnote it =
@@ -581,5 +402,5 @@ let title-deco =
   end
 
 
-let document = StdJaBook.document
+let document = StdJaReport.document
   % ad-hoc

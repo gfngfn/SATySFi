@@ -1,8 +1,8 @@
 @require: pervasives
 @require: math
 @require: stdja
-@import: vdecoset
-@import: decoset
+@require: vdecoset
+@require: hdecoset
 
 
 type type-syntax =
@@ -178,7 +178,7 @@ let-inline ctx \meta m =
 
 let-inline ctx \code inner =
   let pads-code = (2pt, 2pt, 2pt, 2pt) in
-  let decoset-code = DecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
+  let decoset-code = HDecoSet.rectangle-round-fill 4pt 2pt (Color.gray 0.9) in
   let ctx-code =
     name-context ctx |> set-math-command (command \meta)
   in
