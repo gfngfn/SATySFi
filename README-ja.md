@@ -3,6 +3,8 @@
 
 [![Build Status](https://travis-ci.org/gfngfn/SATySFi.svg?branch=master)](https://travis-ci.org/gfngfn/SATySFi)
 
+[English README is here](https://github.com/gfngfn/SATySFi/blob/master/README.md)
+
 ## 概要
 
 *SATySFi*（英単語の “satisfy” と同様に発音します）は，新しい組版処理システムとその言語です。構文は主にテキスト部分とプログラム部分からなり，前者はLaTeX風の構文で文書を執筆するために，後者はコマンドを定義するために使われます。いわゆる函数型プログラミングの要領でコマンドが定義でき，かつ静的に型がつけられるため，柔軟な記述とわかりやすいエラー報告が実現されています。
