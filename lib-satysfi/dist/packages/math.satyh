@@ -179,6 +179,7 @@ module Math : sig
   direct \nexists : [] math-cmd
   direct \bigcirc : [] math-cmd
 
+  direct \cdot  : [] math-cmd
   direct \ldots : [] math-cmd
   direct \cdots : [] math-cmd
   direct \vdots : [] math-cmd
@@ -366,7 +367,6 @@ module Math : sig
   direct \leftthreetimes : [] math-cmd
   direct \rightthreetimes : [] math-cmd
   direct \wr : [] math-cmd
-  direct \centerdot : [] math-cmd
 
   direct \diamond : [] math-cmd
   direct \star : [] math-cmd
@@ -775,6 +775,7 @@ end = struct
   let-math \nexists = ord `∄`
   let-math \bigcirc = ord `◯`
 
+  let-math \cdot  = bin `⋅`
   let-math \ldots = ord `…`
   let-math \cdots = math-char MathInner `⋯`
   let-math \vdots = ord `⋮`
@@ -962,7 +963,6 @@ end = struct
   let-math \leftthreetimes = bin `⋋`
   let-math \rightthreetimes = bin `⋌`
   let-math \wr = bin `≀`
-  let-math \centerdot = bin `⋅`
 
   let-math \diamond = ord `⋄`
   let-math \star = ord `⋆`
