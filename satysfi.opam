@@ -38,11 +38,11 @@ extra-source "IPAexfont00301.zip" {
 }
 build: [
   ["mkdir" "-p" "temp"]
-  ["unzip" "lm2.004otf.zip" "*.otf" "-d" "lib-satysfi/dist/fonts/"]
-  ["unzip" "latinmodern-math-1959.zip" "*.otf" "-d" "temp/"]
+  ["unzip" "-o" "lm2.004otf.zip" "*.otf" "-d" "lib-satysfi/dist/fonts/"]
+  ["unzip" "-o" "latinmodern-math-1959.zip" "*.otf" "-d" "temp/"]
   ["cp" "temp/latinmodern-math-1959/otf/latinmodern-math.otf" "lib-satysfi/dist/fonts/"]
-  ["unzip" "junicode-1.002.zip" "*.ttf" "-d" "lib-satysfi/dist/fonts/"]
-  ["unzip" "IPAexfont00301.zip" "*.ttf" "-d" "temp/"]
+  ["unzip" "-o" "junicode-1.002.zip" "*.ttf" "-d" "lib-satysfi/dist/fonts/"]
+  ["unzip" "-o" "IPAexfont00301.zip" "*.ttf" "-d" "temp/"]
   ["cp" "temp/IPAexfont00301/ipaexg.ttf" "lib-satysfi/dist/fonts/"]
   ["cp" "temp/IPAexfont00301/ipaexm.ttf" "lib-satysfi/dist/fonts/"]
   [make "-f" "Makefile" "PREFIX=%{prefix}%"]
