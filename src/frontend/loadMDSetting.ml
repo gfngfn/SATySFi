@@ -52,6 +52,7 @@ let make_code_name_map (srcpath : file_path) (prefix : char) (json : Yojson.Safe
 
         | _ ->
             raise (InvalidYOJSON(srcpath, "not a pair: " ^ (Yojson.Safe.to_string json)))
+
       ) CodeNameMap.empty
 
   | _ ->

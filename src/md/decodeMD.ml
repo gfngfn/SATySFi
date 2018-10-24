@@ -31,7 +31,6 @@ and inline_element =
   | Url of string * inline * string
   | InlineRaw of string
 
-
 and inline = inline_element list
 [@@deriving show { with_path = false; }]
 
