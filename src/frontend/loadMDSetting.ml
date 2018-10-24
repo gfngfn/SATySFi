@@ -1,92 +1,94 @@
 
 open MyUtil
-open MyYojsonUtil
 
+module MYU = MyYojsonUtil
+module YS = Yojson.SafePos
+type json = YS.json
 
 type file_path = string
 
-exception MultipleDesignation of file_path * string
-exception InvalidYOJSON       of file_path * string
-exception MissingRequiredKey  of file_path * string
-exception InvalidValueForKey  of file_path * string
+exception MultipleCodeNameDesignation of Range.t * string
+exception NotACommandName             of Range.t * string
 
 
-let cut_module_names (exn : exn) (s : string) : string list * string =
+let err_not_a_command rng s =
+  raise (NotACommandName(rng, s))
+
+
+let cut_module_names (rng : Range.t) (s : string) : string list * string =
   match List.rev (String.split_on_char '.' s) with
   | varnm :: mdlnmsrev -> (List.rev mdlnmsrev, varnm)
-  | _                  -> raise exn
+  | _                  -> err_not_a_command rng s
 
 
-let get_command_main exn (prefix : char) (s : string) =
+let get_command_main (rng : Range.t) (prefix : char) (s : string) =
   try
     if Char.equal (String.get s 0) prefix then
       let stail = (String.sub s 1 (String.length s - 1)) in
-      let (mdlnms, varnm) = cut_module_names exn stail in
+      let (mdlnms, varnm) = cut_module_names rng stail in
       (mdlnms, (String.make 1 prefix) ^ varnm)
     else
-      raise exn
+      err_not_a_command rng s
   with
-  | Invalid_argument(_) -> raise exn
+  | Invalid_argument(_) -> err_not_a_command rng s
 
 
-let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : assoc) =
-  let json = assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k in
-  let exn = InvalidValueForKey(srcpath, k) in
-  match json with
-  | `String(s) -> get_command_main exn prefix s
-  | _          -> raise exn
+let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : MYU.assoc) =
+  let (pos, s) =
+    let (pos, _) as json =
+      assoc |> MYU.find k
+    in
+      (pos, YS.Util.to_string json)
+  in
+  let rng = MYU.make_range pos in
+  get_command_main rng prefix s
 
 
-let make_code_name_map (srcpath : file_path) (prefix : char) (json : Yojson.Safe.json) : (string list * string) DecodeMD.CodeNameMap.t =
+let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json : json) : (string list * string) DecodeMD.CodeNameMap.t =
   let open DecodeMD in
-  match json with
-  | `List(pairs) ->
-      pairs |> List.fold_left (fun accmap json ->
-        match json with
-        | `Tuple(`String(name) :: `String(s) :: []) ->
-            if accmap |> CodeNameMap.mem name then
-              raise (MultipleDesignation(srcpath, name))
-            else
-              let cmd = get_command_main (InvalidValueForKey(srcpath, name)) prefix s in
-              accmap |> CodeNameMap.add name cmd
+  let pairs = json |> YS.Util.to_list in
+  pairs |> List.fold_left (fun accmap json ->
+    match json with
+    | (pos, `Tuple(json1 :: ((pos2, _) as json2) :: [])) ->
+        let name = json1 |> YS.Util.to_string in
+        let s = json2 |> YS.Util.to_string in
+        let rng2 = MYU.make_range pos2 in
+        if accmap |> CodeNameMap.mem name then
+          let rng = MYU.make_range pos in
+          raise (MultipleCodeNameDesignation(rng, name))
+        else
+          let cmd = get_command_main rng2 prefix s in
+          accmap |> CodeNameMap.add name cmd
 
-        | _ ->
-            raise (InvalidYOJSON(srcpath, "not a pair: " ^ (Yojson.Safe.to_string json)))
+    | _ ->
+        raise (YS.Util.Type_error("Expecting a pair", json))
 
-      ) CodeNameMap.empty
-
-  | _ ->
-      raise (InvalidYOJSON(srcpath, "not a list: " ^ (Yojson.Safe.to_string json)))
+  ) CodeNameMap.empty
 
 
-let read_assoc (srcpath : file_path) (assoc : assoc) =
+let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let open DecodeMD in
   let block = get_command srcpath '+' in
   let inline = get_command srcpath '\\' in
   let name k assoc =
-    let json =
-      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k
+    let (pos, _) as json =
+      assoc |> MYU.find k
     in
-    let exn = InvalidValueForKey(srcpath, k) in
-    match json with
-    | `String(name) -> cut_module_names exn name
-    | _             -> raise exn
+    let rng = MYU.make_range pos in
+    let name = json |> YS.Util.to_string in
+    cut_module_names rng name
   in
   let code_block assoc =
-    assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code-block")) "code-block"
+    assoc |> MYU.find "code-block"
           |> make_code_name_map srcpath '+'
   in
   let code assoc =
-    assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "code")) "code"
+    assoc |> MYU.find "code"
           |> make_code_name_map srcpath '\\'
   in
   let string k assoc =
-    let json =
-      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, k)) k
-    in
-    match json with
-    | `String(s) -> s
-    | _          -> raise (InvalidValueForKey(srcpath, k))
+    assoc |> MYU.find k
+          |> YS.Util.to_string
   in
   let cmdrcd =
     {
@@ -120,31 +122,20 @@ let read_assoc (srcpath : file_path) (assoc : assoc) =
     }
   in
   let depends =
-    let json =
-      assoc |> MyYojsonUtil.find (MissingRequiredKey(srcpath, "depends")) "depends"
-    in
-    match json with
-    | `List(jsons) ->
-        jsons |> List.map (function `String(s) -> s | json -> raise (InvalidYOJSON(srcpath, "not a string: " ^ (Yojson.Safe.to_string json))))
-
-    | _ ->
-        raise (InvalidYOJSON(srcpath, "not a list: " ^ (Yojson.Safe.to_string json)))
+    assoc
+      |> MYU.find "depends"
+      |> YS.Util.to_list
+      |> List.map YS.Util.to_string
   in
   (cmdrcd, depends)
 
 
-let exception_for_multiple srcpath k =
-  MultipleDesignation(srcpath, k)
-
-
 let main (key : string) : DecodeMD.command_record * string list =
   let srcpath = Config.resolve_dist_file (Filename.concat "dist/md" (key ^ ".satysfi-md")) in
-    try
-      let json = Yojson.Safe.from_file srcpath in
-          (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-      let kvs = Yojson.Safe.Util.to_assoc json in
-      let assoc = make_assoc (exception_for_multiple srcpath) kvs in
-      read_assoc srcpath assoc
-    with
-    | Yojson.Json_error(msg)                 -> raise (InvalidYOJSON(srcpath, msg))
-    | Yojson.Safe.Util.Type_error(msg, json) -> raise (InvalidYOJSON(srcpath, msg))
+  try
+    let json = YS.from_file ~fname:srcpath srcpath in
+      (* -- may raise 'Sys_error' -- *)
+    let assoc = MYU.make_assoc json in
+    read_assoc srcpath assoc
+  with
+  | Yojson.Json_error(msg) -> raise (MYU.SyntaxError(srcpath, msg))

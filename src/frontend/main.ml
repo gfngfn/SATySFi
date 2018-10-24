@@ -571,9 +571,28 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
 
-  | LoadMDSetting.MissingRequiredKey(srcpath, key) ->
+  | MyYojsonUtil.SyntaxError(srcpath, msg) ->
       report_error System [
-        NormalLine("in " ^ srcpath ^ ":");
+        NormalLine("in '" ^ srcpath ^ "':");
+        NormalLine(msg);
+      ]
+
+  | MyYojsonUtil.MultipleDesignation(rng, key) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("multiple designation for key \"" ^ key ^ "\".");
+      ]
+
+  | Yojson.SafePos.Util.Type_error(msg, (pos, _)) ->
+      let rng = MyYojsonUtil.make_range pos in
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(msg);
+      ]
+
+  | MyYojsonUtil.MissingRequiredKey(rng, key) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
         NormalLine("missing required key '" ^ key ^ "'.");
       ]
 
