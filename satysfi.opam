@@ -68,6 +68,6 @@ depends: [
   "otfm" {= "0.3.2+satysfi"}
   "ppx_deriving"
   "uutf"
-  "yojson"
+  "yojson" {= "1.4.1+satysfi"}
   "omd"
 ]
