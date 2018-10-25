@@ -244,7 +244,7 @@ type command_record = {
 
   emph               : command;
   bold               : command;
-  hard_break         : command;
+  hard_break         : command option;
   code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
@@ -304,7 +304,11 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       make_inline_application cmd [utastarg]
 
   | Br ->
-      make_inline_application cmdrcd.hard_break []
+      begin
+        match cmdrcd.hard_break with
+        | Some(cmd) -> make_inline_application cmd []
+        | None      -> [(dummy_range, UTInputHorzText("\n"))]
+      end
 
   | Url(href, iln, title) ->
       let utastarg1 = (dummy_range, UTStringConstant(href)) in

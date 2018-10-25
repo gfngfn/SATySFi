@@ -40,3 +40,34 @@ let find (key : string) ((pos, assoc) : assoc) : json =
 
   | Some(json) ->
       json
+
+
+let err_variant json branches =
+  let s =
+    branches |> List.map (function
+    | (label, None)    -> "<" ^ label ^ ">"
+    | (label, Some(_)) -> "<" ^ label ^ ": _ >"
+    ) |> String.concat ", "
+  in
+  raise (YS.Util.Type_error("Expects " ^ s, json))
+
+
+let decode_variant (type a) (branches : (string * (json -> a) option) list) (json : json) : a option =
+  match json with
+  | (_, `Variant(label, jsonopt)) ->
+      begin
+        match List.assoc_opt label branches with
+        | None ->
+            err_variant json branches
+
+        | Some(fopt) ->
+            begin
+              match (fopt, jsonopt) with
+              | (Some(f), Some(arg)) -> Some(f arg)
+              | (None, None)         -> None
+              | _                    -> err_variant json branches
+            end
+      end
+
+  | _ ->
+      err_variant json branches

@@ -79,6 +79,17 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let open DecodeMD in
   let block = get_command pair_block in
   let inline = get_command pair_inline in
+  let inline_option k assoc =
+    let json = assoc |> MYU.find k in
+    json |> MYU.decode_variant [
+      ("None", None);
+      ("Some", Some(fun ((pos, _) as json) ->
+        let rng = MYU.make_range pos in
+        let s = json |> YS.Util.to_string in
+        get_command_main pair_inline rng s
+      ));
+    ]
+  in
   let name k assoc =
     let (pos, _) as json = assoc |> MYU.find k in
     let rng = MYU.make_range pos in
@@ -124,7 +135,7 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
 
       emph               = assoc |> inline "emph";
       bold               = assoc |> inline "bold";
-      hard_break         = assoc |> inline "hard-break";
+      hard_break         = assoc |> inline_option "hard-break";
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
