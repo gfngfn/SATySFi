@@ -12,6 +12,10 @@ module YojsonMap = Map.Make(String)
 type assoc = Yojson.position * json YojsonMap.t
 
 
+let syntax_error srcpath msg =
+  raise (SyntaxError(srcpath, msg))
+
+
 let make_range (pos : Yojson.position) =
   let open Yojson in
   let fname = BatOption.default "(none)" pos.file_name in

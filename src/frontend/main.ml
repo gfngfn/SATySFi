@@ -417,55 +417,6 @@ let error_log_environment suspended =
         DisplayLine(jsonstr);
       ]
 
-  | LoadFont.InvalidYOJSON(srcpath, msg) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a valid YOJSON format;");
-        DisplayLine(msg);
-      ]
-
-  | LoadFont.FontHashOtherThanDictionary(srcpath) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | LoadFont.FontHashElementOtherThanVariant(srcpath, abbrev, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with the font name '" ^ abbrev ^ "' is NOT a YOJSON variant;");
-        DisplayLine(jsonstr);
-      ]
-
-  | LoadFont.MultipleDesignation(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has multiple designations for '" ^ key ^ "'.");
-      ]
-
-  | LoadFont.UnexpectedYOJSONKey(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has an unexpected designation key '" ^ key ^ "'.");
-      ]
-
-  | LoadFont.UnexpectedYOJSONValue(srcpath, abbrev, key, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has an unexpected designation value for '" ^ key ^ "';");
-        DisplayLine(jsonstr);
-      ]
-
-  | LoadFont.MissingRequiredYOJSONKey(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "does NOT have the required designation key '" ^ key ^ "'.");
-      ]
-
   | SetDefaultFont.InvalidYOJSON(srcpath, msg) ->
       report_error Interface [
         NormalLine("the default font hash file '" ^ srcpath ^ "' is NOT a valid YOJSON file;");

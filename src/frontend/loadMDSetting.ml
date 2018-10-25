@@ -163,4 +163,4 @@ let main (key : string) : DecodeMD.command_record * string list =
     let assoc = MYU.make_assoc json in
     read_assoc srcpath assoc
   with
-  | Yojson.Json_error(msg) -> raise (MYU.SyntaxError(srcpath, msg))
+  | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
