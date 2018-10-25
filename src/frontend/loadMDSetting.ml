@@ -11,21 +11,25 @@ exception MultipleCodeNameDesignation of Range.t * string
 exception NotACommandName             of Range.t * string
 
 
+let err_json msg json =
+  raise (YS.Util.Type_error(msg, json))
+
+
 let err_not_a_command rng s =
   raise (NotACommandName(rng, s))
 
 
-let cut_module_names (rng : Range.t) (s : string) : string list * string =
+let cut_module_names (s : string) : string list * string =
   match List.rev (String.split_on_char '.' s) with
   | varnm :: mdlnmsrev -> (List.rev mdlnmsrev, varnm)
-  | _                  -> err_not_a_command rng s
+  | _                  -> assert false  (* -- 'String.split_on_char' always returns a non-empty list -- *)
 
 
 let get_command_main (rng : Range.t) (prefix : char) (s : string) =
   try
     if Char.equal (String.get s 0) prefix then
       let stail = (String.sub s 1 (String.length s - 1)) in
-      let (mdlnms, varnm) = cut_module_names rng stail in
+      let (mdlnms, varnm) = cut_module_names stail in
       (mdlnms, (String.make 1 prefix) ^ varnm)
     else
       err_not_a_command rng s
@@ -61,7 +65,7 @@ let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json :
           accmap |> CodeNameMap.add name cmd
 
     | _ ->
-        raise (YS.Util.Type_error("Expecting a pair", json))
+        err_json "Expects a pair" json
 
   ) CodeNameMap.empty
 
@@ -71,24 +75,24 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let block = get_command srcpath '+' in
   let inline = get_command srcpath '\\' in
   let name k assoc =
-    let (pos, _) as json =
-      assoc |> MYU.find k
-    in
-    let rng = MYU.make_range pos in
+    let json = assoc |> MYU.find k in
     let name = json |> YS.Util.to_string in
-    cut_module_names rng name
+    cut_module_names name
   in
   let code_block assoc =
-    assoc |> MYU.find "code-block"
-          |> make_code_name_map srcpath '+'
+    assoc
+      |> MYU.find "code-block"
+      |> make_code_name_map srcpath '+'
   in
   let code assoc =
-    assoc |> MYU.find "code"
-          |> make_code_name_map srcpath '\\'
+    assoc
+      |> MYU.find "code"
+      |> make_code_name_map srcpath '\\'
   in
   let string k assoc =
-    assoc |> MYU.find k
-          |> YS.Util.to_string
+    assoc
+      |> MYU.find k
+      |> YS.Util.to_string
   in
   let cmdrcd =
     {
