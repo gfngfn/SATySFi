@@ -21,6 +21,7 @@ module MDJa : sig
   direct +code : [string] block-cmd
   direct +console : [string] block-cmd
   direct +quote : [block-text] block-cmd
+  direct +hr : [] block-cmd
   direct +error : [string] block-cmd
 
   direct \code : [string] inline-cmd
@@ -28,6 +29,7 @@ module MDJa : sig
   direct \bold : [inline-text] inline-cmd
   direct \link : [string; inline-text] inline-cmd
   direct \hard-break : [] inline-cmd
+  direct \embed-block : [block-text] inline-cmd
   direct \error : [string] inline-cmd
 end = struct
 
@@ -55,6 +57,8 @@ end = struct
   let font-cjk-gothic = (`ipaexg`, font-ratio-cjk, 0.)
   let font-cjk-mincho = (`ipaexm`, font-ratio-cjk, 0.)
 
+  let hr-margin = 5mm
+  let hr-thickness = 1pt
 
   let-mutable h1-number <- 0
   let-mutable h2-number <- 0
@@ -199,12 +203,19 @@ end = struct
     '<+enumerate(Item({}, items));>
 
 
-  let-block +code s =
-    '<+Code.code(s);>
+  let fix-block-code s =
+    string-unexplode [0x0A] ^ s
+      % dirty trick; should fix '+Code.code' and the parser of SATySFi
+
+
+  let-block ctx +code s =
+    let ctx = set-font-size (get-font-size ctx *' 0.875) ctx in
+    read-block ctx '<+Code.code(fix-block-code s);>
 
 
   let-block +console s =
-    '<+Code.console(s);>
+    '<+Code.console(fix-block-code s);>
+
 
   let-block ctx +quote it =
     let qsize = get-quad-size ctx in
@@ -213,6 +224,15 @@ end = struct
     block-frame-breakable ctx pads decoset
       (fun ctx -> read-block ctx it)
 
+
+  let-block ctx +hr =
+    let w = get-text-width ctx in
+    let h = hr-margin +' hr-thickness *' 0.5 in
+    let color = (Gray(0.75)) in
+    line-break true true ctx
+      (inline-graphics w h h (fun (x, y) ->
+        [ stroke hr-thickness color (Gr.line (x, y) (x +' w, y)); ]
+      ))
 
   let-block ctx +error s =
     let ctx = ctx |> set-text-color Color.red in
@@ -251,6 +271,10 @@ end = struct
 
   let-inline ctx \hard-break =
     mandatory-break ctx
+
+
+  let-inline ctx \embed-block bt =
+    inline-fil ++ embed-block-breakable ctx (read-block ctx bt)
 
 
   let-inline ctx \error s =

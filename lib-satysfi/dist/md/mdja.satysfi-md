@@ -23,7 +23,7 @@
 
   "emph": "\\emph",
   "bold": "\\bold",
-  "hard-break": "\\hard-break",
+  "hard-break": <None>,
   "code": [
   ],
   "code-default": "\\code",
