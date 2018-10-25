@@ -423,44 +423,6 @@ let error_log_environment suspended =
         NormalLine("invalid string for hyphenation pattern.");
       ]
 
-  | SetDefaultFont.InvalidYOJSON(srcpath, msg) ->
-      report_error Interface [
-        NormalLine("the default font hash file '" ^ srcpath ^ "' is NOT a valid YOJSON file;");
-        DisplayLine(msg);
-      ]
-
-  | SetDefaultFont.OtherThanDictionary(srcpath) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | SetDefaultFont.MissingRequiredScriptKey(srcpath, key_script) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("missing required script key '" ^ key_script ^ "'");
-      ]
-
-  | SetDefaultFont.MissingRequiredKey(srcpath, key_script, key) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("missing required key '" ^ key ^ "' for the script '" ^ key_script ^ "'");
-      ]
-
-  | SetDefaultFont.ElementOtherThanDictionary(srcpath, key_script, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with the script key '" ^ key_script ^ "' is NOT a dictionary.");
-        DisplayLine(jsonstr);
-      ]
-
-  | SetDefaultFont.InvalidDataTypeOfKey(srcpath, key_script, key) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ ":");
-        NormalLine("the value associated with the key '" ^ key ^ "' "
-                      ^ "for the script '" ^ key_script ^ "' is of invalid data type.");
-      ]
-
   | FontFormat.FailToLoadFontOwingToSize(srcpath) ->
       report_error Interface [
         NormalLine("font file '" ^ srcpath ^ "' is too large to be loaded.");
