@@ -30,6 +30,7 @@ and inline_element =
   | Br
   | Url of string * inline * string
   | InlineRaw of string
+  | EmbeddedBlock of block
 
 and inline = inline_element list
 [@@deriving show { with_path = false; }]
@@ -63,8 +64,10 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Ulp(_)
   | Omd.Ol(_)
   | Omd.Olp(_)
-  | Omd.Raw_block(_)
-      -> failwith ("block occurs; inline expected: " ^ Omd.to_text [mde])
+  | Omd.Raw_block(_) -> single @@ EmbeddedBlock(make_block_of_element mde)
+(*
+      failwith ("block occurs; inline expected: " ^ Omd.to_text [mde])
+ *)
 
   | Omd.Html_comment(_) -> empty
 
@@ -95,7 +98,7 @@ and make_inline (md : Omd.t) : inline =
   md |> List.map make_inline_of_element |> List.concat
 
 
-let rec make_block_of_element (mde : Omd.element) =
+and make_block_of_element (mde : Omd.element) =
   let single blke = [blke] in
   let empty = [] in
   match mde with
@@ -245,6 +248,7 @@ type command_record = {
   code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
+  embed_block        : command;
   err_inline         : command;
 }
 
@@ -307,6 +311,10 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]
 
+  | EmbeddedBlock(blk) ->
+      let utastarg = convert_block cmdrcd blk in
+      make_inline_application cmdrcd.embed_block [utastarg]
+
   | InlineRaw(s) ->
       let utastarg = (dummy_range, UTStringConstant(s)) in
       make_inline_application cmdrcd.err_inline [utastarg]
@@ -322,7 +330,7 @@ and convert_inline (cmdrcd : command_record) (iln : inline) : untyped_abstract_t
   (dummy_range, UTInputHorz(utih))
 
 
-let rec convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
+and convert_block_element (cmdrcd : command_record) (blke : block_element) : untyped_input_vert_element list =
   match blke with
   | Paragraph(iln) ->
       let utastarg = convert_inline cmdrcd iln in

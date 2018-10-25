@@ -123,6 +123,7 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
+      embed_block        = assoc |> block "embed-block";
       err_inline         = assoc |> inline "err-inline";
     }
   in
