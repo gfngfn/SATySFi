@@ -82,11 +82,14 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let inline_option k assoc =
     let json = assoc |> MYU.find k in
     json |> MYU.decode_variant [
-      ("None", None);
-      ("Some", Some(fun ((pos, _) as json) ->
+      ("None", MYU.NoArg(fun () ->
+        None
+      ));
+      ("Some", MYU.Arg(fun ((pos, _) as json) ->
         let rng = MYU.make_range pos in
         let s = json |> YS.Util.to_string in
-        get_command_main pair_inline rng s
+        let cmd = get_command_main pair_inline rng s in
+        Some(cmd)
       ));
     ]
   in

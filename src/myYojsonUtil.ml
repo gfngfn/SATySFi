@@ -42,17 +42,26 @@ let find (key : string) ((pos, assoc) : assoc) : json =
       json
 
 
+let fold (type a) (f : string -> json -> a -> a) (init : a) ((_, assoc) : assoc) : a =
+  YojsonMap.fold f assoc init
+
+
+type 'a variant_arg =
+  | NoArg of (unit -> 'a)
+  | Arg   of (json -> 'a)
+
+
 let err_variant json branches =
   let s =
     branches |> List.map (function
-    | (label, None)    -> "<" ^ label ^ ">"
-    | (label, Some(_)) -> "<" ^ label ^ ": _ >"
+    | (label, NoArg(_)) -> "<" ^ label ^ ">"
+    | (label, Arg(_))   -> "<" ^ label ^ ": _ >"
     ) |> String.concat ", "
   in
-  raise (YS.Util.Type_error("Expects " ^ s, json))
+  raise (YS.Util.Type_error("Expects one of the following form(s): " ^ s, json))
 
 
-let decode_variant (type a) (branches : (string * (json -> a) option) list) (json : json) : a option =
+let decode_variant (type a) (branches : (string * a variant_arg) list) (json : json) : a =
   match json with
   | (_, `Variant(label, jsonopt)) ->
       begin
@@ -63,9 +72,9 @@ let decode_variant (type a) (branches : (string * (json -> a) option) list) (jso
         | Some(fopt) ->
             begin
               match (fopt, jsonopt) with
-              | (Some(f), Some(arg)) -> Some(f arg)
-              | (None, None)         -> None
-              | _                    -> err_variant json branches
+              | (Arg(f), Some(arg)) -> f arg
+              | (NoArg(hook), None) -> hook ()
+              | _                   -> err_variant json branches
             end
       end
 
