@@ -25,19 +25,19 @@ let cut_module_names (s : string) : string list * string =
   | _                  -> assert false  (* -- 'String.split_on_char' always returns a non-empty list -- *)
 
 
-let get_command_main (rng : Range.t) (prefix : char) (s : string) =
+let get_command_main (rng : Range.t) (prefix : char) (s : string) : DecodeMD.command =
   try
     if Char.equal (String.get s 0) prefix then
       let stail = (String.sub s 1 (String.length s - 1)) in
       let (mdlnms, varnm) = cut_module_names stail in
-      (mdlnms, (String.make 1 prefix) ^ varnm)
+      (rng, (mdlnms, (String.make 1 prefix) ^ varnm))
     else
       err_not_a_command rng s
   with
   | Invalid_argument(_) -> err_not_a_command rng s
 
 
-let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : MYU.assoc) =
+let get_command (prefix : char) (k : string) (assoc : MYU.assoc) =
   let (pos, s) =
     let (pos, _) as json =
       assoc |> MYU.find k
@@ -48,7 +48,7 @@ let get_command (srcpath : file_path) (prefix : char) (k : string) (assoc : MYU.
   get_command_main rng prefix s
 
 
-let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json : json) : (string list * string) DecodeMD.CodeNameMap.t =
+let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
   let open DecodeMD in
   let pairs = json |> YS.Util.to_list in
   pairs |> List.fold_left (fun accmap json ->
@@ -72,12 +72,13 @@ let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json :
 
 let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let open DecodeMD in
-  let block = get_command srcpath '+' in
-  let inline = get_command srcpath '\\' in
+  let block = get_command '+' in
+  let inline = get_command '\\' in
   let name k assoc =
-    let json = assoc |> MYU.find k in
+    let (pos, _) as json = assoc |> MYU.find k in
+    let rng = MYU.make_range pos in
     let name = json |> YS.Util.to_string in
-    cut_module_names name
+    (rng, cut_module_names name)
   in
   let code_block assoc =
     assoc

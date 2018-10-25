@@ -216,7 +216,7 @@ let normalize_h1 = normalize_h H1 (function Omd.H1(heading) -> Some(heading) | _
 module CodeNameMap = Map.Make(String)
 
 
-type command = module_name list * var_name
+type command = Range.t * (module_name list * var_name)
 
 type command_record = {
   document           : command;
@@ -258,13 +258,13 @@ let make_list_tree utastlst =
   ) utastlst (dummy_range, UTEndOfList)
 
 
-let make_inline_application ((mdlnmlst, cmdnm) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (dummy_range, UTContentOf(mdlnmlst, cmdnm)) in
+let make_inline_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
+  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
   [(dummy_range, UTInputHorzEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
 
 
-let make_block_application ((mdlnmlst, cmdnm) : command) (utasts : untyped_abstract_tree list) =
-  let utastcmd = (dummy_range, UTContentOf(mdlnmlst, cmdnm)) in
+let make_block_application ((rng, (mdlnmlst, cmdnm)) : command) (utasts : untyped_abstract_tree list) =
+  let utastcmd = (rng, UTContentOf(mdlnmlst, cmdnm)) in
   [(dummy_range, UTInputVertEmbedded(utastcmd, utasts |> List.map (fun x -> UTMandatoryArgument(x))))]
 
 
@@ -403,8 +403,8 @@ and convert_block (cmdrcd : command_record) (blk : block) : untyped_abstract_tre
 
 let decode (cmdrcd : command_record) (s : string) =
   let utastdoccmd =
-    let (mdlnms, varnm) = cmdrcd.document in
-    (dummy_range, UTContentOf(mdlnms, varnm))
+    let (rng, (mdlnms, varnm)) = cmdrcd.document in
+    (rng, UTContentOf(mdlnms, varnm))
   in
   let md = Omd.of_string s in
   let (strheader, md) =

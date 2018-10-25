@@ -3,7 +3,7 @@ open Types_
 
 module CodeNameMap : Map.S with type key = string
 
-type command = module_name list * var_name
+type command = Range.t * (module_name list * var_name)
 
 type command_record = {
   document           : command;
