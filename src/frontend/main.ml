@@ -571,6 +571,24 @@ let error_log_environment suspended =
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
       ]
 
+  | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("multiple designation for key '" ^ s ^ "'.");
+      ]
+
+  | LoadMDSetting.NotAnInlineCommand(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ s ^ "' is not an inline command name.");
+      ]
+
+  | LoadMDSetting.NotABlockCommand(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ s ^ "' is not a block command name.");
+      ]
+
   | MyYojsonUtil.SyntaxError(srcpath, msg) ->
       report_error System [
         NormalLine("in '" ^ srcpath ^ "':");

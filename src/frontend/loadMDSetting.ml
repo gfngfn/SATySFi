@@ -8,15 +8,24 @@ type json = YS.json
 type file_path = string
 
 exception MultipleCodeNameDesignation of Range.t * string
-exception NotACommandName             of Range.t * string
+exception NotAnInlineCommand          of Range.t * string
+exception NotABlockCommand            of Range.t * string
 
 
 let err_json msg json =
   raise (YS.Util.Type_error(msg, json))
 
 
-let err_not_a_command rng s =
-  raise (NotACommandName(rng, s))
+let err_not_a_block_command rng s =
+  raise (NotABlockCommand(rng, s))
+
+
+let err_not_an_inline_command rng s =
+  raise (NotAnInlineCommand(rng, s))
+
+
+let pair_block = ('+', err_not_a_block_command)
+let pair_inline = ('\\', err_not_an_inline_command)
 
 
 let cut_module_names (s : string) : string list * string =
@@ -25,30 +34,26 @@ let cut_module_names (s : string) : string list * string =
   | _                  -> assert false  (* -- 'String.split_on_char' always returns a non-empty list -- *)
 
 
-let get_command_main (rng : Range.t) (prefix : char) (s : string) : DecodeMD.command =
+let get_command_main ((prefix, errf) : char * (Range.t -> string -> 'a)) (rng : Range.t) (s : string) : DecodeMD.command =
   try
     if Char.equal (String.get s 0) prefix then
       let stail = (String.sub s 1 (String.length s - 1)) in
       let (mdlnms, varnm) = cut_module_names stail in
       (rng, (mdlnms, (String.make 1 prefix) ^ varnm))
     else
-      err_not_a_command rng s
+      errf rng s
   with
-  | Invalid_argument(_) -> err_not_a_command rng s
+  | Invalid_argument(_) -> errf rng s
 
 
-let get_command (prefix : char) (k : string) (assoc : MYU.assoc) =
-  let (pos, s) =
-    let (pos, _) as json =
-      assoc |> MYU.find k
-    in
-      (pos, YS.Util.to_string json)
-  in
+let get_command pair (k : string) (assoc : MYU.assoc) =
+  let (pos, _) as json = assoc |> MYU.find k in
+  let s = YS.Util.to_string json in
   let rng = MYU.make_range pos in
-  get_command_main rng prefix s
+  get_command_main pair rng s
 
 
-let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
+let make_code_name_map pair ((pos, _) as json : json) : DecodeMD.command DecodeMD.CodeNameMap.t =
   let open DecodeMD in
   let pairs = json |> YS.Util.to_list in
   pairs |> List.fold_left (fun accmap json ->
@@ -61,7 +66,7 @@ let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json :
           let rng = MYU.make_range pos in
           raise (MultipleCodeNameDesignation(rng, name))
         else
-          let cmd = get_command_main rng2 prefix s in
+          let cmd = get_command_main pair rng2 s in
           accmap |> CodeNameMap.add name cmd
 
     | _ ->
@@ -72,8 +77,8 @@ let make_code_name_map (srcpath : file_path) (prefix : char) ((pos, _) as json :
 
 let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let open DecodeMD in
-  let block = get_command '+' in
-  let inline = get_command '\\' in
+  let block = get_command pair_block in
+  let inline = get_command pair_inline in
   let name k assoc =
     let (pos, _) as json = assoc |> MYU.find k in
     let rng = MYU.make_range pos in
@@ -83,12 +88,12 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
   let code_block assoc =
     assoc
       |> MYU.find "code-block"
-      |> make_code_name_map srcpath '+'
+      |> make_code_name_map pair_block
   in
   let code assoc =
     assoc
       |> MYU.find "code"
-      |> make_code_name_map srcpath '\\'
+      |> make_code_name_map pair_inline
   in
   let string k assoc =
     assoc
@@ -123,7 +128,7 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
-      embed_block        = assoc |> block "embed-block";
+      embed_block        = assoc |> inline "embed-block";
       err_inline         = assoc |> inline "err-inline";
     }
   in
