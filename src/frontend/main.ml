@@ -417,6 +417,12 @@ let error_log_environment suspended =
         DisplayLine(jsonstr);
       ]
 
+  | LoadHyph.InvalidPatternElement(rng) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("invalid string for hyphenation pattern.");
+      ]
+
   | SetDefaultFont.InvalidYOJSON(srcpath, msg) ->
       report_error Interface [
         NormalLine("the default font hash file '" ^ srcpath ^ "' is NOT a valid YOJSON file;");
