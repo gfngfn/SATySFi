@@ -70,13 +70,13 @@
       if num >= len then tail_spaces else
         begin
           match (prev, String.get str num) with
-          | (Some '\r', '\n') ->
-              aux (num + 1) (tail_spaces + 1) (Some '\n')
+          | (Some('\r'), '\n') ->
+              aux (num + 1) (tail_spaces + 1) (Some('\n'))
 
-          | (_, c) when c = '\n' || c = '\r' ->
+          | (_, (('\n' | '\r') as c)) ->
               has_break := true;
               increment_line lexbuf;
-              aux (num + 1) 0 (Some c)
+              aux (num + 1) 0 (Some(c))
 
           | _ ->
               aux (num + 1) (tail_spaces + 1) None
