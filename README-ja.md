@@ -97,15 +97,22 @@ opam install satysfi
 
 ## 用法
 
-    satysfi <input files> -o <output file>
+```sh
+satysfi <input file> -o <output file>
+```
 
-で `<input files>` から `<output file>` を出力します。例えばソースファイル `doc.saty` から `output.pdf` を出力したい場合，次のようにします：
+で `<input file>` から `<output file>` を出力します。例えばソースファイル `doc.saty` から `output.pdf` を出力したい場合，次のようにします：
 
-    satysfi doc.saty -o output.pdf
+```sh
+satysfi doc.saty -o output.pdf
+```
 
 ## コマンドラインオプション
 
 * `-v`, `--version`: ヴァージョンを表示します。
 * `-o`, `--output`: 出力ファイル名を指定します。省略された場合，入力ファイル名の拡張子を `.pdf` に変えた名前を出力ファイル名とします。
+* `-b`, `--bytecomp`: 評価前にバイトコンパイルを行ないます（複雑な計算に対して高速化が期待できます）。
 * `--full-path`: 標準出力に書き込むログに於いて，ファイル名をすべて絶対パスで表示します。
 * `--type-check-only`: 型検査だけをして終了します。
+* `--debug-show-bbox`: （デバッグ目的で）各グリフにバウンディングボックスをつけて出力します。
+* `--debug-show-space`: （デバッグ目的で）スペース部分に目印をつけて出力します。
