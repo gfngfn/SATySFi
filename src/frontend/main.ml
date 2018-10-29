@@ -11,6 +11,8 @@ exception NoInputFileDesignation
 exception CyclicFileDependency of file_path list
 exception NotALibraryFile  of file_path * Typeenv.t * mono_type
 exception NotADocumentFile of file_path * Typeenv.t * mono_type
+exception NotAStringFile   of file_path * Typeenv.t * mono_type
+exception ShouldSpecifyOutputFile
 
 
 type line =
@@ -93,8 +95,13 @@ type file_info =
 
 
 let make_absolute_path curdir headerelem =
+  let extcands =
+    match OptionState.get_mode () with
+    | None      -> [".satyh"; ".satyg"]
+    | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
+  in
   match headerelem with
-  | HeaderRequire(s) -> Config.resolve_dist_path (Filename.concat "dist/packages" s ^ ".satyh")
+  | HeaderRequire(s) -> Config.resolve_dist_package (Filename.concat "dist/packages" s) extcands
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
@@ -141,10 +148,13 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : fi
 
 (* -- initialization that should be performed before every cross-reference-solving loop -- *)
 let reset () =
-  begin
-    FontInfo.initialize ();
-    ImageInfo.initialize ();
-  end
+  if OptionState.is_text_mode () then
+    ()
+  else
+    begin
+      FontInfo.initialize ();
+      ImageInfo.initialize ();
+    end
 
 
 (* -- initialization that should be performed before typechecking -- *)
@@ -156,7 +166,12 @@ let initialize (dump_file : file_path) =
     EvalVarID.initialize ();
     StoreID.initialize ();
     let dump_file_exists = CrossRef.initialize dump_file in
-    let (tyenv, env) = Primitives.make_environments () in
+    let (tyenv, env) =
+      if OptionState.is_text_mode () then
+        Primitives.make_text_mode_environments ()
+      else
+        Primitives.make_pdf_mode_environments ()
+    in
     begin
       if OptionState.bytecomp_mode () then
         Bytecomp.compile_environment env
@@ -213,6 +228,26 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
   end
 
 
+let eval_main i env_freezed ast =
+  Logging.start_evaluation i;
+  reset ();
+  let env = unfreeze_environment env_freezed in
+  let valuedoc =
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_and_exec env ast
+    else
+      Evaluator.interpret env ast
+  in
+  Logging.end_evaluation ();
+  valuedoc
+
+
+let output_text file_path_out s =
+  let outc = open_out file_path_out in
+  output_string outc s;
+  close_out outc
+
+
 let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
     Logging.begin_to_read_file file_path_in;
     let (ty, _, ast) = Typechecker.main tyenv utast in
@@ -220,19 +255,37 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
     if OptionState.type_check_only () then ()
     else
     let env_freezed = freeze_environment env in
+    if OptionState.is_text_mode () then
+      match ty with
+      | (_, BaseType(StringType)) ->
+          let rec aux i =
+            let valuestr = eval_main i env_freezed ast in
+            let s = EvalUtil.get_string valuestr in
+            match CrossRef.needs_another_trial file_path_dump with
+            | CrossRef.NeedsAnotherTrial ->
+                Logging.needs_another_trial ();
+                aux (i + 1);
+
+            | CrossRef.CountMax ->
+                Logging.achieve_count_max ();
+                output_text file_path_out s;
+                Logging.end_output file_path_out;
+
+            | CrossRef.CanTerminate unresolved_crossrefs ->
+                Logging.achieve_fixpoint unresolved_crossrefs;
+                output_text file_path_out s;
+                Logging.end_output file_path_out;
+
+          in
+          aux 1
+
+      | _ ->
+          raise (NotAStringFile(file_path_in, tyenv, ty))
+    else
       match ty with
       | (_, BaseType(DocumentType)) ->
           let rec aux i =
-            Logging.start_evaluation i;
-            reset ();
-            let env = unfreeze_environment env_freezed in
-            let valuedoc =
-              if OptionState.bytecomp_mode () then
-                Bytecomp.compile_and_exec env ast
-              else
-                Evaluator.interpret env ast
-            in
-            Logging.end_evaluation ();
+            let valuedoc = eval_main i env_freezed ast in
             begin
               match valuedoc with
               | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
@@ -286,12 +339,12 @@ let error_log_environment suspended =
         (cycle |> List.map (fun s -> DisplayLine(s)))
       )
 
-  | Config.DistFileNotFound(file_name, dirlst) ->
+  | Config.DistFileNotFound(file_name, pathcands) ->
       report_error Interface (List.append [
         NormalLine("package file not found:");
         DisplayLine(file_name);
-        NormalLine("candidate directories for the SATySFi library root:");
-      ] (dirlst |> List.map (fun dir -> DisplayLine(dir))))
+        NormalLine("candidate paths:");
+      ] (pathcands |> List.map (fun pathcand -> DisplayLine(pathcand))))
 
   | NotALibraryFile(file_name_in, tyenv, ty) ->
       report_error Typechecker [
@@ -303,6 +356,17 @@ let error_log_environment suspended =
       report_error Typechecker [
         NormalLine("file '" ^ file_name_in ^ "' is not a document file; it is of type");
         DisplayLine(string_of_mono_type tyenv ty);
+      ]
+
+  | NotAStringFile(file_name_in, tyenv, ty) ->
+      report_error Typechecker [
+        NormalLine("file '" ^ file_name_in ^ "' is not a file for generating text; it is of type");
+        DisplayLine(string_of_mono_type tyenv ty);
+      ]
+
+  | ShouldSpecifyOutputFile ->
+      report_error Interface [
+        NormalLine("should specify output file for text mode.");
       ]
 
   | CrossRef.InvalidYOJSON(dumpfile, msg) ->
@@ -686,7 +750,7 @@ let error_log_environment suspended =
 let arg_version () =
   begin
     print_string (
-        "  SATySFi version 0.0.2\n"
+        "  SATySFi version 0.0.3\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
@@ -718,6 +782,11 @@ let handle_anonimous_arg (curdir : file_path) (s : file_path) =
   OptionState.set_input_file file_path
 
 
+let text_mode s =
+  let slst = String.split_on_char ',' s in
+    OptionState.set_text_mode slst
+
+
 let arg_spec_list curdir =
   [
     ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"              );
@@ -731,6 +800,7 @@ let arg_spec_list curdir =
     ("--type-check-only" , Arg.Unit(OptionState.set_type_check_only) , " Stops after type checking"        );
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
+    ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                    );
   ]
 
 
@@ -775,10 +845,13 @@ let () =
           v
 
       | None ->
-          begin
-            try (Filename.chop_extension input_file) ^ ".pdf" with
-            | Invalid_argument(_) -> input_file ^ ".pdf"
-          end
+          if OptionState.is_text_mode () then
+            raise ShouldSpecifyOutputFile
+          else
+            begin
+              try (Filename.chop_extension input_file) ^ ".pdf" with
+              | Invalid_argument(_) -> input_file ^ ".pdf"
+            end
     in
     Logging.target_file output_file;
     let dump_file = (Filename.remove_extension output_file) ^ ".satysfi-aux" in

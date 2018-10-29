@@ -207,7 +207,7 @@ let get_script (value : syntactic_value) =
   | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
   | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
   | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
-  | Constructor("Other"         , UnitConstant) -> CharBasis.OtherScript
+  | Constructor("OtherScript"   , UnitConstant) -> CharBasis.OtherScript
   | _                                           -> report_bug_value "get_script" value
 
 
@@ -347,6 +347,12 @@ let get_context (value : syntactic_value) : input_context =
   match value with
   | Context(ictx) -> ictx
   | _             -> report_bug_value "get_context" value
+
+
+let get_text_mode_context (value : syntactic_value) : TextBackend.text_mode_context =
+  match value with
+  | TextModeContext(tctx) -> tctx
+  | _                     -> report_bug_value "get_text_mode_context" value
 
 
 let get_length (value : syntactic_value) : length =
@@ -591,6 +597,25 @@ let make_paren reducef valueparenf : HorzBox.paren =
   )
 
 
+let make_math (mlst : math list) : syntactic_value =
+  MathValue(mlst)
+
+
+let make_option (type a) (makef : a -> syntactic_value) (opt : a option) : syntactic_value =
+  match opt with
+  | None    -> Constructor("None", UnitConstant)
+  | Some(x) -> let value = makef x in Constructor("Some", value)
+
+
+let make_pull_in_scripts reducef valuef =
+  (fun mopt1 mopt2 ->
+     let value1 = make_option make_math mopt1 in
+     let value2 = make_option make_math mopt2 in
+     let valueret = reducef valuef [value1; value2] in
+     get_math valueret
+  )
+
+
 let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
   (fun fontsize ypos ->
      let valuefontsize = LengthConstant(fontsize) in
@@ -600,10 +625,19 @@ let make_math_char_kern_func reducef valuekernf : HorzBox.math_char_kern_func =
   )
 
 
-let make_inline_graphics reducef valueg =
+let make_inline_graphics reducef valueg : HorzBox.fixed_graphics =
   (fun (xpos, ypos) ->
      let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
      let valueret = reducef valueg [valuepos] in
+       graphics_of_list valueret
+  )
+
+
+let make_inline_graphics_outer reducef valueg : HorzBox.outer_fil_graphics =
+  (fun wid (xpos, ypos) ->
+     let valuepos = TupleCons(LengthConstant(xpos), TupleCons(LengthConstant(ypos), EndOfTuple)) in
+     let valuewid = LengthConstant(wid) in
+     let valueret = reducef valueg [valuewid; valuepos] in
        graphics_of_list valueret
   )
 

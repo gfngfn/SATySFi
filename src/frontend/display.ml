@@ -110,13 +110,6 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
     match tymain with
 
     | TypeVariable(tvi) -> tvf plev tvi
-(*
-(*
-              "${" ^ iter tyl ^ "}"  (* TEMPORARY *)
-*)
-
-          | Bound(bid) ->
-*)
 
     | BaseType(EnvType)     -> "env"  (* -- unused -- *)
     | BaseType(UnitType)    -> "unit"
@@ -129,9 +122,6 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
     | BaseType(TextColType) -> "block-text"
     | BaseType(BoxRowType)  -> "inline-boxes"
     | BaseType(BoxColType)  -> "block-boxes"
-(*
-    | BaseType(FontType)    -> "font"
-*)
     | BaseType(ContextType) -> "context"
     | BaseType(PrePathType) -> "pre-path"
     | BaseType(PathType)    -> "path"
@@ -141,6 +131,7 @@ let rec string_of_mono_type_sub (tvf : paren_level -> 'a -> string) ortvf (tyenv
     | BaseType(DocumentType) -> "document"
     | BaseType(MathType)     -> "math"
     | BaseType(RegExpType)   -> "regexp"
+    | BaseType(TextInfoType) -> "text-info"
 
     | VariantType(tyarglist, tyid) ->
         let s = (iter_args tyarglist) ^ (Typeenv.find_type_name tyenv tyid) in
@@ -328,86 +319,9 @@ let string_of_poly_type (tyenv : Typeenv.t) (Poly(pty) : poly_type) =
 
 
 (* -- following are all for debug -- *)
+
 let string_of_utast utast = show_untyped_abstract_tree utast
 
-(*
-let rec string_of_utast ((_, utastmain) : untyped_abstract_tree) =
-  match utastmain with
-  | UTStringEmpty                  -> "{}"
-  | UTIntegerConstant(nc)          -> string_of_int nc
-  | UTBooleanConstant(bc)          -> string_of_bool bc
-  | UTStringConstant(sc)           -> "{" ^ sc ^ "}"
-  | UTUnitConstant                 -> "()"
-  | UTContentOf(lst, varnm)        -> (List.fold_left (fun mdlnm s -> s ^ mdlnm ^ ".") "" lst) ^ varnm
-  | UTConcat(ut1, (_, UTStringEmpty)) -> string_of_utast ut1
-  | UTConcat(ut1, ut2)             -> "(" ^ (string_of_utast ut1) ^ " ^ " ^ (string_of_utast ut2) ^ ")"
-  | UTApply(ut1, ut2)              -> "(" ^ (string_of_utast ut1) ^ " " ^ (string_of_utast ut2) ^ ")"
-  | UTListCons(hd, tl)             -> "(" ^ (string_of_utast hd) ^ " :: " ^ (string_of_utast tl) ^ ")"
-  | UTEndOfList                    -> "[]"
-  | UTTupleCons(hd, tl)            -> "(" ^ (string_of_utast hd) ^ ", " ^ (string_of_utast tl) ^ ")"
-  | UTEndOfTuple                   -> "$"
-(*
-  | UTBreakAndIndent               -> "break"
-*)
-  | UTLetRecIn(_, ut)              -> "(let ... in " ^ (string_of_utast ut) ^ ")"
-  | UTIfThenElse(ut1, ut2, ut3)    -> "(if " ^ (string_of_utast ut1) ^ " then "
-                                        ^ (string_of_utast ut2) ^ " else " ^ (string_of_utast ut3) ^ ")"
-  | UTFunction(_)                  -> "(function ...)"
-  | UTFinishHeaderFile             -> "finish"
-  | UTPatternMatch(ut, pmcons)     -> "(match " ^ (string_of_utast ut) ^ " with" ^ (string_of_pmcons pmcons) ^ ")"
-  | UTItemize(itmz)                -> "(itemize " ^ string_of_itemize 0 itmz ^ ")"
-(*  | UTDeclareVariantIn() *)
-  | UTInputVert(utivlst)           -> "(textV " ^ (String.concat " " (List.map string_of_utiv utivlst)) ^ ")"
-  | UTInputHorz(utihlst)           -> "(textH " ^ (String.concat " " (List.map string_of_utih utihlst)) ^ ")"
-  | _                              -> "OTHER"
-*)
-
-(*
-let rec string_of_utiv (_, utivmain) =
-  match utivmain with
-  | UTInputVertEmbedded(utastcmd, utastlst) ->
-      "(embV " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
-  | UTInputVertContent(utast0) ->
-      "(embVC " ^ (string_of_utast utast0) ^ ")"
-
-and string_of_utih (_, utihmain) =
-  match utihmain with
-  | UTInputHorzEmbedded(utastcmd, utastlst) ->
-      "(embH " ^ (string_of_utast utastcmd) ^ " " ^ (String.concat " " (List.map string_of_utast utastlst)) ^ ")"
-  | UTInputHorzText(s) -> "\"" ^ s ^ "\""
-  | UTInputHorzContent(utast0) ->
-      "(embHC " ^ (string_of_utast utast0) ^ ")"
-  | UTInputHorzEmbeddedMath(utastmath) ->
-      "(embHM " ^ (string_of_utast utastmath) ^ ")"
-
-and string_of_itemize dp (UTItem(utast, itmzlst)) =
-  "(" ^ (String.make dp '*') ^ " " ^ (string_of_utast utast)
-    ^ (List.fold_left (fun x y -> x ^ " " ^ y) "" (List.map (string_of_itemize (dp + 1)) itmzlst)) ^ ")"
-
-and string_of_pmcons pmcons =
-  match pmcons with
-  | [] -> ""
-  | UTPatternBranch(pat, ut) :: tail
-      -> " | " ^ (string_of_utpat pat) ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
-  | UTPatternBranchWhen(pat, utb, ut) :: tail
-      -> " | " ^ (string_of_utpat pat) ^ " when " ^ (string_of_utast utb)
-          ^ " -> " ^ (string_of_utast ut) ^ (string_of_pmcons tail)
-
-and string_of_utpat (_, pat) =
-  match pat with
-  | UTPIntegerConstant(nc)  -> string_of_int nc
-  | UTPBooleanConstant(bc)  -> string_of_bool bc
-  | UTPStringConstant(ut)   -> string_of_utast ut
-  | UTPUnitConstant         -> "()"
-  | UTPListCons(hd, tl)     -> (string_of_utpat hd) ^ " :: " ^ (string_of_utpat tl)
-  | UTPEndOfList            ->  "[]"
-  | UTPTupleCons(hd, tl)    -> "(" ^ (string_of_utpat hd) ^ ", " ^ (string_of_utpat tl) ^ ")"
-  | UTPEndOfTuple           -> "$"
-  | UTPWildCard             -> "_"
-  | UTPVariable(varnm)      -> varnm
-  | UTPAsVariable(varnm, p) -> "(" ^ (string_of_utpat p) ^ " as " ^ varnm ^ ")"
-  | UTPConstructor(cnm,p)   -> "(" ^ cnm ^ " " ^ (string_of_utpat p) ^ ")"
-*)
 
 let escape_letters str =
   let rec aux str index =
@@ -424,76 +338,3 @@ let escape_letters str =
 
 
 let string_of_ast (ast : abstract_tree) = show_abstract_tree ast
-
-(*
-let rec string_of_ast (ast : abstract_tree) =
-  match ast with
-  | LambdaAbstract(x, m)         -> "(" ^ (EvalVarID.show_direct x) ^ " -> " ^ (string_of_ast m) ^ ")"
-  | FuncWithEnvironment(x, m, _) -> "(" ^ (EvalVarID.show_direct x) ^ " *-> " ^ (string_of_ast m) ^ ")"
-  | ContentOf(rng, x)            -> EvalVarID.show_direct x
-  | Apply(m, n)                  -> "(" ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | Concat(s, t)                 -> "(" ^ (string_of_ast s) ^ " ^ " ^ (string_of_ast t) ^ ")"
-  | StringEmpty                  -> "\"\""
-  | StringConstant(sc)           -> "\"" ^ (escape_letters sc) ^ "\""
-  | IntegerConstant(nc)          -> string_of_int nc
-  | FloatConstant(nc)            -> string_of_float nc
-  | BooleanConstant(bc)          -> string_of_bool bc
-  | IfThenElse(b, t, f)          ->
-      "(if " ^ (string_of_ast b) ^ " then " ^ (string_of_ast t) ^ " else " ^ (string_of_ast f) ^ ")"
-(*
-  | ApplyClassAndID(c, i, m)     ->
-      "(apply-class-and-id " ^ (string_of_ast c) ^ " " ^ (string_of_ast i) ^ " " ^ (string_of_ast m) ^ ")"
-*)
-  | Dereference(a)               -> "(!" ^ (string_of_ast a) ^ ")"
-(*
-  | ReferenceFinal(a)            -> "(!!" ^ (string_of_ast a) ^ ")"
-*)
-  | Overwrite(x, n)              -> "(" ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast n) ^ ")"
-  | Location(loc)                -> "<mutable>"
-  | UnitConstant                 -> "()"
-  | LetMutableIn(x, d, f)        -> "(let-mutable " ^ (EvalVarID.show_direct x) ^ " <- " ^ (string_of_ast d) ^ " in " ^ (string_of_ast f) ^ ")"
-  | ListCons(a, cons)            -> "(" ^ (string_of_ast a) ^ " :: " ^ (string_of_ast cons) ^ ")"
-  | EndOfList                    -> "[]"
-  | TupleCons(a, cons)           -> "(" ^ (string_of_ast a) ^ ", " ^ (string_of_ast cons) ^ ")"
-  | EndOfTuple                   -> "end-of-tuple"
-(*
-  | BreakAndIndent               -> "break"
-*)
-  | FinishHeaderFile             -> "finish-header-file"
-  | EvaluatedEnvironment(_)      -> "evaluated-environment"
-(*
-  | DeeperIndent(m)              -> "(deeper " ^ (string_of_ast m) ^ ")"
-*)
-  | Constructor(c, m)            -> "(constructor " ^ c ^ " " ^ (string_of_ast m) ^ ")"
-  | PatternMatch(_, _)           -> "(match ...)"
-  | LetIn(_, m)                  -> "(let ... in " ^ (string_of_ast m) ^ ")"
-  | WhileDo(m, n)                -> "(while " ^ (string_of_ast m) ^ " do " ^ (string_of_ast n) ^ ")"
-(*
-  | DeclareGlobalHash(m, n)      -> "(declare-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
-  | OverwriteGlobalHash(m, n)    -> "(overwrite-global-hash " ^ (string_of_ast m) ^ " <<- " ^ (string_of_ast n) ^ ")"
-*)
-  | Module(m, n)                 -> "(module " ^ (string_of_ast m) ^ " end in " ^ (string_of_ast n) ^ ")"
-  | Sequential(m, n)             -> "(sequential " ^ (string_of_ast m) ^ " ; " ^ (string_of_ast n) ^ ")"
-  | PrimitiveSame(m, n)          -> "(same " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ ")"
-  | PrimitiveStringSub(m, n, o)  ->
-      "(string-sub " ^ (string_of_ast m) ^ " " ^ (string_of_ast n) ^ " " ^ (string_of_ast o) ^ ")"
-  | PrimitiveStringLength(m)     -> "(string-length " ^ (string_of_ast m) ^ ")"
-  | PrimitiveArabic(m)           -> "(arabic " ^ (string_of_ast m) ^ ")"
-  | Record(asc)                  -> "(| ... |)"
-  | AccessField(r, f)            -> (string_of_ast r) ^ "#" ^ f
-  | InputHorz(_)                 -> "(input-horz ...)"
-  | InputVert(_)                 -> "(input-vert ...)"
-  | Horz(_)                      -> "(horz ...)"
-  | Vert(_)                      -> "(vert ...)"
-  | HorzConcat(ast1, ast2)       -> "(horz-concat " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
-  | VertConcat(ast1, ast2)       -> "(vert-concat " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
-  | HorzLex(ast1, ast2)          -> "(horz-lex " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
-  | VertLex(ast1, ast2)          -> "(vert-lex " ^ (string_of_ast ast1) ^ " " ^ (string_of_ast ast2) ^ ")"
-  | LambdaHorz(_, ast1)          -> "(lambda-horz _. " ^ (string_of_ast ast1) ^ ")"
-  | LambdaVert(_, ast1)          -> "(lambda-vert _. " ^ (string_of_ast ast1) ^ ")"
-  | LambdaHorzWithEnvironment(_, ast1, _) -> "(lambda-horz! _. " ^ (string_of_ast ast1) ^ ")"
-  | LambdaVertWithEnvironment(_, ast1, _) -> "(lambda-vert! _. " ^ (string_of_ast ast1) ^ ")"
-  | Context(_)                   -> "(context)"
-  | FontDesignation(_)           -> "(font-designation)"
-  | _                            -> "OTHER"
-*)

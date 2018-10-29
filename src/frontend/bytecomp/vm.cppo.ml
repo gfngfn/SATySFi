@@ -147,7 +147,84 @@ and exec_input_vert_content env ivlst =
     CompiledInputVertWithEnvironment(imivlst, env)
 
 
-and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+and exec_text_mode_intermediate_input_vert (env : vmenv) (valuetctx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
+  let rec interpret_commands env imivlst =
+    imivlst |> List.map (fun imiv ->
+        match imiv with
+        | CompiledImInputVertEmbedded(code) ->
+            let valueret = exec [valuetctx] env (List.append code [OpApplyT(1)]) [] in
+              get_string valueret
+
+        | CompiledImInputVertContent(imivlstsub, envsub) ->
+            interpret_commands envsub imivlstsub
+
+      ) |> String.concat ""
+  in
+  let s = interpret_commands env imivlst in
+    StringConstant(s)
+
+
+and exec_text_mode_intermediate_input_horz (env : vmenv) (valuetctx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+  let tctx = get_text_mode_context valuetctx in
+    begin
+      let rec normalize imihlst =
+        imihlst |> List.fold_left (fun acc imih ->
+            match imih with
+            | CompiledImInputHorzEmbedded(code) ->
+                let nmih = CompiledNomInputHorzEmbedded(code) in
+                  Alist.extend acc nmih
+
+            | CompiledImInputHorzText(s2) ->
+                begin
+                  match Alist.chop_last acc with
+                  | Some(accrest, CompiledNomInputHorzText(s1)) -> (Alist.extend accrest (CompiledNomInputHorzText(s1 ^ s2)))
+                  | _                                           -> (Alist.extend acc (CompiledNomInputHorzText(s2)))
+                end
+
+            | CompiledImInputHorzEmbeddedMath(mathcode) ->
+                failwith "Vm_> math; remains to be supported."
+(*
+                let nmih = CompiledNomInputHorzThunk(List.append mathcode [OpPush(valuetctx); OpForward(1); OpPush(valuemcmd); OpApplyT(2)]) in
+                  Alist.extend acc nmih
+*)
+
+            | CompiledImInputHorzContent(imihlst, envsub) ->
+                let nmihlstsub = normalize imihlst in
+                let nmih = CompiledNomInputHorzContent(nmihlstsub, envsub) in
+                  Alist.extend acc nmih
+
+          ) Alist.empty |> Alist.to_list
+      in
+
+      let rec interpret_commands (env : vmenv) (nmihlst : compiled_nom_input_horz_element list) : string =
+        nmihlst |> List.map (fun nmih ->
+            match nmih with
+            | CompiledNomInputHorzEmbedded(code) ->
+                let valueret = exec [valuetctx] env (List.append code [OpApplyT(1)]) [] in
+                  get_string valueret
+
+            | CompiledNomInputHorzThunk(code) ->
+                let valueret = exec [] env code [] in
+                  get_string valueret
+
+            | CompiledNomInputHorzText(s) ->
+                let uchlst = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+                let uchlstret = TextBackend.stringify uchlst tctx in
+                  InternalText.to_utf8 (InternalText.of_uchar_list uchlstret)
+
+            | CompiledNomInputHorzContent(nmihlstsub, envsub) ->
+                interpret_commands envsub nmihlstsub
+
+          ) |> String.concat ""
+      in
+
+      let nmihlst = normalize imihlst in
+      let s = interpret_commands env nmihlst in
+        StringConstant(s)
+    end
+
+
+and exec_pdf_mode_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imivlst : compiled_intermediate_input_vert_element list) : syntactic_value =
   let rec interpret_commands env imivlst =
     imivlst |> List.map (fun imiv ->
         match imiv with
@@ -164,7 +241,7 @@ and exec_intermediate_input_vert (env : vmenv) (valuectx : syntactic_value) (imi
     Vert(imvblst)
 
 
-and exec_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
+and exec_pdf_mode_intermediate_input_horz (env : vmenv) (valuectx : syntactic_value) (imihlst : compiled_intermediate_input_horz_element list) : syntactic_value =
   let (ctx, valuemcmd) = get_context valuectx in
     begin
       let rec normalize imihlst =

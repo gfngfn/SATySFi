@@ -7,6 +7,7 @@ type state = {
   mutable show_full_path  : bool;
   mutable debug_show_bbox : bool;
   mutable debug_show_space : bool;
+  mutable mode             : (string list) option;
 }
 
 
@@ -18,6 +19,7 @@ let state = {
   show_full_path  = false;
   debug_show_bbox = false;
   debug_show_space = false;
+  mode             = None;
 }
 
 let set_input_file srcpath = state.input_file <- Some(srcpath)
@@ -40,3 +42,10 @@ let debug_show_bbox ()     = state.debug_show_bbox
 
 let set_debug_show_space () = state.debug_show_space <- true
 let debug_show_space ()     = state.debug_show_space
+
+let set_text_mode lst = state.mode <- Some(lst)
+let get_mode () = state.mode
+let is_text_mode () =
+  match state.mode with
+  | Some(_) -> true
+  | None -> false

@@ -636,17 +636,29 @@ let rec typecheck
         (Concat(e1, e2), (rng, BaseType(TextRowType)))
 
   | UTLambdaHorz(varrng, varnmctx, utast1) ->
+      let (bstyvar, bstyret) =
+        if OptionState.is_text_mode () then
+          (TextInfoType, StringType)
+        else
+          (ContextType, BoxRowType)
+      in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(bstyvar)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
-      let () = unify tyret (Range.dummy "lambda-horz-return", BaseType(BoxRowType)) in
+      let () = unify tyret (Range.dummy "lambda-horz-return", BaseType(bstyret)) in
         (abstraction evid e1, (rng, HorzCommandType(cmdargtylist)))
 
   | UTLambdaVert(varrng, varnmctx, utast1) ->
+      let (bstyvar, bstyret) =
+        if OptionState.is_text_mode () then
+          (TextInfoType, StringType)
+        else
+          (ContextType, BoxColType)
+      in
       let evid = EvalVarID.fresh (varrng, varnmctx) in
-      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(ContextType)), evid)) utast1 in
+      let (e1, ty1) = typecheck_iter (Typeenv.add tyenv varnmctx (Poly(varrng, BaseType(bstyvar)), evid)) utast1 in
       let (cmdargtylist, tyret) = flatten_type ty1 in
-      let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(BoxColType)) in
+      let () = unify tyret (Range.dummy "lambda-vert-return", BaseType(bstyret)) in
         (abstraction evid e1, (rng, VertCommandType(cmdargtylist)))
 
   | UTLambdaMath(utastF) ->
@@ -874,16 +886,28 @@ let rec typecheck
   | UTLexHorz(utastctx, utasth) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in
       let (eh, tyh) = typecheck_iter tyenv utasth in
-      let () = unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(ContextType)) in
+      let (eret, bstyctx, bstyret) =
+        if OptionState.is_text_mode () then
+          (TextHorzLex(ectx, eh), TextInfoType, StringType)
+        else
+          (HorzLex(ectx, eh), ContextType, BoxRowType)
+      in
+      let () = unify tyctx (Range.dummy "ut-lex-horz-1", BaseType(bstyctx)) in
       let () = unify tyh (Range.dummy "ut-lex-horz-2", BaseType(TextRowType)) in
-        (HorzLex(ectx, eh), (rng, BaseType(BoxRowType)))
+        (eret, (rng, BaseType(bstyret)))
 
   | UTLexVert(utastctx, utastv) ->
       let (ectx, tyctx) = typecheck_iter tyenv utastctx in
       let (ev, tyv) = typecheck_iter tyenv utastv in
-      let () = unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(ContextType)) in
+      let (eret, bstyctx, bstyret) =
+        if OptionState.is_text_mode () then
+          (TextVertLex(ectx, ev), TextInfoType, StringType)
+        else
+          (VertLex(ectx, ev), ContextType, BoxColType)
+      in
+      let () = unify tyctx (Range.dummy "ut-lex-vert-1", BaseType(bstyctx)) in
       let () = unify tyv (Range.dummy "ut-lex-vert-2", BaseType(TextColType)) in
-        (HorzLex(ectx, ev), (rng, BaseType(BoxColType)))
+        (eret, (rng, BaseType(bstyret)))
 
 
 and typecheck_command_arguments (ecmd : abstract_tree) (tycmd : mono_type) (rngcmdapp : Range.t) qtfbl lev tyenv (utcmdarglst : untyped_command_argument list) (cmdargtylst : mono_command_argument_type list) : abstract_tree =

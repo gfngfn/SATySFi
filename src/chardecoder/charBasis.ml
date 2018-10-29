@@ -1,4 +1,6 @@
 
+type uchar_segment = Uchar.t * Uchar.t list
+
 type code_point = int
 
 type code_point_kind =
@@ -15,11 +17,20 @@ type script =
 (* temporary; should add more scripts *)
   | OtherScript
 
+
 module ScriptSchemeMap = Map.Make
   (struct
     type t = script
     let compare = Pervasives.compare
   end)
+
+
+module ScriptSpaceMap = Map.Make
+  (struct
+    type t = script * script
+    let compare = Pervasives.compare
+  end)
+
 
 type east_asian_width =
   | EAWHalfWidth
@@ -126,7 +137,7 @@ let is_open_punctuation = function
 
 
 let is_close_punctuation = function
-  | CL | CP | QU | JLCP
+  | CL | CP | QU | NS | JLCP | JLNS | JLCM | JLFS
       -> true
   | _ -> false
 
@@ -222,4 +233,4 @@ let rec show_lregexp lregexp =
   ) |> String.concat " "
 
 
-type line_break_element = Uchar.t * line_break_class * break_opportunity
+type line_break_element = uchar_segment * line_break_class * break_opportunity

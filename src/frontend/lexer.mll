@@ -438,6 +438,9 @@ and mathexpr stack = parse
       comment lexbuf;
       mathexpr stack lexbuf
     }
+  | "?:" {
+      OPTIONAL(get_pos lexbuf)
+    }
   | "!{" {
       Stack.push HorizontalState stack;
       skip_spaces lexbuf;
@@ -566,7 +569,7 @@ and literal omit_pre quote_range quote_length buffer = parse
   | (("`"+ as tok) "#") {
       let len = String.length tok in
         if len < quote_length then begin
-          Buffer.add_string buffer tok;
+          Buffer.add_string buffer (tok ^ "#");
           literal omit_pre quote_range quote_length buffer lexbuf
         end else if len > quote_length then
           report_error lexbuf "literal area was closed with too many '`'s"

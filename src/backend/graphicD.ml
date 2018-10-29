@@ -195,18 +195,34 @@ let pdfops_of_fill (fill_color : color) (pathlst : path list) : Pdfops.t list =
     List.concat [[op_q; op_fill_color]; ops_path; [op_draw; op_Q]]
 
 
-let pdfops_of_text (pt : point) (rising : length) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.t) =
-  [
-    op_cm_translate (Length.zero, Length.zero);
-    op_q;
-    pdfop_of_text_color color;
-    op_BT;
-    op_Tm_translate pt;
-    op_Tf tag fontsize;
-    op_Ts rising;
-    op_TJ (OutputText.to_TJ_argument otxt);
-    op_ET;
-    op_Q;
+let pdfops_of_text (pt : point) (tag : string) (fontsize : length) (color : color) (otxt : OutputText.t) =
+  let pdfopstxt =
+    (OutputText.to_TJ_arguments otxt) |> List.fold_left (fun acc (hopt, pdfobjs) ->
+      let optxt = op_TJ (Pdf.Array(pdfobjs)) in
+        match hopt with
+        | None ->
+            Alist.append acc [op_Ts Length.zero; optxt]
+
+        | Some(FontFormat.PerMille(h)) ->
+            let r = fontsize *% (float_of_int h *. 0.001) in
+              Alist.append acc [op_Ts r; optxt]
+
+    ) Alist.empty |> Alist.to_list
+  in
+  List.concat [
+    [
+      op_cm_translate (Length.zero, Length.zero);
+      op_q;
+      pdfop_of_text_color color;
+      op_BT;
+      op_Tm_translate pt;
+      op_Tf tag fontsize;
+    ];
+    pdfopstxt;
+    [
+      op_ET;
+      op_Q;
+    ];
   ]
 
 
@@ -241,10 +257,10 @@ let pdfops_test_box color (xpos, ypos) wid hgt =
 
 
 (* -- 'pdfops_test_frame': output bounding box of horizontal elements for debugging -- *)
-let pdfops_test_frame (xpos, yposbaseline) wid hgt dpt =
+let pdfops_test_frame color (xpos, yposbaseline) wid hgt dpt =
   [
     op_q;
-    op_RG (1.0, 0.5, 0.5);
+    pdfop_of_stroke_color color;
     op_w (Length.of_pdf_point 0.1);
     op_m (xpos, yposbaseline);
     op_l (xpos +% wid, yposbaseline);

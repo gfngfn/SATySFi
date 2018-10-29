@@ -9,14 +9,32 @@ let initialize root_dirs =
   satysfi_root_dirs := root_dirs
 
 
-let resolve_dist_path filename =
-  let dirlst = !satysfi_root_dirs in
-  let rec go = function
-    | [] ->
-        raise (DistFileNotFound(filename, dirlst))
+let resolve fn =
+  if Sys.file_exists fn then Some(fn) else None
 
-    | d :: ds ->
-        let fn = Filename.concat d filename in
-          if Sys.file_exists fn then fn else go ds
+
+let resolve_dist_file filename =
+  let dirs = !satysfi_root_dirs in
+  let pathcands =
+    dirs |> List.map (fun dir -> Filename.concat dir filename)
   in
-    go dirlst
+    match MyUtil.first_some resolve pathcands with
+    | None     -> raise (DistFileNotFound(filename, pathcands))
+    | Some(fn) -> fn
+
+
+let resolve_dist_package package extcands =
+  let withexts =
+    extcands |> List.map (fun extcand -> package ^ extcand)
+  in
+  let dirs = !satysfi_root_dirs in
+  let pathcands =
+    dirs |> List.map (fun dir ->
+      withexts |> List.map (fun withext ->
+        Filename.concat dir withext
+      )
+    ) |> List.concat
+  in
+    match MyUtil.first_some resolve pathcands with
+    | None     -> raise (DistFileNotFound(package, pathcands))
+    | Some(fn) -> fn
