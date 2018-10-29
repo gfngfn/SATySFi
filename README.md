@@ -116,9 +116,9 @@ See [release page](https://github.com/gfngfn/Macrodown/releases)
 
 Type
 
-    satysfi <input files> -o <output file>
+    satysfi <input file> -o <output file>
 
-in order to convert `<input files>` (file names separated with spaces) into `<output file>`. For example, when you want to convert `doc.saty` into `output.pdf`, the following command will work:
+in order to convert `<input file>` into `<output file>`. For example, when you want to convert `doc.saty` into `output.pdf`, the following command will work:
 
     satysfi doc.saty -o output.pdf
 
@@ -126,5 +126,8 @@ in order to convert `<input files>` (file names separated with spaces) into `<ou
 
 * `-v`, `--version`: Prints the version.
 * `-o`, `--output`: Specify the name of the output PDF file. if this option is not given explicitly, the name of the output file is the concatenation of the base name of the input file and the extension `.pdf`.
+* `-b`, `--bytecomp`: Use byte compiler and enhance performance of computation.
 * `--full-path`: Displays file names with their absolute path when outputting them to stdout.
 * `--type-check-only`: Stops after type checking.
+* `--debug-show-bbox`: Outputs bounding boxes for each glyph (for the purpose of debugging).
+* `--debug-show-space`: Outputs boxes for spaces (for the purpose of debugging).
