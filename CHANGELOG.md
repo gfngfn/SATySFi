@@ -15,7 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 
 ## [0.0.3] - 2018-10-09
 ### Fixed
-- Does NOT insert spacing between different scripts when the [line breaking class](http://unicode.org/reports/tr14/) of the posterior charcter is CL, CP, QU, NS, JLCP, JLNS, JLCM, or JLFS.
+- Does NOT insert spacing between different scripts when the [line breaking class](http://unicode.org/reports/tr14/) of the posterior charcter is CL, CP, QU, NS, JLCP (= [JLreq cl-02](https://www.w3.org/TR/jlreq/ja/#cl-02)), JLFS (= [JLreq cl-06](https://www.w3.org/TR/jlreq/ja/#cl-06)), or JLCM (= [JLreq cl-07](https://www.w3.org/TR/jlreq/ja/#cl-07)).
 
 ### Added
 - Supports the application of math commands to optional arguments.
