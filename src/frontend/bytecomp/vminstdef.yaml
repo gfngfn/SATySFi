@@ -3087,7 +3087,7 @@ type: |
 
 params:
 - uri : string
-- (x, y) : point
+- pt : point
 - wid : length
 - hgt : length
 - dpt : length
@@ -3096,7 +3096,7 @@ params:
 
 code: |
   let coloropt = get_option get_color coloropt in
-  Annotation.register (Annotation.Link(Action.Uri(uri))) (x, y, wid, hgt, dpt) border coloropt;
+  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) border coloropt;
   UnitConstant
 
 ---
@@ -3108,7 +3108,7 @@ type: |
 
 params:
 - name : string
-- (x, y) : point
+- pt : point
 - wid : length
 - hgt : length
 - dpt : length
@@ -3118,5 +3118,5 @@ params:
 code: |
   let coloropt = get_option get_color coloropt in
   let destname = NamedDest.get name in
-  Annotation.register (Annotation.Link(Action.GotoName(destname))) (x, y, wid, hgt, dpt) border coloropt;
+  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) border coloropt;
   UnitConstant

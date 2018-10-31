@@ -15,7 +15,7 @@ let register annot rect border coloropt =
   annot_acc := Alist.extend !annot_acc (annot, rect, border, coloropt)
 
 
-let of_annotation (Link(act), (x, y, wid, hgt, dpt), border, coloropt) =
+let of_annotation (Link(act), ((x, y), wid, hgt, dpt), border, coloropt) =
   let rect = (to_pdf_point x, to_pdf_point (y -% dpt), to_pdf_point (x +% wid), to_pdf_point (y +% hgt)) in
   let color =
     match coloropt with
