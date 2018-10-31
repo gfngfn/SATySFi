@@ -1,5 +1,10 @@
 
+type input_kind =
+  | SATySFi
+  | Markdown of string
+
 type state = {
+  mutable input_kind      : input_kind;
   mutable input_file      : string option;
   mutable output_file     : string option;
   mutable type_check_only : bool;
@@ -12,6 +17,7 @@ type state = {
 
 
 let state = {
+  input_kind = SATySFi;
   input_file = None;
   output_file = None;
   type_check_only = false;
@@ -21,6 +27,9 @@ let state = {
   debug_show_space = false;
   mode             = None;
 }
+
+let set_input_kind ikd = state.input_kind <- ikd
+let get_input_kind ()  = state.input_kind
 
 let set_input_file srcpath = state.input_file <- Some(srcpath)
 let input_file ()          = state.input_file

@@ -98,14 +98,18 @@ type file_info =
   | LibraryFile  of untyped_abstract_tree
 
 
-let make_absolute_path curdir headerelem =
+let make_absolute_path_required package =
   let extcands =
     match OptionState.get_mode () with
     | None      -> [".satyh"; ".satyg"]
     | Some(lst) -> List.append (lst |> List.map (fun s -> ".satyh-" ^ s)) [".satyg"]
   in
+  Config.resolve_dist_package (Filename.concat "dist/packages" package) extcands
+
+
+let make_absolute_path curdir headerelem =
   match headerelem with
-  | HeaderRequire(s) -> Config.resolve_dist_package (Filename.concat "dist/packages" s) extcands
+  | HeaderRequire(s) -> make_absolute_path_required s
   | HeaderImport(s)  -> Filename.concat curdir (s ^ ".satyh")
 
 
@@ -225,10 +229,31 @@ let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in 
       let file_path_sub = make_absolute_path curdir headerelem in
       begin
         if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub;
+          register_library_file dg file_path_sub
       end;
       FileDependencyGraph.add_edge dg file_path_in file_path_sub
     )
+  end
+
+
+let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (file_path_in : file_path) : unit =
+  begin
+    Logging.begin_to_parse_file file_path_in;
+    let (cmdrcd, depends) = LoadMDSetting.main setting in
+    let data = MyUtil.string_of_file file_path_in in
+    let utast = DecodeMD.decode cmdrcd data in
+(*
+    let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
+ *)
+    FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+    depends |> List.iter (fun package ->
+      let file_path_sub = make_absolute_path_required package in
+      begin
+      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+        register_library_file dg file_path_sub
+      end;
+      FileDependencyGraph.add_edge dg file_path_in file_path_sub
+    );
   end
 
 
@@ -392,91 +417,10 @@ let error_log_environment suspended =
         DisplayLine(jsonstr);
       ]
 
-  | LoadFont.InvalidYOJSON(srcpath, msg) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a valid YOJSON format;");
-        DisplayLine(msg);
-      ]
-
-  | LoadFont.FontHashOtherThanDictionary(srcpath) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | LoadFont.FontHashElementOtherThanVariant(srcpath, abbrev, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with the font name '" ^ abbrev ^ "' is NOT a YOJSON variant;");
-        DisplayLine(jsonstr);
-      ]
-
-  | LoadFont.MultipleDesignation(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has multiple designations for '" ^ key ^ "'.");
-      ]
-
-  | LoadFont.UnexpectedYOJSONKey(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has an unexpected designation key '" ^ key ^ "'.");
-      ]
-
-  | LoadFont.UnexpectedYOJSONValue(srcpath, abbrev, key, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "has an unexpected designation value for '" ^ key ^ "';");
-        DisplayLine(jsonstr);
-      ]
-
-  | LoadFont.MissingRequiredYOJSONKey(srcpath, abbrev, key) ->
-      report_error Interface [
-        NormalLine("in the font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with font name '" ^ abbrev ^ "' "
-                     ^ "does NOT have the required designation key '" ^ key ^ "'.");
-      ]
-
-  | SetDefaultFont.InvalidYOJSON(srcpath, msg) ->
-      report_error Interface [
-        NormalLine("the default font hash file '" ^ srcpath ^ "' is NOT a valid YOJSON file;");
-        DisplayLine(msg);
-      ]
-
-  | SetDefaultFont.OtherThanDictionary(srcpath) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("the content is NOT a dictionary.");
-      ]
-
-  | SetDefaultFont.MissingRequiredScriptKey(srcpath, key_script) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("missing required script key '" ^ key_script ^ "'");
-      ]
-
-  | SetDefaultFont.MissingRequiredKey(srcpath, key_script, key) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("missing required key '" ^ key ^ "' for the script '" ^ key_script ^ "'");
-      ]
-
-  | SetDefaultFont.ElementOtherThanDictionary(srcpath, key_script, jsonstr) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ "':");
-        NormalLine("the value associated with the script key '" ^ key_script ^ "' is NOT a dictionary.");
-        DisplayLine(jsonstr);
-      ]
-
-  | SetDefaultFont.InvalidDataTypeOfKey(srcpath, key_script, key) ->
-      report_error Interface [
-        NormalLine("in the default font hash file '" ^ srcpath ^ ":");
-        NormalLine("the value associated with the key '" ^ key ^ "' "
-                      ^ "for the script '" ^ key_script ^ "' is of invalid data type.");
+  | LoadHyph.InvalidPatternElement(rng) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("invalid string for hyphenation pattern.");
       ]
 
   | FontFormat.FailToLoadFontOwingToSize(srcpath) ->
@@ -544,6 +488,49 @@ let error_log_environment suspended =
   | ParserInterface.Error(rng) ->
       report_error Parser [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");
+      ]
+
+  | LoadMDSetting.MultipleCodeNameDesignation(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("multiple designation for key '" ^ s ^ "'.");
+      ]
+
+  | LoadMDSetting.NotAnInlineCommand(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ s ^ "' is not an inline command name.");
+      ]
+
+  | LoadMDSetting.NotABlockCommand(rng, s) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("'" ^ s ^ "' is not a block command name.");
+      ]
+
+  | MyYojsonUtil.SyntaxError(srcpath, msg) ->
+      report_error System [
+        NormalLine("in '" ^ srcpath ^ "':");
+        NormalLine(msg);
+      ]
+
+  | MyYojsonUtil.MultipleDesignation(rng, key) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("multiple designation for key \"" ^ key ^ "\".");
+      ]
+
+  | Yojson.SafePos.Util.Type_error(msg, (pos, _)) ->
+      let rng = MyYojsonUtil.make_range pos in
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine(msg);
+      ]
+
+  | MyYojsonUtil.MissingRequiredKey(rng, key) ->
+      report_error System [
+        NormalLine("at " ^ (Range.to_string rng) ^ ":");
+        NormalLine("missing required key '" ^ key ^ "'.");
       ]
 
   | Typechecker.UndefinedVariable(rng, mdlnmlst, varnm, candidates) ->
@@ -791,6 +778,10 @@ let text_mode s =
     OptionState.set_text_mode slst
 
 
+let input_markdown setting =
+  OptionState.set_input_kind (OptionState.Markdown(setting))
+
+
 let arg_spec_list curdir =
   [
     ("-o"                , Arg.String(arg_output curdir)             , " Specify output file"              );
@@ -805,6 +796,7 @@ let arg_spec_list curdir =
     ("-b"                , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--bytecomp"        , Arg.Unit(OptionState.set_bytecomp_mode)   , " Use bytecode compiler"            );
     ("--text-mode"       , Arg.String(text_mode)                     , " Set text mode"                    );
+    ("--markdown"        , Arg.String(input_markdown)                , " Pass Markdown source as input"    );
   ]
 
 
@@ -863,7 +855,14 @@ let () =
     Logging.dump_file dump_file_exists dump_file;
 
     let dg = FileDependencyGraph.create 32 in
-    register_document_file dg input_file;
+    begin
+      match OptionState.get_input_kind () with
+      | OptionState.SATySFi ->
+          register_document_file dg input_file
+
+      | OptionState.Markdown(setting) ->
+          register_markdown_file dg setting input_file
+    end;
     match FileDependencyGraph.find_cycle dg with
     | Some(cycle) ->
         raise (CyclicFileDependency(cycle))

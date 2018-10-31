@@ -7,6 +7,7 @@ module VDecoSet : sig
   val simple-frame-stroke : length -> color -> deco-set
   val simple-frame : length -> color -> color -> deco-set
   val paper : deco-set
+  val quote-round : length -> length -> color -> deco-set
 
 end = struct
 
@@ -132,6 +133,25 @@ end = struct
             (x +' w, y +' h);
           ]);
       ]
+    in
+    (decoS, decoH, decoM, decoT)
+
+
+  let quote-round qw r color =
+    let decoS (x, y) _ h d =
+      [ fill color (Gr.rectangle-round-left r
+          (x, y -' d) (x +' qw, y +' h)); ]
+    in
+    let decoH (x, y) _ h d =
+      [ fill color (Gr.rectangle-round-left-upper r
+          (x, y -' d) (x +' qw, y +' h)); ]
+    in
+    let decoM (x, y) _ h d =
+      [ fill color (Gr.rectangle (x, y -' d) (x +' qw, y +' h)); ]
+    in
+    let decoT (x, y) _ h d =
+      [ fill color (Gr.rectangle-round-left-lower r
+          (x, y -' d) (x +' qw, y +' h)); ]
     in
     (decoS, decoH, decoM, decoT)
 

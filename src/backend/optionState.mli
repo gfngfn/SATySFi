@@ -1,4 +1,11 @@
 
+type input_kind =
+  | SATySFi
+  | Markdown of string
+
+val set_input_kind : input_kind -> unit
+val get_input_kind : unit -> input_kind
+
 val set_input_file : string -> unit
 val input_file : unit -> string option
 
