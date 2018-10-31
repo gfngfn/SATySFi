@@ -13,3 +13,5 @@ val to_string : t -> string
 val unite : t -> t -> t
 
 val make : string -> int -> int -> int -> t
+
+val make_large : string -> int -> int -> int -> int -> t

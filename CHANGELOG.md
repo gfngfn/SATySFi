@@ -4,9 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Fixed
+- Rename math command `\centerdot` to `\cdot` ([PR\#114](https://github.com/gfngfn/SATySFi/pull/114)).
+- Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121)).
+- Handles `CR`+`LF` correctly as one line ending ([PR\#122](https://github.com/gfngfn/SATySFi/pull/122)).
+
+## Added
+- Begin to support Markdown input.
+
 ## [0.0.3] - 2018-10-09
 ### Fixed
-- Does NOT insert spacing between different scripts when the [line breaking class](http://unicode.org/reports/tr14/) of the posterior charcter is CL, CP, QU, NS, JLCP, JLNS, JLCM, or JLFS.
+- Does NOT insert spacing between different scripts when the [line breaking class](http://unicode.org/reports/tr14/) of the posterior charcter is CL, CP, QU, NS, JLCP (= [JLreq cl-02](https://www.w3.org/TR/jlreq/ja/#cl-02)), JLFS (= [JLreq cl-06](https://www.w3.org/TR/jlreq/ja/#cl-06)), or JLCM (= [JLreq cl-07](https://www.w3.org/TR/jlreq/ja/#cl-07)).
 
 ### Added
 - Supports the application of math commands to optional arguments.

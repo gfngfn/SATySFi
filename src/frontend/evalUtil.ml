@@ -208,7 +208,7 @@ let get_script (value : syntactic_value) =
   | Constructor("HanIdeographic", UnitConstant) -> CharBasis.HanIdeographic
   | Constructor("Kana"          , UnitConstant) -> CharBasis.HiraganaOrKatakana
   | Constructor("Latin"         , UnitConstant) -> CharBasis.Latin
-  | Constructor("Other"         , UnitConstant) -> CharBasis.OtherScript
+  | Constructor("OtherScript"   , UnitConstant) -> CharBasis.OtherScript
   | _                                           -> report_bug_value "get_script" value
 
 
