@@ -1,13 +1,15 @@
 
-type t =
+type link =
   | Goto      of Pdfdest.t
   | GotoName  of string
   | Uri       of string
+
+type screen =
   | Rendition of int * int * Rendition.t
 
 
 (* -- 'pdfobject_of_action': returns an action dictionary [Section 8.5, Table 8.43] --*)
-let pdfobject_of_action pdf = function
+let pdfobject_of_link_action = function
   | Goto(dest) ->
       let destobj = Pdfdest.pdfobject_of_destination dest in
       Pdf.Dictionary[
@@ -30,6 +32,8 @@ let pdfobject_of_action pdf = function
         ("/URI" , Pdf.String(uri));
       ]
 
+
+let pdfobject_of_screen_action pdf = function
   | Rendition(irannot, opnum, r) ->
       let pdfobj = Rendition.pdfobject_of_rendition pdf r in
       Pdf.Dictionary[

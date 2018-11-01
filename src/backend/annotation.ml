@@ -8,8 +8,8 @@ let ( ~% ) = Length.to_pdf_point
 
 
 type t =
-  | Link of Action.t
-  | Screen of Action.t
+  | Link   of Action.link
+  | Screen of Action.screen
 
 
 let annot_acc = ref Alist.empty
@@ -79,7 +79,7 @@ let of_annotation pdf (annot, ((x, y), wid, hgt, dptnonneg), border, coloropt) =
           Pdfannot.Link
       in
       let pdfobj_annotrest =
-        Pdf.Dictionary[("/A", Action.pdfobject_of_action pdf act)]
+        Pdf.Dictionary[("/A", Action.pdfobject_of_link_action act)]
       in
       { link with
         Pdfannot.annotrest = pdfobj_annotrest;
@@ -95,7 +95,7 @@ let of_annotation pdf (annot, ((x, y), wid, hgt, dptnonneg), border, coloropt) =
       in
       let pdfobj_annotrest =
         Pdf.Dictionary[
-          ("/A", Action.pdfobject_of_action pdf act);
+          ("/A", Action.pdfobject_of_screen_action pdf act);
           ("/AP", make_appearance_dictionary pdf wid hgt dptnonneg);
         ]
       in

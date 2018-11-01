@@ -4,8 +4,8 @@ open GraphicBase
 
 
 type t =
-  | Link of Action.t
-  | Screen of Action.t
+  | Link of Action.link
+  | Screen of Action.screen
 
 
 val register : t -> ((length * length) * length * length * length) -> length -> color option -> unit

@@ -1,9 +1,12 @@
 
-type t =
+type link =
   | Goto      of Pdfdest.t
   | GotoName  of string
   | Uri       of string
+
+type screen =
   | Rendition of int * int * Rendition.t
 
+val pdfobject_of_link_action : link -> Pdf.pdfobject
 
-val pdfobject_of_action : Pdf.t -> t -> Pdf.pdfobject
+val pdfobject_of_screen_action : Pdf.t -> screen -> Pdf.pdfobject
