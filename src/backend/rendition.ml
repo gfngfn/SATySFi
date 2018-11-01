@@ -10,7 +10,7 @@ type file_specification =
 
 type media_clip_data = {
   data      : file_specification;
-  mime_type : string;
+  mime_type : mime_type;
 }
 
 type media_clip =
