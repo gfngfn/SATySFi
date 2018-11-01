@@ -65,7 +65,7 @@ let pdfobject_of_rendition pdf = function
   | Media(medrend) ->
       let pdfobjclip = pdfobject_of_media_clip pdf medrend.media_clip in
       indirect_dictionary pdf [
-        ("/Type", Pdf.Name "/Rendition");
-        ("/S"   , Pdf.Name "/MR");
+        ("/Type", Pdf.Name("/Rendition"));
+        ("/S"   , Pdf.Name("/MR"));
         ("/C"   , pdfobjclip);
       ]

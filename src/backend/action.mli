@@ -1,8 +1,8 @@
 
 type t =
-  | Goto of Pdfdest.t
-  | GotoName of string
-  | Uri  of string
+  | Goto      of Pdfdest.t
+  | GotoName  of string
+  | Uri       of string
   | Rendition of Rendition.t
 
 
