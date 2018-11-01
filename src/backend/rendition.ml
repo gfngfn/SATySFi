@@ -61,6 +61,7 @@ let pdfobject_of_media_clip pdf = function
       ]
 
 
+(* -- 'pdfobject_of_rendition': returns a rendition dictionary [Section 9.1.2] -- *)
 let pdfobject_of_rendition pdf = function
   | Media(medrend) ->
       let pdfobjclip = pdfobject_of_media_clip pdf medrend.media_clip in

@@ -3120,3 +3120,16 @@ code: |
   let destname = NamedDest.get name in
   Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) border coloropt;
   UnitConstant
+
+# ---
+# inst:BackendLoadRendition
+# is-pdf-mode-primitive: yes
+# name: "load-rendition"
+# type: |
+#   ~% (tS @-> tREND)
+#
+# params:
+# - relpath : string
+#
+# code: |
+#   Annotation.register (Annotation.Screen)

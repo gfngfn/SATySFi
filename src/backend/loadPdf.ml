@@ -12,13 +12,13 @@ module IRSet = MutableSet.Make
   end)
 
 
-let rec collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.pdfobject) : Pdf.pdfobject =
+let collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.pdfobject) : Pdf.pdfobject =
 
   let irset = IRSet.create 32 in
 
   let rec aux pdfobj =
     match pdfobj with
-    | Pdf.Dictionary(keyval) -> 
+    | Pdf.Dictionary(keyval) ->
         let keyvalnew =
           keyval |> List.map (fun (key, pdfobjsub) -> (key, aux pdfobjsub))
         in
@@ -58,7 +58,7 @@ let rec collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.
     aux pdfobj
 
 
-let xobject_of_page (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : Pdf.pdfobject =
+let make_xobject (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : Pdf.pdfobject =
   let content = pageext.Pdfpage.content in
   let pdfdict_resources = collect_direct_objects pdfmain pdfext pageext.Pdfpage.resources in
   let pdfarr_rect = pageext.Pdfpage.mediabox in
@@ -78,18 +78,12 @@ let xobject_of_page (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : P
             with a dictionary containing only a /Length entry -- *)
     match retobj with
     | Pdf.Stream({contents = (Pdf.Dictionary(entrieslen), stream)} as streamref) ->
-        begin
-          streamref := (Pdf.Dictionary(List.append entriesadded entrieslen), stream);
-          let ir = Pdf.addobj pdfmain retobj in
-          Pdf.Indirect(ir)
-        end
+        streamref := (Pdf.Dictionary(List.append entriesadded entrieslen), stream);
+        let ir = Pdf.addobj pdfmain retobj in
+        Pdf.Indirect(ir)
 
-    | _ -> assert false
-
-
-let make_xobject (pdfmain : Pdf.t) (pdfext : Pdf.t) (pageext : Pdfpage.t) : Pdf.pdfobject =
-  let pdfstream = xobject_of_page pdfmain pdfext pageext in
-  pdfstream
+    | _ ->
+        assert false
 
 
 let get_page (pdfext : Pdf.t) (pageno : int) : (bbox * Pdfpage.t) option =
