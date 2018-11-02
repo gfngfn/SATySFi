@@ -3121,15 +3121,33 @@ code: |
   Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) border coloropt;
   UnitConstant
 
-# ---
-# inst:BackendLoadRendition
-# is-pdf-mode-primitive: yes
-# name: "load-rendition"
-# type: |
-#   ~% (tS @-> tREND)
-#
-# params:
-# - relpath : string
-#
-# code: |
-#   Annotation.register (Annotation.Screen)
+---
+inst: BackendInsertExternalRendition
+is-pdf-mode-primitive: yes
+name: "insert-external-rendition"
+type: |
+  ~% (tS @-> tS @-> tLN @-> tLN @-> tIB)
+
+params:
+- relpath : string
+- mimety : string
+- wid : length
+- hgt : length
+
+code: |
+  let hookf _ pt =
+    let rend =
+      Rendition.(Media{
+        media_clip =
+          MediaClipData{
+            data      = External(relpath);
+            mime_type = mimety;
+          };
+      })
+    in
+    let rect = (pt, wid, hgt, Length.zero) in
+    Annotation.register
+      (Annotation.Screen(Action.Rendition(4, rend)))
+      rect Length.zero None
+  in
+  Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
