@@ -94,10 +94,18 @@ let of_annotation pdf (annot, ((x, y), wid, hgt, dptnonneg), border, coloropt) =
           Pdfannot.Screen
       in
       let pdfobj_annotrest =
-        Pdf.Dictionary[
-          ("/A", Action.pdfobject_of_screen_action pdf act);
-          ("/AP", make_appearance_dictionary pdf wid hgt dptnonneg);
-        ]
+        let irannot = Pdf.addobj pdf Pdf.Null in
+          (* -- dummy insertion to get a fresh number -- *)
+        let pdfobjdictact = Action.pdfobject_of_screen_action pdf irannot act in
+        Pdf.removeobj pdf irannot;
+        let annot =
+          Pdf.Dictionary[
+            ("/A" , pdfobjdictact);
+            ("/AP", make_appearance_dictionary pdf wid hgt dptnonneg);
+          ]
+        in
+        Pdf.addobj_given_num pdf (irannot, annot);
+        annot
       in
       { screen with
         Pdfannot.annotrest = pdfobj_annotrest;

@@ -5,7 +5,7 @@ type link =
   | Uri       of string
 
 type screen =
-  | Rendition of int * int * Rendition.t
+  | Rendition of int * Rendition.t
 
 
 (* -- 'pdfobject_of_action': returns an action dictionary [Section 8.5, Table 8.43] --*)
@@ -33,14 +33,14 @@ let pdfobject_of_link_action = function
       ]
 
 
-let pdfobject_of_screen_action pdf = function
-  | Rendition(irannot, opnum, r) ->
+let pdfobject_of_screen_action pdf irannot = function
+  | Rendition(opnum, r) ->
       let pdfobj = Rendition.pdfobject_of_rendition pdf r in
       Pdf.Dictionary[
         ("/Type", Pdf.Name("/Action"));
         ("/S"   , Pdf.Name("/Rendition"));
         ("/R"   , pdfobj);
-        ("/AN"  , Pdf.Indirect(opnum));
-        ("/OP"  , Pdf.Integer(4));  (* temporary *)
+        ("/AN"  , Pdf.Indirect(irannot));
+        ("/OP"  , Pdf.Integer(opnum));
       ]
         (* -- Rendition action [Table 8.43, Table 8.64] -- *)
