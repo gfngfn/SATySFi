@@ -3150,4 +3150,7 @@ code: |
       (Annotation.Screen(Action.Rendition(4, rend)))
       rect Length.zero None
   in
-  Horz(HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+  Horz(HorzBox.([
+    HorzPure(PHGHookPageBreak(hookf));
+    HorzPure(PHGEmbeddedVert(wid, hgt, Length.zero, []));
+  ]))
