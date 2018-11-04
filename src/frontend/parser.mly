@@ -1006,11 +1006,17 @@ patbot: /* -> Types_.untyped_pattern_tree */
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
+  | BLIST patlist ELIST                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(rng, omit_spaces pre post str)) }
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
+;
+patlist: /* -> untyped_pattern_tree */
+  | patas                   { make_standard (Ranged $1) (Ranged $1) (UTPListCons($1, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
+  | patas LISTPUNCT         { make_standard (Ranged $1) (Tok $2) (UTPListCons($1, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
+  | patas LISTPUNCT patlist { make_standard (Ranged $1) (Ranged $3) (UTPListCons($1, $3)) }
 ;
 binop:
   | UNOP_EXCLAM
