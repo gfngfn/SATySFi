@@ -3,6 +3,7 @@
 @require: math
 @require: itemize
 @require: color
+@require: hdecoset
 @require: vdecoset
 
 
@@ -60,6 +61,8 @@ end = struct
   let hr-margin = 5mm
   let hr-thickness = 1pt
 
+  let code-background = Gray(0.875)
+
   let-mutable h1-number <- 0
   let-mutable h2-number <- 0
   let-mutable h3-number <- 0
@@ -82,6 +85,9 @@ end = struct
       |> set-dominant-narrow-script Latin
       |> set-dominant-wide-script Kana
       |> set-latin-font font-latin-roman
+      |> set-cjk-font font-cjk-mincho
+      |> set-hyphen-penalty 1000
+      |> set-space-ratio 0.275 0.08 0.12
 
 
   let footer pbinfo =
@@ -253,8 +259,24 @@ end = struct
     {\emph(it);}
 
 
-  let-inline \code s =
-    {\Code.code(s);}
+  let strut h d =
+    inline-graphics 0pt h d (fun _ -> [])
+
+
+  let-inline ctx \code s =
+    let ib-strut = strut 8pt 3pt in
+    let ib =
+      let ctx =
+        ctx
+          |> set-latin-font font-latin-mono
+          |> set-cjk-font font-cjk-gothic
+          |> set-every-word-break inline-nil ib-strut
+      in
+        ib-strut ++ read-inline ctx (embed-string s)
+    in
+    let pads = (2pt, 2pt, 2pt, 2pt) in
+    let decoset = HDecoSet.rectangle-round-fill 4pt 2pt code-background in
+    script-guard Latin (inline-frame-breakable pads decoset ib)
 
 
   let-inline ctx \url s =
