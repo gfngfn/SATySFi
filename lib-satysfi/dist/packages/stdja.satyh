@@ -15,7 +15,13 @@ module StdJa : sig
       show-title : bool;
     |)
 
+  val font-latin-roman  : string * float * float
+  val font-latin-bold   : string * float * float
   val font-latin-italic : string * float * float
+  val font-latin-sans   : string * float * float
+  val font-latin-mono   : string * float * float
+  val font-cjk-mincho   : string * float * float
+  val font-cjk-gothic   : string * float * float
   direct \ref : [string] inline-cmd
   direct \ref-page : [string] inline-cmd
   direct \figure : [inline-text; block-text] inline-cmd
@@ -73,6 +79,7 @@ end = struct
   let font-ratio-cjk = 0.88
 
   let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
+  let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
   let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)

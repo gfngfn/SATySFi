@@ -16,6 +16,7 @@ module StdJaReport : sig
     |)
 
   val font-latin-roman  : string * float * float
+  val font-latin-bold   : string * float * float
   val font-latin-italic : string * float * float
   val font-latin-sans   : string * float * float
   val font-latin-mono   : string * float * float
@@ -87,6 +88,7 @@ end = struct
   let font-ratio-cjk = 0.88
 
   let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
+  let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
   let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
   let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
   let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
