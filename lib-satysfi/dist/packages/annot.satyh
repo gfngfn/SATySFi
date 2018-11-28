@@ -1,6 +1,7 @@
 @require: pervasives
 @require: color
 @require: gr
+@require: option
 
 module Annot : sig
 
@@ -12,11 +13,7 @@ module Annot : sig
 end = struct
 
   let link-to-uri-frame uri borderopt coloropt =
-    let border =
-      match borderopt with
-      | Some(b) -> b
-      | None    -> 0.0pt
-    in
+    let border = Option.from 0.0pt borderopt in
     let deco (x, y) w h d =
       let () = register-link-to-uri uri (x, y) w h d border coloropt in []
     in
@@ -24,11 +21,7 @@ end = struct
 
 
   let link-to-location-frame name borderopt coloropt =
-    let border =
-      match borderopt with
-      | Some(b) -> b
-      | None    -> 0.0pt
-    in
+    let border = Option.from 0.0pt borderopt in
     let deco (x, y) w h d =
       let () = register-link-to-location name (x, y) w h d border coloropt in []
     in
