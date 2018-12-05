@@ -4,6 +4,7 @@
 @require: list
 @require: math
 @require: color
+@require: annot
 
 module StdJa : sig
 
@@ -40,6 +41,9 @@ end = struct
       ))
 
 
+  let no-pads = (0pt, 0pt, 0pt, 0pt)
+
+
   let-inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
     let it =
@@ -47,7 +51,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      read-inline ctx it
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -57,7 +61,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      read-inline ctx it
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
 
 
   let font-size-normal  = 12pt
@@ -271,15 +275,18 @@ let title-deco =
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
                   bbacc +++ line-break true true ctx-doc
-                    (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None)
+                    (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page))
 
           | TOCElementSubsection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
                   bbacc +++ line-break true true ctx-doc
-                    (inline-skip 20pt ++ read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)
+                    (inline-skip 20pt ++ (inline-frame-breakable no-pads
+                      (Annot.link-to-location-frame label None None)
+                      (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
 
-          )) block-nil
+            )) block-nil
         in
         bb-toc-title +++ bb-toc-main
     in
@@ -390,8 +397,9 @@ let title-deco =
     in
     let ib-title = read-inline ctx-title title in
     let bb-title =
-      line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+      block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
+        (line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
+        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))))
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner
@@ -411,7 +419,8 @@ let title-deco =
     let ib-title = read-inline ctx-title title in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
-        (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))
+        (inline-frame-breakable no-pads (Annot.register-location-frame label)
+          (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
       bb-title +++ bb-inner

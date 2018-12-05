@@ -148,14 +148,14 @@ end = struct
       | None        -> ()
     in
     let it-num = embed-string s-num in
-    let d =
+    let ds =
       match labelopt with
       | Some(label) -> Annot.register-location-frame label
       | None        ->
         let d (_, _) _ _ _ = [] in (d, d, d, d)
     in
     let bb-inner =
-      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) d (fun ctx -> (
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) ds (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
       ))
