@@ -60,7 +60,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -70,7 +70,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let font-size-normal  = 12pt
@@ -367,7 +367,7 @@ let title-deco =
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None) (ib-title ++ ib-middle ++ ib-page))
+                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None) (ib-title ++ ib-middle ++ ib-page))
 
           | TOCElementSubsection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
@@ -385,7 +385,7 @@ let title-deco =
                       make-dots-line ctx-doc w
                 in
                   bbacc +++ line-break true true ctx-doc
-                    (ib-indent ++ (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None) (ib-title ++ ib-middle ++ ib-page)))
+                    (ib-indent ++ (inline-frame-breakable no-pads (Annot.link-to-location-frame label None) (ib-title ++ ib-middle ++ ib-page)))
 
           )) block-nil
         in

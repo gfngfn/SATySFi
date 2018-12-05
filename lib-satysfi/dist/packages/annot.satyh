@@ -5,31 +5,29 @@
 
 module Annot : sig
 
-  direct \href : [length?; color?; string; inline-text] inline-cmd
-  val link-to-uri-frame : string -> length option -> color option -> deco-set
-  val link-to-location-frame : string -> length option -> color option -> deco-set
+  direct \href : [(length * color)?; string; inline-text] inline-cmd
+  val link-to-uri-frame : string -> (length * color) option -> deco-set
+  val link-to-location-frame : string -> (length * color) option -> deco-set
   val register-location-frame : string -> deco-set
 
 end = struct
 
-  let link-to-uri-frame uri borderopt coloropt =
-    let border = Option.from 0.0pt borderopt in
+  let link-to-uri-frame uri borderopt =
     let deco (x, y) w h d =
-      let () = register-link-to-uri uri (x, y) w h d border coloropt in []
+      let () = register-link-to-uri uri (x, y) w h d borderopt in []
     in
       (deco, deco, deco, deco)
 
 
-  let link-to-location-frame name borderopt coloropt =
-    let border = Option.from 0.0pt borderopt in
+  let link-to-location-frame name borderopt =
     let deco (x, y) w h d =
-      let () = register-link-to-location name (x, y) w h d border coloropt in []
+      let () = register-link-to-location name (x, y) w h d borderopt in []
     in
       (deco, deco, deco, deco)
 
 
-  let-inline ctx \href ?:borderopt ?:coloropt uri inner =
-    inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt coloropt) (read-inline ctx inner)
+  let-inline ctx \href ?:borderopt uri inner =
+    inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt) (read-inline ctx inner)
 
 
   let register-location-frame key =

@@ -61,7 +61,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -71,7 +71,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let font-size-normal  = 12pt

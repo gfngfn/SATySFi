@@ -51,7 +51,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let-inline ctx \ref-page key =
@@ -61,7 +61,7 @@ end = struct
       | None    -> {?}
       | Some(s) -> embed-string s
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None None) (read-inline ctx it)
+      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
   let font-size-normal  = 12pt
@@ -275,7 +275,7 @@ let title-deco =
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
                   bbacc +++ line-break true true ctx-doc
-                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None None)
+                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None)
                     (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page))
 
           | TOCElementSubsection(label, title) ->
@@ -283,7 +283,7 @@ let title-deco =
                 let it-page = embed-string (get-cross-reference-page label) in
                   bbacc +++ line-break true true ctx-doc
                     (inline-skip 20pt ++ (inline-frame-breakable no-pads
-                      (Annot.link-to-location-frame label None None)
+                      (Annot.link-to-location-frame label None)
                       (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
 
             )) block-nil
