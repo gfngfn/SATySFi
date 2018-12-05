@@ -735,6 +735,11 @@ let error_log_environment suspended =
   | Vm.ExecError(s)
       -> report_error Evaluator [ NormalLine(s); ]
 
+  | Annotation.NotDuringPageBreak ->
+      report_error Evaluator [
+        NormalLine("a primitive as to PDF annotation was called before page breaking starts.");
+      ]
+
   | Sys_error(s) ->
       report_error System [ NormalLine(s); ]
 
