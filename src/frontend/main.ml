@@ -319,6 +319,7 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
               match valuedoc with
               | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                   Logging.start_page_break ();
+                  State.start_page_break ();
                   let pdf = PageBreak.main file_path_out pagesize pagecontf pagepartsf imvblst in
                   begin
                     match CrossRef.needs_another_trial file_path_dump with

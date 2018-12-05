@@ -4,6 +4,8 @@ open LengthInterface
 open GraphicBase
 
 
+exception NotDuringPageBreak
+
 type t =
   | Link of Action.t
 
@@ -11,16 +13,31 @@ type t =
 let annot_acc = ref Alist.empty
 
 
-let register annot rect border coloropt =
-  annot_acc := Alist.extend !annot_acc (annot, rect, border, coloropt)
+let register annot rect borderopt =
+  if State.during_page_break () then
+    annot_acc := Alist.extend !annot_acc (annot, rect, borderopt)
+  else
+    raise NotDuringPageBreak
 
 
-let of_annotation (Link(act), ((x, y), wid, hgt, dpt), border, coloropt) =
+let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =
   let rect = (to_pdf_point x, to_pdf_point (y -% dpt), to_pdf_point (x +% wid), to_pdf_point (y +% hgt)) in
-  let color =
-    match coloropt with
-    | Some(DeviceRGB(r, g, b)) -> Some((int_of_float r, int_of_float g, int_of_float b))
-    | _                        -> None
+  let (border, coloropt) =
+    match borderopt with
+    | Some(l, color) ->
+        begin
+          match color with
+          | DeviceRGB(r, g, b) ->
+              (l, Some((int_of_float r, int_of_float g, int_of_float b)))
+
+          | _ ->
+              Format.printf "! [Warning] border color other than RGB; ignored\n";
+                (* temporary; should warn in a more sophisticated manner *)
+              (Length.zero, None)
+        end
+
+    | _ ->
+        (Length.zero, None)
   in
   let link =
     Pdfannot.make
@@ -33,7 +50,7 @@ let of_annotation (Link(act), ((x, y), wid, hgt, dpt), border, coloropt) =
   in
   { link with
     Pdfannot.annotrest = pdfobj_annotrest;
-    Pdfannot.colour    = color;
+    Pdfannot.colour    = coloropt;
   }
 
 

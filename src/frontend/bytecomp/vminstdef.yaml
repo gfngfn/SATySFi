@@ -3083,7 +3083,7 @@ inst: BackendRegisterLinkToUri
 is-pdf-mode-primitive: yes
 name: "register-link-to-uri"
 type: |
-  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tLN @-> (tOPT tCLR) @-> tU)
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
 
 params:
 - uri : string
@@ -3091,12 +3091,11 @@ params:
 - wid : length
 - hgt : length
 - dpt : length
-- border : length
-- coloropt
+- vborderopt
 
 code: |
-  let coloropt = get_option get_color coloropt in
-  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) border coloropt;
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
   UnitConstant
 
 ---
@@ -3104,7 +3103,7 @@ inst: BackendRegisterLinkToLocation
 is-pdf-mode-primitive: yes
 name: "register-link-to-location"
 type: |
-  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> tLN @-> (tOPT tCLR) @-> tU)
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
 
 params:
 - name : string
@@ -3112,11 +3111,10 @@ params:
 - wid : length
 - hgt : length
 - dpt : length
-- border : length
-- coloropt
+- vborderopt
 
 code: |
-  let coloropt = get_option get_color coloropt in
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
   let destname = NamedDest.get name in
-  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) border coloropt;
+  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
   UnitConstant
