@@ -3062,3 +3062,59 @@ code: |
   match CrossRef.probe k with
   | None    -> Constructor("None", UnitConstant)
   | Some(v) -> Constructor("Some", StringConstant(v))
+
+---
+inst: BackendRegisterDestination
+is-pdf-mode-primitive: yes
+name: "register-destination"
+type: |
+  ~% (tS @-> tPT @-> tU)
+
+params:
+- name : string
+- p : point
+
+code: |
+  NamedDest.register name p;
+  UnitConstant
+
+---
+inst: BackendRegisterLinkToUri
+is-pdf-mode-primitive: yes
+name: "register-link-to-uri"
+type: |
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+
+params:
+- uri : string
+- pt : point
+- wid : length
+- hgt : length
+- dpt : length
+- vborderopt
+
+code: |
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
+  UnitConstant
+
+---
+inst: BackendRegisterLinkToLocation
+is-pdf-mode-primitive: yes
+name: "register-link-to-location"
+type: |
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+
+params:
+- name : string
+- pt : point
+- wid : length
+- hgt : length
+- dpt : length
+- vborderopt
+
+code: |
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  let destname = NamedDest.get name in
+  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+  UnitConstant

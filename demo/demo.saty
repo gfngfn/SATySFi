@@ -13,7 +13,7 @@ document (|
 |) '<
   +section{はじめに}<
     +p{
-      \dfn{\SATySFi;}は，2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
+      \href(`https://github.com/gfngfn/SATySFi`){\dfn{\SATySFi;}}は，2017年度IPA未踏事業のひとつとして開発された，新しい組版処理システムである。
       一口に組版処理システムといっても，大きく分けて
 
       \listing{

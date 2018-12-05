@@ -162,6 +162,7 @@ let reset () =
     begin
       FontInfo.initialize ();
       ImageInfo.initialize ();
+      NamedDest.initialize ();
     end
 
 
@@ -319,6 +320,7 @@ let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : f
               match valuedoc with
               | DocumentValue(pagesize, pagecontf, pagepartsf, imvblst) ->
                   Logging.start_page_break ();
+                  State.start_page_break ();
                   let pdf = PageBreak.main file_path_out pagesize pagecontf pagepartsf imvblst in
                   begin
                     match CrossRef.needs_another_trial file_path_dump with
@@ -733,6 +735,11 @@ let error_log_environment suspended =
   | Evaluator.EvalError(s)
   | Vm.ExecError(s)
       -> report_error Evaluator [ NormalLine(s); ]
+
+  | State.NotDuringPageBreak ->
+      report_error Evaluator [
+        NormalLine("a primitive as to PDF annotation was called before page breaking starts.");
+      ]
 
   | Sys_error(s) ->
       report_error System [ NormalLine(s); ]
