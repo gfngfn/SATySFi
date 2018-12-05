@@ -162,6 +162,7 @@ let reset () =
     begin
       FontInfo.initialize ();
       ImageInfo.initialize ();
+      NamedDest.initialize ();
     end
 
 
@@ -735,7 +736,7 @@ let error_log_environment suspended =
   | Vm.ExecError(s)
       -> report_error Evaluator [ NormalLine(s); ]
 
-  | Annotation.NotDuringPageBreak ->
+  | State.NotDuringPageBreak ->
       report_error Evaluator [
         NormalLine("a primitive as to PDF annotation was called before page breaking starts.");
       ]

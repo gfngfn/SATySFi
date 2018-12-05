@@ -4,8 +4,6 @@ open LengthInterface
 open GraphicBase
 
 
-exception NotDuringPageBreak
-
 type t =
   | Link of Action.t
 
@@ -17,7 +15,7 @@ let register annot rect borderopt =
   if State.during_page_break () then
     annot_acc := Alist.extend !annot_acc (annot, rect, borderopt)
   else
-    raise NotDuringPageBreak
+    raise State.NotDuringPageBreak
 
 
 let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =

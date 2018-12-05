@@ -1,4 +1,6 @@
 
+exception NotDuringPageBreak
+
 type state = {
   mutable during_page_break : bool;
 }

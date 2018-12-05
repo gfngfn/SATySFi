@@ -2,8 +2,6 @@
 open LengthInterface
 open GraphicBase
 
-exception NotDuringPageBreak
-
 type t =
   | Link of Action.t
 

@@ -1,6 +1,8 @@
 
 open LengthInterface
 
+val initialize : unit -> unit
+
 val register : string -> point -> unit
 
 val get : string -> string
