@@ -1,5 +1,4 @@
 
-module Types = Types_
 open LengthInterface
 open GraphicBase
 open Types

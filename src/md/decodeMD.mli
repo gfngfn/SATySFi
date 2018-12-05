@@ -1,5 +1,5 @@
 
-open Types_
+open Types
 
 module CodeNameMap : Map.S with type key = string
 

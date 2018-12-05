@@ -8,17 +8,12 @@
 # `gen_code.rb` generates OCaml source code and
 # type declarations for
 #
-# * `types_template.ml`,
-# * `ir_template.ml`,
-# * `evaluator_template.ml`, and
-# * `vm_template.ml`.
+# * `types.cppo.ml`,
+# * `primitives.cppo.ml`,
+# * `ir.cppo.ml`,
+# * `evaluator.cppo.ml`, and
+# * `vm.cppo.ml`.
 #
-# Final source files that `gen_code.rb` generates are
-#
-# * `types_.ml`,
-# * `ir_.ml`,
-# * `evaluator_.ml`, and
-# * `vm_.ml`.
 #
 # To add a new primitive,
 #   1. Add a new instruction definition to this file.
@@ -32,8 +27,8 @@
 # needs-reducef: Use `reducef` for evaluating applications (default: no)
 # suppress-pp:   Use a simple pritty printer (default: no)
 # custom-pp:     Specify custom pritty printer
-# no-ircode:     Suppress code generation for `ir_.ml` (default: no)
-# no-interp:     Suppress code generation for `evaluator_.ml` (default: !`is-pdf-mode-primitive`)
+# no-ircode:     Suppress code generation for `ir.ml` (default: no)
+# no-interp:     Suppress code generation for `evaluator.ml` (default: !`is-pdf-mode-primitive`)
 # name:          Identifier for the primitive
 # type:          Type expression for the primitive
 # fields:        Field list (for `abstract_tree` type)
