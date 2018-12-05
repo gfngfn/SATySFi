@@ -9,10 +9,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Rename math command `\centerdot` to `\cdot` ([PR\#114](https://github.com/gfngfn/SATySFi/pull/114) by `nekketsuuu`).
 - Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121) by `na4zagin3`).
 - Handles `CR`+`LF` correctly as one line ending ([PR\#122](https://github.com/gfngfn/SATySFi/pull/122) by `matsud224`).
-- Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`)
+- Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
 
 ## Added
-- Begin to support Markdown input.
+- Begins to support Markdown input.
+- Supports PDF hyperlinks ([PR\#113](https://github.com/gfngfn/SATySFi/pull/113) by `matsud224`).
 
 ## [0.0.3] - 2018-10-09
 ### Fixed
