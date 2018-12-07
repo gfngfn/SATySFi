@@ -2329,6 +2329,20 @@ code: |
   BooleanConstant(String.equal str1 str2)
 
 ---
+inst: PrimitiveStringLessThan
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "string-lt"
+type: |
+  ~% (tS @-> tS @-> tB)
+
+params:
+- str1 : string
+- str2 : string
+code: |
+  BooleanConstant(str1 < str2)
+
+---
 inst: PrimitiveStringSub
 is-pdf-mode-primitive: yes
 is-text-mode-primitive: yes
