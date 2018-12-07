@@ -1,0 +1,22 @@
+
+module String
+: sig
+    val equal : string -> string -> bool
+    val lt : string -> string -> bool
+    val gt : string -> string -> bool
+    val le : string -> string -> bool
+    val ge : string -> string -> bool
+  end
+= struct
+
+    let equal = string-same
+
+    let lt = string-lt
+
+    let gt s1 s2 = lt s2 s1
+
+    let le s1 s2 = not (gt s1 s2)
+
+    let ge s1 s2 = not (lt s1 s2)
+
+  end
