@@ -2385,14 +2385,13 @@ inst: PrimitiveStringScan
 is-primitive: yes
 name: "string-scan"
 type: |
-  ~% (tRE @-> tS @-> tOPT (tPROD [tS ; tS]))
+  ~% (tRE @-> tS @-> tOPT (tPROD [tS; tS]))
 
 params:
 - pat : regexp
-- str:    string
+- str : string
 code: |
-  if Str.string_match pat str 0
-  then
+  if Str.string_match pat str 0 then
     let matched = Str.matched_string str in
     let start   = String.length matched in
     let rest    = String.sub str start (String.length str - start) in
