@@ -86,10 +86,14 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Url(href, md, title) ->
       single @@ Url(href, make_inline md, title)
 
-  | Omd.Ref(_)
-  | Omd.Img(_)
+  | Omd.Ref(container, name, s, _) ->
+      failwith ("Ref; remains to be supported: " ^ Omd.to_text [mde])
+
+  | Omd.Img(alt, src, title) ->
+      failwith ("Img; remiains to be supported: " ^ Omd.to_text [mde])
+
   | Omd.Img_ref(_) ->
-      failwith ("Ref, Img, Img_ref; remains to be supported: " ^ Omd.to_text [mde])
+      failwith ("Img_ref; remains to be supported: " ^ Omd.to_text [mde])
 
   | Omd.Raw(s) ->
       single @@ InlineRaw(s)
