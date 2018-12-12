@@ -113,6 +113,7 @@ and make_block_of_element (mde : Omd.element) =
   let empty = [] in
   match mde with
   | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_) ->
+      Format.printf "!!!! %s\n" (Omd.to_text [mde]);
       assert false
         (* -- should be omitted by 'normalize_section' -- *)
 
