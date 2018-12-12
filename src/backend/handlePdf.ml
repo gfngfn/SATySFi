@@ -375,6 +375,8 @@ let write_to_file ((PDF(pdf, pageacc, flnm)) : t) : unit =
     )
   in
   let (pdfsub, irpageroot) = Pdfpage.add_pagetree pagelst pdf in
-  let pdfout = Pdfpage.add_root irpageroot [] pdfsub in
-  let pdfout = NamedDest.add_to_pdf pdfout in
+  let pdfout = pdfsub |> (Pdfpage.add_root irpageroot [])
+                      |> Outline.add_to_pdf
+                      |> NamedDest.add_to_pdf
+  in
     Pdfwrite.pdf_to_file pdfout flnm

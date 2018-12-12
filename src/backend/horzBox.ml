@@ -1,4 +1,5 @@
 
+open MyUtil
 open LengthInterface
 open GraphicBase
 
@@ -515,3 +516,21 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
     in
       (wid +% w, Length.max hgt h, Length.min dpt d)
   ) (Length.zero, Length.zero, Length.zero)
+
+
+let rec extract_string (hblst : horz_box list) : string =
+  let rec extract_one hb =
+    match hb with
+    | HorzPure(PHCInnerString(_, uchlst))             -> string_of_uchlst uchlst
+    | HorzPure(PHCInnerMathGlyph(_, _, _, _, otxt))   -> ""
+    | HorzPure(PHGRising(_, hblst))                   -> extract_string hblst
+    | HorzPure(PHGFixedFrame(_, _, _, hblst))         -> extract_string hblst
+    | HorzPure(PHGInnerFrame(_, _, hblst))            -> extract_string hblst
+    | HorzPure(PHGOuterFrame(_, _, hblst))            -> extract_string hblst
+    | HorzDiscretionary(_, hblst1, hblst2, hblst3) ->
+      extract_string hblst1 ^ extract_string hblst2 ^ extract_string hblst3
+    | HorzFrameBreakable(_, _, _, _, _, _, _, hblst)  -> extract_string hblst
+    | HorzScriptGuard(_, hblst)                       -> extract_string hblst
+    | _ -> ""
+  in
+    String.concat "" (List.map extract_one hblst)
