@@ -338,9 +338,13 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
         | Some((title, url)) ->
             let u1 = (dummy_range, UTStringConstant(title)) in
             let u2 = (dummy_range, UTStringConstant(url)) in
-            (dummy_range, UTTupleCons(u1,
-               (dummy_range, UTTupleCons(u2,
-                 (dummy_range, UTEndOfTuple)))))
+            let upair =
+              (dummy_range, UTTupleCons(u1,
+                 (dummy_range, UTTupleCons(u2,
+                   (dummy_range, UTEndOfTuple)))))
+            in
+            (dummy_range, UTConstructor("Some", upair))
+
       in
       make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]
 
