@@ -202,7 +202,7 @@ end = struct
 
   let-block ctx +h3 it bt =
     let bb-title-thunk () =
-      let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ arabic !h3-number in
+      let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ `.` ^ arabic !h3-number in
       let it-num = embed-string s-num in
       let ctx = ctx |> h3-heading in
       line-break true false ctx
