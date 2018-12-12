@@ -147,71 +147,56 @@ end = struct
     counter-children |> List.iter (fun r -> (r <- 0))
 
 
-  let heading-scheme ctx counter counter-children bb-title-thunk bt =
-    let () = increment-counter counter counter-children in
-    let bb-title = bb-title-thunk () in
+  let heading-scheme ctx bb-title bt =
     let bb-content = read-block ctx bt in
     bb-title +++ bb-content
 
 
-  let h1-heading ctx =
-    ctx |> set-font-size font-size-h1
-        |> set-latin-font font-latin-sans
+  let set-heading-font size ctx =
+    ctx |> set-latin-font font-latin-sans
         |> set-cjk-font font-cjk-gothic
+        |> set-font-size size
 
 
-  let h2-heading ctx =
-    ctx |> set-font-size font-size-h2
-        |> set-latin-font font-latin-sans
-        |> set-cjk-font font-cjk-gothic
-
-
-  let h3-heading ctx =
-    ctx |> set-font-size font-size-h3
-        |> set-latin-font font-latin-sans
-        |> set-cjk-font font-cjk-gothic
+  let h1-heading = set-heading-font font-size-h1
+  let h2-heading = set-heading-font font-size-h2
+  let h3-heading = set-heading-font font-size-h3
 
 
   let-block ctx +h1 it bt =
-    let bb-title-thunk () =
+    let () = increment-counter h1-number [h2-number; h3-number; h4-number; h5-number; h6-number] in
+    let bb-title =
       let s-num = arabic !h1-number in
       let it-num = embed-string s-num in
       let ctx = ctx |> h1-heading in
       line-break true false ctx
         (read-inline ctx {#it-num;. #it;} ++ inline-fil)
     in
-    heading-scheme ctx h1-number
-      [h2-number; h3-number; h4-number; h5-number; h6-number]
-      bb-title-thunk
-      bt
+    heading-scheme ctx bb-title bt
 
 
   let-block ctx +h2 it bt =
-    let bb-title-thunk () =
+    let () = increment-counter h2-number [h3-number; h4-number; h5-number; h6-number] in
+    let bb-title =
       let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number in
       let it-num = embed-string s-num in
       let ctx = ctx |> h2-heading in
       line-break true false ctx
         (read-inline ctx {#it-num;. #it;} ++ inline-fil)
     in
-    heading-scheme ctx h2-number
-      [h3-number; h4-number; h5-number; h6-number]
-      bb-title-thunk
-      bt
+    heading-scheme ctx bb-title bt
 
 
   let-block ctx +h3 it bt =
-    let bb-title-thunk () =
+    let () = increment-counter h3-number [h4-number; h5-number; h6-number] in
+    let bb-title =
       let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ `.` ^ arabic !h3-number in
       let it-num = embed-string s-num in
       let ctx = ctx |> h3-heading in
       line-break true false ctx
         (read-inline ctx {#it-num;. #it;} ++ inline-fil)
     in
-    heading-scheme ctx h3-number
-      [h4-number; h5-number; h6-number]
-      bb-title-thunk
-      bt
+    heading-scheme ctx bb-title bt
 
 
   let get-quad-size ctx =
