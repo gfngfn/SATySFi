@@ -67,7 +67,8 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Raw_block(_) ->
       single @@ EmbeddedBlock(make_block_of_element mde)
 
-  | Omd.Html_comment(_) -> empty
+  | Omd.Html_comment(_) ->
+      empty
 
   | Omd.Html(_) ->
       failwith ("HTML; remains to be supported: " ^ Omd.to_text [mde])
@@ -102,8 +103,9 @@ and make_block_of_element (mde : Omd.element) =
   let single blke = [blke] in
   let empty = [] in
   match mde with
-  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
-      -> assert false  (* -- should be omitted by 'normalize_section' -- *)
+  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_) ->
+      assert false
+        (* -- should be omitted by 'normalize_section' -- *)
 
   | Omd.Text(_)
   | Omd.Emph(_)
@@ -120,8 +122,8 @@ and make_block_of_element (mde : Omd.element) =
       single @@ Paragraph(make_inline [mde])
 
   | Omd.Br
-  | Omd.NL
-      -> empty
+  | Omd.NL ->
+      empty
 
   | Omd.Html_comment(s) ->
       Format.printf "  [Comment] %s@," s;  (* TEMPORARY *)
