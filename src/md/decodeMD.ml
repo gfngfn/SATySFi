@@ -38,7 +38,7 @@ and inline = inline_element list
 
 type middle_record =
   {
-    pre_contents        : block;
+    pre_contents        : Omd.t;
     current_heading     : Omd.t;
     current_accumulated : Omd.element Alist.t;
     accumulated         : (inline * Omd.t) Alist.t;
@@ -175,7 +175,7 @@ let normalize_section nomf (md : Omd.t) =
             match acc with
             | Beginning(eacc) ->
                 Middle{
-                  pre_contents        = make_block (Alist.to_list eacc);
+                  pre_contents        = Alist.to_list eacc;
                   current_heading     = heading;
                   current_accumulated = Alist.empty;
                   accumulated         = Alist.empty;
@@ -207,7 +207,7 @@ let normalize_section nomf (md : Omd.t) =
   in
   match acc with
   | Beginning(eacc) ->
-      (make_block (Alist.to_list eacc), [])
+      (Alist.to_list eacc, [])
 
   | Middle(midrcd) ->
       let mainacc = finish_section midrcd in
@@ -216,7 +216,7 @@ let normalize_section nomf (md : Omd.t) =
 
 let normalize_h seclev nomf subf md =
   let (pre, inner) = normalize_section nomf md in
-  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
+  List.append (subf pre) (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
 
 
 let normalize_h6 = normalize_h H6 (function Omd.H6(heading) -> Some(heading) | _ -> None) make_block
