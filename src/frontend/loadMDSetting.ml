@@ -142,6 +142,7 @@ let read_assoc (srcpath : file_path) (assoc : MYU.assoc) =
       code_map           = assoc |> code;
       code_default       = assoc |> inline "code-default";
       url                = assoc |> inline "url";
+      reference          = assoc |> inline "reference";
       embed_block        = assoc |> inline "embed-block";
       err_inline         = assoc |> inline "err-inline";
     }

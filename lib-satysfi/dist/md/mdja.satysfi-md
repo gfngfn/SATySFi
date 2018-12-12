@@ -28,6 +28,7 @@
   ],
   "code-default": "\\code",
   "url": "\\link",
+  "reference": "\\reference",
   "embed-block": "\\embed-block",
   "err-inline": "\\error"
 }

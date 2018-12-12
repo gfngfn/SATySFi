@@ -29,6 +29,7 @@ and inline_element =
       [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
   | Url of string * inline * string
+  | Ref of string * string * (string * string) option
   | InlineRaw of string
   | EmbeddedBlock of block
 
@@ -37,7 +38,7 @@ and inline = inline_element list
 
 type middle_record =
   {
-    pre_contents        : block;
+    pre_contents        : Omd.t;
     current_heading     : Omd.t;
     current_accumulated : Omd.element Alist.t;
     accumulated         : (inline * Omd.t) Alist.t;
@@ -64,12 +65,11 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Ulp(_)
   | Omd.Ol(_)
   | Omd.Olp(_)
-  | Omd.Raw_block(_) -> single @@ EmbeddedBlock(make_block_of_element mde)
-(*
-      failwith ("block occurs; inline expected: " ^ Omd.to_text [mde])
- *)
+  | Omd.Raw_block(_) ->
+      single @@ EmbeddedBlock(make_block_of_element mde)
 
-  | Omd.Html_comment(_) -> empty
+  | Omd.Html_comment(_) ->
+      empty
 
   | Omd.Html(_) ->
       failwith ("HTML; remains to be supported: " ^ Omd.to_text [mde])
@@ -84,14 +84,24 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Br            -> single @@ Br
   | Omd.NL            -> single @@ Br
 
-  | Omd.Url(href, md, title) -> single @@ Url(href, make_inline md, title)
+  | Omd.Url(href, md, title) ->
+      single @@ Url(href, make_inline md, title)
 
-  | Omd.Ref(_)
-  | Omd.Img(_)
-  | Omd.Img_ref(_)
-      -> failwith ("Ref, Img, Img_ref; remains to be supported: " ^ Omd.to_text [mde])
+  | Omd.Ref(container, tag, display, _) ->
+      let refopt = container#get_ref tag in
+      single @@ Ref(tag, display, refopt)
+(*
+      failwith (Printf.sprintf "Ref; remains to be supported: name='%s', s='%s'" name s)
+*)
 
-  | Omd.Raw(s)        -> single @@ InlineRaw(s)
+  | Omd.Img(alt, src, title) ->
+      failwith (Printf.sprintf "Img; remiains to be supported: alt='%s', src'%s', title='%s'" alt src title)
+
+  | Omd.Img_ref(_, name, alt, _) ->
+      failwith (Printf.sprintf "Img_ref; remains to be supported: name='%s', alt='%s'" name alt)
+
+  | Omd.Raw(s) ->
+      single @@ InlineRaw(s)
 
 
 and make_inline (md : Omd.t) : inline =
@@ -102,8 +112,10 @@ and make_block_of_element (mde : Omd.element) =
   let single blke = [blke] in
   let empty = [] in
   match mde with
-  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_)
-      -> assert false  (* -- should be omitted by 'normalize_section' -- *)
+  | Omd.H1(_) | Omd.H2(_) | Omd.H3(_) | Omd.H4(_) | Omd.H5(_) | Omd.H6(_) ->
+      Format.printf "!!!! %s\n" (Omd.to_text [mde]);
+      assert false
+        (* -- should be omitted by 'normalize_section' -- *)
 
   | Omd.Text(_)
   | Omd.Emph(_)
@@ -114,15 +126,14 @@ and make_block_of_element (mde : Omd.element) =
   | Omd.Img(_)
   | Omd.Img_ref(_)
   | Omd.Raw(_)
-  | Omd.Html(_)
-      ->
-        Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
-          (* temporary; should warn in a more sophisticated manner *)
-        single @@ Paragraph(make_inline [mde])
+  | Omd.Html(_) ->
+      Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
+        (* temporary; should warn in a more sophisticated manner *)
+      single @@ Paragraph(make_inline [mde])
 
   | Omd.Br
-  | Omd.NL
-      -> empty
+  | Omd.NL ->
+      empty
 
   | Omd.Html_comment(s) ->
       Format.printf "  [Comment] %s@," s;  (* TEMPORARY *)
@@ -164,7 +175,7 @@ let normalize_section nomf (md : Omd.t) =
             match acc with
             | Beginning(eacc) ->
                 Middle{
-                  pre_contents        = make_block (Alist.to_list eacc);
+                  pre_contents        = Alist.to_list eacc;
                   current_heading     = heading;
                   current_accumulated = Alist.empty;
                   accumulated         = Alist.empty;
@@ -196,7 +207,7 @@ let normalize_section nomf (md : Omd.t) =
   in
   match acc with
   | Beginning(eacc) ->
-      (make_block (Alist.to_list eacc), [])
+      (Alist.to_list eacc, [])
 
   | Middle(midrcd) ->
       let mainacc = finish_section midrcd in
@@ -205,7 +216,7 @@ let normalize_section nomf (md : Omd.t) =
 
 let normalize_h seclev nomf subf md =
   let (pre, inner) = normalize_section nomf md in
-  List.append pre (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
+  List.append (subf pre) (inner |> List.map (fun (heading, mdsub) -> Section(seclev, heading, subf mdsub)))
 
 
 let normalize_h6 = normalize_h H6 (function Omd.H6(heading) -> Some(heading) | _ -> None) make_block
@@ -248,6 +259,7 @@ type command_record = {
   code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
+  reference          : command;
   embed_block        : command;
   err_inline         : command;
 }
@@ -314,6 +326,23 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg1 = (dummy_range, UTStringConstant(href)) in
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]
+
+  | Ref(tag, display, refopt) ->
+      let utastarg1 = (dummy_range, UTStringConstant(tag)) in
+      let utastarg2 = (dummy_range, UTStringConstant(display)) in
+      let utastarg3 =
+        match refopt with
+        | None ->
+            (dummy_range, UTConstructor("None", (dummy_range, UTUnitConstant)))
+
+        | Some((title, url)) ->
+            let u1 = (dummy_range, UTStringConstant(title)) in
+            let u2 = (dummy_range, UTStringConstant(url)) in
+            (dummy_range, UTTupleCons(u1,
+               (dummy_range, UTTupleCons(u2,
+                 (dummy_range, UTEndOfTuple)))))
+      in
+      make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]
 
   | EmbeddedBlock(blk) ->
       let utastarg = convert_block cmdrcd blk in
