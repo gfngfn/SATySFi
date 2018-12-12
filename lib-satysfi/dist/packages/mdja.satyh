@@ -31,6 +31,7 @@ module MDJa : sig
   direct \emph : [inline-text] inline-cmd
   direct \bold : [inline-text] inline-cmd
   direct \link : [string; inline-text] inline-cmd
+  direct \reference : [string; string; (string * string) option] inline-cmd
   direct \hard-break : [] inline-cmd
   direct \embed-block : [block-text] inline-cmd
   direct \error : [string] inline-cmd
@@ -68,12 +69,14 @@ end = struct
 
   let text-color-link = RGB(0.0, 0.5, 1.0)
 
+
   let-mutable h1-number <- 0
   let-mutable h2-number <- 0
   let-mutable h3-number <- 0
   let-mutable h4-number <- 0
   let-mutable h5-number <- 0
   let-mutable h6-number <- 0
+  let-mutable reference-acc <- []
 
 
   let set-latin-font font ctx =
@@ -108,6 +111,30 @@ end = struct
         |> set-cjk-font font-cjk-mincho
 
 
+  let pads-zero = (0pt, 0pt, 0pt, 0pt)
+
+
+  let-inline ctx \link url it =
+    inline-frame-breakable pads-zero (Annot.link-to-uri-frame url None)
+      (read-inline (ctx |> set-text-color text-color-link) it)
+
+
+  let-inline ctx \jump key-pdf-loc it =
+    inline-frame-breakable pads-zero (Annot.link-to-location-frame key-pdf-loc None)
+      (read-inline (ctx |> set-text-color text-color-link) it)
+
+
+  let set-heading-font size ctx =
+    ctx |> set-latin-font font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+        |> set-font-size size
+
+
+  let h1-heading = set-heading-font font-size-h1
+  let h2-heading = set-heading-font font-size-h2
+  let h3-heading = set-heading-font font-size-h3
+
+
   let document rcd bt =
     let ctx = initial-context in
     let bb-title =
@@ -120,6 +147,29 @@ end = struct
         (inline-fil ++ read-inline ctx rcd#author)
     in
     let bb-main = read-block ctx bt in
+    let bb-reference =
+      match List.reverse !reference-acc with
+      | [] ->
+          block-nil
+
+      | refs ->
+          let bb-body =
+            refs |> List.map (fun (tag, title, url) -> (
+              let it-tag = embed-string tag in
+              let it-title = embed-string title in
+              let it = {[#it-tag;] \link(url){#it-title;}} in
+              let key-pdf-loc = `reference:` ^ tag in
+              let decoset = Annot.register-location-frame key-pdf-loc in
+              let ib = inline-frame-breakable pads-zero decoset (read-inline ctx it) in
+              line-break true true ctx (ib ++ inline-fil)
+            )) |> List.fold-left (+++) block-nil
+          in
+          let bb-heading =
+            let ctx = ctx |> h1-heading in
+            line-break true false ctx (read-inline ctx {参考文献} ++ inline-fil)
+          in
+          bb-heading +++ bb-body
+    in
     let pagecontf _ =
       (|
         text-origin = text-origin;
@@ -139,6 +189,7 @@ end = struct
         bb-title; bb-author;
         block-skip skip-before-content;
         bb-main;
+        bb-reference;
       ])
 
 
@@ -150,17 +201,6 @@ end = struct
   let heading-scheme ctx bb-title bt =
     let bb-content = read-block ctx bt in
     bb-title +++ bb-content
-
-
-  let set-heading-font size ctx =
-    ctx |> set-latin-font font-latin-sans
-        |> set-cjk-font font-cjk-gothic
-        |> set-font-size size
-
-
-  let h1-heading = set-heading-font font-size-h1
-  let h2-heading = set-heading-font font-size-h2
-  let h3-heading = set-heading-font font-size-h3
 
 
   let-block ctx +h1 it bt =
@@ -297,10 +337,22 @@ end = struct
     read-inline ctx (embed-string s)
 
 
-  let-inline ctx \link s it =
-    let pads = (0pt, 0pt, 0pt, 0pt) in
-    inline-frame-breakable pads (Annot.link-to-uri-frame s None)
-      (read-inline (ctx |> set-text-color text-color-link) it)
+  let-inline ctx \reference tag display opt =
+    let it = embed-string display in
+    match opt with
+    | None ->
+        let () = display-message (`no reference for tag '` ^ tag ^ `'.`) in
+        read-inline ctx it
+
+    | Some((title, url)) ->
+        let () = display-message (`tag = '` ^ tag ^ `'`) in
+        let () = display-message (`display = '` ^ display ^ `'`) in
+        let () = display-message (`title = '` ^ title ^ `'`) in
+        let () = display-message (`url = '` ^ url ^ `'`) in
+        let () = reference-acc <- (tag, title, url) :: !reference-acc in
+        let key-pdf-loc = `reference:` ^ tag in
+        let it-tag = embed-string tag in
+        read-inline ctx {\jump(key-pdf-loc){#it; [#it-tag;]}}
 
 
   let-inline ctx \hard-break =
