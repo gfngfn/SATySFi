@@ -32,6 +32,7 @@ type command_record = {
   code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
+  reference          : command;
   embed_block        : command;
   err_inline         : command;
 }

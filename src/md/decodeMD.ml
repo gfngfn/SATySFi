@@ -29,6 +29,7 @@ and inline_element =
       [@printer (fun fmt (name, s) -> Format.fprintf fmt "Code(\"%s\",@ \"%s\")" name s)]
   | Br
   | Url of string * inline * string
+  | Ref of string * string * (string * string) option
   | InlineRaw of string
   | EmbeddedBlock of block
 
@@ -86,8 +87,12 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Url(href, md, title) ->
       single @@ Url(href, make_inline md, title)
 
-  | Omd.Ref(_, name, s, _) ->
+  | Omd.Ref(container, tag, display, _) ->
+      let refopt = container#get_ref tag in
+      single @@ Ref(tag, display, refopt)
+(*
       failwith (Printf.sprintf "Ref; remains to be supported: name='%s', s='%s'" name s)
+*)
 
   | Omd.Img(alt, src, title) ->
       failwith (Printf.sprintf "Img; remiains to be supported: alt='%s', src'%s', title='%s'" alt src title)
@@ -253,6 +258,7 @@ type command_record = {
   code_map           : command CodeNameMap.t;
   code_default       : command;
   url                : command;
+  reference          : command;
   embed_block        : command;
   err_inline         : command;
 }
@@ -319,6 +325,23 @@ let rec convert_inline_element (cmdrcd : command_record) (ilne : inline_element)
       let utastarg1 = (dummy_range, UTStringConstant(href)) in
       let utastarg2 = convert_inline cmdrcd iln in
       make_inline_application cmdrcd.url [utastarg1; utastarg2]
+
+  | Ref(tag, display, refopt) ->
+      let utastarg1 = (dummy_range, UTStringConstant(tag)) in
+      let utastarg2 = (dummy_range, UTStringConstant(display)) in
+      let utastarg3 =
+        match refopt with
+        | None ->
+            (dummy_range, UTConstructor("None", (dummy_range, UTUnitConstant)))
+
+        | Some((title, url)) ->
+            let u1 = (dummy_range, UTStringConstant(title)) in
+            let u2 = (dummy_range, UTStringConstant(url)) in
+            (dummy_range, UTTupleCons(u1,
+               (dummy_range, UTTupleCons(u2,
+                 (dummy_range, UTEndOfTuple)))))
+      in
+      make_inline_application cmdrcd.reference [utastarg1; utastarg2; utastarg3]
 
   | EmbeddedBlock(blk) ->
       let utastarg = convert_block cmdrcd blk in
