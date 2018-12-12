@@ -64,10 +64,8 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Ulp(_)
   | Omd.Ol(_)
   | Omd.Olp(_)
-  | Omd.Raw_block(_) -> single @@ EmbeddedBlock(make_block_of_element mde)
-(*
-      failwith ("block occurs; inline expected: " ^ Omd.to_text [mde])
- *)
+  | Omd.Raw_block(_) ->
+      single @@ EmbeddedBlock(make_block_of_element mde)
 
   | Omd.Html_comment(_) -> empty
 
@@ -84,14 +82,16 @@ let rec make_inline_of_element (mde : Omd.element) =
   | Omd.Br            -> single @@ Br
   | Omd.NL            -> single @@ Br
 
-  | Omd.Url(href, md, title) -> single @@ Url(href, make_inline md, title)
+  | Omd.Url(href, md, title) ->
+      single @@ Url(href, make_inline md, title)
 
   | Omd.Ref(_)
   | Omd.Img(_)
-  | Omd.Img_ref(_)
-      -> failwith ("Ref, Img, Img_ref; remains to be supported: " ^ Omd.to_text [mde])
+  | Omd.Img_ref(_) ->
+      failwith ("Ref, Img, Img_ref; remains to be supported: " ^ Omd.to_text [mde])
 
-  | Omd.Raw(s)        -> single @@ InlineRaw(s)
+  | Omd.Raw(s) ->
+      single @@ InlineRaw(s)
 
 
 and make_inline (md : Omd.t) : inline =
@@ -114,11 +114,10 @@ and make_block_of_element (mde : Omd.element) =
   | Omd.Img(_)
   | Omd.Img_ref(_)
   | Omd.Raw(_)
-  | Omd.Html(_)
-      ->
-        Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
-          (* temporary; should warn in a more sophisticated manner *)
-        single @@ Paragraph(make_inline [mde])
+  | Omd.Html(_) ->
+      Format.printf "! [Warning] not a block: %s@," (Omd.to_text [mde]);
+        (* temporary; should warn in a more sophisticated manner *)
+      single @@ Paragraph(make_inline [mde])
 
   | Omd.Br
   | Omd.NL
