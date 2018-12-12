@@ -5,6 +5,7 @@
 @require: color
 @require: hdecoset
 @require: vdecoset
+@require: annot
 
 
 module MDJa : sig
@@ -16,6 +17,7 @@ module MDJa : sig
 
   direct +h1 : [inline-text; block-text] block-cmd
   direct +h2 : [inline-text; block-text] block-cmd
+  direct +h3 : [inline-text; block-text] block-cmd
   direct +p : [inline-text] block-cmd
   direct +ul : [inline-text list] block-cmd
   direct +ol : [inline-text list] block-cmd
@@ -47,6 +49,7 @@ end = struct
   let font-size-title = 20pt
   let font-size-h1 = 18pt
   let font-size-h2 = 16pt
+  let font-size-h3 = 14pt
 
   let font-ratio-cjk = 0.88
 
@@ -62,6 +65,8 @@ end = struct
   let hr-thickness = 1pt
 
   let code-background = Gray(0.875)
+
+  let text-color-link = RGB(0.0, 0.5, 1.0)
 
   let-mutable h1-number <- 0
   let-mutable h2-number <- 0
@@ -161,6 +166,12 @@ end = struct
         |> set-cjk-font font-cjk-gothic
 
 
+  let h3-heading ctx =
+    ctx |> set-font-size font-size-h3
+        |> set-latin-font font-latin-sans
+        |> set-cjk-font font-cjk-gothic
+
+
   let-block ctx +h1 it bt =
     let bb-title-thunk () =
       let s-num = arabic !h1-number in
@@ -185,6 +196,20 @@ end = struct
     in
     heading-scheme ctx h2-number
       [h3-number; h4-number; h5-number; h6-number]
+      bb-title-thunk
+      bt
+
+
+  let-block ctx +h3 it bt =
+    let bb-title-thunk () =
+      let s-num = arabic !h1-number ^ `.` ^ arabic !h2-number ^ arabic !h3-number in
+      let it-num = embed-string s-num in
+      let ctx = ctx |> h3-heading in
+      line-break true false ctx
+        (read-inline ctx {#it-num;. #it;} ++ inline-fil)
+    in
+    heading-scheme ctx h3-number
+      [h4-number; h5-number; h6-number]
       bb-title-thunk
       bt
 
@@ -287,8 +312,10 @@ end = struct
     read-inline ctx (embed-string s)
 
 
-  let-inline \link s it =
-    {#it;(\url(s);)}
+  let-inline ctx \link s it =
+    let pads = (0pt, 0pt, 0pt, 0pt) in
+    inline-frame-breakable pads (Annot.link-to-uri-frame s None)
+      (read-inline (ctx |> set-text-color text-color-link) it)
 
 
   let-inline ctx \hard-break =
