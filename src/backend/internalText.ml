@@ -46,6 +46,25 @@ let to_utf16be_hex (intext : t) =
   Buffer.contents buffer
 
 
+let to_utf16be (intext : t) =
+  let buffer = Buffer.create (String.length intext * 4) in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String intext) in
+  let encoder = Uutf.encoder `UTF_16BE (`Buffer buffer) in
+  let rec loop () =
+    match Uutf.decode decoder with
+    | `Await -> assert false (* Manual source! *)
+    | `End -> ignore (Uutf.encode encoder `End)
+    | `Malformed _ ->
+      ignore (Uutf.encode encoder (`Uchar Uchar.rep));
+      loop ()
+    | `Uchar ch ->
+      ignore (Uutf.encode encoder (`Uchar ch));
+      loop ()
+  in
+  loop ();
+  "\xFE\xFF" ^ Buffer.contents buffer (* add BOM *)
+
+
 let to_uchar_list (intext : t) : Uchar.t list =
   let rev_chars = ref [] in
   let decoder = Uutf.decoder ~encoding:`UTF_8 (`String intext) in

@@ -2041,6 +2041,18 @@ code-interp: |
   InputHorzWithEnvironment([ImInputHorzText(str)], env)
 
 ---
+inst: PrimitiveExtract
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "extract-string"
+type: |
+  ~% (tIB @-> tS)
+params:
+  - hblst : horz
+code: |
+  StringConstant(HorzBox.extract_string hblst)
+
+---
 inst: PrimitiveGetAxisHeight
 is-pdf-mode-primitive: yes
 name: "get-axis-height"
@@ -3131,4 +3143,16 @@ code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   let destname = NamedDest.get name in
   Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+  UnitConstant
+
+---
+inst: BackendRegisterOutline
+is-pdf-mode-primitive : yes
+name: "register-outline"
+type: |
+  ~% ((tL(tPROD [tI; tS; tS; tB])) @-> tU)
+params:
+  - ol
+code: |
+  Outline.register (get_list get_outline ol);
   UnitConstant

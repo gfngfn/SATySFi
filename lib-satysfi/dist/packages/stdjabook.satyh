@@ -4,6 +4,7 @@
 @require: list
 @require: math
 @require: color
+@require: option
 @require: annot
 @require: footnote-scheme
 
@@ -30,8 +31,8 @@ module StdJaBook : sig
   direct \figure : [string?; inline-text; block-text] inline-cmd
   direct +p : [inline-text] block-cmd
   direct +pn : [inline-text] block-cmd
-  direct +section : [string?; inline-text; block-text] block-cmd
-  direct +subsection : [string?; inline-text; block-text] block-cmd
+  direct +section : [string?; string?; inline-text; block-text] block-cmd
+  direct +subsection : [string?; string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
   direct \footnote : [inline-text] inline-cmd
 
@@ -259,6 +260,7 @@ let title-deco =
 
 
   let-mutable toc-acc-ref <- []
+  let-mutable outline-ref <- []
 
 
   let get-cross-reference-number label =
@@ -450,7 +452,9 @@ let title-deco =
           footer-content = footer;
         |)
     in
-      page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main)
+    let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main) in
+    let () = register-outline (List.reverse !outline-ref) in
+      doc
 
 
   let-mutable needs-indentation-ref <- true
@@ -485,7 +489,7 @@ let title-deco =
       form-paragraph ctx (ib-inner ++ inline-fil)
 
 
-  let section-scheme ctx label title inner =
+  let section-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
     let () = num-subsection <- 0 in
@@ -498,6 +502,8 @@ let title-deco =
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
       block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         (section-heading ctx
@@ -507,7 +513,7 @@ let title-deco =
       bb-title +++ bb-inner
 
 
-  let subsection-scheme ctx label title inner =
+  let subsection-scheme ctx label title outline-title-opt inner =
     let () = num-subsection <- !num-subsection + 1 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
@@ -519,6 +525,8 @@ let title-deco =
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
         (inline-frame-breakable no-pads (Annot.register-location-frame label)
@@ -528,22 +536,22 @@ let title-deco =
       bb-title +++ bb-inner
 
 
-  let-block ctx +section ?:labelopt title inner =
+  let-block ctx +section ?:labelopt ?:outline-title-opt title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      section-scheme ctx label title inner
+      section-scheme ctx label title outline-title-opt inner
 
 
-  let-block ctx +subsection ?:labelopt title inner =
+  let-block ctx +subsection ?:labelopt ?:outline-title-opt title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      subsection-scheme ctx label title inner
+      subsection-scheme ctx label title outline-title-opt inner
 
 
   let-inline ctx \emph inner =
