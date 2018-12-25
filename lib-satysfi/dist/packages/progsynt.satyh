@@ -82,7 +82,7 @@ end = struct
     let mx = to-math x in
     let me = to-math e in
       (|
-        math = ${\lambda#mx.\sp#me};
+        math = ${\token{\lambda}#mx.\sp#me};
         assoc = 2;
       |)
 
