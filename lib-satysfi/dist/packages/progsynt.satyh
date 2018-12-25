@@ -6,58 +6,88 @@ module Term : sig
   type t
   val term-object-color : color
   val term-meta-color : color
+  val make : int -> math -> t
   val var : math -> t
   val meta : math -> t
   val letin : t -> t -> t -> t
   val app : t -> t -> t
   val abs : t -> t -> t
+  val to-math : int?-> t -> math
+  val \token : [math] math-cmd
+  val \sp : [] math-cmd
   direct \term : [t] math-cmd
 end = struct
 
   let term-object-color = (RGB(0., 0., 0.5))
   let term-meta-color = (RGB(0.5, 0., 0.5))
 
+
   type t = (| math : math; assoc : int; |)
+
+
+  let make i m =
+    (|
+      math = m;
+      assoc = i;
+    |)
+
 
   let-math \token m =
     math-color term-object-color (math-char-class MathBoldRoman m)
 
+
   let-math \sp =
     text-in-math MathOrd (fun ctx -> inline-skip (get-font-size ctx *' 0.25))
+
+
+  let term-paren m =
+    let m = math-color (Gray(0.)) m in
+    math-color term-object-color ${\paren{#m}}
+
+
+  let to-math ?:iopt e =
+    let m = e#math in
+    match iopt with
+    | None    -> m
+    | Some(i) -> if e#assoc <= i then m else term-paren m
+
 
   let var m =
     (| math = math-color term-object-color m; assoc = 0; |)
 
+
   let meta m =
     (| math = math-color term-meta-color m; assoc = 0; |)
 
+
   let letin x e1 e2 =
     let mx = x#math in
-    let m1 = e1#math in
-    let m2 = e2#math in
+    let m1 = to-math e1 in
+    let m2 = to-math e2 in
       (|
         math = ${\token{let}\sp #mx = #m1 \sp\token{in}\sp #m2};
         assoc = 0;
       |)
 
+
   let app e1 e2 =
-    let m1 = e1#math in
-    let m2 = e2#math in
+    let m1 = to-math ?:1 e1 in
+    let m2 = to-math ?:0 e2 in
       (|
         math = ${#m1\sp#m2};
-        assoc = 0;
+        assoc = 1;
       |)
 
-  let abs e1 e2 =
-    let m1 = e1#math in
-    let m2 = e2#math in
+  let abs x e =
+    let mx = to-math x in
+    let me = to-math e in
       (|
-        math = ${\lambda#m1.\sp#m2};
-        assoc = 0;
+        math = ${\lambda#mx.\sp#me};
+        assoc = 2;
       |)
 
   let-math \term tm =
-    tm#math
+    to-math tm
 
 end
 
