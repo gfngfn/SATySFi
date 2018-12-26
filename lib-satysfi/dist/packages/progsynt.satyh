@@ -7,6 +7,7 @@ module Term : sig
   val term-object-color : color
   val term-meta-color : color
   val make : int -> math -> t
+  val paren : t -> t
   val var : math -> t
   val meta : math -> t
   val letin : t -> t -> t -> t
@@ -52,6 +53,13 @@ end = struct
     | Some(i) -> if e#assoc <= i then m else term-paren m
 
 
+  let paren e =
+    (|
+      math = term-paren e#math;
+      assoc = 0;
+    |)
+
+
   let var m =
     (| math = math-color term-object-color m; assoc = 0; |)
 
@@ -88,6 +96,68 @@ end = struct
 
   let-math \term tm =
     to-math tm
+
+end
+
+
+module Type : sig
+  val type-object-color : color
+  val type-meta-color : color
+  type t
+  val make : int -> math -> t
+  val \token : [math] math-cmd
+  val base : math -> t
+  val meta : math -> t
+  val (-->) : t -> t -> t
+  val to-math : int?-> t -> math
+  direct \type : [t] math-cmd
+end = struct
+
+  let type-object-color = RGB(0.75, 0., 0.)
+  let type-meta-color = RGB(0.75, 0.375, 0.)
+
+
+  type t = (| math : math; assoc : int; |)
+
+
+  let make i m = (| math = m; assoc = i; |)
+
+
+  let-math \token m =
+    math-color type-object-color ${\mathbf{#m}}
+
+
+  let base m =
+    (| math = ${\token{m}}; assoc = 0; |)
+
+
+  let meta m =
+    (| math = math-color type-meta-color m; assoc = 0; |)
+
+
+  let type-paren m =
+    let m = math-color (Gray(0.)) m in
+    math-color type-object-color ${\paren{#m}}
+
+
+  let to-math ?:iopt ty =
+    let m = ty#math in
+    match iopt with
+    | None    -> m
+    | Some(i) -> if ty#assoc <= i then m else type-paren m
+
+
+  let (-->) t1 t2 =
+    let m1 = to-math ?:0 t1 in
+    let m2 = to-math ?:2 t2 in
+    (|
+      math = ${#m1\token{\rightarrow}#m2};
+      assoc = 2;
+    |)
+
+
+  let-math \type ty =
+    to-math ty
 
 end
 
