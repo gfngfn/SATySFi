@@ -98,6 +98,17 @@ opam install satysfi
 * 再インストール： `opam reinstall satysfi` を実行
 * アンインストール： `opam uninstall satysfi` を実行
 
+### セットアップ
+使用する前に，ライブラリを所定の場所に移し，フォントをダウンロードする必要があります．
+
+1. `lib-satysfi/dist` をホームディレクトリ以下 `~/.satysfi/dist/` にコピー
+2. 次のフォントをダウンロード
+    * [Junicode](http://junicode.sourceforge.net)
+    * [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+    * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
+    * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
+3. ダウンロードしたフォントファイル (.otf と .ttf) を `~/.satysfi/dist/fonts` に移動
+
 ## 用法
 
 ```sh
@@ -108,6 +119,25 @@ satysfi <input file> -o <output file>
 
 ```sh
 satysfi doc.saty -o output.pdf
+```
+
+### コンパイルしてみよう
+デモファイルが `demo` フォルダにあるので，初めにこのファイルをコンパイルしてみましょう．
+このデモには `MakeFile` が用意されているので，`make` を実行するだけで完了します．
+
+```sh
+cd demo
+make
+```
+
+うまく準備できていれば，`demo.pdf` が作成されます．
+
+### リファレンス
+SATySFi で文書を作成するためのリファレンスは，`doc` フォルダに SATySFi を用いて書かれています．
+
+```sh
+cd doc
+make
 ```
 
 ## コマンドラインオプション
