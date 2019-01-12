@@ -53,7 +53,7 @@ let add_pdf (srcpath : file_path) (pageno : int) =
     | Pdf.PDFError(msg) -> raise (CannotLoadPdf(msg, srcpath, pageno))
   in
     if pageno < 1 then
-      raise (CannotLoadPdf("Page number should be greater than 1", srcpath, pageno))
+      raise (CannotLoadPdf("Page number should be greater than 0", srcpath, pageno))
     else
       match LoadPdf.get_page pdfext (pageno - 1) with
       | None               -> raise (CannotLoadPdf("Invalid page number", srcpath, pageno))
