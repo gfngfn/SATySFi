@@ -33,6 +33,7 @@ type command_record = {
   code_default       : command;
   url                : command;
   reference          : command;
+  img                : command;
   embed_block        : command;
   err_inline         : command;
 }
