@@ -242,22 +242,24 @@ module GlyphIDTable
   end
 = struct
 
-    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GHt.t
+    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GHt.t * Uchar.t GHt.t
 
 
     let create submap n =
       let ht = UHt.create n in
       let revht = GHt.create n in
-      (submap, ht, revht)
+      let revorght = GHt.create n in
+      (submap, ht, revht, revorght)
 
 
-    let add uch gidorg (submap, ht, revht) =
+    let add uch gidorg (submap, ht, revht, revorght) =
       begin
         let gidsub = submap |> SubsetMap.intern gidorg in
         UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
         match GHt.find_opt revht gidsub with
         | None ->
-            GHt.add revht gidsub uch
+            GHt.add revht gidsub uch;
+            GHt.add revorght gidorg uch
 
         | Some(uchpre) ->
             begin
@@ -269,15 +271,15 @@ module GlyphIDTable
       end
 
 
-    let find_opt uch (_, ht, _) =
+    let find_opt uch (_, ht, _, _) =
       UHt.find_opt ht uch
 
 
-    let find_rev_opt gidsub (_, _, revht) =
-      GHt.find_opt revht gidsub
+    let find_rev_opt gidorg (_, _, _, revorght) =
+      GHt.find_opt revorght gidorg
 
 
-    let fold_rev f init (_, _, revht) =
+    let fold_rev f init (_, _, revht, _) =
       GHt.fold f revht init
 
   end
@@ -571,14 +573,16 @@ module LigatureTable
     let add gidorg liginfolst ligtbl =
       let htmain = ligtbl.entry_table in
       let htrev = ligtbl.rev_table in
+      let submap = ligtbl.subset_map in
       begin
         GHt.add htmain gidorg liginfolst;
         liginfolst |> List.iter (fun single ->
           let gidorgtail = single.tail in
           let gidorglig = single.ligature in
+          let gidsublig = submap |> SubsetMap.intern gidorglig in
           match GHt.find_opt htrev gidorglig with
           | None ->
-              GHt.add htrev gidorglig (gidorg :: gidorgtail)
+              GHt.add htrev gidsublig (gidorg :: gidorgtail)
 
           | Some(_) ->
               begin
