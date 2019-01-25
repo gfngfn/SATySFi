@@ -1,23 +1,26 @@
 
-(* We use utf8 as the internal representation *)
+(* -- We use utf8 as the internal representation -- *)
 type t = string
-
-exception NotEncodableToUTF16BE of t
 
 
 let of_utf8 (str_utf8 : string) : t =
   let buffer = Buffer.create (String.length str_utf8) in
-  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String str_utf8) in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer buffer) in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(str_utf8)) in
+  let encoder = Uutf.encoder `UTF_8 (`Buffer(buffer)) in
   let rec loop () =
     match Uutf.decode decoder with
-    | `Await -> assert false (* Manual source! *)
-    | `End -> ignore (Uutf.encode encoder `End)
-    | `Malformed _ ->
-        ignore (Uutf.encode encoder (`Uchar Uchar.rep));
+    | `Await ->
+        assert false  (* -- Manual source! -- *)
+
+    | `End ->
+        Uutf.encode encoder `End |> ignore
+
+    | `Malformed(_) ->
+        Uutf.encode encoder (`Uchar(Uchar.rep)) |> ignore;
         loop ()
-    | `Uchar ch ->
-        ignore (Uutf.encode encoder (`Uchar ch));
+
+    | `Uchar(ch) ->
+        Uutf.encode encoder (`Uchar(ch)) |> ignore;
         loop ()
   in
   loop ();
@@ -26,13 +29,19 @@ let of_utf8 (str_utf8 : string) : t =
 
 let to_utf16be_hex (intext : t) =
   let buffer = Buffer.create (String.length intext * 4) in
-  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String intext) in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(intext)) in
   let rec loop () =
     match Uutf.decode decoder with
-    | `Await -> assert false (* Manual source! *)
-    | `End -> ()
-    | `Malformed _ -> assert false (* Valid utf-8! *)
-    | `Uchar ch ->
+    | `Await ->
+        assert false  (* -- Manual source! -- *)
+
+    | `End ->
+        ()
+
+    | `Malformed(_) ->
+        assert false  (* -- Valid utf-8! -- *)
+
+    | `Uchar(ch) ->
         let cp = Uchar.to_int ch in
         if cp < 0x10000 then
           Printf.bprintf buffer "%04X" cp
@@ -48,37 +57,49 @@ let to_utf16be_hex (intext : t) =
 
 let to_utf16be (intext : t) =
   let buffer = Buffer.create (String.length intext * 4) in
-  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String intext) in
-  let encoder = Uutf.encoder `UTF_16BE (`Buffer buffer) in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(intext)) in
+  let encoder = Uutf.encoder `UTF_16BE (`Buffer(buffer)) in
   let rec loop () =
     match Uutf.decode decoder with
-    | `Await -> assert false (* Manual source! *)
-    | `End -> ignore (Uutf.encode encoder `End)
-    | `Malformed _ ->
-      ignore (Uutf.encode encoder (`Uchar Uchar.rep));
-      loop ()
-    | `Uchar ch ->
-      ignore (Uutf.encode encoder (`Uchar ch));
-      loop ()
-  in
-  loop ();
-  "\xFE\xFF" ^ Buffer.contents buffer (* add BOM *)
+    | `Await ->
+        assert false  (* -- Manual source! -- *)
 
+    | `End ->
+        Uutf.encode encoder `End |> ignore
 
-let to_uchar_list (intext : t) : Uchar.t list =
-  let rev_chars = ref [] in
-  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String intext) in
-  let rec loop () =
-    match Uutf.decode decoder with
-    | `Await -> assert false (* Manual source! *)
-    | `End -> ()
-    | `Malformed _ -> assert false (* Valid utf-8! *)
-    | `Uchar ch ->
-        rev_chars := ch :: !rev_chars;
+    | `Malformed(_) ->
+        Uutf.encode encoder (`Uchar(Uchar.rep)) |> ignore;
+        loop ()
+
+    | `Uchar(ch) ->
+        Uutf.encode encoder (`Uchar(ch)) |> ignore;
         loop ()
   in
   loop ();
-  List.rev !rev_chars
+  "\xFE\xFF" ^ Buffer.contents buffer
+    (* -- add BOM -- *)
+
+
+let to_uchar_list (intext : t) : Uchar.t list =
+  let characc = ref Alist.empty in
+  let decoder = Uutf.decoder ~encoding:`UTF_8 (`String(intext)) in
+  let rec loop () =
+    match Uutf.decode decoder with
+    | `Await ->
+        assert false  (* -- Manual source! -- *)
+
+    | `End ->
+        ()
+
+    | `Malformed(_) ->
+        assert false  (* -- Valid utf-8! -- *)
+
+    | `Uchar(ch) ->
+        characc := Alist.extend !characc ch;
+        loop ()
+  in
+  loop ();
+  Alist.to_list !characc
 
 
 
@@ -87,17 +108,17 @@ let to_utf8 (intext : t) : string = intext
 
 let of_uchar (uch : Uchar.t) : t =
   let buffer = Buffer.create 4 in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer buffer) in
-  ignore (Uutf.encode encoder (`Uchar uch));
-  ignore (Uutf.encode encoder `End);
+  let encoder = Uutf.encoder `UTF_8 (`Buffer(buffer)) in
+  Uutf.encode encoder (`Uchar(uch)) |> ignore;
+  Uutf.encode encoder `End |> ignore;
   Buffer.contents buffer
 
 
 let of_uchar_list (uchlst : Uchar.t list) : t =
   let buffer = Buffer.create (List.length uchlst * 4) in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer buffer) in
+  let encoder = Uutf.encoder `UTF_8 (`Buffer(buffer)) in
   List.iter (fun uch ->
-    ignore (Uutf.encode encoder (`Uchar uch))
+    Uutf.encode encoder (`Uchar(uch)) |> ignore
   ) uchlst;
-  ignore (Uutf.encode encoder `End);
+  Uutf.encode encoder `End |> ignore;
   Buffer.contents buffer
