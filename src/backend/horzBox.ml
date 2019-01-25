@@ -527,8 +527,7 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHGFixedFrame(_, _, _, hblst))         -> extract_string hblst
     | HorzPure(PHGInnerFrame(_, _, hblst))            -> extract_string hblst
     | HorzPure(PHGOuterFrame(_, _, hblst))            -> extract_string hblst
-    | HorzDiscretionary(_, hblst1, hblst2, hblst3) ->
-      extract_string hblst1 ^ extract_string hblst2 ^ extract_string hblst3
+    | HorzDiscretionary(_, hblst0, _, _)              -> extract_string hblst0
     | HorzFrameBreakable(_, _, _, _, _, _, _, hblst)  -> extract_string hblst
     | HorzScriptGuard(_, hblst)                       -> extract_string hblst
     | _ -> ""
