@@ -474,7 +474,8 @@ let get_metrics_of_evaled_horz_box ((wid, evhbmain) : evaled_horz_box) : length 
     | EvHorzHookPageBreak(_, _)
         -> (Length.zero, Length.zero)
 
-    | EvHorzInlineImage(h, _) -> (h, Length.zero)
+    | EvHorzInlineImage(h, _) ->
+        (h, Length.zero)
 
     | EvHorzString(_, h, d, _)
     | EvHorzRising(h, d, _, _)
@@ -501,7 +502,8 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
   imhblst |> List.fold_left (fun (wid, hgt, dpt) imhb ->
     let (w, h, d) =
       match imhb with
-      | ImHorz(evhb) -> get_metrics_of_evaled_horz_box evhb
+      | ImHorz(evhb) ->
+          get_metrics_of_evaled_horz_box evhb
 
       | ImHorzHookPageBreak(_)
       | ImHorzFootnote(_)
@@ -521,15 +523,15 @@ let get_metrics_of_intermediate_horz_box_list (imhblst : intermediate_horz_box l
 let rec extract_string (hblst : horz_box list) : string =
   let rec extract_one hb =
     match hb with
-    | HorzPure(PHCInnerString(_, uchlst))             -> string_of_uchlst uchlst
-    | HorzPure(PHCInnerMathGlyph(_, _, _, _, otxt))   -> ""
-    | HorzPure(PHGRising(_, hblst))                   -> extract_string hblst
-    | HorzPure(PHGFixedFrame(_, _, _, hblst))         -> extract_string hblst
-    | HorzPure(PHGInnerFrame(_, _, hblst))            -> extract_string hblst
-    | HorzPure(PHGOuterFrame(_, _, hblst))            -> extract_string hblst
-    | HorzDiscretionary(_, hblst0, _, _)              -> extract_string hblst0
-    | HorzFrameBreakable(_, _, _, _, _, _, _, hblst)  -> extract_string hblst
-    | HorzScriptGuard(_, hblst)                       -> extract_string hblst
-    | _ -> ""
+    | HorzPure(PHCInnerString(_, uchlst))            -> string_of_uchlst uchlst
+    | HorzPure(PHCInnerMathGlyph(_, _, _, _, otxt))  -> ""
+    | HorzPure(PHGRising(_, hblst))                  -> extract_string hblst
+    | HorzPure(PHGFixedFrame(_, _, _, hblst))        -> extract_string hblst
+    | HorzPure(PHGInnerFrame(_, _, hblst))           -> extract_string hblst
+    | HorzPure(PHGOuterFrame(_, _, hblst))           -> extract_string hblst
+    | HorzDiscretionary(_, hblst0, _, _)             -> extract_string hblst0
+    | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
+    | HorzScriptGuard(_, hblst)                      -> extract_string hblst
+    | _                                              -> ""
   in
     String.concat "" (List.map extract_one hblst)
