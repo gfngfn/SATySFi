@@ -238,7 +238,7 @@ module GlyphIDTable
     val add : Uchar.t -> original_glyph_id -> t -> unit
     val find_opt : Uchar.t -> t -> glyph_id_pair option
     val find_rev_opt : original_glyph_id -> t -> Uchar.t option
-    val fold_rev : (original_glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
+    val fold_rev : (subset_glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
@@ -247,18 +247,18 @@ module GlyphIDTable
 
     let create submap n =
       let ht = UHt.create n in
-      let revht = GHt.create n in
+      let revsubht = GHt.create n in
       let revorght = GHt.create n in
-      (submap, ht, revht, revorght)
+      (submap, ht, revsubht, revorght)
 
 
-    let add uch gidorg (submap, ht, revht, revorght) =
+    let add uch gidorg (submap, ht, revsubht, revorght) =
       begin
         let gidsub = submap |> SubsetMap.intern gidorg in
         UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
-        match GHt.find_opt revht gidsub with
+        match GHt.find_opt revsubht gidsub with
         | None ->
-            GHt.add revht gidsub uch;
+            GHt.add revsubht gidsub uch;
             GHt.add revorght gidorg uch
 
         | Some(uchpre) ->
@@ -279,8 +279,8 @@ module GlyphIDTable
       GHt.find_opt revorght gidorg
 
 
-    let fold_rev f init (_, _, revht, _) =
-      GHt.fold f revht init
+    let fold_rev f gidsub (_, _, revsubht, _) =
+      GHt.fold f revsubht gidsub
 
   end
 
@@ -1695,8 +1695,8 @@ module Type0
       ligtbl |> LigatureTable.fold_rev (fun gidlig gidlst () ->
         try
           let uchlst =
-            gidlst |> List.map (fun gid ->
-              match gidtbl |> GlyphIDTable.find_rev_opt gid with
+            gidlst |> List.map (fun gidorg ->
+              match gidtbl |> GlyphIDTable.find_rev_opt gidorg with
               | None      -> raise Exit
               | Some(uch) -> uch
             )
