@@ -2248,6 +2248,21 @@ InputHorzWithEnvironment([ImInputHorzText(str)], env)
         ~code:{|
 CompiledInputHorzWithEnvironment([CompiledImInputHorzText(str)], env)
 |}
+    ; inst "PrimitiveExtract"
+        ~name:"extract-string"
+        ~type_:{|
+~% (tIB @-> tS)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hblst" ~type_:"horz";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+StringConstant(HorzBox.extract_string hblst)
+|}
     ; inst "PrimitiveGetAxisHeight"
         ~name:"get-axis-height"
         ~type_:{|
@@ -2631,6 +2646,26 @@ IntegerConstant(BatUTF8.length str)
         ~is_text_mode_primitive:true
         ~code:{|
 IntegerConstant(String.length str)
+|}
+    ; inst "PrimitiveStringScan"
+        ~name:"string-scan"
+        ~type_:{|
+~% (tRE @-> tS @-> tOPT (tPROD [tS; tS]))
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "pat" ~type_:"regexp";
+          param "str" ~type_:"string";
+        ]
+        ~code:{|
+if Str.string_match pat str 0 then
+  let matched = Str.matched_string str in
+  let start   = String.length matched in
+  let rest    = String.sub str start (String.length str - start) in
+  Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+else
+  Constructor("None", UnitConstant)
 |}
     ; inst "PrimitiveStringUnexplode"
         ~name:"string-unexplode"
@@ -3246,6 +3281,7 @@ FloatConstant(atan2 flt1 flt2)
           param "len2" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
         ~code:{|
 LengthConstant(HorzBox.(len1 +% len2))
 |}
@@ -3261,6 +3297,7 @@ LengthConstant(HorzBox.(len1 +% len2))
           param "len2" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
         ~code:{|
 LengthConstant(HorzBox.(len1 -% len2))
 |}
@@ -3276,6 +3313,7 @@ LengthConstant(HorzBox.(len1 -% len2))
           param "flt2" ~type_:"float";
         ]
         ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
         ~code:{|
 LengthConstant(HorzBox.(len1 *% flt2))
 |}
@@ -3291,6 +3329,7 @@ LengthConstant(HorzBox.(len1 *% flt2))
           param "len2" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
         ~code:{|
 FloatConstant(HorzBox.(len1 /% len2))
 |}
@@ -3403,5 +3442,79 @@ let hblst2 = ctx.HorzBox.after_word_break in
 match CrossRef.probe k with
 | None    -> Constructor("None", UnitConstant)
 | Some(v) -> Constructor("Some", StringConstant(v))
+|}
+    ; inst "BackendRegisterDestination"
+        ~name:"register-destination"
+        ~type_:{|
+~% (tS @-> tPT @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "name" ~type_:"string";
+          param "p" ~type_:"point";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+NamedDest.register name p;
+UnitConstant
+|}
+    ; inst "BackendRegisterLinkToUri"
+        ~name:"register-link-to-uri"
+        ~type_:{|
+~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "uri" ~type_:"string";
+          param "pt" ~type_:"point";
+          param "wid" ~type_:"length";
+          param "hgt" ~type_:"length";
+          param "dpt" ~type_:"length";
+          param "vborderopt";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let borderopt = get_option (get_pair get_length get_color) vborderopt in
+Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
+UnitConstant
+|}
+    ; inst "BackendRegisterLinkToLocation"
+        ~name:"register-link-to-location"
+        ~type_:{|
+~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "name" ~type_:"string";
+          param "pt" ~type_:"point";
+          param "wid" ~type_:"length";
+          param "hgt" ~type_:"length";
+          param "dpt" ~type_:"length";
+          param "vborderopt";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let borderopt = get_option (get_pair get_length get_color) vborderopt in
+let destname = NamedDest.get name in
+Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+UnitConstant
+|}
+    ; inst "BackendRegisterOutline"
+        ~name:"register-outline"
+        ~type_:{|
+~% ((tL(tPROD [tI; tS; tS; tB])) @-> tU)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "ol";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Outline.register (get_list get_outline ol);
+UnitConstant
 |}
     ])
