@@ -7,6 +7,8 @@ module Gr : sig
   val rectangle : point -> point -> path
   val rectangle-round       : length -> point -> point -> path
   val rectangle-round-left  : length -> point -> point -> path
+  val rectangle-round-left-lower : length -> point -> point -> path
+  val rectangle-round-left-upper : length -> point -> point -> path
   val rectangle-round-right : length -> point -> point -> path
   val poly-line : point -> point list -> path
   val polygon : point -> point list -> path
@@ -60,6 +62,34 @@ end = struct
         |> close-with-line
 
 
+  let rectangle-round-left-lower r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = length-min xA xB in
+    let x2 = length-max xA xB in
+    let y1 = length-min yA yB in
+    let y2 = length-max yA yB in
+      start-path                                 (x1, y1 +' r)
+        |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+        |> line-to                               (x2, y1)
+        |> line-to                               (x2, y2)
+        |> line-to                               (x1, y2)
+        |> close-with-line
+
+
+  let rectangle-round-left-upper r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = length-min xA xB in
+    let x2 = length-max xA xB in
+    let y1 = length-min yA yB in
+    let y2 = length-max yA yB in
+      start-path                                 (x1, y1)
+        |> line-to                               (x2, y1)
+        |> line-to                               (x2, y2)
+        |> line-to                               (x1 +' r, y2)
+        |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y1 -' t)
+        |> close-with-line
+
+
   let rectangle-round-right r (xA, yA) (xB, yB) =
     let t = r *' 0.4 in
     let x1 = length-min xA xB in
@@ -84,7 +114,7 @@ end = struct
   let polygon ptinit ptlst =
     ptlst |> List.fold-left (fun acc pt -> (
       acc |> line-to pt
-    )) (start-path ptinit) |> terminate-path
+    )) (start-path ptinit) |> close-with-line
 
 
   let line pt1 pt2 =

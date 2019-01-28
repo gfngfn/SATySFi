@@ -8,17 +8,12 @@
 # `gen_code.rb` generates OCaml source code and
 # type declarations for
 #
-# * `types_template.ml`,
-# * `ir_template.ml`,
-# * `evaluator_template.ml`, and
-# * `vm_template.ml`.
+# * `types.cppo.ml`,
+# * `primitives.cppo.ml`,
+# * `ir.cppo.ml`,
+# * `evaluator.cppo.ml`, and
+# * `vm.cppo.ml`.
 #
-# Final source files that `gen_code.rb` generates are
-#
-# * `types_.ml`,
-# * `ir_.ml`,
-# * `evaluator_.ml`, and
-# * `vm_.ml`.
 #
 # To add a new primitive,
 #   1. Add a new instruction definition to this file.
@@ -32,8 +27,8 @@
 # needs-reducef: Use `reducef` for evaluating applications (default: no)
 # suppress-pp:   Use a simple pritty printer (default: no)
 # custom-pp:     Specify custom pritty printer
-# no-ircode:     Suppress code generation for `ir_.ml` (default: no)
-# no-interp:     Suppress code generation for `evaluator_.ml` (default: !`is-pdf-mode-primitive`)
+# no-ircode:     Suppress code generation for `ir.ml` (default: no)
+# no-interp:     Suppress code generation for `evaluator.ml` (default: !`is-pdf-mode-primitive`)
 # name:          Identifier for the primitive
 # type:          Type expression for the primitive
 # fields:        Field list (for `abstract_tree` type)
@@ -2046,6 +2041,18 @@ code-interp: |
   InputHorzWithEnvironment([ImInputHorzText(str)], env)
 
 ---
+inst: PrimitiveExtract
+is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
+name: "extract-string"
+type: |
+  ~% (tIB @-> tS)
+params:
+  - hblst : horz
+code: |
+  StringConstant(HorzBox.extract_string hblst)
+
+---
 inst: PrimitiveGetAxisHeight
 is-pdf-mode-primitive: yes
 name: "get-axis-height"
@@ -2384,6 +2391,25 @@ params:
 - str : string
 code: |
   IntegerConstant(String.length str)
+
+---
+inst: PrimitiveStringScan
+is-primitive: yes
+name: "string-scan"
+type: |
+  ~% (tRE @-> tS @-> tOPT (tPROD [tS; tS]))
+
+params:
+- pat : regexp
+- str : string
+code: |
+  if Str.string_match pat str 0 then
+    let matched = Str.matched_string str in
+    let start   = String.length matched in
+    let rest    = String.sub str start (String.length str - start) in
+    Constructor("Some", TupleCons(StringConstant(matched), TupleCons(StringConstant(rest), EndOfTuple)))
+  else
+    Constructor("None", UnitConstant)
 
 ---
 inst: PrimitiveStringUnexplode
@@ -2917,6 +2943,7 @@ code: |
 ---
 inst: LengthPlus
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "+'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2930,6 +2957,7 @@ code: |
 ---
 inst: LengthMinus
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "-'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2943,6 +2971,7 @@ code: |
 ---
 inst: LengthTimes
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "*'"
 type: |
   ~% (tLN @-> tFL @-> tLN)
@@ -2956,6 +2985,7 @@ code: |
 ---
 inst: LengthDivides
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "/'"
 type: |
   ~% (tLN @-> tLN @-> tFL)
@@ -3062,3 +3092,71 @@ code: |
   match CrossRef.probe k with
   | None    -> Constructor("None", UnitConstant)
   | Some(v) -> Constructor("Some", StringConstant(v))
+
+---
+inst: BackendRegisterDestination
+is-pdf-mode-primitive: yes
+name: "register-destination"
+type: |
+  ~% (tS @-> tPT @-> tU)
+
+params:
+- name : string
+- p : point
+
+code: |
+  NamedDest.register name p;
+  UnitConstant
+
+---
+inst: BackendRegisterLinkToUri
+is-pdf-mode-primitive: yes
+name: "register-link-to-uri"
+type: |
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+
+params:
+- uri : string
+- pt : point
+- wid : length
+- hgt : length
+- dpt : length
+- vborderopt
+
+code: |
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
+  UnitConstant
+
+---
+inst: BackendRegisterLinkToLocation
+is-pdf-mode-primitive: yes
+name: "register-link-to-location"
+type: |
+  ~% (tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
+
+params:
+- name : string
+- pt : point
+- wid : length
+- hgt : length
+- dpt : length
+- vborderopt
+
+code: |
+  let borderopt = get_option (get_pair get_length get_color) vborderopt in
+  let destname = NamedDest.get name in
+  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+  UnitConstant
+
+---
+inst: BackendRegisterOutline
+is-pdf-mode-primitive : yes
+name: "register-outline"
+type: |
+  ~% ((tL(tPROD [tI; tS; tS; tB])) @-> tU)
+params:
+  - ol
+code: |
+  Outline.register (get_list get_outline ol);
+  UnitConstant

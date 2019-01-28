@@ -2,18 +2,14 @@
 open MyUtil
 open CharBasis
 
+module YS = Yojson.SafePos
+module MYU = MyYojsonUtil
+
 
 type dir_path = string
 type file_path = string
 
-exception InvalidYOJSON               of file_path * string
-exception OtherThanDictionary         of file_path
-exception NotProvidingExceptionList   of file_path
-exception ExceptionListOtherThanArray of file_path
-exception InvalidExceptionElement     of file_path
-exception NotProvidingPatternList     of file_path
-exception PatternListOtherThanArray   of file_path
-exception InvalidPatternElement       of file_path
+exception InvalidPatternElement of Range.t
 
 
 module ExceptionMap = Map.Make(String)
@@ -39,26 +35,20 @@ type answer =
   | Fractions of (uchar_segment list) list
 
 
-let read_exception_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : exception_map =
-  match jsonarr with
-  | `List(jsonlst) ->
-      jsonlst |> List.fold_left (fun mapacc json ->
-        match json with
-        | `Tuple[`String(wordfrom); `List(jsonlstto)] ->
-            let fraclstto =
-              jsonlstto |> List.map (function
-                | `String(fracto) -> fracto
-                | _               -> raise (InvalidExceptionElement(srcpath))
-              )
-            in
-            mapacc |> ExceptionMap.add wordfrom fraclstto
+let read_exception_list (json : YS.json) : exception_map =
+  let jsonlst = json |> YS.Util.to_list in
+  jsonlst |> List.fold_left (fun mapacc json ->
+    match json with
+    | (_, `Tuple[json1; json2]) ->
+        let wordfrom = json1 |> YS.Util.to_string in
+        let jsonlstto = json2 |> YS.Util.to_list in
+        let fraclstto = jsonlstto |> List.map YS.Util.to_string in
+        mapacc |> ExceptionMap.add wordfrom fraclstto
 
-        | _ ->
-            raise (InvalidExceptionElement(srcpath))
-      ) ExceptionMap.empty
+    | _ ->
+        raise (YS.Util.Type_error("Expects pair", json))
 
-  | _ ->
-      raise (ExceptionListOtherThanArray(srcpath))
+  ) ExceptionMap.empty
 
 
 let numeric (uch : Uchar.t) : number option =
@@ -71,12 +61,12 @@ let numeric (uch : Uchar.t) : number option =
       None
 
 
-let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
+let convert_pattern (rng : Range.t) (strpat : string) : pattern =
   let uchlstraw = InternalText.to_uchar_list (InternalText.of_utf8 strpat) in
   let (beginning, uchlstsub) =
       match uchlstraw with
       | [] ->
-          raise (InvalidPatternElement(srcpath))
+          raise (InvalidPatternElement(rng))
 
       | uch0 :: uchtail ->
           if uch0 = Uchar.of_char '.' then
@@ -89,7 +79,7 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
   let (final, uchlst) =
     match List.rev uchlstsub with
     | [] ->
-        raise (InvalidPatternElement(srcpath))
+        raise (InvalidPatternElement(rng))
 
     | uchL :: uchrest ->
         if uchL = Uchar.of_char '.' then
@@ -132,42 +122,29 @@ let convert_pattern (srcpath : file_path) (strpat : string) : pattern =
     (beginning, pairlst, final)
 
 
-let read_pattern_list (srcpath : file_path) (jsonarr : Yojson.Safe.json) : pattern list =
-  match jsonarr with
-  | `List(jsonlst) ->
-      jsonlst |> List.map (function
-        | `String(strpat) -> convert_pattern srcpath strpat
-        | _               -> raise (InvalidPatternElement(srcpath))
-      )
-
-  | _ ->
-      raise (PatternListOtherThanArray(srcpath))
+let read_pattern_list (json : YS.json) : pattern list =
+  let jsons = json |> YS.Util.to_list  in
+  jsons |> List.map (fun ((pos, _) as json) ->
+    let rng = MYU.make_range pos in
+    convert_pattern rng (YS.Util.to_string json)
+  )
 
 
-let read_assoc (srcpath : file_path) (assoc : (string * Yojson.Safe.json) list) : t =
-  let excpmap =
-    match assoc |> List.assoc_opt "exceptions" with
-    | None          -> raise (NotProvidingExceptionList(srcpath))
-    | Some(jsonarr) -> read_exception_list srcpath jsonarr
-  in
-  let hyphpatlst =
-    match assoc |> List.assoc_opt "patterns" with
-    | None          -> raise (NotProvidingPatternList(srcpath))
-    | Some(jsonarr) -> read_pattern_list srcpath jsonarr
-  in
-    (excpmap, hyphpatlst)
+let read_assoc (assoc : MYU.assoc) : t =
+  let excpmap = assoc |> MYU.find "exceptions" |> read_exception_list in
+  let hyphpatlst = assoc |> MYU.find "patterns" |> read_pattern_list in
+  (excpmap, hyphpatlst)
 
 
 let main (filename : file_path) : t =
   let srcpath = Config.resolve_dist_file (Filename.concat "dist/hyph" filename) in
     try
-      let json = Yojson.Safe.from_file srcpath in
-          (* -- may raise 'Sys_error', or 'Yojson.Json_error' -- *)
-        match json with
-        | `Assoc(assoc) -> read_assoc srcpath assoc
-        | json_other    -> raise (OtherThanDictionary(srcpath))
+      let json = YS.from_file ~fname:srcpath srcpath in
+        (* -- may raise 'Sys_error'  -- *)
+      let assoc = json |> MYU.make_assoc in
+      read_assoc assoc
     with
-    | Yojson.Json_error(msg) -> raise (InvalidYOJSON(srcpath, msg))
+    | Yojson.Json_error(msg) -> MYU.syntax_error srcpath msg
 
 
 let empty = (ExceptionMap.empty, [])

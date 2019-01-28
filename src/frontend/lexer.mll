@@ -1,5 +1,4 @@
 {
-  module Types = Types_
   open Types
   open Parser
 
@@ -66,20 +65,23 @@
   let rec increment_line_for_each_break lexbuf str =
     let len = String.length str in
     let has_break = ref false in
-    let rec aux num tail_spaces =
+    let rec aux num tail_spaces prev =
       if num >= len then tail_spaces else
         begin
-          match String.get str num with
-          | ( '\n' | '\r' ) ->
+          match (prev, String.get str num) with
+          | (Some('\r'), '\n') ->
+              aux (num + 1) (tail_spaces + 1) (Some('\n'))
+
+          | (_, (('\n' | '\r') as c)) ->
               has_break := true;
               increment_line lexbuf;
-              aux (num + 1) 0
+              aux (num + 1) 0 (Some(c))
 
           | _ ->
-              aux (num + 1) (tail_spaces + 1)
+              aux (num + 1) (tail_spaces + 1) None
         end;
     in
-    let amt = aux 0 0 in
+    let amt = aux 0 0 None in
       if !has_break then
         adjust_bol lexbuf (-amt)
       else
@@ -109,7 +111,7 @@
 }
 
 let space = [' ' '\t']
-let break = ['\n' '\r']
+let break = ('\r' '\n' | '\n' | '\r')
 let nonbreak = [^ '\n' '\r']
 let nzdigit = ['1'-'9']
 let digit = (nzdigit | "0")

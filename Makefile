@@ -80,6 +80,8 @@ install: $(TARGET)
 	install -m 644 lib-satysfi/dist/hyph/* $(LIBDIR)/dist/hyph
 	install -d $(LIBDIR)/dist/packages
 	install -m 644 lib-satysfi/dist/packages/* $(LIBDIR)/dist/packages
+	install -d $(LIBDIR)/dist/md
+	install -m 644 lib-satysfi/dist/md/* $(LIBDIR)/dist/md
 
 #preliminary:
 #	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"

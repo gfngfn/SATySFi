@@ -1,5 +1,4 @@
 
-module Types = Types_
 open LengthInterface
 open GraphicBase
 open Types
@@ -312,7 +311,13 @@ let get_option (getf : syntactic_value -> 'a) (value : syntactic_value) : 'a opt
   match value with
   | Constructor("None", UnitConstant) -> None
   | Constructor("Some", valuesub)     -> Some(getf valuesub)
-  | _                                 -> report_bug_vm "interpret_option"
+  | _                                 -> report_bug_vm "get_option"
+
+
+let get_pair (getf1 : syntactic_value -> 'a) (getf2 : syntactic_value -> 'b) (value : syntactic_value) : 'a * 'b =
+  match value with
+  | TupleCons(v1, TupleCons(v2, EndOfTuple)) -> (getf1 v1, getf2 v2)
+  | _                                        -> report_bug_vm "get_pair"
 
 
 let get_page_size (value : syntactic_value) : HorzBox.page_size =
@@ -473,6 +478,16 @@ let get_math_variant_style value =
             })
 
     | _ -> report_bug_value "get_math_variant_style: missing some fields" value
+
+
+let get_outline (value : syntactic_value) =
+  match value with
+  | TupleCons(IntegerConstant(level),
+      TupleCons(StringConstant(text),
+        TupleCons(StringConstant(key),
+          TupleCons(BooleanConstant(isopen), EndOfTuple)))) ->
+    (level, text, key, isopen)
+  | _ -> report_bug_value "get_outline" value
 
 
 let make_page_break_info pbinfo =

@@ -7,7 +7,7 @@
     failwith msg;
 
 
-  open Types_
+  open Types
 
   type literal_reading_state = Normal | ReadingSpace
   type 'a range_kind =
@@ -389,22 +389,22 @@
       InternalText.to_utf8 (InternalText.of_uchar_list uchlst)
 %}
 
-%token <Range.t * Types_.var_name> VAR
-%token <Range.t * Types_.ctrlseq_name> HORZCMD
-%token <Range.t * Types_.ctrlseq_name> VERTCMD
-%token <Range.t * Types_.ctrlseq_name> MATHCMD
-%token <Range.t * (Types_.module_name list) * Types_.var_name> VARWITHMOD
-%token <Range.t * (Types_.module_name list) * Types_.ctrlseq_name> HORZCMDWITHMOD
-%token <Range.t * (Types_.module_name list) * Types_.ctrlseq_name> VERTCMDWITHMOD
-%token <Range.t * (Types_.module_name list) * Types_.ctrlseq_name> MATHCMDWITHMOD
-%token <Range.t * (Types_.module_name list) * Types_.ctrlseq_name> VARINHORZ
-%token <Range.t * (Types_.module_name list) * Types_.ctrlseq_name> VARINVERT
-%token <Range.t * (Types_.module_name list) * Types_.var_name> VARINMATH
-%token <Range.t * Types_.var_name> TYPEVAR
-%token <Range.t * Types_.constructor_name> CONSTRUCTOR
+%token <Range.t * Types.var_name> VAR
+%token <Range.t * Types.ctrlseq_name> HORZCMD
+%token <Range.t * Types.ctrlseq_name> VERTCMD
+%token <Range.t * Types.ctrlseq_name> MATHCMD
+%token <Range.t * (Types.module_name list) * Types.var_name> VARWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> HORZCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VERTCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> MATHCMDWITHMOD
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINHORZ
+%token <Range.t * (Types.module_name list) * Types.ctrlseq_name> VARINVERT
+%token <Range.t * (Types.module_name list) * Types.var_name> VARINMATH
+%token <Range.t * Types.var_name> TYPEVAR
+%token <Range.t * Types.constructor_name> CONSTRUCTOR
 %token <Range.t * int> INTCONST
 %token <Range.t * float> FLOATCONST
-%token <Range.t * float * Types_.length_unit_name> LENGTHCONST
+%token <Range.t * float * Types.length_unit_name> LENGTHCONST
 %token <Range.t * string> CHAR
 %token <Range.t * string * bool * bool> LITERAL
 %token <Range.t> SPACE BREAK
@@ -413,15 +413,15 @@
 %token <Range.t> SUBSCRIPT SUPERSCRIPT
 %token <Range.t> LAMBDA ARROW COMMAND
 %token <Range.t> LETREC LETNONREC DEFEQ LETAND IN OPEN
-%token <Range.t * Types_.module_name> OPENMODULE
+%token <Range.t * Types.module_name> OPENMODULE
 %token <Range.t> MODULE STRUCT END DIRECT SIG VAL CONSTRAINT
 %token <Range.t> TYPE OF MATCH WITH BAR WILDCARD WHEN AS COLON
 %token <Range.t> LETMUTABLE OVERWRITEEQ
 %token <Range.t> LETHORZ LETVERT LETMATH
 %token <Range.t> IF THEN ELSE
-%token <Range.t * Types_.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
-%token <Range.t * Types_.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
-%token <Range.t * Types_.var_name> UNOP_EXCLAM
+%token <Range.t * Types.var_name> BINOP_TIMES BINOP_DIVIDES BINOP_PLUS BINOP_MINUS
+%token <Range.t * Types.var_name> BINOP_HAT BINOP_AMP BINOP_BAR BINOP_GT BINOP_LT BINOP_EQ
+%token <Range.t * Types.var_name> UNOP_EXCLAM
 %token <Range.t> EXACT_MINUS EXACT_TIMES MOD BEFORE LNOT
 %token <Range.t> LPAREN RPAREN
 %token <Range.t> BVERTGRP EVERTGRP
@@ -472,49 +472,49 @@
 *)
 
 %start main
-%type <Types_.header_element list * Types_.untyped_abstract_tree> main
-%type <Types_.untyped_abstract_tree> nxlet
-%type <Types_.untyped_abstract_tree> nxletsub
-%type <Types_.untyped_letrec_binding list> nxrecdec
-%type <Types_.untyped_let_binding> nxnonrecdec
-%type <Types_.untyped_abstract_tree> nxbfr
-%type <Types_.untyped_abstract_tree> nxwhl
-%type <Types_.untyped_abstract_tree> nxif
-%type <Types_.untyped_abstract_tree> nxlor
-%type <Types_.untyped_abstract_tree> nxland
-%type <Types_.untyped_abstract_tree> nxcomp
-%type <Types_.untyped_abstract_tree> nxconcat
-%type <Types_.untyped_abstract_tree> nxlplus
-%type <Types_.untyped_abstract_tree> nxltimes
-%type <Types_.untyped_abstract_tree> nxrplus
-%type <Types_.untyped_abstract_tree> nxrtimes
-%type <Types_.untyped_abstract_tree> nxun
-%type <Types_.untyped_abstract_tree> nxapp
-%type <Types_.untyped_abstract_tree> nxbot
-%type <Types_.untyped_abstract_tree> tuple
-%type <Range.t * Types_.untyped_pattern_branch list> pats
-%type <Types_.untyped_pattern_tree> patas
-%type <Types_.untyped_pattern_tree> patbot
-%type <Types_.untyped_abstract_tree> nxlist
-%type <Types_.untyped_abstract_tree> sxsep
-%type <Types_.untyped_abstract_tree> sxblock
-%type <Types_.untyped_abstract_tree> vxblock
-%type <Types_.untyped_input_vert_element> vxbot
-%type <Types_.var_name * Types_.manual_kind> constrnt
-%type <Types_.constraints> constrnts
+%type <Types.header_element list * Types.untyped_abstract_tree> main
+%type <Types.untyped_abstract_tree> nxlet
+%type <Types.untyped_abstract_tree> nxletsub
+%type <Types.untyped_letrec_binding list> nxrecdec
+%type <Types.untyped_let_binding> nxnonrecdec
+%type <Types.untyped_abstract_tree> nxbfr
+%type <Types.untyped_abstract_tree> nxwhl
+%type <Types.untyped_abstract_tree> nxif
+%type <Types.untyped_abstract_tree> nxlor
+%type <Types.untyped_abstract_tree> nxland
+%type <Types.untyped_abstract_tree> nxcomp
+%type <Types.untyped_abstract_tree> nxconcat
+%type <Types.untyped_abstract_tree> nxlplus
+%type <Types.untyped_abstract_tree> nxltimes
+%type <Types.untyped_abstract_tree> nxrplus
+%type <Types.untyped_abstract_tree> nxrtimes
+%type <Types.untyped_abstract_tree> nxun
+%type <Types.untyped_abstract_tree> nxapp
+%type <Types.untyped_abstract_tree> nxbot
+%type <Types.untyped_abstract_tree> tuple
+%type <Range.t * Types.untyped_pattern_branch list> pats
+%type <Types.untyped_pattern_tree> patas
+%type <Types.untyped_pattern_tree> patbot
+%type <Types.untyped_abstract_tree> nxlist
+%type <Types.untyped_abstract_tree> sxsep
+%type <Types.untyped_abstract_tree> sxblock
+%type <Types.untyped_abstract_tree> vxblock
+%type <Types.untyped_input_vert_element> vxbot
+%type <Types.var_name * Types.manual_kind> constrnt
+%type <Types.constraints> constrnts
 (*
-%type <Types_.untyped_abstract_tree> sxclsnm
-%type <Types_.untyped_abstract_tree> sxidnm
+%type <Types.untyped_abstract_tree> sxclsnm
+%type <Types.untyped_abstract_tree> sxidnm
 *)
-%type <Types_.untyped_command_argument> narg
-%type <Types_.untyped_command_argument> sarg
-%type <Types_.untyped_pattern_tree list> argpats
-%type <Range.t * Types_.var_name> binop
-%type <Types_.untyped_unkinded_type_argument list> xpltyvars
-%type <Types_.manual_type option * untyped_pattern_tree list> recdecargpart
-%type <Types_.manual_type option * untyped_argument list> nonrecdecargpart
+%type <Types.untyped_command_argument> narg
+%type <Types.untyped_command_argument> sarg
+%type <Types.untyped_pattern_tree list> argpats
+%type <Range.t * Types.var_name> binop
+%type <Types.untyped_unkinded_type_argument list> xpltyvars
+%type <Types.manual_type option * untyped_pattern_tree list> recdecargpart
+%type <Types.manual_type option * untyped_argument list> nonrecdecargpart
 %type <Range.t * manual_type list * (module_name list * type_name)> txapp
-%type <Range.t * module_name list * Types_.type_name> txbot
+%type <Range.t * module_name list * Types.type_name> txbot
 
 %%
 
@@ -990,13 +990,13 @@ patas:
   | pattr AS VAR       { make_standard (Ranged $1) (Ranged $3) (UTPAsVariable(extract_name $3, $1)) }
   | pattr              { $1 }
 ;
-pattr: /* -> Types_.untyped_pattern_tree */
+pattr: /* -> Types.untyped_pattern_tree */
   | patbot CONS pattr  { make_standard (Ranged $1) (Ranged $3) (UTPListCons($1, $3)) }
   | CONSTRUCTOR patbot { make_standard (Ranged $1) (Ranged $2) (UTPConstructor(extract_name $1, $2)) }
   | CONSTRUCTOR        { make_standard (Ranged $1) (Ranged $1) (UTPConstructor(extract_name $1, (Range.dummy "constructor-unit-value", UTPUnitConstant))) }
   | patbot             { $1 }
 ;
-patbot: /* -> Types_.untyped_pattern_tree */
+patbot: /* -> Types.untyped_pattern_tree */
   | INTCONST           { make_standard (Ranged $1) (Ranged $1) (UTPIntegerConstant(extract_main $1)) }
   | TRUE               { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(true)) }
   | FALSE              { make_standard (Tok $1) (Tok $1) (UTPBooleanConstant(false)) }
@@ -1006,11 +1006,17 @@ patbot: /* -> Types_.untyped_pattern_tree */
   | LPAREN patas RPAREN                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | LPAREN patas COMMA pattuple RPAREN { make_standard (Tok $1) (Tok $5) (UTPTupleCons($2, $4)) }
   | BLIST ELIST                        { make_standard (Tok $1) (Tok $2) UTPEndOfList }
+  | BLIST patlist ELIST                { make_standard (Tok $1) (Tok $3) (extract_main $2) }
   | tok=LITERAL                        { let (rng, str, pre, post) = tok in make_standard (Tok rng) (Tok rng) (UTPStringConstant(rng, omit_spaces pre post str)) }
 ;
 pattuple: /* -> untyped_pattern_tree */
   | patas                { make_standard (Ranged $1) (Ranged $1) (UTPTupleCons($1, (Range.dummy "end-of-tuple-pattern", UTPEndOfTuple))) }
   | patas COMMA pattuple { make_standard (Ranged $1) (Ranged $3) (UTPTupleCons($1, $3)) }
+;
+patlist: /* -> untyped_pattern_tree */
+  | patas                   { make_standard (Ranged $1) (Ranged $1) (UTPListCons($1, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
+  | patas LISTPUNCT         { make_standard (Ranged $1) (Tok $2) (UTPListCons($1, (Range.dummy "end-of-list-pattern", UTPEndOfList))) }
+  | patas LISTPUNCT patlist { make_standard (Ranged $1) (Ranged $3) (UTPListCons($1, $3)) }
 ;
 binop:
   | UNOP_EXCLAM
@@ -1238,7 +1244,7 @@ sargs:
     }
 ;
 
-sarg: /* -> Types_.untyped_argument_cons */
+sarg: /* -> Types.untyped_argument_cons */
   | opn=BVERTGRP; utast=vxblock; cls=EVERTGRP { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
   | opn=BHORZGRP; utast=sxsep; cls=EHORZGRP   { UTMandatoryArgument(make_standard (Tok opn) (Tok cls) (extract_main utast)) }
 ;

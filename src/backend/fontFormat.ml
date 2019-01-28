@@ -141,15 +141,21 @@ module UHt = Hashtbl.Make
   end)
 
 
-module GHt = Hashtbl.Make
+module GOHt = Hashtbl.Make
   (struct
     type t = original_glyph_id
     let equal = (=)
     let hash = Hashtbl.hash
   end)
 
+type subset_glyph_id = SubsetNumber of Otfm.glyph_id
 
-type subset_glyph_id = Otfm.glyph_id
+module GSHt = Hashtbl.Make
+  (struct
+    type t = subset_glyph_id
+    let equal = (=)
+    let hash = Hashtbl.hash
+  end)
 
 type glyph_id_pair = {
   original_id : original_glyph_id;
@@ -164,12 +170,12 @@ type original_glyph_segment = original_glyph_id * original_glyph_id list
 type glyph_segment = glyph_id * glyph_id list
 
 
-let notdef = SubsetGlyphID(0, 0)
+let notdef = SubsetGlyphID(0, SubsetNumber(0))
 
 
-let hex_of_glyph_id ((SubsetGlyphID(_, gidsub)) : glyph_id) =
-  let b0 = gidsub / 256 in
-  let b1 = gidsub mod 256 in
+let hex_of_glyph_id ((SubsetGlyphID(_, SubsetNumber(n))) : glyph_id) =
+  let b0 = n / 256 in
+  let b1 = n mod 256 in
     Printf.sprintf "%02X%02X" b0 b1
 
 
@@ -184,14 +190,14 @@ module SubsetMap
 = struct
 
     type t =
-      | Subset of subset_glyph_id GHt.t * int ref * (original_glyph_id Alist.t) ref * original_glyph_id GHt.t
+      | Subset of subset_glyph_id GOHt.t * int ref * (original_glyph_id Alist.t) ref * original_glyph_id GSHt.t
       | Dummy
 
 
     let create n =
-      let ht = GHt.create n in
-      let revht = GHt.create n in
-      GHt.add ht 0 0;
+      let ht = GOHt.create n in
+      let revht = GSHt.create n in
+      GOHt.add ht 0 (SubsetNumber(0));
       Subset(ht, ref 0, ref (Alist.extend Alist.empty 0), revht)
 
 
@@ -202,19 +208,19 @@ module SubsetMap
     let intern gidorg submap =
       match submap with
       | Dummy ->
-          gidorg
+          SubsetNumber(gidorg)
 
       | Subset(ht, count, store, revht) ->
           begin
-            match GHt.find_opt ht gidorg with
+            match GOHt.find_opt ht gidorg with
             | Some(gidsub) ->
                 gidsub
 
             | None ->
                 incr count;
-                let gidsub = !count in
-                GHt.add ht gidorg gidsub;
-                GHt.add revht gidsub gidorg;
+                let gidsub = SubsetNumber(!count) in
+                GOHt.add ht gidorg gidsub;
+                GSHt.add revht gidsub gidorg;
                 let alst = Alist.extend (!store) gidorg in
                 store := alst;
                 gidsub
@@ -238,47 +244,49 @@ module GlyphIDTable
     val add : Uchar.t -> original_glyph_id -> t -> unit
     val find_opt : Uchar.t -> t -> glyph_id_pair option
     val find_rev_opt : original_glyph_id -> t -> Uchar.t option
-    val fold_rev : (original_glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
+    val fold_rev : (subset_glyph_id -> Uchar.t -> 'a -> 'a) -> 'a -> t -> 'a
   end
 = struct
 
-    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GHt.t
+    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GSHt.t * Uchar.t GOHt.t
 
 
     let create submap n =
       let ht = UHt.create n in
-      let revht = GHt.create n in
-      (submap, ht, revht)
+      let revsubht = GSHt.create n in
+      let revorght = GOHt.create n in
+      (submap, ht, revsubht, revorght)
 
 
-    let add uch gidorg (submap, ht, revht) =
+    let add uch gidorg (submap, ht, revsubht, revorght) =
       begin
         let gidsub = submap |> SubsetMap.intern gidorg in
         UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
-        match GHt.find_opt revht gidsub with
+        match GSHt.find_opt revsubht gidsub with
         | None ->
-            GHt.add revht gidsub uch
+            GSHt.add revsubht gidsub uch;
+            GOHt.add revorght gidorg uch
 
         | Some(uchpre) ->
             begin
               Format.printf "FontFormat> warning:\n";
               Format.printf "FontFormat> multiple Unicode code points (%d, %d)\n" (Uchar.to_int uchpre) (Uchar.to_int uch);
-              Format.printf "FontFormat> are mapped to the same GID %d.\n" gidsub
+              Format.printf "FontFormat> are mapped to the same GID %d.\n" gidorg
                 (* temporary; should log the warning in a more sophisticated manner *)
             end
       end
 
 
-    let find_opt uch (_, ht, _) =
+    let find_opt uch (_, ht, _, _) =
       UHt.find_opt ht uch
 
 
-    let find_rev_opt gidsub (_, _, revht) =
-      GHt.find_opt revht gidsub
+    let find_rev_opt gidorg (_, _, _, revorght) =
+      GOHt.find_opt revorght gidorg
 
 
-    let fold_rev f init (_, _, revht) =
-      GHt.fold f revht init
+    let fold_rev f gidsub (_, _, revsubht, _) =
+      GSHt.fold f revsubht gidsub
 
   end
 
@@ -296,19 +304,19 @@ module GlyphBBoxTable
   end
 = struct
 
-    type t = (per_mille * bbox) GHt.t
+    type t = (per_mille * bbox) GOHt.t
 
     let create =
-      GHt.create
+      GOHt.create
 
     let add gid pair gmtbl =
-      GHt.add gmtbl gid pair
+      GOHt.add gmtbl gid pair
 
     let find_opt gid gmtbl =
-      GHt.find_opt gmtbl gid
+      GOHt.find_opt gmtbl gid
 
     let fold f init gmtbl =
-      GHt.fold f gmtbl init
+      GOHt.fold f gmtbl init
 
   end
 
@@ -544,7 +552,7 @@ module LigatureTable
     type t
     val create : subset_map -> int -> t
     val add : original_glyph_id -> single list -> t -> unit
-    val fold_rev : (original_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
+    val fold_rev : (subset_glyph_id -> original_glyph_id list -> 'a -> 'a) -> 'a -> t -> 'a
     val match_prefix : original_glyph_segment list -> MarkTable.t -> t -> ligature_matching
   end
 = struct
@@ -557,28 +565,30 @@ module LigatureTable
 
     type t = {
       subset_map  : subset_map;
-      entry_table : (single list) GHt.t;
-      rev_table   : (original_glyph_id list) GHt.t;
+      entry_table : (single list) GOHt.t;
+      rev_table   : (original_glyph_id list) GSHt.t;
     }
 
 
     let create submap n =
-      let htmain = GHt.create n in
-      let htrev = GHt.create n in
+      let htmain = GOHt.create n in
+      let htrev = GSHt.create n in
       { subset_map = submap; entry_table = htmain; rev_table = htrev; }
 
 
     let add gidorg liginfolst ligtbl =
       let htmain = ligtbl.entry_table in
       let htrev = ligtbl.rev_table in
+      let submap = ligtbl.subset_map in
       begin
-        GHt.add htmain gidorg liginfolst;
+        GOHt.add htmain gidorg liginfolst;
         liginfolst |> List.iter (fun single ->
           let gidorgtail = single.tail in
           let gidorglig = single.ligature in
-          match GHt.find_opt htrev gidorglig with
+          let gidsublig = submap |> SubsetMap.intern gidorglig in
+          match GSHt.find_opt htrev gidsublig with
           | None ->
-              GHt.add htrev gidorglig (gidorg :: gidorgtail)
+              GSHt.add htrev gidsublig (gidorg :: gidorgtail)
 
           | Some(_) ->
               begin
@@ -591,7 +601,7 @@ module LigatureTable
 
     let fold_rev f init ligtbl =
       let htrev = ligtbl.rev_table in
-      GHt.fold (fun gidorg gidorglst acc -> f gidorg gidorglst acc) htrev init
+      GSHt.fold (fun gidsub gidorglst acc -> f gidsub gidorglst acc) htrev init
 
 
     (* --
@@ -762,7 +772,7 @@ module LigatureTable
 
             | [] ->
                 begin
-                  match GHt.find_opt mainht gobase with
+                  match GOHt.find_opt mainht gobase with
                   | None ->
                       Match(gobase, [], segorgtail)
 
@@ -1572,19 +1582,19 @@ module ToUnicodeCMap
 : sig
     type t
     val create : unit -> t
-    val add_single : t -> original_glyph_id -> Uchar.t list -> unit
+    val add_single : t -> subset_glyph_id -> Uchar.t list -> unit
     val stringify : t -> string
   end
 = struct
 
-    type t = ((Uchar.t list) GHt.t) array
+    type t = ((Uchar.t list) GSHt.t) array
 
     let create () =
-      Array.init 1024 (fun _ -> GHt.create 32)
+      Array.init 1024 (fun _ -> GSHt.create 32)
 
     let add_single touccmap gid uchlst =
-      let i = gid / 64 in
-      GHt.add (touccmap.(i)) gid uchlst
+      let i = match gid with SubsetNumber(n) -> n / 64 in
+      GSHt.add (touccmap.(i)) gid uchlst
 
     let stringify touccmap =
       let prefix =
@@ -1600,15 +1610,15 @@ module ToUnicodeCMap
       let buf = Buffer.create ((15 + (6 + 512) * 64 + 10) * 1024) in
       Array.iteri (fun i ht ->
         let ht = touccmap.(i) in
-        let num = GHt.length ht in
+        let num = GSHt.length ht in
         if num <= 0 then
           ()
         else
           begin
             Printf.bprintf buf "%d beginbfchar" num;
-            GHt.iter (fun gid uchlst ->
+            GSHt.iter (fun (SubsetNumber(n)) uchlst ->
               let dst = (InternalText.to_utf16be_hex (InternalText.of_uchar_list uchlst)) in
-              Printf.bprintf buf "<%04X><%s>" gid dst
+              Printf.bprintf buf "<%04X><%s>" n dst
             ) ht;
             Printf.bprintf buf "endbfchar ";
           end
@@ -1670,8 +1680,8 @@ module Type0
       let bboxtbl = dcdr.glyph_bbox_table in
       let arr =
         bboxtbl |> GlyphBBoxTable.fold (fun gidorg (PerMille(w), _) acc ->
-          let gidsub = dcdr.subset_map |> SubsetMap.intern gidorg in
-          Pdf.Integer(gidsub) :: Pdf.Array[Pdf.Integer(w)] :: acc
+          let SubsetNumber(n) = dcdr.subset_map |> SubsetMap.intern gidorg in
+          Pdf.Integer(n) :: Pdf.Array[Pdf.Integer(w)] :: acc
         ) []
       in
       let obj = Pdf.Array(arr) in
@@ -1691,8 +1701,8 @@ module Type0
       ligtbl |> LigatureTable.fold_rev (fun gidlig gidlst () ->
         try
           let uchlst =
-            gidlst |> List.map (fun gid ->
-              match gidtbl |> GlyphIDTable.find_rev_opt gid with
+            gidlst |> List.map (fun gidorg ->
+              match gidtbl |> GlyphIDTable.find_rev_opt gidorg with
               | None      -> raise Exit
               | Some(uch) -> uch
             )
@@ -2128,7 +2138,7 @@ let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
   | None ->
       Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch);
         (* temporary; should emit a warning in a more sophisticated manner *)
-      SubsetGlyphID(0, 0)
+      notdef
 
   | Some(gid) -> gid
 

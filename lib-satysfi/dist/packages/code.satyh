@@ -15,9 +15,9 @@ module Code : sig
 
 end = struct
 
-  let code-fill-color = (RGB(0.975, 0.975, 1.))
-  let code-stroke-color = (RGB(0., 0., 0.25))
-  let console-fill-color = (Gray(0.25))
+  let code-fill-color = Gray(0.875)
+  let code-stroke-color = Gray(0.625)
+  let console-fill-color = Gray(0.25)
 
 
   let decoset-code =

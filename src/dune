@@ -12,6 +12,7 @@
             otfm
             uutf
             yojson
+            omd
             )
  (preprocess (pps
               ppx_deriving.show
@@ -22,6 +23,7 @@
 ;; https://github.com/ocaml/dune/issues/109
 (copy_files# backend/*.{ml,mli})
 (copy_files# text-mode/*.{ml,mli})
+(copy_files# md/*.{ml,mli})
 (copy_files# chardecoder/*.{ml,mli})
 (copy_files  chardecoder/*.{mll,mly})
 (copy_files# frontend/*.{ml,mli})
@@ -36,26 +38,26 @@
  (flags (--table --explain)))
 
 (rule
- (targets types_.ml)
- (deps    (:src types_.cppo.ml) __insttype.gen.ml __attype.gen.ml)
+ (targets types.ml)
+ (deps    (:src types.cppo.ml) __insttype.gen.ml __attype.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
- (targets vm_.ml)
- (deps    (:src vm_.cppo.ml) __vm.gen.ml)
+ (targets vm.ml)
+ (deps    (:src vm.cppo.ml) __vm.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
- (targets ir_.ml)
- (deps    (:src ir_.cppo.ml) __ir.gen.ml)
+ (targets ir.ml)
+ (deps    (:src ir.cppo.ml) __ir.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
- (targets evaluator_.ml)
- (deps    (:src evaluator_.cppo.ml) __evaluator.gen.ml)
+ (targets evaluator.ml)
+ (deps    (:src evaluator.cppo.ml) __evaluator.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))
 
 (rule
- (targets primitives_.ml)
- (deps    (:src primitives_.cppo.ml) __primitives_pdf_mode.gen.ml __primitives_text_mode.gen.ml)
+ (targets primitives.ml)
+ (deps    (:src primitives.cppo.ml) __primitives_pdf_mode.gen.ml __primitives_text_mode.gen.ml)
  (action  (run %{bin:cppo} %{src} -o %{targets})))

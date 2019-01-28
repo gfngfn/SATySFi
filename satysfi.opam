@@ -58,7 +58,7 @@ depends: [
   "ocaml" {>= "4.06.0"}
   "batteries"
   "camlimages" {>= "5.0.1"}
-  "camlpdf" {= "2.2.1+satysfi"}
+  "camlpdf" {= "2.2.2+satysfi"}
   "core_kernel" {>= "v0.10.0"}
   "cppo" {build & >= "1.6.4" & < "1.7.0"}
   "depext"
@@ -69,5 +69,6 @@ depends: [
   "ppx_deriving"
   "re" {build}
   "uutf"
-  "yojson"
+  "yojson" {= "1.4.1+satysfi"}
+  "omd"
 ]
