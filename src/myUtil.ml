@@ -14,6 +14,12 @@ let ascii_small_of_index i =
   Uchar.of_int ((Char.code 'a') + i)
 
 
+let string_of_uchlst uchlst =
+  let buffer = Buffer.create ((List.length uchlst) * 4) in
+    List.iter (fun u -> Uutf.Buffer.add_utf_8 buffer u) uchlst;
+    Buffer.contents buffer
+
+
 let rec range i j =
   if i > j then [] else
     i :: (range (i + 1) j)

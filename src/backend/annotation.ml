@@ -25,13 +25,9 @@ let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =
     | Some(l, color) ->
         begin
           match color with
-          | DeviceRGB(r, g, b) ->
-              (l, Some((int_of_float r, int_of_float g, int_of_float b)))
-
-          | _ ->
-              Format.printf "! [Warning] border color other than RGB; ignored\n";
-                (* temporary; should warn in a more sophisticated manner *)
-              (Length.zero, None)
+          | DeviceGray(gray)       -> (l, Some(Pdfannot.DeviceGray(gray)))
+          | DeviceRGB(r, g, b)     -> (l, Some(Pdfannot.DeviceRGB(r, g, b)))
+          | DeviceCMYK(c, m, y, k) -> (l, Some(Pdfannot.DeviceCMYK(c, m, y, k)))
         end
 
     | _ ->
