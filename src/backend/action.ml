@@ -5,25 +5,11 @@ type t =
   | Uri      of string
 
 
-let pdfobject_of_action = function
-  | Goto(dest) ->
-      let destobj = Pdfdest.pdfobject_of_destination dest in
-      Pdf.Dictionary[
-        ("/Type", Pdf.Name "/Action");
-        ("/S"   , Pdf.Name "/GoTo");
-        ("/D"   , destobj);
-      ]
-
-  | GotoName(destname) ->
-      Pdf.Dictionary[
-        ("/Type", Pdf.Name "/Action");
-        ("/S"   , Pdf.Name "/GoTo");
-        ("/D"   , Pdf.Name ("/" ^ destname));
-      ]
-
-  | Uri(uri) ->
-      Pdf.Dictionary[
-        ("/Type", Pdf.Name "/Action");
-        ("/S"   , Pdf.Name "/URI");
-        ("/URI", Pdf.String uri);
-      ]
+let pdfobject_of_action act =
+  let pdfact =
+    match act with
+    | Goto(dest)         -> Pdfaction.Goto(dest)
+    | GotoName(destname) -> Pdfaction.GotoName(destname)
+    | Uri(uri)           -> Pdfaction.Uri(uri)
+  in
+  Pdfaction.pdfobject_of_action pdfact
