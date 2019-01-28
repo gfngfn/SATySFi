@@ -2943,6 +2943,7 @@ code: |
 ---
 inst: LengthPlus
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "+'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2956,6 +2957,7 @@ code: |
 ---
 inst: LengthMinus
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "-'"
 type: |
   ~% (tLN @-> tLN @-> tLN)
@@ -2969,6 +2971,7 @@ code: |
 ---
 inst: LengthTimes
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "*'"
 type: |
   ~% (tLN @-> tFL @-> tLN)
@@ -2982,6 +2985,7 @@ code: |
 ---
 inst: LengthDivides
 is-pdf-mode-primitive: yes
+is-text-mode-primitive: yes
 name: "/'"
 type: |
   ~% (tLN @-> tLN @-> tFL)
