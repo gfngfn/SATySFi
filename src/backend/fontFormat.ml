@@ -189,8 +189,18 @@ module SubsetMap
   end
 = struct
 
+    type subset = {
+      original_to_subset : subset_glyph_id GOHt.t;
+      subset_to_original : original_glyph_id GSHt.t;
+      count : int ref;
+      store : (original_glyph_id Alist.t) ref;
+    }
+
     type t =
+      | Subset of subset
+(*
       | Subset of subset_glyph_id GOHt.t * int ref * (original_glyph_id Alist.t) ref * original_glyph_id GSHt.t
+*)
       | Dummy
 
 
@@ -198,7 +208,12 @@ module SubsetMap
       let ht = GOHt.create n in
       let revht = GSHt.create n in
       GOHt.add ht 0 (SubsetNumber(0));
-      Subset(ht, ref 0, ref (Alist.extend Alist.empty 0), revht)
+      Subset{
+        original_to_subset = ht;
+        subset_to_original = revht;
+        count = ref 0;
+        store = ref (Alist.extend Alist.empty 0);
+      }
 
 
     let create_dummy () =
@@ -210,7 +225,11 @@ module SubsetMap
       | Dummy ->
           SubsetNumber(gidorg)
 
-      | Subset(ht, count, store, revht) ->
+      | Subset(r) ->
+          let ht = r.original_to_subset in
+          let revht = r.subset_to_original in
+          let count = r.count in
+          let store = r.store in
           begin
             match GOHt.find_opt ht gidorg with
             | Some(gidsub) ->
@@ -228,8 +247,8 @@ module SubsetMap
 
     let to_list submap =
       match submap with
-      | Subset(_, _, store, _) -> Some(Alist.to_list (!store))
-      | Dummy                  -> None
+      | Subset(r) -> Some(Alist.to_list !(r.store))
+      | Dummy     -> None
 
   end
 
