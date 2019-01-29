@@ -264,17 +264,31 @@ module GlyphIDTable
   end
 = struct
 
-    type t = subset_map * glyph_id_pair UHt.t * Uchar.t GSHt.t * Uchar.t GOHt.t
+    type t = {
+      subset_map   : subset_map;
+      main         : glyph_id_pair UHt.t;
+      rev_subset   : Uchar.t GSHt.t;
+      rev_original : Uchar.t GOHt.t;
+    }
 
 
     let create submap n =
       let ht = UHt.create n in
       let revsubht = GSHt.create n in
       let revorght = GOHt.create n in
-      (submap, ht, revsubht, revorght)
+      {
+        subset_map   = submap;
+        main         = ht;
+        rev_subset   = revsubht;
+        rev_original = revorght;
+      }
 
 
-    let add uch gidorg (submap, ht, revsubht, revorght) =
+    let add uch gidorg r =
+      let submap = r.subset_map in
+      let ht = r.main in
+      let revsubht = r.rev_subset in
+      let revorght = r.rev_original in
       begin
         let gidsub = submap |> SubsetMap.intern gidorg in
         UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
@@ -289,16 +303,16 @@ module GlyphIDTable
       end
 
 
-    let find_opt uch (_, ht, _, _) =
-      UHt.find_opt ht uch
+    let find_opt uch r =
+      UHt.find_opt r.main uch
 
 
-    let find_rev_opt gidorg (_, _, _, revorght) =
-      GOHt.find_opt revorght gidorg
+    let find_rev_opt gidorg r =
+      GOHt.find_opt r.rev_original gidorg
 
 
-    let fold_rev f gidsub (_, _, revsubht, _) =
-      GSHt.fold f revsubht gidsub
+    let fold_rev f gidsub r =
+      GSHt.fold f r.rev_subset gidsub
 
   end
 
@@ -984,11 +998,6 @@ let per_mille (dcdr : decoder) (w : design_units) : per_mille =
 
 
 let get_original_gid (dcdr : decoder) (gid : glyph_id) : original_glyph_id =
-(*
-  match dcdr.subset_map |> SubsetMap.find_rev_opt gid with
-  | None         -> assert false
-  | Some(gidorg) -> gidorg
-*)
   let SubsetGlyphID(gidorg, _) = gid in
   gidorg
 
@@ -1013,10 +1022,6 @@ let bbox_zero =
 let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
   let f = per_mille dcdr in
   match get_glyph_raw_bbox dcdr gidorg with
-(*
-  | Error(`Missing_required_table(t))
-                     when t = Otfm.Tag.loca ->
-*)
   | Error(e) ->
       broken dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
@@ -1025,7 +1030,7 @@ let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
 
   | Ok(Some(bbox_raw)) ->
       let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
-        (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+      (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
 
 
 let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : per_mille =
@@ -1053,8 +1058,13 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
     (* -- if the font is CFF OT -- *)
       begin
         match Otfm.charstring_absolute csinfo gidorg with
-        | Error(oerr)       -> broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
-        | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
+        | Error(oerr) ->
+            broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
+
+        | Ok(None) ->
+            bbox_zero
+              (* needs reconsideration; maybe should emit an error *)
+
         | Ok(Some(pathlst)) ->
             begin
               match Otfm.charstring_bbox pathlst with
@@ -1064,7 +1074,7 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
               | Some(bbox_raw) ->
                   let (xmin_raw, ymin_raw, xmax_raw, ymax_raw) = bbox_raw in
                   let f = per_mille dcdr in
-                    (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
+                  (f xmin_raw, f ymin_raw, f xmax_raw, f ymax_raw)
             end
       end
 
@@ -1082,10 +1092,8 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
         let wid = get_glyph_advance_width dcdr gidorg in
         let bbox = get_bbox dcdr gidorg in
         let pair = (wid, bbox) in
-        begin
-          bboxtbl |> GlyphBBoxTable.add gidorg pair;
-          pair
-        end
+        bboxtbl |> GlyphBBoxTable.add gidorg pair;
+        pair
   in
   let hgt = ymax in
   let dpt = ymin in
