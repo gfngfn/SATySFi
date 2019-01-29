@@ -114,7 +114,7 @@ end = struct
   let polygon ptinit ptlst =
     ptlst |> List.fold-left (fun acc pt -> (
       acc |> line-to pt
-    )) (start-path ptinit) |> terminate-path
+    )) (start-path ptinit) |> close-with-line
 
 
   let line pt1 pt2 =

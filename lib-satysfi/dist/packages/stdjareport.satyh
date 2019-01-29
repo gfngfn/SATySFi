@@ -4,6 +4,7 @@
 @require: list
 @require: math
 @require: color
+@require: option
 @require: annot
 @require: footnote-scheme
 
@@ -28,9 +29,9 @@ module StdJaReport : sig
   direct \ref-page : [string] inline-cmd
   direct \figure : [string?; inline-text; block-text] inline-cmd
   direct +p : [inline-text] block-cmd
-  direct +chapter : [string?; inline-text; block-text] block-cmd
-  direct +section : [string?; inline-text; block-text] block-cmd
-  direct +subsection : [string?; inline-text; block-text] block-cmd
+  direct +chapter : [string?; string?; inline-text; block-text] block-cmd
+  direct +section : [string?; string?; inline-text; block-text] block-cmd
+  direct +subsection : [string?; string?; inline-text; block-text] block-cmd
   direct \emph : [inline-text] inline-cmd
   direct \dfn : [inline-text] inline-cmd
   direct \footnote : [inline-text] inline-cmd
@@ -180,6 +181,7 @@ end = struct
 
 
 %  let-mutable toc-acc-ref <- []
+  let-mutable outline-ref <- []
 
 
   let get-cross-reference-number label =
@@ -307,7 +309,9 @@ end = struct
           footer-content = footer;
         |)
     in
-      page-break page pagecontf pagepartsf (bb-title +++ bb-main)
+    let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-main) in
+    let () = register-outline (List.reverse !outline-ref) in
+      doc
 
 
   let-mutable num-chapter <- 0
@@ -325,7 +329,7 @@ end = struct
       form-paragraph ctx ib-parag
 
 
-  let chapter-scheme ctx label title inner =
+  let chapter-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-chapter-title ctx in
     let () = increment num-chapter in
     let () = num-section <- 0 in
@@ -340,6 +344,8 @@ end = struct
                register-cross-reference (label ^ `:page`) (arabic pageno)))
     in
     let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, `chapter:` ^ label, false) :: !outline-ref in
     let bb-title =
       block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         chapter-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))))
@@ -348,7 +354,7 @@ end = struct
       bb-title +++ bb-inner
 
 
-  let section-scheme ctx label title inner =
+  let section-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-section-title ctx in
     let () = increment num-section in
     let () = num-subsection <- 0 in
@@ -362,6 +368,8 @@ end = struct
                register-cross-reference (label ^ `:page`) (arabic pageno)))
     in
     let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, `section:` ^ label, false) :: !outline-ref in
     let bb-title =
       block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         (section-heading ctx
@@ -371,7 +379,7 @@ end = struct
       bb-title +++ bb-inner
 
 
-  let subsection-scheme ctx label title inner =
+  let subsection-scheme ctx label title outline-title-opt inner =
     let () = num-subsection <- !num-subsection + 1 in
     let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
     let () = register-cross-reference (label ^ `:num`) s-num in
@@ -382,6 +390,8 @@ end = struct
         ++ hook-page-break (fun pbinfo _ -> register-cross-reference (label ^ `:page`) (arabic pbinfo#page-number))
     in
     let ib-title = read-inline ctx-title title in
+    let outline-title = Option.from (extract-string ib-title) outline-title-opt in
+    let () = outline-ref <- (2, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
       line-break true false (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
         (inline-frame-breakable no-pads (Annot.register-location-frame label)
@@ -391,31 +401,31 @@ end = struct
       bb-title +++ bb-inner
 
 
-  let-block ctx +chapter ?:labelopt title inner =
+  let-block ctx +chapter ?:labelopt ?:outline-title-opt title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
       in
-        chapter-scheme ctx label title inner
+        chapter-scheme ctx label title outline-title-opt inner
 
 
-  let-block ctx +section ?:labelopt title inner =
+  let-block ctx +section ?:labelopt ?:outline-title-opt title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      section-scheme ctx label title inner
+      section-scheme ctx label title outline-title-opt inner
 
 
-  let-block ctx +subsection ?:labelopt title inner =
+  let-block ctx +subsection ?:labelopt ?:outline-title-opt title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
     in
-      subsection-scheme ctx label title inner
+      subsection-scheme ctx label title outline-title-opt inner
 
 
   let-inline ctx \emph inner =

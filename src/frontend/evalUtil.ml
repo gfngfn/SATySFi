@@ -480,6 +480,16 @@ let get_math_variant_style value =
     | _ -> report_bug_value "get_math_variant_style: missing some fields" value
 
 
+let get_outline (value : syntactic_value) =
+  match value with
+  | TupleCons(IntegerConstant(level),
+      TupleCons(StringConstant(text),
+        TupleCons(StringConstant(key),
+          TupleCons(BooleanConstant(isopen), EndOfTuple)))) ->
+    (level, text, key, isopen)
+  | _ -> report_bug_value "get_outline" value
+
+
 let make_page_break_info pbinfo =
   let asc =
     Assoc.of_list [
