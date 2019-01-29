@@ -284,12 +284,8 @@ module GlyphIDTable
             GOHt.add revorght gidorg uch
 
         | Some(uchpre) ->
-            begin
-              Format.printf "FontFormat> warning:\n";
-              Format.printf "FontFormat> multiple Unicode code points (%d, %d)\n" (Uchar.to_int uchpre) (Uchar.to_int uch);
-              Format.printf "FontFormat> are mapped to the same GID %d.\n" gidorg
-                (* temporary; should log the warning in a more sophisticated manner *)
-            end
+            Logging.warn_noninjective_cmap uchpre uch gidorg;
+            ()
       end
 
 
@@ -607,10 +603,8 @@ module LigatureTable
               GSHt.add htrev gidsublig (gidorg :: gidorgtail)
 
           | Some(_) ->
-              begin
-                Format.printf "FontFormat> GID %d is used as more than one kind of ligatures.\n" gidorglig;
-                  (* temporary; should log the warning in a more sophisticated manner *)
-              end
+              Logging.warn_noninjective_ligature gidorglig;
+              ()
         );
       end
 
@@ -668,11 +662,7 @@ module LigatureTable
             begin
               match backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark with
               | None ->
-                  begin
-                    if is_ligature then () else
-                      Format.printf "FontFormat> combining diacritical mark of GID %d cannot be attached to GID %d\n" gomark gobase
-                        (* temporary; should warn in a more sophisticated manner *)
-                  end;
+                  if is_ligature then () else Logging.warn_nonattachable_mark gomark gobase;
                   None
 
               | Some(p) ->
@@ -1559,8 +1549,7 @@ module CIDFontType2
       }
       (* --
          Doesn't have to contain information about /W entry;
-         the PDF file will be furnished with /W entry when outputted
-         according to the glyph metrics table
+         the /W entry will be added by using the glyph metrics table when the PDF file is outputted
          -- *)
 
 
@@ -2036,7 +2025,6 @@ let to_design_units (md : math_decoder) (ratio : float) : design_units =
 let to_ratio (md : math_decoder) (du : design_units) : float =
   let upem = md.as_normal_font.units_per_em in
     (float_of_int du) /. (float_of_int upem)
-    (* temporary; should use UnitsPerEm *)
 
 
 let convert_kern (mkopt : Otfm.math_kern option) : math_kern =
@@ -2151,11 +2139,7 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =
 let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
   let dcdr = md.as_normal_font in
   match get_glyph_id dcdr uch with
-  | None ->
-      Format.printf "FontFormat> no glyph for U+%04x\n" (Uchar.to_int uch);
-        (* temporary; should emit a warning in a more sophisticated manner *)
-      notdef
-
+  | None      -> Logging.warn_no_glyph uch; notdef
   | Some(gid) -> gid
 
 

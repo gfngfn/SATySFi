@@ -98,6 +98,23 @@ let begin_to_write_page () =
   print_endline (" ---- ---- ---- ----");
   print_endline ("  writing pages ...")
 
+
 let warn_cmyk_image file_name =
-  print_endline ("  [Warning]: (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
-  print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.");
+  print_endline ("  [Warning] (" ^ (show_path file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
+  print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
+
+
+let warn_noninjective_cmap uchpre uch gidorg =
+  Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uchpre) (Uchar.to_int uch) gidorg
+
+
+let warn_noninjective_ligature gidorglig =
+  Format.printf "[Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
+
+
+let warn_nonattachable_mark gomark gobase =
+  Format.printf "[Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
+
+
+let warn_no_glyph uch =
+  Format.printf "[Warning] No glyph for U+%04X.\n" (Uchar.to_int uch)
