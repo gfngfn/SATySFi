@@ -29,7 +29,7 @@ let broken srcpath oerr s =
 
 
 let string_of_file (srcpath : file_path) : string =
-  let bufsize = 65536 in  (* temporary; size of buffer for loading font format file *)
+  let bufsize = 65536 in  (* arbitrary constant; the initial size of the buffer for loading font format file *)
   let buf : Buffer.t = Buffer.create bufsize in
   let byt : bytes = Bytes.create bufsize in
   let ic =
@@ -52,11 +52,11 @@ let string_of_file (srcpath : file_path) : string =
           aux ()
         end
   in
-    try
-      aux ()
-    with
-    | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
-    | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
+  try
+    aux ()
+  with
+  | Failure(_)     -> begin close_in ic; raise (FailToLoadFontOwingToSize(srcpath)) end
+  | Sys_error(msg) -> begin close_in ic; raise (FailToLoadFontOwingToSystem(srcpath, msg)) end
 
 
 type cid_system_info = {
@@ -289,18 +289,16 @@ module GlyphIDTable
       let ht = r.main in
       let revsubht = r.rev_subset in
       let revorght = r.rev_original in
-      begin
-        let gidsub = submap |> SubsetMap.intern gidorg in
-        UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
-        match GSHt.find_opt revsubht gidsub with
-        | None ->
-            GSHt.add revsubht gidsub uch;
-            GOHt.add revorght gidorg uch
+      let gidsub = submap |> SubsetMap.intern gidorg in
+      UHt.add ht uch { original_id = gidorg; subset_id = gidsub; };
+      match GSHt.find_opt revsubht gidsub with
+      | None ->
+          GSHt.add revsubht gidsub uch;
+          GOHt.add revorght gidorg uch
 
-        | Some(uchpre) ->
-            Logging.warn_noninjective_cmap uchpre uch gidorg;
-            ()
-      end
+      | Some(uchpre) ->
+          Logging.warn_noninjective_cmap uchpre uch gidorg;
+          ()
 
 
     let find_opt uch r =
@@ -505,12 +503,12 @@ let result_bind x f =
 
 
 let get_mark_table srcpath units_per_em d =
+  let script_tag = "latn" in  (* temporary; should depend on the script *)
   let mktbl = MarkTable.create () in
   let res =
     let open ResultMonad in
     Otfm.gpos_script d >>= fun scriptlst ->
-    match scriptlst |> List.find_opt (fun gs -> Otfm.gpos_script_tag gs = "latn") with
-      (* temporary; should depend on the script *)
+    match scriptlst |> List.find_opt (fun gs -> Otfm.gpos_script_tag gs = script_tag) with
     | None ->
         return ()
 
@@ -629,12 +627,12 @@ module LigatureTable
 
 
     (* --
-       'backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark' returns:
+       `backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark` returns:
 
-       - 'Some(p)' if 'gomark' can be attached at the position 'p'
-          to 'gobase', to which every mark in 'markpairacc' is already attached.
+       * `Some(p)` if `gomark` can be attached at the position `p`
+          to `gobase`, to which every mark in `markpairacc` is already attached.
 
-       - 'None' otherwise.
+       * `None` otherwise.
 
        -- *)
     let backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark =
@@ -658,12 +656,12 @@ module LigatureTable
 
 
     (* --
-       'attach_marks mktbl markbasef gobase gomarks' returns:
+       `attach_marks mktbl markbasef gobase gomarks` returns:
 
-       - 'Some([(gm1, p1), ..., (gmN, pN)])' if every 'gmI' in 'gomarks'
-         can be attached to 'gobase' at the position 'p'.
+       * `Some([(gm1, p1), ..., (gmN, pN)])` if every `gmI` in `gomarks`
+         can be attached to `gobase` at the position `pI`.
 
-       - 'None' otherwise.
+       * `None` otherwise.
 
        -- *)
     let attach_marks is_ligature mktbl markbasef gobase gomarks =
@@ -676,7 +674,7 @@ module LigatureTable
             begin
               match backtrack_mark_to_mark mktbl markbasef gobase markpairacc gomark with
               | None ->
-                  if is_ligature then () else Logging.warn_nonattachable_mark gomark gobase;
+                  if not is_ligature then Logging.warn_nonattachable_mark gomark gobase;
                   None
 
               | Some(p) ->
@@ -687,12 +685,12 @@ module LigatureTable
 
 
     (* --
-       'make_ligature_mark_info mktbl golig markpairs' returns:
+       `make_ligature_mark_info mktbl golig markpairs` returns:
 
-       - 'Some(markinfolst)' if all diacritical marks of 'markpairs'
-          are attachable to the ligature 'golig'.
+       * `Some(markinfolst)` if all diacritical marks of `markpairs`
+          are attachable to the ligature `golig`.
 
-       - 'None' otherwise.
+       * `None` otherwise.
 
        -- *)
     let make_ligature_mark_info mktbl golig markpairs =
@@ -708,19 +706,19 @@ module LigatureTable
               | Some(markinfolst) -> aux (Alist.append acc markinfolst) tail
             end
       in
-        aux Alist.empty markpairs
+      aux Alist.empty markpairs
 
 
     (* --
-       'prefix mktbl golig lst1 seglst2' returns:
+       `prefix mktbl golig lst1 seglst2` returns:
 
-       - 'Some(seglst, markinfolst)'
-          if 'lst1' is a prefix of 'seglst2' and
-          forming ligature does not prevent attachment of diacritical marks,
-          where 'seglst' is the rest of 'seglst2'
-          and 'markinfolst' is the position information of diacritical marks.
+       * `Some(seglst, markinfolst)`
+`        if `lst1` is a prefix of `seglst2` and
+         forming the ligature does not prevent any attachment of diacritical marks,
+         where `seglst` is the rest of `seglst2`
+         and `markinfolst` is the position information of diacritical marks.
 
-       - 'None' otherwise.
+       * `None` otherwise.
 
        -- *)
     let prefix (mktbl : MarkTable.t) (golig : original_glyph_id) (lst1 : original_glyph_id list) (seglst2 : original_glyph_segment list) : (original_glyph_segment list * (original_glyph_id * anchor_point) list) option =
@@ -737,14 +735,14 @@ module LigatureTable
         | (head1 :: tail1, (head2, gomarks) :: tail2) ->
             if head1 = head2 then
               let acc = Alist.extend acc (i, gomarks) in
-                aux (i + 1) acc tail1 tail2
+              aux (i + 1) acc tail1 tail2
             else
               None
 
         | _ ->
             None
       in
-        aux 0 Alist.empty lst1 seglst2
+      aux 0 Alist.empty lst1 seglst2
 
 
     let lookup (mktbl : MarkTable.t) (liginfolst : single list) (segorglst : original_glyph_segment list) =
@@ -808,12 +806,12 @@ end
 
 
 let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : LigatureTable.t =
-  let ligtbl = LigatureTable.create submap 32 (* temporary; size of the hash table *) in
+  let script_tag = "latn" in  (* temporary; should depend on the script *)
+  let ligtbl = LigatureTable.create submap 32 (* arbitrary constant; the initial size of the hash table *) in
   let res =
     let (>>=) = result_bind in
     Otfm.gsub_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = "latn") `Missing_script >>= fun script ->
-      (* temporary; should depend on the script *)
+    pickup scriptlst (fun gs -> Otfm.gsub_script_tag gs = script_tag) `Missing_script >>= fun script ->
     Otfm.gsub_langsys script >>= fun (langsys, _) ->
       (* temporary; should depend on the current language system *)
     Otfm.gsub_feature langsys >>= fun (_, featurelst) ->
@@ -880,7 +878,7 @@ module KerningTable
 
 
     let add_by_class clsdeflst1 clsdeflst2 lst (_, refC) =
-      let htC = HtClass.create 1024 (* temporary *) in
+      let htC = HtClass.create 1024 (* arbitrary constant *) in
       begin
         lst |> List.iter (fun (cls1, pairposlst) ->
           pairposlst |> List.iter (fun (cls2, valrcd1, valrcd2) ->
@@ -928,7 +926,8 @@ module KerningTable
 
 
 let get_kerning_table srcpath (d : Otfm.decoder) =
-  let kerntbl = KerningTable.create 32 (* temporary; size of the hash table *) in
+  let script_tag = "latn" in  (* temporary; should depend on the script *)
+  let kerntbl = KerningTable.create 32 (* arbitrary constant; the initial size of the hash table *) in
   let _ =
     () |> Otfm.kern d (fun () kinfo ->
       match kinfo with
@@ -941,8 +940,7 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
   let res =
     let (>>=) = result_bind in
     Otfm.gpos_script d >>= fun scriptlst ->
-    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = "latn") `Missing_script >>= fun script ->
-      (* temporary; should depend on the script *)
+    pickup scriptlst (fun gs -> Otfm.gpos_script_tag gs = script_tag) `Missing_script >>= fun script ->
     Otfm.gpos_langsys script >>= fun (langsys, _) ->
       (* temporary; should depend on the current language system *)
     Otfm.gpos_feature langsys >>= fun (_, featurelst) ->
@@ -1079,7 +1077,7 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
       end
 
 
-(* PUBLIC *)
+(* -- PUBLIC -- *)
 let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
   let bboxtbl = dcdr.glyph_bbox_table in
   let gidorg = get_original_gid dcdr gid in
@@ -1097,7 +1095,7 @@ let get_glyph_metrics (dcdr : decoder) (gid : glyph_id) : metrics =
   in
   let hgt = ymax in
   let dpt = ymin in
-    (wid, hgt, dpt)
+  (wid, hgt, dpt)
 
 
 type 'a resource =
