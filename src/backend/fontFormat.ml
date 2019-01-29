@@ -23,7 +23,7 @@ exception BrokenFont                  of file_path * string
 exception CannotFindUnicodeCmap       of file_path
 
 
-let raise_err srcpath oerr s =
+let broken srcpath oerr s =
   let msg = Format.asprintf "%a" Otfm.pp_error oerr in
   raise (BrokenFont(srcpath, msg ^ "; " ^ s))
 
@@ -198,9 +198,6 @@ module SubsetMap
 
     type t =
       | Subset of subset
-(*
-      | Subset of subset_glyph_id GOHt.t * int ref * (original_glyph_id Alist.t) ref * original_glyph_id GSHt.t
-*)
       | Dummy
 
 
@@ -538,7 +535,7 @@ let get_mark_table srcpath units_per_em d =
         end
   in
   match res with
-  | Error(oerr) -> raise_err srcpath oerr "get_mark_table"
+  | Error(oerr) -> broken srcpath oerr "get_mark_table"
   | _           -> mktbl
 
 
@@ -835,7 +832,7 @@ let get_ligature_table srcpath (submap : subset_map) (d : Otfm.decoder) : Ligatu
             when tag = Otfm.Tag.gsub -> ligtbl
         | `Missing_script            -> ligtbl
         | `Missing_feature           -> ligtbl
-        | #Otfm.error as oerr        -> raise_err srcpath oerr "get_ligature_table"
+        | #Otfm.error as oerr        -> broken srcpath oerr "get_ligature_table"
       end
 
 
@@ -969,7 +966,7 @@ let get_kerning_table srcpath (d : Otfm.decoder) =
             when t = Otfm.Tag.gpos -> kerntbl
         | `Missing_script          -> kerntbl
         | `Missing_feature         -> kerntbl
-        | #Otfm.error as oerr      -> raise_err srcpath oerr "get_kerning_table"
+        | #Otfm.error as oerr      -> broken srcpath oerr "get_kerning_table"
       end
 
 
@@ -1031,7 +1028,7 @@ let get_ttf_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
                      when t = Otfm.Tag.loca ->
 *)
   | Error(e) ->
-      raise_err dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
+      broken dcdr.file_path e (Printf.sprintf "get_ttf_bbox (gid = %d)" gidorg)
 
   | Ok(None) ->
       bbox_zero
@@ -1051,7 +1048,7 @@ let get_glyph_advance_width (dcdr : decoder) (gidorgkey : original_glyph_id) : p
     )
   in
     match hmtxres with
-    | Error(e)             -> raise_err dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
+    | Error(e)             -> broken dcdr.file_path e (Printf.sprintf "get_glyph_advance_width (gid = %d)" gidorgkey)
     | Ok(None)             -> PerMille(0)
     | Ok(Some((adv, lsb))) -> per_mille dcdr adv
 
@@ -1066,7 +1063,7 @@ let get_bbox (dcdr : decoder) (gidorg : original_glyph_id) : bbox =
     (* -- if the font is CFF OT -- *)
       begin
         match Otfm.charstring_absolute csinfo gidorg with
-        | Error(oerr)       -> raise_err dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
+        | Error(oerr)       -> broken dcdr.file_path oerr (Printf.sprintf "get_bbox (gid = %d)" gidorg)
         | Ok(None)          -> bbox_zero  (* needs reconsideration; maybe should emit an error *)
         | Ok(Some(pathlst)) ->
             begin
@@ -1174,10 +1171,10 @@ let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
   let write_byte_as_input buf =
     let src_offset = !src_offset_ref in
     if src_offset >= src_len then 0 else
-      let len =
-        if src_len - src_offset < 1024 then src_len - src_offset else 1024
-      in
       begin
+        let len =
+          if src_len - src_offset < 1024 then src_len - src_offset else 1024
+        in
         src_offset_ref += len;
         Bytes.blit_string data src_offset buf 0 len;
         len
@@ -1188,18 +1185,16 @@ let to_flate_pdf_bytes (data : string) : string * Pdfio.bytes =
     (* -- in the worst case the output size is 1.003 times as large as the input size -- *)
   let write_byte_as_output bufret len =
     let out_offset = !out_offset_ref in
-      if len <= 0 then () else
+    if len <= 0 then () else
       begin
         out_offset_ref += len;
         Bytes.blit bufret 0 bufout out_offset len
       end
   in
-  begin
-    Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
-    let out_len = !out_offset_ref in
-    let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
-    ("/FlateDecode", bt)
-  end
+  Pdfflate.compress ~level:9 write_byte_as_input write_byte_as_output;
+  let out_len = !out_offset_ref in
+  let bt = Pdfio.bytes_of_string (String.sub (Bytes.to_string bufout) 0 out_len) in
+  ("/FlateDecode", bt)
 
 
 let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string option) : Pdf.pdfobject =
@@ -1215,7 +1210,7 @@ let pdfstream_of_decoder (pdf : Pdf.t) (dcdr : decoder) (subtypeopt : string opt
       | Some(gidorglst) ->
           begin
             match OtfSubset.make d gidorglst with
-            | Error(e) -> raise_err dcdr.file_path e "pdfstream_of_decoder"
+            | Error(e) -> broken dcdr.file_path e "pdfstream_of_decoder"
             | Ok(s)    -> s
           end
   in
@@ -1241,8 +1236,10 @@ let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) 
   let cmapres =
     Otfm.cmap_subtable cmapsubtbl (fun accopt mapkd (u0, u1) gid ->
       match accopt with
-      | Some(_) -> accopt
-      | None    ->
+      | Some(_) ->
+          accopt
+
+      | None ->
           if u0 <= cp && cp <= u1 then
             match mapkd with
             | `Glyph_range -> Some(gid + (cp - u0))
@@ -1251,9 +1248,9 @@ let get_glyph_id_main srcpath (cmapsubtbl : Otfm.cmap_subtable) (uch : Uchar.t) 
             None
     ) None
   in
-    match cmapres with
-    | Error(e)      -> raise_err srcpath e (Printf.sprintf "get_glyph_id_main (cp = U+%04X)" cp)
-    | Ok(opt)       -> opt
+  match cmapres with
+  | Error(e)      -> broken srcpath e (Printf.sprintf "get_glyph_id_main (cp = U+%04X)" cp)
+  | Ok(opt)       -> opt
 
 
 let cmap_predicate f =
@@ -1261,12 +1258,12 @@ let cmap_predicate f =
 
 
 let get_cmap_subtable srcpath d =
-  let opt =
-    match Otfm.cmap d with
-    | Error(oerr) ->
-        raise_err srcpath oerr "get_cmap_subtable"
+  match Otfm.cmap d with
+  | Error(oerr) ->
+      broken srcpath oerr "get_cmap_subtable"
 
-    | Ok(subtbllst) ->
+  | Ok(subtbllst) ->
+      let opt =
         List.fold_left (fun opt idspred ->
           match opt with
           | Some(_) -> opt
@@ -1279,10 +1276,10 @@ let get_cmap_subtable srcpath d =
           (fun (pid, eid, _)    -> pid = 3 && eid = 1);
           (fun (pid, _, _)      -> pid = 1);
         ]
-  in
-    match opt with
-    | None         -> raise (CannotFindUnicodeCmap(srcpath))
-    | Some(subtbl) -> subtbl
+      in
+      match opt with
+      | None         -> raise (CannotFindUnicodeCmap(srcpath))
+      | Some(subtbl) -> subtbl
 
 
 let add_element_of_composite_glyph (dcdr : decoder) (gidorg : original_glyph_id) =
@@ -1315,7 +1312,7 @@ let add_element_of_composite_glyph (dcdr : decoder) (gidorg : original_glyph_id)
       | Otfm.CFF                    -> return ()
     in
     match res with
-    | Error(e) -> raise_err dcdr.file_path e "add_element_of_composite_glyph"
+    | Error(e) -> broken dcdr.file_path e "add_element_of_composite_glyph"
     | Ok(())   -> ()
 
 
@@ -1371,7 +1368,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
   let rcdhhea = dcdr.hhea_record in
   match Otfm.os2 d with
   | Error(e) ->
-      raise_err dcdr.file_path e "font_descriptor_of_decoder"
+      broken dcdr.file_path e "font_descriptor_of_decoder"
 
   | Ok(rcdos2) ->
       let bbox =
@@ -1399,7 +1396,7 @@ let font_descriptor_of_decoder (dcdr : decoder) (font_name : string) =
 let get_postscript_name (dcdr : decoder) =
   let d = dcdr.main in
   match Otfm.postscript_name d with
-  | Error(e)    -> raise_err dcdr.file_path e "get_postscript_name"
+  | Error(e)    -> broken dcdr.file_path e "get_postscript_name"
   | Ok(None)    -> assert false  (* temporary *)
   | Ok(Some(x)) -> x
 
@@ -1869,7 +1866,7 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let cmapsubtbl = get_cmap_subtable srcpath d in
   let submap =
     match Otfm.flavour d with
-    | Error(e)                        -> raise_err srcpath e "make_decoder"
+    | Error(e)                        -> broken srcpath e "make_decoder"
     | Ok(Otfm.TTF_true | Otfm.TTF_OT) -> SubsetMap.create 32  (* temporary; initial size of hash tables *)
     | Ok(Otfm.CFF)                    -> SubsetMap.create_dummy ()
   in
@@ -1878,12 +1875,12 @@ let make_decoder (srcpath : file_path) (d : Otfm.decoder) : decoder =
   let (rcdhhea, ascent, descent) =
     match Otfm.hhea d with
     | Ok(rcdhhea) -> (rcdhhea, rcdhhea.Otfm.hhea_ascender, rcdhhea.Otfm.hhea_descender)
-    | Error(e)    -> raise_err srcpath e "make_decoder (hhea)"
+    | Error(e)    -> broken srcpath e "make_decoder (hhea)"
   in
   let (rcdhead, units_per_em) =
     match Otfm.head d with
     | Ok(rcdhead) -> (rcdhead, rcdhead.Otfm.head_units_per_em)
-    | Error(e)    -> raise_err srcpath e "make_decoder (head)"
+    | Error(e)    -> broken srcpath e "make_decoder (head)"
   in
   let kerntbl = get_kerning_table srcpath d in
   let ligtbl = get_ligature_table srcpath submap d in
@@ -1938,14 +1935,14 @@ let get_font (dcdr : decoder) (fontreg : font_registration) (fontname : string) 
 
 let get_decoder_single (fontname : string) (srcpath : file_path) : (decoder * font) option =
   match get_main_decoder_single srcpath with
-  | Error(oerr)            -> raise_err srcpath oerr "get_decoder_single"
+  | Error(oerr)            -> broken srcpath oerr "get_decoder_single"
   | Ok(None)               -> None
   | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
 
 let get_decoder_ttc (fontname : string) (srcpath :file_path) (i : int) : (decoder * font) option =
   match get_main_decoder_ttc srcpath i with
-  | Error(oerr)            -> raise_err srcpath oerr "get_decoder_ttc"
+  | Error(oerr)            -> broken srcpath oerr "get_decoder_ttc"
   | Ok(None)               -> None
   | Ok(Some((d, fontreg))) -> let dcdr = make_decoder srcpath d in Some((dcdr, get_font dcdr fontreg fontname))
 
@@ -2076,7 +2073,7 @@ let get_math_decoder (fontname : string) (srcpath : file_path) : (math_decoder *
   let d = dcdr.main in
     match Otfm.math d with
     | Error(oerr) ->
-        raise_err srcpath oerr "get_math_decoder"
+        broken srcpath oerr "get_math_decoder"
 
     | Ok(mathraw) ->
         let micmap =
