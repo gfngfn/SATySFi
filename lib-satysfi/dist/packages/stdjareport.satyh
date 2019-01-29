@@ -345,7 +345,7 @@ end = struct
     in
     let ib-title = read-inline ctx-title title in
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
-    let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, `chapter:` ^ label, false) :: !outline-ref in
+    let () = outline-ref <- (0, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
       block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         chapter-heading ctx (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil))))
@@ -369,7 +369,7 @@ end = struct
     in
     let ib-title = read-inline ctx-title title in
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
-    let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, `section:` ^ label, false) :: !outline-ref in
+    let () = outline-ref <- (1, s-num ^ `. `#  ^ outline-title, label, false) :: !outline-ref in
     let bb-title =
       block-frame-breakable ctx no-pads (Annot.register-location-frame label) (fun ctx -> (
         (section-heading ctx
