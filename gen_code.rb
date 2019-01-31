@@ -209,6 +209,89 @@ def gen_ircases
   end
 end
 
+def f(inst, key, label)
+   v = inst[key]
+   unless v.nil? then
+      vv = if block_given? then yield v else v end
+      puts "        ~#{label}:#{vv}"
+   end
+end
+
+def gen_ml
+   print <<EOF
+(**
+   {1 SATySFi virtual machine instruction definitions}
+
+   This file is a part of [gencode.exe].
+   [gencode.exe] generates OCaml source code and
+   type declarations included from
+
+   - [types_.cppo.ml],
+   - [ir_.cppo.ml],
+   - [evaluator_.cppo.ml], and
+   - [vm_.cppo.ml].
+
+   To add a new primitive,
+
+   + Add a new instruction definition to this file.
+      ([is_pdf_mode_primitive] or [is_text_mode_primitive] should be [true].)
+   + Add a new entry to [primitives.ml].
+*)
+
+EOF
+   puts 'let def ='
+   puts '  Instruction.('
+   n = 0
+   YAML.load_stream(ARGF.read) do |inst|
+      sep = (n == 0) ? '[' : ';'
+      fs = inst['fields']&.collect{|h|
+         k = h.keys[0]
+         v = h.values[0]
+         "          field #{k.dump} ~type_:#{v.dump};\n"
+      }&.join('') || ''
+      ps = inst['params']&.collect{|v|
+         case v
+         when String then
+            "          param #{v.dump};\n"
+         when Hash then
+            k = v.keys[0]
+            t = v.values[0]
+            "          param #{k.dump} ~type_:#{t.dump};\n"
+         end
+      }&.join('') || ''
+      puts "    #{sep} inst #{inst['inst'].dump}"
+      f(inst, 'name', 'name') {|v| v.dump }
+      if inst['type'] then
+         puts "        ~type_:{|"
+         puts inst['type']
+         puts "|}"
+      end
+      puts "        ~fields:[\n#{fs}        ]"
+      puts "        ~params:[\n#{ps}        ]"
+      f(inst, 'is-pdf-mode-primitive', 'is_pdf_mode_primitive')
+      f(inst, 'is-text-mode-primitive', 'is_text_mode_primitive')
+      f(inst, 'needs-reducef', 'needs_reducef')
+      if inst['suppress-pp'] then
+         puts "        ~pp:Simple"
+      elsif inst['custom-pp'] then
+         v = inst['custom-pp']
+         puts "        ~pp:(Custom #{v.dump})"
+      end
+      f(inst, 'no-ircode', 'no_ircode')
+      f(inst, 'no-interp', 'no_interp')
+      if inst['code-interp'] then
+         puts "        ~code_interp:{|"
+         puts inst['code-interp']
+         puts "|}"
+      end
+      puts "        ~code:{|"
+      puts inst['code']
+      puts "|}"
+      n += 1
+   end
+   puts '    ])'
+end
+
 opt = OptionParser.new
 
 func = nil
@@ -220,6 +303,7 @@ opt.on('--gen-attype') {|v| func = method(:gen_attype) }
 opt.on('--gen-interps') {|v| func = method(:gen_interps) }
 opt.on('--gen-pdf-mode-prims') {|v| func = method(:gen_pdf_mode_prims) }
 opt.on('--gen-text-mode-prims') {|v| func = method(:gen_text_mode_prims) }
+opt.on('--ml') {|v| func = method(:gen_ml) }
 
 opt.parse!(ARGV)
 
