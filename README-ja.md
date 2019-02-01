@@ -32,7 +32,6 @@ $ brew install --HEAD nyuichi/satysfi/satysfi
 * make
 * unzip
 * wget or curl
-* ruby
 * [opam](https://opam.ocaml.org/) 2.0 （インストール手順は[こちら](https://opam.ocaml.org/doc/Install.html)。）
     * opam 2 をインストールするのに必要なツールである bubblewrap は，いくつかの環境において未だ簡単にはインストールできません。たとえば Windows Subsystem for Linux（WSL）や Ubuntu 16.04 が該当します。さしあたりの回避法として，`opam init` をする際に `--disable-sandboxing` オプションを渡すことで opam 2 を bubblewrap 無しにインストールすることができます。**詳細を [opam の FAQ](https://opam.ocaml.org/doc/FAQ.html#Why-does-opam-require-bwrap) で必ずご確認ください。**
 * ocaml 4.06.0 （OPAM からインストールします）
