@@ -2575,6 +2575,22 @@ ListCons(valuehd, valuetl)
         ~code:{|
 BooleanConstant(String.equal str1 str2)
 |}
+    ; inst "PrimitiveLessThan"
+        ~name:"string-lt"
+        ~type_:{|
+~% (tS @-> tS @-> tB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "str1" ~type_:"string";
+          param "str2" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+BooleanConstant(str1 < str2)
+|}
     ; inst "PrimitiveStringSub"
         ~name:"string-sub"
         ~type_:{|
