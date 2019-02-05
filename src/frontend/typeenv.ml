@@ -926,10 +926,16 @@ let rec poly_type_equal (pty1 : poly_type_body) (pty2 : poly_type_body) =
     try let lst = List.combine lst1 lst2 in p lst with Invalid_argument(_) -> false
   in
 
-  let rec iter ((_, ptymain1) : poly_type_body) ((_, ptymain2) : poly_type_body) =
+  let rec iter ((_, ptymain1) as pty1 : poly_type_body) ((_, ptymain2) as pty2 : poly_type_body) =
     match (ptymain1, ptymain2) with
     | (BaseType(bt1), BaseType(bt2)) ->
         bt1 = bt2
+
+    | (SynonymType(tyl1, tyid1, tyreal1), _) ->
+        iter tyreal1 pty2
+
+    | (_, SynonymType(tyl2, tyid2, tyreal2)) ->
+        iter pty1 tyreal2
 
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         BoundID.eq bid1 bid2
