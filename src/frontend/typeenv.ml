@@ -1034,7 +1034,9 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               let binc =
                 match kd2 with
                 | UniversalKind      -> true
-                | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
+                | RecordKind(tyasc2) ->
+                    Assoc.domain_included tyasc2 tyasc1 &&
+                    List.fold_left (fun b (x, y) -> b && aux x y) true (Assoc.intersection tyasc1 tyasc2)
               in
               if not binc then false else
                 begin
