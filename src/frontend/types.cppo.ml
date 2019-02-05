@@ -962,7 +962,7 @@ let instantiate_kind (lev : level) (qtfbl : quantifiability) (pkd : poly_kind) :
   instantiate_kind_aux bid_ht lev qtfbl pkd
 
 
-let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type =
+let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool) (ty : mono_type) : poly_type_body =
   let tvidht = FreeIDHashTable.create 32 in
   let rec iter (rng, tymain) =
     match tymain with
@@ -1028,7 +1028,7 @@ let lift_poly_general (ptv : FreeID.t -> bool) (porv : OptionRowVarID.t -> bool)
               generalize_option_row optrow
         end
   in
-    Poly(iter ty)
+  iter ty
 
 
 let check_level lev (ty : mono_type) =
@@ -1076,7 +1076,7 @@ let check_level lev (ty : mono_type) =
   iter ty
 
 
-let generalize (lev : level) =
+let generalize (lev : level) (ty : mono_type) =
   let ptv tvid =
     let bkd =
       let kd = FreeID.get_kind tvid in
@@ -1089,11 +1089,15 @@ let generalize (lev : level) =
   let porv orv =
     not (Level.less_than lev (OptionRowVarID.get_level orv))
   in
-  lift_poly_general ptv porv
+  Poly(lift_poly_general ptv porv ty)
 
 
-let lift_poly =
+let lift_poly_body =
   lift_poly_general (fun _ -> false) (fun _ -> false)
+
+
+let lift_poly (ty : mono_type) : poly_type =
+  Poly(lift_poly_body ty)
 
 
 let rec unlift_aux pty =
