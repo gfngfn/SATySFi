@@ -2478,6 +2478,21 @@ Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 let scriptopt = LineBreak.get_leftmost_script hblst in
 make_option make_script_value scriptopt
 |}
+    ; inst "BackendGetRightmostScript"
+        ~name:"get-rightmost-script"
+        ~type_:{|
+~% (tIB @-> tOPT tSCR)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "hblst" ~type_:"horz";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let scriptopt = LineBreak.get_rightmost_script hblst in
+make_option make_script_value scriptopt
+|}
     ; inst "BackendDiscretionary"
         ~name:"discretionary"
         ~type_:{|

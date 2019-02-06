@@ -11,3 +11,5 @@ val fit : horz_box list -> length -> intermediate_horz_box list * length * lengt
 val get_natural_metrics : horz_box list -> length * length * length
 
 val get_leftmost_script : horz_box list -> CharBasis.script option
+
+val get_rightmost_script : horz_box list -> CharBasis.script option

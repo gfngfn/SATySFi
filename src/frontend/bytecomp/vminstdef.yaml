@@ -2244,6 +2244,19 @@ code: |
   make_option make_script_value scriptopt
 
 ---
+inst: BackendGetRightmostScript
+is-pdf-mode-primitive: yes
+name: "get-rightmost-script"
+type: |
+  ~% (tIB @-> tOPT tSCR)
+
+params:
+- hblst : horz
+code: |
+  let scriptopt = LineBreak.get_rightmost_script hblst in
+  make_option make_script_value scriptopt
+
+---
 inst: BackendDiscretionary
 is-pdf-mode-primitive: yes
 name: "discretionary"
