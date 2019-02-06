@@ -5,7 +5,7 @@ open GraphicBase
 
 
 type t =
-  | Link of Action.t
+  | Link of Pdfaction.t
 
 
 let annot_acc = ref Alist.empty
@@ -40,7 +40,7 @@ let of_annotation (Link(act), ((x, y), wid, hgt, dpt), borderopt) =
       Pdfannot.Link
   in
   let pdfobj_annotrest =
-    Pdf.Dictionary[("/A", Action.pdfobject_of_action act)]
+    Pdf.Dictionary[("/A", Pdfaction.pdfobject_of_action act)]
   in
   { link with
     Pdfannot.annotrest = pdfobj_annotrest;
