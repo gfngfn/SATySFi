@@ -27,7 +27,21 @@ end = struct
 
 
   let-inline ctx \href ?:borderopt uri inner =
-    inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt) (read-inline ctx inner)
+    let ib = read-inline ctx inner in
+    let ibL =
+      match get-leftmost-script ib with
+      | Some(scriptL) -> script-guard scriptL inline-nil
+      | None          -> inline-nil
+    in
+    let ibR =
+      match get-rightmost-script ib with
+      | Some(scriptR) -> script-guard scriptR inline-nil
+      | None          -> inline-nil
+    in
+    let ib-frame =
+      inline-frame-breakable (0pt, 0pt, 0pt, 0pt) (link-to-uri-frame uri borderopt) ib
+    in
+    ibL ++ ib-frame ++ ibR
 
 
   let register-location-frame key =
