@@ -3523,7 +3523,7 @@ UnitConstant
         ~is_pdf_mode_primitive:true
         ~code:{|
 let borderopt = get_option (get_pair get_length get_color) vborderopt in
-Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
+Annotation.register (Annotation.Link(Pdfaction.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
 UnitConstant
 |}
     ; inst "BackendRegisterLinkToLocation"
@@ -3545,7 +3545,7 @@ UnitConstant
         ~code:{|
 let borderopt = get_option (get_pair get_length get_color) vborderopt in
 let destname = NamedDest.get name in
-Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+Annotation.register (Annotation.Link(Pdfaction.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
 UnitConstant
 |}
     ; inst "BackendRegisterOutline"
