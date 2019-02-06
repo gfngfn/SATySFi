@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
 - Supports PDF outlines ([PR\#134](https://github.com/gfngfn/SATySFi/pull/134) by `matsud224`).
 - Reports detailed error messages when a given image file is invalid ([PR\#138](https://github.com/gfngfn/SATySFi/pull/138) by `matsud224`).
+- Provides new primitives `get-leftmost-script : inline-boxes -> script option`, `get-rightmost-script : inline-boxes -> script option`, and `script-guard-both : script -> script -> inline-boxes -> inline-boxes`.
 
 ## [0.0.3] - 2018-10-09
 ### Fixed
