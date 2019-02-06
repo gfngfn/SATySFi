@@ -1032,3 +1032,57 @@ let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
         None
   in
   aux hblst
+
+
+let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
+  let rec aux hbrev =
+    match hbrev with
+    | [] ->
+        None
+
+    | HorzScriptGuard(_, scriptR, _) :: _ ->
+        Some(scriptR)
+
+    | HorzDiscretionary(_, hblst0, _, _) :: revtail ->
+        begin
+          match hblst0 with
+          | [] -> aux revtail
+          | _  -> aux (List.rev hblst0)
+        end
+
+    | HorzPure(phb) :: revtail ->
+        begin
+          match phb with
+          | PHCInnerString(ctxmain, uchlst) ->
+              let aux_chunks chunkrev =
+                match chunkrev with
+                | []                                            -> aux revtail
+                | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
+                | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
+                | _                                             -> None
+              in
+              let (_, chunks) = ConvertText.to_chunks ctxmain uchlst PreventBreak in
+              aux_chunks (List.rev chunks)
+
+          | PHCInnerMathGlyph(_) ->
+              Some(CharBasis.Latin)
+
+          | PHGRising(_, hblst0) ->
+              begin
+                match hblst0 with
+                | [] -> aux revtail
+                | _  -> aux (List.rev hblst0)
+              end
+
+          | PHGHookPageBreak(_)
+          | PHGFootnote(_) ->
+              aux revtail
+
+          | _ ->
+              None
+        end
+
+    | _ ->
+        None
+  in
+  aux (List.rev hblst)
