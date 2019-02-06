@@ -150,7 +150,7 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
               else
                 let levx = FreeID.get_level tvidx in
                 if Level.less_than lev levx then begin
-                  tvref := MonoFree(FreeID.set_level tvidx lev)
+                  FreeID.set_level tvidx lev
                     (* -- update level -- *)
                 end;
                 begin
@@ -230,7 +230,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
           | MonoFree(tvidx) ->
               let levx = FreeID.get_level tvidx in
               if Level.less_than lev levx then begin
-                tvref := MonoFree(FreeID.set_level tvidx lev)
+                FreeID.set_level tvidx lev
                   (* -- update level -- *)
               end;
               begin
@@ -297,8 +297,8 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
   iter_or optrow
 
 
-let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
-  let () =
+let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : unit =
+  begin
     match kd with
     | UniversalKind ->
         ()
@@ -306,8 +306,8 @@ let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : FreeID.t =
     | RecordKind(tyasc) ->
         let b = Assoc.fold_value (fun bacc ty -> let b = occurs tvid ty in bacc || b) false tyasc in
         if b then raise InternalInclusionError else ()
-  in
-  FreeID.set_kind tvid kd
+  end;
+  FreeID.set_kind kd tvid
 
 
 let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 : mono_type) =
@@ -393,30 +393,28 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           if b1 || b2 then
             raise InternalInclusionError
           else
-          let (tvid1q, tvid2q) =
             if FreeID.is_quantifiable tvid1 && FreeID.is_quantifiable tvid2 then
-              (tvid1, tvid2)
-            else
-              (FreeID.set_quantifiability Unquantifiable tvid1, FreeID.set_quantifiability Unquantifiable tvid2)
-          in
-          let (tvid1l, tvid2l) =
-            let lev1 = FreeID.get_level tvid1q in
-            let lev2 = FreeID.get_level tvid2q in
-            if Level.less_than lev1 lev2 then
-              (tvid1q, FreeID.set_level tvid2q lev1)
-            else if Level.less_than lev2 lev1 then
-              (FreeID.set_level tvid1q lev2, tvid2q)
-            else
-              (tvid1q, tvid2q)
-          in
-          tvref1 := MonoFree(tvid1l);
-          tvref2 := MonoFree(tvid2l);
+              ()
+            else begin
+              FreeID.set_quantifiability Unquantifiable tvid1;
+              FreeID.set_quantifiability Unquantifiable tvid2;
+            end;
+            let lev1 = FreeID.get_level tvid1 in
+            let lev2 = FreeID.get_level tvid2 in
+            begin
+              if Level.less_than lev1 lev2 then
+                FreeID.set_level tvid2 lev1
+              else if Level.less_than lev2 lev1 then
+                FreeID.set_level tvid1 lev2
+              else
+                ()
+            end;
           let (oldtvref, newtvref, newtvid, newty) =
-            if Range.is_dummy rng1 then (tvref1, tvref2, tvid2l, ty2) else (tvref2, tvref1, tvid1l, ty1)
+            if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
           in
           oldtvref := MonoLink(newty);
-          let kd1 = FreeID.get_kind tvid1l in
-          let kd2 = FreeID.get_kind tvid2l in
+          let kd1 = FreeID.get_kind tvid1 in
+          let kd2 = FreeID.get_kind tvid2 in
           let (eqnlst, kdunion) =
             match (kd1, kd2) with
             | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
@@ -428,8 +426,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
                 (Assoc.intersection asc1 asc2, kdunion)
           in
           unify_list eqnlst;
-          newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
-          ()
+          set_kind_with_checking_loop newtvid kdunion
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in

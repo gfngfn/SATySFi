@@ -115,54 +115,69 @@ module FreeID_
 : sig
     type 'a t_  [@@deriving show]
     val get_level : 'a t_ -> level
-    val set_level : 'a t_ -> level -> 'a t_
+    val set_level : 'a t_ -> level -> unit
     val initialize : unit -> unit
     val fresh : 'a -> quantifiability -> level -> unit -> 'a t_
     val equal : 'a t_ -> 'a t_ -> bool
     val is_quantifiable : 'a t_ -> bool
-    val set_quantifiability : quantifiability -> 'a t_ -> 'a t_
+    val set_quantifiability : quantifiability -> 'a t_ -> unit
     val get_kind : 'a t_ -> 'a
-    val set_kind : 'a t_ -> 'a -> 'a t_
-    val map_kind : ('a -> 'b) -> 'a t_ -> 'b t_
+    val set_kind : 'a -> 'a t_ -> unit
+    val update_kind : ('a -> 'a) -> 'a t_ -> unit
     val show_direct : ('a -> string) -> 'a t_ -> string
   end
 = struct
-    type 'a t_ = int * 'a * quantifiability * level
+    type 'k t_ = {
+      id                      : int;
+      mutable kind            : 'k;
+      mutable quantifiability : quantifiability;
+      mutable level           : level;
+    }
     [@@deriving show]
 
-    let get_level (_, _, _, lev) = lev
+    let get_level tvid = tvid.level
 
-    let set_level (idmain, kd, qtfbl, _) lev = (idmain, kd, qtfbl, lev)
+    let set_level tvid lev =
+      tvid.level <- lev
 
     let current_id = ref 0
 
     let initialize () =
-      begin current_id := 0; end
+      current_id := 0
 
     let fresh kd qtfbl lev () =
-      begin
-        incr current_id;
-        (!current_id, kd, qtfbl, lev)
-      end
+      incr current_id;
+      {
+        id              = !current_id;
+        kind            = kd;
+        quantifiability = qtfbl;
+        level           = lev;
+      }
 
-    let equal (i1, _, _, _) (i2, _, _, _) =
-      (i1 = i2)
+    let equal tvid1 tvid2 =
+      tvid1.id = tvid2.id
 
-    let is_quantifiable (_, _, qtfbl, _) =
-        match qtfbl with
-        | Quantifiable   -> true
-        | Unquantifiable -> false
+    let is_quantifiable tvid =
+      match tvid.quantifiability with
+      | Quantifiable   -> true
+      | Unquantifiable -> false
 
-    let set_quantifiability qtfbl (idmain, kd, _, lev) = (idmain, kd, qtfbl, lev)
+    let set_quantifiability qtfbl tvid =
+      tvid.quantifiability <- qtfbl
 
-    let get_kind (_, kd, _, _) = kd
+    let get_kind tvid = tvid.kind
 
-    let set_kind (idmain, _, qtfbl, lev) kd = (idmain, kd, qtfbl, lev)
+    let set_kind kd tvid =
+      tvid.kind <- kd
 
-    let map_kind f (idmain, kd, qtfbl, lev) = (idmain, f kd, qtfbl, lev)
+    let update_kind f tvid =
+      tvid.kind <- f tvid.kind
 
-    let show_direct f (idmain, kd, qtfbl, lev) =
-      match qtfbl with
+    let show_direct f tvid =
+      let idmain = tvid.id in
+      let lev = tvid.level in
+      let kd = tvid.kind in
+      match tvid.quantifiability with
       | Quantifiable   -> (string_of_int idmain) ^ "[Q" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
       | Unquantifiable -> (string_of_int idmain) ^ "[U" ^ (Level.show lev) ^ "::" ^ (f kd) ^ "]"
 
@@ -850,7 +865,7 @@ let rec erase_range_of_type (ty : mono_type) : mono_type =
     | TypeVariable(tvref) ->
         begin
           match !tvref with
-          | MonoFree(tvid) -> tvref := MonoFree(FreeID.map_kind erase_range_of_kind tvid); (rng, tymain)
+          | MonoFree(tvid) -> FreeID.update_kind erase_range_of_kind tvid; (rng, tymain)
           | MonoLink(ty)   -> erase_range_of_type ty
         end
 
