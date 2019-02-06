@@ -3,15 +3,15 @@ open MyUtil
 open Types
 open Display
 
-exception UndefinedVariable     of Range.t * module_name list * var_name * var_name list
-exception UndefinedConstructor  of Range.t * var_name * var_name list
-exception InclusionError        of Typeenv.t * mono_type * mono_type
-exception ContradictionError    of Typeenv.t * mono_type * mono_type
-exception UnknownUnitOfLength   of Range.t * length_unit_name
-exception HorzCommandInMath     of Range.t
-exception MathCommandInHorz     of Range.t
-exception BreaksValueRestriction of Range.t
-exception MultiplePatternVariable of Range.t * Range.t * var_name
+exception UndefinedVariable              of Range.t * module_name list * var_name * var_name list
+exception UndefinedConstructor           of Range.t * var_name * var_name list
+exception InclusionError                 of Typeenv.t * mono_type * mono_type
+exception ContradictionError             of Typeenv.t * mono_type * mono_type
+exception UnknownUnitOfLength            of Range.t * length_unit_name
+exception HorzCommandInMath              of Range.t
+exception MathCommandInHorz              of Range.t
+exception BreaksValueRestriction         of Range.t
+exception MultiplePatternVariable        of Range.t * Range.t * var_name
 exception InvalidOptionalCommandArgument of Typeenv.t * mono_type * Range.t
 exception NeedsMoreArgument              of Range.t * Typeenv.t * mono_type * mono_type
 exception TooManyArgument                of Range.t * Typeenv.t * mono_type
@@ -42,24 +42,24 @@ let add_optionals_to_type_environment (tyenv : Typeenv.t) qtfbl lev (optargs : (
       OptionRowCons(ty, acc)
     ) (Alist.to_list tyacc) OptionRowEmpty
   in
-    (optrow, Alist.to_list evidacc, tyenvnew)
+  (optrow, Alist.to_list evidacc, tyenvnew)
 
 
 let rec is_nonexpansive_expression e =
   let iter = is_nonexpansive_expression in
-    match e with
-    | Value(_)
-    | Function(_)
-    | ContentOf(_)
-        -> true
+  match e with
+  | Value(_)
+  | Function(_)
+  | ContentOf(_) ->
+      true
 
-    | NonValueConstructor(constrnm, e1) -> iter e1
-    | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
-    | PrimitiveTupleCons(e1, e2)        -> iter e1 && iter e2
-    | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
-    | LetRecIn(_, e2)                   -> iter e2
-    | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
-    | _                                 -> false
+  | NonValueConstructor(constrnm, e1) -> iter e1
+  | PrimitiveListCons(e1, e2)         -> iter e1 && iter e2
+  | PrimitiveTupleCons(e1, e2)        -> iter e1 && iter e2
+  | Record(asc)                       -> Assoc.fold_value (fun b e -> b && iter e) true asc
+  | LetRecIn(_, e2)                   -> iter e2
+  | LetNonRecIn(_, e1, e2)            -> iter e1 && iter e2
+  | _                                 -> false
 
 
 module PatternVarMap = Map.Make
@@ -81,14 +81,14 @@ let unite_pattern_var_map (patvarmap1 : pattern_var_map) (patvarmap2 : pattern_v
 let add_pattern_var_mono (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = lift_poly (erase_range_of_type ty) in
-      Typeenv.add tyenvacc varnm (pty, evid)
+    Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
 
 let add_pattern_var_poly lev (tyenv : Typeenv.t) (patvarmap : pattern_var_map) : Typeenv.t =
   PatternVarMap.fold (fun varnm (_, evid, ty) tyenvacc ->
     let pty = (generalize lev (erase_range_of_type ty)) in
-      Typeenv.add tyenvacc varnm (pty, evid)
+    Typeenv.add tyenvacc varnm (pty, evid)
   ) patvarmap tyenv
 
 
@@ -101,12 +101,7 @@ let point_type_main =
 
 (* -- 'apply_tree_of_list': converts e0 and [e1; ...; eN] into (e0 e1 ... eN) -- *)
 let apply_tree_of_list astfunc astlst =
-  let rec aux astacc astlst =
-    match astlst with
-    | []                 -> astacc
-    | asthead :: asttail -> aux (Apply(astacc, asthead)) asttail
-  in
-    aux astfunc astlst
+  List.fold_left (fun astf astx -> Apply(astf, astx)) astfunc astlst
 
 
 (* -- 'flatten_type': converts type (t1 -> ... -> tN -> t) into ([t1; ...; tN], t) -- *)
@@ -129,11 +124,11 @@ let flatten_type (ty : mono_type) : mono_command_argument_type list * mono_type 
           let accnew =
             Alist.append acc (List.append (aux_or optrow) [MandatoryArgumentType(tydom)])
           in
-            aux accnew tycod
+          aux accnew tycod
 
       | _ -> (Alist.to_list acc, ty)
   in
-    aux Alist.empty ty
+  aux Alist.empty ty
 
 
 let occurs (tvid : FreeID.t) (ty : mono_type) =
@@ -146,19 +141,18 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
     | TypeVariable(tvref) ->
         begin
           match !tvref with
-          | MonoLink(tyl)   -> iter tyl
+          | MonoLink(tyl) ->
+              iter tyl
+
           | MonoFree(tvidx) ->
               if FreeID.equal tvidx tvid then
                 true
               else
                 let levx = FreeID.get_level tvidx in
-                let () =
-                  (* -- update level -- *)
-                  if Level.less_than lev levx then
-                    tvref := MonoFree(FreeID.set_level tvidx lev)
-                  else
-                    ()
-                in
+                if Level.less_than lev levx then begin
+                  tvref := MonoFree(FreeID.set_level tvidx lev)
+                    (* -- update level -- *)
+                end;
                 begin
                   match FreeID.get_kind tvidx with
                   | UniversalKind     -> false
@@ -210,13 +204,10 @@ let occurs (tvid : FreeID.t) (ty : mono_type) =
 
           | MonoORFree(orvx) ->
               let levx = OptionRowVarID.get_level orvx in
-              let () =
-                (* -- update level -- *)
-                if Level.less_than lev levx then
-                  orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
-                else
-                  ()
-              in
+              if Level.less_than lev levx then begin
+                orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                  (* -- update level -- *)
+              end;
               false
         end
 
@@ -238,13 +229,10 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
 
           | MonoFree(tvidx) ->
               let levx = FreeID.get_level tvidx in
-              let () =
-                (* -- update level -- *)
-                if Level.less_than lev levx then
-                  tvref := MonoFree(FreeID.set_level tvidx lev)
-                else
-                  ()
-              in
+              if Level.less_than lev levx then begin
+                tvref := MonoFree(FreeID.set_level tvidx lev)
+                  (* -- update level -- *)
+              end;
               begin
                 match FreeID.get_kind tvidx with
                 | UniversalKind     -> false
@@ -298,13 +286,10 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
                 true
               else
                 let levx = OptionRowVarID.get_level orvx in
-                let () =
-                  (* -- update level -- *)
-                  if Level.less_than lev levx then
-                    orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
-                  else
-                    ()
-                in
+                if Level.less_than lev levx then begin
+                  orviref := MonoORFree(OptionRowVarID.set_level orvx lev)
+                    (* -- update level -- *)
+                end;
                 false
         end
 
@@ -345,8 +330,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (BaseType(bsty1), BaseType(bsty2))  when bsty1 = bsty2 -> ()
 
-    | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2))
-      ->
+    | (FuncType(optrow1, tydom1, tycod1), FuncType(optrow2, tydom2, tycod2)) ->
         begin
           unify_option_row optrow1 optrow2;
           unify_sub tydom1 tydom2;
@@ -355,8 +339,7 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
 
     | (HorzCommandType(cmdargtylist1), HorzCommandType(cmdargtylist2))
     | (VertCommandType(cmdargtylist1), VertCommandType(cmdargtylist2))
-    | (MathCommandType(cmdargtylist1), MathCommandType(cmdargtylist2))
-      ->
+    | (MathCommandType(cmdargtylist1), MathCommandType(cmdargtylist2)) ->
         begin
           try
             List.iter2 (fun cmdargty1 cmdargty2 ->
@@ -370,13 +353,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               raise InternalContradictionError
         end
 
-    | (ProductType(tylist1), ProductType(tylist2))
-      ->
+    | (ProductType(tylist1), ProductType(tylist2)) ->
         begin
           try
             unify_list (List.combine tylist1 tylist2)
           with
-          | Invalid_argument(_) -> (* -- not of the same length -- *)
+          | Invalid_argument(_) ->  (* -- not of the same length -- *)
               raise InternalContradictionError
         end
 
@@ -397,11 +379,9 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
         end
 
     | (ListType(tysub1), ListType(tysub2)) -> unify_sub tysub1 tysub2
-
     | (RefType(tysub1), RefType(tysub2))   -> unify_sub tysub1 tysub2
 
     | (TypeVariable({contents= MonoLink(tyl1)}), _) -> unify_sub tyl1 (rng2, tymain2)
-
     | (_, TypeVariable({contents= MonoLink(tyl2)})) -> unify_sub (rng1, tymain1) tyl2
 
     | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), TypeVariable({contents= MonoFree(tvid2)} as tvref2)) ->
@@ -422,12 +402,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
           let (tvid1l, tvid2l) =
             let lev1 = FreeID.get_level tvid1q in
             let lev2 = FreeID.get_level tvid2q in
-              if Level.less_than lev1 lev2 then
-                (tvid1q, FreeID.set_level tvid2q lev1)
-              else if Level.less_than lev2 lev1 then
-                (FreeID.set_level tvid1q lev2, tvid2q)
-              else
-                (tvid1q, tvid2q)
+            if Level.less_than lev1 lev2 then
+              (tvid1q, FreeID.set_level tvid2q lev1)
+            else if Level.less_than lev2 lev1 then
+              (FreeID.set_level tvid1q lev2, tvid2q)
+            else
+              (tvid1q, tvid2q)
           in
           tvref1 := MonoFree(tvid1l);
           tvref2 := MonoFree(tvid2l);
@@ -442,9 +422,10 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
             | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
             | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
+
             | (RecordKind(asc1), RecordKind(asc2)) ->
                 let kdunion = RecordKind(Assoc.union asc1 asc2) in
-                  (Assoc.intersection asc1 asc2, kdunion)
+                (Assoc.intersection asc1 asc2, kdunion)
           in
           unify_list eqnlst;
           newtvref := MonoFree(set_kind_with_checking_loop newtvid kdunion);
@@ -458,32 +439,33 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             | RecordKind(tyasc1) -> Assoc.domain_included tyasc1 tyasc2
           in
           let chk = occurs tvid1 ty2 in
-            if chk then
-              raise InternalInclusionError
-            else if not binc then
-              raise InternalContradictionError
-            else
-              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-              let eqnlst =
-                match kd1 with
-                | UniversalKind      -> []
-                | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
-              in
-              unify_list eqnlst;
-              tvref1 := MonoLink(newty2);
-              ()
+          if chk then
+            raise InternalInclusionError
+          else if not binc then
+            raise InternalContradictionError
+          else
+            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+            let eqnlst =
+              match kd1 with
+              | UniversalKind      -> []
+              | RecordKind(tyasc1) -> Assoc.intersection tyasc1 tyasc2
+            in
+            unify_list eqnlst;
+            tvref1 := MonoLink(newty2)
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
           let chk = occurs tvid1 ty2 in
-            if chk then
-              raise InternalInclusionError
-            else
-              let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
-              tvref1 := MonoLink(newty2)
+          if chk then
+            raise InternalInclusionError
+          else
+            let newty2 = if Range.is_dummy rng1 then (rng2, tymain2) else (rng1, tymain2) in
+            tvref1 := MonoLink(newty2)
 
-      | (_, TypeVariable(_)) -> unify_sub ty2 ty1
+      | (_, TypeVariable(_)) ->
+          unify_sub ty2 ty1
 
-      | _ -> raise InternalContradictionError
+      | _ ->
+          raise InternalContradictionError
 
 
 and unify_option_row optrow1 optrow2 =
@@ -515,8 +497,7 @@ and unify_option_row optrow1 optrow2 =
         orviref2 := MonoORLink(optrow1)
 
   | (OptionRowEmpty, OptionRowCons(_, _))
-  | (OptionRowCons(_, _), OptionRowEmpty)
-    ->
+  | (OptionRowCons(_, _), OptionRowEmpty) ->
       raise InternalContradictionError
 
 
@@ -528,7 +509,7 @@ let unify_ (tyenv : Typeenv.t) (ty1 : mono_type) (ty2 : mono_type) =
   | InternalContradictionError -> raise (ContradictionError(tyenv, ty1, ty2))
 
 
-let final_tyenv    : Typeenv.t ref = ref (Typeenv.empty)
+let final_tyenv : Typeenv.t ref = ref (Typeenv.empty)
 
 
 let rec typecheck
