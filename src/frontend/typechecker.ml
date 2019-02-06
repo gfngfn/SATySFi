@@ -297,7 +297,7 @@ let occurs_optional_row (orv : OptionRowVarID.t) (optrow : mono_option_row) =
   iter_or optrow
 
 
-let set_kind_with_checking_loop (tvid : FreeID.t) (kd : mono_kind) : unit =
+let set_kind_with_occurs_check (tvid : FreeID.t) (kd : mono_kind) : unit =
   begin
     match kd with
     | UniversalKind ->
@@ -409,24 +409,24 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
               else
                 ()
             end;
-          let (oldtvref, newtvref, newtvid, newty) =
-            if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
-          in
-          oldtvref := MonoLink(newty);
-          let kd1 = FreeID.get_kind tvid1 in
-          let kd2 = FreeID.get_kind tvid2 in
-          let (eqnlst, kdunion) =
-            match (kd1, kd2) with
-            | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
-            | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
-            | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
+            let (oldtvref, newtvref, newtvid, newty) =
+              if Range.is_dummy rng1 then (tvref1, tvref2, tvid2, ty2) else (tvref2, tvref1, tvid1, ty1)
+            in
+            oldtvref := MonoLink(newty);
+            let (eqnlst, kdunion) =
+              let kd1 = FreeID.get_kind tvid1 in
+              let kd2 = FreeID.get_kind tvid2 in
+              match (kd1, kd2) with
+              | (UniversalKind, UniversalKind)       -> ([], UniversalKind)
+              | (RecordKind(asc1), UniversalKind)    -> ([], RecordKind(asc1))
+              | (UniversalKind, RecordKind(asc2))    -> ([], RecordKind(asc2))
 
-            | (RecordKind(asc1), RecordKind(asc2)) ->
-                let kdunion = RecordKind(Assoc.union asc1 asc2) in
-                (Assoc.intersection asc1 asc2, kdunion)
-          in
-          unify_list eqnlst;
-          set_kind_with_checking_loop newtvid kdunion
+              | (RecordKind(asc1), RecordKind(asc2)) ->
+                  let kdunion = RecordKind(Assoc.union asc1 asc2) in
+                  (Assoc.intersection asc1 asc2, kdunion)
+            in
+            unify_list eqnlst;
+            set_kind_with_occurs_check newtvid kdunion
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), RecordType(tyasc2)) ->
           let kd1 = FreeID.get_kind tvid1 in
