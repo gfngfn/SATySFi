@@ -3,7 +3,7 @@ open LengthInterface
 open GraphicBase
 
 type t =
-  | Link of Action.t
+  | Link of Pdfaction.t
 
 val register : t -> ((length * length) * length * length * length) -> (length * color) option -> unit
 
