@@ -8,13 +8,13 @@ open LineBreakBox
 type lb_either =
   | TextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | LB          of lb_box
-  | ScriptGuard of CharBasis.script * lb_box list
+  | ScriptGuard of CharBasis.script * CharBasis.script * lb_box list
 
 
 type lb_pure_either =
   | PTextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | PLB          of lb_pure_box
-  | PScriptGuard of CharBasis.script * lb_pure_box list
+  | PScriptGuard of CharBasis.script * CharBasis.script * lb_pure_box list
 
 
 let ( ~. ) = float_of_int
@@ -254,10 +254,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lhblstnew = append_horz_padding lhblst pads in
           aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)))) tail
 
-    | HorzScriptGuard(script, hblstG) :: tail ->
+    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
-          aux (Alist.extend lbeacc (ScriptGuard(script, lhblstG))) tail
+          aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
   in
     aux Alist.empty hblst
 
@@ -286,9 +286,9 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
           aux (Alist.extend lbpeacc (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)))) tail
 
-    | HorzScriptGuard(script, hblstG) :: tail ->
+    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
-          aux (Alist.extend lbpeacc (PScriptGuard(script, lphblstG))) tail
+          aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
   in
   let lbpelst = aux Alist.empty hblst in
     normalize_chunks_pure lbpelst
@@ -320,15 +320,15 @@ and normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
               aux lhbacc (Some((scriptB, append_chunks chunkacc alwfirst chunklst))) lbeithertail
         end
 
-    | ScriptGuard(scriptG, lhblstG) :: lbeithertail ->
-        let optnext = Some(scriptG, Alist.empty) in
+    | ScriptGuard(scriptL, scriptR, lhblstG) :: lbeithertail ->
+        let optnext = Some(scriptR, Alist.empty) in
         begin
           match optprev with
           | None ->
               aux (Alist.append lhbacc lhblstG) optnext lbeithertail
 
           | Some((scriptB, chunkacc)) ->
-              let scriptA = scriptG in
+              let scriptA = scriptL in
               let lhblstC = ConvertText.chunks_to_boxes convert_list_for_line_breaking_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) optnext lbeithertail
         end
@@ -385,16 +385,17 @@ and normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
               aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
         end
 
-    | PScriptGuard(scriptG, lphblstG) :: lbpetail  ->
+    | PScriptGuard(scriptL, scriptR, lphblstG) :: lbpetail  ->
         begin
           match chunkaccopt with
           | None ->
               aux (Alist.append lphbacc lphblstG) None lbpetail
 
           | Some((scriptB, chunkacc)) ->
-              let scriptA = scriptG in
+              let scriptA = scriptL in
               let lphblstC = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.append (Alist.append lphbacc lphblstC) lphblstG) None lbpetail
+                (* DOUBTFUL; the current implementation does not use `scriptR` at all. *)
         end
   in
     aux Alist.empty None lbpelst

@@ -2214,7 +2214,21 @@ params:
 - script : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
+  Horz(HorzBox.([HorzScriptGuard(script, script, hblst)]))
+
+---
+inst: BackendScriptGuardBoth
+is-pdf-mode-primitive: yes
+name: "script-guard-both"
+type: |
+  ~% (tSCR @-> tSCR @-> tIB @-> tIB)
+
+params:
+- scriptL : script
+- scriptR : script
+- hblst : horz
+code: |
+  Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 
 ---
 inst: BackendDiscretionary

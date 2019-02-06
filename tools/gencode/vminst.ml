@@ -2445,7 +2445,23 @@ let graphics = make_inline_graphics_outer reducef valueg in
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
+Horz(HorzBox.([HorzScriptGuard(script, script, hblst)]))
+|}
+    ; inst "BackendScriptGuardBoth"
+        ~name:"script-guard-both"
+        ~type_:{|
+~% (tSCR @-> tSCR @-> tIB @-> tIB)
+|}
+        ~fields:[
+        ]
+        ~params:[
+          param "scriptL" ~type_:"script";
+          param "scriptR" ~type_:"script";
+          param "hblst" ~type_:"horz";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
 |}
     ; inst "BackendDiscretionary"
         ~name:"discretionary"
