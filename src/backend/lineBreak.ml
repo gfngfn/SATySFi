@@ -978,3 +978,29 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
 let get_natural_metrics (hblst : horz_box list) : length * length * length =
   let (widinfo, hgt, dpt) = get_metrics_of_horz_box hblst in
     (widinfo.natural, hgt, dpt)
+
+
+let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
+  let rec aux lbe =
+    match lbe with
+    | [] ->
+        None
+
+    | ScriptGuard(scriptL, _, _) :: _ ->
+        Some(scriptL)
+
+    | TextChunks(_, chunks) :: tail ->
+        let rec aux_chunks chunks =
+          match chunks with
+          | []                                            -> aux tail
+          | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
+          | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
+          | _ :: chunktail                                -> aux_chunks chunktail
+        in
+        aux_chunks chunks
+
+    | LB(lb) :: tail ->
+        None
+  in
+  let lbe = convert_list_for_line_breaking hblst in
+  aux lbe
