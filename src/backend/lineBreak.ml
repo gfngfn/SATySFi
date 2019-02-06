@@ -981,26 +981,54 @@ let get_natural_metrics (hblst : horz_box list) : length * length * length =
 
 
 let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
-  let rec aux lbe =
-    match lbe with
+  let rec aux hblst =
+    match hblst with
     | [] ->
         None
 
-    | ScriptGuard(scriptL, _, _) :: _ ->
+    | HorzScriptGuard(scriptL, _, _) :: _ ->
         Some(scriptL)
 
-    | TextChunks(_, chunks) :: tail ->
-        let rec aux_chunks chunks =
-          match chunks with
-          | []                                            -> aux tail
-          | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
-          | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
-          | _ :: chunktail                                -> aux_chunks chunktail
-        in
-        aux_chunks chunks
+    | HorzDiscretionary(_, hblst0, _, _) :: tail ->
+        begin
+          match hblst0 with
+          | [] -> aux tail
+          | _  -> aux hblst0
+        end
 
-    | LB(lb) :: tail ->
+    | HorzPure(phb) :: tail ->
+        begin
+          match phb with
+          | PHCInnerString(ctxmain, uchlst) ->
+              let aux_chunks chunks =
+                match chunks with
+                | []                                            -> aux tail
+                | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
+                | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
+                | _ :: _                                        -> None
+              in
+              let (_, chunks) = ConvertText.to_chunks ctxmain uchlst PreventBreak in
+              aux_chunks chunks
+
+          | PHCInnerMathGlyph(_) ->
+              Some(CharBasis.Latin)
+
+          | PHGRising(_, hblst0) ->
+              begin
+                match hblst0 with
+                | [] -> aux tail
+                | _  -> aux hblst0
+              end
+
+          | PHGHookPageBreak(_)
+          | PHGFootnote(_) ->
+              aux tail
+
+          | _ ->
+              None
+        end
+
+    | _ ->
         None
   in
-  let lbe = convert_list_for_line_breaking hblst in
-  aux lbe
+  aux hblst
