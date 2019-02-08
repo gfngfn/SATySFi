@@ -72,8 +72,8 @@ install: $(TARGET)
 	install -d $(LIBDIR)/dist
 	install -d $(LIBDIR)/dist/unidata
 	install -m 644 lib-satysfi/dist/unidata/*.txt $(LIBDIR)/dist/unidata
-	install -d $(LIBDIR)/dist/fonts
-	install -m 644 lib-satysfi/dist/fonts/* $(LIBDIR)/dist/fonts
+#	install -d $(LIBDIR)/dist/fonts
+#	install -m 644 lib-satysfi/dist/fonts/* $(LIBDIR)/dist/fonts
 	install -d $(LIBDIR)/dist/hash
 	install -m 644 lib-satysfi/dist/hash/* $(LIBDIR)/dist/hash
 	install -d $(LIBDIR)/dist/hyph

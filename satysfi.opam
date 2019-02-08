@@ -8,6 +8,7 @@ authors: [
 homepage: "https://github.com/gfngfn/SATySFi"
 dev-repo: "git+https://github.com/gfngfn/SATySFi.git"
 bug-reports: "https://github.com/gfngfn/SATySFi/issues"
+(*
 extra-source "lm2.004otf.zip" {
   archive: "http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip"
   checksum: [
@@ -36,8 +37,10 @@ extra-source "IPAexfont00301.zip" {
     "sha512=92df9f6a1002ea68cfd88f2b1fe4a5a5d6dfdb0ac4be7f4c0815200ce1962d3db7330ec17e7380efe4ba0735a55e0f5160b0cd6c1553a79fc8a860c434958388"
   ]
 }
+*)
 build: [
   ["mkdir" "-p" "temp"]
+(*
   ["unzip" "-o" "lm2.004otf.zip" "*.otf" "-d" "lib-satysfi/dist/fonts/"]
   ["unzip" "-o" "latinmodern-math-1959.zip" "*.otf" "-d" "temp/"]
   ["cp" "temp/latinmodern-math-1959/otf/latinmodern-math.otf" "lib-satysfi/dist/fonts/"]
@@ -45,6 +48,7 @@ build: [
   ["unzip" "-o" "IPAexfont00301.zip" "*.ttf" "-d" "temp/"]
   ["cp" "temp/IPAexfont00301/ipaexg.ttf" "lib-satysfi/dist/fonts/"]
   ["cp" "temp/IPAexfont00301/ipaexm.ttf" "lib-satysfi/dist/fonts/"]
+*)
   [make "-f" "Makefile" "PREFIX=%{prefix}%"]
 ]
 install: [
