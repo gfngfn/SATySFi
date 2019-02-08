@@ -8,13 +8,13 @@ open LineBreakBox
 type lb_either =
   | TextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | LB          of lb_box
-  | ScriptGuard of CharBasis.script * lb_box list
+  | ScriptGuard of CharBasis.script * CharBasis.script * lb_box list
 
 
 type lb_pure_either =
   | PTextChunks  of CharBasis.break_opportunity * line_break_chunk list
   | PLB          of lb_pure_box
-  | PScriptGuard of CharBasis.script * lb_pure_box list
+  | PScriptGuard of CharBasis.script * CharBasis.script * lb_pure_box list
 
 
 let ( ~. ) = float_of_int
@@ -254,10 +254,10 @@ let rec convert_list_for_line_breaking (hblst : horz_box list) : lb_either list 
         let lhblstnew = append_horz_padding lhblst pads in
           aux (Alist.extend lbeacc (LB(LBFrameBreakable(pads, wid1, wid2, decoS, decoH, decoM, decoT, lhblstnew)))) tail
 
-    | HorzScriptGuard(script, hblstG) :: tail ->
+    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lbelstG = convert_list_for_line_breaking hblstG in
         let lhblstG = normalize_chunks lbelstG in
-          aux (Alist.extend lbeacc (ScriptGuard(script, lhblstG))) tail
+          aux (Alist.extend lbeacc (ScriptGuard(scriptR, scriptL, lhblstG))) tail
   in
     aux Alist.empty hblst
 
@@ -286,9 +286,9 @@ and convert_list_for_line_breaking_pure (hblst : horz_box list) : lb_pure_box li
         let (lphblstnew, widinfo_total) = append_horz_padding_pure lphblst widinfo_sub pads in
           aux (Alist.extend lbpeacc (PLB(LBOuterFrame((widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB), decoS, lphblst)))) tail
 
-    | HorzScriptGuard(script, hblstG) :: tail ->
+    | HorzScriptGuard(scriptL, scriptR, hblstG) :: tail ->
         let lphblstG = convert_list_for_line_breaking_pure hblstG in
-          aux (Alist.extend lbpeacc (PScriptGuard(script, lphblstG))) tail
+          aux (Alist.extend lbpeacc (PScriptGuard(scriptL, scriptR, lphblstG))) tail
   in
   let lbpelst = aux Alist.empty hblst in
     normalize_chunks_pure lbpelst
@@ -320,15 +320,15 @@ and normalize_chunks (lbeitherlst : lb_either list) : lb_box list =
               aux lhbacc (Some((scriptB, append_chunks chunkacc alwfirst chunklst))) lbeithertail
         end
 
-    | ScriptGuard(scriptG, lhblstG) :: lbeithertail ->
-        let optnext = Some(scriptG, Alist.empty) in
+    | ScriptGuard(scriptL, scriptR, lhblstG) :: lbeithertail ->
+        let optnext = Some(scriptR, Alist.empty) in
         begin
           match optprev with
           | None ->
               aux (Alist.append lhbacc lhblstG) optnext lbeithertail
 
           | Some((scriptB, chunkacc)) ->
-              let scriptA = scriptG in
+              let scriptA = scriptL in
               let lhblstC = ConvertText.chunks_to_boxes convert_list_for_line_breaking_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.append (Alist.append lhbacc lhblstC) lhblstG) optnext lbeithertail
         end
@@ -385,16 +385,17 @@ and normalize_chunks_pure (lbpelst : lb_pure_either list) : lb_pure_box list =
               aux (Alist.extend (Alist.append lphbacc lphblst) lphb) None lbpetail
         end
 
-    | PScriptGuard(scriptG, lphblstG) :: lbpetail  ->
+    | PScriptGuard(scriptL, scriptR, lphblstG) :: lbpetail  ->
         begin
           match chunkaccopt with
           | None ->
               aux (Alist.append lphbacc lphblstG) None lbpetail
 
           | Some((scriptB, chunkacc)) ->
-              let scriptA = scriptG in
+              let scriptA = scriptL in
               let lphblstC = ConvertText.chunks_to_boxes_pure scriptB (Alist.to_list chunkacc) scriptA in
               aux (Alist.append (Alist.append lphbacc lphblstC) lphblstG) None lbpetail
+                (* DOUBTFUL; the current implementation does not use `scriptR` at all. *)
         end
   in
     aux Alist.empty None lbpelst
@@ -977,3 +978,111 @@ let get_metrics_of_horz_box (hblst : horz_box list) : length_info * length * len
 let get_natural_metrics (hblst : horz_box list) : length * length * length =
   let (widinfo, hgt, dpt) = get_metrics_of_horz_box hblst in
     (widinfo.natural, hgt, dpt)
+
+
+let get_leftmost_script (hblst : horz_box list) : CharBasis.script option =
+  let rec aux hblst =
+    match hblst with
+    | [] ->
+        None
+
+    | HorzScriptGuard(scriptL, _, _) :: _ ->
+        Some(scriptL)
+
+    | HorzDiscretionary(_, hblst0, _, _) :: tail ->
+        begin
+          match hblst0 with
+          | [] -> aux tail
+          | _  -> aux hblst0
+        end
+
+    | HorzPure(phb) :: tail ->
+        begin
+          match phb with
+          | PHCInnerString(ctxmain, uchlst) ->
+              let aux_chunks chunks =
+                match chunks with
+                | []                                            -> aux tail
+                | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
+                | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
+                | _ :: _                                        -> None
+              in
+              let (_, chunks) = ConvertText.to_chunks ctxmain uchlst PreventBreak in
+              aux_chunks chunks
+
+          | PHCInnerMathGlyph(_) ->
+              Some(CharBasis.Latin)
+
+          | PHGRising(_, hblst0) ->
+              begin
+                match hblst0 with
+                | [] -> aux tail
+                | _  -> aux hblst0
+              end
+
+          | PHGHookPageBreak(_)
+          | PHGFootnote(_) ->
+              aux tail
+
+          | _ ->
+              None
+        end
+
+    | _ ->
+        None
+  in
+  aux hblst
+
+
+let get_rightmost_script (hblst : horz_box list) : CharBasis.script option =
+  let rec aux hbrev =
+    match hbrev with
+    | [] ->
+        None
+
+    | HorzScriptGuard(_, scriptR, _) :: _ ->
+        Some(scriptR)
+
+    | HorzDiscretionary(_, hblst0, _, _) :: revtail ->
+        begin
+          match hblst0 with
+          | [] -> aux revtail
+          | _  -> aux (List.rev hblst0)
+        end
+
+    | HorzPure(phb) :: revtail ->
+        begin
+          match phb with
+          | PHCInnerString(ctxmain, uchlst) ->
+              let aux_chunks chunkrev =
+                match chunkrev with
+                | []                                            -> aux revtail
+                | (_, AlphabeticChunk(script, _, _, _, _)) :: _ -> Some(script)
+                | (_, IdeographicChunk(script, _, _, _)) :: _   -> Some(script)
+                | _                                             -> None
+              in
+              let (_, chunks) = ConvertText.to_chunks ctxmain uchlst PreventBreak in
+              aux_chunks (List.rev chunks)
+
+          | PHCInnerMathGlyph(_) ->
+              Some(CharBasis.Latin)
+
+          | PHGRising(_, hblst0) ->
+              begin
+                match hblst0 with
+                | [] -> aux revtail
+                | _  -> aux (List.rev hblst0)
+              end
+
+          | PHGHookPageBreak(_)
+          | PHGFootnote(_) ->
+              aux revtail
+
+          | _ ->
+              None
+        end
+
+    | _ ->
+        None
+  in
+  aux (List.rev hblst)

@@ -467,6 +467,30 @@ let error_log_environment suspended =
         NormalLine("is not a single font file; it is a TrueType collection.");
       ]
 
+  | ImageHashTable.CannotLoadPdf(msg, srcpath, pageno) ->
+      report_error Interface [
+        NormalLine("cannot load PDF file '" ^ srcpath ^ "' page #" ^ (string_of_int pageno) ^ ";");
+        DisplayLine(msg);
+      ]
+
+  | ImageHashTable.CannotLoadImage(msg, srcpath) ->
+      report_error Interface [
+        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        DisplayLine(msg);
+      ]
+
+  | ImageHashTable.ImageOfWrongFileType(srcpath) ->
+      report_error Interface [
+        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        DisplayLine("This file format is not supported.");
+      ]
+
+  | ImageHashTable.UnsupportedColorModel(_, srcpath) ->
+      report_error Interface [
+        NormalLine("cannot load image file '" ^ srcpath ^ "';");
+        DisplayLine("This color model is not supported.");
+      ]
+
   | Lexer.LexError(rng, s) ->
       report_error Lexer [
         NormalLine("at " ^ (Range.to_string rng) ^ ":");

@@ -13,9 +13,10 @@ type value_main =
 
 type value = tag * bbox * value_main
 
-exception CannotLoadPdf          of file_path * int
+exception CannotLoadPdf          of string * file_path * int
+exception CannotLoadImage        of string * file_path
 exception ImageOfWrongFileType   of file_path
-exception UnsupportedColorModel  of Images.colormodel
+exception UnsupportedColorModel  of Images.colormodel * file_path
 
 
 let main_hash_table : (key, value) Hashtbl.t = Hashtbl.create 32
@@ -49,22 +50,26 @@ let generate_tag () : key * tag =
 let add_pdf (srcpath : file_path) (pageno : int) =
   let pdfext =
     try Pdfread.pdf_of_file None None srcpath with
-    | Pdf.PDFError(_) -> raise (CannotLoadPdf(srcpath, pageno))
+    | Pdf.PDFError(msg) -> raise (CannotLoadPdf(msg, srcpath, pageno))
   in
-    match LoadPdf.get_page pdfext (pageno - 1) with
-    | None               -> raise (CannotLoadPdf(srcpath, pageno))
-    | Some((bbox, page)) ->
-        let (key, tag) = generate_tag () in
-        begin
-          Hashtbl.add main_hash_table key (tag, bbox, PDFImage(pdfext, page));
-          key
-        end
+    if pageno < 1 then
+      raise (CannotLoadPdf("Page number should be greater than 0", srcpath, pageno))
+    else
+      match LoadPdf.get_page pdfext (pageno - 1) with
+      | None               -> raise (CannotLoadPdf("Invalid page number", srcpath, pageno))
+      | Some((bbox, page)) ->
+          let (key, tag) = generate_tag () in
+          begin
+            Hashtbl.add main_hash_table key (tag, bbox, PDFImage(pdfext, page));
+            key
+          end
 
 
 let add_image (srcpath : file_path) =
   let (imgfmt, imgheader) =
     try Images.file_format srcpath with
     | Images.Wrong_file_type -> raise (ImageOfWrongFileType(srcpath))
+    | Sys_error(msg)         -> raise (CannotLoadImage(msg, srcpath))
   in
   let infolst = imgheader.Images.header_infos in
   let widdots = imgheader.Images.header_width in
@@ -97,7 +102,7 @@ let add_image (srcpath : file_path) =
     | Images.RGB   -> Pdf.Name("/DeviceRGB")
     | Images.YCbCr -> Pdf.Name("/DeviceRGB")
     | Images.CMYK  -> Logging.warn_cmyk_image srcpath; Pdf.Name("/DeviceCMYK")
-    | _            -> raise (UnsupportedColorModel(colormodel))
+    | _            -> raise (UnsupportedColorModel(colormodel, srcpath))
   in
   let pdf_points_of_inches inch = 72. *. inch in
   let wid = pdf_points_of_inches ((float_of_int widdots) /. dpi) in

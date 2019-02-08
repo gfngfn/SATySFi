@@ -10,12 +10,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/), 
 - Does not fail when a script value evaluates to `OtherScript` ([PR\#121](https://github.com/gfngfn/SATySFi/pull/121) by `na4zagin3`).
 - Handles `CR`+`LF` correctly as one line ending ([PR\#122](https://github.com/gfngfn/SATySFi/pull/122) by `matsud224`).
 - Fix how to generate ToUnicodeCMap as to ligatures ([PR\#140](https://github.com/gfngfn/SATySFi/pull/140) by `matsud224`).
+- Fix bug of `\ref` in `stdjareport` ([PR\#135](https://github.com/gfngfn/SATySFi/pull/135) by `matsud224`).
+- Fix bug of signature matching in the type checker ([PR\#143](https://github.com/gfngfn/SATySFi/pull/143) and [PR\#144](https://github.com/gfngfn/SATySFi/pull/144) by `elpinal`).
 
 ## Added
 - Begins to support Markdown input.
 - Supports PDF hyperlinks ([PR\#113](https://github.com/gfngfn/SATySFi/pull/113) by `matsud224`).
 - Supports fixed-length list patterns ([PR\#123](https://github.com/gfngfn/SATySFi/pull/123) by `nekketsuuu`).
 - Supports PDF outlines ([PR\#134](https://github.com/gfngfn/SATySFi/pull/134) by `matsud224`).
+- Reports detailed error messages when a given image file is invalid ([PR\#138](https://github.com/gfngfn/SATySFi/pull/138) by `matsud224`).
+- Provides new primitives `get-leftmost-script : inline-boxes -> script option`, `get-rightmost-script : inline-boxes -> script option`, and `script-guard-both : script -> script -> inline-boxes -> inline-boxes`.
 
 ## [0.0.3] - 2018-10-09
 ### Fixed

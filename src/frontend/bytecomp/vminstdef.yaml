@@ -2214,7 +2214,47 @@ params:
 - script : script
 - hblst : horz
 code: |
-  Horz(HorzBox.([HorzScriptGuard(script, hblst)]))
+  Horz(HorzBox.([HorzScriptGuard(script, script, hblst)]))
+
+---
+inst: BackendScriptGuardBoth
+is-pdf-mode-primitive: yes
+name: "script-guard-both"
+type: |
+  ~% (tSCR @-> tSCR @-> tIB @-> tIB)
+
+params:
+- scriptL : script
+- scriptR : script
+- hblst : horz
+code: |
+  Horz(HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
+
+---
+inst: BackendGetLeftmostScript
+is-pdf-mode-primitive: yes
+name: "get-leftmost-script"
+type: |
+  ~% (tIB @-> tOPT tSCR)
+
+params:
+- hblst : horz
+code: |
+  let scriptopt = LineBreak.get_leftmost_script hblst in
+  make_option make_script_value scriptopt
+
+---
+inst: BackendGetRightmostScript
+is-pdf-mode-primitive: yes
+name: "get-rightmost-script"
+type: |
+  ~% (tIB @-> tOPT tSCR)
+
+params:
+- hblst : horz
+code: |
+  let scriptopt = LineBreak.get_rightmost_script hblst in
+  make_option make_script_value scriptopt
 
 ---
 inst: BackendDiscretionary
@@ -3125,7 +3165,7 @@ params:
 
 code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
-  Annotation.register (Annotation.Link(Action.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
+  Annotation.register (Annotation.Link(Pdfaction.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
   UnitConstant
 
 ---
@@ -3146,7 +3186,7 @@ params:
 code: |
   let borderopt = get_option (get_pair get_length get_color) vborderopt in
   let destname = NamedDest.get name in
-  Annotation.register (Annotation.Link(Action.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
+  Annotation.register (Annotation.Link(Pdfaction.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
   UnitConstant
 
 ---

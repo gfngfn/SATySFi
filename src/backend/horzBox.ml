@@ -262,7 +262,7 @@ and horz_box =
       [@printer (fun fmt _ -> Format.fprintf fmt "HorzDiscretionary(...)")]
   | HorzEmbeddedVertBreakable of length * vert_box list
   | HorzFrameBreakable of paddings * length * length * decoration * decoration * decoration * decoration * horz_box list
-  | HorzScriptGuard    of CharBasis.script * horz_box list
+  | HorzScriptGuard    of CharBasis.script * CharBasis.script * horz_box list
 
 and intermediate_graphics =
   | ImGraphicsFixed    of fixed_graphics
@@ -531,7 +531,7 @@ let rec extract_string (hblst : horz_box list) : string =
     | HorzPure(PHGOuterFrame(_, _, hblst))           -> extract_string hblst
     | HorzDiscretionary(_, hblst0, _, _)             -> extract_string hblst0
     | HorzFrameBreakable(_, _, _, _, _, _, _, hblst) -> extract_string hblst
-    | HorzScriptGuard(_, hblst)                      -> extract_string hblst
+    | HorzScriptGuard(_, _, hblst)                   -> extract_string hblst
     | _                                              -> ""
   in
     String.concat "" (List.map extract_one hblst)

@@ -926,10 +926,16 @@ let rec poly_type_equal (pty1 : poly_type_body) (pty2 : poly_type_body) =
     try let lst = List.combine lst1 lst2 in p lst with Invalid_argument(_) -> false
   in
 
-  let rec iter ((_, ptymain1) : poly_type_body) ((_, ptymain2) : poly_type_body) =
+  let rec iter ((_, ptymain1) as pty1 : poly_type_body) ((_, ptymain2) as pty2 : poly_type_body) =
     match (ptymain1, ptymain2) with
     | (BaseType(bt1), BaseType(bt2)) ->
         bt1 = bt2
+
+    | (SynonymType(tyl1, tyid1, tyreal1), _) ->
+        iter tyreal1 pty2
+
+    | (_, SynonymType(tyl2, tyid2, tyreal2)) ->
+        iter pty1 tyreal2
 
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         BoundID.eq bid1 bid2
@@ -1017,9 +1023,10 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               poly_type_equal ty1 tyold
 
           | None ->
-              if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then
-                begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
-              else
+              if is_stronger_kind (BoundID.get_kind bid1) (BoundID.get_kind bid2) then begin
+                BoundIDHashTable.add current_bid_to_ty bid2 ty1;
+                true
+              end else
                 false
         end
 
@@ -1033,14 +1040,19 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               let kd2 = BoundID.get_kind bid2 in
               let binc =
                 match kd2 with
-                | UniversalKind      -> true
-                | RecordKind(tyasc2) -> Assoc.domain_included tyasc2 tyasc1
+                | UniversalKind ->
+                    true
+
+                | RecordKind(tyasc2) ->
+                    Assoc.domain_included tyasc2 tyasc1 &&
+                      List.for_all (fun (x, y) -> aux x y) (Assoc.intersection tyasc1 tyasc2)
               in
-              if not binc then false else
-                begin
-                  BoundIDHashTable.add current_bid_to_ty bid2 ty1;
-                  true
-                end
+              if not binc then
+                false
+              else begin
+                BoundIDHashTable.add current_bid_to_ty bid2 ty1;
+                true
+              end
         end
 
     | (_, TypeVariable(PolyBound(bid2))) ->
@@ -1053,7 +1065,7 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
               let kd2 = BoundID.get_kind bid2 in
               begin
                 match kd2 with
-                | UniversalKind -> begin BoundIDHashTable.add current_bid_to_ty bid2 ty1; true end
+                | UniversalKind -> BoundIDHashTable.add current_bid_to_ty bid2 ty1; true
                 | RecordKind(_) -> false
               end
         end
@@ -1062,8 +1074,12 @@ let reflects (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool =
         let kd2 = FreeID.get_kind tvid2 in
         let binc =
           match kd2 with
-          | UniversalKind      -> true
-          | RecordKind(tyasc2) -> Assoc.domain_included tyasc1 tyasc2
+          | UniversalKind ->
+              true
+
+          | RecordKind(tyasc2) ->
+              Assoc.domain_included tyasc1 tyasc2 &&
+                List.for_all (fun (ty1, ty2) -> aux ty1 ty2) (Assoc.intersection tyasc1 (Assoc.map_value lift_poly_body tyasc2))
         in
         if binc then
           match unlift_poly ty1 with
