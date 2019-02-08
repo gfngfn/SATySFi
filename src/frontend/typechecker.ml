@@ -451,6 +451,12 @@ let rec unify_sub ((rng1, tymain1) as ty1 : mono_type) ((rng2, tymain2) as ty2 :
             tvref1 := MonoLink(newty2)
 
       | (TypeVariable({contents= MonoFree(tvid1)} as tvref1), _) ->
+          let kd1 = FreeID.get_kind tvid1 in
+          let () =
+            match kd1 with
+            | UniversalKind -> ()
+            | RecordKind(_) -> raise InternalContradictionError
+          in
           let chk = occurs tvid1 ty2 in
           if chk then
             raise InternalInclusionError
