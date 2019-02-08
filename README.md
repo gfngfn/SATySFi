@@ -6,13 +6,13 @@
 
 ## Summary of SATySFi
 
-*SATySFi* (pronounced in the same way as the verb “satisfy” in English) is a new typesetting system with a static type system. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has ML-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.
+*SATySFi* (pronounced in the same way as the verb “satisfy” in English) is a new typesetting system equipped with a statically-typed, functional programming language. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has OCaml-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.
 
-This software is supported by IPA Mitou Project 2017 (see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html)).
+This software was supported by IPA Mitou Project 2017 (see the abstract [here](https://www.ipa.go.jp/jinzai/mitou/2017/gaiyou_t-4.html) written in Japanese), and its development continues to this day (February 2019).
 
-## Install using Homebrew (for OSX users)
+## Install using Homebrew (for OS X users)
 
-There is a homebrew formula for SATySFi.
+A Homebrew formula is provided for SATySFi (v0.0.2).
 
 ```sh
 $ brew install --HEAD nyuichi/satysfi/satysfi
@@ -116,30 +116,40 @@ See [release page](https://github.com/gfngfn/Macrodown/releases)
 -->
 
 ### Setup for SATySFi
-You should put libraries and fonts onto the prescribed directory manually.
 
-1. Copy `lib-satysfi/dist` to  `~/.satysfi/dist/`
-2. Download these fonts
-    * [Junicode](http://junicode.sourceforge.net)
-    * [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html) (if you use Japanese Characters)
-    * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
-    * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
-3. Put the font files (.otf and .ttf) onto `~/.satysfi/dist/fonts` 
+Before using SATySFI, one should put libraries and fonts onto the appropriate directory. This can be done by invoking the following commands in order:
+
+```sh
+./download-fonts.sh
+./install-libs.sh
+```
+
+The former downloads the fonts required by the default settings into `lib-satysfi/dist/fonts/`, and the latter copies `lib-satysfi/` to  `/usr/local/share/satysfi/`.
+
+During this setup, the following fonts are downloaded. Consult their license before using them.
+
+* [Junicode](http://junicode.sourceforge.net)
+* [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html)
+* [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
+* [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
 
 ## Usage of SATySFi
 
 Type
 
-    satysfi <input file> -o <output file>
+```sh
+satysfi <input file> -o <output file>
+```
 
 in order to convert `<input file>` into `<output file>`. For example, when you want to convert `doc.saty` into `output.pdf`, the following command will work:
 
-    satysfi doc.saty -o output.pdf
+```sh
+satysfi doc.saty -o output.pdf
+```
 
 ### Starting out
-First of all, let's try to compile the demo file.
-It is in `demo` folder.
-Because this demo file has `MakeFile`, All you should do is only type `make`.
+
+First of all, let’s try to compile the demo file. It is in `demo` folder. Because this demo file has `MakeFile`, All you should do is only type `make`.
 
 ```sh
 cd demo
@@ -149,8 +159,8 @@ make
 If `demo.pdf` is created, then the setup has been finished correctly.
 
 ### Reference
-The reference to write SATySFi is written by SATySFi itself in `doc` folder.
-You need compile it to read.
+
+In addition, a concice reference of SATySFi is written by SATySFi itself in `doc` folder. You need to compile it to read.
 
 ```sh
 cd doc
@@ -169,4 +179,4 @@ make
 
 ## Learning SATySFi
 
-[Wiki(Japanese)](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99) has some information about learning SATySFi.
+[Wiki](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99) (currently written only in Japanese) has some information about learning SATySFi.
