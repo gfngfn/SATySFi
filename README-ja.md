@@ -119,3 +119,7 @@ satysfi doc.saty -o output.pdf
 * `--type-check-only`: 型検査だけをして終了します。
 * `--debug-show-bbox`: （デバッグ目的で）各グリフにバウンディングボックスをつけて出力します。
 * `--debug-show-space`: （デバッグ目的で）スペース部分に目印をつけて出力します。
+
+## SATySFiを学ぶ
+
+[Wiki](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99)に学習用の資料があります。
