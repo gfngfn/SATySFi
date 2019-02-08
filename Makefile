@@ -72,8 +72,8 @@ install: $(TARGET)
 	install -d $(LIBDIR)/dist
 	install -d $(LIBDIR)/dist/unidata
 	install -m 644 lib-satysfi/dist/unidata/*.txt $(LIBDIR)/dist/unidata
-#	install -d $(LIBDIR)/dist/fonts
-#	install -m 644 lib-satysfi/dist/fonts/* $(LIBDIR)/dist/fonts
+	install -d $(LIBDIR)/dist/fonts
+	install -m 644 lib-satysfi/dist/fonts/* $(LIBDIR)/dist/fonts
 	install -d $(LIBDIR)/dist/hash
 	install -m 644 lib-satysfi/dist/hash/* $(LIBDIR)/dist/hash
 	install -d $(LIBDIR)/dist/hyph
@@ -82,6 +82,24 @@ install: $(TARGET)
 	install -m 644 lib-satysfi/dist/packages/* $(LIBDIR)/dist/packages
 	install -d $(LIBDIR)/dist/md
 	install -m 644 lib-satysfi/dist/md/* $(LIBDIR)/dist/md
+
+install-fonts:
+	mkdir -p temp
+# Latin Modern
+	wget -O temp/lm2.004otf.zip http://www.gust.org.pl/projects/e-foundry/latin-modern/download/lm2.004otf.zip
+	unzip -o temp/lm2.004otf.zip *.otf -d lib-satysfi/dist/fonts/
+# Latin Modern Math
+	wget -O temp/latinmodern-math-1959.zip http://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip
+	unzip -o temp/latinmodern-math-1959.zip *.otf -d temp/
+	cp temp/latinmodern-math-1959/otf/latinmodern-math.otf lib-satysfi/dist/fonts/
+# Junicode
+	wget -O temp/junicode-1.002.zip http://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip
+	unzip -o temp/junicode-1.002.zip *.ttf -d lib-satysfi/dist/fonts/
+# IPAexfont
+	wget -O temp/IPAexfont00301.zip https://oscdl.ipa.go.jp/IPAexfont/IPAexfont00301.zip
+	unzip -o temp/IPAexfont00301.zip *.ttf -d temp/
+	cp temp/IPAexfont00301/ipaexg.ttf lib-satysfi/dist/fonts/
+	cp temp/IPAexfont00301/ipaexm.ttf lib-satysfi/dist/fonts/
 
 #preliminary:
 #	[ -d .git ] && git submodule update -i || echo "Skip git submodule update -i"
