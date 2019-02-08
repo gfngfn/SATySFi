@@ -134,3 +134,7 @@ in order to convert `<input file>` into `<output file>`. For example, when you w
 * `--type-check-only`: Stops after type checking.
 * `--debug-show-bbox`: Outputs bounding boxes for each glyph (for the purpose of debugging).
 * `--debug-show-space`: Outputs boxes for spaces (for the purpose of debugging).
+
+## Learning SATySFi
+
+[Wiki(Japanese)](https://github.com/gfngfn/SATySFi/wiki/SATySFi-Wiki#%E5%AD%A6%E7%BF%92%E7%94%A8%E8%B3%87%E6%96%99) has some information about learning SATySFi.
