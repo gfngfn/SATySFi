@@ -117,7 +117,7 @@ See [release page](https://github.com/gfngfn/Macrodown/releases)
 
 ### Setup for SATySFi
 
-Before using SATySFI, one should put libraries and fonts onto the appropriate directory. This can be done by invoking the following commands in order:
+Before using SATySFi, one should put libraries and fonts onto the appropriate directory. This can be done by invoking the following commands in order:
 
 ```sh
 ./download-fonts.sh
