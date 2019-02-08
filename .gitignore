@@ -21,7 +21,6 @@ old/
 test/
 *.png
 _build/
-temp/
 satysfi
 *.ttf
 *.otf
