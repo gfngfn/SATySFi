@@ -115,6 +115,17 @@ You can modify the directory for the installation by specifying `PREFIX` like `s
 See [release page](https://github.com/gfngfn/Macrodown/releases)
 -->
 
+### Setup for SATySFi
+You should put libraries and fonts onto the prescribed directory manually.
+
+1. Copy `lib-satysfi/dist` to  `~/.satysfi/dist/`
+2. Download these fonts
+    * [Junicode](http://junicode.sourceforge.net)
+    * [IPA Font](https://ipafont.ipa.go.jp/old/ipafont/download.html) (if you use Japanese Characters)
+    * [Latin Modern](http://www.gust.org.pl/projects/e-foundry/latin-modern/)
+    * [Latin Modern Math](http://www.gust.org.pl/projects/e-foundry/lm-math)
+3. Put the font files (.otf and .ttf) onto `~/.satysfi/dist/fonts` 
+
 ## Usage of SATySFi
 
 Type
@@ -124,6 +135,27 @@ Type
 in order to convert `<input file>` into `<output file>`. For example, when you want to convert `doc.saty` into `output.pdf`, the following command will work:
 
     satysfi doc.saty -o output.pdf
+
+### Starting out
+First of all, let's try to compile the demo file.
+It is in `demo` folder.
+Because this demo file has `MakeFile`, All you should do is only type `make`.
+
+```sh
+cd demo
+make
+```
+
+If `demo.pdf` is created, then the setup has been finished correctly.
+
+### Reference
+The reference to write SATySFi is written by SATySFi itself in `doc` folder.
+You need compile it to read.
+
+```sh
+cd doc
+make
+```
 
 ## Command-line options
 
