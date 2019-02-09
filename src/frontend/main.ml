@@ -41,33 +41,34 @@ let show_error_category = function
 
 
 let report_error (cat : error_category) (lines : line list) =
-  let rec aux lst =
-    match lst with
-    | []                     -> ()
-    | NormalLine(s) :: tail
-    | NormalLineOption(Some(s)) :: tail
-      -> begin print_endline ("    " ^ s) ; aux tail end
-    | DisplayLine(s) :: tail
-    | DisplayLineOption(Some(s)) :: tail
-      -> begin print_endline ("      " ^ s); aux tail end
-    | _ :: tail -> aux tail
+  let aux lst =
+    lst |> List.fold_left (fun is_first line ->
+      begin
+        match line with
+        | NormalLine(s)
+        | NormalLineOption(Some(s)) ->
+            if is_first then
+              print_endline s
+            else
+              print_endline ("    " ^ s)
+
+        | DisplayLine(s)
+        | DisplayLineOption(Some(s)) ->
+            if is_first then
+              print_endline ("\n      " ^ s)
+            else
+              print_endline ("      " ^ s)
+
+        | _ ->
+            ()
+      end;
+      false
+    ) true
   in
-  let first lst =
-    match lst with
-    | []                     -> ()
-    | NormalLine(s) :: tail
-    | NormalLineOption(Some(s)) :: tail
-      -> begin print_endline s; aux tail end
-    | DisplayLine(s) :: tail
-    | DisplayLineOption(Some(s)) :: tail
-      -> begin print_endline ("\n      " ^ s); aux tail end
-    | _ :: tail -> aux tail
-  in
-  begin
-    print_string ("! [" ^ (show_error_category cat) ^ "] ");
-    first lines;
-    exit 1;
-  end
+  print_string ("! [" ^ (show_error_category cat) ^ "] ");
+  aux lines |> ignore;
+  exit 1
+
 
 let make_candidates_message (candidates : string list) =
   let add_quote s = "'" ^ s ^ "'" in
@@ -155,37 +156,34 @@ let eval_library_file (tyenv : Typeenv.t) (env : environment) (file_name_in : fi
 let reset () =
   if OptionState.is_text_mode () then
     ()
-  else
-    begin
-      FontInfo.initialize ();
-      ImageInfo.initialize ();
-      NamedDest.initialize ();
-    end
+  else begin
+    FontInfo.initialize ();
+    ImageInfo.initialize ();
+    NamedDest.initialize ();
+  end
 
 
 (* -- initialization that should be performed before typechecking -- *)
 let initialize (dump_file : file_path) =
+  FreeID.initialize ();
+  BoundID.initialize ();
+  Typeenv.initialize_id ();
+  EvalVarID.initialize ();
+  StoreID.initialize ();
+  let dump_file_exists = CrossRef.initialize dump_file in
+  let (tyenv, env) =
+    if OptionState.is_text_mode () then
+      Primitives.make_text_mode_environments ()
+    else
+      Primitives.make_pdf_mode_environments ()
+  in
   begin
-    FreeID.initialize ();
-    BoundID.initialize ();
-    Typeenv.initialize_id ();
-    EvalVarID.initialize ();
-    StoreID.initialize ();
-    let dump_file_exists = CrossRef.initialize dump_file in
-    let (tyenv, env) =
-      if OptionState.is_text_mode () then
-        Primitives.make_text_mode_environments ()
-      else
-        Primitives.make_pdf_mode_environments ()
-    in
-    begin
-      if OptionState.bytecomp_mode () then
-        Bytecomp.compile_environment env
-      else
-        ()
-    end;
-    (tyenv, env, dump_file_exists)
-  end
+    if OptionState.bytecomp_mode () then
+      Bytecomp.compile_environment env
+    else
+      ()
+  end;
+  (tyenv, env, dump_file_exists)
 
 
 let output_pdf pdfret =
@@ -217,42 +215,38 @@ let unfreeze_environment ((valenv, stenvref, stmap) : frozen_environment) : envi
 
 
 let register_document_file (dg : file_info FileDependencyGraph.t) (file_path_in : file_path) : unit =
-  begin
-    Logging.begin_to_parse_file file_path_in;
-    let file_in = open_in file_path_in in
-    let curdir = Filename.dirname file_path_in in
-    let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
-    FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
-    header |> List.iter (fun headerelem ->
-      let file_path_sub = make_absolute_path curdir headerelem in
-      begin
-        if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-          register_library_file dg file_path_sub
-      end;
-      FileDependencyGraph.add_edge dg file_path_in file_path_sub
-    )
-  end
+  Logging.begin_to_parse_file file_path_in;
+  let file_in = open_in file_path_in in
+  let curdir = Filename.dirname file_path_in in
+  let (header, utast) = ParserInterface.process (Filename.basename file_path_in) (Lexing.from_channel file_in) in
+  FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+  header |> List.iter (fun headerelem ->
+    let file_path_sub = make_absolute_path curdir headerelem in
+    begin
+      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+        register_library_file dg file_path_sub
+    end;
+    FileDependencyGraph.add_edge dg file_path_in file_path_sub
+  )
 
 
 let register_markdown_file (dg : file_info FileDependencyGraph.t) (setting : string) (file_path_in : file_path) : unit =
-  begin
-    Logging.begin_to_parse_file file_path_in;
-    let (cmdrcd, depends) = LoadMDSetting.main setting in
-    let data = MyUtil.string_of_file file_path_in in
-    let utast = DecodeMD.decode cmdrcd data in
+  Logging.begin_to_parse_file file_path_in;
+  let (cmdrcd, depends) = LoadMDSetting.main setting in
+  let data = MyUtil.string_of_file file_path_in in
+  let utast = DecodeMD.decode cmdrcd data in
 (*
     let () = Format.printf "%a\n" pp_untyped_abstract_tree utast in  (* for debug *)
- *)
-    FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
-    depends |> List.iter (fun package ->
-      let file_path_sub = make_absolute_path_required package in
-      begin
-      if FileDependencyGraph.mem_vertex file_path_sub dg then () else
-        register_library_file dg file_path_sub
-      end;
-      FileDependencyGraph.add_edge dg file_path_in file_path_sub
-    );
-  end
+*)
+  FileDependencyGraph.add_vertex dg file_path_in (DocumentFile(utast));
+  depends |> List.iter (fun package ->
+    let file_path_sub = make_absolute_path_required package in
+    begin
+    if FileDependencyGraph.mem_vertex file_path_sub dg then () else
+      register_library_file dg file_path_sub
+    end;
+    FileDependencyGraph.add_edge dg file_path_in file_path_sub
+  )
 
 
 let eval_main i env_freezed ast =
@@ -276,11 +270,12 @@ let output_text file_path_out s =
 
 
 let eval_document_file (tyenv : Typeenv.t) (env : environment) (file_path_in : file_path) (utast : untyped_abstract_tree) (file_path_out : file_path) (file_path_dump : file_path) =
-    Logging.begin_to_read_file file_path_in;
-    let (ty, _, ast) = Typechecker.main tyenv utast in
-    Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
-    if OptionState.type_check_only () then ()
-    else
+  Logging.begin_to_read_file file_path_in;
+  let (ty, _, ast) = Typechecker.main tyenv utast in
+  Logging.pass_type_check (Some(Display.string_of_mono_type tyenv ty));
+  if OptionState.type_check_only () then
+    ()
+  else
     let env_freezed = freeze_environment env in
     if OptionState.is_text_mode () then
       match ty with
@@ -773,9 +768,8 @@ let error_log_environment suspended =
 
 
 let arg_version () =
-  begin
-    print_string (
-        "  SATySFi version 0.0.3\n"
+  print_string (
+    "  SATySFi version 0.0.3\n"
 (*
       ^ "  (in the middle of the transition from Macrodown)\n"
       ^ "    ____   ____       ________     _____   ______\n"
@@ -788,9 +782,8 @@ let arg_version () =
       ^ " /   /    \\   \\  \\   \\              /   /_________/   /\n"
       ^ "/___/      \\___\\  \\___\\            /_________________/\n"
 *)
-    );
-    exit 0;
-  end
+  );
+  exit 0
 
 
 let arg_output curdir s =
@@ -809,7 +802,7 @@ let handle_anonimous_arg (curdir : file_path) (s : file_path) =
 
 let text_mode s =
   let slst = String.split_on_char ',' s in
-    OptionState.set_text_mode slst
+  OptionState.set_text_mode slst
 
 
 let input_markdown setting =
@@ -854,9 +847,9 @@ let setup_root_dirs () =
       | Some(s) -> [Filename.concat s ".satysfi"]
   in
   let ds = List.append user_dirs runtime_dirs in
-    match ds with
-    | []     -> raise NoLibraryRootDesignation
-    | _ :: _ -> Config.initialize ds
+  match ds with
+  | []     -> raise NoLibraryRootDesignation
+  | _ :: _ -> Config.initialize ds
 
 
 let () =
