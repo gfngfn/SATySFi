@@ -1,5 +1,6 @@
 (executable
  (name satysfi)
+ (package satysfi)
  (public_name satysfi)
  (libraries main)
  (preprocess no_preprocessing)
