@@ -109,12 +109,16 @@ let warn_noninjective_cmap uchpre uch gidorg =
 
 
 let warn_noninjective_ligature gidorglig =
-  Format.printf "[Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
+  Format.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n" gidorglig
 
 
 let warn_nonattachable_mark gomark gobase =
-  Format.printf "[Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
+  Format.printf "  [Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
 
 
-let warn_no_glyph uch =
-  Format.printf "[Warning] No glyph for U+%04X.\n" (Uchar.to_int uch)
+let warn_no_glyph abbrev uch =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by font `%s`.\n" (Uchar.to_int uch) abbrev
+
+
+let warn_no_math_glyph mfabbrev uch =
+  Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) mfabbrev

@@ -1,5 +1,11 @@
 
+exception RemainsToBeImplemented of string
+
 type file_path = string
+
+
+let remains_to_be_implemented msg =
+  raise (RemainsToBeImplemented(msg))
 
 
 let uchar_of_char ch =

@@ -169,11 +169,10 @@ let convert_gid_list (metricsf : FontFormat.glyph_id -> FontFormat.metrics) (dcd
     (gsynlst |> List.map (fun (gid, _) -> gid) (* temporary *), otxt, (FontFormat.PerMille(rawwid), FontFormat.PerMille(rawhgt), FontFormat.PerMille(rawdpt)))
 
 
-let get_glyph_id dcdr uch =
+let get_glyph_id font_abbrev dcdr uch =
   match FontFormat.get_glyph_id dcdr uch with
   | None ->
-      Format.printf "FontFormat> No glyph is associated with U+%04X.\n" (Uchar.to_int uch);
-        (* temporary; should emit a warning in a more sophisticated manner *)
+      Logging.warn_no_glyph font_abbrev uch;
       FontFormat.notdef
 
   | Some(gid) ->
@@ -187,8 +186,8 @@ let get_metrics_of_word (hsinfo : horz_string_info) (uchseglst : uchar_segment l
   let dcdr = dfn.decoder in
   let gseglst =
     uchseglst |> List.map (fun (ubase, umarks) ->
-      let gbase = get_glyph_id dcdr ubase in
-      let gmarks = List.map (get_glyph_id dcdr) umarks in
+      let gbase = get_glyph_id font_abbrev dcdr ubase in
+      let gmarks = List.map (get_glyph_id font_abbrev dcdr) umarks in
       (gbase, gmarks)
     )
   in
@@ -354,7 +353,15 @@ let get_math_char_info (mathctx : math_context) (is_in_display : bool) (is_big :
   let md = mfdfn.math_decoder in
   let gidlst =
     uchlst |> List.map (fun uch ->
-      let gidraw = FontFormat.get_math_glyph_id md uch in
+      let gidraw =
+        match FontFormat.get_math_glyph_id md uch with
+        | None ->
+            Logging.warn_no_math_glyph mfabbrev uch;
+            FontFormat.notdef
+
+        | Some(gid) ->
+            gid
+      in
       let gidsub =
         if MathContext.is_in_base_level mathctx then
           gidraw
@@ -435,7 +442,7 @@ let initialize () =
   math_font_hash |> List.iter (fun (mfabbrev, data) ->
     match data with
     | LoadFont.Single(srcpath)        -> MathFontAbbrevHashTable.add mfabbrev srcpath
-    | LoadFont.Collection(srcpath, i) -> failwith "TTC math font; remains to be implemented."
+    | LoadFont.Collection(srcpath, i) -> remains_to_be_implemented "cannot use a TrueType Collection for a math font"
   );
 
 

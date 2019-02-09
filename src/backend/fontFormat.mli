@@ -68,7 +68,7 @@ val get_math_decoder : string -> file_path -> (math_decoder * font) option
 
 val math_base_font : math_decoder -> decoder
 
-val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id
+val get_math_glyph_id : math_decoder -> Uchar.t -> glyph_id option
 
 val get_math_script_variant : math_decoder -> glyph_id -> glyph_id
 

@@ -1,4 +1,5 @@
 
+open MyUtil
 open Types
 open Display
 
@@ -349,6 +350,12 @@ let error_log_environment suspended =
   try
     suspended ()
   with
+  | RemainsToBeImplemented(msg) ->
+      report_error Interface [
+        NormalLine("remains to be supported:");
+        DisplayLine(msg);
+      ]
+
   | NoLibraryRootDesignation ->
       report_error Interface [
         NormalLine("cannot determine where the SATySFi library root is;");

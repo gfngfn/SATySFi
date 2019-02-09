@@ -1,5 +1,9 @@
 
+exception RemainsToBeImplemented of string
+
 type file_path = string
+
+val remains_to_be_implemented : string -> 'a
 
 val uchar_of_char : char -> Uchar.t
 

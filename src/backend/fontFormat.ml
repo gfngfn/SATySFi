@@ -1791,7 +1791,7 @@ module Type0
       let objcidtogidmap =
         match cidty2font.CIDFontType2.cid_to_gid_map with
         | CIDToGIDIdentity -> Pdf.Name("/Identity")
-        | _                -> failwith "/CIDToGIDMap other than /Identity; remains to be implemented."  (* temporary *)
+        | _                -> remains_to_be_implemented "/CIDToGIDMap other than /Identity"
       in
       let dwpmopt =
         cidty2font.CIDFontType2.dw |> option_map (fun dw -> per_mille dcdr dw)
@@ -2142,11 +2142,9 @@ let get_script_style_id (md : math_decoder) (gid : glyph_id) : glyph_id =
 
 
 
-let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id =
+let get_math_glyph_id (md : math_decoder) (uch : Uchar.t) : glyph_id option =
   let dcdr = md.as_normal_font in
-  match get_glyph_id dcdr uch with
-  | None      -> Logging.warn_no_glyph uch; notdef
-  | Some(gid) -> gid
+  get_glyph_id dcdr uch
 
 
 let get_math_script_variant (md : math_decoder) (gid : glyph_id) =
