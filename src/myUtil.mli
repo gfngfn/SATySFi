@@ -1,8 +1,6 @@
 
 exception RemainsToBeImplemented of string
 
-type file_path = string
-
 type abs_path
 
 type lib_path
