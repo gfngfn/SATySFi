@@ -6,12 +6,7 @@
   "lmroman-it": <Single: {"src": "dist/fonts/lmroman10-italic.otf"}>,
   "lmmono"    : <Single: {"src": "dist/fonts/lmmono10-regular.otf"}>,
   "lmsans"    : <Single: {"src": "dist/fonts/lmsans10-regular.otf"}>,
-  "ArnoPro"   : <Single: {"src": "dist/fonts/ArnoPro-Regular.otf"}>,
-  "ArnoPro-it": <Single: {"src": "dist/fonts/ArnoPro-Italic.otf"}>,
   "Junicode"  : <Single: {"src": "dist/fonts/Junicode.ttf"}>,
   "Junicode-b": <Single: {"src": "dist/fonts/Junicode-Bold.ttf"}>,
-  "Junicode-it": <Single: {"src": "dist/fonts/Junicode-Italic.ttf"}>,
-  "HiraKakuProN-W2": <Single: {"src": "dist/fonts/HiraKakuProN-W2.otf"}>,
-  "HiraKakuProN-W5": <Single: {"src": "dist/fonts/HiraKakuProN-W5.otf"}>,
-  "Menlo": <Collection: {"src": "dist/fonts/Menlo.ttc", "index": 1}>
+  "Junicode-it": <Single: {"src": "dist/fonts/Junicode-Italic.ttf"}>
 }

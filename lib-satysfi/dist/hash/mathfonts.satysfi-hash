@@ -1,5 +1,3 @@
 {
-  "Asana": <Single: {"src": "dist/fonts/Asana-math.otf"}>,
-  "lmodern": <Single: {"src": "dist/fonts/latinmodern-math.otf"}>,
-  "CambriaMath": <Single: {"src": "dist/fonts/CambriaMath.otf"}>
+  "lmodern": <Single: {"src": "dist/fonts/latinmodern-math.otf"}>
 }
