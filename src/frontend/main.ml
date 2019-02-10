@@ -379,12 +379,27 @@ let error_log_environment suspended =
         (cycle |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath)))
       )
 
-  | Config.PackageNotFound(file_name, pathcands) ->
+  | Config.PackageNotFound(package, pathcands) ->
       report_error Interface (List.append [
         NormalLine("package file not found:");
-        DisplayLine(file_name);
+        DisplayLine(package);
         NormalLine("candidate paths:");
       ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
+
+  | Config.LibraryFileNotFound(relpath, pathcands) ->
+      report_error Interface (List.append [
+        NormalLine("library file not found:");
+        DisplayLine(get_lib_path_string relpath);
+        NormalLine("candidate paths:");
+      ] (pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath))))
+
+  | Config.LibraryFilesNotFound(relpaths, pathcands) ->
+      report_error Interface (List.concat [
+        [ NormalLine("any of the following library file(s) not found:"); ];
+        relpaths |> List.map (fun relpath -> DisplayLine(get_lib_path_string relpath));
+        [ NormalLine("candidate paths:"); ];
+        pathcands |> List.map (fun abspath -> DisplayLine(get_abs_path_string abspath));
+      ])
 
   | NotALibraryFile(abspath_in, tyenv, ty) ->
       let fname = convert_abs_path_to_show abspath_in in
